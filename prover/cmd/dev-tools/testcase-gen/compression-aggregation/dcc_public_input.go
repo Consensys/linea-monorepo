@@ -7,11 +7,15 @@ package main
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -169,7 +173,31 @@ func wrapResponseWithDCC(resp *aggregation.Response, lastFinalizedL1RollingHash 
 // l2MsgMerkleTreeDepth is the depth used for L2 message merkle trees
 const l2MsgMerkleTreeDepth = 5
 
-// recalculateDCCPublicInput recalculates the public input hash with DCC support
-func recalculateDCCPublicInput(resp *DCCAggregationResponse) {
+// makeDCCDummyProof generates a dummy proof for the given public input.
+// This mirrors the logic in prover/backend/aggregation/prove.go:makeDummyProof
+func makeDCCDummyProof(publicInput string) string {
+	srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
+	if err != nil {
+		printlnAndExit("could not create SRS provider: %v", err)
+	}
+
+	setup, err := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitIDEmulation, ecc.BN254.ScalarField())
+	if err != nil {
+		printlnAndExit("could not create dummy setup: %v", err)
+	}
+
+	var x bn254fr.Element
+	xBytes, _ := hexutil.Decode(publicInput)
+	x.SetBytes(xBytes)
+
+	return dummy.MakeProof(&setup, x, circuits.MockCircuitIDEmulation)
+}
+
+// recalculateDCCPublicInputAndProof recalculates the public input hash with DCC support
+// and regenerates the proof for that public input.
+func recalculateDCCPublicInputAndProof(resp *DCCAggregationResponse) {
+	// First compute the DCC public input
 	resp.AggregatedProofPublicInput = computeDCCPublicInputHashFromDCCResponse(resp, l2MsgMerkleTreeDepth)
+	// Then regenerate the proof for that public input
+	resp.AggregatedProof = makeDCCDummyProof(resp.AggregatedProofPublicInput)
 }

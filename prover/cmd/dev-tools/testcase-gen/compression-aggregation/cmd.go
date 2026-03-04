@@ -359,7 +359,8 @@ func ProcessAggregationSpecDCC(
 	)
 
 	// Recalculate public input hash with DCC (includes chain config hash)
-	recalculateDCCPublicInput(resp)
+	// and regenerate the proof for that public input
+	recalculateDCCPublicInputAndProof(resp)
 
 	// Post-processing
 	runningSpec.LastFinalizedL1RollingHash = resp.L1RollingHash
