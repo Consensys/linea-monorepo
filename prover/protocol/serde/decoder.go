@@ -257,7 +257,13 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	// InterfaceHeader always points to the start of that data.
 	ih := (*InterfaceHeader)(unsafe.Pointer(&dec.data[offset]))
 	traceLog("Header Read: TypeID=%d Ind=%d Offset=%d", ih.TypeID, ih.PtrIndirection, ih.Offset)
-	if int(ih.TypeID) < 0 || int(ih.TypeID) >= len(IDToType) {
+
+	// Composite types (slice, map, array) are encoded with a sentinel TypeID.
+	if ih.TypeID == compositeTypeID {
+		return dec.decodeBoxedComposite(target, ih)
+	}
+
+	if int(ih.TypeID) >= len(IDToType) {
 		return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 	}
 	concreteType := IDToType[ih.TypeID]
@@ -296,6 +302,53 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 		if err := dec.decode(concreteVal, int64(ih.Offset)); err != nil {
 			return err
 		}
+	}
+	target.Set(concreteVal)
+	return nil
+}
+
+// decodeBoxedComposite reconstructs a slice, map, or array that was stored
+// inside an interface value and encoded with the compositeTypeID sentinel.
+// The type description is read from the InterfaceHeader.Reserved bytes:
+//
+//	Reserved[0]   = composite kind (compositeKindSlice / Map / Array)
+//	Reserved[1:3] = primary TypeID  (elem for slice/array; key for map)
+//	Reserved[3:5] = secondary value (val TypeID for map; array length for array)
+func (dec *decoder) decodeBoxedComposite(target reflect.Value, ih *InterfaceHeader) error {
+	kind := ih.Reserved[0]
+	primaryTypeID := uint16(ih.Reserved[1]) | uint16(ih.Reserved[2])<<8
+	secondaryVal := uint16(ih.Reserved[3]) | uint16(ih.Reserved[4])<<8
+
+	if int(primaryTypeID) >= len(IDToType) {
+		return fmt.Errorf("decodeBoxedComposite: invalid primary TypeID %d", primaryTypeID)
+	}
+
+	var compositeType reflect.Type
+	switch kind {
+	case compositeKindSlice:
+		compositeType = reflect.SliceOf(IDToType[primaryTypeID])
+
+	case compositeKindMap:
+		if int(secondaryVal) >= len(IDToType) {
+			return fmt.Errorf("decodeBoxedComposite: invalid value TypeID %d", secondaryVal)
+		}
+		compositeType = reflect.MapOf(IDToType[primaryTypeID], IDToType[secondaryVal])
+
+	case compositeKindArray:
+		compositeType = reflect.ArrayOf(int(secondaryVal), IDToType[primaryTypeID])
+
+	default:
+		return fmt.Errorf("decodeBoxedComposite: unknown composite kind %d", kind)
+	}
+
+	if ih.Offset.IsNull() {
+		target.Set(reflect.Zero(compositeType))
+		return nil
+	}
+
+	concreteVal := reflect.New(compositeType).Elem()
+	if err := dec.decode(concreteVal, int64(ih.Offset)); err != nil {
+		return err
 	}
 	target.Set(concreteVal)
 	return nil

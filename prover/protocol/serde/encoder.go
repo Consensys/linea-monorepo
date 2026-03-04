@@ -421,6 +421,19 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 	if concreteVal.Kind() == reflect.Ptr && concreteVal.IsNil() {
 		traceLog("!!! ALERT: TYPED NIL DETECTED !!! Type: %s", concreteVal.Type())
 	}
+
+	// Composite types (slice, map, array) cannot be registered by name in
+	// TypeToID so they are handled by a dedicated encoding path that embeds the
+	// type description into the InterfaceHeader's Reserved bytes.
+	switch concreteVal.Kind() {
+	case reflect.Slice:
+		return linearizeBoxedSlice(w, concreteVal)
+	case reflect.Map:
+		return linearizeBoxedMap(w, concreteVal)
+	case reflect.Array:
+		return linearizeBoxedArray(w, concreteVal)
+	}
+
 	dataOff, err := encode(w, concreteVal)
 	if err != nil {
 		return 0, err
@@ -445,6 +458,111 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		return Ref(off), nil
 	}
 	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
+	off := w.write(ih)
+	return Ref(off), nil
+}
+
+// linearizeBoxedSlice encodes a slice that is stored directly inside an
+// interface value.  The element type must be registered in TypeToID.
+//
+// Binary layout written to the buffer:
+//
+//	[slice data via existing slice path]   ← pointed to by InterfaceHeader.Offset
+//	InterfaceHeader {
+//	    TypeID         = compositeTypeID (0xFFFF)
+//	    Reserved[0]   = compositeKindSlice (1)
+//	    Reserved[1:3] = elem TypeID (little-endian uint16)
+//	    Offset        → FileSlice header of the slice data
+//	}
+func linearizeBoxedSlice(w *encoder, v reflect.Value) (Ref, error) {
+	elemType := v.Type().Elem()
+	typeID, ok := TypeToID[elemType]
+	if !ok {
+		return 0, fmt.Errorf("boxed slice: element type %v is not registered in TypeToID; add it via RegisterImplementation", elemType)
+	}
+	dataOff, err := encode(w, v)
+	if err != nil {
+		return 0, err
+	}
+	ih := InterfaceHeader{
+		TypeID:   compositeTypeID,
+		Reserved: [5]uint8{compositeKindSlice, uint8(typeID), uint8(typeID >> 8), 0, 0},
+		Offset:   dataOff,
+	}
+	off := w.write(ih)
+	return Ref(off), nil
+}
+
+// linearizeBoxedMap encodes a map that is stored directly inside an interface
+// value.  Both the key and value types must be registered in TypeToID.
+//
+// Binary layout:
+//
+//	[map data via existing map path]   ← pointed to by InterfaceHeader.Offset
+//	InterfaceHeader {
+//	    TypeID         = compositeTypeID (0xFFFF)
+//	    Reserved[0]   = compositeKindMap (2)
+//	    Reserved[1:3] = key TypeID (little-endian uint16)
+//	    Reserved[3:5] = val TypeID (little-endian uint16)
+//	    Offset        → FileSlice header of the map data
+//	}
+func linearizeBoxedMap(w *encoder, v reflect.Value) (Ref, error) {
+	keyType := v.Type().Key()
+	valType := v.Type().Elem()
+	keyTypeID, keyOk := TypeToID[keyType]
+	valTypeID, valOk := TypeToID[valType]
+	if !keyOk {
+		return 0, fmt.Errorf("boxed map: key type %v is not registered in TypeToID; add it via RegisterImplementation", keyType)
+	}
+	if !valOk {
+		return 0, fmt.Errorf("boxed map: value type %v is not registered in TypeToID; add it via RegisterImplementation", valType)
+	}
+	dataOff, err := encode(w, v)
+	if err != nil {
+		return 0, err
+	}
+	ih := InterfaceHeader{
+		TypeID:   compositeTypeID,
+		Reserved: [5]uint8{compositeKindMap, uint8(keyTypeID), uint8(keyTypeID >> 8), uint8(valTypeID), uint8(valTypeID >> 8)},
+		Offset:   dataOff,
+	}
+	off := w.write(ih)
+	return Ref(off), nil
+}
+
+// linearizeBoxedArray encodes a fixed-size array that is stored directly inside
+// an interface value.  The element type must be registered in TypeToID and the
+// array length must fit in a uint16 (≤ 65535).
+//
+// Binary layout:
+//
+//	[array data via existing array path]   ← pointed to by InterfaceHeader.Offset
+//	InterfaceHeader {
+//	    TypeID         = compositeTypeID (0xFFFF)
+//	    Reserved[0]   = compositeKindArray (3)
+//	    Reserved[1:3] = elem TypeID (little-endian uint16)
+//	    Reserved[3:5] = array length (little-endian uint16)
+//	    Offset        → raw array data
+//	}
+func linearizeBoxedArray(w *encoder, v reflect.Value) (Ref, error) {
+	elemType := v.Type().Elem()
+	length := v.Len()
+	typeID, ok := TypeToID[elemType]
+	if !ok {
+		return 0, fmt.Errorf("boxed array: element type %v is not registered in TypeToID; add it via RegisterImplementation", elemType)
+	}
+	if length > 65535 {
+		return 0, fmt.Errorf("boxed array: length %d exceeds the maximum of 65535 for interface-boxed arrays", length)
+	}
+	dataOff, err := encode(w, v)
+	if err != nil {
+		return 0, err
+	}
+	ih := InterfaceHeader{
+		TypeID:   compositeTypeID,
+		Reserved: [5]uint8{compositeKindArray, uint8(typeID), uint8(typeID >> 8), uint8(length), uint8(length >> 8)},
+		Offset:   dataOff,
+	}
 	off := w.write(ih)
 	return Ref(off), nil
 }
