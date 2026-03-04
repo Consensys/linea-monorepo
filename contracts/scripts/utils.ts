@@ -150,11 +150,13 @@ async function estimateGasFees(
   from: string,
   to?: string,
   data: string = "0x",
-): Promise<{ maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint; gasPrice?: bigint; gasLimit?: bigint }> {
+): Promise<{ maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint; gasPrice?: bigint }> {
   const chainId = Number((await provider.getNetwork()).chainId);
   if (isLineaChainId(chainId)) {
     const client = new LineaEstimateGasClient(new URL(rpcUrl), from);
-    return client.lineaEstimateGas(to, data);
+    const { gasLimit, ...fees } = await client.lineaEstimateGas(to, data);
+    void gasLimit;
+    return fees;
   }
   return get1559Fees(provider);
 }
