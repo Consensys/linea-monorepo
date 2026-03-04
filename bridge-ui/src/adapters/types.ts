@@ -4,11 +4,13 @@ import { Config } from "wagmi";
 import { type HistoryActionsForCompleteTxCaching } from "@/stores/historyStore";
 import {
   type AdapterModeId,
+  BridgeProvider,
   type BridgeMessage,
   BridgeTransaction,
   Chain,
   ChainLayer,
   ClaimType,
+  GithubTokenListToken,
   SupportedChainIds,
   Token,
 } from "@/types";
@@ -105,17 +107,20 @@ export interface ReceivedAmountParams {
 export interface BridgeAdapter {
   readonly id: string;
   readonly name: string;
+  readonly provider: BridgeProvider;
+  readonly logoSrc: string;
   readonly modes?: readonly AdapterMode[];
   readonly defaultMode?: AdapterModeId;
   readonly hasAdvancedSettings?: boolean;
 
-  isEnabled?(): boolean;
+  isEnabled(): boolean;
+  matchesToken(token: GithubTokenListToken): boolean;
   canHandle(token: Token, fromChain: Chain, toChain: Chain): boolean;
 
   getEstimatedTime?(fromChainLayer: ChainLayer, mode: AdapterModeId | undefined): EstimatedTime;
 
   buildDepositTx(params: DepositParams): TransactionRequest | undefined;
-  buildClaimTx(params: ClaimParams): TransactionRequest | undefined;
+  buildClaimTx?(params: ClaimParams): TransactionRequest | undefined;
 
   /**
    * Enriches the message with data needed for claiming (e.g., Merkle proof for native L2→L1).
