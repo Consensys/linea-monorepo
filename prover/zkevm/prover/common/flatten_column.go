@@ -249,6 +249,18 @@ func (l *FlattenColumn) Run(run *wizard.ProverRuntime) {
 	if !run.Columns.Exists(l.Limbs.GetColID()) {
 		l.assignLimbs(run)
 	}
+
+	for i := range l.ShiftedFlattenLimbs {
+		// GetColAssignment triggers the assignment of the column if it has not
+		// been assigned already.
+		l.ShiftedFlattenLimbs[i].GetColAssignment(run)
+	}
+
+	for i := range l.ShiftedFlattenMask {
+		// GetColAssignment triggers the assignment of the column if it has not
+		// been assigned already.
+		l.ShiftedFlattenMask[i].GetColAssignment(run)
+	}
 }
 
 func (l *FlattenColumn) assignMask(run *wizard.ProverRuntime) {
