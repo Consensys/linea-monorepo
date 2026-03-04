@@ -74,52 +74,51 @@ To test the package:
 
 ### Conventions
 
-- **Naming:** `TestFoo` for the happy path, `TestFoo_Scenario` for
-  sub-cases (e.g. `TestVerify_InvalidSignature`).
+- **Naming:** `TestFoo` for the happy path, `TestFoo_Scenario` for sub-cases 
+    (e.g. `TestVerify_InvalidSignature`).
 - **Table-driven:** Use `t.Run` with a case slice when there are 3 or
-  more input variants.
-- **Negative tests:** Every non-trivial function must have at least
-  one failure case that asserts the expected error.
-- **Circuit soundness tests are mandatory.** For every circuit, write
-  at least one test that provides an invalid witness and asserts proof
-  generation fails. A circuit tested only with valid witnesses is
-  untested against its core security property.
-- **Benchmarks:** Add `BenchmarkFoo` for any function on a hot path
-  or where algorithmic choice matters. Run with
-  `go test -bench=. -benchmem`.
-- **Assertions:** Use `require` (stops the test immediately) for
-  setup and preconditions. Use `assert` for independent checks within
-  the same test.
+    more input variants.
+- **Negative tests:** Every non-trivial function must have at least one failure 
+    case that asserts the expected error.
+- **Circuit soundness tests are mandatory.** For every circuit, write at least 
+    one test that provides an invalid witness and asserts proof generation 
+    fails. A circuit tested only with valid witnesses is untested against its 
+    core security property.
+- **Benchmarks:** Add `BenchmarkFoo` for any function on a hot path or where 
+    algorithmic choice matters. Run with `go test -bench=. -benchmem`.
+- **Assertions:** Use `require` (stops the test immediately) for setup and 
+    preconditions. Use `assert` for independent checks within the same test.
 
 ## Agent Rules (Overrides)
 
 - Always run `gofmt` and `golangci-lint` before proposing Go changes
-- Do not touch circuit code without explicit user directive (see Circuit Rules below)
-- Binary assets in `prover-assets/` are version-controlled selectively — check `.gitignore` exceptions
+- Do not touch circuit code without explicit user directive (see Circuit Rules 
+    below)
+- Binary assets in `prover-assets/` are version-controlled selectively — check 
+    `.gitignore` exceptions
 
 ## Code Style
 
 ### Package Structure
 
-- Fewer packages is better. Before creating a new package, propose the
-  structure to the user — do not define new packages without consent.
-- `./utils` is for domain-agnostic functionality — an extension of the
-  standard library or key dependencies. It is not a dumping ground for
-  orphan functions.
+- Fewer packages is better. Before creating a new package, propose the structure 
+    to the user — do not define new packages without consent.
+- `./utils` is for domain-agnostic functionality — an extension of the standard 
+    library or key dependencies. 
+- It is not a dumping ground for orphan functions.
 
-  **May go in:** assertion helpers (`utils.Require`), parallel
-  execution primitives, generic slice operations (`RightPadWith`,
-  `SortedKeysOf`), safe numeric conversions (`DivCeil`, `ToInt`),
-  iterator combinators (`ChainIterators`) — anything explainable
-  without domain knowledge.
+  **May go in:** assertion helpers (`utils.Require`), parallel execution 
+    primitives, generic slice operations (`RightPadWith`, `SortedKeysOf`), safe 
+    numeric conversions (`DivCeil`, `ToInt`), iterator combinators 
+    (`ChainIterators`) — anything explainable without domain knowledge.
 
   **Cannot go in:**
   - Functions with fewer than 3 call sites in the codebase.
-  - Functions already available in the standard library or key
-    dependencies, or that are trivial one-liners.
-  - Functions that require domain knowledge to explain — if
-    understanding it requires knowing what a ZK-EVM, a Vortex
-    polynomial, or a Compiled-IOP is, it does not belong here.
+  - Functions already available in the standard library or key dependencies, or 
+    that are trivial one-liners.
+  - Functions that require domain knowledge to explain — if understanding it 
+    requires knowing what a ZK-EVM, a Vortex polynomial, or a Compiled-IOP is, 
+    it does not belong here.
 
 ### Dependencies
 
@@ -130,14 +129,14 @@ To test the package:
 | Packages already in `go.mod` | Allowed; notify the user |
 | New external dependencies | Requires user consent |
 
-New external dependencies are discouraged but not prohibited. When
-proposing one, explain why it is preferable to a local implementation.
+New external dependencies are discouraged but not prohibited. When proposing 
+one, explain why it is preferable to a local implementation.
 
 ### Abstractions
 
 - Prefer extending existing types and interfaces over creating new ones.
-- Only introduce a new struct or interface if it reduces maintenance
-  cost or complexity.
+- Only introduce a new struct or interface if it reduces maintenance cost or 
+    complexity.
 
 ### Naming
 
@@ -206,12 +205,12 @@ signal-to-noise ratio. Favor good naming and simpler design when possible.
 Circuit definitions encode security-critical constraints. They are
 off-limits without an explicit directive from the user.
 
-- Do not modify, or generate `Define()` implementations or constraint expressions 
-    without explicit user instruction. This applies to any function that takes
-    in a gnark's `frontend.API` in their parameter.
-- Do not add, remove, or reorder fields in circuit structs without
-  explicit user instruction — this changes the verification key and
-  invalidates existing proofs.
+- Do not modify, or generate `Define()` implementations or constraint 
+    expressions without explicit user instruction. This applies to any function 
+    that takes in a gnark's `frontend.API` in their parameter.
+- Do not add, remove, or reorder fields in circuit structs without explicit user 
+    instruction — this changes the verification key and invalidates existing 
+    proofs.
 - Explaining circuit code is always fine.
 - Be proactive in raising concerns about soundness of a circuits.
 - Do not insert, modify or remove items in a Compiled-IOP without explicit 
@@ -225,13 +224,13 @@ off-limits without an explicit directive from the user.
 
 Every circuit struct must carry a comment documenting:
 
-- **What it proves.** One or two sentences in plain language, written
-  for an auditor who is unfamiliar with the codebase.
-- **Public vs private.** Each field must be annotated `// public` or
-  `// private`. Public inputs are visible to the verifier; private
-  fields are known only to the prover.
-- **Constraint budget.** Approximate constraint count and the dominant
-  cost (e.g. "~500k constraints, dominated by Keccak permutations").
+- **What it proves.** One or two sentences in plain language, written for an 
+    auditor who is unfamiliar with the codebase.
+- **Public vs private.** Each field must be annotated `// public` or 
+    `// private`. Public inputs are visible to the verifier; private fields are 
+    known only to the prover.
+- **Constraint budget.** Approximate constraint count and the dominant cost 
+    (e.g. "~500k constraints, dominated by Keccak permutations").
 
 ## Performance
 
@@ -246,27 +245,27 @@ Every circuit struct must carry a comment documenting:
 ### Allocations
 
 - Pre-allocate slices when the size is known: `make([]T, 0, n)`.
-- Pass buffers as parameters rather than allocating and returning them
-  — lets callers reuse allocations across calls.
-- Avoid `interface{}` / `any` boxing in hot loops — boxing forces a
-  heap allocation for the value.
-- Prefer arrays over slices for fixed-size data — no pointer, no GC
-  pressure, better cache behaviour.
-- Avoid `big.Int` in hot paths — every arithmetic operation allocates.
-  Use the field element types from gnark-crypto instead.
+- Pass buffers as parameters rather than allocating and returning them to lets 
+  callers reuse allocations across calls.
+- Avoid `interface{}` / `any` boxing in hot loops — boxing forces a heap 
+  allocation for the value.
+- Prefer arrays over slices for fixed-size data — no pointer, no GC pressure, 
+  better cache behaviour.
+- Avoid `big.Int` in hot paths — every arithmetic operation allocates. Use the 
+  field element types from gnark-crypto instead.
 - Measure with `-benchmem` to track allocation pressure.
 
 ### CPU
 
 - Order struct fields largest-to-smallest to minimize padding.
-- Avoid `fmt.Sprintf` in hot paths; use `strings.Builder` or
-  direct byte manipulation.
-- For data-parallel loops over large arrays, prefer struct-of-arrays
-  (SoA) layout over array-of-structs (AoS) for cache locality.
+- Avoid `fmt.Sprintf` in hot paths; use `strings.Builder` or direct byte 
+  manipulation.
+- For data-parallel loops over large arrays, prefer struct-of-arrays (SoA) 
+  layout over array-of-structs (AoS) for cache locality.
 
 ### Parallelism
 
 - Use `parallel.Execute` for parallel computation. Assume 100+ CPUs.
-- Avoid channels and locks for single-task dispatch — the scheduling
-  overhead dominates. Prepare uniform-shaped work chunks for
-  `parallel.Execute` instead; use `runtime.GOMAXPROCS(0)` for sizing.
+- Avoid channels and locks for single-task dispatch — the scheduling overhead 
+  dominates. Prepare uniform-shaped work chunks for `parallel.Execute` instead; 
+  use `runtime.GOMAXPROCS(0)` for sizing.
