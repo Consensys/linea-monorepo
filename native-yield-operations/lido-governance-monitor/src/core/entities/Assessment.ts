@@ -23,6 +23,7 @@ export type NativeYieldInvariant = (typeof NativeYieldInvariant)[keyof typeof Na
 
 export interface Assessment {
   riskScore: number;
+  effectiveRisk: number;
   riskLevel: RiskLevel;
   confidence: number;
   proposalType: ProposalType;
@@ -41,6 +42,7 @@ export interface Assessment {
 // Mirrors the Assessment interface above so that stale or malformed data is caught at runtime.
 export const AssessmentSchema = z.object({
   riskScore: z.number(),
+  effectiveRisk: z.number().int().min(0).max(100),
   riskLevel: z.enum(["low", "medium", "high", "critical"]),
   confidence: z.number(),
   proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
