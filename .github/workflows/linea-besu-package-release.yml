@@ -54,15 +54,15 @@ jobs:
       - name: Write release summary
         shell: bash
         env:
-          RELEASED_TAG: ${{ needs.build-test-push.outputs.linea_besu_package_tag }}
+          DOCKER_TAG: ${{ needs.build-test-push.outputs.linea_besu_package_tag }}
           RELEASE_TAG: ${{ needs.build-test-push.outputs.linea_besu_package_release_tag }}
           IMAGE_PUSHED: ${{ inputs.skip_push_image != 'true' }}
         run: |
           set -euo pipefail
 
-          released_tag="$RELEASED_TAG"
+          docker_tag="$DOCKER_TAG"
           release_tag="$RELEASE_TAG"
-          if [[ -z "$released_tag" ]]; then
+          if [[ -z "$docker_tag" ]]; then
             echo "linea_besu_package_tag output is empty"
             exit 1
           fi
@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-          image_ref="consensys/linea-besu-package:${released_tag}"
+          image_ref="consensys/linea-besu-package:${docker_tag}"
           release_url="https://github.com/Consensys/linea-monorepo/releases/tag/linea-besu-package-${release_tag}"
           image_pushed="$IMAGE_PUSHED"
 
