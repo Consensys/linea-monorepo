@@ -100,7 +100,7 @@ export const hyperlaneAdapter: BridgeAdapter = {
         recipient: message.recipient,
       },
     })) as unknown as MTokenReceivedLogEvent[];
-    console.log(logs);
+
     const match = logs.find((log) => log.args.index === message.transferIndex);
     return match?.transactionHash;
   },
