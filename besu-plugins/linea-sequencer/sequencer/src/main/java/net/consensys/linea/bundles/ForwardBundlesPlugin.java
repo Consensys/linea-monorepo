@@ -35,7 +35,7 @@ public class ForwardBundlesPlugin extends AbstractLineaRequiredPlugin {
     final var forwardUrls = config.forwardUrls();
     if (forwardUrls.isEmpty()) {
       log.warn(
-          "Bundle Forwarder plugin is active but no forward URLs are configured (--plugin-linea-bundles-forward-urls). Bundles will NOT be forwarded to the Sequencer.");
+          "Bundle Forwarder plugin is active but no forward URLs are configured (--plugin-linea-bundles-forward-urls). Bundles will NOT be forwarded");
     } else {
       final var rpcClient = createRpcClient(config.timeoutMillis());
       final var retryScheduler = createRetryScheduler();
