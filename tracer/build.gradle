@@ -2,8 +2,7 @@
 buildscript {
   ext {
     besuPluginDir = File.createTempDir("plugins")
-    targetReleaseVersion = "${releases.versions.arithmetization.get()}"
-    releaseVersion = findProperty('releaseVersion') ?: targetReleaseVersion
+    releaseVersion = project.findProperty('releaseVersion') ?: 'SNAPSHOT'
     distributionIdentifier = "linea-tracer"
     distibutionBaseName = "linea-arithmetization"
   }
@@ -76,14 +75,33 @@ sonar {
   }
 }
 
-version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
+version = project.findProperty('releaseVersion') ?: "SNAPSHOT"
+
+apply from: file("gradle/java.gradle")
 
 jar {
   archiveBaseName = distibutionBaseName
+  version = calculateVersion()
 }
 
 distributions {
   main {
     distributionBaseName = distibutionBaseName
+    version = calculateVersion()
+  }
+}
+
+def buildAndUpdateBesuVersionInLibsVersions = rootProject.tasks.named('buildAndUpdateBesuVersionInLibsVersions')
+def forceCheckoutAndBuildBesu = project.hasProperty('forceCheckoutAndBuildBesu') ? project.forceCheckoutAndBuildBesu.toBoolean() : false
+tasks.named('jar').configure {
+  if (forceCheckoutAndBuildBesu) {
+    // Ensure Besu is resolved/built and libs.versions.toml is updated before running jar task
+    dependsOn buildAndUpdateBesuVersionInLibsVersions
+  }
+}
+tasks.named('distZip').configure {
+  if (forceCheckoutAndBuildBesu) {
+    // Ensure Besu is resolved/built and libs.versions.toml is updated before running distZip task
+    dependsOn buildAndUpdateBesuVersionInLibsVersions
   }
 }
