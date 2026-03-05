@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -402,6 +403,12 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 	// These are the slow and expensive operations.
 	dw.CompileSegments(LimitlessCompilationParams).Conglomerate(LimitlessCompilationParams)
+
+	// This is needed because the outer-circuit will expect the conglomeration
+	// wizard to provide the public-inputs metadata.
+	dw.CompiledConglomeration.RecursionComp.
+		ExtraData[publicInput.PublicInputExtractorMetadata] = zkevm.
+		InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
