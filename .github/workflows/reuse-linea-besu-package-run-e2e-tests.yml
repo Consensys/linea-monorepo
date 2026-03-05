@@ -129,7 +129,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=false
+            make start-env-with-tracing-v2-ci-partial-prover CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
       - name: Spin up fresh environment with besu tracing and fleet nodes with retry
