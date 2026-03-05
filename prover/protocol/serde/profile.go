@@ -141,6 +141,38 @@ func WriteProfileTo(node *ProfileNode, w io.Writer) error {
 	return nil
 }
 
+// PruneTree removes every node whose Bytes is strictly less than minBytes,
+// together with all of its descendants.  The root is never removed; if its
+// Bytes fall below the threshold the tree is returned unchanged.
+// The function modifies the tree in place and returns the (possibly trimmed)
+// root for convenience.
+//
+// Typical usage:
+//
+//	root, _ := serde.Profile(v)
+//	root.PruneTree(1<<20) // hide everything below 1 MB
+//	serde.WriteProfileReport(root, "profile.txt")
+func (node *ProfileNode) PruneTree(minBytes int64) *ProfileNode {
+	if node == nil {
+		return nil
+	}
+	pruneChildren(node, minBytes)
+	return node
+}
+
+// pruneChildren filters node.Children in-place, keeping only those whose
+// Bytes >= minBytes, and recurses into the survivors.
+func pruneChildren(node *ProfileNode, minBytes int64) {
+	kept := node.Children[:0]
+	for _, child := range node.Children {
+		if child.Bytes >= minBytes {
+			pruneChildren(child, minBytes)
+			kept = append(kept, child)
+		}
+	}
+	node.Children = kept
+}
+
 // sortTree sorts each node's children by Bytes descending, recursively.
 func sortTree(n *ProfileNode) {
 	if n == nil {
