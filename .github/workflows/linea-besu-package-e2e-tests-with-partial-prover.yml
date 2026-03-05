@@ -1,6 +1,13 @@
 name: linea-besu-package-e2e-tests-with-partial-prover
 
+permissions:
+  actions: read
+  contents: read
+
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       linea_besu_package_image_tag:
@@ -18,16 +25,6 @@ on:
         required: false
         type: string
         default: 'true'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/linea-besu-package-e2e-tests-with-partial-prover.yml'
-
-permissions:
-  actions: read
-  contents: read
-  packages: read
 
 jobs:
   build-and-upload-artifact:
