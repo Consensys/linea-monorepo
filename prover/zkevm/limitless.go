@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -968,55 +967,4 @@ func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.Verificatio
 	defer closer.Close()
 
 	return mt, nil
-}
-
-// GetAffinities returns a list of affinities for the following modules. This
-// affinities regroup how the modules are grouped.
-//
-//	ecadd / ecmul / ecpairing
-//	hub / hub.scp / hub.acp
-//	everything related to keccak
-func GetAffinities(z *ZkEvm) [][]column.Natural {
-
-	return [][]column.Natural{
-		{
-			z.Ecmul.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecadd.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecpair.AlignedFinalExpCircuit.IsActive.(column.Natural),
-			z.Ecpair.AlignedG2MembershipData.IsActive.(column.Natural),
-			z.Ecpair.AlignedMillerLoopCircuit.IsActive.(column.Natural),
-		},
-		{
-			z.InitialCompiledIOP.Columns.GetHandle("hub.HUB_STAMP").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("hub.scp_ADDRESS_HI").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
-		},
-		{
-			z.InitialCompiledIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("CLEANING_KECCAK_CleanLimb").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("DECOMPOSITION_KECCAK_Decomposed_Len_0").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("KECCAK_FILTERS_SPAGHETTI").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("LANE_KECCAK_Lane").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("KECCAKF_IS_ACTIVE_").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("KECCAKF_BLOCK_BASE_2_0").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("KECCAK_OVER_BLOCKS_TAGS_0").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("HASH_OUTPUT_Hash_Lo").(column.Natural),
-		},
-		{
-			z.InitialCompiledIOP.Columns.GetHandle("SHA2_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("DECOMPOSITION_SHA2_Decomposed_Len_0").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("LENGTH_CONSISTENCY_SHA2_BYTE_LEN_0_0").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("SHA2_FILTERS_SPAGHETTI").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("LANE_SHA2_Lane").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
-		},
-		{
-			z.InitialCompiledIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
-			z.InitialCompiledIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
-		},
-	}
 }
