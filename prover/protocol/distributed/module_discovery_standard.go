@@ -1067,8 +1067,8 @@ func (module *QueryBasedModule) NumColumn() int {
 // NewSizeOf returns the size (length) of a column.
 func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col column.Natural) int {
 	size := col.Size()
-
 	mod := disc.ModuleOf(col)
+
 	for i := range disc.Modules {
 		if disc.Modules[i].ModuleName == mod {
 			qbm := disc.Modules[i]
@@ -1146,72 +1146,6 @@ func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 			utils.Panic("col=%v does not have a consistent size %v != %v", colID, size, colSize)
 		}
 	}
-}
-
-// groupQBModulesByAffinity groups the [QueryBasedModule] by affinity. Affinity
-// consists in a group of columns that are to be grouped in the same standard
-// module.
-func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
-
-	sets := make([]*collection.Set[*QueryBasedModule], len(qbModules))
-
-	for i := range qbModules {
-		s := collection.NewSet[*QueryBasedModule]()
-		sets[i] = &s
-		sets[i].Insert(qbModules[i])
-	}
-
-	for _, aff := range affinities {
-
-		matched := make([]*collection.Set[*QueryBasedModule], 0)
-		for i := range sets {
-
-			isSetMatched := false
-
-			for k := range aff {
-				for qbm := range sets[i].Iter() {
-					if qbm.Ds.Has(aff[k].ID) {
-						isSetMatched = true
-						continue
-					}
-				}
-			}
-
-			if isSetMatched {
-				matched = append(matched, sets[i])
-			}
-		}
-
-		if len(matched) <= 1 {
-			continue
-		}
-
-		mergedModule := matched[0]
-
-		for i := 1; i < len(matched); i++ {
-			mergedModule.Merge(matched[i])
-			matched[i].Clear()
-		}
-	}
-
-	groups = make([][]*QueryBasedModule, 0, len(sets))
-
-	for i := range sets {
-		if sets[i].Size() == 0 {
-			continue
-		}
-
-		groups = append(
-			groups,
-			sets[i].SortKeysBy(
-				func(qbm1, qbm2 *QueryBasedModule) bool {
-					return string(qbm1.ModuleName) < string(qbm2.ModuleName)
-				},
-			),
-		)
-	}
-
-	return groups
 }
 
 func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModule) int {
