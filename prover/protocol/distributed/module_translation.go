@@ -72,6 +72,10 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 		return res
 	}
 
+	if data.Len() != NewSizeOfColumn(mt.Disc, col) && !pragmas.IsCompletelyPeriodic(col) {
+		utils.Panic("inconsistent sizes %v != %v", data.Len(), NewSizeOfColumn(mt.Disc, col))
+	}
+
 	mt.Wiop.Precomputed.InsertNew(col.ID, data)
 	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status(), true)
 }
