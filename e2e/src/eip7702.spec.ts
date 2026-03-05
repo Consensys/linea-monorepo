@@ -113,7 +113,7 @@ describe("EIP-7702 test suite", () => {
     await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
   });
 
-  it("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
+  it.concurrent("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
     const [accountA, accountB] = await l2AccountManager.generateAccounts(2);
     const accountAWalletClient = context.l2WalletClient({ account: accountA });
 
