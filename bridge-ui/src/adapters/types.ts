@@ -112,6 +112,8 @@ export interface BridgeAdapter {
   readonly modes?: readonly AdapterMode[];
   readonly defaultMode?: AdapterModeId;
   readonly hasAdvancedSettings?: boolean;
+  /** Custom label for the destination-chain bridging fee row (defaults to "<toChain.name> fee"). */
+  readonly bridgingFeeLabel?: string;
 
   isEnabled(): boolean;
   matchesToken(token: GithubTokenListToken): boolean;

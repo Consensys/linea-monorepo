@@ -23,9 +23,10 @@ const HYPERLANE_LOGO = `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/hyperla
 
 export const hyperlaneAdapter: BridgeAdapter = {
   id: "hyperlane",
-  name: "Hyperlane Portal Lite",
+  name: "Hyperlane",
   provider: BridgeProvider.HYPERLANE,
   logoSrc: HYPERLANE_LOGO,
+  bridgingFeeLabel: "Hyperlane fee",
 
   isEnabled() {
     return config.isHyperlaneEnabled;
