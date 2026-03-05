@@ -239,13 +239,17 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 ) (circuits.Builder, map[string]any, error) {
 	extraFlags := make(map[string]any)
 	switch c {
-	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
+	case circuits.ExecutionCircuitID:
 		limits := cfg.TracesLimits
-		if c == circuits.ExecutionLargeCircuitID {
-			limits.SetLargeMode()
-		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
-		zkEvm := zkevm.FullZkEvm(&limits, cfg)
+		zkEvm := zkevm.FullZkEvmSetup(&limits, cfg)
+		return execution.NewBuilder(zkEvm), extraFlags, nil
+
+	case circuits.ExecutionLargeCircuitID:
+		limits := cfg.TracesLimits
+		limits.SetLargeMode()
+		extraFlags["cfg_checksum"] = limits.Checksum()
+		zkEvm := zkevm.FullZkEvmSetupLarge(&limits, cfg)
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLimitlessCircuitID:
