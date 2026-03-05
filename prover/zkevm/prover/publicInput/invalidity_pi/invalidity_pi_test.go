@@ -1,11 +1,17 @@
 package invalidity
 
 import (
+	"bytes"
+	"encoding/hex"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	zkevmcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 )
 
 var (
@@ -150,5 +156,89 @@ func checkPublicInputsFromProof(t *testing.T, comp *wizard.CompiledIOP, proof wi
 	gotNbL2Logs := getPI(extractor.NbL2Logs)
 	if !gotNbL2Logs.Equal(&expectedNbL2Logs) {
 		t.Errorf("NbL2Logs mismatch: got %v, want %v", gotNbL2Logs, expectedNbL2Logs)
+	}
+}
+
+// TestInvalidityPIWithRealEcdsa runs the real ECDSA antichamber module (using
+// antichamber.csv test data) wired into InvalidityPI, and extracts the TxHash
+// and FromAddress public inputs to verify their byte/limb ordering.
+func TestInvalidityPIWithRealEcdsa(t *testing.T) {
+
+	var (
+		ecdsaSetup *ecdsa.TestEcdsaSetup
+		pi         *InvalidityPI
+		hubCol     ifaces.Column
+		filterCol  ifaces.Column
+	)
+
+	hubSize := 64
+	filterSize := 64
+
+	comp := wizard.Compile(func(b *wizard.Builder) {
+		c := b.CompiledIOP
+
+		ecdsaSetup = ecdsa.NewTestEcdsaSetup(b, 2)
+
+		hubCol = c.InsertCommit(0, "hub.PROVER_ILLEGAL_TRANSACTION_DETECTED", hubSize, true)
+		filterCol = c.InsertCommit(0, "MOCK_FILTER_FETCHED_L2L1", filterSize, true)
+
+		pi = NewInvalidityPI(c, ecdsaSetup.Ecdsa, filterCol)
+	}, dummy.Compile)
+
+	proof := wizard.Prove(comp, func(run *wizard.ProverRuntime) {
+		ecdsaSetup.ProverFunc(run)
+
+		run.AssignColumn(hubCol.GetColID(), smartvectors.NewConstant(field.Zero(), hubSize))
+		run.AssignColumn(filterCol.GetColID(), smartvectors.NewConstant(field.Zero(), filterSize))
+
+		pi.Assign(run)
+	})
+
+	if err := wizard.Verify(comp, proof); err != nil {
+		t.Fatal("verification failed:", err)
+	}
+
+	extractor := comp.ExtraData[InvalidityPIExtractorMetadata].(*InvalidityPIExtractor)
+
+	getPI := func(p wizard.PublicInput) field.Element {
+		val := proof.GetPublicInput(comp, p.Name, false)
+		fieldVal, err := val.GetBase()
+		if err != nil {
+			t.Fatalf("Failed to get PI %s: %v", p.Name, err)
+		}
+		return fieldVal
+	}
+
+	// Extract TxHash limbs (BE order from public inputs)
+	t.Log("=== TxHash from real ECDSA (BE limbs, each 16-bit) ===")
+	var txHashBytes [32]byte
+	for i := 0; i < zkevmcommon.NbLimbU256; i++ {
+		limb := getPI(extractor.TxHash[i])
+		v := limb.Uint64()
+		txHashBytes[i*2] = byte(v >> 8)
+		txHashBytes[i*2+1] = byte(v)
+		t.Logf("  TxHash[%2d] = 0x%04x", i, v)
+	}
+	t.Logf("  TxHash (full): 0x%s", hex.EncodeToString(txHashBytes[:]))
+
+	expectedTxHash := ecdsaSetup.KeccakTrace.HashOutPut[0]
+	if !bytes.Equal(txHashBytes[:], expectedTxHash[:]) {
+		t.Errorf("TxHash mismatch: got %v, want %v", txHashBytes[:], expectedTxHash[:])
+	}
+
+	// Extract FromAddress limbs (BE order from public inputs)
+	t.Log("=== FromAddress from real ECDSA (BE limbs, each 16-bit) ===")
+	var fromBytes [20]byte
+	for i := 0; i < zkevmcommon.NbLimbEthAddress; i++ {
+		limb := getPI(extractor.FromAddress[i])
+		v := limb.Uint64()
+		fromBytes[i*2] = byte(v >> 8)
+		fromBytes[i*2+1] = byte(v)
+		t.Logf("  From[%2d] = 0x%04x", i, v)
+	}
+	t.Logf("  FromAddress (full): 0x%s", hex.EncodeToString(fromBytes[:]))
+	expectedFromAddress := ecdsaSetup.FromAddress
+	if !bytes.Equal(fromBytes[:], expectedFromAddress[:]) {
+		t.Errorf("FromAddress mismatch: got %v, want %v", fromBytes[:], expectedFromAddress[:])
 	}
 }
