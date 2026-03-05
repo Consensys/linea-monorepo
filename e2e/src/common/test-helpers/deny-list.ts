@@ -19,7 +19,6 @@ export async function reloadDenyList(client: DenyListControlClient): Promise<voi
     pluginName: SequencerPluginName.TransactionPoolValidator,
   });
 
-  console.log("Deny list reloaded");
   await wait(3000);
 }
 
