@@ -9,6 +9,7 @@ export type AffectedComponent =
   | "StakingVault"
   | "VaultHub"
   | "LazyOracle"
+  | "AccountingOracle"
   | "OperatorGrid"
   | "PredepositGuarantee"
   | "Dashboard"
@@ -48,7 +49,16 @@ export const AssessmentSchema = z.object({
   proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
   impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
   affectedComponents: z.array(
-    z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"]),
+    z.enum([
+      "StakingVault",
+      "VaultHub",
+      "LazyOracle",
+      "AccountingOracle",
+      "OperatorGrid",
+      "PredepositGuarantee",
+      "Dashboard",
+      "Other",
+    ]),
   ),
   whatChanged: z.string(),
   nativeYieldInvariantsAtRisk: z.array(
