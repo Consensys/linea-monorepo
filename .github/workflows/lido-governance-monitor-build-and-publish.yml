@@ -49,9 +49,6 @@ on:
         required: false
         type: boolean
         default: true
-  push:
-    branches:
-      - lido-governance-monitor-initcontainer
 
 concurrency:
   group: lido-governance-monitor-build-and-publish-${{ github.workflow }}-${{ github.ref }}
@@ -62,10 +59,10 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: lido-governance-monitor
     env:
-      COMMIT_TAG: ${{ inputs.commit_tag || github.sha }}
-      DEVELOP_TAG: ${{ inputs.develop_tag || 'develop' }}
-      IMAGE_NAME: ${{ inputs.image_name || 'consensys/linea-lido-governance-monitor' }}
-      PUSH_IMAGE: ${{ github.event_name == 'push' && 'true' || inputs.push_image }}
+      COMMIT_TAG: ${{ inputs.commit_tag }}
+      DEVELOP_TAG: ${{ inputs.develop_tag }}
+      IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
