@@ -40,8 +40,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
-	// Setting the issue handler to exit on unsatisfied constraint but not limit overflow.
-	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint)
+	// Setting the issue handler to exit on unsatisfied constraint and missing trace file,
+	// but not limit overflow.
+	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint | exit.ExitOnMissingTraceFile)
 
 	// Clean up witness directory to be sure it is empty when we start the
 	// process. This helps addressing the situation where a previous process
