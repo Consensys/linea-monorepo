@@ -342,13 +342,14 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 			for i := start; i < stop; i++ {
 
-				if denominator.GetPtr(i).IsZero() {
+				den := denominator.GetExt(i)
+				if den.IsZero() {
 					return fext.GenericFieldElem{}, errors.New("denominator is zero")
 				}
 
-				if !numerator.GetPtr(i).IsZero() {
-					denominatorNonZero = append(denominatorNonZero, denominator.GetExt(i))
-					numeratorNonZero = append(numeratorNonZero, numerator.GetExt(i))
+				if num := numerator.GetExt(i); num.IsZero() {
+					denominatorNonZero = append(denominatorNonZero, den)
+					numeratorNonZero = append(numeratorNonZero, num)
 				}
 			}
 
@@ -384,9 +385,9 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 			return fext.GenericFieldElem{}, errors.New("denominator is zero")
 		}
 
-		if !numerator.GetPtr(i).IsZero() {
-			denominatorNonZero = append(denominatorNonZero, denominator.GetExt(i))
-			numeratorNonZero = append(numeratorNonZero, numerator.GetExt(i))
+		if x := numerator.GetExt(i); x.IsZero() {
+			denominatorNonZero = append(denominatorNonZero, a)
+			numeratorNonZero = append(numeratorNonZero, x)
 		}
 	}
 
