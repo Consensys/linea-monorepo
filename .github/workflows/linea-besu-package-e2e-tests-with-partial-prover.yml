@@ -50,5 +50,5 @@ jobs:
       run_e2e_tests_for_partial_prover: true
       runner_machine: gha-runner-scale-set-ubuntu-24-amd64-xxl
       e2e-tests-logs-dump: true
-      e2e-tests-with-besu-fleet: ${{ inputs.without_besu_fleet_plugin != 'true' }}
+      e2e-tests-with-besu-fleet: ${{ inputs.without_besu_fleet_plugin != '' && inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
