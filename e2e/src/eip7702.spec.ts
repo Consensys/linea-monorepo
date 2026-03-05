@@ -44,7 +44,7 @@ describe("EIP-7702 test suite", () => {
     const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
 
     const deployEstimate = await estimateLineaGas(l2PublicClient, {
-      account: deployer.address,
+      account: deployer,
       data: TestEIP7702DelegationAbiBytecode,
     });
 
