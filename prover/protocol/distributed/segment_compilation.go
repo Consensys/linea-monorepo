@@ -315,7 +315,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
-			16,
+			2,
 			false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
