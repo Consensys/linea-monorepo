@@ -168,6 +168,14 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		plonkOpts = append(plonkOpts, plonkinternal.WithSubscript(params.Subscript))
 	}
 
+	// Mark inputComp's SubVerifiers as gnark-skipped BEFORE compiling the
+	// gnark circuit. PlonkCheck calls frontend.Compile immediately (inside
+	// createCtx), so the flag must be set before PlonkCheck is invoked.
+	// This prevents the RecursionCircuit from re-running inputComp's
+	// SubVerifiers in gnark mode — the PlonkInWizard proof already encodes
+	// all of inputComp's SubVerifier checks, so skipping them is safe.
+	inputComp.GnarkSubVerifiersSkipped = true
+
 	var (
 		plonkCircuit = AllocRecursionCircuit(inputComp, params.WithExternalHasherOpts)
 		plonkCtx     = plonkinternal.PlonkCheck(comp, params.Name, 0, plonkCircuit, params.MaxNumProof, plonkOpts...)

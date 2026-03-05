@@ -8,6 +8,29 @@ import (
 // Option to be passed to vortex
 type VortexOp func(ctx *Ctx)
 
+// ForceNumTotalColumns pads the Vortex committed-row count to at least n by
+// inserting zero-valued shadow polynomials into the last committed round.
+// This ensures that circuit loops depending on CommittedRowsCount have a fixed
+// upper bound, making the gnark verifier circuit size uniform across tree depths.
+// If the actual count already meets or exceeds n, no padding is added.
+func ForceNumTotalColumns(n int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.MinTotalCommittedCols = n
+	}
+}
+
+// ForceNumTotalRounds pads the number of committed IOP rounds to at least n by
+// converting empty rounds into dummy committed rounds (each with one zero-valued
+// shadow polynomial). This fixes MerkleProofSize and Merkle-root proof column
+// counts, making the gnark verifier circuit size uniform across tree depths.
+// Empty rounds within [0, MaxCommittedRound] are filled first.
+// If the actual count already meets or exceeds n, no padding is added.
+func ForceNumTotalRounds(n int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.MinTotalCommittedRounds = n
+	}
+}
+
 // Overrides the number of opened columns (should
 // not be used in production)
 func ForceNumOpenedColumns(nbCol int) VortexOp {
@@ -29,6 +52,18 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 func WithOptionalSISHashingThreshold(sisHashingThreshold int) VortexOp {
 	return func(ctx *Ctx) {
 		ctx.ApplySISHashThreshold = sisHashingThreshold
+	}
+}
+
+// ForceNumPrecomputed pads the precomputed column count to at least n by
+// inserting zero-valued shadow polynomials. This normalizes the precomputed
+// column count across tree depths, ensuring that totalCommitted (dynamic +
+// precomputed) in the first Vortex round is depth-independent, which keeps
+// the BN254 wrap circuit constraint count constant.
+// If the actual count already meets or exceeds n, no padding is added.
+func ForceNumPrecomputed(n int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.MinTotalPrecomputedCols = n
 	}
 }
 

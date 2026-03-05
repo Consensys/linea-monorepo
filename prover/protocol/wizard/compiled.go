@@ -138,6 +138,18 @@ type CompiledIOP struct {
 	// This is set by the Vortex compiler when IsLastRound=true and
 	// enables efficient wrapping in a BN254 PLONK circuit.
 	UseBN254FS bool
+
+	// GnarkSubVerifiersSkipped, when true, makes VerifierCircuit.Define skip
+	// all SubVerifier gnark steps for this compiled IOP. It is set on an
+	// inputComp after its verification circuit has been compiled into a
+	// PlonkInWizard by DefineRecursionOf. This prevents O(depth) constraint
+	// accumulation in tree aggregation: once Q_k captures inputComp's
+	// SubVerifiers, outer levels do not need to re-run them because the
+	// PlonkInWizard proof already guarantees their satisfaction.
+	//
+	// Note: native Run() verification is unaffected — only RunGnark() is
+	// skipped.
+	GnarkSubVerifiersSkipped bool
 }
 
 // NumRounds returns the total number of prover interactions with the verifier

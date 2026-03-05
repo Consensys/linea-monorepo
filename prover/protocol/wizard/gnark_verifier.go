@@ -359,16 +359,25 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 	c.KoalaFS.Update(zkWV[:]...)
 
-	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
+	// If the compiled IOP has been fully captured by a PlonkInWizard circuit,
+	// skip all SubVerifier gnark steps. The PlonkInWizard proof already
+	// guarantees their satisfaction, so re-running them would only add O(depth)
+	// constraint accumulation without adding soundness.
+	if !c.Spec.GnarkSubVerifiersSkipped {
+		for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
-		if round >= c.NumRound {
-			break
-		}
+			if round >= c.NumRound {
+				break
+			}
 
-		c.GenerateCoinsForRound(api, round)
+			c.GenerateCoinsForRound(api, round)
 
-		for _, step := range roundSteps {
-			step.RunGnark(api, c)
+			for _, step := range roundSteps {
+				if skippable, ok := step.(GnarkSkippableAction); ok && skippable.IsGnarkSkipped() {
+					continue
+				}
+				step.RunGnark(api, c)
+			}
 		}
 	}
 }

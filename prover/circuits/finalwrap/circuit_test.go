@@ -19,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
@@ -27,6 +28,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/tree"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
@@ -292,7 +294,7 @@ func TestToyFinalWrapEndToEnd(t *testing.T) {
 	require.NoError(t, err, "BN254 final wrap proof should succeed")
 	require.NotNil(t, proof)
 
-	t.Log("BN254 final wrap proof generated and verified successfully")
+	t.Log("BN254 final wrap proof generated and verified successfully (toy)")
 }
 
 // TestFinalWrapEndToEnd tests the BN254 pipeline:
@@ -336,4 +338,133 @@ func TestFinalWrapEndToEnd(t *testing.T) {
 	require.NotNil(t, proof)
 
 	t.Log("BN254 final wrap proof generated and verified successfully")
+}
+
+// realisticLeafCompile compiles the base wizard IOP for use as a leaf in tree
+// aggregation. Uses PremarkAsSelfRecursed so the output can be consumed by
+// recursion.DefineRecursionOf at the tree level.
+func realisticLeafCompile(p realisticWizardParams) *wizard.CompiledIOP {
+	const (
+		rsInverseRate    = 16
+		nbOpenedColumns  = 64
+		targetColSize    = 1 << 16
+		// normTotalColumns pins the Merkle tree depth to log2(64)=6 regardless
+		// of how many polynomial columns the wizard circuit happens to produce.
+		// Without this, two leaves from circuits of different sizes would have
+		// different Merkle depths, making the tree-aggregation verification
+		// circuit non-uniform and breaking the "one fixed circuit per level"
+		// property.  Any N ≥ actual CommittedRowsCount works; 64 matches the
+		// current count (52 → NextPowerOfTwo → 64) and is the minimum safe value
+		// for this test circuit.  Production leaf suites need an analogous
+		// ForceNumTotalColumns sized to their actual column budget.
+		normTotalColumns = 64
+	)
+
+	return wizard.Compile(
+		realisticWizardDefine(p),
+		compiler.Arcane(
+			compiler.WithTargetColSize(targetColSize),
+			compiler.WithStitcherMinSize(1<<1),
+		),
+		vortex.Compile(
+			rsInverseRate, false,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
+			vortex.ForceNumTotalColumns(normTotalColumns),
+			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.PremarkAsSelfRecursed(),
+		),
+	)
+}
+
+// TestConstraintsVsDepth measures BN254 constraint count at different tree depths
+// WITHOUT proving — compile-only to quickly answer whether cost is O(1) with depth.
+//
+// Expected results:
+//   - If the SelfRecurse + Arcane normalization caps proof size, constraint count
+//     should be approximately constant for depth ≥ 1.
+//   - If it grows, the compression isn't capping the output size.
+func TestConstraintsVsDepth(t *testing.T) {
+	params := defaultRealisticParams
+
+	t.Log("Compiling leaf wizard (PremarkAsSelfRecursed)...")
+	leafComp := realisticLeafCompile(params)
+	t.Logf("Leaf wizard compiled: %d rounds", leafComp.NumRounds())
+
+	for depth := 1; depth <= 3; depth++ {
+		t.Run(fmt.Sprintf("depth=%d", depth), func(t *testing.T) {
+			t.Logf("Compiling tree aggregation depth=%d...", depth)
+			treeAgg := tree.CompileTreeAggregation(leafComp, depth)
+			t.Logf("Tree depth=%d root rounds=%d", depth, treeAgg.RootCompiledIOP().NumRounds())
+
+			ccs, err := MakeCS(treeAgg.RootCompiledIOP())
+			require.NoError(t, err, "BN254 wrap circuit should compile at depth=%d", depth)
+			t.Logf("depth=%d => %d BN254 constraints", depth, ccs.GetNbConstraints())
+		})
+	}
+}
+
+// TestAggregateFinalWrapEndToEnd tests the full tree-aggregation pipeline for N=2:
+//
+//	2 leaf wizard proofs (PremarkAsSelfRecursed)
+//	  → tree.CompileTreeAggregation(depth=1): DefineRecursionOf(MaxNumProof=2) on KoalaBear
+//	    → 1 root proof (IsLastRound=true)
+//	      → BN254 PLONK final wrap (L1)
+func TestAggregateFinalWrapEndToEnd(t *testing.T) {
+	params := defaultRealisticParams
+	srsProvider := circuits.NewUnsafeSRSProvider()
+
+	// Step 1: compile the leaf wizard
+	t.Log("Compiling leaf wizard (PremarkAsSelfRecursed)...")
+	leafComp := realisticLeafCompile(params)
+	t.Logf("Leaf wizard compiled: %d rounds", leafComp.NumRounds())
+
+	// Step 2: compile tree aggregation (depth=1 for N=2, single final level)
+	t.Log("Compiling tree aggregation (depth=1 for N=2)...")
+	treeAgg := tree.CompileTreeAggregation(leafComp, 1)
+	t.Logf("Tree compiled: depth=%d, root rounds=%d", treeAgg.Depth(), treeAgg.RootCompiledIOP().NumRounds())
+
+	// Step 3: generate 2 leaf witnesses by running the prover to the vortex
+	// query round and extracting the recursion witness.
+	t.Log("Generating 2 leaf witnesses...")
+	stoppingRound := recursion.VortexQueryRound(leafComp) + 1
+	run1 := wizard.RunProverUntilRound(leafComp, realisticWizardAssign(params), stoppingRound)
+	wit1 := recursion.ExtractWitness(run1)
+	run2 := wizard.RunProverUntilRound(leafComp, realisticWizardAssign(params), stoppingRound)
+	wit2 := recursion.ExtractWitness(run2)
+
+	// Step 4: prove the tree — produces a single root proof
+	t.Log("Proving tree aggregation (N=2)...")
+	rootProof, err := treeAgg.ProveTree([]recursion.Witness{wit1, wit2})
+	require.NoError(t, err, "tree proving should succeed")
+
+	err = wizard.Verify(treeAgg.RootCompiledIOP(), rootProof)
+	require.NoError(t, err, "root proof should verify")
+	t.Log("Root proof verified OK")
+
+	// Step 5: compile BN254 final wrap circuit around the root compiled IOP
+	t.Log("Compiling BN254 final wrap circuit...")
+	ccs, err := MakeCS(treeAgg.RootCompiledIOP())
+	require.NoError(t, err, "final wrap circuit should compile")
+	t.Logf("Final wrap circuit: %d constraints", ccs.GetNbConstraints())
+
+	// Step 6: PLONK setup
+	t.Log("Creating PLONK setup (BN254)...")
+	setup, err := circuits.MakeSetup(
+		context.Background(),
+		circuits.FinalWrapCircuitID,
+		ccs,
+		srsProvider,
+		nil,
+	)
+	require.NoError(t, err, "PLONK setup should succeed")
+
+	// Step 7: prove and verify
+	t.Log("Generating BN254 PLONK proof...")
+	var publicInput frBn254.Element
+	proof, err := MakeProof(&setup, treeAgg.RootCompiledIOP(), rootProof, publicInput)
+	require.NoError(t, err, "BN254 aggregate final wrap proof should succeed")
+	require.NotNil(t, proof)
+
+	t.Log("BN254 aggregate final wrap proof (N=2) generated and verified successfully")
 }

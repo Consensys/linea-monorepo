@@ -38,6 +38,14 @@ func TreeAggregationCompilationSuite() CompilationSuite {
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
+			// Pad CommittedRowsCount to 2048 so that every tree level produces
+			// opened columns of the same size (NextPowerOfTwo(2048)=2048),
+			// making the self-recursion circuit shape uniform across depths.
+			vortex.ForceNumTotalColumns(2048),
+			// Pad precomputed columns to 256 so that totalCommitted in round1
+			// (dynamic + precomputed) is depth-independent, keeping the BN254
+			// wrap circuit constraint count constant across tree depths.
+			vortex.ForceNumPrecomputed(256),
 		),
 
 		// First round of self-recursion
@@ -52,6 +60,7 @@ func TreeAggregationCompilationSuite() CompilationSuite {
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.ForceNumTotalColumns(2048),
 		),
 
 		// Second round of self-recursion
@@ -86,6 +95,11 @@ func TreeAggregationFinalCompilationSuite() CompilationSuite {
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
+			vortex.ForceNumTotalColumns(2048),
+			// Pad precomputed columns to 256 so that totalCommitted in round1
+			// (dynamic + precomputed) is depth-independent, keeping the BN254
+			// wrap circuit constraint count constant across tree depths.
+			vortex.ForceNumPrecomputed(256),
 		),
 
 		// First round of self-recursion
@@ -100,6 +114,7 @@ func TreeAggregationFinalCompilationSuite() CompilationSuite {
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.ForceNumTotalColumns(2048),
 		),
 
 		// Second round of self-recursion

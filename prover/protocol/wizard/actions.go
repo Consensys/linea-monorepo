@@ -37,6 +37,17 @@ type VerifierAction interface {
 	RunGnark(frontend.API, GnarkRuntime)
 }
 
+// GnarkSkippableAction is an optional interface that VerifierAction
+// implementors can implement to allow their RunGnark method to be skipped when
+// the action has already been captured by an inner PlonkInWizard circuit. This
+// prevents O(depth) accumulation of gnark constraints in tree aggregation
+// without compromising soundness (the inner PlonkInWizard circuit already
+// encodes the SubVerifier checks).
+type GnarkSkippableAction interface {
+	SkipGnark()
+	IsGnarkSkipped() bool
+}
+
 // PrintingProverAction is a ProverAction printing a column content. And an
 // additional message.
 type PrintingProverAction struct {

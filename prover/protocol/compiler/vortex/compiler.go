@@ -93,9 +93,31 @@ func Compile(blowUpFactor int, IsLastRound bool, options ...VortexOp) func(*wiza
 		// Process the precomputed columns
 		ctx.processStatusPrecomputed()
 
-		// registers all the commitments
+		// Phase 1: compile all rounds. This registers ShadowRowProverActions
+		// for SIS-alignment shadow columns inside compileRound.
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
+		}
+
+		// Phase 2: pad to requested minimums.
+		// Must run after all rounds are compiled (so MaxCommittedRound is
+		// final and NumCols is set) but before ColumnAssignmentProverAction
+		// is registered, so that the padding ShadowRowProverActions execute
+		// first.
+		//
+		// Order matters: padToMinTotalRounds first (adds new committed rounds
+		// which may increase CommittedRowsCount), then padToMinTotalCols
+		// (tops up CommittedRowsCount within the last committed round), then
+		// padToMinPrecomputed (pads precomputed columns to normalise
+		// totalCommitted across tree depths).
+		ctx.padToMinTotalRounds()
+		ctx.padToMinTotalCols()
+		ctx.padToMinPrecomputed()
+
+		// Phase 3: register ColumnAssignmentProverAction for every round.
+		// All ShadowRowProverActions (phases 1 & 2) are already in the
+		// queue before these, preserving the required assignment order.
+		for round := 0; round <= lastRound; round++ {
 			comp.RegisterProverAction(round, &ColumnAssignmentProverAction{
 				Ctx:   ctx,
 				Round: round,
@@ -223,6 +245,25 @@ type Ctx struct {
 
 	// Optional parameter
 	NumOpenedCol int
+
+	// MinTotalCommittedCols is set by ForceNumTotalColumns. When positive,
+	// padToMinTotalCols() will insert shadow zero-polynomials into the last
+	// committed round until CommittedRowsCount reaches this value.
+	MinTotalCommittedCols int
+
+	// MinTotalCommittedRounds is set by ForceNumTotalRounds. When positive,
+	// padToMinTotalRounds() will convert empty IOP rounds into dummy committed
+	// rounds (1 shadow poly each) until NumCommittedRounds() reaches this value.
+	// This fixes MerkleProofSize and Merkle-root column count across tree depths.
+	MinTotalCommittedRounds int
+
+	// MinTotalPrecomputedCols is set by ForceNumPrecomputed. When positive,
+	// padToMinPrecomputed() will insert zero-valued shadow precomputed columns
+	// until len(PrecomputedColums) reaches this value. This normalizes the
+	// precomputed column count across tree depths so that totalCommitted in
+	// round1 (dynamic + precomputed) is depth-independent, keeping the BN254
+	// wrap circuit constraint count constant.
+	MinTotalPrecomputedCols int
 
 	// By rounds commitments
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
@@ -586,6 +627,9 @@ func (ctx *Ctx) generateVortexParams() {
 
 	totalCommitted := ctx.CommittedRowsCount + len(ctx.Items.Precomputeds.PrecomputedColums)
 
+	logrus.Infof("Vortex generateVortexParams: CommittedRowsCount=%d precomputed=%d totalCommitted=%d numCols=%d",
+		ctx.CommittedRowsCount, len(ctx.Items.Precomputeds.PrecomputedColums), totalCommitted, ctx.NumCols)
+
 	// edge-case : we in fact have nothing to commit to. So no need to gene-
 	// rate the vortex params.
 	if ctx.NumCols == 0 || totalCommitted == 0 {
@@ -646,6 +690,11 @@ func (ctx *Ctx) NbColsToOpen() int {
 // registers the vortex opening proof. As an input, we pass the last round
 // of the protocol. Also register them in the item set of the context.
 func (ctx *Ctx) registerOpeningProof(lastRound int) {
+
+	logrus.Infof("Vortex registerOpeningProof: NumCommittedRounds=%d MerkleProofSize=%d numRows=%d numRowsSIS=%d",
+		ctx.NumCommittedRounds(), ctx.MerkleProofSize(),
+		utils.NextPowerOfTwo(ctx.CommittedRowsCount),
+		utils.NextPowerOfTwo(ctx.CommittedRowsCountSIS))
 
 	// register the linear combination randomness
 	ctx.Items.Alpha = ctx.Comp.InsertCoin(
@@ -1144,4 +1193,187 @@ func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
 	}
 
 	return res
+}
+
+// padToMinPrecomputed appends zero-valued shadow precomputed polynomials until
+// len(PrecomputedColums) reaches ctx.MinTotalPrecomputedCols. It is a no-op
+// when MinTotalPrecomputedCols is zero or already satisfied.
+//
+// This must be called after processStatusPrecomputed() populates PrecomputedColums
+// and after compileRound() has set NumCols, but before commitPrecomputeds()
+// encodes the precomputed matrix. Placement in Phase 2 (after the compileRound
+// loop) satisfies both constraints.
+//
+// The new shadow columns are registered at committed round 0 (same convention
+// as the SIS-alignment shadows in processStatusPrecomputed) and are marked as
+// ignored. commitPrecomputeds() already substitutes zero smartvectors for any
+// column present in ctx.ShadowCols, so no special prover handling is needed.
+func (ctx *Ctx) padToMinPrecomputed() {
+	current := len(ctx.Items.Precomputeds.PrecomputedColums)
+	if ctx.MinTotalPrecomputedCols <= 0 || current >= ctx.MinTotalPrecomputedCols {
+		logrus.Infof("Vortex padToMinPrecomputed: precomputed=%d MinTotalPrecomputedCols=%d (no padding needed)",
+			current, ctx.MinTotalPrecomputedCols)
+		return
+	}
+
+	if ctx.NumCols == 0 {
+		return
+	}
+
+	numToAdd := ctx.MinTotalPrecomputedCols - current
+
+	logrus.Infof("Vortex padToMinPrecomputed: precomputed=%d target=%d adding %d shadow cols",
+		current, ctx.MinTotalPrecomputedCols, numToAdd)
+
+	// Use ID offset 1<<24 to avoid collisions with:
+	//   - SIS-alignment precomputed shadows: IDs 1<<20..1<<20+n-1
+	//   - Column-count padding:              IDs 1<<26..1<<26+n-1
+	//   - Round padding:                     IDs 1<<27..1<<27+n-1
+	const shadowIDOffset = 1 << 24
+
+	for i := 0; i < numToAdd; i++ {
+		shadowCol := autoAssignedShadowRow(ctx.Comp, ctx.NumCols, 0, shadowIDOffset+i)
+		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+		ctx.Items.Precomputeds.PrecomputedColums = append(ctx.Items.Precomputeds.PrecomputedColums, shadowCol)
+	}
+}
+
+// padToMinTotalCols adds zero-valued shadow polynomials to the last committed
+// round until ctx.CommittedRowsCount reaches ctx.MinTotalCommittedCols. It is
+// a no-op when MinTotalCommittedCols is zero or already satisfied.
+//
+// This method must be called after all rounds have been compiled (so that
+// MaxCommittedRound is final) and before ColumnAssignmentProverAction is
+// registered for the last committed round, so that the shadow zero-assignment
+// prover actions execute before the column commitment step.
+func (ctx *Ctx) padToMinTotalCols() {
+	if ctx.MinTotalCommittedCols <= 0 || ctx.CommittedRowsCount >= ctx.MinTotalCommittedCols {
+		logrus.Infof("Vortex padToMinTotalCols: CommittedRowsCount=%d MinTotalCommittedCols=%d (no padding needed)",
+			ctx.CommittedRowsCount, ctx.MinTotalCommittedCols)
+		return
+	}
+
+	if ctx.NumCols == 0 {
+		return
+	}
+
+	lastCommitted := ctx.MaxCommittedRound
+	numToAdd := ctx.MinTotalCommittedCols - ctx.CommittedRowsCount
+
+	logrus.Infof("Vortex padToMinTotalCols: CommittedRowsCount=%d target=%d adding %d shadow rows at round=%d",
+		ctx.CommittedRowsCount, ctx.MinTotalCommittedCols, numToAdd, lastCommitted)
+
+	// Use ID offset 1<<26 to avoid collisions with:
+	//   - SIS-alignment shadows at round r: IDs 0..n-1
+	//   - Precomputed shadows at round 0: IDs 1<<20..1<<20+n-1
+	const shadowIDOffset = 1 << 26
+
+	for i := 0; i < numToAdd; i++ {
+		shadowCol := autoAssignedShadowRow(ctx.Comp, ctx.NumCols, lastCommitted, shadowIDOffset+i)
+		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+
+		ctx.CommitmentsByRounds.AppendToInner(lastCommitted, shadowCol.GetColID())
+
+		if ctx.RoundStatus[lastCommitted] == IsSISApplied {
+			ctx.CommitmentsByRoundsSIS.AppendToInner(lastCommitted, shadowCol.GetColID())
+			ctx.CommittedRowsCountSIS++
+		} else {
+			ctx.CommitmentsByRoundsNonSIS.AppendToInner(lastCommitted, shadowCol.GetColID())
+		}
+		ctx.CommittedRowsCount++
+	}
+}
+
+// padToMinTotalRounds converts empty IOP rounds into dummy committed rounds
+// (each containing one zero-valued shadow polynomial) until NumCommittedRounds()
+// reaches ctx.MinTotalCommittedRounds. It is a no-op when MinTotalCommittedRounds
+// is zero or the current count already satisfies the requirement.
+//
+// Each new dummy round gets Merkle root proof columns so that the prover and
+// verifier can process it identically to a real round. Shadow polynomials are
+// all-zero, so their Merkle roots are deterministic hashes of zeros.
+//
+// This method must be called after Phase 1 (all rounds compiled) and before
+// Phase 3 (ColumnAssignmentProverAction registered), for the same reason as
+// padToMinTotalCols: shadow prover actions must execute before column
+// commitment.
+func (ctx *Ctx) padToMinTotalRounds() {
+	current := ctx.NumCommittedRounds()
+	logrus.Infof("Vortex padToMinTotalRounds: NumCommittedRounds=%d MinTotalCommittedRounds=%d",
+		current, ctx.MinTotalCommittedRounds)
+
+	if ctx.MinTotalCommittedRounds <= 0 || current >= ctx.MinTotalCommittedRounds {
+		return
+	}
+
+	if ctx.NumCols == 0 {
+		return
+	}
+
+	roundsToAdd := ctx.MinTotalCommittedRounds - current
+
+	// Collect empty rounds in [0, MaxCommittedRound] to fill.
+	emptyRounds := make([]int, 0, roundsToAdd)
+	for i := 0; i <= ctx.MaxCommittedRound && len(emptyRounds) < roundsToAdd; i++ {
+		if ctx.RoundStatus[i] == IsEmpty {
+			emptyRounds = append(emptyRounds, i)
+		}
+	}
+
+	if len(emptyRounds) < roundsToAdd {
+		utils.Panic("ForceNumTotalRounds: need %d more committed rounds but only %d empty rounds available in [0,%d]",
+			roundsToAdd, len(emptyRounds), ctx.MaxCommittedRound)
+	}
+
+	// Use ID offset 1<<27 to avoid collisions with:
+	//   - SIS-alignment shadows: IDs 0..n-1
+	//   - Precomputed shadows:   IDs 1<<20..1<<20+n-1
+	//   - Column-count padding:  IDs 1<<26..1<<26+n-1
+	const shadowIDBase = 1 << 27
+
+	for i, round := range emptyRounds {
+		// Insert one shadow polynomial to give this round a committed poly.
+		shadowCol := autoAssignedShadowRow(ctx.Comp, ctx.NumCols, round, shadowIDBase+i)
+		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+		ctx.Comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+
+		// Convert this round from IsEmpty to IsNoSis (no SIS threshold set
+		// on dummy rounds; they always use Poseidon2-only Merkle hashing).
+		ctx.RoundStatus[round] = IsNoSis
+		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, shadowCol.GetColID())
+		ctx.CommitmentsByRounds.AppendToInner(round, shadowCol.GetColID())
+		ctx.CommittedRowsCount++
+		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
+		ctx.MaxCommittedRound = utils.Max(ctx.MaxCommittedRound, round)
+
+		// Register Merkle root proof columns for this round so the prover
+		// can fill them and the verifier can check them.
+		for j := 0; j < blockSize; j++ {
+			ctx.Items.MerkleRoots[round][j] = ctx.Comp.InsertProof(
+				round,
+				ifaces.ColID(ctx.MerkleRootName(round, j)),
+				len(field.Element{}),
+				true,
+			)
+		}
+
+		// When compiling for BN254 final wrap, also register the BN254
+		// Merkle root chunk columns for this round.
+		if ctx.IsLastRound {
+			ctx.Items.BN254MerkleRoots[round] = make([]ifaces.Column, bn254BlockSize)
+			for j := 0; j < bn254BlockSize; j++ {
+				ctx.Items.BN254MerkleRoots[round][j] = ctx.Comp.InsertProof(
+					round,
+					ifaces.ColID(ctx.BN254MerkleRootName(round, j)),
+					len(field.Element{}),
+					true,
+				)
+			}
+		}
+	}
+
+	logrus.Infof("Vortex padToMinTotalRounds: added %d dummy rounds, NumCommittedRounds now=%d",
+		roundsToAdd, ctx.NumCommittedRounds())
 }

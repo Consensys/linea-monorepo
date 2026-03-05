@@ -29,6 +29,9 @@ func (ctx *CompilationCtx) addHashConstraint() {
 			WithField("circuit-name", ctx.Name).
 			WithField("subscript", ctx.Subscript).
 			Warnf("using external hasher mode, but no hashed were passed to the external hasher")
+		// Disable the external hasher option so the prover does not attempt
+		// to call assignHashColumns on uninitialized (nil) columns.
+		ctx.ExternalHasherOption.Enabled = false
 		return
 	}
 
