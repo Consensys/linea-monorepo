@@ -15,12 +15,14 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.utils.PriorityThreadPoolExecutor;
 import okhttp3.OkHttpClient;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 
+@Slf4j
 @AutoService(BesuPlugin.class)
 public class ForwardBundlesPlugin extends AbstractLineaRequiredPlugin {
 
@@ -31,7 +33,10 @@ public class ForwardBundlesPlugin extends AbstractLineaRequiredPlugin {
   public void doStart() {
     final var config = bundleConfiguration();
     final var forwardUrls = config.forwardUrls();
-    if (!forwardUrls.isEmpty()) {
+    if (forwardUrls.isEmpty()) {
+      log.warn(
+          "Bundle Forwarder plugin is active but no forward URLs are configured (--plugin-linea-bundles-forward-urls). Bundles will NOT be forwarded to the Sequencer.");
+    } else {
       final var rpcClient = createRpcClient(config.timeoutMillis());
       final var retryScheduler = createRetryScheduler();
       forwardUrls.stream()
