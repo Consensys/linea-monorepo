@@ -1,3 +1,4 @@
+import { wait } from "@consensys/linea-shared-utils";
 import { appendFileSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
@@ -17,6 +18,9 @@ export async function reloadDenyList(client: DenyListControlClient): Promise<voi
   await client.pluginsReloadPluginConfig({
     pluginName: SequencerPluginName.TransactionPoolValidator,
   });
+
+  console.log("Deny list reloaded");
+  await wait(3000);
 }
 
 export function addToDenyList(addresses: readonly string[], denyListPath: string = DEFAULT_DENY_LIST_PATH): void {
