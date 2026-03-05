@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
 
@@ -13,19 +14,27 @@ const MAX_L2_LOGS = 16
 
 // BadPrecompileCircuit defines the circuit for the transaction with a bad precompile.
 type BadPrecompileCircuit struct {
-	// The wizard verifier circuit - this is the main witness
 	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 
-	// These fields are derived from wizard public inputs
-	// They are excluded from witness generation via gnark:"-" tag
-	stateRootHash    [2]frontend.Variable `gnark:"-"`
+	// Derived from invalidity PI extractor (gnark:"-" = no wires, set during Define)
 	txHash           [2]frontend.Variable `gnark:"-"`
 	fromAddress      frontend.Variable    `gnark:"-"`
 	hasBadPrecompile frontend.Variable    `gnark:"-"`
 	NbL2Logs         frontend.Variable    `gnark:"-"`
 
-	// Recipient address (not constrained in this subcircuit, but included in public input)
+	// Derived from execution PI extractor (gnark:"-" = no wires, set during Define)
+	stateRootHash         [2]frontend.Variable `gnark:"-"`
+	coinBase              frontend.Variable    `gnark:"-"`
+	baseFee               frontend.Variable    `gnark:"-"`
+	chainID               frontend.Variable    `gnark:"-"`
+	l2MessageServiceAddr  frontend.Variable    `gnark:"-"`
+	initialBlockTimestamp frontend.Variable    `gnark:"-"`
+	initialBlockNumber    frontend.Variable    `gnark:"-"`
+
+	// Witness fields assigned externally
 	ToAddress      frontend.Variable
+	ToIsFiltered   frontend.Variable
+	FromIsFiltered frontend.Variable
 	InvalidityType frontend.Variable
 }
 
@@ -40,9 +49,9 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	circuit.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 	circuit.WizardVerifier.Verify(api)
 
-	// Extract public inputs of the wizard circuit first
 	pie := getInvalidityPIExtractor(&circuit.WizardVerifier)
-	circuit.checkPublicInputs(api, &circuit.WizardVerifier, pie)
+	execPie := getExecutionPIExtractor(&circuit.WizardVerifier)
+	circuit.checkPublicInputs(api, &circuit.WizardVerifier, pie, execPie)
 
 	// check that invalidity type is valid, it should be 2 or 3
 	// binaryType = 0 when BadPrecompile (type 2), binaryType = 1 when TooManyLogs (type 3)
@@ -50,8 +59,8 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	api.AssertIsBoolean(binaryType)
 
 	// check that hasBadPrecompile is non-zero, if invalidityType == 2 (BadPrecompile)
-	// When binaryType=0: (1-0)*hasBadPrecompile + 0 = hasBadPrecompile != 0 ✓
-	// When binaryType=1: (1-1)*hasBadPrecompile + 1 = 1 != 0 ✓ (always passes)
+	// When binaryType=0: (1-0)*hasBadPrecompile + 0 = hasBadPrecompile != 0
+	// When binaryType=1: (1-1)*hasBadPrecompile + 1 = 1 != 0  (always passes)
 	api.AssertIsDifferent(
 		api.Add(
 			api.Mul(api.Sub(1, binaryType), circuit.hasBadPrecompile),
@@ -59,8 +68,8 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 		0)
 
 	// check that NbL2Logs is greater than MAX_L2_LOGS, if invalidityType == 3 (TooManyLogs)
-	// When binaryType=1: 17 <= 1*NbL2Logs + 0 = NbL2Logs ✓
-	// When binaryType=0: 17 <= 0*NbL2Logs + 17 = 17 ✓ (always passes)
+	// When binaryType=1: 17 <= 1*NbL2Logs + 0 = NbL2Logs
+	// When binaryType=0: 17 <= 0*NbL2Logs + 17 = 17  (always passes)
 	api.AssertIsLessOrEqual(MAX_L2_LOGS+1,
 		api.Add(
 			api.Mul(binaryType, circuit.NbL2Logs),
@@ -71,30 +80,33 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// checkPublicInputs checks the public inputs of the wizard circuit
-func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wizard.VerifierCircuit, pie *invalidity.InvalidityPIExtractor) {
-	// Extract StateRootHash (8 KoalaBear elements) and reconstruct
-	extrStateRootHashWords := getPublicInputArr(api, wvc, pie.StateRootHash[:])
-	circuit.stateRootHash[0] = combine32BitLimbs(api, extrStateRootHashWords[:4])
-	circuit.stateRootHash[1] = combine32BitLimbs(api, extrStateRootHashWords[4:])
-
-	// Extract TxHash (16 BE limbs) and reconstruct using compress.ReadNum
+// checkPublicInputs extracts public inputs from both the invalidity and
+// execution PI wizard extractors. Both modules always run together.
+func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wizard.VerifierCircuit, pie *invalidity.InvalidityPIExtractor, execPie *publicInput.FunctionalInputExtractor) {
+	// From invalidity PI extractor
 	extrTxHashLimbs := getPublicInputArr(api, wvc, pie.TxHash[:])
-
 	circuit.txHash[0] = combine16BitLimbs(api, extrTxHashLimbs[:8])
 	circuit.txHash[1] = combine16BitLimbs(api, extrTxHashLimbs[8:])
-	// Extract FromAddress (10 BE limbs) and reconstruct
+
 	extrFromAddressLimbs := getPublicInputArr(api, wvc, pie.FromAddress[:])
 	circuit.fromAddress = combine16BitLimbs(api, extrFromAddressLimbs)
 
-	// Extract scalar public inputs
 	circuit.hasBadPrecompile = getPublicInput(api, wvc, pie.HasBadPrecompile)
 	circuit.NbL2Logs = getPublicInput(api, wvc, pie.NbL2Logs)
 
+	// From execution PI extractor
+	extrStateRootHashWords := getPublicInputArr(api, wvc, execPie.InitialStateRootHash[:])
+	circuit.stateRootHash[0] = combine32BitLimbs(api, extrStateRootHashWords[:4])
+	circuit.stateRootHash[1] = combine32BitLimbs(api, extrStateRootHashWords[4:])
+
+	circuit.coinBase = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.CoinBase[:]))
+	circuit.baseFee = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.BaseFee[:]))
+	circuit.chainID = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.ChainID[:]))
+	circuit.l2MessageServiceAddr = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.L2MessageServiceAddr[:]))
+	circuit.initialBlockTimestamp = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockTimestamp[:]))
+	circuit.initialBlockNumber = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockNumber[:]))
 }
 
-// getInvalidityPIExtractor retrieves the InvalidityPIExtractor from wizard circuit metadata
-// This follows the same pattern as execution circuit (pi_wizard_extraction.go:287-296)
 func getInvalidityPIExtractor(wvc *wizard.VerifierCircuit) *invalidity.InvalidityPIExtractor {
 	extraData, extraDataFound := wvc.Spec.ExtraData[invalidity.InvalidityPIExtractorMetadata]
 	if !extraDataFound {
@@ -103,6 +115,18 @@ func getInvalidityPIExtractor(wvc *wizard.VerifierCircuit) *invalidity.Invalidit
 	pie, ok := extraData.(*invalidity.InvalidityPIExtractor)
 	if !ok {
 		panic("invalidity PI extractor not of the right type: " + reflect.TypeOf(extraData).String())
+	}
+	return pie
+}
+
+func getExecutionPIExtractor(wvc *wizard.VerifierCircuit) *publicInput.FunctionalInputExtractor {
+	extraData, extraDataFound := wvc.Spec.ExtraData[publicInput.PublicInputExtractorMetadata]
+	if !extraDataFound {
+		panic("execution PI extractor not found")
+	}
+	pie, ok := extraData.(*publicInput.FunctionalInputExtractor)
+	if !ok {
+		panic("execution PI extractor not of the right type: " + reflect.TypeOf(extraData).String())
 	}
 	return pie
 }
@@ -130,17 +154,25 @@ func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.InitialCompiledIOP, assi.ZkevmWizardProof, 0, true)
 	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
 
-	// Assign ToAddress (not constrained, but flows into public input hash)
+	// Assign fields not constrained by wizard, but flowing into public input hash
 	circuit.ToAddress = assi.Transaction.To()[:]
-
+	circuit.ToIsFiltered = 0
+	circuit.FromIsFiltered = 0
 }
 
-// FunctionalPIQGnark returns the subcircuit-derived functional public inputs
 func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
-		FromAddress:   c.fromAddress,
-		TxHash:        c.txHash,
-		StateRootHash: c.stateRootHash,
-		ToAddress:     c.ToAddress,
+		FromAddress:           c.fromAddress,
+		TxHash:                c.txHash,
+		StateRootHash:         c.stateRootHash,
+		ToAddress:             c.ToAddress,
+		ToIsFiltered:          c.ToIsFiltered,
+		FromIsFiltered:        c.FromIsFiltered,
+		CoinBase:              c.coinBase,
+		BaseFee:               c.baseFee,
+		ChainID:               c.chainID,
+		L2MessageServiceAddr:  c.l2MessageServiceAddr,
+		InitialBlockTimestamp: c.initialBlockTimestamp,
+		InitialBlockNumber:    c.initialBlockNumber,
 	}
 }

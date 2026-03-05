@@ -27,6 +27,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -245,21 +246,34 @@ func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	return fullZkEvmSetupLarge
 }
 
-func FullZkEvmInvalidity(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+func FullZkEvmInvalidity(cfg *config.Config) *ZkEvm {
 	onceFullZkEvmInvalidity.Do(func() {
-		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite, true)
+		tl := simulatedTracesLimits(cfg)
+		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
 	})
 	return fullZkEvmInvalidity
 }
 
-func FullZkEVMInvalidityCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+func FullZkEVMInvalidityCheckOnly(cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
-		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, cfg, dummyCompilationSuite, nil, true)
+		tl := simulatedTracesLimits(cfg)
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, cfg, dummyCompilationSuite, nil)
 	})
 
 	return fullZkEvmCheckOnly
+}
+
+// simulatedTracesLimits returns the traces limits to use for the invalidity
+// ZkEVM. It prefers the dedicated SimulatedTracesLimits when configured,
+// falling back to the main TracesLimits otherwise.
+func simulatedTracesLimits(cfg *config.Config) *config.TracesLimits {
+	if cfg.Invalidity.SimulatedTracesLimits != nil {
+		logrus.Info("invalidity ZkEVM: using SimulatedTracesLimits from config")
+		return cfg.Invalidity.SimulatedTracesLimits
+	}
+	logrus.Info("invalidity ZkEVM: no SimulatedTracesLimits configured, falling back to main TracesLimits")
+	return &cfg.TracesLimits
 }
 
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.
@@ -270,7 +284,7 @@ func FullZKEVMWithSuite(
 	cfg *config.Config,
 	preRecursionSuite CompilationSuite,
 	postRecursionSuite *CompilationSuite,
-	isInvalidityMode ...bool) *ZkEvm {
+) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.
@@ -368,8 +382,6 @@ func FullZKEVMWithSuite(
 			Name:          "PUBLIC_INPUT",
 			BlockL2L1Logs: tl.BlockL2L1Logs(),
 		},
-
-		IsInvalidityMode: len(isInvalidityMode) > 0 && isInvalidityMode[0],
 	}
 
 	// Initialize the Full zkEVM arithmetization

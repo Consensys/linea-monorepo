@@ -10,11 +10,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	zkevmcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
 
-// CreateTxHashLimbs splits a 32-byte hash into 16 big-endian 2-byte limbs.
-func CreateTxHashLimbs(b [32]byte) [16]field.Element {
+// CreateLimbs32Bytes splits a 32-byte hash into 16 big-endian 2-byte limbs.
+func CreateLimbs32Bytes(b [32]byte) [16]field.Element {
 	var limbs [16]field.Element
 	for i := 0; i < 16; i++ {
 		limbs[i].SetBytes([]byte{b[i*2], b[i*2+1]})
@@ -22,8 +25,8 @@ func CreateTxHashLimbs(b [32]byte) [16]field.Element {
 	return limbs
 }
 
-// CreateFromLimbs splits a 20-byte address into 10 big-endian 2-byte limbs.
-func CreateFromLimbs(b [20]byte) [10]field.Element {
+// CreateLimbs20Bytes splits a 20-byte address into 10 big-endian 2-byte limbs.
+func CreateLimbs20Bytes(b [20]byte) [10]field.Element {
 	var limbs [10]field.Element
 	for i := 0; i < 10; i++ {
 		limbs[i].SetBytes([]byte{b[i*2], b[i*2+1]})
@@ -31,75 +34,95 @@ func CreateFromLimbs(b [20]byte) [10]field.Element {
 	return limbs
 }
 
+func Create8LimbsFromInt(n uint64) [8]field.Element {
+	var limbs [8]field.Element
+	bytes := common.SplitBigEndianUint64(n) // 4 big-endian 2-byte chunks
+	for i := 0; i < 4; i++ {
+		limbs[i+4].SetBytes(bytes[i])
+	}
+	return limbs
+}
+
 // MockZkevmPI creates a minimal ZkEvm with limb-based public inputs for BadPrecompileCircuit.
-// It registers columns and public inputs matching the InvalidityPIExtractor layout,
-// then proves them with the provided input values.
+// It registers columns and public inputs matching both the InvalidityPIExtractor
+// and the execution FunctionalInputExtractor layouts, then proves them with the
+// provided input values.
 func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 	define := func(b *wizard.Builder) {
-		var (
-			stateRootHashCols [8]ifaces.Column
-			txHashCols        [16]ifaces.Column
-			fromAddressCols   [10]ifaces.Column
-		)
+		comp := b.CompiledIOP
 
-		for i := 0; i < 8; i++ {
-			stateRootHashCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("STATE_ROOT_HASH_%d", i), 1, true)
+		registerLimbCols := func(baseName string, n int) []ifaces.Column {
+			cols := make([]ifaces.Column, n)
+			for i := range n {
+				cols[i] = comp.InsertProof(0, ifaces.ColIDf("%s_%d", baseName, i), 1, true)
+			}
+			return cols
+		}
+		registerLimbPIs := func(cols []ifaces.Column, baseName string) []wizard.PublicInput {
+			pis := make([]wizard.PublicInput, len(cols))
+			for i, col := range cols {
+				pis[i] = comp.InsertPublicInput(
+					fmt.Sprintf("%s_%d", baseName, i),
+					accessors.NewFromPublicColumn(col, 0),
+				)
+			}
+			return pis
 		}
 
-		for i := 0; i < 16; i++ {
-			txHashCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("TX_HASH_%d", i), 1, true)
-		}
-
-		for i := 0; i < 10; i++ {
-			fromAddressCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("FROM_ADDRESS_%d", i), 1, true)
-		}
-
-		hasBadPrecompileCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), 1, true)
-		nbL2LogsCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("NB_L2_LOGS_COL"), 1, true)
-
+		// --- Invalidity PI columns ---
 		extractor := &invalidityPI.InvalidityPIExtractor{}
 
-		for i := 0; i < 8; i++ {
-			extractor.StateRootHash[i] = b.CompiledIOP.InsertPublicInput(
-				fmt.Sprintf("StateRootHash_BE_%d", i),
-				accessors.NewFromPublicColumn(stateRootHashCols[i], 0),
-			)
-		}
+		txHashCols := registerLimbCols("TX_HASH", 16)
+		copy(extractor.TxHash[:], registerLimbPIs(txHashCols, "TxHash_BE"))
 
-		for i := 0; i < 16; i++ {
-			extractor.TxHash[i] = b.CompiledIOP.InsertPublicInput(
-				fmt.Sprintf("TxHash_BE_%d", i),
-				accessors.NewFromPublicColumn(txHashCols[i], 0),
-			)
-		}
+		fromAddrCols := registerLimbCols("FROM_ADDRESS", 10)
+		copy(extractor.FromAddress[:], registerLimbPIs(fromAddrCols, "From_BE"))
 
-		for i := 0; i < 10; i++ {
-			extractor.FromAddress[i] = b.CompiledIOP.InsertPublicInput(
-				fmt.Sprintf("From_BE_%d", i),
-				accessors.NewFromPublicColumn(fromAddressCols[i], 0),
-			)
-		}
+		hasBadPrecompileCol := comp.InsertProof(0, ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), 1, true)
+		nbL2LogsCol := comp.InsertProof(0, ifaces.ColID("NB_L2_LOGS_COL"), 1, true)
+		extractor.HasBadPrecompile = comp.InsertPublicInput("HasBadPrecompile", accessors.NewFromPublicColumn(hasBadPrecompileCol, 0))
+		extractor.NbL2Logs = comp.InsertPublicInput("NbL2Logs", accessors.NewFromPublicColumn(nbL2LogsCol, 0))
+		comp.ExtraData[invalidityPI.InvalidityPIExtractorMetadata] = extractor
 
-		extractor.HasBadPrecompile = b.CompiledIOP.InsertPublicInput("HasBadPrecompile", accessors.NewFromPublicColumn(hasBadPrecompileCol, 0))
-		extractor.NbL2Logs = b.CompiledIOP.InsertPublicInput("NbL2Logs", accessors.NewFromPublicColumn(nbL2LogsCol, 0))
+		// --- Execution PI columns ---
+		execExtractor := &publicInput.FunctionalInputExtractor{}
 
-		b.CompiledIOP.ExtraData[invalidityPI.InvalidityPIExtractorMetadata] = extractor
+		stateRootCols := registerLimbCols("EXEC_STATE_ROOT", zkevmcommon.NbElemPerHash)
+		copy(execExtractor.InitialStateRootHash[:], registerLimbPIs(stateRootCols, "InitialStateRootHash"))
+
+		coinBaseCols := registerLimbCols("EXEC_COINBASE", zkevmcommon.NbLimbEthAddress)
+		copy(execExtractor.CoinBase[:], registerLimbPIs(coinBaseCols, "CoinBase"))
+
+		baseFeeCols := registerLimbCols("EXEC_BASEFEE", zkevmcommon.NbLimbU128)
+		copy(execExtractor.BaseFee[:], registerLimbPIs(baseFeeCols, "BaseFee"))
+
+		chainIDCols := registerLimbCols("EXEC_CHAINID", zkevmcommon.NbLimbU256)
+		copy(execExtractor.ChainID[:], registerLimbPIs(chainIDCols, "ChainID"))
+
+		l2MsgSvcCols := registerLimbCols("EXEC_L2MSGSVC", zkevmcommon.NbLimbEthAddress)
+		copy(execExtractor.L2MessageServiceAddr[:], registerLimbPIs(l2MsgSvcCols, "L2MessageServiceAddr"))
+
+		blockTsCols := registerLimbCols("EXEC_BLOCKTIMESTAMP", zkevmcommon.NbLimbU128)
+		copy(execExtractor.InitialBlockTimestamp[:], registerLimbPIs(blockTsCols, "InitialBlockTimestamp"))
+
+		blockNumCols := registerLimbCols("EXEC_BLOCKNUM", zkevmcommon.NbLimbU48)
+		copy(execExtractor.InitialBlockNumber[:], registerLimbPIs(blockNumCols, "InitialBlockNumber"))
+
+		comp.ExtraData[publicInput.PublicInputExtractorMetadata] = execExtractor
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
 
 	prove := func(run *wizard.ProverRuntime) {
-		for i := 0; i < 8; i++ {
-			run.AssignColumn(ifaces.ColIDf("STATE_ROOT_HASH_%d", i), smartvectors.NewConstant(in.StateRootLimbs[i], 1))
+		assignLimbCols := func(baseName string, vals []field.Element) {
+			for i, v := range vals {
+				run.AssignColumn(ifaces.ColIDf("%s_%d", baseName, i), smartvectors.NewConstant(v, 1))
+			}
 		}
 
-		for i := 0; i < 16; i++ {
-			run.AssignColumn(ifaces.ColIDf("TX_HASH_%d", i), smartvectors.NewConstant(in.TxHashLimbs[i], 1))
-		}
-
-		for i := 0; i < 10; i++ {
-			run.AssignColumn(ifaces.ColIDf("FROM_ADDRESS_%d", i), smartvectors.NewConstant(in.FromLimbs[i], 1))
-		}
+		// --- Assign invalidity PI columns ---
+		assignLimbCols("TX_HASH", in.TxHashLimbs[:])
+		assignLimbCols("FROM_ADDRESS", in.FromLimbs[:])
 
 		var hasBadPrecompileVal field.Element
 		if in.CaseInputs.HasBadPrecompile {
@@ -109,12 +132,19 @@ func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs) (*wizard.CompiledIOP, w
 		} else {
 			hasBadPrecompileVal = field.Zero()
 		}
-
 		run.AssignColumn(ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), smartvectors.NewConstant(hasBadPrecompileVal, 1))
 		run.AssignColumn(ifaces.ColID("NB_L2_LOGS_COL"), smartvectors.NewConstant(field.NewElement(uint64(in.CaseInputs.NumL2Logs)), 1))
+
+		// --- Assign execution PI columns ---
+		assignLimbCols("EXEC_STATE_ROOT", in.StateRootHash[:])
+		assignLimbCols("EXEC_COINBASE", in.CoinBase[:])
+		assignLimbCols("EXEC_BASEFEE", in.BaseFee[:])
+		assignLimbCols("EXEC_CHAINID", in.ChainID[:])
+		assignLimbCols("EXEC_L2MSGSVC", in.L2MessageServiceAddr[:])
+		assignLimbCols("EXEC_BLOCKTIMESTAMP", in.InitialBlockTimestamp[:])
+		assignLimbCols("EXEC_BLOCKNUM", in.InitialBlockNumber[:])
 	}
 
 	proof := wizard.Prove(comp, prove)
-
 	return comp, proof
 }

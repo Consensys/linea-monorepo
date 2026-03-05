@@ -38,7 +38,18 @@ type BadNonceBalanceCircuit struct {
 	ToAddress frontend.Variable
 	// Invalidity type: 0 = BadNonce, 1 = BadBalance
 	InvalidityType frontend.Variable
-	api            frontend.API
+
+	// Fields unconstrained by this subcircuit, flow into public input hash
+	ToIsFiltered          frontend.Variable
+	FromIsFiltered        frontend.Variable
+	CoinBase              frontend.Variable
+	BaseFee               frontend.Variable
+	ChainID               frontend.Variable
+	L2MessageServiceAddr  frontend.Variable
+	InitialBlockTimestamp frontend.Variable
+	InitialBlockNumber    frontend.Variable
+
+	api frontend.API
 }
 
 // Define represents the constraints relevant to [BadNonceBalanceCircuit]
@@ -183,15 +194,32 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	cir.AccountTrie.Assign(assi.AccountTrieInputs)
 	cir.KeccakH = *keccak
 	cir.ToAddress = assi.Transaction.To()[:]
+
+	cir.ToIsFiltered = 0
+	cir.FromIsFiltered = 0
+	cir.CoinBase = assi.FuncInputs.CoinBase[:]
+	cir.BaseFee = assi.FuncInputs.BaseFee
+	cir.ChainID = assi.FuncInputs.ChainID
+	cir.L2MessageServiceAddr = assi.FuncInputs.L2MessageServiceAddr[:]
+	cir.InitialBlockTimestamp = assi.FuncInputs.InitialBlockTimestamp
+	cir.InitialBlockNumber = assi.FuncInputs.InitialBlockNumber
 }
 
 // FunctionalPIQGnark returns the subcircuit-derived functional public inputs
 func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
-		TxHash:        c.TxHash,
-		FromAddress:   c.TxFromAddress,
-		StateRootHash: reconstructRootHash(c.api, c.AccountTrie.TopRoot),
-		ToAddress:     c.ToAddress,
+		TxHash:                c.TxHash,
+		FromAddress:           c.TxFromAddress,
+		StateRootHash:         reconstructRootHash(c.api, c.AccountTrie.TopRoot),
+		ToAddress:             c.ToAddress,
+		ToIsFiltered:          c.ToIsFiltered,
+		FromIsFiltered:        c.FromIsFiltered,
+		CoinBase:              c.CoinBase,
+		BaseFee:               c.BaseFee,
+		ChainID:               c.ChainID,
+		L2MessageServiceAddr:  c.L2MessageServiceAddr,
+		InitialBlockTimestamp: c.InitialBlockTimestamp,
+		InitialBlockNumber:    c.InitialBlockNumber,
 	}
 }
 

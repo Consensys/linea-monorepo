@@ -274,8 +274,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 	case circuits.InvalidityPrecompileLogsCircuitID:
 		// BadPrecompile/TooManyLogs circuit needs zkEVM
-		limits := cfg.TracesLimits
-		zkEvmInvalidity := zkevm.FullZkEvmInvalidity(&limits, cfg)
+		zkEvmInvalidity := zkevm.FullZkEvmInvalidity(cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			Zkevm: zkEvmInvalidity,
 		},

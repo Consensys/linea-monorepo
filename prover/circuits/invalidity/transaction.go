@@ -69,9 +69,11 @@ func CheckKeccakConsistency(api frontend.API, hashInput []frontend.Variable, has
 	}
 	// handle the last chunk
 	if len(hashInput) > 0 {
-		// left align and pad with zeros
 		v := make([]frontend.Variable, LIMB_SIZE)
 		copy(v, hashInput)
+		for i := len(hashInput); i < LIMB_SIZE; i++ {
+			v[i] = 0
+		}
 		curLimb := compress.ReadNum(api, v, radix)
 		api.AssertIsEqual(limbCol[ctr], curLimb)
 	}

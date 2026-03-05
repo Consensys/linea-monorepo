@@ -295,6 +295,11 @@ type Invalidity struct {
 	// MaxRlpByteSize specifies the maximum size of the RLP-encoded data,
 	// in bytes (this is the payload size without signature)
 	MaxRlpByteSize int `mapstructure:"max_rlp_byte_size" validate:"gte=0"`
+
+	// SimulatedTracesLimits holds the traces limits for the simulated
+	// execution used in invalidity proofs. When set,  modules will be sized according to these limits instead of the
+	// main TracesLimits. Otherwise, the main TracesLimits are used.
+	SimulatedTracesLimits *TracesLimits `mapstructure:"simulated_traces_limits"`
 }
 
 type Aggregation struct {

@@ -16,18 +16,28 @@ import (
 type FunctionalPublicInputsGnark struct {
 	FunctinalPIQGnark   `gnark:"-"` // derived from subcircuit in Define, no wires allocated
 	TxNumber            frontend.Variable
-	ExpectedBlockNumber frontend.Variable
+	ExpectedBlockNumber frontend.Variable // deadline block number to execute/attempt ftx.
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
-	// the following fields are used for the extraction of the filtered addresses and are not hashed as part of the public input of the invalidity circuit, filtered are hashed in the aggregation circuit
-	ToIsFiltered   frontend.Variable // 1 if the to address is filtered, 0 otherwise
-	FromIsFiltered frontend.Variable // 1 if the from address is filtered, 0 otherwise
+
 }
 
+// it stores all the fields that should match the FPI of the sub-circuit.
 type FunctinalPIQGnark struct {
 	TxHash        [2]frontend.Variable // keccak hash needs 2 field elements (16 bytes each)
 	FromAddress   frontend.Variable
 	StateRootHash [2]frontend.Variable // KoalaBear octuplet converted to 2 BLS12-377 field elements (16 bytes each)
 	ToAddress     frontend.Variable    // the to address of the transaction
+	// The following fields are used for the extraction of the filtered addresses
+	ToIsFiltered   frontend.Variable // 1 if the to address is filtered, 0 otherwise
+	FromIsFiltered frontend.Variable // 1 if the from address is filtered, 0 otherwise
+
+	// From execution PI extractor (shared between execution and invalidity)
+	CoinBase              frontend.Variable
+	BaseFee               frontend.Variable
+	ChainID               frontend.Variable
+	L2MessageServiceAddr  frontend.Variable
+	InitialBlockTimestamp frontend.Variable
+	InitialBlockNumber    frontend.Variable
 }
 
 // Assign the functional public inputs
@@ -45,7 +55,7 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 
 	gpi.FtxRollingHash = pi.FtxRollingHash[:]
 
-	// Filtered address fields (not hashed, but must be assigned to avoid nil)
+	// Filtered address fields
 	if pi.FromIsFiltered {
 		gpi.FromIsFiltered = 1
 	} else {
@@ -57,6 +67,13 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 		gpi.ToIsFiltered = 0
 	}
 	gpi.ToAddress = pi.ToAddress[:]
+
+	gpi.CoinBase = pi.CoinBase[:]
+	gpi.BaseFee = pi.BaseFee
+	gpi.ChainID = pi.ChainID
+	gpi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
+	gpi.InitialBlockTimestamp = pi.InitialBlockTimestamp
+	gpi.InitialBlockNumber = pi.InitialBlockNumber
 }
 
 // Sum computes the hash over the functional inputs using Poseidon2
@@ -78,6 +95,14 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 		spi.StateRootHash[1],
 		spi.FtxRollingHash,
 		spi.ToAddress,
+		spi.ToIsFiltered,
+		spi.FromIsFiltered,
+		spi.CoinBase,
+		spi.BaseFee,
+		spi.ChainID,
+		spi.L2MessageServiceAddr,
+		spi.InitialBlockTimestamp,
+		spi.InitialBlockNumber,
 	)
 
 	return hsh.Sum()

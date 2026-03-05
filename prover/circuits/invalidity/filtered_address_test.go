@@ -83,14 +83,19 @@ func TestFilteredAddressCircuit(t *testing.T) {
 				InvalidityType: tc.invalidityType,
 				RlpEncodedTx:   rlpEncodedTx,
 				FuncInputs: public_input.Invalidity{
-					TxHash:         txHash,
-					FromAddress:    linTypes.EthAddress(tc.fromAddress),
-					StateRootHash:  linTypes.KoalaOctuplet(stateRoot),
-					FromIsFiltered: tc.invalidityType == invalidity.FilteredAddressFrom,
-					ToIsFiltered:   tc.invalidityType == invalidity.FilteredAddressTo,
-					ToAddress:      linTypes.EthAddress(*tc.tx.To),
+					TxHash:                txHash,
+					FromAddress:           linTypes.EthAddress(tc.fromAddress),
+					StateRootHash:         linTypes.KoalaOctuplet(stateRoot),
+					FromIsFiltered:        tc.invalidityType == invalidity.FilteredAddressFrom,
+					ToIsFiltered:          tc.invalidityType == invalidity.FilteredAddressTo,
+					ToAddress:             linTypes.EthAddress(*tc.tx.To),
+					CoinBase:              linTypes.DummyAddress(32),
+					BaseFee:               1000000000,
+					ChainID:               59144,
+					L2MessageServiceAddr:  linTypes.DummyAddress(32),
+					InitialBlockTimestamp: 1000000000,
+					InitialBlockNumber:    1000000000,
 				},
-				StateRootHash: stateRoot,
 			}
 
 			// Generate keccak proof
@@ -172,7 +177,6 @@ func TestFilteredAddressCircuitWithLargeRLP(t *testing.T) {
 			ToIsFiltered:   false,
 			ToAddress:      linTypes.EthAddress(toAddr),
 		},
-		StateRootHash: stateRoot,
 	}
 
 	kcomp, kproof := invalidity.MakeKeccakProofs(tx, maxRlpByteSize, dummy.Compile)

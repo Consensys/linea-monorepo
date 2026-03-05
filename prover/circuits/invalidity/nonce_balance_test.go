@@ -132,7 +132,7 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 	candidates := make([]addrHKey, 20)
 	for i := range candidates {
 		candidates[i].addr = common.BigToAddress(big.NewInt(int64(i + 1)))
-		candidates[i].hkey = hKeyFromAddress(candidates[i].addr)
+		candidates[i].hkey = hashAddress(candidates[i].addr)
 	}
 	for i := 0; i < len(candidates); i++ {
 		for j := i + 1; j < len(candidates); j++ {
@@ -158,7 +158,7 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 		LineaCodeHash:  linTypes.MustHexToKoalabearOctuplet("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
 		KeccakCodeHash: linTypes.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 	}
-	dummyAccountHash := hValFromAccount(dummyAccount)
+	dummyAccountHash := hashAccount(&dummyAccount)
 
 	// Minus leaf at index 0, plus leaf at index 1
 	loMinus := accumulator.LeafOpening{

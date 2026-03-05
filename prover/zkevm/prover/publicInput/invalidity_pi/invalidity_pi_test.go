@@ -9,23 +9,17 @@ import (
 )
 
 var (
-	// Test values - these are limb values (16-bit each)
-	testTxHashLimbs    [zkevmcommon.NbLimbU256]field.Element
-	testFromLimbs      [zkevmcommon.NbLimbEthAddress]field.Element
-	testStateRootLimbs [zkevmcommon.NbLimbU128]field.Element
-	colSize            = 16 // power of 2
+	testTxHashLimbs [zkevmcommon.NbLimbU256]field.Element
+	testFromLimbs   [zkevmcommon.NbLimbEthAddress]field.Element
+	colSize         = 16
 )
 
 func init() {
-	// Initialize test limb values
 	for i := range testTxHashLimbs {
 		testTxHashLimbs[i] = field.NewElement(uint64(0x1000 + i))
 	}
 	for i := range testFromLimbs {
 		testFromLimbs[i] = field.NewElement(uint64(0x2000 + i))
-	}
-	for i := range testStateRootLimbs {
-		testStateRootLimbs[i] = field.NewElement(uint64(0x3000 + i))
 	}
 }
 
@@ -64,10 +58,9 @@ func TestInvalidityPIAssign(t *testing.T) {
 
 	// Build FixedInputs from test data
 	fixedInputs := FixedInputs{
-		TxHashLimbs:    testTxHashLimbs,
-		FromLimbs:      testFromLimbs,
-		StateRootLimbs: testStateRootLimbs,
-		ColSize:        colSize,
+		TxHashLimbs: testTxHashLimbs,
+		FromLimbs:   testFromLimbs,
+		ColSize:     colSize,
 	}
 
 	for _, tc := range testCases {
@@ -122,15 +115,6 @@ func checkPublicInputsFromProof(t *testing.T, comp *wizard.CompiledIOP, proof wi
 			t.Fatalf("Failed to get base value for %s: %v", pi.Name, err)
 		}
 		return fieldVal
-	}
-
-	// Check StateRootHash limbs (8 limbs)
-	for i := 0; i < zkevmcommon.NbLimbU128; i++ {
-		gotField := getPI(extractor.StateRootHash[i])
-		expected := testStateRootLimbs[i]
-		if !gotField.Equal(&expected) {
-			t.Errorf("StateRootHash_%d mismatch: got %v, want %v", i, gotField, expected)
-		}
 	}
 
 	// Check TxHash limbs (16 limbs)

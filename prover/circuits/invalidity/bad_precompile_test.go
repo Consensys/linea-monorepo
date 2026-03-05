@@ -23,19 +23,21 @@ import (
 // we dont need a cryptographic random number generator for testing
 var rng = rand.New(rand.NewPCG(0, 0)) //nolint:gosec // G404: weak random is fine for tests
 
-// Test data
 var (
 	piStateRootHash    = field.RandomOctuplet()
 	piTxHashBytes      = [32]byte{0x11, 0x22, 0x33, 0x44}
 	piFromAddressBytes = [20]byte{0xAA, 0xBB, 0xCC, 0xDD}
+	piCoinBaseBytes    = [20]byte{0x20, 0x20, 0x20, 0x20}
+	piBaseFee          = uint64(1 << 62)
 )
 
-// fixedInputs are the inputs that are fixed for different test cases
 var fixedInputs = invalidityPI.FixedInputs{
-	TxHashLimbs:    invalidity.CreateTxHashLimbs(piTxHashBytes),
-	FromLimbs:      invalidity.CreateFromLimbs(piFromAddressBytes),
-	StateRootLimbs: piStateRootHash,
-	ColSize:        16,
+	TxHashLimbs:   invalidity.CreateLimbs32Bytes(piTxHashBytes),
+	FromLimbs:     invalidity.CreateLimbs20Bytes(piFromAddressBytes),
+	StateRootHash: piStateRootHash,
+	CoinBase:      invalidity.CreateLimbs20Bytes(piCoinBaseBytes),
+	BaseFee:       invalidity.Create8LimbsFromInt(piBaseFee),
+	ColSize:       16,
 }
 
 // testCase defines a test case
@@ -109,9 +111,12 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				Transaction:      tx,
 				FuncInputs: public_input.Invalidity{
 					StateRootHash: piStateRootHash,
-					TxHash:        common.Hash(piTxHashBytes),
-					FromAddress:   types.EthAddress(piFromAddressBytes),
-					ToAddress:     types.EthAddress(*tx.To()),
+
+					TxHash:      common.Hash(piTxHashBytes),
+					FromAddress: types.EthAddress(piFromAddressBytes),
+					ToAddress:   types.EthAddress(*tx.To()),
+					CoinBase:    types.EthAddress(piCoinBaseBytes),
+					BaseFee:     piBaseFee,
 				},
 			}
 

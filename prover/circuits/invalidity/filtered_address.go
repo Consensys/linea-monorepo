@@ -34,8 +34,15 @@ type FilteredAddressCircuit struct {
 	ToIsFiltered frontend.Variable
 	// Keccak verifier circuit
 	KeccakH wizardk.VerifierCircuit
-	// State root hash
-	StateRootHash [2]frontend.Variable
+
+	// Execution PI fields (unconstrained by subcircuit, flow into public input hash)
+	StateRootHash         [2]frontend.Variable
+	CoinBase              frontend.Variable
+	BaseFee               frontend.Variable
+	ChainID               frontend.Variable
+	L2MessageServiceAddr  frontend.Variable
+	InitialBlockTimestamp frontend.Variable
+	InitialBlockNumber    frontend.Variable
 
 	api frontend.API
 }
@@ -124,17 +131,32 @@ func (c *FilteredAddressCircuit) Assign(assi AssigningInputs) {
 	}
 
 	c.KeccakH = *keccak
-	rootBytes := assi.StateRootHash.ToBytes()
+	rootBytes := assi.FuncInputs.StateRootHash.ToBytes()
 	c.StateRootHash[0] = rootBytes[:16]
 	c.StateRootHash[1] = rootBytes[16:]
+
+	c.CoinBase = assi.FuncInputs.CoinBase[:]
+	c.BaseFee = assi.FuncInputs.BaseFee
+	c.ChainID = assi.FuncInputs.ChainID
+	c.L2MessageServiceAddr = assi.FuncInputs.L2MessageServiceAddr[:]
+	c.InitialBlockTimestamp = assi.FuncInputs.InitialBlockTimestamp
+	c.InitialBlockNumber = assi.FuncInputs.InitialBlockNumber
 }
 
 // FunctionalPIQGnark returns the subcircuit-derived functional public inputs
 func (c *FilteredAddressCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
-		TxHash:        c.TxHash,
-		FromAddress:   c.TxFromAddress,
-		StateRootHash: c.StateRootHash,
-		ToAddress:     c.TxToAddress,
+		TxHash:                c.TxHash,
+		FromAddress:           c.TxFromAddress,
+		StateRootHash:         c.StateRootHash,
+		ToAddress:             c.TxToAddress,
+		ToIsFiltered:          c.ToIsFiltered,
+		FromIsFiltered:        c.FromIsFiltered,
+		CoinBase:              c.CoinBase,
+		BaseFee:               c.BaseFee,
+		ChainID:               c.ChainID,
+		L2MessageServiceAddr:  c.L2MessageServiceAddr,
+		InitialBlockTimestamp: c.InitialBlockTimestamp,
+		InitialBlockNumber:    c.InitialBlockNumber,
 	}
 }

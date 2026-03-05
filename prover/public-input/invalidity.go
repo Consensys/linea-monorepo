@@ -19,10 +19,17 @@ type Invalidity struct {
 	ExpectedBlockHeight uint64              //  the max expected block number for the transaction to be executed.
 	StateRootHash       types.KoalaOctuplet // state-root-hash on which the invalidity is based
 	FtxRollingHash      types.Bls12377Fr    // the rolling hash of the forced transaction from mimc_bls12377
-	// the following fields are used for the extraction of the filtered addresses and are not hashed as part of the public input of the invalidity circuit, filtered are hashed in the aggregation circuit
-	FromIsFiltered bool             // 1 if the from address is filtered, 0 otherwise
-	ToIsFiltered   bool             // 1 if the to address is filtered, 0 otherwise
-	ToAddress      types.EthAddress // address of the recipient
+	FromIsFiltered      bool                // 1 if the from address is filtered, 0 otherwise
+	ToIsFiltered        bool                // 1 if the to address is filtered, 0 otherwise
+	ToAddress           types.EthAddress    // address of the recipient
+
+	// From execution PI (shared between execution and invalidity)
+	CoinBase              types.EthAddress
+	BaseFee               uint64
+	ChainID               uint64
+	L2MessageServiceAddr  types.EthAddress
+	InitialBlockTimestamp uint64
+	InitialBlockNumber    uint64
 }
 
 // Sum compute the Poseidon2 hash over the functional public inputs
@@ -65,6 +72,46 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 		panic(err)
 	}
 	_, err = hsh.Write(pi.ToAddress[:])
+	if err != nil {
+		panic(err)
+	}
+	if pi.ToIsFiltered {
+		_, err = writeNum(hsh, 1)
+	} else {
+		_, err = writeNum(hsh, 0)
+	}
+	if err != nil {
+		panic(err)
+	}
+	if pi.FromIsFiltered {
+		_, err = writeNum(hsh, 1)
+	} else {
+		_, err = writeNum(hsh, 0)
+	}
+	if err != nil {
+		panic(err)
+	}
+	_, err = hsh.Write(pi.CoinBase[:])
+	if err != nil {
+		panic(err)
+	}
+	_, err = writeNum(hsh, pi.BaseFee)
+	if err != nil {
+		panic(err)
+	}
+	_, err = writeNum(hsh, pi.ChainID)
+	if err != nil {
+		panic(err)
+	}
+	_, err = hsh.Write(pi.L2MessageServiceAddr[:])
+	if err != nil {
+		panic(err)
+	}
+	_, err = writeNum(hsh, pi.InitialBlockTimestamp)
+	if err != nil {
+		panic(err)
+	}
+	_, err = writeNum(hsh, pi.InitialBlockNumber)
 	if err != nil {
 		panic(err)
 	}

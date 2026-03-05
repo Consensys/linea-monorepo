@@ -600,8 +600,8 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 1,
-			HKey: hKeyFromAddress(common.HexToAddress("0x00aed6")),
-			HVal: hValFromAccount(Account{
+			HKey: hashAddress(common.HexToAddress("0x00aed6")),
+			HVal: hashAccount(&Account{
 				Balance: big.NewInt(0),
 			}),
 		},
@@ -631,8 +631,8 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 0,
 			Next: 2,
-			HKey: hKeyFromAddress(common.HexToAddress("0x00aed7")),
-			HVal: hValFromAccount(Account{
+			HKey: hashAddress(common.HexToAddress("0x00aed7")),
+			HVal: hashAccount(&Account{
 				Nonce:          65,
 				Balance:        big.NewInt(5690),
 				StorageRoot:    MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
@@ -666,8 +666,8 @@ var tcases = []TestCases{
 		Leaf: accumulator.LeafOpening{
 			Prev: 1,
 			Next: 3,
-			HKey: hKeyFromAddress(common.HexToAddress("0x00aed8")),
-			HVal: hValFromAccount(Account{
+			HKey: hashAddress(common.HexToAddress("0x00aed8")),
+			HVal: hashAccount(&Account{
 				Nonce:          65,
 				Balance:        big.NewInt(835),
 				StorageRoot:    MustHexToKoalabearOctuplet("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
@@ -688,36 +688,4 @@ var tcases = []TestCases{
 		TxHash:         common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),
 		InvalidityType: 0,
 	},
-}
-
-// hKeyFromAddress computes the HKey using Poseidon2 hash of the address
-func hKeyFromAddress(add common.Address) linTypes.KoalaOctuplet {
-	hasher := poseidon2_koalabear.NewMDHasher()
-	addrBytes := add.Bytes()
-	elems := make([]field.Element, 0, 10)
-	for i := 0; i < len(addrBytes); i += 2 {
-		v := uint64(addrBytes[i])<<8 | uint64(addrBytes[i+1])
-		var e field.Element
-		e.SetUint64(v)
-		elems = append(elems, e)
-	}
-	hasher.WriteElements(elems...)
-	digest := hasher.Sum(nil)
-	var d linTypes.KoalaOctuplet
-	if err := d.SetBytes(digest); err != nil {
-		panic(err)
-	}
-	return d
-}
-
-// hValFromAccount computes the HVal using Poseidon2 hash of the account
-func hValFromAccount(a Account) linTypes.KoalaOctuplet {
-	hasher := poseidon2_koalabear.NewMDHasher()
-	a.WriteTo(hasher)
-	digest := hasher.Sum(nil)
-	var d linTypes.KoalaOctuplet
-	if err := d.SetBytes(digest); err != nil {
-		panic(err)
-	}
-	return d
 }

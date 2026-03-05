@@ -14,9 +14,6 @@ import (
 	zkevmcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Public input names for invalidity proofs - these must match what BadPrecompileCircuit expects
@@ -25,9 +22,8 @@ const (
 	// Metadata key for storing the extractor in CompiledIOP
 	InvalidityPIExtractorMetadata = "InvalidityPIExtractor"
 
-	StateRootHashName    = "StateRootHash" // 8 KoalaBear elements
-	TxHashName           = "TxHash"        // 16 limbs in BE order (MSB first), converted from ECDSA LE
-	FromName             = "From"          // 10 limbs in BE order (MSB first), converted from ECDSA LE
+	TxHashName           = "TxHash" // 16 limbs in BE order (MSB first), converted from ECDSA LE
+	FromName             = "From"   // 10 limbs in BE order (MSB first), converted from ECDSA LE
 	HasBadPrecompileName = "HasBadPrecompile"
 	NbL2LogsName         = "NbL2Logs"
 )
@@ -46,9 +42,6 @@ type InvalidityPI struct {
 	// Extractor holds the LocalOpening queries for the public inputs
 	// used to register public inputs via LocalOpening queries
 	Extractor InvalidityPIExtractor
-
-	// PublicInputFetcher fetches the public inputs from the logs and root hash fetcher, used to facilitate the assignment of the public inputs
-	PublicInputFetcher *PublicInputFetcher
 }
 
 // InputColumns collects the input columns from the arithmetization, ECDSA, and logs module
@@ -61,38 +54,20 @@ type InputColumns struct {
 	txSignature *ecdsa.TxSignature // used to bubble up TxHash to the public input
 
 	// Input columns from logs and root hash fetcher
-	FilterFetchedL2L1    ifaces.Column                         // Input columns from logs - used to bubble up NbL2Logs to the public input
-	RootHashFetcherFirst [zkevmcommon.NbLimbU128]ifaces.Column // Input columns from root hash fetcher - used to bubble up StateRootHash to the public input
+	FilterFetchedL2L1 ifaces.Column // Input columns from logs - used to bubble up NbL2Logs to the public input
 }
 
 // InvalidityPIExtractor holds wizard.PublicInput for invalidity public inputs
 type InvalidityPIExtractor struct {
-	StateRootHash [zkevmcommon.NbLimbU128]wizard.PublicInput
-	TxHash        [zkevmcommon.NbLimbU256]wizard.PublicInput
-	FromAddress   [zkevmcommon.NbLimbEthAddress]wizard.PublicInput
+	TxHash      [zkevmcommon.NbLimbU256]wizard.PublicInput
+	FromAddress [zkevmcommon.NbLimbEthAddress]wizard.PublicInput
 
 	HasBadPrecompile wizard.PublicInput // the first row of the HasBadPrecompile column (a non-zero value means a bad precompile was detected)
 	NbL2Logs         wizard.PublicInput // the first row of the backward accumulator of the FilterFetched column
 }
 
 // NewInvalidityPI creates a new InvalidityPI module from the arithmetization, ECDSA, and logs module
-func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, ss *statesummary.Module, logCols logs.LogColumns) *InvalidityPI {
-	fetcher := NewPublicInputFetcher(comp, ss, logCols)
-	pi := newInvalidityPIFromFetcher(comp,
-		ecdsa,
-		fetcher.FetchedL2L1.FilterFetched,
-		fetcher.RootHashFetcher.First)
-	pi.PublicInputFetcher = &fetcher
-	return pi
-}
-
-func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
-	pi.PublicInputFetcher.Assign(run, l2BridgeAddress)
-	pi.assignFromFetcher(run)
-}
-
-// NewInvalidityPIZkEvm creates a new InvalidityPI module
-func newInvalidityPIFromFetcher(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filteredFetchedL2L1 ifaces.Column, rootHashFetcherFirst [zkevmcommon.NbLimbU128]ifaces.Column) *InvalidityPI {
+func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filteredFetchedL2L1 ifaces.Column) *InvalidityPI {
 
 	var (
 		name              = "INVALIDITY_PI"
@@ -118,11 +93,10 @@ func newInvalidityPIFromFetcher(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEv
 
 		// Input columns
 		InputColumns: InputColumns{
-			badPrecompileCol:     badPrecompileCol,
-			txSignature:          ecdsa.Ant.TxSignature,
-			addresses:            ecdsa.Ant.Addresses,
-			FilterFetchedL2L1:    filteredFetchedL2L1,
-			RootHashFetcherFirst: rootHashFetcherFirst,
+			badPrecompileCol:  badPrecompileCol,
+			txSignature:       ecdsa.Ant.TxSignature,
+			addresses:         ecdsa.Ant.Addresses,
+			FilterFetchedL2L1: filteredFetchedL2L1,
 		},
 	}
 
@@ -181,9 +155,6 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 		return pis
 	}
 
-	// Register StateRootHash public inputs (8 KoalaBear elements)
-	copy(pi.Extractor.StateRootHash[:], newLoPublicInputs(pi.InputColumns.RootHashFetcherFirst[:], StateRootHashName))
-
 	// Register TxHash public inputs
 	copy(pi.Extractor.TxHash[:], newLoPublicInputs(pi.TxHash.GetLimbs(), TxHashName))
 
@@ -199,8 +170,8 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 	comp.ExtraData[InvalidityPIExtractorMetadata] = &pi.Extractor
 }
 
-// assignFromFetcher assigns values to the InvalidityPI columns
-func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
+// Assign assigns values to the InvalidityPI columns.
+func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 
 	// 2. Extract FromAddress from addresses module using Addresses()
 	// Find the row where IsAddressFromTxnData = 1 and extract limb values
@@ -287,10 +258,6 @@ func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 		run.AssignLocalPoint(q.Q.ID, value)
 	}
 
-	// StateRootHash limbs
-	for i := range pi.Extractor.StateRootHash {
-		assignLO(pi.Extractor.StateRootHash[i], pi.InputColumns.RootHashFetcherFirst[i].GetColAssignmentAt(run, 0))
-	}
 	// TxHash limbs
 	for i := range pi.Extractor.TxHash {
 		assignLO(pi.Extractor.TxHash[i], txHashLimbValues[i])

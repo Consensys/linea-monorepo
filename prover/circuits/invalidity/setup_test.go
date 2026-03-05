@@ -26,7 +26,7 @@ func TestSetupRoundTripNonceBalance(t *testing.T) {
 		t.Skip("skipping setup round-trip test in short mode")
 	}
 
-	const maxRlpByteSize = 1024
+	const maxRlpByteSize = 1023
 
 	keccakComp := invalidity.MakeKeccakCompiledIOP(maxRlpByteSize, keccakDummy.Compile)
 	builder := invalidity.NewBuilder(
@@ -49,7 +49,7 @@ func TestSetupRoundTripPrecompileLogs(t *testing.T) {
 		t.Skip("skipping setup round-trip test in short mode")
 	}
 
-	comp, _ := invalidityPI.MockZkevmArithCols(invalidityPI.Inputs{
+	comp, _ := invalidity.MockZkevmPI(rng, invalidityPI.Inputs{
 		FixedInputs: fixedInputs,
 		CaseInputs: invalidityPI.CaseInputs{
 			HasBadPrecompile: true,
@@ -74,7 +74,7 @@ func TestSetupRoundTripFilteredAddress(t *testing.T) {
 		t.Skip("skipping setup round-trip test in short mode")
 	}
 
-	const maxRlpByteSize = 1024
+	const maxRlpByteSize = 1023
 
 	keccakComp := invalidity.MakeKeccakCompiledIOP(maxRlpByteSize, keccakDummy.Compile)
 	builder := invalidity.NewBuilder(

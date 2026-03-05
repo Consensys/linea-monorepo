@@ -140,9 +140,9 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 			var zkEvm *zkevm.ZkEvm
 			if isPartial {
-				zkEvm = zkevm.FullZkEVMInvalidityCheckOnly(&cfg.TracesLimits, cfg)
+				zkEvm = zkevm.FullZkEVMInvalidityCheckOnly(cfg)
 			} else {
-				zkEvm = zkevm.FullZkEvmInvalidity(&cfg.TracesLimits, cfg)
+				zkEvm = zkevm.FullZkEvmInvalidity(cfg)
 			}
 			proof := zkEvm.ProveInner(zkevmWitness)
 			if err := zkEvm.VerifyInner(proof); err != nil {
@@ -157,7 +157,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			} else {
 				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 			}
-			assigningInputs.StateRootHash = req.ZkParentStateRootHash
+
 		}
 
 		if isPartial {

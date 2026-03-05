@@ -15,7 +15,6 @@ import (
 	smtKoala "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -57,8 +56,6 @@ type AssigningInputs struct {
 	// inputs related to zkevm-wizard
 	Zkevm            *zkevm.ZkEvm
 	ZkevmWizardProof wizard.Proof
-
-	StateRootHash linTypes.KoalaOctuplet // in case the Merkle proof is not provided. The state root hash is provided separately specially for the filtered address case.
 }
 
 // Define the constraints

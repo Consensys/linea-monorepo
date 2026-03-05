@@ -32,10 +32,9 @@ var (
 )
 
 var fixedInputs = invalidityPI.FixedInputs{
-	TxHashLimbs:    invalidity.CreateTxHashLimbs(piTxHashBytes),
-	FromLimbs:      invalidity.CreateFromLimbs(piFromAddressBytes),
-	StateRootLimbs: piStateRootHash,
-	ColSize:        16,
+	TxHashLimbs: invalidity.CreateLimbs32Bytes(piTxHashBytes),
+	FromLimbs:   invalidity.CreateLimbs20Bytes(piFromAddressBytes),
+	ColSize:     16,
 }
 
 // compileSetupProve compiles the circuit, runs PLONK setup with an unsafe SRS,
@@ -122,7 +121,7 @@ func TestProveFilteredAddress(t *testing.T) {
 		RlpEncodedTx:      rlpEncodedTx,
 		KeccakCompiledIOP: kcomp,
 		KeccakProof:       kproof,
-		StateRootHash:     stateRoot,
+
 		FuncInputs: public_input.Invalidity{
 			TxHash:         txHash,
 			FromAddress:    linTypes.EthAddress(fromAddr),
@@ -182,10 +181,10 @@ func TestProveBadPrecompile(t *testing.T) {
 		ZkevmWizardProof: wizProof,
 		Transaction:      tx,
 		FuncInputs: public_input.Invalidity{
-			StateRootHash: piStateRootHash,
-			TxHash:        common.Hash(piTxHashBytes),
-			FromAddress:   linTypes.EthAddress(piFromAddressBytes),
-			ToAddress:     linTypes.EthAddress(*tx.To()),
+
+			TxHash:      common.Hash(piTxHashBytes),
+			FromAddress: linTypes.EthAddress(piFromAddressBytes),
+			ToAddress:   linTypes.EthAddress(*tx.To()),
 		},
 	}
 
