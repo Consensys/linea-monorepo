@@ -5,9 +5,9 @@ permissions:
   contents: read
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - 2537-manual-ci-workflow-e2e-with-partial-prover
   workflow_dispatch:
     inputs:
       linea_besu_package_image_tag:
