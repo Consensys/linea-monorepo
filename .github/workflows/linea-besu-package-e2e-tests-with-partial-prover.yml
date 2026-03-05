@@ -17,7 +17,12 @@ on:
         description: 'Type "true" to exclude besu-fleet-plugin in the locally bulit linea-besu-package image'
         required: false
         type: string
-        default: ''
+        default: 'true'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/linea-besu-package-e2e-tests-with-partial-prover.yml'
 
 permissions:
   actions: read
