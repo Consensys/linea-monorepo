@@ -167,7 +167,6 @@ jobs:
           push: true
           tags: |
             consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
-            consensys/linea-besu-package:latest
             ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:develop' || '' }}
             ${{ github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package:latest' || '' }}
 
