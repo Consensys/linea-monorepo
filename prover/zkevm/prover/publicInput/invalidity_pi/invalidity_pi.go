@@ -2,7 +2,6 @@ package invalidity
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -112,29 +111,35 @@ func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filtered
 // defineConstraints defines constraints over the columns of pi.
 func (pi *InvalidityPI) defineConstraints(comp *wizard.CompiledIOP) {
 
-	// the idea is that we propagate the target value over the rows to bring it to the first row
-	// each limb of TxHash must be constant,
-	commonconstraints.LimbsMustBeConstant(comp, pi.TxHash.GetLimbs())
-
-	// each limb of From must be constant
-	commonconstraints.LimbsMustBeConstant(comp, pi.From.GetLimbs())
-
 	// HasBadPrecompile must be an accumulator backward of the badPrecompileCol column
 	commonconstraints.MustBeAccumulatorBackward(comp, pi.HasBadPrecompile, pi.InputColumns.badPrecompileCol)
 
 	// NbL2Logs is the backward accumulator of the filterFetched column
 	commonconstraints.MustBeAccumulatorBackward(comp, pi.NbL2Logs, pi.InputColumns.FilterFetchedL2L1)
 
-	// when IsAddressFromTxnData = 1, From equals Address (using the same layout as ecdsa.Addresses())
-	limbs.NewGlobal(comp, ifaces.QueryIDf("%s_FROM_EQUALS_ADDRESS", "INVALIDITY_PI"),
-		sym.Mul(pi.InputColumns.addresses.IsAddressFromTxnData,
-			sym.Sub(pi.From.AsDynSize(), pi.InputColumns.addresses.Addresses().ToBigEndianLimbs()),
+	// Backward propagation for TxHash:
+	//   when IsTxHash=1: pi.TxHash[i] = ecdsaTxHash_BE[i]  (grab from ECDSA)
+	//   when IsTxHash=0: pi.TxHash[i] = pi.TxHash[i+1]     (copy from next row)
+	// This propagates the first flagged value up to row 0 for the LocalOpening.
+	txHashShifted := limbs.Shift(pi.TxHash.AsDynSize(), 1)
+	limbs.NewGlobal(comp, ifaces.QueryIDf("%s_TX_HASH_PROPAGATION", "INVALIDITY_PI"),
+		sym.Add(
+			sym.Sub(pi.TxHash.AsDynSize(), txHashShifted),
+			sym.Mul(pi.InputColumns.txSignature.IsTxHash,
+				sym.Sub(txHashShifted, pi.InputColumns.txSignature.TxHash.ToBigEndianLimbs()),
+			),
 		))
 
-	// when IsTxHash = 1, TxHash must equal txSignature.TxHash
-	limbs.NewGlobal(comp, ifaces.QueryIDf("%s_TX_HASH_EQUALS_TX_HASH", "INVALIDITY_PI"),
-		sym.Mul(pi.InputColumns.txSignature.IsTxHash,
-			sym.Sub(pi.TxHash.AsDynSize(), pi.InputColumns.txSignature.TxHash.ToBigEndianLimbs()),
+	// Backward propagation for From:
+	//   when IsAddressFromTxnData=1: pi.From[i] = ecdsaAddr_BE[i]  (grab from ECDSA)
+	//   when IsAddressFromTxnData=0: pi.From[i] = pi.From[i+1]     (copy from next row)
+	fromShifted := limbs.Shift(pi.From.AsDynSize(), 1)
+	limbs.NewGlobal(comp, ifaces.QueryIDf("%s_FROM_PROPAGATION", "INVALIDITY_PI"),
+		sym.Add(
+			sym.Sub(pi.From.AsDynSize(), fromShifted),
+			sym.Mul(pi.InputColumns.addresses.IsAddressFromTxnData,
+				sym.Sub(fromShifted, pi.InputColumns.addresses.Addresses().ToBigEndianLimbs()),
+			),
 		))
 }
 
@@ -173,58 +178,37 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 // Assign assigns values to the InvalidityPI columns.
 func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 
-	// 2. Extract FromAddress from addresses module using Addresses()
-	// Find the row where IsAddressFromTxnData = 1 and extract limb values
-	isFromCol := pi.InputColumns.addresses.IsAddressFromTxnData.GetColAssignment(run)
-	sizeEcdsa := isFromCol.Len()
-	var fromLimbValues [zkevmcommon.NbLimbEthAddress]field.Element
-	isFromCount := 0
-	for i := 0; i < sizeEcdsa; i++ {
-		source := isFromCol.Get(i)
-		if source.IsOne() {
-			isFromCount++
-			addressRow := pi.InputColumns.addresses.Addresses().GetRow(run, i)
-			for j := 0; j < zkevmcommon.NbLimbEthAddress; j++ {
-				fromLimbValues[j] = addressRow.T[j]
-			}
-			break
-		}
-	}
-	if isFromCount < 1 {
-		panic(fmt.Sprintf("InvalidityPI.Assign: expected at least one row with IsAddressFromTxnData = 1, got %d", isFromCount))
-	}
-
-	// 3. Extract TxHash from ECDSA module - find the row where IsTxHash = 1
 	isTxHashCol := pi.InputColumns.txSignature.IsTxHash.GetColAssignment(run)
 	ecdsaSize := isTxHashCol.Len()
-	var txHashLimbValues [zkevmcommon.NbLimbU256]field.Element
-	isTxHashCount := 0
-	for i := 0; i < ecdsaSize; i++ {
-		isTxHash := isTxHashCol.Get(i)
-		if isTxHash.IsOne() {
-			isTxHashCount++
-			txHashRow := pi.InputColumns.txSignature.TxHash.GetRow(run, i)
-			for j := 0; j < zkevmcommon.NbLimbU256; j++ {
-				txHashLimbValues[j] = txHashRow.T[j]
+	isFromCol := pi.InputColumns.addresses.IsAddressFromTxnData.GetColAssignment(run)
+
+	// Backward-propagate TxHash: when IsTxHash=1 grab from ECDSA, else copy next row.
+	// The first flagged value propagates to row 0.
+	txHashLimbValues := backwardPropagate(ecdsaSize, zkevmcommon.NbLimbU256, isTxHashCol,
+		func(row int) []field.Element {
+			leRow := pi.InputColumns.txSignature.TxHash.GetRow(run, row)
+			be := make([]field.Element, zkevmcommon.NbLimbU256)
+			for j := range be {
+				be[j] = leRow.T[zkevmcommon.NbLimbU256-1-j]
 			}
-			break
-		}
-	}
-	if isTxHashCount < 1 {
-		panic(fmt.Sprintf("InvalidityPI.Assign: expected at least one row with IsTxHash = 1, got %d", isTxHashCount))
-	}
-
-	// 5. Assign output columns
-	// Assign TxHash limbs (constant columns)
-	slices.Reverse(txHashLimbValues[:]) // reverse the txHashLimbValues to be in BE order
-	for i, col := range pi.TxHash.GetLimbs() {
-		run.AssignColumn(col.GetColID(), smartvectors.NewConstant(txHashLimbValues[i], col.Size()))
+			return be
+		})
+	for limbIdx, col := range pi.TxHash.GetLimbs() {
+		run.AssignColumn(col.GetColID(), smartvectors.NewRegular(txHashLimbValues[limbIdx]))
 	}
 
-	// Assign From limbs (constant columns)
-	slices.Reverse(fromLimbValues[:]) // reverse the fromLimbValues to be in BE order
-	for i, col := range pi.From.GetLimbs() {
-		run.AssignColumn(col.GetColID(), smartvectors.NewConstant(fromLimbValues[i], col.Size()))
+	// Backward-propagate From: when IsAddressFromTxnData=1 grab from ECDSA, else copy next row.
+	fromLimbValues := backwardPropagate(ecdsaSize, zkevmcommon.NbLimbEthAddress, isFromCol,
+		func(row int) []field.Element {
+			leRow := pi.InputColumns.addresses.Addresses().GetRow(run, row)
+			be := make([]field.Element, zkevmcommon.NbLimbEthAddress)
+			for j := range be {
+				be[j] = leRow.T[zkevmcommon.NbLimbEthAddress-1-j]
+			}
+			return be
+		})
+	for limbIdx, col := range pi.From.GetLimbs() {
+		run.AssignColumn(col.GetColID(), smartvectors.NewRegular(fromLimbValues[limbIdx]))
 	}
 
 	// Assign NbL2Logs (backward accumulator of filterFetched)
@@ -249,7 +233,7 @@ func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 	}
 	run.AssignColumn(pi.HasBadPrecompile.GetColID(), smartvectors.NewRegular(accBadPrecompileValues))
 
-	// 6. Assign local openings from the extractor's public inputs
+	// Assign local openings from row 0 of the propagated columns
 	assignLO := func(pi wizard.PublicInput, value field.Element) {
 		q, ok := pi.Acc.(*accessors.FromLocalOpeningYAccessor)
 		if !ok {
@@ -258,14 +242,57 @@ func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 		run.AssignLocalPoint(q.Q.ID, value)
 	}
 
-	// TxHash limbs
 	for i := range pi.Extractor.TxHash {
-		assignLO(pi.Extractor.TxHash[i], txHashLimbValues[i])
+		assignLO(pi.Extractor.TxHash[i], txHashLimbValues[i][0])
 	}
-	// From limbs
 	for i := range pi.Extractor.FromAddress {
-		assignLO(pi.Extractor.FromAddress[i], fromLimbValues[i])
+		assignLO(pi.Extractor.FromAddress[i], fromLimbValues[i][0])
 	}
 	assignLO(pi.Extractor.HasBadPrecompile, accBadPrecompileValues[0])
 	assignLO(pi.Extractor.NbL2Logs, accNbL2LogsValues[0])
+}
+
+// backwardPropagate builds column values via backward propagation:
+// when flag[i]=1, grab BE limbs from readBE(i); when flag[i]=0, copy from row i+1.
+// Returns [nbLimbs][size]field.Element (one full column per limb).
+func backwardPropagate(
+	size, nbLimbs int,
+	flag smartvectors.SmartVector,
+	readBE func(row int) []field.Element,
+) [][]field.Element {
+
+	// Find the first flagged row to seed the cyclic wrap
+	var seedBE []field.Element
+	for i := 0; i < size; i++ {
+		v := flag.Get(i)
+		if v.IsOne() {
+			seedBE = readBE(i)
+			break
+		}
+	}
+	if seedBE == nil {
+		panic("backwardPropagate: no flagged row found")
+	}
+
+	cols := make([][]field.Element, nbLimbs)
+	for j := range cols {
+		cols[j] = make([]field.Element, size)
+	}
+
+	// Initialize current values with the seed (first flagged row)
+	current := make([]field.Element, nbLimbs)
+	copy(current, seedBE)
+
+	// Backward pass: from the last row toward row 0
+	for i := size - 1; i >= 0; i-- {
+		v := flag.Get(i)
+		if v.IsOne() {
+			copy(current, readBE(i))
+		}
+		for j := 0; j < nbLimbs; j++ {
+			cols[j][i] = current[j]
+		}
+	}
+
+	return cols
 }
