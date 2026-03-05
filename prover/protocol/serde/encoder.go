@@ -44,6 +44,10 @@ type encoder struct {
 	// missing type, encoding continues so that all missing types can be reported at once.
 	// The set is keyed by reflect.Type to deduplicate repeated occurrences of the same type.
 	missingTypes map[reflect.Type]struct{}
+
+	// profiler is non-nil only when Profile() is used instead of Serialize().
+	// It builds a size tree without any overhead in normal (non-profiling) runs.
+	profiler *sizeProfiler
 }
 
 func newEncoder() *encoder {
@@ -273,6 +277,11 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
+			// A dedup hit skips linearize entirely, so nextLabel would otherwise
+			// survive to be misapplied to the next unrelated node.
+			if w.profiler != nil {
+				w.profiler.nextLabel = ""
+			}
 			return ref, nil
 		}
 
@@ -296,6 +305,20 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 func linearize(w *encoder, v reflect.Value) (Ref, error) {
 	traceEnter("LINEARIZE", v)
 	defer traceExit("LINEARIZE", nil)
+
+	// Size profiling: create a tree node for every complex type (struct, slice,
+	// map, interface). Pointers are excluded because linearize immediately
+	// recurses into the pointed-to value, which creates its own node.
+	// The w.offset delta from push to pop captures the full byte contribution of
+	// this subtree: the inline reservation (writeZeros) plus all heap bytes
+	// appended by indirect children.
+	if w.profiler != nil {
+		switch v.Kind() {
+		case reflect.Struct, reflect.Slice, reflect.Map, reflect.Interface:
+			w.profiler.push(v.Type().String(), w.offset)
+			defer func() { w.profiler.pop(w.offset) }()
+		}
+	}
 
 	// Custom handlers override default behaviour
 	if handler, ok := customRegistry[v.Type()]; ok {
@@ -699,6 +722,9 @@ func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 	n := v.Len()
 	refs := make([]Ref, n)
 	for i := 0; i < n; i++ {
+		if w.profiler != nil {
+			w.profiler.nextLabel = fmt.Sprintf("[%d]", i)
+		}
 		ref, err := encode(w, v.Index(i))
 		if err != nil {
 			return 0, err
@@ -811,6 +837,10 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 		traceLog("Patching Field: %s (Type: %s, Offset: %d)", t.Name, fType, startOffset+currentFieldOff)
 		info := getTypeInfo(fType)
 		if info.isIndirect {
+			// Label the profiler node that linearize will create for this field.
+			if w.profiler != nil {
+				w.profiler.nextLabel = t.Name
+			}
 			ref, err := encode(w, f)
 			if err != nil {
 				return err
@@ -820,9 +850,23 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			continue
 		}
 		if f.Kind() == reflect.Struct {
+			// Inline struct: not indirect, so linearize is never called for it.
+			// Push a profiler node here directly; its Bytes will equal the heap
+			// contributions from its own indirect descendants (the fixed inline
+			// bytes were already reserved by the parent's writeZeros).
+			if w.profiler != nil {
+				w.profiler.nextLabel = t.Name
+				w.profiler.push(fType.String(), w.offset)
+			}
 			// Recurse to patch the inner struct's fields
 			if err := patchStructBody(w, f, startOffset+currentFieldOff); err != nil {
+				if w.profiler != nil {
+					w.profiler.pop(w.offset)
+				}
 				return err
+			}
+			if w.profiler != nil {
+				w.profiler.pop(w.offset)
 			}
 			currentFieldOff += info.binSize
 			continue

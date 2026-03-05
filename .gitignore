@@ -163,6 +163,12 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
+# Prover serde testdata
+!prover/protocol/serde/testdata/*.txt
+# Usually the profiling pdfs
+prover/*.pdf
+# Usually request/response files
+prover/*.json 
 
 .claude/settings.local.json
 contracts/.claude/settings.local.json
