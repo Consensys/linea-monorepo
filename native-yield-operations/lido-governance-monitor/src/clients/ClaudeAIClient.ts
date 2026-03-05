@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { IAIClient, AIAnalysisRequest } from "../core/clients/IAIClient.js";
 import {
+  AffectedComponentValues,
   Assessment,
   NativeYieldInvariant,
   RiskLevel,
@@ -17,18 +18,7 @@ const LLMOutputSchema = z
     confidence: z.number().int().min(0).max(100),
     proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
     impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
-    affectedComponents: z.array(
-      z.enum([
-        "StakingVault",
-        "VaultHub",
-        "LazyOracle",
-        "AccountingOracle",
-        "OperatorGrid",
-        "PredepositGuarantee",
-        "Dashboard",
-        "Other",
-      ]),
-    ),
+    affectedComponents: z.array(z.enum(AffectedComponentValues)),
     whatChanged: z.string().min(1),
     nativeYieldInvariantsAtRisk: z.array(
       z.enum([

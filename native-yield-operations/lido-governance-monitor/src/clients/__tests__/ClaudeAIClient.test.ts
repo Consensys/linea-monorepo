@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-import { NativeYieldInvariant } from "../../core/entities/Assessment.js";
+import { AffectedComponent, NativeYieldInvariant } from "../../core/entities/Assessment.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ClaudeAIClient } from "../ClaudeAIClient.js";
 
@@ -78,6 +78,29 @@ describe("ClaudeAIClient", () => {
         urgency: "routine",
       });
       expect(logger.debug).toHaveBeenCalledWith("AI analysis completed", expect.any(Object));
+    });
+
+    const newlyTrackedAffectedComponents = [
+      AffectedComponent.ACCOUNTING,
+      AffectedComponent.ORACLE_REPORT_SANITY_CHECKER,
+      AffectedComponent.HASH_CONSENSUS,
+      AffectedComponent.VAULT_FACTORY,
+      AffectedComponent.ST_ETH,
+    ] as const;
+
+    it.each(newlyTrackedAffectedComponents)("accepts %s in affectedComponents", async (affectedComponent) => {
+      // Arrange
+      const llmOutput = createLLMOutput({ affectedComponents: [affectedComponent] as const });
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+      });
+
+      // Act
+      const result = await client.analyzeProposal(createAnalysisRequest());
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result?.affectedComponents).toEqual([affectedComponent]);
     });
 
     it("extracts JSON from response with surrounding text", async () => {
