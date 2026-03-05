@@ -157,6 +157,37 @@ describe("EIP-7702 test suite", () => {
     logger.debug("Contract address removed from deny list.");
   }, 120_000);
 
+  it.concurrent("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
+    const [accountA, accountB] = await l2AccountManager.generateAccounts(2);
+    const accountAWalletClient = context.l2WalletClient({ account: accountA });
+
+    const authorization = await accountAWalletClient.signAuthorization({
+      contractAddress: accountB.address,
+      executor: "self",
+    });
+
+    const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(l2PublicClient, {
+      account: accountA,
+      to: accountA.address,
+      data: "0x",
+    });
+
+    const nonce = await l2PublicClient.getTransactionCount({ address: accountA.address });
+
+    await expectSuccessfulTransaction(
+      l2PublicClient,
+      accountAWalletClient.sendTransaction({
+        authorizationList: [authorization],
+        to: accountA.address,
+        data: "0x",
+        nonce,
+        gas: 100_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      }),
+    );
+  });
+
   it("should block EIP-7702 tx after non-denied authority is added to denylist and plugin config is reloaded", async () => {
     const scenario = await createDelegationScenario({
       scenarioType: DelegationScenarioType.DenylistedAuthority,
