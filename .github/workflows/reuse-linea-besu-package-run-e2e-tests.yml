@@ -11,6 +11,37 @@ on:
         description: The tag to use for all linea-besu-package images
         required: true
         type: string
+      coordinator_tag:
+        description: The tag to use for coordinator
+        required: false
+        type: string
+      postman_tag:
+        description: The tag to use for postman
+        required: false
+        type: string
+      prover_tag:
+        description: The tag to use for prover
+        required: false
+        type: string
+      tx_exclusion_api_tag:
+        description: The tag to use for transaction exclusion api service
+        required: false
+        type: string
+      use_local_linea_besu_package_image:
+        description: Use the uploaded local linea-besu-package image
+        required: false
+        type: boolean
+        default: true
+      run_e2e_tests_for_partial_prover:
+        description: Run e2e tests far partial prover
+        required: false
+        type: boolean
+        default: false
+      runner_machine:
+        description: Runner machine to run the e2e tests
+        required: false
+        type: string
+        default: gha-runner-scale-set-ubuntu-22.04-amd64-xl
       e2e-tests-with-ssh:
         description: Run end to end tests with ability to ssh into environment
         required: false
@@ -45,12 +76,15 @@ jobs:
   run-e2e-tests:
     env:
       BESU_PACKAGE_TAG: ${{ inputs.linea_besu_package_tag }}
+      COORDINATOR_TAG: ${{ inputs.coordinator_tag || 'develop' }}
+      POSTMAN_TAG: ${{ inputs.postman_tag || 'develop' }}
+      PROVER_TAG: ${{ inputs.prover_tag || 'develop' }}
+      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.tx_exclusion_api_tag || 'develop' }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
-    # xl saves ~0 mins
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
+    runs-on: ${{ inputs.runner_machine }}
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
@@ -74,12 +108,14 @@ jobs:
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+rw tmp/local/
       - name: Download local docker image artifacts
+        if: ${{ inputs.use_local_linea_besu_package_image }}
         uses: actions/download-artifact@v7
         with:
           pattern: linea-besu-package
           path: ${{ github.workspace }}/tmp/artifacts
           merge-multiple: true
       - name: Load Docker images
+        if: ${{ inputs.use_local_linea_besu_package_image }}
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
           gunzip -c $GITHUB_WORKSPACE/tmp/artifacts/linea-besu-package-image.tar.gz | docker load
@@ -116,9 +152,16 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
+        if: ${{ !inputs.run_e2e_tests_for_partial_prover }}
         timeout-minutes: 6
         run: |
           pnpm run -F e2e test:local
+      - name: Run e2e tests with partial prover
+        id: run_e2e_tests_for_partial_prover
+        if: ${{ inputs.run_e2e_tests_for_partial_prover }}
+        timeout-minutes: 30
+        run: |
+          pnpm run -F e2e test:partial-prover:local
       - name: Run extra e2e tests for Besu fleet nodes
         id: run_e2e_tests_fleet
         if: ${{ inputs.e2e-tests-with-besu-fleet }}
