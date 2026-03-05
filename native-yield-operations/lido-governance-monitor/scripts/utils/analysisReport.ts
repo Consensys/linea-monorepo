@@ -72,8 +72,14 @@ export function computeEffectiveRisk(riskScore: number, confidence: number): num
   return Math.round((riskScore * confidence) / 100);
 }
 
+const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;
+
+export function stripAnsiCodes(text: string): string {
+  return text.replace(ANSI_ESCAPE_RE, "");
+}
+
 export function extractAnalysisEntriesFromLog(logText: string): AnalysisReportEntry[] {
-  const lines = logText.split(/\r?\n/);
+  const lines = stripAnsiCodes(logText).split(/\r?\n/);
   const entries: AnalysisReportEntry[] = [];
 
   let lineIndex = 0;

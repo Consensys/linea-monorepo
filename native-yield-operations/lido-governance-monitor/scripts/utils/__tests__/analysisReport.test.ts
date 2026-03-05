@@ -70,6 +70,39 @@ describe("analysisReport", () => {
       );
     });
 
+    it("strips ANSI escape codes and extracts entries from color-coded logs", () => {
+      // Arrange - simulates mainnet log format with ANSI color wrapping
+      const ESC = "\x1b";
+      const logText = [
+        `${ESC}[34mtime=2026-03-05T12:37:15.948Z level=DEBUG ${LOG_PREFIX.RESPONSE}\`\`\`json${ESC}[39m`,
+        `${ESC}[34m{${ESC}[39m`,
+        `${ESC}[34m  "riskScore": 50,${ESC}[39m`,
+        `${ESC}[34m  "confidence": 25,${ESC}[39m`,
+        `${ESC}[34m  "proposalType": "onchain_vote"${ESC}[39m`,
+        `${ESC}[34m}${ESC}[39m`,
+        `${ESC}[34m\`\`\`${ESC}[39m`,
+        `${ESC}[34mtime=2026-03-05T12:37:15.949Z level=DEBUG ${LOG_PREFIX.COMPLETED}LDO Contract vote 28 riskScore=50${ESC}[39m`,
+      ].join("\n");
+
+      // Act
+      const result = extractAnalysisEntriesFromLog(logText);
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          index: 1,
+          timestamp: "2026-03-05T12:37:15.948Z",
+          proposalTitle: "LDO Contract vote 28",
+          status: "parsed",
+          riskScore: 50,
+          confidence: 25,
+          computedEffectiveRisk: 13,
+          loggedRiskScore: 50,
+        }),
+      );
+    });
+
     it("marks entry as invalid_json when textContent cannot be parsed", () => {
       // Arrange
       const logText = [
