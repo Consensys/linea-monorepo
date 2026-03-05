@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, getAddress, isAddress } from "viem";
+import { encodeFunctionData, getAddress, isAddress, PrivateKeyAccount } from "viem";
 
 import {
   addToDenyList,
@@ -43,12 +43,12 @@ describe("EIP-7702 test suite", () => {
 
   let targetContractAddress: `0x${string}`;
 
-  async function deployDelegationContract(deployer: { address: `0x${string}` }): Promise<`0x${string}`> {
+  async function deployDelegationContract(deployer: PrivateKeyAccount): Promise<`0x${string}`> {
     const deployerWalletClient = context.l2WalletClient({ account: deployer });
     const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
 
     const deployEstimate = await estimateLineaGas(l2PublicClient, {
-      account: deployer,
+      account: deployer.address,
       data: TestEIP7702DelegationAbiBytecode,
     });
 
@@ -80,7 +80,7 @@ describe("EIP-7702 test suite", () => {
     const authorization = await authorityWalletClient.signAuthorization({
       contractAddress,
       // Self-sponsored tx if target address is denylisted
-      executor: isDenylistedAuthorityCase ? sponsor : "self",
+      executor: isDenylistedAuthorityCase ? undefined : "self",
     });
     const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(l2PublicClient, {
       account: sponsor,
@@ -111,7 +111,7 @@ describe("EIP-7702 test suite", () => {
     targetContractAddress = await deployDelegationContract(deployer);
   }, 120_000);
 
-  it.concurrent("should execute EIP-7702 (Set Code) transactions", async () => {
+  it("should execute EIP-7702 (Set Code) transactions", async () => {
     const [deployer] = await l2AccountManager.generateAccounts(1);
     // Keep this deployment test-local to avoid state coupling with shared beforeAll contract in concurrent execution.
     const testTargetContractAddress = await deployDelegationContract(deployer);
@@ -157,7 +157,7 @@ describe("EIP-7702 test suite", () => {
     logger.debug("Contract address removed from deny list.");
   }, 120_000);
 
-  it.concurrent("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
+  it("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
     const [accountA, accountB] = await l2AccountManager.generateAccounts(2);
     const accountAWalletClient = context.l2WalletClient({ account: accountA });
 
