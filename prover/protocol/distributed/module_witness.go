@@ -306,7 +306,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscov
 				qbm, _ := disc.QbmOf(col)
 
 				if _, ok := segmentWarningCache.Load(qbm.ModuleName); !ok {
-					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%v start=%v stop=%v newSize=%v originalSize=%v\n",
+					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%s start=%v stop=%v newSize=%v originalSize=%v\n",
 						mn, qbm.ModuleName, col.ID, nbSegmentForCol, paddingInfo, start, stop, newSize, col.Size(),
 					)
 					segmentWarningCache.Store(qbm.ModuleName, struct{}{})

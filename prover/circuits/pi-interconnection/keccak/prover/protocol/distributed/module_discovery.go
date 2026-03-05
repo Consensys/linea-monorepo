@@ -31,11 +31,26 @@ var (
 type paddingInformation int
 
 const (
-	constantPaddingInformation = iota + 1
+	constantPaddingInformation paddingInformation = iota + 1
 	leftPaddingInformation
 	rightPaddingInformation
 	noPaddingInformation
 )
+
+func (p paddingInformation) String() string {
+	switch p {
+	case constantPaddingInformation:
+		return "constant"
+	case leftPaddingInformation:
+		return "left"
+	case rightPaddingInformation:
+		return "right"
+	case noPaddingInformation:
+		return "no-padding"
+	default:
+		return "<invalid-value>"
+	}
+}
 
 // ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]
 // using the informations of the discoverer. The resolution of the module name
