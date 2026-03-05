@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, getAddress, isAddress, PrivateKeyAccount } from "viem";
+import { describe, expect, it } from "@jest/globals";
+import { encodeFunctionData, getAddress, isAddress } from "viem";
 
 import {
   addToDenyList,
@@ -31,8 +31,6 @@ type CreateDelegationScenarioParams = {
   contractAddress: `0x${string}`;
 };
 
-// deny-list.txt is a shared file modified by this suite. Denylist tests below
-// MUST NOT use it.concurrent() because removeFromDenyList uses read-modify-write.
 describe("EIP-7702 test suite", () => {
   const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
   const sequencerClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
@@ -41,9 +39,7 @@ describe("EIP-7702 test suite", () => {
     functionName: "initialize",
   });
 
-  let targetContractAddress: `0x${string}`;
-
-  async function deployDelegationContract(deployer: PrivateKeyAccount): Promise<`0x${string}`> {
+  async function deployDelegationContract(deployer: { address: `0x${string}` }): Promise<`0x${string}`> {
     const deployerWalletClient = context.l2WalletClient({ account: deployer });
     const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
 
@@ -106,56 +102,16 @@ describe("EIP-7702 test suite", () => {
     };
   }
 
-  beforeAll(async () => {
+  it.concurrent("should execute EIP-7702 (Set Code) transactions", async () => {
     const [deployer] = await l2AccountManager.generateAccounts(1);
-    targetContractAddress = await deployDelegationContract(deployer);
-  }, 120_000);
-
-  it("should execute EIP-7702 (Set Code) transactions", async () => {
-    const [deployer] = await l2AccountManager.generateAccounts(1);
-    // Keep this deployment test-local to avoid state coupling with shared beforeAll contract in concurrent execution.
-    const testTargetContractAddress = await deployDelegationContract(deployer);
-    // Not a denylist test, but reuse createDelegationScenario fn
+    const contractAddress = await deployDelegationContract(deployer);
     const scenario = await createDelegationScenario({
       scenarioType: DelegationScenarioType.DenylistedContract,
-      contractAddress: testTargetContractAddress,
+      contractAddress,
     });
 
     await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
   });
-
-  it("should block EIP-7702 tx when authorization_list authority is denylisted", async () => {
-    const scenario = await createDelegationScenario({
-      scenarioType: DelegationScenarioType.DenylistedAuthority,
-      contractAddress: targetContractAddress,
-    });
-
-    await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
-      logger.debug(`Authority address added to deny list. address=${scenario.denyListAddress}`);
-      const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
-
-      await expectBlockedTransaction(sendTransactionPromise);
-      logger.debug("EIP-7702 transaction correctly rejected for denied authority.");
-    });
-
-    logger.debug("Authority address removed from deny list.");
-  }, 120_000);
-
-  it("should block EIP-7702 tx when authorization_list delegates to denylisted contract", async () => {
-    const scenario = await createDelegationScenario({
-      scenarioType: DelegationScenarioType.DenylistedContract,
-      contractAddress: targetContractAddress,
-    });
-    await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
-      logger.debug(`Contract address added to deny list. address=${scenario.denyListAddress}`);
-      const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
-
-      await expectBlockedTransaction(sendTransactionPromise);
-      logger.debug("EIP-7702 transaction correctly rejected for denied contract delegation.");
-    });
-
-    logger.debug("Contract address removed from deny list.");
-  }, 120_000);
 
   it("should execute EIP-7702 self-call with no calldata when delegating to a codeless EOA", async () => {
     const [accountA, accountB] = await l2AccountManager.generateAccounts(2);
@@ -188,22 +144,73 @@ describe("EIP-7702 test suite", () => {
     );
   });
 
-  it("should block EIP-7702 tx after non-denied authority is added to denylist and plugin config is reloaded", async () => {
-    const scenario = await createDelegationScenario({
-      scenarioType: DelegationScenarioType.DenylistedAuthority,
-      contractAddress: targetContractAddress,
-    });
+  it.concurrent(
+    "should block EIP-7702 tx when authorization_list authority is denylisted",
+    async () => {
+      const [deployer] = await l2AccountManager.generateAccounts(1);
+      const contractAddress = await deployDelegationContract(deployer);
+      const scenario = await createDelegationScenario({
+        scenarioType: DelegationScenarioType.DenylistedAuthority,
+        contractAddress,
+      });
 
-    try {
-      await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
+        logger.debug(`Authority address added to deny list. address=${scenario.denyListAddress}`);
+        const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
 
-      addToDenyList([scenario.denyListAddress]);
-      await reloadDenyList(sequencerClient);
+        await expectBlockedTransaction(sendTransactionPromise);
+        logger.debug("EIP-7702 transaction correctly rejected for denied authority.");
+      });
 
-      await expectBlockedTransaction(scenario.sendDelegatedInitializeTx());
-    } finally {
-      removeFromDenyList([scenario.denyListAddress]);
-      await reloadDenyList(sequencerClient);
-    }
-  }, 120_000);
+      logger.debug("Authority address removed from deny list.");
+    },
+    120_000,
+  );
+
+  it.concurrent(
+    "should block EIP-7702 tx when authorization_list delegates to denylisted contract",
+    async () => {
+      const [deployer] = await l2AccountManager.generateAccounts(1);
+      const contractAddress = await deployDelegationContract(deployer);
+      const scenario = await createDelegationScenario({
+        scenarioType: DelegationScenarioType.DenylistedContract,
+        contractAddress,
+      });
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
+        logger.debug(`Contract address added to deny list. address=${scenario.denyListAddress}`);
+        const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
+
+        await expectBlockedTransaction(sendTransactionPromise);
+        logger.debug("EIP-7702 transaction correctly rejected for denied contract delegation.");
+      });
+
+      logger.debug("Contract address removed from deny list.");
+    },
+    120_000,
+  );
+
+  it.concurrent(
+    "should block EIP-7702 tx after non-denied authority is added to denylist and plugin config is reloaded",
+    async () => {
+      const [deployer] = await l2AccountManager.generateAccounts(1);
+      const contractAddress = await deployDelegationContract(deployer);
+      const scenario = await createDelegationScenario({
+        scenarioType: DelegationScenarioType.DenylistedAuthority,
+        contractAddress,
+      });
+
+      try {
+        await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
+
+        addToDenyList([scenario.denyListAddress]);
+        await reloadDenyList(sequencerClient);
+
+        await expectBlockedTransaction(scenario.sendDelegatedInitializeTx());
+      } finally {
+        removeFromDenyList([scenario.denyListAddress]);
+        await reloadDenyList(sequencerClient);
+      }
+    },
+    120_000,
+  );
 });
