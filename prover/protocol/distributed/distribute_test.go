@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -14,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
@@ -65,18 +67,30 @@ func TestDistributedWizard(t *testing.T) {
 	}
 }
 
-func TestDistributedWizardWithSegmentCompilation(t *testing.T) {
-	t.Skipf(" the test is skipped since vortex is not yet implemented for extension/post-recursion")
+// TestCompileOneSegment tests the compilation of a single segment.
+func TestCompileOneSegment(t *testing.T) {
 
-	testCases := []DistributedTestCase{
-		&LookupTestCase{numRow: 1 << NbRow},
+	t.SkipNow()
+
+	var (
+		tc      = &PermutationTestCase{numRow: 1 << NbRow}
+		defFunc = func(build *wizard.Builder) { tc.Define(build.CompiledIOP) }
+		wiop    = wizard.Compile(defFunc)
+		disc    = &distributed.StandardModuleDiscoverer{
+			TargetWeight: NbRow,
+			Advices:      tc.Advices(),
+		}
+		distWizard = distributed.DistributeWizard(wiop, disc)
+		compiled   = distributed.CompileSegment(distWizard.GLs[0], testCompilationParams)
+	)
+
+	profileTree, err := serde.Profile(compiled)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.Name(), func(t *testing.T) {
-			runDistributedWizardTest(t, tc, true)
-		})
-	}
+	profileTree.PruneTree(1 << 20)
+	serde.WriteProfileTo(profileTree, files.MustOverwrite("./profiling/comp-profile.txt"))
 }
 
 // runDistributedWizardTest runs a single distributed wizard test case.
