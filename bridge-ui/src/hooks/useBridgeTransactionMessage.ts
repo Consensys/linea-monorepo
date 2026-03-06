@@ -21,7 +21,7 @@ const useBridgeTransactionMessage = (
       if (status !== TransactionStatus.READY_TO_CLAIM) return message;
 
       await adapter?.prepareClaimMessage?.({ message, fromChain, toChain, wagmiConfig });
-      return message;
+      return { ...message };
     },
     enabled: !!transaction,
   });
