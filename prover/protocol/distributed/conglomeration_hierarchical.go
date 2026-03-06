@@ -106,7 +106,10 @@ type ConglomerationHierarchicalVerifierAction struct {
 // public inputs of a conglomeration node.
 // T is the base field type, E is the extension field type.
 type LimitlessPublicInput[T, E any] struct {
-	Functionals                  []T
+	Functionals []struct {
+		F *T
+		E *E
+	}
 	TargetNbSegments             []T
 	SegmentCountGL               []T
 	SegmentCountLPP              []T
@@ -329,9 +332,19 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 
 	for _, pi := range scanFunctionalInputs(moduleMod) {
 		if pi.Acc.IsBase() {
-			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, pi.Name))
+			newPi := declarePiColumn(c.Wiop, pi.Name)
+			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals,
+				struct {
+					F *wizard.PublicInput
+					E *wizard.PublicInput
+				}{F: &newPi})
 		} else {
-			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumnExt(c.Wiop, pi.Name))
+			newPi := declarePiColumnExt(c.Wiop, pi.Name)
+			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals,
+				struct {
+					F *wizard.PublicInput
+					E *wizard.PublicInput
+				}{E: &newPi})
 		}
 	}
 
@@ -431,13 +444,24 @@ func (c *ModuleConglo) Assign(
 	}
 
 	// This assigns the functional public input by summing them
-	for f := range c.PublicInputs.Functionals {
-		var sumValue field.Element
-		for instance := 0; instance < aggregationArity; instance++ {
-			sumValue.Add(&sumValue, &collectedPIs[instance].Functionals[f])
+	for f, toAssignPi := range c.PublicInputs.Functionals {
+
+		switch {
+		case toAssignPi.F != nil:
+			var sumValue field.Element
+			for instance := 0; instance < aggregationArity; instance++ {
+				sumValue.Add(&sumValue, collectedPIs[instance].Functionals[f].F)
+			}
+			assignPiColumn(run, toAssignPi.F.Name, sumValue)
+		case toAssignPi.E != nil:
+			var sumValue fext.Element
+			for instance := 0; instance < aggregationArity; instance++ {
+				sumValue.Add(&sumValue, collectedPIs[instance].Functionals[f].E)
+			}
+			assignPiColumnExt(run, toAssignPi.E.Name, sumValue)
+		default:
+			panic("unexpected: they are both nil")
 		}
-		pi := c.PublicInputs.Functionals[f]
-		assignPiColumn(run, pi.Name, sumValue)
 	}
 
 	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mSetGeneral[:])
@@ -498,18 +522,33 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 	// This checks that the functional public inputs are correctly conglomerated
 	// across all instances.
-	for k := range topPIs.Functionals {
+	for k, topPI := range topPIs.Functionals {
 
-		summedUpValue := field.Element{}
+		switch {
+		case topPI.F != nil:
+			summedUpValue := field.Element{}
+			for instance := 0; instance < aggregationArity; instance++ {
+				funcPI := collectedPIs[instance].Functionals[k]
+				summedUpValue.Add(&summedUpValue, funcPI.F)
+			}
+			if summedUpValue != *topPI.F {
+				err = errors.Join(err, fmt.Errorf("public input mismatch for Functionals at index %d, name=%v", k, c.PublicInputs.Functionals[k].F.Name))
+			}
 
-		for instance := 0; instance < aggregationArity; instance++ {
-			funcPI := collectedPIs[instance].Functionals[k]
-			summedUpValue.Add(&summedUpValue, &funcPI)
+		case topPI.E != nil:
+			summedUpValue := fext.Element{}
+			for instance := 0; instance < aggregationArity; instance++ {
+				funcPI := collectedPIs[instance].Functionals[k]
+				summedUpValue.Add(&summedUpValue, funcPI.E)
+			}
+			if summedUpValue != *topPI.E {
+				err = errors.Join(err, fmt.Errorf("public input mismatch for Functionals at index %d, name=%v", k, c.PublicInputs.Functionals[k].E.Name))
+			}
+
+		default:
+			panic("unexpected: they are both nil")
 		}
 
-		if summedUpValue != topPIs.Functionals[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for Functionals at index %d, name=%v", k, c.PublicInputs.Functionals[k].Name))
-		}
 	}
 
 	for k := 0; k < c.ModuleNumber; k++ {
@@ -669,13 +708,27 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This checks that the functional public inputs are correctly conglomerated
 	// across all instances.
-	for k := range topPIs.Functionals {
-		summedUpValue := frontend.Variable(0)
-		for instance := 0; instance < aggregationArity; instance++ {
-			funcPI := collectedPIs[instance].Functionals[k]
-			summedUpValue = api.Add(summedUpValue, funcPI)
+	for k, topPI := range topPIs.Functionals {
+		switch {
+		case topPI.F != nil:
+			summedUpValue := frontend.Variable(0)
+			for instance := 0; instance < aggregationArity; instance++ {
+				funcPI := *collectedPIs[instance].Functionals[k].F
+				summedUpValue = api.Add(summedUpValue, funcPI)
+			}
+			api.AssertIsEqual(summedUpValue, *topPI.F)
+
+		case topPI.E != nil:
+			summedUpValue := koalagnark.NewExt(fext.Zero())
+			for instance := 0; instance < aggregationArity; instance++ {
+				funcPI := *collectedPIs[instance].Functionals[k].E
+				summedUpValue = koalaAPI.AddExt(summedUpValue, funcPI)
+			}
+			koalaAPI.AssertIsEqualExt(summedUpValue, *topPI.E)
+
+		default:
+			panic("unexpected: they are both nil")
 		}
-		api.AssertIsEqual(summedUpValue, topPIs.Functionals[k])
 	}
 
 	for k := 0; k < c.ModuleNumber; k++ {
@@ -956,7 +1009,25 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
-		res.Functionals = append(res.Functionals, c.Recursion.GetPublicInputOfInstance(run, pi.Name, instance).Base)
+
+		fGen := c.Recursion.GetPublicInputOfInstance(run, pi.F.Name, instance)
+
+		switch {
+		case pi.F != nil:
+			res.Functionals = append(res.Functionals, struct {
+				F *field.Element
+				E *fext.Element
+			}{F: &fGen.Base})
+
+		case pi.E != nil:
+			res.Functionals = append(res.Functionals, struct {
+				F *field.Element
+				E *fext.Element
+			}{E: &fGen.Ext})
+
+		default:
+			utils.Panic("unknown public input type")
+		}
 	}
 
 	return res
@@ -1003,7 +1074,20 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 	}
 
 	for _, pi := range scanFunctionalInputs(run.GetSpec()) {
-		res.Functionals = append(res.Functionals, run.GetPublicInput(pi.Name).Base)
+		fGen := run.GetPublicInput(pi.Name)
+		if pi.Acc.IsBase() {
+			res.Functionals = append(res.Functionals,
+				struct {
+					F *field.Element
+					E *fext.Element
+				}{F: &fGen.Base})
+		} else {
+			res.Functionals = append(res.Functionals,
+				struct {
+					F *field.Element
+					E *fext.Element
+				}{E: &fGen.Ext})
+		}
 	}
 
 	return res
@@ -1045,8 +1129,25 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
-		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance)
-		res.Functionals = append(res.Functionals, wrapped.Native())
+		switch {
+		case pi.F != nil:
+			wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.F.Name, instance)
+			wrappedFE := wrapped.Native()
+			res.Functionals = append(res.Functionals, struct {
+				F *frontend.Variable
+				E *koalagnark.Ext
+			}{F: &wrappedFE})
+
+		case pi.E != nil:
+			wrapped := c.Recursion.GetPublicInputAccessorOfInstance(run.GetSpec(), pi.E.Name, instance).GetFrontendVariableExt(api, run)
+			res.Functionals = append(res.Functionals, struct {
+				F *frontend.Variable
+				E *koalagnark.Ext
+			}{E: &wrapped})
+
+		default:
+			panic("unreachable")
+		}
 	}
 
 	return res
@@ -1080,8 +1181,23 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 	}
 
 	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
-		wrapped := run.GetPublicInput(api, pi.Name)
-		res.Functionals = append(res.Functionals, wrapped.Native())
+
+		if pi.Acc.IsBase() {
+			wrapped := run.GetPublicInput(api, pi.Name)
+			wrappedFE := wrapped.Native()
+			res.Functionals = append(res.Functionals, struct {
+				F *frontend.Variable
+				E *koalagnark.Ext
+			}{F: &wrappedFE})
+
+		} else {
+			wrapped := run.GetSpec().GetPublicInputAccessor(pi.Name).
+				GetFrontendVariableExt(api, run)
+			res.Functionals = append(res.Functionals, struct {
+				F *frontend.Variable
+				E *koalagnark.Ext
+			}{E: &wrapped})
+		}
 	}
 
 	return res
