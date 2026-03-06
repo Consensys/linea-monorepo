@@ -328,7 +328,11 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	c.Wiop = comp
 
 	for _, pi := range scanFunctionalInputs(moduleMod) {
-		c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, pi.Name))
+		if pi.Acc.IsBase() {
+			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, pi.Name))
+		} else {
+			c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumnExt(c.Wiop, pi.Name))
+		}
 	}
 
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, 0, TargetNbSegmentPublicInputBase, c.ModuleNumber)
