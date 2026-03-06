@@ -902,8 +902,13 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.DefinitionInput.LocalOpenings {
 		newLo := run.GetLocalPointEval(a.DefinitionInput.LocalOpenings[i].ID)
-		y := newLo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
+		if newLo.Pol.IsBase() {
+			y := newLo.Pol.GetColAssignmentAt(run, 0)
+			run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
+		} else {
+			y := newLo.Pol.GetColAssignmentAtExt(run, 0)
+			run.AssignLocalPointExt(a.DefinitionInput.LocalOpenings[i].ID, y)
+		}
 	}
 }
 
