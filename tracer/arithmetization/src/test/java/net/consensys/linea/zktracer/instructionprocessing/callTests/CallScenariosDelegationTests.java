@@ -15,12 +15,16 @@
 
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
+import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendInsufficientBalanceCall;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_EXCEPTION;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import kotlin.jvm.functions.Function3;
+import kotlin.jvm.functions.Function2;
 import kotlin.jvm.functions.Function4;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -117,41 +121,9 @@ public class CallScenariosDelegationTests extends TracerTestBase {
           .address(Address.fromHexString("0xDDCA77EE"))
           .build();
 
-  Function3<ToyAccount, LoopType, RevertType, BytecodeCompiler> callProgram =
-      (targetAccount, loopType, revertType) ->
-          BytecodeCompiler.newProgram(chainConfig)
-              .immediate(
-                  loopType == LoopType.EXIT_EARLY,
-                  BytecodeCompiler.newProgram(chainConfig)
-                      .push(0)
-                      .op(OpCode.SLOAD) // LOOP_DEPTH_CURRENT
-                      .push(3) // LOOP_DEPTH_MAX
-                      .op(OpCode.GT) // LOOP_DEPTH_MAX > LOOP_DEPTH_CURRENT
-                      .push(10)
-                      .op(OpCode.JUMPI) // if LOOP_DEPTH_CURRENT < LOOP_DEPTH_MAX jump to JUMPDEST
-                      // else STOP
-                      .op(OpCode.STOP)
-                      .op(OpCode.JUMPDEST) // PC = 10
-                      .compile())
-              .push(0)
-              .op(OpCode.SLOAD)
-              .push(1)
-              .op(OpCode.ADD)
-              .push(0)
-              .op(OpCode.SSTORE) // increment LOOP_DEPTH_CURRENT by 1
-              // execute the call
-              .apply(
-                  program ->
-                      appendFullGasCall(
-                          program, OpCode.CALL, targetAccount.getAddress(), 0, 0, 0, 0, 0))
-              // preparing for a potential revert
-              .push(0)
-              .push(0)
-              .op(revertType == RevertType.TERMINATES_ON_REVERT ? OpCode.REVERT : OpCode.STOP);
-
-  Function4<CallScenarioFragment.CallScenario, OpCode, LoopType, RevertType, BytecodeCompiler>
-      rootProgram =
-          (callScenario, callOpCode, loopType, revertType) ->
+  Function4<CallScenarioFragment.CallScenario, ToyAccount, LoopType, RevertType, BytecodeCompiler>
+      callProgram =
+          (callScenario, targetAccount, loopType, revertType) ->
               BytecodeCompiler.newProgram(chainConfig)
                   .immediate(
                       loopType == LoopType.EXIT_EARLY,
@@ -174,25 +146,82 @@ public class CallScenariosDelegationTests extends TracerTestBase {
                   .op(OpCode.ADD)
                   .push(0)
                   .op(OpCode.SSTORE) // increment LOOP_DEPTH_CURRENT by 1
-                  // execute 2 identical calls to callerAccount
+                  // execute the call
                   .apply(
                       program ->
-                          appendFullGasCall(
-                              program, callOpCode, callerAccount.getAddress(), 0, 0, 0, 0, 0),
-                      2)
-                  .push(rootAccount.getAddress())
-                  .op(OpCode.BALANCE)
-                  .op(OpCode.POP)
-                  .push(callerAccount.getAddress())
-                  .op(OpCode.BALANCE)
-                  .op(OpCode.POP)
-                  .push(calleeAccount.getAddress())
-                  .op(OpCode.BALANCE)
-                  .op(OpCode.POP)
+                          switch (callScenario) {
+                            case CALL_EXCEPTION ->
+                                // triggers a staticFault as the target account tries to execute
+                                // SSTORE
+                                appendFullGasCall(
+                                    program,
+                                    OpCode.STATICCALL,
+                                    targetAccount.getAddress(),
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0);
+                            case CALL_ABORT_WILL_REVERT, CALL_ABORT_WONT_REVERT ->
+                                appendInsufficientBalanceCall(
+                                    program, OpCode.CALL, targetAccount.getAddress(), 0, 0, 0, 0);
+                            default ->
+                                appendFullGasCall(
+                                    program,
+                                    OpCode.CALL,
+                                    targetAccount.getAddress(),
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0);
+                          })
                   // preparing for a potential revert
                   .push(0)
                   .push(0)
                   .op(revertType == RevertType.TERMINATES_ON_REVERT ? OpCode.REVERT : OpCode.STOP);
+
+  Function2<LoopType, RevertType, BytecodeCompiler> rootProgram =
+      (loopType, revertType) ->
+          BytecodeCompiler.newProgram(chainConfig)
+              .immediate(
+                  loopType == LoopType.EXIT_EARLY,
+                  BytecodeCompiler.newProgram(chainConfig)
+                      .push(0)
+                      .op(OpCode.SLOAD) // LOOP_DEPTH_CURRENT
+                      .push(3) // LOOP_DEPTH_MAX
+                      .op(OpCode.GT) // LOOP_DEPTH_MAX > LOOP_DEPTH_CURRENT
+                      .push(10)
+                      .op(OpCode.JUMPI) // if LOOP_DEPTH_CURRENT < LOOP_DEPTH_MAX jump to JUMPDEST
+                      // else STOP
+                      .op(OpCode.STOP)
+                      .op(OpCode.JUMPDEST) // PC = 10
+                      .compile())
+              .push(0)
+              .op(OpCode.SLOAD)
+              .push(1)
+              .op(OpCode.ADD)
+              .push(0)
+              .op(OpCode.SSTORE) // increment LOOP_DEPTH_CURRENT by 1
+              // execute 2 identical calls to callerAccount
+              .apply(
+                  program ->
+                      appendCall(
+                          program, OpCode.CALL, 100_000, callerAccount.getAddress(), 0, 0, 0, 0, 0),
+                  2)
+              .push(rootAccount.getAddress())
+              .op(OpCode.BALANCE)
+              .op(OpCode.POP)
+              .push(callerAccount.getAddress())
+              .op(OpCode.BALANCE)
+              .op(OpCode.POP)
+              .push(calleeAccount.getAddress())
+              .op(OpCode.BALANCE)
+              .op(OpCode.POP)
+              // preparing for a potential revert
+              .push(0)
+              .push(0)
+              .op(revertType == RevertType.TERMINATES_ON_REVERT ? OpCode.REVERT : OpCode.STOP);
 
   public enum CallerType {
     DELEGATED,
@@ -235,20 +264,26 @@ public class CallScenariosDelegationTests extends TracerTestBase {
       RevertType calleeCodeRevertType,
       LoopType loopType,
       TestInfo testInfo) {
-    rootAccount.setCode(
-        rootProgram.invoke(callScenario, OpCode.CALL, loopType, rootCodeRevertType).compile());
+    rootAccount.setCode(rootProgram.invoke(loopType, rootCodeRevertType).compile());
 
     switch (callerType) {
       case DELEGATED -> {
         callerAccount.delegateTo(smcAccount1);
         smcAccount1.setCode(
-            callProgram.invoke(calleeAccount, loopType, callerCodeRevertType).compile());
+            callProgram
+                .invoke(callScenario, calleeAccount, loopType, callerCodeRevertType)
+                .compile());
       }
       case SMC ->
           callerAccount.setCode(
-              callProgram.invoke(calleeAccount, loopType, callerCodeRevertType).compile());
+              callProgram
+                  .invoke(callScenario, calleeAccount, loopType, callerCodeRevertType)
+                  .compile());
     }
 
+    // TODO: should callScenario apply to the callee code as well?
+    // TODO: are the CALL_EOA and CALL_SMC scenarios already implicitly covered due to the nature of
+    // calleeType?
     switch (calleeType) {
       case DELEGATED_TO_ROOT -> calleeAccount.delegateTo(rootAccount);
       case DELEGATED_TO_CALLER -> calleeAccount.delegateTo(callerAccount);
@@ -256,13 +291,13 @@ public class CallScenariosDelegationTests extends TracerTestBase {
         calleeAccount.delegateTo(smcAccount2);
         smcAccount2.setCode(
             callProgram
-                .invoke(callerAccount, loopType, calleeCodeRevertType)
+                .invoke(callScenario, callerAccount, loopType, calleeCodeRevertType)
                 .compile()); // This could be a call to anything
       }
       case SMC ->
           calleeAccount.setCode(
               callProgram
-                  .invoke(callerAccount, loopType, calleeCodeRevertType)
+                  .invoke(callScenario, callerAccount, loopType, calleeCodeRevertType)
                   .compile()); // This could be a call to anything
     }
 
@@ -271,7 +306,7 @@ public class CallScenariosDelegationTests extends TracerTestBase {
             .sender(senderAccount)
             .to(rootAccount)
             .keyPair(senderKeyPair)
-            .gasLimit(100_000L)
+            .gasLimit(MAX_GAS_LIMIT)
             .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =

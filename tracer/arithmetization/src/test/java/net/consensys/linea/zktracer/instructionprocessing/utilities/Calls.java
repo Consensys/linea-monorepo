@@ -153,6 +153,24 @@ public class Calls {
     return program;
   }
 
+  public static BytecodeCompiler appendInsufficientBalanceCall(
+      BytecodeCompiler program, OpCode callOpcode, Address to, int cdo, int cds, int rao, int rac) {
+    OpCodeData callInfo = program.opCodeData(callOpcode);
+    checkArgument(callInfo.callHasValueArgument());
+    program
+        .push(rac)
+        .push(rao)
+        .push(cds)
+        .push(cdo)
+        .op(BALANCE)
+        .push(1)
+        .op(ADD) // puts balance + 1 on the stack
+        .push(to)
+        .op(OpCode.GAS)
+        .op(callOpcode);
+    return program;
+  }
+
   public static BytecodeCompiler appendRecursiveSelfCall(
       BytecodeCompiler program, OpCode callOpCode) {
     OpCodeData callInfo = program.opCodeData(callOpCode);
