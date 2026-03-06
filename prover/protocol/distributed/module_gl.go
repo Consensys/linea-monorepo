@@ -81,7 +81,7 @@ type ModuleGL struct {
 	ReceivedValuesGlobal ifaces.Column
 
 	// ReceivedValuesGlobalAccs the list of the accessors to [ReceivedValuesGlobal]
-	// which are used to compute the
+	// which are used to compute the completion local-constraints.
 	ReceivedValuesGlobalAccs []ifaces.Accessor
 
 	// ReceivedValuesGlobalHash is the hash of the [ReceivedValuesGlobal]. It is
