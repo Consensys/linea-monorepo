@@ -549,7 +549,11 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
 	for _, pi := range defInp.PublicInputs {
-		modLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+		if pi.Acc.IsBase() {
+			modLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+		} else {
+			modLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstantExt(fext.Zero()))
+		}
 	}
 
 	// This section adds the public inputs for the log-derivative, grand-product

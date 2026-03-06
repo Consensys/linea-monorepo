@@ -940,22 +940,14 @@ func (modGl *ModuleGL) declarePublicInput() {
 
 	// This adds the functional inputs by multiplying them with the value of
 	// isFirst.
-	for i := range defInp.PublicInputs {
+	for _, pi := range defInp.PublicInputs {
 
-		pubInputAcc := accessors.NewConstant(field.Zero())
+		pubInputAcc := accessors.NewFromExpression(sym.Mul(
+			modGl.TranslateAccessor(pi.Acc),
+			accessors.NewFromPublicColumn(modGl.IsFirst, 0),
+		), "IS_FIRST_MULT_"+pi.Name)
 
-		if defInp.PublicInputs[i].Acc != nil {
-			pubInputAcc = modGl.TranslateAccessor(defInp.PublicInputs[i].Acc)
-			pubInputAcc = accessors.NewFromExpression(sym.Mul(
-				pubInputAcc,
-				accessors.NewFromPublicColumn(modGl.IsFirst, 0),
-			), "IS_FIRST_MULT_"+defInp.PublicInputs[i].Name)
-		}
-
-		modGl.Wiop.InsertPublicInput(
-			defInp.PublicInputs[i].Name,
-			pubInputAcc,
-		)
+		modGl.Wiop.InsertPublicInput(pi.Name, pubInputAcc)
 	}
 
 	// This section adds the dummy public inputs for the log-derivative, grand-product
