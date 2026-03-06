@@ -138,6 +138,7 @@ export class ClaudeAIClient implements IAIClient {
       const effectiveRisk = computeEffectiveRisk(llmOutput.riskScore, llmOutput.confidence);
       return {
         ...llmOutput,
+        effectiveRisk,
         riskLevel: deriveRiskLevel(effectiveRisk),
         recommendedAction: deriveRecommendedAction(effectiveRisk),
         urgency: deriveUrgency(effectiveRisk),

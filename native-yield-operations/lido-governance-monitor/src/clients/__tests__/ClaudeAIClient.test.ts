@@ -72,6 +72,7 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
+        effectiveRisk: 64,
         riskLevel: "high",
         recommendedAction: "comment",
         urgency: "routine",
@@ -122,6 +123,7 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
+        effectiveRisk: 35,
         riskLevel: "medium",
         recommendedAction: "monitor",
         urgency: "none",
