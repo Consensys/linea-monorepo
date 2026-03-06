@@ -1010,16 +1010,16 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 
 	for _, pi := range c.PublicInputs.Functionals {
 
-		fGen := c.Recursion.GetPublicInputOfInstance(run, pi.F.Name, instance)
-
 		switch {
 		case pi.F != nil:
+			fGen := c.Recursion.GetPublicInputOfInstance(run, pi.F.Name, instance)
 			res.Functionals = append(res.Functionals, struct {
 				F *field.Element
 				E *fext.Element
 			}{F: &fGen.Base})
 
 		case pi.E != nil:
+			fGen := c.Recursion.GetPublicInputOfInstance(run, pi.E.Name, instance)
 			res.Functionals = append(res.Functionals, struct {
 				F *field.Element
 				E *fext.Element
