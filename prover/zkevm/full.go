@@ -147,6 +147,78 @@ var (
 		// logdata.Log("pre-recursion.post-vortex-4"),
 	}
 
+	// This is the compilation suite in use for the full prover (large variant)
+	// Doubles the TargetColSize to fit within 2^27 SRS
+	fullInitialCompilationSuiteLarge = CompilationSuite{
+		// logdata.Log("initial-wizard"),
+		poseidon2.CompilePoseidon2,
+		plonkinwizard.Compile,
+		compiler.Arcane(
+			compiler.WithStitcherMinSize(16),
+			compiler.WithTargetColSize(1<<20), // doubled from 1<<19
+			// compiler.WithDebugMode("initial-compiler-step-0"),
+			// compiler.GenCSVAfterExpansion("zkevm_first_compilation.csv"),
+		),
+		vortex.Compile(
+			2, false,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+		),
+		// logdata.Log("pre-recursion.post-vortex-1"),
+
+		// First round of self-recursion
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-1"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<18), // doubled from 1<<17
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-1"),
+		),
+		vortex.Compile(
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
+			vortex.WithSISParams(&sisInstance),
+		),
+		// logdata.Log("pre-recursion.post-vortex-2"),
+
+		// Second round of self-recursion
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-2"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<16), // doubled from 1<<15
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-2"),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+
+		// Fourth round of self-recursion
+		// logdata.Log("pre-recursion.post-vortex-3"),
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-3"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15), // doubled from 1<<14
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-3"),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
+		),
+		// logdata.Log("pre-recursion.post-vortex-4"),
+	}
+
 	// This is the compilation suite in use for the full prover *after* the
 	// recursion step.
 	fullSecondCompilationSuite = CompilationSuite{
@@ -238,7 +310,7 @@ func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmSetupLarge.Do(func() {
-		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
+		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuiteLarge, &fullSecondCompilationSuite)
 	})
 
 	return fullZkEvmSetupLarge
