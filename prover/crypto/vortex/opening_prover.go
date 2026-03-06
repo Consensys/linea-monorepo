@@ -29,6 +29,39 @@ type OpeningProof struct {
 	MerkleProofs [][]smt.Proof
 }
 
+// SizeBytes returns the number of bytes required to serialize the opening proof.
+// This counts:
+//   - The field elements in the opened columns (each 32 bytes)
+//   - The field elements in the linear combination codeword (each 32 bytes)
+//   - The Merkle proof siblings (each 32 bytes) plus the path integers
+func (proof *OpeningProof) SizeBytes() int {
+	const fieldElemSize = 32
+
+	size := 0
+
+	// Count the bytes for the opened columns: Columns[commitment][entry][row]
+	for i := range proof.Columns {
+		for j := range proof.Columns[i] {
+			size += len(proof.Columns[i][j]) * fieldElemSize
+		}
+	}
+
+	// Count the bytes for the linear combination codeword
+	if proof.LinearCombination != nil {
+		size += proof.LinearCombination.Len() * fieldElemSize
+	}
+
+	// Count the bytes for the Merkle proofs: MerkleProofs[commitment][entry]
+	for i := range proof.MerkleProofs {
+		for j := range proof.MerkleProofs[i] {
+			// Each Merkle proof: siblings (32 bytes each) + path (4 bytes)
+			size += len(proof.MerkleProofs[i][j].Siblings)*fieldElemSize + 4
+		}
+	}
+
+	return size
+}
+
 // InitOpeningWithLC initiates the construction of a Vortex proof by returning the
 // encoding of the linear combinations of the committed row-vectors contained
 // in committedSV by the successive powers of randomCoin.

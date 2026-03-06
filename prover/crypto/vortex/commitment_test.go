@@ -584,3 +584,40 @@ func BenchmarkCommitWithSIS(b *testing.B) {
 		_, _, _ = params.CommitMerkleWithSIS(ps)
 	}
 }
+
+func TestOpeningProofSizeBytes(t *testing.T) {
+const (
+blowUpFactor     = 2
+polySize         = 1 << 6
+nPolys           = 16
+numOpenedColumns = 4
+)
+
+params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams)
+
+polys := make([]smartvectors.SmartVector, nPolys)
+for i := range polys {
+polys[i] = smartvectors.Rand(polySize)
+}
+
+randomCoin := field.NewElement(42)
+entryList := []int{0, 1, 2, 3}
+
+_, tree, _ := params.CommitMerkleWithSIS(polys)
+
+proof := params.InitOpeningWithLC(polys, randomCoin)
+proof.Complete(entryList, []EncodedMatrix{params.encodeRows(polys)}, []*smt.Tree{tree})
+
+size := proof.SizeBytes()
+if size <= 0 {
+t.Fatalf("expected positive SizeBytes(), got %d", size)
+}
+
+t.Logf("OpeningProof.SizeBytes() = %d bytes (%.2f KB)", size, float64(size)/1024)
+
+// The linear combination alone is numEncodedCols * 32 bytes.
+expectedMinSize := params.NumEncodedCols() * 32
+if size < expectedMinSize {
+t.Errorf("SizeBytes() = %d is unexpectedly small; expected at least %d (linear combination only)", size, expectedMinSize)
+}
+}
