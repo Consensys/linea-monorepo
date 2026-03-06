@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
@@ -23,18 +24,21 @@ type BadPrecompileCircuit struct {
 	NbL2Logs         frontend.Variable    `gnark:"-"`
 
 	// Derived from execution PI extractor (gnark:"-" = no wires, set during Define)
-	stateRootHash         [2]frontend.Variable `gnark:"-"`
-	coinBase              frontend.Variable    `gnark:"-"`
-	baseFee               frontend.Variable    `gnark:"-"`
-	chainID               frontend.Variable    `gnark:"-"`
-	l2MessageServiceAddr  frontend.Variable    `gnark:"-"`
-	initialBlockTimestamp frontend.Variable    `gnark:"-"`
-	initialBlockNumber    frontend.Variable    `gnark:"-"`
+	stateRootHash      [2]frontend.Variable `gnark:"-"`
+	initialBlockNumber frontend.Variable    `gnark:"-"`
 
-	// Witness fields assigned externally
+	// Witness fields, cross-checked against extraction
+	// when the extracted value is non-zero.
+	CoinBase              frontend.Variable
+	BaseFee               frontend.Variable
+	ChainID               frontend.Variable
+	L2MessageServiceAddr  frontend.Variable
+	InitialBlockTimestamp frontend.Variable
+	// Witness fields not constrained by wizard, but flowing into public input hash
 	ToAddress      frontend.Variable
 	ToIsFiltered   frontend.Variable
 	FromIsFiltered frontend.Variable
+	// Invalidity type: 2 = BadPrecompile, 3 = TooManyLogs
 	InvalidityType frontend.Variable
 }
 
@@ -99,11 +103,20 @@ func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wi
 	circuit.stateRootHash[0] = combine32BitLimbs(api, extrStateRootHashWords[:4])
 	circuit.stateRootHash[1] = combine32BitLimbs(api, extrStateRootHashWords[4:])
 
-	circuit.coinBase = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.CoinBase[:]))
-	circuit.baseFee = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.BaseFee[:]))
-	circuit.chainID = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.ChainID[:]))
-	circuit.l2MessageServiceAddr = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.L2MessageServiceAddr[:]))
-	circuit.initialBlockTimestamp = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockTimestamp[:]))
+	extrCoinBase := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.CoinBase[:]))
+	extrBaseFee := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.BaseFee[:]))
+	extrChainID := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.ChainID[:]))
+	extrL2MsgServiceAddr := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.L2MessageServiceAddr[:]))
+	extrBlockTimestamp := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockTimestamp[:]))
+
+	// Cross-check witness values against extraction when extracted is non-zero.
+	// The extraction may return zero if the relevant opcode was never called.
+	internal.AssertEqualIf(api, extrCoinBase, circuit.CoinBase, extrCoinBase)
+	internal.AssertEqualIf(api, extrBaseFee, circuit.BaseFee, extrBaseFee)
+	internal.AssertEqualIf(api, extrChainID, circuit.ChainID, extrChainID)
+	internal.AssertEqualIf(api, extrL2MsgServiceAddr, circuit.L2MessageServiceAddr, extrL2MsgServiceAddr)
+	internal.AssertEqualIf(api, extrBlockTimestamp, circuit.InitialBlockTimestamp, extrBlockTimestamp)
+
 	circuit.initialBlockNumber = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockNumber[:]))
 }
 
@@ -154,10 +167,15 @@ func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.InitialCompiledIOP, assi.ZkevmWizardProof, 0, true)
 	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
 
-	// Assign fields not constrained by wizard, but flowing into public input hash
 	circuit.ToAddress = assi.Transaction.To()[:]
 	circuit.ToIsFiltered = 0
 	circuit.FromIsFiltered = 0
+
+	circuit.CoinBase = assi.FuncInputs.CoinBase[:]
+	circuit.BaseFee = assi.FuncInputs.BaseFee
+	circuit.ChainID = assi.FuncInputs.ChainID
+	circuit.L2MessageServiceAddr = assi.FuncInputs.L2MessageServiceAddr[:]
+	circuit.InitialBlockTimestamp = assi.FuncInputs.InitialBlockTimestamp
 }
 
 func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
@@ -168,11 +186,11 @@ func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 		ToAddress:             c.ToAddress,
 		ToIsFiltered:          c.ToIsFiltered,
 		FromIsFiltered:        c.FromIsFiltered,
-		CoinBase:              c.coinBase,
-		BaseFee:               c.baseFee,
-		ChainID:               c.chainID,
-		L2MessageServiceAddr:  c.l2MessageServiceAddr,
-		InitialBlockTimestamp: c.initialBlockTimestamp,
+		CoinBase:              c.CoinBase,
+		BaseFee:               c.BaseFee,
+		ChainID:               c.ChainID,
+		L2MessageServiceAddr:  c.L2MessageServiceAddr,
+		InitialBlockTimestamp: c.InitialBlockTimestamp,
 		InitialBlockNumber:    c.initialBlockNumber,
 	}
 }

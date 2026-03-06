@@ -29,6 +29,7 @@ var (
 	piFromAddressBytes = [20]byte{0xAA, 0xBB, 0xCC, 0xDD}
 	piCoinBaseBytes    = [20]byte{0x20, 0x20, 0x20, 0x20}
 	piBaseFee          = uint64(1 << 62)
+	piChainID          = [32]byte{0x00} // for the public input extraction we set it to zero, while it is non-zero in the circuit. test should pass.
 )
 
 var fixedInputs = invalidityPI.FixedInputs{
@@ -37,6 +38,7 @@ var fixedInputs = invalidityPI.FixedInputs{
 	StateRootHash: piStateRootHash,
 	CoinBase:      invalidity.CreateLimbs20Bytes(piCoinBaseBytes),
 	BaseFee:       invalidity.Create8LimbsFromInt(piBaseFee),
+	ChainID:       invalidity.CreateLimbs32Bytes(piChainID),
 	ColSize:       16,
 }
 
@@ -117,6 +119,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 					ToAddress:   types.EthAddress(*tx.To()),
 					CoinBase:    types.EthAddress(piCoinBaseBytes),
 					BaseFee:     piBaseFee,
+					ChainID:     uint64(59144), // this is  zero in the extracted public inputs, but the test should pass.
 				},
 			}
 
