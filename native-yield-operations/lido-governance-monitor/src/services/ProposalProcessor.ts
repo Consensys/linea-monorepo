@@ -75,8 +75,6 @@ export class ProposalProcessor implements IProposalProcessor {
       await this.proposalRepository.saveAnalysis(
         proposal.id,
         assessment,
-        assessment.riskScore,
-        assessment.effectiveRisk,
         this.aiClient.getModelName(),
         this.riskThreshold,
         this.promptVersion,

@@ -97,6 +97,10 @@ export class SlackClient implements ISlackClient {
     }
   }
 
+  private deriveEffectiveRisk(assessment: Assessment): number {
+    return assessment.effectiveRisk ?? Math.round((assessment.riskScore * assessment.confidence) / 100);
+  }
+
   private getRiskEmoji(riskLevel: RiskLevel): string {
     switch (riskLevel) {
       case "critical":
@@ -129,7 +133,8 @@ export class SlackClient implements ISlackClient {
   }
 
   private buildAuditPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
-    const wouldAlert = assessment.effectiveRisk >= this.riskThreshold;
+    const effectiveRisk = this.deriveEffectiveRisk(assessment);
+    const wouldAlert = effectiveRisk >= this.riskThreshold;
 
     return {
       blocks: [
@@ -146,7 +151,7 @@ export class SlackClient implements ISlackClient {
           elements: [
             {
               type: "mrkdwn",
-              text: `*Assessment logged for manual review* • Effective Risk: ${assessment.effectiveRisk}/100 • ${wouldAlert ? "⚠️ Would trigger alert" : "ℹ️ Below alert threshold"}`,
+              text: `*Assessment logged for manual review* • Effective Risk: ${effectiveRisk}/100 • ${wouldAlert ? "⚠️ Would trigger alert" : "ℹ️ Below alert threshold"}`,
             },
           ],
         },
@@ -210,6 +215,7 @@ export class SlackClient implements ISlackClient {
   // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
   // Extracted to prevent formatting drift when either payload is updated.
   private buildSharedBlocks(proposal: ProposalWithoutText, assessment: Assessment): object[] {
+    const effectiveRisk = this.deriveEffectiveRisk(assessment);
     const whatChanged = this.escapeSlackMrkdwn(assessment.whatChanged);
     const nativeYieldImpact = assessment.nativeYieldImpact.map((i) => `- ${this.escapeSlackMrkdwn(i)}`).join("\n");
 
@@ -217,7 +223,7 @@ export class SlackClient implements ISlackClient {
       {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*Effective Risk:* ${assessment.effectiveRisk}/100` },
+          { type: "mrkdwn", text: `*Effective Risk:* ${effectiveRisk}/100` },
           { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
           { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
         ],

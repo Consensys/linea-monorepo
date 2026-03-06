@@ -44,8 +44,6 @@ describe("ProposalProcessor", () => {
     assessmentPromptVersion: null,
     analyzedAt: null,
     assessmentJson: null,
-    riskScore: null,
-    effectiveRisk: null,
     notifyAttemptCount: 0,
     notifiedAt: null,
     ...overrides,
@@ -53,7 +51,6 @@ describe("ProposalProcessor", () => {
 
   const createMockAssessment = (overrides: Partial<Assessment> = {}): Assessment => ({
     riskScore: 75,
-    effectiveRisk: 64,
     riskLevel: "high",
     confidence: 85,
     proposalType: "discourse",
@@ -155,8 +152,6 @@ describe("ProposalProcessor", () => {
       expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
         proposal.id,
         assessment,
-        75,
-        64,
         "claude-sonnet-4",
         60,
         "v1.0",

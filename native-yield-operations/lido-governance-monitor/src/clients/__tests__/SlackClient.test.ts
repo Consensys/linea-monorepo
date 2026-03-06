@@ -40,8 +40,6 @@ describe("SlackClient", () => {
     assessmentPromptVersion: "v1.0",
     analyzedAt: new Date(),
     assessmentJson: null,
-    riskScore: 75,
-    effectiveRisk: 64,
     notifyAttemptCount: 0,
     notifiedAt: null,
     ...overrides,
@@ -268,7 +266,7 @@ describe("SlackClient", () => {
 
     it("includes threshold context for high-risk proposals", async () => {
       // Arrange
-      const mockProposal = createMockProposal({ riskScore: 75 });
+      const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment({ effectiveRisk: 75 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
@@ -283,7 +281,7 @@ describe("SlackClient", () => {
 
     it("includes threshold context for low-risk proposals", async () => {
       // Arrange
-      const mockProposal = createMockProposal({ riskScore: 30 });
+      const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment({ effectiveRisk: 30 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
@@ -373,7 +371,7 @@ describe("SlackClient", () => {
         15000,
         "https://hooks.slack.com/services/yyy",
       );
-      const proposalBelowThreshold = createMockProposal({ riskScore: 70 });
+      const proposalBelowThreshold = createMockProposal();
       const assessmentBelowThreshold = createMockAssessment({ effectiveRisk: 70 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
@@ -396,7 +394,7 @@ describe("SlackClient", () => {
         15000,
         "https://hooks.slack.com/services/yyy",
       );
-      const proposalAtThreshold = createMockProposal({ riskScore: 70 });
+      const proposalAtThreshold = createMockProposal();
       const assessmentAtThreshold = createMockAssessment({ effectiveRisk: 70 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 

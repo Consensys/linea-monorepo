@@ -72,7 +72,6 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
-        effectiveRisk: 64,
         riskLevel: "high",
         recommendedAction: "comment",
         urgency: "routine",
@@ -123,7 +122,6 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
-        effectiveRisk: 35,
         riskLevel: "medium",
         recommendedAction: "monitor",
         urgency: "none",
@@ -269,8 +267,6 @@ describe("ClaudeAIClient", () => {
         // Assert
         expect(resultMin).toBeDefined();
         expect(resultMin?.confidence).toBe(0);
-        expect(resultMin?.effectiveRisk).toBe(0); // round(75*0/100) = 0
-
         // Arrange - Test maximum value
         const mockResponseMax = createMockAIResponse({ confidence: 100 });
         mockAnthropicClient.messages.create.mockResolvedValue(mockResponseMax);
@@ -281,7 +277,6 @@ describe("ClaudeAIClient", () => {
         // Assert
         expect(resultMax).toBeDefined();
         expect(resultMax?.confidence).toBe(100);
-        expect(resultMax?.effectiveRisk).toBe(75); // round(75*100/100) = 75
       });
 
       it("rejects out-of-range confidence values", async () => {
@@ -342,7 +337,6 @@ describe("ClaudeAIClient", () => {
 
         // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(8); // Math.round(15 * 50 / 100)
         expect(result?.riskLevel).toBe("low");
         expect(result?.recommendedAction).toBe("no-action");
         expect(result?.urgency).toBe("none");
@@ -360,7 +354,6 @@ describe("ClaudeAIClient", () => {
 
         // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(64); // Math.round(75 * 85 / 100)
         expect(result?.riskLevel).toBe("high");
         expect(result?.recommendedAction).toBe("comment");
         expect(result?.urgency).toBe("routine");
@@ -378,7 +371,6 @@ describe("ClaudeAIClient", () => {
 
         // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(86); // Math.round(90 * 95 / 100)
         expect(result?.riskLevel).toBe("critical");
         expect(result?.recommendedAction).toBe("escalate");
         expect(result?.urgency).toBe("critical");
@@ -396,7 +388,6 @@ describe("ClaudeAIClient", () => {
 
         // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(43); // Math.round(95 * 45 / 100)
         expect(result?.riskLevel).toBe("medium");
         expect(result?.recommendedAction).toBe("monitor");
         expect(result?.urgency).toBe("none");
@@ -414,7 +405,6 @@ describe("ClaudeAIClient", () => {
 
         // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(64); // Math.round(85 * 75 / 100)
         expect(result?.riskLevel).toBe("high");
         expect(result?.recommendedAction).toBe("comment");
         expect(result?.urgency).toBe("routine");
