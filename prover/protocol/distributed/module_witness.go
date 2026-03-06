@@ -259,8 +259,8 @@ func segmentModuleLPP(
 
 		for _, col := range moduleLPP.LPPColumnSets {
 			col := runtime.Spec.Columns.GetHandle(col)
-			segment := SegmentOfColumn(runtime, disc, col, segment, nbSegmentModule)
-			moduleWitnessLPP.Columns[col.GetColID()] = segment
+			seg := SegmentOfColumn(runtime, disc, col, segment, nbSegmentModule)
+			moduleWitnessLPP.Columns[col.GetColID()] = seg
 			witnessCols = append(witnessCols, col.GetColID())
 		}
 
@@ -385,8 +385,13 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 
 		// At this point, we are sure that the correct padding value is the
 		// first value.
-		padding := assignment.Get(0)
-		return smartvectors.NewConstant(padding, newSize)
+		padding := assignment.GetExt(0)
+		if fext.IsBase(&padding) {
+			paddingBase, _ := fext.GetBase(&padding)
+			return smartvectors.NewConstant(paddingBase, newSize)
+		} else {
+			return smartvectors.NewConstantExt(padding, newSize)
+		}
 
 	case start >= col.Size() && end > col.Size():
 		// Otherwise, the padding technique is completely fine.
@@ -403,15 +408,27 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 
 		// At this point, we are sure that the correct padding value is the
 		// last value (otherwise, we would have no way of guessing it).
-		padding := assignment.Get(col.Size() - 1)
-		return smartvectors.NewConstant(padding, newSize)
+		padding := assignment.GetExt(col.Size() - 1)
+		if fext.IsBase(&padding) {
+			paddingBase, _ := fext.GetBase(&padding)
+			return smartvectors.NewConstant(paddingBase, newSize)
+		} else {
+			return smartvectors.NewConstantExt(padding, newSize)
+		}
 
 	case start == 0 && end > col.Size():
 
 		if isZeroPadded {
-			return smartvectors.RightPadded(
-				assignment.IntoRegVecSaveAlloc(),
-				field.Zero(),
+			if smartvectors.IsBase(assignment) {
+				return smartvectors.RightPadded(
+					assignment.IntoRegVecSaveAlloc(),
+					field.Zero(),
+					newSize,
+				)
+			}
+			return smartvectors.RightPaddedExt(
+				assignment.IntoRegVecSaveAllocExt(),
+				fext.Zero(),
 				newSize,
 			)
 		}
@@ -421,18 +438,33 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 		// 	"Going to extend the column on the right by repeating the last value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
 		// 	col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 
-		return smartvectors.RightPadded(
-			assignment.IntoRegVecSaveAlloc(),
-			assignment.Get(col.Size()-1),
+		if smartvectors.IsBase(assignment) {
+			return smartvectors.RightPadded(
+				assignment.IntoRegVecSaveAlloc(),
+				assignment.Get(col.Size()-1),
+				newSize,
+			)
+		}
+		paddingExt := assignment.GetExt(col.Size() - 1)
+		return smartvectors.RightPaddedExt(
+			assignment.IntoRegVecSaveAllocExt(),
+			paddingExt,
 			newSize,
 		)
 
 	case start < 0 && end == col.Size():
 
 		if isZeroPadded {
-			return smartvectors.LeftPadded(
-				assignment.IntoRegVecSaveAlloc(),
-				field.Zero(),
+			if smartvectors.IsBase(assignment) {
+				return smartvectors.LeftPadded(
+					assignment.IntoRegVecSaveAlloc(),
+					field.Zero(),
+					newSize,
+				)
+			}
+			return smartvectors.LeftPaddedExt(
+				assignment.IntoRegVecSaveAllocExt(),
+				fext.Zero(),
 				newSize,
 			)
 		}
@@ -442,9 +474,17 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc *StandardModuleDiscover
 		// 	"Going to extend the column on the left by repeating the first value but this might fail. You may want to increase the bootstrapper size for this column so that it is always larger than the new size",
 		// 	col.GetColID(), col.Size(), start, end, startSeg, stopSeg)
 
-		return smartvectors.LeftPadded(
-			assignment.IntoRegVecSaveAlloc(),
-			assignment.Get(0),
+		if smartvectors.IsBase(assignment) {
+			return smartvectors.LeftPadded(
+				assignment.IntoRegVecSaveAlloc(),
+				assignment.Get(0),
+				newSize,
+			)
+		}
+		paddingExt := assignment.GetExt(0)
+		return smartvectors.LeftPaddedExt(
+			assignment.IntoRegVecSaveAllocExt(),
+			paddingExt,
 			newSize,
 		)
 

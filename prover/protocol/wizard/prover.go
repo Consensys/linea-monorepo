@@ -1081,7 +1081,13 @@ func (run *ProverRuntime) GetPublicInput(name string) (res fext.GenericFieldElem
 			return res
 		}
 	}
-	utils.Panic("could not find public input nb %v", name)
+
+	pubNames := []string{}
+	for i := range allPubs {
+		pubNames = append(pubNames, allPubs[i].Name)
+	}
+
+	utils.Panic("could not find public input `%v` -> %v", name, pubNames)
 	return fext.GenericFieldElem{}
 
 }

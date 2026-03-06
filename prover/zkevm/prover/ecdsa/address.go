@@ -94,14 +94,14 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		comp,
 		"ADDRESS_LO",
 		size,
-		pragmas.PragmaPair{Pragma: pragmas.LeftPadded, Value: true},
+		pragmas.PragmaPair{Pragma: pragmas.RightPadded, Value: true},
 	)
 
 	addressHiUntrimmed := limbs.NewUint128Le(
 		comp,
 		"ADDRESS_HI_UNTRIMMED",
 		size,
-		pragmas.LeftPaddedPair,
+		pragmas.RightPaddedPair,
 	)
 
 	// declare the native columns

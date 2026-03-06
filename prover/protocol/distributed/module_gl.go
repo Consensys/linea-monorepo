@@ -407,7 +407,7 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
 		newExpr            = newGlobal.Expression
-		newExprRound       = wizardutils.LastRoundToEval(newExpr)
+		newExprRound       = 1
 		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
 		firstRowToComplete = min(-offsetRange.Max, 0)
 		lastRowToComplete  = max(-offsetRange.Min, 0)
@@ -993,7 +993,14 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 	var lppCommitments field.Octuplet
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(piName).Base
+		}
+
 	}
 
 	var (
@@ -1058,7 +1065,13 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	)
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.GetSpec().HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(piName).Base
+		}
 	}
 
 	multiSetSharedRandomness.Insert(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
@@ -1137,8 +1150,16 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
-		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
-		lppCommitments[i] = wrapped
+
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.GetSpec().HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(api, piName)
+		} else {
+			lppCommitments[i] = koalagnark.NewElement(field.Zero())
+		}
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
