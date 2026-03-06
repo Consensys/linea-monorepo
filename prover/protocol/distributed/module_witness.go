@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -39,6 +40,10 @@ type ModuleSegmentationBlueprint struct {
 	// ReceivedValuesGlobalPosition stores the list of the position of the
 	// [ModuleGL.ReceivedValuesGlobalAccs] for each received value.
 	ReceivedValuesGlobalAccsPositions []int
+	// ReceivedValuesGlobalAccsIsBase stores, for each received value, whether
+	// the corresponding sent value is a base field element (true) or a field
+	// extension element (false). This mirrors [ModuleGL.SentValuesGlobal[i].IsBase()].
+	ReceivedValuesGlobalAccsIsBase []bool
 	// NextN0SelectorRoots stores the list of the selector columns ID for the
 	// Horner queries.
 	NextN0SelectorRoots [][]ifaces.ColID
@@ -70,8 +75,9 @@ type ModuleWitnessGL struct {
 	// Columns maps the column id to their witness values
 	Columns map[ifaces.ColID]smartvectors.SmartVector
 	// ReceivedValuesGlobal stores the received values (for the global
-	// constraints) of the current segment.
-	ReceivedValuesGlobal []field.Element
+	// constraints) of the current segment. Each entry is a field extension
+	// element; for base-field values the upper three coordinates are zero.
+	ReceivedValuesGlobal []fext.Element
 	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
 	// key.
 	VkMerkleRoot field.Octuplet
@@ -178,7 +184,7 @@ func segmentModuleGL(
 		moduleName           = blueprintGL.ModuleName
 		cols                 = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule      = totalNbSegment[blueprintGL.ModuleIndex]
-		receivedValuesGlobal = make([]field.Element, len(blueprintGL.ReceivedValuesGlobalAccsRoots))
+		receivedValuesGlobal = make([]fext.Element, len(blueprintGL.ReceivedValuesGlobalAccsRoots))
 	)
 
 	witnessesGL = make([]*ModuleWitnessGL, nbSegmentModule)
@@ -306,7 +312,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc *StandardModuleDiscov
 				qbm, _ := disc.QbmOf(col)
 
 				if _, ok := segmentWarningCache.Load(qbm.ModuleName); !ok {
-					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%s start=%v stop=%v newSize=%v originalSize=%v\n",
+					fmt.Printf("[large nb segment] module=%v qbm=%v column=%v nbSegment=%v paddingInfo=%v start=%v stop=%v newSize=%v originalSize=%v\n",
 						mn, qbm.ModuleName, col.ID, nbSegmentForCol, paddingInfo, start, stop, newSize, col.Size(),
 					)
 					segmentWarningCache.Store(qbm.ModuleName, struct{}{})
@@ -459,6 +465,7 @@ func (moduleGL *ModuleGL) Blueprint() ModuleSegmentationBlueprint {
 		ModuleName:                        moduleGL.DefinitionInput.ModuleName,
 		ReceivedValuesGlobalAccsRoots:     make([]ifaces.ColID, len(moduleGL.SentValuesGlobal)),
 		ReceivedValuesGlobalAccsPositions: make([]int, len(moduleGL.SentValuesGlobal)),
+		ReceivedValuesGlobalAccsIsBase:    make([]bool, len(moduleGL.SentValuesGlobal)),
 	}
 
 	for i, loc := range moduleGL.SentValuesGlobal {
@@ -471,6 +478,7 @@ func (moduleGL *ModuleGL) Blueprint() ModuleSegmentationBlueprint {
 
 		blueprintGL.ReceivedValuesGlobalAccsRoots[i] = colName
 		blueprintGL.ReceivedValuesGlobalAccsPositions[i] = pos
+		blueprintGL.ReceivedValuesGlobalAccsIsBase[i] = loc.IsBase()
 	}
 
 	return blueprintGL
@@ -594,9 +602,9 @@ func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) [
 
 // NextReceivedValuesGlobal returns the next value of ReceivedValuesGlobal, from
 // the witness of the current module.
-func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentationBlueprint) []field.Element {
+func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentationBlueprint) []fext.Element {
 
-	newReceivedValuesGlobal := make([]field.Element, len(mw.ReceivedValuesGlobal))
+	newReceivedValuesGlobal := make([]fext.Element, len(mw.ReceivedValuesGlobal))
 
 	for i := range blueprintGL.ReceivedValuesGlobalAccsRoots {
 
@@ -604,6 +612,7 @@ func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentat
 			rootName        = blueprintGL.ReceivedValuesGlobalAccsRoots[i]
 			loc             = blueprintGL.ReceivedValuesGlobalAccsPositions[i]
 			smartvec, found = mw.Columns[rootName]
+			isBase          = blueprintGL.ReceivedValuesGlobalAccsIsBase[i]
 		)
 
 		if !found {
@@ -611,7 +620,21 @@ func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(blueprintGL *ModuleSegmentat
 		}
 
 		loc = utils.PositiveMod(loc, smartvec.Len())
-		newReceivedValuesGlobal[i] = smartvec.Get(loc)
+
+		if isBase {
+			// Hard assertion: the smartvec must yield a base field value at
+			// this position. If GetBase returns an error the column is
+			// extension-typed, which would be a programming error.
+			extVal := smartvec.GetExt(loc)
+			baseVal, err := fext.GetBase(&extVal)
+			if err != nil {
+				fmt.Printf("ReceivedValuesGlobalAccsIsBase=%v\n", blueprintGL.ReceivedValuesGlobalAccsIsBase)
+				utils.Panic("sent value at index %d is declared base-field but column %v returned an extension element at position %d: %v, value=%v", i, rootName, loc, err, extVal.String())
+			}
+			newReceivedValuesGlobal[i] = fext.Lift(baseVal)
+		} else {
+			newReceivedValuesGlobal[i] = smartvec.GetExt(loc)
+		}
 	}
 
 	return newReceivedValuesGlobal

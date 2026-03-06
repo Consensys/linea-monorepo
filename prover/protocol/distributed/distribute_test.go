@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -58,6 +59,7 @@ func TestDistributedWizard(t *testing.T) {
 		&LookupTestCase{numRow: 1 << NbRow},
 		&ProjectionTestCase{numRow: 1 << NbRow},
 		&PermutationTestCase{numRow: 1 << NbRow},
+		&FibExtTestCase{numRow: 1 << NbRow},
 	}
 
 	for _, tc := range testCases {
@@ -520,5 +522,75 @@ func (d *PermutationTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
 	return []*distributed.ModuleDiscoveryAdvice{
 		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
 		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+	}
+}
+
+// FibExtTestCase tests that ReceivedValuesGlobal correctly handles extension-field
+// values across segment boundaries.
+//
+// The column extFib forms an arithmetic sequence over F_p^4:
+//
+//	extFib[i] = (i+1) * delta   where delta = 1 + 2u
+//
+// The global constraint extFib[i] - extFib[i-1] - delta = 0 forces each segment
+// to receive the last value of the previous segment as a genuine extension-field
+// element (non-zero upper coordinates), exercising the non-base code path in
+// ReceivedValuesGlobal.
+//
+// At segment 0 the implicit "received" value is 0_fext, so extFib[0] = delta.
+type FibExtTestCase struct {
+	numRow int
+	wiop   *wizard.CompiledIOP
+}
+
+func (d *FibExtTestCase) Name() string {
+	return "FibExt"
+}
+
+// Define registers the single extension-field column and the step constraint.
+func (d *FibExtTestCase) Define(comp *wizard.CompiledIOP) {
+	d.wiop = comp
+
+	// extFib lives in F_p^4 (isBase = false).
+	extFib := comp.InsertCommit(0, "extFib", d.numRow, false)
+
+	// delta = 1 + 2u  — a non-trivial extension-field element so that the
+	// values sent across segment boundaries are genuinely extension-field and
+	// not merely lifted base-field elements.
+	delta := fext.NewFromInt(1, 2, 0, 0)
+
+	// extFib[i] - extFib[i-1] - delta = 0  for all i.
+	// At row 0 of each segment extFib[-1] is the last value of the previous
+	// segment, transmitted as a ReceivedValuesGlobal extension-field entry.
+	comp.InsertGlobal(0, "extFib-step",
+		symbolic.Sub(
+			ifaces.ColumnAsVariable(extFib),
+			ifaces.ColumnAsVariable(column.Shift(extFib, -1)),
+			symbolic.NewConstant(delta),
+		),
+	)
+}
+
+// Assign fills extFib with extFib[i] = (i+1)*delta.
+//
+// The first segment implicitly receives 0_fext, so the constraint
+// extFib[0] - 0 - delta = 0  forces extFib[0] = delta.  By induction
+// every subsequent value follows from the step constraint.
+func (d *FibExtTestCase) Assign(run *wizard.ProverRuntime) {
+	delta := fext.NewFromInt(1, 2, 0, 0)
+
+	extFibVals := make([]fext.Element, d.numRow)
+	extFibVals[0] = delta
+	for i := 1; i < d.numRow; i++ {
+		extFibVals[i].Add(&extFibVals[i-1], &delta)
+	}
+
+	run.AssignColumn("extFib", smartvectors.NewRegularExt(extFibVals))
+}
+
+// Advices returns the module-discovery advice for FibExtTestCase.
+func (d *FibExtTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("fib-ext-module", d.wiop.Columns.GetHandle("extFib")),
 	}
 }

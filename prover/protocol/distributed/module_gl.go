@@ -536,10 +536,24 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 8, true)
 	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 8, true)
 
+	// Since, everything that is sent has to be received by the next
+	// instance of the same module. We have that the number of elements
+	// to be received is equal to the number of elements sent, giving
+	// us the following sanity-check.
+	if len(m.ReceivedValuesGlobalMap) != len(m.SentValuesGlobal) {
+		utils.Panic(
+			"number of received values must be equal to the number of sent values: %v != %v",
+			len(m.ReceivedValuesGlobalMap), len(m.SentValuesGlobal),
+		)
+	}
+
+	// Each logical received value occupies fext.ExtensionDegree consecutive
+	// base-field positions in the column; for base-field values only the first
+	// coordinate is non-zero (the rest are asserted to be zero at proving time).
 	m.ReceivedValuesGlobal = m.Wiop.InsertProof(
 		1,
 		ifaces.ColID("RECEIVED_VALUES_GLOBAL"),
-		utils.NextPowerOfTwo(len(m.ReceivedValuesGlobalMap)),
+		utils.NextPowerOfTwo(fext.ExtensionDegree*len(m.ReceivedValuesGlobalMap)),
 		true,
 	)
 
@@ -547,18 +561,24 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	m.ReceivedValuesGlobalAccs = make([]ifaces.Accessor, len(m.ReceivedValuesGlobalMap))
 	for i := range m.ReceivedValuesGlobalAccs {
-		m.ReceivedValuesGlobalAccs[i] = accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, i)
-	}
-
-	// Since, everything that is sent has to be received by the next
-	// instance of the same module. We have that the number of elements
-	// to be received is equal to the number of elements sent, giving
-	// us the following sanity-check.
-	if len(m.ReceivedValuesGlobalAccs) != len(m.SentValuesGlobal) {
-		utils.Panic(
-			"number of received values must be equal to the number of sent values: %v != %v",
-			len(m.ReceivedValuesGlobalAccs), len(m.SentValuesGlobal),
-		)
+		if m.SentValuesGlobal[i].IsBase() {
+			// Base-field value: a single FromPublicColumn accessor at position
+			// 4*i. The other three positions (4i+1, 4i+2, 4i+3) are zero and
+			// will be asserted at both proving and verifying time.
+			m.ReceivedValuesGlobalAccs[i] = accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i)
+		} else {
+			// Extension-field value: a composite accessor reading all four
+			// coordinates from consecutive column positions.
+			m.ReceivedValuesGlobalAccs[i] = &accessors.Extension{
+				Title: fmt.Sprintf("RECEIVED_VALUE_GLOBAL_EXT_%d", i),
+				Coords: [4]ifaces.Accessor{
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+1),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+2),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+3),
+				},
+			}
+		}
 	}
 }
 
@@ -573,13 +593,22 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	if len(a.ReceivedValuesGlobalMap) > 0 {
 
+		// vslice are the values to be hashed for the "sent" values.
+		// For base-field sent values, we append one element to vslice.
+		// For extension-field sent values, we append all four coordinates.
 		vslice := []field.Element{}
 
 		for i := range a.SentValuesGlobal {
 			lo := a.SentValuesGlobal[i]
-			v := lo.Pol.GetColAssignmentAt(run, 0)
-			run.AssignLocalPoint(lo.ID, v)
-			vslice = append(vslice, v)
+			if lo.IsBase() {
+				v := lo.Pol.GetColAssignmentAt(run, 0)
+				run.AssignLocalPoint(lo.ID, v)
+				vslice = append(vslice, v)
+			} else {
+				vExt := lo.Pol.GetColAssignmentAtExt(run, 0)
+				run.AssignLocalPointExt(lo.ID, vExt)
+				vslice = append(vslice, vExt.B0.A0, vExt.B0.A1, vExt.B1.A0, vExt.B1.A1)
+			}
 		}
 
 		hashSend := poseidon2_koalabear.HashVec(vslice...)
@@ -596,12 +625,48 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 			utils.Panic("len(rcvData: %v) != len(a.ReceivedValuesGlobalAccs: %v)", len(rcvData), len(a.ReceivedValuesGlobalAccs))
 		}
 
+		// Hard assertion: for every received value that is paired with a
+		// base-field sent value, the upper three extension coordinates must be
+		// zero. A violation here indicates a bug in the segmentation logic.
+		for i, rcvVal := range rcvData {
+			if a.SentValuesGlobal[i].IsBase() {
+				if !rcvVal.B0.A1.IsZero() || !rcvVal.B1.A0.IsZero() || !rcvVal.B1.A1.IsZero() {
+					utils.Panic(
+						"received value at index %d is paired with a base-field sent value but has non-zero extension coordinates: %v",
+						i, rcvVal,
+					)
+				}
+			}
+		}
+
+		// Flatten []fext.Element into a []field.Element with 4 base-field
+		// entries per logical value, then assign the proof column.
+		rcvFlat := make([]field.Element, len(rcvData)*fext.ExtensionDegree)
+		for i, rcvVal := range rcvData {
+			rcvFlat[fext.ExtensionDegree*i] = rcvVal.B0.A0
+			rcvFlat[fext.ExtensionDegree*i+1] = rcvVal.B0.A1
+			rcvFlat[fext.ExtensionDegree*i+2] = rcvVal.B1.A0
+			rcvFlat[fext.ExtensionDegree*i+3] = rcvVal.B1.A1
+		}
+
 		run.AssignColumn(
 			a.ReceivedValuesGlobal.GetColID(),
-			smartvectors.RightZeroPadded(rcvData, a.ReceivedValuesGlobal.Size()),
+			smartvectors.RightZeroPadded(rcvFlat, a.ReceivedValuesGlobal.Size()),
 		)
 
-		hashRcv := poseidon2_koalabear.HashVec(rcvData...)
+		// rcvSlice is the list of values to be hashed for the "received" side.
+		// Build the hash input for received values using the same conditional
+		// logic as for sent values so that the two hashes are comparable.
+		rcvSlice := []field.Element{}
+		for i, rcvVal := range rcvData {
+			if a.SentValuesGlobal[i].IsBase() {
+				rcvSlice = append(rcvSlice, rcvVal.B0.A0)
+			} else {
+				rcvSlice = append(rcvSlice, rcvVal.B0.A0, rcvVal.B0.A1, rcvVal.B1.A0, rcvVal.B1.A1)
+			}
+		}
+
+		hashRcv := poseidon2_koalabear.HashVec(rcvSlice...)
 
 		run.AssignColumn(
 			a.ReceivedValuesGlobalHash.GetColID(),
@@ -626,9 +691,14 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		hashSendComputed field.Octuplet
 	)
 
+	// Hash sent values: one element for base-field values, four for extension.
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.WriteElements(v.BaseY)
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.WriteElements(v.BaseY)
+		} else {
+			hsh.WriteElements(v.ExtY.B0.A0, v.ExtY.B0.A1, v.ExtY.B1.A0, v.ExtY.B1.A1)
+		}
 	}
 
 	hashSendComputed = hsh.SumElement()
@@ -647,9 +717,36 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		numReceived     = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	// Hard assertion: for base-field received values the three upper
+	// coordinates stored in the column must be zero.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			if !rcvGlobalCol[fext.ExtensionDegree*i+1].IsZero() ||
+				!rcvGlobalCol[fext.ExtensionDegree*i+2].IsZero() ||
+				!rcvGlobalCol[fext.ExtensionDegree*i+3].IsZero() {
+				return fmt.Errorf(
+					"received value at index %d is paired with a base-field sent value but has non-zero extension coordinates",
+					i,
+				)
+			}
+		}
+	}
+
 	hsh.Reset()
 
-	hsh.WriteElements(rcvGlobalCol[:numReceived]...)
+	// Hash received values using the same conditional logic as for sent values.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.WriteElements(rcvGlobalCol[fext.ExtensionDegree*i])
+		} else {
+			hsh.WriteElements(
+				rcvGlobalCol[fext.ExtensionDegree*i],
+				rcvGlobalCol[fext.ExtensionDegree*i+1],
+				rcvGlobalCol[fext.ExtensionDegree*i+2],
+				rcvGlobalCol[fext.ExtensionDegree*i+3],
+			)
+		}
+	}
 
 	hashRcvComputed = hsh.SumElement()
 
@@ -685,9 +782,19 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
+	// Hash sent values: one element for base-field values, four for extension.
+	// IsBase() is a static (compile-time) property so the branch is resolved
+	// during circuit construction, not at proof time.
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.Write(v.BaseY.Native())
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.Write(v.BaseY.Native())
+		} else {
+			hsh.Write(v.ExtY.B0.A0.Native())
+			hsh.Write(v.ExtY.B0.A1.Native())
+			hsh.Write(v.ExtY.B1.A0.Native())
+			hsh.Write(v.ExtY.B1.A1.Native())
+		}
 	}
 
 	hashSendComputed := hsh.Sum()
@@ -703,10 +810,28 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	// Hard circuit constraints: for base-field received values the three upper
+	// coordinates stored in the column must be zero.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+1].Native(), 0)
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+2].Native(), 0)
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+3].Native(), 0)
+		}
+	}
+
 	hsh.Reset()
 
+	// Hash received values using the same conditional logic as for sent values.
 	for i := 0; i < numReceived; i++ {
-		hsh.Write(rcvGlobalCol[i].Native())
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i].Native())
+		} else {
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+1].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+2].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+3].Native())
+		}
 	}
 
 	hashRcvComputed := hsh.Sum()
