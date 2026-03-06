@@ -67,7 +67,7 @@ var LimitlessCompilationParams = distributed.CompilationParams{
 		HubAModuleName + "-GL": 1 << 17,
 		HubBModuleName + "-GL": 1 << 17,
 	},
-	InitialCompilerSizeConglo:    1 << 21,
+	InitialCompilerSizeConglo:    1 << 18,
 	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
 	ColumnProfileMPTSPrecomputed: 45,
 	FullDebugMode:                false,
