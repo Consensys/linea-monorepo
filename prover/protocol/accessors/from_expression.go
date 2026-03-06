@@ -135,6 +135,10 @@ func EvaluateExpressionExt(run ifaces.Runtime, e *symbolic.Expression) fext.Elem
 		}
 	}
 
+	if len(inputs) == 0 {
+		return e.ESHash // It's a constant
+	}
+
 	return board.Evaluate(inputs).GetExt(0)
 }
 
@@ -277,6 +281,10 @@ func EvaluateExpressionExtGnark(api frontend.API, run ifaces.GnarkRuntime, e *sy
 		default:
 			utils.Panic("unsupported type %T", m)
 		}
+	}
+
+	if len(inputs) == 0 {
+		return koalagnark.NewExt(e.ESHash) // It's a constant
 	}
 
 	return board.GnarkEvalExt(api, inputs)
