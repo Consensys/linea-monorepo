@@ -4,6 +4,7 @@ import { ProposalWithoutText } from "../core/entities/Proposal.js";
 import { ProposalState } from "../core/entities/ProposalState.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { INotificationService } from "../core/services/INotificationService.js";
+import { computeEffectiveRisk } from "../utils/effectiveRisk.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class NotificationService implements INotificationService {
@@ -47,7 +48,7 @@ export class NotificationService implements INotificationService {
   }
 
   private deriveEffectiveRisk(assessment: Assessment): number {
-    return assessment.effectiveRisk ?? Math.round((assessment.riskScore * assessment.confidence) / 100);
+    return computeEffectiveRisk(assessment.riskScore, assessment.confidence, assessment.effectiveRisk);
   }
 
   private withEffectiveRisk(assessment: Assessment): Assessment & { effectiveRisk: number } {

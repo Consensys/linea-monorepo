@@ -1,3 +1,7 @@
+import { computeEffectiveRisk } from "../../src/utils/effectiveRisk.js";
+
+export { computeEffectiveRisk };
+
 const LOG_MARKER = {
   TIME_PREFIX: "time=",
   RESPONSE_TEXT: "message=AI response text content | class=ClaudeAIClient textContent=",
@@ -66,10 +70,6 @@ interface ParseResult {
   confidence: number | null;
   computedEffectiveRisk: number | null;
   analysis: Record<string, unknown> | null;
-}
-
-export function computeEffectiveRisk(riskScore: number, confidence: number): number {
-  return Math.round((riskScore * confidence) / 100);
 }
 
 const ANSI_ESCAPE_RE = /\x1b\[[0-9;]*m/g;

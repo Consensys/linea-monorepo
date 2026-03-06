@@ -10,6 +10,7 @@ import {
   RecommendedAction,
   Urgency,
 } from "../core/entities/Assessment.js";
+import { computeEffectiveRisk } from "../utils/effectiveRisk.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 const LLMOutputSchema = z
@@ -134,7 +135,7 @@ export class ClaudeAIClient implements IAIClient {
         return undefined;
       }
       const llmOutput = result.data;
-      const effectiveRisk = Math.round((llmOutput.riskScore * llmOutput.confidence) / 100);
+      const effectiveRisk = computeEffectiveRisk(llmOutput.riskScore, llmOutput.confidence);
       return {
         ...llmOutput,
         riskLevel: deriveRiskLevel(effectiveRisk),

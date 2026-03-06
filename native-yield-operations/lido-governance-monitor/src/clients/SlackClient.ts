@@ -3,6 +3,7 @@ import { fetchWithTimeout } from "@consensys/linea-shared-utils";
 import { ISlackClient, SlackNotificationResult } from "../core/clients/ISlackClient.js";
 import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
 import { ProposalWithoutText } from "../core/entities/Proposal.js";
+import { computeEffectiveRisk } from "../utils/effectiveRisk.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 const SLACK_LIMITS = {
@@ -98,7 +99,7 @@ export class SlackClient implements ISlackClient {
   }
 
   private deriveEffectiveRisk(assessment: Assessment): number {
-    return assessment.effectiveRisk ?? Math.round((assessment.riskScore * assessment.confidence) / 100);
+    return computeEffectiveRisk(assessment.riskScore, assessment.confidence, assessment.effectiveRisk);
   }
 
   private getRiskEmoji(riskLevel: RiskLevel): string {
