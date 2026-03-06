@@ -8,9 +8,10 @@ import atypTextFont from "@/assets/fonts/atypText";
 import { Layout } from "@/components/layouts/Layout";
 import { Providers } from "@/components/layouts/Providers";
 import FirstVisitModal from "@/components/modal/first-time-visit";
+import TosModal from "@/components/modal/tos-modal";
 import { ModalBase } from "@/components/modal-base";
+import { getNavData } from "@/lib/nav-data";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
-import { getNavData } from "@/services";
 
 import "../scss/app.scss";
 
@@ -41,6 +42,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </Layout>
         </Providers>
         <FirstVisitModal />
+        {/* TODO: Remove TosModal after March 28, 2026 */}
+        <TosModal />
       </body>
 
       <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" nonce={nonce} />
