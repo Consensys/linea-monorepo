@@ -6,7 +6,7 @@ import { useTransactionReceipt } from "wagmi";
 
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import Modal from "@/components/modal";
-import { useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
+import { useClaimingTx } from "@/hooks";
 import { BridgeTransaction, TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp } from "@/utils/format";
 
@@ -23,19 +23,9 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
-  const { message, isLoading: isLoadingClaimTxParams } = useBridgeTransactionMessage(transaction);
   const claimingTx = useClaimingTx(transaction);
 
-  const hydratedTransaction = useMemo(() => {
-    if (!transaction) return undefined;
-    return {
-      ...transaction,
-      ...(message ? { message } : {}),
-      ...(claimingTx && !transaction.claimingTx ? { claimingTx } : {}),
-    };
-  }, [transaction, message, claimingTx]);
-
-  const displayClaimingTx = hydratedTransaction?.claimingTx;
+  const displayClaimingTx = claimingTx || transaction?.claimingTx;
 
   const { data: initialTransactionReceipt } = useTransactionReceipt({
     hash: transaction?.bridgingTx as `0x${string}`,
@@ -128,12 +118,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
             </li>
           )}
         </ul>
-        {hydratedTransaction?.status === TransactionStatus.READY_TO_CLAIM && (
-          <ClaimActions
-            transaction={hydratedTransaction}
-            isLoadingClaimTxParams={isLoadingClaimTxParams}
-            onCloseModal={onCloseModal}
-          />
+        {transaction?.status === TransactionStatus.READY_TO_CLAIM && (
+          <ClaimActions transaction={transaction} onCloseModal={onCloseModal} />
         )}
       </div>
     </Modal>

@@ -2,92 +2,35 @@ import { useEffect } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useConnection, useDisconnect, useSimulateContract, useSwitchChain } from "wagmi";
+import { useConnection, useDisconnect, useSwitchChain } from "wagmi";
 
-import { LINEA_ROLLUP_YIELD_EXTENSION_ABI } from "@/adapters/native/abis";
-import { buildClaimWithProofParams, isNativeBridgeMessage } from "@/adapters/native/message";
 import Button from "@/components/ui/button";
-import { useClaim, useL1MessageServiceLiquidity } from "@/hooks";
-import { BridgeTransaction, ChainLayer } from "@/types";
-import { isEth } from "@/utils/tokens";
+import { useClaim } from "@/hooks";
+import { BridgeTransaction } from "@/types";
 
 import styles from "./transaction-details.module.scss";
 
 type ClaimActionsProps = {
   transaction: BridgeTransaction;
-  isLoadingClaimTxParams: boolean;
   onCloseModal: () => void;
 };
 
-export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCloseModal }: ClaimActionsProps) {
-  const { chain, address } = useConnection();
+export default function ClaimActions({ transaction, onCloseModal }: ClaimActionsProps) {
+  const { chain } = useConnection();
   const { mutate: disconnect } = useDisconnect();
   const { mutate: switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
-  const nativeMessage =
-    transaction.message && isNativeBridgeMessage(transaction.message) ? transaction.message : undefined;
-
-  const isL2ToL1EthWithdrawal =
-    !!nativeMessage &&
-    transaction.fromChain.layer === ChainLayer.L2 &&
-    transaction.toChain.layer === ChainLayer.L1 &&
-    isEth(transaction.token);
-
-  const withdrawalAmount = isL2ToL1EthWithdrawal ? nativeMessage.amountSent : 0n;
-
-  const { isLowLiquidity: isMessageServiceBalanceTooLow, isLoading: isLiquidityLoading } = useL1MessageServiceLiquidity(
-    {
-      toChain: transaction.toChain,
-      isL2ToL1Eth: isL2ToL1EthWithdrawal,
-      withdrawalAmount,
-    },
-  );
-
-  const isConnectedWalletMessageRecipient =
-    isL2ToL1EthWithdrawal && !!address && nativeMessage.to.toLowerCase() === address.toLowerCase();
-
-  const canAttemptLstClaim =
-    isMessageServiceBalanceTooLow && isConnectedWalletMessageRecipient && !!transaction.toChain.yieldProviderAddress;
-
-  const claimWithProofParams =
-    canAttemptLstClaim && nativeMessage ? buildClaimWithProofParams(nativeMessage) : undefined;
-
-  const {
-    isSuccess: isLstSimulationSuccess,
-    isLoading: isLstSimulationLoading,
-    error: lstSimulationError,
-  } = useSimulateContract({
-    address: transaction.toChain.messageServiceAddress,
-    abi: LINEA_ROLLUP_YIELD_EXTENSION_ABI,
-    functionName: "claimMessageWithProofAndWithdrawLST",
-    args: claimWithProofParams
-      ? [claimWithProofParams, transaction.toChain.yieldProviderAddress as `0x${string}`]
-      : undefined,
-    chainId: transaction.toChain.id,
-    account: address,
-    query: {
-      enabled: canAttemptLstClaim && !!claimWithProofParams && !!address,
-      retry: 2,
-      staleTime: 30_000,
-    },
-  });
-
-  const canClaimStEth = canAttemptLstClaim && isLstSimulationSuccess;
-
   const {
     claim,
+    claimContext,
+    isClaimTxLoading,
+    isSimulating,
+    simulationFailed,
     isConfirming,
     isPending,
     isConfirmed,
     error: claimError,
-  } = useClaim({
-    status: transaction.status,
-    adapterId: transaction.adapterId,
-    fromChain: transaction.fromChain,
-    toChain: transaction.toChain,
-    args: transaction.message,
-    lstSimulationPassed: canClaimStEth,
-  });
+  } = useClaim({ transaction });
 
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -99,25 +42,25 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
   }, [isConfirmed]);
 
   const needsChainSwitch = chain?.id !== transaction.toChain.id;
+  const hasClaimOptions = !!claimContext?.claimOptions;
 
   const buttonText = (() => {
-    if (isLoadingClaimTxParams || isLiquidityLoading) return "Loading Claim Data...";
+    if (isClaimTxLoading) return "Loading Claim Data...";
     if (isPending || isConfirming) return "Waiting for confirmation...";
     if (isSwitchingChain) return "Switching chain...";
-    if (isMessageServiceBalanceTooLow && !isConnectedWalletMessageRecipient) return "Switch wallet";
-    if (canAttemptLstClaim && !needsChainSwitch && isLstSimulationLoading) return "Simulating claim...";
-    if (canAttemptLstClaim && !needsChainSwitch) return "Claim stETH";
+    if (claimContext && !hasClaimOptions) return "Switch wallet";
+    if (hasClaimOptions && !needsChainSwitch && isSimulating) return "Simulating claim...";
+    if (hasClaimOptions && !needsChainSwitch) return claimContext!.label;
     if (needsChainSwitch) return `Switch to ${transaction.toChain.name}`;
     return "Claim";
   })();
 
   const isButtonDisabled =
-    isLoadingClaimTxParams ||
-    isLiquidityLoading ||
+    isClaimTxLoading ||
     isPending ||
     isConfirming ||
     isSwitchingChain ||
-    (canAttemptLstClaim && !needsChainSwitch && !isLstSimulationSuccess);
+    (hasClaimOptions && !needsChainSwitch && (isSimulating || simulationFailed));
 
   const handleClaim = () => {
     if (transaction.toChain.id && chain?.id && chain.id !== transaction.toChain.id) {
@@ -128,7 +71,7 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
   };
 
   const handlePrimaryAction = () => {
-    if (isMessageServiceBalanceTooLow && !isConnectedWalletMessageRecipient) {
+    if (claimContext && !hasClaimOptions) {
       disconnect();
       return;
     }
@@ -146,26 +89,24 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
         </Button>
       </div>
       {claimError && <p className={styles["error-text"]}>Claim failed. Please try again.</p>}
-      {lstSimulationError && !needsChainSwitch && (
-        <p className={styles["error-text"]}>
-          stETH claiming is currently unavailable. Please wait until stETH or ETH claiming becomes available.
-        </p>
+      {simulationFailed && !needsChainSwitch && claimContext && (
+        <p className={styles["error-text"]}>{claimContext.errorMessage}</p>
       )}
-      {isMessageServiceBalanceTooLow && (
-        <div className={styles["low-liquidity-info"]}>
-          <p className={styles["helper-text"]}>
-            {isConnectedWalletMessageRecipient
-              ? "Low ETH liquidity. Claim as stETH now or wait until sufficient ETH balance becomes available."
-              : "Please connect the recipient wallet to claim stETH, or wait until sufficient ETH balance becomes available."}
-          </p>
-          {canAttemptLstClaim && (
-            <p className={styles["terms-text"]}>
-              By claiming, you acknowledge that a liquidity buffer may apply. See{" "}
-              <Link href="https://linea.build/terms-of-service" target="_blank" rel="noopener noreferrer">
-                Terms & Conditions.
-              </Link>
+      {claimContext && claimContext.messages.length > 0 && (
+        <div className={styles["claim-messages"]}>
+          {claimContext.messages.map((msg, i) => (
+            <p key={i} className={styles["helper-text"]}>
+              {msg.text}
+              {msg.link && (
+                <>
+                  {" "}
+                  <Link href={msg.link.url} target="_blank" rel="noopener noreferrer">
+                    {msg.link.label}
+                  </Link>
+                </>
+              )}
             </p>
-          )}
+          ))}
         </div>
       )}
     </>

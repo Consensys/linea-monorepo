@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useConnection } from "wagmi";
+import { useConfig, useConnection } from "wagmi";
 
-import { getAdapter } from "@/adapters";
+import { type DepositWarning, getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import { ETH_SYMBOL } from "@/constants/tokens";
-import { useL1MessageServiceLiquidity } from "@/hooks";
 import useFees from "@/hooks/fees/useFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
@@ -29,6 +28,7 @@ const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advance
 
 export default function Claiming() {
   const { isConnected } = useConnection();
+  const wagmiConfig = useConfig();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
 
@@ -44,18 +44,14 @@ export default function Claiming() {
   const adapter = getAdapter(token, fromChain, toChain);
   const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
 
-  const isL2ToL1EthFlow =
-    fromChain.layer === ChainLayer.L2 && toChain.layer === ChainLayer.L1 && token.symbol === ETH_SYMBOL;
+  const { data: depositWarnings, isLoading: isWarningsLoading } = useQuery<DepositWarning[] | undefined>({
+    queryKey: ["depositWarnings", adapter?.id, fromChain.id, toChain.id, token.symbol, amount?.toString()],
+    queryFn: () => adapter!.getDepositWarnings!({ token, fromChain, toChain, amount: amount ?? 0n, wagmiConfig }),
+    enabled: !!adapter?.getDepositWarnings && !!amount && amount > 0n,
+    staleTime: 30_000,
+  });
 
-  const { isLowLiquidity: hasLowL1MessageServiceBalance, isLoading: isLiquidityLoading } = useL1MessageServiceLiquidity(
-    {
-      toChain,
-      isL2ToL1Eth: isL2ToL1EthFlow,
-      withdrawalAmount: amount ?? 0n,
-    },
-  );
-
-  const liquidityLoading = isLiquidityLoading && !!amount && amount > 0n;
+  const warningLoading = isWarningsLoading && !!adapter?.getDepositWarnings && !!amount && amount > 0n;
 
   useEffect(() => {
     setLoading(true);
@@ -97,7 +93,7 @@ export default function Claiming() {
         </div>
       </div>
 
-      {loading || isFeesLoading || liquidityLoading ? (
+      {loading || isFeesLoading || warningLoading ? (
         <Skeleton />
       ) : (
         <div className={styles.content}>
@@ -117,14 +113,19 @@ export default function Claiming() {
           </div>
         </div>
       )}
-      {hasLowL1MessageServiceBalance && (
-        <p className={styles.warning}>
-          The bridge is currently congested.{" "}
-          <Link href="https://linea.build/hub/bridge" target="_blank" rel="noopener noreferrer">
-            Learn more.
-          </Link>
+      {depositWarnings?.map((warning, i) => (
+        <p key={i} className={styles.warning}>
+          {warning.text}
+          {warning.link && (
+            <>
+              {" "}
+              <Link href={warning.link.url} target="_blank" rel="noopener noreferrer">
+                {warning.link.label}
+              </Link>
+            </>
+          )}
         </p>
-      )}
+      ))}
       {showAdvancedSettingsModal && (
         <AdvancedSettings
           isModalOpen={showAdvancedSettingsModal}

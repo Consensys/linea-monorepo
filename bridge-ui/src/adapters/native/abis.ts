@@ -88,6 +88,16 @@ export const LINEA_ROLLUP_YIELD_EXTENSION_ABI = [
   },
 ] as const;
 
+export const MINIMUM_FEE_ABI = [
+  {
+    inputs: [],
+    name: "minimumFeeInWei",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
 export const TOKEN_BRIDGE_ABI = [
   {
     inputs: [
