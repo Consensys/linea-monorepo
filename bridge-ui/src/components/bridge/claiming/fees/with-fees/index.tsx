@@ -5,7 +5,7 @@ import Image from "next/image";
 import { formatUnits } from "viem";
 
 import { useFees } from "@/hooks";
-import useBridgeFees from "@/hooks/fees/useBridgeFees";
+import { useCctpFee } from "@/hooks/transaction-args/cctp/useCctpUtilHooks";
 import { useFormattedDigit } from "@/hooks/useFormattedDigit";
 import { useConfigStore } from "@/stores/configStore";
 import { useFormStore } from "@/stores/formStoreProvider";
@@ -26,10 +26,12 @@ export default function WithFees({ iconPath }: Props) {
 
   const { total, fees, isLoading } = useFees();
   const token = useFormStore((state) => state.token);
-  const { fees: bridgeFees } = useBridgeFees();
+  const amount = useFormStore((state) => state.amount);
+  const cctpFee = useCctpFee(amount, token.decimals);
 
   const formattedFees = useFormattedDigit(total.fees, 18);
-  const formattedProtocolFee = bridgeFees.protocolFee ? formatUnits(bridgeFees.protocolFee, token.decimals) : "";
+  const formattedCctpFees = cctpFee ? formatUnits(cctpFee, token.decimals) : "";
+  console.log(formattedCctpFees);
 
   if (isLoading) {
     return null;
@@ -37,12 +39,10 @@ export default function WithFees({ iconPath }: Props) {
 
   return (
     <>
-      {formattedProtocolFee && (
+      {formattedCctpFees && (
         <button type="button" className={`${styles["gas-fees"]} ${styles["no-click"]}`}>
-          <Image src={token.image} width={12} height={12} alt="protocol-fee-icon" />
-          <p className={styles["estimate-crypto"]}>
-            {formattedProtocolFee} {token.symbol}
-          </p>
+          <Image src={token.image} width={12} height={12} alt="usdc-fee-icon" />
+          <p className={styles["estimate-crypto"]}>{formattedCctpFees} USDC</p>
         </button>
       )}
       {total && (

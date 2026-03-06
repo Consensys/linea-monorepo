@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -40,8 +40,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
-	// Setting the issue handler to exit on unsatisfied constraint but not limit overflow.
-	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint)
+	// Setting the issue handler to exit on unsatisfied constraint and missing trace file,
+	// but not limit overflow.
+	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint | exit.ExitOnMissingTraceFile)
 
 	// Clean up witness directory to be sure it is empty when we start the
 	// process. This helps addressing the situation where a previous process
@@ -288,6 +289,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		cong.RecursionComp,
 		congFinalproof.GetOuterProofInput(),
 		*witness.FuncInp,
+		witness.ZkEVM.ExecData,
 	)
 
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
@@ -298,7 +300,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Element) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -356,6 +358,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 				runtimeBoot = wizard.RunProver(
 					assets.DistWizard.Bootstrapper,
 					assets.Zkevm.GetMainProverStep(zkevmWitness),
+					false,
 				)
 				return
 			}
@@ -367,6 +370,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				false,
 			)
 		}()
 	}
@@ -403,7 +407,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
 
@@ -423,7 +427,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
 
@@ -447,9 +451,11 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -468,15 +474,17 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 }
 
 // RunLPP runs the LPP prover for the provided witness index
-func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *distributed.SegmentProof, err error) {
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	witness.InitialFiatShamirState = sharedRandomness
 

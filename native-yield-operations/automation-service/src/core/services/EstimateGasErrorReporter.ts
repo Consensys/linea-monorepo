@@ -20,3 +20,4 @@ export class EstimateGasErrorReporter implements IEstimateGasErrorReporter {
     this.metricsUpdater.incrementContractEstimateGasError(contractAddress, rawRevertData, errorName);
   }
 }
+

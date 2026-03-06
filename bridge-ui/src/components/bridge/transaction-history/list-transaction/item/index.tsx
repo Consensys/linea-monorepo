@@ -3,13 +3,13 @@ import { memo } from "react";
 import clsx from "clsx";
 import { formatUnits } from "viem";
 
-import { getAdapterById } from "@/adapters";
 import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
-import { BridgeTransaction, TransactionStatus } from "@/types";
+import { BridgeTransaction, CCTPMode, TransactionStatus } from "@/types";
 import { getChainLogoPath } from "@/utils/chains";
-import { formatEstimatedTime, formatHex, formatTimestamp } from "@/utils/format";
+import { formatHex, formatTimestamp } from "@/utils/format";
+import { getEstimatedTimeText } from "@/utils/message";
 
 import styles from "./item.module.scss";
 
@@ -19,20 +19,20 @@ type Props = BridgeTransaction & {
 
 const Transaction = memo(function Transaction({
   bridgingTx,
-  adapterId,
   status,
   fromChain,
   toChain,
   timestamp,
   message,
   token,
-  mode,
+  cctpMode,
   onClick,
 }: Props) {
   const formatedTxHash = formatHex(bridgingTx);
-  const adapter = getAdapterById(adapterId);
-  const time = adapter?.getEstimatedTime?.(fromChain.layer, mode);
-  const estimatedTimeText = time ? formatEstimatedTime(time, { abbreviated: true, spacedHyphen: true }) : "";
+  const estimatedTimeText = getEstimatedTimeText(fromChain, token, cctpMode ?? CCTPMode.STANDARD, {
+    withSpaceAroundHyphen: true,
+    isAbbreviatedTimeUnit: true,
+  });
 
   const renderStatus = () => {
     switch (status) {

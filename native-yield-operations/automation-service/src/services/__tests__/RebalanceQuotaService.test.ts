@@ -96,7 +96,11 @@ describe("RebalanceQuotaService", () => {
         service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, amountPerCycle);
       }
 
-      const result = service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, amountPerCycle);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        amountPerCycle,
+      );
 
       // Assert
       expect(result).toBeGreaterThan(0n);
@@ -431,7 +435,11 @@ describe("RebalanceQuotaService", () => {
       service = createService();
 
       // Act
-      const result = service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, VERY_LARGE_BALANCE_WEI, HALF_QUOTA_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        VERY_LARGE_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
       // Assert
       expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);

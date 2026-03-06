@@ -3,21 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useConnection } from "wagmi";
 
-import { getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import useBridgeFees from "@/hooks/fees/useBridgeFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
-import { useUiStore } from "@/stores/uiStore";
-import { ChainLayer, ClaimType } from "@/types";
+import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
+import { isCctp } from "@/utils/tokens";
 
 import BridgeMode from "./bridge-mode";
 import styles from "./claiming.module.scss";
-import EstimatedTime from "./estimated-time";
-import WithFees from "./fees/with-fees";
-import ManualClaim from "./manual-claim";
+import Fees from "./fees";
 import ReceivedAmount from "./received-amount";
 
 const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advanced-settings"), {
@@ -35,14 +31,8 @@ export default function Claiming() {
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
-  const selectedMode = useFormStore((state) => state.selectedMode);
-  const claim = useFormStore((state) => state.claim);
-  const { resolvedClaimType } = useBridgeFees();
-  const effectiveClaimType = resolvedClaimType ?? claim;
+  const cctpMode = useFormStore((state) => state.cctpMode);
   const originChainBalanceTooLow = amount && balance < amount;
-
-  const adapter = getAdapter(token, fromChain, toChain);
-  const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
 
   useEffect(() => {
     setLoading(true);
@@ -54,18 +44,20 @@ export default function Claiming() {
   }, [amount]);
 
   useEffect(() => {
-    const effectiveMode = selectedMode ?? adapter?.defaultMode;
-    const hasProtocolFee = !!adapter?.modes && effectiveMode !== adapter?.defaultMode;
-    setHideNoFeesPill(hasProtocolFee);
+    const noFeePill = document.getElementById("no-fees-pill");
+    if (!noFeePill) return;
 
-    return () => setHideNoFeesPill(false);
-  }, [selectedMode, adapter, setHideNoFeesPill]);
+    noFeePill.style.display =
+      token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST ? "none" : "block";
+  }, [cctpMode, token.bridgeProvider]);
 
+  // Do not allow user to go to AdvancedSettings modal, when they have no choice of ClaimType anyway
   const showSettingIcon = useMemo(() => {
     if (fromChain.layer === ChainLayer.L2) return false;
-    if (!adapter?.hasAdvancedSettings) return false;
+    // No auto-claiming for USDC via CCTPV2
+    if (isCctp(token)) return false;
     return !loading;
-  }, [fromChain, adapter, loading]);
+  }, [fromChain, token, loading]);
 
   if (!amount || amount <= 0n) return null;
   if (isConnected && originChainBalanceTooLow) return null;
@@ -97,11 +89,7 @@ export default function Claiming() {
             />
             <ReceivedAmount />
           </div>
-          <div className={styles.estimate}>
-            <WithFees iconPath={fromChain.iconPath} />
-            <EstimatedTime />
-            {effectiveClaimType === ClaimType.MANUAL && <ManualClaim />}
-          </div>
+          <Fees />
         </div>
       )}
       {showAdvancedSettingsModal && (

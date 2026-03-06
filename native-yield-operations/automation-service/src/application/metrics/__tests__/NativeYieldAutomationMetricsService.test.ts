@@ -16,7 +16,10 @@ describe("NativeYieldAutomationMetricsService", () => {
     it("applies default labels when none are provided", async () => {
       // Arrange
       const service = createMetricsService();
-      const counter = service.createCounter(LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal, "test counter");
+      const counter = service.createCounter(
+        LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
+        "test counter",
+      );
 
       // Act
       counter.inc();

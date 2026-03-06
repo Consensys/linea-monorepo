@@ -1,16 +1,26 @@
-import useTransactionSteps from "./transaction-args/useTransactionSteps";
-import useTransactionSender from "./useTransactionSender";
+import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+
+import useTransactionArgs from "./transaction-args/useTransactionArgs";
 
 const useBridge = () => {
-  const transactionArgs = useTransactionSteps();
-  const { send, ...txState } = useTransactionSender(transactionArgs?.args);
+  const transactionArgs = useTransactionArgs();
+
+  const { data: hash, mutate: sendTransaction, isPending, error, isError, isSuccess } = useSendTransaction();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   return {
     transactionType: transactionArgs?.type,
-    adapterId: transactionArgs?.adapterId,
     refetchAllowance: transactionArgs?.refetchAllowance,
-    bridge: send,
-    ...txState,
+    bridge: transactionArgs ? () => sendTransaction(transactionArgs.args) : undefined,
+    isPending: isPending,
+    isConfirming,
+    isConfirmed,
+    isError,
+    error,
+    isSuccess,
   };
 };
 

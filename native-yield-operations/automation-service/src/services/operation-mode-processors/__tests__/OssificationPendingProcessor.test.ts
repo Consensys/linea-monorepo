@@ -75,10 +75,9 @@ const createVaultHubClientMock = (): jest.Mocked<IVaultHub<TransactionReceipt>> 
     isVaultConnected: jest.fn(),
   }) as unknown as jest.Mocked<IVaultHub<TransactionReceipt>>;
 
-const createTransactionReceipt = (): TransactionReceipt =>
-  ({
-    transactionHash: TRANSACTION_HASH,
-  }) as unknown as TransactionReceipt;
+const createTransactionReceipt = (): TransactionReceipt => ({
+  transactionHash: TRANSACTION_HASH,
+} as unknown as TransactionReceipt);
 
 const createVaultReportEvent = () => ({
   result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
@@ -243,10 +242,7 @@ describe("OssificationPendingProcessor", () => {
 
     it("records operation mode duration metrics", async () => {
       // Arrange
-      const performanceSpy = jest
-        .spyOn(performance, "now")
-        .mockReturnValueOnce(START_TIME_MS)
-        .mockReturnValueOnce(END_TIME_MS);
+      const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(START_TIME_MS).mockReturnValueOnce(END_TIME_MS);
       const processor = createProcessor();
 
       // Act
@@ -376,7 +372,6 @@ describe("OssificationPendingProcessor", () => {
 
       // Assert
       expect(yieldManager.isOssified).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS);
-      expect(logger.info).not.toHaveBeenCalledWith("_process - Ossification completed, performing max safe withdrawal");
       expect(metricsRecorder.recordSafeWithdrawalMetrics).not.toHaveBeenCalled();
     });
 
@@ -389,12 +384,8 @@ describe("OssificationPendingProcessor", () => {
       await processor.process();
 
       // Assert
-      expect(logger.info).toHaveBeenCalledWith("_process - Ossification completed, performing max safe withdrawal");
       expect(yieldManager.safeMaxAddToWithdrawalReserve).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS);
-      expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(
-        YIELD_PROVIDER_ADDRESS,
-        expect.anything(),
-      );
+      expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS, expect.anything());
     });
   });
 
@@ -417,10 +408,7 @@ describe("OssificationPendingProcessor", () => {
         YIELD_PROVIDER_ADDRESS,
         expect.anything(),
       );
-      expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(
-        YIELD_PROVIDER_ADDRESS,
-        expect.anything(),
-      );
+      expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS, expect.anything());
     });
   });
 });

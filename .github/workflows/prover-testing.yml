@@ -41,9 +41,9 @@ jobs:
       working-directory: prover
       run: if [[ -n $(gofmt -l .) ]]; then echo "please run gofmt"; exit 1; fi
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 #v6.5.2
+      uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 #v8
       with:
-          version: v1.64.3
+          version: v2.1.6
           working-directory: prover
           args: --timeout=5m
     - name: generated files should not be modified
@@ -91,6 +91,6 @@ jobs:
         go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
     - name: Test (32 bits & race)
       working-directory: prover
-      if: matrix.go-version == '1.20.x'
+      if: matrix.go-version == '1.24.x'
       run: |
           go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...

@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
-import { useUiStore } from "@/stores/uiStore";
 
 import styles from "./item.module.scss";
 
@@ -13,7 +12,7 @@ export type NavItemProps = {
   icon: React.ReactNode;
   label?: string;
   description: string;
-  hideWhenNoFeesPillHidden?: boolean;
+  labelId?: string;
 };
 
 type Props = NavItemProps & {
@@ -29,15 +28,13 @@ export default function NavItem({
   href,
   icon,
   label,
-  hideWhenNoFeesPillHidden,
+  labelId,
   as,
   dropdown,
   showCaret,
   isOpen,
 }: Props) {
   const Wrapper = as || "li";
-  const hideNoFeesPill = useUiStore((s) => s.hideNoFeesPill);
-  const showLabel = label && !(hideWhenNoFeesPillHidden && hideNoFeesPill);
 
   const content = (
     <>
@@ -46,7 +43,11 @@ export default function NavItem({
         <div className={styles["card-content"]}>
           <div className={styles["card-title-wrapper"]}>
             <h2 className={styles["card-title"]}>{title}</h2>
-            {showLabel && <span className={styles["card-label"]}>{label}</span>}
+            {label && (
+              <span id={labelId} className={styles["card-label"]}>
+                {label}
+              </span>
+            )}
           </div>
           <p className={styles["card-description"]}>{description}</p>
         </div>

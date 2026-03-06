@@ -6,7 +6,7 @@
 //
 // The Vortex polynomial commitment scheme produces an "opening proof" that can
 // be several megabytes in size (the dominant term is the opened column
-// fragments: numColsToOpen × numRows × 32 bytes per field element).
+// fragments: numColsToOpen × numRows × field.Bytes per field element).
 //
 // To publish such a proof on Ethereum L1 – where calldata costs dominate – we
 // need the proof to fit within a size budget of roughly 300 KB.
@@ -14,12 +14,12 @@
 // The PQ wrapper achieves this purely with hash-based (post-quantum)
 // primitives by chaining the following compilation steps:
 //
-//  1. [selfrecursion.SelfRecurse]  – compresses the Vortex proof into a
+//  1. [selfrecursion.SelfRecurse]      – compresses the Vortex proof into a
 //     new, smaller Wizard IOP whose Vortex parameters are set automatically.
-//  2. [mimc.CompileMiMC]           – compiles MiMC hash queries.
-//  3. [compiler.Arcane]            – compiles the resulting PLONK-in-Wizard
+//  2. [poseidon2.CompilePoseidon2]     – compiles Poseidon2 hash queries.
+//  3. [compiler.Arcane]               – compiles the resulting PLONK-in-Wizard
 //     IOP with a controlled target column size.
-//  4. [vortex.Compile]             – applies Vortex again with the same SIS
+//  4. [vortex.Compile]                – applies Vortex again with the same SIS
 //     and blow-up parameters.
 //
 // Each iteration produces a smaller Vortex proof.  After at most
@@ -42,9 +42,9 @@
 //	cfg := pq.DefaultConfig()
 //	compiled := wizard.Compile(
 //	    defineMyIOP,
-//	    vortex.Compile(2, ...),        // initial Vortex compilation
-//	    pq.Wrap(cfg),                  // PQ wrapper – reduces proof to < 300 KB
-//	    dummy.Compile,                 // final step (or replace with your prover)
+//	    vortex.Compile(2, false, ...),  // initial Vortex compilation
+//	    pq.Wrap(cfg),                   // PQ wrapper – reduces proof to < 300 KB
+//	    dummy.Compile,                  // final step (or replace with your prover)
 //	)
 package pq
 
@@ -53,7 +53,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -177,7 +177,7 @@ func WithNumOpenedCols(n int) Option {
 //
 //	compiled := wizard.Compile(
 //	    defineMyIOP,
-//	    vortex.Compile(2, ...),
+//	    vortex.Compile(2, false, ...),
 //	    pq.Wrap(pq.DefaultConfig(), pq.WithProofSizeBudget(200*1024)),
 //	    dummy.Compile,
 //	)
@@ -212,13 +212,13 @@ func Wrap(cfg Config, opts ...Option) func(*wizard.CompiledIOP) {
 			// Build the slice of inner Vortex options.
 			innerVortexOpts := buildVortexOptions(cfg)
 
-			// Apply one round: SelfRecurse -> MiMC -> Arcane -> Vortex.
+			// Apply one round: SelfRecurse -> Poseidon2 -> Arcane -> Vortex.
 			comp = wizard.ContinueCompilation(
 				comp,
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(compiler.WithTargetColSize(cfg.TargetColSize)),
-				vortex.Compile(cfg.BlowUpFactor, innerVortexOpts...),
+				vortex.Compile(cfg.BlowUpFactor, false, innerVortexOpts...),
 			)
 
 			innerCtx := extractVortexCtx(comp)

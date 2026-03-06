@@ -1,10 +1,9 @@
-import { getAdapter } from "@/adapters";
 import Modal from "@/components/modal";
 import Button from "@/components/ui/button";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
-import { ChainLayer } from "@/types";
-import { formatEstimatedTime } from "@/utils/format";
+import { ChainLayer, CCTPMode } from "@/types";
+import { getEstimatedTimeText } from "@/utils/message";
 
 import styles from "./estimated-time.module.scss";
 
@@ -15,13 +14,12 @@ type Props = {
 
 export default function EstimatedTimeModal({ isModalOpen, onCloseModal }: Props) {
   const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
   const token = useFormStore((state) => state.token);
-  const selectedMode = useFormStore((state) => state.selectedMode);
-
-  const adapter = getAdapter(token, fromChain, toChain);
-  const time = adapter?.getEstimatedTime?.(fromChain.layer, selectedMode ?? undefined);
-  const estimatedTimeText = time ? formatEstimatedTime(time, { spacedHyphen: true }) : "";
+  const cctpMode = useFormStore((state) => state.cctpMode);
+  const estimatedTimeText = getEstimatedTimeText(fromChain, token, cctpMode ?? CCTPMode.STANDARD, {
+    withSpaceAroundHyphen: true,
+    isAbbreviatedTimeUnit: false,
+  });
   const estimatedTimeType = fromChain.layer === ChainLayer.L1 ? "deposit" : "withdraw";
 
   return (

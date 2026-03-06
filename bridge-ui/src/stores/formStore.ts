@@ -2,7 +2,7 @@ import { Address } from "viem";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 
-import { type AdapterModeId, Token, ClaimType } from "@/types";
+import { Token, ClaimType, CCTPMode } from "@/types";
 
 import { defaultTokensConfig } from "./tokenStore";
 
@@ -13,7 +13,9 @@ export type FormState = {
   balance: bigint;
   claim: ClaimType;
   gasFees: bigint;
-  selectedMode: AdapterModeId | null;
+  bridgingFees: bigint;
+  minimumFees: bigint;
+  cctpMode: CCTPMode;
 };
 
 export type FormActions = {
@@ -23,7 +25,9 @@ export type FormActions = {
   setBalance: (balance: bigint) => void;
   setClaim: (claim: ClaimType) => void;
   setGasFees: (gasFees: bigint) => void;
-  setSelectedMode: (mode: AdapterModeId | null) => void;
+  setBridgingFees: (bridgingFees: bigint) => void;
+  setMinimumFees: (minimumFees: bigint) => void;
+  setCctpMode: (cctpMode: CCTPMode) => void;
   resetForm(): void;
 };
 
@@ -36,7 +40,9 @@ export const defaultInitState: FormState = {
   recipient: "0x",
   claim: ClaimType.AUTO_SPONSORED,
   gasFees: 0n,
-  selectedMode: null,
+  bridgingFees: 0n,
+  minimumFees: 0n,
+  cctpMode: CCTPMode.STANDARD,
 };
 
 export const createFormStore = (defaultValues?: FormState) =>
@@ -50,7 +56,9 @@ export const createFormStore = (defaultValues?: FormState) =>
       setBalance: (balance) => set({ balance }),
       setClaim: (claim) => set({ claim }),
       setGasFees: (gasFees) => set({ gasFees }),
-      setSelectedMode: (selectedMode) => set({ selectedMode }),
+      setBridgingFees: (bridgingFees) => set({ bridgingFees }),
+      setMinimumFees: (minimumFees) => set({ minimumFees }),
+      setCctpMode: (cctpMode) => set({ cctpMode }),
       resetForm: () => set(defaultInitState),
     };
   }, shallow);

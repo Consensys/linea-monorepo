@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/pq"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -32,14 +32,14 @@ func testIOP(polSize, nPols int) (define func(*wizard.Builder), prove func(*wiza
 	}
 
 	prove = func(pr *wizard.ProverRuntime) {
-		x := field.NewElement(42)
-		ys := make([]field.Element, nPols)
+		x := fext.RandomElement()
+		ys := make([]fext.Element, nPols)
 		for i := range rows {
 			p := smartvectors.Rand(polSize)
-			ys[i] = smartvectors.Interpolate(p, x)
+			ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 			pr.AssignColumn(rows[i].GetColID(), p)
 		}
-		pr.AssignUnivariate("EVAL", x, ys...)
+		pr.AssignUnivariateExt("EVAL", x, ys...)
 	}
 
 	return define, prove
@@ -57,7 +57,7 @@ func TestOpeningProofSizeBytes(t *testing.T) {
 
 	comp := wizard.Compile(
 		define,
-		vortex.Compile(2,
+		vortex.Compile(2, false,
 			vortex.WithSISParams(&smallSISParams),
 		),
 		dummy.Compile,
@@ -86,7 +86,7 @@ func TestEstimateOpeningProofSizeBytes(t *testing.T) {
 	// still accessible.
 	comp := wizard.Compile(
 		define,
-		vortex.Compile(2,
+		vortex.Compile(2, false,
 			vortex.WithSISParams(&smallSISParams),
 			vortex.ForceNumOpenedColumns(8),
 		),
@@ -120,7 +120,7 @@ func TestPQWrapReducesProofSize(t *testing.T) {
 	// Compile without PQ wrap to measure the baseline estimated size.
 	baseComp := wizard.Compile(
 		define,
-		vortex.Compile(2,
+		vortex.Compile(2, false,
 			vortex.WithSISParams(&smallSISParams),
 			vortex.ForceNumOpenedColumns(8),
 		),
@@ -136,7 +136,7 @@ func TestPQWrapReducesProofSize(t *testing.T) {
 
 	comp := wizard.Compile(
 		define,
-		vortex.Compile(2,
+		vortex.Compile(2, false,
 			vortex.WithSISParams(&smallSISParams),
 			vortex.ForceNumOpenedColumns(8),
 		),
@@ -168,7 +168,7 @@ func TestPQWrapDefaultConfig(t *testing.T) {
 
 	comp := wizard.Compile(
 		define,
-		vortex.Compile(2,
+		vortex.Compile(2, false,
 			vortex.WithSISParams(&smallSISParams),
 			vortex.ForceNumOpenedColumns(4),
 		),

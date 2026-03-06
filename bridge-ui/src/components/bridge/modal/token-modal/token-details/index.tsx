@@ -10,7 +10,7 @@ import { useChainStore } from "@/stores/chainStore";
 import { type CurrencyOption } from "@/stores/configStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
-import { Token } from "@/types";
+import { CCTPMode, Token } from "@/types";
 import { formatBalance } from "@/utils/format";
 import { isEth } from "@/utils/tokens";
 
@@ -36,7 +36,7 @@ const TokenDetails = memo(function TokenDetails({
   const { balance } = useTokenBalance(token);
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
-  const setSelectedMode = useFormStore((state) => state.setSelectedMode);
+  const setCctpMode = useFormStore((state) => state.setCctpMode);
 
   const chainLayer = fromChain?.layer;
   const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
@@ -55,8 +55,8 @@ const TokenDetails = memo(function TokenDetails({
     setSelectedToken(token);
     setToken(token);
     onTokenClick(token);
-    setSelectedMode(null);
-  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setSelectedMode]);
+    setCctpMode(CCTPMode.STANDARD);
+  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setCctpMode]);
 
   return (
     <button

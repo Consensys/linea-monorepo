@@ -94,6 +94,7 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       "LineaTransactionPoolValidatorPlugin",
       "LineaTransactionSelectorPlugin",
       "LineaBundleEndpointsPlugin",
+      "ForwardBundlesPlugin",
       "LineaTransactionValidatorPlugin",
       "LineaForcedTransactionEndpointsPlugin",
     )
