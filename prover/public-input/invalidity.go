@@ -16,7 +16,7 @@ type Invalidity struct {
 	TxHash              common.Hash // hash of the unsigned transaction
 	TxNumber            uint64
 	FromAddress         types.EthAddress    // address of the sender
-	ExpectedBlockHeight uint64              //  the max expected block number for the transaction to be executed.
+	DeadLineBlockNumber uint64              //  the max expected block number for the transaction to be executed.
 	StateRootHash       types.KoalaOctuplet // state-root-hash on which the invalidity is based
 	FtxRollingHash      types.Bls12377Fr    // the rolling hash of the forced transaction from mimc_bls12377
 	FromIsFiltered      bool                // 1 if the from address is filtered, 0 otherwise
@@ -24,12 +24,12 @@ type Invalidity struct {
 	ToAddress           types.EthAddress    // address of the recipient
 
 	// From execution PI (shared between execution and invalidity)
-	CoinBase              types.EthAddress
-	BaseFee               uint64
-	ChainID               uint64
-	L2MessageServiceAddr  types.EthAddress
-	InitialBlockTimestamp uint64
-	InitialBlockNumber    uint64
+	CoinBase                types.EthAddress
+	BaseFee                 uint64
+	ChainID                 uint64
+	L2MessageServiceAddr    types.EthAddress
+	SimulatedBlockTimestamp uint64 // expected to be the initial block timestamp in the aggregation
+	SimulatedBlockNumber    uint64 // expected to be the initial block number in the aggregation
 }
 
 // Sum compute the Poseidon2 hash over the functional public inputs
@@ -55,7 +55,7 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	if err != nil {
 		panic(err)
 	}
-	_, err = writeNum(hsh, pi.ExpectedBlockHeight)
+	_, err = writeNum(hsh, pi.DeadLineBlockNumber)
 	if err != nil {
 		panic(err)
 	}
@@ -107,11 +107,11 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	if err != nil {
 		panic(err)
 	}
-	_, err = writeNum(hsh, pi.InitialBlockTimestamp)
+	_, err = writeNum(hsh, pi.SimulatedBlockTimestamp)
 	if err != nil {
 		panic(err)
 	}
-	_, err = writeNum(hsh, pi.InitialBlockNumber)
+	_, err = writeNum(hsh, pi.SimulatedBlockNumber)
 	if err != nil {
 		panic(err)
 	}

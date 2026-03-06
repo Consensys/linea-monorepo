@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 )
 
 // Request file for a forced transaction attempted to be included in the current aggregation.
@@ -65,6 +66,8 @@ func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.Eth
 // Validate checks that the required fields are present based on the InvalidityType.
 // Both partial and full modes require the same trace inputs.
 func (req *Request) Validate(proverMode config.ProverMode) error {
+
+	logrus.Infof("Validating invalidity request: %+v, proverMode: %s", req, proverMode)
 
 	if req.ZkParentStateRootHash == (types.KoalaOctuplet{}) {
 		return fmt.Errorf("zkParentStateRootHash is required")

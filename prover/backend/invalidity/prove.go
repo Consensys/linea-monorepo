@@ -74,7 +74,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("could not decode the RlpEncodedTx: %w", err)
 	}
 
-	funcInput := req.FuncInput()
+	funcInput := FuncInput(req, cfg)
 
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
 		logrus.Info("Running in DEV mode (generating mock proofs)")
@@ -200,6 +200,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		ZkParentStateRootHash:            req.ZkParentStateRootHash,
 		SimulatedExecutionBlockNumber:    req.SimulatedExecutionBlockNumber,
 		SimulatedExecutionBlockTimestamp: req.SimulatedExecutionBlockTimestamp,
+		ChainID:                          cfg.Layer2.ChainID,
+		BaseFee:                          cfg.Layer2.BaseFee,
+		CoinBase:                         linTypes.EthAddress(cfg.Layer2.CoinBase),
+		L2BridgeAddress:                  linTypes.EthAddress(cfg.Layer2.MsgSvcContract),
 		ProverVersion:                    cfg.Version,
 		Proof:                            serializedProof,
 		VerifyingKeyShaSum:               setup.VerifyingKeyDigest(),

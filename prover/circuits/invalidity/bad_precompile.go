@@ -175,22 +175,22 @@ func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.BaseFee = assi.FuncInputs.BaseFee
 	circuit.ChainID = assi.FuncInputs.ChainID
 	circuit.L2MessageServiceAddr = assi.FuncInputs.L2MessageServiceAddr[:]
-	circuit.InitialBlockTimestamp = assi.FuncInputs.InitialBlockTimestamp
+	circuit.InitialBlockTimestamp = assi.FuncInputs.SimulatedBlockTimestamp
 }
 
 func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
-		FromAddress:           c.fromAddress,
-		TxHash:                c.txHash,
-		StateRootHash:         c.stateRootHash,
-		ToAddress:             c.ToAddress,
-		ToIsFiltered:          c.ToIsFiltered,
-		FromIsFiltered:        c.FromIsFiltered,
-		CoinBase:              c.CoinBase,
-		BaseFee:               c.BaseFee,
-		ChainID:               c.ChainID,
-		L2MessageServiceAddr:  c.L2MessageServiceAddr,
-		InitialBlockTimestamp: c.InitialBlockTimestamp,
-		InitialBlockNumber:    c.initialBlockNumber,
+		FromAddress:             c.fromAddress,
+		TxHash:                  c.txHash,
+		StateRootHash:           c.stateRootHash,
+		ToAddress:               c.ToAddress,
+		ToIsFiltered:            c.ToIsFiltered,
+		FromIsFiltered:          c.FromIsFiltered,
+		CoinBase:                c.CoinBase,
+		BaseFee:                 c.BaseFee,
+		ChainID:                 c.ChainID,
+		L2MessageServiceAddr:    c.L2MessageServiceAddr,
+		SimulatedBlockTimestamp: c.InitialBlockTimestamp,
+		SimulatedBlockNumber:    c.initialBlockNumber,
 	}
 }

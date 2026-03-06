@@ -60,15 +60,17 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	)
 
 	invalReq := public_input.Invalidity{
-		TxHash:              common.Hash(txHash),
-		TxNumber:            4,
-		StateRootHash:       linTypes.BytesToKoalaOctupletLoose(execReq.InitialStateRootHash[:]),
-		ExpectedBlockHeight: 9,
-		FromAddress:         linTypes.DummyAddress(32),
-		FtxRollingHash:      ftxRollingHash,
-		ToAddress:           linTypes.DummyAddress(22),
-		FromIsFiltered:      true,
-		ToIsFiltered:        false,
+		TxHash:                  common.Hash(txHash),
+		TxNumber:                4,
+		StateRootHash:           linTypes.BytesToKoalaOctupletLoose(execReq.InitialStateRootHash[:]),
+		DeadLineBlockNumber:     9,
+		FromAddress:             linTypes.DummyAddress(32),
+		FtxRollingHash:          ftxRollingHash,
+		ToAddress:               linTypes.DummyAddress(22),
+		FromIsFiltered:          true,
+		ToIsFiltered:            false,
+		SimulatedBlockTimestamp: 7,
+		SimulatedBlockNumber:    6,
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))

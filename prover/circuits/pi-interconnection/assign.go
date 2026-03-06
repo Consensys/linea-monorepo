@@ -439,7 +439,7 @@ func MerkleRoot(hsh hash.Hash, treeNbLeaves int, data [][32]byte) [32]byte {
 	return b[0]
 }
 
-// assignInvalidity assigns the invalidity public inputs and the invalidity proof
+// assignInvalidity assigns the invalidity public inputs and the invalidity proof.
 func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPublicInputsGnark, invalidityPI []frontend.Variable) {
 
 	invalidityFPI = make([]invalidity.FunctionalPublicInputsGnark, n)
@@ -447,8 +447,9 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPu
 
 	for i := 0; i < n; i++ {
 		if i < len(r.Invalidity) {
-			invalidityFPI[i].Assign(r.Invalidity[i])
-			invalidityPI[i] = r.Invalidity[i].Sum(nil)
+			inv := r.Invalidity[i]
+			invalidityFPI[i].Assign(inv)
+			invalidityPI[i] = inv.Sum(nil)
 
 		} else { // padding
 			invalidityFPI[i].Assign(public_input.Invalidity{})

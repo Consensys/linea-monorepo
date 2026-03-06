@@ -428,7 +428,11 @@ func parseProofClaim(
 }
 
 func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
-	var po invalidity.Response
+	var (
+		po     invalidity.Response
+		prevPo invalidity.Response
+	)
+	logrus.Infof(" Collecting invalidity info and validating interconnection among invalidity proofs")
 
 	for i, invalReqFPath := range req.InvalidityProofs {
 
@@ -440,7 +444,9 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		if err := json.NewDecoder(f).Decode(&po); err != nil {
 			return fmt.Errorf("fields collection, decoding %s, %w", invalReqFPath, err)
 		}
-
+		if i == 0 {
+			prevPo = po
+		}
 		cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Invalidity)
 
 		pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
@@ -450,12 +456,39 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		cf.ProofClaims = append(cf.ProofClaims, *pClaim)
 
 		pi := po.FuncInput()
-
-		// Recompute the public input hash and verify it matches the stored value.
 		// Sum(nil) uses Poseidon2
 		if recomputed := po.FuncInput().Sum(nil); !bytes.Equal(recomputed, po.PublicInput[:]) {
 			return fmt.Errorf("invalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, recomputed)
 		}
+
+		if po.SimulatedExecutionBlockTimestamp != prevPo.SimulatedExecutionBlockTimestamp {
+			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block timestamps: %d vs %d", prevPo.SimulatedExecutionBlockTimestamp, po.SimulatedExecutionBlockTimestamp)
+		}
+		if po.SimulatedExecutionBlockNumber != prevPo.SimulatedExecutionBlockNumber {
+			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block numbers: %d vs %d", prevPo.SimulatedExecutionBlockNumber, po.SimulatedExecutionBlockNumber)
+		}
+		if po.ForcedTransactionNumber != prevPo.ForcedTransactionNumber+1 {
+			return fmt.Errorf("forced transaction numbers should be consecutive: jumping from %d to %d instead of incrementing by 1", prevPo.ForcedTransactionNumber, po.ForcedTransactionNumber)
+		}
+
+		if got, want := po.ChainID, cfg.Layer2.ChainID; got != want {
+			err = fmt.Errorf("invalidity #%d fails CHECK_CHAIN_ID:\n\texpected %x, encountered %x", i, want, got)
+
+		}
+		if got, want := po.BaseFee, cfg.Layer2.BaseFee; got != want {
+			err = fmt.Errorf("invalidity #%d fails CHECK_BASE_FEE:\n\texpected %x, encountered %x", i, want, got)
+
+		}
+		if got, want := po.CoinBase, cfg.Layer2.CoinBase; got != types.EthAddress(want) {
+			err = fmt.Errorf("invalidity #%d fails CHECK_COIN_BASE:\n\texpected CoinBase %x, encountered %x", i, want, got)
+
+		}
+		if got, want := po.L2BridgeAddress, cfg.Layer2.MsgSvcContract; got != types.EthAddress(want) {
+			err = fmt.Errorf("invalidity #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, want, got)
+
+		}
+
+		prevPo = po
 
 		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
 

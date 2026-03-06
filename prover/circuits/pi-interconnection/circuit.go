@@ -257,7 +257,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
-	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, c.InitialStateRootHash, c.LastFinalizedBlockNumber)
+	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, c.InitialStateRootHash, c.LastFinalizedBlockNumber, c.LastFinalizedBlockTimestamp)
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
@@ -295,6 +295,7 @@ func (c *Circuit) checkInvalidityProofs(
 	api frontend.API,
 	parentFinalState [2]frontend.Variable,
 	parentFinalBlockNumber frontend.Variable,
+	parentBlockTimestamp frontend.Variable,
 ) (finalFtxNumber, finalFtxRollingHash frontend.Variable) {
 
 	maxNbInvalidity := len(c.InvalidityFPI)
@@ -308,12 +309,28 @@ func (c *Circuit) checkInvalidityProofs(
 	addrTable := internal.SliceToTable(api, c.FilteredAddressesFPISnark.Addresses)
 	ctr := frontend.Variable(0)
 
+	internal.AssertIsLessIf(api, rInvalidity.InRange[0], parentBlockTimestamp, c.InvalidityFPI[0].SimulatedBlockTimestamp)
+
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[0], parentFinalState[0])
 		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[1], parentFinalState[1])
-		// InRange[i] != 0 => parentFinalBlockNumber < ExpectedBlockNumber
-		internal.AssertIsLessIf(api, rInvalidity.InRange[i], parentFinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+
+		// CHECK_CHAIN_ID, CHECK_BASE_FEE, CHECK_COINBASE, CHECK_SVC_ADDR
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.ChainID, c.ChainConfigurationFPISnark.ChainID)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.BaseFee, c.ChainConfigurationFPISnark.BaseFee)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.CoinBase, c.ChainConfigurationFPISnark.CoinBase)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.L2MessageServiceAddr, c.ChainConfigurationFPISnark.L2MessageServiceAddress)
+
+		//  CHECK_SIMULATED_BLOCK_TIME
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.SimulatedBlockTimestamp, c.InvalidityFPI[0].SimulatedBlockTimestamp)
+
+		// CHECK_SIMULATED_BLOCK_NUMBER
+		internal.AssertEqualIf(api, rInvalidity.InRange[i],
+			invalidityFPI.SimulatedBlockNumber, api.Add(parentFinalBlockNumber, 1))
+
+		// InRange[i] != 0 => SimulatedBlockNumber <= ExpectedBlockNumber
+		internal.AssertIsLessIf(api, rInvalidity.InRange[i], invalidityFPI.SimulatedBlockNumber, api.Add(invalidityFPI.DeadLineBlockNumber, 1))
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api)))
 
 		// constraints over Ftx Number and Rolling Hash
@@ -325,7 +342,7 @@ func (c *Circuit) checkInvalidityProofs(
 			PrevFtxRollingHash:  finalFtxRollingHash,
 			TxHash0:             invalidityFPI.TxHash[0],
 			TxHash1:             invalidityFPI.TxHash[1],
-			ExpectedBlockHeight: invalidityFPI.ExpectedBlockNumber,
+			ExpectedBlockHeight: invalidityFPI.DeadLineBlockNumber,
 			FromAddress:         invalidityFPI.FromAddress,
 		})
 		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(ftxRollingHash, invalidityFPI.FtxRollingHash)), 0)

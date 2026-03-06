@@ -38,7 +38,7 @@ func TestInvalidityPublicInputHashConsistency(t *testing.T) {
 		TxHash:              common.HexToHash("0x11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"),
 		TxNumber:            7,
 		FromAddress:         linTypes.EthAddress(common.HexToAddress("0x1111111111111111111111111111111111111111")),
-		ExpectedBlockHeight: 42,
+		DeadLineBlockNumber: 42,
 		StateRootHash:       linTypes.MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
 		FtxRollingHash:      ftxRollingHash,
 	}

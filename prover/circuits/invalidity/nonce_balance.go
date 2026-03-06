@@ -201,25 +201,25 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	cir.BaseFee = assi.FuncInputs.BaseFee
 	cir.ChainID = assi.FuncInputs.ChainID
 	cir.L2MessageServiceAddr = assi.FuncInputs.L2MessageServiceAddr[:]
-	cir.InitialBlockTimestamp = assi.FuncInputs.InitialBlockTimestamp
-	cir.InitialBlockNumber = assi.FuncInputs.InitialBlockNumber
+	cir.InitialBlockTimestamp = assi.FuncInputs.SimulatedBlockTimestamp
+	cir.InitialBlockNumber = assi.FuncInputs.SimulatedBlockNumber
 }
 
 // FunctionalPIQGnark returns the subcircuit-derived functional public inputs
 func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
-		TxHash:                c.TxHash,
-		FromAddress:           c.TxFromAddress,
-		StateRootHash:         reconstructRootHash(c.api, c.AccountTrie.TopRoot),
-		ToAddress:             c.ToAddress,
-		ToIsFiltered:          c.ToIsFiltered,
-		FromIsFiltered:        c.FromIsFiltered,
-		CoinBase:              c.CoinBase,
-		BaseFee:               c.BaseFee,
-		ChainID:               c.ChainID,
-		L2MessageServiceAddr:  c.L2MessageServiceAddr,
-		InitialBlockTimestamp: c.InitialBlockTimestamp,
-		InitialBlockNumber:    c.InitialBlockNumber,
+		TxHash:                  c.TxHash,
+		FromAddress:             c.TxFromAddress,
+		StateRootHash:           reconstructRootHash(c.api, c.AccountTrie.TopRoot),
+		ToAddress:               c.ToAddress,
+		ToIsFiltered:            c.ToIsFiltered,
+		FromIsFiltered:          c.FromIsFiltered,
+		CoinBase:                c.CoinBase,
+		BaseFee:                 c.BaseFee,
+		ChainID:                 c.ChainID,
+		L2MessageServiceAddr:    c.L2MessageServiceAddr,
+		SimulatedBlockTimestamp: c.InitialBlockTimestamp,
+		SimulatedBlockNumber:    c.InitialBlockNumber,
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -29,6 +30,14 @@ type Response struct {
 	ZkParentStateRootHash            types.KoalaOctuplet `json:"zkParentStateRootHash"`
 	SimulatedExecutionBlockNumber    uint64              `json:"simulatedExecutionBlockNumber"`
 	SimulatedExecutionBlockTimestamp uint64              `json:"simulatedExecutionBlockTimestamp"`
+
+	// Dynamic chain configuration (mirrors execution Response fields)
+	ChainID  uint             `json:"chainID"`
+	BaseFee  uint             `json:"baseFee"`
+	CoinBase types.EthAddress `json:"coinBase"`
+
+	L2BridgeAddress types.EthAddress `json:"l2BridgeAddress"`
+
 	// the FtxRollingHash of the forced transaction
 	FtxRollingHash types.Bls12377Fr `json:"ftxRollingHash"`
 	// PublicInput is the final value public input of the current proof. This
@@ -43,16 +52,22 @@ type Response struct {
 }
 
 // FuncInput reconstructs the functional public inputs from the response fields.
-// This delegates to Request.FuncInput() by building a Request from the
-// corresponding Response fields.
 func (resp *Response) FuncInput() *public_input.Invalidity {
 	req := &Request{
-		RlpEncodedTx:            resp.RLPEncodedTx,
-		ForcedTransactionNumber: resp.ForcedTransactionNumber,
-		PrevFtxRollingHash:      resp.PrevFtxRollingHash,
-		DeadlineBlockHeight:     resp.DeadlineBlockHeight,
-		InvalidityType:          resp.InvalidityType,
-		ZkParentStateRootHash:   resp.ZkParentStateRootHash,
+		RlpEncodedTx:                     resp.RLPEncodedTx,
+		ForcedTransactionNumber:          resp.ForcedTransactionNumber,
+		PrevFtxRollingHash:               resp.PrevFtxRollingHash,
+		DeadlineBlockHeight:              resp.DeadlineBlockHeight,
+		InvalidityType:                   resp.InvalidityType,
+		ZkParentStateRootHash:            resp.ZkParentStateRootHash,
+		SimulatedExecutionBlockNumber:    resp.SimulatedExecutionBlockNumber,
+		SimulatedExecutionBlockTimestamp: resp.SimulatedExecutionBlockTimestamp,
 	}
-	return req.FuncInput()
+	cfg := &config.Config{}
+	cfg.Layer2.ChainID = resp.ChainID
+	cfg.Layer2.BaseFee = resp.BaseFee
+	cfg.Layer2.CoinBase = common.Address(resp.CoinBase)
+	cfg.Layer2.MsgSvcContract = common.Address(resp.L2BridgeAddress)
+
+	return FuncInput(req, cfg)
 }

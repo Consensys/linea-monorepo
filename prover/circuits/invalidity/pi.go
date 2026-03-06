@@ -16,7 +16,7 @@ import (
 type FunctionalPublicInputsGnark struct {
 	FunctinalPIQGnark   `gnark:"-"` // derived from subcircuit in Define, no wires allocated
 	TxNumber            frontend.Variable
-	ExpectedBlockNumber frontend.Variable // deadline block number to execute/attempt ftx.
+	DeadLineBlockNumber frontend.Variable // deadline block number to execute/attempt ftx.
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
 
 }
@@ -32,12 +32,12 @@ type FunctinalPIQGnark struct {
 	FromIsFiltered frontend.Variable // 1 if the from address is filtered, 0 otherwise
 
 	// From execution PI extractor (shared between execution and invalidity)
-	CoinBase              frontend.Variable
-	BaseFee               frontend.Variable
-	ChainID               frontend.Variable
-	L2MessageServiceAddr  frontend.Variable
-	InitialBlockTimestamp frontend.Variable
-	InitialBlockNumber    frontend.Variable
+	CoinBase                frontend.Variable
+	BaseFee                 frontend.Variable
+	ChainID                 frontend.Variable
+	L2MessageServiceAddr    frontend.Variable
+	SimulatedBlockTimestamp frontend.Variable // expected to be the initial block timestamp in the aggregation
+	SimulatedBlockNumber    frontend.Variable // expected to be the initial block number in the aggregation
 }
 
 // Assign the functional public inputs
@@ -45,7 +45,7 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.TxHash[0] = pi.TxHash[:16]
 	gpi.TxHash[1] = pi.TxHash[16:]
 	gpi.FromAddress = pi.FromAddress[:]
-	gpi.ExpectedBlockNumber = pi.ExpectedBlockHeight
+	gpi.DeadLineBlockNumber = pi.DeadLineBlockNumber
 	gpi.TxNumber = pi.TxNumber
 
 	// Convert octuplet to 32 bytes, then split into two 16-byte chunks
@@ -72,8 +72,8 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 	gpi.BaseFee = pi.BaseFee
 	gpi.ChainID = pi.ChainID
 	gpi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
-	gpi.InitialBlockTimestamp = pi.InitialBlockTimestamp
-	gpi.InitialBlockNumber = pi.InitialBlockNumber
+	gpi.SimulatedBlockTimestamp = pi.SimulatedBlockTimestamp
+	gpi.SimulatedBlockNumber = pi.SimulatedBlockNumber
 }
 
 // Sum computes the hash over the functional inputs using Poseidon2
@@ -90,7 +90,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 		spi.TxHash[1],
 		spi.TxNumber,
 		spi.FromAddress,
-		spi.ExpectedBlockNumber,
+		spi.DeadLineBlockNumber,
 		spi.StateRootHash[0],
 		spi.StateRootHash[1],
 		spi.FtxRollingHash,
@@ -101,8 +101,8 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 		spi.BaseFee,
 		spi.ChainID,
 		spi.L2MessageServiceAddr,
-		spi.InitialBlockTimestamp,
-		spi.InitialBlockNumber,
+		spi.SimulatedBlockTimestamp,
+		spi.SimulatedBlockNumber,
 	)
 
 	return hsh.Sum()

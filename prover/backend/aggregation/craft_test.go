@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	backendInvalidity "github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
@@ -294,7 +295,7 @@ func makeMockInvalidityResponse(
 		SimulatedExecutionBlockTimestamp: 1700000000,
 	}
 
-	funcInput := req.FuncInput()
+	funcInput := invalidity.FuncInput(&req, &config.Config{})
 	mockCircuitID := mockCircuitIDForType(invalidityType)
 
 	setup, err := dummy.MakeUnsafeSetup(srsProvider, mockCircuitID, ecc.BLS12_377.ScalarField())

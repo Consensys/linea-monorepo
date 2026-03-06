@@ -3,6 +3,7 @@ package invalidity
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	circuitInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -12,7 +13,7 @@ import (
 // are functionally useful to contextualize what the proof is proving. This
 // is used by the aggregation circuit to ensure that the invalidity proofs
 // relate to consecutive Linea forced transactions.
-func (req *Request) FuncInput() *public_input.Invalidity {
+func FuncInput(req *Request, cfg *config.Config) *public_input.Invalidity {
 
 	tx, err := ethereum.RlpDecodeWithSignature(req.RlpEncodedTx)
 	if err != nil {
@@ -40,15 +41,21 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 	}
 
 	fi := &public_input.Invalidity{
-		TxHash:              txHash,
-		TxNumber:            uint64(req.ForcedTransactionNumber),
-		FromAddress:         fromAddress,
-		ExpectedBlockHeight: uint64(req.DeadlineBlockHeight),
-		StateRootHash:       req.ZkParentStateRootHash,
-		FtxRollingHash:      ftxRollingHash,
-		ToAddress:           toAddress,
-		FromIsFiltered:      req.InvalidityType == circuitInvalidity.FilteredAddressFrom,
-		ToIsFiltered:        req.InvalidityType == circuitInvalidity.FilteredAddressTo,
+		TxHash:                  txHash,
+		TxNumber:                uint64(req.ForcedTransactionNumber),
+		FromAddress:             fromAddress,
+		DeadLineBlockNumber:     uint64(req.DeadlineBlockHeight),
+		StateRootHash:           req.ZkParentStateRootHash,
+		FtxRollingHash:          ftxRollingHash,
+		ToAddress:               toAddress,
+		FromIsFiltered:          req.InvalidityType == circuitInvalidity.FilteredAddressFrom,
+		ToIsFiltered:            req.InvalidityType == circuitInvalidity.FilteredAddressTo,
+		SimulatedBlockNumber:    req.SimulatedExecutionBlockNumber,
+		SimulatedBlockTimestamp: req.SimulatedExecutionBlockTimestamp,
+		CoinBase:                types.EthAddress(cfg.Layer2.CoinBase),
+		BaseFee:                 uint64(cfg.Layer2.BaseFee),
+		ChainID:                 uint64(cfg.Layer2.ChainID),
+		L2MessageServiceAddr:    types.EthAddress(cfg.Layer2.MsgSvcContract),
 	}
 	return fi
 
