@@ -6,9 +6,6 @@ permissions:
   packages: write
 
 on:
-  push:
-    branches:
-      - lido-governance-monitor-initcontainer
   workflow_call:
     inputs:
       commit_tag:
@@ -62,10 +59,10 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: lido-governance-monitor
     env:
-      COMMIT_TAG: ${{ inputs.commit_tag || github.sha }}
-      DEVELOP_TAG: ${{ inputs.develop_tag || 'develop' }}
-      IMAGE_NAME: ${{ inputs.image_name || 'consensys/linea-lido-governance-monitor' }}
-      PUSH_IMAGE: ${{ inputs.push_image || true }}
+      COMMIT_TAG: ${{ inputs.commit_tag }}
+      DEVELOP_TAG: ${{ inputs.develop_tag }}
+      IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
