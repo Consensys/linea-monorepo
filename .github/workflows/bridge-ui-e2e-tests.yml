@@ -28,7 +28,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Use for testing workflow only (and not publish to Docker)
       - uses: actions/cache@v4.2.0
