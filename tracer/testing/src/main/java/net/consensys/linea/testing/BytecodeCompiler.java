@@ -168,13 +168,35 @@ public class BytecodeCompiler {
    */
   public BytecodeCompiler immediate(final byte[] bs) {
     this.byteCode.add(Bytes.wrap(bs));
-
     return this;
+  }
+
+  /**
+   * Conditionally add a byte array as is to the bytecode sequence.
+   *
+   * @param condition whether to add the byte array or not
+   * @param bs byte array to be added
+   * @return current instance
+   */
+  public BytecodeCompiler immediate(final boolean condition, final byte[] bs) {
+    if (condition) {
+      return this.immediate(bs);
+    } else {
+      return this;
+    }
   }
 
   public BytecodeCompiler immediate(final byte b) {
     this.byteCode.add(Bytes.of(b));
     return this;
+  }
+
+  public BytecodeCompiler immediate(final boolean condition, final byte b) {
+    if (condition) {
+      return this.immediate(b);
+    } else {
+      return this;
+    }
   }
 
   /**
@@ -188,6 +210,21 @@ public class BytecodeCompiler {
   }
 
   /**
+   * Conditionally add a {@link Bytes} instance as is to the bytecode sequence.
+   *
+   * @param condition whether to add the {@link Bytes} instance or not
+   * @param bytes {@link Bytes} to be added
+   * @return current instance
+   */
+  public BytecodeCompiler immediate(final boolean condition, final Bytes bytes) {
+    if (condition) {
+      return this.immediate(bytes);
+    } else {
+      return this;
+    }
+  }
+
+  /**
    * Add an int as is to the bytecode sequence.
    *
    * @param x integer number to be added
@@ -198,6 +235,18 @@ public class BytecodeCompiler {
   }
 
   /**
+   * Conditionally add an int as is to the bytecode sequence.
+   *
+   * @param condition whether to add the integer or not
+   * @param x integer number to be added
+   * @return current instance
+   */
+  public BytecodeCompiler immediate(final boolean condition, final int x) {
+    if (condition) return this.immediate(x);
+    else return this;
+  }
+
+  /**
    * Add a {@link UInt256} number as is to the bytecode sequence.
    *
    * @param x {@link UInt256} number to be added
@@ -205,8 +254,22 @@ public class BytecodeCompiler {
    */
   public BytecodeCompiler immediate(final UInt256 x) {
     this.byteCode.add(x);
-
     return this;
+  }
+
+  /**
+   * Conditionally add a {@link UInt256} number as is to the bytecode sequence.
+   *
+   * @param condition whether to add the {@link UInt256} number or not
+   * @param x {@link UInt256} number to be added
+   * @return current instance
+   */
+  public BytecodeCompiler immediate(final boolean condition, final UInt256 x) {
+    if (condition) {
+      return this.immediate(x);
+    } else {
+      return this;
+    }
   }
 
   /**
@@ -476,10 +539,25 @@ public class BytecodeCompiler {
    * Apply a function to this compiler instance.
    *
    * @param function the function to apply to this BytecodeCompiler
-   * @return current instance for method chaining
+   * @return current instance after applying the function
    */
   public BytecodeCompiler apply(final Function<BytecodeCompiler, BytecodeCompiler> function) {
     return function.apply(this);
+  }
+
+  /**
+   * Apply a function to this compiler instance for a given number of repetitions.
+   *
+   * @param function the function to apply to this BytecodeCompiler
+   * @param reps the number of times to apply the function
+   * @return current instance after applying the function for the given number of repetitions
+   */
+  public BytecodeCompiler apply(Function<BytecodeCompiler, BytecodeCompiler> function, int reps) {
+    BytecodeCompiler result = this;
+    for (int i = 0; i < reps; i++) {
+      result = function.apply(result);
+    }
+    return result;
   }
 
   /**
