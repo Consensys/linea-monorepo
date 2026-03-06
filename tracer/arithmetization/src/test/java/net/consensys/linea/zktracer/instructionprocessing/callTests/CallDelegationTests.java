@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -121,14 +123,10 @@ public class CallDelegationTests extends TracerTestBase {
               .push(0)
               .op(OpCode.SSTORE) // increment LOOP_DEPTH_CURRENT by 1
               // execute the call
-              .push(0) // return at capacity
-              .push(0) // return at offset
-              .push(0) // call data size
-              .push(0) // call data offset
-              .push(0) // value
-              .push(targetAccount.getAddress()) // address
-              .op(OpCode.GAS)
-              .op(OpCode.CALL)
+              .apply(
+                  program ->
+                      appendFullGasCall(
+                          program, OpCode.CALL, targetAccount.getAddress(), 0, 0, 0, 0, 0))
               // preparing for a potential revert
               .push(0)
               .push(0)
@@ -144,14 +142,10 @@ public class CallDelegationTests extends TracerTestBase {
               .push(0)
               .op(OpCode.SSTORE) // increment LOOP_DEPTH_CURRENT by 1
               // execute the call
-              .push(0) // return at capacity
-              .push(0) // return at offset
-              .push(0) // call data size
-              .push(0) // call data offset
-              .push(0) // value
-              .push(targetAccount.getAddress()) // address
-              .op(OpCode.GAS)
-              .op(OpCode.CALL)
+              .apply(
+                  program ->
+                      appendFullGasCall(
+                          program, OpCode.CALL, targetAccount.getAddress(), 0, 0, 0, 0, 0))
               // preparing for a potential revert
               .push(0)
               .push(0)
