@@ -1146,7 +1146,12 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 	t := time.Now()
 
 	defer func() {
-		logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, time.Since(t))
+		totalTime := time.Since(t)
+		if totalTime > 100*time.Millisecond {
+			logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, totalTime)
+		} else {
+			logrus.Debugf("[prover runtime] done running prover step. name=%v, time=%v", name, totalTime)
+		}
 	}()
 
 	// Define helper excute function
