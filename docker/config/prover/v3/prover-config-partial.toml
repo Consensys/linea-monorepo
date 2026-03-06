@@ -9,6 +9,7 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "partial"
 requests_root_dir = "/data/prover/v3/execution"
+conflated_traces_dir = ""
 
 [data_availability]
 prover_mode = "dev"
