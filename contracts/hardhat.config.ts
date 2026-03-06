@@ -78,7 +78,7 @@ const config: HardhatUserConfig = {
     },
     hoodi: {
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
-      url: process.env.CUSTOM_RPC_URL ? process.env.CUSTOM_RPC_URL : "",
+      url: "https://hoodi.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: SupportedChainIds.HOODI,
     },
     linea_mainnet: {
