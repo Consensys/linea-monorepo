@@ -71,10 +71,10 @@ public class CallScenariosDelegationTests extends TracerTestBase {
                  └------[further test]
      */
 
-  static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-  static final Address senderAddress =
+  final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+  final Address senderAddress =
       Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-  static final ToyAccount senderAccount =
+  final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(10))
           .nonce(42)
@@ -82,35 +82,35 @@ public class CallScenariosDelegationTests extends TracerTestBase {
           .keyPair(senderKeyPair)
           .build();
 
-  static final ToyAccount rootAccount =
+  final ToyAccount rootAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
           .nonce(67)
           .address(Address.fromHexString("0x40010000"))
           .build();
 
-  static final ToyAccount callerAccount =
+  final ToyAccount callerAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(3))
           .nonce(69)
           .address(Address.fromHexString("0xCA77E400"))
           .build();
 
-  static final ToyAccount calleeAccount =
+  final ToyAccount calleeAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(4))
           .nonce(90)
           .address(Address.fromHexString("0xCA77EE00"))
           .build();
 
-  static final ToyAccount smcAccount1 =
+  final ToyAccount smcAccount1 =
       ToyAccount.builder()
           .balance(Wei.fromEth(5))
           .nonce(101)
           .address(Address.fromHexString("0xDDCA77E4"))
           .build();
 
-  static final ToyAccount smcAccount2 =
+  final ToyAccount smcAccount2 =
       ToyAccount.builder()
           .balance(Wei.fromEth(6))
           .nonce(666)
