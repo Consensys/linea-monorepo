@@ -9,8 +9,8 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
 import { ETH_SYMBOL } from "@/constants/tokens";
-import useFees from "@/hooks/fees/useFees";
 import { useL1MessageServiceLiquidity } from "@/hooks";
+import useFees from "@/hooks/fees/useFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 import { useUiStore } from "@/stores/uiStore";
@@ -47,12 +47,13 @@ export default function Claiming() {
   const isL2ToL1EthFlow =
     fromChain.layer === ChainLayer.L2 && toChain.layer === ChainLayer.L1 && token.symbol === ETH_SYMBOL;
 
-  const { isLowLiquidity: hasLowL1MessageServiceBalance, isLoading: isLiquidityLoading } =
-    useL1MessageServiceLiquidity({
+  const { isLowLiquidity: hasLowL1MessageServiceBalance, isLoading: isLiquidityLoading } = useL1MessageServiceLiquidity(
+    {
       toChain,
       isL2ToL1Eth: isL2ToL1EthFlow,
       withdrawalAmount: amount ?? 0n,
-    });
+    },
+  );
 
   const liquidityLoading = isLiquidityLoading && !!amount && amount > 0n;
 
