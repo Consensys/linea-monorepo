@@ -303,10 +303,6 @@ describe("NotificationService", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposalWithoutEffectiveRisk]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({
-        ...proposalWithoutEffectiveRisk,
-        notifyAttemptCount: 1,
-      });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.markNotified.mockResolvedValue({
         ...proposalWithoutEffectiveRisk,
