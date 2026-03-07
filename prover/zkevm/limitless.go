@@ -60,7 +60,7 @@ var (
 
 var LimitlessCompilationParams = distributed.CompilationParams{
 	FixedNbRowPlonkCircuit:   1 << 24,
-	FixedNbRowExternalHasher: 1 << 22, // Increased from 1<<22 to handle hash claims
+	FixedNbRowExternalHasher: 1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:       1 << 10,
 	InitialCompilerSize:      1 << 18,
 	InitialCompilerSizeOverride: map[string]int{
@@ -406,7 +406,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 	// This is needed because the outer-circuit will expect the conglomeration
 	// wizard to provide the public-inputs metadata.
-	dw.CompiledConglomeration.RecursionComp.
+	dw.CompiledConglomeration.RecursionCompBLS.
 		ExtraData[publicInput.PublicInputExtractorMetadata] = zkevm.
 		InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 

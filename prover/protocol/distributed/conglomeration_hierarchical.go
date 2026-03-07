@@ -144,14 +144,14 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 	}
 
 	for _, module := range moduleGL {
-		appendLeaf(module.RecursionComp)
+		appendLeaf(module.RecursionCompKoala)
 	}
 
 	for _, module := range moduleLPP {
-		appendLeaf(module.RecursionComp)
+		appendLeaf(module.RecursionCompKoala)
 	}
 
-	appendLeaf(hierAgg.RecursionComp)
+	appendLeaf(hierAgg.RecursionCompKoala)
 
 	// padding with zeroes so that the leaves number if a power-of-two
 	paddedSize := utils.NextPowerOfTwo(len(leaves))
@@ -300,7 +300,7 @@ func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedW
 	}
 
 	comp := wizard.NewCompiledIOP()
-	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
+	conglo.Compile(comp, d.CompiledGLs[0].RecursionCompKoala)
 	d.CompiledConglomeration = CompileSegment(conglo, params)
 	assertCompatibleIOPs(d)
 
@@ -1314,22 +1314,22 @@ func scanFunctionalInputs(comp *wizard.CompiledIOP) []wizard.PublicInput {
 // assertCompatibleIOPs checks that all the compiled IOPs are compatible and
 // can be aggregated within the same conglomeration.
 func assertCompatibleIOPs(d *DistributedWizard) {
-	w0 := d.CompiledConglomeration.RecursionComp
+	w0 := d.CompiledConglomeration.RecursionCompKoala
 
 	for i := range d.CompiledGLs {
-		diff1, diff2 := cmpWizardIOP(w0, d.CompiledGLs[i].RecursionComp)
+		diff1, diff2 := cmpWizardIOP(w0, d.CompiledGLs[i].RecursionCompKoala)
 		if len(diff1) > 0 || len(diff2) > 0 {
 			dumpWizardIOP(w0, "conglomeration-debug/iop-conglo.csv")
-			dumpWizardIOP(d.CompiledGLs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-gl-%d.csv", i))
+			dumpWizardIOP(d.CompiledGLs[i].RecursionCompKoala, fmt.Sprintf("conglomeration-debug/iop-gl-%d.csv", i))
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}
 	}
 
 	for i := range d.CompiledLPPs {
-		diff1, diff2 := cmpWizardIOP(w0, d.CompiledLPPs[i].RecursionComp)
+		diff1, diff2 := cmpWizardIOP(w0, d.CompiledLPPs[i].RecursionCompKoala)
 		if len(diff1) > 0 || len(diff2) > 0 {
 			dumpWizardIOP(w0, "conglomeration-debug/iop-conglomeration.csv")
-			dumpWizardIOP(d.CompiledLPPs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-lpp-%d.csv", i))
+			dumpWizardIOP(d.CompiledLPPs[i].RecursionCompKoala, fmt.Sprintf("conglomeration-debug/iop-lpp-%d.csv", i))
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}
 	}

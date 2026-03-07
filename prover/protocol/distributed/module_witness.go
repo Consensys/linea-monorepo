@@ -59,6 +59,9 @@ type ModuleSegmentationBlueprint struct {
 	// LPPColumnSets stores the list of the columns that are used for the
 	// LPP segments.
 	LPPColumnSets []ifaces.ColID
+	// SplittedPrecomps stores the list of the precomps that are used and bear
+	// the "CompletelyPeriodic" tag.
+	SplittedPrecomps map[ifaces.ColID]smartvectors.SmartVector
 }
 
 // ModuleWitnessGL is a structure collecting the witness of a module. And
