@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"path"
+	"reflect"
 	"runtime"
 	"time"
 
@@ -1147,10 +1148,14 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 
 	defer func() {
 		totalTime := time.Since(t)
+		typeString := "<bare-func>"
+		if proverAction, ok := action.(ProverAction); ok {
+			typeString = reflect.TypeOf(proverAction).String()
+		}
 		if totalTime > 100*time.Millisecond {
-			logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, totalTime)
+			logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v, type=%v", name, totalTime, typeString)
 		} else {
-			logrus.Debugf("[prover runtime] done running prover step. name=%v, time=%v", name, totalTime)
+			logrus.Debugf("[prover runtime] done running prover step. name=%v, time=%v, type=%v", name, totalTime, typeString)
 		}
 	}()
 
