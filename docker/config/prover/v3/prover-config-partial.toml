@@ -10,7 +10,7 @@ retry_delays = [0, 1]
 prover_mode = "dev"
 requests_root_dir = "/data/prover/v3/execution"
 conflated_traces_dir = "/"
-ignoreCompatibilityCheck = true
+ignore_compatibility_check = true
 
 [data_availability]
 prover_mode = "dev"
