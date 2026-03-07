@@ -1,0 +1,54 @@
+name: linea-besu-package-e2e-tests-with-partial-prover
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+
+on:
+  push:
+    branches:
+      - 2537-manual-ci-workflow-e2e-with-partial-prover
+  workflow_dispatch:
+    inputs:
+      linea_besu_package_image_tag:
+        description: 'Target linea-besu-package image tag (i.e. [prefix]-[YYYYMMDDHHMMSS]-[commit]), if not given, would build the linea-besu-package image locally in pipelines'
+        required: false
+        type: string
+        default: ''
+      prover_tag:
+        description: 'Target prover image tag, if not given, would use the "develop" tag'
+        required: false
+        type: string
+        default: ''
+      without_besu_fleet_plugin:
+        description: 'Type "true" to exclude besu-fleet-plugin in the locally bulit linea-besu-package image'
+        required: false
+        type: string
+        default: 'true'
+
+jobs:
+  build-and-upload-artifact:
+    if: ${{ inputs.linea_besu_package_image_tag == '' }}
+    uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
+    with:
+      release_tag_prefix: 'dev'
+      with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
+    secrets: inherit
+  
+  run-e2e-tests:
+    needs: [ build-and-upload-artifact ]
+    if: ${{ always() && !cancelled() }}
+    concurrency:
+      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    uses: ./.github/workflows/reuse-linea-besu-package-run-e2e-tests.yml
+    with:
+      linea_besu_package_tag: ${{ inputs.linea_besu_package_image_tag || needs.build-and-upload-artifact.outputs.linea_besu_package_tag }}
+      prover_tag: ${{ inputs.prover_tag }}
+      use_local_linea_besu_package_image: ${{ inputs.linea_besu_package_image_tag == '' }}
+      run_e2e_tests_for_partial_prover: true
+      runner_machine: gha-runner-scale-set-ubuntu-24-amd64-xxl
+      e2e-tests-logs-dump: true
+      e2e-tests-with-besu-fleet: ${{ inputs.without_besu_fleet_plugin != '' && inputs.without_besu_fleet_plugin != 'true' }}
+    secrets: inherit
