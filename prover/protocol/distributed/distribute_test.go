@@ -29,11 +29,11 @@ const (
 // Note: ColumnProfileMPTS is left nil to avoid profile size constraints during testing
 var testCompilationParams = distributed.CompilationParams{
 	FixedNbRowPlonkCircuit:       1 << 24,
-	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
+	FixedNbRowExternalHasher:     1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
-	InitialCompilerSizeConglo:    1 << 21,
-	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+	InitialCompilerSizeConglo:    1 << 18,
+	ColumnProfileMPTS:            []int{264, 1400, 300, 15, 15, 28, 4, 4},
 	ColumnProfileMPTSPrecomputed: 45,
 	FullDebugMode:                false,
 }
@@ -79,7 +79,7 @@ func TestCompileOneSegment(t *testing.T) {
 		defFunc = func(build *wizard.Builder) { tc.Define(build.CompiledIOP) }
 		wiop    = wizard.Compile(defFunc)
 		disc    = &distributed.StandardModuleDiscoverer{
-			TargetWeight: NbRow,
+			TargetWeight: 1 << NbRow,
 			Advices:      tc.Advices(),
 		}
 		distWizard = distributed.DistributeWizard(wiop, disc)
@@ -102,7 +102,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		defFunc = func(build *wizard.Builder) { tc.Define(build.CompiledIOP) }
 		wiop    = wizard.Compile(defFunc)
 		disc    = &distributed.StandardModuleDiscoverer{
-			TargetWeight: NbRow,
+			TargetWeight: 1 << NbRow,
 			Advices:      tc.Advices(),
 		}
 		distWizard *distributed.DistributedWizard
