@@ -191,11 +191,7 @@ var (
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("final-compiler-step-2"),
 		),
-		vortex.Compile(
-			16, true,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithOptionalSISHashingThreshold(1<<20),
-		),
+		vortex.Compile(16, true, vortex.ForceNumOpenedColumns(64)),
 	}
 )
 
