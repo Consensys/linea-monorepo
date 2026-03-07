@@ -127,12 +127,9 @@ func TreeAggregationFinalCompilationSuite() CompilationSuite {
 		),
 		// Final vortex round: IsLastRound=true since this will be wrapped
 		// in BN254 rather than further recursed in KoalaBear.
-		// 32 opened columns (not 64) keeps gnark constraints within the
-		// BN254 PLONK limit: GnarkCheckLinComb and BN254 Merkle verification
-		// both scale linearly with the column count.
 		vortex.Compile(
 			16, true,
-			vortex.ForceNumOpenedColumns(32),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
 	}

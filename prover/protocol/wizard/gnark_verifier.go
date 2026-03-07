@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	gnarkprofile "github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -140,6 +141,20 @@ type VerifierCircuit struct {
 
 	// NumRound is the last round of the proof.
 	NumRound int
+
+	// ActionProfiler, if non-nil, is called after each SubVerifier step with
+	// the step's type name and the number of BN254 constraints it added.
+	// This is intended for profiling/investigation only.
+	ActionProfiler func(round int, stepType string, delta int) `gnark:"-"`
+
+	// CoinRoundProfiler, if non-nil, is called after each GenerateCoinsForRound
+	// call with the round index and the number of BN254 constraints it added.
+	CoinRoundProfiler func(round int, delta int) `gnark:"-"`
+
+	// FSInitProfiler, if non-nil, is called once after the initial
+	// c.KoalaFS.Update(zkWV[:]...) call with the number of BN254 constraints
+	// it added. This captures the cost of absorbing the FiatShamirSetup value.
+	FSInitProfiler func(delta int) `gnark:"-"`
 }
 
 // newVerifierCircuit creates an empty wizard verifier circuit.
@@ -357,7 +372,14 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		zkWV[i] = koalagnark.NewElementFromKoala(c.Spec.FiatShamirSetup[i])
 	}
 
-	c.KoalaFS.Update(zkWV[:]...)
+	if c.FSInitProfiler != nil {
+		p := gnarkprofile.Start(gnarkprofile.WithNoOutput())
+		c.KoalaFS.Update(zkWV[:]...)
+		p.Stop()
+		c.FSInitProfiler(p.NbConstraints())
+	} else {
+		c.KoalaFS.Update(zkWV[:]...)
+	}
 
 	// If the compiled IOP has been fully captured by a PlonkInWizard circuit,
 	// skip all SubVerifier gnark steps. The PlonkInWizard proof already
@@ -370,17 +392,32 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 				break
 			}
 
-			c.GenerateCoinsForRound(api, round)
+			if c.CoinRoundProfiler != nil {
+				p := gnarkprofile.Start(gnarkprofile.WithNoOutput())
+				c.GenerateCoinsForRound(api, round)
+				p.Stop()
+				c.CoinRoundProfiler(round, p.NbConstraints())
+			} else {
+				c.GenerateCoinsForRound(api, round)
+			}
 
 			for _, step := range roundSteps {
 				if skippable, ok := step.(GnarkSkippableAction); ok && skippable.IsGnarkSkipped() {
 					continue
 				}
-				step.RunGnark(api, c)
+				if c.ActionProfiler != nil {
+					p := gnarkprofile.Start(gnarkprofile.WithNoOutput())
+					step.RunGnark(api, c)
+					p.Stop()
+					c.ActionProfiler(round, fmt.Sprintf("%T", step), p.NbConstraints())
+				} else {
+					step.RunGnark(api, c)
+				}
 			}
 		}
 	}
 }
+
 
 // GenerateCoinsForRound runs the FS coin generator for round=currRound,
 // it will update the FS state with the assets of currRound-1 and then

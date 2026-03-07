@@ -3,9 +3,13 @@ package finalwrap
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -70,13 +74,18 @@ type realisticWizardParams struct {
 	NumRow          int
 }
 
+// defaultRealisticParams matches the "realistic-segment" case from
+// BenchmarkCompilerWithSelfRecursionAndGnarkVerifier in standard_benchmark_test.go:
+// 5 permutations, 50 lookups, 5 projections, 200 fibonacci cols, NumCol=3.
+// NumRow=1<<16 equals targetColSize so Arcane produces one sub-column per raw column
+// (no splitting needed). This is 16× more data than the old 1<<14 default.
 var defaultRealisticParams = realisticWizardParams{
-	NumPermutations: 1,
-	NumLookups:      5,
-	NumProjections:  1,
-	NumFibo:         10,
-	NumCol:          2,
-	NumRow:          1 << 14,
+	NumPermutations: 5,
+	NumLookups:      50,
+	NumProjections:  5,
+	NumFibo:         200,
+	NumCol:          3,
+	NumRow:          1 << 16,
 }
 
 // realisticWizardDefine defines a wizard IOP with multiple module types
@@ -345,19 +354,16 @@ func TestFinalWrapEndToEnd(t *testing.T) {
 // recursion.DefineRecursionOf at the tree level.
 func realisticLeafCompile(p realisticWizardParams) *wizard.CompiledIOP {
 	const (
-		rsInverseRate    = 16
-		nbOpenedColumns  = 64
-		targetColSize    = 1 << 16
-		// normTotalColumns pins the Merkle tree depth to log2(64)=6 regardless
-		// of how many polynomial columns the wizard circuit happens to produce.
-		// Without this, two leaves from circuits of different sizes would have
-		// different Merkle depths, making the tree-aggregation verification
-		// circuit non-uniform and breaking the "one fixed circuit per level"
-		// property.  Any N ≥ actual CommittedRowsCount works; 64 matches the
-		// current count (52 → NextPowerOfTwo → 64) and is the minimum safe value
-		// for this test circuit.  Production leaf suites need an analogous
-		// ForceNumTotalColumns sized to their actual column budget.
-		normTotalColumns = 64
+		rsInverseRate   = 16
+		nbOpenedColumns = 64
+		targetColSize   = 1 << 16
+		// normTotalColumns ensures CommittedRowsCount is padded to a fixed value
+		// so all leaves produce Vortex opened columns of the same size.
+		// With the realistic-segment params (5 perms, 50 lookups, 5 projs, 200 fibo,
+		// NumCol=3, NumRow=1<<16) there are ~570 raw columns → ~850 after compilation
+		// → NextPowerOfTwo(850)=1024. Use 2048 to match the inner-node normalization
+		// in TreeAggregationCompilationSuite (ForceNumTotalColumns(2048)).
+		normTotalColumns = 2048
 	)
 
 	return wizard.Compile(
@@ -391,7 +397,7 @@ func TestConstraintsVsDepth(t *testing.T) {
 	leafComp := realisticLeafCompile(params)
 	t.Logf("Leaf wizard compiled: %d rounds", leafComp.NumRounds())
 
-	for depth := 1; depth <= 3; depth++ {
+	for depth := 1; depth <= 5; depth++ {
 		t.Run(fmt.Sprintf("depth=%d", depth), func(t *testing.T) {
 			t.Logf("Compiling tree aggregation depth=%d...", depth)
 			treeAgg := tree.CompileTreeAggregation(leafComp, depth)
@@ -401,6 +407,98 @@ func TestConstraintsVsDepth(t *testing.T) {
 			require.NoError(t, err, "BN254 wrap circuit should compile at depth=%d", depth)
 			t.Logf("depth=%d => %d BN254 constraints", depth, ccs.GetNbConstraints())
 		})
+	}
+}
+
+// TestProfileConstraintsByAction profiles the BN254 constraint count broken
+// down by SubVerifier action type, coin round, FS init, and PI digest.
+// Uses depth=2 tree aggregation.
+// Run with: go test -run TestProfileConstraintsByAction -v
+func TestProfileConstraintsByAction(t *testing.T) {
+	params := defaultRealisticParams
+	t.Log("Compiling leaf wizard...")
+	leafComp := realisticLeafCompile(params)
+	t.Log("Compiling depth=2 tree aggregation...")
+	treeAgg := tree.CompileTreeAggregation(leafComp, 2)
+	rootComp := treeAgg.RootCompiledIOP()
+
+	// Build circuit with all profilers attached.
+	circuit := Allocate(rootComp)
+
+	// Track SubVerifier actions
+	actionCounts := map[string]int{}
+	circuit.WizardVerifier.ActionProfiler = func(round int, stepType string, delta int) {
+		actionCounts[stepType] += delta
+	}
+
+	// Track GenerateCoinsForRound per round
+	coinRoundCounts := map[int]int{}
+	circuit.WizardVerifier.CoinRoundProfiler = func(round int, delta int) {
+		coinRoundCounts[round] += delta
+	}
+
+	// Track FS init cost
+	var fsInitCount int
+	circuit.WizardVerifier.FSInitProfiler = func(delta int) {
+		fsInitCount = delta
+	}
+
+	// Track computePIDigest cost
+	var piDigestCount int
+	circuit.PIDigestProfiler = func(delta int) {
+		piDigestCount = delta
+	}
+
+	t.Log("Compiling BN254 circuit with profilers...")
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, circuit)
+	if err != nil {
+		t.Fatalf("compile error: %v", err)
+	}
+	total := ccs.GetNbConstraints()
+
+	// --- SubVerifier action breakdown ---
+	type entry struct {
+		name  string
+		count int
+	}
+	var actionRows []entry
+	actionTotal := 0
+	for k, v := range actionCounts {
+		actionRows = append(actionRows, entry{k, v})
+		actionTotal += v
+	}
+	sort.Slice(actionRows, func(i, j int) bool { return actionRows[i].count > actionRows[j].count })
+
+	// --- Coin round breakdown ---
+	coinTotal := 0
+	var coinRounds []int
+	for r := range coinRoundCounts {
+		coinRounds = append(coinRounds, r)
+		coinTotal += coinRoundCounts[r]
+	}
+	sort.Ints(coinRounds)
+
+	// --- Summary ---
+	knownTotal := actionTotal + coinTotal + fsInitCount + piDigestCount
+	unknownTotal := total - knownTotal
+
+	t.Logf("Total BN254 constraints: %d", total)
+	t.Log("═══════════════════════════════════════════════════════════════════")
+	t.Logf("  FS init (FiatShamirSetup absorb):  %12d  (%5.1f%%)", fsInitCount, 100*float64(fsInitCount)/float64(total))
+	t.Logf("  GenerateCoinsForRound (all rounds): %12d  (%5.1f%%)", coinTotal, 100*float64(coinTotal)/float64(total))
+	for _, r := range coinRounds {
+		c := coinRoundCounts[r]
+		t.Logf("    round %-3d: %12d  (%5.1f%%)", r, c, 100*float64(c)/float64(total))
+	}
+	t.Logf("  SubVerifier actions total:          %12d  (%5.1f%%)", actionTotal, 100*float64(actionTotal)/float64(total))
+	t.Logf("  computePIDigest:                    %12d  (%5.1f%%)", piDigestCount, 100*float64(piDigestCount)/float64(total))
+	t.Logf("  Untracked (AssertIsEqual etc.):     %12d  (%5.1f%%)", unknownTotal, 100*float64(unknownTotal)/float64(total))
+	t.Log("───────────────────────────────────────────────────────────────────")
+	t.Log("SubVerifier action breakdown:")
+	t.Logf("  %-60s %12s  %6s", "Action type", "Constraints", "%total")
+	t.Log("  " + fmt.Sprintf("%s", "─────────────────────────────────────────────────────────────────"))
+	for _, r := range actionRows {
+		t.Logf("  %-60s %12d  %5.1f%%", r.name, r.count, 100*float64(r.count)/float64(total))
 	}
 }
 
@@ -467,4 +565,71 @@ func TestAggregateFinalWrapEndToEnd(t *testing.T) {
 	require.NotNil(t, proof)
 
 	t.Log("BN254 aggregate final wrap proof (N=2) generated and verified successfully")
+}
+
+// TestAggregateFinalWrapEndToEndDepth2 tests the full tree-aggregation pipeline for N=4:
+//
+//	4 leaf wizard proofs
+//	  → tree.CompileTreeAggregation(depth=2): 2 aggregation levels
+//	    → 1 root proof (IsLastRound=true)
+//	      → BN254 PLONK final wrap (L1)
+//
+// This validates that depth=2 still produces a valid proof and measures
+// whether constraint count is O(1) vs depth (compared to depth=1 above).
+func TestAggregateFinalWrapEndToEndDepth2(t *testing.T) {
+	params := defaultRealisticParams
+	srsProvider := circuits.NewUnsafeSRSProvider()
+
+	// Step 1: compile the leaf wizard
+	t.Log("Compiling leaf wizard (PremarkAsSelfRecursed)...")
+	leafComp := realisticLeafCompile(params)
+	t.Logf("Leaf wizard compiled: %d rounds", leafComp.NumRounds())
+
+	// Step 2: compile tree aggregation depth=2 (2 levels, verifies 4 leaf proofs)
+	t.Log("Compiling tree aggregation (depth=2 for N=4)...")
+	treeAgg := tree.CompileTreeAggregation(leafComp, 2)
+	t.Logf("Tree compiled: depth=%d, root rounds=%d", treeAgg.Depth(), treeAgg.RootCompiledIOP().NumRounds())
+
+	// Step 3: compile final wrap circuit and log constraint count
+	t.Log("Compiling BN254 final wrap circuit...")
+	ccs, err := MakeCS(treeAgg.RootCompiledIOP())
+	require.NoError(t, err, "final wrap circuit should compile at depth=2")
+	t.Logf("Final wrap circuit (depth=2): %d constraints", ccs.GetNbConstraints())
+
+	// Step 4: generate 4 leaf witnesses
+	t.Log("Generating 4 leaf witnesses...")
+	stoppingRound := recursion.VortexQueryRound(leafComp) + 1
+	wits := make([]recursion.Witness, 4)
+	for i := range wits {
+		run := wizard.RunProverUntilRound(leafComp, realisticWizardAssign(params), stoppingRound)
+		wits[i] = recursion.ExtractWitness(run)
+	}
+
+	// Step 5: prove the tree
+	t.Log("Proving tree aggregation (N=4, depth=2)...")
+	rootProof, err := treeAgg.ProveTree(wits)
+	require.NoError(t, err, "tree proving should succeed at depth=2")
+
+	err = wizard.Verify(treeAgg.RootCompiledIOP(), rootProof)
+	require.NoError(t, err, "root proof should verify at depth=2")
+	t.Log("Root proof verified OK (depth=2)")
+
+	// Step 6: PLONK setup + prove + verify
+	t.Log("Creating PLONK setup (BN254, depth=2)...")
+	setup, err := circuits.MakeSetup(
+		context.Background(),
+		circuits.FinalWrapCircuitID,
+		ccs,
+		srsProvider,
+		nil,
+	)
+	require.NoError(t, err, "PLONK setup should succeed at depth=2")
+
+	t.Log("Generating BN254 PLONK proof (depth=2)...")
+	var publicInput frBn254.Element
+	proof, err := MakeProof(&setup, treeAgg.RootCompiledIOP(), rootProof, publicInput)
+	require.NoError(t, err, "BN254 aggregate final wrap proof should succeed at depth=2")
+	require.NotNil(t, proof)
+
+	t.Log("BN254 aggregate final wrap proof (N=4, depth=2) generated and verified successfully")
 }

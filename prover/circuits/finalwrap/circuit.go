@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gnarkprofile "github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,6 +38,10 @@ type FinalWrapCircuit struct {
 	// It is the hash of the aggregated functional public inputs, fitting
 	// within the BN254 scalar field.
 	PublicInput frontend.Variable `gnark:",public"`
+
+	// PIDigestProfiler, if non-nil, is called after computePIDigest with
+	// the number of BN254 constraints it added. Profiling only.
+	PIDigestProfiler func(delta int) `gnark:"-"`
 }
 
 // Define implements frontend.Circuit. It verifies the KoalaBear wizard proof
@@ -51,7 +56,15 @@ func (c *FinalWrapCircuit) Define(api frontend.API) error {
 	// Extract the wizard's public inputs and verify consistency with
 	// the BN254 public input.
 	koalaAPI := koalagnark.NewAPI(api)
-	piDigest := computePIDigest(api, koalaAPI, &c.WizardVerifier)
+	var piDigest frontend.Variable
+	if c.PIDigestProfiler != nil {
+		p := gnarkprofile.Start(gnarkprofile.WithNoOutput())
+		piDigest = computePIDigest(api, koalaAPI, &c.WizardVerifier)
+		p.Stop()
+		c.PIDigestProfiler(p.NbConstraints())
+	} else {
+		piDigest = computePIDigest(api, koalaAPI, &c.WizardVerifier)
+	}
 	api.AssertIsEqual(piDigest, c.PublicInput)
 
 	return nil
