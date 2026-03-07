@@ -545,6 +545,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 		NextN0SelectorConsts:     make([][]field.Element, numHornerPart),
 		NextN0SelectorConstSizes: make([][]int, numHornerPart),
 		LPPColumnSets:            []ifaces.ColID{},
+		SplittedPrecomps:         make(map[ifaces.ColID]smartvectors.SmartVector),
 	}
 
 	res.LPPColumnSets = make([]ifaces.ColID, len(moduleLPP.DefinitionInput.ColumnsLPP))
@@ -581,8 +582,14 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 			// Expectedly, at this point. The column must be a natural column. We can't support
 			// shifted selector columns.
-			if _, ok := selCol.(column.Natural); !ok {
+			nat, ok := selCol.(column.Natural)
+			if !ok {
 				utils.Panic("this is not a column.Natural: %v (%T)", selCol, selCol)
+			}
+
+			if nat.Status().IsOffline() {
+				val := moduleLPP.Wiop.Precomputed.MustGet(nat.GetColID())
+				res.SplittedPrecomps[nat.GetColID()] = val
 			}
 		}
 	}
@@ -622,8 +629,17 @@ func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) [
 				utils.Panic("the selector column has non-binary values: %v", selColConst.String())
 			}
 
-			selSV, ok := mw.Columns[selColID]
-			if !ok {
+			var selSV smartvectors.SmartVector
+
+			if data, ok := blueprintLPP.SplittedPrecomps[selColID]; ok {
+				selSV = data
+			}
+
+			if data, ok := mw.Columns[selColID]; ok {
+				selSV = data
+			}
+
+			if selSV == nil {
 				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v, segment-index: %v", selColID, mw.ModuleName, mw.ModuleIndex, mw.SegmentModuleIndex)
 			}
 
