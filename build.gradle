@@ -268,31 +268,6 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
   }
 }
 
-def besuCommit = libs.versions.besuCommit.get()
-def besuCommitShort = besuCommit.take(7)
-def checkoutAndResolveVersionScript = """
-    set -e
-    BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
-    BESU_COMMIT='${besuCommit}'
-    SHORT_COMMIT='${besuCommitShort}'
-    if [ ! -d "\$BESU_DIR/.git" ]; then
-      echo "Cloning https://github.com/hyperledger/besu into \$BESU_DIR"
-      mkdir -p "\$(dirname "\$BESU_DIR")"
-      git clone --no-checkout https://github.com/hyperledger/besu.git "\$BESU_DIR"
-      cd "\$BESU_DIR" && git checkout "\$BESU_COMMIT"
-    else
-      (cd "\$BESU_DIR" && git reset --hard && git fetch origin && git checkout "\$BESU_COMMIT")
-    fi
-    BASE_TAG=\$(cd "\$BESU_DIR" && git describe --tags --abbrev=0 "\$BESU_COMMIT" 2>/dev/null || true)
-    if [ -n "\$BASE_TAG" ]; then
-      BESU_VERSION="\${BASE_TAG}-linea-\${SHORT_COMMIT}"
-    else
-      BESU_VERSION="0.0.0-linea-\${SHORT_COMMIT}"
-    fi
-    echo "Resolved besuVersion: \$BESU_VERSION"
-    echo "\$BESU_VERSION"
-"""
-
 tasks.register('checkoutAndResolveVersion') {
   group = 'Build'
   description = 'Clone/fetch hyperledger/besu at besuCommit and resolve besu version = latest release tag + "-" + 7-char commit'
@@ -300,7 +275,9 @@ tasks.register('checkoutAndResolveVersion') {
     def outputStream = new ByteArrayOutputStream()
     exec {
       workingDir = rootProject.layout.projectDirectory.asFile
-      commandLine 'bash', '-c', checkoutAndResolveVersionScript
+      environment 'BESU_DIR', "${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu"
+      environment 'BESU_COMMIT', libs.versions.besuCommit.get()
+      commandLine 'bash', "${rootProject.layout.projectDirectory.asFile.absolutePath}/linea-besu/scripts/checkout-and-resolve-version.sh"
       standardOutput = outputStream
     }
     def resolvedBesuVer = outputStream.toString().trim().readLines().last()
