@@ -35,7 +35,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air --field=KOALABEAR_16
-          JUNIT_TESTS_PARALLELISM: 4
+          JUNIT_TESTS_PARALLELISM: 8
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
       - name: Upload test report

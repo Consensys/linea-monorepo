@@ -98,7 +98,7 @@ jobs:
         run: GOMEMLIMIT=26GiB ./gradlew :tracer:arithmetization:fastReplayTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          JUNIT_TESTS_PARALLELISM: 4
+          JUNIT_TESTS_PARALLELISM: 8
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air --field=KOALABEAR_16
 
       - name: Upload test report
