@@ -1,20 +1,15 @@
-import { Provider, DefaultGasProvider, Direction, wait } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
 import { mock } from "jest-mock-extended";
 
+import { IEthereumGasProvider } from "../../../core/clients/blockchain/IGasProvider";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
-import {
-  DEFAULT_GAS_ESTIMATION_PERCENTILE,
-  DEFAULT_INITIAL_FROM_BLOCK,
-  DEFAULT_LISTENER_INTERVAL,
-  DEFAULT_MAX_FEE_PER_GAS_CAP,
-} from "../../../core/constants";
-import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
+import { DEFAULT_INITIAL_FROM_BLOCK, DEFAULT_LISTENER_INTERVAL } from "../../../core/constants";
+import { Direction, DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { DatabaseAccessError } from "../../../core/errors";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { IMessageSentEventProcessor } from "../../../core/services/processors/IMessageSentEventProcessor";
+import { wait } from "../../../core/utils/shared";
 import { rejectedMessageProps, testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
@@ -25,16 +20,12 @@ describe("TestMessageSentEventPoller", () => {
   let databaseService: EthereumMessageDBService;
 
   const eventProcessorMock = mock<IMessageSentEventProcessor>();
-  const provider = mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, Provider>>();
+  const provider = mock<IProvider>();
   const logger = new TestLogger(MessageSentEventPoller.name);
 
   beforeEach(() => {
-    const gasProvider = new DefaultGasProvider(provider, {
-      maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
-      gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
-      enforceMaxGasFee: false,
-    });
-    databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository<unknown>>());
+    const gasProvider = mock<IEthereumGasProvider>();
+    databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository>());
     testMessageSentEventPoller = new MessageSentEventPoller(
       eventProcessorMock,
       provider,

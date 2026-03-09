@@ -1,12 +1,3 @@
-import {
-  ContractTransactionResponse,
-  ErrorDescription,
-  Overrides,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
-
 import { ILineaRollupClient } from "../core/clients/blockchain/ethereum/ILineaRollupClient";
 import { IEthereumGasProvider } from "../core/clients/blockchain/IGasProvider";
 import { PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
@@ -26,14 +17,8 @@ export class EthereumTransactionValidationService implements ITransactionValidat
    * @param {TransactionValidationServiceConfig} config - Configuration settings for the transaction validation service, including profit margin and maximum gas limit.
    */
   constructor(
-    private readonly lineaRollupClient: ILineaRollupClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
-    private readonly gasProvider: IEthereumGasProvider<TransactionRequest>,
+    private readonly lineaRollupClient: ILineaRollupClient,
+    private readonly gasProvider: IEthereumGasProvider,
     private readonly config: TransactionValidationServiceConfig,
     private readonly logger: IPostmanLogger,
   ) {}

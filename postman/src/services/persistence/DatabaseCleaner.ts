@@ -1,18 +1,11 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { ContractTransactionResponse } from "ethers";
 
 import { IDatabaseCleaner } from "../../core/persistence/IDatabaseCleaner";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 
 export class DatabaseCleaner implements IDatabaseCleaner {
-  /**
-   * Constructs a new instance of the `DatabaseCleaner`.
-   *
-   * @param {IMessageDBService<ContractTransactionResponse>} databaseService - An instance of a MessageDBService that provides access to message storage and operations.
-   * @param {ILogger} logger - An instance of a logger for logging information and errors during the cleanup process.
-   */
   constructor(
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
+    private readonly databaseService: IMessageDBService,
     private readonly logger: ILogger,
   ) {}
 

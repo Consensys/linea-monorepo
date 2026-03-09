@@ -1,8 +1,7 @@
-import { Direction } from "@consensys/linea-sdk";
 import { IMetricsService } from "@consensys/linea-shared-utils";
 import { EntityManager } from "typeorm";
 
-import { MessageStatus } from "../../../../core/enums";
+import { Direction, MessageStatus } from "../../../../core/enums";
 import { IMessageMetricsUpdater, LineaPostmanMetrics, MessagesMetricsAttributes } from "../../../../core/metrics";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
 

@@ -1,20 +1,12 @@
-import { Direction, wait } from "@consensys/linea-sdk";
-import {
-  Block,
-  ContractTransactionResponse,
-  JsonRpcProvider,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
-
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { Message } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { DatabaseAccessError } from "../../core/errors/DatabaseErrors";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IPoller } from "../../core/services/pollers/IPoller";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
+import { wait } from "../../core/utils/shared";
 import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 type MessageSentEventPollerConfig = {
@@ -38,14 +30,8 @@ export class MessageSentEventPoller implements IPoller {
    */
   constructor(
     private readonly eventProcessor: IMessageSentEventProcessor,
-    private readonly provider: IProvider<
-      TransactionReceipt,
-      Block,
-      TransactionRequest,
-      TransactionResponse,
-      JsonRpcProvider
-    >,
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
+    private readonly provider: IProvider,
+    private readonly databaseService: IMessageDBService,
     private readonly config: MessageSentEventPollerConfig,
     private readonly logger: IPostmanLogger,
   ) {}

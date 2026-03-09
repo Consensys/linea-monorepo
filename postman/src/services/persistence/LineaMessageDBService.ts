@@ -1,19 +1,17 @@
-import { Direction } from "@consensys/linea-sdk";
-import { ContractTransactionResponse } from "ethers";
-
 import { MessageDBService } from "./MessageDBService";
 import { Message } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 
-export class LineaMessageDBService extends MessageDBService implements IMessageDBService<ContractTransactionResponse> {
+export class LineaMessageDBService extends MessageDBService implements IMessageDBService {
   /**
    * Creates an instance of `LineaMessageDBService`.
    *
    * @param {IMessageRepository} messageRepository - The message repository for interacting with the message database.
    */
-  constructor(messageRepository: IMessageRepository<ContractTransactionResponse>) {
+  constructor(messageRepository: IMessageRepository) {
     super(messageRepository);
   }
 

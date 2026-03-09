@@ -1,54 +1,37 @@
-import { OnChainMessageStatus } from "@consensys/linea-sdk";
-import {
-  Overrides,
-  TransactionResponse,
-  ContractTransactionResponse,
-  TransactionReceipt,
-  Signer,
-  ErrorDescription,
-} from "ethers";
-
 import { Message } from "../../core/entities/Message";
-import { MessageStatus } from "../../core/enums";
+import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
+import { IErrorParser } from "../../core/errors/IErrorParser";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { INonceManager } from "../../core/services/INonceManager";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
 import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
-import { ErrorParser } from "../../utils/ErrorParser";
 import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
-  private readonly maxNonceDiff: number;
-
   /**
    * Initializes a new instance of the `MessageClaimingProcessor`.
    *
    * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
-   * @param {Signer} signer - An instance of a class implementing the `Signer` interface, used to query blockchain data.
+   * @param {INonceManager} nonceManager - An instance of a class implementing the `INonceManager` interface, used to acquire and release nonces for claiming transactions.
    * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {ITransactionValidationService} transactionValidationService - An instance of a class implementing the `ITransactionValidationService` interface, used for validating transactions.
+   * @param {IErrorParser} errorParser - An instance of a class implementing the `IErrorParser` interface, used to parse errors and determine retryability.
    * @param {MessageClaimingProcessorConfig} config - Configuration for network-specific settings, including transaction submission timeout, maximum transaction retries, and gas limit.
    * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages.
    */
   constructor(
-    private readonly messageServiceContract: IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
-    private readonly signer: Signer,
-    private readonly databaseService: IMessageDBService<TransactionResponse>,
+    private readonly messageServiceContract: IMessageServiceContract,
+    private readonly nonceManager: INonceManager,
+    private readonly databaseService: IMessageDBService,
     private readonly transactionValidationService: ITransactionValidationService,
+    private readonly errorParser: IErrorParser,
     private readonly config: MessageClaimingProcessorConfig,
     private readonly logger: IPostmanLogger,
-  ) {
-    this.maxNonceDiff = Math.max(config.maxNonceDiff, 0);
-  }
+  ) {}
 
   /**
    * Identifies the next message eligible for claiming and attempts to execute the claim transaction. It considers various factors such as gas estimation, profit margin, and rate limits to decide whether to proceed with the claim.
@@ -57,12 +40,12 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    */
   public async process(): Promise<void> {
     let nextMessageToClaim: Message | null = null;
+    let nonce: number | null = null;
 
     try {
-      const nonce = await this.getNonce();
+      nonce = await this.nonceManager.acquireNonce();
 
-      if (!nonce && nonce !== 0) {
-        this.logger.error("Nonce returned from getNonce is an invalid value (e.g. null or undefined)");
+      if (nonce === null) {
         return;
       }
 
@@ -128,47 +111,11 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         claimTxFees.maxPriorityFeePerGas,
         claimTxFees.maxFeePerGas,
       );
+      this.nonceManager.releaseNonce(nonce, "");
     } catch (e) {
+      if (nonce !== null) this.nonceManager.reportFailure(nonce);
       await this.handleProcessingError(e, nextMessageToClaim);
     }
-  }
-
-  /**
-   * Retrieves the current nonce for the claiming transactions, ensuring it is within an acceptable range compared to the last recorded nonce.
-   *
-   * @returns {Promise<number | null>} The nonce to use for the next transaction, or null if the nonce difference exceeds the configured maximum.
-   */
-  private async getNonce(): Promise<number | null> {
-    const [lastTxNonce, onChainNonce] = await Promise.all([
-      this.databaseService.getLastClaimTxNonce(this.config.direction),
-      this.signer.getNonce(),
-    ]);
-
-    if (lastTxNonce === null) {
-      return onChainNonce;
-    }
-
-    if (lastTxNonce - onChainNonce > this.maxNonceDiff) {
-      this.logger.warn(
-        "Last recorded nonce in db is higher than the latest nonce from blockchain and exceeds the diff limit, paused the claim message process now: nonceInDb=%s nonceOnChain=%s maxAllowedNonceDiff=%s",
-        lastTxNonce,
-        onChainNonce,
-        this.maxNonceDiff,
-      );
-      return null;
-    }
-
-    const computedNonce = Math.max(onChainNonce, lastTxNonce + 1);
-
-    this.logger.debug(
-      "Nonce computation: direction=%s lastTxNonce=%s onChainNonce=%s computedNonce=%s",
-      this.config.direction,
-      lastTxNonce,
-      onChainNonce,
-      computedNonce,
-    );
-
-    return computedNonce;
   }
 
   /**
@@ -246,6 +193,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     }
     return false;
   }
+
   /**
    * Handles underpriced messages, updating their status and logging a warning.
    *
@@ -306,9 +254,9 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @returns {Promise<void>} A promise that resolves when the error has been handled.
    */
   private async handleProcessingError(e: unknown, message: Message | null): Promise<void> {
-    const parsedError = ErrorParser.parseErrorWithMitigation(e);
+    const parsedError = this.errorParser.parse(e);
 
-    if (parsedError?.mitigation && !parsedError.mitigation.shouldRetry && message) {
+    if (!parsedError.retryable && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.databaseService.updateMessage(message);
     }

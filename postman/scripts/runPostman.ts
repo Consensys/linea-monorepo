@@ -1,12 +1,12 @@
 import * as dotenv from "dotenv";
 import { transports } from "winston";
 
-import { PostmanServiceClient } from "../src/application/postman/app/PostmanServiceClient";
+import { PostmanApp } from "../src/application/postman/app/PostmanApp";
 
 dotenv.config();
 
 async function main() {
-  const client = new PostmanServiceClient({
+  const client = new PostmanApp({
     l1Options: {
       rpcUrl: process.env.L1_RPC_URL ?? "",
       messageServiceContractAddress: process.env.L1_CONTRACT_ADDRESS ?? "",
@@ -49,7 +49,10 @@ async function main() {
           : {}),
       },
       claiming: {
-        signerPrivateKey: process.env.L1_SIGNER_PRIVATE_KEY ?? "",
+        signer: {
+          type: "private-key" as const,
+          privateKey: (process.env.L1_SIGNER_PRIVATE_KEY ?? "0x") as `0x${string}`,
+        },
         messageSubmissionTimeout: process.env.MESSAGE_SUBMISSION_TIMEOUT
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
@@ -115,7 +118,10 @@ async function main() {
           : {}),
       },
       claiming: {
-        signerPrivateKey: process.env.L2_SIGNER_PRIVATE_KEY ?? "",
+        signer: {
+          type: "private-key" as const,
+          privateKey: (process.env.L2_SIGNER_PRIVATE_KEY ?? "0x") as `0x${string}`,
+        },
         messageSubmissionTimeout: process.env.MESSAGE_SUBMISSION_TIMEOUT
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
@@ -174,8 +180,7 @@ async function main() {
       port: process.env.API_PORT ? parseInt(process.env.API_PORT) : undefined,
     },
   });
-  await client.connectServices();
-  client.startAllServices();
+  await client.start();
 }
 
 main()

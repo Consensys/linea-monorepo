@@ -1,47 +1,50 @@
-import { Direction, OnChainMessageStatus, testingHelpers } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import {
-  Block,
-  ContractTransactionResponse,
-  ErrorDescription,
-  JsonRpcProvider,
-  Overrides,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
 import { mock } from "jest-mock-extended";
 
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../../src/core/metrics";
-import { IGasProvider } from "../../../core/clients/blockchain/IGasProvider";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { Message } from "../../../core/entities/Message";
-import { MessageStatus } from "../../../core/enums";
+import { Direction, OnChainMessageStatus, MessageStatus } from "../../../core/enums";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import { IMessageClaimingPersister } from "../../../core/services/processors/IMessageClaimingPersister";
-import { testL2NetworkConfig, testPendingMessage, testPendingMessage2 } from "../../../utils/testing/constants";
+import { TransactionReceipt, TransactionSubmission } from "../../../core/types";
+import {
+  TEST_TRANSACTION_HASH,
+  testL2NetworkConfig,
+  testPendingMessage,
+  testPendingMessage2,
+} from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
+
+const generateTransactionReceipt = (overrides: Partial<TransactionReceipt> = {}): TransactionReceipt => ({
+  hash: TEST_TRANSACTION_HASH,
+  blockNumber: 100,
+  status: "success",
+  gasUsed: 50_000n,
+  gasPrice: 100_000_000_000n,
+  logs: [],
+  ...overrides,
+});
+
+const generateTransactionSubmission = (overrides: Partial<TransactionSubmission> = {}): TransactionSubmission => ({
+  hash: TEST_TRANSACTION_HASH,
+  nonce: 1,
+  gasLimit: 50_000n,
+  maxFeePerGas: 100_000_000_000n,
+  maxPriorityFeePerGas: 1_000_000_000n,
+  ...overrides,
+});
 
 describe("TestMessageClaimingPersister ", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
   let mockedDate: Date;
   const databaseService = mock<EthereumMessageDBService>();
-  const l2MessageServiceContractMock = mock<
-    IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    > &
-      IGasProvider<TransactionRequest>
-  >();
+  const l2MessageServiceContractMock = mock<IMessageServiceContract>();
   const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
   const transactionMetricsUpdater = mock<ITransactionMetricsUpdater>();
-  const provider =
-    mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider = mock<IProvider>();
   const logger = new TestLogger(MessageClaimingPersister.name);
 
   beforeEach(() => {
@@ -55,6 +58,8 @@ describe("TestMessageClaimingPersister ", () => {
         direction: Direction.L1_TO_L2,
         messageSubmissionTimeout: testL2NetworkConfig.claiming.messageSubmissionTimeout,
         maxTxRetries: testL2NetworkConfig.claiming.maxTxRetries,
+        receiptPollingTimeout: 120_000,
+        receiptPollingInterval: 0,
       },
       logger,
     );
@@ -77,7 +82,7 @@ describe("TestMessageClaimingPersister ", () => {
     isRateLimitExceededError?: boolean;
     firstOnChainMessageStatus?: OnChainMessageStatus;
     secondOnChainMessageStatus?: OnChainMessageStatus;
-    retryTransactionWithHigherFeeResponse?: TransactionResponse;
+    retryTransactionWithHigherFeeResponse?: TransactionSubmission;
     retryTransactionWithHigherFeeError?: Error;
     retryTransactionWithHigherFeeReceipt?: TransactionReceipt | null;
   };
@@ -114,13 +119,20 @@ describe("TestMessageClaimingPersister ", () => {
     }
     if (txReceiptError !== undefined) {
       jest.spyOn(provider, "getTransactionReceipt").mockRejectedValue(txReceiptError);
+    } else if (retryTransactionWithHigherFeeReceipt !== undefined) {
+      // First call in process(): returns null (no receipt for existing tx)
+      // Second call in pollForReceipt(): returns the retry tx receipt
+      jest
+        .spyOn(provider, "getTransactionReceipt")
+        .mockResolvedValueOnce(txReceipt ?? null)
+        .mockResolvedValueOnce(retryTransactionWithHigherFeeReceipt);
+    } else if (retryTxReceipt !== undefined) {
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValueOnce(null).mockResolvedValueOnce(retryTxReceipt);
     } else if (txReceipt !== undefined) {
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
     }
     if (isRateLimitExceededError !== undefined)
       jest.spyOn(l2MessageServiceContractMock, "isRateLimitExceededError").mockResolvedValue(isRateLimitExceededError);
-    if (retryTxReceipt !== undefined)
-      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValueOnce(null).mockResolvedValueOnce(retryTxReceipt);
     if (firstOnChainMessageStatus !== undefined && secondOnChainMessageStatus !== undefined) {
       jest
         .spyOn(l2MessageServiceContractMock, "getMessageStatus")
@@ -133,14 +145,10 @@ describe("TestMessageClaimingPersister ", () => {
       jest
         .spyOn(l2MessageServiceContractMock, "retryTransactionWithHigherFee")
         .mockRejectedValue(retryTransactionWithHigherFeeError);
-    } else if (
-      retryTransactionWithHigherFeeResponse !== undefined &&
-      retryTransactionWithHigherFeeReceipt !== undefined
-    ) {
+    } else if (retryTransactionWithHigherFeeResponse !== undefined) {
       jest
         .spyOn(l2MessageServiceContractMock, "retryTransactionWithHigherFee")
         .mockResolvedValue(retryTransactionWithHigherFeeResponse);
-      jest.spyOn(retryTransactionWithHigherFeeResponse, "wait").mockResolvedValue(retryTransactionWithHigherFeeReceipt);
     }
 
     jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
@@ -191,7 +199,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should log as info and update message as claimed success if successful", async () => {
-      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
+      const txReceipt = generateTransactionReceipt({ status: "success" });
       const testPendingMessageLocal = new Message(testPendingMessage);
       const expectedSavedMessage = new Message({
         ...testPendingMessageLocal,
@@ -218,7 +226,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should return and update message as sent if receipt status is 0 and rate limit exceeded", async () => {
-      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 0 });
+      const txReceipt = generateTransactionReceipt({ status: "reverted" });
       const testPendingMessageLocal = new Message(testPendingMessage);
       const expectedSavedMessage = new Message({
         ...testPendingMessage,
@@ -239,7 +247,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should log as warning and update message as claim reverted if receipt status is 0", async () => {
-      const txReceipt = testingHelpers.generateTransactionReceipt({ status: 0 });
+      const txReceipt = generateTransactionReceipt({ status: "reverted" });
       const testPendingMessageLocal = new Message(testPendingMessage);
       const expectedSavedMessage = new Message({
         ...testPendingMessage,
@@ -266,7 +274,7 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should update message as claimed if retry receipt successful and message claimed on-chain", async () => {
-      const retryTxReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
+      const retryTxReceipt = generateTransactionReceipt({ status: "success" });
       const testPendingMessageLocal = new Message(testPendingMessage);
       const expectedSavedMessage = new Message({
         ...testPendingMessageLocal,
@@ -327,8 +335,8 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should return and log as warning if message is claimable and retry tx was sent successfully", async () => {
-      const retryTxReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
-      const retryTxResponse = testingHelpers.generateTransactionResponse({
+      const retryTxReceipt = generateTransactionReceipt({ status: "success" });
+      const retryTxResponse = generateTransactionSubmission({
         maxPriorityFeePerGas: undefined,
         maxFeePerGas: undefined,
       });
@@ -354,12 +362,11 @@ describe("TestMessageClaimingPersister ", () => {
 
       await messageClaimingPersister.process();
 
-      expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(1);
+      expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(1, testPendingMessageLocal);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
 
-      // expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(testPendingMessageLocal);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(3);
       expect(loggerWarnSpy).toHaveBeenNthCalledWith(
         1,
@@ -381,8 +388,8 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should update DB successfully if first process claimable message with receipt, then process claimed message with no receipt", async () => {
-      const retryTxReceipt = testingHelpers.generateTransactionReceipt({ status: 1 });
-      const retryTxResponse = testingHelpers.generateTransactionResponse({
+      const retryTxReceipt = generateTransactionReceipt({ status: "success" });
+      const retryTxResponse = generateTransactionSubmission({
         maxPriorityFeePerGas: undefined,
         maxFeePerGas: undefined,
       });
@@ -412,7 +419,7 @@ describe("TestMessageClaimingPersister ", () => {
       await messageClaimingPersister.process();
       await messageClaimingPersister.process();
 
-      expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(3);
+      expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(4);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(1, testPendingMessageLocal);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
@@ -447,6 +454,8 @@ describe("TestMessageClaimingPersister ", () => {
           direction: Direction.L1_TO_L2,
           messageSubmissionTimeout: 0,
           maxTxRetries: 0,
+          receiptPollingTimeout: 120_000,
+          receiptPollingInterval: 0,
         },
         logger,
       );
@@ -491,9 +500,23 @@ describe("TestMessageClaimingPersister ", () => {
     });
 
     it("Should return and log as error if retry tx fails to get receipt", async () => {
-      const retryTxResponse = testingHelpers.generateTransactionResponse();
+      messageClaimingPersister = new MessageClaimingPersister(
+        databaseService,
+        l2MessageServiceContractMock,
+        sponsorshipMetricsUpdater,
+        transactionMetricsUpdater,
+        provider,
+        {
+          direction: Direction.L1_TO_L2,
+          messageSubmissionTimeout: testL2NetworkConfig.claiming.messageSubmissionTimeout,
+          maxTxRetries: testL2NetworkConfig.claiming.maxTxRetries,
+          receiptPollingTimeout: 0,
+          receiptPollingInterval: 0,
+        },
+        logger,
+      );
+      const retryTxResponse = generateTransactionSubmission();
       const testPendingMessageLocal = new Message(testPendingMessage);
-      jest.spyOn(l2MessageServiceContractMock, "retryTransactionWithHigherFee").mockResolvedValue(retryTxResponse);
       const { loggerWarnSpy, loggerErrorSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
         firstPendingMessage: testPendingMessageLocal,
         txReceipt: null,

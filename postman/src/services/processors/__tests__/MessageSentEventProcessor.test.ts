@@ -1,24 +1,16 @@
-import { Direction, MessageSent } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach } from "@jest/globals";
-import {
-  Block,
-  ContractTransactionResponse,
-  Interface,
-  JsonRpcProvider,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
 import { mock } from "jest-mock-extended";
 
 import { ILineaRollupLogClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IL2MessageServiceLogClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
 import { MessageFactory } from "../../../core/entities/MessageFactory";
-import { MessageStatus } from "../../../core/enums";
+import { Direction, MessageStatus } from "../../../core/enums";
 import { IMessageDBService } from "../../../core/persistence/IMessageDBService";
+import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { MessageSentEventProcessorConfig } from "../../../core/services/processors/IMessageSentEventProcessor";
+import { MessageSent } from "../../../core/types";
 import {
   TEST_ADDRESS_1,
   TEST_ADDRESS_2,
@@ -32,13 +24,14 @@ import { MessageSentEventProcessor } from "../MessageSentEventProcessor";
 
 class TestMessageSentEventProcessor extends MessageSentEventProcessor {
   constructor(
-    databaseService: IMessageDBService<ContractTransactionResponse>,
+    databaseService: IMessageDBService,
     logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
-    provider: IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>,
+    provider: IProvider,
+    calldataDecoder: ICalldataDecoder,
     public readonly config: MessageSentEventProcessorConfig,
     logger: ILogger,
   ) {
-    super(databaseService, logClient, provider, config, logger);
+    super(databaseService, logClient, provider, calldataDecoder, config, logger);
   }
 
   public shouldProcessMessage(
@@ -54,15 +47,22 @@ describe("TestMessageSentEventProcessor", () => {
   let messageSentEventProcessor: TestMessageSentEventProcessor;
   const databaseService = mock<EthereumMessageDBService>();
   const l1LogClientMock = mock<ILineaRollupLogClient>();
-  const provider =
-    mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const provider = mock<IProvider>();
+  const calldataDecoder = mock<ICalldataDecoder>();
   const logger = new TestLogger(MessageSentEventProcessor.name);
+
+  // Encoded calldata for: receiveFromOtherLayer(address, uint256)
+  // selector: 0x26dfbc20, recipient: 0x5eeea0e70ffe4f5419477056023c4b0aca016562, amount: 100000
+  const funcFragment = "function receiveFromOtherLayer(address recipient, uint256 amount)";
+  const encodedCalldata =
+    "0x26dfbc200000000000000000000000005eeea0e70ffe4f5419477056023c4b0aca01656200000000000000000000000000000000000000000000000000000000000186a0";
 
   beforeEach(() => {
     messageSentEventProcessor = new TestMessageSentEventProcessor(
       databaseService,
       l1LogClientMock,
       provider,
+      calldataDecoder,
       {
         direction: Direction.L1_TO_L2,
         maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -104,6 +104,7 @@ describe("TestMessageSentEventProcessor", () => {
         databaseService,
         l1LogClientMock,
         provider,
+        calldataDecoder,
         {
           direction: Direction.L1_TO_L2,
           maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -137,6 +138,7 @@ describe("TestMessageSentEventProcessor", () => {
         databaseService,
         l1LogClientMock,
         provider,
+        calldataDecoder,
         {
           direction: Direction.L1_TO_L2,
           maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -154,6 +156,12 @@ describe("TestMessageSentEventProcessor", () => {
         },
         logger,
       );
+      // decoder returns amount=100000 which does NOT satisfy `amount == 0`
+      calldataDecoder.decode.mockReturnValue({
+        recipient: "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
+        amount: 100000n,
+      });
+
       const loggerInfoSpy = jest.spyOn(logger, "info");
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
@@ -161,8 +169,7 @@ describe("TestMessageSentEventProcessor", () => {
         testMessageSentEvent,
         {
           ...testMessageSentEvent,
-          calldata:
-            "0x26dfbc200000000000000000000000005eeea0e70ffe4f5419477056023c4b0aca01656200000000000000000000000000000000000000000000000000000000000186a0",
+          calldata: encodedCalldata,
         },
       ]);
       const expectedMessage1ToInsert = MessageFactory.createMessage({
@@ -176,8 +183,7 @@ describe("TestMessageSentEventProcessor", () => {
       const expectedMessage2ToInsert = MessageFactory.createMessage({
         ...{
           ...testMessageSentEvent,
-          calldata:
-            "0x26dfbc200000000000000000000000005eeea0e70ffe4f5419477056023c4b0aca01656200000000000000000000000000000000000000000000000000000000000186a0",
+          calldata: encodedCalldata,
         },
         sentBlockNumber: testMessageSentEvent.blockNumber,
         direction: Direction.L1_TO_L2,
@@ -198,6 +204,7 @@ describe("TestMessageSentEventProcessor", () => {
         databaseService,
         l1LogClientMock,
         provider,
+        calldataDecoder,
         {
           direction: Direction.L1_TO_L2,
           maxBlocksToFetchLogs: testL1NetworkConfig.listener.maxBlocksToFetchLogs,
@@ -228,13 +235,6 @@ describe("TestMessageSentEventProcessor", () => {
   });
 
   describe("shouldProcessMessage", () => {
-    const funcFragment = "function receiveFromOtherLayer(address recipient, uint256 amount)";
-
-    const encodedCalldata = new Interface([funcFragment]).encodeFunctionData(funcFragment, [
-      "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
-      100000n,
-    ]);
-
     it("Should return true if calldata is empty and EOA is enabled", () => {
       const result = messageSentEventProcessor.shouldProcessMessage(
         testMessageSentEvent,
@@ -280,6 +280,10 @@ describe("TestMessageSentEventProcessor", () => {
 
     it("Should return false if event filter criteria is not correctly formatted", () => {
       messageSentEventProcessor.config.isCalldataEnabled = true;
+      calldataDecoder.decode.mockReturnValue({
+        recipient: "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
+        amount: 100000n,
+      });
 
       const result = messageSentEventProcessor.shouldProcessMessage(
         {
@@ -297,6 +301,10 @@ describe("TestMessageSentEventProcessor", () => {
 
     it("Should return false if event filter criteria is false", () => {
       messageSentEventProcessor.config.isCalldataEnabled = true;
+      calldataDecoder.decode.mockReturnValue({
+        recipient: "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
+        amount: 100000n,
+      });
 
       const result = messageSentEventProcessor.shouldProcessMessage(
         {
@@ -314,6 +322,10 @@ describe("TestMessageSentEventProcessor", () => {
 
     it("Should return true if event filter criteria is true", () => {
       messageSentEventProcessor.config.isCalldataEnabled = true;
+      calldataDecoder.decode.mockReturnValue({
+        recipient: "0x5eeea0e70ffe4f5419477056023c4b0aca016562",
+        amount: 100000n,
+      });
 
       const result = messageSentEventProcessor.shouldProcessMessage(
         {

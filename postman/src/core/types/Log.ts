@@ -1,0 +1,8 @@
+export type Log = {
+  address: string;
+  topics: string[];
+  data: string;
+  blockNumber: number;
+  transactionHash: string;
+  logIndex: number;
+};

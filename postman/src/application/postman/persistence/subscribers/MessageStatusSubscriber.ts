@@ -1,4 +1,3 @@
-import { Direction } from "@consensys/linea-sdk";
 import { type ILogger } from "@consensys/linea-shared-utils";
 import {
   EventSubscriber,
@@ -9,7 +8,7 @@ import {
   TransactionCommitEvent,
 } from "typeorm";
 
-import { MessageStatus } from "../../../../core/enums";
+import { Direction, MessageStatus } from "../../../../core/enums";
 import { type IMessageMetricsUpdater, MessagesMetricsAttributes } from "../../../../core/metrics";
 import { MessageEntity } from "../entities/Message.entity";
 

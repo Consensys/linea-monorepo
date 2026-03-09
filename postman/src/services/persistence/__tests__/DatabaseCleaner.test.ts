@@ -1,6 +1,5 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach } from "@jest/globals";
-import { ContractTransactionResponse } from "ethers";
 import { mock } from "jest-mock-extended";
 
 import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
@@ -10,7 +9,7 @@ import { DatabaseCleaner } from "../DatabaseCleaner";
 
 describe("TestDatabaseCleaner", () => {
   let testDatabaseCleaner: DatabaseCleaner;
-  const messageRepositoryMock = mock<IMessageDBService<ContractTransactionResponse>>();
+  const messageRepositoryMock = mock<IMessageDBService>();
   const loggerMock = mock<ILogger>();
 
   beforeEach(() => {

@@ -1,52 +1,30 @@
-import { GasProvider, LineaProvider, testingHelpers } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import {
-  ContractTransactionResponse,
-  ErrorDescription,
-  Overrides,
-  Signer,
-  TransactionReceipt,
-  TransactionResponse,
-  Wallet,
-} from "ethers";
 import { mock, MockProxy } from "jest-mock-extended";
 
 import { TestLogger } from "../../../../src/utils/testing/helpers";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
+import { ILineaProvider } from "../../../core/clients/blockchain/linea/ILineaProvider";
 import {
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
-  DEFAULT_MAX_FEE_PER_GAS_CAP,
   DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
-import {
-  DEFAULT_MAX_FEE_PER_GAS,
-  TEST_CONTRACT_ADDRESS_2,
-  TEST_L2_SIGNER_PRIVATE_KEY,
-  testMessage,
-} from "../../../utils/testing/constants";
+import { DEFAULT_MAX_FEE_PER_GAS, testMessage } from "../../../utils/testing/constants";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 
 describe("LineaTransactionValidationService", () => {
   let lineaTransactionValidationService: LineaTransactionValidationService;
-  let gasProvider: GasProvider;
-  let l2ContractClient: IL2MessageServiceClient<
-    Overrides,
-    TransactionReceipt,
-    TransactionResponse,
-    ContractTransactionResponse,
-    Signer,
-    ErrorDescription
-  >;
-  let provider: MockProxy<LineaProvider>;
+  let l2ContractClient: MockProxy<IL2MessageServiceClient>;
+  let provider: MockProxy<ILineaProvider>;
 
   const setup = (estimatedGasLimit: bigint, isNullExtraData = false) => {
-    jest.spyOn(gasProvider, "getGasFees").mockResolvedValueOnce({
+    jest.spyOn(l2ContractClient, "estimateClaimGasFees").mockResolvedValueOnce({
       gasLimit: estimatedGasLimit,
       maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
     });
+    jest.spyOn(l2ContractClient, "isRateLimitExceeded").mockResolvedValueOnce(false);
     jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce(
       isNullExtraData
         ? null
@@ -62,20 +40,8 @@ describe("LineaTransactionValidationService", () => {
   const logger = new TestLogger(LineaTransactionValidationService.name);
 
   beforeEach(() => {
-    provider = mock<LineaProvider>();
-    const clients = testingHelpers.generateL2MessageServiceClient(
-      provider,
-      TEST_CONTRACT_ADDRESS_2,
-      "read-write",
-      new Wallet(TEST_L2_SIGNER_PRIVATE_KEY),
-      {
-        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
-        enforceMaxGasFee: false,
-      },
-    );
-
-    l2ContractClient = clients.l2MessageServiceClient;
-    gasProvider = clients.gasProvider;
+    provider = mock<ILineaProvider>();
+    l2ContractClient = mock<IL2MessageServiceClient>();
 
     lineaTransactionValidationService = new LineaTransactionValidationService(
       {
@@ -88,8 +54,6 @@ describe("LineaTransactionValidationService", () => {
       l2ContractClient,
       logger,
     );
-
-    jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
   });
 
   afterEach(() => {

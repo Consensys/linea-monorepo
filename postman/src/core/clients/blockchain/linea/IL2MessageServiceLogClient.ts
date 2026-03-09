@@ -1,4 +1,4 @@
-import { MessageSent, ServiceVersionMigrated } from "@consensys/linea-sdk";
+import { MessageSent } from "../../../types";
 
 export type MessageSentEventFilters = {
   from?: string;
@@ -13,19 +13,4 @@ export interface IL2MessageServiceLogClient {
     toBlock?: string | number;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]>;
-
-  getMessageSentEventsByMessageHash(params: {
-    messageHash: string;
-    fromBlock?: number;
-    toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<MessageSent[]>;
-
-  getMessageSentEventsByBlockRange(fromBlock: number, toBlock: number): Promise<MessageSent[]>;
-
-  getServiceVersionMigratedEvents(param?: {
-    fromBlock?: number;
-    toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<ServiceVersionMigrated[]>;
 }

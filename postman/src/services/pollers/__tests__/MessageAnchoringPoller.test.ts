@@ -1,7 +1,7 @@
-import { Direction } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
+import { Direction } from "../../../core/enums";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
 import { testL2NetworkConfig } from "../../../utils/testing/constants";

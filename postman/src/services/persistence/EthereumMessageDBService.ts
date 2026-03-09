@@ -1,26 +1,21 @@
-import { Direction } from "@consensys/linea-sdk";
-import { ContractTransactionResponse, TransactionRequest } from "ethers";
-
 import { MessageDBService } from "./MessageDBService";
-import { IGasProvider } from "../../core/clients/blockchain/IGasProvider";
+import { IEthereumGasProvider } from "../../core/clients/blockchain/IGasProvider";
 import { Message } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 
-export class EthereumMessageDBService
-  extends MessageDBService
-  implements IMessageDBService<ContractTransactionResponse>
-{
+export class EthereumMessageDBService extends MessageDBService implements IMessageDBService {
   /**
    * Creates an instance of `EthereumMessageDBService`.
    *
-   * @param {IGasProvider} gasProvider - The gas provider for fetching gas fee estimates.
+   * @param {IEthereumGasProvider} gasProvider - The gas provider for fetching gas fee estimates.
    * @param {IMessageRepository} messageRepository - The message repository for interacting with the message database.
    */
   constructor(
-    private readonly gasProvider: IGasProvider<TransactionRequest>,
-    messageRepository: IMessageRepository<ContractTransactionResponse>,
+    private readonly gasProvider: IEthereumGasProvider,
+    messageRepository: IMessageRepository,
   ) {
     super(messageRepository);
   }

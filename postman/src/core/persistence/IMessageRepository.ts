@@ -1,9 +1,9 @@
-import { Direction } from "@consensys/linea-sdk";
-
 import { Message } from "../entities/Message";
+import { Direction } from "../enums";
 import { MessageStatus } from "../enums";
+import { TransactionSubmission } from "../types";
 
-export interface IMessageRepository<ContractTransactionResponse> {
+export interface IMessageRepository {
   insertMessage(message: Message): Promise<void>;
   updateMessage(message: Message): Promise<void>;
   updateMessageByTransactionHash(transactionHash: string, direction: Direction, message: Message): Promise<void>;
@@ -37,6 +37,6 @@ export interface IMessageRepository<ContractTransactionResponse> {
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<ContractTransactionResponse>,
+    claimTxFn: () => Promise<TransactionSubmission>,
   ): Promise<void>;
 }

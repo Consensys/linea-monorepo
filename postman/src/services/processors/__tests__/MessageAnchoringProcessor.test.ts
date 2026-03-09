@@ -1,19 +1,8 @@
-import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import {
-  Block,
-  ContractTransactionResponse,
-  ErrorDescription,
-  JsonRpcProvider,
-  Overrides,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
 import { mock } from "jest-mock-extended";
 
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
-import { MessageStatus } from "../../../core/enums";
+import { OnChainMessageStatus, MessageStatus } from "../../../core/enums";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
 import { testL1NetworkConfig, testL2NetworkConfig, testMessage } from "../../../utils/testing/constants";
@@ -24,18 +13,8 @@ import { MessageAnchoringProcessor } from "../MessageAnchoringProcessor";
 describe("TestMessageAnchoringProcessor", () => {
   let anchoringProcessor: IMessageAnchoringProcessor;
   const databaseService = mock<EthereumMessageDBService>();
-  const l2ContractClientMock =
-    mock<
-      IMessageServiceContract<
-        Overrides,
-        TransactionReceipt,
-        TransactionResponse,
-        ContractTransactionResponse,
-        ErrorDescription
-      >
-    >();
-  const provider =
-    mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
+  const l2ContractClientMock = mock<IMessageServiceContract>();
+  const provider = mock<IProvider>();
   const logger = new TestLogger(MessageAnchoringProcessor.name);
 
   beforeEach(() => {

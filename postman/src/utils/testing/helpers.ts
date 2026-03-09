@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Direction } from "@consensys/linea-sdk";
 
 import { TEST_ADDRESS_1, TEST_CONTRACT_ADDRESS_1, TEST_CONTRACT_ADDRESS_2, TEST_MESSAGE_HASH } from "./constants";
 import { MessageEntity } from "../../application/postman/persistence/entities/Message.entity";
 import { Message, MessageProps } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
 import { IPostmanLogger } from "../IPostmanLogger";
 

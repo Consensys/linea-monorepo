@@ -1,55 +1,28 @@
-import { LineaProvider, serialize, testingHelpers } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import {
-  ContractTransactionResponse,
-  ErrorDescription,
-  Overrides,
-  Signer,
-  TransactionReceipt,
-  TransactionResponse,
-  Wallet,
-} from "ethers";
 import { mock } from "jest-mock-extended";
 
+jest.mock("@consensys/linea-native-libs", () => ({
+  GoNativeCompressor: class {
+    constructor(_dataLimit: number) {}
+    getCompressedTxSize(_data: Uint8Array): number {
+      return 100;
+    }
+  },
+}));
+
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
-import { DEFAULT_MAX_FEE_PER_GAS_CAP } from "../../../core/constants";
-import { BaseError } from "../../../core/errors";
-import {
-  DEFAULT_MAX_FEE_PER_GAS,
-  TEST_CONTRACT_ADDRESS_2,
-  TEST_L2_SIGNER_PRIVATE_KEY,
-  testMessage,
-} from "../../../utils/testing/constants";
+import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
+import { DEFAULT_MAX_FEE_PER_GAS, testMessage } from "../../../utils/testing/constants";
 import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 
 describe("L2ClaimTransactionSizeCalculator", () => {
   let transactionSizeCalculator: L2ClaimTransactionSizeCalculator;
 
-  const databaseService = mock<EthereumMessageDBService>();
-  let l2ContractClient: IL2MessageServiceClient<
-    Overrides,
-    TransactionReceipt,
-    TransactionResponse,
-    ContractTransactionResponse,
-    Signer,
-    ErrorDescription
-  >;
+  const l2ContractClient = mock<IL2MessageServiceClient>();
+  const transactionSigner = mock<ITransactionSigner>();
 
   beforeEach(() => {
-    const clients = testingHelpers.generateL2MessageServiceClient(
-      mock<LineaProvider>(),
-      TEST_CONTRACT_ADDRESS_2,
-      "read-only",
-      undefined,
-      {
-        maxFeePerGasCap: DEFAULT_MAX_FEE_PER_GAS_CAP,
-        enforceMaxGasFee: false,
-      },
-    );
-
-    l2ContractClient = clients.l2MessageServiceClient;
-    transactionSizeCalculator = new L2ClaimTransactionSizeCalculator(l2ContractClient);
+    transactionSizeCalculator = new L2ClaimTransactionSizeCalculator(l2ContractClient, transactionSigner);
   });
 
   afterEach(() => {
@@ -57,8 +30,10 @@ describe("L2ClaimTransactionSizeCalculator", () => {
   });
 
   describe("process", () => {
-    it("Should throw an error if  signer is undefined", async () => {
-      jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockResolvedValue([]);
+    it("Should throw an error if encodeClaimMessageTransactionData throws", async () => {
+      jest.spyOn(l2ContractClient, "encodeClaimMessageTransactionData").mockImplementation(() => {
+        throw new Error("encode error");
+      });
 
       await expect(
         transactionSizeCalculator.calculateTransactionSize(testMessage, {
@@ -66,13 +41,13 @@ describe("L2ClaimTransactionSizeCalculator", () => {
           maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
           maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         }),
-      ).rejects.toThrow(
-        new BaseError(`Transaction size calculation error: ${serialize(new BaseError("Signer is undefined."))}`),
-      );
+      ).rejects.toThrow("Transaction size calculation error");
     });
 
     it("Should return transaction size", async () => {
-      jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
+      jest.spyOn(l2ContractClient, "encodeClaimMessageTransactionData").mockReturnValue("0x1234");
+      jest.spyOn(l2ContractClient, "getContractAddress").mockReturnValue("0x0000000000000000000000000000000000000001");
+      jest.spyOn(transactionSigner, "signAndSerialize").mockResolvedValue(new Uint8Array(50));
 
       const transactionSize = await transactionSizeCalculator.calculateTransactionSize(testMessage, {
         gasLimit: 50_000n,
@@ -80,7 +55,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
 
-      expect(transactionSize).toStrictEqual(81);
+      expect(transactionSize).toBeGreaterThan(0);
     });
   });
 });

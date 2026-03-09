@@ -1,6 +1,6 @@
-import { Direction } from "@consensys/linea-sdk";
 import { IMetricsService } from "@consensys/linea-shared-utils";
 
+import { Direction } from "../../../../core/enums";
 import { ISponsorshipMetricsUpdater, LineaPostmanMetrics } from "../../../../core/metrics";
 
 export class SponsorshipMetricsUpdater implements ISponsorshipMetricsUpdater {

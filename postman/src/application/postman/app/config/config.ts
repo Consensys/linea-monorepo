@@ -2,6 +2,13 @@ import { LoggerOptions } from "winston";
 
 import { DBOptions, DBCleanerOptions, DBCleanerConfig } from "../../persistence/config/types";
 
+import type {
+  SignerConfig,
+  Web3SignerTlsConfig,
+} from "../../../../infrastructure/blockchain/viem/signers/SignerConfig";
+
+export type { SignerConfig, Web3SignerTlsConfig };
+
 type DeepRequired<T> = {
   [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];
 };
@@ -75,7 +82,7 @@ export type L2NetworkConfig = NetworkConfig & {
  * Configuration for claiming operations, including signer details, fee settings, and retry policies.
  */
 export type ClaimingOptions = {
-  signerPrivateKey: string;
+  signer: SignerConfig;
   messageSubmissionTimeout?: number;
   feeRecipientAddress?: string;
   maxNonceDiff?: number;
@@ -92,7 +99,8 @@ export type ClaimingOptions = {
   claimViaAddress?: string;
 };
 
-export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddress" | "claimViaAddress"> & {
+export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddress" | "claimViaAddress" | "signer"> & {
+  signer: SignerConfig;
   feeRecipientAddress?: string;
   claimViaAddress?: string;
 };

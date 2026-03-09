@@ -1,18 +1,7 @@
-import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
-import {
-  Overrides,
-  TransactionResponse,
-  ContractTransactionResponse,
-  TransactionReceipt,
-  Block,
-  TransactionRequest,
-  JsonRpcProvider,
-  ErrorDescription,
-} from "ethers";
 
 import { IProvider } from "../../core/clients/blockchain/IProvider";
-import { MessageStatus } from "../../core/enums";
+import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import {
@@ -27,28 +16,16 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   /**
    * Constructs a new instance of the `MessageAnchoringProcessor`.
    *
-   * @param {IMessageServiceContract<Overrides, TransactionReceipt, TransactionResponse, ContractTransactionResponse>} contractClient - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
-   * @param {IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
-   * @param {IMessageDBService<ContractTransactionResponse>} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
+   * @param {IMessageServiceContract} contractClient - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
+   * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
+   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly contractClient: IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
-    private readonly provider: IProvider<
-      TransactionReceipt,
-      Block,
-      TransactionRequest,
-      TransactionResponse,
-      JsonRpcProvider
-    >,
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
+    private readonly contractClient: IMessageServiceContract,
+    private readonly provider: IProvider,
+    private readonly databaseService: IMessageDBService,
     private readonly config: MessageAnchoringProcessorConfig,
     private readonly logger: ILogger,
   ) {

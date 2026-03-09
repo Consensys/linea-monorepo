@@ -1,23 +1,9 @@
-import { MessageSent } from "@consensys/linea-sdk";
-
 import { MessageProps } from "../../../entities/Message";
 import { IMessageServiceContract } from "../../../services/contracts/IMessageServiceContract";
+import { MessageSent, Overrides } from "../../../types";
 import { LineaGasFees } from "../IGasProvider";
 
-export interface IL2MessageServiceClient<
-  Overrides,
-  TransactionReceipt,
-  TransactionResponse,
-  ContractTransactionResponse,
-  Signer,
-  ErrorDescription,
-> extends IMessageServiceContract<
-  Overrides,
-  TransactionReceipt,
-  TransactionResponse,
-  ContractTransactionResponse,
-  ErrorDescription
-> {
+export interface IL2MessageServiceClient extends IMessageServiceContract {
   encodeClaimMessageTransactionData(message: MessageProps & { feeRecipient?: string }): string;
   estimateClaimGasFees(
     message: (MessageSent | MessageProps) & { feeRecipient?: string },
@@ -26,6 +12,5 @@ export interface IL2MessageServiceClient<
       overrides?: Overrides;
     },
   ): Promise<LineaGasFees>;
-  getSigner(): Signer | undefined;
   getContractAddress(): string;
 }

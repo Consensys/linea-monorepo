@@ -1,4 +1,4 @@
-import { L2MessagingBlockAnchored, MessageClaimed, MessageSent } from "@consensys/linea-sdk";
+import { MessageSent } from "../../../types";
 
 export type MessageSentEventFilters = {
   from?: string;
@@ -26,13 +26,11 @@ export interface ILineaRollupLogClient {
     filters?: L2MessagingBlockAnchoredFilters;
     fromBlock?: number;
     toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<L2MessagingBlockAnchored[]>;
+  }): Promise<{ l2Block: bigint; blockNumber: number; transactionHash: string; logIndex: number }[]>;
 
   getMessageClaimedEvents(params: {
     filters?: MessageClaimedFilters;
     fromBlock?: number;
     toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<MessageClaimed[]>;
+  }): Promise<{ messageHash: string; blockNumber: number; transactionHash: string; logIndex: number }[]>;
 }

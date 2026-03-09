@@ -1,9 +1,8 @@
-import { Direction } from "@consensys/linea-sdk";
-import { ContractTransactionResponse } from "ethers";
-
 import { Message } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
+import { TransactionSubmission } from "../../core/types";
 
 export abstract class MessageDBService {
   /**
@@ -11,7 +10,7 @@ export abstract class MessageDBService {
    *
    * @param {IMessageRepository} messageRepository - The message repository for interacting with the message database.
    */
-  constructor(protected readonly messageRepository: IMessageRepository<ContractTransactionResponse>) {}
+  constructor(protected readonly messageRepository: IMessageRepository) {}
 
   /**
    * Inserts a message into the database.
@@ -107,13 +106,13 @@ export abstract class MessageDBService {
    *
    * @param {Message} message - The message to update.
    * @param {number} nonce - The nonce to use for the claim transaction.
-   * @param {Promise<ContractTransactionResponse>} claimTxFn - Function that resolves to the claim transaction response.
+   * @param {Promise<TransactionSubmission>} claimTxFn - Function that resolves to the claim transaction submission.
    * @returns {Promise<void>} A promise that resolves when the message is updated.
    */
   public async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<ContractTransactionResponse>,
+    claimTxFn: () => Promise<TransactionSubmission>,
   ): Promise<void> {
     await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
   }

@@ -1,8 +1,9 @@
-import { Direction, wait } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
 
+import { Direction } from "../../core/enums";
 import { IPoller } from "../../core/services/pollers/IPoller";
 import { IMessageClaimingPersister } from "../../core/services/processors/IMessageClaimingPersister";
+import { wait } from "../../core/utils/shared";
 
 type MessagePersistingPollerConfig = {
   direction: Direction;

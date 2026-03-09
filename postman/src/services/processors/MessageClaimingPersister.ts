@@ -1,19 +1,8 @@
-import { Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
-import {
-  Overrides,
-  TransactionResponse,
-  ContractTransactionResponse,
-  TransactionReceipt,
-  TransactionRequest,
-  Block,
-  JsonRpcProvider,
-  ErrorDescription,
-} from "ethers";
 
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { Message } from "../../core/entities/Message";
-import { MessageStatus } from "../../core/enums";
+import { Direction, OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { BaseError } from "../../core/errors";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../core/metrics";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
@@ -22,6 +11,8 @@ import {
   IMessageClaimingPersister,
   MessageClaimingPersisterConfig,
 } from "../../core/services/processors/IMessageClaimingPersister";
+import { TransactionReceipt } from "../../core/types";
+import { wait } from "../../core/utils/shared";
 import { ErrorParser } from "../../utils/ErrorParser";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
@@ -39,23 +30,11 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
-    private readonly messageServiceContract: IMessageServiceContract<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >,
+    private readonly databaseService: IMessageDBService,
+    private readonly messageServiceContract: IMessageServiceContract,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
-    private readonly provider: IProvider<
-      TransactionReceipt,
-      Block,
-      TransactionRequest,
-      TransactionResponse,
-      JsonRpcProvider
-    >,
+    private readonly provider: IProvider,
     private readonly config: MessageClaimingPersisterConfig,
     private readonly logger: ILogger,
   ) {
@@ -131,10 +110,30 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
   }
 
   /**
+   * Polls for a transaction receipt until it is found or the timeout is reached.
+   *
+   * @param {string} txHash - The transaction hash to poll for.
+   * @returns {Promise<TransactionReceipt>} The transaction receipt.
+   * @throws {BaseError} If the receipt is not found within the timeout.
+   */
+  private async pollForReceipt(txHash: string): Promise<TransactionReceipt> {
+    const deadline = Date.now() + this.config.receiptPollingTimeout;
+    while (Date.now() < deadline) {
+      const receipt = await this.provider.getTransactionReceipt(txHash);
+      if (receipt) return receipt;
+      await wait(this.config.receiptPollingInterval);
+    }
+    throw new BaseError(
+      `RetryTransaction: Transaction receipt not found after retry transaction. transactionHash=${txHash}`,
+    );
+  }
+
+  /**
    * Attempts to retry a transaction with a higher fee if the original transaction has not been successfully processed.
    *
    * @param {string} transactionHash - The hash of the original transaction to retry.
    * @param {string} messageHash - The hash of the message associated with the transaction.
+   * @param {number} messageBlockNumber - The block number of the message.
    * @returns {Promise<TransactionReceipt | null>} The receipt of the retried transaction, or null if the retry was unsuccessful.
    */
   private async retryTransaction(
@@ -173,7 +172,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
 
       this.messageBeingRetry.message?.edit({
         claimTxCreationDate: retryCreationDate,
-        claimTxGasLimit: parseInt(tx.gasLimit.toString()),
+        claimTxGasLimit: Number(tx.gasLimit),
         claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
         claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
         claimTxHash: tx.hash,
@@ -183,13 +182,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       });
       await this.databaseService.updateMessage(this.messageBeingRetry.message!);
 
-      const receipt = await tx.wait();
-      if (!receipt) {
-        throw new BaseError(
-          `RetryTransaction: Transaction receipt not found after retry transaction. transactionHash=${tx.hash}`,
-        );
-      }
-      return receipt;
+      return await this.pollForReceipt(tx.hash);
     } catch (e) {
       this.logger.error(
         "Transaction retry failed: messageHash=%s error=%s",
@@ -237,7 +230,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       }
     }
 
-    if (receipt.status === 0) {
+    if (receipt.status === "reverted") {
       const isRateLimitExceeded = await this.messageServiceContract.isRateLimitExceededError(receipt.hash);
 
       if (isRateLimitExceeded) {
@@ -277,7 +270,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
 
     if (message.isForSponsorship) {
       await this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(
-        BigInt(receipt.gasPrice) * BigInt(receipt.gasUsed),
+        receipt.gasPrice * receipt.gasUsed,
         message.direction,
       );
     }

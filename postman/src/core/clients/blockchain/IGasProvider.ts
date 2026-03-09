@@ -1,4 +1,5 @@
-import { Direction } from "@consensys/linea-sdk";
+import { Direction } from "../../enums";
+import { TransactionRequest } from "../../types";
 
 export type GasFees = {
   maxFeePerGas: bigint;
@@ -38,16 +39,16 @@ export type GasProviderConfig = DefaultGasProviderConfig & {
   enableLineaEstimateGas: boolean;
 };
 
-export interface IGasProvider<TransactionRequest> {
+export interface IGasProvider {
   getGasFees(transactionRequest?: TransactionRequest): Promise<GasFees | LineaGasFees>;
   getMaxFeePerGas(): bigint;
 }
 
-export interface IEthereumGasProvider<TransactionRequest> extends IGasProvider<TransactionRequest> {
+export interface IEthereumGasProvider extends IGasProvider {
   getGasFees(): Promise<GasFees>;
 }
 
-export interface ILineaGasProvider<TransactionRequest> extends IGasProvider<TransactionRequest> {
+export interface ILineaGasProvider extends IGasProvider {
   getGasFees(transactionRequest: TransactionRequest): Promise<LineaGasFees>;
 }
 

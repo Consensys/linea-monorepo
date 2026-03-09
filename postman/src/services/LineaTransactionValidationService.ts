@@ -1,15 +1,3 @@
-import {
-  Block,
-  ContractTransactionResponse,
-  ErrorDescription,
-  JsonRpcProvider,
-  Overrides,
-  Signer,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
-
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { ILineaProvider } from "../core/clients/blockchain/linea/ILineaProvider";
 import { MINIMUM_MARGIN, PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
@@ -31,21 +19,8 @@ export class LineaTransactionValidationService implements ITransactionValidation
    */
   constructor(
     private readonly config: TransactionValidationServiceConfig,
-    private readonly provider: ILineaProvider<
-      TransactionReceipt,
-      Block,
-      TransactionRequest,
-      TransactionResponse,
-      JsonRpcProvider
-    >,
-    private readonly l2MessageServiceClient: IL2MessageServiceClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      Signer,
-      ErrorDescription
-    >,
+    private readonly provider: ILineaProvider,
+    private readonly l2MessageServiceClient: IL2MessageServiceClient,
     private readonly logger: IPostmanLogger,
   ) {}
 

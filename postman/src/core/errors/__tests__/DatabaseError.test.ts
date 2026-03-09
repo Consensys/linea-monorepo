@@ -1,9 +1,10 @@
-import { Direction, serialize } from "@consensys/linea-sdk";
 import { describe, it, expect } from "@jest/globals";
 
 import { ZERO_ADDRESS, ZERO_HASH } from "../../constants";
 import { MessageProps } from "../../entities/Message";
+import { Direction } from "../../enums";
 import { DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../enums";
+import { serialize } from "../../utils/shared";
 import { DatabaseAccessError } from "../DatabaseErrors";
 
 describe("DatabaseAccessError", () => {

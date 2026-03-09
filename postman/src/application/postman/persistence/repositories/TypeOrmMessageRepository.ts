@@ -1,20 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Direction } from "@consensys/linea-sdk";
-import { ContractTransactionResponse } from "ethers";
 import { Brackets, DataSource, Repository } from "typeorm";
 
 import { Message } from "../../../../core/entities/Message";
-import { DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../../../core/enums";
+import { Direction, DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../../../core/enums";
 import { DatabaseAccessError } from "../../../../core/errors";
 import { IMessageRepository } from "../../../../core/persistence/IMessageRepository";
+import { TransactionSubmission } from "../../../../core/types";
 import { subtractSeconds } from "../../../../core/utils/shared";
 import { MessageEntity } from "../entities/Message.entity";
 import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/messageMappers";
 
-export class TypeOrmMessageRepository<TransactionResponse extends ContractTransactionResponse>
-  extends Repository<MessageEntity>
-  implements IMessageRepository<TransactionResponse>
-{
+export class TypeOrmMessageRepository extends Repository<MessageEntity> implements IMessageRepository {
   constructor(readonly dataSource: DataSource) {
     super(MessageEntity, dataSource.createEntityManager());
   }
@@ -275,7 +271,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
   async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<ContractTransactionResponse>,
+    claimTxFn: () => Promise<TransactionSubmission>,
   ): Promise<void> {
     await this.manager.transaction(async (entityManager) => {
       await entityManager.update(
@@ -298,7 +294,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         { messageHash: message.messageHash, direction: message.direction },
         {
           claimTxCreationDate,
-          claimTxGasLimit: parseInt(tx.gasLimit.toString()),
+          claimTxGasLimit: Number(tx.gasLimit),
           claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
           claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
           claimTxHash: tx.hash,

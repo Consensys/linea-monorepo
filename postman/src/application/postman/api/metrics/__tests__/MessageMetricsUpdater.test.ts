@@ -1,8 +1,7 @@
-import { Direction } from "@consensys/linea-sdk";
 import { mock, MockProxy } from "jest-mock-extended";
 import { EntityManager, SelectQueryBuilder } from "typeorm";
 
-import { MessageStatus } from "../../../../../core/enums";
+import { Direction, MessageStatus } from "../../../../../core/enums";
 import { IMessageMetricsUpdater } from "../../../../../core/metrics";
 import { MessageMetricsUpdater } from "../MessageMetricsUpdater";
 import { PostmanMetricsService } from "../PostmanMetricsService";

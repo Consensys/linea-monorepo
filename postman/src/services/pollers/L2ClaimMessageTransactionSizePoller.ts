@@ -1,7 +1,8 @@
-import { Direction, wait } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
 
+import { Direction } from "../../core/enums";
 import { IPoller } from "../../core/services/pollers/IPoller";
+import { wait } from "../../core/utils/shared";
 import { L2ClaimMessageTransactionSizeProcessor } from "../processors/L2ClaimMessageTransactionSizeProcessor";
 
 type L2ClaimMessageTransactionSizePollerConfig = {

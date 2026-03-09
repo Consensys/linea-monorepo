@@ -1,8 +1,7 @@
-import { Direction } from "@consensys/linea-sdk";
 import { describe, it, expect } from "@jest/globals";
 
 import { Message } from "../../../../../core/entities/Message";
-import { MessageStatus } from "../../../../../core/enums";
+import { Direction, MessageStatus } from "../../../../../core/enums";
 import {
   TEST_ADDRESS_1,
   TEST_CONTRACT_ADDRESS_1,

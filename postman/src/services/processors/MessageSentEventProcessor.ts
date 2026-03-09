@@ -1,15 +1,4 @@
-import { serialize, isEmptyBytes, MessageSent } from "@consensys/linea-sdk";
 import { ILogger } from "@consensys/linea-shared-utils";
-import {
-  Block,
-  ContractTransactionResponse,
-  dataSlice,
-  Interface,
-  JsonRpcProvider,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse,
-} from "ethers";
 import { compileExpression, useDotAccessOperator } from "filtrex";
 
 import { ILineaRollupLogClient } from "../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
@@ -18,10 +7,13 @@ import { IL2MessageServiceLogClient } from "../../core/clients/blockchain/linea/
 import { MessageFactory } from "../../core/entities/MessageFactory";
 import { MessageStatus } from "../../core/enums";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { ICalldataDecoder } from "../../core/services/ICalldataDecoder";
 import {
   IMessageSentEventProcessor,
   MessageSentEventProcessorConfig,
 } from "../../core/services/processors/IMessageSentEventProcessor";
+import { MessageSent } from "../../core/types";
+import { isEmptyBytes, serialize } from "../../core/utils/shared";
 
 export class MessageSentEventProcessor implements IMessageSentEventProcessor {
   private readonly maxBlocksToFetchLogs: number;
@@ -29,22 +21,18 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
   /**
    * Initializes a new instance of the `MessageSentEventProcessor`.
    *
-   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
-   * @param {ILineaRollupLogClient | IL2MessageServiceLogClient} logClient - An instance of a class implementing the `ILineaRollupLogClient` or the `IL2MessageServiceLogClient` interface for fetching message sent events from the blockchain.
-   * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
-   * @param {MessageSentEventProcessorConfig} config - Configuration for network-specific settings, including listener parameters and feature flags.
-   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
+   * @param {IMessageDBService<unknown>} databaseService - Used for storing and retrieving message data.
+   * @param {ILineaRollupLogClient | IL2MessageServiceLogClient} logClient - For fetching message sent events from the blockchain.
+   * @param {IProvider} provider - Used to query blockchain data.
+   * @param {ICalldataDecoder} calldataDecoder - Decodes function calldata for filter evaluation.
+   * @param {MessageSentEventProcessorConfig} config - Network-specific settings including listener parameters and feature flags.
+   * @param {ILogger} logger - Used for logging messages.
    */
   constructor(
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
+    private readonly databaseService: IMessageDBService,
     private readonly logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
-    private readonly provider: IProvider<
-      TransactionReceipt,
-      Block,
-      TransactionRequest,
-      TransactionResponse,
-      JsonRpcProvider
-    >,
+    private readonly provider: IProvider,
+    private readonly calldataDecoder: ICalldataDecoder,
     protected readonly config: MessageSentEventProcessorConfig,
     private readonly logger: ILogger,
   ) {
@@ -53,10 +41,6 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
   /**
    * Calculates the starting block number for fetching events, ensuring it is within the valid range.
-   *
-   * @param {number} fromBlockNumber - The proposed starting block number.
-   * @param {number} toBlockNumber - The ending block number for the query range.
-   * @returns {number} The adjusted starting block number.
    */
   private calculateFromBlockNumber(fromBlockNumber: number, toBlockNumber: number): number {
     if (fromBlockNumber > toBlockNumber) {
@@ -67,10 +51,6 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
   /**
    * Fetches `MessageSent` events from the blockchain within a specified block range and stores them in the database.
-   *
-   * @param {number} fromBlock - The starting block number for fetching events.
-   * @param {number} fromBlockLogIndex - The log index within the starting block to begin processing events from.
-   * @returns {Promise<{ nextFromBlock: number; nextFromBlockLogIndex: number }>} The block number and log index to start fetching events from in the next iteration.
    */
   public async process(
     fromBlock: number,
@@ -120,10 +100,6 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
   /**
    * Determines whether a message should be processed based on its calldata and the configuration.
-   *
-   * @param {string} event - The message event.
-   * @param {string} messageHash - The hash of the message.
-   * @returns {boolean} `true` if the message should be processed, `false` otherwise.
    */
   protected shouldProcessMessage(
     event: MessageSent,
@@ -165,13 +141,12 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       return true;
     }
 
-    const iface = new Interface([filters.calldataFunctionInterface]);
-    const decodedCalldata = iface.decodeFunctionData(filters.calldataFunctionInterface, event.calldata);
+    const decodedCalldata = this.calldataDecoder.decode(filters.calldataFunctionInterface, event.calldata);
 
     const context = {
       calldata: {
-        funcSignature: dataSlice(event.calldata, 0, 4),
-        ...this.convertBigInts(decodedCalldata.toObject(true)),
+        funcSignature: event.calldata.slice(0, 10),
+        ...this.convertBigInts(decodedCalldata),
       },
     };
 

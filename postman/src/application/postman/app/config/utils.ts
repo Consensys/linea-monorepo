@@ -1,5 +1,5 @@
-import { Interface, isAddress } from "ethers";
 import { compileExpression, useDotAccessOperator } from "filtrex";
+import { isAddress, parseAbi } from "viem";
 
 import { ListenerConfig, PostmanConfig, PostmanOptions } from "./config";
 import {
@@ -66,7 +66,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         ...(l1Options.listener.eventFilters ? { eventFilters: l1Options.listener.eventFilters } : {}),
       },
       claiming: {
-        signerPrivateKey: l1Options.claiming.signerPrivateKey,
+        signer: l1Options.claiming.signer,
         messageSubmissionTimeout: l1Options.claiming.messageSubmissionTimeout ?? DEFAULT_MESSAGE_SUBMISSION_TIMEOUT,
         feeRecipientAddress: l1Options.claiming.feeRecipientAddress,
         maxNonceDiff: l1Options.claiming.maxNonceDiff ?? DEFAULT_MAX_NONCE_DIFF,
@@ -102,7 +102,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         ...(l2Options.listener.eventFilters ? { eventFilters: l2Options.listener.eventFilters } : {}),
       },
       claiming: {
-        signerPrivateKey: l2Options.claiming.signerPrivateKey,
+        signer: l2Options.claiming.signer,
         messageSubmissionTimeout: l2Options.claiming.messageSubmissionTimeout ?? DEFAULT_MESSAGE_SUBMISSION_TIMEOUT,
         feeRecipientAddress: l2Options.claiming.feeRecipientAddress,
         maxNonceDiff: l2Options.claiming.maxNonceDiff ?? DEFAULT_MAX_NONCE_DIFF,
@@ -162,9 +162,8 @@ export function validateEventsFiltersConfig(eventFilters: ListenerConfig["eventF
 
 export function isFunctionInterfaceValid(functionInterface: string): boolean {
   try {
-    const i = new Interface([functionInterface]);
-
-    return i.fragments.length !== 0;
+    const abi = parseAbi([functionInterface] as readonly string[]);
+    return (abi as unknown[]).length !== 0;
   } catch {
     return false;
   }

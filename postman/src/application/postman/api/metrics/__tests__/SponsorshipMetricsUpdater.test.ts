@@ -1,5 +1,4 @@
-import { Direction } from "@consensys/linea-sdk";
-
+import { Direction } from "../../../../../core/enums";
 import { ISponsorshipMetricsUpdater } from "../../../../../core/metrics";
 import { PostmanMetricsService } from "../PostmanMetricsService";
 import { SponsorshipMetricsUpdater } from "../SponsorshipMetricsUpdater";

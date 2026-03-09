@@ -1,12 +1,3 @@
-import {
-  ContractTransactionResponse,
-  ErrorDescription,
-  Overrides,
-  Signer,
-  TransactionReceipt,
-  TransactionResponse,
-} from "ethers";
-
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
@@ -30,15 +21,8 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
    * @param {IPostmanLogger} logger - The logger for logging information and errors.
    */
   constructor(
-    private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
-    private readonly l2MessageServiceClient: IL2MessageServiceClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      Signer,
-      ErrorDescription
-    >,
+    private readonly databaseService: IMessageDBService,
+    private readonly l2MessageServiceClient: IL2MessageServiceClient,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly config: L2ClaimMessageTransactionSizeProcessorConfig,
     private readonly logger: IPostmanLogger,

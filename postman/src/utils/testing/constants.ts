@@ -1,5 +1,3 @@
-import { Direction, MessageSent } from "@consensys/linea-sdk";
-
 import { L1NetworkConfig, L2NetworkConfig } from "../../application/postman/app/config/config";
 import {
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
@@ -18,7 +16,9 @@ import {
   ZERO_HASH,
 } from "../../core/constants";
 import { Message, MessageProps } from "../../core/entities/Message";
+import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
+import { MessageSent } from "../../core/types";
 
 export const TEST_L1_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
 export const TEST_L2_SIGNER_PRIVATE_KEY = "0x0000000000000000000000000000000000000000000000000000000000000002";
@@ -193,7 +193,7 @@ export const testMessageSentEventWithCallData: MessageSent = {
 
 export const testL1NetworkConfig: L1NetworkConfig = {
   claiming: {
-    signerPrivateKey: TEST_L1_SIGNER_PRIVATE_KEY,
+    signer: { type: "private-key" as const, privateKey: TEST_L1_SIGNER_PRIVATE_KEY },
     messageSubmissionTimeout: 300_000,
     maxFeePerGasCap: 100_000_000n,
     gasEstimationPercentile: 15,
@@ -223,7 +223,7 @@ export const testL1NetworkConfig: L1NetworkConfig = {
 
 export const testL2NetworkConfig: L2NetworkConfig = {
   claiming: {
-    signerPrivateKey: TEST_L2_SIGNER_PRIVATE_KEY,
+    signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY },
     messageSubmissionTimeout: 300_000,
     maxFeePerGasCap: 100_000_000n,
     gasEstimationPercentile: 15,

@@ -1,21 +1,12 @@
 import { GoNativeCompressor } from "@consensys/linea-native-libs";
-import { serialize } from "@consensys/linea-sdk";
-import {
-  ContractTransactionResponse,
-  ErrorDescription,
-  ethers,
-  Overrides,
-  Signer,
-  Transaction,
-  TransactionReceipt,
-  TransactionResponse,
-} from "ethers";
 
 import { LineaGasFees } from "../core/clients/blockchain/IGasProvider";
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { MessageProps } from "../core/entities/Message";
 import { BaseError } from "../core/errors";
+import { ITransactionSigner } from "../core/services/ITransactionSigner";
 import { IL2ClaimTransactionSizeCalculator } from "../core/services/processors/IL2ClaimTransactionSizeCalculator";
+import { serialize } from "../core/utils/shared";
 
 export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSizeCalculator {
   private compressor: GoNativeCompressor;
@@ -23,17 +14,12 @@ export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSize
   /**
    * Constructs a new instance of the `L2ClaimTransactionSizeCalculator`.
    *
-   * @param {IL2MessageServiceClient} l2MessageServiceClient - An instance of a class implementing the `IL2MessageServiceClient` interface, used to interact with the L2 message service.
+   * @param {IL2MessageServiceClient} l2MessageServiceClient - Used to encode the claim calldata and retrieve the contract address.
+   * @param {ITransactionSigner} transactionSigner - Used to sign and serialize a dummy transaction for size measurement.
    */
   constructor(
-    private readonly l2MessageServiceClient: IL2MessageServiceClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      Signer,
-      ErrorDescription
-    >,
+    private readonly l2MessageServiceClient: IL2MessageServiceClient,
+    private readonly transactionSigner: ITransactionSigner,
   ) {
     this.compressor = new GoNativeCompressor(800_000);
   }
@@ -52,27 +38,12 @@ export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSize
   ): Promise<number> {
     try {
       const transactionData = this.l2MessageServiceClient.encodeClaimMessageTransactionData(message);
-      const signer = this.l2MessageServiceClient.getSigner();
       const destinationAddress = this.l2MessageServiceClient.getContractAddress();
-      const { gasLimit, maxFeePerGas, maxPriorityFeePerGas } = fees;
 
-      if (!signer) {
-        throw new BaseError("Signer is undefined.");
-      }
-
-      const transaction = Transaction.from({
-        to: destinationAddress,
-        value: 0n,
-        data: transactionData,
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-        gasLimit,
-        type: 2,
-      });
-
-      const signedTx = await signer.signTransaction(transaction);
-      const rlpEncodedTx = ethers.encodeRlp(signedTx);
-      const rlpEncodedTxInBytes = ethers.getBytes(rlpEncodedTx);
+      const rlpEncodedTxInBytes = await this.transactionSigner.signAndSerialize(
+        { to: destinationAddress, value: 0n, data: transactionData },
+        fees,
+      );
 
       return this.compressor.getCompressedTxSize(rlpEncodedTxInBytes);
     } catch (error) {
