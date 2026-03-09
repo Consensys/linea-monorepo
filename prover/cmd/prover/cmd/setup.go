@@ -287,7 +287,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		asset = nil
 		runtime.GC()
 
-		return execution.NewBuilderLimitless(compCong.RecursionComp, &limits), extraFlags, nil
+		return execution.NewBuilderLimitless(compCong.RecursionCompBLS, &limits), extraFlags, nil
 
 	case circuits.DataAvailabilityV2CircuitID:
 		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
@@ -360,7 +360,26 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 	srsProvider circuits.SRSProvider, inCircuits map[circuits.CircuitID]bool,
 	piSetup *circuits.Setup, allowedVkForAggregation []plonk.VerifyingKey,
 ) ([]plonk.VerifyingKey, error) {
+
 	if !inCircuits[circuits.AggregationCircuitID] {
+
+		// Aggregation was not requested, but emulation may still need the
+		// aggregation verifying keys. Try to read them from disk.
+		if inCircuits[circuits.EmulationCircuitID] {
+			allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
+			for _, numProofs := range cfg.Aggregation.NumProofs {
+				c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
+				setupPath := cfg.PathForSetup(string(c))
+				vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
+				vk := plonk.NewVerifyingKey(ecc.BW6_761)
+				if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
+					return nil, fmt.Errorf("failed to read verifying key for circuit %s (needed by emulation): %w", c, err)
+				}
+				allowedVkForEmulation = append(allowedVkForEmulation, vk)
+			}
+			return allowedVkForEmulation, nil
+		}
+
 		return nil, nil
 	}
 

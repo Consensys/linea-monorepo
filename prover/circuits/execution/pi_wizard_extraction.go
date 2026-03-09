@@ -298,8 +298,14 @@ func getPublicInputExtractor(wvc *wizard.VerifierCircuit) *publicInput.Functiona
 // getPublicInputExt returns a field extension public input coordinates in array
 // form
 func getPublicInputExt(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) [4]frontend.Variable {
+
+	name := pi.Name
+	if !wvc.HasPublicInput(name) {
+		name = "functional." + name
+	}
+
 	// this prefixing is needed because the full-prover circuit is being recursed
-	res := wvc.GetPublicInputExt(api, pi.Name)
+	res := wvc.GetPublicInputExt(api, name)
 	return [4]frontend.Variable{
 		res.B0.A0.Native(),
 		res.B0.A1.Native(),
@@ -312,7 +318,17 @@ func getPublicInputExt(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.
 func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wizard.PublicInput) []frontend.Variable {
 	res := make([]frontend.Variable, len(pis))
 	for i := range pis {
-		r := wvc.GetPublicInput(api, pis[i].Name)
+
+		// When the outer-proof runs on top of the limitless prover. Then, the
+		// name of the "functional" public-inputs (e.g. the one that corresponds
+		// to the actual statement of the execution instance) is prefixed with
+		// "functional."
+		name := pis[i].Name
+		if !wvc.HasPublicInput(name) {
+			name = "functional." + name
+		}
+
+		r := wvc.GetPublicInput(api, name)
 		res[i] = r.Native()
 	}
 	return res
@@ -320,7 +336,13 @@ func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wiza
 
 // getPublicInput returns a value from the public input
 func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
-	r := wvc.GetPublicInput(api, pi.Name)
+
+	name := pi.Name
+	if !wvc.HasPublicInput(name) {
+		name = "functional." + name
+	}
+
+	r := wvc.GetPublicInput(api, name)
 	return r.Native()
 }
 

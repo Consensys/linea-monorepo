@@ -45,10 +45,8 @@ func runProverGLs(
 			t.Fatalf("module does not exists, module=%v, distWizard.ModuleNames=%v", witnessGL.ModuleName, distWizard.ModuleNames)
 		}
 
-		moduleGL.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
-
 		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
-		proofs[i] = moduleGL.ProveSegment(witnessGL)
+		proofs[i] = moduleGL.ProveSegmentKoala(witnessGL)
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
 
 	}
@@ -80,13 +78,11 @@ func runProverLPPs(
 			moduleLPP   = distWizard.CompiledLPPs[moduleIndex]
 		)
 
-		moduleLPP.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
-
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
 		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex, witnessLPP.SegmentModuleIndex)
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-		proofs[i] = moduleLPP.ProveSegment(witnessLPP)
+		proofs[i] = moduleLPP.ProveSegmentKoala(witnessLPP)
 		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
 	}
 
@@ -144,7 +140,7 @@ func runConglomerationProver(
 
 		logrus.Infof("AGGREGATING PROOF, remaining %v\n", len(remainingProofs))
 
-		new := cong.ProveSegment(&distributed.ModuleWitnessConglo{
+		new := cong.ProveSegmentKoala(&distributed.ModuleWitnessConglo{
 			SegmentProofs:             []distributed.SegmentProof{*a, *b},
 			VerificationKeyMerkleTree: *mt,
 		})

@@ -835,6 +835,17 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 	})
 }
 
+// HasPublicInput returns true if the public input with the provided name exists
+func (c *VerifierCircuit) HasPublicInput(name string) bool {
+	allPubs := c.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // GetPublicInput returns a public input value from its name
 func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagnark.Element {
 	allPubs := c.Spec.PublicInputs

@@ -62,9 +62,10 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 			col := z.InitialCompiledIOP.Columns.GetHandle(colName)
 
 			var (
-				nat     = col.(column.Natural)
-				newSize = disc.NewSizeOf(nat)
-				module  = disc.ModuleOf(nat)
+				nat        = col.(column.Natural)
+				newSize    = distributed.NewSizeOfColumn(disc, nat)
+				module     = disc.ModuleOf(nat)
+				_, qbmSize = disc.QbmOf(nat)
 			)
 
 			if module == "" {
@@ -73,6 +74,10 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 			if newSize == 0 {
 				t.Errorf("new-size of %v is 0", colName)
+			}
+
+			if newSize != qbmSize {
+				t.Errorf("new-size of %v is %v, expected %v", colName, newSize, qbmSize)
 			}
 		}
 	})

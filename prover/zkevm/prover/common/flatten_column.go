@@ -234,6 +234,8 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 	l.AuxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
 		precomputeAuxProjectionMask(l.Size, l.OriginalMask.Size(), l.NbLimbsCols))
 
+	pragmas.MarkRightPadded(l.Limbs)
+
 	// This is needed to hint the distributer that this column is completely
 	// periodic and is no issue for splitting. We could as well replace it
 	// by a RepeatedPattern column but the fact that the repetition period is
@@ -281,6 +283,11 @@ func (l *FlattenColumn) assignMask(run *wizard.ProverRuntime) {
 }
 
 func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
+
+	// In theory, this should be set in the define function but this is a patch
+	// that avoid needing to regenerate the setup.
+	pragmas.MarkRightPadded(l.Limbs)
+
 	limbsCols := make([][]field.Element, l.NbLimbsCols)
 	for i, limb := range l.OriginalLimbs {
 		limbsCols[i] = limb.GetColAssignment(run).IntoRegVecSaveAlloc()

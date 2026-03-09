@@ -169,5 +169,5 @@ func processConstOnlyExt(op operator, svecs []SmartVector, coeffs []int) (constR
 		return nil, 0
 	}
 
-	return &ConstantExt{Value: constVal, length: svecs[0].Len()}, numMatches
+	return &ConstantExt{Value: constVal, Length: svecs[0].Len()}, numMatches
 }

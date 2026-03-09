@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
@@ -26,11 +29,11 @@ const (
 // Note: ColumnProfileMPTS is left nil to avoid profile size constraints during testing
 var testCompilationParams = distributed.CompilationParams{
 	FixedNbRowPlonkCircuit:       1 << 24,
-	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
+	FixedNbRowExternalHasher:     1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
-	InitialCompilerSizeConglo:    1 << 21,
-	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+	InitialCompilerSizeConglo:    1 << 18,
+	ColumnProfileMPTS:            []int{264, 1400, 300, 15, 15, 28, 4, 4},
 	ColumnProfileMPTSPrecomputed: 45,
 	FullDebugMode:                false,
 }
@@ -56,6 +59,7 @@ func TestDistributedWizard(t *testing.T) {
 		&LookupTestCase{numRow: 1 << NbRow},
 		&ProjectionTestCase{numRow: 1 << NbRow},
 		&PermutationTestCase{numRow: 1 << NbRow},
+		&FibExtTestCase{numRow: 1 << NbRow},
 	}
 
 	for _, tc := range testCases {
@@ -65,18 +69,30 @@ func TestDistributedWizard(t *testing.T) {
 	}
 }
 
-func TestDistributedWizardWithSegmentCompilation(t *testing.T) {
-	t.Skipf(" the test is skipped since vortex is not yet implemented for extension/post-recursion")
+// TestCompileOneSegment tests the compilation of a single segment.
+func TestCompileOneSegment(t *testing.T) {
 
-	testCases := []DistributedTestCase{
-		&LookupTestCase{numRow: 1 << NbRow},
+	t.SkipNow()
+
+	var (
+		tc      = &PermutationTestCase{numRow: 1 << NbRow}
+		defFunc = func(build *wizard.Builder) { tc.Define(build.CompiledIOP) }
+		wiop    = wizard.Compile(defFunc)
+		disc    = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << NbRow,
+			Advices:      tc.Advices(),
+		}
+		distWizard = distributed.DistributeWizard(wiop, disc)
+		compiled   = distributed.CompileSegment(distWizard.GLs[0], testCompilationParams)
+	)
+
+	profileTree, err := serde.Profile(compiled)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.Name(), func(t *testing.T) {
-			runDistributedWizardTest(t, tc, true)
-		})
-	}
+	profileTree.PruneTree(1 << 20)
+	serde.WriteProfileTo(profileTree, files.MustOverwrite("./profiling/comp-profile.txt"))
 }
 
 // runDistributedWizardTest runs a single distributed wizard test case.
@@ -86,7 +102,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		defFunc = func(build *wizard.Builder) { tc.Define(build.CompiledIOP) }
 		wiop    = wizard.Compile(defFunc)
 		disc    = &distributed.StandardModuleDiscoverer{
-			TargetWeight: NbRow,
+			TargetWeight: 1 << NbRow,
 			Advices:      tc.Advices(),
 		}
 		distWizard *distributed.DistributedWizard
@@ -506,5 +522,75 @@ func (d *PermutationTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
 	return []*distributed.ModuleDiscoveryAdvice{
 		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
 		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+	}
+}
+
+// FibExtTestCase tests that ReceivedValuesGlobal correctly handles extension-field
+// values across segment boundaries.
+//
+// The column extFib forms an arithmetic sequence over F_p^4:
+//
+//	extFib[i] = (i+1) * delta   where delta = 1 + 2u
+//
+// The global constraint extFib[i] - extFib[i-1] - delta = 0 forces each segment
+// to receive the last value of the previous segment as a genuine extension-field
+// element (non-zero upper coordinates), exercising the non-base code path in
+// ReceivedValuesGlobal.
+//
+// At segment 0 the implicit "received" value is 0_fext, so extFib[0] = delta.
+type FibExtTestCase struct {
+	numRow int
+	wiop   *wizard.CompiledIOP
+}
+
+func (d *FibExtTestCase) Name() string {
+	return "FibExt"
+}
+
+// Define registers the single extension-field column and the step constraint.
+func (d *FibExtTestCase) Define(comp *wizard.CompiledIOP) {
+	d.wiop = comp
+
+	// extFib lives in F_p^4 (isBase = false).
+	extFib := comp.InsertCommit(0, "extFib", d.numRow, false)
+
+	// delta = 1 + 2u  — a non-trivial extension-field element so that the
+	// values sent across segment boundaries are genuinely extension-field and
+	// not merely lifted base-field elements.
+	delta := fext.NewFromInt(1, 2, 0, 0)
+
+	// extFib[i] - extFib[i-1] - delta = 0  for all i.
+	// At row 0 of each segment extFib[-1] is the last value of the previous
+	// segment, transmitted as a ReceivedValuesGlobal extension-field entry.
+	comp.InsertGlobal(0, "extFib-step",
+		symbolic.Sub(
+			ifaces.ColumnAsVariable(extFib),
+			ifaces.ColumnAsVariable(column.Shift(extFib, -1)),
+			symbolic.NewConstant(delta),
+		),
+	)
+}
+
+// Assign fills extFib with extFib[i] = (i+1)*delta.
+//
+// The first segment implicitly receives 0_fext, so the constraint
+// extFib[0] - 0 - delta = 0  forces extFib[0] = delta.  By induction
+// every subsequent value follows from the step constraint.
+func (d *FibExtTestCase) Assign(run *wizard.ProverRuntime) {
+	delta := fext.NewFromInt(1, 2, 0, 0)
+
+	extFibVals := make([]fext.Element, d.numRow)
+	extFibVals[0] = delta
+	for i := 1; i < d.numRow; i++ {
+		extFibVals[i].Add(&extFibVals[i-1], &delta)
+	}
+
+	run.AssignColumn("extFib", smartvectors.NewRegularExt(extFibVals))
+}
+
+// Advices returns the module-discovery advice for FibExtTestCase.
+func (d *FibExtTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("fib-ext-module", d.wiop.Columns.GetHandle("extFib")),
 	}
 }

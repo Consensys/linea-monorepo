@@ -418,7 +418,8 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		coms                = ctx.commitmentsAtRoundFromQuery(round)
 		numComsActual       = len(coms) // actual == not shadow and not unconstrained
 		fillUpTo            = len(coms)
-		withoutSis          = len(coms) < ctx.ApplySISHashThreshold
+		// BLS always uses Poseidon2 hashing (no SIS), regardless of the number of commitments.
+		withoutSis = len(coms) < ctx.ApplySISHashThreshold || ctx.IsBLS
 	)
 
 	// This part corresponds to an edge-case that is not supposed to happen
@@ -761,7 +762,10 @@ func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
 	if ctx.Items.Precomputeds.PrecomputedColums == nil {
 		return false
 	}
-	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
+	if ctx.IsBLS {
+		return false
+	}
+	return len(ctx.Items.Precomputeds.PrecomputedColums) >= ctx.ApplySISHashThreshold
 }
 
 // Turns the precomputed into verifying key messages. A possible improvement
@@ -820,7 +824,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	var (
 		nbUnskippedPrecomputedCols = len(precomputedCols)
 		fillUpTo                   = nbUnskippedPrecomputedCols
-		onlyPoseidon2Applied       = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
+		onlyPoseidon2Applied       = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold || ctx.IsBLS
 	)
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so

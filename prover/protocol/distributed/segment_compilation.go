@@ -83,12 +83,21 @@ type RecursedSegmentCompilation struct {
 	// HierarchicalConglomeration is optional and is set if the segment is a
 	// conglomerated segment.
 	HierarchicalConglomeration *ModuleConglo
-	// RecursionComp is the compiled IOP of the recursed wizard.
-	RecursionComp *wizard.CompiledIOP
-	// Recursion is the wizard construction context of the recursed wizard.
-	Recursion *recursion.Recursion
-	// Checking with a foreign RecursionCompiledIOP is optional and is set if
-	RecursionCompForCheck *wizard.CompiledIOP
+	// RecursionCompKoala is the compiled IOP of the recursed wizard that is
+	// used to generate a conglomeratable proof.
+	RecursionCompKoala *wizard.CompiledIOP
+	// RecursionKoala is the wizard construction context of the recursed wizard
+	// used toward being reconglomerated again.
+	RecursionKoala *recursion.Recursion
+	// RecursionBLS is the recursion context used to generate a BLS proof. It is
+	// identical to the one used to generate a conglomeratable proof but it is
+	// compiled differently. This is used for the final-proof that is wrapped
+	// in the inner-proof.
+	RecursionBLS *recursion.Recursion
+	// RecursionCompBLS is the compiled IOP of the recursed wizard that is used
+	// to generate a BLS proof. This is used for the final-proof that is wrapped
+	// in the inner-proof.
+	RecursionCompBLS *wizard.CompiledIOP
 }
 
 // SegmentProof stores a proof for a segment or for the conglomeration proof
@@ -262,7 +271,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		// dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 	)
 
-	var recCtx *recursion.Recursion
 	// The loops below are there to filter the public inputs so that
 	// Important: this must remain nil by default.
 	var publicInputRestriction []string
@@ -287,71 +295,103 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	sortPublicInput(modIOP, publicInputRestriction)
 
-	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf(
-			build2.CompiledIOP,
-			modIOP,
-			recursion.Parameters{
-				Name:                   "wizard-recursion",
-				MaxNumProof:            1,
-				FixedNbRowPlonkCircuit: params.FixedNbRowPlonkCircuit,
-				WithExternalHasherOpts: true,
-				ExternalHasherNbRows:   params.FixedNbRowExternalHasher,
-				FixedNbPublicInput:     params.FixedNbPublicInput,
-				Subscript:              subscript,
-				SkipRecursionPrefix:    true,
-				RestrictPublicInputs:   publicInputRestriction,
-			},
+	makeRecursion := func(withBLS bool) (*wizard.CompiledIOP, *recursion.Recursion) {
+
+		var recCtx *recursion.Recursion
+
+		defineRecursion := func(build2 *wizard.Builder) {
+			recCtx = recursion.DefineRecursionOf(
+				build2.CompiledIOP,
+				modIOP,
+				recursion.Parameters{
+					Name:                   "wizard-recursion",
+					MaxNumProof:            1,
+					FixedNbRowPlonkCircuit: params.FixedNbRowPlonkCircuit,
+					WithExternalHasherOpts: true,
+					ExternalHasherNbRows:   params.FixedNbRowExternalHasher,
+					FixedNbPublicInput:     params.FixedNbPublicInput,
+					Subscript:              subscript,
+					SkipRecursionPrefix:    true,
+					RestrictPublicInputs:   publicInputRestriction,
+				},
+			)
+		}
+
+		recursedComp := wizard.Compile(defineRecursion,
+			poseidon2.CompilePoseidon2,
+			plonkinwizard.Compile,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<19),
+				compiler.WithStitcherMinSize(2),
+				compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/post-recursion.initial/")),
+			),
+			logdata.Log("just-after-recursion-expanded"),
+			vortex.Compile(
+				2,
+				false,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
+				vortex.WithOptionalSISHashingThreshold(64),
+			),
+			selfrecursion.SelfRecurse,
+			poseidon2.CompilePoseidon2,
+			cleanup.CleanUp,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<14),
+				compiler.WithStitcherMinSize(2),
+				compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/recursion.arcane-2/")),
+			),
 		)
+
+		if withBLS {
+			recursedComp = wizard.ContinueCompilation(recursedComp,
+				vortex.Compile(16, true, vortex.ForceNumOpenedColumns(64)),
+			)
+		} else {
+			recursedComp = wizard.ContinueCompilation(recursedComp,
+				vortex.Compile(
+					16,
+					false,
+					vortex.ForceNumOpenedColumns(64),
+					vortex.WithSISParams(&sisInstance),
+					vortex.PremarkAsSelfRecursed(),
+					vortex.WithOptionalSISHashingThreshold(64),
+				),
+			)
+		}
+
+		return recursedComp, recCtx
 	}
 
-	recursedComp := wizard.Compile(defineRecursion,
-		poseidon2.CompilePoseidon2,
-		plonkinwizard.Compile,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<19),
-			compiler.WithStitcherMinSize(2),
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/post-recursion.initial/")),
-		),
-		logdata.Log("just-after-recursion-expanded"),
-		vortex.Compile(
-			16,
-			false,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
-		cleanup.CleanUp,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
-			compiler.WithStitcherMinSize(2),
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/recursion.arcane-2/")),
-		),
-		vortex.Compile(
-			16,
-			false,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-	)
-
-	res.Recursion = recCtx
-	res.RecursionComp = recursedComp
-
+	res.RecursionCompKoala, res.RecursionKoala = makeRecursion(false)
 	// It is necessary to add the extradata from the compiled IOP to the
-	// recursed one otherwise, it will not be found.
-	res.RecursionComp.ExtraData[VerifyingKeyPublicInput] = modIOP.ExtraData[VerifyingKeyPublicInput]
+	// recursed one otherwise, it will not be found by the conglomerator.
+	res.RecursionCompKoala.ExtraData[VerifyingKeyPublicInput] = modIOP.ExtraData[VerifyingKeyPublicInput]
+
+	if proofType == proofTypeConglo {
+		res.RecursionCompBLS, res.RecursionBLS = makeRecursion(true)
+		// It is necessary to add the extradata from the compiled IOP to the
+		// recursed one otherwise, it will not be found by the conglomerator.
+		// ?? Is that even needed ??
+		res.RecursionCompBLS.ExtraData[VerifyingKeyPublicInput] = modIOP.ExtraData[VerifyingKeyPublicInput]
+	}
 
 	return res
 }
 
-// ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
+// ProveSegmentKoala runs the prover for a segment of the protocol
+func (r *RecursedSegmentCompilation) ProveSegmentKoala(wit any) *SegmentProof {
+	return r.proveSegment(wit, false)
+}
+
+// ProveSegmentBLS runs the prover for a segment of the protocol with BLS. This
+// is used for the outer-proof.
+func (r *RecursedSegmentCompilation) ProveSegmentBLS(wit any) *SegmentProof {
+	return r.proveSegment(wit, true)
+}
+
+func (r *RecursedSegmentCompilation) proveSegment(wit any, forBLS bool) *SegmentProof {
 
 	var (
 		comp               *wizard.CompiledIOP
@@ -422,19 +462,29 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 	}
 
 	var (
-		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
+		recursionComp = r.RecursionCompKoala
+		recursionCtx  = r.RecursionKoala
+	)
+
+	if forBLS {
+		recursionComp = r.RecursionCompBLS
+		recursionCtx = r.RecursionBLS
+	}
+
+	var (
+		recStoppingRound = recursion.VortexQueryRound(recursionComp) + 1
 		recursionWit     = recursion.ExtractWitness(proverRun)
 		run              *wizard.ProverRuntime
 		recursionTime    = profiling.TimeIt(func() {
 			run = wizard.RunProverUntilRound(
-				r.RecursionComp,
-				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
+				recursionComp,
+				recursionCtx.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
-				false,
+				forBLS,
 			)
 		})
 		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
+		finalProofErr = wizard.VerifyUntilRound(recursionComp, finalProof, recStoppingRound, forBLS)
 	)
 
 	if finalProofErr != nil {
@@ -454,8 +504,13 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		ModuleIndex:      moduleIndex,
 		SegmentIndex:     segmentModuleIndex,
 		ProofType:        proofType,
-		RecursionWitness: recursion.ExtractWitness(run),
 		recursionRuntime: run,
+	}
+
+	if !forBLS {
+		// For BLS workload, the function ExtractWitness does not work and  -
+		// importantly is not well-defined import.
+		segmentProof.RecursionWitness = recursion.ExtractWitness(run)
 	}
 
 	if proofType == proofTypeGL {
@@ -467,7 +522,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 
 // GetVerifyingKeyPair returns the verifying keys of the compiled segment.
 func (c *RecursedSegmentCompilation) GetVerifyingKeyPair() [2]field.Octuplet {
-	vk0, vk1 := getVerifyingKeyPair(c.RecursionComp)
+	vk0, vk1 := getVerifyingKeyPair(c.RecursionCompKoala)
 	return [2]field.Octuplet{vk0, vk1}
 }
 

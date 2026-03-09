@@ -44,6 +44,10 @@ type encoder struct {
 	// missing type, encoding continues so that all missing types can be reported at once.
 	// The set is keyed by reflect.Type to deduplicate repeated occurrences of the same type.
 	missingTypes map[reflect.Type]struct{}
+
+	// profiler is non-nil only when Profile() is used instead of Serialize().
+	// It builds a size tree without any overhead in normal (non-profiling) runs.
+	profiler *sizeProfiler
 }
 
 func newEncoder() *encoder {
@@ -273,6 +277,11 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 		ptrAddr = v.Pointer()
 		if ref, ok := w.ptrMap[ptrAddr]; ok {
 			traceLog("Encode: Dedup Hit! Addr %x -> Ref %d", ptrAddr, ref)
+			// A dedup hit skips linearize entirely, so nextLabel would otherwise
+			// survive to be misapplied to the next unrelated node.
+			if w.profiler != nil {
+				w.profiler.nextLabel = ""
+			}
 			return ref, nil
 		}
 
@@ -296,6 +305,20 @@ func encode(w *encoder, v reflect.Value) (Ref, error) {
 func linearize(w *encoder, v reflect.Value) (Ref, error) {
 	traceEnter("LINEARIZE", v)
 	defer traceExit("LINEARIZE", nil)
+
+	// Size profiling: create a tree node for every complex type (struct, slice,
+	// map, interface). Pointers are excluded because linearize immediately
+	// recurses into the pointed-to value, which creates its own node.
+	// The w.offset delta from push to pop captures the full byte contribution of
+	// this subtree: the inline reservation (writeZeros) plus all heap bytes
+	// appended by indirect children.
+	if w.profiler != nil {
+		switch v.Kind() {
+		case reflect.Struct, reflect.Slice, reflect.Map, reflect.Interface:
+			w.profiler.push(v.Type().String(), w.offset)
+			defer func() { w.profiler.pop(w.offset) }()
+		}
+	}
 
 	// Custom handlers override default behaviour
 	if handler, ok := customRegistry[v.Type()]; ok {
@@ -422,9 +445,9 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		traceLog("!!! ALERT: TYPED NIL DETECTED !!! Type: %s", concreteVal.Type())
 	}
 
-	// Composite types (slice, map, array) cannot be registered by name in
-	// TypeToID so they are handled by a dedicated encoding path that embeds the
-	// type description into the InterfaceHeader's Reserved bytes.
+	// Composite types (slice, map, array, struct{}) cannot be registered by name
+	// in TypeToID so they are handled by a dedicated encoding path that embeds
+	// the type description into the InterfaceHeader's Reserved bytes.
 	switch concreteVal.Kind() {
 	case reflect.Slice:
 		return linearizeBoxedSlice(w, concreteVal)
@@ -432,6 +455,15 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		return linearizeBoxedMap(w, concreteVal)
 	case reflect.Array:
 		return linearizeBoxedArray(w, concreteVal)
+	case reflect.Struct:
+		if concreteVal.Type() == emptyStructType {
+			// struct{} has no data; write only the sentinel InterfaceHeader.
+			off := w.write(InterfaceHeader{
+				TypeID:   compositeTypeID,
+				Reserved: [5]uint8{compositeKindEmptyStruct},
+			})
+			return Ref(off), nil
+		}
 	}
 
 	dataOff, err := encode(w, concreteVal)
@@ -462,8 +494,50 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 	return Ref(off), nil
 }
 
+// encodeCompositeTypeField packs a reflect.Type into the 2-byte TypeID sub-field
+// used by InterfaceHeader.Reserved for boxed composite type descriptors.
+//
+//   - struct{} (zero-size) → compositeElemEmptyStruct (0xFFFF)
+//   - *T / **T / ***T → indirection in bits 14–15, base TypeID in bits 0–13
+//   - T (value type) → TypeID in bits 0–13, indirection bits = 0
+//
+// Returns an error when the base type is not in TypeToID or when pointer
+// indirection exceeds 3. On an unregistered-type error the caller should add
+// stripPointers(t) to w.missingTypes so the bulk error report names the base type.
+func encodeCompositeTypeField(t reflect.Type) (uint16, error) {
+	indirection := 0
+	base := t
+	for base.Kind() == reflect.Ptr {
+		base = base.Elem()
+		indirection++
+	}
+	if base == emptyStructType {
+		if indirection > 0 {
+			return 0, fmt.Errorf("boxed composite: *struct{} as element/key/value type is not supported")
+		}
+		return compositeElemEmptyStruct, nil
+	}
+	if indirection > 3 {
+		return 0, fmt.Errorf("boxed composite: pointer indirection %d for type %v exceeds maximum of 3", indirection, t)
+	}
+	id, ok := TypeToID[base]
+	if !ok {
+		return 0, fmt.Errorf("boxed composite: type %v not registered; add it via RegisterImplementation", base)
+	}
+	return uint16(indirection)<<compositeIndirectionShift | id&compositeTypeMask, nil
+}
+
+// stripPointers returns the base type after removing all pointer indirections.
+// Used to extract the unregistered base type for error accumulation.
+func stripPointers(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
 // linearizeBoxedSlice encodes a slice that is stored directly inside an
-// interface value.  The element type must be registered in TypeToID.
+// interface value.  The element type must be in TypeToID (or be struct{} or *T).
 //
 // Binary layout written to the buffer:
 //
@@ -471,14 +545,18 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 //	InterfaceHeader {
 //	    TypeID         = compositeTypeID (0xFFFF)
 //	    Reserved[0]   = compositeKindSlice (1)
-//	    Reserved[1:3] = elem TypeID (little-endian uint16)
+//	    Reserved[1:3] = elem TypeID field  (little-endian uint16, see encodeCompositeTypeField)
 //	    Offset        → FileSlice header of the slice data
 //	}
 func linearizeBoxedSlice(w *encoder, v reflect.Value) (Ref, error) {
-	elemType := v.Type().Elem()
-	typeID, ok := TypeToID[elemType]
-	if !ok {
-		return 0, fmt.Errorf("boxed slice: element type %v is not registered in TypeToID; add it via RegisterImplementation", elemType)
+	elemField, err := encodeCompositeTypeField(v.Type().Elem())
+	if err != nil {
+		base := stripPointers(v.Type().Elem())
+		if base != emptyStructType {
+			w.missingTypes[base] = struct{}{}
+		}
+		off := w.write(InterfaceHeader{})
+		return Ref(off), nil
 	}
 	dataOff, err := encode(w, v)
 	if err != nil {
@@ -486,7 +564,7 @@ func linearizeBoxedSlice(w *encoder, v reflect.Value) (Ref, error) {
 	}
 	ih := InterfaceHeader{
 		TypeID:   compositeTypeID,
-		Reserved: [5]uint8{compositeKindSlice, uint8(typeID), uint8(typeID >> 8), 0, 0},
+		Reserved: [5]uint8{compositeKindSlice, uint8(elemField), uint8(elemField >> 8), 0, 0},
 		Offset:   dataOff,
 	}
 	off := w.write(ih)
@@ -494,7 +572,7 @@ func linearizeBoxedSlice(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 // linearizeBoxedMap encodes a map that is stored directly inside an interface
-// value.  Both the key and value types must be registered in TypeToID.
+// value.  Key and value types must be in TypeToID (or be struct{} or *T).
 //
 // Binary layout:
 //
@@ -502,20 +580,27 @@ func linearizeBoxedSlice(w *encoder, v reflect.Value) (Ref, error) {
 //	InterfaceHeader {
 //	    TypeID         = compositeTypeID (0xFFFF)
 //	    Reserved[0]   = compositeKindMap (2)
-//	    Reserved[1:3] = key TypeID (little-endian uint16)
-//	    Reserved[3:5] = val TypeID (little-endian uint16)
+//	    Reserved[1:3] = key TypeID field (little-endian uint16, see encodeCompositeTypeField)
+//	    Reserved[3:5] = val TypeID field (little-endian uint16, see encodeCompositeTypeField)
 //	    Offset        → FileSlice header of the map data
 //	}
 func linearizeBoxedMap(w *encoder, v reflect.Value) (Ref, error) {
-	keyType := v.Type().Key()
-	valType := v.Type().Elem()
-	keyTypeID, keyOk := TypeToID[keyType]
-	valTypeID, valOk := TypeToID[valType]
-	if !keyOk {
-		return 0, fmt.Errorf("boxed map: key type %v is not registered in TypeToID; add it via RegisterImplementation", keyType)
-	}
-	if !valOk {
-		return 0, fmt.Errorf("boxed map: value type %v is not registered in TypeToID; add it via RegisterImplementation", valType)
+	keyField, keyErr := encodeCompositeTypeField(v.Type().Key())
+	valField, valErr := encodeCompositeTypeField(v.Type().Elem())
+
+	if keyErr != nil || valErr != nil {
+		if keyErr != nil {
+			if base := stripPointers(v.Type().Key()); base != emptyStructType {
+				w.missingTypes[base] = struct{}{}
+			}
+		}
+		if valErr != nil {
+			if base := stripPointers(v.Type().Elem()); base != emptyStructType {
+				w.missingTypes[base] = struct{}{}
+			}
+		}
+		off := w.write(InterfaceHeader{})
+		return Ref(off), nil
 	}
 	dataOff, err := encode(w, v)
 	if err != nil {
@@ -523,7 +608,7 @@ func linearizeBoxedMap(w *encoder, v reflect.Value) (Ref, error) {
 	}
 	ih := InterfaceHeader{
 		TypeID:   compositeTypeID,
-		Reserved: [5]uint8{compositeKindMap, uint8(keyTypeID), uint8(keyTypeID >> 8), uint8(valTypeID), uint8(valTypeID >> 8)},
+		Reserved: [5]uint8{compositeKindMap, uint8(keyField), uint8(keyField >> 8), uint8(valField), uint8(valField >> 8)},
 		Offset:   dataOff,
 	}
 	off := w.write(ih)
@@ -531,8 +616,8 @@ func linearizeBoxedMap(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 // linearizeBoxedArray encodes a fixed-size array that is stored directly inside
-// an interface value.  The element type must be registered in TypeToID and the
-// array length must fit in a uint16 (≤ 65535).
+// an interface value.  The element type must be in TypeToID (or be struct{} or *T)
+// and the array length must fit in a uint16 (≤ 65535).
 //
 // Binary layout:
 //
@@ -540,19 +625,22 @@ func linearizeBoxedMap(w *encoder, v reflect.Value) (Ref, error) {
 //	InterfaceHeader {
 //	    TypeID         = compositeTypeID (0xFFFF)
 //	    Reserved[0]   = compositeKindArray (3)
-//	    Reserved[1:3] = elem TypeID (little-endian uint16)
-//	    Reserved[3:5] = array length (little-endian uint16)
+//	    Reserved[1:3] = elem TypeID field  (little-endian uint16, see encodeCompositeTypeField)
+//	    Reserved[3:5] = array length       (little-endian uint16, raw — not a TypeID field)
 //	    Offset        → raw array data
 //	}
 func linearizeBoxedArray(w *encoder, v reflect.Value) (Ref, error) {
-	elemType := v.Type().Elem()
 	length := v.Len()
-	typeID, ok := TypeToID[elemType]
-	if !ok {
-		return 0, fmt.Errorf("boxed array: element type %v is not registered in TypeToID; add it via RegisterImplementation", elemType)
-	}
 	if length > 65535 {
 		return 0, fmt.Errorf("boxed array: length %d exceeds the maximum of 65535 for interface-boxed arrays", length)
+	}
+	elemField, err := encodeCompositeTypeField(v.Type().Elem())
+	if err != nil {
+		if base := stripPointers(v.Type().Elem()); base != emptyStructType {
+			w.missingTypes[base] = struct{}{}
+		}
+		off := w.write(InterfaceHeader{})
+		return Ref(off), nil
 	}
 	dataOff, err := encode(w, v)
 	if err != nil {
@@ -560,7 +648,7 @@ func linearizeBoxedArray(w *encoder, v reflect.Value) (Ref, error) {
 	}
 	ih := InterfaceHeader{
 		TypeID:   compositeTypeID,
-		Reserved: [5]uint8{compositeKindArray, uint8(typeID), uint8(typeID >> 8), uint8(length), uint8(length >> 8)},
+		Reserved: [5]uint8{compositeKindArray, uint8(elemField), uint8(elemField >> 8), uint8(length), uint8(length >> 8)},
 		Offset:   dataOff,
 	}
 	off := w.write(ih)
@@ -634,6 +722,9 @@ func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 	n := v.Len()
 	refs := make([]Ref, n)
 	for i := 0; i < n; i++ {
+		if w.profiler != nil {
+			w.profiler.nextLabel = fmt.Sprintf("[%d]", i)
+		}
 		ref, err := encode(w, v.Index(i))
 		if err != nil {
 			return 0, err
@@ -746,6 +837,10 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 		traceLog("Patching Field: %s (Type: %s, Offset: %d)", t.Name, fType, startOffset+currentFieldOff)
 		info := getTypeInfo(fType)
 		if info.isIndirect {
+			// Label the profiler node that linearize will create for this field.
+			if w.profiler != nil {
+				w.profiler.nextLabel = t.Name
+			}
 			ref, err := encode(w, f)
 			if err != nil {
 				return err
@@ -755,9 +850,23 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			continue
 		}
 		if f.Kind() == reflect.Struct {
+			// Inline struct: not indirect, so linearize is never called for it.
+			// Push a profiler node here directly; its Bytes will equal the heap
+			// contributions from its own indirect descendants (the fixed inline
+			// bytes were already reserved by the parent's writeZeros).
+			if w.profiler != nil {
+				w.profiler.nextLabel = t.Name
+				w.profiler.push(fType.String(), w.offset)
+			}
 			// Recurse to patch the inner struct's fields
 			if err := patchStructBody(w, f, startOffset+currentFieldOff); err != nil {
+				if w.profiler != nil {
+					w.profiler.pop(w.offset)
+				}
 				return err
+			}
+			if w.profiler != nil {
+				w.profiler.pop(w.offset)
 			}
 			currentFieldOff += info.binSize
 			continue

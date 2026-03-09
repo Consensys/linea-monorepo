@@ -91,10 +91,10 @@ func AssignEcRecTxnData(
 
 	ecRecLimb.PadAndAssignZero(run)
 	isEcRecRes.PadAndAssign(run)
-	txnCt.PadLeftAndAssign(run)
-	txnUser.PadLeftAndAssign(run)
-	txnSelector.PadLeftAndAssign(run)
-	txnFrom.PadLeftAndAssignZero(run)
+	txnCt.PadAndAssign(run)
+	txnUser.PadAndAssign(run)
+	txnSelector.PadAndAssign(run)
+	txnFrom.PadAndAssignZero(run)
 
 	effectiveSize := nbEcRec*nbRowsPerEcRec + nbTxS*nbRowsPerTxSign
 	isActive := vector.Repeat(field.One(), effectiveSize)
