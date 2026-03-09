@@ -58,10 +58,12 @@ const (
 
 var (
 	fullZkEvm               *ZkEvm
+	fullZkEvmLarge          *ZkEvm
 	fullZkEvmCheckOnly      *ZkEvm
 	fullZkEvmSetup          *ZkEvm
 	fullZkEvmSetupLarge     *ZkEvm
 	onceFullZkEvm           = sync.Once{}
+	onceFullZkEvmLarge      = sync.Once{}
 	onceFullZkEvmCheckOnly  = sync.Once{}
 	onceFullZkEvmSetup      = sync.Once{}
 	onceFullZkEvmSetupLarge = sync.Once{}
@@ -148,7 +150,8 @@ var (
 	}
 
 	// This is the compilation suite in use for the full prover (large variant)
-	// Doubles the TargetColSize to fit within 2^27 SRS
+	// Increases TargetColSize to fit within 2^27 SRS (134M constraints)
+	// Stage 1 doubled from 1<<19 to 1<<20 (must be power of two)
 	fullInitialCompilationSuiteLarge = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		poseidon2.CompilePoseidon2,
@@ -172,7 +175,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18), // doubled from 1<<17
+			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-1"),
 		),
@@ -189,7 +192,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<16), // doubled from 1<<15
+			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-2"),
 		),
@@ -206,7 +209,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15), // doubled from 1<<14
+			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-3"),
 		),
@@ -282,6 +285,18 @@ func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	})
 
 	return fullZkEvm
+}
+
+// FullZkEvmLarge is similar to FullZkEvm but uses the large compilation suite
+// with doubled TargetColSize values to reduce constraint count.
+func FullZkEvmLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+
+	onceFullZkEvmLarge.Do(func() {
+		// Initialize the Full zkEVM arithmetization with large compilation suite
+		fullZkEvmLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuiteLarge, &fullSecondCompilationSuite)
+	})
+
+	return fullZkEvmLarge
 }
 
 func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {

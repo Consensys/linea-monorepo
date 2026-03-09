@@ -147,7 +147,11 @@ func mustProveAndPass(
 		}
 		if fullZkEvm == nil {
 			logrus.Info("Get Full IOP")
-			fullZkEvm = zkevm.FullZkEvm(traces, cfg)
+			if large {
+				fullZkEvm = zkevm.FullZkEvmLarge(traces, cfg)
+			} else {
+				fullZkEvm = zkevm.FullZkEvm(traces, cfg)
+			}
 		}
 
 		var (
