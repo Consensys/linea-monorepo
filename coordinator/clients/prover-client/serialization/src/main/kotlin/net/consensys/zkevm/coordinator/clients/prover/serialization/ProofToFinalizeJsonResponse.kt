@@ -40,6 +40,9 @@ data class ProofToFinalizeJsonResponse(
   @JsonDeserialize(using = ByteArrayDeserializer::class)
   val l2MessagingBlocksOffsets: ByteArray,
   val parentAggregationFtxNumber: Long = 0,
+  @JsonSerialize(using = ByteArraySerializer::class)
+  @JsonDeserialize(using = ByteArrayDeserializer::class)
+  val parentAggregationFtxRollingHash: ByteArray = ByteArray(32),
   val finalFtxNumber: Long = 0,
   @JsonSerialize(using = ByteArraySerializer::class)
   @JsonDeserialize(using = ByteArrayDeserializer::class)
@@ -67,6 +70,7 @@ data class ProofToFinalizeJsonResponse(
       l2MerkleTreesDepth = l2MerkleTreesDepth,
       l2MessagingBlocksOffsets = l2MessagingBlocksOffsets,
       parentAggregationFtxNumber = parentAggregationFtxNumber.toULong(),
+      parentAggregationFtxRollingHash = parentAggregationFtxRollingHash,
       finalFtxNumber = finalFtxNumber.toULong(),
       finalFtxRollingHash = finalFtxRollingHash,
       filteredAddresses = filteredAddresses,
@@ -100,6 +104,7 @@ data class ProofToFinalizeJsonResponse(
     if (!l1RollingHash.contentEquals(other.l1RollingHash)) return false
     if (!l2MerkleRoots.byteArrayListEquals(other.l2MerkleRoots)) return false
     if (!l2MessagingBlocksOffsets.contentEquals(other.l2MessagingBlocksOffsets)) return false
+    if (!parentAggregationFtxRollingHash.contentEquals(other.parentAggregationFtxRollingHash)) return false
     if (!finalFtxRollingHash.contentEquals(other.finalFtxRollingHash)) return false
     if (!filteredAddresses.byteArrayListEquals(other.filteredAddresses)) return false
 
@@ -124,6 +129,7 @@ data class ProofToFinalizeJsonResponse(
     result = 31 * result + l1RollingHash.contentHashCode()
     result = 31 * result + l2MerkleRoots.byteArrayListHashCode()
     result = 31 * result + l2MessagingBlocksOffsets.contentHashCode()
+    result = 31 * result + parentAggregationFtxRollingHash.contentHashCode()
     result = 31 * result + finalFtxRollingHash.contentHashCode()
     result = 31 * result + filteredAddresses.byteArrayListHashCode()
     return result
@@ -158,6 +164,7 @@ data class ProofToFinalizeJsonResponse(
         l2MerkleTreesDepth = proofToFinalize.l2MerkleTreesDepth,
         l2MessagingBlocksOffsets = proofToFinalize.l2MessagingBlocksOffsets,
         parentAggregationFtxNumber = proofToFinalize.parentAggregationFtxNumber.toLong(),
+        parentAggregationFtxRollingHash = proofToFinalize.parentAggregationFtxRollingHash,
         finalFtxNumber = proofToFinalize.finalFtxNumber.toLong(),
         finalFtxRollingHash = proofToFinalize.finalFtxRollingHash,
         filteredAddresses = proofToFinalize.filteredAddresses,

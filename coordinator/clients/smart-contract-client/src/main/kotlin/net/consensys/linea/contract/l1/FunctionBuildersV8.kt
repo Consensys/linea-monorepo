@@ -78,7 +78,7 @@ internal object FunctionBuildersV8 {
         // BigInteger finalForcedTransactionNumber,
         aggregationProof.finalFtxNumber.toBigInteger(),
         // byte[] lastFinalizedForcedTransactionRollingHash,
-        aggregationProof.finalFtxRollingHash,
+        aggregationProof.parentAggregationFtxRollingHash,
         // l2MerkleRoots
         aggregationProof.l2MerkleRoots,
         //  List<String> filteredAddresses,

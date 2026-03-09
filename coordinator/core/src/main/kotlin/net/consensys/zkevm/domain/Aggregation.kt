@@ -93,6 +93,7 @@ data class ProofToFinalize(
   val l2MerkleTreesDepth: Int,
   val l2MessagingBlocksOffsets: ByteArray,
   val parentAggregationFtxNumber: ULong,
+  val parentAggregationFtxRollingHash: ByteArray,
   val finalFtxNumber: ULong,
   val finalFtxRollingHash: ByteArray,
   val filteredAddresses: List<ByteArray>,
@@ -122,6 +123,7 @@ data class ProofToFinalize(
     if (!l2MerkleRoots.byteArrayListEquals(other.l2MerkleRoots)) return false
     if (!l2MessagingBlocksOffsets.contentEquals(other.l2MessagingBlocksOffsets)) return false
     if (parentAggregationFtxNumber != other.parentAggregationFtxNumber) return false
+    if (!parentAggregationFtxRollingHash.contentEquals(other.parentAggregationFtxRollingHash)) return false
     if (finalFtxNumber != other.finalFtxNumber) return false
     if (!finalFtxRollingHash.contentEquals(other.finalFtxRollingHash)) return false
     if (!filteredAddresses.byteArrayListEquals(other.filteredAddresses)) return false
@@ -148,6 +150,7 @@ data class ProofToFinalize(
     result = 31 * result + l2MerkleRoots.byteArrayListHashCode()
     result = 31 * result + l2MessagingBlocksOffsets.contentHashCode()
     result = 31 * result + parentAggregationFtxNumber.hashCode()
+    result = 31 * result + parentAggregationFtxRollingHash.contentHashCode()
     result = 31 * result + finalFtxNumber.hashCode()
     result = 31 * result + finalFtxRollingHash.contentHashCode()
     result = 31 * result + filteredAddresses.byteArrayListHashCode()

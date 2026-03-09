@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlockIntervals
-import linea.kotlin.trimToSecondPrecision
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -16,8 +15,8 @@ import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.domain.CompressionProofIndex
 import net.consensys.zkevm.domain.ForcedTransactionRecordFactory.createForcedTransactionRecord
 import net.consensys.zkevm.domain.InvalidityProofIndex
-import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
+import net.consensys.zkevm.domain.createProofToFinalize
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
@@ -34,7 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
 import java.util.function.Supplier
 import kotlin.random.Random
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -63,28 +61,10 @@ class ProofAggregationCoordinatorServiceTest {
     return BlobAndBatchCounters(blobCounters = blobCounters, executionProofs = batches)
   }
 
-  private val aggregationProofResponse =
-    ProofToFinalize(
-      aggregatedProof = "mock_aggregatedProof".toByteArray(),
-      aggregatedVerifierIndex = 1,
-      aggregatedProofPublicInput = "mock_aggregatedProofPublicInput".toByteArray(),
-      dataHashes = listOf("mock_dataHashes_1".toByteArray()),
-      dataParentHash = "mock_dataParentHash".toByteArray(),
-      parentStateRootHash = "mock_parentStateRootHash".toByteArray(),
-      parentAggregationLastBlockTimestamp = Clock.System.now().trimToSecondPrecision(),
-      finalTimestamp = Clock.System.now().trimToSecondPrecision(),
-      firstBlockNumber = 1,
-      finalBlockNumber = 23,
-      l1RollingHash = "mock_l1RollingHash".toByteArray(),
-      l1RollingHashMessageNumber = 4,
-      l2MerkleRoots = listOf("mock_l2MerkleRoots".toByteArray()),
-      l2MerkleTreesDepth = 5,
-      l2MessagingBlocksOffsets = "mock_l2MessagingBlocksOffsets".toByteArray(),
-      parentAggregationFtxNumber = 1UL,
-      finalFtxNumber = 2UL,
-      finalFtxRollingHash = "mock_finalFtxRollingHash".toByteArray(),
-      filteredAddresses = emptyList(),
-    )
+  private val aggregationProofResponse = createProofToFinalize(
+    firstBlockNumber = 11,
+    finalBlockNumber = 23,
+  )
 
   @Test
   fun `test aggregation flow`(vertx: Vertx) {
