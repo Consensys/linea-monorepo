@@ -12,7 +12,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import linea.blob.BlobCompressor;
+import kotlin.time.Clock;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -25,11 +26,13 @@ import org.hyperledger.besu.datatypes.Transaction;
 @Slf4j
 public class CachingTransactionCompressor implements TransactionCompressor {
   private static final long DEFAULT_CACHE_SIZE = 10000;
-  private final BlobCompressor blobCompressor;
+  private final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp;
   private final Cache<Hash, Integer> compressedSizeCache;
 
-  public CachingTransactionCompressor(final long cacheSize, final BlobCompressor blobCompressor) {
-    this.blobCompressor = blobCompressor;
+  public CachingTransactionCompressor(
+      final long cacheSize,
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
+    this.blobCompressorSelectorByTimestamp = blobCompressorSelectorByTimestamp;
     compressedSizeCache =
         CacheBuilder.newBuilder()
             .maximumSize(cacheSize)
@@ -37,13 +40,16 @@ public class CachingTransactionCompressor implements TransactionCompressor {
             .build();
   }
 
-  public CachingTransactionCompressor(final BlobCompressor blobCompressor) {
-    this(DEFAULT_CACHE_SIZE, blobCompressor);
+  public CachingTransactionCompressor(
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
+    this(DEFAULT_CACHE_SIZE, blobCompressorSelectorByTimestamp);
   }
 
   private int calculateCompressedSize(final Transaction transaction) {
     final byte[] encoded = TxEncodingUtils.encodeForCompressor(transaction);
-    return blobCompressor.compressedSize(encoded);
+    return blobCompressorSelectorByTimestamp
+        .getBlobCompressor(Clock.System.INSTANCE.now())
+        .compressedSize(encoded);
   }
 
   /**

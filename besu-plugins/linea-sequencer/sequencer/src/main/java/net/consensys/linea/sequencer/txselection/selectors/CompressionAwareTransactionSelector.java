@@ -19,7 +19,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import kotlin.time.Instant;
 import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.utils.TransactionCompressor;
 import org.apache.tuweni.bytes.Bytes;
@@ -105,7 +107,7 @@ public class CompressionAwareTransactionSelector
 
   private final long fastExecutionPathLimit;
   private final TransactionCompressor transactionCompressor;
-  private final BlobCompressor blobCompressor;
+  private final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp;
 
   /**
    * Shared single-threaded executor for slow-execution-path compression. Declared static so that
@@ -143,7 +145,7 @@ public class CompressionAwareTransactionSelector
       final int blobSizeLimit,
       final int compressedBlockHeaderOverhead,
       final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
     super(
         selectorsStateManager,
         new CompressionState(0L, new ArrayList<>()),
@@ -154,7 +156,7 @@ public class CompressionAwareTransactionSelector
           "fastExecutionPathLimit must be positive, got " + fastExecutionPathLimit);
     }
     this.transactionCompressor = transactionCompressor;
-    this.blobCompressor = blobCompressor;
+    this.blobCompressorSelectorByTimestamp = blobCompressorSelectorByTimestamp;
   }
 
   @Override
@@ -204,6 +206,10 @@ public class CompressionAwareTransactionSelector
     pendingSlowExecutionPathFuture =
         COMPRESSION_EXECUTOR.submit(
             () -> {
+              Instant timestamp =
+                  Instant.Companion.fromEpochSeconds(pendingHeader.getTimestamp(), 0L);
+              BlobCompressor blobCompressor =
+                  blobCompressorSelectorByTimestamp.getBlobCompressor(timestamp);
               blobCompressor.reset();
               return blobCompressor.appendBlock(blockRlp);
             });
