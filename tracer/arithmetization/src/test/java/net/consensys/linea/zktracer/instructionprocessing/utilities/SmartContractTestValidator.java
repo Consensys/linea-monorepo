@@ -59,7 +59,7 @@ public class SmartContractTestValidator implements TransactionProcessingResultVa
         for (int i = 0; i < result.getLogs().size(); i++) {
           List<LogTopic> txLogsTopics = result.getLogs().get(i).getTopics();
           for (int j = 0; j < txLogsTopics.size(); j++) {
-            String txLogsTopic = txLogsTopics.get(j).toString();
+            String txLogsTopic = txLogsTopics.get(j).getBytes().toHexString();
             if (logsMapTopic.toString().equals(txLogsTopic)) {
               logsMaplogCount--;
               if ((logsDataMap.get(txLogsTopic) != null)

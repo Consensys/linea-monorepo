@@ -183,9 +183,9 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     if (valueCase.isNonZeroCase()
         && (gasCase == COST_MINUS_ONE || gasCase == COST || gasCase == GasCase.COST_PLUS_ONE)
         && !precompileAddress.getBytes().equals(ALTBN128_ADD.getBytes())
-        && !precompileAddress.equals(BLS12_G1ADD)
-        && !precompileAddress.equals(BLS12_G2ADD)
-        && !precompileAddress.equals(MODEXP)) {
+        && !precompileAddress.getBytes().equals(BLS12_G1ADD.getBytes())
+        && !precompileAddress.getBytes().equals(BLS12_G2ADD.getBytes())
+        && !precompileAddress.getBytes().equals(MODEXP.getBytes())) {
       gas -= GAS_CONST_G_CALL_STIPEND;
     }
 

@@ -202,10 +202,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
       }
     }
 
-    if (recipientAddress.equals(delegateAddress)) {
+    if (recipientAddress.getBytes().equals(delegateAddress.getBytes())) {
       delegate = recipientNew.deepCopy();
       delegateNew = delegate;
-    } else if (senderAddress.equals(delegateAddress)) {
+    } else if (senderAddress.getBytes().equals(delegateAddress.getBytes())) {
       delegate = senderNew.deepCopy();
       delegateNew = delegate;
     }

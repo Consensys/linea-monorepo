@@ -158,7 +158,8 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
             .to(contractAccountA)
             .payload(
                 Bytes.fromHexString(
-                    "0x60a394a5000000000000000000000000" + addressB.toString().substring(2)))
+                    "0x60a394a5000000000000000000000000"
+                        + addressB.getBytes().toHexString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
             .value(Wei.ZERO)
             .keyPair(keyPair)
@@ -171,7 +172,8 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
             .to(contractAccountB)
             .payload(
                 Bytes.fromHexString(
-                    "0x60a394a5000000000000000000000000" + addressC.toString().substring(2)))
+                    "0x60a394a5000000000000000000000000"
+                        + addressC.getBytes().toHexString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
             .value(Wei.ZERO)
             .keyPair(keyPair)
@@ -184,7 +186,8 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
             .to(contractAccountC)
             .payload(
                 Bytes.fromHexString(
-                    "0x60a394a5000000000000000000000000" + addressD.toString().substring(2)))
+                    "0x60a394a5000000000000000000000000"
+                        + addressD.getBytes().toHexString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
             .value(Wei.ZERO)
             .keyPair(keyPair)
@@ -197,7 +200,8 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
             .to(contractAccountD)
             .payload(
                 Bytes.fromHexString(
-                    "0x60a394a5000000000000000000000000" + addressE.toString().substring(2)))
+                    "0x60a394a5000000000000000000000000"
+                        + addressE.getBytes().toHexString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
             .value(Wei.ZERO)
             .keyPair(keyPair)

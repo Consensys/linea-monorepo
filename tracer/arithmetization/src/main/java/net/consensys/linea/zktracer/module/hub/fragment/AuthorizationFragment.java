@@ -111,7 +111,7 @@ public class AuthorizationFragment implements TraceFragment {
   }
 
   public Bytecode getBytecode() {
-    if (delegation.address().equals(Address.ZERO)) {
+    if (delegation.address().getBytes().equals(Address.ZERO.getBytes())) {
       return Bytecode.EMPTY;
     }
 
@@ -120,7 +120,7 @@ public class AuthorizationFragment implements TraceFragment {
                 .trimLeadingZeros()
                 .toHexString()
                 .substring(2)
-            + delegation.address().toHexString().substring(2);
+            + delegation.address().getBytes().toHexString().substring(2);
 
     checkState(
         bytecodeHexString.length() == 2 * EOA_DELEGATED_CODE_LENGTH,
@@ -149,7 +149,8 @@ public class AuthorizationFragment implements TraceFragment {
         .pAuthAuthorizationTupleIsValid(authorizationTupleIsValid)
         .pAuthDelegationAddressHi(delegation.address().getBytes().slice(0, 4).toLong())
         .pAuthDelegationAddressLo(delegation.address().getBytes().slice(4, LLARGE))
-        .pAuthDelegationAddressIsZero(delegation.address().equals(Address.ZERO));
+        .pAuthDelegationAddressIsZero(
+            delegation.address().getBytes().equals(Address.ZERO.getBytes()));
   }
 
   private boolean traceAccountData() {

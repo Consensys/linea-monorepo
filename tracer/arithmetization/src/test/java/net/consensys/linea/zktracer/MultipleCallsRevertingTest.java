@@ -222,11 +222,11 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
       CallCase callCase) {
     return "0x625fd839"
         + "000000000000000000000000"
-        + addressFundsSender.toString().substring(2)
+        + addressFundsSender.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver1.toString().substring(2)
+        + addressFundsReceiver1.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver2.toString().substring(2)
+        + addressFundsReceiver2.getBytes().toHexString().substring(2)
         + "000000000000000000000000000000000000000000000000000000000000000"
         + (mustRevert ? "1" : "0")
         + "000000000000000000000000000000000000000000000000000000000000000"
@@ -240,9 +240,9 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
       CallCase callCase) {
     return "0xc74c79b5"
         + "000000000000000000000000"
-        + addressFundsReceiver1.toString().substring(2)
+        + addressFundsReceiver1.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver2.toString().substring(2)
+        + addressFundsReceiver2.getBytes().toHexString().substring(2)
         + "000000000000000000000000000000000000000000000000000000000000000"
         + (mustRevert ? "1" : "0")
         + "000000000000000000000000000000000000000000000000000000000000000"
