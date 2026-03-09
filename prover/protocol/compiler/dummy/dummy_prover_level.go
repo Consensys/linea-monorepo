@@ -59,6 +59,10 @@ func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
 // DoneOperation is an operation done during a round. It used to help avoid the
 // CompilerAtProverLvl to recompile the same verification steps when called
 // multiple times.
+//
+// The reason this structure exists (it used to be a locally named structure in
+// the body of the DummyAtProverLvl compiler) is that we need it to be named
+// publicly so that the serializer can handle it.
 type DoneOperation struct {
 	Type       byte // 0 for params, 1 for no-params, 2 for verifier-action
 	Round      int  // round in which the operation was done
@@ -66,6 +70,13 @@ type DoneOperation struct {
 }
 
 // DoneOperationSet wraps a set of [DoneOperation]s.
+//
+// The reason this structure exists (it used to be a locally named structure in
+// the body of the DummyAtProverLvl compiler) is that we need it to be named
+// publicly so that the serializer can handle it.
+//
+// Also, it used to be a map[DoneOperation]struct{} in the body of the compiler
+// but the serializer has issues serializing that.
 type DoneOperationSet struct {
 	S map[DoneOperation]int
 }

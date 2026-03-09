@@ -319,6 +319,10 @@ func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wiza
 	res := make([]frontend.Variable, len(pis))
 	for i := range pis {
 
+		// When the outer-proof runs on top of the limitless prover. Then, the
+		// name of the "functional" public-inputs (e.g. the one that corresponds
+		// to the actual statement of the execution instance) is prefixed with
+		// "functional."
 		name := pis[i].Name
 		if !wvc.HasPublicInput(name) {
 			name = "functional." + name

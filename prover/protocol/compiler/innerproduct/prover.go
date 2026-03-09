@@ -12,6 +12,10 @@ import (
 // ProverTask implements the [wizard.ProverAction] interface and as such
 // implements the prover work of the compilation step. It works by calling
 // in parallel the prover tasks of the sub-compilation steps.
+//
+// The reason we need a wrapping structure (and not just `type X []*Y“) is
+// because the serializer will recognize it as an `[]*Y` and not as an `X` and
+// thus not as a valid interface implementation for [wizard.ProverAction].
 type ProverTask struct {
 	Contexts []*ContextForSize
 }
