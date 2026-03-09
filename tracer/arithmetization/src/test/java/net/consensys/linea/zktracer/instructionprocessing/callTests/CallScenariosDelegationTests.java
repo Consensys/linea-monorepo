@@ -384,8 +384,9 @@ public class CallScenariosDelegationTests extends TracerTestBase {
       for (CalleeType calleeType : CalleeType.values()) {
         if (callScenario.isEoaCallScenario() && !calleeType.isDelegatedEOA()
             || callScenario.isSmcCallScenario() && !calleeType.isSmc()) {
-          continue; // skip irrelevant scenarios, e.g., CALL_SMC_SUCCESS_WILL_REVERT
-          // scenario with DELEGATED_TO_ROOT callee type
+          continue;
+          // if scenario is CALL_EOA then callee must be a (delegated) EOA
+          // if scenario is CALL_SMC then callee must be an SMC
         }
         for (CallerType callerType : CallerType.values()) {
           for (RevertType rootCodeRevertType : RevertType.values()) {
