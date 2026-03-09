@@ -5,7 +5,6 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.Tuple
 import linea.domain.BlockIntervals
-import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.domain.Aggregation
@@ -34,7 +33,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import kotlin.ByteArray
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 @ExtendWith(VertxExtension::class)
@@ -46,28 +44,10 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-aggregations-dao")
 
   private val maxBlobReturnLimit = 10u
-  private val sampleResponse = ProofToFinalize(
-    aggregatedProof = "mock_aggregatedProof".toByteArray(),
-    aggregatedVerifierIndex = 1,
-    aggregatedProofPublicInput = "mock_aggregatedProofPublicInput".toByteArray(),
-    dataHashes = listOf("mock_dataHashes_1".toByteArray()),
-    dataParentHash = "mock_dataParentHash".toByteArray(),
-    parentStateRootHash = "mock_parentStateRootHash".toByteArray(),
-    parentAggregationLastBlockTimestamp = Clock.System.now().trimToSecondPrecision(),
-    finalTimestamp = Clock.System.now().trimToSecondPrecision(),
+  private val sampleResponse = createProofToFinalize(
     firstBlockNumber = 1,
     finalBlockNumber = 23,
-    l1RollingHash = "mock_l1RollingHash".toByteArray(),
-    l1RollingHashMessageNumber = 4,
-    l2MerkleRoots = listOf("mock_l2MerkleRoots".toByteArray()),
-    l2MerkleTreesDepth = 5,
-    l2MessagingBlocksOffsets = "mock_l2MessagingBlocksOffsets".toByteArray(),
-    parentAggregationFtxNumber = 1UL,
-    finalFtxNumber = 2UL,
-    finalFtxRollingHash = "mock_finalFtxRollingHash".toByteArray(),
-    filteredAddresses = emptyList(),
   )
-
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   private var fakeClock = FakeFixedClock(fakeClockTime)
 
