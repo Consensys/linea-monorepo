@@ -207,7 +207,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 				false,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
-				vortex.WithOptionalSISHashingThreshold(64),
+				vortex.WithOptionalSISHashingThreshold(512),
 			),
 		)
 	} else {
@@ -219,7 +219,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
-				vortex.WithOptionalSISHashingThreshold(64),
+				vortex.WithOptionalSISHashingThreshold(512),
 			),
 		)
 	}
@@ -243,7 +243,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
+			vortex.WithOptionalSISHashingThreshold(512),
 		),
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
@@ -266,7 +266,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
-			vortex.WithOptionalSISHashingThreshold(64),
+			vortex.WithOptionalSISHashingThreshold(512),
 		),
 		// dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 	)
@@ -332,7 +332,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 				vortex.ForceNumOpenedColumns(64),
 				vortex.WithSISParams(&sisInstance),
 				vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
-				vortex.WithOptionalSISHashingThreshold(64),
+				vortex.WithOptionalSISHashingThreshold(512),
 			),
 			selfrecursion.SelfRecurse,
 			poseidon2.CompilePoseidon2,
@@ -356,7 +356,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 					vortex.ForceNumOpenedColumns(64),
 					vortex.WithSISParams(&sisInstance),
 					vortex.PremarkAsSelfRecursed(),
-					vortex.WithOptionalSISHashingThreshold(64),
+					vortex.WithOptionalSISHashingThreshold(512),
 				),
 			)
 		}
