@@ -480,11 +480,11 @@ func (r *RecursedSegmentCompilation) proveSegment(wit any, forBLS bool) *Segment
 				recursionComp,
 				recursionCtx.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
-				false,
+				forBLS,
 			)
 		})
 		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(recursionComp, finalProof, recStoppingRound, false)
+		finalProofErr = wizard.VerifyUntilRound(recursionComp, finalProof, recStoppingRound, forBLS)
 	)
 
 	if finalProofErr != nil {
@@ -504,8 +504,13 @@ func (r *RecursedSegmentCompilation) proveSegment(wit any, forBLS bool) *Segment
 		ModuleIndex:      moduleIndex,
 		SegmentIndex:     segmentModuleIndex,
 		ProofType:        proofType,
-		RecursionWitness: recursion.ExtractWitness(run),
 		recursionRuntime: run,
+	}
+
+	if !forBLS {
+		// For BLS workload, the function ExtractWitness does not work and  -
+		// importantly is not well-defined import.
+		segmentProof.RecursionWitness = recursion.ExtractWitness(run)
 	}
 
 	if proofType == proofTypeGL {

@@ -315,6 +315,8 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			if ctx.RoundStatus[round] == IsNoSis {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 				blsTrees = append(blsTrees, tree)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				utils.Panic("IsSISApplied is not supported in BLS mode (round %v)", round)
 			}
 
 		} else {
