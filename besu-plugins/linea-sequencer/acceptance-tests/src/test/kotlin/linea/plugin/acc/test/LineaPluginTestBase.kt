@@ -94,7 +94,6 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       "LineaTransactionPoolValidatorPlugin",
       "LineaTransactionSelectorPlugin",
       "LineaBundleEndpointsPlugin",
-      "ForwardBundlesPlugin",
       "LineaTransactionValidatorPlugin",
       "LineaForcedTransactionEndpointsPlugin",
     )
@@ -451,7 +450,7 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
     return PollingTransactionReceiptProcessor(
       web3j,
       maxOf(1000L, DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 1000L / 5),
-      DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 3,
+      DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 6,
     )
   }
 
