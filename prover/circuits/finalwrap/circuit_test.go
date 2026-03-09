@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -193,13 +194,14 @@ func realisticWizardAssign(p realisticWizardParams) func(*wizard.ProverRuntime) 
 }
 
 // realisticWizardCompile compiles a realistic wizard IOP using the pipeline:
-// Arcane → Vortex → SelfRecursion → Poseidon2 → Arcane → Vortex (IsLastRound=true).
+// Arcane → Vortex → (SelfRecursion → Poseidon2 → Arcane → Vortex) × nbIteration (IsLastRound=true on final).
 // This matches realisticBLSWizardCompile in e2e_bls_test.go for fair comparison.
-func realisticWizardCompile(p realisticWizardParams) *wizard.CompiledIOP {
+func realisticWizardCompile(p realisticWizardParams, nbIteration int) *wizard.CompiledIOP {
 	const (
 		rsInverseRate     = 16
 		nbOpenedColumns   = 64
 		initTargetColSize = 1 << 16
+		midTargetRowSize  = 1 << 8
 		lastTargetRowSize = 1 << 10
 	)
 
@@ -217,11 +219,32 @@ func realisticWizardCompile(p realisticWizardParams) *wizard.CompiledIOP {
 		),
 	)
 
-	selfrecursion.SelfRecurse(comp)
+	for i := 0; i < nbIteration-1; i++ {
+		selfrecursion.SelfRecurse(comp)
 
+		stats := logdata.GetWizardStats(comp)
+		rowSize := utils.NextPowerOfTwo(utils.DivCeil(stats.NumCellsCommitted, midTargetRowSize))
+		wizard.ContinueCompilation(comp,
+			poseidon2.CompilePoseidon2,
+			compiler.Arcane(
+				compiler.WithTargetColSize(rowSize),
+				compiler.WithStitcherMinSize(1<<1),
+			),
+		)
+		wizard.ContinueCompilation(comp,
+			vortex.Compile(
+				rsInverseRate, false,
+				vortex.ForceNumOpenedColumns(nbOpenedColumns),
+				vortex.WithSISParams(&ringsis.StdParams),
+			),
+		)
+
+	}
+
+	// Last iteration: SelfRecursion → Poseidon2 → Arcane → Vortex (IsLastRound=true).
+	selfrecursion.SelfRecurse(comp)
 	stats := logdata.GetWizardStats(comp)
 	rowSize := utils.NextPowerOfTwo(utils.DivCeil(stats.NumCellsCommitted, lastTargetRowSize))
-
 	wizard.ContinueCompilation(comp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
@@ -229,11 +252,10 @@ func realisticWizardCompile(p realisticWizardParams) *wizard.CompiledIOP {
 			compiler.WithStitcherMinSize(1<<1),
 		),
 	)
-
-	// IsLastRound=true → BN254-native FS + Merkle hashing
+	// IsLastRound=true
 	wizard.ContinueCompilation(comp,
 		vortex.Compile(
-			rsInverseRate, true,
+			rsInverseRate, true, // IsLastRound=true
 			vortex.ForceNumOpenedColumns(nbOpenedColumns),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
@@ -307,14 +329,14 @@ func TestToyFinalWrapEndToEnd(t *testing.T) {
 }
 
 // TestFinalWrapEndToEnd tests the BN254 pipeline:
-// wizard IOP (Arcane → Vortex → SelfRecursion × 1) → BN254 final wrap.
+// wizard IOP (Arcane → Vortex → SelfRecursion × 2) → BN254 final wrap.
 // This is the BN254-native equivalent of TestFullOldPipelineBLS in e2e_bls_test.go.
 func TestFinalWrapEndToEnd(t *testing.T) {
 	params := defaultRealisticParams
 	srsProvider := circuits.NewUnsafeSRSProvider()
 
-	t.Log("Compiling realistic wizard IOP (Arcane → Vortex → SelfRecursion × 1)...")
-	comp := realisticWizardCompile(params)
+	t.Log("Compiling realistic wizard IOP (Arcane → Vortex → SelfRecursion × 2)...")
+	comp := realisticWizardCompile(params, 2)
 	require.NotNil(t, comp)
 	t.Logf("Wizard IOP compiled: %d rounds", comp.NumRounds())
 
@@ -381,6 +403,129 @@ func realisticLeafCompile(p realisticWizardParams) *wizard.CompiledIOP {
 			vortex.PremarkAsSelfRecursed(),
 		),
 	)
+}
+
+// TestProofSizeProgression shows real cell/column counts at each step of
+// realisticWizardCompile to illustrate how self-recursion compresses the proof.
+// Compile-only — no proving.
+func TestProofSizeProgression(t *testing.T) {
+	const (
+		rsInverseRate     = 16
+		nbOpenedColumns   = 64
+		initTargetColSize = 1 << 16
+		midTargetRowSize  = 1 << 8
+		lastTargetRowSize = 1 << 10
+		nbIteration       = 3
+	)
+	p := defaultRealisticParams
+	// KoalaBear field element = 4 bytes (32-bit prime field).
+	// Intermediate rounds use KoalaBear; final round adds BN254 elements (32 bytes each),
+	// but proof columns are all KoalaBear-sized so 4 bytes/cell is a good approximation.
+	const bytesPerCell = 4
+	fmtSize := func(cells int) string {
+		bytes := cells * bytesPerCell
+		switch {
+		case bytes >= 1<<20:
+			return fmt.Sprintf("%.2f MB", float64(bytes)/float64(1<<20))
+		case bytes >= 1<<10:
+			return fmt.Sprintf("%.2f KB", float64(bytes)/float64(1<<10))
+		default:
+			return fmt.Sprintf("%d B", bytes)
+		}
+	}
+	logStats := func(label string, comp *wizard.CompiledIOP) {
+		s := logdata.GetWizardStats(comp)
+		t.Logf("%-44s committed: cols=%5d  cells=%10d  | proof: cols=%4d  cells=%8d  (%s)",
+			label,
+			s.NumColumnsCommitted, s.NumCellsCommitted,
+			s.NumColumnsProof, s.NumCellsProof,
+			fmtSize(s.NumCellsProof),
+		)
+	}
+
+	comp := wizard.Compile(
+		realisticWizardDefine(p),
+		compiler.Arcane(
+			compiler.WithTargetColSize(initTargetColSize),
+			compiler.WithStitcherMinSize(1<<1),
+		),
+	)
+	logStats("after initial Arcane", comp)
+
+	wizard.ContinueCompilation(comp,
+		vortex.Compile(
+			rsInverseRate, false,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
+	logStats("after initial Vortex", comp)
+
+	for i := 0; i < nbIteration-1; i++ {
+		selfrecursion.SelfRecurse(comp)
+		logStats(fmt.Sprintf("iter %d: after SelfRecurse", i), comp)
+
+		s := logdata.GetWizardStats(comp)
+		rowSize := utils.NextPowerOfTwo(utils.DivCeil(s.NumCellsCommitted, midTargetRowSize))
+		t.Logf("  → computed rowSize for Arcane = %d", rowSize)
+
+		isLastRound := i == nbIteration-1
+		wizard.ContinueCompilation(comp, poseidon2.CompilePoseidon2)
+		logStats(fmt.Sprintf("iter %d: after Poseidon2", i), comp)
+		wizard.ContinueCompilation(comp,
+			compiler.Arcane(
+				compiler.WithTargetColSize(rowSize),
+				compiler.WithStitcherMinSize(1<<1),
+			),
+		)
+		logStats(fmt.Sprintf("iter %d: after Arcane", i), comp)
+
+		wizard.ContinueCompilation(comp,
+			vortex.Compile(
+				rsInverseRate, isLastRound,
+				vortex.ForceNumOpenedColumns(nbOpenedColumns),
+				// Use SIS for all rounds so intermediate Poseidon2 linear-hash
+				// queries are replaced by ring-polynomial SIS checks. This avoids
+				// the O(nbOpened × colHeight / 8) Poseidon2 query blowup in
+				// subsequent iterations. Only Merkle-path Poseidon2 queries remain.
+				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithOptionalSISHashingThreshold(1),
+			),
+		)
+		logStats(fmt.Sprintf("iter %d: after Vortex (lastRound=%v)", i, isLastRound), comp)
+	}
+
+	selfrecursion.SelfRecurse(comp)
+	logStats(fmt.Sprintf("iter %d: after SelfRecurse", nbIteration-1), comp)
+
+	s := logdata.GetWizardStats(comp)
+	rowSize := utils.NextPowerOfTwo(utils.DivCeil(s.NumCellsCommitted, lastTargetRowSize))
+	t.Logf("  → computed rowSize for Arcane = %d", rowSize)
+
+	isLastRound := true
+	wizard.ContinueCompilation(comp, poseidon2.CompilePoseidon2)
+	logStats(fmt.Sprintf("iter %d: after Poseidon2", nbIteration-1), comp)
+	wizard.ContinueCompilation(comp,
+		compiler.Arcane(
+			compiler.WithTargetColSize(rowSize),
+			compiler.WithStitcherMinSize(1<<1),
+		),
+	)
+	logStats(fmt.Sprintf("iter %d: after Arcane", nbIteration-1), comp)
+
+	wizard.ContinueCompilation(comp,
+		vortex.Compile(
+			rsInverseRate, isLastRound,
+			vortex.ForceNumOpenedColumns(nbOpenedColumns),
+			// Use SIS for all rounds so intermediate Poseidon2 linear-hash
+			// queries are replaced by ring-polynomial SIS checks. This avoids
+			// the O(nbOpened × colHeight / 8) Poseidon2 query blowup in
+			// subsequent iterations. Only Merkle-path Poseidon2 queries remain.
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+		),
+	)
+	logStats(fmt.Sprintf("iter %d: after Vortex (lastRound=%v)", nbIteration-1, isLastRound), comp)
 }
 
 // TestConstraintsVsDepth measures BN254 constraint count at different tree depths
@@ -632,4 +777,90 @@ func TestAggregateFinalWrapEndToEndDepth2(t *testing.T) {
 	require.NotNil(t, proof)
 
 	t.Log("BN254 aggregate final wrap proof (N=4, depth=2) generated and verified successfully")
+}
+
+// TestProductionProofSizeProgression mirrors fullSecondCompilationSuite from
+// zkevm/full.go step-by-step, logging proof sizes at each stage.
+// realisticLeafCompile produces the same PremarkAsSelfRecursed output as
+// fullInitialCompilationSuite, so this test begins where fullSecondCompilationSuite starts.
+func TestProductionProofSizeProgression(t *testing.T) {
+	p := defaultRealisticParams
+	const bytesPerCell = 4
+	fmtSize := func(cells int) string {
+		bytes := cells * bytesPerCell
+		switch {
+		case bytes >= 1<<20:
+			return fmt.Sprintf("%.2f MB", float64(bytes)/float64(1<<20))
+		case bytes >= 1<<10:
+			return fmt.Sprintf("%.2f KB", float64(bytes)/float64(1<<10))
+		default:
+			return fmt.Sprintf("%d B", bytes)
+		}
+	}
+	logStats := func(label string, comp *wizard.CompiledIOP) {
+		s := logdata.GetWizardStats(comp)
+		t.Logf("%-58s committed: cols=%5d  cells=%10d  | proof: cols=%4d  cells=%8d  (%s)",
+			label,
+			s.NumColumnsCommitted, s.NumCellsCommitted,
+			s.NumColumnsProof, s.NumCellsProof,
+			fmtSize(s.NumCellsProof),
+		)
+	}
+
+	// zkevm/full.go sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+	sisInst := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+	// Equivalent to the output of fullInitialCompilationSuite (ends with PremarkAsSelfRecursed).
+	comp := realisticLeafCompile(p)
+	logStats("leaf (≡ fullInitialCompilationSuite output)", comp)
+
+	// fullSecondCompilationSuite step 1:
+	// CleanUp → Poseidon2 → Arcane(1<<22) → Vortex(rsRate=2, nbOpened=256, SIS)
+	wizard.ContinueCompilation(comp, cleanup.CleanUp, poseidon2.CompilePoseidon2)
+	logStats("fullSecond step1: after CleanUp+Poseidon2", comp)
+	wizard.ContinueCompilation(comp, compiler.Arcane(
+		compiler.WithTargetColSize(1<<22),
+		compiler.WithStitcherMinSize(16),
+	))
+	logStats("fullSecond step1: after Arcane(1<<22)", comp)
+	wizard.ContinueCompilation(comp, vortex.Compile(2, false,
+		vortex.ForceNumOpenedColumns(256),
+		vortex.WithSISParams(&sisInst),
+	))
+	logStats("fullSecond step1: after Vortex(rsRate=2, nbOpened=256, SIS)", comp)
+
+	// fullSecondCompilationSuite step 2:
+	// SelfRecurse → CleanUp → Poseidon2 → Arcane(1<<17) → Vortex(rsRate=16, nbOpened=64, SIS)
+	selfrecursion.SelfRecurse(comp)
+	logStats("fullSecond selfrecurse1: after SelfRecurse", comp)
+	wizard.ContinueCompilation(comp, cleanup.CleanUp, poseidon2.CompilePoseidon2)
+	logStats("fullSecond step2: after CleanUp+Poseidon2", comp)
+	wizard.ContinueCompilation(comp, compiler.Arcane(
+		compiler.WithTargetColSize(1<<17),
+		compiler.WithStitcherMinSize(16),
+	))
+	logStats("fullSecond step2: after Arcane(1<<17)", comp)
+	wizard.ContinueCompilation(comp, vortex.Compile(16, false,
+		vortex.ForceNumOpenedColumns(64),
+		vortex.WithSISParams(&sisInst),
+	))
+	logStats("fullSecond step2: after Vortex(rsRate=16, nbOpened=64, SIS)", comp)
+
+	// fullSecondCompilationSuite step 3:
+	// SelfRecurse → CleanUp → Poseidon2 → Arcane(1<<12) → Vortex(PremarkAsSelfRecursed)
+	selfrecursion.SelfRecurse(comp)
+	logStats("fullSecond selfrecurse2: after SelfRecurse", comp)
+	wizard.ContinueCompilation(comp, cleanup.CleanUp, poseidon2.CompilePoseidon2)
+	logStats("fullSecond step3: after CleanUp+Poseidon2", comp)
+	wizard.ContinueCompilation(comp, compiler.Arcane(
+		compiler.WithTargetColSize(1<<12),
+		compiler.WithStitcherMinSize(16),
+	))
+	logStats("fullSecond step3: after Arcane(1<<12)", comp)
+	wizard.ContinueCompilation(comp, vortex.Compile(16, false,
+		vortex.ForceNumOpenedColumns(64),
+		vortex.WithOptionalSISHashingThreshold(1<<20),
+		vortex.PremarkAsSelfRecursed(),
+	))
+	logStats("fullSecond step3: after Vortex(PremarkAsSelfRecursed) [→ tree-agg leaf]", comp)
 }
