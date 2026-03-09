@@ -21,7 +21,7 @@ internal fun Web3j.getWeb3jService(): Web3jService {
       field.get(this) as Web3jService
     }
     else -> {
-      throw IllegalStateException("Web3j of type is not supported yet ${this::class.simpleName}")
+      throw IllegalStateException("Web3j of type ${this::class.simpleName} is not supported yet")
     }
   }
 }

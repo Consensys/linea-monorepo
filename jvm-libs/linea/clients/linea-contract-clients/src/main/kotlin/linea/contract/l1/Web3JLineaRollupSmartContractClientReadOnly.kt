@@ -165,7 +165,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
           .sendAsync()
           .toSafeFuture()
           .thenCompose { finalizedBlockNumber ->
-            getFinalisedStateEvent(
+            getFinalizedStateEvent(
               upToBlock = blockParameter,
               finalisedBlockNumber = finalizedBlockNumber.toULong(),
             )
@@ -181,7 +181,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       }
   }
 
-  private fun getFinalisedStateEvent(
+  private fun getFinalizedStateEvent(
     upToBlock: BlockParameter,
     finalisedBlockNumber: ULong,
   ): SafeFuture<FinalizedStateUpdatedEvent> {
