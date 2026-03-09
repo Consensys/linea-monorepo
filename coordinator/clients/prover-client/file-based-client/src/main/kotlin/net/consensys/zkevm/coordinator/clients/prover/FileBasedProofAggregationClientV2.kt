@@ -108,6 +108,7 @@ internal class AggregationRequestDtoMapper(
 class FileBasedProofAggregationClientV2(
   vertx: Vertx,
   val config: FileBasedProverConfig,
+  val invalidityProverConfig: FileBasedProverConfig? = null,
   hashFunction: HashFunction = Sha256HashFunction(),
   executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex> =
     ExecutionProofFileNameProvider,
@@ -151,21 +152,19 @@ class FileBasedProofAggregationClientV2(
     }
   }
 
-  // FIXME: fix hardcoded later
-  private val invalidityProofConfig = config.copy(
-    requestsDirectory = config.requestsDirectory.parent.resolve("invalidity"),
-    responsesDirectory = config.responsesDirectory.parent.resolve("invalidity"),
-  )
-
   private fun awaitInvalidityProofResponses(
     proofRequest: ProofsToAggregate,
   ): SafeFuture<Unit> {
     if (proofRequest.invalidityProofs.isEmpty()) {
       return SafeFuture.completedFuture(Unit)
     }
+    if (invalidityProverConfig == null) {
+      throw IllegalStateException("Proof request contains invalidity proofs but invalidityProofConfig is not set")
+    }
+
     val responseNames = proofRequest.invalidityProofs.map { invalidityProofIndex ->
       val responseFileName = InvalidityProofFileNameProvider.getFileName(invalidityProofIndex)
-      invalidityProofConfig.responsesDirectory.resolve(responseFileName)
+      invalidityProverConfig.responsesDirectory.resolve(responseFileName)
     }
     return fileMonitor
       .awaitForAllFiles(responseNames)

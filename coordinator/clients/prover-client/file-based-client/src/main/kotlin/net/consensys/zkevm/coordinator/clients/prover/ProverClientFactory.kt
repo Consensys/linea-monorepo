@@ -85,12 +85,13 @@ class ProverClientFactory(
     log: Logger = FileBasedProofAggregationClientV2.LOG,
   ): ProofAggregationProverClientV2 {
     return createClient(
-      proverAConfig = config.proverA.proofAggregation,
-      proverBConfig = config.proverB?.proofAggregation,
+      proverAConfig = config.proverA,
+      proverBConfig = config.proverB,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
       FileBasedProofAggregationClientV2(
-        config = proverConfig,
+        config = proverConfig.proofAggregation,
+        invalidityProverConfig = proverConfig.invalidity,
         vertx = vertx,
         log = log,
       )
@@ -99,25 +100,28 @@ class ProverClientFactory(
   }
 
   fun createInvalidityProofClient(): InvalidityProverClientV1 {
+    if (config.proverA.invalidity == null) {
+      throw IllegalStateException("Invalidity prover config is not configured")
+    }
+
     return createClient(
-      proverAConfig = config.proverA.invalidity
-        ?: throw IllegalStateException("Invalidity prover config is not configured"),
-      proverBConfig = config.proverB?.invalidity,
+      proverAConfig = config.proverA,
+      proverBConfig = config.proverB,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
       FileBasedInvalidityProverClient(
-        config = proverConfig,
+        config = proverConfig.invalidity!!,
         vertx = vertx,
       )
         .also { invalidityWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  private fun <ProofRequest, ProofResponse, TProofIndex> createClient(
-    proverAConfig: FileBasedProverConfig,
-    proverBConfig: FileBasedProverConfig?,
+  private fun <ProverConfig, ProofRequest, ProofResponse, TProofIndex> createClient(
+    proverAConfig: ProverConfig,
+    proverBConfig: ProverConfig?,
     switchBlockNumberInclusive: ULong?,
-    clientBuilder: (FileBasedProverConfig) -> ProverClient<ProofRequest, ProofResponse, TProofIndex>,
+    clientBuilder: (ProverConfig) -> ProverClient<ProofRequest, ProofResponse, TProofIndex>,
   ): ProverClient<ProofRequest, ProofResponse, TProofIndex>
     where ProofRequest : Any, TProofIndex : ProofIndex {
     return if (switchBlockNumberInclusive != null) {
