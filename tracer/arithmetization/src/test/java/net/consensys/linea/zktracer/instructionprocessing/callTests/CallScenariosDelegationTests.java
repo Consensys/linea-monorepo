@@ -407,6 +407,20 @@ public class CallScenariosDelegationTests extends TracerTestBase {
       }
     }
 
+    /*  For debugging:
+    arguments.clear();
+    arguments.add(
+        Arguments.of(
+            CALL_EOA_SUCCESS_WONT_REVERT,
+            CallerType.DELEGATED,
+            CalleeType.DELEGATED_TO_SMC,
+            RevertType.TERMINATES_ON_NON_REVERT,
+            RevertType.TERMINATES_ON_NON_REVERT,
+            LoopType.EXIT_EARLY));
+    - Do we want other exception cases?
+    - Should callScenario apply also to callee?
+    */
+
     return arguments.stream();
   }
 }
