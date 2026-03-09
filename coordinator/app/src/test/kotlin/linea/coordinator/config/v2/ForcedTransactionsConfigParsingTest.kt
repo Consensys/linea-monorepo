@@ -23,6 +23,7 @@ class ForcedTransactionsConfigParsingTest {
       processing-tick-interval = "PT5M"
       processing-delay = "PT30S"
       processing-batch-size = 20
+      invalidity-proof-check-interval = "PT10M"
 
       [forced-transactions.l1-request-retries]
       max-retries = 4
@@ -51,6 +52,7 @@ class ForcedTransactionsConfigParsingTest {
         processingTickInterval = 5.minutes,
         processingDelay = 30.seconds,
         processingBatchSize = 20u,
+        invalidityProofCheckInterval = 10.minutes,
         sequencerEndpoint = "http://sequencer-node:8545".toURL(),
         l1RequestRetries =
         RequestRetriesToml(
@@ -89,6 +91,7 @@ class ForcedTransactionsConfigParsingTest {
         processingTickInterval = 2.minutes,
         processingDelay = 0.seconds,
         processingBatchSize = 10u,
+        invalidityProofCheckInterval = 2.minutes,
         sequencerEndpoint = "http://sequencer-node:8545".toURL(),
         l1RequestRetries = null,
         sequencerRequestRetries = null,

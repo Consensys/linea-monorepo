@@ -18,6 +18,7 @@ data class ForcedTransactionsConfigToml(
   val processingTickInterval: Duration = 2.minutes,
   val processingDelay: Duration = Duration.ZERO,
   val processingBatchSize: UInt = 10u,
+  val invalidityProofCheckInterval: Duration = 2.minutes,
   val l1EventScraping: L1EventScraping = L1EventScraping(),
 ) {
   init {
@@ -64,6 +65,7 @@ data class ForcedTransactionsConfigToml(
       processingTickInterval = processingTickInterval,
       processingDelay = processingDelay,
       processingBatchSize = processingBatchSize,
+      invalidityProofCheckInterval = invalidityProofCheckInterval,
       l1EventScraping = ForcedTransactionsConfig.L1EventScraping(
         pollingInterval = l1EventScraping.pollingInterval,
         pollingTimeout = l1EventScraping.pollingTimeout,
