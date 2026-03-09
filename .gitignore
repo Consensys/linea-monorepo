@@ -169,6 +169,8 @@ __pycache__/
 prover/*.pdf
 # Usually request/response files
 prover/*.json 
+# Usually helper shell scripts to run the prover
+prover/*.sh
 
 .claude/settings.local.json
 contracts/.claude/settings.local.json
