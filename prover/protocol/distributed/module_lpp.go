@@ -761,6 +761,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
 		if run.GetSpec().HasPublicInput(piName) {
 			lppCommitments[i] = run.GetPublicInput(api, piName)
+		} else {
+			lppCommitments[i] = koalagnark.NewElement(0)
 		}
 	}
 
