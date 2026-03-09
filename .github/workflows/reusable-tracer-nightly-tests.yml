@@ -32,7 +32,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew :tracer:arithmetization:nightlyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -v --ansi-escapes=false --report --air --field=KOALABEAR_16
           JUNIT_TESTS_PARALLELISM: 2
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
@@ -75,7 +75,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew :tracer:arithmetization:nightlyModexpTests
         env:
           JUNIT_TESTS_PARALLELISM: 2
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --air --field=KOALABEAR_16
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
       - name: Upload test report
