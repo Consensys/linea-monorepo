@@ -39,7 +39,7 @@ data class ProofToFinalizeJsonResponse(
   @JsonSerialize(using = ByteArraySerializer::class)
   @JsonDeserialize(using = ByteArrayDeserializer::class)
   val l2MessagingBlocksOffsets: ByteArray,
-  val parentAggregationFtxNumber: Long,
+  val parentAggregationFtxNumber: Long = 0,
   val finalFtxNumber: Long = 0,
   @JsonSerialize(using = ByteArraySerializer::class)
   @JsonDeserialize(using = ByteArrayDeserializer::class)
