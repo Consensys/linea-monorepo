@@ -181,10 +181,14 @@ def isBesuAndDistributionAvailableInMavenLocal = { String version ->
   def mavenLocalPom = new File(System.getProperty('user.home'), ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
   if (!mavenLocalPom.exists()) {
     logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu:${version} is not in maven local")
+  } else {
+    logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: Besu ${version} was found in maven local")
   }
   def besuDistTar = rootProject.file("tmp/hyperledger-besu/build/distributions/besu-${version}.tar.gz")
   if (!besuDistTar.exists()) {
     logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution doesn't exist")
+  } else {
+    logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution was found under \"tmp/hyperledger-besu/build/distributions\"")
   }
   return (mavenLocalPom.exists() && besuDistTar.exists())
 }
@@ -305,17 +309,16 @@ tasks.register('checkoutAndResolveVersion') {
   }
 }
 
-tasks.register('checkoutAndBuildBesu', Exec) {
+tasks.register('checkoutAndBuildBesu') {
   group = 'Build'
   description = 'Build Besu at the resolved version (distTar publish/publishToMavenLocal)'
-  workingDir = rootProject.layout.projectDirectory.asFile
 
   def publishToMaven = project.hasProperty('publishToMaven') ? project.publishToMaven.toBoolean() : false
   def publishGradleTaskName = publishToMaven ? "publish" : "publishToMavenLocal"
 
   dependsOn checkoutAndResolveVersion
 
-  doFirst {
+  doLast {
     def resolvedBesuVer = rootProject.ext.resolvedBesuVer
     def shouldSkip = false
     if (publishToMaven) {
@@ -325,20 +328,24 @@ tasks.register('checkoutAndBuildBesu', Exec) {
       else if (isBesuAvailableInMaven.call(resolvedBesuVer) && downloadBesuDistributionFromMaven.call(resolvedBesuVer)) shouldSkip = true
     }
     if (shouldSkip) {
-      throw new org.gradle.api.tasks.StopExecutionException("Skipping checkoutAndBuildBesu: Besu ${resolvedBesuVer} already available")
+      logger.lifecycle("Skipping checkoutAndBuildBesu: Besu ${resolvedBesuVer} already available")
+      return
     }
-    environment 'RESOLVED_BESU_VERSION', resolvedBesuVer
-    environment 'CLOUDSMITH_USER', project.hasProperty('cloudsmithUser') ? project.cloudsmithUser : ''
-    environment 'CLOUDSMITH_API_KEY', project.hasProperty('cloudsmithApiKey') ? project.cloudsmithApiKey : ''
+    exec {
+      workingDir = rootProject.layout.projectDirectory.asFile
+      environment 'RESOLVED_BESU_VERSION', resolvedBesuVer
+      environment 'CLOUDSMITH_USER', project.hasProperty('cloudsmithUser') ? project.cloudsmithUser : ''
+      environment 'CLOUDSMITH_API_KEY', project.hasProperty('cloudsmithApiKey') ? project.cloudsmithApiKey : ''
+      commandLine 'bash', '-c', """
+        set -e
+        BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
+        echo "Injecting Cloudsmith publish to "\$BESU_DIR"/build.gradle"
+        java ./linea-besu/scripts/InjectLines.java "\$BESU_DIR"/build.gradle
+        echo "Building Besu with version \$RESOLVED_BESU_VERSION (distTar ${publishGradleTaskName})"
+        (cd "\$BESU_DIR" && ./gradlew -Prelease.releaseVersion=\$RESOLVED_BESU_VERSION -Pversion=\$RESOLVED_BESU_VERSION distTar ${publishGradleTaskName})
+      """
+    }
   }
-  commandLine 'bash', '-c', """
-    set -e
-    BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
-    echo "Injecting Cloudsmith publish to "\$BESU_DIR"/build.gradle"
-    java ./linea-besu/scripts/InjectLines.java "\$BESU_DIR"/build.gradle
-    echo "Building Besu with version \$RESOLVED_BESU_VERSION (distTar ${publishGradleTaskName})"
-    (cd "\$BESU_DIR" && ./gradlew -Prelease.releaseVersion=\$RESOLVED_BESU_VERSION -Pversion=\$RESOLVED_BESU_VERSION distTar ${publishGradleTaskName})
-  """
 }
 
 tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
