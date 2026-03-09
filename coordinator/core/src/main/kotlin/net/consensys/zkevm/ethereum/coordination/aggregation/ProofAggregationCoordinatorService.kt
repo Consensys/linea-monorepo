@@ -243,10 +243,10 @@ class ProofAggregationCoordinatorService(
   }
 
   private fun aggregationProofCreation(
-    batchIntervals: BlockIntervals,
+    executionProofsIndexes: BlockIntervals,
     compressionProofIndexes: List<CompressionProofIndex>,
   ): SafeFuture<ProofToFinalize> {
-    val blobsToAggregate = batchIntervals.toBlockInterval()
+    val blobsToAggregate = executionProofsIndexes.toBlockInterval()
     return aggregationL2StateProvider
       .getAggregationL2State(blockNumber = blobsToAggregate.startBlockNumber.toLong() - 1)
       .whenException {
@@ -261,11 +261,11 @@ class ProofAggregationCoordinatorService(
         getInvalidityProofs(
           ftxStartingNumber = rollingInfo.parentAggregationLastFtxNumber.inc(),
           aggregationStartingBlockNumber = blobsToAggregate.startBlockNumber,
-        ).thenApply { invalidityProofs ->
+        ).thenApply { invalidityProofIndexes ->
           ProofsToAggregate(
             compressionProofIndexes = compressionProofIndexes,
-            executionProofs = batchIntervals,
-            invalidityProofs = invalidityProofs,
+            executionProofs = executionProofsIndexes,
+            invalidityProofs = invalidityProofIndexes,
             parentAggregationLastBlockTimestamp = rollingInfo.parentAggregationLastBlockTimestamp,
             parentAggregationLastL1RollingHashMessageNumber =
             rollingInfo.parentAggregationLastL1RollingHashMessageNumber,
@@ -278,7 +278,7 @@ class ProofAggregationCoordinatorService(
           .whenException {
             log.debug(
               "Error getting aggregation proof: aggregation={} errorMessage={}",
-              batchIntervals.toBlockInterval().intervalString(),
+              executionProofsIndexes.toBlockInterval().intervalString(),
               it.message,
               it,
             )
@@ -291,7 +291,10 @@ class ProofAggregationCoordinatorService(
     aggregationStartingBlockNumber: ULong,
   ): SafeFuture<List<InvalidityProofIndex>> {
     return forcedTransactionsDao
-      .findByStartingNumber(ftxStartingNumber, aggregationStartingBlockNumber)
+      .findByStartingNumber(
+        ftxStartingNumberInclusive = ftxStartingNumber,
+        endSimulatedExecutionBlockNumberInclusive = aggregationStartingBlockNumber,
+      )
       .thenApply {
         it.map { ftxRecord ->
           InvalidityProofIndex(

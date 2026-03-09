@@ -16,7 +16,6 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
     log: Logger = LogManager.getLogger(AggregationTriggerCalculatorByTargetBlockNumbers::class.java),
   ) : this(
     targetEndBlockNumbersProvider = { targetEndBlockNumbers },
-    triggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
     log = log,
   )
 
