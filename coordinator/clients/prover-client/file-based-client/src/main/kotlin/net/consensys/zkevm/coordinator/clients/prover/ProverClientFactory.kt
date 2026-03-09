@@ -117,11 +117,11 @@ class ProverClientFactory(
     }
   }
 
-  private fun <ProverConfig, ProofRequest, ProofResponse, TProofIndex> createClient(
-    proverAConfig: ProverConfig,
-    proverBConfig: ProverConfig?,
+  private fun <TProverConfig, ProofRequest, ProofResponse, TProofIndex> createClient(
+    proverAConfig: TProverConfig,
+    proverBConfig: TProverConfig?,
     switchBlockNumberInclusive: ULong?,
-    clientBuilder: (ProverConfig) -> ProverClient<ProofRequest, ProofResponse, TProofIndex>,
+    clientBuilder: (TProverConfig) -> ProverClient<ProofRequest, ProofResponse, TProofIndex>,
   ): ProverClient<ProofRequest, ProofResponse, TProofIndex>
     where ProofRequest : Any, TProofIndex : ProofIndex {
     return if (switchBlockNumberInclusive != null) {
