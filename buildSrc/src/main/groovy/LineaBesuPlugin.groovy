@@ -99,18 +99,20 @@ class LineaBesuPlugin implements Plugin<Project> {
     if (!version) return false
     def mavenLocalPom = new File(System.getProperty('user.home'),
         ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
-    if (!mavenLocalPom.exists()) {
+    def pomExists = mavenLocalPom.exists()
+    if (!pomExists) {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu:${version} is not in maven local")
     } else {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: Besu ${version} was found in maven local")
     }
     def besuDistTar = project.rootProject.file("tmp/hyperledger-besu/build/distributions/besu-${version}.tar.gz")
-    if (!besuDistTar.exists()) {
+    def distExists = besuDistTar.exists()
+    if (!distExists) {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution doesn't exist")
     } else {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution was found under \"tmp/hyperledger-besu/build/distributions\"")
     }
-    return mavenLocalPom.exists() && besuDistTar.exists()
+    return pomExists && distExists
   }
 
   private static boolean isBesuAvailableInMaven(Project project, String version) {
