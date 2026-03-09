@@ -24,7 +24,11 @@ class AggregationL2StateProviderImpl(
   private data class FtxRollingInfo(
     val ftxNumber: ULong,
     val ftxRollingHash: ByteArray,
-  )
+  ) {
+    companion object {
+      val GENESIS = FtxRollingInfo(0uL, ByteArray(32))
+    }
+  }
 
   private fun getLastAnchoredMessage(blockNumber: ULong): SafeFuture<AnchoredMessage> {
     return messageService
@@ -51,7 +55,7 @@ class AggregationL2StateProviderImpl(
   private fun getAggregationFtxRollingInfo(aggEndBlockNumber: ULong): SafeFuture<FtxRollingInfo> {
     if (aggEndBlockNumber == 0uL) {
       // return genesis ftx number and hash
-      SafeFuture.completedFuture(FtxRollingInfo(0uL, ByteArray(32)))
+      return SafeFuture.completedFuture(FtxRollingInfo.GENESIS)
     }
 
     return forcedTransactionsDao
@@ -60,7 +64,7 @@ class AggregationL2StateProviderImpl(
       ).thenApply { highestFtx ->
         highestFtx
           ?.let { FtxRollingInfo(it.ftxNumber, it.ftxRollingHash) }
-          ?: FtxRollingInfo(0uL, ByteArray(32))
+          ?: FtxRollingInfo.GENESIS
       }
   }
 
@@ -73,7 +77,7 @@ class AggregationL2StateProviderImpl(
     return SafeFuture
       .allOf(anchoredMessageFuture, aggregationFtxNumbersFuture, blockFuture)
       .thenApply {
-        val (messageNumber, rollingHash) = aggregationFtxNumbersFuture.get()
+        val (messageNumber, rollingHash) = anchoredMessageFuture.get()
         val block = blockFuture.get()
         val (ftxNumber, ftxRollingHash) = aggregationFtxNumbersFuture.get()
         AggregationL2State(
