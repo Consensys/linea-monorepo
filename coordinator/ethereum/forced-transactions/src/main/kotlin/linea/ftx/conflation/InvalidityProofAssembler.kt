@@ -5,6 +5,7 @@ import build.linea.clients.LineaAccountProof
 import build.linea.clients.StateManagerAccountProofClient
 import build.linea.clients.StateManagerClientV1
 import com.github.michaelbull.result.get
+import com.github.michaelbull.result.getOrThrow
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
@@ -153,7 +154,7 @@ class InvalidityProofAssembler(
         ftx.simulatedExecutionBlockNumber,
         ftx.ftxRlp,
       )
-        .thenApply { it.get() }
+        .thenApply { it.getOrThrow { errorResponse -> errorResponse.asException() } }
     }
     return SafeFuture
       .allOf(
