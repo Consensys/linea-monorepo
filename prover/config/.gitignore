@@ -1,0 +1,8 @@
+prover/config/*.toml
+!prover/config/config-devnet-dev.toml
+!prover/config/config-devnet-staging.toml
+!prover/config/config-e2e-dev.toml
+!prover/config/config-e2e-staging.toml
+!prover/config/config-mainnet-prod.toml
+!prover/config/config-mainnet-staging.toml
+!prover/config/config-sepolia-staging.toml
