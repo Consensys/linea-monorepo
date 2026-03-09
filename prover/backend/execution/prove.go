@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -63,7 +64,7 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			} else {
 				// Proofless Mode
 				// task.ProverConfig.Mode() == config.ProverProofless
-				logrus.Infof("Running the prover in proofless mode")
+				logrus.Infof("Running the %s prover", strings.ToUpper(string(cfg.Execution.ProverMode)))
 				out.Version = cfg.Version
 				out.ProverMode = config.ProverModeProofless
 			}
@@ -89,12 +90,12 @@ func mustProveAndPass(
 		traces.SetLargeMode()
 	}
 
+	logrus.Infof("Running the %s prover", strings.ToUpper(string(cfg.Execution.ProverMode)))
+
 	switch cfg.Execution.ProverMode {
 	case config.ProverModeDev, config.ProverModePartial:
 
 		if cfg.Execution.ProverMode == config.ProverModePartial {
-
-			logrus.Info("Running the PARTIAL prover")
 
 			// And run the partial-prover with only the main steps. The generated
 			// proof is sanity-checked to ensure that the prover never outputs
@@ -120,11 +121,10 @@ func mustProveAndPass(
 
 	case config.ProverModeFull:
 
-		logrus.Info("Running the FULL prover")
-
 		circuitID := circuits.ExecutionCircuitID
 		if large {
 			circuitID = circuits.ExecutionLargeCircuitID
+			logrus.Info("Running in large mode")
 		}
 
 		// Try loading serialized inner circuit, fall back to compilation
