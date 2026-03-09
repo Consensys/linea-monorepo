@@ -65,7 +65,9 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F "e2e..." --frozen-lockfile --prefer-offline'
+          commands: |
+            pnpm run -F "e2e^..." build
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
@@ -79,12 +81,13 @@ jobs:
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v7
         with:
-          pattern: linea-besu-package*
-          path: ${{ github.workspace }}/linea-besu-package
+          pattern: linea-besu-package
+          path: ${{ github.workspace }}/tmp/artifacts
+          merge-multiple: true
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
-          gunzip -c $GITHUB_WORKSPACE/linea-besu-package/linea-besu-package-image.tar.gz | docker load
+          gunzip -c $GITHUB_WORKSPACE/tmp/artifacts/linea-besu-package-image.tar.gz | docker load
         shell: bash
       - name: Replace expected traces api version in coordinator config file
         shell: bash

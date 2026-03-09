@@ -8,9 +8,10 @@ import atypTextFont from "@/assets/fonts/atypText";
 import { Layout } from "@/components/layouts/Layout";
 import { Providers } from "@/components/layouts/Providers";
 import FirstVisitModal from "@/components/modal/first-time-visit";
+import TosModal from "@/components/modal/tos-modal";
 import { ModalBase } from "@/components/modal-base";
-import { gtmScript, gtmNoScript } from "@/scripts/gtm";
-import { getNavData } from "@/services";
+import { getNavData } from "@/lib/nav-data";
+import { gtmScript } from "@/scripts/gtm";
 
 import "../scss/app.scss";
 
@@ -32,7 +33,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <meta name="description" content={metadata.description?.toString()} key="desc" />
 
       <body>
-        <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-PPCSK62D"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="Google Tag Manager"
+          />
+        </noscript>
 
         <Providers>
           <Layout navData={navData}>
@@ -41,6 +50,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </Layout>
         </Providers>
         <FirstVisitModal />
+        {/* TODO: Remove TosModal after March 28, 2026 */}
+        <TosModal />
       </body>
 
       <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" nonce={nonce} />

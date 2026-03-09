@@ -22,7 +22,6 @@ import org.hyperledger.besu.plugin.services.mining.MiningService
 import org.hyperledger.besu.plugin.services.p2p.P2PService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
 import kotlin.time.Duration.Companion.minutes
-import linea.kotlin.encodeHex
 
 fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
   return this.getService(clazz)

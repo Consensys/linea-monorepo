@@ -145,6 +145,7 @@ __pycache__/
 
 /docker/config/l2-genesis-initialization/*.json
 /docker/config/l2-genesis-initialization/*.toml
+/docker/config/l2-genesis-initialization/fork-timestamp.txt
 
 !.gitkeep
 !operations/bin/
@@ -163,3 +164,4 @@ __pycache__/
 !prover/zkevm/prover/bls/testdata/*.go
 
 .claude/settings.local.json
+contracts/.claude/settings.local.json
