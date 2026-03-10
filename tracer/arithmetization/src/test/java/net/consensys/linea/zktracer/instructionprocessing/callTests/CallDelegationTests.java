@@ -74,35 +74,35 @@ public class CallDelegationTests extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
           .nonce(67)
-          .address(Address.fromHexString("0x40010000"))
+          .address(Address.fromHexString("0x40070000"))
           .build();
 
   final ToyAccount callerAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(3))
           .nonce(69)
-          .address(Address.fromHexString("0xCA77E400"))
+          .address(Address.fromHexString("0xCA11E400"))
           .build();
 
   final ToyAccount calleeAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(4))
           .nonce(90)
-          .address(Address.fromHexString("0xCA77EE00"))
+          .address(Address.fromHexString("0xCA11EE00"))
           .build();
 
   final ToyAccount smcAccount1 =
       ToyAccount.builder()
           .balance(Wei.fromEth(5))
           .nonce(101)
-          .address(Address.fromHexString("0xDDCA77E4"))
+          .address(Address.fromHexString("0xDE1E0FCA11E4"))
           .build();
 
   final ToyAccount smcAccount2 =
       ToyAccount.builder()
           .balance(Wei.fromEth(6))
           .nonce(666)
-          .address(Address.fromHexString("0xDDCA77EE"))
+          .address(Address.fromHexString("0xDE1E0FCA11EE"))
           .build();
 
   Function3<ToyAccount, LoopType, RevertType, BytecodeCompiler> callProgram =

@@ -56,7 +56,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class CallScenariosDelegationTests extends TracerTestBase {
+public class DoubleCallDelegationTests extends TracerTestBase {
 
   /*
     https://github.com/Consensys/linea-monorepo/issues/2470
@@ -312,8 +312,8 @@ public class CallScenariosDelegationTests extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @MethodSource("callScenariosDelegationTestsSource")
-  public void callScenariosDelegationTests(
+  @MethodSource("doubleCallDelegationTestsSource")
+  public void doubleCallDelegationTests(
       CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario,
       ExceptionType exceptionType,
       CallerType callerType,
@@ -424,7 +424,7 @@ public class CallScenariosDelegationTests extends TracerTestBase {
     toyExecutionEnvironmentV2.run();
   }
 
-  static Stream<Arguments> callScenariosDelegationTestsSource() {
+  static Stream<Arguments> doubleCallDelegationTestsSource() {
     List<Arguments> arguments = new ArrayList<>();
     for (CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario :
         new CallScenarioFragment.CallScenario[] {
