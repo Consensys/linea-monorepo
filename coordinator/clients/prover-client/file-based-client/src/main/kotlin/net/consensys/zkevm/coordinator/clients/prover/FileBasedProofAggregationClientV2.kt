@@ -159,7 +159,7 @@ class FileBasedProofAggregationClientV2(
       return SafeFuture.completedFuture(Unit)
     }
     if (invalidityProverConfig == null) {
-      throw IllegalStateException("Proof request contains invalidity proofs but invalidityProofConfig is not set")
+      throw IllegalStateException("Proof request contains invalidity proofs but invalidity Prover is not configured")
     }
 
     val responseNames = proofRequest.invalidityProofs.map { invalidityProofIndex ->
