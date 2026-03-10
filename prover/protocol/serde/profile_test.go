@@ -249,7 +249,7 @@ func TestProfile(t *testing.T) {
 
 			if *update || !fileExists(goldenPath) {
 				require.NoError(t,
-					os.WriteFile(goldenPath, buf.Bytes(), 0o644),
+					os.WriteFile(goldenPath, buf.Bytes(), 0o600),
 					"writing golden file",
 				)
 				t.Logf("wrote golden file: %s", goldenPath)
