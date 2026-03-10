@@ -61,7 +61,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
     fromBlock = this.calculateFromBlockNumber(fromBlock, toBlock);
 
-    this.logger.info("Getting events fromBlock=%s toBlock=%s", fromBlock, toBlock);
+    this.logger.info("Getting events.", { fromBlock, toBlock });
 
     const events = await this.logClient.getMessageSentEvents({
       filters: {
@@ -73,7 +73,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       fromBlockLogIndex,
     });
 
-    this.logger.info("Number of fetched MessageSent events: %s", events.length);
+    this.logger.info("Number of fetched MessageSent events.", { count: events.length });
 
     for (const event of events) {
       const shouldBeProcessed = this.shouldProcessMessage(
@@ -93,7 +93,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
       await this.messageRepository.insertMessage(message);
     }
-    this.logger.info(`Messages hashes found: messageHashes=%s`, serialize(events.map((event) => event.messageHash)));
+    this.logger.info("Messages hashes found.", { messageHashes: serialize(events.map((event) => event.messageHash)) });
 
     return { nextFromBlock: toBlock + 1, nextFromBlockLogIndex: 0 };
   }
@@ -119,10 +119,9 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     }
 
     if (!basicProcess) {
-      this.logger.debug(
-        "Message has been excluded because target address is not an EOA or calldata is not empty: messageHash=%s",
+      this.logger.debug("Message has been excluded because target address is not an EOA or calldata is not empty.", {
         messageHash,
-      );
+      });
       return false;
     }
 
@@ -152,12 +151,11 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     const passesFilter = this.evaluateExpression(filters.criteriaExpression, context);
 
     if (!passesFilter) {
-      this.logger.debug(
-        "Message has been excluded because it does not match the criteria: criteria=%s messageHash=%s transactionHash=%s",
-        filters.criteriaExpression,
-        event.messageHash,
-        event.transactionHash,
-      );
+      this.logger.debug("Message has been excluded because it does not match the criteria.", {
+        criteria: filters.criteriaExpression,
+        messageHash: event.messageHash,
+        transactionHash: event.transactionHash,
+      });
       return false;
     }
 

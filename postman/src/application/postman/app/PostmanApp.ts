@@ -28,6 +28,7 @@ import {
   createSignerClient,
   contractSignerToViemAccount,
 } from "../../../infrastructure/blockchain/viem";
+import { ViemErrorParser } from "../../../infrastructure/blockchain/viem";
 import { MessageMetricsUpdater } from "../../../infrastructure/metrics/MessageMetricsUpdater";
 import { PostmanMetricsService } from "../../../infrastructure/metrics/PostmanMetricsService";
 import { SponsorshipMetricsUpdater } from "../../../infrastructure/metrics/SponsorshipMetricsUpdater";
@@ -37,7 +38,6 @@ import { TypeOrmMessageRepository } from "../../../infrastructure/persistence/re
 import { MessageStatusSubscriber } from "../../../infrastructure/persistence/subscribers/MessageStatusSubscriber";
 import { DatabaseCleaner } from "../../../services/persistence";
 import { DatabaseCleaningPoller } from "../../../services/pollers";
-import { ErrorParser } from "../../../utils/ErrorParser";
 import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
 
 export class PostmanApp {
@@ -136,7 +136,7 @@ export class PostmanApp {
 
     const calldataDecoder = new ViemCalldataDecoder();
     const transactionSigner = new ViemTransactionSigner(l2Signer, l2ChainId);
-    const errorParser = new ErrorParser();
+    const errorParser = new ViemErrorParser();
     const sharedMetrics = {
       sponsorshipMetricsUpdater: this.sponsorshipMetricsUpdater,
       transactionMetricsUpdater: this.transactionMetricsUpdater,

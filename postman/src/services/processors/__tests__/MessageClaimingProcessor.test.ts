@@ -16,7 +16,7 @@ import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/en
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { INonceManager } from "../../../core/services/INonceManager";
 import { IMessageClaimingProcessor } from "../../../core/services/processors/IMessageClaimingProcessor";
-import { ErrorParser } from "../../../utils/ErrorParser";
+import { ViemErrorParser } from "../../../infrastructure/blockchain/viem";
 import {
   DEFAULT_MAX_FEE_PER_GAS,
   TEST_ADDRESS_2,
@@ -40,7 +40,7 @@ describe("TestMessageClaimingProcessor", () => {
   let mockedDate: Date;
   const lineaRollupContractMock = mock<ILineaRollupClient>();
   const nonceManager = mock<INonceManager>();
-  const errorParser = new ErrorParser();
+  const errorParser = new ViemErrorParser();
 
   const logger = new TestLogger(MessageClaimingProcessor.name);
 
@@ -140,10 +140,9 @@ describe("TestMessageClaimingProcessor", () => {
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Found message with zero fee. This message will not be processed: messageHash=%s",
-        expectedLoggingMessage.messageHash,
-      );
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Found message with zero fee. This message will not be processed.", {
+        messageHash: expectedLoggingMessage.messageHash,
+      });
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedSavedMessage);
     });
@@ -165,10 +164,9 @@ describe("TestMessageClaimingProcessor", () => {
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
       expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
-      expect(loggerInfoSpy).toHaveBeenCalledWith(
-        "Found already claimed message: messageHash=%s",
-        expectedLoggingMessage.messageHash,
-      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Found already claimed message.", {
+        messageHash: expectedLoggingMessage.messageHash,
+      });
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedSavedMessage);
     });
@@ -196,11 +194,13 @@ describe("TestMessageClaimingProcessor", () => {
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Estimated gas limit is higher than the max allowed gas limit for this message: messageHash=%s messageInfo=%s estimatedGasLimit=%s maxAllowedGasLimit=%s",
-        expectedLoggingMessage.messageHash,
-        expectedLoggingMessage.toString(),
-        undefined, // DEFAULT_MAX_CLAIM_GAS_LIMIT * 2n,
-        testL2NetworkConfig.claiming.maxClaimGasLimit!.toString(),
+        "Estimated gas limit is higher than the max allowed gas limit for this message.",
+        {
+          messageHash: expectedLoggingMessage.messageHash,
+          messageInfo: expectedLoggingMessage.toString(),
+          estimatedGasLimit: undefined,
+          maxAllowedGasLimit: testL2NetworkConfig.claiming.maxClaimGasLimit!.toString(),
+        },
       );
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedSavedMessage);
@@ -233,13 +233,12 @@ describe("TestMessageClaimingProcessor", () => {
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Fee underpriced found in this message: messageHash=%s messageInfo=%s transactionGasLimit=%s maxFeePerGas=%s",
-        expectedLoggingMessage.messageHash,
-        expectedLoggingMessage.toString(),
-        "100000",
-        "1000000000",
-      );
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Fee underpriced found in this message.", {
+        messageHash: expectedLoggingMessage.messageHash,
+        messageInfo: expectedLoggingMessage.toString(),
+        transactionGasLimit: "100000",
+        maxFeePerGas: "1000000000",
+      });
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
       //expect(messageRepositorySaveSpy).toHaveBeenNthCalledWith(1, [expectedLoggingMessage]);
       expect(messageRepositorySaveSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
@@ -270,8 +269,8 @@ describe("TestMessageClaimingProcessor", () => {
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Rate limit exceeded for this message. It will be reprocessed later: messageHash=%s",
-        expectedLoggingMessage.messageHash,
+        "Rate limit exceeded for this message. It will be reprocessed later.",
+        { messageHash: expectedLoggingMessage.messageHash },
       );
     });
 
@@ -325,19 +324,12 @@ describe("TestMessageClaimingProcessor", () => {
         claimGasEstimationThreshold: 10000000000,
         updatedAt: mockedDate,
       });
-      const expectedSavedMessage = new Message({
-        ...testAnchoredMessage,
-        claimGasEstimationThreshold: 10000000000,
-        status: MessageStatus.NON_EXECUTABLE,
-        updatedAt: mockedDate,
-      });
 
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
-      expect(messageRepositorySaveSpy).toHaveBeenNthCalledWith(1, expectedLoggingMessage);
-      expect(messageRepositorySaveSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
       expect(messageRepositoryUpdateAtomicSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(actionRejectedError, {

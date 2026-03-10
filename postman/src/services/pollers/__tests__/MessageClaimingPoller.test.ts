@@ -36,7 +36,7 @@ describe("TestMessageClaimingPoller", () => {
       await testClaimingPoller.start();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith("%s has already started.", MessageClaimingPoller.name);
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Poller has already started.", { name: MessageClaimingPoller.name });
     });
 
     it("Should call getAndClaimAnchoredMessage and log as info if it started successfully", async () => {
@@ -47,7 +47,10 @@ describe("TestMessageClaimingPoller", () => {
 
       expect(claimingProcessorMockSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting %s %s...", Direction.L1_TO_L2, MessageClaimingPoller.name);
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageClaimingPoller.name,
+      });
     });
   });
 
@@ -66,18 +69,14 @@ describe("TestMessageClaimingPoller", () => {
       testClaimingPoller.stop();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        1,
-        "Stopping %s %s...",
-        Direction.L1_TO_L2,
-        MessageClaimingPoller.name,
-      );
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        2,
-        "%s %s stopped.",
-        Direction.L1_TO_L2,
-        MessageClaimingPoller.name,
-      );
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Stopping poller.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageClaimingPoller.name,
+      });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "Poller stopped.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageClaimingPoller.name,
+      });
     });
   });
 });

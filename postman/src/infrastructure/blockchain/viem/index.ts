@@ -12,3 +12,4 @@ export { ViemL2MessageServiceClient } from "./clients/ViemL2MessageServiceClient
 export { createSignerClient } from "./signers/createSignerClient";
 export { contractSignerToViemAccount } from "./signers/contractSignerToViemAccount";
 export type { SignerConfig, Web3SignerTlsConfig } from "./signers/SignerConfig";
+export { ViemErrorParser } from "./ViemErrorParser";

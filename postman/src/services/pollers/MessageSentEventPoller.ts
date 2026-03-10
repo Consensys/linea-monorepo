@@ -44,11 +44,11 @@ export class MessageSentEventPoller implements IPoller {
    */
   public async start(): Promise<void> {
     if (this.isPolling) {
-      this.logger.warn("%s has already started.", this.logger.name);
+      this.logger.warn("Poller has already started.", { name: this.logger.name });
       return;
     }
 
-    this.logger.info("Starting %s %s...", this.config.direction, this.logger.name);
+    this.logger.info("Starting poller.", { direction: this.config.direction, name: this.logger.name });
 
     this.isPolling = true;
     this.startProcessingEvents();
@@ -59,9 +59,9 @@ export class MessageSentEventPoller implements IPoller {
    * Logs information about the stopping process.
    */
   public stop() {
-    this.logger.info("Stopping %s %s...", this.config.direction, this.logger.name);
+    this.logger.info("Stopping poller.", { direction: this.config.direction, name: this.logger.name });
     this.isPolling = false;
-    this.logger.info("%s %s stopped.", this.config.direction, this.logger.name);
+    this.logger.info("Poller stopped.", { direction: this.config.direction, name: this.logger.name });
   }
 
   /**
@@ -74,7 +74,7 @@ export class MessageSentEventPoller implements IPoller {
       const { fromBlock, fromBlockLogIndex } = await this.getInitialFromBlock();
       this.processEvents(fromBlock, fromBlockLogIndex);
     } catch (e) {
-      this.logger.error(e);
+      this.logger.error("Failed to get initial block number.", { error: e });
       await wait(this.config.pollingInterval);
       this.startProcessingEvents();
     }
@@ -99,12 +99,11 @@ export class MessageSentEventPoller implements IPoller {
       if (e instanceof DatabaseAccessError) {
         fromBlock = (e.rejectedMessage as Message & { logIndex: number }).sentBlockNumber;
         fromBlockLogIndex = (e.rejectedMessage as Message & { logIndex: number }).logIndex;
-        this.logger.warn(
-          "Something went wrong with database access. Restarting fromBlockNum=%s and fromLogIndex=%s and errorMessage=%s",
-          fromBlock,
-          fromBlockLogIndex,
-          e.message,
-        );
+        this.logger.warn("Something went wrong with database access. Restarting.", {
+          fromBlockNum: fromBlock,
+          fromLogIndex: fromBlockLogIndex,
+          errorMessage: e.message,
+        });
       } else {
         this.logger.warnOrError(e);
       }

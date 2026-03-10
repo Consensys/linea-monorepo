@@ -18,8 +18,10 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
   const l2ContractClientMock = mock<IL2MessageServiceClient>();
   const transactionSignerMock = mock<ITransactionSigner>();
   const logger = new TestLogger(L2ClaimMessageTransactionSizeProcessor.name);
+  const errorParser = { parse: jest.fn() };
 
   beforeEach(() => {
+    errorParser.parse.mockReturnValue({ retryable: false, message: "" });
     transactionSizeCalculator = new L2ClaimTransactionSizeCalculator(l2ContractClientMock, transactionSignerMock);
 
     transactionSizeProcessor = new L2ClaimMessageTransactionSizeProcessor(
@@ -31,6 +33,7 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
         originContractAddress: testL1NetworkConfig.messageServiceContractAddress,
       },
       logger,
+      errorParser,
     );
   });
 
@@ -65,13 +68,8 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
       await transactionSizeProcessor.process();
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith("Error occurred while processing message transaction size.", {
-        error: new Error("calculation failed."),
-        parsedError: {
-          errorCode: "UNKNOWN_ERROR",
-          errorMessage: "calculation failed.",
-          mitigation: { shouldRetry: false },
-        },
+      expect(loggerErrorSpy).toHaveBeenCalledWith(new Error("calculation failed."), {
+        parsedError: { retryable: false, message: "" },
         messageHash: testMessage.messageHash,
       });
     });
@@ -85,13 +83,8 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
       await transactionSizeProcessor.process();
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith("Error occurred while processing message transaction size.", {
-        parsedError: {
-          errorCode: "UNKNOWN_ERROR",
-          errorMessage: error.message,
-          mitigation: { shouldRetry: false },
-        },
-        error,
+      expect(loggerErrorSpy).toHaveBeenCalledWith(error, {
+        parsedError: { retryable: false, message: "" },
         messageHash: testMessage.messageHash,
       });
     });
@@ -116,12 +109,11 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
       await transactionSizeProcessor.process();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith(
-        "Message transaction size and gas limit have been computed: messageHash=%s transactionSize=%s gasLimit=%s",
-        testMessage.messageHash,
-        testTransactionSize,
-        testGasLimit,
-      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Message transaction size and gas limit have been computed.", {
+        messageHash: testMessage.messageHash,
+        transactionSize: testTransactionSize,
+        gasLimit: testGasLimit.toString(),
+      });
       expect(testMessageEditSpy).toHaveBeenCalledTimes(1);
       expect(testMessageEditSpy).toHaveBeenCalledWith({
         claimTxGasLimit: Number(testGasLimit),

@@ -33,15 +33,15 @@ export class DatabaseCleaningPoller implements IPoller {
    */
   public async start() {
     if (!this.enabled) {
-      this.logger.warn("%s is disabled", this.logger.name);
+      this.logger.warn("Poller is disabled.", { name: this.logger.name });
       return;
     }
 
     if (this.isPolling) {
-      this.logger.warn("%s has already started.", this.logger.name);
+      this.logger.warn("Poller has already started.", { name: this.logger.name });
       return;
     }
-    this.logger.info("Starting %s...", this.logger.name);
+    this.logger.info("Starting poller.", { name: this.logger.name });
     this.isPolling = true;
 
     while (this.isPolling) {
@@ -54,8 +54,8 @@ export class DatabaseCleaningPoller implements IPoller {
    * Stops the polling process, halting any further database cleanup operations.
    */
   public stop() {
-    this.logger.info("Stopping %s...", this.logger.name);
+    this.logger.info("Stopping poller.", { name: this.logger.name });
     this.isPolling = false;
-    this.logger.info("%s stopped.", this.logger.name);
+    this.logger.info("Poller stopped.", { name: this.logger.name });
   }
 }

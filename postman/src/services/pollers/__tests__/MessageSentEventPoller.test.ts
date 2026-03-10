@@ -55,7 +55,7 @@ describe("TestMessageSentEventPoller", () => {
       await testMessageSentEventPoller.start();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith("%s has already started.", MessageSentEventPoller.name);
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Poller has already started.", { name: MessageSentEventPoller.name });
 
       testMessageSentEventPoller.stop();
     });
@@ -75,7 +75,10 @@ describe("TestMessageSentEventPoller", () => {
       await wait(500);
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting %s %s...", Direction.L1_TO_L2, MessageSentEventPoller.name);
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageSentEventPoller.name,
+      });
       expect(l1QuerierMockSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryMockSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryMockSpy).toHaveBeenCalledWith(
@@ -97,7 +100,7 @@ describe("TestMessageSentEventPoller", () => {
       await wait(500);
 
       expect(loggerErrorSpy).toHaveBeenCalled();
-      expect(loggerErrorSpy).toHaveBeenCalledWith(error);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to get initial block number.", { error });
       expect(l1QuerierMockSpy).toHaveBeenCalled();
 
       testMessageSentEventPoller.stop();
@@ -124,16 +127,15 @@ describe("TestMessageSentEventPoller", () => {
       await wait(500);
 
       expect(loggerWarnSpy).toHaveBeenCalled();
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Something went wrong with database access. Restarting fromBlockNum=%s and fromLogIndex=%s and errorMessage=%s",
-        0,
-        1,
-        new DatabaseAccessError(
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Something went wrong with database access. Restarting.", {
+        fromBlockNum: 0,
+        fromLogIndex: 1,
+        errorMessage: new DatabaseAccessError(
           DatabaseRepoName.MessageRepository,
           DatabaseErrorType.Read,
           new Error("read database error."),
         ).message,
-      );
+      });
       expect(l1QuerierMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalledWith(
@@ -193,24 +195,18 @@ describe("TestMessageSentEventPoller", () => {
       testMessageSentEventPoller.stop();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(3);
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        1,
-        "Starting %s %s...",
-        Direction.L1_TO_L2,
-        MessageSentEventPoller.name,
-      );
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        2,
-        "Stopping %s %s...",
-        Direction.L1_TO_L2,
-        MessageSentEventPoller.name,
-      );
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        3,
-        "%s %s stopped.",
-        Direction.L1_TO_L2,
-        MessageSentEventPoller.name,
-      );
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Starting poller.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageSentEventPoller.name,
+      });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "Stopping poller.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageSentEventPoller.name,
+      });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(3, "Poller stopped.", {
+        direction: Direction.L1_TO_L2,
+        name: MessageSentEventPoller.name,
+      });
     });
   });
 });

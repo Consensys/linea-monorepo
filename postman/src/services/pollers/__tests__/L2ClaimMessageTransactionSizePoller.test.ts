@@ -37,7 +37,9 @@ describe("L2ClaimMessageTransactionSizePoller", () => {
       await testClaimMessageTransactionSizePoller.start();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith("%s has already started.", L2ClaimMessageTransactionSizePoller.name);
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Poller has already started.", {
+        name: L2ClaimMessageTransactionSizePoller.name,
+      });
     });
 
     it("Should call process and log as info if it started successfully", async () => {
@@ -50,11 +52,10 @@ describe("L2ClaimMessageTransactionSizePoller", () => {
 
       expect(transactionSizeProcessorMockSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith(
-        "Starting %s %s...",
-        Direction.L1_TO_L2,
-        L2ClaimMessageTransactionSizePoller.name,
-      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
+        direction: Direction.L1_TO_L2,
+        name: L2ClaimMessageTransactionSizePoller.name,
+      });
       testClaimMessageTransactionSizePoller.stop();
     });
   });
@@ -73,18 +74,14 @@ describe("L2ClaimMessageTransactionSizePoller", () => {
       testClaimMessageTransactionSizePoller.stop();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        1,
-        "Stopping %s %s...",
-        Direction.L1_TO_L2,
-        L2ClaimMessageTransactionSizePoller.name,
-      );
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(
-        2,
-        "%s %s stopped.",
-        Direction.L1_TO_L2,
-        L2ClaimMessageTransactionSizePoller.name,
-      );
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Stopping poller.", {
+        direction: Direction.L1_TO_L2,
+        name: L2ClaimMessageTransactionSizePoller.name,
+      });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "Poller stopped.", {
+        direction: Direction.L1_TO_L2,
+        name: L2ClaimMessageTransactionSizePoller.name,
+      });
     });
   });
 });

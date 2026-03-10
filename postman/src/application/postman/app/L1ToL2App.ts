@@ -73,6 +73,7 @@ export class L1ToL2App {
     } = deps;
 
     const log = (name: string) => new PostmanWinstonLogger(name, loggerOptions);
+    const logWithErrorParser = (name: string) => new PostmanWinstonLogger(name, loggerOptions, errorParser);
 
     const sentEventProcessor = new MessageSentEventProcessor(
       messageRepository,
@@ -100,7 +101,7 @@ export class L1ToL2App {
         initialFromBlock: l1Config.listener.initialFromBlock,
         originContractAddress: l1Config.messageServiceContractAddress,
       },
-      log(`L1${MessageSentEventPoller.name}`),
+      logWithErrorParser(`L1${MessageSentEventPoller.name}`),
     );
 
     const anchoringProcessor = new MessageAnchoringProcessor(
@@ -112,7 +113,7 @@ export class L1ToL2App {
         maxFetchMessagesFromDb: l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: l1Config.messageServiceContractAddress,
       },
-      log(`L2${MessageAnchoringProcessor.name}`),
+      logWithErrorParser(`L2${MessageAnchoringProcessor.name}`),
     );
 
     const anchoringPoller = new MessageAnchoringPoller(
@@ -168,7 +169,7 @@ export class L1ToL2App {
         maxClaimGasLimit: l2Config.claiming.maxClaimGasLimit,
         claimViaAddress: l2Config.claiming.claimViaAddress,
       },
-      log(`L2${MessageClaimingProcessor.name}`),
+      logWithErrorParser(`L2${MessageClaimingProcessor.name}`),
     );
 
     const claimingPoller = new MessageClaimingPoller(
@@ -190,7 +191,7 @@ export class L1ToL2App {
         receiptPollingTimeout: l2Config.claiming.messageSubmissionTimeout,
         receiptPollingInterval: l2Config.listener.receiptPollingInterval,
       },
-      log(`L2${MessageClaimingPersister.name}`),
+      logWithErrorParser(`L2${MessageClaimingPersister.name}`),
     );
 
     const persistingPoller = new MessagePersistingPoller(
@@ -205,7 +206,8 @@ export class L1ToL2App {
       l2MessageServiceClient,
       sizeCalculator,
       { direction: Direction.L1_TO_L2, originContractAddress: l1Config.messageServiceContractAddress },
-      log(`${L2ClaimMessageTransactionSizeProcessor.name}`),
+      logWithErrorParser(`${L2ClaimMessageTransactionSizeProcessor.name}`),
+      errorParser,
     );
 
     const sizePoller = new L2ClaimMessageTransactionSizePoller(

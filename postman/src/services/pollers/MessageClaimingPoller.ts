@@ -34,10 +34,10 @@ export class MessageClaimingPoller implements IPoller {
    */
   public async start(): Promise<void> {
     if (this.isPolling) {
-      this.logger.warn("%s has already started.", this.logger.name);
+      this.logger.warn("Poller has already started.", { name: this.logger.name });
       return;
     }
-    this.logger.info("Starting %s %s...", this.config.direction, this.logger.name);
+    this.logger.info("Starting poller.", { direction: this.config.direction, name: this.logger.name });
     this.isPolling = true;
 
     while (this.isPolling) {
@@ -51,8 +51,8 @@ export class MessageClaimingPoller implements IPoller {
    * Logs information about the stopping process.
    */
   public stop() {
-    this.logger.info("Stopping %s %s...", this.config.direction, this.logger.name);
+    this.logger.info("Stopping poller.", { direction: this.config.direction, name: this.logger.name });
     this.isPolling = false;
-    this.logger.info("%s %s stopped.", this.config.direction, this.logger.name);
+    this.logger.info("Poller stopped.", { direction: this.config.direction, name: this.logger.name });
   }
 }

@@ -29,7 +29,7 @@ describe("TestDatabaseCleaningPoller", () => {
       await testDatabaseCleaningPoller.start();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith("%s is disabled", DatabaseCleaningPoller.name);
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Poller is disabled.", { name: DatabaseCleaningPoller.name });
     });
 
     it("Should return and log as warning if it has been started", async () => {
@@ -44,7 +44,7 @@ describe("TestDatabaseCleaningPoller", () => {
       await testDatabaseCleaningPoller.start();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith("%s has already started.", DatabaseCleaningPoller.name);
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Poller has already started.", { name: DatabaseCleaningPoller.name });
     });
 
     it("Should call databaseCleanerRoutine and log as info if it started successfully", async () => {
@@ -60,7 +60,7 @@ describe("TestDatabaseCleaningPoller", () => {
 
       expect(databaseCleanerMockSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting %s...", DatabaseCleaningPoller.name);
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", { name: DatabaseCleaningPoller.name });
     });
   });
 
@@ -76,8 +76,8 @@ describe("TestDatabaseCleaningPoller", () => {
       testDatabaseCleaningPoller.stop();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Stopping %s...", DatabaseCleaningPoller.name);
-      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "%s stopped.", DatabaseCleaningPoller.name);
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Stopping poller.", { name: DatabaseCleaningPoller.name });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "Poller stopped.", { name: DatabaseCleaningPoller.name });
     });
   });
 });

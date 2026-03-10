@@ -16,7 +16,6 @@ describe("TestMessageAnchoringProcessor", () => {
   const l2ContractClientMock = mock<IMessageServiceContract>();
   const provider = mock<IProvider>();
   const logger = new TestLogger(MessageAnchoringProcessor.name);
-
   beforeEach(() => {
     anchoringProcessor = new MessageAnchoringProcessor(
       l2ContractClientMock,
@@ -55,10 +54,9 @@ describe("TestMessageAnchoringProcessor", () => {
       await anchoringProcessor.process();
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Limit of messages sent to listen reached (%s).",
-        maxFetchMessagesFromDb,
-      );
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Limit of messages sent to listen reached.", {
+        limit: maxFetchMessagesFromDb,
+      });
     });
 
     it("Should log as info and call saveMessages if returned messageStatus is CLAIMABLE", async () => {
@@ -72,7 +70,9 @@ describe("TestMessageAnchoringProcessor", () => {
       await anchoringProcessor.process();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith("Message has been anchored: messageHash=%s", testMessage.messageHash);
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Message has been anchored.", {
+        messageHash: testMessage.messageHash,
+      });
       expect(testMessageEditSpy).toHaveBeenCalledTimes(1);
       expect(testMessageEditSpy).toHaveBeenCalledWith({ status: MessageStatus.ANCHORED });
       expect(messageRepositoryMockSaveSpy).toHaveBeenCalledTimes(1);
@@ -90,10 +90,9 @@ describe("TestMessageAnchoringProcessor", () => {
       await anchoringProcessor.process();
 
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith(
-        "Message has already been claimed: messageHash=%s",
-        testMessage.messageHash,
-      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Message has already been claimed.", {
+        messageHash: testMessage.messageHash,
+      });
       expect(testMessageEditSpy).toHaveBeenCalledTimes(1);
       expect(testMessageEditSpy).toHaveBeenCalledWith({ status: MessageStatus.CLAIMED_SUCCESS });
       expect(messageRepositoryMockSaveSpy).toHaveBeenCalledTimes(1);
@@ -101,7 +100,7 @@ describe("TestMessageAnchoringProcessor", () => {
     });
 
     it("Should log as error if getCurrentBlockNumber throws error", async () => {
-      const loggerErrorSpy = jest.spyOn(logger, "error");
+      const loggerWarnOrErrorSpy = jest.spyOn(logger, "warnOrError");
       const error = new Error("Error for testing");
       jest.spyOn(messageRepository, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       jest.spyOn(provider, "getBlockNumber").mockRejectedValue(error);
@@ -109,10 +108,9 @@ describe("TestMessageAnchoringProcessor", () => {
 
       await anchoringProcessor.process();
 
-      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith("An error occurred while processing messages.", {
-        errorCode: "UNKNOWN_ERROR",
-        errorMessage: error.message,
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(error, {
+        direction: Direction.L1_TO_L2,
       });
       expect(messageRepositoryMockSaveSpy).toHaveBeenCalledTimes(0);
     });

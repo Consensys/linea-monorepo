@@ -1,5 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
-
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { Message } from "../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../core/enums";
@@ -13,7 +11,7 @@ import {
 } from "../../core/services/processors/IMessageClaimingPersister";
 import { TransactionReceipt } from "../../core/types";
 import { wait } from "../../core/utils/shared";
-import { ErrorParser } from "../../utils/ErrorParser";
+import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
   private messageBeingRetry: { message: Message | null; retries: number };
@@ -36,7 +34,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
     private readonly provider: IProvider,
     private readonly config: MessageClaimingPersisterConfig,
-    private readonly logger: ILogger,
+    private readonly logger: IPostmanLogger,
   ) {
     this.messageBeingRetry = { message: null, retries: 0 };
   }
@@ -69,13 +67,18 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         return;
       }
 
+      this.logger.debug("Checking pending message.", {
+        messageHash: firstPendingMessage.messageHash,
+        claimTxHash: firstPendingMessage.claimTxHash,
+      });
+
       const receipt = await this.provider.getTransactionReceipt(firstPendingMessage.claimTxHash);
       if (receipt) {
         const receiptReceivedAt = new Date();
         await this.updateReceiptStatus(firstPendingMessage, receipt, receiptReceivedAt);
       } else {
         if (!this.isMessageExceededSubmissionTimeout(firstPendingMessage)) return;
-        this.logger.warn("Retrying to claim message: messageHash=%s", firstPendingMessage.messageHash);
+        this.logger.warn("Retrying to claim message.", { messageHash: firstPendingMessage.messageHash });
 
         if (
           !this.messageBeingRetry.message ||
@@ -91,20 +94,15 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         );
         if (!retryTransactionReceipt) return;
         const receiptReceivedAt = new Date();
-        this.logger.warn(
-          "Retried claim message transaction succeed: messageHash=%s transactionHash=%s",
-          firstPendingMessage.messageHash,
-          retryTransactionReceipt.hash,
-        );
+        this.logger.warn("Retried claim message transaction succeed.", {
+          messageHash: firstPendingMessage.messageHash,
+          transactionHash: retryTransactionReceipt.hash,
+        });
         await this.updateReceiptStatus(firstPendingMessage, retryTransactionReceipt, receiptReceivedAt);
       }
     } catch (e) {
-      const error = ErrorParser.parseErrorWithMitigation(e);
-      this.logger.error("Error processing message.", {
+      this.logger.warnOrError(e, {
         ...(firstPendingMessage ? { messageHash: firstPendingMessage.messageHash } : {}),
-        ...(error?.errorCode ? { errorCode: error.errorCode } : {}),
-        ...(error?.errorMessage ? { errorMessage: error.errorMessage } : {}),
-        ...(error?.data ? { data: error.data } : {}),
       });
     }
   }
@@ -142,6 +140,8 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     messageBlockNumber: number,
   ): Promise<TransactionReceipt | null> {
     try {
+      this.logger.debug("Checking message status before retry.", { messageHash });
+
       const messageStatus = await this.messageServiceContract.getMessageStatus({
         messageHash,
         messageBlockNumber,
@@ -152,20 +152,18 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         const receipt = await this.provider.getTransactionReceipt(transactionHash);
         if (!receipt) {
           this.logger.warn(
-            "Calling retryTransaction again as message was claimed but transaction receipt is not available yet: messageHash=%s transactionHash=%s",
-            messageHash,
-            transactionHash,
+            "Calling retryTransaction again as message was claimed but transaction receipt is not available yet.",
+            { messageHash, transactionHash },
           );
         }
         return receipt;
       }
 
       this.messageBeingRetry.retries++;
-      this.logger.warn(
-        "Retry to claim message: numberOfRetries=%s messageInfo=%s",
-        this.messageBeingRetry.retries.toString(),
-        this.messageBeingRetry.message?.toString(),
-      );
+      this.logger.warn("Retry to claim message.", {
+        numberOfRetries: this.messageBeingRetry.retries.toString(),
+        messageInfo: this.messageBeingRetry.message?.toString(),
+      });
 
       const retryCreationDate = new Date();
       const tx = await this.messageServiceContract.retryTransactionWithHigherFee(transactionHash);
@@ -184,16 +182,13 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
 
       return await this.pollForReceipt(tx.hash);
     } catch (e) {
-      this.logger.error(
-        "Transaction retry failed: messageHash=%s error=%s",
-        this.messageBeingRetry.message?.messageHash,
-        e,
-      );
+      this.logger.warnOrError(e, {
+        messageHash: this.messageBeingRetry.message?.messageHash,
+      });
       if (this.messageBeingRetry.retries > this.config.maxTxRetries) {
-        this.logger.error(
-          "Max number of retries exceeded. Manual intervention is needed as soon as possible: messageInfo=%s",
-          this.messageBeingRetry.message?.toString(),
-        );
+        this.logger.error("Max number of retries exceeded. Manual intervention is needed as soon as possible.", {
+          messageInfo: this.messageBeingRetry.message?.toString(),
+        });
       }
       return null;
     }
@@ -241,24 +236,20 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         await this.messageRepository.updateMessage(message);
 
         this.logger.warn(
-          "Claim transaction has been reverted with RateLimitExceeded error. Claiming will be retry later: messageHash=%s transactionHash=%s",
-          message.messageHash,
-          receipt.hash,
+          "Claim transaction has been reverted with RateLimitExceeded error. Claiming will be retry later.",
+          { messageHash: message.messageHash, transactionHash: receipt.hash },
         );
         return;
       }
 
       message.edit({ status: MessageStatus.CLAIMED_REVERTED });
       await this.messageRepository.updateMessage(message);
-      this.logger.warn(
-        "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
-        message.messageHash,
-        receipt.hash,
-        {
-          ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-          ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
-        },
-      );
+      this.logger.warn("Message claim transaction has been REVERTED.", {
+        messageHash: message.messageHash,
+        transactionHash: receipt.hash,
+        ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
+        ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
+      });
       return;
     }
 
@@ -275,14 +266,11 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       );
     }
 
-    this.logger.info(
-      "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",
-      message.messageHash,
-      receipt.hash,
-      {
-        ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-        ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
-      },
-    );
+    this.logger.info("Message has been SUCCESSFULLY claimed.", {
+      messageHash: message.messageHash,
+      transactionHash: receipt.hash,
+      ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
+      ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
+    });
   }
 }

@@ -45,20 +45,23 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     let nonce: number | null = null;
 
     try {
+      this.logger.debug("Starting claim processing cycle.");
       nonce = await this.nonceManager.acquireNonce();
 
       if (nonce === null) {
         return;
       }
 
+      this.logger.debug("Acquired nonce.", { nonce });
+
       nextMessageToClaim = await this.getNextMessageToClaim();
 
       if (!nextMessageToClaim) {
-        this.logger.info("No message to claim found");
+        this.logger.info("No message to claim found.");
         return;
       }
 
-      this.logger.info("Found message to claim: messageHash=%s", nextMessageToClaim.messageHash);
+      this.logger.info("Found message to claim.", { messageHash: nextMessageToClaim.messageHash });
 
       const messageStatus = await this.messageServiceContract.getMessageStatus({
         messageHash: nextMessageToClaim.messageHash,
@@ -66,12 +69,14 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       });
 
       if (messageStatus === OnChainMessageStatus.CLAIMED) {
-        this.logger.info("Found already claimed message: messageHash=%s", nextMessageToClaim.messageHash);
+        this.logger.info("Found already claimed message.", { messageHash: nextMessageToClaim.messageHash });
 
         nextMessageToClaim.edit({ status: MessageStatus.CLAIMED_SUCCESS });
         await this.messageRepository.updateMessage(nextMessageToClaim);
         return;
       }
+
+      this.logger.debug("Evaluating transaction.", { messageHash: nextMessageToClaim.messageHash });
 
       const {
         hasZeroFee,
@@ -100,6 +105,12 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       )
         return;
       if (this.handleRateLimitExceeded(nextMessageToClaim, isRateLimitExceeded)) return;
+
+      this.logger.debug("Executing claim transaction.", {
+        messageHash: nextMessageToClaim.messageHash,
+        nonce,
+        gasLimit: estimatedGasLimit!.toString(),
+      });
 
       await this.executeClaimTransaction(
         nextMessageToClaim,
@@ -156,10 +167,9 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    */
   private async handleZeroFee(hasZeroFee: boolean, message: Message): Promise<boolean> {
     if (hasZeroFee) {
-      this.logger.warn(
-        "Found message with zero fee. This message will not be processed: messageHash=%s",
-        message.messageHash,
-      );
+      this.logger.warn("Found message with zero fee. This message will not be processed.", {
+        messageHash: message.messageHash,
+      });
       message.edit({ status: MessageStatus.ZERO_FEE });
       await this.messageRepository.updateMessage(message);
       return true;
@@ -176,14 +186,12 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    */
   private async handleNonExecutable(message: Message, estimatedGasLimit: bigint | null): Promise<boolean> {
     if (!estimatedGasLimit) {
-      this.logger.warn(
-        "Estimated gas limit is higher than the max allowed gas limit for this message: messageHash=%s messageInfo=%s estimatedGasLimit=%s maxAllowedGasLimit=%s",
-        message.messageHash,
-        message.toString(),
-        // TODO: fix this
-        estimatedGasLimit?.toString(),
-        this.config.maxClaimGasLimit.toString(),
-      );
+      this.logger.warn("Estimated gas limit is higher than the max allowed gas limit for this message.", {
+        messageHash: message.messageHash,
+        messageInfo: message.toString(),
+        estimatedGasLimit: estimatedGasLimit?.toString(),
+        maxAllowedGasLimit: this.config.maxClaimGasLimit.toString(),
+      });
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.messageRepository.updateMessage(message);
       return true;
@@ -208,17 +216,16 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   ): Promise<boolean> {
     if (isUnderPriced) {
       if (message.status !== MessageStatus.FEE_UNDERPRICED) {
-        this.logger.warn(
-          "Fee underpriced found in this message: messageHash=%s messageInfo=%s transactionGasLimit=%s maxFeePerGas=%s",
-          message.messageHash,
-          message.toString(),
-          estimatedGasLimit?.toString(),
-          maxFeePerGas.toString(),
-        );
+        this.logger.warn("Fee underpriced found in this message.", {
+          messageHash: message.messageHash,
+          messageInfo: message.toString(),
+          transactionGasLimit: estimatedGasLimit?.toString(),
+          maxFeePerGas: maxFeePerGas.toString(),
+        });
         message.edit({ status: MessageStatus.FEE_UNDERPRICED });
         await this.messageRepository.updateMessage(message);
       } else {
-        this.logger.warn("Message is underpriced, will retry later: messageHash=%s", message.messageHash);
+        this.logger.warn("Message is underpriced, will retry later.", { messageHash: message.messageHash });
       }
       return true;
     }
@@ -234,10 +241,9 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    */
   private handleRateLimitExceeded(message: Message, isRateLimitExceeded: boolean): boolean {
     if (isRateLimitExceeded) {
-      this.logger.warn(
-        "Rate limit exceeded for this message. It will be reprocessed later: messageHash=%s",
-        message.messageHash,
-      );
+      this.logger.warn("Rate limit exceeded for this message. It will be reprocessed later.", {
+        messageHash: message.messageHash,
+      });
       return true;
     }
     return false;

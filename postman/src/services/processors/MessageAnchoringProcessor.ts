@@ -1,5 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
-
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
@@ -8,7 +6,7 @@ import {
   IMessageAnchoringProcessor,
   MessageAnchoringProcessorConfig,
 } from "../../core/services/processors/IMessageAnchoringProcessor";
-import { ErrorParser } from "../../utils/ErrorParser";
+import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   private readonly maxFetchMessagesFromDb: number;
@@ -20,14 +18,14 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
    * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
-   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
+   * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages.
    */
   constructor(
     private readonly contractClient: IMessageServiceContract,
     private readonly provider: IProvider,
     private readonly messageRepository: IMessageRepository,
     private readonly config: MessageAnchoringProcessorConfig,
-    private readonly logger: ILogger,
+    private readonly logger: IPostmanLogger,
   ) {
     this.maxFetchMessagesFromDb = Math.max(config.maxFetchMessagesFromDb, 0);
   }
@@ -47,7 +45,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
       );
 
       if (messages.length === this.maxFetchMessagesFromDb) {
-        this.logger.warn(`Limit of messages sent to listen reached (%s).`, this.maxFetchMessagesFromDb);
+        this.logger.warn("Limit of messages sent to listen reached.", { limit: this.maxFetchMessagesFromDb });
       }
 
       if (messages.length === 0) {
@@ -55,9 +53,16 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
         return;
       }
 
+      this.logger.debug("Fetched messages for anchoring.", {
+        count: messages.length,
+        direction: this.config.direction,
+      });
+
       const latestBlockNumber = await this.provider.getBlockNumber();
 
       for (const message of messages) {
+        this.logger.debug("Checking on-chain status.", { messageHash: message.messageHash });
+
         const messageStatus = await this.contractClient.getMessageStatus({
           messageHash: message.messageHash,
           messageBlockNumber: message.sentBlockNumber,
@@ -66,22 +71,19 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
 
         if (messageStatus === OnChainMessageStatus.CLAIMABLE) {
           message.edit({ status: MessageStatus.ANCHORED });
-          this.logger.info("Message has been anchored: messageHash=%s", message.messageHash);
+          this.logger.info("Message has been anchored.", { messageHash: message.messageHash });
         }
 
         if (messageStatus === OnChainMessageStatus.CLAIMED) {
           message.edit({ status: MessageStatus.CLAIMED_SUCCESS });
-          this.logger.info("Message has already been claimed: messageHash=%s", message.messageHash);
+          this.logger.info("Message has already been claimed.", { messageHash: message.messageHash });
         }
       }
 
       await this.messageRepository.saveMessages(messages);
     } catch (e) {
-      const error = ErrorParser.parseErrorWithMitigation(e);
-      this.logger.error("An error occurred while processing messages.", {
-        errorCode: error?.errorCode,
-        errorMessage: error?.errorMessage,
-        ...(error?.data ? { data: error.data } : {}),
+      this.logger.warnOrError(e, {
+        direction: this.config.direction,
       });
     }
   }

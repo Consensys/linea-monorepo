@@ -92,6 +92,7 @@ describe("TestMessageClaimingPersister ", () => {
     loggerErrorSpy: jest.SpyInstance<ReturnType<typeof logger.error>>;
     loggerWarnSpy: jest.SpyInstance<ReturnType<typeof logger.warn>>;
     loggerInfoSpy: jest.SpyInstance<ReturnType<typeof logger.info>>;
+    loggerWarnOrErrorSpy: jest.SpyInstance<ReturnType<typeof logger.warnOrError>>;
     messageRepositoryUpdateSpy: jest.SpyInstance<ReturnType<typeof databaseService.updateMessage>>;
   };
 
@@ -158,6 +159,7 @@ describe("TestMessageClaimingPersister ", () => {
     const loggerErrorSpy = jest.spyOn(logger, "error");
     const loggerWarnSpy = jest.spyOn(logger, "warn");
     const loggerInfoSpy = jest.spyOn(logger, "info");
+    const loggerWarnOrErrorSpy = jest.spyOn(logger, "warnOrError");
     const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
     return {
@@ -165,6 +167,7 @@ describe("TestMessageClaimingPersister ", () => {
       loggerErrorSpy,
       loggerWarnSpy,
       loggerInfoSpy,
+      loggerWarnOrErrorSpy,
       messageRepositoryUpdateSpy,
     };
   };
@@ -183,18 +186,16 @@ describe("TestMessageClaimingPersister ", () => {
     it("Should log as error if getTransactionReceipt throws error", async () => {
       const getTxReceiptError = new Error("error for testing");
       const testPendingMessageLocal = new Message(testPendingMessage);
-      const { loggerErrorSpy } = testFixtureFactory({
+      const { loggerWarnOrErrorSpy } = testFixtureFactory({
         firstPendingMessage: testPendingMessageLocal,
         txReceiptError: getTxReceiptError,
       });
 
       await messageClaimingPersister.process();
 
-      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message.", {
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(getTxReceiptError, {
         messageHash: testPendingMessage.messageHash,
-        errorCode: "UNKNOWN_ERROR",
-        errorMessage: getTxReceiptError.message,
       });
     });
 
@@ -217,12 +218,10 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(expectedSavedMessage);
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith(
-        "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",
-        expectedSavedMessage.messageHash,
-        expectedSavedMessage.claimTxHash,
-        {},
-      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith("Message has been SUCCESSFULLY claimed.", {
+        messageHash: expectedSavedMessage.messageHash,
+        transactionHash: expectedSavedMessage.claimTxHash,
+      });
     });
 
     it("Should return and update message as sent if receipt status is 0 and rate limit exceeded", async () => {
@@ -265,12 +264,10 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(expectedSavedMessage);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
-        expectedSavedMessage.messageHash,
-        expectedSavedMessage.claimTxHash,
-        {},
-      );
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Message claim transaction has been REVERTED.", {
+        messageHash: expectedSavedMessage.messageHash,
+        transactionHash: expectedSavedMessage.claimTxHash,
+      });
     });
 
     it("Should update message as claimed if retry receipt successful and message claimed on-chain", async () => {
@@ -294,17 +291,13 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(expectedSavedMessage);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessage.messageHash,
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        2,
-        "Retried claim message transaction succeed: messageHash=%s transactionHash=%s",
-        testPendingMessage.messageHash,
-        retryTxReceipt.hash,
-      );
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(2, "Retried claim message transaction succeed.", {
+        messageHash: testPendingMessage.messageHash,
+        transactionHash: retryTxReceipt.hash,
+      });
     });
 
     it("Should return and log as warning if message is claimed but receipt returned as null", async () => {
@@ -321,16 +314,13 @@ describe("TestMessageClaimingPersister ", () => {
       expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(0);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessageLocal.messageHash,
-      );
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessageLocal.messageHash,
+      });
       expect(loggerWarnSpy).toHaveBeenNthCalledWith(
         2,
-        "Calling retryTransaction again as message was claimed but transaction receipt is not available yet: messageHash=%s transactionHash=%s",
-        testPendingMessageLocal.messageHash,
-        testPendingMessageLocal.claimTxHash,
+        "Calling retryTransaction again as message was claimed but transaction receipt is not available yet.",
+        { messageHash: testPendingMessageLocal.messageHash, transactionHash: testPendingMessageLocal.claimTxHash },
       );
     });
 
@@ -368,23 +358,17 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
 
       expect(loggerWarnSpy).toHaveBeenCalledTimes(3);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessage.messageHash,
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        2,
-        "Retry to claim message: numberOfRetries=%s messageInfo=%s",
-        "1",
-        testPendingMessage.toString(),
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        3,
-        "Retried claim message transaction succeed: messageHash=%s transactionHash=%s",
-        testPendingMessageLocal.messageHash,
-        retryTxReceipt.hash,
-      );
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(2, "Retry to claim message.", {
+        numberOfRetries: "1",
+        messageInfo: testPendingMessage.toString(),
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(3, "Retried claim message transaction succeed.", {
+        messageHash: testPendingMessageLocal.messageHash,
+        transactionHash: retryTxReceipt.hash,
+      });
     });
 
     it("Should update DB successfully if first process claimable message with receipt, then process claimed message with no receipt", async () => {
@@ -424,23 +408,17 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(1, testPendingMessageLocal);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(2, expectedSavedMessage);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(5);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessage.messageHash,
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        2,
-        "Retry to claim message: numberOfRetries=%s messageInfo=%s",
-        "1",
-        testPendingMessage.toString(),
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        3,
-        "Retried claim message transaction succeed: messageHash=%s transactionHash=%s",
-        testPendingMessageLocal.messageHash,
-        retryTxReceipt.hash,
-      );
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(2, "Retry to claim message.", {
+        numberOfRetries: "1",
+        messageInfo: testPendingMessage.toString(),
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(3, "Retried claim message transaction succeed.", {
+        messageHash: testPendingMessageLocal.messageHash,
+        transactionHash: retryTxReceipt.hash,
+      });
     });
 
     it("Should return and log as warning if message is claimable but retry tx throws error", async () => {
@@ -461,7 +439,13 @@ describe("TestMessageClaimingPersister ", () => {
       );
       const testPendingMessageLocal = new Message(testPendingMessage);
       const retryError = new Error("error for testing");
-      const { loggerWarnSpy, loggerErrorSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
+      const {
+        loggerWarnSpy,
+        loggerWarnOrErrorSpy,
+        loggerErrorSpy,
+        messageRepositoryUpdateSpy,
+        l2QuerierGetReceiptSpy,
+      } = testFixtureFactory({
         firstPendingMessage: testPendingMessageLocal,
         txReceipt: null,
         isRateLimitExceededError: false,
@@ -473,30 +457,23 @@ describe("TestMessageClaimingPersister ", () => {
 
       expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(0);
-      expect(loggerErrorSpy).toHaveBeenCalledTimes(2);
-      expect(loggerErrorSpy).toHaveBeenNthCalledWith(
-        1,
-        "Transaction retry failed: messageHash=%s error=%s",
-        testPendingMessage.messageHash,
-        retryError,
-      );
-      expect(loggerErrorSpy).toHaveBeenNthCalledWith(
-        2,
-        `Max number of retries exceeded. Manual intervention is needed as soon as possible: messageInfo=%s`,
-        testPendingMessage.toString(),
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(retryError, {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        "Max number of retries exceeded. Manual intervention is needed as soon as possible.",
+        { messageInfo: testPendingMessage.toString() },
       );
       expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessage.messageHash,
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        2,
-        "Retry to claim message: numberOfRetries=%s messageInfo=%s",
-        "1",
-        testPendingMessage.toString(),
-      );
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(2, "Retry to claim message.", {
+        numberOfRetries: "1",
+        messageInfo: testPendingMessage.toString(),
+      });
     });
 
     it("Should return and log as error if retry tx fails to get receipt", async () => {
@@ -517,14 +494,15 @@ describe("TestMessageClaimingPersister ", () => {
       );
       const retryTxResponse = generateTransactionSubmission();
       const testPendingMessageLocal = new Message(testPendingMessage);
-      const { loggerWarnSpy, loggerErrorSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
-        firstPendingMessage: testPendingMessageLocal,
-        txReceipt: null,
-        isRateLimitExceededError: false,
-        firstOnChainMessageStatus: OnChainMessageStatus.CLAIMABLE,
-        retryTransactionWithHigherFeeResponse: retryTxResponse,
-        retryTransactionWithHigherFeeReceipt: null,
-      });
+      const { loggerWarnSpy, loggerWarnOrErrorSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } =
+        testFixtureFactory({
+          firstPendingMessage: testPendingMessageLocal,
+          txReceipt: null,
+          isRateLimitExceededError: false,
+          firstOnChainMessageStatus: OnChainMessageStatus.CLAIMABLE,
+          retryTransactionWithHigherFeeResponse: retryTxResponse,
+          retryTransactionWithHigherFeeReceipt: null,
+        });
 
       await messageClaimingPersister.process();
 
@@ -532,18 +510,14 @@ describe("TestMessageClaimingPersister ", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(testPendingMessageLocal);
       expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        1,
-        "Retrying to claim message: messageHash=%s",
-        testPendingMessage.messageHash,
-      );
-      expect(loggerWarnSpy).toHaveBeenNthCalledWith(
-        2,
-        "Retry to claim message: numberOfRetries=%s messageInfo=%s",
-        "1",
-        testPendingMessage.toString(),
-      );
-      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(1, "Retrying to claim message.", {
+        messageHash: testPendingMessage.messageHash,
+      });
+      expect(loggerWarnSpy).toHaveBeenNthCalledWith(2, "Retry to claim message.", {
+        numberOfRetries: "1",
+        messageInfo: testPendingMessage.toString(),
+      });
+      expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

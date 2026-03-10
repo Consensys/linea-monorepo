@@ -69,6 +69,7 @@ export class L2ToL1App {
     } = deps;
 
     const log = (name: string) => new PostmanWinstonLogger(name, loggerOptions);
+    const logWithErrorParser = (name: string) => new PostmanWinstonLogger(name, loggerOptions, errorParser);
 
     const sentEventProcessor = new MessageSentEventProcessor(
       messageRepository,
@@ -96,7 +97,7 @@ export class L2ToL1App {
         initialFromBlock: l2Config.listener.initialFromBlock,
         originContractAddress: l2Config.messageServiceContractAddress,
       },
-      log(`L2${MessageSentEventPoller.name}`),
+      logWithErrorParser(`L2${MessageSentEventPoller.name}`),
     );
 
     const anchoringProcessor = new MessageAnchoringProcessor(
@@ -108,7 +109,7 @@ export class L2ToL1App {
         maxFetchMessagesFromDb: l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: l2Config.messageServiceContractAddress,
       },
-      log(`L1${MessageAnchoringProcessor.name}`),
+      logWithErrorParser(`L1${MessageAnchoringProcessor.name}`),
     );
 
     const anchoringPoller = new MessageAnchoringPoller(
@@ -167,7 +168,7 @@ export class L2ToL1App {
         maxClaimGasLimit: l1Config.claiming.maxClaimGasLimit,
         claimViaAddress: l1Config.claiming.claimViaAddress,
       },
-      log(`L1${MessageClaimingProcessor.name}`),
+      logWithErrorParser(`L1${MessageClaimingProcessor.name}`),
     );
 
     const claimingPoller = new MessageClaimingPoller(
@@ -189,7 +190,7 @@ export class L2ToL1App {
         receiptPollingTimeout: l1Config.claiming.messageSubmissionTimeout,
         receiptPollingInterval: l1Config.listener.receiptPollingInterval,
       },
-      log(`L1${MessageClaimingPersister.name}`),
+      logWithErrorParser(`L1${MessageClaimingPersister.name}`),
     );
 
     const persistingPoller = new MessagePersistingPoller(
