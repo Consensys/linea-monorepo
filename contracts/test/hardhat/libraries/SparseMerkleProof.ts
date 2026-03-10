@@ -111,6 +111,26 @@ describe("SparseMerkleProof", () => {
         );
       });
 
+      it("Should revert when the leaf length is not 192 bytes", async () => {
+        const {
+          accountProof: {
+            proof: { proofRelatedNodes },
+          },
+        } = merkleProofTestData;
+
+        const leafIndex = 200;
+
+        const clonedProof = proofRelatedNodes.slice(0, proofRelatedNodes.length);
+        clonedProof[clonedProof.length - 1] = "0x1234";
+
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.verifyProof(clonedProof, leafIndex, STATE_ROOT),
+          "WrongBytesLength",
+          [192, 2],
+        );
+      });
+
       it("Should revert when the computedHash != subSmtRoot", async () => {
         if (process.env.SOLIDITY_COVERAGE === "true") {
           // Skipping this test in coverage mode due to high gas consumption.
@@ -312,9 +332,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should revert when leaf bytes length > 192", async () => {
@@ -326,9 +349,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `${proofRelatedNodes[proofRelatedNodes.length - 1]}1234`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should return parsed leaf", async () => {
@@ -361,9 +387,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should return parsed leaf", async () => {
@@ -397,9 +426,12 @@ describe("SparseMerkleProof", () => {
 
       const wrongAccountValue = `0x${value.slice(4)}`;
 
-      await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-        .withArgs(192, ethers.dataLength(wrongAccountValue));
+      await expectRevertWithCustomError(
+        sparseMerkleProof,
+        sparseMerkleProof.getAccount(wrongAccountValue),
+        "WrongBytesLength",
+        [192, ethers.dataLength(wrongAccountValue)],
+      );
     });
 
     it("Should revert when account bytes length > 192", async () => {
@@ -411,9 +443,12 @@ describe("SparseMerkleProof", () => {
 
       const wrongAccountValue = `${value}123456`;
 
-      await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-        .withArgs(192, ethers.dataLength(wrongAccountValue));
+      await expectRevertWithCustomError(
+        sparseMerkleProof,
+        sparseMerkleProof.getAccount(wrongAccountValue),
+        "WrongBytesLength",
+        [192, ethers.dataLength(wrongAccountValue)],
+      );
     });
 
     it("Should return parsed account", async () => {

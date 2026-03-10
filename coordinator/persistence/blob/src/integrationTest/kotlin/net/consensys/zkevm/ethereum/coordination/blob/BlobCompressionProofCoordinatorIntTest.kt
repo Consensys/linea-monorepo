@@ -8,8 +8,6 @@ import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.domain.BlockIntervals
 import linea.kotlin.ByteArrayExt
 import net.consensys.linea.traces.TracesCountersV2
@@ -17,6 +15,7 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
+import net.consensys.zkevm.domain.CompressionProofIndex
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.ProofIndex
@@ -43,8 +42,10 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
@@ -146,7 +147,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           kzgProofContract = Random.nextBytes(48),
           kzgProofSidecar = Random.nextBytes(48),
         )
-        val proofIndex = ProofIndex(
+        val proofIndex = CompressionProofIndex(
           startBlockNumber = proofReq.startBlockNumber,
           endBlockNumber = proofReq.conflations.last().endBlockNumber,
           hash = proofReq.expectedShnarfResult.dataHash,

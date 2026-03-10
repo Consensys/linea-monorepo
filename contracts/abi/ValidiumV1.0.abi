@@ -7,17 +7,6 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "addressNotFiltered",
-          "type": "address"
-        }
-      ],
-      "name": "AddressIsNotFiltered",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
           "internalType": "uint256",
           "name": "bytesLength",
           "type": "uint256"
@@ -88,17 +77,6 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "nextForcedTransactionNumber",
-          "type": "uint256"
-        }
-      ],
-      "name": "FinalizationDataMissingForcedTransaction",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "l2BlockTimestamp",
           "type": "uint256"
         },
@@ -125,17 +103,6 @@
         }
       ],
       "name": "FinalizationStateIncorrect",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "blockNumber",
-          "type": "uint256"
-        }
-      ],
-      "name": "ForcedTransactionExistsForBlockOrIsTooLow",
       "type": "error"
     },
     {
@@ -295,11 +262,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "NoEthSent",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "bytes32",
@@ -431,35 +393,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "ZeroLengthNotAllowed",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ZeroValueNotAllowed",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "oldAddressFilter",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "newAddressFilter",
-          "type": "address"
-        }
-      ],
-      "name": "AddressFilterChanged",
-      "type": "event"
-    },
-    {
       "anonymous": false,
       "inputs": [
         {
@@ -532,87 +465,6 @@
         }
       ],
       "name": "DataSubmittedV3",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "blockNumber",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "messageNumber",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "forcedTransactionNumber",
-          "type": "uint256"
-        }
-      ],
-      "name": "FinalizedStateUpdated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "forcedTransactionNumber",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "blockNumberDeadline",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "forcedTransactionRollingHash",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes",
-          "name": "rlpEncodedSignedTransaction",
-          "type": "bytes"
-        }
-      ],
-      "name": "ForcedTransactionAdded",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "forcedTransactionFeeInWei",
-          "type": "uint256"
-        }
-      ],
-      "name": "ForcedTransactionFeeSet",
       "type": "event"
     },
     {
@@ -694,12 +546,6 @@
     {
       "anonymous": false,
       "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes8",
-          "name": "initialContractVersion",
-          "type": "bytes8"
-        },
         {
           "components": [
             {
@@ -792,16 +638,11 @@
               "internalType": "address",
               "name": "shnarfProvider",
               "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "addressFilter",
-              "type": "address"
             }
           ],
           "indexed": false,
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
-          "name": "initializationData",
+          "name": "InitializationData",
           "type": "tuple"
         }
       ],
@@ -1225,32 +1066,6 @@
     },
     {
       "inputs": [],
-      "name": "FORCED_TRANSACTION_FEE_SETTER_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "FORCED_TRANSACTION_SENDER_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "INBOX_STATUS_RECEIVED",
       "outputs": [
         {
@@ -1394,19 +1209,6 @@
     },
     {
       "inputs": [],
-      "name": "PAUSE_NATIVE_YIELD_STAKING_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "PAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
@@ -1434,19 +1236,6 @@
     {
       "inputs": [],
       "name": "SECURITY_COUNCIL_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "SET_ADDRESS_FILTER_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1499,19 +1288,6 @@
     {
       "inputs": [],
       "name": "UNPAUSE_L2_L1_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "UNPAUSE_NATIVE_YIELD_STAKING_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1595,19 +1371,6 @@
       "name": "acceptShnarfData",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "addressFilter",
-      "outputs": [
-        {
-          "internalType": "contract IAddressFilter",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1851,29 +1614,9 @@
               "type": "uint256"
             },
             {
-              "internalType": "uint256",
-              "name": "lastFinalizedForcedTransactionNumber",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "finalForcedTransactionNumber",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "lastFinalizedForcedTransactionRollingHash",
-              "type": "bytes32"
-            },
-            {
               "internalType": "bytes32[]",
               "name": "l2MerkleRoots",
               "type": "bytes32[]"
-            },
-            {
-              "internalType": "address[]",
-              "name": "filteredAddresses",
-              "type": "address[]"
             },
             {
               "internalType": "bytes",
@@ -1881,7 +1624,7 @@
               "type": "bytes"
             }
           ],
-          "internalType": "struct ILineaRollupBase.FinalizationDataV4",
+          "internalType": "struct ILineaRollupBase.FinalizationDataV3",
           "name": "_finalizationData",
           "type": "tuple"
         }
@@ -1889,85 +1632,6 @@
       "name": "finalizeBlocks",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "forcedTransactionFeeInWei",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "forcedTransactionNumber",
-          "type": "uint256"
-        }
-      ],
-      "name": "forcedTransactionL2BlockNumbers",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "l2BlockNumber",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "forcedTransactionNumber",
-          "type": "uint256"
-        }
-      ],
-      "name": "forcedTransactionRollingHashes",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "rollingHash",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getRequiredForcedTransactionFields",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "finalizedState",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "previousForcedTransactionRollingHash",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "uint256",
-          "name": "currentFinalizedL2BlockNumber",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "forcedTransactionFeeAmount",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -2144,11 +1808,6 @@
               "internalType": "address",
               "name": "shnarfProvider",
               "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "addressFilter",
-              "type": "address"
             }
           ],
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
@@ -2239,19 +1898,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "nextForcedTransactionNumber",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -2443,32 +2089,6 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "_addressFilter",
-          "type": "address"
-        }
-      ],
-      "name": "setAddressFilter",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_forcedTransactionFeeInWei",
-          "type": "uint256"
-        }
-      ],
-      "name": "setForcedTransactionFee",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
           "name": "_newVerifierAddress",
           "type": "address"
         },
@@ -2513,34 +2133,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "_forcedTransactionRollingHash",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "_from",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_blockNumberDeadline",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bytes",
-          "name": "_rlpEncodedSignedTransaction",
-          "type": "bytes"
-        }
-      ],
-      "name": "storeForcedTransaction",
-      "outputs": [],
-      "stateMutability": "payable",
       "type": "function"
     },
     {

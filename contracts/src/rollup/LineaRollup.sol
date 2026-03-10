@@ -9,6 +9,7 @@ import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+import { InitializationVersionCheck } from "../common/InitializationVersionCheck.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -16,6 +17,7 @@ import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is
+  InitializationVersionCheck,
   LineaRollupBase,
   LineaRollupYieldExtension,
   LivenessRecovery,
@@ -40,7 +42,7 @@ contract LineaRollup is
     BaseInitializationData calldata _initializationData,
     address _livenessRecoveryOperator,
     address _yieldManager
-  ) external initializer {
+  ) external onlyInitializedVersion(0) reinitializer(9) {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
       EMPTY_HASH,
@@ -78,13 +80,7 @@ contract LineaRollup is
   function reinitializeLineaRollupV9(
     uint256 _forcedTransactionFeeInWei,
     address _addressFilter
-  ) external reinitializer(9) {
-    address proxyAdmin;
-    assembly {
-      proxyAdmin := sload(PROXY_ADMIN_SLOT)
-    }
-    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
-
+  ) external reinitializer(9) nonReentrant {
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
 

@@ -5,9 +5,11 @@ import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-
 
 import {
   ADDRESS_ZERO,
+  BLOCK_NUMBER_DEADLINE_BUFFER,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
   INITIAL_WITHDRAW_LIMIT,
+  L2_BLOCK_DURATION_SECONDS,
   LINEA_MAINNET_CHAIN_ID,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   MAX_FORCED_TRANSACTION_GAS_LIMIT,
@@ -188,6 +190,8 @@ export async function deployForcedTransactionGatewayFixture() {
     MAX_INPUT_LENGTH_LIMIT,
     securityCouncil.address,
     await addressFilter.getAddress(),
+    L2_BLOCK_DURATION_SECONDS,
+    BLOCK_NUMBER_DEADLINE_BUFFER,
   )) as unknown as ForcedTransactionGateway;
 
   await forcedTransactionGateway.waitForDeployment();

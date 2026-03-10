@@ -11,7 +11,6 @@ import {
   GENERAL_PAUSE_TYPE,
   INBOX_STATUS_CLAIMED,
   INBOX_STATUS_RECEIVED,
-  INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   L1_L2_MESSAGE_SETTER_ROLE,
   L1_L2_PAUSE_TYPE,
@@ -36,6 +35,9 @@ import {
   expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
+  expectPaused,
+  expectNotPaused,
   generateKeccak256Hash,
 } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
@@ -199,7 +201,7 @@ describe("L2MessageService", () => {
         L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       );
 
-      await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(l2MessageService, deployCall, "InitializedVersionWrong", [0, 3]);
     });
 
     it.skip("Can upgrade existing contract", async () => {
@@ -217,7 +219,7 @@ describe("L2MessageService", () => {
           .connect(securityCouncil)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, GENERAL_PAUSE_TYPE);
       });
     });
 
@@ -229,7 +231,7 @@ describe("L2MessageService", () => {
           .connect(securityCouncil)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [L2_L1_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, L2_L1_PAUSE_TYPE);
       });
     });
 
@@ -618,7 +620,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, claimMessageCall, GENERAL_PAUSE_TYPE);
       });
     });
 
@@ -638,7 +640,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "IsPaused", [L1_L2_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, claimMessageCall, L1_L2_PAUSE_TYPE);
       });
     });
 
@@ -953,7 +955,7 @@ describe("L2MessageService", () => {
           .connect(admin)
           .canSendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, GENERAL_PAUSE_TYPE);
 
         const usedAmount = await l2MessageService.currentPeriodAmountInWei();
         expect(usedAmount).to.be.equal(0);
@@ -988,7 +990,8 @@ describe("L2MessageService", () => {
           EMPTY_CALLDATA,
           1,
         );
-        await expect(
+        await expectRevertWithCustomError(
+          l2MessageService,
           l2MessageService.claimMessage(
             await l2MessageService.getAddress(),
             notAuthorizedAccount.address,
@@ -998,7 +1001,8 @@ describe("L2MessageService", () => {
             EMPTY_CALLDATA,
             1,
           ),
-        ).to.be.revertedWithCustomError(l2MessageService, "MessageDoesNotExistOrHasAlreadyBeenClaimed");
+          "MessageDoesNotExistOrHasAlreadyBeenClaimed",
+        );
       });
 
       it("Should execute the claim message and send the fees to msg.sender", async () => {
@@ -1358,11 +1362,9 @@ describe("L2MessageService", () => {
 
   describe("Set minimum fee", () => {
     it("Should fail when caller is not allowed", async () => {
-      await expect(l2MessageService.connect(notAuthorizedAccount).setMinimumFee(MINIMUM_FEE)).to.be.revertedWith(
-        "AccessControl: account " +
-          notAuthorizedAccount.address.toLowerCase() +
-          " is missing role " +
-          MINIMUM_FEE_SETTER_ROLE,
+      await expectRevertWithReason(
+        l2MessageService.connect(notAuthorizedAccount).setMinimumFee(MINIMUM_FEE),
+        buildAccessErrorMessage(notAuthorizedAccount, MINIMUM_FEE_SETTER_ROLE),
       );
     });
 
@@ -1375,22 +1377,22 @@ describe("L2MessageService", () => {
 
   describe("Pausing contracts", () => {
     it("Should fail pausing as non-pauser", async () => {
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
 
       await expectRevertWithReason(
         l2MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE),
         buildAccessErrorMessage(admin, PAUSE_ALL_ROLE),
       );
 
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
     });
 
     it("Should pause as pause manager", async () => {
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
 
       await l2MessageService.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(l2MessageService, GENERAL_PAUSE_TYPE);
     });
   });
 
@@ -1437,30 +1439,40 @@ describe("L2MessageService", () => {
   });
 
   describe("L2MessageService Upgradeable Tests", () => {
+    it("Should set initialized version to 3 on fresh deploy", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      const slotValue = await testL2MessageService.getSlotValue(0);
+      expect(slotValue).equal(3);
+    });
+
     it("Should deploy and manually upgrade the L2MessageService contract", async function () {
       const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
 
       let slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(0);
       await testL2MessageService.setSlotValue(177, 1);
 
-      // simulating reentry value at slot 1
+      // simulating reentry value at slot 177
       slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(1);
 
-      // Deploy new TokenBridge implementation
-      const newTokenBridgeFactory = await ethers.getContractFactory(
+      // Deploy new L2MessageService implementation
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
         "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
       );
 
-      const newTokenBridge = await upgrades.upgradeProxy(testL2MessageService, newTokenBridgeFactory, {
+      const newL2MessageService = await upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
         call: { fn: "reinitializeV3" },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      await newTokenBridge.waitForDeployment();
+      await newL2MessageService.waitForDeployment();
 
       // reentry slot cleared
       slotValue = await testL2MessageService.getSlotValue(177);
@@ -1469,6 +1481,31 @@ describe("L2MessageService", () => {
       // version changed
       slotValue = await testL2MessageService.getSlotValue(0);
       expect(slotValue).equal(3);
+    });
+
+    it("Should revert reinitializeV3 if old reentrancy guard slot indicates ENTERED", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
+
+      // Set legacy reentrancy guard slot 1 to OZ ENTERED value (2) — the assembly checks sload(1)
+      await testL2MessageService.setSlotValue(177, 2);
+
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
+        "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
+      );
+
+      await expectRevertWithCustomError(
+        testL2MessageService,
+        upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
+          call: { fn: "reinitializeV3" },
+          kind: "transparent",
+          unsafeAllowRenames: true,
+          unsafeAllow: ["incorrect-initializer-order"],
+        }),
+        "ReentrantCall",
+      );
     });
   });
 });

@@ -1,51 +1,9 @@
-export type RawBlockData = {
-  rootHash: string;
-  timestamp: number;
-  rlpEncodedTransactions: string[];
-  l2ToL1MsgHashes: string[];
-  batchReceptionIndices: number[];
-  fromAddresses: string;
-};
-
-export type FormattedBlockData = Omit<
-  RawBlockData,
-  "rlpEncodedTransactions" | "timestamp" | "l2ToL1MsgHashes" | "fromAddresses" | "rootHash"
-> & {
-  l2BlockTimestamp: number;
-  transactions: string[];
-  l2ToL1MsgHashes: string[];
-  fromAddresses: string;
-  blockRootHash: string;
-};
-
-export type DebugData = {
-  blocks: {
-    txHashes: string[];
-    hashOfTxHashes: string;
-    logHashes: string[];
-    hashOfLogHashes: string;
-    hashOfPositions: string;
-    HashForBlock: string;
-  }[];
-  hashForAllBlocks: string;
-  hashOfRootHashes: string;
-  timestampHashes: string;
-  finalHash: string;
-};
-
 export type BlobSubmission = {
   dataEvaluationClaim: string;
   kzgCommitment: string;
   kzgProof: string;
   finalStateRootHash: string;
   snarkHash: string;
-};
-
-export type ParentSubmissionData = {
-  finalStateRootHash: string;
-  firstBlockNumber: bigint;
-  endBlockNumber: bigint;
-  shnarf: string;
 };
 
 export type ParentAndExpectedShnarf = {
@@ -144,4 +102,43 @@ export type LineaRollupInitializationData = {
   defaultAdmin: string;
   shnarfProvider: string;
   addressFilter: string;
+};
+
+export type AggregatedProofData = {
+  finalShnarf: string;
+  parentAggregationFinalShnarf: string;
+  aggregatedProof: string;
+  aggregatedProverVersion: string;
+  aggregatedVerifierIndex: number;
+  aggregatedProofPublicInput: string;
+  dataHashes: string[];
+  dataParentHash: string;
+  finalStateRootHash: string;
+  parentStateRootHash: string;
+  parentAggregationLastBlockTimestamp: number;
+  lastFinalizedBlockNumber: number;
+  finalTimestamp: number;
+  finalBlockNumber: number;
+  lastFinalizedL1RollingHash: string;
+  l1RollingHash: string;
+  lastFinalizedL1RollingHashMessageNumber: number;
+  l1RollingHashMessageNumber: number;
+  finalFtxRollingHash: string;
+  parentAggregationFtxRollingHash: string;
+  finalFtxNumber: number;
+  parentAggregationFtxNumber: number;
+  l2MerkleRoots: string[];
+  l2MerkleTreesDepth: number;
+  l2MessagingBlocksOffsets: string;
+  chainID: number;
+  baseFee: number;
+  coinBase: string;
+  l2MessageServiceAddr: string;
+  isAllowedCircuitID: number;
+  filteredAddresses: string[];
+};
+
+export type ExpectedCustomError = {
+  name: string;
+  args?: unknown[];
 };

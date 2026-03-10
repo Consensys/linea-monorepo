@@ -35,6 +35,16 @@
           "internalType": "address",
           "name": "_addressFilter",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_l2BlockDurationSeconds",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_blockNumberDeadlineBuffer",
+          "type": "uint256"
         }
       ],
       "stateMutability": "nonpayable",
@@ -75,6 +85,17 @@
         }
       ],
       "name": "FinalizationStateIncorrect",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "blockNumber",
+          "type": "uint256"
+        }
+      ],
+      "name": "ForcedTransactionAlreadySubmittedInBlock",
       "type": "error"
     },
     {
@@ -133,11 +154,6 @@
         }
       ],
       "name": "MaxPriorityFeePerGasHigherThanMaxFee",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "ToAddressTooLow",
       "type": "error"
     },
     {
@@ -264,6 +280,19 @@
     },
     {
       "inputs": [],
+      "name": "BLOCK_NUMBER_DEADLINE_BUFFER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "DEFAULT_ADMIN_ROLE",
       "outputs": [
         {
@@ -291,6 +320,19 @@
     {
       "inputs": [],
       "name": "L2_BLOCK_BUFFER",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "L2_BLOCK_DURATION_SECONDS",
       "outputs": [
         {
           "internalType": "uint256",
@@ -396,6 +438,19 @@
           "internalType": "bool",
           "name": "",
           "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastSubmissionBlock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -538,11 +593,6 @@
             {
               "internalType": "bytes32",
               "name": "forcedTransactionRollingHash",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "blockHash",
               "type": "bytes32"
             }
           ],

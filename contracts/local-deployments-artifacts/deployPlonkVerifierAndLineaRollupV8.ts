@@ -4,10 +4,19 @@ import path from "path";
 import * as dotenv from "dotenv";
 import { abi as LineaRollupV8Abi, bytecode as LineaRollupV8Bytecode } from "./dynamic-artifacts/LineaRollupV8.json";
 import {
+  abi as ForcedTransactionGatewayAbi,
+  bytecode as ForcedTransactionGatewayBytecode,
+} from "./static-artifacts/ForcedTransactionGateway.json";
+import {
   contractName as ProxyAdminContractName,
   abi as ProxyAdminAbi,
   bytecode as ProxyAdminBytecode,
 } from "./static-artifacts/ProxyAdmin.json";
+import {
+  contractName as MimcAddressContractName,
+  abi as MimcAddressAbi,
+  bytecode as MimcAddressFilterBytecode,
+} from "./static-artifacts/Mimc.json";
 import {
   contractName as AddressFilterContractName,
   abi as AddressFilterAbi,
@@ -28,6 +37,7 @@ import {
   YIELD_PROVIDER_STAKING_ROLE,
   ADDRESS_ZERO,
   PRECOMPILES_ADDRESSES,
+  FORCED_TRANSACTION_SENDER_ROLE,
 } from "../common/constants";
 import { get1559Fees } from "../scripts/utils";
 
@@ -57,20 +67,33 @@ function findContractArtifacts(
 
 async function main() {
   const verifierName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+  const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
+  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
+  const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const lineaRollupGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
+
+  // Forced Transaction Gateway
+  const destinationChainId = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_CHAIN_ID");
+  const l2BlockBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER");
+  const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
+  const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
+
+  const l2BlockDurationSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS");
+  const blockNumberDeadlineBuffer = getRequiredEnvVar("FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER");
 
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const lineaRollupName = "LineaRollupV8";
   const lineaRollupImplementationName = "LineaRollupV8Implementation";
+  const forcedTransactionGatewayName = "ForcedTransactionGateway";
 
   const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES);
+
+  const securityCouncilPrivateKey = getRequiredEnvVar("SECURITY_COUNCIL_PRIVATE_KEY");
+
   // Use random hardcoded address until we introduce YieldManager E2E tests
   const automationServiceAddress = "0x3A9f0c2b8e7D4F6e1b5a9C2e0Fd7a4B6C8e9F1A2";
   const defaultRoleAddresses = [
@@ -85,7 +108,7 @@ async function main() {
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
 
   const { gasPrice } = await get1559Fees(provider);
 
@@ -153,7 +176,7 @@ async function main() {
     "0xB7De4A2cf9E1c6a0B5f8d3e7a9C4B1a2e6d0f5C8",
   ]);
 
-  await deployContractFromArtifacts(
+  const lineaRollupContract = await deployContractFromArtifacts(
     lineaRollupName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
@@ -161,8 +184,64 @@ async function main() {
     lineaRollupImplementationAddress,
     proxyAdminAddress,
     initializer,
-    { gasPrice },
+    {
+      nonce: walletNonce + 4,
+      gasPrice,
+    },
   );
+
+  const lineaRollupAddress = await lineaRollupContract.getAddress();
+
+  const args = [
+    lineaRollupAddress,
+    destinationChainId,
+    l2BlockBuffer,
+    maxGasLimit,
+    maxInputLengthBuffer,
+    lineaRollupSecurityCouncil,
+    addressFilterAddress,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
+  ];
+
+  const mimc = await deployContractFromArtifacts(
+    MimcAddressContractName,
+    MimcAddressAbi,
+    MimcAddressFilterBytecode,
+    wallet,
+    {
+      nonce: walletNonce + 5,
+      gasPrice,
+    },
+  );
+
+  const mimcAddress = await mimc.getAddress();
+
+  const forcedTransactionGateway = await deployContractFromArtifacts(
+    forcedTransactionGatewayName,
+    ForcedTransactionGatewayAbi,
+    ForcedTransactionGatewayBytecode,
+    wallet,
+    { libraries: { "src/libraries/Mimc.sol:Mimc": mimcAddress } },
+    ...args,
+    {
+      nonce: walletNonce + 6,
+      gasPrice,
+    },
+  );
+
+  const forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
+  const securityCouncilWallet = new ethers.Wallet(securityCouncilPrivateKey, provider);
+  const lineaRollup = new ethers.Contract(lineaRollupAddress, LineaRollupV8Abi, securityCouncilWallet);
+
+  console.log(
+    `Granting FORCED_TRANSACTION_SENDER_ROLE to ForcedTransactionGateway at ${forcedTransactionGatewayAddress}...`,
+  );
+  const grantRoleTx = await lineaRollup.grantRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress, {
+    gasPrice,
+  });
+  await grantRoleTx.wait();
+  console.log(`FORCED_TRANSACTION_SENDER_ROLE granted to ForcedTransactionGateway`);
 }
 
 main().catch((error) => {

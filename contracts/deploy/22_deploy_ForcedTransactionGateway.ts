@@ -10,10 +10,16 @@ const func: DeployFunction = async function () {
   const l2BlockBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER");
   const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
   const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
-  const defaultAdmin = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+  const defaultAdmin = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const addressFilter = getRequiredEnvVar("FORCED_TRANSACTION_ADDRESS_FILTER");
+  const mimcLibraryAddress = getRequiredEnvVar("MIMC_LIBRARY_ADDRESS");
 
-  const factory = await ethers.getContractFactory(contractName);
+  const factory = await ethers.getContractFactory("ForcedTransactionGateway", {
+    libraries: { Mimc: mimcLibraryAddress },
+  });
+  const l2BlockDurationSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS");
+  const blockNumberDeadlineBuffer = getRequiredEnvVar("FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER");
+
   const contract = await factory.deploy(
     lineaRollupAddress,
     destinationChainId,
@@ -22,6 +28,8 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
   );
 
   await LogContractDeployment(contractName, contract);
@@ -35,6 +43,8 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
   ];
   await tryVerifyContractWithConstructorArgs(
     contractAddress,

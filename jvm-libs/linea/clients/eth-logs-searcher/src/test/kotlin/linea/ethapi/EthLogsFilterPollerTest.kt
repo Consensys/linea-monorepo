@@ -3,6 +3,7 @@ package linea.ethapi
 import io.vertx.core.Vertx
 import linea.domain.BlockParameter
 import linea.domain.EthLog
+import linea.ethapi.extensions.EthLogsFilterState
 import linea.kotlin.decodeHex
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -10,6 +11,7 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
@@ -76,7 +78,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(50UL)
 
     // When: poller starts and polls
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -102,7 +104,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(30UL)
 
     // When: first poll processes initial logs
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -142,7 +144,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(50UL)
 
     // When: poller processes logs
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -175,7 +177,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(50UL)
 
     // When: consumer fails on second log, then succeeds
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     val throwErrorLatch = AtomicBoolean(true)
     val failureCount = AtomicInteger(0)
 
@@ -213,7 +215,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setLogs(emptyList())
     fakeEthApiClient.setFinalizedBlockTag(10UL)
 
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -245,7 +247,7 @@ class EthLogsFilterPollerTest {
     // Given: finalized block is behind current search position
     fakeEthApiClient.setFinalizedBlockTag(10UL)
 
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(20UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -280,7 +282,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(150UL)
 
     // When: poller uses small chunk size
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -312,7 +314,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(50UL)
 
     // When: logs are consumed
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -359,7 +361,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(50UL)
 
     // When: poller filters by address and topic
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -390,7 +392,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setFinalizedBlockTag(25UL)
 
     // Given: poller with consumer
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -418,7 +420,7 @@ class EthLogsFilterPollerTest {
     fakeEthApiClient.setLogs(listOf(logAtBlock11))
     fakeEthApiClient.setFinalizedBlockTag(10UL) // Only block 10 is finalized (no logs)
 
-    val consumedLogs = mutableListOf<EthLog>()
+    val consumedLogs = CopyOnWriteArrayList<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(10UL),
       toBlock = BlockParameter.Tag.FINALIZED,
@@ -441,6 +443,51 @@ class EthLogsFilterPollerTest {
 
     awaitUntilAsserted {
       assertThat(consumedLogs).containsExactly(logAtBlock11)
+    }
+  }
+
+  @Test
+  fun `should notify state listener when transitioning between states`() {
+    // Given: logs exist up to block 20
+    val logs = listOf(
+      templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
+      templateLog.copy(blockNumber = 20UL, logIndex = 0UL),
+    )
+    fakeEthApiClient.setLogs(logs)
+    fakeEthApiClient.setFinalizedBlockTag(30UL)
+
+    // When: poller starts with state listener
+    val stateTransitions = CopyOnWriteArrayList<Pair<EthLogsFilterState, EthLogsFilterState>>()
+    poller = createPoller(
+      fromBlock = BlockParameter.BlockNumber(0UL),
+      toBlock = BlockParameter.Tag.FINALIZED,
+      pollingInterval = 50.milliseconds,
+      consumer = { },
+    )
+    poller.setStateListener { oldState, newState ->
+      stateTransitions.add(oldState to newState)
+    }
+
+    poller.start().get()
+
+    // Then: should transition from Idle to Searching first
+    awaitUntilAsserted {
+      assertThat(stateTransitions.first())
+        .isEqualTo(EthLogsFilterState.Idle to EthLogsFilterState.Searching(0UL))
+    }
+
+    // Then: should eventually transition to CaughtUp
+    awaitUntilAsserted {
+      assertThat(stateTransitions).hasSizeGreaterThan(1)
+      assertThat(stateTransitions[1])
+        .isEqualTo(EthLogsFilterState.Searching(0UL) to EthLogsFilterState.CaughtUp(30UL))
+    }
+
+    fakeEthApiClient.setFinalizedBlockTag(50UL)
+    awaitUntilAsserted {
+      assertThat(stateTransitions).hasSizeGreaterThan(2)
+      assertThat(stateTransitions[2])
+        .isEqualTo(EthLogsFilterState.CaughtUp(30UL) to EthLogsFilterState.Searching(31UL))
     }
   }
 

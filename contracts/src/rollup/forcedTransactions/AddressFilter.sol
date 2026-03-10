@@ -10,9 +10,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
  * @custom:security-contact security-report@linea.build
  */
 contract AddressFilter is AccessControl, IAddressFilter {
-  bool public useAddressFilter = true;
-
-  mapping(address => bool) internal filteredAddresses;
+  mapping(address ethereumAddress => bool isFiltered) internal filteredAddresses;
 
   constructor(address _defaultAdmin, address[] memory _initialfilteredAddresses) {
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());

@@ -20,17 +20,17 @@ const func: DeployFunction = async function () {
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
-  const validiumInitialStateRootHash = getRequiredEnvVar("VALIDIUM_INITIAL_STATE_ROOT_HASH");
-  const validiumInitialL2BlockNumber = getRequiredEnvVar("VALIDIUM_INITIAL_L2_BLOCK_NUMBER");
-  const validiumSecurityCouncil = getRequiredEnvVar("VALIDIUM_SECURITY_COUNCIL");
+  const verifierAddress = getRequiredEnvVar("VERIFIER_ADDRESS");
+  const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
+  const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
+  const validiumSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
-  const validiumGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
+  const validiumGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
 
-  const pauseTypeRoles = getEnvVarOrDefault("VALIDIUM_PAUSE_TYPE_ROLES", VALIDIUM_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvVarOrDefault("VALIDIUM_UNPAUSE_TYPE_ROLES", VALIDIUM_UNPAUSE_TYPES_ROLES);
+  const pauseTypeRoles = getEnvVarOrDefault("VALIDIUM_PAUSE_TYPES_ROLES", VALIDIUM_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("VALIDIUM_UNPAUSE_TYPES_ROLES", VALIDIUM_UNPAUSE_TYPES_ROLES);
   const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, validiumSecurityCouncil, [
     { role: OPERATOR_ROLE, addresses: validiumOperators },
   ]);

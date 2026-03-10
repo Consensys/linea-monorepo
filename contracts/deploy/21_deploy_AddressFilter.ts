@@ -6,7 +6,7 @@ import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 const func: DeployFunction = async function () {
   const contractName = "AddressFilter";
 
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+  const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const filteredAddresses = getRequiredEnvVar("ADDRESS_FILTER_FILTERED_ADDRESSES").split(",");
 
   const defaultFilterAddresses = [...PRECOMPILES_ADDRESSES, ...filteredAddresses];

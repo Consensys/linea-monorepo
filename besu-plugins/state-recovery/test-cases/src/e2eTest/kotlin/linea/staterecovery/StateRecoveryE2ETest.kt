@@ -5,7 +5,6 @@ import build.linea.clients.StateManagerV1JsonRpcClient
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import kotlinx.datetime.Clock
 import linea.domain.EthLogEvent
 import linea.ethapi.EthLogsSearcherImpl
 import linea.kotlin.decodeHex
@@ -36,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -116,7 +116,7 @@ class StateRecoveryE2ETest {
     // No Errors should be logged in Besu
     assertThat(getBesuErrorLogs()).isEmpty()
 
-    val localStackL1ContractAddress = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
+    val localStackL1ContractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
     val logsSearcher = EthLogsSearcherImpl(
       vertx = vertx,
       ethApiClient =

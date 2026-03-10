@@ -45,8 +45,6 @@ import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.add.Add;
-import net.consensys.linea.zktracer.module.bin.Bin;
-import net.consensys.linea.zktracer.module.blake2f.Blake2f;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
@@ -214,7 +212,6 @@ public final class Hub implements Module {
   // stateless modules
   private final Wcp wcp = new Wcp();
   private final Add add = new Add();
-  private final Bin bin = new Bin();
   private final Blockhash blockhash;
   private final Euc euc = new Euc();
   private final Ext ext = new Ext();
@@ -354,8 +351,6 @@ public final class Hub implements Module {
    */
   private final ShakiraData shakiraData;
 
-  private final Blake2f blake2f = new Blake2f();
-
   @Getter
   private final BlakeModexpData blakeModexpData =
       new BlakeModexpData(
@@ -407,8 +402,6 @@ public final class Hub implements Module {
     return List.of(
         this,
         add,
-        bin,
-        blake2f,
         blakeModexpData,
         blockdata,
         blockhash,
@@ -496,8 +489,6 @@ public final class Hub implements Module {
         Stream.concat(
                 Stream.of(
                     add,
-                    bin,
-                    blake2f,
                     blakeModexpData,
                     blockhash, /* WARN: must be called BEFORE WCP (for traceEndConflation) */
                     blsData,

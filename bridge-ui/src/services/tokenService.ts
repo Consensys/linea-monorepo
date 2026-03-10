@@ -4,10 +4,11 @@ import log from "loglevel";
 import { Address } from "viem";
 
 import { config } from "@/config";
-import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants";
-import { defaultTokensConfig, SupportedCurrencies } from "@/stores";
+import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants/tokens";
+import { type SupportedCurrencies } from "@/stores/configStore";
+import { defaultTokensConfig } from "@/stores/tokenStore";
 import { BridgeProvider, GithubTokenListToken, NetworkTokens, Token } from "@/types";
-import { isUndefined } from "@/utils";
+import { isUndefined } from "@/utils/misc";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
@@ -98,7 +99,7 @@ export const getTokenConfig = cache(async (): Promise<NetworkTokens> => {
           name: "TestERC20",
           symbol: "TERC20",
           decimals: 18,
-          L1: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+          L1: "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
           L2: "0xCC1B08B17301e090cbb4c1F5598Cbaa096d591FB",
           image: "",
           isDefault: true,
@@ -112,7 +113,7 @@ export const getTokenConfig = cache(async (): Promise<NetworkTokens> => {
           name: "TestERC20",
           symbol: "TERC20",
           decimals: 18,
-          L1: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+          L1: "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
           L2: "0xCC1B08B17301e090cbb4c1F5598Cbaa096d591FB",
           image: "",
           isDefault: true,
