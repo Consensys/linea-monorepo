@@ -137,7 +137,13 @@ data class ProofToFinalizeJsonResponse(
 
   companion object {
 
-    val PROPERTIES_NOT_INCLUDED = setOf("aggregatedProverVersion")
+    val optionalFields = setOf(
+      "parentAggregationFtxNumber",
+      "parentAggregationFtxRollingHash",
+      "finalFtxNumber",
+      "finalFtxRollingHash",
+      "filteredAddresses",
+    )
 
     fun fromJsonString(jsonString: String): ProofToFinalizeJsonResponse {
       return JsonSerialization.proofResponseMapperV1.readValue(
