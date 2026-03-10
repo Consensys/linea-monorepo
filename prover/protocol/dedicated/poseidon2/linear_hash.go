@@ -268,15 +268,15 @@ func (ctx *linearHashCtx) HashingCols() {
 				Sub(ifaces.ColumnAsVariable(ctx.NewStateClean[i])),
 		)
 
-		//
-		// Correctness of the blocks compressions
-		//
-		ctx.Comp.InsertPoseidon2(
-			ctx.Round,
-			ifaces.QueryID(prefixWithLinearHash(ctx.Comp, ctx.Name, "BLOCKS_COMPRESSION_%v_%v", ctx.ToHash[i].GetColID(), i)),
-			ctx.ToHash, ctx.OldState, ctx.NewState, nil,
-		)
 	}
+	//
+	// Correctness of the blocks compressions
+	//
+	ctx.Comp.InsertPoseidon2(
+		ctx.Round,
+		ifaces.QueryID(prefixWithLinearHash(ctx.Comp, ctx.Name, "BLOCKS_COMPRESSION")),
+		ctx.ToHash, ctx.OldState, ctx.NewState, nil,
+	)
 
 }
 
