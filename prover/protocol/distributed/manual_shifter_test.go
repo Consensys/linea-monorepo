@@ -102,7 +102,7 @@ func TestManualShifter(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			comp := wizard.Compile(testCase.Define, compileManualShifter)
+			comp := wizard.Compile(testCase.Define, CompileManualShifter)
 			err := auditInitialWizard(comp)
 			if err != nil {
 				t.Fatalf("audit failed: %v", err.Error())
