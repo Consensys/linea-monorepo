@@ -91,6 +91,7 @@ dependencies {
   testImplementation 'org.junit.jupiter:junit-jupiter-params'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testImplementation "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}"
 }
 
 // Do not run acceptance tests with ./gradlew test, only with ./gradlew acceptanceTests

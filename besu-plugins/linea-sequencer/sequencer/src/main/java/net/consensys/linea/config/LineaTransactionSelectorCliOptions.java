@@ -9,6 +9,7 @@
 
 package net.consensys.linea.config;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
 import java.io.File;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -246,8 +248,9 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
     }
   }
 
-  private Map<BlobCompressorVersion, Instant> parseBlobCompressorVersionTimestamps(String input) {
-    Map<BlobCompressorVersion, Instant> result = new ConcurrentHashMap<>();
+  @VisibleForTesting
+  Map<BlobCompressorVersion, Instant> parseBlobCompressorVersionTimestamps(String input) {
+    Map<BlobCompressorVersion, Instant> result = new HashMap<>();
     String[] pairs = input.split(",");
     for (String pair : pairs) {
       String[] kv = pair.split("=");
