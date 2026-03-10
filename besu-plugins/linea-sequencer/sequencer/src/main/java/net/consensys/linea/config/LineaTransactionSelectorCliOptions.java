@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import kotlin.time.Instant;
+import kotlin.time.jdk8.InstantConversionsJDK8Kt;
 import linea.blob.BlobCompressorVersion;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
@@ -269,6 +270,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         && !blobCompressorVersionTimestampsRaw.isEmpty()) {
       return parseBlobCompressorVersionTimestamps(blobCompressorVersionTimestampsRaw);
     }
-    return Map.of(BlobCompressorVersion.V2, Instant.Companion.getMIN$kotlin_stdlib());
+    return Map.of(
+        BlobCompressorVersion.V2, InstantConversionsJDK8Kt.toKotlinInstant(java.time.Instant.MIN));
   }
 }
