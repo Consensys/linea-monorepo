@@ -41,20 +41,13 @@ apply from: lineaSequencerProject.file("gradle/dist.gradle")
 
 distZip {
   archiveBaseName = 'linea-sequencer'
-  exclude '**/arithmetization-*.jar'
 }
 
-// Simple artifacts task that runs buildAndUpdateBesuVersionInLibsVersions, then jar and distZip
+// Simple artifacts task that runs jar and distPlugin
 task artifacts {
   group = 'Build'
-  description = 'Creates all build artifacts (JAR and distribution ZIP). Ensures hyperledger/besu is checked out and built first, then syncs besu version to libs.versions.toml.'
-  def forceCheckoutAndBuildBesu = project.hasProperty('forceCheckoutAndBuildBesu') ? project.forceCheckoutAndBuildBesu.toBoolean() : false
-  if (forceCheckoutAndBuildBesu) {
-    def buildAndUpdateBesuVersionInLibsVersions = rootProject.tasks.named('buildAndUpdateBesuVersionInLibsVersions')
-    dependsOn buildAndUpdateBesuVersionInLibsVersions, 'jar', 'distZip'
-  } else {
-    dependsOn 'jar', 'distZip'
-  }
+  description = 'Creates all build artifacts (JAR and distribution ZIP)'
+  dependsOn 'jar', 'distZip'
 }
 
 test {

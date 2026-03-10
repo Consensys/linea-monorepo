@@ -31,7 +31,7 @@ class LineaBesuPlugin implements Plugin<Project> {
           workingDir = project.rootProject.layout.projectDirectory.asFile
           environment 'BESU_DIR', "${rootDir}/tmp/hyperledger-besu"
           environment 'BESU_COMMIT', besuCommit
-          environment 'VERSION_LABEL', "linea"
+          environment 'VERSION_LABEL', ""
           commandLine 'bash', "${rootDir}/linea-besu/scripts/checkout-and-resolve-version.sh"
           standardOutput = outputStream
         }

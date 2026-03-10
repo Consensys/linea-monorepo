@@ -20,9 +20,9 @@ fi
 BASE_TAG=$(cd "$BESU_DIR" && git describe --tags --abbrev=0 "$BESU_COMMIT" 2>/dev/null || true)
 
 if [ -n "$BASE_TAG" ]; then
-  BESU_VERSION="${BASE_TAG}-${VERSION_LABEL}-${SHORT_COMMIT}"
+  BESU_VERSION="${BASE_TAG}${VERSION_LABEL}-${SHORT_COMMIT}"
 else
-  BESU_VERSION="0.0.0-${VERSION_LABEL}-${SHORT_COMMIT}"
+  BESU_VERSION="0.0.0${VERSION_LABEL}-${SHORT_COMMIT}"
 fi
 
 echo "Resolved besuVersion: $BESU_VERSION"

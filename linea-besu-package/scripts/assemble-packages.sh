@@ -10,8 +10,8 @@ pushd ./tmp
 
 echo "BESU_VERSION=$BESU_VERSION"
 echo "LOCAL_BESU_ZIP_PATH=$LOCAL_BESU_ZIP_PATH"
-echo "LOCAL_SEQUENCER_ZIP_PATH: $LOCAL_SEQUENCER_ZIP_PATH"
-echo "LOCAL_TRACER_ZIP_PATH: $LOCAL_TRACER_ZIP_PATH"
+echo "LOCAL_SEQUENCER_DIST_FOLDER: $LOCAL_SEQUENCER_DIST_FOLDER"
+echo "LOCAL_TRACER_DIST_FOLDER: $LOCAL_TRACER_DIST_FOLDER"
 
 if [ -z "$BESU_VERSION" ]; then
   echo "Please provide besu version in env BESU_VERSION"
@@ -23,13 +23,13 @@ if [ -z "$LOCAL_BESU_ZIP_PATH" ] || [ ! -f "$LOCAL_BESU_ZIP_PATH" ]; then
   exit 1
 fi
 
-if [ -z "$LOCAL_SEQUENCER_ZIP_PATH" ] || [ ! -f "$LOCAL_SEQUENCER_ZIP_PATH" ]; then
-  echo "Please provide an valid file path for the sequencer plugin distribution zip file in env LOCAL_SEQUENCER_ZIP_PATH"
+if [ -z "$LOCAL_SEQUENCER_DIST_FOLDER" ]; then
+  echo "Please provide an valid path for the sequencer plugin distribution folder in env LOCAL_SEQUENCER_DIST_FOLDER"
   exit 1
 fi
 
-if [ -z "$LOCAL_TRACER_ZIP_PATH" ] || [ ! -f "$LOCAL_TRACER_ZIP_PATH" ]; then
-  echo "Please provide an valid file path for the tracer plugin distribution zip file in env LOCAL_TRACER_ZIP_PATH"
+if [ -z "$LOCAL_TRACER_DIST_FOLDER" ]; then
+  echo "Please provide an valid path for the tracer plugin distribution folder in env LOCAL_TRACER_DIST_FOLDER"
   exit 1
 fi
 
@@ -44,15 +44,11 @@ cp ../versions.env ./besu/versions.txt
 mkdir -p ./besu/plugins
 cd ./besu/plugins
 
-echo "using local sequencer zip: $LOCAL_SEQUENCER_ZIP_PATH"
-cp $LOCAL_SEQUENCER_ZIP_PATH .
-unzip -j -o $(basename "$LOCAL_SEQUENCER_ZIP_PATH")
-rm $(basename "$LOCAL_SEQUENCER_ZIP_PATH")
+echo "using JAR files under local sequencer distribution folder: $LOCAL_SEQUENCER_DIST_FOLDER"
+cp -a $LOCAL_SEQUENCER_DIST_FOLDER/. .
 
-echo "using local tracer zip: $LOCAL_TRACER_ZIP_PATH"
-cp $LOCAL_TRACER_ZIP_PATH .
-unzip -j -o $(basename "$LOCAL_TRACER_ZIP_PATH")
-rm $(basename "$LOCAL_TRACER_ZIP_PATH")
+echo "using JAR files under local tracer distribution folder: $LOCAL_TRACER_DIST_FOLDER"
+cp -a $LOCAL_TRACER_DIST_FOLDER/. .
 
 echo "getting linea_staterecovery_plugin_version: $LINEA_STATERECOVERY_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-staterecovery-v$LINEA_STATERECOVERY_PLUGIN_VERSION/linea-staterecovery-besu-plugin-v$LINEA_STATERECOVERY_PLUGIN_VERSION.jar

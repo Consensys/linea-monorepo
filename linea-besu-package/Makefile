@@ -5,11 +5,9 @@ PLATFORM ?=
 BESU_COMMIT ?= $(shell grep -E '^\s*besuCommit\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 TRACER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
 SEQUENCER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
-LOCAL_SEQUENCER_ZIP_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/distributions)
-LOCAL_TRACER_ZIP_FOLDER ?= $(abspath ../tracer/plugins/build/distributions)
+LOCAL_SEQUENCER_DIST_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/install/sequencer)
+LOCAL_TRACER_DIST_FOLDER ?= $(abspath ../tracer/plugins/build/install/linea-tracer)
 LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/hyperledger-besu/build/distributions)
-LOCAL_TRACER_ZIP_PATH ?= $(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip
-LOCAL_SEQUENCER_ZIP_PATH ?= $(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip
 
 build-besu-local-and-update-lib-version:
 	cd ..; \
@@ -19,15 +17,19 @@ build-besu-local-and-update-lib-version:
 build-tracer-and-sequencer:
 	cd ..; \
 	echo "Build versions: TRACER_PLUGIN_VERSION=${TRACER_PLUGIN_VERSION} SEQUENCER_PLUGIN_VERSION=$(SEQUENCER_PLUGIN_VERSION)" ; \
-	echo "Clean and build zip distribution for tracer" ; \
-	./gradlew :tracer:clean && ./gradlew :tracer:artifacts -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
-	echo "Clean and build zip distribution for sequencer" ; \
-	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
+	echo "Clean and build distribution for tracer" ; \
+	./gradlew :tracer:clean && ./gradlew :tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
+	echo "Clean and build distribution for sequencer" ; \
+	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:installDist -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
 
 assemble: BESU_VERSION := $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 assemble: LOCAL_BESU_ZIP_PATH := $(LOCAL_BESU_DIST_FOLDER)/besu-$(BESU_VERSION).tar.gz
 assemble:
-	BESU_VERSION=$(BESU_VERSION) LOCAL_BESU_ZIP_PATH=$(LOCAL_BESU_ZIP_PATH) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_PATH) LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_PATH) ./scripts/assemble-packages.sh
+	BESU_VERSION=$(BESU_VERSION) \
+	LOCAL_BESU_ZIP_PATH=$(LOCAL_BESU_ZIP_PATH) \
+	LOCAL_SEQUENCER_DIST_FOLDER=$(LOCAL_SEQUENCER_DIST_FOLDER) \
+	LOCAL_TRACER_DIST_FOLDER=$(LOCAL_TRACER_DIST_FOLDER) \
+	./scripts/assemble-packages.sh
 
 build:
 	$(MAKE) build-besu-local-and-update-lib-version
