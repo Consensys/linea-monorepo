@@ -41,7 +41,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import org.apache.tuweni.bytes.Bytes;
-import org.checkerframework.checker.units.qual.A;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Tag;
@@ -52,7 +51,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class LowGasStipendPrecompileCallTests extends TracerTestBase {
 
-  final static int LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE = 600;
+  static final int LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE = 600;
 
   // Enums for the different testing scenarios
   enum ValueCase {
@@ -217,7 +216,9 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleLowGasStipendPrecompileTestSources() {
-    return randomSampleByDayOfMonth(LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE, fullGasStipendPrecompileCallP256TestSource()).stream();
+    return randomSampleByDayOfMonth(
+        LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE, fullGasStipendPrecompileCallP256TestSource())
+        .stream();
   }
 
   static List<Arguments> fullGasStipendPrecompileCallP256TestSource() {

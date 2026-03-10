@@ -305,11 +305,13 @@ public class MxpxThresholdTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleInputParamsNightly() {
-    return randomSampleByDayOfMonth(MXPX_THRESHOLD_SAMPLE_SIZE, inputs(inputsValuesNightly)).stream();
+    return randomSampleByDayOfMonth(MXPX_THRESHOLD_SAMPLE_SIZE, inputs(inputsValuesNightly))
+        .stream();
   }
 
   private static Stream<Arguments> sampleInputParamsUnit() {
-    return randomSampleByDayOfMonth(MXPX_THRESHOLD_SAMPLE_SIZE, inputs(inputValuesUnitTests)).stream();
+    return randomSampleByDayOfMonth(MXPX_THRESHOLD_SAMPLE_SIZE, inputs(inputValuesUnitTests))
+        .stream();
   }
 
   private static final List<Bytes32> inputValuesUnitTests =

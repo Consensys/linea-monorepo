@@ -42,7 +42,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class XbsLimitsTests extends TracerTestBase {
 
-  final static int XBS_LIMIT_TEST_SAMPLE_SIZE = 600;
+  static final int XBS_LIMIT_TEST_SAMPLE_SIZE = 600;
 
   final KeyPair keyPair = new SECP256K1().generateKeyPair();
   final Address senderAddress =
@@ -143,7 +143,8 @@ public class XbsLimitsTests extends TracerTestBase {
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   static Stream<Arguments> sampleModexpXbsLimitsTestsNighlySource() {
-    return randomSampleByDayOfMonth(XBS_LIMIT_TEST_SAMPLE_SIZE, modexpXbsLimitsTestsNighlySource()).stream();
+    return randomSampleByDayOfMonth(XBS_LIMIT_TEST_SAMPLE_SIZE, modexpXbsLimitsTestsNighlySource())
+        .stream();
   }
 
   static List<Arguments> modexpXbsLimitsTestsNighlySource() {
