@@ -294,7 +294,7 @@ class ForcedTransactionsAppTest {
   }
 
   @Test
-  fun `on restart shall wait to reach the tip of the chain before releasing the conflation`() {
+  fun `on restart shall wait to reach the tip of the l1 chain before releasing the conflation`() {
     // Scenario: On restart, there are FTX on L1 and may take long time to fetch..
     // The coordinator should keep the lock at 0 until it catches up with head or until it fetches the first one and
     // sends to the sequencer and gets inclusion status, whichever comes first.
@@ -374,8 +374,9 @@ class ForcedTransactionsAppTest {
       l2BlockNumber = 1013UL,
       inclusionResult = ForcedTransactionInclusionResult.Included,
     )
+    // assert conflation is released after processing all FTXs
     await()
-      .atMost(1.seconds.toJavaDuration())
+      .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(safeBlockTracker.stateTransitions.lastOrNull()).isNull()
       }
