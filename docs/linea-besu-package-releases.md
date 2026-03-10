@@ -21,7 +21,7 @@ A new field called `besuCommit` in `libs.versions.toml` to denote the commit has
 ### Purpose
 
 - **Single source of truth** for locally-built besu release version:
-  - Besu artifact will be named as `besu-[release-tag]-linea-[7-char-besu-commit-hash].tar.gz`: e.g. `besu-25.12.0-d68679d.tar.gz` where `25.12.0` is the latest release tag on `hyperleger/besu` at the given `besuCommit`, the artifact will be placed under the `tmp/hyperledger-besu/build/distributions/folder` and the `besu` field in `libs.version.toml` will be automatically updated, e.g. `besu = 25.12.0-d68679d`, by running `gradlew buildAndUpdateBesuVersionInLibsVersions` or `cd linea-besu-package && make build`
+  - Besu artifact will be named as `besu-[release-tag]-[7-char-besu-commit-hash].tar.gz`: e.g. `besu-25.12.0-d68679d.tar.gz` where `25.12.0` is the latest release tag on `hyperleger/besu` at the given `besuCommit`, the artifact will be placed under the `tmp/hyperledger-besu/build/distributions/folder` and the `besu` field in `libs.version.toml` will be automatically updated, e.g. `besu = 25.12.0-d68679d`, by running `gradlew buildAndUpdateBesuVersionInLibsVersions` or `cd linea-besu-package && make build`
 
 - **Trigger workflows** when the desired besu commit, tracer/sequencer, or other plugins have been updated:
   - Build a **linea-besu-package** Docker image using **locally built** tracer and sequencer plugins with the desired `besuCommit` defined in `libs.versions.toml` (will build it from source if the corresponding besu version were not found in maven) and runs e2e tests against that image

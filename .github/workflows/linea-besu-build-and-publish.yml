@@ -70,10 +70,9 @@ jobs:
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          BRANCH="${{ github.head_ref }}"
           git fetch origin "$BRANCH"
           git checkout "$BRANCH"
-          cp tmp/libs-versions/libs.versions.toml gradle/libs.versions.toml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet gradle/libs.versions.toml; then
