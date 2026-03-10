@@ -47,7 +47,7 @@ func (mt *ModuleTranslator) InsertColumn(col column.Natural, atRound int) ifaces
 	}
 
 	newSize := NewSizeOfColumn(mt.Disc, col)
-	return mt.Wiop.InsertColumn(atRound, col.ID, newSize, col.Status(), true)
+	return mt.Wiop.InsertColumn(atRound, col.ID, newSize, col.Status(), col.IsBase())
 }
 
 // InsertPrecomputed is as [InsertColumn] but specificially works for precomputed
@@ -63,11 +63,21 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 	}
 
 	if mt.Wiop.Columns.Exists(col.ID) {
-		return mt.Wiop.Columns.GetHandle(col.ID)
+		res := mt.Wiop.Columns.GetHandle(col.ID)
+
+		if res.Size() != data.Len() {
+			utils.Panic("inconsistent sizes %v != %v", res.Size(), data.Len())
+		}
+
+		return res
+	}
+
+	if data.Len() != NewSizeOfColumn(mt.Disc, col) && !pragmas.IsCompletelyPeriodic(col) {
+		utils.Panic("inconsistent sizes %v != %v", data.Len(), NewSizeOfColumn(mt.Disc, col))
 	}
 
 	mt.Wiop.Precomputed.InsertNew(col.ID, data)
-	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status(), true)
+	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status(), col.IsBase())
 }
 
 // TranslateColumn returns an equivalent column from the new module. The

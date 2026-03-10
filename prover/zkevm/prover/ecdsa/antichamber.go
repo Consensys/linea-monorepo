@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -111,6 +112,8 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *Anticha
 
 		Size: size,
 	}
+
+	pragmas.MarkRightPadded(res.IsFetching)
 
 	// declare submodules
 	txSignInputs := txSignatureInputs{

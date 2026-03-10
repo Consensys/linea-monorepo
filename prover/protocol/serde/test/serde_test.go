@@ -502,6 +502,29 @@ func TestSerdeValue(t *testing.T) {
 				}{A: map[string]int{"a": 1, "b": 2, "c": 3}}
 			}(),
 		},
+		{
+			Name: "boxed-set",
+			V: func() any {
+				return struct {
+					A any
+				}{A: map[dummy.DoneOperation]struct{}{
+					dummy.DoneOperation{Type: 1, Round: 0, PosInRound: 0}: {},
+					dummy.DoneOperation{Type: 2, Round: 0, PosInRound: 0}: {},
+					dummy.DoneOperation{Type: 3, Round: 0, PosInRound: 0}: {},
+				}}
+			}(),
+		},
+		{
+			Name: "boxed-slice-of-ptr",
+			V: func() any {
+				a, b, c := 1, 2, 3
+				return struct {
+					A any
+				}{
+					A: []*int{&a, &b, &c},
+				}
+			}(),
+		},
 	}
 
 	for i := 0; i < len(testCases); i++ {

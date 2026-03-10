@@ -165,7 +165,7 @@ func SoftRotateExt(v SmartVector, offset int) SmartVector {
 		return NewPaddedCircularWindowExt(
 			casted.Window_,
 			casted.PaddingVal_,
-			utils.PositiveMod(casted.offset+offset, casted.Len()),
+			utils.PositiveMod(casted.Offset+offset, casted.Len()),
 			casted.Len(),
 		)
 	case *ConstantExt:

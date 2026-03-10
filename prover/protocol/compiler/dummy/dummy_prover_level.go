@@ -59,10 +59,26 @@ func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
 // DoneOperation is an operation done during a round. It used to help avoid the
 // CompilerAtProverLvl to recompile the same verification steps when called
 // multiple times.
+//
+// The reason this structure exists (it used to be a locally named structure in
+// the body of the DummyAtProverLvl compiler) is that we need it to be named
+// publicly so that the serializer can handle it.
 type DoneOperation struct {
 	Type       byte // 0 for params, 1 for no-params, 2 for verifier-action
 	Round      int  // round in which the operation was done
 	PosInRound int  // # of the operation in the round
+}
+
+// DoneOperationSet wraps a set of [DoneOperation]s.
+//
+// The reason this structure exists (it used to be a locally named structure in
+// the body of the DummyAtProverLvl compiler) is that we need it to be named
+// publicly so that the serializer can handle it.
+//
+// Also, it used to be a map[DoneOperation]struct{} in the body of the compiler
+// but the serializer has issues serializing that.
+type DoneOperationSet struct {
+	S map[DoneOperation]int
 }
 
 func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
@@ -79,12 +95,14 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 	for round := 0; round < numRounds; round++ {
 
 		if _, foundMap := comp.ExtraData[alreadyDoneInPreviousDummyProverAction]; !foundMap {
-			alreadyDonePlain := map[DoneOperation]struct{}{}
+			alreadyDonePlain := DoneOperationSet{
+				S: map[DoneOperation]int{},
+			}
 			alreadyDone := &alreadyDonePlain
 			comp.ExtraData[alreadyDoneInPreviousDummyProverAction] = alreadyDone
 		}
 
-		alreadyDone := comp.ExtraData[alreadyDoneInPreviousDummyProverAction].(*map[DoneOperation]struct{})
+		alreadyDone := comp.ExtraData[alreadyDoneInPreviousDummyProverAction].(*DoneOperationSet)
 
 		// The filter returns true, as long as the query has not been marked as
 		// already compiled. This is to avoid them being compiled a second time.
@@ -97,9 +115,10 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 			if comp.QueriesParams.IsIgnored(qName) {
 				continue
 			}
-			if _, found := (*alreadyDone)[di]; found {
+			if _, found := alreadyDone.S[di]; found {
 				continue
 			}
+			alreadyDone.S[di] = 1
 			queriesParamsToCompile = append(queriesParamsToCompile, qName)
 		}
 
@@ -108,17 +127,19 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 			if comp.QueriesNoParams.IsIgnored(qName) {
 				continue
 			}
-			if _, found := (*alreadyDone)[di]; found {
+			if _, found := alreadyDone.S[di]; found {
 				continue
 			}
+			alreadyDone.S[di] = 1
 			queriesNoParamsToCompile = append(queriesNoParamsToCompile, qName)
 		}
 
 		for i := range comp.SubVerifiers.GetOrEmpty(round) {
 			di := DoneOperation{Type: 2, Round: round, PosInRound: i}
-			if _, found := (*alreadyDone)[di]; found {
+			if _, found := alreadyDone.S[di]; found {
 				continue
 			}
+			alreadyDone.S[di] = 1
 			verifierActions = append(verifierActions, comp.SubVerifiers.GetOrEmpty(round)[i])
 		}
 

@@ -362,6 +362,16 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 			continue
 		}
 
+		if repeated, isRepeated := c.(verifiercol.RepeatedAccessor); isRepeated {
+			// Same optimization as for const columns. We can skip the Lagrange
+			// evaluation for this one as the column is made of X times the
+			// same value.
+			fExt := repeated.Accessor.GetFrontendVariableExt(api, run)
+			poly := []*koalagnark.Ext{&fExt}
+			polys = append(polys, poly)
+			continue
+		}
+
 		type mayProvidePtrDirectly interface {
 			GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext
 		}

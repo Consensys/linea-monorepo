@@ -122,6 +122,11 @@ func NewZkEVM(
 			defineRecursion,
 			*settings.PostRecursionCompilationSuite...,
 		)
+
+		// This sets the public input extractor metadata in the recursion IOP
+		res.RecursionCompiledIOP.
+			ExtraData[publicInput.PublicInputExtractorMetadata] = res.
+			InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 	}
 
 	return res

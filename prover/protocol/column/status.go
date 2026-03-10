@@ -100,6 +100,16 @@ func (s Status) IsPublic() bool {
 	}
 }
 
+// IsOffline returns true if the column is defined offline
+func (s Status) IsOffline() bool {
+	switch s {
+	case Precomputed, VerifyingKey:
+		return true
+	default:
+		return false
+	}
+}
+
 // MarshalJSON implements [json.Marshaler] directly returning the Itoa of the
 // integer.
 func (t Status) MarshalJSON() ([]byte, error) {

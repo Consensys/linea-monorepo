@@ -123,18 +123,22 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 
 		// Check commit mismatch
 		if zkevmBinCommit != traceFileCommit {
-			errors = append(errors, fmt.Sprintf(
-				"zkevm.bin incompatible with trace file:\n\nzkevm.bin: %s\ntrace file:  %s",
-				zkevmBinCommit, traceFileCommit,
-			))
+			errors = append(errors, "zkevm.bin incompatible with trace file")
+			errors = append(errors, fmt.Sprintf("zkevm.bin: %s", zkevmBinCommit))
+			errors = append(errors, fmt.Sprintf("trace file: %s", traceFileCommit))
 		}
 
 		// Panic only if there are errors
 		if len(errors) > 0 {
-			logrus.Panic("compatibility check failed with error message:\n" + strings.Join(errors, "\n"))
+			for _, err := range errors {
+				logrus.Error(err)
+			}
+			logrus.Panic("compatibility check failed")
 		}
 	} else {
-		logrus.Infof("Skip constraints compatibility check between zkevm.bin and trace file\nzkevm.bin: %s\ntrace file:  %s", zkevmBinCommit, traceFileCommit)
+		logrus.Info("Skip constraints compatibility check between zkevm.bin and trace file")
+		logrus.Infof("zkevm.bin: %s", zkevmBinCommit)
+		logrus.Infof("trace file: %s", traceFileCommit)
 	}
 
 	if errT != nil {

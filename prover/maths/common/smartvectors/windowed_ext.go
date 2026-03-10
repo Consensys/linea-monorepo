@@ -15,7 +15,7 @@ type PaddedCircularWindowExt struct {
 	Window_     []fext.Element
 	PaddingVal_ fext.Element
 	// Totlen is the length of the represented vector
-	totLen, offset int
+	TotLen, Offset int
 }
 
 // Create a new padded circular window vector
@@ -38,14 +38,14 @@ func NewPaddedCircularWindowExt(window []fext.Element, paddingVal fext.Element, 
 	return &PaddedCircularWindowExt{
 		Window_:     window,
 		PaddingVal_: paddingVal,
-		offset:      offset,
-		totLen:      totLen,
+		Offset:      offset,
+		TotLen:      totLen,
 	}
 }
 
 // Returns the length of the vector
 func (p *PaddedCircularWindowExt) Len() int {
-	return p.totLen
+	return p.TotLen
 }
 
 // Returns a queries position
@@ -55,7 +55,7 @@ func (p *PaddedCircularWindowExt) GetBase(n int) (field.Element, error) {
 
 func (p *PaddedCircularWindowExt) GetExt(n int) fext.Element {
 	// Check if the queried index is in the window
-	posFromWindowsPoV := utils.PositiveMod(n-p.offset, p.totLen)
+	posFromWindowsPoV := utils.PositiveMod(n-p.Offset, p.TotLen)
 	if posFromWindowsPoV < len(p.Window_) {
 		return p.Window_[posFromWindowsPoV]
 	}
@@ -79,9 +79,9 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) SmartVector {
 		panic("negative start value is not allowed")
 	}
 	// Sanity checks for all subvectors
-	assertCorrectBound(start, p.totLen)
+	assertCorrectBound(start, p.TotLen)
 	// The +1 is because we accept if "stop = length"
-	assertCorrectBound(stop, p.totLen+1)
+	assertCorrectBound(stop, p.TotLen+1)
 
 	if start > stop {
 		panic("rollover are forbidden")
@@ -175,7 +175,7 @@ func (p *PaddedCircularWindowExt) SubVector(start, stop int) SmartVector {
 
 // Rotate the vector
 func (p *PaddedCircularWindowExt) RotateRight(offset int) SmartVector {
-	return NewPaddedCircularWindowExt(vectorext.DeepCopy(p.Window_), p.PaddingVal_, p.offset+offset, p.totLen)
+	return NewPaddedCircularWindowExt(vectorext.DeepCopy(p.Window_), p.PaddingVal_, p.Offset+offset, p.TotLen)
 }
 
 func (p *PaddedCircularWindowExt) WriteInSlice(buff []field.Element) {
@@ -183,25 +183,25 @@ func (p *PaddedCircularWindowExt) WriteInSlice(buff []field.Element) {
 }
 
 func (p *PaddedCircularWindowExt) WriteInSliceExt(buff []fext.Element) {
-	assertHasLength(len(buff), p.totLen)
+	assertHasLength(len(buff), p.TotLen)
 
 	for i := range p.Window_ {
-		pos := utils.PositiveMod(i+p.offset, p.totLen)
+		pos := utils.PositiveMod(i+p.Offset, p.TotLen)
 		buff[pos] = p.Window_[i]
 	}
 
-	for i := len(p.Window_); i < p.totLen; i++ {
-		pos := utils.PositiveMod(i+p.offset, p.totLen)
+	for i := len(p.Window_); i < p.TotLen; i++ {
+		pos := utils.PositiveMod(i+p.Offset, p.TotLen)
 		buff[pos] = p.PaddingVal_
 	}
 }
 
 func (p *PaddedCircularWindowExt) Pretty() string {
-	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.PaddingVal_.String(), vectorext.Prettify(p.Window_))
+	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.TotLen, p.Offset, p.PaddingVal_.String(), vectorext.Prettify(p.Window_))
 }
 
 func (p *PaddedCircularWindowExt) interval() CircularInterval {
-	return IvalWithStartLen(p.offset, len(p.Window_), p.totLen)
+	return IvalWithStartLen(p.Offset, len(p.Window_), p.TotLen)
 }
 
 // processWindowedOnlyExt applies the operator `op` to all the smartvectors
@@ -330,7 +330,7 @@ func processWindowedOnlyExt(op operator, svecs []SmartVector, coeffs_ []int) (re
 
 func (w *PaddedCircularWindowExt) DeepCopy() SmartVector {
 	window := vectorext.DeepCopy(w.Window_)
-	return NewPaddedCircularWindowExt(window, w.PaddingVal_, w.offset, w.totLen)
+	return NewPaddedCircularWindowExt(window, w.PaddingVal_, w.Offset, w.TotLen)
 }
 
 // Converts a smart-vector into a normal vec. The implementation minimizes

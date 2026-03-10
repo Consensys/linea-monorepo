@@ -286,7 +286,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	out.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
-		cong.RecursionComp,
+		cong.RecursionCompBLS,
 		congFinalproof.GetOuterProofInput(),
 		*witness.FuncInp,
 		witness.ZkEVM.ExecData,
@@ -466,7 +466,7 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 
 	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofGL := compiledGL.ProveSegment(witness).ClearRuntime()
+	_proofGL := compiledGL.ProveSegmentKoala(witness).ClearRuntime()
 
 	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -497,7 +497,7 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuple
 
 	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofLPP := compiledLPP.ProveSegment(witness).ClearRuntime()
+	_proofLPP := compiledLPP.ProveSegmentKoala(witness).ClearRuntime()
 
 	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -529,10 +529,22 @@ func RunConglomerationHierarchical(ctx context.Context,
 			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
 				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
 				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
-			aggregated := cong.ProveSegment(&distributed.ModuleWitnessConglo{
+
+			wit := &distributed.ModuleWitnessConglo{
 				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
 				VerificationKeyMerkleTree: *mt,
-			})
+			}
+
+			// The last conglomeration step (producing the single final proof) uses
+			// BLS so that the outer circuit can verify it.
+			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
+			var aggregated *distributed.SegmentProof
+			if isLastConglomeration {
+				aggregated = cong.ProveSegmentBLS(wit)
+			} else {
+				aggregated = cong.ProveSegmentKoala(wit)
+			}
+
 			stack = append(stack, aggregated)
 		}
 

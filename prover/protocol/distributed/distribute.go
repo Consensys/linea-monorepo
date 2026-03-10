@@ -79,7 +79,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 
 	// We complie the comp object to manually shift all the columns that need to be shifted. This is due to the
 	// fact that distributed wizard does not support shifted columns.
-	compileManualShifter(comp)
+	CompileManualShifter(comp)
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
