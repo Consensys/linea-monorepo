@@ -3,7 +3,8 @@ SHELL := /usr/bin/env bash
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := 38878c03118883b13cacf59c6a7dba0298ac02d0
+# beta-v5.0-rc5
+CONSTRAINTS_COMMIT_HASH := 4d1eea0c4b78c7742b292764319fb4ae3b9ac83b
 GO_CORSET_VERSION := v1.2.6
 
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
