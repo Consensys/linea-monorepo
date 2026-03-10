@@ -74,7 +74,7 @@ runs:
     
     - name: Build besu from source 
       shell: bash
-      run: make build-besu-local-and-update-lib-version
+      run: cd linea-besu-package && make build-besu-local-and-update-lib-version
       env:
         JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
@@ -93,7 +93,7 @@ runs:
       run: |
         TRACER_PLUGIN_VERSION=${{ steps.metadata.outputs.tracer_plugin_version }} \
         SEQUENCER_PLUGIN_VERSION=${{ steps.metadata.outputs.sequencer_plugin_version }} \
-        make build-tracer-and-sequencer
+        cd linea-besu-package && make build-tracer-and-sequencer
       env:
         JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
