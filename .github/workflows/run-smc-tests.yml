@@ -46,6 +46,24 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
 
+      - name: Cache Hardhat compiler
+        uses: actions/cache@v4.2.0
+        with:
+          path: ~/.cache/hardhat-nodejs
+          key: ${{ runner.os }}-hardhat-compilers-${{ hashFiles('contracts/hardhat.config.ts', 'contracts/hardhat_overrides.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-hardhat-compilers-
+
+      - name: Pre-download solc 0.8.33 binary
+        run: |
+          SOLC_DIR=~/.cache/hardhat-nodejs/compilers-v2/linux-amd64
+          mkdir -p "$SOLC_DIR"
+          if [ ! -f "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714" ]; then
+            curl -L -o "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714" \
+              "https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.33+commit.e14f2714"
+            chmod +x "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714"
+          fi
+
       - name: Check JS formatting
         run: pnpm -F contracts run lint:ts
 
@@ -55,6 +73,9 @@ jobs:
 
       - name: Compile kzg.node
         run: npx node-gyp --directory=contracts/node_modules/c-kzg rebuild # explicitly running rebuild to get the .node file
+
+      - name: Pre-compile contracts to cache solc
+        run: pnpm -F contracts run build
 
       - name: Run smart contracts tests and generate coverage report
         run: pnpm -F contracts run coverage
