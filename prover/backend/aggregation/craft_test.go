@@ -431,7 +431,7 @@ func TestCraftResponseWithInvalidityProofs(t *testing.T) {
 		FinalShnarf:                         zeroHash,
 		ParentAggregationFinalShnarf:        zeroHash,
 		DataParentHash:                      zeroHash,
-		ParentStateRootHash:                 types.KoalaOctuplet{},
+		ParentStateRootHashContract:         types.FullBytes32{},
 		ParentAggregationLastBlockTimestamp: 1000,
 		FinalTimestamp:                      2000,
 		L1RollingHash:                       zeroHash,
