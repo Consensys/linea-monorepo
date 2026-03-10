@@ -475,7 +475,7 @@ func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModul
 	traceLimits.ScaleUp(scalingFactor)
 
 	zkevm := FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
-	distributed.CompileManualShifter(zkevm.WizardIOP)
+	distributed.CompileManualShifter(zkevm.InitialCompiledIOP)
 	return distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc), zkevm
 }
 
