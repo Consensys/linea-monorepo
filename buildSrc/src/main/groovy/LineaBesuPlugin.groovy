@@ -55,7 +55,7 @@ class LineaBesuPlugin implements Plugin<Project> {
         def shouldSkip = false
         if (publishToMaven) {
           shouldSkip = isBesuAvailableInMaven(project, resolvedBesuVer) &&
-              downloadBesuDistributionFromMaven(project, resolvedBesuVer, true)
+              canDownloadBesuDistributionFromMaven(project, resolvedBesuVer)
         } else {
           if (isBesuAndDistributionAvailableInMavenLocal(project, resolvedBesuVer)) {
             shouldSkip = true
@@ -88,7 +88,7 @@ class LineaBesuPlugin implements Plugin<Project> {
         def localBesuVersion = project.rootProject.ext.resolvedBesuVer
         def libsVersionsFile = project.rootProject.file('gradle/libs.versions.toml')
         def content = libsVersionsFile.text
-        content = content.replaceFirst(/besu\s*=\s*"[^"]*"/, "besu = \"${localBesuVersion}\"")
+        content = content.replaceFirst(/(?m)^besu\s*=\s*"[^"]*"/, "besu = \"${localBesuVersion}\"")
         libsVersionsFile.text = content
         project.logger.lifecycle("Updated gradle/libs.versions.toml: besu = \"${localBesuVersion}\"")
       }
@@ -97,9 +97,9 @@ class LineaBesuPlugin implements Plugin<Project> {
 
   private static boolean isBesuAndDistributionAvailableInMavenLocal(Project project, String version) {
     if (!version) return false
-    def mavenLocalPom = new File(System.getProperty('user.home'),
-        ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
-    def pomExists = mavenLocalPom.exists()
+    def mavenLocalBase = System.getProperty('maven.repo.local') ?: "${System.getProperty('user.home')}/.m2/repository"
+    def mavenLocalPom = new File(mavenLocalBase, "org/hyperledger/besu/bom/${version}/bom-${version}.pom")
+     def pomExists = mavenLocalPom.exists()
     if (!pomExists) {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu:${version} is not in maven local")
     } else {
@@ -125,8 +125,9 @@ class LineaBesuPlugin implements Plugin<Project> {
     def connectTimeoutMs = 5000
     def readTimeoutMs = 5000
     for (def pomUrl : candidates) {
+      def conn = null
       try {
-        def conn = (java.net.HttpURLConnection) new URL(pomUrl).openConnection()
+        conn = (java.net.HttpURLConnection) new URL(pomUrl).openConnection()
         conn.setConnectTimeout(connectTimeoutMs)
         conn.setReadTimeout(readTimeoutMs)
         conn.setRequestMethod('HEAD')
@@ -135,13 +136,35 @@ class LineaBesuPlugin implements Plugin<Project> {
           return true
         }
       } catch (Exception ignored) {
+      } finally {
+        if (conn != null) conn.disconnect()
       }
     }
     project.logger.lifecycle("isBesuAvailableInMaven: Besu ${version} not found in any maven repo")
     return false
   }
 
-  private static boolean downloadBesuDistributionFromMaven(Project project, String version, boolean checkOnly = false) {
+  private static boolean canDownloadBesuDistributionFromMaven(Project project, String version) {
+    if (!version) return false
+    def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
+    def url = "${baseUrl}${version}/besu-${version}.tar.gz"
+    def conn = null
+    try {
+      conn = (java.net.HttpURLConnection) new URL(url).openConnection()
+      conn.setConnectTimeout(10000)
+      conn.setReadTimeout(60000)
+      conn.setRequestMethod('HEAD')
+      if (conn.getResponseCode() == 200) {
+        project.logger.lifecycle("canDownloadBesuDistributionFromMaven: Found besu distribution from Maven (${url})")
+        return true
+      }
+      return false
+    } finally {
+      if (conn != null) conn.disconnect()
+    }
+  }
+
+  private static boolean downloadBesuDistributionFromMaven(Project project, String version) {
     if (!version) return false
     def destDir = project.rootProject.file("tmp/hyperledger-besu/build/distributions")
     def destFile = new File(destDir, "besu-${version}.tar.gz")
@@ -151,31 +174,23 @@ class LineaBesuPlugin implements Plugin<Project> {
     }
     def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
     def url = "${baseUrl}${version}/besu-${version}.tar.gz"
+    def conn = null
     try {
-      def conn = (java.net.HttpURLConnection) new URL(url).openConnection()
+      conn = (java.net.HttpURLConnection) new URL(url).openConnection()
       conn.setConnectTimeout(10000)
       conn.setReadTimeout(60000)
-      if (checkOnly) {
-        conn.setRequestMethod('HEAD')
-        if (conn.getResponseCode() == 200) {
-          project.logger.lifecycle("downloadBesuDistributionFromMaven: Found besu distribution from Maven (${url})")
-          return true
-        }
-        return false
-      } else {
-        destDir.mkdirs()
-        conn.setRequestMethod('GET')
+      conn.setRequestMethod('GET')
+      destDir.mkdirs()
 
-        if (conn.getResponseCode() != 200) {
-          project.logger.lifecycle("downloadBesuDistributionFromMaven: Could not find and download besu distribution from Maven (${url})")
-          return false
-        }
-        conn.getInputStream().withStream { input ->
-          destFile.withOutputStream { it << input }
-        }
-        project.logger.lifecycle("downloadBesuDistributionFromMaven: Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
-        return true
+      if (conn.getResponseCode() != 200) {
+        project.logger.lifecycle("downloadBesuDistributionFromMaven: Could not find and download besu distribution from Maven (${url})")
+        return false
       }
+      conn.getInputStream().withStream { input ->
+        destFile.withOutputStream { it << input }
+      }
+      project.logger.lifecycle("downloadBesuDistributionFromMaven: Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
+      return true
     } catch (Exception e) {
       project.logger.lifecycle("downloadBesuDistributionFromMaven: Failed to download besu distribution from Maven (${url}): ${e.message}")
       if (destFile.exists()) {
@@ -183,6 +198,8 @@ class LineaBesuPlugin implements Plugin<Project> {
         project.logger.lifecycle("downloadBesuDistributionFromMaven: Removed partial/corrupt file so next run can retry: ${destFile}")
       }
       return false
+    } finally {
+      if (conn != null) conn.disconnect()
     }
   }
 }
