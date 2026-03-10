@@ -7,6 +7,7 @@ import io.vertx.micrometer.backends.NoopBackendRegistry
 import io.vertx.sqlclient.SqlClient
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.DatabaseConfig
+import linea.persistence.ftx.DisabledForcedTransactionsDao
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -102,13 +103,19 @@ class CoordinatorApp(
       ),
     )
 
-  private val forcedTransactionsDao = RetryingPostgresForcedTransactionsDao(
-    delegate =
-    PostgresForcedTransactionsDao(
-      connection = sqlClient,
-    ),
-    persistenceRetryer = persistenceRetryer,
-  )
+  private val forcedTransactionsDao = run {
+    if (configs.forcedTransactions?.disabled ?: true) {
+      DisabledForcedTransactionsDao()
+    } else {
+      RetryingPostgresForcedTransactionsDao(
+        delegate =
+        PostgresForcedTransactionsDao(
+          connection = sqlClient,
+        ),
+        persistenceRetryer = persistenceRetryer,
+      )
+    }
+  }
 
   private val blobsRepository =
     BlobsRepositoryImpl(

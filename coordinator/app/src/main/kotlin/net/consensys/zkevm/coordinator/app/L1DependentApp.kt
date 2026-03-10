@@ -14,7 +14,7 @@ import linea.domain.BlockNumberAndHash
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
 import linea.kotlin.toKWeiUInt
-import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
+import linea.persistence.ftx.ForcedTransactionsDao
 import linea.web3j.SmartContractErrors
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -78,7 +78,7 @@ class L1DependentApp(
   private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   private val batchesRepository: BatchesRepository,
   private val blobsRepository: BlobsRepository,
-  private val forcedTransactionsDao: RetryingPostgresForcedTransactionsDao,
+  private val forcedTransactionsDao: ForcedTransactionsDao,
   private val aggregationsRepository: AggregationsRepository,
   private val sqlClient: SqlClient,
   private val smartContractErrors: SmartContractErrors,
