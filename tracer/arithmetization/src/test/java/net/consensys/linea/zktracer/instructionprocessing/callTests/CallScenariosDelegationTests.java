@@ -32,8 +32,8 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScen
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import kotlin.jvm.functions.Function2;
-import kotlin.jvm.functions.Function4;
+import kotlin.jvm.functions.Function3;
+import kotlin.jvm.functions.Function5;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -42,6 +42,7 @@ import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -129,12 +130,18 @@ public class CallScenariosDelegationTests extends TracerTestBase {
           .address(Address.fromHexString("0xDDCA77EE"))
           .build();
 
-  Function4<CallScenarioFragment.CallScenario, ToyAccount, LoopType, RevertType, BytecodeCompiler>
+  Function5<
+          CallScenarioFragment.CallScenario,
+          ExceptionType,
+          ToyAccount,
+          LoopType,
+          RevertType,
+          BytecodeCompiler>
       callProgram =
-          (callScenario, targetAccount, loopType, revertType) ->
+          (callScenario, exceptionType, targetAccount, loopType, revertType) ->
               BytecodeCompiler.newProgram(chainConfig)
                   .immediate(
-                      loopType == LoopType.EXIT_EARLY,
+                      loopType == LoopType.BOUNDED_LOOP,
                       BytecodeCompiler.newProgram(chainConfig)
                           .push(0)
                           .op(OpCode.SLOAD) // LOOP_DEPTH_CURRENT
@@ -159,17 +166,37 @@ public class CallScenariosDelegationTests extends TracerTestBase {
                       program ->
                           switch (callScenario) {
                             case CALL_EXCEPTION ->
-                                // triggers a staticFault as the target account tries to execute
-                                // SSTORE
-                                appendFullGasCall(
-                                    program,
-                                    OpCode.STATICCALL,
-                                    targetAccount.getAddress(),
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    0);
+                                switch (exceptionType) {
+                                  case STATICX ->
+                                      // The root previously executed a STATICCALL to the caller
+                                      appendFullGasCall(
+                                          program,
+                                          OpCode.CALL,
+                                          targetAccount.getAddress(),
+                                          1, // non-zero value to trigger STATICX
+                                          0,
+                                          0,
+                                          0,
+                                          0);
+                                  case OOGX -> {
+                                    // rac = 2^20 gives a quadratic cost of (rac / 32)^2 / 512 =
+                                    // 2^21 which exceeds the gas in the current frame, which is
+                                    // 200_000
+                                    final int rac = 1 << 20;
+                                    yield appendFullGasCall(
+                                        program,
+                                        OpCode.CALL,
+                                        targetAccount.getAddress(),
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        rac);
+                                  }
+                                  case NONE ->
+                                      throw new IllegalArgumentException(
+                                          "Invalid exception type for CALL_EXCEPTION scenario");
+                                };
                             case CALL_ABORT_WILL_REVERT, CALL_ABORT_WONT_REVERT ->
                                 appendInsufficientBalanceCall(
                                     program, OpCode.CALL, targetAccount.getAddress(), 0, 0, 0, 0);
@@ -189,11 +216,11 @@ public class CallScenariosDelegationTests extends TracerTestBase {
                   .push(0)
                   .op(revertType == RevertType.TERMINATES_ON_REVERT ? OpCode.REVERT : OpCode.STOP);
 
-  Function2<LoopType, RevertType, BytecodeCompiler> rootProgram =
-      (loopType, revertType) ->
+  Function3<ExceptionType, LoopType, RevertType, BytecodeCompiler> rootProgram =
+      (exceptionType, loopType, revertType) ->
           BytecodeCompiler.newProgram(chainConfig)
               .immediate(
-                  loopType == LoopType.EXIT_EARLY,
+                  loopType == LoopType.BOUNDED_LOOP,
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(0)
                       .op(OpCode.SLOAD) // LOOP_DEPTH_CURRENT
@@ -215,7 +242,15 @@ public class CallScenariosDelegationTests extends TracerTestBase {
               .apply(
                   program ->
                       appendCall(
-                          program, OpCode.CALL, 100_000, callerAccount.getAddress(), 0, 0, 0, 0, 0),
+                          program,
+                          exceptionType == ExceptionType.STATICX ? OpCode.STATICCALL : OpCode.CALL,
+                          200_000,
+                          callerAccount.getAddress(),
+                          1,
+                          0,
+                          0,
+                          0,
+                          0),
                   2)
               .push(rootAccount.getAddress())
               .op(OpCode.BALANCE)
@@ -241,20 +276,13 @@ public class CallScenariosDelegationTests extends TracerTestBase {
     // DELEGATED_TO_NON_EXISTENT,
     // DELEGATED_TO_EMPTY_CODE_ACCOUNT,
     // DELEGATED_TO_PRC,
-    // DELEGATED_TO_SELF,
     // most relevant cases
+    EOA,
+    DELEGATED_TO_SELF,
     DELEGATED_TO_ROOT,
     DELEGATED_TO_CALLER,
     DELEGATED_TO_SMC,
     SMC; // already tested
-
-    public boolean isDelegatedEOA() {
-      return this == DELEGATED_TO_ROOT || this == DELEGATED_TO_CALLER || this == DELEGATED_TO_SMC;
-    }
-
-    public boolean isSmc() {
-      return this == SMC;
-    }
   }
 
   // this should apply per smart contract
@@ -266,13 +294,21 @@ public class CallScenariosDelegationTests extends TracerTestBase {
   // this should apply uniformly to all smart contracts
   public enum LoopType {
     INFINITE_LOOP,
-    EXIT_EARLY;
+    BOUNDED_LOOP;
+  }
+
+  /** In this family of tests we are interested only in static and out-of-gas exceptions. */
+  public enum ExceptionType {
+    NONE,
+    STATICX,
+    OOGX
   }
 
   @ParameterizedTest
   @MethodSource("callScenariosDelegationTestsSource")
   public void callScenariosDelegationTests(
-      CallScenarioFragment.CallScenario callScenario,
+      CallScenarioFragment.CallScenario callerToCalleeCallScenario,
+      ExceptionType exceptionType,
       CallerType callerType,
       CalleeType calleeType,
       RevertType rootCodeRevertType,
@@ -281,7 +317,9 @@ public class CallScenariosDelegationTests extends TracerTestBase {
       TestInfo testInfo) {
     /*
      Scenarios and how they are triggered:
-     CALL_EXCEPTION: caller STATICCALLs to the callee which tries to execute SSTORE
+     CALL_EXCEPTION:
+      - STATICX: root STATICCALLs caller and caller CALLs callee with non-zero value
+      - OOGX: caller CALLs callee and the upfront cost of the call exceeds the remaining gas
      CALL_ABORT_WILL_REVERT: caller CALLs to the callee with insufficient balance to cover value transfer, then reverts
      CALL_ABORT_WONT_REVERT: caller CALLs to the callee with insufficient balance to cover value transfer, but doesn't revert
      CALL_EOA_SUCCESS_WILL_REVERT: caller CALLs to an EOA which successfully processes the call but then reverts
@@ -291,7 +329,7 @@ public class CallScenariosDelegationTests extends TracerTestBase {
      CALL_SMC_SUCCESS_WILL_REVERT: caller CALLs to an SMC which successfully processes the call but then reverts
      CALL_SMC_SUCCESS_WONT_REVERT: caller CALLs to an SMC which successfully processes the call and doesn't revert
     */
-    rootAccount.setCode(rootProgram.invoke(loopType, rootCodeRevertType).compile());
+    rootAccount.setCode(rootProgram.invoke(exceptionType, loopType, rootCodeRevertType).compile());
 
     switch (callerType) {
       case DELEGATED -> {
@@ -299,10 +337,11 @@ public class CallScenariosDelegationTests extends TracerTestBase {
         smcAccount1.setCode(
             callProgram
                 .invoke(
-                    callScenario,
+                    callerToCalleeCallScenario,
+                    exceptionType,
                     calleeAccount,
                     loopType,
-                    callScenario.isWillRevertCallScenario()
+                    callerToCalleeCallScenario.isWillRevertCallScenario()
                         ? RevertType.TERMINATES_ON_REVERT
                         : RevertType.TERMINATES_ON_NON_REVERT)
                 .compile());
@@ -311,35 +350,46 @@ public class CallScenariosDelegationTests extends TracerTestBase {
           callerAccount.setCode(
               callProgram
                   .invoke(
-                      callScenario,
+                      callerToCalleeCallScenario,
+                      exceptionType,
                       calleeAccount,
                       loopType,
-                      callScenario.isWillRevertCallScenario()
+                      callerToCalleeCallScenario.isWillRevertCallScenario()
                           ? RevertType.TERMINATES_ON_REVERT
                           : RevertType.TERMINATES_ON_NON_REVERT)
                   .compile());
     }
 
-    // CALL_EOA scenarios are implicitly covered by DELEGATED_TO_ROOT, DELEGATED_TO_CALLER and
-    // DELEGATED_TO_SMC cases
     switch (calleeType) {
+      case EOA -> calleeAccount.setCode(Bytes.EMPTY); // do nothing as EOAs have no code
+      case DELEGATED_TO_SELF -> calleeAccount.delegateTo(calleeAccount);
       case DELEGATED_TO_ROOT -> calleeAccount.delegateTo(rootAccount);
       case DELEGATED_TO_CALLER -> calleeAccount.delegateTo(callerAccount);
       case DELEGATED_TO_SMC -> {
         calleeAccount.delegateTo(smcAccount2);
         smcAccount2.setCode(
-            callScenario.isFailureCallScenario()
+            callerToCalleeCallScenario.isFailureCallScenario()
                 ? BytecodeCompiler.newProgram(chainConfig).op(OpCode.INVALID).compile()
                 : callProgram
-                    .invoke(callScenario, callerAccount, loopType, calleeCodeRevertType)
+                    .invoke(
+                        CallScenarioFragment.CallScenario.UNDEFINED,
+                        ExceptionType.NONE,
+                        callerAccount,
+                        loopType,
+                        calleeCodeRevertType)
                     .compile()); // This could be a call to anything
       }
       case SMC -> {
         calleeAccount.setCode(
-            callScenario.isFailureCallScenario()
+            callerToCalleeCallScenario.isFailureCallScenario()
                 ? BytecodeCompiler.newProgram(chainConfig).op(OpCode.INVALID).compile()
                 : callProgram
-                    .invoke(callScenario, callerAccount, loopType, calleeCodeRevertType)
+                    .invoke(
+                        CallScenarioFragment.CallScenario.UNDEFINED,
+                        ExceptionType.NONE,
+                        callerAccount,
+                        loopType,
+                        calleeCodeRevertType)
                     .compile()); // This could be a call to anything
       }
     }
@@ -369,7 +419,7 @@ public class CallScenariosDelegationTests extends TracerTestBase {
 
   static Stream<Arguments> callScenariosDelegationTestsSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (CallScenarioFragment.CallScenario callScenario :
+    for (CallScenarioFragment.CallScenario callerToCalleeCallScenario :
         new CallScenarioFragment.CallScenario[] {
           CALL_EXCEPTION,
           CALL_ABORT_WILL_REVERT,
@@ -381,25 +431,28 @@ public class CallScenariosDelegationTests extends TracerTestBase {
           CALL_SMC_SUCCESS_WILL_REVERT,
           CALL_SMC_SUCCESS_WONT_REVERT,
         }) {
-      for (CalleeType calleeType : CalleeType.values()) {
-        if (callScenario.isEoaCallScenario() && !calleeType.isDelegatedEOA()
-            || callScenario.isSmcCallScenario() && !calleeType.isSmc()) {
+      for (ExceptionType exceptionType : ExceptionType.values()) {
+        if (skipTest(callerToCalleeCallScenario, exceptionType)) {
           continue;
-          // if scenario is CALL_EOA then callee must be a (delegated) EOA
-          // if scenario is CALL_SMC then callee must be an SMC
         }
-        for (CallerType callerType : CallerType.values()) {
-          for (RevertType rootCodeRevertType : RevertType.values()) {
-            for (RevertType calleeCodeRevertType : RevertType.values()) {
-              for (LoopType loopType : LoopType.values()) {
-                arguments.add(
-                    Arguments.of(
-                        callScenario,
-                        callerType,
-                        calleeType,
-                        rootCodeRevertType,
-                        calleeCodeRevertType,
-                        loopType));
+        for (CalleeType calleeType : CalleeType.values()) {
+          if (skipTest(callerToCalleeCallScenario, calleeType)) {
+            continue;
+          }
+          for (CallerType callerType : CallerType.values()) {
+            for (RevertType rootCodeRevertType : RevertType.values()) {
+              for (RevertType calleeCodeRevertType : RevertType.values()) {
+                for (LoopType loopType : LoopType.values()) {
+                  arguments.add(
+                      Arguments.of(
+                          callerToCalleeCallScenario,
+                          exceptionType,
+                          callerType,
+                          calleeType,
+                          rootCodeRevertType,
+                          calleeCodeRevertType,
+                          loopType));
+                }
               }
             }
           }
@@ -422,5 +475,21 @@ public class CallScenariosDelegationTests extends TracerTestBase {
     */
 
     return arguments.stream();
+  }
+
+  private static boolean skipTest(
+      CallScenarioFragment.CallScenario callerToCalleeCallScenario, ExceptionType exceptionType) {
+    return (callerToCalleeCallScenario == CALL_EXCEPTION && exceptionType == ExceptionType.NONE)
+        || (callerToCalleeCallScenario != CALL_EXCEPTION && exceptionType != ExceptionType.NONE);
+  }
+
+  private static boolean skipTest(
+      CallScenarioFragment.CallScenario callerToCalleeCallScenario, CalleeType calleeType) {
+    return switch (calleeType) {
+      case EOA -> callerToCalleeCallScenario.isSmcCallScenario();
+      case DELEGATED_TO_SELF, DELEGATED_TO_ROOT, DELEGATED_TO_CALLER, DELEGATED_TO_SMC, SMC ->
+          callerToCalleeCallScenario.isEoaCallScenario();
+        // Note that caller always has non-empty bytecode
+    };
   }
 }

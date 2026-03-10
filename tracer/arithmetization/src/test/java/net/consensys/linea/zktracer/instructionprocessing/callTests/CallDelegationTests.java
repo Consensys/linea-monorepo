@@ -109,7 +109,7 @@ public class CallDelegationTests extends TracerTestBase {
       (targetAccount, loopType, revertType) ->
           BytecodeCompiler.newProgram(chainConfig)
               .immediate(
-                  loopType == LoopType.EXIT_EARLY,
+                  loopType == LoopType.BOUNDED_LOOP,
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(0)
                       .op(OpCode.SLOAD) // LOOP_DEPTH_CURRENT
@@ -164,7 +164,7 @@ public class CallDelegationTests extends TracerTestBase {
   // this should apply uniformly to all smart contracts
   public enum LoopType {
     INFINITE_LOOP,
-    EXIT_EARLY;
+    BOUNDED_LOOP;
   }
 
   @ParameterizedTest
