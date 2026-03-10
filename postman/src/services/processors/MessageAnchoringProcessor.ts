@@ -2,7 +2,7 @@ import { ILogger } from "@consensys/linea-shared-utils";
 
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import {
   IMessageAnchoringProcessor,
@@ -18,14 +18,14 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
    *
    * @param {IMessageServiceContract} contractClient - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
-   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
+   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
     private readonly contractClient: IMessageServiceContract,
     private readonly provider: IProvider,
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly config: MessageAnchoringProcessorConfig,
     private readonly logger: ILogger,
   ) {
@@ -39,7 +39,9 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
    */
   public async process(): Promise<void> {
     try {
-      const messages = await this.databaseService.getNFirstMessagesSent(
+      const messages = await this.messageRepository.getNFirstMessagesByStatus(
+        MessageStatus.SENT,
+        this.config.direction,
         this.maxFetchMessagesFromDb,
         this.config.originContractAddress,
       );
@@ -73,7 +75,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
         }
       }
 
-      await this.databaseService.saveMessages(messages);
+      await this.messageRepository.saveMessages(messages);
     } catch (e) {
       const error = ErrorParser.parseErrorWithMitigation(e);
       this.logger.error("An error occurred while processing messages.", {

@@ -4,12 +4,12 @@ import { mock } from "jest-mock-extended";
 
 import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
-import { IMessageDBService } from "../../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { DatabaseCleaner } from "../DatabaseCleaner";
 
 describe("TestDatabaseCleaner", () => {
   let testDatabaseCleaner: DatabaseCleaner;
-  const messageRepositoryMock = mock<IMessageDBService>();
+  const messageRepositoryMock = mock<IMessageRepository>();
   const loggerMock = mock<ILogger>();
 
   beforeEach(() => {

@@ -1,22 +1,22 @@
 import { MessageProps } from "../../entities/Message";
 import { OnChainMessageStatus } from "../../enums";
-import { ErrorDescription, MessageSent, Overrides, TransactionSubmission } from "../../types";
+import { Address, Hash, ErrorDescription, MessageSent, Overrides, TransactionSubmission } from "../../types";
 
 export interface IMessageServiceContract {
   getMessageStatus(params: {
-    messageHash: string;
+    messageHash: Hash;
     messageBlockNumber?: number;
     overrides?: Overrides;
   }): Promise<OnChainMessageStatus>;
   claim(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string; messageBlockNumber?: number },
+    message: (MessageSent | MessageProps) & { feeRecipient?: Address; messageBlockNumber?: number },
     opts?: {
-      claimViaAddress?: string;
+      claimViaAddress?: Address;
       overrides?: Overrides;
     },
   ): Promise<TransactionSubmission>;
-  retryTransactionWithHigherFee(transactionHash: string, priceBumpPercent?: number): Promise<TransactionSubmission>;
+  retryTransactionWithHigherFee(transactionHash: Hash, priceBumpPercent?: number): Promise<TransactionSubmission>;
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;
-  isRateLimitExceededError(transactionHash: string): Promise<boolean>;
-  parseTransactionError(transactionHash: string): Promise<ErrorDescription | string>;
+  isRateLimitExceededError(transactionHash: Hash): Promise<boolean>;
+  parseTransactionError(transactionHash: Hash): Promise<ErrorDescription | string>;
 }

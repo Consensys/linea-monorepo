@@ -1,4 +1,4 @@
-import { ExpressApiApplication, IApplication, ILogger, IMetricsService } from "@consensys/linea-shared-utils";
+import { IApplication, ILogger, IMetricsService } from "@consensys/linea-shared-utils";
 import { DataSource } from "typeorm";
 import { createPublicClient, createWalletClient, defineChain, http } from "viem";
 
@@ -13,6 +13,7 @@ import {
   LineaPostmanMetrics,
 } from "../../../core/metrics";
 import { IPoller } from "../../../core/services/pollers/IPoller";
+import { createPostmanApi } from "../../../infrastructure/api/PostmanApi";
 import {
   ViemCalldataDecoder,
   ViemEthereumGasProvider,
@@ -27,17 +28,17 @@ import {
   createSignerClient,
   contractSignerToViemAccount,
 } from "../../../infrastructure/blockchain/viem";
-import { DatabaseCleaner, EthereumMessageDBService, LineaMessageDBService } from "../../../services/persistence";
+import { MessageMetricsUpdater } from "../../../infrastructure/metrics/MessageMetricsUpdater";
+import { PostmanMetricsService } from "../../../infrastructure/metrics/PostmanMetricsService";
+import { SponsorshipMetricsUpdater } from "../../../infrastructure/metrics/SponsorshipMetricsUpdater";
+import { TransactionMetricsUpdater } from "../../../infrastructure/metrics/TransactionMetricsUpdater";
+import { DB } from "../../../infrastructure/persistence/dataSource";
+import { TypeOrmMessageRepository } from "../../../infrastructure/persistence/repositories/TypeOrmMessageRepository";
+import { MessageStatusSubscriber } from "../../../infrastructure/persistence/subscribers/MessageStatusSubscriber";
+import { DatabaseCleaner } from "../../../services/persistence";
 import { DatabaseCleaningPoller } from "../../../services/pollers";
 import { ErrorParser } from "../../../utils/ErrorParser";
 import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
-import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
-import { PostmanMetricsService } from "../api/metrics/PostmanMetricsService";
-import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
-import { TransactionMetricsUpdater } from "../api/metrics/TransactionMetricsUpdater";
-import { DB } from "../persistence/dataSource";
-import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
-import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
 
 export class PostmanApp {
   private readonly config: PostmanConfig;
@@ -55,6 +56,8 @@ export class PostmanApp {
   constructor(options: PostmanOptions) {
     this.config = getConfig(options);
     this.logger = new PostmanWinstonLogger(PostmanApp.name, this.config.loggerOptions);
+    this.logger.info("Postman configuration:\n  %s", this.toLogfmt(this.redactConfig(this.config)));
+
     this.db = DB.create(this.config.databaseOptions);
     this.postmanMetricsService = new PostmanMetricsService();
     this.messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, this.postmanMetricsService);
@@ -130,8 +133,6 @@ export class PostmanApp {
     );
 
     const messageRepository = new TypeOrmMessageRepository(this.db);
-    const lineaMessageDBService = new LineaMessageDBService(messageRepository);
-    const ethereumMessageDBService = new EthereumMessageDBService(l1GasProvider, messageRepository);
 
     const calldataDecoder = new ViemCalldataDecoder();
     const transactionSigner = new ViemTransactionSigner(l2Signer, l2ChainId);
@@ -149,7 +150,7 @@ export class PostmanApp {
         l2Provider: new ViemLineaProvider(l2PublicClient),
         l2PublicClient,
         l2SignerAddress: l2Account.address,
-        lineaMessageDBService,
+        messageRepository,
         calldataDecoder,
         transactionSigner,
         errorParser,
@@ -168,7 +169,7 @@ export class PostmanApp {
         l1Provider: new ViemProvider(l1PublicClient),
         l1PublicClient,
         l1SignerAddress: l1Account.address,
-        ethereumMessageDBService,
+        messageRepository,
         l1GasProvider,
         calldataDecoder,
         errorParser,
@@ -180,7 +181,7 @@ export class PostmanApp {
     }
 
     const databaseCleaner = new DatabaseCleaner(
-      ethereumMessageDBService,
+      messageRepository,
       new PostmanWinstonLogger(DatabaseCleaner.name, loggerOptions),
     );
     this.databaseCleaningPoller = new DatabaseCleaningPoller(
@@ -200,10 +201,10 @@ export class PostmanApp {
     this.db.subscribers.push(
       new MessageStatusSubscriber(this.messageMetricsUpdater, new PostmanWinstonLogger(MessageStatusSubscriber.name)),
     );
-    this.api = new ExpressApiApplication(
+    this.api = createPostmanApi(
       this.config.apiConfig.port,
       this.postmanMetricsService,
-      new PostmanWinstonLogger(ExpressApiApplication.name),
+      new PostmanWinstonLogger("ExpressApiApplication"),
     );
 
     this.l1ToL2App?.start();
@@ -220,5 +221,41 @@ export class PostmanApp {
     this.api?.stop();
     await this.db.destroy();
     this.logger.info("All services stopped.");
+  }
+
+  private redactConfig(config: PostmanConfig): Record<string, unknown> {
+    const redactNetworkConfig = (networkConfig: PostmanConfig["l1Config"]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { signer: _, ...claimingWithoutSigner } = networkConfig.claiming;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { rpcUrl: __, ...networkWithoutRpcUrl } = networkConfig;
+      return {
+        ...networkWithoutRpcUrl,
+        claiming: claimingWithoutSigner,
+      };
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { databaseOptions: _, loggerOptions, ...rest } = config;
+    return {
+      ...rest,
+      l1Config: redactNetworkConfig(config.l1Config),
+      l2Config: redactNetworkConfig(config.l2Config),
+      loggerOptions: { level: loggerOptions?.level },
+    };
+  }
+
+  private toLogfmt(obj: Record<string, unknown>, prefix = ""): string {
+    const pairs: string[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        pairs.push(this.toLogfmt(value as Record<string, unknown>, fullKey));
+      } else {
+        const str = typeof value === "bigint" ? value.toString() : String(value ?? "");
+        pairs.push(str.includes(" ") || str.includes('"') || str === "" ? `${fullKey}="${str}"` : `${fullKey}=${str}`);
+      }
+    }
+    return pairs.join("\n  ");
   }
 }

@@ -5,6 +5,7 @@ import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../..
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { Message } from "../../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../../core/enums";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import { IMessageClaimingPersister } from "../../../core/services/processors/IMessageClaimingPersister";
 import { TransactionReceipt, TransactionSubmission } from "../../../core/types";
@@ -15,7 +16,6 @@ import {
   testPendingMessage2,
 } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
 
 const generateTransactionReceipt = (overrides: Partial<TransactionReceipt> = {}): TransactionReceipt => ({
@@ -40,7 +40,7 @@ const generateTransactionSubmission = (overrides: Partial<TransactionSubmission>
 describe("TestMessageClaimingPersister ", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
   let mockedDate: Date;
-  const databaseService = mock<EthereumMessageDBService>();
+  const databaseService = mock<IMessageRepository>();
   const l2MessageServiceContractMock = mock<IMessageServiceContract>();
   const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
   const transactionMetricsUpdater = mock<ITransactionMetricsUpdater>();

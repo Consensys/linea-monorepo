@@ -14,7 +14,7 @@ export function mapViemReceiptToCoreReceipt(receipt: GetTransactionReceiptReturn
         topics: [...log.topics],
         data: log.data,
         blockNumber: Number(log.blockNumber),
-        transactionHash: log.transactionHash ?? "",
+        transactionHash: log.transactionHash ?? "0x",
         logIndex: log.logIndex ?? 0,
       }),
     ),
@@ -29,7 +29,7 @@ export function mapViemBlockToCoreBlock(block: {
   return {
     number: Number(block.number ?? 0n),
     timestamp: Number(block.timestamp),
-    hash: block.hash ?? "",
+    hash: block.hash ?? "0x",
   };
 }
 

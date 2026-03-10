@@ -1,7 +1,6 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { IEthereumGasProvider } from "../../../core/clients/blockchain/IGasProvider";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { DEFAULT_INITIAL_FROM_BLOCK, DEFAULT_LISTENER_INTERVAL } from "../../../core/constants";
 import { Direction, DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
@@ -12,20 +11,17 @@ import { IMessageSentEventProcessor } from "../../../core/services/processors/IM
 import { wait } from "../../../core/utils/shared";
 import { rejectedMessageProps, testL1NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { MessageSentEventPoller } from "../MessageSentEventPoller";
 
 describe("TestMessageSentEventPoller", () => {
   let testMessageSentEventPoller: IPoller;
-  let databaseService: EthereumMessageDBService;
+  const databaseService = mock<IMessageRepository>();
 
   const eventProcessorMock = mock<IMessageSentEventProcessor>();
   const provider = mock<IProvider>();
   const logger = new TestLogger(MessageSentEventPoller.name);
 
   beforeEach(() => {
-    const gasProvider = mock<IEthereumGasProvider>();
-    databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository>());
     testMessageSentEventPoller = new MessageSentEventPoller(
       eventProcessorMock,
       provider,

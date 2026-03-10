@@ -1,16 +1,16 @@
-import { MessageSent } from "../../../types";
+import { Address, Hash, MessageSent } from "../../../types";
 
 export type MessageSentEventFilters = {
-  from?: string;
-  to?: string;
-  messageHash?: string;
+  from?: Address;
+  to?: Address;
+  messageHash?: Hash;
 };
 
 export interface IL2MessageServiceLogClient {
   getMessageSentEvents(params: {
     filters?: MessageSentEventFilters;
-    fromBlock?: number;
-    toBlock?: string | number;
+    fromBlock?: bigint;
+    toBlock?: string | bigint;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]>;
 }

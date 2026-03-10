@@ -1,7 +1,7 @@
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import {
   IL2ClaimMessageTransactionSizeProcessor,
   L2ClaimMessageTransactionSizeProcessorConfig,
@@ -14,14 +14,14 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
   /**
    * Constructs a new instance of the `L2ClaimMessageTransactionSizeProcessor`.
    *
-   * @param {IMessageDBService} databaseService - The database service for interacting with message data.
+   * @param {IMessageRepository} messageRepository - The message repository for interacting with message data.
    * @param {IL2MessageServiceClient} l2MessageServiceClient - The L2 message service client for estimating gas fees.
    * @param {IL2ClaimTransactionSizeCalculator} transactionSizeCalculator - The calculator for determining the transaction size.
    * @param {L2ClaimMessageTransactionSizeProcessorConfig} config - Configuration settings for the processor, including the direction and origin contract address.
    * @param {IPostmanLogger} logger - The logger for logging information and errors.
    */
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly l2MessageServiceClient: IL2MessageServiceClient,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly config: L2ClaimMessageTransactionSizeProcessorConfig,
@@ -38,7 +38,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
     let message: Message | null = null;
 
     try {
-      const messages = await this.databaseService.getNFirstMessagesByStatus(
+      const messages = await this.messageRepository.getNFirstMessagesByStatus(
         MessageStatus.ANCHORED,
         this.config.direction,
         1,
@@ -67,7 +67,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
         status: MessageStatus.TRANSACTION_SIZE_COMPUTED,
       });
 
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
 
       this.logger.info(
         "Message transaction size and gas limit have been computed: messageHash=%s transactionSize=%s gasLimit=%s",
@@ -92,7 +92,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
 
     if (parsedError?.mitigation && !parsedError.mitigation.shouldRetry && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
       this.logger.warnOrError("Error occurred while processing message transaction size.", {
         error: e,
         parsedError,

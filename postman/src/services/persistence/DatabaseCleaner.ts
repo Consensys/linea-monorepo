@@ -1,11 +1,11 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 
 import { IDatabaseCleaner } from "../../core/persistence/IDatabaseCleaner";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 
 export class DatabaseCleaner implements IDatabaseCleaner {
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly logger: ILogger,
   ) {}
 
@@ -16,7 +16,7 @@ export class DatabaseCleaner implements IDatabaseCleaner {
    */
   public async databaseCleanerRoutine(msBeforeNowToDelete: number) {
     try {
-      const affected = await this.databaseService.deleteMessages(msBeforeNowToDelete);
+      const affected = await this.messageRepository.deleteMessages(msBeforeNowToDelete);
       this.logger.info("Database cleanup result: deleted %s rows", affected);
     } catch (e) {
       this.logger.error(e);

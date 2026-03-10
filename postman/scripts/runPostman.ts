@@ -1,15 +1,43 @@
 import * as dotenv from "dotenv";
 import { transports } from "winston";
 
+import { SignerConfig } from "../src/application/postman/app/config/config";
 import { PostmanApp } from "../src/application/postman/app/PostmanApp";
 
 dotenv.config();
+
+function buildSignerConfig(prefix: "L1" | "L2"): SignerConfig {
+  const signerType = process.env[`${prefix}_SIGNER_TYPE`] ?? "private-key";
+
+  if (signerType === "web3signer") {
+    return {
+      type: "web3signer",
+      endpoint: process.env[`${prefix}_WEB3_SIGNER_ENDPOINT`] ?? "",
+      publicKey: (process.env[`${prefix}_WEB3_SIGNER_PUBLIC_KEY`] ?? "0x") as `0x${string}`,
+      ...(process.env[`${prefix}_WEB3_SIGNER_TLS_KEYSTORE_PATH`]
+        ? {
+            tls: {
+              keyStorePath: process.env[`${prefix}_WEB3_SIGNER_TLS_KEYSTORE_PATH`]!,
+              keyStorePassword: process.env[`${prefix}_WEB3_SIGNER_TLS_KEYSTORE_PASSWORD`] ?? "",
+              trustStorePath: process.env[`${prefix}_WEB3_SIGNER_TLS_TRUSTSTORE_PATH`] ?? "",
+              trustStorePassword: process.env[`${prefix}_WEB3_SIGNER_TLS_TRUSTSTORE_PASSWORD`] ?? "",
+            },
+          }
+        : {}),
+    };
+  }
+
+  return {
+    type: "private-key",
+    privateKey: (process.env[`${prefix}_SIGNER_PRIVATE_KEY`] ?? "0x") as `0x${string}`,
+  };
+}
 
 async function main() {
   const client = new PostmanApp({
     l1Options: {
       rpcUrl: process.env.L1_RPC_URL ?? "",
-      messageServiceContractAddress: process.env.L1_CONTRACT_ADDRESS ?? "",
+      messageServiceContractAddress: (process.env.L1_CONTRACT_ADDRESS ?? "") as `0x${string}`,
       isEOAEnabled: process.env.L1_L2_EOA_ENABLED === "true",
       isCalldataEnabled: process.env.L1_L2_CALLDATA_ENABLED === "true",
       listener: {
@@ -34,8 +62,8 @@ async function main() {
         (process.env.L1_EVENT_FILTER_CALLDATA && process.env.L1_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE)
           ? {
               eventFilters: {
-                fromAddressFilter: process.env.L1_EVENT_FILTER_FROM_ADDRESS,
-                toAddressFilter: process.env.L1_EVENT_FILTER_TO_ADDRESS,
+                fromAddressFilter: process.env.L1_EVENT_FILTER_FROM_ADDRESS as `0x${string}` | undefined,
+                toAddressFilter: process.env.L1_EVENT_FILTER_TO_ADDRESS as `0x${string}` | undefined,
                 ...(process.env.L1_EVENT_FILTER_CALLDATA && process.env.L1_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE
                   ? {
                       calldataFilter: {
@@ -49,10 +77,7 @@ async function main() {
           : {}),
       },
       claiming: {
-        signer: {
-          type: "private-key" as const,
-          privateKey: (process.env.L1_SIGNER_PRIVATE_KEY ?? "0x") as `0x${string}`,
-        },
+        signer: buildSignerConfig("L1"),
         messageSubmissionTimeout: process.env.MESSAGE_SUBMISSION_TIMEOUT
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
@@ -73,12 +98,12 @@ async function main() {
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT
           ? BigInt(process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT)
           : undefined,
-        claimViaAddress: process.env.L1_CLAIM_VIA_ADDRESS,
+        claimViaAddress: process.env.L1_CLAIM_VIA_ADDRESS as `0x${string}` | undefined,
       },
     },
     l2Options: {
       rpcUrl: process.env.L2_RPC_URL ?? "",
-      messageServiceContractAddress: process.env.L2_CONTRACT_ADDRESS ?? "",
+      messageServiceContractAddress: (process.env.L2_CONTRACT_ADDRESS ?? "") as `0x${string}`,
       isEOAEnabled: process.env.L2_L1_EOA_ENABLED === "true",
       isCalldataEnabled: process.env.L2_L1_CALLDATA_ENABLED === "true",
       listener: {
@@ -103,8 +128,8 @@ async function main() {
         (process.env.L2_EVENT_FILTER_CALLDATA && process.env.L2_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE)
           ? {
               eventFilters: {
-                fromAddressFilter: process.env.L2_EVENT_FILTER_FROM_ADDRESS,
-                toAddressFilter: process.env.L2_EVENT_FILTER_TO_ADDRESS,
+                fromAddressFilter: process.env.L2_EVENT_FILTER_FROM_ADDRESS as `0x${string}` | undefined,
+                toAddressFilter: process.env.L2_EVENT_FILTER_TO_ADDRESS as `0x${string}` | undefined,
                 ...(process.env.L2_EVENT_FILTER_CALLDATA && process.env.L2_EVENT_FILTER_CALLDATA_FUNCTION_INTERFACE
                   ? {
                       calldataFilter: {
@@ -118,10 +143,7 @@ async function main() {
           : {}),
       },
       claiming: {
-        signer: {
-          type: "private-key" as const,
-          privateKey: (process.env.L2_SIGNER_PRIVATE_KEY ?? "0x") as `0x${string}`,
-        },
+        signer: buildSignerConfig("L2"),
         messageSubmissionTimeout: process.env.MESSAGE_SUBMISSION_TIMEOUT
           ? parseInt(process.env.MESSAGE_SUBMISSION_TIMEOUT)
           : undefined,
@@ -142,7 +164,7 @@ async function main() {
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT
           ? BigInt(process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT)
           : undefined,
-        claimViaAddress: process.env.L2_CLAIM_VIA_ADDRESS,
+        claimViaAddress: process.env.L2_CLAIM_VIA_ADDRESS as `0x${string}` | undefined,
       },
       l2MessageTreeDepth: process.env.L2_MESSAGE_TREE_DEPTH ? parseInt(process.env.L2_MESSAGE_TREE_DEPTH) : undefined,
       enableLineaEstimateGas: process.env.ENABLE_LINEA_ESTIMATE_GAS === "true",

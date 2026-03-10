@@ -1,4 +1,6 @@
+import type { Hex } from "../types/hex";
+
 export interface ICalldataDecoder {
   /** Decode function calldata according to the given ABI signature string. */
-  decode(calldataFunctionInterface: string, calldata: string): Record<string, unknown>;
+  decode(calldataFunctionInterface: string, calldata: Hex): Record<string, unknown>;
 }

@@ -2,11 +2,11 @@ import { MessageProps } from "../core/entities/Message";
 import { DatabaseAccessError } from "../core/errors/DatabaseErrors";
 import { IErrorParser, ParsedError } from "../core/errors/IErrorParser";
 
-export type Mitigation = {
+type Mitigation = {
   shouldRetry: boolean;
 };
 
-export type ParsedErrorResult = {
+type ParsedErrorResult = {
   errorCode: string;
   errorMessage?: string;
   data?: string;

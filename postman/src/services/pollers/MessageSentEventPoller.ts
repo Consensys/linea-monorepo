@@ -3,7 +3,7 @@ import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { Message } from "../../core/entities/Message";
 import { Direction } from "../../core/enums";
 import { DatabaseAccessError } from "../../core/errors/DatabaseErrors";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IPoller } from "../../core/services/pollers/IPoller";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
 import { wait } from "../../core/utils/shared";
@@ -13,7 +13,7 @@ type MessageSentEventPollerConfig = {
   direction: Direction;
   pollingInterval: number;
   initialFromBlock: number;
-  originContractAddress: string;
+  originContractAddress: `0x${string}`;
 };
 
 export class MessageSentEventPoller implements IPoller {
@@ -24,14 +24,14 @@ export class MessageSentEventPoller implements IPoller {
    *
    * @param {IMessageSentEventProcessor} eventProcessor - An instance of a class implementing the `IMessageSentEventProcessor` interface, responsible for processing message sent events.
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
-   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
+   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageSentEventPollerConfig} config - Configuration settings for the poller, including the direction of message flow, the polling interval, and the initial block number to start listening from.
    * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages related to the polling process.
    */
   constructor(
     private readonly eventProcessor: IMessageSentEventProcessor,
     private readonly provider: IProvider,
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly config: MessageSentEventPollerConfig,
     private readonly logger: IPostmanLogger,
   ) {}
@@ -146,7 +146,7 @@ export class MessageSentEventPoller implements IPoller {
    * @returns {Promise<number | null>} The block number of the latest message sent event, or null if no such event has been processed.
    */
   private async getLatestMessageSentBlockNumber(direction: Direction): Promise<number | null> {
-    const lastMessageSent = await this.databaseService.getLatestMessageSent(
+    const lastMessageSent = await this.messageRepository.getLatestMessageSent(
       direction,
       this.config.originContractAddress,
     );

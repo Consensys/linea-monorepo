@@ -1,7 +1,9 @@
+import type { Address, Hex } from "./hex";
+
 export type TransactionRequest = {
-  from?: string;
-  to: string;
-  data?: string;
+  from?: Address;
+  to: Address;
+  data?: Hex;
   value?: bigint;
   gasLimit?: bigint;
   maxFeePerGas?: bigint;

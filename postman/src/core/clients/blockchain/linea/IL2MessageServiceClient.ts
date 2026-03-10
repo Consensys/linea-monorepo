@@ -1,16 +1,16 @@
 import { MessageProps } from "../../../entities/Message";
 import { IMessageServiceContract } from "../../../services/contracts/IMessageServiceContract";
-import { MessageSent, Overrides } from "../../../types";
+import { Address, Hex, MessageSent, Overrides } from "../../../types";
 import { LineaGasFees } from "../IGasProvider";
 
 export interface IL2MessageServiceClient extends IMessageServiceContract {
-  encodeClaimMessageTransactionData(message: MessageProps & { feeRecipient?: string }): string;
+  encodeClaimMessageTransactionData(message: MessageProps & { feeRecipient?: Address }): Hex;
   estimateClaimGasFees(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
+    message: (MessageSent | MessageProps) & { feeRecipient?: Address },
     opts?: {
-      claimViaAddress?: string;
+      claimViaAddress?: Address;
       overrides?: Overrides;
     },
   ): Promise<LineaGasFees>;
-  getContractAddress(): string;
+  getContractAddress(): Address;
 }

@@ -1,8 +1,10 @@
+import type { Address, Hash, Hex } from "./hex";
+
 export type Log = {
-  address: string;
-  topics: string[];
-  data: string;
+  address: Address;
+  topics: Hex[];
+  data: Hex;
   blockNumber: number;
-  transactionHash: string;
+  transactionHash: Hash;
   logIndex: number;
 };

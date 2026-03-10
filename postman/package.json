@@ -20,7 +20,6 @@
     "@consensys/linea-sdk-core": "workspace:*",
     "@consensys/linea-sdk-viem": "workspace:*",
     "@consensys/linea-shared-utils": "workspace:*",
-    "better-sqlite3": "11.6.0",
     "class-validator": "0.14.1",
     "dotenv": "catalog:",
     "viem": "catalog:",
@@ -30,7 +29,8 @@
     "prom-client": "catalog:",
     "typeorm": "0.3.28",
     "typeorm-naming-strategies": "4.1.0",
-    "winston": "catalog:"
+    "winston": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@consensys/eslint-config": "workspace:*",

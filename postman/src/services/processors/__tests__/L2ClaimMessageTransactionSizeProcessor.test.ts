@@ -3,18 +3,18 @@ import { mock } from "jest-mock-extended";
 
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { Direction, MessageStatus } from "../../../core/enums";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
 import { testL1NetworkConfig, testMessage, DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimMessageTransactionSizeProcessor } from "../L2ClaimMessageTransactionSizeProcessor";
 
 describe("L2ClaimMessageTransactionSizeProcessor", () => {
   let transactionSizeProcessor: L2ClaimMessageTransactionSizeProcessor;
   let transactionSizeCalculator: L2ClaimTransactionSizeCalculator;
 
-  const databaseService = mock<EthereumMessageDBService>();
+  const databaseService = mock<IMessageRepository>();
   const l2ContractClientMock = mock<IL2MessageServiceClient>();
   const transactionSignerMock = mock<ITransactionSigner>();
   const logger = new TestLogger(L2ClaimMessageTransactionSizeProcessor.name);

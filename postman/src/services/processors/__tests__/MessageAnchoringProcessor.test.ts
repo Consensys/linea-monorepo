@@ -2,17 +2,17 @@ import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
-import { OnChainMessageStatus, MessageStatus } from "../../../core/enums";
+import { Direction, OnChainMessageStatus, MessageStatus } from "../../../core/enums";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
 import { testL1NetworkConfig, testL2NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { MessageAnchoringProcessor } from "../MessageAnchoringProcessor";
 
 describe("TestMessageAnchoringProcessor", () => {
   let anchoringProcessor: IMessageAnchoringProcessor;
-  const databaseService = mock<EthereumMessageDBService>();
+  const messageRepository = mock<IMessageRepository>();
   const l2ContractClientMock = mock<IMessageServiceContract>();
   const provider = mock<IProvider>();
   const logger = new TestLogger(MessageAnchoringProcessor.name);
@@ -21,8 +21,9 @@ describe("TestMessageAnchoringProcessor", () => {
     anchoringProcessor = new MessageAnchoringProcessor(
       l2ContractClientMock,
       provider,
-      databaseService,
+      messageRepository,
       {
+        direction: Direction.L1_TO_L2,
         maxFetchMessagesFromDb: testL2NetworkConfig.listener.maxFetchMessagesFromDb,
         originContractAddress: testL1NetworkConfig.messageServiceContractAddress,
       },
@@ -37,7 +38,7 @@ describe("TestMessageAnchoringProcessor", () => {
   describe("process", () => {
     it("Should return if getNFirstMessageSent returns empty list", async () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
-      jest.spyOn(databaseService, "getNFirstMessagesSent").mockResolvedValue([]);
+      jest.spyOn(messageRepository, "getNFirstMessagesByStatus").mockResolvedValue([]);
 
       await anchoringProcessor.process();
 
@@ -48,7 +49,7 @@ describe("TestMessageAnchoringProcessor", () => {
       const loggerWarnSpy = jest.spyOn(logger, "warn");
       const maxFetchMessagesFromDb = testL2NetworkConfig.listener.maxFetchMessagesFromDb;
       jest
-        .spyOn(databaseService, "getNFirstMessagesSent")
+        .spyOn(messageRepository, "getNFirstMessagesByStatus")
         .mockResolvedValue(Array(maxFetchMessagesFromDb).map(() => testMessage));
 
       await anchoringProcessor.process();
@@ -62,11 +63,11 @@ describe("TestMessageAnchoringProcessor", () => {
 
     it("Should log as info and call saveMessages if returned messageStatus is CLAIMABLE", async () => {
       const loggerInfoSpy = jest.spyOn(logger, "info");
-      jest.spyOn(databaseService, "getNFirstMessagesSent").mockResolvedValue([testMessage]);
+      jest.spyOn(messageRepository, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       jest.spyOn(l2ContractClientMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       const testMessageEditSpy = jest.spyOn(testMessage, "edit");
-      const messageRepositoryMockSaveSpy = jest.spyOn(databaseService, "saveMessages");
+      const messageRepositoryMockSaveSpy = jest.spyOn(messageRepository, "saveMessages");
 
       await anchoringProcessor.process();
 
@@ -80,11 +81,11 @@ describe("TestMessageAnchoringProcessor", () => {
 
     it("Should log as info and call saveMessages if returned messageStatus is CLAIMED", async () => {
       const loggerInfoSpy = jest.spyOn(logger, "info");
-      jest.spyOn(databaseService, "getNFirstMessagesSent").mockResolvedValue([testMessage]);
+      jest.spyOn(messageRepository, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
       jest.spyOn(l2ContractClientMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
       const testMessageEditSpy = jest.spyOn(testMessage, "edit");
-      const messageRepositoryMockSaveSpy = jest.spyOn(databaseService, "saveMessages");
+      const messageRepositoryMockSaveSpy = jest.spyOn(messageRepository, "saveMessages");
 
       await anchoringProcessor.process();
 
@@ -102,9 +103,9 @@ describe("TestMessageAnchoringProcessor", () => {
     it("Should log as error if getCurrentBlockNumber throws error", async () => {
       const loggerErrorSpy = jest.spyOn(logger, "error");
       const error = new Error("Error for testing");
-      jest.spyOn(databaseService, "getNFirstMessagesSent").mockResolvedValue([testMessage]);
+      jest.spyOn(messageRepository, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       jest.spyOn(provider, "getBlockNumber").mockRejectedValue(error);
-      const messageRepositoryMockSaveSpy = jest.spyOn(databaseService, "saveMessages");
+      const messageRepositoryMockSaveSpy = jest.spyOn(messageRepository, "saveMessages");
 
       await anchoringProcessor.process();
 

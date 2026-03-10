@@ -1,7 +1,9 @@
 import { compileExpression, useDotAccessOperator } from "filtrex";
 import { isAddress, parseAbi } from "viem";
+import { ZodError } from "zod";
 
 import { ListenerConfig, PostmanConfig, PostmanOptions } from "./config";
+import { postmanOptionsSchema } from "./schema";
 import {
   DEFAULT_CALLDATA_ENABLED,
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
@@ -31,6 +33,16 @@ import {
  * @return postmanConfig The complete configuration for the Postman service.
  */
 export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
+  try {
+    postmanOptionsSchema.parse(postmanOptions);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      const issues = error.issues.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`).join("\n");
+      throw new Error(`Invalid postman configuration:\n${issues}`);
+    }
+    throw error;
+  }
+
   const {
     l1Options,
     l2Options,

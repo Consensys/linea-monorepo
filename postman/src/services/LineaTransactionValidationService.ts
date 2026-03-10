@@ -7,6 +7,7 @@ import {
   ITransactionValidationService,
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
+import { Address } from "../core/types";
 import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class LineaTransactionValidationService implements ITransactionValidationService {
@@ -43,8 +44,8 @@ export class LineaTransactionValidationService implements ITransactionValidation
    */
   public async evaluateTransaction(
     message: Message,
-    feeRecipient?: string,
-    claimViaAddress?: string,
+    feeRecipient?: Address,
+    claimViaAddress?: Address,
   ): Promise<{
     hasZeroFee: boolean;
     isUnderPriced: boolean;

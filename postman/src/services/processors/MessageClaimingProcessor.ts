@@ -1,7 +1,7 @@
 import { Message } from "../../core/entities/Message";
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IErrorParser } from "../../core/errors/IErrorParser";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { INonceManager } from "../../core/services/INonceManager";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
@@ -17,7 +17,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    *
    * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
    * @param {INonceManager} nonceManager - An instance of a class implementing the `INonceManager` interface, used to acquire and release nonces for claiming transactions.
-   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
+   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
+   * @param {() => Promise<Message | null>} getNextMessageToClaim - A function that fetches the next message eligible for claiming, encapsulating network-specific query logic.
    * @param {ITransactionValidationService} transactionValidationService - An instance of a class implementing the `ITransactionValidationService` interface, used for validating transactions.
    * @param {IErrorParser} errorParser - An instance of a class implementing the `IErrorParser` interface, used to parse errors and determine retryability.
    * @param {MessageClaimingProcessorConfig} config - Configuration for network-specific settings, including transaction submission timeout, maximum transaction retries, and gas limit.
@@ -26,7 +27,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   constructor(
     private readonly messageServiceContract: IMessageServiceContract,
     private readonly nonceManager: INonceManager,
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
+    private readonly getNextMessageToClaim: () => Promise<Message | null>,
     private readonly transactionValidationService: ITransactionValidationService,
     private readonly errorParser: IErrorParser,
     private readonly config: MessageClaimingProcessorConfig,
@@ -49,12 +51,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       }
 
-      nextMessageToClaim = await this.databaseService.getMessageToClaim(
-        this.config.originContractAddress,
-        this.config.profitMargin,
-        this.config.maxNumberOfRetries,
-        this.config.retryDelayInSeconds,
-      );
+      nextMessageToClaim = await this.getNextMessageToClaim();
 
       if (!nextMessageToClaim) {
         this.logger.info("No message to claim found");
@@ -72,7 +69,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         this.logger.info("Found already claimed message: messageHash=%s", nextMessageToClaim.messageHash);
 
         nextMessageToClaim.edit({ status: MessageStatus.CLAIMED_SUCCESS });
-        await this.databaseService.updateMessage(nextMessageToClaim);
+        await this.messageRepository.updateMessage(nextMessageToClaim);
         return;
       }
 
@@ -95,7 +92,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       if (await this.handleNonExecutable(nextMessageToClaim, estimatedGasLimit)) return;
 
       nextMessageToClaim.edit({ claimGasEstimationThreshold: threshold, isForSponsorship });
-      await this.databaseService.updateMessage(nextMessageToClaim);
+      await this.messageRepository.updateMessage(nextMessageToClaim);
 
       if (
         !isForSponsorship &&
@@ -147,7 +144,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
           overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
         },
       );
-    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
+    await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
   }
 
   /**
@@ -164,7 +161,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         message.messageHash,
       );
       message.edit({ status: MessageStatus.ZERO_FEE });
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
       return true;
     }
     return false;
@@ -188,7 +185,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         this.config.maxClaimGasLimit.toString(),
       );
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
       return true;
     }
     return false;
@@ -219,7 +216,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
           maxFeePerGas.toString(),
         );
         message.edit({ status: MessageStatus.FEE_UNDERPRICED });
-        await this.databaseService.updateMessage(message);
+        await this.messageRepository.updateMessage(message);
       } else {
         this.logger.warn("Message is underpriced, will retry later: messageHash=%s", message.messageHash);
       }
@@ -258,7 +255,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
 
     if (!parsedError.retryable && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
     }
 
     this.logger.warnOrError(e, {

@@ -5,7 +5,7 @@ import { Message } from "../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { BaseError } from "../../core/errors";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../core/metrics";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import {
   IMessageClaimingPersister,
@@ -21,7 +21,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
   /**
    * Initializes a new instance of the `MessageClaimingPersister`.
    *
-   * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
+   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
    * @param {ISponsorshipMetricsUpdater} sponsorshipMetricsUpdater - An instance of a class implementing the `ISponsorshipMetricsUpdater` interface, update sponsorship metrics for Prometheus monitoring.
    * @param {ITransactionMetricsUpdater} transactionMetricsUpdater - An instance of a class implementing the `ITransactionMetricsUpdater` interface, used to update transaction-related metrics.
@@ -30,7 +30,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly messageServiceContract: IMessageServiceContract,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
@@ -63,7 +63,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
   public async process(): Promise<void> {
     let firstPendingMessage: Message | null = null;
     try {
-      firstPendingMessage = await this.databaseService.getFirstPendingMessage(this.config.direction);
+      firstPendingMessage = await this.messageRepository.getFirstPendingMessage(this.config.direction);
       if (!firstPendingMessage?.claimTxHash) {
         this.logger.info("No pending message status to update.");
         return;
@@ -116,7 +116,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @returns {Promise<TransactionReceipt>} The transaction receipt.
    * @throws {BaseError} If the receipt is not found within the timeout.
    */
-  private async pollForReceipt(txHash: string): Promise<TransactionReceipt> {
+  private async pollForReceipt(txHash: `0x${string}`): Promise<TransactionReceipt> {
     const deadline = Date.now() + this.config.receiptPollingTimeout;
     while (Date.now() < deadline) {
       const receipt = await this.provider.getTransactionReceipt(txHash);
@@ -137,8 +137,8 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @returns {Promise<TransactionReceipt | null>} The receipt of the retried transaction, or null if the retry was unsuccessful.
    */
   private async retryTransaction(
-    transactionHash: string,
-    messageHash: string,
+    transactionHash: `0x${string}`,
+    messageHash: `0x${string}`,
     messageBlockNumber: number,
   ): Promise<TransactionReceipt | null> {
     try {
@@ -180,7 +180,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         claimLastRetriedAt: new Date(),
         claimTxNonce: tx.nonce,
       });
-      await this.databaseService.updateMessage(this.messageBeingRetry.message!);
+      await this.messageRepository.updateMessage(this.messageBeingRetry.message!);
 
       return await this.pollForReceipt(tx.hash);
     } catch (e) {
@@ -238,7 +238,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
           status: MessageStatus.SENT,
           //claimGasEstimationThreshold: undefined,
         });
-        await this.databaseService.updateMessage(message);
+        await this.messageRepository.updateMessage(message);
 
         this.logger.warn(
           "Claim transaction has been reverted with RateLimitExceeded error. Claiming will be retry later: messageHash=%s transactionHash=%s",
@@ -249,7 +249,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       }
 
       message.edit({ status: MessageStatus.CLAIMED_REVERTED });
-      await this.databaseService.updateMessage(message);
+      await this.messageRepository.updateMessage(message);
       this.logger.warn(
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         message.messageHash,
@@ -266,7 +266,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       status: MessageStatus.CLAIMED_SUCCESS,
     });
 
-    await this.databaseService.updateMessage(message);
+    await this.messageRepository.updateMessage(message);
 
     if (message.isForSponsorship) {
       await this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(

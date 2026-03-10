@@ -6,16 +6,16 @@ import { ILineaRollupLogClient } from "../../../core/clients/blockchain/ethereum
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { ILineaProvider } from "../../../core/clients/blockchain/linea/ILineaProvider";
-import { Direction } from "../../../core/enums";
+import { Direction, MessageStatus } from "../../../core/enums";
 import { IErrorParser } from "../../../core/errors/IErrorParser";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../core/metrics";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/InlineNonceManager";
+import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/signers/InlineNonceManager";
 import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTransactionSizeCalculator";
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
-import { LineaMessageDBService } from "../../../services/persistence";
 import {
   L2ClaimMessageTransactionSizePoller,
   MessageAnchoringPoller,
@@ -38,8 +38,8 @@ export type L1ToL2Deps = {
   l2MessageServiceClient: IL2MessageServiceClient;
   l2Provider: ILineaProvider;
   l2PublicClient: PublicClient;
-  l2SignerAddress: string;
-  lineaMessageDBService: LineaMessageDBService;
+  l2SignerAddress: `0x${string}`;
+  messageRepository: IMessageRepository;
   calldataDecoder: ICalldataDecoder;
   transactionSigner: ITransactionSigner;
   sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
@@ -61,7 +61,7 @@ export class L1ToL2App {
       l2Provider,
       l2PublicClient,
       l2SignerAddress,
-      lineaMessageDBService,
+      messageRepository,
       calldataDecoder,
       transactionSigner,
       sponsorshipMetricsUpdater,
@@ -75,7 +75,7 @@ export class L1ToL2App {
     const log = (name: string) => new PostmanWinstonLogger(name, loggerOptions);
 
     const sentEventProcessor = new MessageSentEventProcessor(
-      lineaMessageDBService,
+      messageRepository,
       l1LogClient,
       l1Provider,
       calldataDecoder,
@@ -93,7 +93,7 @@ export class L1ToL2App {
     const sentEventPoller = new MessageSentEventPoller(
       sentEventProcessor,
       l1Provider,
-      lineaMessageDBService,
+      messageRepository,
       {
         direction: Direction.L1_TO_L2,
         pollingInterval: l1Config.listener.pollingInterval,
@@ -106,8 +106,9 @@ export class L1ToL2App {
     const anchoringProcessor = new MessageAnchoringProcessor(
       l2MessageServiceClient,
       l2Provider,
-      lineaMessageDBService,
+      messageRepository,
       {
+        direction: Direction.L1_TO_L2,
         maxFetchMessagesFromDb: l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: l1Config.messageServiceContractAddress,
       },
@@ -133,7 +134,7 @@ export class L1ToL2App {
     );
 
     const nonceManager = new InlineNonceManager(
-      lineaMessageDBService,
+      messageRepository,
       l2PublicClient,
       l2SignerAddress,
       l2Config.claiming.maxNonceDiff,
@@ -141,10 +142,20 @@ export class L1ToL2App {
       log(`L2${InlineNonceManager.name}`),
     );
 
+    const getNextMessageToClaim = () =>
+      messageRepository.getFirstMessageToClaimOnL2(
+        Direction.L1_TO_L2,
+        l1Config.messageServiceContractAddress,
+        [MessageStatus.TRANSACTION_SIZE_COMPUTED, MessageStatus.FEE_UNDERPRICED],
+        l2Config.claiming.maxNumberOfRetries,
+        l2Config.claiming.retryDelayInSeconds,
+      );
+
     const claimingProcessor = new MessageClaimingProcessor(
       l2MessageServiceClient,
       nonceManager,
-      lineaMessageDBService,
+      messageRepository,
+      getNextMessageToClaim,
       validationService,
       errorParser,
       {
@@ -167,7 +178,7 @@ export class L1ToL2App {
     );
 
     const claimingPersister = new MessageClaimingPersister(
-      lineaMessageDBService,
+      messageRepository,
       l2MessageServiceClient,
       sponsorshipMetricsUpdater,
       transactionMetricsUpdater,
@@ -190,7 +201,7 @@ export class L1ToL2App {
 
     const sizeCalculator = new L2ClaimTransactionSizeCalculator(l2MessageServiceClient, transactionSigner);
     const sizeProcessor = new L2ClaimMessageTransactionSizeProcessor(
-      lineaMessageDBService,
+      messageRepository,
       l2MessageServiceClient,
       sizeCalculator,
       { direction: Direction.L1_TO_L2, originContractAddress: l1Config.messageServiceContractAddress },

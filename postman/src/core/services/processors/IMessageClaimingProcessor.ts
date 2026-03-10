@@ -1,16 +1,18 @@
 import { Direction } from "../../enums";
 
+import type { Address } from "../../types/hex";
+
 export interface IMessageClaimingProcessor {
   process(): Promise<void>;
 }
 
 export type MessageClaimingProcessorConfig = {
-  feeRecipientAddress?: string;
+  feeRecipientAddress?: Address;
   profitMargin: number;
   maxNumberOfRetries: number;
   retryDelayInSeconds: number;
   maxClaimGasLimit: bigint;
   direction: Direction;
-  originContractAddress: string;
-  claimViaAddress?: string;
+  originContractAddress: Address;
+  claimViaAddress?: Address;
 };

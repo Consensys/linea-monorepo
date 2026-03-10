@@ -7,7 +7,7 @@ import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { IL2MessageServiceLogClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
 import { MessageFactory } from "../../../core/entities/MessageFactory";
 import { Direction, MessageStatus } from "../../../core/enums";
-import { IMessageDBService } from "../../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { MessageSentEventProcessorConfig } from "../../../core/services/processors/IMessageSentEventProcessor";
 import { MessageSent } from "../../../core/types";
@@ -19,12 +19,11 @@ import {
   testMessageSentEventWithCallData,
 } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { MessageSentEventProcessor } from "../MessageSentEventProcessor";
 
 class TestMessageSentEventProcessor extends MessageSentEventProcessor {
   constructor(
-    databaseService: IMessageDBService,
+    databaseService: IMessageRepository,
     logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
     provider: IProvider,
     calldataDecoder: ICalldataDecoder,
@@ -45,7 +44,7 @@ class TestMessageSentEventProcessor extends MessageSentEventProcessor {
 
 describe("TestMessageSentEventProcessor", () => {
   let messageSentEventProcessor: TestMessageSentEventProcessor;
-  const databaseService = mock<EthereumMessageDBService>();
+  const databaseService = mock<IMessageRepository>();
   const l1LogClientMock = mock<ILineaRollupLogClient>();
   const provider = mock<IProvider>();
   const calldataDecoder = mock<ICalldataDecoder>();

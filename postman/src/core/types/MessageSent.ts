@@ -1,13 +1,15 @@
+import type { Address, Hash, Hex } from "./hex";
+
 export type MessageSent = {
-  messageHash: string;
-  messageSender: string;
-  destination: string;
+  messageHash: Hash;
+  messageSender: Address;
+  destination: Address;
   fee: bigint;
   value: bigint;
   messageNonce: bigint;
-  calldata: string;
-  contractAddress: string;
+  calldata: Hex;
+  contractAddress: Address;
   blockNumber: number;
-  transactionHash: string;
+  transactionHash: Hash;
   logIndex: number;
 };

@@ -6,6 +6,7 @@ import {
   ITransactionValidationService,
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
+import { Address } from "../core/types";
 import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class EthereumTransactionValidationService implements ITransactionValidationService {
@@ -42,8 +43,8 @@ export class EthereumTransactionValidationService implements ITransactionValidat
    */
   public async evaluateTransaction(
     message: Message,
-    feeRecipient?: string,
-    claimViaAddress?: string,
+    feeRecipient?: Address,
+    claimViaAddress?: Address,
   ): Promise<{
     hasZeroFee: boolean;
     isUnderPriced: boolean;

@@ -1,5 +1,7 @@
+import type { Hash } from "./hex";
+
 export type TransactionSubmission = {
-  hash: string;
+  hash: Hash;
   nonce: number;
   gasLimit: bigint;
   maxFeePerGas?: bigint;

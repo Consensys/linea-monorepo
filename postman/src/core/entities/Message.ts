@@ -1,16 +1,18 @@
 import { Direction } from "../enums";
 import { MessageStatus } from "../enums";
 
+import type { Address, Hash, Hex } from "../types/hex";
+
 export type MessageProps = {
   id?: number;
-  messageSender: string;
-  destination: string;
+  messageSender: Address;
+  destination: Address;
   fee: bigint;
   value: bigint;
   messageNonce: bigint;
-  calldata: string;
-  messageHash: string;
-  contractAddress: string;
+  calldata: Hex;
+  messageHash: Hash;
+  contractAddress: Address;
   sentBlockNumber: number;
   direction: Direction;
   status: MessageStatus;
@@ -19,7 +21,7 @@ export type MessageProps = {
   claimTxMaxFeePerGas?: bigint;
   claimTxMaxPriorityFeePerGas?: bigint;
   claimTxNonce?: number;
-  claimTxHash?: string;
+  claimTxHash?: Hash;
   claimNumberOfRetry: number;
   claimLastRetriedAt?: Date;
   claimGasEstimationThreshold?: number;
@@ -30,9 +32,9 @@ export type MessageProps = {
 };
 
 export type MessageWithProofProps = MessageProps & {
-  proof: string[];
+  proof: Hex[];
   leafIndex: number;
-  merkleRoot: string;
+  merkleRoot: Hash;
 };
 
 type EditableMessageProps = Omit<
@@ -54,14 +56,14 @@ type EditableMessageProps = Omit<
 
 export class Message {
   public id?: number;
-  public messageSender: string;
-  public destination: string;
+  public messageSender: Address;
+  public destination: Address;
   public fee: bigint;
   public value: bigint;
   public messageNonce: bigint;
-  public calldata: string;
-  public messageHash: string;
-  public contractAddress: string;
+  public calldata: Hex;
+  public messageHash: Hash;
+  public contractAddress: Address;
   public sentBlockNumber: number;
   public direction: Direction;
   public status: MessageStatus;
@@ -70,7 +72,7 @@ export class Message {
   public claimTxMaxFeePerGas?: bigint;
   public claimTxMaxPriorityFeePerGas?: bigint;
   public claimTxNonce?: number;
-  public claimTxHash?: string;
+  public claimTxHash?: Hash;
   public claimNumberOfRetry: number;
   public claimLastRetriedAt?: Date;
   public claimGasEstimationThreshold?: number;

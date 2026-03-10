@@ -9,11 +9,11 @@ import { IL2MessageServiceLogClient } from "../../../core/clients/blockchain/lin
 import { Direction } from "../../../core/enums";
 import { IErrorParser } from "../../../core/errors/IErrorParser";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../core/metrics";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/InlineNonceManager";
+import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/signers/InlineNonceManager";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
-import { EthereumMessageDBService } from "../../../services/persistence";
 import {
   MessageAnchoringPoller,
   MessageClaimingPoller,
@@ -34,8 +34,8 @@ export type L2ToL1Deps = {
   lineaRollupClient: ILineaRollupClient;
   l1Provider: IProvider;
   l1PublicClient: PublicClient;
-  l1SignerAddress: string;
-  ethereumMessageDBService: EthereumMessageDBService;
+  l1SignerAddress: `0x${string}`;
+  messageRepository: IMessageRepository;
   l1GasProvider: IEthereumGasProvider;
   calldataDecoder: ICalldataDecoder;
   sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
@@ -57,7 +57,7 @@ export class L2ToL1App {
       l1Provider,
       l1PublicClient,
       l1SignerAddress,
-      ethereumMessageDBService,
+      messageRepository,
       l1GasProvider,
       calldataDecoder,
       sponsorshipMetricsUpdater,
@@ -71,7 +71,7 @@ export class L2ToL1App {
     const log = (name: string) => new PostmanWinstonLogger(name, loggerOptions);
 
     const sentEventProcessor = new MessageSentEventProcessor(
-      ethereumMessageDBService,
+      messageRepository,
       l2LogClient,
       l2Provider,
       calldataDecoder,
@@ -89,7 +89,7 @@ export class L2ToL1App {
     const sentEventPoller = new MessageSentEventPoller(
       sentEventProcessor,
       l2Provider,
-      ethereumMessageDBService,
+      messageRepository,
       {
         direction: Direction.L2_TO_L1,
         pollingInterval: l2Config.listener.pollingInterval,
@@ -102,8 +102,9 @@ export class L2ToL1App {
     const anchoringProcessor = new MessageAnchoringProcessor(
       lineaRollupClient,
       l1Provider,
-      ethereumMessageDBService,
+      messageRepository,
       {
+        direction: Direction.L2_TO_L1,
         maxFetchMessagesFromDb: l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: l2Config.messageServiceContractAddress,
       },
@@ -129,7 +130,7 @@ export class L2ToL1App {
     );
 
     const nonceManager = new InlineNonceManager(
-      ethereumMessageDBService,
+      messageRepository,
       l1PublicClient,
       l1SignerAddress,
       l1Config.claiming.maxNonceDiff,
@@ -137,10 +138,23 @@ export class L2ToL1App {
       log(`L1${InlineNonceManager.name}`),
     );
 
+    const getNextMessageToClaim = async () => {
+      const { maxFeePerGas } = await l1GasProvider.getGasFees();
+      return messageRepository.getFirstMessageToClaimOnL1(
+        Direction.L2_TO_L1,
+        l2Config.messageServiceContractAddress,
+        maxFeePerGas,
+        l1Config.claiming.profitMargin,
+        l1Config.claiming.maxNumberOfRetries,
+        l1Config.claiming.retryDelayInSeconds,
+      );
+    };
+
     const claimingProcessor = new MessageClaimingProcessor(
       lineaRollupClient,
       nonceManager,
-      ethereumMessageDBService,
+      messageRepository,
+      getNextMessageToClaim,
       validationService,
       errorParser,
       {
@@ -163,7 +177,7 @@ export class L2ToL1App {
     );
 
     const claimingPersister = new MessageClaimingPersister(
-      ethereumMessageDBService,
+      messageRepository,
       lineaRollupClient,
       sponsorshipMetricsUpdater,
       transactionMetricsUpdater,

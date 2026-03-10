@@ -1,10 +1,12 @@
 import { Message } from "../entities/Message";
 
+import type { Address } from "../types/hex";
+
 export interface ITransactionValidationService {
   evaluateTransaction(
     message: Message,
-    feeRecipient?: string,
-    claimViaAddress?: string,
+    feeRecipient?: Address,
+    claimViaAddress?: Address,
   ): Promise<{
     hasZeroFee: boolean;
     isUnderPriced: boolean;

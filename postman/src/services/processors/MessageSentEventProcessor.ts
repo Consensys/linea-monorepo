@@ -6,7 +6,7 @@ import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { IL2MessageServiceLogClient } from "../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
 import { MessageFactory } from "../../core/entities/MessageFactory";
 import { MessageStatus } from "../../core/enums";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../core/services/ICalldataDecoder";
 import {
   IMessageSentEventProcessor,
@@ -21,7 +21,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
   /**
    * Initializes a new instance of the `MessageSentEventProcessor`.
    *
-   * @param {IMessageDBService<unknown>} databaseService - Used for storing and retrieving message data.
+   * @param {IMessageRepository} messageRepository - Used for storing and retrieving message data.
    * @param {ILineaRollupLogClient | IL2MessageServiceLogClient} logClient - For fetching message sent events from the blockchain.
    * @param {IProvider} provider - Used to query blockchain data.
    * @param {ICalldataDecoder} calldataDecoder - Decodes function calldata for filter evaluation.
@@ -29,7 +29,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
    * @param {ILogger} logger - Used for logging messages.
    */
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly messageRepository: IMessageRepository,
     private readonly logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
     private readonly provider: IProvider,
     private readonly calldataDecoder: ICalldataDecoder,
@@ -68,8 +68,8 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
         from: this.config.eventFilters?.fromAddressFilter,
         to: this.config.eventFilters?.toAddressFilter,
       },
-      fromBlock,
-      toBlock,
+      fromBlock: BigInt(fromBlock),
+      toBlock: BigInt(toBlock),
       fromBlockLogIndex,
     });
 
@@ -91,7 +91,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
         claimNumberOfRetry: 0,
       });
 
-      await this.databaseService.insertMessage(message);
+      await this.messageRepository.insertMessage(message);
     }
     this.logger.info(`Messages hashes found: messageHashes=%s`, serialize(events.map((event) => event.messageHash)));
 
@@ -142,7 +142,6 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
     }
 
     const decodedCalldata = this.calldataDecoder.decode(filters.calldataFunctionInterface, event.calldata);
-
     const context = {
       calldata: {
         funcSignature: event.calldata.slice(0, 10),

@@ -6,6 +6,7 @@ import { MessageProps } from "../core/entities/Message";
 import { BaseError } from "../core/errors";
 import { ITransactionSigner } from "../core/services/ITransactionSigner";
 import { IL2ClaimTransactionSizeCalculator } from "../core/services/processors/IL2ClaimTransactionSizeCalculator";
+import { Address } from "../core/types";
 import { serialize } from "../core/utils/shared";
 
 export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSizeCalculator {
@@ -33,7 +34,7 @@ export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSize
    * @throws {BaseError} If there is an error during the transaction size calculation.
    */
   public async calculateTransactionSize(
-    message: MessageProps & { feeRecipient?: string },
+    message: MessageProps & { feeRecipient?: Address },
     fees: LineaGasFees,
   ): Promise<number> {
     try {

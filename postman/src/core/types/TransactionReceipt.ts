@@ -1,7 +1,9 @@
 import { Log } from "./Log";
 
+import type { Hash } from "./hex";
+
 export type TransactionReceipt = {
-  hash: string;
+  hash: Hash;
   blockNumber: number;
   status: "success" | "reverted";
   gasUsed: bigint;
