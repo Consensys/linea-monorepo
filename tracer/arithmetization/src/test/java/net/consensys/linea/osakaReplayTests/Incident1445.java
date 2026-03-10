@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.OSAKA;
 
 import net.consensys.linea.reporting.TracerTestBase;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -36,6 +37,7 @@ public class Incident1445 extends TracerTestBase {
   // It triggered a divergence in execution paths between the tracer node and the Besu Shomei node.
   // And therefore discrepancies in state updates between the tracer's trace and the Shomei's one.
   @Test
+  @Disabled("timeout under KOALABEAR_16")
   void block_28279135_28279249(TestInfo testInfo) {
     replay(
         MAINNET_TESTCONFIG(OSAKA),

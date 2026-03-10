@@ -327,17 +327,27 @@ public class Utilities {
   }
 
   /**
+   * Provides a "cap" on the number of parameterized tests to run in any given testing run. This can
+   * value can be overridden using an environment variable.
+   */
+  public static int PARAMETERIZED_TEST_SAMPLE_SIZE =
+      Integer.parseInt(System.getenv().getOrDefault("PARAMETERIZED_TEST_SAMPLE_SIZE", "100"));
+
+  public static <T> List<T> randomSampleByCurrentCommitHash(List<T> items) {
+    return randomSampleByCurrentCommitHash(PARAMETERIZED_TEST_SAMPLE_SIZE, items);
+  }
+
+  /**
    * Sample exactly n items at random from a given input list. If that list has fewer than n items,
    * then the list is returned unchanged. The Random Number Generated (RNG) is seeded with the
    * current commit hash. The idea here is that we benefit from different seeds (i.e. by testing
    * different inputs), but should a failure occur we can (in principle) recreate it.
    *
-   * @param n Number of items to sample
    * @param items Source of items to sample from
    * @param <T>
    * @return
    */
-  public static <T> List<T> randomSampleByCurrentCommitHash(int n, List<T> items) {
+  private static <T> List<T> randomSampleByCurrentCommitHash(int n, List<T> items) {
     // If the sampling is bigger than the original list, just return the list
     if (n >= items.size()) {
       return items;

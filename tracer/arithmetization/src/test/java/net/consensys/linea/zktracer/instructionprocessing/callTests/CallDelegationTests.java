@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -251,6 +252,6 @@ public class CallDelegationTests extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

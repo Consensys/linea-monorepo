@@ -28,7 +28,7 @@ tasks.register('corsetExists') {
 ext {
   corsetVersion = project.hasProperty('corsetVersion')
     ? project.property('corsetVersion')
-    : System.getenv().getOrDefault('CORSET_VERSION', "v1.2.7")
+    : System.getenv().getOrDefault('CORSET_VERSION', "v1.2.8-rc1")
 }
 
 tasks.register('installGoCorset') {
@@ -142,6 +142,6 @@ tasks.register('buildAllTracers', Exec) {
   doFirst {
     traceJava.parentFile.mkdirs()
   }
-  commandLine 'go-corset', 'generate', '-p', TRACE_PKG, '-i', traceJava,
-    '-o', traceOsakaJava, zkevmOsakaBin
-}
+  commandLine 'go-corset', 'generate', '--air',
+    '--field=KOALABEAR_16', '-p', TRACE_PKG, '-i', traceJava, '-o',
+    traceOsakaJava, zkevmOsakaBin }

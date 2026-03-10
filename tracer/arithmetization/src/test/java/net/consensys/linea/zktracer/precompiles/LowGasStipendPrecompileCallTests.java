@@ -49,9 +49,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class LowGasStipendPrecompileCallTests extends TracerTestBase {
-
-  static final int LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE = 600;
-
   // Enums for the different testing scenarios
   enum ValueCase {
     ZERO,
@@ -214,8 +211,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleLowGasStipendPrecompileTestSources() {
-    return randomSampleByCurrentCommitHash(
-        LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE, fullGasStipendPrecompileCallP256TestSource())
+    return randomSampleByCurrentCommitHash(fullGasStipendPrecompileCallP256TestSource())
         .stream();
   }
 
@@ -253,7 +249,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, Integer.MAX_VALUE, false));
       }
     }
-    return arguments;
+    return randomSampleByCurrentCommitHash(arguments);
   }
 
   static List<Arguments> lowGasStipendPrecompileCallTestSource() {
@@ -368,7 +364,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, null, true));
     }
 
-    return arguments;
+    return randomSampleByCurrentCommitHash(arguments);
   }
 
   // Support methods

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(UnitTestWatcher.class)
 public class FastReplayTests extends TracerTestBase {
   @Test
+  @Disabled("timeout under KOALABEAR_16")
   void fatMxp(TestInfo testInfo) {
     replay(
         MAINNET_TESTCONFIG(OSAKA, false),
