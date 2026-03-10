@@ -166,6 +166,10 @@ tasks.withType(Test).configureEach {
 tasks.test.configure {
   // Following required as some unit tests run BESU checks
   dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
+  // Recycle the JVM after each test class so that stuck in-process Besu/Shomei threads
+  // (non-daemon) from runWithBesu=true tests cannot prevent JVM shutdown indefinitely.
+  // Gradle will SIGKILL a worker that does not exit within its stop timeout.
+  forkEvery = 1
   //
   useJUnitPlatform {
     excludeTags("nightly | replay | weekly")
