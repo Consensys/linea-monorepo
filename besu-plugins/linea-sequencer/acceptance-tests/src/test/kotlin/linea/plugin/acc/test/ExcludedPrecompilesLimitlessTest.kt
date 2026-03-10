@@ -9,7 +9,6 @@
 package linea.plugin.acc.test
 
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Credentials
@@ -19,7 +18,6 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.utils.Numeric
 import java.math.BigInteger
-import java.util.concurrent.TimeUnit
 
 class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
 
@@ -74,14 +72,7 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
       ),
     )
 
-    // wait for the current block cycle to finish, then immediately disable background building
-    // so the block builder doesn't trace and evict txs before we can assert pool state
-    val blockBeforePause = getLatestBlockNumber()
-    await()
-      .atMost(2 * blockTimeSeconds!!, TimeUnit.SECONDS)
-      .pollInterval(500, TimeUnit.MILLISECONDS)
-      .until { getLatestBlockNumber() > blockBeforePause }
-    buildBlocksInBackground = false
+    stopBackgroundBlockBuilding()
 
     invalidCalls.forEach { invalidCall ->
       // this tx must not be accepted but not mined
@@ -108,15 +99,12 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
 
     assertThat(getTxPoolContent()).hasSize(invalidCalls.size)
 
-    // resume block building so the sentry tx gets mined and invalid txs get traced
-    buildBlocksInBackground = true
-
-    // transfer used as sentry to ensure a new block is mined without the invalid txs
+    // submit sentry transfer, then manually build one block to mine it and trace the invalid txs
     val transferTxHash1 = accountTransactions
       .createTransfer(recipient, accounts.secondaryBenefactor, 1)
       .execute(minerNode.nodeRequests())
+    buildNewBlockAndWait()
 
-    // first sentry is mined and no tx of the bundle is mined
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.toHexString()))
     invalidCalls.forEach { invalidCall ->
       minerNode.verify(
