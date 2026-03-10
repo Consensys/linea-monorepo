@@ -237,23 +237,6 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
     }
   }
 
-  async getLastClaimTxNonce(direction: Direction): Promise<number | null> {
-    try {
-      const message = await this.createQueryBuilder("message")
-        .select("MAX(message.claimTxNonce)", "lastTxNonce")
-        .where("message.direction = :direction", { direction })
-        .getRawOne();
-
-      if (message.lastTxNonce === null || message.lastTxNonce === undefined) {
-        return null;
-      }
-
-      return message.lastTxNonce;
-    } catch (err: any) {
-      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
-    }
-  }
-
   async getFirstPendingMessage(direction: Direction): Promise<Message | null> {
     try {
       const message = await this.createQueryBuilder("message")
@@ -268,13 +251,9 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
     }
   }
 
-  async updateMessageWithClaimTxAtomic(
-    message: Message,
-    nonce: number,
-    claimTxFn: () => Promise<TransactionSubmission>,
-  ): Promise<void> {
-    await this.manager.transaction(async (entityManager) => {
-      await entityManager.update(
+  async reserveMessageForClaiming(message: Message, nonce: number): Promise<void> {
+    try {
+      await this.manager.update(
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
@@ -285,28 +264,26 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
             : {}),
         },
       );
+    } catch (err: any) {
+      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Update, err, message);
+    }
+  }
 
-      const claimTxCreationDate = new Date();
-      const tx = await claimTxFn();
-
-      await entityManager.update(
+  async recordClaimSubmission(message: Message, tx: TransactionSubmission): Promise<void> {
+    try {
+      await this.manager.update(
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
-          claimTxCreationDate,
+          claimTxCreationDate: new Date(),
           claimTxGasLimit: Number(tx.gasLimit),
           claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
           claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
           claimTxHash: tx.hash,
         },
       );
-
-      // Store updated entity in the queryRunner to access it in the afterTransactionCommit hook
-      entityManager.queryRunner!.data.updatedEntity = {
-        previousStatus: message.status,
-        newStatus: MessageStatus.PENDING,
-        direction: message.direction,
-      };
-    });
+    } catch (err: any) {
+      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Update, err, message);
+    }
   }
 }

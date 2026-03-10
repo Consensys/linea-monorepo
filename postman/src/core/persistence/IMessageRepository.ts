@@ -3,12 +3,17 @@ import { Direction } from "../enums";
 import { MessageStatus } from "../enums";
 import { Address, Hash, TransactionSubmission } from "../types";
 
-export interface IMessageRepository {
+export interface IMessageWriter {
   insertMessage(message: Message): Promise<void>;
   updateMessage(message: Message): Promise<void>;
   updateMessageByTransactionHash(transactionHash: Hash, direction: Direction, message: Message): Promise<void>;
   saveMessages(messages: Message[]): Promise<void>;
   deleteMessages(msBeforeNowToDelete: number): Promise<number>;
+  reserveMessageForClaiming(message: Message, nonce: number): Promise<void>;
+  recordClaimSubmission(message: Message, tx: TransactionSubmission): Promise<void>;
+}
+
+export interface IMessageReader {
   getFirstMessageToClaimOnL1(
     direction: Direction,
     contractAddress: Address,
@@ -32,11 +37,7 @@ export interface IMessageRepository {
     contractAddress: Address,
   ): Promise<Message[]>;
   getMessageSent(direction: Direction, contractAddress: Address): Promise<Message | null>;
-  getLastClaimTxNonce(direction: Direction): Promise<number | null>;
   getFirstPendingMessage(direction: Direction): Promise<Message | null>;
-  updateMessageWithClaimTxAtomic(
-    message: Message,
-    nonce: number,
-    claimTxFn: () => Promise<TransactionSubmission>,
-  ): Promise<void>;
 }
+
+export interface IMessageRepository extends IMessageWriter, IMessageReader {}

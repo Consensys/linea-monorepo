@@ -1,4 +1,3 @@
-import { type PublicClient } from "viem";
 import { type LoggerOptions } from "winston";
 
 import { L1NetworkConfig, L2NetworkConfig } from "./config/config";
@@ -11,15 +10,10 @@ import { IErrorParser } from "../../../core/errors/IErrorParser";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../core/metrics";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
+import { INonceManager } from "../../../core/services/INonceManager";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/signers/InlineNonceManager";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
-import {
-  MessageAnchoringPoller,
-  MessageClaimingPoller,
-  MessagePersistingPoller,
-  MessageSentEventPoller,
-} from "../../../services/pollers";
+import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
 import {
   MessageAnchoringProcessor,
   MessageClaimingPersister,
@@ -33,8 +27,7 @@ export type L2ToL1Deps = {
   l2Provider: IProvider;
   lineaRollupClient: ILineaRollupClient;
   l1Provider: IProvider;
-  l1PublicClient: PublicClient;
-  l1SignerAddress: `0x${string}`;
+  l1NonceManager: INonceManager;
   messageRepository: IMessageRepository;
   l1GasProvider: IEthereumGasProvider;
   calldataDecoder: ICalldataDecoder;
@@ -55,8 +48,7 @@ export class L2ToL1App {
       l2Provider,
       lineaRollupClient,
       l1Provider,
-      l1PublicClient,
-      l1SignerAddress,
+      l1NonceManager,
       messageRepository,
       l1GasProvider,
       calldataDecoder,
@@ -112,10 +104,10 @@ export class L2ToL1App {
       logWithErrorParser(`L1${MessageAnchoringProcessor.name}`),
     );
 
-    const anchoringPoller = new MessageAnchoringPoller(
+    const anchoringPoller = new IntervalPoller(
       anchoringProcessor,
       { direction: Direction.L2_TO_L1, pollingInterval: l1Config.listener.pollingInterval },
-      log(`L1${MessageAnchoringPoller.name}`),
+      log("L1MessageAnchoringPoller"),
     );
 
     const validationService = new EthereumTransactionValidationService(
@@ -128,15 +120,6 @@ export class L2ToL1App {
         maxPostmanSponsorGasLimit: l1Config.claiming.maxPostmanSponsorGasLimit,
       },
       log(`${EthereumTransactionValidationService.name}`),
-    );
-
-    const nonceManager = new InlineNonceManager(
-      messageRepository,
-      l1PublicClient,
-      l1SignerAddress,
-      l1Config.claiming.maxNonceDiff,
-      Direction.L2_TO_L1,
-      log(`L1${InlineNonceManager.name}`),
     );
 
     const getNextMessageToClaim = async () => {
@@ -153,7 +136,7 @@ export class L2ToL1App {
 
     const claimingProcessor = new MessageClaimingProcessor(
       lineaRollupClient,
-      nonceManager,
+      l1NonceManager,
       messageRepository,
       getNextMessageToClaim,
       validationService,
@@ -171,10 +154,10 @@ export class L2ToL1App {
       logWithErrorParser(`L1${MessageClaimingProcessor.name}`),
     );
 
-    const claimingPoller = new MessageClaimingPoller(
+    const claimingPoller = new IntervalPoller(
       claimingProcessor,
       { direction: Direction.L2_TO_L1, pollingInterval: l1Config.listener.pollingInterval },
-      log(`L1${MessageClaimingPoller.name}`),
+      log("L1MessageClaimingPoller"),
     );
 
     const claimingPersister = new MessageClaimingPersister(
@@ -193,10 +176,10 @@ export class L2ToL1App {
       logWithErrorParser(`L1${MessageClaimingPersister.name}`),
     );
 
-    const persistingPoller = new MessagePersistingPoller(
+    const persistingPoller = new IntervalPoller(
       claimingPersister,
       { direction: Direction.L2_TO_L1, pollingInterval: l1Config.listener.receiptPollingInterval },
-      log(`L1${MessagePersistingPoller.name}`),
+      log("L1MessagePersistingPoller"),
     );
 
     this.pollers = [sentEventPoller, anchoringPoller, claimingPoller, persistingPoller];

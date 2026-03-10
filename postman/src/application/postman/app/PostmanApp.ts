@@ -25,6 +25,7 @@ import {
   ViemL2MessageServiceLogClient,
   ViemProvider,
   ViemTransactionSigner,
+  InMemoryNonceManager,
   createSignerClient,
   contractSignerToViemAccount,
 } from "../../../infrastructure/blockchain/viem";
@@ -134,6 +135,8 @@ export class PostmanApp {
 
     const messageRepository = new TypeOrmMessageRepository(this.db);
 
+    const l1Provider = new ViemProvider(l1PublicClient);
+    const l2Provider = new ViemProvider(l2PublicClient);
     const calldataDecoder = new ViemCalldataDecoder();
     const transactionSigner = new ViemTransactionSigner(l2Signer, l2ChainId);
     const errorParser = new ViemErrorParser();
@@ -143,13 +146,20 @@ export class PostmanApp {
     };
 
     if (this.config.l1L2AutoClaimEnabled) {
+      const l2NonceManager = new InMemoryNonceManager(
+        l2Provider,
+        l2Account.address,
+        l2Config.claiming.maxNonceDiff,
+        new PostmanWinstonLogger("L2NonceManager", loggerOptions),
+      );
+      await l2NonceManager.initialize();
+
       this.l1ToL2App = new L1ToL2App({
         l1LogClient: new ViemLineaRollupLogClient(l1PublicClient, l1Config.messageServiceContractAddress),
-        l1Provider: new ViemProvider(l1PublicClient),
+        l1Provider,
         l2MessageServiceClient,
         l2Provider: new ViemLineaProvider(l2PublicClient),
-        l2PublicClient,
-        l2SignerAddress: l2Account.address,
+        l2NonceManager,
         messageRepository,
         calldataDecoder,
         transactionSigner,
@@ -162,13 +172,20 @@ export class PostmanApp {
     }
 
     if (this.config.l2L1AutoClaimEnabled) {
+      const l1NonceManager = new InMemoryNonceManager(
+        l1Provider,
+        l1Account.address,
+        l1Config.claiming.maxNonceDiff,
+        new PostmanWinstonLogger("L1NonceManager", loggerOptions),
+      );
+      await l1NonceManager.initialize();
+
       this.l2ToL1App = new L2ToL1App({
         l2LogClient: new ViemL2MessageServiceLogClient(l2PublicClient, l2Config.messageServiceContractAddress),
-        l2Provider: new ViemProvider(l2PublicClient),
+        l2Provider,
         lineaRollupClient,
-        l1Provider: new ViemProvider(l1PublicClient),
-        l1PublicClient,
-        l1SignerAddress: l1Account.address,
+        l1Provider,
+        l1NonceManager,
         messageRepository,
         l1GasProvider,
         calldataDecoder,

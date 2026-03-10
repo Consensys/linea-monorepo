@@ -12,18 +12,6 @@ import {
 import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
-  /**
-   * Initializes a new instance of the `MessageClaimingProcessor`.
-   *
-   * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
-   * @param {INonceManager} nonceManager - An instance of a class implementing the `INonceManager` interface, used to acquire and release nonces for claiming transactions.
-   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
-   * @param {() => Promise<Message | null>} getNextMessageToClaim - A function that fetches the next message eligible for claiming, encapsulating network-specific query logic.
-   * @param {ITransactionValidationService} transactionValidationService - An instance of a class implementing the `ITransactionValidationService` interface, used for validating transactions.
-   * @param {IErrorParser} errorParser - An instance of a class implementing the `IErrorParser` interface, used to parse errors and determine retryability.
-   * @param {MessageClaimingProcessorConfig} config - Configuration for network-specific settings, including transaction submission timeout, maximum transaction retries, and gas limit.
-   * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages.
-   */
   constructor(
     private readonly messageServiceContract: IMessageServiceContract,
     private readonly nonceManager: INonceManager,
@@ -35,24 +23,12 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     private readonly logger: IPostmanLogger,
   ) {}
 
-  /**
-   * Identifies the next message eligible for claiming and attempts to execute the claim transaction. It considers various factors such as gas estimation, profit margin, and rate limits to decide whether to proceed with the claim.
-   *
-   * @returns {Promise<void>} A promise that resolves when the processing is complete.
-   */
   public async process(): Promise<void> {
     let nextMessageToClaim: Message | null = null;
     let nonce: number | null = null;
 
     try {
       this.logger.debug("Starting claim processing cycle.");
-      nonce = await this.nonceManager.acquireNonce();
-
-      if (nonce === null) {
-        return;
-      }
-
-      this.logger.debug("Acquired nonce.", { nonce });
 
       nextMessageToClaim = await this.getNextMessageToClaim();
 
@@ -106,6 +82,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       if (this.handleRateLimitExceeded(nextMessageToClaim, isRateLimitExceeded)) return;
 
+      nonce = await this.nonceManager.acquireNonce();
+
       this.logger.debug("Executing claim transaction.", {
         messageHash: nextMessageToClaim.messageHash,
         nonce,
@@ -119,23 +97,13 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         claimTxFees.maxPriorityFeePerGas,
         claimTxFees.maxFeePerGas,
       );
-      this.nonceManager.releaseNonce(nonce, "");
+      this.nonceManager.commitNonce(nonce);
     } catch (e) {
-      if (nonce !== null) this.nonceManager.reportFailure(nonce);
+      if (nonce !== null) this.nonceManager.rollbackNonce(nonce);
       await this.handleProcessingError(e, nextMessageToClaim);
     }
   }
 
-  /**
-   * Executes the claim transaction for a message, updating the message repository with transaction details.
-   *
-   * @param {Message} message - The message object to claim.
-   * @param {number} nonce - The nonce to use for the transaction.
-   * @param {bigint} gasLimit - The gas limit for the transaction.
-   * @param {bigint} maxPriorityFeePerGas - The maximum priority fee per gas for the transaction.
-   * @param {bigint} maxFeePerGas - The maximum fee per gas for the transaction.
-   * @returns {Promise<void>} A promise that resolves when the transaction is executed.
-   */
   private async executeClaimTransaction(
     message: Message,
     nonce: number,
@@ -143,8 +111,15 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
-    const claimTxFn = async () =>
-      await this.messageServiceContract.claim(
+    const previousStatus = message.status;
+
+    // Step 1: Reserve nonce in DB (pure persistence)
+    await this.messageRepository.reserveMessageForClaiming(message, nonce);
+
+    // Step 2: Submit transaction to chain (outside DB transaction)
+    let tx;
+    try {
+      tx = await this.messageServiceContract.claim(
         {
           ...message,
           feeRecipient: this.config.feeRecipientAddress,
@@ -155,16 +130,22 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
           overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
         },
       );
-    await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
+    } catch (e) {
+      // Chain call failed — tx was NOT sent. Reset message to previous status
+      // so it can be picked up again by the next claiming cycle.
+      this.logger.warn("Claim transaction failed, resetting message status.", {
+        messageHash: message.messageHash,
+        previousStatus,
+      });
+      message.edit({ status: previousStatus });
+      await this.messageRepository.updateMessage(message);
+      throw e;
+    }
+
+    // Step 3: Record tx details in DB (pure persistence)
+    await this.messageRepository.recordClaimSubmission(message, tx);
   }
 
-  /**
-   * Handles messages with zero fee, updating their status and logging a warning.
-   *
-   * @param {boolean} hasZeroFee - Indicates whether the message has zero fee.
-   * @param {Message} message - The message object to handle.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the message has zero fee, `false` otherwise.
-   */
   private async handleZeroFee(hasZeroFee: boolean, message: Message): Promise<boolean> {
     if (hasZeroFee) {
       this.logger.warn("Found message with zero fee. This message will not be processed.", {
@@ -177,13 +158,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     return false;
   }
 
-  /**
-   * Handles non-executable messages, updating their status and logging a warning.
-   *
-   * @param {Message} message - The message object to handle.
-   * @param {bigint | null} estimatedGasLimit - The estimated gas limit for the transaction.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the message is non-executable, `false` otherwise.
-   */
   private async handleNonExecutable(message: Message, estimatedGasLimit: bigint | null): Promise<boolean> {
     if (!estimatedGasLimit) {
       this.logger.warn("Estimated gas limit is higher than the max allowed gas limit for this message.", {
@@ -199,15 +173,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     return false;
   }
 
-  /**
-   * Handles underpriced messages, updating their status and logging a warning.
-   *
-   * @param {Message} message - The message object to handle.
-   * @param {boolean} isUnderPriced - Indicates whether the message is underpriced.
-   * @param {bigint | null} estimatedGasLimit - The estimated gas limit for the transaction.
-   * @param {bigint} maxFeePerGas - The maximum fee per gas for the transaction.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the message is underpriced, `false` otherwise.
-   */
   private async handleUnderpriced(
     message: Message,
     isUnderPriced: boolean,
@@ -232,13 +197,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     return false;
   }
 
-  /**
-   * Handles messages that have exceeded the rate limit, logging a warning.
-   *
-   * @param {Message} message - The message object to handle.
-   * @param {boolean} isRateLimitExceeded - Indicates whether the rate limit has been exceeded.
-   * @returns {boolean} `true` if the rate limit has been exceeded, `false` otherwise.
-   */
   private handleRateLimitExceeded(message: Message, isRateLimitExceeded: boolean): boolean {
     if (isRateLimitExceeded) {
       this.logger.warn("Rate limit exceeded for this message. It will be reprocessed later.", {
@@ -249,13 +207,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     return false;
   }
 
-  /**
-   * Handles errors that occur during the processing of messages, updating their status if necessary and logging the error.
-   *
-   * @param {unknown} e - The error that occurred.
-   * @param {Message | null} message - The message object being processed when the error occurred.
-   * @returns {Promise<void>} A promise that resolves when the error has been handled.
-   */
   private async handleProcessingError(e: unknown, message: Message | null): Promise<void> {
     const parsedError = this.errorParser.parse(e);
 

@@ -6,7 +6,7 @@ export { ViemEthereumGasProvider } from "./gas/ViemEthereumGasProvider";
 export { ViemLineaGasProvider } from "./gas/ViemLineaGasProvider";
 export { ViemTransactionSigner } from "./signers/ViemTransactionSigner";
 export { ViemCalldataDecoder } from "./ViemCalldataDecoder";
-export { InlineNonceManager } from "./signers/InlineNonceManager";
+export { InMemoryNonceManager } from "./signers/InMemoryNonceManager";
 export { ViemLineaRollupClient } from "./clients/ViemLineaRollupClient";
 export { ViemL2MessageServiceClient } from "./clients/ViemL2MessageServiceClient";
 export { createSignerClient } from "./signers/createSignerClient";

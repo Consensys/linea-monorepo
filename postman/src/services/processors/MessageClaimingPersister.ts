@@ -62,8 +62,20 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     let firstPendingMessage: Message | null = null;
     try {
       firstPendingMessage = await this.messageRepository.getFirstPendingMessage(this.config.direction);
-      if (!firstPendingMessage?.claimTxHash) {
+      if (!firstPendingMessage) {
         this.logger.info("No pending message status to update.");
+        return;
+      }
+
+      if (!firstPendingMessage.claimTxHash) {
+        // Message is PENDING but has no txHash — this means either the chain call
+        // failed after reservation, or recordClaimSubmission failed after a successful
+        // chain call. Reset to SENT so the claiming processor can retry.
+        this.logger.warn("Found pending message without claim tx hash, resetting to allow retry.", {
+          messageHash: firstPendingMessage.messageHash,
+        });
+        firstPendingMessage.edit({ status: MessageStatus.SENT });
+        await this.messageRepository.updateMessage(firstPendingMessage);
         return;
       }
 

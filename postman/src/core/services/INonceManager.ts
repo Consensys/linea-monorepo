@@ -1,5 +1,6 @@
 export interface INonceManager {
-  acquireNonce(): Promise<number | null>;
-  releaseNonce(nonce: number, txHash: string): void;
-  reportFailure(nonce: number): void;
+  initialize(): Promise<void>;
+  acquireNonce(): Promise<number>;
+  commitNonce(nonce: number): void;
+  rollbackNonce(nonce: number): void;
 }

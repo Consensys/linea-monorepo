@@ -1,4 +1,3 @@
-import { type PublicClient } from "viem";
 import { type LoggerOptions } from "winston";
 
 import { L1NetworkConfig, L2NetworkConfig } from "./config/config";
@@ -11,18 +10,12 @@ import { IErrorParser } from "../../../core/errors/IErrorParser";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../core/metrics";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
+import { INonceManager } from "../../../core/services/INonceManager";
 import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { InlineNonceManager } from "../../../infrastructure/blockchain/viem/signers/InlineNonceManager";
 import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTransactionSizeCalculator";
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
-import {
-  L2ClaimMessageTransactionSizePoller,
-  MessageAnchoringPoller,
-  MessageClaimingPoller,
-  MessagePersistingPoller,
-  MessageSentEventPoller,
-} from "../../../services/pollers";
+import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
 import {
   L2ClaimMessageTransactionSizeProcessor,
   MessageAnchoringProcessor,
@@ -37,8 +30,7 @@ export type L1ToL2Deps = {
   l1Provider: IProvider;
   l2MessageServiceClient: IL2MessageServiceClient;
   l2Provider: ILineaProvider;
-  l2PublicClient: PublicClient;
-  l2SignerAddress: `0x${string}`;
+  l2NonceManager: INonceManager;
   messageRepository: IMessageRepository;
   calldataDecoder: ICalldataDecoder;
   transactionSigner: ITransactionSigner;
@@ -59,8 +51,7 @@ export class L1ToL2App {
       l1Provider,
       l2MessageServiceClient,
       l2Provider,
-      l2PublicClient,
-      l2SignerAddress,
+      l2NonceManager,
       messageRepository,
       calldataDecoder,
       transactionSigner,
@@ -116,10 +107,10 @@ export class L1ToL2App {
       logWithErrorParser(`L2${MessageAnchoringProcessor.name}`),
     );
 
-    const anchoringPoller = new MessageAnchoringPoller(
+    const anchoringPoller = new IntervalPoller(
       anchoringProcessor,
       { direction: Direction.L1_TO_L2, pollingInterval: l2Config.listener.pollingInterval },
-      log(`L2${MessageAnchoringPoller.name}`),
+      log("L2MessageAnchoringPoller"),
     );
 
     const validationService = new LineaTransactionValidationService(
@@ -134,15 +125,6 @@ export class L1ToL2App {
       log(`${LineaTransactionValidationService.name}`),
     );
 
-    const nonceManager = new InlineNonceManager(
-      messageRepository,
-      l2PublicClient,
-      l2SignerAddress,
-      l2Config.claiming.maxNonceDiff,
-      Direction.L1_TO_L2,
-      log(`L2${InlineNonceManager.name}`),
-    );
-
     const getNextMessageToClaim = () =>
       messageRepository.getFirstMessageToClaimOnL2(
         Direction.L1_TO_L2,
@@ -154,7 +136,7 @@ export class L1ToL2App {
 
     const claimingProcessor = new MessageClaimingProcessor(
       l2MessageServiceClient,
-      nonceManager,
+      l2NonceManager,
       messageRepository,
       getNextMessageToClaim,
       validationService,
@@ -172,10 +154,10 @@ export class L1ToL2App {
       logWithErrorParser(`L2${MessageClaimingProcessor.name}`),
     );
 
-    const claimingPoller = new MessageClaimingPoller(
+    const claimingPoller = new IntervalPoller(
       claimingProcessor,
       { direction: Direction.L1_TO_L2, pollingInterval: l2Config.listener.pollingInterval },
-      log(`L2${MessageClaimingPoller.name}`),
+      log("L2MessageClaimingPoller"),
     );
 
     const claimingPersister = new MessageClaimingPersister(
@@ -194,10 +176,10 @@ export class L1ToL2App {
       logWithErrorParser(`L2${MessageClaimingPersister.name}`),
     );
 
-    const persistingPoller = new MessagePersistingPoller(
+    const persistingPoller = new IntervalPoller(
       claimingPersister,
       { direction: Direction.L1_TO_L2, pollingInterval: l2Config.listener.receiptPollingInterval },
-      log(`L2${MessagePersistingPoller.name}`),
+      log("L2MessagePersistingPoller"),
     );
 
     const sizeCalculator = new L2ClaimTransactionSizeCalculator(l2MessageServiceClient, transactionSigner);
@@ -210,10 +192,10 @@ export class L1ToL2App {
       errorParser,
     );
 
-    const sizePoller = new L2ClaimMessageTransactionSizePoller(
+    const sizePoller = new IntervalPoller(
       sizeProcessor,
-      { pollingInterval: l2Config.listener.pollingInterval },
-      log(`${L2ClaimMessageTransactionSizePoller.name}`),
+      { pollingInterval: l2Config.listener.pollingInterval, direction: Direction.L1_TO_L2 },
+      log("L2ClaimMessageTransactionSizePoller"),
     );
 
     this.pollers = [sentEventPoller, anchoringPoller, claimingPoller, persistingPoller, sizePoller];
