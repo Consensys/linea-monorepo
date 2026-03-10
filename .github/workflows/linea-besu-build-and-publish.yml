@@ -7,13 +7,6 @@ permissions:
 
 on:
   workflow_call:
-    inputs:
-      # Only pass refs you trust (e.g. same-repo branches). Do not pass PR head ref from fork PRs;
-      # this workflow checks out and runs code at ref with contents/packages write.
-      ref:
-        description: 'Git ref (branch, tag, or SHA) to build and publish from'
-        required: true
-        type: string
     secrets:
       CLOUDSMITH_USER:
         required: false
@@ -27,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
 
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
@@ -79,13 +70,15 @@ jobs:
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
         run: |
+          BRANCH="${{ github.head_ref }}"
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet gradle/libs.versions.toml; then
-            echo "No changes to gradle/libs.versions.toml, skipping commit"
+            echo "No changes to libs.versions.toml, skipping commit"
           else
-            git pull
             git add gradle/libs.versions.toml
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git push origin HEAD:${{ inputs.ref }} 
+            git push origin "$BRANCH"
           fi
