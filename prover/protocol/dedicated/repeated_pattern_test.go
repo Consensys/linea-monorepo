@@ -53,7 +53,7 @@ var ListOfRepeatedPatternTestcase = []*RepeatedPatternTestcase{
 
 func (rp *RepeatedPatternTestcase) Define(comp *wizard.CompiledIOP) {
 	isActive := comp.InsertCommit(0, ifaces.ColID(rp.name)+"_ACTIVE", rp.IsActive.Len(), true)
-	rp.rp = NewRepeatedPattern(comp, 0, rp.Pattern, isActive)
+	rp.rp = NewRepeatedPattern(comp, 0, rp.Pattern, isActive, "TEST")
 }
 
 func (rp *RepeatedPatternTestcase) Assign(run *wizard.ProverRuntime) {
@@ -86,7 +86,7 @@ func TestRepeatedPatWithVerifCol(t *testing.T) {
 	var rp *RepeatedPattern
 	define := func(b *wizard.Builder) {
 		pattern := vector.ForTest(1, 2, 3)
-		rp = NewRepeatedPattern(b.CompiledIOP, 0, pattern, verifiercol.NewConstantCol(field.One(), 32, "active"))
+		rp = NewRepeatedPattern(b.CompiledIOP, 0, pattern, verifiercol.NewConstantCol(field.One(), 32, "active"), "TEST")
 	}
 	prove := func(run *wizard.ProverRuntime) {
 		rp.Assign(run)

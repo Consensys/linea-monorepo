@@ -3,7 +3,6 @@ package distributed_test
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -26,13 +25,14 @@ const (
 // testCompilationParams defines compilation parameters for testing segment compilation
 // Note: ColumnProfileMPTS is left nil to avoid profile size constraints during testing
 var testCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 18,
-	FixedNbRowExternalHasher:     1 << 14,
+	FixedNbRowPlonkCircuit:       1 << 24,
+	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
-	InitialCompilerSizeConglo:    1 << 13,
-	ColumnProfileMPTS:            nil, // nil disables profile checking
-	ColumnProfileMPTSPrecomputed: 0,
+	InitialCompilerSizeConglo:    1 << 21,
+	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+	ColumnProfileMPTSPrecomputed: 45,
+	FullDebugMode:                false,
 }
 
 // DistributedTestCase is an interface for test cases that can be run through
@@ -44,6 +44,8 @@ type DistributedTestCase interface {
 	Define(comp *wizard.CompiledIOP)
 	// Assign assigns values to the columns at runtime
 	Assign(run *wizard.ProverRuntime)
+	// Advices returns a list of advices for the module discovery.
+	Advices() []*distributed.ModuleDiscoveryAdvice
 }
 
 // TestDistributedWizard runs the distributed wizard test over multiple test cases.
@@ -85,7 +87,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		wiop    = wizard.Compile(defFunc)
 		disc    = &distributed.StandardModuleDiscoverer{
 			TargetWeight: NbRow,
-			Predivision:  1,
+			Advices:      tc.Advices(),
 		}
 		distWizard *distributed.DistributedWizard
 	)
@@ -193,6 +195,8 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 			moduleLPP   = distWizard.LPPs[moduleIndex]
 		)
 
+		// The test uses stubbed values for the initial Fiat-Shamir state for
+		// replicability reasons. This is important to help debugging.
 		witnessLPP.InitialFiatShamirState = field.NewOctupletFromStrings(
 			[8]string{
 				"123456789",
@@ -246,10 +250,8 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		t.Errorf("log-derivative-sum does not cancel. Has %v", allLogDerivativeSum.String())
 	}
 
-	for i := 0; i < len(generalMSet); i++ {
-		if !generalMSet.IsEmpty() {
-			t.Errorf("generalMSet does not cancel: ")
-		}
+	if !generalMSet.IsEmpty() {
+		t.Errorf("generalMSet does not cancel: ")
 	}
 }
 
@@ -258,6 +260,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 // and the two modules are joined by a lookup.
 type LookupTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *LookupTestCase) Name() string {
@@ -268,6 +271,8 @@ func (d *LookupTestCase) Name() string {
 // composed of 2 modules that are connected by a lookup. The two modules are
 // identical and are defined as a + b = c.
 func (d *LookupTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
@@ -301,11 +306,20 @@ func (d *LookupTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
 }
 
+// Advices returns the advices for the LookupTestCase.
+func (d *LookupTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+	}
+}
+
 // ProjectionTestCase includes a projection query in addition to
 // the global and inclusion constraints. Projection queries are compiled
 // into Horner evaluations.
 type ProjectionTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *ProjectionTestCase) Name() string {
@@ -317,6 +331,8 @@ func (d *ProjectionTestCase) Name() string {
 // - An inclusion query between modules
 // - A projection query between filtered columns
 func (d *ProjectionTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow/2, true)
@@ -403,11 +419,20 @@ func (d *ProjectionTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("filterB", smartvectors.NewRegular(filterBVals))
 }
 
+// Advices returns a list of advices for the module discovery
+func (d *ProjectionTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+	}
+}
+
 // PermutationTestCase includes a permutation query in addition to
 // the global constraints. Permutation queries are compiled into
 // grand product arguments.
 type PermutationTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *PermutationTestCase) Name() string {
@@ -418,6 +443,8 @@ func (d *PermutationTestCase) Name() string {
 // - Global constraints a + b = c for both modules
 // - A permutation query asserting that (a0, b0, c0) and (a1, b1, c1) contain the same rows
 func (d *PermutationTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
@@ -474,86 +501,10 @@ func (d *PermutationTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("c1", smartvectors.NewRegular(c1Vals))
 }
 
-// runProverGLs executes the prover for each GL module segment. It takes in a list of
-// compiled GL segments and corresponding witnesses, then runs the prover for each
-// segment. The function logs the start and end times of the prover execution for each
-// segment. It returns a slice of ProverRuntime instances, each representing the
-// result of the prover execution for a segment.
-func runProverGLs(
-	t *testing.T,
-	distWizard *distributed.DistributedWizard,
-	witnessGLs []*distributed.ModuleWitnessGL,
-) (proofs []*distributed.SegmentProof) {
-
-	var (
-		compiledGLs = distWizard.CompiledGLs
-	)
-
-	proofs = make([]*distributed.SegmentProof, len(witnessGLs))
-
-	for i := range witnessGLs {
-
-		var (
-			witnessGL = witnessGLs[i]
-			moduleGL  *distributed.RecursedSegmentCompilation
-		)
-
-		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex, witnessGL.SegmentModuleIndex)
-		for k := range distWizard.ModuleNames {
-			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
-				continue
-			}
-			moduleGL = compiledGLs[k]
-		}
-
-		if moduleGL == nil {
-			t.Fatalf("module does not exists, module=%v, distWizard.ModuleNames=%v", witnessGL.ModuleName, distWizard.ModuleNames)
-		}
-
-		moduleGL.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
-
-		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
-		proofs[i] = moduleGL.ProveSegment(witnessGL)
-		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
-
+// Advices returns a list of advices for the module discovery
+func (d *PermutationTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
 	}
-
-	return proofs
-}
-
-// runProverLPPs runs a prover for a LPP segment. It takes in a DistributedWizard
-// object, a slice of RecursedSegmentCompilation objects, and a slice of
-// ModuleWitnessLPP objects. It runs the prover for each segment and logs the
-// time at which the prover starts and ends. It returns a slice of ProverRuntime
-// instances, each representing the result of the prover execution for a segment.
-func runProverLPPs(
-	t *testing.T,
-	distWizard *distributed.DistributedWizard,
-	sharedRandomness field.Octuplet,
-	witnessLPPs []*distributed.ModuleWitnessLPP,
-) []*distributed.SegmentProof {
-
-	var (
-		proofs = make([]*distributed.SegmentProof, len(witnessLPPs))
-	)
-
-	for i := range witnessLPPs {
-
-		var (
-			witnessLPP  = witnessLPPs[i]
-			moduleIndex = witnessLPP.ModuleIndex
-			moduleLPP   = distWizard.CompiledLPPs[moduleIndex]
-		)
-
-		moduleLPP.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
-
-		witnessLPP.InitialFiatShamirState = sharedRandomness
-
-		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex, witnessLPP.SegmentModuleIndex)
-		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-		proofs[i] = moduleLPP.ProveSegment(witnessLPP)
-		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
-	}
-
-	return proofs
 }

@@ -103,26 +103,28 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		rawTrace, metadata, errT = ReadLtTraces(traceF)
 	)
 
+	// Extract commit metadata from both files
+	zkevmBinCommit, zkevmBinCommitOk := a.Metadata.String("commit")
+	traceFileCommit, traceFileCommitOk := metadata.String("commit")
+
 	// Performs a compatibility check by comparing the constraints
 	// commit of zkevm.bin with the constraints commit of the trace file.
 	// Panics if an incompatibility is detected.
 	if !*a.Settings.IgnoreCompatibilityCheck {
 		var errors []string
 
-		zkevmBinCommit, ok := a.Metadata.String("commit")
-		if !ok {
+		if !zkevmBinCommitOk {
 			errors = append(errors, "missing constraints commit metadata in 'zkevm.bin'")
 		}
 
-		traceFileCommit, ok := metadata.String("commit")
-		if !ok {
+		if !traceFileCommitOk {
 			errors = append(errors, "missing constraints commit metadata in '.lt' file")
 		}
 
 		// Check commit mismatch
 		if zkevmBinCommit != traceFileCommit {
 			errors = append(errors, fmt.Sprintf(
-				"zkevm.bin incompatible with trace file (commit %s vs %s)",
+				"zkevm.bin incompatible with trace file:\n\nzkevm.bin: %s\ntrace file:  %s",
 				zkevmBinCommit, traceFileCommit,
 			))
 		}
@@ -132,7 +134,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 			logrus.Panic("compatibility check failed with error message:\n" + strings.Join(errors, "\n"))
 		}
 	} else {
-		logrus.Info("Skip constraints compatibility check between zkevm.bin and trace file")
+		logrus.Infof("Skip constraints compatibility check between zkevm.bin and trace file\nzkevm.bin: %s\ntrace file:  %s", zkevmBinCommit, traceFileCommit)
 	}
 
 	if errT != nil {

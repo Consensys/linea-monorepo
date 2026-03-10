@@ -9,6 +9,7 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "bench"
 conflated_traces_dir = "./prover-v2/conflated"
+serialization = false
 
 [data_availability]
 prover_mode = "dev"

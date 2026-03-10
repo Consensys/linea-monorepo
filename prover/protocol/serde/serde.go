@@ -6,6 +6,8 @@ package serde
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 	"unsafe"
 )
 
@@ -29,6 +31,21 @@ func Serialize(v any) ([]byte, error) {
 	rootOff, err := encode(enc, reflect.ValueOf(v))
 	if err != nil {
 		return nil, err
+	}
+
+	// Report all unregistered interface types discovered during encoding in one go,
+	// so the caller can fix impl_registry.go without having to re-run repeatedly.
+	if len(enc.missingTypes) > 0 {
+		names := make([]string, 0, len(enc.missingTypes))
+		for t := range enc.missingTypes {
+			names = append(names, t.String())
+		}
+		sort.Strings(names)
+		return nil, fmt.Errorf(
+			"serialization failed: %d unregistered concrete type(s) need to be added to impl_registry.go:\n  - %s",
+			len(names),
+			strings.Join(names, "\n  - "),
+		)
 	}
 
 	// Construct the final metadata. PayloadOff points to the "Root" object.

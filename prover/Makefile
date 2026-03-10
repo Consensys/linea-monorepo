@@ -3,8 +3,8 @@ SHELL := /usr/bin/env bash
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := b88da9e199b6b7c8a413902f6035dd2774c43def
-GO_CORSET_VERSION := v1.1.28
+CONSTRAINTS_COMMIT_HASH := 14a017033784a05195c85fc1d8e719ad994c68c2
+GO_CORSET_VERSION := v1.2.4
 
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
 # Find where Go installs binaries
@@ -38,8 +38,6 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 	testdata \
 	extract-constraints-git-archive \
 
-# Default target: runs all tests
-all: test test-compilers  test-compilers-gnark test-benchmark-gnark
 
 ##
 ## This rule produces the go-corset binary
@@ -145,21 +143,8 @@ lib/compressor-and-shnarf-calculator-local: lib/compressor lib/shnarf_calculator
 ## Run all the unit-tests
 ##
 test:
-	@echo "Running all Go tests for Linea Monorepo prover packages..."
-	@for pkg in $(PACKAGES); do \
-		echo "--> Running tests for $$pkg"; \
-		go test -tags debug -skip TestAlignment $$pkg || exit 1; \
-	done
-	@echo "All tests completed successfully."
+	go test -tags debug ./...
 
-test-compilers:
-	go test -timeout 30s -run ^TestCompilers$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
-
-test-compilers-gnark:
-	go test -run ^TestCompilersWithGnarkVerifier$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
-
-test-benchmark-gnark:
-	go test -benchmem -timeout=1h -run=^$$ -bench ^BenchmarkCompilerWithSelfRecursionAndGnarkVerifier$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
 ##
 ## Run the CI linting
 ##
@@ -178,9 +163,3 @@ cgo-flags:
 make update-testdata-for-coordinator:
 	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/linea-monorepo/prover/backend/testing -v
 	cp -f backend/testing/**/*-*-zkProof.json ../testdata/prover/output
-
-# Target to clean Go build cache (optional, but good practice)
-clean:
-	@echo "Cleaning Go build cache..."
-	@go clean -testcache
-	@echo "Go build cache cleaned."

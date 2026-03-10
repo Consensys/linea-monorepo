@@ -26,10 +26,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
-
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -478,6 +478,30 @@ func TestSerdeValue(t *testing.T) {
 				return wiop
 			}(),
 		},
+		{
+			Name: "boxed-slice",
+			V: func() any {
+				return struct {
+					A any
+				}{A: []int{1, 2, 3}}
+			}(),
+		},
+		{
+			Name: "boxed-array",
+			V: func() any {
+				return struct {
+					A any
+				}{A: [8]int{1, 2, 3}}
+			}(),
+		},
+		{
+			Name: "boxed-map",
+			V: func() any {
+				return struct {
+					A any
+				}{A: map[string]int{"a": 1, "b": 2, "c": 3}}
+			}(),
+		},
 	}
 
 	for i := 0; i < len(testCases); i++ {
@@ -487,7 +511,7 @@ func TestSerdeValue(t *testing.T) {
 			msg, err := serde.Serialize(testCases[i].V)
 			require.NoError(t, err)
 
-			t.Logf("testcase=%v, msg=%v\n", i, string(msg))
+			// t.Logf("testcase=%v, msg=%v\n", i, string(msg))
 
 			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
 			err = serde.Deserialize(msg, unmarshaled)

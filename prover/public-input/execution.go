@@ -293,7 +293,9 @@ func checksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 	blockI = api.Sub(blockI, 1)
 	partial := partials.Lookup(blockI)[0]
 
-	return compressor.Compress(partial, nbBytes), nil
+	// Return the partial hash (before incorporating the length). The full hash
+	// Compress(partial, nbBytes) is verified separately by DataChecksumSnark.Check.
+	return partial, nil
 }
 
 // ComputeExecutionDataLinkingCommitment computes the linking commitment for
@@ -319,8 +321,8 @@ func CheckExecDataMultiCommitmentOpeningGnark(api frontend.API,
 	recoveredY [4]frontend.Variable, hashBLS frontend.Variable,
 ) {
 
-	// hash the execution data, using 3-byte packing
-	hashBLS, err := checksumExecDataSnark(api, execData[:], 3*8, execDataNBytes, compressor)
+	// hash the execution data: each element of execData is an individual byte
+	hashBLS, err := checksumExecDataSnark(api, execData[:], 8, execDataNBytes, compressor)
 	if err != nil {
 		utils.Panic("could not compute bls12377 checksum : %v", err)
 	}
@@ -329,6 +331,14 @@ func CheckExecDataMultiCommitmentOpeningGnark(api frontend.API,
 	// freshly computed hashBLS
 	recoveredXFext := computeSchwarzZipfelEvaluationPointGnark(api, hashBLS, hashKoala, compressor)
 	recoveredYFext := evaluateExecDataForSchwarzZipfelGnark(api, execData, recoveredXFext)
+
+	// Reduce the emulated Koalabear values to canonical form before
+	// converting to native variables. Without this, the emulated arithmetic
+	// may leave values unreduced (larger than the Koalabear modulus), making
+	// them incomparable with canonical values extracted from the wizard proof.
+	koalaAPI := koalagnark.NewAPI(api)
+	recoveredXFext = koalaAPI.ModReduceExt(recoveredXFext)
+	recoveredYFext = koalaAPI.ModReduceExt(recoveredYFext)
 
 	recoveredX = [4]frontend.Variable{
 		recoveredXFext.B0.A0.Native(),
@@ -444,7 +454,7 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 	var (
 		koalaAPI = koalagnark.NewAPI(api)
 		res      = koalagnark.NewExt(fext.Zero())
-numWords = len(execData) / 2
+		numWords = len(execData) / 2
 	)
 
 	for i := numWords - 1; i >= 0; i-- {
@@ -452,10 +462,10 @@ numWords = len(execData) / 2
 		packedNative := api.Add(api.Mul(execData[2*i], bigPowOfTwo(8)), execData[2*i+1])
 		packed := koalaAPI.FromFrontendVar(packedNative)
 
-if i < numWords-1 {
-		res = koalaAPI.MulExt(res, x)
-		res = koalaAPI.AddByBaseExt(res, packed)
-} else {
+		if i < numWords-1 {
+			res = koalaAPI.MulExt(res, x)
+			res = koalaAPI.AddByBaseExt(res, packed)
+		} else {
 			res.B0.A0 = packed
 		}
 	}
@@ -473,7 +483,7 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 	const blockByteSize = 16
 	hasherState := field.Octuplet{}
 
-	for {
+	for len(data) > 0 {
 		var (
 			blockBytes [blockByteSize]byte
 			blockKoala field.Octuplet
@@ -482,13 +492,12 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 		copy(blockBytes[:], data)
 
 		for w := 0; w < 8; w++ {
-			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+1])
+			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+2])
 		}
 
 		hasherState = poseidon2_koalabear.Compress(hasherState, blockKoala)
 
-		if len(data) < blockByteSize {
-			data = nil
+		if len(data) <= blockByteSize {
 			break
 		}
 

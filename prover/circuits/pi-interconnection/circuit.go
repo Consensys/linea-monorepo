@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -64,6 +65,13 @@ type Circuit struct {
 	//
 	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
 	IsAllowedCircuitID frontend.Variable `gnark:",public"`
+
+	// FirstExecutionInitialStateRootHash is the executionPublicInput of the
+	// first execution circuit. This value is useful because during the
+	// koalabear migration, on the first block. The aggregation.InitialStateRootHash
+	// will be set to a different value. Otherwise, the value won't be used
+	// in the circuit.
+	FirstExecutionInitialStateRootHash [2]frontend.Variable
 
 	MaxNbCircuits int // possibly useless TODO consider removing
 }
@@ -145,20 +153,31 @@ func (c *Circuit) Define(api frontend.API) error {
 		api.AssertIsEqual(c.DataAvailabilityPublicInput[i], api.Mul(rDA.InRange[i], piq.Sum(api)))
 	}
 
-	shnarfs := ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
-	// The circuit only has the last shnarf as input, therefore we do not perform
-	// CHECK_SHNARF. However, since they are chained, the passing of CHECK_FINAL_SHNARF
-	// implies that all shnarfs are correct.
+	var (
+		// The circuit only has the last shnarf as input, therefore we do not
+		// perform CHECK_SHNARF. However, since they are chained, the passing of
+		// CHECK_FINAL_SHNARF implies that all shnarfs are correct.
+		shnarfs = ComputeShnarfs(&hshK, c.ParentShnarf, shnarfParams)
+		// implicit: CHECK_EXEC_LIMIT
+		rExecution             = internal.NewRange(api, nbExecution, maxNbExecution)
+		finalBlockNum          = c.LastFinalizedBlockNumber
+		finalRollingHashMsgNum = c.LastFinalizedRollingHashNumber
+		finalRollingHash       = c.LastFinalizedRollingHash
+		finalBlockTime         = c.LastFinalizedBlockTimestamp
+		l2MessagesByByte       [32][]internal.VarSlice
+		execMaxNbL2Msg         = len(c.ExecutionFPIQ[0].L2MessageHashes.Values)
+		merkleNbLeaves         = 1 << c.L2MessageMerkleDepth
+		// This checks that the initial state-root hash represents a
+		// koalabear octuplet. The only situation where this clause may apply
+		// is when the value passed by the smart-contract can be on BLS12-377
+		// (on the first proof after the migration to koalabear).
+		isKoalaStateRootHash = isActuallyKoalaHash(api, c.InitialStateRootHash)
+		finalStateRootHash   = [2]frontend.Variable{
+			api.Select(isKoalaStateRootHash, c.InitialStateRootHash[0], c.FirstExecutionInitialStateRootHash[0]),
+			api.Select(isKoalaStateRootHash, c.InitialStateRootHash[1], c.FirstExecutionInitialStateRootHash[1]),
+		}
+	)
 
-	// implicit: CHECK_EXEC_LIMIT
-	rExecution := internal.NewRange(api, nbExecution, maxNbExecution)
-
-	finalBlockNum, finalRollingHashMsgNum, finalRollingHash := c.LastFinalizedBlockNumber, c.LastFinalizedRollingHashNumber, c.LastFinalizedRollingHash
-	finalBlockTime, finalState := c.LastFinalizedBlockTimestamp, c.InitialStateRootHash
-	var l2MessagesByByte [32][]internal.VarSlice
-
-	execMaxNbL2Msg := len(c.ExecutionFPIQ[0].L2MessageHashes.Values)
-	merkleNbLeaves := 1 << c.L2MessageMerkleDepth
 	for j := range l2MessagesByByte {
 		l2MessagesByByte[j] = make([]internal.VarSlice, maxNbExecution)
 		for k := range l2MessagesByByte[j] {
@@ -184,7 +203,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		pi := execution.FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: piq,
-			InitialStateRootHash:        finalState,                                           // implicit CHECK_STATE_CONSEC
+			InitialStateRootHash:        finalStateRootHash,                                   // implicit CHECK_STATE_CONSEC
 			InitialBlockNumber:          api.Add(finalBlockNum, 1),                            // implicit CHECK_NUM_CONSEC
 			ChainID:                     c.ChainConfigurationFPISnark.ChainID,                 // implicit CHECK_CHAIN_ID
 			BaseFee:                     c.ChainConfigurationFPISnark.BaseFee,                 // implicit CHECK_BASE_FEE
@@ -208,7 +227,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		finalBlockTime = pi.FinalBlockTimestamp
 		finalBlockNum = pi.FinalBlockNumber
-		finalState = pi.FinalStateRootHash
+		finalStateRootHash = pi.FinalStateRootHash
 
 		api.AssertIsEqual(c.ExecutionPublicInput[i], api.Mul(rExecution.InRange[i], pi.Sum(api))) // "open" execution circuit public input
 
@@ -528,12 +547,29 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 
 }
 
-// mashStateRoot returns a mashedStateRoot by mashing the two limbs of the state
-// root into one.
-func mashStateRoot(api frontend.API, stateRoot [2]frontend.Variable) frontend.Variable {
-	twoPow128, _ := new(big.Int).SetString("100000000000000000000000000000000", 16)
-	return api.Add(
-		api.Mul(twoPow128, stateRoot[0]),
-		stateRoot[1],
-	)
+// isActuallyKoalaHash checks if the given pair of frontend.Variable represents
+// an octuplet of field elements. This is done by splitting the variables in
+// 4 limbs (of each 32 bits) and checking that these are smaller than the
+// koalabear modulus.
+func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.Variable {
+
+	// The cmpRes is computed by adding the result of Cmp for each (allegedly)
+	// koalabear element. If the limbs are koalabear, the result of cmp will
+	// be -1. Thus, at the end of the function cmpRes would be equal to 0 and
+	// to some positive value if any of the cmpRes is NOT -1. Thus, it is
+	// an equivalent test.
+	cmpRes := frontend.Variable(8)
+
+	for i := range hash {
+		// The decomposition is done by splitting in bits, and then recombining
+		// them in 4 uint32s.
+		bitsOfHalf := api.ToBinary(hash[i], 128)
+		for k := range 4 {
+			limbs := api.FromBinary(bitsOfHalf[k*32 : (k+1)*32])
+			shouldBeNeg := api.Cmp(limbs, koalabear.Modulus())
+			cmpRes = api.Add(cmpRes, shouldBeNeg)
+		}
+	}
+
+	return api.IsZero(cmpRes)
 }

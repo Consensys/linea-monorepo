@@ -56,6 +56,15 @@ func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
 	}
 }
 
+// DoneOperation is an operation done during a round. It used to help avoid the
+// CompilerAtProverLvl to recompile the same verification steps when called
+// multiple times.
+type DoneOperation struct {
+	Type       byte // 0 for params, 1 for no-params, 2 for verifier-action
+	Round      int  // round in which the operation was done
+	PosInRound int  // # of the operation in the round
+}
+
 func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 
 	/*
@@ -67,21 +76,15 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 	*/
 	numRounds := comp.NumRounds()
 
-	type doneOperation struct {
-		Type       byte // 0 for params, 1 for no-params, 2 for verifier-action
-		Round      int  // round in which the operation was done
-		PosInRound int  // # of the operation in the round
-	}
-
 	for round := 0; round < numRounds; round++ {
 
 		if _, foundMap := comp.ExtraData[alreadyDoneInPreviousDummyProverAction]; !foundMap {
-			alreadyDonePlain := map[doneOperation]struct{}{}
+			alreadyDonePlain := map[DoneOperation]struct{}{}
 			alreadyDone := &alreadyDonePlain
 			comp.ExtraData[alreadyDoneInPreviousDummyProverAction] = alreadyDone
 		}
 
-		alreadyDone := comp.ExtraData[alreadyDoneInPreviousDummyProverAction].(*map[doneOperation]struct{})
+		alreadyDone := comp.ExtraData[alreadyDoneInPreviousDummyProverAction].(*map[DoneOperation]struct{})
 
 		// The filter returns true, as long as the query has not been marked as
 		// already compiled. This is to avoid them being compiled a second time.
@@ -90,7 +93,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 		verifierActions := []wizard.VerifierAction{}
 
 		for i, qName := range comp.QueriesParams.AllKeysAt(round) {
-			di := doneOperation{Type: 0, Round: round, PosInRound: i}
+			di := DoneOperation{Type: 0, Round: round, PosInRound: i}
 			if comp.QueriesParams.IsIgnored(qName) {
 				continue
 			}
@@ -101,7 +104,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 		}
 
 		for i, qName := range comp.QueriesNoParams.AllKeysAt(round) {
-			di := doneOperation{Type: 1, Round: round, PosInRound: i}
+			di := DoneOperation{Type: 1, Round: round, PosInRound: i}
 			if comp.QueriesNoParams.IsIgnored(qName) {
 				continue
 			}
@@ -112,7 +115,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 		}
 
 		for i := range comp.SubVerifiers.GetOrEmpty(round) {
-			di := doneOperation{Type: 2, Round: round, PosInRound: i}
+			di := DoneOperation{Type: 2, Round: round, PosInRound: i}
 			if _, found := (*alreadyDone)[di]; found {
 				continue
 			}

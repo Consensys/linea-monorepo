@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -55,11 +56,13 @@ func newP256Verify(comp *wizard.CompiledIOP, limits *Limits, src *P256VerifyData
 		Limits:               limits,
 	}
 	flattenLimbs.CsFlattenProjection(comp)
+	pragmas.AddModuleRef(res.FlattenLimbs.Mask, NAME_P256_VERIFY)
 
 	return res
 }
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
+
 	maxNbInstancesInputs := utils.DivCeil(pv.FlattenLimbs.Mask.Size(), nbRows)
 	maxNbInstancesLimit := pv.Limits.LimitCalls
 	switch maxNbInstancesLimit {

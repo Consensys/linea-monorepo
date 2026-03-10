@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf/iokeccakf"
 )
 
 type KeccakfInputs struct {
@@ -26,8 +25,6 @@ type Module struct {
 	Inputs KeccakfInputs
 	// initial state before applying the keccakf rounds.
 	InitialState kcommon.State
-	// blocks module, responsible for creating the blocks from the  Inputs.
-	KeccakfBlocks *iokeccakf.KeccakFBlocks
 	// Theta module, responsible for updating the state in the Theta step of keccakf
 	Theta *theta
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf

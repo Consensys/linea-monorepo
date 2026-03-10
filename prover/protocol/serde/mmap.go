@@ -59,11 +59,30 @@ type InterfaceHeader struct {
 	// 1 byte: Number of pointer dereferences (e.g., ***T)
 	PtrIndirection uint8
 
-	// Reserved: 5 bytes of explicit padding.
-	// Together with TypeID (2) and Indirection (1), these 5 bytes ensure
-	// that the 'Offset' field starts exactly at the 8th byte.
-	// This allows the 64-bit 'Ref' to be naturally aligned.
-	// Total header size: 2 + 1 + 5 + 8 = 16 bytes.
+	// Reserved: 5 bytes used for two distinct purposes depending on TypeID.
+	//
+	// Case A — named type (TypeID < 0xFFFF, i.e. a type from IDToType):
+	//   All 5 bytes are unused padding.  Their only role is to push 'Offset'
+	//   to byte-offset 8 so the 64-bit Ref stays naturally aligned.
+	//   Total header size: 2 + 1 + 5 + 8 = 16 bytes.
+	//
+	// Case B — composite type (TypeID == compositeTypeID == 0xFFFF):
+	//   PtrIndirection is unused (always 0).
+	//   Reserved[0]   composite kind:
+	//                   compositeKindSlice (1) — []ElemType
+	//                   compositeKindMap   (2) — map[KeyType]ValType
+	//                   compositeKindArray (3) — [N]ElemType
+	//   Reserved[1:3] primary TypeID   (little-endian uint16):
+	//                   elem type for slice/array; key type for map.
+	//   Reserved[3:5] secondary value  (little-endian uint16):
+	//                   val TypeID for map; array length for array.
+	//                   Unused (0) for slice.
+	//   Offset        points to the serialised slice/map/array data, exactly
+	//                 as it would be for a top-level value of that type.
+	//
+	// Case B is useful when the serialized data contains boxed composites such
+	// as ``interface{}(map[string]T)`` or ``interface{}([]T)`` because we
+	// cannot register them in the TypeToID registry.
 	Reserved [5]uint8
 
 	// 8 bytes: File or memory offset to the actual data
@@ -91,6 +110,19 @@ type FileSlice struct {
 	// Original capacity (used to restore slice header)
 	Cap int64
 }
+
+// compositeTypeID is a sentinel TypeID stored in InterfaceHeader.TypeID to
+// signal that the interface holds a composite type (slice, map, or array) rather
+// than a named type from the TypeToID registry.  0xFFFF is safely above the
+// current maximum registered ID (~215) and cannot be confused with a real entry.
+const compositeTypeID = uint16(0xFFFF)
+
+// Composite kind codes stored in InterfaceHeader.Reserved[0].
+const (
+	compositeKindSlice = uint8(1)
+	compositeKindMap   = uint8(2)
+	compositeKindArray = uint8(3)
+)
 
 func SizeOf[T any]() int64 {
 	var z T

@@ -47,6 +47,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
+			ParentStateRootHashContract:             req.ParentAggregationStateRootHashContract,
 			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
 			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
 		}
@@ -71,7 +72,12 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
-			cf.ParentStateRootHash = po.ParentStateRootHash
+			// If the user does not pass the value (which will be the case 99%
+			// of the time), we assume the parent state root hash is the same
+			// as the first block's state root hash.
+			if cf.ParentStateRootHashContract.IsZero() {
+				cf.ParentStateRootHashContract = po.ParentStateRootHash.ToBytes32()
+			}
 			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 			cf.LastFinalizedFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		}
@@ -232,7 +238,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
+		ParentStateRootHash:                     cf.ParentStateRootHashContract.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		L1RollingHash:                           cf.L1RollingHash,
@@ -268,7 +274,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	pubInputParts := public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
+		ParentStateRootHash:                     cf.ParentStateRootHashContract.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
@@ -319,7 +325,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 func validate(cf *CollectedFields) (err error) {
 
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
-	utils.ValidateHexString(&err, cf.ParentStateRootHash.Hex(), "ParentStateRootHash : %w", 32)
+	utils.ValidateHexString(&err, cf.ParentStateRootHashContract.Hex(), "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.LastFinalizedFtxRollingHash, "parentAggregationLastFtxRollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.FinalFtxRollingHash, "FinalFtxRollingHash : %w", 32)

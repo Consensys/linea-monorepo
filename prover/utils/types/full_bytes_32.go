@@ -107,3 +107,13 @@ func LeftPadToFullBytes32(b []byte) FullBytes32 {
 	c := append(make([]byte, 32-len(b)), b...)
 	return FullBytes32(c)
 }
+
+// IsZero checks if the FullBytes32 is all zeros
+func (f FullBytes32) IsZero() bool {
+	for i := range f {
+		if f[i] != 0 {
+			return false
+		}
+	}
+	return true
+}

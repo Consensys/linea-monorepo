@@ -152,6 +152,28 @@ func (p Projection) Name() ifaces.QueryID {
 // Check implements the [ifaces.Query] interface
 func (p Projection) Check(run ifaces.Runtime) error {
 
+	// First, verify that all filter columns are binary (0 or 1 only).
+	// Non-binary selectors cause panics in the Horner compilation step,
+	// so catching them here gives a much clearer error message.
+	for partIdx, f := range p.Inp.FiltersA {
+		for row := 0; row < f.Size(); row++ {
+			v := f.GetColAssignmentAt(run, row)
+			if !v.IsZero() && !v.IsOne() {
+				return fmt.Errorf("projection %v: FilterA[%d] is non-binary at row %d: value=%v (col=%v)",
+					p.ID, partIdx, row, v.String(), f.GetColID())
+			}
+		}
+	}
+	for partIdx, f := range p.Inp.FiltersB {
+		for row := 0; row < f.Size(); row++ {
+			v := f.GetColAssignmentAt(run, row)
+			if !v.IsZero() && !v.IsOne() {
+				return fmt.Errorf("projection %v: FilterB[%d] is non-binary at row %d: value=%v (col=%v)",
+					p.ID, partIdx, row, v.String(), f.GetColID())
+			}
+		}
+	}
+
 	// The function is implemented by creating two iterator functions and
 	// checking that they yield the same values.
 	var (

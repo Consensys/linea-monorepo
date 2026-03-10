@@ -90,7 +90,7 @@ func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) *IsZeroCtx {
 	ctx.Round = max(roundMask, ctx.Round)
 
 	if sizeMask != size {
-		utils.Panic("the size of the mask if %v but the column's size is %v", sizeMask, size)
+		utils.Panic("the size of the mask is %v but the column's size is %v", sizeMask, size)
 	}
 
 	ctx.Mask = m
@@ -128,7 +128,6 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ONE_IF_C_ISZERO", ctx.CtxID),
 		sym.Add(ctx.IsZero, sym.Mul(ctx.InvOrZero, ctx.C), sym.Neg(mask)),
 	)
-
 	comp.InsertGlobal(
 		ctx.Round,
 		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ZERO_IF_C_ISNONZERO", ctx.CtxID),

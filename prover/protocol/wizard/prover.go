@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"path"
+	"runtime"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -199,13 +200,14 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof 
 
 // Resume resumes a [ProverRuntime] from a checkpoint till the end (the last
 // round) and returns a pointer to self.
-func (runtime *ProverRuntime) Resume() *ProverRuntime {
-	round := runtime.Spec.NumRounds()
-	for runtime.currRound+1 < round {
-		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
-		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+func (pRuntime *ProverRuntime) Resume() *ProverRuntime {
+	round := pRuntime.Spec.NumRounds()
+	for pRuntime.currRound+1 < round {
+		pRuntime.exec(fmt.Sprintf("next-after-round-%d", pRuntime.currRound), pRuntime.goNextRound)
+		pRuntime.exec(fmt.Sprintf("prover-steps-round-%d", pRuntime.currRound), pRuntime.runProverSteps)
+		runtime.GC()
 	}
-	return runtime
+	return pRuntime
 }
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
@@ -217,23 +219,24 @@ func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *Prov
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
 func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int, IsBLS bool) *ProverRuntime {
-	runtime := c.createProver(IsBLS)
-	runtime.HighLevelProver = highLevelProver
+	pRuntime := c.createProver(IsBLS)
+	pRuntime.HighLevelProver = highLevelProver
 
 	// Execute the high-level prover as a ProverAction
-	if runtime.HighLevelProver != nil {
-		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
+	if pRuntime.HighLevelProver != nil {
+		pRuntime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
 	}
 
 	// Run sub-prover steps for the initial round
-	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+	pRuntime.exec(fmt.Sprintf("prover-steps-round%d", pRuntime.currRound), pRuntime.runProverSteps)
 
-	for runtime.currRound+1 < round {
-		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
-		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+	for pRuntime.currRound+1 < round {
+		pRuntime.exec(fmt.Sprintf("next-after-round-%d", pRuntime.currRound), pRuntime.goNextRound)
+		pRuntime.exec(fmt.Sprintf("prover-steps-round-%d", pRuntime.currRound), pRuntime.runProverSteps)
+		runtime.GC()
 	}
 
-	return &runtime
+	return &pRuntime
 }
 
 // ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
@@ -574,7 +577,6 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasLeftPaddedPragma:
 
 		if !hasLeftPaddedRange {
-			// logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a right-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion
@@ -592,7 +594,6 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasRightPaddedPragma:
 
 		if !hasRightPaddedRange {
-			// logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a left-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion
@@ -752,7 +753,7 @@ func (run *ProverRuntime) goNextRound() {
 	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
 		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
 		for i := range fsHooks {
-						fsHooks[i].Run(run)
+			fsHooks[i].Run(run)
 		}
 	}
 	var seed field.Octuplet
@@ -1136,7 +1137,6 @@ func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
 // exec: executes the `action` with the performance monitor if active
 func (runtime *ProverRuntime) exec(name string, action any) {
 
-	logrus.Infof("[prover runtime] started running prover step: name=%v step=%T", name, action)
 	t := time.Now()
 
 	defer func() {

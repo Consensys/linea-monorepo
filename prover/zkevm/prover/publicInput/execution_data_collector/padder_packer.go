@@ -464,14 +464,17 @@ func DefineStepThreeProjectionQueries(comp *wizard.CompiledIOP, ppp *PadderPacke
 }
 
 func DefineFilterWithoutGapsPadded(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
-	// the filter without gaps is padded with non-binary values from the CounterColumnPadded column
-	// making it fill up to a multiple of 8 rows
+	// FilterWithoutGapsPadded is a binary filter covering both active rows
+	// (where FilterWithoutGaps=1) and padded rows (where CounterColumnPadded>0).
+	// We use (1 - SelectorCounterColumnPadded) which is 1 when
+	// CounterColumnPadded != 0, and 0 otherwise. Since the active and padded
+	// regions don't overlap, their sum is always 0 or 1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_FILTER_WITHOUT_GAPS_PADDED", name),
 		sym.Sub(
-			ppp.FilterWithoutGapsPadded, // when the Periodic filter is at the beginning of a segment of 8
+			ppp.FilterWithoutGapsPadded,
 			ppp.FilterWithoutGaps,
-			ppp.CounterColumnPadded,
+			sym.Sub(1, ppp.SelectorCounterColumnPadded),
 		),
 	)
 }
@@ -607,7 +610,11 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 			lastRow = i
 		}
 	}
-	if lastRow%(2*common.NbLimbU128) != 0 {
+	// Pad counterColumnPadded to fill the current block of 16 rows.
+	// The check uses (lastRow+1) because lastRow is 0-indexed: e.g. 17 active
+	// rows means lastRow=16, and (16+1)%16=1 ≠ 0, so padding is needed.
+	// We also guard against the edge case where there are no active rows.
+	if filterWithoutGaps[lastRow].IsOne() && (lastRow+1)%(2*common.NbLimbU128) != 0 {
 		for i := lastRow + 1; i%(2*common.NbLimbU128) != 0; i++ {
 			counterColumnPadded[i].SetUint64(uint64(i % (2 * common.NbLimbU128)))
 		}
@@ -637,7 +644,14 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 	run.AssignColumn(ppp.OneColumnBytesSum.GetColID(), sv.NewRegular(oneColumnBytesSum))
 	run.AssignColumn(ppp.CounterColumn.GetColID(), sv.NewRegular(counterColumn))
 	run.AssignColumn(ppp.CounterColumnPadded.GetColID(), sv.NewRegular(counterColumnPadded))
-	run.AssignColumn(ppp.FilterWithoutGapsPadded.GetColID(), sv.Add(sv.NewRegular(filterWithoutGaps), sv.NewRegular(counterColumnPadded)))
+	// FilterWithoutGapsPadded is binary: 1 where either filterWithoutGaps or counterColumnPadded is non-zero
+	filterWithoutGapsPadded := make([]field.Element, len(filterWithoutGaps))
+	for i := range filterWithoutGaps {
+		if !filterWithoutGaps[i].IsZero() || !counterColumnPadded[i].IsZero() {
+			filterWithoutGapsPadded[i].SetOne()
+		}
+	}
+	run.AssignColumn(ppp.FilterWithoutGapsPadded.GetColID(), sv.NewRegular(filterWithoutGapsPadded))
 	for j := range ppp.PeriodicFilter {
 		run.AssignColumn(ppp.PeriodicFilter[j].GetColID(), sv.NewRegular(periodicFilter[j]))
 	}

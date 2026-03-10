@@ -64,7 +64,7 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 	}
 
 	if !foundAny {
-		utils.Panic("No commitment found in the local constraint")
+		utils.Panic("No commitment found in the local constraint, query id %v", id)
 	}
 
 	if domainSize == 0 {

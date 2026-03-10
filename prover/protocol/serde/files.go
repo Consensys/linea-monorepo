@@ -150,6 +150,7 @@ func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	_ = tmpFile.Close()
 
 	// Atomic Rename: On POSIX, this replaces the file instantly.
+	// #nosec G703 -- path traversal are not a concern as this is not meant to be run in a browser.
 	if err := os.Rename(tmpName, filePath); err != nil {
 		return fmt.Errorf("rename failed: %w", err)
 	}

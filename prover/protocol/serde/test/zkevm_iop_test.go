@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime/debug"
+	"sync"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -39,8 +40,17 @@ var (
 )
 
 var (
-	z = zkevm.GetTestZkEVM()
+	z_        *zkevm.ZkEvm
+	_setZOnce = &sync.Once{}
 )
+
+func getTestZkEVM() *zkevm.ZkEvm {
+	_setZOnce.Do(func() {
+		z_ = zkevm.GetTestZkEVM()
+	})
+
+	return z_
+}
 
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
@@ -98,7 +108,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 
 func TestSerdeZkEVM(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	runSerdeTest(t, z, "ZKEVM", true, false)
+	runSerdeTest(t, getTestZkEVM(), "ZKEVM", true, false)
 }
 
 // returns a dummy column name

@@ -220,6 +220,11 @@ func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		h.state[i] = newState[i]
 	}
+	// Ensure State() returns newState immediately after SetState.
+	// Reset() clears h.lastSum to zeros, but sumSoft() uses h.lastSum when
+	// nPushed == nPushedLastSum (both 0 after Reset). Without this, State()
+	// would return zeros instead of newState.
+	h.lastSum = h.state
 }
 
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
