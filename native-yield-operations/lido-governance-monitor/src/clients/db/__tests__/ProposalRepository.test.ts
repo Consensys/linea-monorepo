@@ -229,7 +229,7 @@ describe("ProposalRepository", () => {
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "ANALYZED" });
 
       // Act
-      await repository.saveAnalysis("uuid-1", assessment, 75, "claude-sonnet-4", 60, "v1.0");
+      await repository.saveAnalysis("uuid-1", assessment, "claude-sonnet-4", 60, "v1.0");
 
       // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
@@ -237,7 +237,6 @@ describe("ProposalRepository", () => {
         data: expect.objectContaining({
           state: "ANALYZED",
           assessmentJson: assessment,
-          riskScore: 75,
           llmModel: "claude-sonnet-4",
         }),
       });
@@ -256,22 +255,6 @@ describe("ProposalRepository", () => {
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: { analysisAttemptCount: { increment: 1 } },
-      });
-    });
-  });
-
-  describe("incrementNotifyAttempt", () => {
-    it("increments the notify attempt count", async () => {
-      // Arrange
-      mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", notifyAttemptCount: 2 });
-
-      // Act
-      await repository.incrementNotifyAttempt("uuid-1");
-
-      // Assert
-      expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
-        where: { id: "uuid-1" },
-        data: { notifyAttemptCount: { increment: 1 } },
       });
     });
   });
@@ -340,7 +323,7 @@ describe("ProposalRepository", () => {
   });
 
   describe("markNotified", () => {
-    it("marks proposal as NOTIFIED with notifiedAt timestamp", async () => {
+    it("marks proposal as NOTIFIED with notifiedAt timestamp and increments attempt count", async () => {
       // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "NOTIFIED" });
 
@@ -353,7 +336,57 @@ describe("ProposalRepository", () => {
         data: expect.objectContaining({
           state: "NOTIFIED",
           notifiedAt: expect.any(Date),
+          notifyAttemptCount: { increment: 1 },
         }),
+      });
+    });
+  });
+
+  describe("markNotifyFailed", () => {
+    it("marks proposal as NOTIFY_FAILED and increments attempt count", async () => {
+      // Arrange
+      mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "NOTIFY_FAILED", notifyAttemptCount: 2 });
+
+      // Act
+      await repository.markNotifyFailed("uuid-1");
+
+      // Assert
+      expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
+        where: { id: "uuid-1" },
+        data: {
+          state: "NOTIFY_FAILED",
+          stateUpdatedAt: expect.any(Date),
+          notifyAttemptCount: { increment: 1 },
+        },
+      });
+    });
+  });
+
+  describe("attemptMarkNotifyFailed", () => {
+    it("returns updated proposal on success", async () => {
+      // Arrange
+      const updated = { id: "uuid-1", state: "NOTIFY_FAILED", notifyAttemptCount: 2 };
+      mockPrisma.proposal.update.mockResolvedValue(updated);
+
+      // Act
+      const result = await repository.attemptMarkNotifyFailed("uuid-1");
+
+      // Assert
+      expect(result).toEqual(updated);
+    });
+
+    it("returns null and logs critical when markNotifyFailed throws", async () => {
+      // Arrange
+      mockPrisma.proposal.update.mockRejectedValue(new Error("Database error"));
+
+      // Act
+      const result = await repository.attemptMarkNotifyFailed("uuid-1");
+
+      // Assert
+      expect(result).toBeNull();
+      expect(logger.critical).toHaveBeenCalledWith("attemptMarkNotifyFailed failed", {
+        id: "uuid-1",
+        error: expect.any(Error),
       });
     });
   });

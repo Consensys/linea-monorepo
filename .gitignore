@@ -174,3 +174,4 @@ prover/*.sh
 
 .claude/settings.local.json
 contracts/.claude/settings.local.json
+*.analysis-report.html

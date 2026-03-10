@@ -29,6 +29,7 @@ describe("Proposal Lifecycle Integration", () => {
 
   const createMockAssessment = (riskScore: number): Assessment => ({
     riskScore,
+    effectiveRisk: Math.round((riskScore * 85) / 100),
     riskLevel: riskScore >= 61 ? "high" : riskScore >= 31 ? "medium" : "low",
     confidence: 85,
     proposalType: "discourse",
@@ -63,7 +64,6 @@ describe("Proposal Lifecycle Integration", () => {
     assessmentPromptVersion: assessment ? "v1.0" : null,
     analyzedAt: assessment ? new Date() : null,
     assessmentJson: assessment ?? null,
-    riskScore: assessment?.riskScore ?? null,
     notifyAttemptCount: 0,
     notifiedAt: null,
   });
@@ -86,8 +86,10 @@ describe("Proposal Lifecycle Integration", () => {
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),
       incrementAnalysisAttempt: jest.fn(),
-      incrementNotifyAttempt: jest.fn(),
       markNotified: jest.fn(),
+      markNotifyFailed: jest.fn(),
+      attemptMarkNotifyFailed: jest.fn(),
+      findLatestSourceIdBySource: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
     processor = new ProposalProcessor(
@@ -108,7 +110,6 @@ describe("Proposal Lifecycle Integration", () => {
       const highRiskAssessment = createMockAssessment(75);
       const newProposal = createMockProposal(ProposalState.NEW);
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, highRiskAssessment);
-      analyzedProposal.riskScore = 75; // Ensure riskScore is set
       const notifiedProposal = createMockProposal(ProposalState.NOTIFIED, highRiskAssessment);
 
       // Phase 1: Process NEW proposal
@@ -127,7 +128,6 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
         newProposal.id,
         highRiskAssessment,
-        75,
         "claude-sonnet-4",
         60,
         "v1.0",
@@ -138,7 +138,6 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
@@ -157,7 +156,6 @@ describe("Proposal Lifecycle Integration", () => {
       const lowRiskAssessment = createMockAssessment(30);
       const newProposal = createMockProposal(ProposalState.NEW);
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, lowRiskAssessment);
-      analyzedProposal.riskScore = 30;
       const notNotifiedProposal = { ...analyzedProposal, state: ProposalState.NOT_NOTIFIED };
 
       proposalRepository.findByStateForAnalysis
@@ -222,7 +220,6 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
         failedProposal.id,
         highRiskAssessment,
-        75,
         "claude-sonnet-4",
         60,
         "v1.0",
@@ -266,22 +263,20 @@ describe("Proposal Lifecycle Integration", () => {
         .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       slackClient.sendAuditLog.mockResolvedValue({ success: true });
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
-      proposalRepository.updateState.mockResolvedValue(failedProposal);
+      proposalRepository.markNotifyFailed.mockResolvedValue(failedProposal);
 
       // Act - First cycle
       await notificationService.notifyOnce();
 
       // Assert - Should transition to NOTIFY_FAILED
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(analyzedProposal.id, ProposalState.NOTIFY_FAILED);
+      expect(proposalRepository.markNotifyFailed).toHaveBeenCalledWith(analyzedProposal.id);
 
       // Second cycle: Slack succeeds
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendAuditLog.mockResolvedValue({ success: true });
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 2 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
@@ -303,7 +298,6 @@ describe("Proposal Lifecycle Integration", () => {
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendProposalAlert.mockResolvedValue({ success: true });
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
       proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
       // Act
