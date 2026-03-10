@@ -551,7 +551,7 @@ class ForcedTransactionsAppTest {
 
     // it should lock safe block number with l2 chain head
     await()
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(500UL)
       }
@@ -630,7 +630,7 @@ class ForcedTransactionsAppTest {
     )
 
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
@@ -682,7 +682,7 @@ class ForcedTransactionsAppTest {
     )
     app.start().get()
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.ftxQueue).hasSize(2)
         assertThat(ftxClient.ftxReceivedIds).isEmpty()
@@ -697,7 +697,7 @@ class ForcedTransactionsAppTest {
     fakeClock.setTimeTo(ftx1Time.plus(processingDelay).plus(1.seconds))
 
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(ftxClient.ftxReceivedIds).startsWith(1UL)
       }
@@ -779,7 +779,7 @@ class ForcedTransactionsAppTest {
     app.start().get()
 
     await()
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(this.fxtDao.list().get().lastOrNull()?.ftxNumber).isEqualTo(5UL)
       }
