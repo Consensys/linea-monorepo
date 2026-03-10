@@ -105,7 +105,7 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
       .execute(minerNode.nodeRequests())
     buildNewBlockAndWait()
 
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.bytes.toHexString()))
     invalidCalls.forEach { invalidCall ->
       minerNode.verify(
         eth.expectNoTransactionReceipt(Hash.sha3(invalidCall.encodedContractCall)),
