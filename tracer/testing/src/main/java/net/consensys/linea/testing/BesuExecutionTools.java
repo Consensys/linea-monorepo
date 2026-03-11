@@ -58,6 +58,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster;
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.TestInfo;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.methods.response.EthBlock.Block;
@@ -522,8 +523,16 @@ public class BesuExecutionTools {
                 ethTransactions.block(
                     DefaultBlockParameter.valueOf(BigInteger.valueOf(startBlockNumber - 1))))
             .getStateRoot();
-    MerkelProofResponse merkelProofResponse =
-        rollupGetZkEVMStateMerkleProofV0(startBlockNumber, endBlockNumber);
+    final MerkelProofResponse[] merkelProofHolder = new MerkelProofResponse[1];
+    Awaitility.await("Shomei syncs block range " + startBlockNumber + "-" + endBlockNumber)
+        .ignoreExceptionsInstanceOf(AssertionError.class)
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () ->
+                merkelProofHolder[0] =
+                    rollupGetZkEVMStateMerkleProofV0(startBlockNumber, endBlockNumber));
+    MerkelProofResponse merkelProofResponse = merkelProofHolder[0];
     log.info("rollupGetZkEVMStateMerkleProofV0={}", merkelProofResponse);
     ExecutionProof.BatchExecutionProofRequestDto executionProofRequestDto =
         new ExecutionProof.BatchExecutionProofRequestDto(
