@@ -71,11 +71,21 @@ class DenylistOperationTracerTest {
   }
 
   @Test
-  void cleansUpThreadLocalOnEndTransaction() {
+  void addressesAvailableAfterTransactionProcessingCompletes() {
+    tracer.traceStartTransaction(null, null);
+    tracer.traceContextEnter(mockFrame(ADDRESS_1));
+
+    // Addresses must still be available after execution ends (for post-processing checks)
+    assertThat(tracer.getCalledAddresses()).containsExactly(ADDRESS_1);
+  }
+
+  @Test
+  void nextTransactionClearsAddressesFromPreviousTransaction() {
     tracer.traceContextEnter(mockFrame(ADDRESS_1));
     assertThat(tracer.getCalledAddresses()).isNotEmpty();
 
-    tracer.traceEndTransaction(null, null, true, null, null, 0, null, 0);
+    // Starting a new transaction clears the previous one's addresses
+    tracer.traceStartTransaction(null, null);
 
     assertThat(tracer.getCalledAddresses()).isEmpty();
   }

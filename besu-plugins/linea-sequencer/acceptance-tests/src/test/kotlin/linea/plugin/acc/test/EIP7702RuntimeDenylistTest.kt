@@ -46,7 +46,9 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
 
   @Test
   fun transactionCallingDeniedAddressIsNotSelected() {
-    val addressCaller = deployAddressCaller()
+    // Deploy a second contract to use as the denied target
+    val targetContract = deployAddressCaller()
+    val callerContract = deployAddressCaller()
     val web3j = minerNode.nodeRequests().eth()
     val txManager = RawTransactionManager(
       web3j,
@@ -54,23 +56,23 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
       CHAIN_ID,
     )
 
-    // Deny the address of the AddressCaller contract itself so that when a tx
-    // is sent TO the contract (which triggers a context enter with the contract
-    // as recipient), the denylist execution selector rejects it.
-    val deniedAddress = addressCaller.contractAddress
+    // Deny the target contract address. The tx.to is the caller contract (not denied),
+    // so pre-processing allows it. But during execution, the caller contract CALLs
+    // the denied target, which the DenylistExecutionSelector catches in post-processing.
+    val deniedAddress = targetContract.contractAddress
     tempDenyList.writeText(deniedAddress)
     reloadSelectorPlugin()
 
-    // Send a tx that calls the denied address via the contract
+    // Send a tx TO the caller contract, which internally CALLs the denied target
     val txResponse = txManager.sendTransaction(
       DefaultGasProvider.GAS_PRICE,
       DefaultGasProvider.GAS_LIMIT,
-      addressCaller.contractAddress,
-      addressCaller.callAddress(deniedAddress).encodeFunctionCall(),
+      callerContract.contractAddress,
+      callerContract.callAddress(deniedAddress).encodeFunctionCall(),
       BigInteger.ZERO,
     )
 
-    // The tx enters the pool (no pool-level denial for caller addresses)
+    // The tx enters the pool (tx.to is the caller contract, not denied)
     assertThat(txResponse.transactionHash).isNotNull()
 
     // Use a canary transfer to verify a block was mined

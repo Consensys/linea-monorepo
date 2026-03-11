@@ -10,13 +10,10 @@ package net.consensys.linea.sequencer.txselection.selectors;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -32,25 +29,12 @@ public class DenylistOperationTracer implements OperationTracer {
 
   @Override
   public void traceStartTransaction(final WorldView worldView, final Transaction transaction) {
-    calledAddresses.get().clear();
+    calledAddresses.remove();
   }
 
   @Override
   public void traceContextEnter(final MessageFrame frame) {
     calledAddresses.get().add(frame.getRecipientAddress());
-  }
-
-  @Override
-  public void traceEndTransaction(
-      final WorldView worldView,
-      final Transaction tx,
-      final boolean status,
-      final Bytes output,
-      final List<Log> logs,
-      final long gasUsed,
-      final Set<Address> selfDestructs,
-      final long timeNs) {
-    calledAddresses.remove();
   }
 
   public Set<Address> getCalledAddresses() {
