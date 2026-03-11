@@ -67,7 +67,7 @@ modules = [
     {module = "RLP_TXN_RCPT", limit = 65536, limit_large = 131072},
     {module = "RLP_AUTH", limit = 16384, limit_large = 32768},
     {module = "ROM", limit = 8388608, limit_large = 8388608},
-    {module = "ROMLEX", limit = 1024, limit_large = 2048},
+    {module = "ROM_LEX", limit = 1024, limit_large = 2048},
     {module = "SHAKIRA_DATA", limit = 65536, limit_large = 65536},
     {module = "SHF", limit = 262144, limit_large = 524288},
     {module = "STP", limit = 16384, limit_large = 32768},
