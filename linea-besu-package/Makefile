@@ -8,11 +8,11 @@ TRACER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
 SEQUENCER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
 LOCAL_SEQUENCER_DIST_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/install/sequencer)
 LOCAL_TRACER_DIST_FOLDER ?= $(abspath ../tracer/plugins/build/install/linea-tracer)
-LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/hyperledger-besu/build/distributions)
+LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/besu-eth/build/distributions)
 
 build-besu-local-and-update-lib-version:
 	cd ..; \
-	echo "Build hyperledger/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
+	echo "Build besu-eth/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
 	./gradlew buildAndUpdateBesuVersionInLibsVersions
 
 build-tracer-and-sequencer:

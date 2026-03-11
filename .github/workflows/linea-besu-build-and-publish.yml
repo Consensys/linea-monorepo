@@ -40,7 +40,7 @@ jobs:
       - name: Check besu distribution exists
         id: check_besu_dist
         run: |
-          BESU_DIST="tmp/hyperledger-besu/build/distributions/besu-${{ steps.release_versions.outputs.besu_version }}.tar.gz"
+          BESU_DIST="tmp/besu-eth/build/distributions/besu-${{ steps.release_versions.outputs.besu_version }}.tar.gz"
           if [ -f "$BESU_DIST" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -56,7 +56,7 @@ jobs:
           python3 -m venv tmp/cloudsmith-env
           source tmp/cloudsmith-env/bin/activate
           python3 -m pip install --upgrade cloudsmith-cli
-          cloudsmith push raw consensys/linea-besu tmp/hyperledger-besu/build/distributions/besu-${LINEA_BESU_VERSION}.tar.gz \
+          cloudsmith push raw consensys/linea-besu tmp/besu-eth/build/distributions/besu-${LINEA_BESU_VERSION}.tar.gz \
             --republish \
             --name 'linea-besu.tar.gz' \
             --version "${LINEA_BESU_VERSION}" \
