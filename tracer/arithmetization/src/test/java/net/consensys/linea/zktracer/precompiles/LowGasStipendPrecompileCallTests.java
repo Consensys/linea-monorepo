@@ -255,8 +255,9 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, Integer.MAX_VALUE, false));
       }
     }
-    arguments.add(Arguments.of(P256_VERIFY, ValueCase.ZERO, COST_MINUS_ONE, 160, false));
-    arguments.add(Arguments.of(BLS12_G1ADD, ValueCase.ZERO, COST, 13, false));
+    // arguments.clear();
+    // arguments.add(Arguments.of(P256_VERIFY, ValueCase.ZERO, COST_MINUS_ONE, 160, false));
+    // arguments.add(Arguments.of(BLS12_G1ADD, ValueCase.ZERO, COST, 13, false));
     return arguments;
   }
 
