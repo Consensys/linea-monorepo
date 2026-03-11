@@ -45,6 +45,15 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
+      - name: show folder structure
+        if: ${{ inputs.linea_besu_package_image_tag == '' }}
+        shell: bash
+        run: |
+          cd linea-besu-package
+          sudo apt update
+          sudo apt-get install --no-install-recommends --assume-yes tree
+          tree .
+
       - name: Install Go (for prover build)
         if: ${{ inputs.linea_besu_package_image_tag != '' &&  inputs.prover_image_tag == '' }}
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
