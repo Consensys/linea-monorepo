@@ -70,9 +70,9 @@ fresh-start-l2-blockchain-only:
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
-## Run with tracing-v2-ci with partial prover
-start-env-with-tracing-v2-ci-partial-prover:
-	make start-env COMPOSE_FILE="docker/compose-tracing-v2-ci-extension.yml -f docker/compose-tracing-v2-partialprover-override.yml"  LINEA_COORDINATOR_SIGNER_TYPE=web3signer
+## Run with tracing-v2 with partial prover
+start-env-with-tracing-v2-partial-prover:
+	make start-env COMPOSE_FILE="docker/compose-tracing-v2.yml -f docker/compose-tracing-v2-partialprover-override.yml"
 
 ## Enable L2 geth node
 start-env-with-tracing-v2-extra:

@@ -1,7 +1,7 @@
 # required for `source`
 SHELL := /usr/bin/env bash
 
-VERSION := $(shell git rev-parse --short=7 HEAD)
+VERSION ?= $(shell git rev-parse --short=7 HEAD)
 
 CONSTRAINTS_COMMIT_HASH := 14a017033784a05195c85fc1d8e719ad994c68c2
 GO_CORSET_VERSION := v1.2.4
@@ -120,7 +120,7 @@ bin/checker:
 ##
 docker:
 	echo "Building docker image for the prover version ${VERSION}"
-	cd .. && docker buildx build -f prover/Dockerfile --build-context prover=prover/ -t consensys/linea-prover .
+	cd .. && docker buildx build -f prover/Dockerfile --build-context prover=prover/ -t consensys/linea-prover:${VERSION} .
 
 ##
 ## Build compressor library
