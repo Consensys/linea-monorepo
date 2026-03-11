@@ -55,6 +55,7 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
+import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.blockhash.BlockHashLookup;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
@@ -304,7 +305,10 @@ public class ReplayExecutionEnvironment {
    */
   private static MutableWorldState initWorld(final ConflationSnapshot conflation) {
     ReferenceTestWorldState world =
-        ReferenceTestWorldState.create(new HashMap<>(), EvmConfiguration.DEFAULT);
+        LineaBonsaiReferenceTestWorldState.create(
+            new HashMap<>(),
+            EvmConfiguration.DEFAULT,
+            DataStorageConfiguration.DEFAULT_BONSAI_CONFIG);
     WorldUpdater updater = world.updater();
     for (AccountSnapshot account : conflation.accounts()) {
       // Construct contract address
