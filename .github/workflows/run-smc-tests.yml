@@ -54,16 +54,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-hardhat-compilers-
 
-      - name: Pre-download solc 0.8.33 binary
-        run: |
-          SOLC_DIR=~/.cache/hardhat-nodejs/compilers-v2/linux-amd64
-          mkdir -p "$SOLC_DIR"
-          if [ ! -f "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714" ]; then
-            curl -L -o "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714" \
-              "https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.33+commit.e14f2714"
-            chmod +x "$SOLC_DIR/solc-linux-amd64-v0.8.33+commit.e14f2714"
-          fi
-
       - name: Check JS formatting
         run: pnpm -F contracts run lint:ts
 
