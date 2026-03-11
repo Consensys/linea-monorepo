@@ -90,12 +90,11 @@ runs:
 
     - name: Build tracer and sequencer from source
       shell: bash
-      run: |
-        TRACER_PLUGIN_VERSION=${{ steps.metadata.outputs.tracer_plugin_version }} \
-        SEQUENCER_PLUGIN_VERSION=${{ steps.metadata.outputs.sequencer_plugin_version }} \
-        cd linea-besu-package && make build-tracer-and-sequencer
+      run: cd linea-besu-package && make build-tracer-and-sequencer
       env:
         JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+        TRACER_PLUGIN_VERSION: ${{ steps.metadata.outputs.tracer_plugin_version }}
+        SEQUENCER_PLUGIN_VERSION: ${{ steps.metadata.outputs.sequencer_plugin_version }}
 
     - name: build the linea artifacts
       id: assemble
