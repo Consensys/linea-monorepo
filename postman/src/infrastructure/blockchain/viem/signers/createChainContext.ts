@@ -11,8 +11,8 @@ export async function createChainContext(
   signerConfig: SignerConfig,
   logger: ILogger,
 ): Promise<ChainContext> {
-  const publicClient = createPublicClient({ transport: http(rpcUrl) });
-  const chainId = await publicClient.getChainId();
+  const tempClient = createPublicClient({ transport: http(rpcUrl) });
+  const chainId = await tempClient.getChainId();
 
   const chain = defineChain({
     id: chainId,
@@ -20,6 +20,8 @@ export async function createChainContext(
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: { default: { http: [rpcUrl] } },
   });
+
+  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
 
   const signer = createSignerClient(signerConfig, logger, rpcUrl, chain);
   const account = contractSignerToViemAccount(signer);

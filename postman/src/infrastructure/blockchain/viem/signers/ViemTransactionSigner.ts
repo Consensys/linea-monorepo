@@ -1,5 +1,5 @@
 import { IContractSignerClient } from "@consensys/linea-shared-utils";
-import { parseSignature, serializeTransaction, toBytes, type TransactionSerializable } from "viem";
+import { parseSignature, serializeTransaction, toRlp, type TransactionSerializable } from "viem";
 
 import { LineaGasFees } from "../../../../core/clients/blockchain/IGasProvider";
 import { ITransactionSigner } from "../../../../core/services/ITransactionSigner";
@@ -28,6 +28,6 @@ export class ViemTransactionSigner implements ITransactionSigner {
     const signatureHex = await this.signer.sign(viemTx);
     const signature = parseSignature(signatureHex);
     const serialized = serializeTransaction(viemTx, signature);
-    return toBytes(serialized);
+    return toRlp(serialized, "bytes");
   }
 }

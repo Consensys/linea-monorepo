@@ -60,11 +60,15 @@ describe("createChainContext", () => {
     expect(ctx.signer).toBeDefined();
   });
 
-  it("creates a public client and fetches chain ID", async () => {
-    const ctx = await createChainContext(rpcUrl, signerConfig, logger);
+  it("creates a temp client to fetch chain ID, then a public client with chain", async () => {
+    await createChainContext(rpcUrl, signerConfig, logger);
 
-    expect(createPublicClient).toHaveBeenCalledWith({ transport: expect.anything() });
-    expect(ctx.publicClient.getChainId).toHaveBeenCalled();
+    expect(createPublicClient).toHaveBeenCalledTimes(2);
+    expect(createPublicClient).toHaveBeenNthCalledWith(1, { transport: expect.anything() });
+    expect(createPublicClient).toHaveBeenNthCalledWith(2, {
+      chain: expect.objectContaining({ id: MOCK_CHAIN_ID }),
+      transport: expect.anything(),
+    });
   });
 
   it("passes signer config to createSignerClient", async () => {

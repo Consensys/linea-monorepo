@@ -1,6 +1,7 @@
 import { IContractSignerClient } from "@consensys/linea-shared-utils";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
+import { bytesToHex } from "viem/utils";
 
 import { LineaGasFees } from "../../../../../core/clients/blockchain/IGasProvider";
 import { TransactionRequest } from "../../../../../core/types";
@@ -88,8 +89,8 @@ describe("ViemTransactionSigner", () => {
     signerClient.sign.mockResolvedValue(FAKE_SIGNATURE_HEX);
 
     const result = await txSigner.signAndSerialize(TEST_TX, TEST_FEES);
-
-    // Verify it starts with 0x02 (EIP-1559 type prefix)
-    expect(result[0]).toBe(0x02);
+    expect(bytesToHex(result)).toBe(
+      "0xb86d02f86a0180843b9aca00847735940082520894bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb8080c080a0b94f5374fce5edbc8e2a8697c15331677e6ebf0b000000000000000000000000a0b94f5374fce5edbc8e2a8697c15331677e6ebf0b000000000000000000000000",
+    );
   });
 });

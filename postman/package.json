@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.build.json",
     "build:runSdk": "tsc ./scripts/runSdk.ts",
     "test": "npx jest --bail --detectOpenHandles --forceExit",
-    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/application/postman/persistence/migrations/${MIGRATION_NAME}"
+    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/infrastructure/persistence/migrations/${MIGRATION_NAME}"
   },
   "dependencies": {
     "@consensys/linea-native-libs": "workspace:*",

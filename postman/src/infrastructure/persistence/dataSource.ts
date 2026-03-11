@@ -11,8 +11,8 @@ import { RemoveUniqueConstraint1689084924789 } from "./migrations/1689084924789-
 import { AddNewIndexes1701265652528 } from "./migrations/1701265652528-AddNewIndexes";
 import { AddUniqueConstraint1709901138056 } from "./migrations/1709901138056-AddUniqueConstraint";
 import { AddCompressedTxSizeColumn1718026260629 } from "./migrations/1718026260629-AddCompressedTxSizeColumn";
-import { AddClaimCycleCount1741700000000 } from "./migrations/1741700000000-AddClaimCycleCount";
 import { AddSponsorshipMetrics1745569276097 } from "./migrations/1745569276097-AddSponsorshipMetrics";
+import { AddClaimCycleCount1773239214352 } from "./migrations/1773239214352-AddClaimCycleCount";
 
 export class DB {
   public static create(config: DBOptions): DataSource {
@@ -29,7 +29,7 @@ export class DB {
         AddUniqueConstraint1709901138056,
         AddCompressedTxSizeColumn1718026260629,
         AddSponsorshipMetrics1745569276097,
-        AddClaimCycleCount1741700000000,
+        AddClaimCycleCount1773239214352,
       ],
       migrationsTableName: "migrations",
       logging: ["error"],

@@ -41,7 +41,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
           maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
           maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         }),
-      ).rejects.toThrow("Transaction size calculation error");
+      ).rejects.toThrow("encode error");
     });
 
     it("Should return transaction size", async () => {

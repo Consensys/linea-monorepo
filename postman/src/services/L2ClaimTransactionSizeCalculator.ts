@@ -3,11 +3,9 @@ import { GoNativeCompressor } from "@consensys/linea-native-libs";
 import { LineaGasFees } from "../core/clients/blockchain/IGasProvider";
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { MessageProps } from "../core/entities/Message";
-import { BaseError } from "../core/errors";
 import { ITransactionSigner } from "../core/services/ITransactionSigner";
 import { IL2ClaimTransactionSizeCalculator } from "../core/services/processors/IL2ClaimTransactionSizeCalculator";
 import { Address } from "../core/types";
-import { serialize } from "../core/utils/shared";
 
 export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSizeCalculator {
   private compressor: GoNativeCompressor;
@@ -37,18 +35,14 @@ export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSize
     message: MessageProps & { feeRecipient?: Address },
     fees: LineaGasFees,
   ): Promise<number> {
-    try {
-      const transactionData = this.l2MessageServiceClient.encodeClaimMessageTransactionData(message);
-      const destinationAddress = this.l2MessageServiceClient.getContractAddress();
+    const transactionData = this.l2MessageServiceClient.encodeClaimMessageTransactionData(message);
+    const destinationAddress = this.l2MessageServiceClient.getContractAddress();
 
-      const rlpEncodedTxInBytes = await this.transactionSigner.signAndSerialize(
-        { to: destinationAddress, value: 0n, data: transactionData },
-        fees,
-      );
+    const rlpEncodedTxInBytes = await this.transactionSigner.signAndSerialize(
+      { to: destinationAddress, value: 0n, data: transactionData },
+      fees,
+    );
 
-      return this.compressor.getCompressedTxSize(rlpEncodedTxInBytes);
-    } catch (error) {
-      throw new BaseError(`Transaction size calculation error: ${serialize(error)}`);
-    }
+    return this.compressor.getCompressedTxSize(rlpEncodedTxInBytes);
   }
 }

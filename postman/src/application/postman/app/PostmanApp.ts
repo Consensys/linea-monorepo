@@ -1,5 +1,4 @@
 import { IApplication, ILogger, IMetricsService, WinstonLogger } from "@consensys/linea-shared-utils";
-import { DatabaseCleanerProcessor } from "postman/src/services/processors/DatabaseCleanerProcessor";
 import { DataSource } from "typeorm";
 
 import { PostmanConfig, PostmanOptions } from "./config/config";
@@ -39,6 +38,7 @@ import { DB } from "../../../infrastructure/persistence/dataSource";
 import { TypeOrmMessageRepository } from "../../../infrastructure/persistence/repositories/TypeOrmMessageRepository";
 import { MessageStatusSubscriber } from "../../../infrastructure/persistence/subscribers/MessageStatusSubscriber";
 import { IntervalPoller } from "../../../services/pollers";
+import { DatabaseCleanerProcessor } from "../../../services/processors/DatabaseCleanerProcessor";
 
 export class PostmanApp {
   private readonly config: PostmanConfig;

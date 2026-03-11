@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner, TableColumn } from "typeorm";
 
-export class AddClaimCycleCount1741700000000 implements MigrationInterface {
+export class AddClaimCycleCount1773239214352 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumn(
       "message",
       new TableColumn({
-        name: "claimCycleCount",
+        name: "claim_cycle_count",
         type: "integer",
         default: 0,
         isNullable: false,
@@ -14,6 +14,6 @@ export class AddClaimCycleCount1741700000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropColumn("message", "claimCycleCount");
+    await queryRunner.dropColumn("message", "claim_cycle_count");
   }
 }
