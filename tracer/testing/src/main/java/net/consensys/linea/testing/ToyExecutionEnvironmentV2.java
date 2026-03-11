@@ -233,9 +233,7 @@ public class ToyExecutionEnvironmentV2 {
             .build();
     final ReferenceTestWorldState referenceTestWorldState =
         LineaBonsaiReferenceTestWorldState.create(
-            accountMockMap,
-            protocolSpec.getEvm().getEvmConfiguration(),
-            dataStorageConfiguration);
+            accountMockMap, protocolSpec.getEvm().getEvmConfiguration(), dataStorageConfiguration);
     final BlockHeader blockHeader =
         ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
             .number(firstBlockNumber)
