@@ -30,6 +30,8 @@ import type {
 const MAX_POSTMAN_SPONSOR_GAS_LIMIT = 250000n;
 const NATIVE_LOGO = `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-rounded.svg`;
 
+const NATIVE_LOGO = `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-rounded.svg`;
+
 export const nativeAdapter: BridgeAdapter = {
   id: "native",
   name: "Linea Native Bridge",
