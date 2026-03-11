@@ -44,7 +44,6 @@ describe("ProposalProcessor", () => {
     assessmentPromptVersion: null,
     analyzedAt: null,
     assessmentJson: null,
-    riskScore: null,
     notifyAttemptCount: 0,
     notifiedAt: null,
     ...overrides,
@@ -83,8 +82,9 @@ describe("ProposalProcessor", () => {
       attemptUpdateState: jest.fn(),
       saveAnalysis: jest.fn(),
       incrementAnalysisAttempt: jest.fn(),
-      incrementNotifyAttempt: jest.fn(),
       markNotified: jest.fn(),
+      markNotifyFailed: jest.fn(),
+      attemptMarkNotifyFailed: jest.fn(),
       findLatestSourceIdBySource: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
@@ -153,7 +153,6 @@ describe("ProposalProcessor", () => {
       expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
         proposal.id,
         assessment,
-        75,
         "claude-sonnet-4",
         60,
         "v1.0",

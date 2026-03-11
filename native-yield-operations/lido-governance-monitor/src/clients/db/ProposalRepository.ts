@@ -83,7 +83,6 @@ export class ProposalRepository implements IProposalRepository {
   async saveAnalysis(
     id: string,
     assessment: Assessment,
-    riskScore: number,
     llmModel: string,
     riskThreshold: number,
     promptVersion: string,
@@ -94,7 +93,6 @@ export class ProposalRepository implements IProposalRepository {
         state: ProposalState.ANALYZED,
         stateUpdatedAt: new Date(),
         assessmentJson: assessment as object,
-        riskScore,
         llmModel,
         riskThreshold,
         assessmentPromptVersion: promptVersion,
@@ -107,13 +105,6 @@ export class ProposalRepository implements IProposalRepository {
     return this.prisma.proposal.update({
       where: { id },
       data: { analysisAttemptCount: { increment: 1 } },
-    }) as Promise<Proposal>;
-  }
-
-  async incrementNotifyAttempt(id: string): Promise<Proposal> {
-    return this.prisma.proposal.update({
-      where: { id },
-      data: { notifyAttemptCount: { increment: 1 } },
     }) as Promise<Proposal>;
   }
 
@@ -137,7 +128,28 @@ export class ProposalRepository implements IProposalRepository {
         state: ProposalState.NOTIFIED,
         stateUpdatedAt: new Date(),
         notifiedAt: new Date(),
+        notifyAttemptCount: { increment: 1 },
       },
     }) as Promise<Proposal>;
+  }
+
+  async markNotifyFailed(id: string): Promise<Proposal> {
+    return this.prisma.proposal.update({
+      where: { id },
+      data: {
+        state: ProposalState.NOTIFY_FAILED,
+        stateUpdatedAt: new Date(),
+        notifyAttemptCount: { increment: 1 },
+      },
+    }) as Promise<Proposal>;
+  }
+
+  async attemptMarkNotifyFailed(id: string): Promise<Proposal | null> {
+    try {
+      return await this.markNotifyFailed(id);
+    } catch (error) {
+      this.logger.critical("attemptMarkNotifyFailed failed", { id, error });
+      return null;
+    }
   }
 }
