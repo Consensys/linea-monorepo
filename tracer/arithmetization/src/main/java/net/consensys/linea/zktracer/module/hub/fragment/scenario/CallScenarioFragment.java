@@ -60,39 +60,6 @@ public class CallScenarioFragment implements TraceFragment {
       return false;
     }
 
-    public boolean isSuccessfulCallScenario() {
-      return this.isAnyOf(
-          CALL_PRC_SUCCESS_WILL_REVERT,
-          CALL_PRC_SUCCESS_WONT_REVERT,
-          CALL_SMC_SUCCESS_WILL_REVERT,
-          CALL_SMC_SUCCESS_WONT_REVERT,
-          CALL_EOA_SUCCESS_WILL_REVERT,
-          CALL_EOA_SUCCESS_WONT_REVERT);
-    }
-
-    public boolean isFailureCallScenario() {
-      return this.isAnyOf(
-          CALL_SMC_FAILURE_WILL_REVERT, CALL_SMC_FAILURE_WONT_REVERT, CALL_PRC_FAILURE);
-    }
-
-    public boolean isWillRevertCallScenario() {
-      return this.isAnyOf(
-          CALL_ABORT_WILL_REVERT,
-          CALL_EOA_SUCCESS_WILL_REVERT,
-          CALL_SMC_FAILURE_WILL_REVERT,
-          CALL_SMC_SUCCESS_WILL_REVERT,
-          CALL_PRC_SUCCESS_WILL_REVERT);
-    }
-
-    public boolean isWontRevertCallScenario() {
-      return this.isAnyOf(
-          CALL_ABORT_WONT_REVERT,
-          CALL_EOA_SUCCESS_WONT_REVERT,
-          CALL_SMC_FAILURE_WONT_REVERT,
-          CALL_SMC_SUCCESS_WONT_REVERT,
-          CALL_PRC_SUCCESS_WONT_REVERT);
-    }
-
     public boolean isIndefinitePrcCallScenario() {
       return this == CALL_PRC_UNDEFINED || isPrcCallScenario();
     }

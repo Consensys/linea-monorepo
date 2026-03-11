@@ -19,15 +19,6 @@ import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendInsufficientBalanceCall;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_ABORT_WILL_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_ABORT_WONT_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_EOA_SUCCESS_WILL_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_EOA_SUCCESS_WONT_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_EXCEPTION;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_SMC_FAILURE_WILL_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_SMC_FAILURE_WONT_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_SMC_SUCCESS_WILL_REVERT;
-import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.CALL_SMC_SUCCESS_WONT_REVERT;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +31,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -131,14 +121,9 @@ public class DoubleCallDelegationTests extends TracerTestBase {
           .build();
 
   Function5<
-          CallScenarioFragment.CallScenario,
-          ExceptionType,
-          ToyAccount,
-          LoopType,
-          RevertType,
-          BytecodeCompiler>
+          TentativeCallScenario, ExceptionType, ToyAccount, LoopType, RevertType, BytecodeCompiler>
       callProgram =
-          (callScenario, exceptionType, targetAccount, loopType, revertType) ->
+          (tentativeCallScenario, exceptionType, targetAccount, loopType, revertType) ->
               BytecodeCompiler.newProgram(chainConfig)
                   .immediate(
                       loopType == LoopType.BOUNDED_LOOP,
@@ -171,7 +156,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
                   // execute the call
                   .apply(
                       program ->
-                          switch (callScenario) {
+                          switch (tentativeCallScenario) {
                             case CALL_EXCEPTION ->
                                 switch (exceptionType) {
                                   case STATICX ->
@@ -275,7 +260,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
 
   public enum CallerType {
     DELEGATED,
-    SMC // already tested
+    SMC
   }
 
   public enum CalleeType {
@@ -283,13 +268,12 @@ public class DoubleCallDelegationTests extends TracerTestBase {
     // DELEGATED_TO_NON_EXISTENT,
     // DELEGATED_TO_EMPTY_CODE_ACCOUNT,
     // DELEGATED_TO_PRC,
-    // most relevant cases
     EOA,
     DELEGATED_TO_SELF,
     DELEGATED_TO_ROOT,
     DELEGATED_TO_CALLER,
     DELEGATED_TO_SMC,
-    SMC; // already tested
+    SMC;
   }
 
   // this should apply per smart contract
@@ -311,10 +295,59 @@ public class DoubleCallDelegationTests extends TracerTestBase {
     OOGX
   }
 
+  /** In this family of tests we interested only in these call scenarios */
+  public enum TentativeCallScenario {
+    UNDEFINED,
+    CALL_EXCEPTION,
+    CALL_ABORT_WILL_REVERT,
+    CALL_ABORT_WONT_REVERT,
+    // Externally owned account call scenarios
+    CALL_EOA_SUCCESS_WILL_REVERT,
+    CALL_EOA_SUCCESS_WONT_REVERT,
+    // Smart contract call scenarios:
+    CALL_SMC_FAILURE_WILL_REVERT,
+    CALL_SMC_FAILURE_WONT_REVERT,
+    CALL_SMC_SUCCESS_WILL_REVERT,
+    CALL_SMC_SUCCESS_WONT_REVERT;
+
+    public boolean isAnyOf(TentativeCallScenario... scenarios) {
+      for (TentativeCallScenario scenario : scenarios) {
+        if (this == scenario) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    public boolean isFailureCallScenario() {
+      return this.isAnyOf(CALL_SMC_FAILURE_WILL_REVERT, CALL_SMC_FAILURE_WONT_REVERT);
+    }
+
+    public boolean isWillRevertCallScenario() {
+      return this.isAnyOf(
+          CALL_ABORT_WILL_REVERT,
+          CALL_EOA_SUCCESS_WILL_REVERT,
+          CALL_SMC_FAILURE_WILL_REVERT,
+          CALL_SMC_SUCCESS_WILL_REVERT);
+    }
+
+    public boolean isSmcCallScenario() {
+      return this.isAnyOf(
+          CALL_SMC_FAILURE_WILL_REVERT,
+          CALL_SMC_FAILURE_WONT_REVERT,
+          CALL_SMC_SUCCESS_WILL_REVERT,
+          CALL_SMC_SUCCESS_WONT_REVERT);
+    }
+
+    public boolean isEoaCallScenario() {
+      return this.isAnyOf(CALL_EOA_SUCCESS_WILL_REVERT, CALL_EOA_SUCCESS_WONT_REVERT);
+    }
+  }
+
   @ParameterizedTest
   @MethodSource("doubleCallDelegationTestsSource")
   public void doubleCallDelegationTests(
-      CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario,
+      TentativeCallScenario callerToCalleeTentativeCallScenario,
       ExceptionType exceptionType,
       CallerType callerType,
       CalleeType calleeType,
@@ -379,7 +412,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
                 ? BytecodeCompiler.newProgram(chainConfig).op(OpCode.INVALID).compile()
                 : callProgram
                     .invoke(
-                        CallScenarioFragment.CallScenario.UNDEFINED,
+                        TentativeCallScenario.UNDEFINED,
                         ExceptionType.NONE,
                         callerAccount,
                         loopType,
@@ -392,7 +425,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
                 ? BytecodeCompiler.newProgram(chainConfig).op(OpCode.INVALID).compile()
                 : callProgram
                     .invoke(
-                        CallScenarioFragment.CallScenario.UNDEFINED,
+                        TentativeCallScenario.UNDEFINED,
                         ExceptionType.NONE,
                         callerAccount,
                         loopType,
@@ -426,17 +459,17 @@ public class DoubleCallDelegationTests extends TracerTestBase {
 
   static Stream<Arguments> doubleCallDelegationTestsSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario :
-        new CallScenarioFragment.CallScenario[] {
-          CALL_EXCEPTION,
-          CALL_ABORT_WILL_REVERT,
-          CALL_ABORT_WONT_REVERT,
-          CALL_EOA_SUCCESS_WILL_REVERT,
-          CALL_EOA_SUCCESS_WONT_REVERT,
-          CALL_SMC_FAILURE_WILL_REVERT,
-          CALL_SMC_FAILURE_WONT_REVERT,
-          CALL_SMC_SUCCESS_WILL_REVERT,
-          CALL_SMC_SUCCESS_WONT_REVERT,
+    for (TentativeCallScenario callerToCalleeTentativeCallScenario :
+        new TentativeCallScenario[] {
+          TentativeCallScenario.CALL_EXCEPTION,
+          TentativeCallScenario.CALL_ABORT_WILL_REVERT,
+          TentativeCallScenario.CALL_ABORT_WONT_REVERT,
+          TentativeCallScenario.CALL_EOA_SUCCESS_WILL_REVERT,
+          TentativeCallScenario.CALL_EOA_SUCCESS_WONT_REVERT,
+          TentativeCallScenario.CALL_SMC_FAILURE_WILL_REVERT,
+          TentativeCallScenario.CALL_SMC_FAILURE_WONT_REVERT,
+          TentativeCallScenario.CALL_SMC_SUCCESS_WILL_REVERT,
+          TentativeCallScenario.CALL_SMC_SUCCESS_WONT_REVERT,
         }) {
       for (ExceptionType exceptionType : ExceptionType.values()) {
         if (skipTest(callerToCalleeTentativeCallScenario, exceptionType)) {
@@ -485,17 +518,15 @@ public class DoubleCallDelegationTests extends TracerTestBase {
   }
 
   private static boolean skipTest(
-      CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario,
-      ExceptionType exceptionType) {
-    return (callerToCalleeTentativeCallScenario == CALL_EXCEPTION
+      TentativeCallScenario callerToCalleeTentativeCallScenario, ExceptionType exceptionType) {
+    return (callerToCalleeTentativeCallScenario == TentativeCallScenario.CALL_EXCEPTION
             && exceptionType == ExceptionType.NONE)
-        || (callerToCalleeTentativeCallScenario != CALL_EXCEPTION
+        || (callerToCalleeTentativeCallScenario != TentativeCallScenario.CALL_EXCEPTION
             && exceptionType != ExceptionType.NONE);
   }
 
   private static boolean skipTest(
-      CallScenarioFragment.CallScenario callerToCalleeTentativeCallScenario,
-      CalleeType calleeType) {
+      TentativeCallScenario callerToCalleeTentativeCallScenario, CalleeType calleeType) {
     return switch (calleeType) {
       case EOA -> callerToCalleeTentativeCallScenario.isSmcCallScenario();
       case DELEGATED_TO_SELF, DELEGATED_TO_ROOT, DELEGATED_TO_CALLER, DELEGATED_TO_SMC, SMC ->

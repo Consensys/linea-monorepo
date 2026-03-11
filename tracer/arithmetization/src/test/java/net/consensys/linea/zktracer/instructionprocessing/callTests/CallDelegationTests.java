@@ -139,7 +139,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   public enum CallerType {
     DELEGATED,
-    SMC // already tested
+    SMC
   }
 
   public enum CalleeType {
@@ -148,11 +148,10 @@ public class CallDelegationTests extends TracerTestBase {
     // DELEGATED_TO_EMPTY_CODE_ACCOUNT,
     // DELEGATED_TO_PRC,
     // DELEGATED_TO_SELF,
-    // most relevant cases
     DELEGATED_TO_ROOT,
     DELEGATED_TO_CALLER,
     DELEGATED_TO_SMC,
-    SMC // already tested
+    SMC
   }
 
   // this should apply per smart contract
