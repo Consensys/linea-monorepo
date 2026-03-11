@@ -725,6 +725,9 @@ describe("Linea Rollup contract: Finalization", () => {
         "0000000000000000000000000000000000000000000000000000000000000280" +
         encodedCall.slice(patchOffset + 64);
 
+      // TODO: Remove this after capturing the hardcoded value
+      console.log("PATCHED_ENCODED_CALL:", encodedCall);
+
       const transaction = {
         data: encodedCall,
         maxPriorityFeePerGas: maxPriorityFeePerGas!,
