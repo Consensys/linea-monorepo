@@ -6,7 +6,7 @@ This document describes the changes introduced to streamline **linea-sequencer**
 
 ## 1. Introduction of `besuCommit` in `libs.versions.toml`
 
-A new field called `besuCommit` in `libs.versions.toml` to denote the commit hash tag from `hyperledger/besu` for tracer and sequencer plugins to build against with.
+A new field called `besuCommit` in `libs.versions.toml` to denote the commit hash tag from `besu-eth/besu` for tracer and sequencer plugins to build against with.
 
 ### File format and location
 
@@ -21,7 +21,7 @@ A new field called `besuCommit` in `libs.versions.toml` to denote the commit has
 ### Purpose
 
 - **Single source of truth** for locally-built besu release version:
-  - Besu artifact will be named as `besu-[release-tag]-[7-char-besu-commit-hash].tar.gz`: e.g. `besu-25.12.0-d68679d.tar.gz` where `25.12.0` is the latest release tag on `hyperleger/besu` at the given `besuCommit`, the artifact will be placed under the `tmp/hyperledger-besu/build/distributions/folder` and the `besu` field in `libs.version.toml` will be automatically updated, e.g. `besu = 25.12.0-d68679d`, by running `gradlew buildAndUpdateBesuVersionInLibsVersions` or `cd linea-besu-package && make build`
+  - Besu artifact will be named as `besu-[release-tag]-[7-char-besu-commit-hash].tar.gz`: e.g. `besu-25.12.0-d68679d.tar.gz` where `25.12.0` is the latest release tag on `hyperleger/besu` at the given `besuCommit`, the artifact will be placed under the `tmp/besu-eth/build/distributions/folder` and the `besu` field in `libs.version.toml` will be automatically updated, e.g. `besu = 25.12.0-d68679d`, by running `gradlew buildAndUpdateBesuVersionInLibsVersions` or `cd linea-besu-package && make build`
 
 - **Trigger workflows** when the desired besu commit, tracer/sequencer, or other plugins have been updated:
   - Build a **linea-besu-package** Docker image using **locally built** tracer and sequencer plugins with the desired `besuCommit` defined in `libs.versions.toml` (will build it from source if the corresponding besu version were not found in maven) and runs e2e tests against that image
@@ -65,7 +65,7 @@ This builds tracer and sequencer from source (and besu if needed), assembles the
 
 ### When the desired besu version needs to be updated
 
-1. Create a PR to update the `besuCommit` field in [libs.versions.toml](../gradle/libs.versions.toml) which denotes the desired commit hash tag from the [hyperledger/besu](https://github.com/hyperledger/besu) repo
+1. Create a PR to update the `besuCommit` field in [libs.versions.toml](../gradle/libs.versions.toml) which denotes the desired commit hash tag from the [besu-eth/besu](https://github.com/besu-eth/besu) repo
 - The triggered Github workflows would automatically build the besu at the desired commit hash tag and publish it to cloudsmith [maven](https://cloudsmith.io/~consensys/repos/linea-besu/packages/) AND it would automatically push a commit to the PR to update the `besu` field in [libs.versions.toml](../gradle/libs.versions.toml)
 - To get the corresponding `besu` version from the besu commit hash before running any Github workflow, one can run `./gradlew buildAndUpdateBesuVersionInLibsVersions` locally which shall see the update in [libs.versions.toml](../gradle/libs.versions.toml) OR run Makefile command i.e. `cd linea-besu-package && make build-besu-local-and-update-lib-version`
 2. Make necessary changes in tracer and seqeuencer to accommodate the besu version change (Please note that tracer and sequencer version will be set as `linea-[7_char_commit_hash]`)

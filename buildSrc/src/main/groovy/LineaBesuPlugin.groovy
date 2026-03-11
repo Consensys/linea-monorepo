@@ -22,14 +22,14 @@ class LineaBesuPlugin implements Plugin<Project> {
   void apply(Project project) {
     project.tasks.register('checkoutAndResolveVersion') {
       group = 'Build'
-      description = 'Clone/fetch hyperledger/besu at besuCommit and resolve besu version = latest release tag + "-" + 7-char commit'
+      description = 'Clone/fetch besu-eth/besu at besuCommit and resolve besu version = latest release tag + "-" + 7-char commit'
       doLast {
         def besuCommit = project.rootProject.libs.versions.besuCommit.get()
         def rootDir = project.rootProject.layout.projectDirectory.asFile.absolutePath
         def outputStream = new ByteArrayOutputStream()
         project.exec {
           workingDir = project.rootProject.layout.projectDirectory.asFile
-          environment 'BESU_DIR', "${rootDir}/tmp/hyperledger-besu"
+          environment 'BESU_DIR', "${rootDir}/tmp/besu-eth"
           environment 'BESU_COMMIT', besuCommit
           environment 'VERSION_LABEL', ""
           commandLine 'bash', "${rootDir}/linea-besu/scripts/checkout-and-resolve-version.sh"
@@ -71,7 +71,7 @@ class LineaBesuPlugin implements Plugin<Project> {
         def rootDir = project.rootProject.layout.projectDirectory.asFile.absolutePath
         project.exec {
           workingDir = project.rootProject.layout.projectDirectory.asFile
-          environment 'BESU_DIR', "${rootDir}/tmp/hyperledger-besu"
+          environment 'BESU_DIR', "${rootDir}/tmp/besu-eth"
           environment 'RESOLVED_BESU_VERSION', resolvedBesuVer
           environment 'CLOUDSMITH_USER', project.hasProperty('cloudsmithUser') ? project.cloudsmithUser : ''
           environment 'CLOUDSMITH_API_KEY', project.hasProperty('cloudsmithApiKey') ? project.cloudsmithApiKey : ''
@@ -105,12 +105,12 @@ class LineaBesuPlugin implements Plugin<Project> {
     } else {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: Besu ${version} was found in maven local")
     }
-    def besuDistTar = project.rootProject.file("tmp/hyperledger-besu/build/distributions/besu-${version}.tar.gz")
+    def besuDistTar = project.rootProject.file("tmp/besu-eth/build/distributions/besu-${version}.tar.gz")
     def distExists = besuDistTar.exists()
     if (!distExists) {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution doesn't exist")
     } else {
-      project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution was found under \"tmp/hyperledger-besu/build/distributions\"")
+      project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution was found under \"tmp/besu-eth/build/distributions\"")
     }
     return pomExists && distExists
   }
@@ -166,7 +166,7 @@ class LineaBesuPlugin implements Plugin<Project> {
 
   private static boolean downloadBesuDistributionFromMaven(Project project, String version) {
     if (!version) return false
-    def destDir = project.rootProject.file("tmp/hyperledger-besu/build/distributions")
+    def destDir = project.rootProject.file("tmp/besu-eth/build/distributions")
     def destFile = new File(destDir, "besu-${version}.tar.gz")
     if (destFile.exists()) {
       project.logger.lifecycle("downloadBesuDistributionFromMaven: Found existing besu distribution at ${destFile}, skipping download")
