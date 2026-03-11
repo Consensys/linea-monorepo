@@ -19,7 +19,12 @@ export default function PageFooter({ showYieldBoost = false }: PageFooterProps) 
       {showYieldBoost && isMainnet && (
         <div className={clsx(styles["page-footer"])}>
           ETH bridged to Linea are being staked with Yield Boost.{" "}
-          <Link data-testid="yield-boost-link" href="#">
+          <Link
+            data-testid="yield-boost-link"
+            href="https://docs.linea.build/network/overview/yield-boost"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Learn more.
           </Link>
         </div>
