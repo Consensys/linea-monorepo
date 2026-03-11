@@ -12,7 +12,7 @@ termination_grace_period_seconds = 1800
 prover_mode = "limitless"
 conflated_traces_dir = "/home/ubuntu/20251104-hierarchical-conglo-testing"
 requests_root_dir = "/home/ubuntu/test_mainnet/prover-execution"
-ignore_compatibility_check = false
+ignore_compatibility_check = true 
 keep_traces_until_block = 0
 
 
