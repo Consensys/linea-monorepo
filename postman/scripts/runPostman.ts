@@ -92,7 +92,8 @@ async function main() {
           ? parseInt(process.env.RETRY_DELAY_IN_SECONDS)
           : undefined,
         maxClaimGasLimit: process.env.MAX_CLAIM_GAS_LIMIT ? BigInt(process.env.MAX_CLAIM_GAS_LIMIT) : undefined,
-        maxTxRetries: process.env.MAX_TX_RETRIES ? parseInt(process.env.MAX_TX_RETRIES) : undefined,
+        maxBumpsPerCycle: process.env.MAX_BUMPS_PER_CYCLE ? parseInt(process.env.MAX_BUMPS_PER_CYCLE) : undefined,
+        maxRetryCycles: process.env.MAX_RETRY_CYCLES ? parseInt(process.env.MAX_RETRY_CYCLES) : undefined,
         isMaxGasFeeEnforced: process.env.L1_MAX_GAS_FEE_ENFORCED === "true",
         isPostmanSponsorshipEnabled: process.env.L2_L1_ENABLE_POSTMAN_SPONSORING === "true",
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT
@@ -158,7 +159,8 @@ async function main() {
           ? parseInt(process.env.RETRY_DELAY_IN_SECONDS)
           : undefined,
         maxClaimGasLimit: process.env.MAX_CLAIM_GAS_LIMIT ? BigInt(process.env.MAX_CLAIM_GAS_LIMIT) : undefined,
-        maxTxRetries: process.env.MAX_TX_RETRIES ? parseInt(process.env.MAX_TX_RETRIES) : undefined,
+        maxBumpsPerCycle: process.env.MAX_BUMPS_PER_CYCLE ? parseInt(process.env.MAX_BUMPS_PER_CYCLE) : undefined,
+        maxRetryCycles: process.env.MAX_RETRY_CYCLES ? parseInt(process.env.MAX_RETRY_CYCLES) : undefined,
         isMaxGasFeeEnforced: process.env.L2_MAX_GAS_FEE_ENFORCED === "true",
         isPostmanSponsorshipEnabled: process.env.L1_L2_ENABLE_POSTMAN_SPONSORING === "true",
         maxPostmanSponsorGasLimit: process.env.MAX_POSTMAN_SPONSOR_GAS_LIMIT

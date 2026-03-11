@@ -1,7 +1,8 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { IProvider } from "../../../../core/clients/blockchain/IProvider";
 import { INonceManager } from "../../../../core/services/INonceManager";
 import { Address } from "../../../../core/types";
-import { IPostmanLogger } from "../../../../utils/IPostmanLogger";
 
 export class InMemoryNonceManager implements INonceManager {
   private nextNonce = 0;
@@ -16,7 +17,7 @@ export class InMemoryNonceManager implements INonceManager {
     private readonly provider: IProvider,
     private readonly signerAddress: Address,
     maxNonceDiff: number,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
   ) {
     this.maxNonceDiff = Math.max(maxNonceDiff, 0);
   }

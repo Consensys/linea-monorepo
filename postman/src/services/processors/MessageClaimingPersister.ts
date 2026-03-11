@@ -1,63 +1,38 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { Message } from "../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../core/enums";
-import { BaseError } from "../../core/errors";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../core/metrics";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { IReceiptPoller } from "../../core/services/IReceiptPoller";
+import { ITransactionRetrier } from "../../core/services/ITransactionRetrier";
 import {
   IMessageClaimingPersister,
   MessageClaimingPersisterConfig,
 } from "../../core/services/processors/IMessageClaimingPersister";
 import { TransactionReceipt } from "../../core/types";
-import { wait } from "../../core/utils/shared";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
-  private messageBeingRetry: { message: Message | null; retries: number };
-
-  /**
-   * Initializes a new instance of the `MessageClaimingPersister`.
-   *
-   * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
-   * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
-   * @param {ISponsorshipMetricsUpdater} sponsorshipMetricsUpdater - An instance of a class implementing the `ISponsorshipMetricsUpdater` interface, update sponsorship metrics for Prometheus monitoring.
-   * @param {ITransactionMetricsUpdater} transactionMetricsUpdater - An instance of a class implementing the `ITransactionMetricsUpdater` interface, used to update transaction-related metrics.
-   * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
-   * @param {MessageClaimingPersisterConfig} config - Configuration for network-specific settings, including transaction submission timeout and maximum transaction retries.
-   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
-   */
   constructor(
     private readonly messageRepository: IMessageRepository,
     private readonly messageServiceContract: IMessageServiceContract,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
     private readonly provider: IProvider,
+    private readonly transactionRetrier: ITransactionRetrier,
+    private readonly receiptPoller: IReceiptPoller,
     private readonly config: MessageClaimingPersisterConfig,
-    private readonly logger: IPostmanLogger,
-  ) {
-    this.messageBeingRetry = { message: null, retries: 0 };
-  }
+    private readonly logger: ILogger,
+  ) {}
 
-  /**
-   * Determines whether a message has exceeded the configured submission timeout.
-   *
-   * This method checks if the time elapsed since the last update of the message exceeds the submission timeout threshold. This is useful for identifying messages that may require action due to prolonged processing times, such as retrying the transaction with a higher fee.
-   *
-   * @param {Message} message - The message object to check for submission timeout exceedance.
-   * @returns {boolean} `true` if the message has exceeded the submission timeout, `false` otherwise.
-   */
   private isMessageExceededSubmissionTimeout(message: Message): boolean {
     return (
       !!message.updatedAt && new Date().getTime() - message.updatedAt.getTime() > this.config.messageSubmissionTimeout
     );
   }
 
-  /**
-   * Processes the first pending message, updating its status based on the transaction receipt. If the transaction has not been mined or has failed, it attempts to retry the transaction with a higher fee.
-   *
-   * @returns {Promise<void>} A promise that resolves when the processing is complete.
-   */
   public async process(): Promise<void> {
     let firstPendingMessage: Message | null = null;
     try {
@@ -68,9 +43,6 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       }
 
       if (!firstPendingMessage.claimTxHash) {
-        // Message is PENDING but has no txHash — this means either the chain call
-        // failed after reservation, or recordClaimSubmission failed after a successful
-        // chain call. Reset to SENT so the claiming processor can retry.
         this.logger.warn("Found pending message without claim tx hash, resetting to allow retry.", {
           messageHash: firstPendingMessage.messageHash,
         });
@@ -88,130 +60,147 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       if (receipt) {
         const receiptReceivedAt = new Date();
         await this.updateReceiptStatus(firstPendingMessage, receipt, receiptReceivedAt);
-      } else {
-        if (!this.isMessageExceededSubmissionTimeout(firstPendingMessage)) return;
-        this.logger.warn("Retrying to claim message.", { messageHash: firstPendingMessage.messageHash });
-
-        if (
-          !this.messageBeingRetry.message ||
-          this.messageBeingRetry.message.messageHash !== firstPendingMessage.messageHash
-        ) {
-          this.messageBeingRetry = { message: firstPendingMessage, retries: 0 };
-        }
-
-        const retryTransactionReceipt = await this.retryTransaction(
-          firstPendingMessage.claimTxHash,
-          firstPendingMessage.messageHash,
-          firstPendingMessage.sentBlockNumber,
-        );
-        if (!retryTransactionReceipt) return;
-        const receiptReceivedAt = new Date();
-        this.logger.warn("Retried claim message transaction succeed.", {
-          messageHash: firstPendingMessage.messageHash,
-          transactionHash: retryTransactionReceipt.hash,
-        });
-        await this.updateReceiptStatus(firstPendingMessage, retryTransactionReceipt, receiptReceivedAt);
+        return;
       }
+
+      if (!this.isMessageExceededSubmissionTimeout(firstPendingMessage)) return;
+
+      // Circuit breaker: max cycles reached
+      if (firstPendingMessage.claimCycleCount >= this.config.maxCycles) {
+        this.logger.error("Max retry cycles exceeded. Manual intervention is needed.", {
+          messageHash: firstPendingMessage.messageHash,
+          claimCycleCount: firstPendingMessage.claimCycleCount,
+        });
+        firstPendingMessage.edit({ status: MessageStatus.NEEDS_MANUAL_INTERVENTION });
+        await this.messageRepository.updateMessage(firstPendingMessage);
+        return;
+      }
+
+      this.logger.warn("Retrying to claim message.", { messageHash: firstPendingMessage.messageHash });
+
+      // Check if bumps exhausted for this cycle
+      if (firstPendingMessage.claimNumberOfRetry >= this.config.maxBumpsPerCycle) {
+        await this.cancelAndResetMessage(firstPendingMessage);
+        return;
+      }
+
+      const retryReceipt = await this.retryWithBump(firstPendingMessage);
+      if (!retryReceipt) return;
+
+      const receiptReceivedAt = new Date();
+      this.logger.warn("Retried claim message transaction succeed.", {
+        messageHash: firstPendingMessage.messageHash,
+        transactionHash: retryReceipt.hash,
+      });
+      await this.updateReceiptStatus(firstPendingMessage, retryReceipt, receiptReceivedAt);
     } catch (e) {
-      this.logger.warnOrError(e, {
+      this.logger.error(e, {
         ...(firstPendingMessage ? { messageHash: firstPendingMessage.messageHash } : {}),
       });
     }
   }
 
-  /**
-   * Polls for a transaction receipt until it is found or the timeout is reached.
-   *
-   * @param {string} txHash - The transaction hash to poll for.
-   * @returns {Promise<TransactionReceipt>} The transaction receipt.
-   * @throws {BaseError} If the receipt is not found within the timeout.
-   */
-  private async pollForReceipt(txHash: `0x${string}`): Promise<TransactionReceipt> {
-    const deadline = Date.now() + this.config.receiptPollingTimeout;
-    while (Date.now() < deadline) {
-      const receipt = await this.provider.getTransactionReceipt(txHash);
-      if (receipt) return receipt;
-      await wait(this.config.receiptPollingInterval);
-    }
-    throw new BaseError(
-      `RetryTransaction: Transaction receipt not found after retry transaction. transactionHash=${txHash}`,
-    );
-  }
-
-  /**
-   * Attempts to retry a transaction with a higher fee if the original transaction has not been successfully processed.
-   *
-   * @param {string} transactionHash - The hash of the original transaction to retry.
-   * @param {string} messageHash - The hash of the message associated with the transaction.
-   * @param {number} messageBlockNumber - The block number of the message.
-   * @returns {Promise<TransactionReceipt | null>} The receipt of the retried transaction, or null if the retry was unsuccessful.
-   */
-  private async retryTransaction(
-    transactionHash: `0x${string}`,
-    messageHash: `0x${string}`,
-    messageBlockNumber: number,
-  ): Promise<TransactionReceipt | null> {
+  private async retryWithBump(message: Message): Promise<TransactionReceipt | null> {
     try {
-      this.logger.debug("Checking message status before retry.", { messageHash });
-
       const messageStatus = await this.messageServiceContract.getMessageStatus({
-        messageHash,
-        messageBlockNumber,
-        overrides: { blockTag: "latest" },
+        messageHash: message.messageHash,
+        messageBlockNumber: message.sentBlockNumber,
       });
 
       if (messageStatus === OnChainMessageStatus.CLAIMED) {
-        const receipt = await this.provider.getTransactionReceipt(transactionHash);
+        const receipt = await this.provider.getTransactionReceipt(message.claimTxHash!);
         if (!receipt) {
-          this.logger.warn(
-            "Calling retryTransaction again as message was claimed but transaction receipt is not available yet.",
-            { messageHash, transactionHash },
-          );
+          this.logger.warn("Message was claimed on-chain but transaction receipt is not available yet.", {
+            messageHash: message.messageHash,
+            transactionHash: message.claimTxHash,
+          });
         }
         return receipt;
       }
 
-      this.messageBeingRetry.retries++;
-      this.logger.warn("Retry to claim message.", {
-        numberOfRetries: this.messageBeingRetry.retries.toString(),
-        messageInfo: this.messageBeingRetry.message?.toString(),
+      const attempt = message.claimNumberOfRetry + 1;
+      this.logger.warn("Bumping fee for claim transaction.", {
+        attempt: attempt.toString(),
+        messageHash: message.messageHash,
       });
 
       const retryCreationDate = new Date();
-      const tx = await this.messageServiceContract.retryTransactionWithHigherFee(transactionHash);
+      const tx = await this.transactionRetrier.retryWithHigherFee(message.claimTxHash!, attempt);
 
-      this.messageBeingRetry.message?.edit({
+      message.edit({
         claimTxCreationDate: retryCreationDate,
         claimTxGasLimit: Number(tx.gasLimit),
         claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
         claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
         claimTxHash: tx.hash,
-        claimNumberOfRetry: this.messageBeingRetry.retries,
+        claimNumberOfRetry: attempt,
         claimLastRetriedAt: new Date(),
         claimTxNonce: tx.nonce,
       });
-      await this.messageRepository.updateMessage(this.messageBeingRetry.message!);
+      await this.messageRepository.updateMessage(message);
 
-      return await this.pollForReceipt(tx.hash);
+      return await this.receiptPoller.poll(
+        tx.hash,
+        this.config.receiptPollingTimeout,
+        this.config.receiptPollingInterval,
+      );
     } catch (e) {
-      this.logger.warnOrError(e, {
-        messageHash: this.messageBeingRetry.message?.messageHash,
-      });
-      if (this.messageBeingRetry.retries > this.config.maxTxRetries) {
-        this.logger.error("Max number of retries exceeded. Manual intervention is needed as soon as possible.", {
-          messageInfo: this.messageBeingRetry.message?.toString(),
-        });
-      }
+      this.logger.error(e, { messageHash: message.messageHash });
       return null;
     }
   }
 
-  /**
-   * Updates the status of a message based on the outcome of its claim transaction.
-   *
-   * @param {Message} message - The message object to update.
-   * @param {TransactionReceipt} receipt - The receipt of the claim transaction.
-   */
+  private async cancelAndResetMessage(message: Message): Promise<void> {
+    try {
+      const messageStatus = await this.messageServiceContract.getMessageStatus({
+        messageHash: message.messageHash,
+        messageBlockNumber: message.sentBlockNumber,
+      });
+
+      if (messageStatus === OnChainMessageStatus.CLAIMED) {
+        const receipt = await this.provider.getTransactionReceipt(message.claimTxHash!);
+        if (receipt) {
+          await this.updateReceiptStatus(message, receipt, new Date());
+          return;
+        }
+        this.logger.warn("Message claimed on-chain but receipt not available, will retry later.", {
+          messageHash: message.messageHash,
+        });
+        return;
+      }
+
+      this.logger.warn("Max fee bumps exhausted, cancelling stuck transaction and resetting message.", {
+        messageHash: message.messageHash,
+        claimTxNonce: message.claimTxNonce,
+        claimCycleCount: message.claimCycleCount,
+      });
+
+      if (message.claimTxNonce !== undefined) {
+        await this.transactionRetrier.cancelTransaction(message.claimTxNonce);
+      }
+
+      message.edit({
+        status: MessageStatus.SENT,
+        claimNumberOfRetry: 0,
+        claimCycleCount: message.claimCycleCount + 1,
+        claimTxHash: undefined,
+        claimTxNonce: undefined,
+        claimLastRetriedAt: new Date(),
+      });
+      await this.messageRepository.updateMessage(message);
+
+      this.logger.warn("Message reset to SENT for re-claiming with fresh nonce.", {
+        messageHash: message.messageHash,
+        newCycleCount: message.claimCycleCount,
+      });
+    } catch (e) {
+      this.logger.error("Failed to cancel and reset message.", {
+        messageHash: message.messageHash,
+        error: e,
+      });
+    }
+  }
+
   private async updateReceiptStatus(
     message: Message,
     receipt: TransactionReceipt,
@@ -243,7 +232,6 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       if (isRateLimitExceeded) {
         message.edit({
           status: MessageStatus.SENT,
-          //claimGasEstimationThreshold: undefined,
         });
         await this.messageRepository.updateMessage(message);
 

@@ -155,13 +155,13 @@ describe("TestMessageSentEventPoller", () => {
         .mockResolvedValue(testMessage);
       const error = new Error("Other error for testing");
       const eventProcessorMockSpy = jest.spyOn(eventProcessorMock, "process").mockRejectedValue(error);
-      const loggerWarnOrErrorSpy = jest.spyOn(logger, "warnOrError");
+      const loggerErrorSpy = jest.spyOn(logger, "error");
 
       await testMessageSentEventPoller.start();
       await wait(500);
 
-      expect(loggerWarnOrErrorSpy).toHaveBeenCalled();
-      expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(error);
+      expect(loggerErrorSpy).toHaveBeenCalled();
+      expect(loggerErrorSpy).toHaveBeenCalledWith(error);
       expect(l1QuerierMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalledWith(

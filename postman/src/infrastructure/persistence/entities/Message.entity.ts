@@ -76,6 +76,10 @@ export class MessageEntity {
   @IsNumber()
   claimNumberOfRetry: number;
 
+  @Column({ default: 0 })
+  @IsNumber()
+  claimCycleCount: number;
+
   @Column({ nullable: true })
   @IsDate()
   claimLastRetriedAt?: Date;

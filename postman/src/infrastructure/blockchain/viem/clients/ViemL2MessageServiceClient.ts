@@ -40,7 +40,6 @@ export class ViemL2MessageServiceClient implements IL2MessageServiceClient {
   public async getMessageStatus(params: {
     messageHash: Hash;
     messageBlockNumber?: number;
-    overrides?: Overrides;
   }): Promise<OnChainMessageStatus> {
     return getL1ToL2MessageStatus(this.publicClient, {
       messageHash: params.messageHash,
@@ -67,14 +66,14 @@ export class ViemL2MessageServiceClient implements IL2MessageServiceClient {
 
   public async estimateClaimGasFees(
     message: (MessageSent | MessageProps) & { feeRecipient?: Address },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _opts: { claimViaAddress?: Address; overrides?: Overrides } = {},
+    opts: { claimViaAddress?: Address; overrides?: Overrides } = {},
   ): Promise<LineaGasFees> {
     const transactionData = this.encodeClaimMessageTransactionDataFromMessage(message);
+    const contractAddress = opts.claimViaAddress ?? this.contractAddress;
 
     return this.gasProvider.getGasFees({
       from: this.signerAddress,
-      to: this.contractAddress,
+      to: contractAddress,
       value: 0n,
       data: transactionData,
     });
@@ -112,57 +111,6 @@ export class ViemL2MessageServiceClient implements IL2MessageServiceClient {
       gasLimit: opts.overrides?.gasLimit ?? 0n,
       maxFeePerGas: opts.overrides?.maxFeePerGas,
       maxPriorityFeePerGas: opts.overrides?.maxPriorityFeePerGas,
-    };
-  }
-
-  public async retryTransactionWithHigherFee(
-    transactionHash: Hash,
-    priceBumpPercent: number = 10,
-  ): Promise<TransactionSubmission> {
-    if (!Number.isInteger(priceBumpPercent)) {
-      throw new Error("'priceBumpPercent' must be an integer");
-    }
-
-    const transaction = await this.publicClient.getTransaction({ hash: transactionHash });
-
-    if (!transaction) {
-      throw new Error(`Transaction with hash ${transactionHash} not found.`);
-    }
-
-    let maxFeePerGas: bigint;
-    let maxPriorityFeePerGas: bigint;
-
-    if (!transaction.maxFeePerGas || !transaction.maxPriorityFeePerGas) {
-      const fees = await this.publicClient.estimateFeesPerGas();
-      maxFeePerGas = fees.maxFeePerGas;
-      maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
-    } else {
-      const bump = BigInt(priceBumpPercent) + 100n;
-      maxFeePerGas = (transaction.maxFeePerGas * bump) / 100n;
-      maxPriorityFeePerGas = (transaction.maxPriorityFeePerGas * bump) / 100n;
-      const cap = this.gasProvider.getMaxFeePerGas();
-      if (maxFeePerGas > cap) maxFeePerGas = cap;
-      if (maxPriorityFeePerGas > cap) maxPriorityFeePerGas = cap;
-    }
-
-    const txHash = await this.walletClient.sendTransaction({
-      account: transaction.from,
-      to: transaction.to ?? undefined,
-      value: transaction.value,
-      data: transaction.input,
-      nonce: transaction.nonce,
-      gas: transaction.gas,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-      chain: null,
-    });
-
-    return {
-      hash: txHash,
-      nonce: transaction.nonce,
-      gasLimit: transaction.gas,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
     };
   }
 

@@ -1,4 +1,5 @@
-import { IProvider } from "../../core/clients/blockchain/IProvider";
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
@@ -6,7 +7,6 @@ import {
   IMessageAnchoringProcessor,
   MessageAnchoringProcessorConfig,
 } from "../../core/services/processors/IMessageAnchoringProcessor";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   private readonly maxFetchMessagesFromDb: number;
@@ -18,14 +18,13 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
    * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
-   * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages.
+   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
     private readonly contractClient: IMessageServiceContract,
-    private readonly provider: IProvider,
     private readonly messageRepository: IMessageRepository,
     private readonly config: MessageAnchoringProcessorConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
   ) {
     this.maxFetchMessagesFromDb = Math.max(config.maxFetchMessagesFromDb, 0);
   }
@@ -58,15 +57,12 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
         direction: this.config.direction,
       });
 
-      const latestBlockNumber = await this.provider.getBlockNumber();
-
       for (const message of messages) {
         this.logger.debug("Checking on-chain status.", { messageHash: message.messageHash });
 
         const messageStatus = await this.contractClient.getMessageStatus({
           messageHash: message.messageHash,
           messageBlockNumber: message.sentBlockNumber,
-          overrides: { blockTag: latestBlockNumber },
         });
 
         if (messageStatus === OnChainMessageStatus.CLAIMABLE) {
@@ -82,7 +78,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
 
       await this.messageRepository.saveMessages(messages);
     } catch (e) {
-      this.logger.warnOrError(e, {
+      this.logger.error(e, {
         direction: this.config.direction,
       });
     }

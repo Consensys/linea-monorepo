@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { BaseTransactionValidationService } from "./BaseTransactionValidationService";
 import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { ILineaProvider } from "../core/clients/blockchain/linea/ILineaProvider";
@@ -9,14 +11,13 @@ import {
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
 import { Address } from "../core/types";
-import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class LineaTransactionValidationService extends BaseTransactionValidationService {
   constructor(
     config: TransactionValidationServiceConfig,
     private readonly provider: ILineaProvider,
     private readonly l2MessageServiceClient: IL2MessageServiceClient,
-    logger: IPostmanLogger,
+    logger: ILogger,
   ) {
     super(config, logger);
   }

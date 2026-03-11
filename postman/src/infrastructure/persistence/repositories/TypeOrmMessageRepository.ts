@@ -93,6 +93,7 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
             MessageStatus.CLAIMED_REVERTED,
             MessageStatus.EXCLUDED,
             MessageStatus.ZERO_FEE,
+            MessageStatus.NEEDS_MANUAL_INTERVENTION,
           ],
         })
         .andWhere("message.updated_at < :updated_before", { updated_before: formattedDateStr })

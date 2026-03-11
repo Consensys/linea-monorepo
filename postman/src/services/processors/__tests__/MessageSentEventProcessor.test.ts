@@ -89,6 +89,7 @@ describe("TestMessageSentEventProcessor", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       await messageSentEventProcessor.process(200, 0);
@@ -123,6 +124,7 @@ describe("TestMessageSentEventProcessor", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.EXCLUDED,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       await messageSentEventProcessor.process(0, 0);
@@ -177,6 +179,7 @@ describe("TestMessageSentEventProcessor", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       const expectedMessage2ToInsert = MessageFactory.createMessage({
@@ -188,6 +191,7 @@ describe("TestMessageSentEventProcessor", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.EXCLUDED,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       await messageSentEventProcessor.process(0, 0);
@@ -223,6 +227,7 @@ describe("TestMessageSentEventProcessor", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       await messageSentEventProcessor.process(0, 0);

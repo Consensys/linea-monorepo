@@ -7,7 +7,8 @@ export interface IMessageClaimingPersister {
 export type MessageClaimingPersisterConfig = {
   direction: Direction;
   messageSubmissionTimeout: number;
-  maxTxRetries: number;
+  maxBumpsPerCycle: number;
+  maxCycles: number;
   receiptPollingTimeout: number;
   receiptPollingInterval: number;
 };

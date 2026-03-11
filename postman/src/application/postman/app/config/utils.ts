@@ -15,12 +15,13 @@ import {
   DEFAULT_LISTENER_INTERVAL,
   DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
+  DEFAULT_MAX_BUMPS_PER_CYCLE,
   DEFAULT_MAX_FEE_PER_GAS_CAP,
   DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
   DEFAULT_MAX_NONCE_DIFF,
   DEFAULT_MAX_NUMBER_OF_RETRIES,
   DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
-  DEFAULT_MAX_TX_RETRIES,
+  DEFAULT_MAX_RETRY_CYCLES,
   DEFAULT_MESSAGE_SUBMISSION_TIMEOUT,
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
@@ -89,7 +90,8 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         maxNumberOfRetries: l1Options.claiming.maxNumberOfRetries ?? DEFAULT_MAX_NUMBER_OF_RETRIES,
         retryDelayInSeconds: l1Options.claiming.retryDelayInSeconds ?? DEFAULT_RETRY_DELAY_IN_SECONDS,
         maxClaimGasLimit: l1Options.claiming.maxClaimGasLimit ?? DEFAULT_MAX_CLAIM_GAS_LIMIT,
-        maxTxRetries: l1Options.claiming.maxTxRetries ?? DEFAULT_MAX_TX_RETRIES,
+        maxBumpsPerCycle: l1Options.claiming.maxBumpsPerCycle ?? DEFAULT_MAX_BUMPS_PER_CYCLE,
+        maxRetryCycles: l1Options.claiming.maxRetryCycles ?? DEFAULT_MAX_RETRY_CYCLES,
         isPostmanSponsorshipEnabled:
           l1Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
         maxPostmanSponsorGasLimit:
@@ -125,7 +127,8 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
         maxNumberOfRetries: l2Options.claiming.maxNumberOfRetries ?? DEFAULT_MAX_NUMBER_OF_RETRIES,
         retryDelayInSeconds: l2Options.claiming.retryDelayInSeconds ?? DEFAULT_RETRY_DELAY_IN_SECONDS,
         maxClaimGasLimit: l2Options.claiming.maxClaimGasLimit ?? DEFAULT_MAX_CLAIM_GAS_LIMIT,
-        maxTxRetries: l2Options.claiming.maxTxRetries ?? DEFAULT_MAX_TX_RETRIES,
+        maxBumpsPerCycle: l2Options.claiming.maxBumpsPerCycle ?? DEFAULT_MAX_BUMPS_PER_CYCLE,
+        maxRetryCycles: l2Options.claiming.maxRetryCycles ?? DEFAULT_MAX_RETRY_CYCLES,
         isPostmanSponsorshipEnabled:
           l2Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
         maxPostmanSponsorGasLimit:

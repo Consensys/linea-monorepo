@@ -23,6 +23,7 @@ export type MessageProps = {
   claimTxNonce?: number;
   claimTxHash?: Hash;
   claimNumberOfRetry: number;
+  claimCycleCount: number;
   claimLastRetriedAt?: Date;
   claimGasEstimationThreshold?: number;
   compressedTransactionSize?: number;
@@ -74,6 +75,7 @@ export class Message {
   public claimTxNonce?: number;
   public claimTxHash?: Hash;
   public claimNumberOfRetry: number;
+  public claimCycleCount: number;
   public claimLastRetriedAt?: Date;
   public claimGasEstimationThreshold?: number;
   public compressedTransactionSize?: number;
@@ -101,6 +103,7 @@ export class Message {
     this.claimTxNonce = props.claimTxNonce;
     this.claimTxHash = props.claimTxHash;
     this.claimNumberOfRetry = props.claimNumberOfRetry;
+    this.claimCycleCount = props.claimCycleCount;
     this.claimLastRetriedAt = props.claimLastRetriedAt;
     this.claimGasEstimationThreshold = props.claimGasEstimationThreshold;
     this.compressedTransactionSize = props.compressedTransactionSize;
@@ -123,6 +126,7 @@ export class Message {
     if (newMessage.claimTxNonce !== undefined) this.claimTxNonce = newMessage.claimTxNonce;
     if (newMessage.claimTxHash !== undefined) this.claimTxHash = newMessage.claimTxHash;
     if (newMessage.claimNumberOfRetry !== undefined) this.claimNumberOfRetry = newMessage.claimNumberOfRetry;
+    if (newMessage.claimCycleCount !== undefined) this.claimCycleCount = newMessage.claimCycleCount;
     if (newMessage.claimLastRetriedAt !== undefined) this.claimLastRetriedAt = newMessage.claimLastRetriedAt;
     if (newMessage.claimGasEstimationThreshold !== undefined)
       this.claimGasEstimationThreshold = newMessage.claimGasEstimationThreshold;
@@ -146,7 +150,7 @@ export class Message {
       this.claimTxMaxPriorityFeePerGas
     }, claimTxNonce=${this.claimTxNonce}, claimTransactionHash=${this.claimTxHash}, claimNumberOfRetry=${
       this.claimNumberOfRetry
-    }, claimLastRetriedAt=${this.claimLastRetriedAt?.toISOString()}, claimGasEstimationThreshold=${
+    }, claimCycleCount=${this.claimCycleCount}, claimLastRetriedAt=${this.claimLastRetriedAt?.toISOString()}, claimGasEstimationThreshold=${
       this.claimGasEstimationThreshold
     }, compressedTransactionSize=${
       this.compressedTransactionSize

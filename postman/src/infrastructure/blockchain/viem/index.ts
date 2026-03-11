@@ -13,3 +13,7 @@ export { createSignerClient } from "./signers/createSignerClient";
 export { contractSignerToViemAccount } from "./signers/contractSignerToViemAccount";
 export type { SignerConfig, Web3SignerTlsConfig } from "./signers/SignerConfig";
 export { ViemErrorParser } from "./ViemErrorParser";
+export { ViemTransactionRetrier } from "./ViemTransactionRetrier";
+export { ViemReceiptPoller } from "./ViemReceiptPoller";
+export type { ChainContext } from "./signers/ChainContext";
+export { createChainContext } from "./signers/createChainContext";

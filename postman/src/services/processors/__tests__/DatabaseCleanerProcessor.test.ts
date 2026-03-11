@@ -5,15 +5,19 @@ import { mock } from "jest-mock-extended";
 import { DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { DatabaseCleaner } from "../DatabaseCleaner";
+import { DatabaseCleanerProcessor } from "../DatabaseCleanerProcessor";
 
-describe("TestDatabaseCleaner", () => {
-  let testDatabaseCleaner: DatabaseCleaner;
+describe("DatabaseCleanerProcessor", () => {
+  let databaseCleanerProcessor: DatabaseCleanerProcessor;
   const messageRepositoryMock = mock<IMessageRepository>();
   const loggerMock = mock<ILogger>();
 
   beforeEach(() => {
-    testDatabaseCleaner = new DatabaseCleaner(messageRepositoryMock, loggerMock);
+    databaseCleanerProcessor = new DatabaseCleanerProcessor(
+      messageRepositoryMock,
+      { daysBeforeNowToDelete: 10 },
+      loggerMock,
+    );
   });
 
   afterEach(() => {
@@ -25,7 +29,7 @@ describe("TestDatabaseCleaner", () => {
       const messageRepositorySpy = jest.spyOn(messageRepositoryMock, "deleteMessages").mockResolvedValue(10);
       const loggerInfoSpy = jest.spyOn(loggerMock, "info");
 
-      await testDatabaseCleaner.databaseCleanerRoutine(10 * 24 * 3600 * 1000); // ms for 10 days
+      await databaseCleanerProcessor.process();
 
       expect(messageRepositorySpy).toHaveBeenCalledTimes(1);
       expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
@@ -44,7 +48,7 @@ describe("TestDatabaseCleaner", () => {
         );
       const loggerErrorSpy = jest.spyOn(loggerMock, "error");
 
-      await testDatabaseCleaner.databaseCleanerRoutine(10 * 24 * 3600 * 1000); // ms for 10 days
+      await databaseCleanerProcessor.process();
 
       expect(messageRepositorySpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);

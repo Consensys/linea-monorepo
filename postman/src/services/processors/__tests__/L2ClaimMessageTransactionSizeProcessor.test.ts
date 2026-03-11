@@ -54,7 +54,7 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
     it("Should log as error when calculateTransactionSize failed", async () => {
       const testGasLimit = 50_000n;
 
-      const loggerErrorSpy = jest.spyOn(logger, "warnOrError");
+      const loggerErrorSpy = jest.spyOn(logger, "error");
       jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       jest.spyOn(l2ContractClientMock, "estimateClaimGasFees").mockResolvedValue({
         gasLimit: testGasLimit,
@@ -75,7 +75,7 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
     });
 
     it("Should log as error when estimateClaimGasFees failed", async () => {
-      const loggerErrorSpy = jest.spyOn(logger, "warnOrError");
+      const loggerErrorSpy = jest.spyOn(logger, "error");
       jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
       const error = new Error("could not coalesce error");
       jest.spyOn(l2ContractClientMock, "estimateClaimGasFees").mockRejectedValue(error);

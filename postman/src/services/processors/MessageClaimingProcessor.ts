@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { Message } from "../../core/entities/Message";
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IErrorParser } from "../../core/errors/IErrorParser";
@@ -9,7 +11,6 @@ import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   constructor(
@@ -20,7 +21,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     private readonly transactionValidationService: ITransactionValidationService,
     private readonly errorParser: IErrorParser,
     private readonly config: MessageClaimingProcessorConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
   ) {}
 
   public async process(): Promise<void> {
@@ -215,7 +216,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       await this.messageRepository.updateMessage(message);
     }
 
-    this.logger.warnOrError(e, {
+    this.logger.error(e, {
       parsedError,
       ...(message ? { messageHash: message.messageHash } : {}),
     });

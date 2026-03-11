@@ -36,6 +36,7 @@ describe("DatabaseAccessError", () => {
       direction: Direction.L1_TO_L2,
       status: MessageStatus.SENT,
       claimNumberOfRetry: 0,
+      claimCycleCount: 0,
     };
     const error = new DatabaseAccessError(
       DatabaseRepoName.MessageRepository,
@@ -61,6 +62,7 @@ describe("DatabaseAccessError", () => {
           direction: "L1_TO_L2",
           status: "SENT",
           claimNumberOfRetry: 0,
+          claimCycleCount: 0,
         },
       }),
     );

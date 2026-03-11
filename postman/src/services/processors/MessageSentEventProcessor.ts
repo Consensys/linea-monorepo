@@ -89,6 +89,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
         direction: this.config.direction,
         status: messageStatusToInsert,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       });
 
       await this.messageRepository.insertMessage(message);

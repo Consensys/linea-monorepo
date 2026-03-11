@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { IProvider } from "../../core/clients/blockchain/IProvider";
 import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { Message } from "../../core/entities/Message";
@@ -7,7 +9,6 @@ import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { IPoller } from "../../core/services/pollers/IPoller";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
 import { wait } from "../../core/utils/shared";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 type MessageSentEventPollerConfig = {
   direction: Direction;
@@ -26,14 +27,14 @@ export class MessageSentEventPoller implements IPoller {
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
    * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageSentEventPollerConfig} config - Configuration settings for the poller, including the direction of message flow, the polling interval, and the initial block number to start listening from.
-   * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages related to the polling process.
+   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages related to the polling process.
    */
   constructor(
     private readonly eventProcessor: IMessageSentEventProcessor,
     private readonly provider: IProvider,
     private readonly messageRepository: IMessageRepository,
     private readonly config: MessageSentEventPollerConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
   ) {}
 
   /**
@@ -105,7 +106,7 @@ export class MessageSentEventPoller implements IPoller {
           errorMessage: e.message,
         });
       } else {
-        this.logger.warnOrError(e);
+        this.logger.error(e);
       }
     } finally {
       await wait(this.config.pollingInterval);

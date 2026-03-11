@@ -282,7 +282,7 @@ describe("TestMessageClaimingProcessor", () => {
     });
 
     it("Should rollback nonce and log error if claim throws", async () => {
-      const loggerWarnOrErrorSpy = jest.spyOn(logger, "warnOrError");
+      const loggerErrorSpy = jest.spyOn(logger, "error");
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
       const messageRepositorySaveSpy = jest.spyOn(messageRepository, "updateMessage");
       const rollbackSpy = jest.spyOn(nonceManager, "rollbackNonce");
@@ -311,8 +311,8 @@ describe("TestMessageClaimingProcessor", () => {
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
       expect(rollbackSpy).toHaveBeenCalledWith(101);
-      expect(loggerWarnOrErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerWarnOrErrorSpy).toHaveBeenCalledWith(actionRejectedError, {
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(actionRejectedError, {
         parsedError: errorParser.parse(actionRejectedError),
         messageHash: expectedLoggingMessage.messageHash,
       });

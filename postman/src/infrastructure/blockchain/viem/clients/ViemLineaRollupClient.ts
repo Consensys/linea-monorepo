@@ -25,7 +25,6 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
   public async getMessageStatus(params: {
     messageHash: Hash;
     messageBlockNumber?: number;
-    overrides?: Overrides;
   }): Promise<OnChainMessageStatus> {
     return getL2ToL1MessageStatus(this.publicClient, {
       l2Client: this.l2PublicClient,
@@ -125,57 +124,6 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
       gasLimit: opts.overrides?.gasLimit ?? 0n,
       maxFeePerGas: opts.overrides?.maxFeePerGas ?? gasFees.maxFeePerGas,
       maxPriorityFeePerGas: opts.overrides?.maxPriorityFeePerGas ?? gasFees.maxPriorityFeePerGas,
-    };
-  }
-
-  public async retryTransactionWithHigherFee(
-    transactionHash: Hash,
-    priceBumpPercent: number = 10,
-  ): Promise<TransactionSubmission> {
-    if (!Number.isInteger(priceBumpPercent)) {
-      throw new Error("'priceBumpPercent' must be an integer");
-    }
-
-    const transaction = await this.publicClient.getTransaction({ hash: transactionHash });
-
-    if (!transaction) {
-      throw new Error(`Transaction with hash ${transactionHash} not found.`);
-    }
-
-    let maxFeePerGas: bigint;
-    let maxPriorityFeePerGas: bigint;
-
-    if (!transaction.maxFeePerGas || !transaction.maxPriorityFeePerGas) {
-      const fees = await this.gasProvider.getGasFees();
-      maxFeePerGas = fees.maxFeePerGas;
-      maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
-    } else {
-      const bump = BigInt(priceBumpPercent) + 100n;
-      maxFeePerGas = (transaction.maxFeePerGas * bump) / 100n;
-      maxPriorityFeePerGas = (transaction.maxPriorityFeePerGas * bump) / 100n;
-      const cap = this.gasProvider.getMaxFeePerGas();
-      if (maxFeePerGas > cap) maxFeePerGas = cap;
-      if (maxPriorityFeePerGas > cap) maxPriorityFeePerGas = cap;
-    }
-
-    const txHash = await this.walletClient.sendTransaction({
-      account: transaction.from,
-      to: transaction.to ?? undefined,
-      value: transaction.value,
-      data: transaction.input,
-      nonce: transaction.nonce,
-      gas: transaction.gas,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-      chain: null,
-    });
-
-    return {
-      hash: txHash,
-      nonce: transaction.nonce,
-      gasLimit: transaction.gas,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
     };
   }
 

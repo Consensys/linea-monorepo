@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
 import { Message } from "../core/entities/Message";
 import {
@@ -6,12 +8,11 @@ import {
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
 import { Address } from "../core/types";
-import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export abstract class BaseTransactionValidationService implements ITransactionValidationService {
   constructor(
     protected readonly config: TransactionValidationServiceConfig,
-    protected readonly logger: IPostmanLogger,
+    protected readonly logger: ILogger,
   ) {}
 
   public abstract evaluateTransaction(

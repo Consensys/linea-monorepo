@@ -1,3 +1,4 @@
+import { WinstonLogger } from "@consensys/linea-shared-utils";
 import { type LoggerOptions } from "winston";
 
 import { L1NetworkConfig, L2NetworkConfig } from "./config/config";
@@ -11,6 +12,8 @@ import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../..
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { INonceManager } from "../../../core/services/INonceManager";
+import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
+import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
 import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
@@ -20,7 +23,6 @@ import {
   MessageClaimingProcessor,
   MessageSentEventProcessor,
 } from "../../../services/processors";
-import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
 
 export type L2ToL1Deps = {
   l2LogClient: IL2MessageServiceLogClient;
@@ -28,6 +30,8 @@ export type L2ToL1Deps = {
   lineaRollupClient: ILineaRollupClient;
   l1Provider: IProvider;
   l1NonceManager: INonceManager;
+  l1TransactionRetrier: ITransactionRetrier;
+  l1ReceiptPoller: IReceiptPoller;
   messageRepository: IMessageRepository;
   l1GasProvider: IEthereumGasProvider;
   calldataDecoder: ICalldataDecoder;
@@ -49,6 +53,8 @@ export class L2ToL1App {
       lineaRollupClient,
       l1Provider,
       l1NonceManager,
+      l1TransactionRetrier,
+      l1ReceiptPoller,
       messageRepository,
       l1GasProvider,
       calldataDecoder,
@@ -60,8 +66,7 @@ export class L2ToL1App {
       loggerOptions,
     } = deps;
 
-    const log = (name: string) => new PostmanWinstonLogger(name, loggerOptions);
-    const logWithErrorParser = (name: string) => new PostmanWinstonLogger(name, loggerOptions, errorParser);
+    const log = (name: string) => new WinstonLogger(name, loggerOptions);
 
     const sentEventProcessor = new MessageSentEventProcessor(
       messageRepository,
@@ -89,19 +94,18 @@ export class L2ToL1App {
         initialFromBlock: l2Config.listener.initialFromBlock,
         originContractAddress: l2Config.messageServiceContractAddress,
       },
-      logWithErrorParser(`L2${MessageSentEventPoller.name}`),
+      log(`L2${MessageSentEventPoller.name}`),
     );
 
     const anchoringProcessor = new MessageAnchoringProcessor(
       lineaRollupClient,
-      l1Provider,
       messageRepository,
       {
         direction: Direction.L2_TO_L1,
         maxFetchMessagesFromDb: l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: l2Config.messageServiceContractAddress,
       },
-      logWithErrorParser(`L1${MessageAnchoringProcessor.name}`),
+      log(`L1${MessageAnchoringProcessor.name}`),
     );
 
     const anchoringPoller = new IntervalPoller(
@@ -151,7 +155,7 @@ export class L2ToL1App {
         maxClaimGasLimit: l1Config.claiming.maxClaimGasLimit,
         claimViaAddress: l1Config.claiming.claimViaAddress,
       },
-      logWithErrorParser(`L1${MessageClaimingProcessor.name}`),
+      log(`L1${MessageClaimingProcessor.name}`),
     );
 
     const claimingPoller = new IntervalPoller(
@@ -166,14 +170,17 @@ export class L2ToL1App {
       sponsorshipMetricsUpdater,
       transactionMetricsUpdater,
       l1Provider,
+      l1TransactionRetrier,
+      l1ReceiptPoller,
       {
         direction: Direction.L2_TO_L1,
         messageSubmissionTimeout: l1Config.claiming.messageSubmissionTimeout,
-        maxTxRetries: l1Config.claiming.maxTxRetries,
+        maxBumpsPerCycle: l1Config.claiming.maxBumpsPerCycle,
+        maxCycles: l1Config.claiming.maxRetryCycles,
         receiptPollingTimeout: l1Config.claiming.messageSubmissionTimeout,
         receiptPollingInterval: l1Config.listener.receiptPollingInterval,
       },
-      logWithErrorParser(`L1${MessageClaimingPersister.name}`),
+      log(`L1${MessageClaimingPersister.name}`),
     );
 
     const persistingPoller = new IntervalPoller(

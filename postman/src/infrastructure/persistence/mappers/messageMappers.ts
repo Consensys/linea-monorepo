@@ -37,6 +37,7 @@ export const mapMessageEntityToMessage = (entity: MessageEntity): Message => {
     claimTxNonce: entity.claimTxNonce,
     claimTxHash: entity.claimTxHash as Hash | undefined,
     claimNumberOfRetry: entity.claimNumberOfRetry,
+    claimCycleCount: entity.claimCycleCount ?? 0,
     claimLastRetriedAt: entity.claimLastRetriedAt,
     claimGasEstimationThreshold: entity.claimGasEstimationThreshold,
     compressedTransactionSize: entity.compressedTransactionSize,

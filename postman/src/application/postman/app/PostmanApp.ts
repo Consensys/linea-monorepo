@@ -1,6 +1,6 @@
-import { IApplication, ILogger, IMetricsService } from "@consensys/linea-shared-utils";
+import { IApplication, ILogger, IMetricsService, WinstonLogger } from "@consensys/linea-shared-utils";
+import { DatabaseCleanerProcessor } from "postman/src/services/processors/DatabaseCleanerProcessor";
 import { DataSource } from "typeorm";
-import { createPublicClient, createWalletClient, defineChain, http } from "viem";
 
 import { PostmanConfig, PostmanOptions } from "./config/config";
 import { getConfig } from "./config/utils";
@@ -26,8 +26,9 @@ import {
   ViemProvider,
   ViemTransactionSigner,
   InMemoryNonceManager,
-  createSignerClient,
-  contractSignerToViemAccount,
+  createChainContext,
+  ViemTransactionRetrier,
+  ViemReceiptPoller,
 } from "../../../infrastructure/blockchain/viem";
 import { ViemErrorParser } from "../../../infrastructure/blockchain/viem";
 import { MessageMetricsUpdater } from "../../../infrastructure/metrics/MessageMetricsUpdater";
@@ -37,9 +38,7 @@ import { TransactionMetricsUpdater } from "../../../infrastructure/metrics/Trans
 import { DB } from "../../../infrastructure/persistence/dataSource";
 import { TypeOrmMessageRepository } from "../../../infrastructure/persistence/repositories/TypeOrmMessageRepository";
 import { MessageStatusSubscriber } from "../../../infrastructure/persistence/subscribers/MessageStatusSubscriber";
-import { DatabaseCleaner } from "../../../services/persistence";
-import { DatabaseCleaningPoller } from "../../../services/pollers";
-import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
+import { IntervalPoller } from "../../../services/pollers";
 
 export class PostmanApp {
   private readonly config: PostmanConfig;
@@ -56,7 +55,7 @@ export class PostmanApp {
 
   constructor(options: PostmanOptions) {
     this.config = getConfig(options);
-    this.logger = new PostmanWinstonLogger(PostmanApp.name, this.config.loggerOptions);
+    this.logger = new WinstonLogger(PostmanApp.name, this.config.loggerOptions);
     this.logger.info("Postman configuration:\n  %s", this.toLogfmt(this.redactConfig(this.config)));
 
     this.db = DB.create(this.config.databaseOptions);
@@ -69,76 +68,43 @@ export class PostmanApp {
   public async start(): Promise<void> {
     const { l1Config, l2Config, loggerOptions } = this.config;
 
-    const l1PublicClient = createPublicClient({ transport: http(l1Config.rpcUrl) });
-    const l2PublicClient = createPublicClient({ transport: http(l2Config.rpcUrl) });
-    const [l1ChainId, l2ChainId] = await Promise.all([l1PublicClient.getChainId(), l2PublicClient.getChainId()]);
+    const [l1, l2] = await Promise.all([
+      createChainContext(l1Config.rpcUrl, l1Config.claiming.signer, this.logger),
+      createChainContext(l2Config.rpcUrl, l2Config.claiming.signer, this.logger),
+    ]);
 
-    const mkChain = (id: number, rpcUrl: string) =>
-      defineChain({
-        id,
-        name: "custom",
-        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-        rpcUrls: { default: { http: [rpcUrl] } },
-      });
-
-    const l1Signer = createSignerClient(
-      l1Config.claiming.signer,
-      this.logger,
-      l1Config.rpcUrl,
-      mkChain(l1ChainId, l1Config.rpcUrl),
-    );
-    const l2Signer = createSignerClient(
-      l2Config.claiming.signer,
-      this.logger,
-      l2Config.rpcUrl,
-      mkChain(l2ChainId, l2Config.rpcUrl),
-    );
-    const l1Account = contractSignerToViemAccount(l1Signer);
-    const l2Account = contractSignerToViemAccount(l2Signer);
-
-    const l1WalletClient = createWalletClient({
-      account: l1Account,
-      transport: http(l1Config.rpcUrl),
-      chain: mkChain(l1ChainId, l1Config.rpcUrl),
-    });
-    const l2WalletClient = createWalletClient({
-      account: l2Account,
-      transport: http(l2Config.rpcUrl),
-      chain: mkChain(l2ChainId, l2Config.rpcUrl),
-    });
-
-    const l1GasProvider = new ViemEthereumGasProvider(l1PublicClient, {
+    const l1GasProvider = new ViemEthereumGasProvider(l1.publicClient, {
       maxFeePerGasCap: l1Config.claiming.maxFeePerGasCap,
       gasEstimationPercentile: l1Config.claiming.gasEstimationPercentile,
       enforceMaxGasFee: l1Config.claiming.isMaxGasFeeEnforced,
     });
-    const l2GasProvider = new ViemLineaGasProvider(l2PublicClient, {
+    const l2GasProvider = new ViemLineaGasProvider(l2.publicClient, {
       maxFeePerGasCap: l2Config.claiming.maxFeePerGasCap,
       enforceMaxGasFee: l2Config.claiming.isMaxGasFeeEnforced,
     });
 
     const lineaRollupClient = new ViemLineaRollupClient(
-      l1PublicClient,
-      l1WalletClient,
+      l1.publicClient,
+      l1.walletClient,
       l1Config.messageServiceContractAddress,
-      l2PublicClient,
+      l2.publicClient,
       l2Config.messageServiceContractAddress,
       l1GasProvider,
     );
     const l2MessageServiceClient = new ViemL2MessageServiceClient(
-      l2PublicClient,
-      l2WalletClient,
+      l2.publicClient,
+      l2.walletClient,
       l2Config.messageServiceContractAddress,
       l2GasProvider,
-      l2Account.address,
+      l2.account.address,
     );
 
     const messageRepository = new TypeOrmMessageRepository(this.db);
 
-    const l1Provider = new ViemProvider(l1PublicClient);
-    const l2Provider = new ViemProvider(l2PublicClient);
+    const l1Provider = new ViemProvider(l1.publicClient);
+    const l2Provider = new ViemProvider(l2.publicClient);
     const calldataDecoder = new ViemCalldataDecoder();
-    const transactionSigner = new ViemTransactionSigner(l2Signer, l2ChainId);
+    const transactionSigner = new ViemTransactionSigner(l2.signer, l2.chainId);
     const errorParser = new ViemErrorParser();
     const sharedMetrics = {
       sponsorshipMetricsUpdater: this.sponsorshipMetricsUpdater,
@@ -148,18 +114,28 @@ export class PostmanApp {
     if (this.config.l1L2AutoClaimEnabled) {
       const l2NonceManager = new InMemoryNonceManager(
         l2Provider,
-        l2Account.address,
+        l2.account.address,
         l2Config.claiming.maxNonceDiff,
-        new PostmanWinstonLogger("L2NonceManager", loggerOptions),
+        new WinstonLogger("L2NonceManager", loggerOptions),
       );
       await l2NonceManager.initialize();
 
+      const l2TransactionRetrier = new ViemTransactionRetrier(
+        l2.publicClient,
+        l2.walletClient,
+        l2.account.address,
+        l2Config.claiming.maxFeePerGasCap,
+      );
+      const l2ReceiptPoller = new ViemReceiptPoller(l2Provider);
+
       this.l1ToL2App = new L1ToL2App({
-        l1LogClient: new ViemLineaRollupLogClient(l1PublicClient, l1Config.messageServiceContractAddress),
+        l1LogClient: new ViemLineaRollupLogClient(l1.publicClient, l1Config.messageServiceContractAddress),
         l1Provider,
         l2MessageServiceClient,
-        l2Provider: new ViemLineaProvider(l2PublicClient),
+        l2Provider: new ViemLineaProvider(l2.publicClient),
         l2NonceManager,
+        l2TransactionRetrier,
+        l2ReceiptPoller,
         messageRepository,
         calldataDecoder,
         transactionSigner,
@@ -174,18 +150,28 @@ export class PostmanApp {
     if (this.config.l2L1AutoClaimEnabled) {
       const l1NonceManager = new InMemoryNonceManager(
         l1Provider,
-        l1Account.address,
+        l1.account.address,
         l1Config.claiming.maxNonceDiff,
-        new PostmanWinstonLogger("L1NonceManager", loggerOptions),
+        new WinstonLogger("L1NonceManager", loggerOptions),
       );
       await l1NonceManager.initialize();
 
+      const l1TransactionRetrier = new ViemTransactionRetrier(
+        l1.publicClient,
+        l1.walletClient,
+        l1.account.address,
+        l1Config.claiming.maxFeePerGasCap,
+      );
+      const l1ReceiptPoller = new ViemReceiptPoller(l1Provider);
+
       this.l2ToL1App = new L2ToL1App({
-        l2LogClient: new ViemL2MessageServiceLogClient(l2PublicClient, l2Config.messageServiceContractAddress),
+        l2LogClient: new ViemL2MessageServiceLogClient(l2.publicClient, l2Config.messageServiceContractAddress),
         l2Provider,
         lineaRollupClient,
         l1Provider,
         l1NonceManager,
+        l1TransactionRetrier,
+        l1ReceiptPoller,
         messageRepository,
         l1GasProvider,
         calldataDecoder,
@@ -197,36 +183,36 @@ export class PostmanApp {
       });
     }
 
-    const databaseCleaner = new DatabaseCleaner(
-      messageRepository,
-      new PostmanWinstonLogger(DatabaseCleaner.name, loggerOptions),
-    );
-    this.databaseCleaningPoller = new DatabaseCleaningPoller(
-      databaseCleaner,
-      new PostmanWinstonLogger(DatabaseCleaningPoller.name, loggerOptions),
-      {
-        enabled: this.config.databaseCleanerConfig.enabled,
-        daysBeforeNowToDelete: this.config.databaseCleanerConfig.daysBeforeNowToDelete,
-        cleaningInterval: this.config.databaseCleanerConfig.cleaningInterval,
-      },
-    );
+    if (this.config.databaseCleanerConfig.enabled) {
+      const databaseCleanerProcessor = new DatabaseCleanerProcessor(
+        messageRepository,
+        { daysBeforeNowToDelete: this.config.databaseCleanerConfig.daysBeforeNowToDelete },
+        new WinstonLogger(DatabaseCleanerProcessor.name, loggerOptions),
+      );
+
+      this.databaseCleaningPoller = new IntervalPoller(
+        databaseCleanerProcessor,
+        { pollingInterval: this.config.databaseCleanerConfig.cleaningInterval },
+        new WinstonLogger("DatabaseCleaningPoller", loggerOptions),
+      );
+    }
 
     await this.db.initialize();
     this.logger.info("Database initialized.");
 
     await this.messageMetricsUpdater.initialize();
     this.db.subscribers.push(
-      new MessageStatusSubscriber(this.messageMetricsUpdater, new PostmanWinstonLogger(MessageStatusSubscriber.name)),
+      new MessageStatusSubscriber(this.messageMetricsUpdater, new WinstonLogger(MessageStatusSubscriber.name)),
     );
     this.api = createPostmanApi(
       this.config.apiConfig.port,
       this.postmanMetricsService,
-      new PostmanWinstonLogger("ExpressApiApplication"),
+      new WinstonLogger("ExpressApiApplication"),
     );
 
     this.l1ToL2App?.start();
     this.l2ToL1App?.start();
-    this.databaseCleaningPoller.start();
+    this.databaseCleaningPoller?.start();
     this.api.start();
     this.logger.info("All services started.");
   }

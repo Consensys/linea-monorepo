@@ -195,6 +195,7 @@ describe("ViemL2MessageServiceClient", () => {
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
+        claimCycleCount: 0,
       };
 
       const encoded = client.encodeClaimMessageTransactionData(
@@ -240,87 +241,6 @@ describe("ViemL2MessageServiceClient", () => {
           l2MessageServiceAddress: TEST_CONTRACT_ADDRESS,
         }),
       );
-    });
-  });
-
-  describe("retryTransactionWithHigherFee", () => {
-    it("throws when priceBumpPercent is not an integer", async () => {
-      await expect(client.retryTransactionWithHigherFee(TEST_TX_HASH, 1.5)).rejects.toThrow(
-        "'priceBumpPercent' must be an integer",
-      );
-    });
-
-    it("throws when transaction not found", async () => {
-      publicClient.getTransaction.mockResolvedValue(
-        null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
-      );
-      await expect(client.retryTransactionWithHigherFee(TEST_TX_HASH)).rejects.toThrow("not found");
-    });
-
-    it("bumps fees and sends transaction", async () => {
-      publicClient.getTransaction.mockResolvedValue({
-        hash: TEST_TX_HASH as `0x${string}`,
-        nonce: 5,
-        gas: 100000n,
-        maxFeePerGas: 1000n,
-        maxPriorityFeePerGas: 100n,
-        to: TEST_ADDRESS_2 as `0x${string}`,
-        value: 0n,
-        input: "0x" as `0x${string}`,
-      } as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>);
-
-      gasProvider.getMaxFeePerGas.mockReturnValue(100_000_000n);
-      walletClient.sendTransaction.mockResolvedValue("0xretryhash" as `0x${string}`);
-
-      const result = await client.retryTransactionWithHigherFee(TEST_TX_HASH, 10);
-
-      expect(result.hash).toBe("0xretryhash");
-      expect(result.nonce).toBe(5);
-      expect(result.maxFeePerGas).toBe(1100n); // 1000 * 110 / 100
-      expect(result.maxPriorityFeePerGas).toBe(110n); // 100 * 110 / 100
-    });
-
-    it("caps fees at gasProvider.getMaxFeePerGas()", async () => {
-      publicClient.getTransaction.mockResolvedValue({
-        hash: TEST_TX_HASH as `0x${string}`,
-        nonce: 5,
-        gas: 100000n,
-        maxFeePerGas: 1000n,
-        maxPriorityFeePerGas: 1000n,
-        to: TEST_ADDRESS_2 as `0x${string}`,
-        value: 0n,
-        input: "0x" as `0x${string}`,
-      } as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>);
-
-      gasProvider.getMaxFeePerGas.mockReturnValue(500n);
-      walletClient.sendTransaction.mockResolvedValue("0xretryhash" as `0x${string}`);
-
-      const result = await client.retryTransactionWithHigherFee(TEST_TX_HASH, 10);
-      expect(result.maxFeePerGas).toBe(500n);
-      expect(result.maxPriorityFeePerGas).toBe(500n);
-    });
-
-    it("fetches current fees when tx lacks maxFeePerGas", async () => {
-      publicClient.getTransaction.mockResolvedValue({
-        hash: TEST_TX_HASH as `0x${string}`,
-        nonce: 5,
-        gas: 100000n,
-        maxFeePerGas: null,
-        maxPriorityFeePerGas: null,
-        to: TEST_ADDRESS_2 as `0x${string}`,
-        value: 0n,
-        input: "0x" as `0x${string}`,
-      } as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>);
-
-      publicClient.estimateFeesPerGas.mockResolvedValue({
-        maxFeePerGas: 2000n,
-        maxPriorityFeePerGas: 200n,
-      } as Awaited<ReturnType<PublicClient["estimateFeesPerGas"]>>);
-      walletClient.sendTransaction.mockResolvedValue("0xretryhash" as `0x${string}`);
-
-      const result = await client.retryTransactionWithHigherFee(TEST_TX_HASH, 10);
-      expect(result.maxFeePerGas).toBe(2000n);
-      expect(result.maxPriorityFeePerGas).toBe(200n);
     });
   });
 });

@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { BaseTransactionValidationService } from "./BaseTransactionValidationService";
 import { ILineaRollupClient } from "../core/clients/blockchain/ethereum/ILineaRollupClient";
 import { IEthereumGasProvider } from "../core/clients/blockchain/IGasProvider";
@@ -7,14 +9,13 @@ import {
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
 import { Address } from "../core/types";
-import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class EthereumTransactionValidationService extends BaseTransactionValidationService {
   constructor(
     private readonly lineaRollupClient: ILineaRollupClient,
     private readonly gasProvider: IEthereumGasProvider,
     config: TransactionValidationServiceConfig,
-    logger: IPostmanLogger,
+    logger: ILogger,
   ) {
     super(config, logger);
   }

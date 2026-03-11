@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { TEST_ADDRESS_1, TEST_CONTRACT_ADDRESS_1, TEST_CONTRACT_ADDRESS_2, TEST_MESSAGE_HASH } from "./constants";
 import { Message, MessageProps } from "../../core/entities/Message";
 import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
 import { MessageEntity } from "../../infrastructure/persistence/entities/Message.entity";
-import { IPostmanLogger } from "../IPostmanLogger";
 
-export class TestLogger implements IPostmanLogger {
+export class TestLogger implements ILogger {
   public readonly name: string;
 
   constructor(loggerName: string) {
@@ -25,9 +26,6 @@ export class TestLogger implements IPostmanLogger {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public debug(error: any): void {}
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public warnOrError(error: any): void {}
 }
 
 export const generateMessage = (overrides?: Partial<MessageProps>): Message => {
@@ -45,6 +43,7 @@ export const generateMessage = (overrides?: Partial<MessageProps>): Message => {
     direction: Direction.L1_TO_L2,
     status: MessageStatus.SENT,
     claimNumberOfRetry: 0,
+    claimCycleCount: 0,
     isForSponsorship: false,
     createdAt: new Date("2023-08-04"),
     updatedAt: new Date("2023-08-04"),
@@ -67,6 +66,7 @@ export const generateMessageEntity = (overrides?: Partial<MessageEntity>): Messa
     direction: Direction.L1_TO_L2,
     status: MessageStatus.SENT,
     claimNumberOfRetry: 0,
+    claimCycleCount: 0,
     isForSponsorship: false,
     createdAt: new Date("2023-08-04"),
     updatedAt: new Date("2023-08-04"),

@@ -1,3 +1,5 @@
+import { ILogger } from "@consensys/linea-shared-utils";
+
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
@@ -8,7 +10,6 @@ import {
   L2ClaimMessageTransactionSizeProcessorConfig,
 } from "../../core/services/processors/IL2ClaimMessageTransactionSizeProcessor";
 import { IL2ClaimTransactionSizeCalculator } from "../../core/services/processors/IL2ClaimTransactionSizeCalculator";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTransactionSizeProcessor {
   /**
@@ -18,14 +19,14 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
    * @param {IL2MessageServiceClient} l2MessageServiceClient - The L2 message service client for estimating gas fees.
    * @param {IL2ClaimTransactionSizeCalculator} transactionSizeCalculator - The calculator for determining the transaction size.
    * @param {L2ClaimMessageTransactionSizeProcessorConfig} config - Configuration settings for the processor, including the direction and origin contract address.
-   * @param {IPostmanLogger} logger - The logger for logging information and errors.
+   * @param {ILogger} logger - The logger for logging information and errors.
    */
   constructor(
     private readonly messageRepository: IMessageRepository,
     private readonly l2MessageServiceClient: IL2MessageServiceClient,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly config: L2ClaimMessageTransactionSizeProcessorConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
     private readonly errorParser: IErrorParser,
   ) {}
 
@@ -95,14 +96,14 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
     if (!parsedError.retryable && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.messageRepository.updateMessage(message);
-      this.logger.warnOrError(e, {
+      this.logger.error(e, {
         parsedError,
         messageHash: message.messageHash,
       });
       return;
     }
 
-    this.logger.warnOrError(e, {
+    this.logger.error(e, {
       parsedError,
     });
   }
