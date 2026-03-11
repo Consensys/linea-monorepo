@@ -690,44 +690,9 @@ describe("Linea Rollup contract: Finalization", () => {
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
 
-      const finalizationData = await generateFinalizationData({
-        l1RollingHash: aggregatedProof1To81.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
-        parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
-        finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
-        l2MerkleRoots: aggregatedProof1To81.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(aggregatedProof1To81.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
-        aggregatedProof: aggregatedProof1To81.aggregatedProof,
-        shnarfData: generateParentShnarfData(2, true),
-        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
-      });
-
-      finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
-      finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
-
-      let encodedCall = LineaRollup__factory.createInterface().encodeFunctionData("finalizeBlocks", [
-        aggregatedProof1To81.aggregatedProof,
-        TEST_PUBLIC_VERIFIER_INDEX,
-        finalizationData,
-      ]);
-
-      // Patch the l2MerkleRoots offset pointer (at byte offset 0x220 from finalizationData start)
-      // to point to an alternate location, creating a malformed call that should fail with InvalidProof.
-      // The finalizationData starts at offset 0x64 (after selector + proof offset + verifierIndex + finalizationData offset).
-      // l2MerkleRoots offset is at 0x220 within finalizationData struct.
-      // Total offset from start of calldata: 4 (selector) + 0x60 (first 3 words) + 0x220 = 0x284 = 644 bytes = 1288 hex chars + 2 for "0x"
-      const patchOffset = 2 + (4 + 0x60 + 0x220) * 2; // 1290
-      // Replace the offset value with a contrived pointer (0x0280 -> points to alternate location with value 0x0e)
-      encodedCall =
-        encodedCall.slice(0, patchOffset) +
-        "0000000000000000000000000000000000000000000000000000000000000280" +
-        encodedCall.slice(patchOffset + 64);
-
-      // TODO: Remove this after capturing the hardcoded value
-      console.log("PATCHED_ENCODED_CALL:", encodedCall);
-
+      // This contains the Merkle roots length for public input at 0x220 and a contrived pointer to an alternate location.
+      const encodedCall =
+        "0x5603c65f0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e0000000000000000000000000000000000000000000000000000000000000036029093956ab5035511b506befae52761827f5c0b29e5f3fa143f7be36903f86ef0a63534b32dea73409e29e219adc9e09b00fb4558db1a1739e79cb3a4703281f0b9d0a323788faa38d9458e3a3183bd287992feddde4cd6cb87496592ccb3bca1dd7295bdb77b48ef8988fe6526edd09a0ede4cce8c9c6f7e515c0efe30277292ba2fadf583b5733e40160dc694e051c5b337e9ad1fadde2ab9d6f4e1002f5de21c59d7f748ce46d9b4acbe44d94aed8bcc0156f7049ade3682008d3fe2bdaa72d68d3df8990602e3d269eb340912b6ba727d9860c6bcdde6cbe7228c6585b0e0f35f6639f670594e7e9e88223d9347ab41335acf70042522e4293bfc107f9f90b0a914931f52ac9381d77dc2c76f8c725c27bf11c90f0ed24ffc0ca47267c032c9a8f301d25494b7c452a07569a5bf36c7348d6c24f7a01c2915f2f61fb67940b15c61094a97233781358069193096ea7ae59e647fb8db081b0686af975465326fdabf16c3c84287ce479e6f7193791ff4e48f0cbe936f95a1997c00fd9b56400051a583c351752e45eda356fe2718f5f6acdef13c164f0e8034721bd2e2ed7182085ec23369082a63e76bb855556c7ce61cf8a3a5b64777385a3a4f16ca3aa1269c9e17b9f7d5f972b595987d41ff9ba367ead153d577bcc42f8cc9e3514552deac55abe689986825032bde231b654d603926d26edf53dda0770dabaddbca9000000000000000000000000000000000000000000000000000000000000028009084f28cf6e68e4ac57cd82dcb41b7cb56582c5aaf46b73600b8827428362b627f5327d19461a3c38284b0f7f82bad8e2387622f6e6fcd079bbe870ea28fa4a21c410e80f368850186b8b90e2ac2ca4ae7f1e5c45952a53350c379411e97f9815bf75539c93a0ac5d92127e2783cadc95f7b4175a4e6540f20c8e4cb11e6a561eabc321ed04cd7a16654b224f9be0dd2720e23a9ddc64bca5e09207c196876627a9a2327c896d8f22f653a4b825817bdb0af45a90d8b102f18e6124066a70260da7bd8c45e30c2112aedf651e9eb28baaa67ba94f41b4a86a268e8e7fde04f6069c4955704012f7aac86268e86ac97cb6dd16d2b377b506ceae8befe75f97af24436b34ab6038c4df3c0a2fb824606759243502d54448265ada6e735349545f063059274a39d495cd84ae7cee59a4314de7a97e0c2d77b08fc27aecb2867faf072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd00000000000000000000000000000000000000000000000000000000000000516f19a5c3028ba90d326cd4e590c586b254386522b9628ed6f7939d214b1c8cea045431943d21416d41524505917a59698c3dab060d85e56f9c372c1dafc52344f0f26782f7afb93f926cacb145f55530714f20b1356725e3971dc99e0ef8b5911ed2f0038be4e78f2a8e767d889df61a483777a0aeb5453ada13ed1d5b4f012a2199bae65182f02c716c8e54f5714561a45694b982da8c8143333d0206078d3f00000000000000000000000000000000000000000000000000000000645580d1000000000000000000000000000000000000000000000000000000006455a7e10000000000000000000000000000000000000000000000000000000000000000dc8e70637c1048e1e0406c4ed6fab51a7489ccb52f37ddd2c135cb1aa18ec6970000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000000016de197db892fd7d3fe0a389452dae0c5d0520e23d18ad20327546e2189a7e3f1000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000fffff000000000000000000000000000000000000";
       const transaction = {
         data: encodedCall,
         maxPriorityFeePerGas: maxPriorityFeePerGas!,
