@@ -36,13 +36,13 @@ type FixedInputs struct {
 	ColSize     int
 
 	// Execution PI fields (from FunctionalInputExtractor)
-	StateRootHash        [zkevmcommon.NbElemPerHash]field.Element   // 8 x 32-bit KoalaBear elements
-	CoinBase             [zkevmcommon.NbLimbEthAddress]field.Element // 10 x 16-bit limbs
-	BaseFee              [zkevmcommon.NbLimbU128]field.Element       // 8 x 16-bit limbs
-	ChainID              [zkevmcommon.NbLimbU256]field.Element       // 16 x 16-bit limbs
-	L2MessageServiceAddr [zkevmcommon.NbLimbEthAddress]field.Element // 10 x 16-bit limbs
-	InitialBlockTimestamp [zkevmcommon.NbLimbU128]field.Element      // 8 x 16-bit limbs
-	InitialBlockNumber    [zkevmcommon.NbLimbU48]field.Element       // 3 x 16-bit limbs
+	StateRootHash         [zkevmcommon.NbElemPerHash]field.Element    // 8 x 32-bit KoalaBear elements
+	CoinBase              [zkevmcommon.NbLimbEthAddress]field.Element // 10 x 16-bit limbs
+	BaseFee               [zkevmcommon.NbLimbU128]field.Element       // 8 x 16-bit limbs
+	ChainID               [zkevmcommon.NbLimbU256]field.Element       // 16 x 16-bit limbs
+	L2MessageServiceAddr  [zkevmcommon.NbLimbEthAddress]field.Element // 10 x 16-bit limbs
+	InitialBlockTimestamp [zkevmcommon.NbLimbU128]field.Element       // 8 x 16-bit limbs
+	InitialBlockNumber    [zkevmcommon.NbLimbU48]field.Element        // 3 x 16-bit limbs
 }
 
 // CaseInputs are the inputs that are different for each test case
