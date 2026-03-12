@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -78,7 +77,8 @@ type GKRPoseidon2Context struct {
 	GKRRound int
 
 	// stackedIOCache caches the stacked I/O arrays computed at round p for use at round p+1.
-	stackedIOCache *gkrStackedIO
+	// It is runtime state and must not be serialized.
+	stackedIOCache *gkrStackedIO `serde:"omit"`
 }
 
 // gkrStackedIO caches stacked I/O assignments between the two prover actions.
@@ -88,8 +88,8 @@ type gkrStackedIO struct {
 	newStates [blockSize][]field.Element
 }
 
-// gkrIOProverAction is the round-p ProverAction that stacks the I/O columns.
-type gkrIOProverAction struct{ ctx *GKRPoseidon2Context }
+// GKRIOProverAction is the round-p ProverAction that stacks the I/O columns.
+type GKRIOProverAction struct{ Ctx *GKRPoseidon2Context }
 
 // CompileGKRPoseidon2 compiles all Poseidon2 queries in comp using the GKR approach.
 // This reduces committed column cells from ~230×N to ~28×N compared to CompilePoseidon2.
@@ -215,20 +215,20 @@ func defineGKRContext(comp *wizard.CompiledIOP) *GKRPoseidon2Context {
 	ctx.OutputIPID = outputIPID
 
 	// Round p: assign stacked I/O columns (must be in the same round as those columns).
-	comp.RegisterProverAction(protocolRoundID, &gkrIOProverAction{ctx: ctx})
+	comp.RegisterProverAction(protocolRoundID, &GKRIOProverAction{Ctx: ctx})
 	// Round p+1: compute GKR proof, assign eq/transcript/IP columns.
 	comp.RegisterProverAction(gkrRound, ctx)
-	comp.RegisterVerifierAction(gkrRound, &gkrPoseidon2VerifierAction{ctx: ctx})
+	comp.RegisterVerifierAction(gkrRound, &GKRPoseidon2VerifierAction{Ctx: ctx})
 
 	return ctx
 }
 
 // ---------- ProverAction (round p) ----------
 
-// Run implements wizard.ProverAction for gkrIOProverAction.
+// Run implements wizard.ProverAction for GKRIOProverAction.
 // It stacks the I/O columns at round p (the same round they are committed in).
-func (a *gkrIOProverAction) Run(run *wizard.ProverRuntime) {
-	ctx := a.ctx
+func (a *GKRIOProverAction) Run(run *wizard.ProverRuntime) {
+	ctx := a.Ctx
 	var (
 		zeroBlock       field.Octuplet
 		totalSize       = ctx.TotalSize
@@ -572,13 +572,13 @@ func gkrProveAll(
 
 // ---------- VerifierAction ----------
 
-type gkrPoseidon2VerifierAction struct {
-	ctx *GKRPoseidon2Context
+type GKRPoseidon2VerifierAction struct {
+	Ctx *GKRPoseidon2Context
 }
 
 // Run implements wizard.VerifierAction.Run (plain verifier).
-func (va *gkrPoseidon2VerifierAction) Run(run wizard.Runtime) error {
-	ctx := va.ctx
+func (va *GKRPoseidon2VerifierAction) Run(run wizard.Runtime) error {
+	ctx := va.Ctx
 	logN := ctx.LogN
 
 	// Extract r0 from coins
@@ -696,16 +696,7 @@ func (va *gkrPoseidon2VerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-// RunGnark implements wizard.VerifierAction.RunGnark (gnark circuit verifier).
-// TODO: implement full gnark circuit GKR verification.
-func (va *gkrPoseidon2VerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime) {
-	// The gnark circuit verification of the GKR transcript requires:
-	// 1. Reading r0 from the gnark circuit coins
-	// 2. Reading the GKR transcript from the proof column (Proof status → available in VerifierCircuit)
-	// 3. Running the GKR verifier using gnark field arithmetic + gnark FS
-	// This is deferred to a future implementation.
-	panic("GKR Poseidon2 gnark circuit verifier not yet implemented")
-}
+// RunGnark is defined in gkr_poseidon2_gnark.go.
 
 // ---------- Runtime helpers ----------
 

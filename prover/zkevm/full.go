@@ -79,7 +79,7 @@ var (
 	// This is the compilation suite in use for the full prover
 	fullInitialCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
@@ -98,9 +98,9 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("pre-recursion.post-selfrecursion-1"),
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<17),
+			compiler.WithTargetColSize(1<<16),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-1"),
 		),
@@ -115,9 +115,9 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("pre-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-2"),
 		),
@@ -132,9 +132,9 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("pre-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
+			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-3"),
 		),
@@ -151,7 +151,7 @@ var (
 	// recursion step.
 	fullSecondCompilationSuite = CompilationSuite{
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<22),
 			compiler.WithStitcherMinSize(16),
@@ -168,7 +168,7 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("post-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
@@ -185,7 +185,7 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("post-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),

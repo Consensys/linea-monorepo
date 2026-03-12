@@ -74,18 +74,24 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			size   = col.Size()
 		)
 
+		// Unify weights for base and non-base columns
+		weight := size
+		if !col.IsBase() {
+			weight = 4 * size
+		}
+
 		switch status {
 		case column.Committed:
-			cellCount.NumCellsCommitted += size
+			cellCount.NumCellsCommitted += weight
 			cellCount.NumColumnsCommitted++
 		case column.Proof:
-			cellCount.NumCellsProof += size
+			cellCount.NumCellsProof += weight
 			cellCount.NumColumnsProof++
 		case column.Precomputed:
-			cellCount.NumCellsPrecomputed += size
+			cellCount.NumCellsPrecomputed += weight
 			cellCount.NumColumnsPrecomputed++
 		case column.VerifyingKey:
-			cellCount.NumCellsVerificationKeys += size
+			cellCount.NumCellsVerificationKeys += weight
 			cellCount.NumColumnsVerificationKeys++
 		}
 	}

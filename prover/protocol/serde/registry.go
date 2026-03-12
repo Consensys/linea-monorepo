@@ -272,6 +272,9 @@ var IDToType = [...]reflect.Type{
 	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}),                           // ID: 206
 	reflect.TypeOf(zkded.AssignPIPProverAction{}),                          // ID: 207
 	reflect.TypeOf(zkded.LengthConsistencyCtx{}),                           // ID: 208
+	reflect.TypeOf(poseidon2.GKRIOProverAction{}),                          // ID: 209
+	reflect.TypeOf(poseidon2.GKRPoseidon2Context{}),                        // ID: 210
+	reflect.TypeOf(poseidon2.GKRPoseidon2VerifierAction{}),                 // ID: 211
 }
 
 // TypeToID maps a reflect.Type to a uint16 ID.
@@ -486,4 +489,7 @@ var TypeToID = map[reflect.Type]uint16{
 	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}):                           206,
 	reflect.TypeOf(zkded.AssignPIPProverAction{}):                          207,
 	reflect.TypeOf(zkded.LengthConsistencyCtx{}):                           208,
+	reflect.TypeOf(poseidon2.GKRIOProverAction{}):                          209,
+	reflect.TypeOf(poseidon2.GKRPoseidon2Context{}):                        210,
+	reflect.TypeOf(poseidon2.GKRPoseidon2VerifierAction{}):                 211,
 }

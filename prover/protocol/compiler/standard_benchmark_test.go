@@ -181,11 +181,11 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 	type params struct{ t3, t4 int }
 	candidates := []params{
 		{1 << 12, 1 << 14},
-		{1 << 12, 1 << 12},
-		{1 << 12, 1 << 13}, // (current best)
+		{1 << 12, 1 << 12}, // (current best)
+		{1 << 12, 1 << 13},
 
-		{1 << 13, 1 << 13},
-		{1 << 11, 1 << 13},
+		{1 << 13, 1 << 12},
+		{1 << 11, 1 << 12},
 	}
 	for _, bc := range benchCases {
 		for _, p := range candidates {
@@ -210,7 +210,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 
 	comp := wizard.Compile(
 		sbc.Define,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
@@ -227,9 +227,9 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
+			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
 		),
 		vortex.Compile(
@@ -243,7 +243,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(t3),
 			compiler.WithStitcherMinSize(16),
@@ -259,7 +259,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
+		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(t4),
 			compiler.WithStitcherMinSize(16),
@@ -273,8 +273,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 		vortex.Compile(
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.WithOptionalSISHashingThreshold(1<<20),
-			vortex.PremarkAsSelfRecursed(),
+			vortex.WithSISParams(&sisInstance),
 		),
 	)
 
