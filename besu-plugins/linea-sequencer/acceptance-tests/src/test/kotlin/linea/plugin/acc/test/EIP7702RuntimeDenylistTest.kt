@@ -9,7 +9,9 @@
 package linea.plugin.acc.test
 
 import linea.plugin.acc.test.tests.web3j.generated.AddressCaller
+import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction
@@ -24,6 +26,7 @@ import java.io.IOException
 import java.math.BigInteger
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
@@ -33,6 +36,11 @@ import kotlin.io.path.writeText
  * by a prior transaction, and a subsequent transaction CALLs that EOA triggering code execution.
  */
 class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
+
+  override fun getRequestedPlugins(): List<String> =
+    DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
+
+  override fun getAdditionalRpcApis(): Set<String> = setOf("TEST")
 
   override fun getTestCliOptions(): List<String> {
     tempDenyList = tempDir.resolve("runtimeDenyList.txt")
@@ -83,6 +91,16 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
 
     // The denied tx should NOT be mined (rejected by DenylistExecutionSelector)
     minerNode.verify(eth.expectNoTransactionReceipt(txResponse.transactionHash))
+
+    // Verify the exact rejection reason via the recording plugin
+    await()
+      .atMost(4, TimeUnit.SECONDS)
+      .pollInterval(50, TimeUnit.MILLISECONDS)
+      .untilAsserted {
+        assertThat(getRejectionReason(txResponse.transactionHash))
+          .withFailMessage { "Expected tx to be rejected with TX_FILTERED_ADDRESS_CALLED" }
+          .isEqualTo(LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_CALLED.toString())
+      }
 
     // It should be discarded from the pool
     assertTransactionNotInThePool(txResponse.transactionHash)
