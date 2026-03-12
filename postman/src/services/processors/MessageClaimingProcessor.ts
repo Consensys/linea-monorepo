@@ -29,8 +29,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     let nonce: number | null = null;
 
     try {
-      this.logger.debug("Starting claim processing cycle.");
-
       nextMessageToClaim = await this.getNextMessageToClaim();
 
       if (!nextMessageToClaim) {

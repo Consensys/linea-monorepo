@@ -65,6 +65,11 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
           messageBlockNumber: message.sentBlockNumber,
         });
 
+        this.logger.debug("Fetched on-chain message status.", {
+          messageHash: message.messageHash,
+          status: messageStatus,
+        });
+
         if (messageStatus === OnChainMessageStatus.CLAIMABLE) {
           message.edit({ status: MessageStatus.ANCHORED });
           this.logger.info("Message has been anchored.", { messageHash: message.messageHash });

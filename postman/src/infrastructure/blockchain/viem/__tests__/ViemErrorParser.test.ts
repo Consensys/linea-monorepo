@@ -10,12 +10,38 @@ import {
   LimitExceededRpcError,
   ResourceUnavailableRpcError,
   ContractFunctionExecutionError,
+  CallExecutionError,
+  ExecutionRevertedError,
+  TransactionExecutionError,
+  InsufficientFundsError,
+  NonceTooLowError,
+  NonceTooHighError,
+  FeeCapTooLowError,
+  IntrinsicGasTooLowError,
+  TipAboveFeeCapError,
   BaseError as ViemBaseError,
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 import { DatabaseErrorType, DatabaseRepoName } from "../../../../core/enums";
 import { DatabaseAccessError } from "../../../../core/errors/DatabaseErrors";
+import { TEST_L1_SIGNER_PRIVATE_KEY } from "../../../../utils/testing/constants";
 import { ViemErrorParser } from "../ViemErrorParser";
+
+// RateLimitExceeded() error selector: keccak256("RateLimitExceeded()")[:4]
+const RATE_LIMIT_EXCEEDED_SELECTOR = "0xa74c1c5f";
+// Some other custom error selector (e.g. "SomeOtherError()")
+const OTHER_ERROR_SELECTOR = "0xdeadbeef";
+
+const TEST_ACCOUNT = privateKeyToAccount(TEST_L1_SIGNER_PRIVATE_KEY);
+
+function createRpcRequestError(message: string, data?: string) {
+  return new RpcRequestError({
+    body: {},
+    url: "http://localhost",
+    error: { code: -32000, message, ...(data !== undefined && { data }) },
+  });
+}
 
 describe("ViemErrorParser", () => {
   const parser = new ViemErrorParser();
@@ -108,30 +134,156 @@ describe("ViemErrorParser", () => {
 
   describe("RpcRequestError with details", () => {
     it("should return not retryable for execution reverted", () => {
-      const error = new RpcRequestError({
-        body: {},
-        url: "http://localhost",
-        error: { code: -32000, message: "execution reverted" },
-      });
+      const error = createRpcRequestError("execution reverted");
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(false);
+    });
+
+    it("should return retryable for execution reverted with RateLimitExceeded data", () => {
+      const error = createRpcRequestError("execution reverted", RATE_LIMIT_EXCEEDED_SELECTOR);
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return not retryable for execution reverted with other revert data", () => {
+      const error = createRpcRequestError("execution reverted", OTHER_ERROR_SELECTOR);
       const result = parser.parse(error);
       expect(result.retryable).toBe(false);
     });
 
     it("should return retryable for nonce too low", () => {
-      const error = new RpcRequestError({
-        body: {},
-        url: "http://localhost",
-        error: { code: -32000, message: "nonce too low" },
+      const result = parser.parse(createRpcRequestError("nonce too low"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for already known", () => {
+      const result = parser.parse(createRpcRequestError("already known"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for insufficient funds", () => {
+      const result = parser.parse(createRpcRequestError("insufficient funds for gas * price + value"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for nonce too high", () => {
+      const result = parser.parse(createRpcRequestError("nonce too high"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for max fee per gas less than block base fee", () => {
+      const result = parser.parse(createRpcRequestError("max fee per gas less than block base fee"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for intrinsic gas too low", () => {
+      const result = parser.parse(createRpcRequestError("intrinsic gas too low"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for transaction already imported", () => {
+      const result = parser.parse(createRpcRequestError("transaction already imported"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for max priority fee per gas higher than max fee per gas", () => {
+      const result = parser.parse(createRpcRequestError("max priority fee per gas higher than max fee per gas"));
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return not retryable for gas required exceeds allowance", () => {
+      const result = parser.parse(createRpcRequestError("gas required exceeds allowance"));
+      expect(result.retryable).toBe(false);
+    });
+  });
+
+  describe("Nested node errors (TransactionExecutionError wrapping node error wrapping RpcRequestError)", () => {
+    it("should return retryable for nested InsufficientFundsError", () => {
+      const rpcError = createRpcRequestError("insufficient funds for gas * price + value");
+      const nodeError = new InsufficientFundsError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
       });
       const result = parser.parse(error);
       expect(result.retryable).toBe(true);
     });
 
-    it("should return retryable for already known", () => {
-      const error = new RpcRequestError({
-        body: {},
-        url: "http://localhost",
-        error: { code: -32000, message: "already known" },
+    it("should return retryable for nested NonceTooLowError", () => {
+      const rpcError = createRpcRequestError("nonce too low");
+      const nodeError = new NonceTooLowError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for nested NonceTooHighError", () => {
+      const rpcError = createRpcRequestError("nonce too high");
+      const nodeError = new NonceTooHighError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for nested FeeCapTooLowError", () => {
+      const rpcError = createRpcRequestError("max fee per gas less than block base fee");
+      const nodeError = new FeeCapTooLowError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for nested IntrinsicGasTooLowError", () => {
+      const rpcError = createRpcRequestError("intrinsic gas too low");
+      const nodeError = new IntrinsicGasTooLowError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for nested TipAboveFeeCapError", () => {
+      const rpcError = createRpcRequestError("max priority fee per gas higher than max fee per gas");
+      const nodeError = new TipAboveFeeCapError({ cause: rpcError });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return not retryable for nested ExecutionRevertedError", () => {
+      const rpcError = createRpcRequestError("execution reverted");
+      const nodeError = new ExecutionRevertedError({ cause: rpcError, message: "execution reverted" });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(false);
+    });
+
+    it("should return retryable for nested ExecutionRevertedError with RateLimitExceeded data", () => {
+      const rpcError = createRpcRequestError("execution reverted", RATE_LIMIT_EXCEEDED_SELECTOR);
+      const nodeError = new ExecutionRevertedError({
+        cause: rpcError,
+        message: "execution reverted: RateLimitExceeded",
+      });
+      const error = new TransactionExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+        chain: undefined,
       });
       const result = parser.parse(error);
       expect(result.retryable).toBe(true);
@@ -150,6 +302,69 @@ describe("ViemErrorParser", () => {
       });
       const result = parser.parse(executionError);
       expect(result.retryable).toBe(false);
+    });
+
+    it("should return retryable for contract revert with RateLimitExceeded data", () => {
+      const revertError = new ContractFunctionRevertedError({
+        abi: [],
+        functionName: "test",
+        data: RATE_LIMIT_EXCEEDED_SELECTOR,
+      });
+      const executionError = new ContractFunctionExecutionError(revertError, {
+        abi: [],
+        functionName: "test",
+      });
+      const result = parser.parse(executionError);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return not retryable for contract revert with other revert data", () => {
+      const revertError = new ContractFunctionRevertedError({
+        abi: [],
+        functionName: "test",
+        data: OTHER_ERROR_SELECTOR,
+      });
+      const executionError = new ContractFunctionExecutionError(revertError, {
+        abi: [],
+        functionName: "test",
+      });
+      const result = parser.parse(executionError);
+      expect(result.retryable).toBe(false);
+    });
+  });
+
+  describe("ExecutionRevertedError nested in CallExecutionError", () => {
+    it("should return not retryable for ExecutionRevertedError in CallExecutionError", () => {
+      const rpcError = createRpcRequestError("execution reverted");
+      const revertError = new ExecutionRevertedError({ cause: rpcError, message: "execution reverted" });
+      const error = new CallExecutionError(revertError, {
+        account: TEST_ACCOUNT,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(false);
+    });
+
+    it("should return retryable for ExecutionRevertedError with RateLimitExceeded in CallExecutionError", () => {
+      const rpcError = createRpcRequestError("execution reverted", RATE_LIMIT_EXCEEDED_SELECTOR);
+      const revertError = new ExecutionRevertedError({
+        cause: rpcError,
+        message: "execution reverted: RateLimitExceeded",
+      });
+      const error = new CallExecutionError(revertError, {
+        account: TEST_ACCOUNT,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+
+    it("should return retryable for InsufficientFundsError in CallExecutionError", () => {
+      const rpcError = createRpcRequestError("insufficient funds for gas * price + value");
+      const nodeError = new InsufficientFundsError({ cause: rpcError });
+      const error = new CallExecutionError(nodeError, {
+        account: TEST_ACCOUNT,
+      });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
     });
   });
 

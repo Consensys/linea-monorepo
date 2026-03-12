@@ -1,11 +1,11 @@
 import { GoNativeCompressor } from "@consensys/linea-native-libs";
 
-import { LineaGasFees } from "../core/clients/blockchain/IGasProvider";
-import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
-import { MessageProps } from "../core/entities/Message";
-import { ITransactionSigner } from "../core/services/ITransactionSigner";
-import { IL2ClaimTransactionSizeCalculator } from "../core/services/processors/IL2ClaimTransactionSizeCalculator";
-import { Address } from "../core/types";
+import { LineaGasFees } from "../../core/clients/blockchain/IGasProvider";
+import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
+import { MessageProps } from "../../core/entities/Message";
+import { ITransactionSigner } from "../../core/services/ITransactionSigner";
+import { IL2ClaimTransactionSizeCalculator } from "../../core/services/processors/IL2ClaimTransactionSizeCalculator";
+import { Address } from "../../core/types";
 
 export class L2ClaimTransactionSizeCalculator implements IL2ClaimTransactionSizeCalculator {
   private compressor: GoNativeCompressor;

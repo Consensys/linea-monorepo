@@ -16,7 +16,7 @@ import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
 import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTransactionSizeCalculator";
+import { L2ClaimTransactionSizeCalculator } from "../../../infrastructure/blockchain/L2ClaimTransactionSizeCalculator";
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
 import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
 import {

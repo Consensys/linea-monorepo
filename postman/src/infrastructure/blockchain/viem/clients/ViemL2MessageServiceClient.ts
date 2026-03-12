@@ -1,10 +1,5 @@
-import {
-  claimOnL2,
-  getL1ToL2MessageStatus,
-  getTransactionReceiptByMessageHash as sdkGetTransactionReceiptByMessageHash,
-} from "@consensys/linea-sdk-viem";
+import { claimOnL2, getL1ToL2MessageStatus } from "@consensys/linea-sdk-viem";
 import { type PublicClient, type WalletClient, decodeErrorResult, encodeFunctionData } from "viem";
-import { getContractEvents } from "viem/actions";
 
 import { ILineaGasProvider, LineaGasFees } from "../../../../core/clients/blockchain/IGasProvider";
 import { IL2MessageServiceClient } from "../../../../core/clients/blockchain/linea/IL2MessageServiceClient";
@@ -18,11 +13,9 @@ import {
   ErrorDescription,
   MessageSent,
   Overrides,
-  TransactionReceipt,
   TransactionSubmission,
 } from "../../../../core/types";
 import { L2MessageServiceAbi } from "../../abis/L2MessageServiceAbi";
-import { mapViemReceiptToCoreReceipt } from "../mappers";
 
 export class ViemL2MessageServiceClient implements IL2MessageServiceClient {
   constructor(
@@ -112,53 +105,6 @@ export class ViemL2MessageServiceClient implements IL2MessageServiceClient {
       maxFeePerGas: opts.overrides?.maxFeePerGas,
       maxPriorityFeePerGas: opts.overrides?.maxPriorityFeePerGas,
     };
-  }
-
-  public async getMessageByMessageHash(messageHash: Hash): Promise<MessageSent | null> {
-    const events = await getContractEvents(this.publicClient, {
-      address: this.contractAddress,
-      abi: L2MessageServiceAbi,
-      eventName: "MessageSent",
-      args: { _messageHash: messageHash },
-      fromBlock: "earliest",
-      toBlock: "latest",
-    });
-    if (!events.length) return null;
-    const e = events[0];
-    const args = e.args as {
-      _messageHash: Hash;
-      _from: Address;
-      _to: Address;
-      _fee: bigint;
-      _value: bigint;
-      _nonce: bigint;
-      _calldata: Hex;
-    };
-    return {
-      messageHash: args._messageHash,
-      messageSender: args._from,
-      destination: args._to,
-      fee: args._fee,
-      value: args._value,
-      messageNonce: args._nonce,
-      calldata: args._calldata,
-      contractAddress: this.contractAddress,
-      blockNumber: Number(e.blockNumber),
-      transactionHash: e.transactionHash!,
-      logIndex: e.logIndex!,
-    };
-  }
-
-  public async getTransactionReceiptByMessageHash(messageHash: Hash): Promise<TransactionReceipt | null> {
-    try {
-      const receipt = await sdkGetTransactionReceiptByMessageHash(this.publicClient, {
-        messageHash,
-        messageServiceAddress: this.contractAddress,
-      });
-      return mapViemReceiptToCoreReceipt(receipt);
-    } catch {
-      return null;
-    }
   }
 
   // L2 has no rate limit

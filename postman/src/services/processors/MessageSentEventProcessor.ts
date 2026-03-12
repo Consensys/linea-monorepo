@@ -61,7 +61,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
     fromBlock = this.calculateFromBlockNumber(fromBlock, toBlock);
 
-    this.logger.info("Getting events.", { fromBlock, toBlock });
+    this.logger.info("Fetching events.", { fromBlock, toBlock });
 
     const events = await this.logClient.getMessageSentEvents({
       filters: {

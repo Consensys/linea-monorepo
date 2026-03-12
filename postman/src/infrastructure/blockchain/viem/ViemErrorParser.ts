@@ -1,15 +1,15 @@
 import {
   BaseError as ViemBaseError,
-  HttpRequestError,
-  TimeoutError,
   ContractFunctionRevertedError,
   RpcRequestError,
   UserRejectedRequestError,
   TransactionRejectedRpcError,
-  InternalRpcError,
-  LimitExceededRpcError,
-  ResourceUnavailableRpcError,
+  ExecutionRevertedError,
+  toFunctionSelector,
+  slice,
+  type Hex,
 } from "viem";
+import { formatAbiItem } from "viem/utils";
 
 import { DatabaseAccessError } from "../../../core/errors/DatabaseErrors";
 import { IErrorParser, ParsedError } from "../../../core/errors/IErrorParser";
@@ -29,7 +29,57 @@ export class ViemErrorParser implements IErrorParser {
 
     const message = error.shortMessage || error.message;
 
-    if (error.walk((e) => e instanceof ContractFunctionRevertedError)) {
+    const rpcError = error.walk((e) => e instanceof RpcRequestError) as RpcRequestError | null;
+    if (rpcError !== null) {
+      const details = rpcError.details?.toLowerCase();
+      if (ExecutionRevertedError.nodeMessage.test(details)) {
+        if (rpcError.data && typeof rpcError.data === "string") {
+          const signature = slice(rpcError.data as Hex, 0, 4);
+          if (
+            signature ===
+            toFunctionSelector(
+              formatAbiItem({
+                inputs: [],
+                name: "RateLimitExceeded",
+                type: "error",
+              }),
+            )
+          ) {
+            return { retryable: true, message };
+          }
+        }
+        return { retryable: false, message };
+      }
+
+      return { retryable: true, message };
+    }
+
+    const contractRevertError = error.walk(
+      (e) => e instanceof ContractFunctionRevertedError,
+    ) as ContractFunctionRevertedError | null;
+    if (contractRevertError) {
+      if (contractRevertError.raw !== undefined) {
+        const signature = slice(contractRevertError.raw, 0, 4);
+        if (
+          signature ===
+          toFunctionSelector(
+            formatAbiItem({
+              inputs: [],
+              name: "RateLimitExceeded",
+              type: "error",
+            }),
+          )
+        ) {
+          return { retryable: true, message };
+        }
+      }
+      return { retryable: false, message };
+    }
+
+    if (error.walk((e) => e instanceof ExecutionRevertedError)) {
+      if (error.message.includes("RateLimitExceeded")) {
+        return { retryable: true, message };
+      }
       return { retryable: false, message };
     }
 
@@ -39,37 +89,6 @@ export class ViemErrorParser implements IErrorParser {
 
     if (error.walk((e) => e instanceof TransactionRejectedRpcError)) {
       return { retryable: false, message };
-    }
-
-    if (error.walk((e) => e instanceof HttpRequestError)) {
-      return { retryable: true, message };
-    }
-
-    if (error.walk((e) => e instanceof TimeoutError)) {
-      return { retryable: true, message };
-    }
-
-    if (error.walk((e) => e instanceof InternalRpcError)) {
-      return { retryable: true, message };
-    }
-
-    if (error.walk((e) => e instanceof LimitExceededRpcError)) {
-      return { retryable: true, message };
-    }
-
-    if (error.walk((e) => e instanceof ResourceUnavailableRpcError)) {
-      return { retryable: true, message };
-    }
-
-    const rpcError = error.walk((e) => e instanceof RpcRequestError);
-    if (rpcError && rpcError instanceof RpcRequestError) {
-      const details = rpcError.details?.toLowerCase();
-      if (details?.includes("execution reverted")) {
-        return { retryable: false, message };
-      }
-      if (details?.includes("nonce too low") || details?.includes("already known")) {
-        return { retryable: true, message };
-      }
     }
 
     return { retryable: true, message };

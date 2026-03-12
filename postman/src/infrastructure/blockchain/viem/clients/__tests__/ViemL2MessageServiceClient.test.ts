@@ -1,7 +1,6 @@
-import { claimOnL2, getL1ToL2MessageStatus, getTransactionReceiptByMessageHash } from "@consensys/linea-sdk-viem";
+import { claimOnL2, getL1ToL2MessageStatus } from "@consensys/linea-sdk-viem";
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { getContractEvents } from "viem/actions";
 
 import { ILineaGasProvider } from "../../../../../core/clients/blockchain/IGasProvider";
 import { Direction, MessageStatus, OnChainMessageStatus } from "../../../../../core/enums";
@@ -67,70 +66,6 @@ describe("ViemL2MessageServiceClient", () => {
   describe("getContractAddress", () => {
     it("returns the contract address", () => {
       expect(client.getContractAddress()).toBe(TEST_CONTRACT_ADDRESS);
-    });
-  });
-
-  describe("getMessageByMessageHash", () => {
-    it("returns the first matching event mapped to postman format", async () => {
-      (getContractEvents as jest.Mock).mockResolvedValue([
-        {
-          removed: false,
-          blockNumber: 51n,
-          transactionHash: TEST_TX_HASH,
-          logIndex: 1,
-          args: {
-            _messageHash: TEST_MESSAGE_HASH,
-            _from: TEST_ADDRESS_1,
-            _to: TEST_ADDRESS_2,
-            _fee: 0n,
-            _value: 0n,
-            _nonce: 1n,
-            _calldata: "0x",
-          },
-        },
-      ]);
-      const result = await client.getMessageByMessageHash(TEST_MESSAGE_HASH);
-      expect(result).toMatchObject({
-        messageHash: TEST_MESSAGE_HASH,
-        messageSender: TEST_ADDRESS_1,
-        destination: TEST_ADDRESS_2,
-        fee: 0n,
-        value: 0n,
-        messageNonce: 1n,
-        calldata: "0x",
-        blockNumber: 51,
-        transactionHash: TEST_TX_HASH,
-        logIndex: 1,
-      });
-    });
-
-    it("returns null when no events found", async () => {
-      (getContractEvents as jest.Mock).mockResolvedValue([]);
-      const result = await client.getMessageByMessageHash(TEST_MESSAGE_HASH);
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getTransactionReceiptByMessageHash", () => {
-    it("returns null when SDK throws (message not found)", async () => {
-      (getTransactionReceiptByMessageHash as jest.Mock).mockRejectedValue(new Error("not found"));
-      const result = await client.getTransactionReceiptByMessageHash(TEST_MESSAGE_HASH);
-      expect(result).toBeNull();
-    });
-
-    it("returns mapped receipt when SDK succeeds", async () => {
-      (getTransactionReceiptByMessageHash as jest.Mock).mockResolvedValue({
-        transactionHash: TEST_TX_HASH as `0x${string}`,
-        blockNumber: 51n,
-        status: "success",
-        gasUsed: 21000n,
-        effectiveGasPrice: 1000000000n,
-        logs: [],
-      });
-
-      const result = await client.getTransactionReceiptByMessageHash(TEST_MESSAGE_HASH);
-      expect(result).not.toBeNull();
-      expect(result?.hash).toBe(TEST_TX_HASH);
     });
   });
 

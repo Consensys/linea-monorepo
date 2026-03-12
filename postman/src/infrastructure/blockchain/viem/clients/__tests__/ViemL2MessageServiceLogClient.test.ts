@@ -51,7 +51,7 @@ describe("ViemL2MessageServiceLogClient", () => {
     it("returns mapped MessageSent events", async () => {
       getContractEventsMock.mockResolvedValue([makeMessageSentEvent()] as never);
 
-      const events = await logClient.getMessageSentEvents({ fromBlock: 90, toBlock: 110 });
+      const events = await logClient.getMessageSentEvents({ fromBlock: 90n, toBlock: 110n });
 
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({

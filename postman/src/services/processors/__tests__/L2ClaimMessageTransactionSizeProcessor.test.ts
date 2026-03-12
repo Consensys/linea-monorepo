@@ -5,9 +5,9 @@ import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/
 import { Direction, MessageStatus } from "../../../core/enums";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
+import { L2ClaimTransactionSizeCalculator } from "../../../infrastructure/blockchain/L2ClaimTransactionSizeCalculator";
 import { testL1NetworkConfig, testMessage, DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
-import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
 import { L2ClaimMessageTransactionSizeProcessor } from "../L2ClaimMessageTransactionSizeProcessor";
 
 describe("L2ClaimMessageTransactionSizeProcessor", () => {
