@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -159,8 +158,7 @@ func TestProveBadPrecompile(t *testing.T) {
 		},
 	}
 
-	comp, wizProof := invalidity.MockZkevmPI(rng, inputs)
-	testZkevm := &zkevm.ZkEvm{InitialCompiledIOP: comp}
+	comp, wizProof := invalidity.MockZkevmPI(rng, inputs, nil)
 
 	txToAddr := common.HexToAddress("0xdeadbeefdeadb")
 	tx := types.NewTx(&types.DynamicFeeTx{
@@ -170,15 +168,15 @@ func TestProveBadPrecompile(t *testing.T) {
 
 	builder := invalidity.NewBuilder(
 		invalidity.Config{
-			Zkevm: testZkevm,
+			ZkEvmComp: comp,
 		},
 		&invalidity.BadPrecompileCircuit{},
 	)
 
 	assi := invalidity.AssigningInputs{
 		InvalidityType:   invalidity.BadPrecompile,
-		Zkevm:            testZkevm,
-		ZkevmWizardProof: wizProof,
+		ZkEvmComp:        comp,
+		ZkEvmWizardProof: wizProof,
 		Transaction:      tx,
 		FuncInputs: public_input.Invalidity{
 

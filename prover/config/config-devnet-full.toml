@@ -40,10 +40,12 @@ num_proofs = [10, 20, 50, 100, 200, 400]
 #   invalidity-precompile-logs-dummy (ID 8, bit 8)   = 1 → ALLOWED
 #   invalidity-filtered-address-dummy (ID 9, bit 9)  = 1 → ALLOWED
 #   invalidity-nonce-balance (ID 10, bit 10)         = 1 → ALLOWED
-#   invalidity-precompile-logs (ID 11, bit 11)       = 1 → ALLOWED
-#   invalidity-filtered-address (ID 12, bit 12)      = 1 → ALLOWED
-# Binary: 0b1111111011011 = 8155 (decimal)
-is_allowed_circuit_id = 8155
+#   invalidity-precompile-logs (ID 11, bit 11)               = 1 → ALLOWED
+#   invalidity-filtered-address (ID 12, bit 12)              = 1 → ALLOWED
+#   invalidity-precompile-logs-limitless (ID 13, bit 13)     = 0 → DISALLOWED
+#   invalidity-precompile-logs-large (ID 14, bit 14)         = 1 → ALLOWED
+# Binary: 0b101111111011011 = 24539 (decimal)
+is_allowed_circuit_id = 24539
 verifier_id = 0
 
 [public_input_interconnection]

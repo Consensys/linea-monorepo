@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -52,19 +51,19 @@ type testCase struct {
 
 var testCases = []testCase{
 	{
-		name:             "BadPrecompile_WithMockedAithColumns",
+		name:             "BadPrecompiles",
 		invalidityType:   invalidity.BadPrecompile,
 		hasBadPrecompile: true,
 		nbL2LogsVal:      5,
 	},
 	{
-		name:             "BadPrecompile_TooManyLogs_WithMockedArithColumns",
+		name:             "TooManyLogs_BadPrecompiles",
 		invalidityType:   invalidity.BadPrecompile,
 		hasBadPrecompile: true, // bad precompile
 		nbL2LogsVal:      23,   // > MAX_L2_LOGS (16)
 	},
 	{
-		name:             "TooManyLogs_WithMockedPI",
+		name:             "TooManyLogs",
 		invalidityType:   invalidity.TooManyLogs,
 		hasBadPrecompile: false,
 		nbL2LogsVal:      20, // > MAX_L2_LOGS (16)
@@ -78,6 +77,13 @@ func TestBadPrecompileCircuit(t *testing.T) {
 		comp  *wizard.CompiledIOP
 		proof wizard.Proof
 	)
+	congloVK := [2]field.Element{field.RandomElement(), field.RandomElement()}
+	vkMerkleRoot := field.RandomElement()
+	limitlessInputs := &invalidity.LimitlessInputs{
+		CongloVK:     congloVK,
+		VKMerkleRoot: vkMerkleRoot,
+	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
@@ -90,9 +96,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				},
 			}
 
-			comp, proof = invalidity.MockZkevmPI(rng, inputs)
-
-			testZkevm := &zkevm.ZkEvm{InitialCompiledIOP: comp}
+			comp, proof = invalidity.MockZkevmPI(rng, inputs, limitlessInputs)
 
 			// Verify the wizard proof first
 			err := wizard.Verify(comp, proof)
@@ -108,8 +112,8 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			// Prepare the circuit inputs
 			assi := invalidity.AssigningInputs{
 				InvalidityType:   tc.invalidityType,
-				Zkevm:            testZkevm,
-				ZkevmWizardProof: proof,
+				ZkEvmComp:        comp,
+				ZkEvmWizardProof: proof,
 				Transaction:      tx,
 				FuncInputs: public_input.Invalidity{
 					StateRootHash: piStateRootHash,
@@ -123,16 +127,23 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				},
 			}
 
+			execCtx := invalidity.ExecutionCtx{
+				LimitlessMode: false, // for now there is a bug in the limitless mode, so we disable it for now.
+				CongloVK:      congloVK,
+				VKMerkleRoot:  vkMerkleRoot,
+			}
+
 			// Define the circuit
 			circuit := invalidity.CircuitInvalidity{
 				SubCircuit: &invalidity.BadPrecompileCircuit{
 					InvalidityType: tc.invalidityType,
+					ExecutionCtx:   execCtx,
 				},
 			}
 
 			// Allocate the circuit
 			circuit.Allocate(invalidity.Config{
-				Zkevm: testZkevm,
+				ZkEvmComp: comp,
 			})
 
 			// Compile the circuit
@@ -147,9 +158,16 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			assignment := invalidity.CircuitInvalidity{
 				SubCircuit: &invalidity.BadPrecompileCircuit{
 					InvalidityType: tc.invalidityType,
+					ExecutionCtx:   execCtx,
 				},
 			}
 			assignment.Assign(assi)
+
+			// Patch initRandomness with BLS12-377 MiMC hash (the mock wizard
+			// stores KoalaBear values, but the gnark circuit computes MiMC
+			// over BLS12-377 natively).
+			bpc := assignment.SubCircuit.(*invalidity.BadPrecompileCircuit)
+			invalidity.PatchLimitlessWitness(&bpc.ExecutionCtx.WizardVerifier)
 
 			// Create witness
 			witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())

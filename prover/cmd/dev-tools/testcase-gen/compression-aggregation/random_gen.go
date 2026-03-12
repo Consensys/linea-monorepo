@@ -176,7 +176,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
-		ParentStateRootHashContract:             types.FullBytes32FromHex(spec.ParentStateRootHash),
+		ParentStateRootHashContract:             linTypes.FullBytes32FromHex(spec.ParentStateRootHash),
 		DataHashes:                              spec.DataHashes,
 		DataParentHash:                          spec.DataParentHash,
 		ParentAggregationLastBlockTimestamp:     spec.LastFinalizedTimestamp,

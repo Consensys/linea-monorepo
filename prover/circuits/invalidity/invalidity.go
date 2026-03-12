@@ -15,7 +15,6 @@ import (
 	smtKoala "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -54,8 +53,8 @@ type AssigningInputs struct {
 	MaxRlpByteSize    int
 
 	// inputs related to zkevm-wizard
-	Zkevm            *zkevm.ZkEvm
-	ZkevmWizardProof wizard.Proof
+	ZkEvmComp        *wizard.CompiledIOP
+	ZkEvmWizardProof wizard.Proof
 }
 
 // Define the constraints
@@ -161,7 +160,7 @@ func (c *CircuitInvalidity) CheckOnly(assi AssigningInputs) error {
 		KeccakCompiledIOP: assi.KeccakCompiledIOP,
 		Depth:             smtKoala.DefaultDepth,
 		MaxRlpByteSize:    assi.MaxRlpByteSize,
-		Zkevm:             assi.Zkevm,
+		ZkEvmComp:         assi.ZkEvmComp,
 	})
 
 	ccs, err := frontend.Compile(
@@ -202,7 +201,7 @@ type Config struct {
 	Depth             int
 	KeccakCompiledIOP *wizardk.CompiledIOP
 	MaxRlpByteSize    int
-	Zkevm             *zkevm.ZkEvm
+	ZkEvmComp         *wizard.CompiledIOP
 }
 
 type builder struct {
@@ -221,6 +220,29 @@ func (b *builder) Compile() (constraint.ConstraintSystem, error) {
 		SubCircuit: b.subCircuit,
 	}
 	return makeCS(b.config, circuit), nil
+}
+
+type limitlessBuilder struct {
+	congWIOP *wizard.CompiledIOP
+}
+
+func NewBuilderLimitless(congWIOP *wizard.CompiledIOP) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP}
+}
+
+func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
+	circuit := &CircuitInvalidity{
+		SubCircuit: &BadPrecompileCircuit{
+			ExecutionCtx: ExecutionCtx{LimitlessMode: true},
+		},
+	}
+	circuit.Allocate(Config{ZkEvmComp: b.congWIOP})
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile limitless invalidity circuit: %w", err)
+	}
+	return ccs, nil
 }
 
 // compile  the circuit to the constraints

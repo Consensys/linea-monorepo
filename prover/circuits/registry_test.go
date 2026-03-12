@@ -337,9 +337,11 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 	assert.Equal(t, uint(10), GlobalCircuitIDMapping["invalidity-nonce-balance"])
 	assert.Equal(t, uint(11), GlobalCircuitIDMapping["invalidity-precompile-logs"])
 	assert.Equal(t, uint(12), GlobalCircuitIDMapping["invalidity-filtered-address"])
-	assert.Equal(t, uint(14), GlobalCircuitIDMapping["emulation"])
-	assert.Equal(t, uint(15), GlobalCircuitIDMapping["aggregation"])
-	assert.Equal(t, uint(16), GlobalCircuitIDMapping["public-input-interconnection"])
+	assert.Equal(t, uint(13), GlobalCircuitIDMapping["invalidity-precompile-logs-limitless"])
+	assert.Equal(t, uint(14), GlobalCircuitIDMapping["invalidity-precompile-logs-large"])
+	assert.Equal(t, uint(15), GlobalCircuitIDMapping["emulation"])
+	assert.Equal(t, uint(16), GlobalCircuitIDMapping["aggregation"])
+	assert.Equal(t, uint(17), GlobalCircuitIDMapping["public-input-interconnection"])
 
 	// Verify no duplicate IDs
 	seen := make(map[uint]string)
@@ -350,8 +352,8 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 		seen[id] = name
 	}
 
-	// Verify we have exactly 16 circuits
-	assert.Equal(t, 16, len(GlobalCircuitIDMapping))
+	// Verify we have exactly 18 circuits
+	assert.Equal(t, 18, len(GlobalCircuitIDMapping))
 }
 
 // Example test showing how to use these functions for config validation
@@ -382,22 +384,24 @@ func TestExampleUsage(t *testing.T) {
 }
 
 // CircuitConfig represents a visual configuration of allowed circuits.
-// Each field corresponds to a circuit ID (0-12 for payload circuits).
+// Each field corresponds to a circuit ID (0-14 for payload circuits).
 // Set to true to allow the circuit, false to disallow.
 type CircuitConfig struct {
-	ExecutionDummy                bool // ID 0
-	DataAvailabilityDummy         bool // ID 1
-	EmulationDummy                bool // ID 2
-	Execution                     bool // ID 3
-	ExecutionLarge                bool // ID 4
-	ExecutionLimitless            bool // ID 5
-	DataAvailabilityV2            bool // ID 6
-	InvalidityNonceBalanceDummy   bool // ID 7
-	InvalidityPrecompileLogsDummy bool // ID 8
-	InvalidityFilteredAddrDummy   bool // ID 9
-	InvalidityNonceBalance        bool // ID 10
-	InvalidityPrecompileLogs      bool // ID 11
-	InvalidityFilteredAddr        bool // ID 12
+	ExecutionDummy                    bool // ID 0
+	DataAvailabilityDummy             bool // ID 1
+	EmulationDummy                    bool // ID 2
+	Execution                         bool // ID 3
+	ExecutionLarge                    bool // ID 4
+	ExecutionLimitless                bool // ID 5
+	DataAvailabilityV2                bool // ID 6
+	InvalidityNonceBalanceDummy       bool // ID 7
+	InvalidityPrecompileLogsDummy     bool // ID 8
+	InvalidityFilteredAddrDummy       bool // ID 9
+	InvalidityNonceBalance            bool // ID 10
+	InvalidityPrecompileLogs          bool // ID 11
+	InvalidityFilteredAddr            bool // ID 12
+	InvalidityPrecompileLogsLimitless bool // ID 13
+	InvalidityPrecompileLogsLarge     bool // ID 14
 }
 
 // ToBitmask converts a CircuitConfig to a bitmask value.
@@ -442,27 +446,35 @@ func (c CircuitConfig) ToBitmask() uint64 {
 	if c.InvalidityFilteredAddr {
 		bitmask |= 1 << 12
 	}
+	if c.InvalidityPrecompileLogsLimitless {
+		bitmask |= 1 << 13
+	}
+	if c.InvalidityPrecompileLogsLarge {
+		bitmask |= 1 << 14
+	}
 	return bitmask
 }
 
 // String returns a visual representation of the circuit configuration.
 func (c CircuitConfig) String() string {
 	return fmt.Sprintf(`Circuit Configuration:
-  ID 0  - execution-dummy:                   %v
-  ID 1  - data-availability-dummy:           %v
-  ID 2  - emulation-dummy:                   %v
-  ID 3  - execution:                         %v
-  ID 4  - execution-large:                   %v
-  ID 5  - execution-limitless:               %v
-  ID 6  - data-availability-v2:              %v
-  ID 7  - invalidity-nonce-balance-dummy:    %v
-  ID 8  - invalidity-precompile-logs-dummy:  %v
-  ID 9  - invalidity-filtered-address-dummy: %v
-  ID 10 - invalidity-nonce-balance:          %v
-  ID 11 - invalidity-precompile-logs:        %v
-  ID 12 - invalidity-filtered-address:       %v
+  ID 0  - execution-dummy:                          %v
+  ID 1  - data-availability-dummy:                  %v
+  ID 2  - emulation-dummy:                          %v
+  ID 3  - execution:                                %v
+  ID 4  - execution-large:                          %v
+  ID 5  - execution-limitless:                      %v
+  ID 6  - data-availability-v2:                     %v
+  ID 7  - invalidity-nonce-balance-dummy:           %v
+  ID 8  - invalidity-precompile-logs-dummy:         %v
+  ID 9  - invalidity-filtered-address-dummy:        %v
+  ID 10 - invalidity-nonce-balance:                 %v
+  ID 11 - invalidity-precompile-logs:               %v
+  ID 12 - invalidity-filtered-address:              %v
+  ID 13 - invalidity-precompile-logs-limitless:     %v
+  ID 14 - invalidity-precompile-logs-large:         %v
   
-  Bitmask: %d (binary: 0b%013b)`,
+  Bitmask: %d (binary: 0b%015b)`,
 		c.ExecutionDummy,
 		c.DataAvailabilityDummy,
 		c.EmulationDummy,
@@ -476,6 +488,8 @@ func (c CircuitConfig) String() string {
 		c.InvalidityNonceBalance,
 		c.InvalidityPrecompileLogs,
 		c.InvalidityFilteredAddr,
+		c.InvalidityPrecompileLogsLimitless,
+		c.InvalidityPrecompileLogsLarge,
 		c.ToBitmask(),
 		c.ToBitmask())
 }
@@ -563,21 +577,23 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 		{
 			name: "All payload circuits enabled",
 			config: CircuitConfig{
-				ExecutionDummy:                true,
-				DataAvailabilityDummy:         true,
-				EmulationDummy:                true,
-				Execution:                     true,
-				ExecutionLarge:                true,
-				ExecutionLimitless:            true,
-				DataAvailabilityV2:            true,
-				InvalidityNonceBalanceDummy:   true,
-				InvalidityPrecompileLogsDummy: true,
-				InvalidityFilteredAddrDummy:   true,
-				InvalidityNonceBalance:        true,
-				InvalidityPrecompileLogs:      true,
-				InvalidityFilteredAddr:        true,
+				ExecutionDummy:                    true,
+				DataAvailabilityDummy:             true,
+				EmulationDummy:                    true,
+				Execution:                         true,
+				ExecutionLarge:                    true,
+				ExecutionLimitless:                true,
+				DataAvailabilityV2:                true,
+				InvalidityNonceBalanceDummy:       true,
+				InvalidityPrecompileLogsDummy:     true,
+				InvalidityFilteredAddrDummy:       true,
+				InvalidityNonceBalance:            true,
+				InvalidityPrecompileLogs:          true,
+				InvalidityFilteredAddr:            true,
+				InvalidityPrecompileLogsLimitless: true,
+				InvalidityPrecompileLogsLarge:     true,
 			},
-			expectedBitmask: 8191, // 0b1111111111111
+			expectedBitmask: 32767, // 0b111111111111111
 		},
 	}
 
@@ -634,6 +650,12 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 			if tt.config.InvalidityFilteredAddr {
 				allowedCircuits = append(allowedCircuits, "invalidity-filtered-address")
 			}
+			if tt.config.InvalidityPrecompileLogsLimitless {
+				allowedCircuits = append(allowedCircuits, "invalidity-precompile-logs-limitless")
+			}
+			if tt.config.InvalidityPrecompileLogsLarge {
+				allowedCircuits = append(allowedCircuits, "invalidity-precompile-logs-large")
+			}
 
 			computedBitmask, err := ComputeIsAllowedCircuitID(allowedCircuits)
 			require.NoError(t, err)
@@ -651,19 +673,21 @@ func TestCalculateCustomBitmask(t *testing.T) {
 	// MODIFY THIS CONFIGURATION AS NEEDED
 	// ==========================================
 	config := CircuitConfig{
-		ExecutionDummy:                false, // ID 0: Set true to allow execution-dummy
-		DataAvailabilityDummy:         false, // ID 1: Set true to allow data-availability-dummy
-		EmulationDummy:                false, // ID 2: Set true to allow emulation-dummy
-		Execution:                     true,  // ID 3: Set true to allow execution
-		ExecutionLarge:                true,  // ID 4: Set true to allow execution-large
-		ExecutionLimitless:            true,  // ID 5: Set true to allow execution-limitless
-		DataAvailabilityV2:            true,  // ID 6: Set true to allow data-availability-v2
-		InvalidityNonceBalanceDummy:   false, // ID 7: Set true to allow invalidity-nonce-balance-dummy
-		InvalidityPrecompileLogsDummy: false, // ID 8: Set true to allow invalidity-precompile-logs-dummy
-		InvalidityFilteredAddrDummy:   false, // ID 9: Set true to allow invalidity-filtered-address-dummy
-		InvalidityNonceBalance:        true,  // ID 10: Set true to allow invalidity-nonce-balance
-		InvalidityPrecompileLogs:      true,  // ID 11: Set true to allow invalidity-precompile-logs
-		InvalidityFilteredAddr:        true,  // ID 12: Set true to allow invalidity-filtered-address
+		ExecutionDummy:                    false, // ID 0: Set true to allow execution-dummy
+		DataAvailabilityDummy:             false, // ID 1: Set true to allow data-availability-dummy
+		EmulationDummy:                    false, // ID 2: Set true to allow emulation-dummy
+		Execution:                         true,  // ID 3: Set true to allow execution
+		ExecutionLarge:                    true,  // ID 4: Set true to allow execution-large
+		ExecutionLimitless:                true,  // ID 5: Set true to allow execution-limitless
+		DataAvailabilityV2:                true,  // ID 6: Set true to allow data-availability-v2
+		InvalidityNonceBalanceDummy:       false, // ID 7: Set true to allow invalidity-nonce-balance-dummy
+		InvalidityPrecompileLogsDummy:     false, // ID 8: Set true to allow invalidity-precompile-logs-dummy
+		InvalidityFilteredAddrDummy:       false, // ID 9: Set true to allow invalidity-filtered-address-dummy
+		InvalidityNonceBalance:            true,  // ID 10: Set true to allow invalidity-nonce-balance
+		InvalidityPrecompileLogs:          true,  // ID 11: Set true to allow invalidity-precompile-logs
+		InvalidityFilteredAddr:            true,  // ID 12: Set true to allow invalidity-filtered-address
+		InvalidityPrecompileLogsLimitless: true,  // ID 13: Set true to allow invalidity-precompile-logs-limitless
+		InvalidityPrecompileLogsLarge:     true,  // ID 14: Set true to allow invalidity-precompile-logs-large
 	}
 	// ==========================================
 

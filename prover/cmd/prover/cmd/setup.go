@@ -48,6 +48,8 @@ var AllCircuits = []circuits.CircuitID{
 	circuits.DataAvailabilityV2CircuitID,
 	circuits.InvalidityNonceBalanceCircuitID,
 	circuits.InvalidityPrecompileLogsCircuitID,
+	circuits.InvalidityPrecompileLogsLargeCircuitID,
+	circuits.InvalidityPrecompileLogsLimitlessCircuitID,
 	circuits.InvalidityFilteredAddressCircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
 	circuits.AggregationCircuitID,
@@ -318,12 +320,38 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 			&invalidity.BadNonceBalanceCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsCircuitID:
-		// BadPrecompile/TooManyLogs circuit needs zkEVM
-		zkEvmInvalidity := zkevm.FullZkEvmInvalidity(cfg)
+		limits := cfg.TracesLimits
+		extraFlags["cfg_checksum"] = limits.Checksum()
+		zkEvm := zkevm.FullZkEvm(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
-			Zkevm: zkEvmInvalidity,
-		},
-			&invalidity.BadPrecompileCircuit{}), extraFlags, nil
+			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
+
+	case circuits.InvalidityPrecompileLogsLargeCircuitID:
+		limits := cfg.TracesLimits
+		limits.SetLargeMode()
+		extraFlags["cfg_checksum"] = limits.Checksum()
+		zkEvm := zkevm.FullZkEvmLarge(&limits, cfg)
+		return invalidity.NewBuilder(invalidity.Config{
+			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
+
+	case circuits.InvalidityPrecompileLogsLimitlessCircuitID:
+		limitlessPath := cfg.PathForSetup("invalidity-precompile-logs-limitless")
+		extraFlags["cfg_checksum"] = cfg.TracesLimits.Checksum()
+
+		logrus.Info("Setting up limitless invalidity prover assets")
+		asset := zkevm.NewLimitlessZkEVM(cfg)
+
+		logrus.Infof("Writing limitless invalidity prover assets to path: %s", limitlessPath)
+		if err := asset.Store(cfg); err != nil {
+			return nil, nil, fmt.Errorf("failed to write limitless invalidity prover assets: %w", err)
+		}
+		compCong := asset.DistWizard.CompiledConglomeration
+		asset = nil
+		runtime.GC()
+
+		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS), extraFlags, nil
 	case circuits.InvalidityFilteredAddressCircuitID:
 		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 		return invalidity.NewBuilder(

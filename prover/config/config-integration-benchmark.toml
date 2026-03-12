@@ -34,9 +34,11 @@ num_proofs = [10]
 #   invalidity-precompile-logs-dummy (ID 8, bit 8)   = 1 → ALLOWED
 #   invalidity-filtered-address-dummy (ID 9, bit 9)  = 1 → ALLOWED
 #   invalidity-nonce-balance (ID 10, bit 10)         = 0 → DISALLOWED
-#   invalidity-precompile-logs (ID 11, bit 11)       = 0 → DISALLOWED
-#   invalidity-filtered-address (ID 12, bit 12)      = 0 → DISALLOWED
-# Binary: 0b0000111_00001011 = 907 (decimal)
+#   invalidity-precompile-logs (ID 11, bit 11)               = 0 → DISALLOWED
+#   invalidity-filtered-address (ID 12, bit 12)              = 0 → DISALLOWED
+#   invalidity-precompile-logs-limitless (ID 13, bit 13)     = 0 → DISALLOWED
+#   invalidity-precompile-logs-large (ID 14, bit 14)         = 0 → DISALLOWED
+# Binary: 0b000001110001011 = 907 (decimal)
 is_allowed_circuit_id = 907
 verifier_id = 1
 

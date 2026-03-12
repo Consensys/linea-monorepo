@@ -4,8 +4,10 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
+	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
@@ -15,7 +17,8 @@ const MAX_L2_LOGS = 16
 
 // BadPrecompileCircuit defines the circuit for the transaction with a bad precompile.
 type BadPrecompileCircuit struct {
-	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
+	//  simulated execution context.
+	ExecutionCtx ExecutionCtx
 
 	// Derived from invalidity PI extractor (gnark:"-" = no wires, set during Define)
 	txHash           [2]frontend.Variable `gnark:"-"`
@@ -42,20 +45,51 @@ type BadPrecompileCircuit struct {
 	InvalidityType frontend.Variable
 }
 
+// ExecutionCtx is the simulated execution for the bad precompile/log circuit.
+type ExecutionCtx struct {
+	// LimitlessMode is set to true if the outer proof is generated for the
+	// limitless prover mode.
+	LimitlessMode bool `gnark:"-"`
+	// CongloVK is used when the [LimitlessMode] is on and is helps checking
+	// the validity of the inner-proofs verification-key public input.
+	CongloVK [2]field.Element
+	// VKMerkleRoot is used when the [LimitlessMode] is on and is helps checking
+	// the validity of the inner-proofs verification-key merkle root public
+	// input.
+	VKMerkleRoot field.Element
+	// The wizard verifier circuit
+	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
+}
+
 func (circuit *BadPrecompileCircuit) Allocate(config Config) {
 
-	wverifier := wizard.AllocateWizardCircuit(config.Zkevm.InitialCompiledIOP, 0, true)
-	circuit.WizardVerifier = *wverifier
+	wverifier := wizard.AllocateWizardCircuit(
+		config.ZkEvmComp,
+		config.ZkEvmComp.NumRounds(),
+		true,
+	)
+
+	circuit.ExecutionCtx.WizardVerifier = *wverifier
 }
 
 func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 
-	circuit.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-	circuit.WizardVerifier.Verify(api)
+	circuit.ExecutionCtx.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
+	circuit.ExecutionCtx.WizardVerifier.Verify(api)
 
-	pie := getInvalidityPIExtractor(&circuit.WizardVerifier)
-	execPie := getExecutionPIExtractor(&circuit.WizardVerifier)
-	circuit.checkPublicInputs(api, &circuit.WizardVerifier, pie, execPie)
+	pie := getInvalidityPIExtractor(&circuit.ExecutionCtx.WizardVerifier)
+	execPie := getExecutionPIExtractor(&circuit.ExecutionCtx.WizardVerifier)
+	circuit.checkPublicInputs(api, &circuit.ExecutionCtx.WizardVerifier, pie, execPie)
+
+	if circuit.ExecutionCtx.LimitlessMode {
+		execCircuit := execCirc.CircuitExecution{
+			LimitlessMode:  true,
+			CongloVK:       circuit.ExecutionCtx.CongloVK,
+			VKMerkleRoot:   circuit.ExecutionCtx.VKMerkleRoot,
+			WizardVerifier: circuit.ExecutionCtx.WizardVerifier,
+		}
+		execCircuit.CheckLimitlessConglomerationCompletion(api)
+	}
 
 	// check that invalidity type is valid, it should be 2 or 3
 	// binaryType = 0 when BadPrecompile (type 2), binaryType = 1 when TooManyLogs (type 3)
@@ -164,7 +198,9 @@ func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.Pub
 
 // Assign assigns the inputs to the circuit
 func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
-	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.InitialCompiledIOP, assi.ZkevmWizardProof, 0, true)
+
+	circuit.ExecutionCtx.WizardVerifier = *wizard.AssignVerifierCircuit(assi.ZkEvmComp, assi.ZkEvmWizardProof, assi.ZkEvmComp.NumRounds(), true)
+
 	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
 
 	circuit.ToAddress = assi.Transaction.To()[:]

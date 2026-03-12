@@ -2,12 +2,17 @@ package invalidity
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand/v2"
 
+	fr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -15,6 +20,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
+
+// LimitlessInputs holds the values needed to mock the conglomeration public
+// inputs that CheckLimitlessConglomerationCompletion reads.
+type LimitlessInputs struct {
+	CongloVK     [2]field.Element
+	VKMerkleRoot field.Element
+}
 
 // CreateLimbs32Bytes splits a 32-byte hash into 16 big-endian 2-byte limbs.
 func CreateLimbs32Bytes(b [32]byte) [16]field.Element {
@@ -47,7 +59,11 @@ func Create8LimbsFromInt(n uint64) [8]field.Element {
 // It registers columns and public inputs matching both the InvalidityPIExtractor
 // and the execution FunctionalInputExtractor layouts, then proves them with the
 // provided input values.
-func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs) (*wizard.CompiledIOP, wizard.Proof) {
+//
+// When limitless is non-nil, the mock also registers the conglomeration public
+// inputs that CheckLimitlessConglomerationCompletion reads, with values that
+// satisfy all its constraints.
+func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs, limitless *LimitlessInputs) (*wizard.CompiledIOP, wizard.Proof) {
 	define := func(b *wizard.Builder) {
 		comp := b.CompiledIOP
 
@@ -109,6 +125,26 @@ func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs) (*wizard.CompiledIOP, w
 		copy(execExtractor.InitialBlockNumber[:], registerLimbPIs(blockNumCols, "InitialBlockNumber"))
 
 		comp.ExtraData[publicInput.PublicInputExtractorMetadata] = execExtractor
+
+		// --- Conglomeration PIs (limitless mode only) ---
+		if limitless != nil {
+			registerSinglePI(comp, distributed.TargetNbSegmentPublicInputBase+"_0")
+			registerSinglePI(comp, distributed.SegmentCountGLPublicInputBase+"_0")
+			registerSinglePI(comp, distributed.SegmentCountLPPPublicInputBase+"_0")
+
+			for i := 0; i < mimc.MSetHashSize; i++ {
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.GeneralMultiSetPublicInputBase, i))
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.SharedRandomnessMultiSetPublicInputBase, i))
+			}
+
+			registerSinglePI(comp, distributed.InitialRandomnessPublicInput)
+			registerSinglePI(comp, distributed.LogDerivativeSumPublicInput)
+			registerSinglePI(comp, distributed.GrandProductPublicInput)
+			registerSinglePI(comp, distributed.HornerPublicInput)
+			registerSinglePI(comp, distributed.VerifyingKeyPublicInput)
+			registerSinglePI(comp, distributed.VerifyingKey2PublicInput)
+			registerSinglePI(comp, distributed.VerifyingKeyMerkleRootPublicInput)
+		}
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
@@ -143,8 +179,71 @@ func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs) (*wizard.CompiledIOP, w
 		assignLimbCols("EXEC_L2MSGSVC", in.L2MessageServiceAddr[:])
 		assignLimbCols("EXEC_BLOCKTIMESTAMP", in.InitialBlockTimestamp[:])
 		assignLimbCols("EXEC_BLOCKNUM", in.InitialBlockNumber[:])
+
+		// --- Assign conglomeration PIs (limitless mode only) ---
+		if limitless != nil {
+			segCount := field.NewElement(3)
+			assignSinglePI(run, distributed.TargetNbSegmentPublicInputBase+"_0", segCount)
+			assignSinglePI(run, distributed.SegmentCountGLPublicInputBase+"_0", segCount)
+			assignSinglePI(run, distributed.SegmentCountLPPPublicInputBase+"_0", segCount)
+
+			for i := 0; i < mimc.MSetHashSize; i++ {
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.GeneralMultiSetPublicInputBase, i), field.Zero())
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.SharedRandomnessMultiSetPublicInputBase, i), field.Zero())
+			}
+
+			// initRandomness must equal mimc.GnarkHashVec(sharedRandMSet) computed
+			// over BLS12-377 in the gnark circuit. We compute the native equivalent.
+			zeros := make([]fr.Element, mimc.MSetHashSize)
+			initRandBLS := mimc.HashVec(zeros)
+			assignSinglePIFr(run, distributed.InitialRandomnessPublicInput, initRandBLS)
+
+			assignSinglePI(run, distributed.LogDerivativeSumPublicInput, field.Zero())
+			assignSinglePI(run, distributed.GrandProductPublicInput, field.One())
+			assignSinglePI(run, distributed.HornerPublicInput, field.Zero())
+			assignSinglePI(run, distributed.VerifyingKeyPublicInput, limitless.CongloVK[0])
+			assignSinglePI(run, distributed.VerifyingKey2PublicInput, limitless.CongloVK[1])
+			assignSinglePI(run, distributed.VerifyingKeyMerkleRootPublicInput, limitless.VKMerkleRoot)
+		}
 	}
 
 	proof := wizard.Prove(comp, prove)
 	return comp, proof
+}
+
+// registerSinglePI registers a single base-field proof column and corresponding
+// public input with the given name.
+func registerSinglePI(comp *wizard.CompiledIOP, name string) {
+	col := comp.InsertProof(0, ifaces.ColID(name+"_PI_COLUMN"), 1, true)
+	comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
+}
+
+// assignSinglePI assigns a value to a single PI column registered by registerSinglePI.
+func assignSinglePI(run *wizard.ProverRuntime, name string, val field.Element) {
+	run.AssignColumn(ifaces.ColID(name+"_PI_COLUMN"), smartvectors.NewConstant(val, 1))
+}
+
+// assignSinglePIFr assigns a BLS12-377 fr.Element to a PI column. This is needed
+// when the value is computed over BLS12-377 (e.g., MiMC hash) and must match
+// the gnark circuit computation exactly.
+func assignSinglePIFr(run *wizard.ProverRuntime, name string, val fr.Element) {
+	var k field.Element
+	k.SetBytes(val.Marshal())
+	run.AssignColumn(ifaces.ColID(name+"_PI_COLUMN"), smartvectors.NewConstant(k, 1))
+}
+
+// PatchLimitlessWitness patches the VerifierCircuit column values for
+// conglomeration PIs that need BLS12-377 values. The wizard proof stores
+// KoalaBear values (31-bit), but the gnark circuit (BLS12-377) computes
+// MiMC hashes natively. This function overwrites the initRandomness column
+// with the correct BLS12-377 MiMC hash so the constraint is satisfied.
+func PatchLimitlessWitness(wvc *wizard.VerifierCircuit) {
+	zeros := make([]fr.Element, mimc.MSetHashSize)
+	initRandBLS := mimc.HashVec(zeros)
+	b := new(big.Int)
+	initRandBLS.BigInt(b)
+
+	colID := ifaces.ColID(distributed.InitialRandomnessPublicInput + "_PI_COLUMN")
+	idx := wvc.ColumnsIDs.MustGet(colID)
+	wvc.Columns[idx][0] = koalagnark.NewElement(b)
 }

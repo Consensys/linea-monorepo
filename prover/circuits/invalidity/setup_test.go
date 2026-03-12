@@ -12,7 +12,6 @@ import (
 	keccakDummy "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
 	smt_koalabear "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/stretchr/testify/require"
 )
@@ -55,11 +54,11 @@ func TestSetupRoundTripPrecompileLogs(t *testing.T) {
 			HasBadPrecompile: true,
 			NumL2Logs:        5,
 		},
-	})
+	}, nil)
 
 	builder := invalidity.NewBuilder(
 		invalidity.Config{
-			Zkevm: &zkevm.ZkEvm{InitialCompiledIOP: comp},
+			ZkEvmComp: comp,
 		},
 		&invalidity.BadPrecompileCircuit{},
 	)

@@ -2,6 +2,7 @@ package invalidity
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -13,6 +14,7 @@ import (
 	keccakDummy "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -36,7 +38,7 @@ import (
 //
 //   - Full (prod): compiles the gnark circuit, loads the trusted setup from
 //     disk, and generates a real PLONK proof. All inputs must be provided.
-func Prove(cfg *config.Config, req *Request) (*Response, error) {
+func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 	profiling.SetMonitorParams(cfg)
 	exit.SetIssueHandlingMode(exit.ExitAlways)
 
@@ -61,7 +63,11 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		circuitID = circuits.InvalidityNonceBalanceCircuitID
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
 		mockCircuitID = circuits.MockCircuitIDInvalidityPrecompileLogs
-		circuitID = circuits.InvalidityPrecompileLogsCircuitID
+		if large {
+			circuitID = circuits.InvalidityPrecompileLogsLargeCircuitID
+		} else {
+			circuitID = circuits.InvalidityPrecompileLogsCircuitID
+		}
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
 		mockCircuitID = circuits.MockCircuitIDInvalidityFilteredAddress
 		circuitID = circuits.InvalidityFilteredAddressCircuitID
@@ -122,6 +128,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			assigningInputs.AccountTrieInputs = accountTrieInputs
 
 		case invalidity.BadPrecompile, invalidity.TooManyLogs:
+			limits := &cfg.TracesLimits
+			if large {
+				limits.SetLargeMode()
+			}
 			txHash := ethereum.GetTxHash(tx)
 			txSignature := ethereum.GetJsonSignature(tx)
 			zkevmWitness := &zkevm.Witness{
@@ -140,16 +150,47 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 			var zkEvm *zkevm.ZkEvm
 			if isPartial {
-				zkEvm = zkevm.FullZkEVMInvalidityCheckOnly(cfg)
+				zkEvm = zkevm.FullZkEVMCheckOnly(limits, cfg)
 			} else {
-				zkEvm = zkevm.FullZkEvmInvalidity(cfg)
+				// The inner zkEVM for invalidity uses the same trace limits
+				// as execution, so the compiled IOP is identical. We reuse
+				// execution's serialized binary (keyed by execution circuit ID)
+				// to skip the expensive compilation when available.
+				execCircuitID := circuits.ExecutionCircuitID
+				if large {
+					execCircuitID = circuits.ExecutionLargeCircuitID
+				}
+
+				enabled, innerPath := cfg.ExecutionCircuitBin(string(execCircuitID))
+				if enabled {
+					if _, statErr := os.Stat(innerPath); statErr == nil {
+						logrus.Infof("Loading serialized inner circuit from %s", innerPath)
+						var loaded zkevm.ZkEvm
+						closer, loadErr := serde.LoadFromDisk(innerPath, &loaded, false)
+						if loadErr == nil {
+							defer closer.Close()
+							zkEvm = &loaded
+						} else {
+							logrus.Warnf("Failed to load inner circuit: %v. Falling back to compilation.", loadErr)
+						}
+					} else {
+						logrus.Warnf("Serialization enabled but %s not found. Falling back to compilation.", innerPath)
+					}
+				}
+				if zkEvm == nil {
+					if large {
+						zkEvm = zkevm.FullZkEvmLarge(limits, cfg)
+					} else {
+						zkEvm = zkevm.FullZkEvm(limits, cfg)
+					}
+				}
 			}
 			proof := zkEvm.ProveInner(zkevmWitness)
 			if err := zkEvm.VerifyInner(proof); err != nil {
 				utils.Panic("zkEVM proof verification failed: %v", err)
 			}
-			assigningInputs.Zkevm = zkEvm
-			assigningInputs.ZkevmWizardProof = proof
+			assigningInputs.ZkEvmComp = zkEvm.RecursionCompiledIOP
+			assigningInputs.ZkEvmWizardProof = proof
 
 		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
 			if isPartial {
