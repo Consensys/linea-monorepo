@@ -40,13 +40,15 @@ jobs:
       - name: Check besu distribution exists
         id: check_besu_dist
         run: |
-          BESU_DIST="tmp/besu-eth/build/distributions/besu-${{ steps.release_versions.outputs.besu_version }}.tar.gz"
+          BESU_DIST="tmp/besu-eth/build/distributions/besu-${BESU_VERSION}.tar.gz"
           if [ -f "$BESU_DIST" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "Skipping Cloudsmith publish: $BESU_DIST not found"
           fi
+        env:
+          BESU_VERSION: ${{ steps.release_versions.outputs.besu_version }}
 
       - name: Publish besu distribution artifact to Cloudsmith
         if: steps.check_besu_dist.outputs.exists == 'true'
@@ -70,7 +72,6 @@ jobs:
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
         run: |
-          BRANCH="${{ github.head_ref }}"
           git fetch origin "$BRANCH"
           git checkout "$BRANCH"
           git config user.name "github-actions[bot]"
@@ -82,3 +83,5 @@ jobs:
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
             git push origin "$BRANCH"
           fi
+        env:
+          BRANCH: ${{ github.head_ref }}
