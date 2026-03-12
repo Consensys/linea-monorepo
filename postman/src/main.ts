@@ -1,8 +1,8 @@
 import * as dotenv from "dotenv";
 import { transports } from "winston";
 
-import { SignerConfig } from "../src/application/postman/app/config/config";
-import { PostmanApp } from "../src/application/postman/app/PostmanApp";
+import { type SignerConfig } from "./application/postman/app/config/config";
+import { PostmanApp } from "./application/postman/app/PostmanApp";
 
 dotenv.config();
 

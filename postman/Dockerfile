@@ -62,4 +62,4 @@ COPY --from=builder --chown=node:node /usr/src/app/prod/postman ./postman
 USER node
 
 # Use exec form for proper signal handling
-CMD ["node", "./postman/dist/scripts/runPostman.js"]
+CMD ["node", "./postman/dist/src/main.js"]
