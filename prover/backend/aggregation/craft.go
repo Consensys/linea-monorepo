@@ -478,20 +478,16 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		}
 
 		if got, want := po.ChainID, cfg.Layer2.ChainID; got != want {
-			err = fmt.Errorf("invalidity #%d fails CHECK_CHAIN_ID:\n\texpected %x, encountered %x", i, want, got)
-
+			return fmt.Errorf("invalidity #%d fails CHECK_CHAIN_ID:\n\texpected %x, encountered %x", i, want, got)
 		}
 		if got, want := po.BaseFee, cfg.Layer2.BaseFee; got != want {
-			err = fmt.Errorf("invalidity #%d fails CHECK_BASE_FEE:\n\texpected %x, encountered %x", i, want, got)
-
+			return fmt.Errorf("invalidity #%d fails CHECK_BASE_FEE:\n\texpected %x, encountered %x", i, want, got)
 		}
 		if got, want := po.CoinBase, cfg.Layer2.CoinBase; got != types.EthAddress(want) {
-			err = fmt.Errorf("invalidity #%d fails CHECK_COIN_BASE:\n\texpected CoinBase %x, encountered %x", i, want, got)
-
+			return fmt.Errorf("invalidity #%d fails CHECK_COIN_BASE:\n\texpected CoinBase %x, encountered %x", i, want, got)
 		}
 		if got, want := po.L2BridgeAddress, cfg.Layer2.MsgSvcContract; got != types.EthAddress(want) {
-			err = fmt.Errorf("invalidity #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, want, got)
-
+			return fmt.Errorf("invalidity #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, want, got)
 		}
 
 		prevPo = po
