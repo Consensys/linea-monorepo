@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/constraint"
@@ -132,50 +133,103 @@ func TestCircuitCompile(t *testing.T) {
 }
 
 // TestCircuitSolve tests the full compile + solve cycle.
-func TestCircuitSolve(t *testing.T) {
+func TestGKRCircuitSolve(t *testing.T) {
 	require.NoError(t, RegisterGates())
 
-	for _, nbElmts := range []int{8, 16, 444} {
+	for _, nbElmts := range []int{8, 16, 444, 800, 160000} {
 		t.Run(fmt.Sprintf("Size_%d", nbElmts), func(t *testing.T) {
 			circuit, witness := getGnarkMDHasherCircuitWitness(nbElmts)
 
+			t0 := time.Now()
 			ccs, err := frontend.CompileU32(koalabear.Modulus(), wideCommitWrapper(scs.NewBuilder), circuit)
 			require.NoError(t, err)
+			compileElapsed := time.Since(t0)
 
 			fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 			require.NoError(t, err)
+			t1 := time.Now()
 			err = ccs.IsSolved(fullWitness)
 			require.NoError(t, err)
-			fmt.Printf("GKR Poseidon2 Solve (%d elems, %d instances): %d constraints\n",
-				nbElmts, (nbElmts+7)/8, ccs.GetNbConstraints())
+			solveElapsed := time.Since(t1)
+			fmt.Printf("[gkr]    size=%d instances=%d constraints=%d compile=%s solve=%s\n",
+				nbElmts, (nbElmts+7)/8, ccs.GetNbConstraints(), compileElapsed, solveElapsed)
 		})
 	}
 }
 
-// TestCircuit mirrors the BLS12-377 TestCircuit in poseidon2_bls12377 for direct comparison.
-// Run both tests to compare constraint counts:
+// nativeMDHasherCircuit tests the plain (non-GKR) Poseidon2 gnark circuit.
+// Constructs GnarkMDHasher directly (gkrCompressor=nil) so Sum() calls
+// CompressPoseidon2 from poseidon2_circuit.go with no GKR batching.
+type nativeMDHasherCircuit struct {
+	Inputs []frontend.Variable
+	Output GnarkOctuplet
+}
+
+func (c *nativeMDHasherCircuit) Define(api frontend.API) error {
+	// Construct directly so gkrCompressor=nil → Sum() uses CompressPoseidon2.
+	// Must initialize state to 0 (nil frontend.Variable panics in Add).
+	var state GnarkOctuplet
+	for i := range state {
+		state[i] = 0
+	}
+	h := GnarkMDHasher{api: api, state: state}
+	h.Write(c.Inputs...)
+	res := h.Sum()
+	for i := 0; i < 8; i++ {
+		api.AssertIsEqual(c.Output[i], res[i])
+	}
+	return nil
+}
+
+func getNativeMDHasherCircuitWitness(nbElmts int) (*nativeMDHasherCircuit, *nativeMDHasherCircuit) {
+	vals := make([]field.Element, nbElmts)
+	for i := 0; i < nbElmts; i++ {
+		vals[i].SetRandom()
+	}
+	phasher := NewMDHasher()
+	phasher.WriteElements(vals...)
+	res := phasher.SumElement()
+
+	var circuit, witness nativeMDHasherCircuit
+	circuit.Inputs = make([]frontend.Variable, nbElmts)
+	witness.Inputs = make([]frontend.Variable, nbElmts)
+	for i := 0; i < nbElmts; i++ {
+		witness.Inputs[i] = vals[i].String()
+	}
+	for i := 0; i < 8; i++ {
+		witness.Output[i] = res[i].String()
+	}
+	return &circuit, &witness
+}
+
+// TestCircuit tests the native (non-GKR) Poseidon2 gnark circuit.
+// Uses scs.NewBuilder directly — no wideCommitWrapper, no RegisterGates.
+//
+// Compare with BLS12-377:
 //
 //	go test ./crypto/poseidon2_bls12377/... -run TestCircuit -v
 //	go test ./crypto/poseidon2_koalabear/... -run "^TestCircuit$" -v
-func TestCircuit(t *testing.T) {
-	require.NoError(t, RegisterGates())
-
-	testSizes := []int{8, 16, 444, 800, 160000}
-
-	for _, size := range testSizes {
+func TestNativeCircuit(t *testing.T) {
+	for _, size := range []int{8, 16, 444, 800, 160000} {
+		size := size
 		t.Run("Size_"+strconv.Itoa(size), func(t *testing.T) {
+			circuit, witness := getNativeMDHasherCircuitWitness(size)
 
-			circuit, witness := getGnarkMDHasherCircuitWitness(size)
-
-			ccs, err := frontend.CompileU32(koalabear.Modulus(), wideCommitWrapper(scs.NewBuilder), circuit)
+			t0 := time.Now()
+			ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 			assert.NoError(t, err)
-			fmt.Printf("native ccs number of constraints: %d\n", ccs.GetNbConstraints())
+			compileElapsed := time.Since(t0)
 
 			fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 			assert.NoError(t, err)
 
+			t1 := time.Now()
 			err = ccs.IsSolved(fullWitness)
 			assert.NoError(t, err)
+			solveElapsed := time.Since(t1)
+
+			fmt.Printf("[native] size=%d constraints=%d compile=%s solve=%s\n",
+				size, ccs.GetNbConstraints(), compileElapsed, solveElapsed)
 		})
 	}
 }
