@@ -78,6 +78,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
 	return CircuitExecution{
+		LimitlessMode:  true,
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
