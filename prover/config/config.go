@@ -1,3 +1,4 @@
+//go:generate go run ./config_sample_generator/main.go
 package config
 
 import (

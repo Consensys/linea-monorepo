@@ -1,40 +1,46 @@
-environment = "devnet"
-version = "6.1.3"                              # TODO @gbotrel hunt all version definitions.
+# This is an auto-generated file. DO NOT EDIT DIRECTLY. Edit the default values 
+# in the generator and run `go generate`.
+
+environment = "mainnet"
+version = "6.1.5"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
+spot_instance_reclaim_time_seconds = 120
+termination_grace_period_seconds = 1800
 
 [execution]
-prover_mode = "full"
+prover_mode = "execution"
 conflated_traces_dir = "./"
 requests_root_dir = "./"
-ignore_compatibility_check=false
+limitless_with_debug = false
+ignore_compatibility_check = false
 keep_traces_until_block = 0
-serialization = true
+serialization = false
 
 [data_availability]
-prover_mode = "full"
+prover_mode = "data-availability"
 requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
-prover_mode = "full"
-requests_root_dir = "/home/ubuntu/beta-v2-rc11/prover-aggregation"
+prover_mode = "aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
-# allowed_inputs = ["execution-dummy", "execution", "execution-large", "data-availability-dummy", "data-availability-v2"]
-# Conversion to is_allowed_circuit_id bitmask:
-#   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-#   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
+# `is_allowed_circuit` is set as a bitmask. Here is an example illustrating how
+# it works for mainnet (e.g. - without allowing dummy circuits):
+#   execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
+#   data-availability-dummy (ID 1, bit 1) = 0 → DISALLOWED
+#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
 #   execution (ID 3, bit 3) = 1 → ALLOWED
 #   execution-large (ID 4, bit 4) = 1 → ALLOWED
-#   execution-limitless (ID 5, bit 5) = 0 → DISALLOWED
+#   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
 #   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-# Binary: 0b01011011 = 91 (decimal)
-is_allowed_circuit_id = 91
-verifier_id = 0
+# Binary: 0b01111000 = 120 (decimal)
+is_allowed_circuit_id = 120
+verifier_id = 1
 
 [public_input_interconnection]
 max_nb_data_availability = 400
@@ -45,10 +51,10 @@ l2_msg_merkle_depth = 5
 l2_msg_max_nb_merkle = 200
 
 [layer2]
-chain_id = 59139
+chain_id = 59144
 base_fee = 7
-coin_base = "0x19bf28626BE6f6aE4ca7d41A5aDe0305e9DC5FCA"
-message_service_contract = "0x33bf916373159a8c1b54b025202517bfdbb7863d"
+coin_base = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E"
+message_service_contract = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
 
 [traces_limits]
 modules = [
@@ -124,4 +130,3 @@ modules = [
     {module = "PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", limit = 4, limit_large = 8},
     {module = "PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS", limit = 128, limit_large = 256},
 ]
-

@@ -1,0 +1,8 @@
+*.toml
+!config-devnet-dev.toml
+!config-devnet-staging.toml
+!config-e2e-dev.toml
+!config-e2e-staging.toml
+!config-mainnet-prod.toml
+!config-mainnet-staging.toml
+!config-sepolia-staging.toml
