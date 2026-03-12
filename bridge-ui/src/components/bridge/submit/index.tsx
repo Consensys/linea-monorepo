@@ -8,6 +8,7 @@ import WalletIcon from "@/assets/icons/wallet.svg";
 import ConnectButton from "@/components/connect-button";
 import Button from "@/components/ui/button";
 import { useBridge } from "@/hooks";
+import useFees from "@/hooks/fees/useFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 
@@ -34,26 +35,34 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
 
   const fromChain = useChainStore.useFromChain();
   const amount = useFormStore((state) => state.amount);
-  const balance = useFormStore((state) => state.balance);
   const recipient = useFormStore((state) => state.recipient);
 
   const resetForm = useFormStore((state) => state.resetForm);
 
-  const { bridge, transactionType, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
+  const { bridge, transactionType, adapterId, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
 
   const chainId = useChainId();
   const { mutate: switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
   const needChainSwitch = fromChain.id !== chainId;
 
+  const { hasInsufficientFunds } = useFees();
+
   const disabled = useMemo(() => {
     if (needChainSwitch) return false;
-    const originChainBalanceTooLow = amount && balance < amount;
-    return originChainBalanceTooLow || !amount || amount <= 0n || isPending || isConfirming || isSwitchingChain;
-  }, [amount, balance, isConfirming, isPending, isSwitchingChain, needChainSwitch]);
+    const isPreparingTransaction = !!amount && amount > 0n && !bridge;
+    return (
+      hasInsufficientFunds ||
+      !amount ||
+      amount <= 0n ||
+      isPreparingTransaction ||
+      isPending ||
+      isConfirming ||
+      isSwitchingChain
+    );
+  }, [amount, bridge, hasInsufficientFunds, isConfirming, isPending, isSwitchingChain, needChainSwitch]);
 
   const buttonText = useMemo(() => {
-    // Do not prompt user for action when in a loading state
     if (isPending || isConfirming) {
       return "Waiting for confirmation...";
     }
@@ -62,7 +71,6 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
       return "Switching chain...";
     }
 
-    // Do not let user do actions with wallet connected to wrong chain
     if (needChainSwitch) {
       return `Switch to ${fromChain.name}`;
     }
@@ -70,10 +78,13 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
     if (!amount || amount <= 0n) {
       return "Enter an amount";
     }
-    const originChainBalanceTooLow = amount && balance < amount;
 
-    if (originChainBalanceTooLow) {
+    if (hasInsufficientFunds) {
       return "Insufficient funds";
+    }
+
+    if (!bridge) {
+      return "Preparing transaction...";
     }
 
     if (transactionType === "approve") {
@@ -81,7 +92,17 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
     }
 
     return "Bridge";
-  }, [amount, balance, fromChain.name, isConfirming, isPending, isSwitchingChain, transactionType, needChainSwitch]);
+  }, [
+    amount,
+    bridge,
+    fromChain.name,
+    hasInsufficientFunds,
+    isConfirming,
+    isPending,
+    isSwitchingChain,
+    transactionType,
+    needChainSwitch,
+  ]);
 
   useEffect(() => {
     if (isConfirmed) {
@@ -136,6 +157,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
         <TransactionConfirmed
           isModalOpen={showTransactionConfirmedModal}
           transactionType={transactionType}
+          adapterId={adapterId}
           onCloseModal={() => {
             if (transactionType !== "approve") {
               resetForm();

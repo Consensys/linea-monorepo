@@ -27,7 +27,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -58,18 +57,13 @@ const (
 )
 
 var (
-	fullZkEvm               *ZkEvm
-	fullZkEvmLarge          *ZkEvm
-	fullZkEvmCheckOnly      *ZkEvm
-	fullZkEvmSetup          *ZkEvm
-	fullZkEvmSetupLarge     *ZkEvm
-	fullZkEvmInvalidity     *ZkEvm
-	onceFullZkEvm           = sync.Once{}
-	onceFullZkEvmLarge      = sync.Once{}
-	onceFullZkEvmCheckOnly  = sync.Once{}
-	onceFullZkEvmSetup      = sync.Once{}
-	onceFullZkEvmSetupLarge = sync.Once{}
-	onceFullZkEvmInvalidity = sync.Once{}
+	fullZkEvm              *ZkEvm
+	fullZkEvmLarge         *ZkEvm
+	fullZkEvmCheckOnly     *ZkEvm
+	onceFullZkEvm          = sync.Once{}
+	onceFullZkEvmLarge     = sync.Once{}
+	onceFullZkEvmCheckOnly = sync.Once{}
+
 	// This is the SIS instance, that has been found to minimize the overhead of
 	// recursion. It is changed w.r.t to the estimated because the estimated one
 	// allows for 10 bits limbs instead of just 8. But since the current state
@@ -309,54 +303,6 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	})
 
 	return fullZkEvmCheckOnly
-}
-
-func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
-
-	onceFullZkEvmSetup.Do(func() {
-		fullZkEvmSetup = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
-	})
-
-	return fullZkEvmSetup
-}
-
-func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
-
-	onceFullZkEvmSetupLarge.Do(func() {
-		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuiteLarge, &fullSecondCompilationSuite)
-	})
-
-	return fullZkEvmSetupLarge
-}
-
-func FullZkEvmInvalidity(cfg *config.Config) *ZkEvm {
-	onceFullZkEvmInvalidity.Do(func() {
-		tl := simulatedTracesLimits(cfg)
-		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
-	})
-	return fullZkEvmInvalidity
-}
-
-func FullZkEVMInvalidityCheckOnly(cfg *config.Config) *ZkEvm {
-
-	onceFullZkEvmCheckOnly.Do(func() {
-		tl := simulatedTracesLimits(cfg)
-		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, cfg, dummyCompilationSuite, nil)
-	})
-
-	return fullZkEvmCheckOnly
-}
-
-// simulatedTracesLimits returns the traces limits to use for the invalidity
-// ZkEVM. It prefers the dedicated SimulatedTracesLimits when configured,
-// falling back to the main TracesLimits otherwise.
-func simulatedTracesLimits(cfg *config.Config) *config.TracesLimits {
-	if cfg.Invalidity.SimulatedTracesLimits != nil {
-		logrus.Info("invalidity ZkEVM: using SimulatedTracesLimits from config")
-		return cfg.Invalidity.SimulatedTracesLimits
-	}
-	logrus.Info("invalidity ZkEVM: no SimulatedTracesLimits configured, falling back to main TracesLimits")
-	return &cfg.TracesLimits
 }
 
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.

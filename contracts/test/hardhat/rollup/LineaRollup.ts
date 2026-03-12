@@ -507,14 +507,51 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.addressFilter()).to.be.equal(newAddressFilter);
     });
 
-    it("Should emit the AddressFilterChanged event when the address filter is set", async () => {
-      const newAddressFilter = ethers.getAddress(generateRandomBytes(20));
-      await expectEvent(
-        lineaRollup,
-        lineaRollup.connect(securityCouncil).setAddressFilter(newAddressFilter),
-        "AddressFilterChanged",
-        [addressFilterAddress, newAddressFilter],
-      );
+    it("Should emit an event while submitting 1 compressed data chunk", async () => {
+      const [submissionData] = generateCallDataSubmission(0, 1);
+
+      const submitDataCall = lineaRollup
+        .connect(operator)
+        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
+      const eventArgs = [prevShnarf, expectedShnarf, submissionData.finalStateRootHash];
+
+      await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
+    });
+
+    it("Should fail if the final state root hash is empty", async () => {
+      const [submissionData] = generateCallDataSubmission(0, 1);
+
+      submissionData.finalStateRootHash = HASH_ZERO;
+
+      const submitDataCall = lineaRollup
+        .connect(operator)
+        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
+
+      // TODO: Make the failure shnarf dynamic and computed
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
+        expectedShnarf,
+        "0xd14582c1b7041f523ac1428657196f30d5260227668151e660840fb629cacba4",
+      ]);
+    });
+
+    it("Should fail to submit where expected shnarf is wrong", async () => {
+      const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
+
+      await expect(
+        lineaRollup
+          .connect(operator)
+          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
+      ).to.not.be.reverted;
+
+      const wrongComputedShnarf = generateRandomBytes(32);
+
+      const submitDataCall = lineaRollup
+        .connect(operator)
+        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, wrongComputedShnarf, { gasLimit: MAX_GAS_LIMIT });
+
+      const eventArgs = [wrongComputedShnarf, secondExpectedShnarf];
+
+      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", eventArgs);
     });
 
     it("Should not emit the event if the address filter is the same", async () => {
