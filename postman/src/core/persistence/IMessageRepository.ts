@@ -1,7 +1,7 @@
 import { Message } from "../entities/Message";
 import { Direction } from "../enums";
 import { MessageStatus } from "../enums";
-import { Address, Hash, TransactionSubmission } from "../types";
+import { Address, Hash } from "../types";
 
 export interface IMessageWriter {
   insertMessage(message: Message): Promise<void>;
@@ -9,8 +9,6 @@ export interface IMessageWriter {
   updateMessageByTransactionHash(transactionHash: Hash, direction: Direction, message: Message): Promise<void>;
   saveMessages(messages: Message[]): Promise<void>;
   deleteMessages(msBeforeNowToDelete: number): Promise<number>;
-  reserveMessageForClaiming(message: Message, nonce: number): Promise<void>;
-  recordClaimSubmission(message: Message, tx: TransactionSubmission): Promise<void>;
 }
 
 export interface IMessageReader {

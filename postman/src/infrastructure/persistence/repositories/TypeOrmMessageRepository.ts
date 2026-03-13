@@ -5,7 +5,6 @@ import { Message } from "../../../core/entities/Message";
 import { Direction, DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../../core/enums";
 import { DatabaseAccessError } from "../../../core/errors";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { TransactionSubmission } from "../../../core/types";
 import { subtractSeconds } from "../../../core/utils/shared";
 import { MessageEntity } from "../entities/Message.entity";
 import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/messageMappers";
@@ -249,42 +248,6 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
       return message ? mapMessageEntityToMessage(message) : null;
     } catch (err: any) {
       throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
-    }
-  }
-
-  async reserveMessageForClaiming(message: Message, nonce: number): Promise<void> {
-    try {
-      await this.manager.update(
-        MessageEntity,
-        { messageHash: message.messageHash, direction: message.direction },
-        {
-          claimTxNonce: nonce,
-          status: MessageStatus.PENDING,
-          ...(message.status === MessageStatus.FEE_UNDERPRICED
-            ? { claimNumberOfRetry: message.claimNumberOfRetry + 1, claimLastRetriedAt: new Date() }
-            : {}),
-        },
-      );
-    } catch (err: any) {
-      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Update, err, message);
-    }
-  }
-
-  async recordClaimSubmission(message: Message, tx: TransactionSubmission): Promise<void> {
-    try {
-      await this.manager.update(
-        MessageEntity,
-        { messageHash: message.messageHash, direction: message.direction },
-        {
-          claimTxCreationDate: new Date(),
-          claimTxGasLimit: Number(tx.gasLimit),
-          claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
-          claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
-          claimTxHash: tx.hash,
-        },
-      );
-    } catch (err: any) {
-      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Update, err, message);
     }
   }
 }

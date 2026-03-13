@@ -113,9 +113,17 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     const previousStatus = message.status;
 
     // Step 1: Reserve nonce in DB (pure persistence)
-    await this.messageRepository.reserveMessageForClaiming(message, nonce);
+    message.edit({
+      claimTxNonce: nonce,
+      status: MessageStatus.PENDING,
+      ...(message.status === MessageStatus.FEE_UNDERPRICED
+        ? { claimNumberOfRetry: message.claimNumberOfRetry + 1, claimLastRetriedAt: new Date() }
+        : {}),
+    });
+    await this.messageRepository.updateMessage(message);
 
     // Step 2: Submit transaction to chain (outside DB transaction)
+    const claimTxCreationDate = new Date();
     let tx;
     try {
       tx = await this.messageServiceContract.claim(
@@ -142,7 +150,14 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     }
 
     // Step 3: Record tx details in DB (pure persistence)
-    await this.messageRepository.recordClaimSubmission(message, tx);
+    message.edit({
+      claimTxCreationDate,
+      claimTxGasLimit: Number(tx.gasLimit),
+      claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
+      claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
+      claimTxHash: tx.hash,
+    });
+    await this.messageRepository.updateMessage(message);
   }
 
   private async handleZeroFee(hasZeroFee: boolean, message: Message): Promise<boolean> {
