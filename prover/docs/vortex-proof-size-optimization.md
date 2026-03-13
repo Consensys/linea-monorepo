@@ -39,9 +39,7 @@ A single large reduction in `committed_cells` can fundamentally reduce both fact
 
 ### Mechanism
 
-Without GKR, every Poseidon2 hash call is proven by explicit polynomial columns — one column
-per intermediate round state, S-box computation, and round constant. Batching N hash calls
-therefore produces O(N × permutation\_rounds) committed columns.
+Without GKR, every Poseidon2 hash call is proven by `poseidon2.checkPoseidon2BlockCompressionExpression` — 206 committed cells. Batching N hash calls therefore produces O(N × 206) committed cells.
 
 With GKR, the entire batch is proven via a sumcheck argument. The GKR verifier needs only a
 short transcript column (`GKR_Poseidon2_TRANSCRIPT`) regardless of batch size, replacing the
@@ -49,10 +47,7 @@ dense intermediate-state columns entirely.
 
 ### Effect on proof size
 
-GKR primarily reduces `numRows` (fewer committed polynomials). This directly shrinks
-`SELECTED_COL`. Additionally, fewer columns fed into each self-recursion round means the
-next Vortex in the chain operates on a smaller matrix, compounding savings across all
-recursion levels.
+GKR primarily reduces committed cells (`numRows` × fewer committed polynomials). This directly shrinks `SELECTED_COL` and the Vortex matrix, and fewer columns fed into each self-recursion round compounds the savings across all recursion levels.
 
 | | Committed cells | Proof cells |
 |---|---|---|
@@ -73,7 +68,7 @@ is sent as a Reed-Solomon codeword of N evaluations over the extension field:
 
 ```
 Eval mode:   N = T × blowup_factor   extension-field elements
-Coeff mode:  T                        extension-field elements
+Coeff mode:  T                       extension-field elements
 ```
 
 `WithUAlphaCoefficients()` switches to coefficient form: the prover sends T polynomial
@@ -178,9 +173,7 @@ boundary downward. With the current parameters (K=64, 7 committed rounds, depth=
 | 7 (skip precomp) | 64 × 7 × 17 = 7,616 | 8,192 | 8,192 × 8 = **65,536** |
 | **Saving** | | | **65,536 cells (262,144 bytes)** |
 
-At depth=16 (T=4096) both cases round to NextPow2=8192 and there is no saving. The
-optimization is effective here because `WithTargetColSize(1<<13)` targets T=8192, giving
-depth=17.
+At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(codeword)=17), 7,616 is below 8,192 and 8,704 above, so the optimization halved the merkle proof cells.
 
 ---
 
