@@ -59,7 +59,13 @@ var (
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:   1 << 24,
+	// Increased from 1<<24 to 1<<25 because HUB-A-GL produces ~22.8M
+	// constraints in its recursion circuit, which exceeds 2^24 = 16.7M.
+	// DomainSizePlonk = nextPowerOf2(22877653 + 12346) = 2^25, so 2^25 rows
+	// are the minimum that can accommodate HUB-A. This value is global because
+	// all segments must share the same Plonk verifier structure for the
+	// conglomeration circuit.
+	FixedNbRowPlonkCircuit:   1 << 25,
 	FixedNbRowExternalHasher: 1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:       1 << 10,
 	InitialCompilerSize:      1 << 18,
@@ -262,9 +268,21 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ELLIPTIC CURVES
 		//
+		// The blsdata FLATTEN_LIMBS column (blsdata.LIMB'0_FLATTEN_LIMBS) has
+		// ~1M rows (NextPowerOfTwo(blsdata_size * 8)). It shares a QBM with
+		// MANUALLY_SHIFTED_FLATTEN_LIMBS columns (via ManuallyShift global
+		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
+		// this produced 2046 segments. This specific regex must appear BEFORE
+		// the generic ^blsdata\. to override it with a large BaseSize.
+		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
+		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
+		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
+		// column ID. This advice covers both. The FlattenLimbs column and its
+		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
