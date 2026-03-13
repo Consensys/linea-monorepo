@@ -199,21 +199,7 @@ weighted ×4 when computing totals.
 | 2 | + WithUAlphaCoefficients | 7,127,040 | — | 308,936 | −491,520 | ~1.2 MB |
 | 3 | + SkipSelfRecursionProofColumns | 7,127,040 | — | 243,400 | −65,536 | ~951 KB |
 | 4 | + SkipPrecomputedMerkleProof | 7,127,040 | — | **177,864** | −65,536 | **~695 KB** |
-| | **Total** | | **−57.8%** | | **−741,376 (−80.7%)** | |
-
-### Per-component breakdown (final Vortex only)
-
-The table below isolates the final-Vortex proof cells by component. The baseline is
-post-GKR (step 1); subsequent columns apply the remaining optimizations.
-
-| Component | post-GKR | +opt3 SkipSelfRec | +opt2 UAlphaCoeff | +opt4 SkipPrecomp |
-|---|---:|---:|---:|---:|
-| `U_alpha` | 524,288 | 524,288 | **32,768** | 32,768 |
-| `SELECTED_COL` | 65,536 | 65,536 | 65,536 | 65,536 |
-| `SELECTED_COL_NON_SIS` | 65,536 | **—** | — | — |
-| `MERKLEPROOF` | 131,072 | 131,072 | 131,072 | **65,536** |
-| `MERKLEROOT` + `OTHER` | ~14,024 | ~14,024 | ~14,024 | ~14,024 |
-| **Total** | **800,456** | **734,920** | **243,400** | **177,864** |
+| | **Total** | **−57.8%**|  | **−741,376 (−80.7%)** | | |
 
 ---
 
