@@ -125,6 +125,14 @@ step, so `SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` are registered as proof c
 **no verifier ever reads them**. `SkipSelfRecursionProofColumns()` suppresses their
 registration entirely, saving one full copy of the split-column data.
 
+### Impact
+
+| Proof column | Before | After |
+|---|---|---|
+| `SELECTED_COL_NON_SIS` | cols=64, cells=65,536 | **removed** |
+| `SELECTED_COL` | cols=64, cells=65,536 | cols=64, cells=65,536 |
+| **Total opened-column cells** | **131,072** | **65,536 (−50%)** |
+
 ---
 
 ## Optimization 4: Skip Precomputed Merkle Proof
