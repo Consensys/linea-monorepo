@@ -103,13 +103,30 @@ func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizar
 // Registers the consistency check between Ys and Ualpha
 func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
-	// Defer the interpolation of Ualpha to a dedicated wizard
-	ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
-		ctx.Comp,
-		ctx.interpolateUAlphaX(),
-		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
-		ctx.Columns.Ualpha,
-	)
+	xAccessor := accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID))
+
+	if ctx.VortexCtx.UseUAlphaCoefficients {
+		// In coefficient mode, Ualpha holds T polynomial coefficients.
+		// Use canonical (Horner) evaluation instead of Lagrange interpolation.
+		pa, res := functionals.CoeffEvalNoRegisterPA(
+			ctx.Comp,
+			ctx.interpolateUAlphaX(),
+			xAccessor,
+			ctx.Columns.Ualpha,
+		)
+		if pa != nil {
+			ctx.Comp.RegisterProverAction(pa.Round, pa)
+		}
+		ctx.Accessors.InterpolateUalphaX = res
+	} else {
+		// In evaluation mode, Ualpha holds N Lagrange evaluations on the NTT domain.
+		ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
+			ctx.Comp,
+			ctx.interpolateUAlphaX(),
+			xAccessor,
+			ctx.Columns.Ualpha,
+		)
+	}
 
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 

@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
+	cryptors "github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -115,13 +116,30 @@ type ColSelectionProverAction struct {
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
-	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
+	uAlphaSV := run.GetColumn(a.Ctx.Columns.Ualpha.GetColID())
 
 	uAlphaQ := make([]fext.Element, 0, a.Ctx.Columns.UalphaQ.Size())
 	uAlphaQFilter := make([]field.Element, 0, a.Ctx.Columns.UalphaQFilter.Size())
-	for _, qi := range q {
-		uAlphaQ = append(uAlphaQ, uAlpha[qi])
-		uAlphaQFilter = append(uAlphaQFilter, field.One())
+
+	if a.Ctx.VortexCtx.UseUAlphaCoefficients {
+		// Coefficient mode: Ualpha holds T polynomial coefficients.
+		// Evaluate the polynomial at the RS domain point omega^qi for each selected column index.
+		domainGen := a.Ctx.VortexCtx.VortexKoalaParams.RsParams.Domains[1].Generator
+		for _, qi := range q {
+			var omegaJ field.Element
+			omegaJ.Exp(domainGen, big.NewInt(int64(qi)))
+			var x fext.Element
+			fext.SetFromBase(&x, &omegaJ)
+			eval := cryptors.ExtCoefficientsEvalAt(uAlphaSV, x)
+			uAlphaQ = append(uAlphaQ, eval)
+			uAlphaQFilter = append(uAlphaQFilter, field.One())
+		}
+	} else {
+		uAlpha := smartvectors.IntoRegVecExt(uAlphaSV)
+		for _, qi := range q {
+			uAlphaQ = append(uAlphaQ, uAlpha[qi])
+			uAlphaQFilter = append(uAlphaQFilter, field.One())
+		}
 	}
 
 	// If the size of q is not a power of two, we pad it with zeros

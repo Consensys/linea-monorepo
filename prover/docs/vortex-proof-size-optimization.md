@@ -72,8 +72,7 @@ Coeff mode:  T                       extension-field elements
 ```
 
 `WithUAlphaCoefficients()` switches to coefficient form: the prover sends T polynomial
-coefficients instead of N codeword evaluations. The verifier reconstructs the full codeword
-via a forward FFT (provided as a hint in the gnark circuit).
+coefficients instead of N codeword evaluations. 
 
 ### Interaction with column size
 
@@ -186,7 +185,7 @@ weighted ×4 when computing totals.
 ### Cumulative impact per optimization
 
 
-| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |  Runtime | Memory |
+| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |  Compile time | Compile mem |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | 0 — baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB | 2.45 s | 2.44 GB |
 | 1 | + GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB | 0.95 s | 1.49 GB |
@@ -236,12 +235,8 @@ Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, pr
 | MERKLEPROOF | 65,536 | base (4 B each) | **262,144** |
 | **Total** | | | **655,360 (~640 KB)** |
 
-The full-pipeline benchmark reports **177,864 proof cells (~695 KB)**. The ~38,600-cell
-difference from the table above comes from Merkle roots, GKR transcript columns, and
-self-recursion auxiliary columns not listed here.
 
----
 
-## Optimization 5: WHIR
+There's a small discrepancy between the benchmark and the production data.
+The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces ~450 committed polynomials → NextPow2=**512**, while the full ZK-EVM has 843 → NextPow2=**1024**, doubling both components. 
 
-TODO

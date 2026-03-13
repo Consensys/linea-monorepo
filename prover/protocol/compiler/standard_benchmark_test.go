@@ -465,6 +465,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			vortex.WithOptionalSISHashingThreshold(512),
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithUAlphaCoefficients(),
 		),
 	)
 
@@ -623,6 +624,7 @@ func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsBLS
 				false,
 				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
 				vortex.WithSISParams(&ringsis.StdParams),
+				vortex.WithUAlphaCoefficients(),
 			),
 		)
 	}

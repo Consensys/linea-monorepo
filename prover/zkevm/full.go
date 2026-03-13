@@ -92,6 +92,7 @@ var (
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithUAlphaCoefficients(),
 		),
 		logdata.Log("pre-recursion.post-vortex-1"),
 
@@ -109,6 +110,7 @@ var (
 			8, false,
 			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithUAlphaCoefficients(),
 		),
 		logdata.Log("pre-recursion.post-vortex-2"),
 
@@ -126,6 +128,7 @@ var (
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.WithUAlphaCoefficients(),
 		),
 
 		// Fourth round of self-recursion
