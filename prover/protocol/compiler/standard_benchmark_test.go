@@ -225,7 +225,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
-			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
+			vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
 
 		),
 	)
@@ -243,7 +243,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			8, false,
 			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
-			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
+			vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
 		),
 	)
 
@@ -260,7 +260,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
-			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
+			vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
 		),
 	)
 

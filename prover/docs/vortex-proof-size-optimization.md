@@ -179,24 +179,21 @@ At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(
 
 ## Benchmark Results
 
-`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=8192.
+`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=8192, `-benchtime=1x`.
 Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
 weighted ×4 when computing totals.
 
-### Cumulative impact per optimization (final Vortex-4 only)
+### Cumulative impact per optimization
 
-The table below tracks only the final-vortex proof cells. Optimizations 1–4 apply
-exclusively to the final Vortex; optimization 5 also compresses intermediate rounds.
 
-| Step | Optimization added | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |
-|---|---|---:|---:|---:|---:|---:|
-| 0 — bare baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB |
-| 1 | GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB |
-| 2 | + WithUAlphaCoefficients (final) | 7,127,040 | — | 308,936 | −491,520 | ~1.2 MB |
-| 3 | + SkipSelfRecursionProofColumns | 7,127,040 | — | 243,400 | −65,536 | ~951 KB |
-| 4 | + SkipPrecomputedMerkleProof | 7,127,040 | — | **177,864** | −65,536 | **~695 KB** |
-| 5 | + WithUAlphaCoefficients (all rounds) | TBD | — | TBD | TBD | TBD |
-| | **Total (opts 1–4)** | **−57.8%**|  | **−741,376 (−80.7%)** | | |
+| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |  Runtime | Memory |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 0 — baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB | 2.45 s | 2.44 GB |
+| 1 | + GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB | 0.95 s | 1.49 GB |
+| 2 | + WithUAlphaCoefficients (all rounds) | 3,686,400 | −48.3% | 243,400 | −557,056 | ~951 KB | 0.87 s | 1.30 GB |
+| 3 | + SkipSelfRecursionProofColumns | 3,686,400 | — | 210,632 | −32,768 | ~823 KB | 0.85 s | 1.30 GB |
+| 4 | + SkipPrecomputedMerkleProof | 3,686,400 | — | **145,096** | −65,536 | **~567 KB** | 0.88 s | 1.30 GB |
+| | **Total** | **−78.2%** | | **−774,144 (−84.2%)** | | | | |
 
 ---
 
