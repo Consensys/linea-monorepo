@@ -44,12 +44,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// but not limit overflow.
 	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint | exit.ExitOnMissingTraceFile)
 
-	// Clean up witness directory to be sure it is empty when we start the
-	// process. This helps addressing the situation where a previous process
-	// have been interrupted.
-	os.RemoveAll(witnessDir)
-	defer os.RemoveAll(witnessDir)
-
 	// Setup execution witness and output response
 	var (
 		out     = execution.CraftProverOutput(cfg, req)
@@ -63,6 +57,59 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return &out, nil
 	}
 
+	// -- 1-4. Run the distributed pipeline: bootstrapper → GL/LPP segment
+	// proofs → shared randomness → hierarchical conglomeration.
+	pipeline, err := RunDistributedPipeline(cfg, witness.ZkEVM)
+	if err != nil {
+		return nil, fmt.Errorf("distributed pipeline failed: %w", err)
+	}
+
+	// -- 5. Load setup (in background started earlier maybe)
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
+
+	// Wait for setup to finish loading
+	<-chSetupDone
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+
+	out.Proof = execCirc.MakeProof(
+		&cfg.TracesLimits,
+		setup,
+		pipeline.Cong.RecursionCompBLS,
+		pipeline.FinalProof.GetOuterProofInput(),
+		*witness.FuncInp,
+		witness.ZkEVM.ExecData,
+	)
+
+	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+
+	return &out, nil
+}
+
+// PipelineResult holds the output of RunDistributedPipeline.
+type PipelineResult struct {
+	FinalProof *distributed.SegmentProof
+	Cong       *distributed.RecursedSegmentCompilation
+}
+
+// RunDistributedPipeline runs the full limitless distributed proving pipeline:
+// bootstrapper → GL segment proofs → shared randomness → LPP segment proofs →
+// hierarchical conglomeration. It returns the final conglomeration proof and
+// the compiled conglomeration (needed for RecursionCompBLS in the outer proof).
+func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness) (*PipelineResult, error) {
+	os.RemoveAll(witnessDir)
+	defer os.RemoveAll(witnessDir)
+
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
 
@@ -72,7 +119,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	var (
-		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
+		numGL, numLPP = RunBootstrapper(cfg, zkevmWitness, mt.GetRoot())
 	)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
@@ -263,38 +310,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
 
-	congFinalproof := res.proof
-
-	// -- 5. Load setup (in background started earlier maybe)
-	var (
-		setup       circuits.Setup
-		errSetup    error
-		chSetupDone = make(chan struct{})
-	)
-	go func() {
-		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
-		close(chSetupDone)
-	}()
-
-	// Wait for setup to finish loading
-	<-chSetupDone
-	if errSetup != nil {
-		utils.Panic("could not load setup: %v", errSetup)
-	}
-
-	out.Proof = execCirc.MakeProof(
-		&cfg.TracesLimits,
-		setup,
-		cong.RecursionCompBLS,
-		congFinalproof.GetOuterProofInput(),
-		*witness.FuncInp,
-		witness.ZkEVM.ExecData,
-	)
-
-	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
-
-	return &out, nil
+	return &PipelineResult{
+		FinalProof: res.proof,
+		Cong:       cong,
+	}, nil
 }
 
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,

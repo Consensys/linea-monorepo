@@ -262,6 +262,90 @@ func (a *API) AssertIsEqual(x, y Element) {
 	}
 }
 
+// AssertOctupletEqual constrains two octuplets to be equal element-wise.
+func (a *API) AssertOctupletEqual(x, y Octuplet) {
+	for i := 0; i < len(x); i++ {
+		a.AssertIsEqual(x[i], y[i])
+	}
+}
+
+// AssertOctupletEqualIf constrains x == y element-wise, conditioned on cond.
+// When cond == 0, the constraint is trivially satisfied.
+func (a *API) AssertOctupletEqualIf(cond Element, x, y Octuplet) {
+	for i := 0; i < len(x); i++ {
+		a.AssertIsEqual(a.Mul(cond, x[i]), a.Mul(cond, y[i]))
+	}
+}
+
+// AssertOctupletIsLess constrains x < y via lexicographic comparison,
+// mirroring KoalaOctuplet.Cmp used in the accumulator's ReadZero.
+// The first differing element determines the result.
+func (a *API) AssertOctupletIsLess(x, y Octuplet) {
+	a.assertOctupletIsLessInternal(nil, x, y)
+}
+
+// AssertOctupletIsLessIf constrains x < y when cond == 1.
+// When cond == 0, the constraint is trivially satisfied.
+func (a *API) AssertOctupletIsLessIf(cond frontend.Variable, x, y Octuplet) {
+
+	a.assertOctupletIsLessInternal(&cond, x, y)
+}
+
+// assertOctupletIsLessInternal implements lexicographic x < y.
+// If condFV is non-nil the assertion is conditional on *condFV == 1.
+//
+// Uses a hint to get per-element isLess booleans, verifies each with a
+// range check, and tracks equality across elements. The first differing
+// element determines the result.
+func (a *API) assertOctupletIsLessInternal(cond *frontend.Variable, x, y Octuplet) {
+	api := a.nativeAPI
+
+	hintInputs := make([]frontend.Variable, 16)
+	for i := 0; i < 8; i++ {
+		hintInputs[2*i] = x[i].V
+		hintInputs[2*i+1] = y[i].V
+	}
+	isLtHint, err := api.NewHint(octupletElementIsLessHint, 8, hintInputs...)
+	if err != nil {
+		panic(err)
+	}
+
+	isLess := frontend.Variable(0)
+	allEq := frontend.Variable(1)
+
+	for i := 0; i < 8; i++ {
+		xi, yi := x[i].V, y[i].V
+		diff := api.Sub(yi, xi)
+		isEq := api.IsZero(diff)
+
+		api.AssertIsBoolean(isLtHint[i])
+		// If isLt=1: posDiff = y-x > 0; if isLt=0: posDiff = x-y >= 0.
+		// Range check proves the hint is consistent with the actual values.
+		posDiff := api.Select(isLtHint[i], diff, api.Neg(diff))
+		api.ToBinary(posDiff, 31)
+
+		isLess = api.Add(isLess, api.Mul(allEq, isLtHint[i]))
+		allEq = api.Mul(allEq, isEq)
+	}
+
+	if cond != nil {
+		api.AssertIsEqual(api.Mul(*cond, api.Sub(1, isLess)), 0)
+	} else {
+		api.AssertIsEqual(isLess, 1)
+	}
+}
+
+func octupletElementIsLessHint(_ *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+	for i := 0; i < 8; i++ {
+		if inputs[2*i].Cmp(inputs[2*i+1]) < 0 {
+			outputs[i].SetInt64(1)
+		} else {
+			outputs[i].SetInt64(0)
+		}
+	}
+	return nil
+}
+
 // AssertIsDifferent constrains x != y.
 func (a *API) AssertIsDifferent(x, y Element) {
 	if a.IsNative() {
@@ -277,6 +361,12 @@ func (a *API) AssertIsLessOrEqual(x, y Element) {
 		a.nativeAPI.AssertIsLessOrEqual(x.Native(), y.Native())
 	} else {
 		a.emulatedAPI.AssertIsLessOrEqual(x.Emulated(), y.Emulated())
+	}
+}
+
+func (a *API) AssetOctupletEqual(x, y Octuplet) {
+	for i := 0; i < 8; i++ {
+		a.AssertIsEqual(x[i], y[i])
 	}
 }
 

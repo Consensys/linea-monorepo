@@ -10,6 +10,7 @@ import (
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
@@ -47,11 +48,14 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
 			ParentStateRootHashContract:             req.ParentAggregationStateRootHashContract,
+			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
+			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
 		}
 	)
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
-	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
+	cf.InvalidityPI = make([]public_input.Invalidity, 0, len(req.InvalidityProofs))
+	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs)+len(req.InvalidityProofs))
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -74,6 +78,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			if cf.ParentStateRootHashContract.IsZero() {
 				cf.ParentStateRootHashContract = po.ParentStateRootHash.ToBytes32()
 			}
+			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
+			cf.LastFinalizedFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		}
 
 		if po.ProverMode == config.ProverModeProofless {
@@ -121,6 +127,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
 		}
+
 		if len(rollingHashUpdateEvents) != 0 {
 			return nil, fmt.Errorf("data discrepancy: %d rolling hash updates in conflation object but only %d collected from blocks", len(po.AllRollingHashEvent), len(po.AllRollingHashEvent)-len(rollingHashUpdateEvents))
 		}
@@ -202,8 +209,18 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		cf.L1RollingHashMessageNumber = uint(req.ParentAggregationLastL1RollingHashMessageNumber)
 	}
 
+	// similarly for the stream hash
+	if len(cf.FinalFtxRollingHash) == 0 {
+		cf.FinalFtxRollingHash = req.ParentAggregationLastFtxRollingHash
+		cf.FinalFtxNumber = uint(req.ParentAggregationLastFtxNumber)
+	}
+
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
 	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
+
+	if err := cf.collectInvalidityInfo(cfg, req); err != nil {
+		return nil, fmt.Errorf("could not collect invalidity info: %w", err)
+	}
 
 	return cf, nil
 }
@@ -216,15 +233,15 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		return resp, err
 	}
 
+	filteredAddrs := collectFilteredAddresses(cf.InvalidityPI)
+
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
 		ParentStateRootHash:                     cf.ParentStateRootHashContract.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
-		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
 		L1RollingHash:                           cf.L1RollingHash,
-		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
 		L2MerkleRoots:                           cf.L2MsgRootHashes,
 		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
@@ -233,6 +250,19 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalBlockNumber:                        cf.FinalBlockNumber,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
 		FinalShnarf:                             cf.FinalShnarf,
+		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
+		ParentAggregationFtxNumber:              cf.LastFinalizedFtxNumber,
+		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
+		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		// chain configuration
+		ChainID:              uint64(cfg.Layer2.ChainID),
+		BaseFee:              uint64(cfg.Layer2.BaseFee),
+		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
+		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
+
+		FilteredAddresses: filteredAddrs,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -253,6 +283,10 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L1RollingHash:                           cf.L1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              resp.L1RollingHashMessageNumber,
+		LastFinalizedFtxRollingHash:             cf.LastFinalizedFtxRollingHash,
+		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
+		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    l2MsgMerkleTreeDepth,
 
@@ -261,7 +295,8 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		BaseFee:              uint64(cfg.Layer2.BaseFee),
 		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
-		IsAllowedCircuitID:   uint64(cfg.Aggregation.IsAllowedCircuitID),
+
+		FilteredAddresses: filteredAddrs,
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()
@@ -269,7 +304,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	// This log is aimed at helping debugging in-depth when the proofs are
 	// reverted because the public input mismatches. The content of this log
 	// can be compared with data on tenderly.
-	logrus.Infof("public inputs components for range (%v-%v): %++v",
+	logrus.Infof("[Aggregation] public inputs components for range (%v-%v): %++v",
 		pubInputParts.LastFinalizedBlockNumber+1,
 		pubInputParts.FinalBlockNumber,
 		pubInputParts,
@@ -292,6 +327,8 @@ func validate(cf *CollectedFields) (err error) {
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
 	utils.ValidateHexString(&err, cf.ParentStateRootHashContract.Hex(), "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
+	utils.ValidateHexString(&err, cf.LastFinalizedFtxRollingHash, "parentAggregationLastFtxRollingHash : %w", 32)
+	utils.ValidateHexString(&err, cf.FinalFtxRollingHash, "FinalFtxRollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
 	utils.ValidateTimestamps(&err, cf.ParentAggregationLastBlockTimestamp, cf.FinalTimestamp)
 	utils.ValidateHexString(&err, cf.DataParentHash, "DataParentHash : %w", 32)
@@ -394,4 +431,91 @@ func parseProofClaim(
 	}
 
 	return res, nil
+}
+
+func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
+	var (
+		po     invalidity.Response
+		prevPo invalidity.Response
+	)
+	logrus.Infof(" Collecting invalidity info and validating interconnection among invalidity proofs")
+
+	for i, invalReqFPath := range req.InvalidityProofs {
+
+		var (
+			fpath = path.Join(cfg.Invalidity.DirTo(), invalReqFPath)
+			f     = files.MustRead(fpath)
+		)
+
+		if err := json.NewDecoder(f).Decode(&po); err != nil {
+			return fmt.Errorf("fields collection, decoding %s, %w", invalReqFPath, err)
+		}
+		if i == 0 {
+			prevPo = po
+		}
+		cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Invalidity)
+
+		pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
+		if err != nil {
+			return fmt.Errorf("could not parse the proof claim %v for `%v` : %w", i, fpath, err)
+		}
+		cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+
+		pi := po.FuncInput()
+		// Sum(nil) uses Poseidon2
+		if recomputed := po.FuncInput().Sum(nil); !bytes.Equal(recomputed, po.PublicInput[:]) {
+			return fmt.Errorf("invalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, recomputed)
+		}
+
+		if po.SimulatedExecutionBlockTimestamp != prevPo.SimulatedExecutionBlockTimestamp {
+			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block timestamps: %d vs %d", prevPo.SimulatedExecutionBlockTimestamp, po.SimulatedExecutionBlockTimestamp)
+		}
+		if po.SimulatedExecutionBlockNumber != prevPo.SimulatedExecutionBlockNumber {
+			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block numbers: %d vs %d", prevPo.SimulatedExecutionBlockNumber, po.SimulatedExecutionBlockNumber)
+		}
+		if po.ForcedTransactionNumber != prevPo.ForcedTransactionNumber+1 {
+			return fmt.Errorf("forced transaction numbers should be consecutive: jumping from %d to %d instead of incrementing by 1", prevPo.ForcedTransactionNumber, po.ForcedTransactionNumber)
+		}
+
+		if got, want := po.ChainID, cfg.Layer2.ChainID; got != want {
+			return fmt.Errorf("invalidity #%d fails CHECK_CHAIN_ID:\n\texpected %x, encountered %x", i, want, got)
+		}
+		if got, want := po.BaseFee, cfg.Layer2.BaseFee; got != want {
+			return fmt.Errorf("invalidity #%d fails CHECK_BASE_FEE:\n\texpected %x, encountered %x", i, want, got)
+		}
+		if got, want := po.CoinBase, cfg.Layer2.CoinBase; got != types.EthAddress(want) {
+			return fmt.Errorf("invalidity #%d fails CHECK_COIN_BASE:\n\texpected CoinBase %x, encountered %x", i, want, got)
+		}
+		if got, want := po.L2BridgeAddress, cfg.Layer2.MsgSvcContract; got != types.EthAddress(want) {
+			return fmt.Errorf("invalidity #%d fails CHECK_SVC_ADDR:\n\texpected L2 service address %x, encountered %x", i, want, got)
+		}
+
+		prevPo = po
+
+		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
+
+		cf.FinalFtxNumber = uint(po.ForcedTransactionNumber)
+		cf.FinalFtxRollingHash = po.FtxRollingHash.Hex()
+	}
+	return nil
+}
+
+// collectFilteredAddresses extracts filtered addresses from invalidity public
+// inputs. For each invalidity PI, if FromIsFiltered is set the FromAddress is
+// collected, and if ToIsFiltered is set the ToAddress is collected.
+func collectFilteredAddresses(invalidityPIs []public_input.Invalidity) []types.EthAddress {
+	var addrs []types.EthAddress
+	for i := range invalidityPIs {
+		pi := &invalidityPIs[i]
+		if pi.FromIsFiltered {
+			addrs = append(addrs, pi.FromAddress)
+		}
+		if pi.ToIsFiltered {
+			addrs = append(addrs, pi.ToAddress)
+		}
+	}
+	if addrs == nil {
+		return []types.EthAddress{}
+	}
+	return addrs
 }

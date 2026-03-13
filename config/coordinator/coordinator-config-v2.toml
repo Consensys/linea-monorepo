@@ -11,7 +11,7 @@ genesis-state-root-hash = "0x01d9afcd495c870f3ae9d8362cd0257a7de2057055058183596
 #   evaludationClaim="0x00...00", evaludationPoint="0x00...00")
 genesis-shnarf = "0xc286ff42414401ccdc23ea8e738775378e8f6c6f7b2966eb2747798d45571b79"
 [protocol.l1]
-contract-address = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+contract-address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
 block-time = "PT1S"
 [protocol.l2]
 contract-address = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"

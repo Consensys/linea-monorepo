@@ -39,14 +39,14 @@ func makeCSLimitless(b *limitlessBuilder) constraint.ConstraintSystem {
 	return scs
 }
 
-// checkLimitlessConglomerationCompletion checks that the conglomeration proof
+// CheckLimitlessConglomerationCompletion checks that the conglomeration proof
 // is complete:
 //
 // - all the segments have been aggregated
 // - the horner/log-derivative/grand-product cancelled out
 // - the shared randomness is correctly computed
 // - the general multiset cancels out
-func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.API) {
+func (c *CircuitExecution) CheckLimitlessConglomerationCompletion(api frontend.API) {
 
 	wvc := c.WizardVerifier
 

@@ -18,6 +18,7 @@ export const L1ConfigSchema = BaseConfigSchema.extend({
   lineaRollupProxyAdminAddress: addressSchema,
   tokenBridgeAddress: addressSchema,
   l1TokenAddress: addressSchema,
+  forcedTransactionGatewayAddress: addressSchema,
 });
 
 export const BaseL2ConfigSchema = BaseConfigSchema.extend({
