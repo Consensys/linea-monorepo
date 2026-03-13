@@ -47,12 +47,6 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 	if alreadyExists {
 		name = fmt.Sprintf("%v/%v", name, comp.Columns.NumEntriesTotal())
 	}
-	// Todo @gusiri; check with @srinath if this is still needed
-	// this has been added from 7702 release
-	if alreadyExists {
-		name = fmt.Sprintf("%v/%v", name, len(comp.Columns.AllKeys()))
-	}
-	// Todo @gusiri; check with @srinath if this is still needed
 
 	var (
 		colName = ifaces.ColID(name) + "_COL"
