@@ -213,3 +213,53 @@ func (p *RsParams) IsCodewordExt(v smartvectors.SmartVector) error {
 
 	return nil
 }
+
+// ExtEvalToCoefficients converts a Reed-Solomon codeword (N = T×RS E4 evaluations)
+// to its T polynomial coefficients. The returned slice has length NbColumns().
+// Panics if the input is not an RS codeword.
+func (p *RsParams) ExtEvalToCoefficients(v smartvectors.SmartVector) smartvectors.SmartVector {
+	n := p.NbEncodedColumns()
+	t := p.NbColumns()
+
+	coeffs := make([]fext.Element, n)
+	v.WriteInSliceExt(coeffs)
+	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	utils.BitReverse(coeffs)
+	return smartvectors.NewRegularExt(coeffs[:t])
+}
+
+// ExtCoefficientsEvalAt evaluates the polynomial given by T coefficients at
+// an extension field point x using Horner's method.
+func ExtCoefficientsEvalAt(coefficients smartvectors.SmartVector, x fext.Element) fext.Element {
+	n := coefficients.Len()
+	if n == 0 {
+		return fext.Element{}
+	}
+	// Horner: result = c[n-1] + x*(c[n-2] + x*(...c[1] + x*c[0]...))
+	res := coefficients.GetExt(n - 1)
+	for i := n - 2; i >= 0; i-- {
+		res.Mul(&res, &x)
+		ci := coefficients.GetExt(i)
+		res.Add(&res, &ci)
+	}
+	return res
+}
+
+// ExtCoefficientsEvalAtDomainPoint evaluates the polynomial given by T coefficients
+// at domain point omega^j using Horner's method.
+func ExtCoefficientsEvalAtDomainPoint(coefficients smartvectors.SmartVector, gen fext.Element, j int) fext.Element {
+	// Compute omega^j as an extension field element: gen is the primitive N-th
+	// root of unity embedded in the extension field.
+	// We compute x = gen^j using repeated multiplication.
+	n := coefficients.Len()
+	if n == 0 || j < 0 {
+		return fext.Element{}
+	}
+	// Compute x = gen^j: start with gen^0=1 and multiply j times.
+	var x fext.Element
+	x.SetOne()
+	for k := 0; k < j; k++ {
+		x.Mul(&x, &gen)
+	}
+	return ExtCoefficientsEvalAt(coefficients, x)
+}

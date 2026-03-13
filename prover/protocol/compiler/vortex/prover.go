@@ -203,7 +203,13 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+
+	uAlpha := proof.LinearCombination
+	if ctx.UseUAlphaCoefficients {
+		// Convert N evaluations → T coefficients via IFFT
+		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(uAlpha)
+	}
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
 
 }
 
@@ -253,7 +259,12 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 
-	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	uAlpha := proof.LinearCombination
+	if ctx.UseUAlphaCoefficients {
+		// Convert N evaluations → T coefficients via IFFT
+		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(uAlpha)
+	}
+	run.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
@@ -367,6 +378,16 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)
 
+		// When SkipPrecomputedMerkleProof is active, the precomputed
+		// commitment's Merkle proof is not included in the packed columns
+		// (the precomputed values are authenticated via the SZ check).
+		// We remove the precomp entry from merkleProofs before packing but
+		// keep proof.Columns intact (precomp selected cols are still needed).
+		if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
+			idx := ctx.precompIdx()
+			merkleProofs = append(merkleProofs[:idx], merkleProofs[idx+1:]...)
+		}
+
 		packedMProofs := ctx.packMerkleProofs(merkleProofs)
 
 		for i := range ctx.Items.MerkleProofs {
@@ -379,27 +400,22 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// Assign the opened columns
 	ctx.assignOpenedColumns(run, entryList, selectedCols, NonSelfRecursion)
 
-	// Assign the SIS and non SIS selected columns.
-	// They are not used in the Vortex compilers,
-	// but are used in the self-recursion compilers.
-	// But we need to assign them anyway as the self-recursion
-	// compiler always runs after running the Vortex compiler
-
-	// Handle SIS round
-	if len(committedMatricesSIS) > 0 {
-		vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
-		sisSelectedCols := sisProof.Columns
-		// Assign the opened columns
-		ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
-	}
-	// Handle non SIS round
-	if len(committedMatricesNoSIS) > 0 {
-		vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
-		nonSisSelectedCols := nonSisProof.Columns
-		ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
-		// Store the selected columns for the non sis round
-		//  in the prover state
-		ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
+	// Assign the SIS and non-SIS selected columns.
+	// They are only needed by a subsequent SelfRecurse step; skip if suppressed.
+	if !ctx.SkipSelfRecursionProofCols {
+		// Handle SIS round
+		if len(committedMatricesSIS) > 0 {
+			vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
+			sisSelectedCols := sisProof.Columns
+			ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
+		}
+		// Handle non SIS round
+		if len(committedMatricesNoSIS) > 0 {
+			vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
+			nonSisSelectedCols := nonSisProof.Columns
+			ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
+			ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
+		}
 	}
 }
 
@@ -544,7 +560,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
 		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
 	}
 	numEntries := len(entryList)

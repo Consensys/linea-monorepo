@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -78,7 +79,7 @@ var (
 
 	// This is the compilation suite in use for the full prover
 	fullInitialCompilationSuite = CompilationSuite{
-		// logdata.Log("initial-wizard"),
+		logdata.Log("initial-wizard"),
 		poseidon2.CompileGKRPoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
@@ -92,15 +93,15 @@ var (
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
 		),
-		// logdata.Log("pre-recursion.post-vortex-1"),
+		logdata.Log("pre-recursion.post-vortex-1"),
 
 		// First round of self-recursion
 		selfrecursion.SelfRecurse,
-		// logdata.Log("pre-recursion.post-selfrecursion-1"),
+		logdata.Log("pre-recursion.post-selfrecursion-1"),
 		cleanup.CleanUp,
 		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<16),
+			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-1"),
 		),
@@ -109,11 +110,11 @@ var (
 			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
 		),
-		// logdata.Log("pre-recursion.post-vortex-2"),
+		logdata.Log("pre-recursion.post-vortex-2"),
 
 		// Second round of self-recursion
 		selfrecursion.SelfRecurse,
-		// logdata.Log("pre-recursion.post-selfrecursion-2"),
+		logdata.Log("pre-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
 		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
@@ -128,13 +129,13 @@ var (
 		),
 
 		// Fourth round of self-recursion
-		// logdata.Log("pre-recursion.post-vortex-3"),
+		logdata.Log("pre-recursion.post-vortex-3"),
 		selfrecursion.SelfRecurse,
-		// logdata.Log("pre-recursion.post-selfrecursion-3"),
+		logdata.Log("pre-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
 		poseidon2.CompileGKRPoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<12),
+			compiler.WithTargetColSize(1<<13),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-3"),
 		),
@@ -143,8 +144,11 @@ var (
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 			vortex.PremarkAsSelfRecursed(),
+			vortex.WithUAlphaCoefficients(),
+			vortex.SkipSelfRecursionProofColumns(),
+			vortex.SkipPrecomputedMerkleProof(),
 		),
-		// logdata.Log("pre-recursion.post-vortex-4"),
+		logdata.Log("pre-recursion.post-vortex-4"),
 	}
 
 	// This is the compilation suite in use for the full prover *after* the

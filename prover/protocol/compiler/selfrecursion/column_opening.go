@@ -28,6 +28,14 @@ import (
 
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
+	// When SkipSelfRecursionProofCols is set, the opened column values are
+	// not included as wizard proof columns — they are verified entirely by
+	// the gnark recursion circuit (AllocRecursionCircuit). The wizard-level
+	// column-opening verification chain (LinearHashAndMerkle, CollapsingPhase,
+	// etc.) cannot run because it depends on those missing proof columns.
+	if ctx.VortexCtx.SkipSelfRecursionProofCols {
+		return
+	}
 	// Registers the limb expanded version of the preimages
 	ctx.ColSelection()
 	ctx.LinearHashAndMerkle()
@@ -172,22 +180,30 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		UAlphaQFilterID: ctx.Columns.UalphaQFilter.GetColID(),
 	})
 
-	// Declare an inclusion query to finalize the selection check
-	ctx.Comp.InsertInclusionConditionalOnIncluded(
-		roundQ,
-		ctx.selectQInclusion(),
-		[]ifaces.Column{
-			ctx.Columns.I,
-			ctx.Columns.Ualpha,
-		},
-		[]ifaces.Column{
-			ctx.Columns.Q,
-			ctx.Columns.UalphaQ,
-		},
-		ctx.Columns.UalphaQFilter,
-	)
-	// Add a binarity constraint for UAlphaQFilter
-	dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
+	// Declare an inclusion query to finalize the selection check.
+	// In coefficient mode (UseUAlphaCoefficients), Ualpha holds polynomial
+	// coefficients (size=NumCols) rather than per-column RS evaluations
+	// (size=NumEncodedCols). The lookup (Q,UalphaQ)⊂(I,Ualpha) requires I
+	// and Ualpha to have the same size, which they don't in coefficient mode.
+	// In coefficient mode the verifier evaluates Ualpha at the selected points
+	// directly, so the lookup is not needed.
+	if !ctx.VortexCtx.UseUAlphaCoefficients {
+		ctx.Comp.InsertInclusionConditionalOnIncluded(
+			roundQ,
+			ctx.selectQInclusion(),
+			[]ifaces.Column{
+				ctx.Columns.I,
+				ctx.Columns.Ualpha,
+			},
+			[]ifaces.Column{
+				ctx.Columns.Q,
+				ctx.Columns.UalphaQ,
+			},
+			ctx.Columns.UalphaQFilter,
+		)
+		// Add a binarity constraint for UAlphaQFilter
+		dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
+	}
 }
 
 type CollapsingProverAction struct {

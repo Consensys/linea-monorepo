@@ -71,3 +71,40 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 		}{Enabled: true, Name: name}
 	}
 }
+
+// WithUAlphaCoefficients instructs the Vortex compiler to send the polynomial
+// coefficients of U_alpha (T E4 elements) instead of the full evaluation form
+// (T×RS E4 elements). This reduces proof cells by ~(RS-1)/RS × T × 4 cells
+// while maintaining the same security level via the column consistency checks.
+// For T=4096 and RS=16 this saves 245,760 proof cells (~40% reduction overall).
+func WithUAlphaCoefficients() VortexOp {
+	return func(ctx *Ctx) {
+		ctx.UseUAlphaCoefficients = true
+	}
+}
+
+// SkipSelfRecursionProofColumns suppresses the registration of the
+// OpenedSISColumns and OpenedNonSISColumns proof columns. These are needed
+// only when a SelfRecurse step will follow this Vortex compilation. Passing
+// this option to the outermost / final Vortex (where no further self-recursion
+// occurs) eliminates dead-weight proof cells: the verifier never reads these
+// columns, yet the prover would otherwise pay K × NextPowerOfTwo(rows) cells.
+func SkipSelfRecursionProofColumns() VortexOp {
+	return func(ctx *Ctx) {
+		ctx.SkipSelfRecursionProofCols = true
+	}
+}
+
+// SkipPrecomputedMerkleProof omits the precomputed columns from the Merkle
+// column-inclusion check. The precomputed polynomial evaluations are already
+// authenticated by the Schwartz-Zippel linear-combination check (the Ys used
+// in the verifier come directly from the wizard's own evaluation of the
+// precomputed polynomials, not from the proof). The extra Merkle proof is
+// therefore redundant and can be safely dropped. Skipping it reduces
+// MerkleProofSize when the removal of one commitment slot causes the product
+// depth × numComs × K to cross a power-of-two boundary downward.
+func SkipPrecomputedMerkleProof() VortexOp {
+	return func(ctx *Ctx) {
+		ctx.SkipPrecomputedMerkleProof = true
+	}
+}

@@ -3,6 +3,7 @@ package vortex
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
@@ -82,5 +83,58 @@ func CheckLinComb(
 		}
 	}
 
+	return nil
+}
+
+// CheckStatementCoeff is like CheckStatement but for coefficient-mode U_alpha.
+// coefficients holds T polynomial coefficients (E4); evaluation at x uses Horner.
+func CheckStatementCoeff(coefficients smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
+	yJoined := utils.Join(ys...)
+	alphaY := reedsolomon.ExtCoefficientsEvalAt(coefficients, x)
+	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
+
+	if alphaY != alphaYPrime {
+		return fmt.Errorf("RowLincomb (coeff mode) and Y are inconsistent")
+	}
+	return nil
+}
+
+// CheckLinCombCoeff is like CheckLinComb but for coefficient-mode U_alpha.
+// coefficients holds T polynomial coefficients (E4).
+// rsParams is used to obtain the N-th root of unity ω, so we can evaluate
+// U_alpha(ω^selectedColID) and compare with the alpha-Horner of the opened column.
+func CheckLinCombCoeff(
+	coefficients smartvectors.SmartVector,
+	entryList []int,
+	alpha fext.Element,
+	columns [][][]field.Element,
+	rsParams *reedsolomon.RsParams,
+) error {
+	gen := rsParams.Domains[1].Generator // primitive N-th root of unity (base field)
+	numCommitments := len(columns)
+
+	for j, selectedColID := range entryList {
+		// Compute ω^selectedColID as a base field element, then embed in E4.
+		var omegaJ field.Element
+		omegaJ.Exp(gen, big.NewInt(int64(selectedColID)))
+		var omegaJFext fext.Element
+		fext.SetFromBase(&omegaJFext, &omegaJ)
+
+		// Evaluate U_alpha polynomial at ω^selectedColID
+		uAlphaAtJ := reedsolomon.ExtCoefficientsEvalAt(coefficients, omegaJFext)
+
+		// Build full column (concatenate across commitments)
+		fullCol := []field.Element{}
+		for i := range numCommitments {
+			fullCol = append(fullCol, columns[i][j]...)
+		}
+
+		// Check consistency: U_alpha(ω^j) == α-Horner of opened column
+		y := vortex.EvalBasePolyHorner(fullCol, alpha)
+		if uAlphaAtJ != y {
+			return fmt.Errorf("linear combination (coeff mode) inconsistent at query %d (col %d): got %v want %v",
+				j, selectedColID, uAlphaAtJ.String(), y.String())
+		}
+	}
 	return nil
 }

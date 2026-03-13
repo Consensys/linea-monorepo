@@ -280,6 +280,32 @@ type Ctx struct {
 	// full-recursion compiler.
 	IsSelfrecursed bool
 
+	// UseUAlphaCoefficients enables compact U_alpha mode: the prover sends T
+	// polynomial coefficients (E4 elements) instead of T×RS evaluations. This
+	// reduces proof-cells by ~245,760 for T=4096, RS=16. Security is maintained
+	// because degree < T is implicit from sending exactly T coefficients, and
+	// the K=64 column checks provide 256-bit binding security.
+	UseUAlphaCoefficients bool
+
+	// SkipSelfRecursionProofCols suppresses registration of the
+	// OpenedSISColumns and OpenedNonSISColumns proof columns. These columns
+	// exist solely so that a subsequent SelfRecurse step can read them. When
+	// the Vortex compilation is the final step (no further self-recursion),
+	// they are dead weight: the prover fills them and no verifier ever reads
+	// them. Setting this flag when compiling the outermost / final Vortex
+	// saves K × NextPowerOfTwo(CommittedRowsCount) proof cells.
+	SkipSelfRecursionProofCols bool
+
+	// SkipPrecomputedMerkleProof omits the precomputed columns from the
+	// Merkle-proof column-inclusion check. The precomputed polynomial
+	// evaluations are already authenticated through the Schwartz-Zippel
+	// linear-combination check (the Ys used in gnarkGetYs come from the
+	// wizard's own evaluation of the precomputed polynomials, not from the
+	// proof), so the additional Merkle proof is redundant. Skipping it saves
+	// one commitment slot in MerkleProofSize, which can halve the MERKLEPROOF
+	// column count when numComs × depth × K crosses a power-of-two boundary.
+	SkipPrecomputedMerkleProof bool
+
 	// Additional options that tells the compiler to add a merkle root to the
 	// public inputs of the comp. This is useful for the distributed prover.
 	AddMerkleRootToPublicInputsOpt struct {
@@ -650,11 +676,17 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.LinCombRandCoinName(),
 		coin.FieldExt,
 	)
-	// registers the linear combination claimed by the prover
+	// registers the linear combination claimed by the prover.
+	// In coefficient mode, we send T polynomial coefficients instead of
+	// T×RS evaluations. This saves (RS-1) × T × 4 proof cells.
+	uAlphaSize := ctx.NumEncodedCols()
+	if ctx.UseUAlphaCoefficients {
+		uAlphaSize = utils.NextPowerOfTwo(ctx.NumCols)
+	}
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),
-		ctx.NumEncodedCols(),
+		uAlphaSize,
 		false,
 	)
 
@@ -679,23 +711,27 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
-		if numRowsSIS != 0 {
-			openedColSIS := ctx.Comp.InsertProof(
-				lastRound+2,
-				ctx.SelectedColSISName(col),
-				numRowsSIS,
-				true,
-			)
-			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
-		}
-		if numRowsNonSIS != 0 {
-			openedColNonSIS := ctx.Comp.InsertProof(
-				lastRound+2,
-				ctx.SelectedColNonSISName(col),
-				numRowsNonSIS,
-				true,
-			)
-			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+		// These columns are only consumed by a subsequent SelfRecurse step.
+		// When this Vortex is the final compilation step, they are dead weight.
+		if !ctx.SkipSelfRecursionProofCols {
+			if numRowsSIS != 0 {
+				openedColSIS := ctx.Comp.InsertProof(
+					lastRound+2,
+					ctx.SelectedColSISName(col),
+					numRowsSIS,
+					true,
+				)
+				ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+			}
+			if numRowsNonSIS != 0 {
+				openedColNonSIS := ctx.Comp.InsertProof(
+					lastRound+2,
+					ctx.SelectedColNonSISName(col),
+					numRowsNonSIS,
+					true,
+				)
+				ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+			}
 		}
 	}
 
@@ -936,6 +972,21 @@ func (ctx *Ctx) NumCommittedRoundsNoSis() int {
 	return res
 }
 
+// precompIdx returns the index of the precomputed commitment inside the
+// combined noSIS+SIS slice that is passed to SelectColumnsAndMerkleProofs.
+// The combined slice is: [noSIS rounds..., SIS rounds...], with the
+// precomputed entry prepended to whichever sub-slice matches its hash type.
+// Therefore:
+//   - if SIS is applied to precomputed → it sits at index NumCommittedRoundsNoSis()
+//     (after all noSIS rounds)
+//   - otherwise → it sits at index 0 (before all noSIS rounds)
+func (ctx *Ctx) precompIdx() int {
+	if ctx.IsSISAppliedToPrecomputed() {
+		return ctx.NumCommittedRoundsNoSis()
+	}
+	return 0
+}
+
 // MerkleProofSize Returns the size of the allocated Merkle proof vector
 func (ctx *Ctx) MerkleProofSize() int {
 	// We registers the column that will contain the Merkle proofs altogether. But
@@ -946,8 +997,10 @@ func (ctx *Ctx) MerkleProofSize() int {
 		numComs    = ctx.NumCommittedRounds()
 		numOpening = ctx.NbColsToOpen()
 	)
-	// The number of rounds increases by 1 for committing to the precomputed
-	if ctx.IsNonEmptyPrecomputed() {
+	// The number of rounds increases by 1 for committing to the precomputed,
+	// unless SkipPrecomputedMerkleProof is set (precomp values are already
+	// authenticated via the Schwartz-Zippel linear-combination check).
+	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
 		numComs += 1
 	}
 

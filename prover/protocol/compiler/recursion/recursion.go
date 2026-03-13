@@ -421,6 +421,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		VortexKoalaParams:     srcVortexCtx.VortexKoalaParams,
 		SisParams:             srcVortexCtx.SisParams,
 		RoundStatus:           srcVortexCtx.RoundStatus,
+		UseUAlphaCoefficients:   srcVortexCtx.UseUAlphaCoefficients,
+		SkipSelfRecursionProofCols: srcVortexCtx.SkipSelfRecursionProofCols,
 
 		// Copy via the translator
 		IsSelfrecursed:                            true,

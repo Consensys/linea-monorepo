@@ -36,9 +36,11 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	blsRoots := []frontend.Variable{}
 	koalaRoots := []poseidon2_koalabear.GnarkOctuplet{}
 
-	// Append the precomputed roots when IsCommitToPrecomputed is true
-
-	if ctx.IsNonEmptyPrecomputed() {
+	// Append the precomputed roots when IsCommitToPrecomputed is true.
+	// When SkipPrecomputedMerkleProof is set, the precomputed columns are
+	// not included in the Merkle proof (their evaluations are authenticated
+	// via the Schwartz-Zippel linear-combination check), so we skip this.
+	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
 		if ctx.IsBLS {
 			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
 
@@ -125,12 +127,25 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	}
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
+	// When SkipPrecomputedMerkleProof is set, proof.Columns includes the
+	// precomp sub-columns at index 0 (needed for the linear-combination check)
+	// but koalaRoots/koalaMerkleProofs do not include the precomp round. In
+	// GnarkRecoverSelectedColumns the precomp is always placed at index 0, so
+	// we strip it before the column-inclusion check.
+	colsForInclusion := proof.Columns
+	if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
+		colsForInclusion = proof.Columns[1:]
+	}
+
 	if ctx.IsBLS {
 		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexBLSParams.Params, proof, Vi)
 		vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, blsMerkleProofs, blsRoots)
+	} else if ctx.UseUAlphaCoefficients {
+		crypto_vortex.GnarkVerifyCoeff(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
+		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, colsForInclusion, koalaMerkleProofs, koalaRoots)
 	} else {
 		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
-		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
+		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, colsForInclusion, koalaMerkleProofs, koalaRoots)
 	}
 }
 
@@ -342,7 +357,7 @@ func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
 		numComs += 1
 	}
 

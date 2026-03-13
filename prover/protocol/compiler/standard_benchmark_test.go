@@ -180,19 +180,24 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 	// NTT limit: T × RS × 16 ≤ 2^24; RS=8 (T1), RS=16 (T3,T4) → T3,T4 ≥ 16.
 	type params struct{ t3, t4 int }
 	candidates := []params{
-		{1 << 12, 1 << 14},
-		{1 << 12, 1 << 12}, // (current best)
-		{1 << 12, 1 << 13},
+		// {1 << 12, 1 << 14},
+		// {1 << 12, 1 << 12},
+		{1 << 12, 1 << 13}, // (current best)
 
-		{1 << 13, 1 << 12},
-		{1 << 11, 1 << 12},
+		// {1 << 15, 1 << 13},
+		// {1 << 10, 1 << 13},
 	}
 	for _, bc := range benchCases {
 		for _, p := range candidates {
 			p := p
+			// Go's benchmark framework calls the sub-benchmark function twice
+			// (probe + measurement). Capture the compiled IOP from the last call
+			// and print the stats once after b.Run returns.
+			var lastComp *wizard.CompiledIOP
 			b.Run(fmt.Sprintf("%s/T3=%d/T4=%d", bc.Name, p.t3, p.t4), func(b *testing.B) {
-				profileSelfRecursionCompilation(b, bc, p.t3, p.t4)
+				lastComp = profileSelfRecursionCompilation(b, bc, p.t3, p.t4)
 			})
+			printProfileStats(lastComp, p.t3, p.t4)
 		}
 	}
 }
@@ -202,7 +207,7 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 // plonkinwizard.Compile are no-ops when the circuit has no matching queries.
 //
 // go test -timeout=10h -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
-func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 int) {
+func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 int) *wizard.CompiledIOP {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
@@ -271,15 +276,87 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 
 	_ = wizard.ContinueCompilation(comp,
 		vortex.Compile(
+
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
+
+			vortex.WithUAlphaCoefficients(),
+			vortex.SkipSelfRecursionProofColumns(),
+			vortex.SkipPrecomputedMerkleProof(),
 		),
 	)
 
 	statsPostFinalVortex := logdata.GetWizardStats(comp)
 	b.ReportMetric(float64(statsPreFinalVortex.NumCellsCommitted), "#committed-cells")
 	b.ReportMetric(float64(statsPostFinalVortex.NumCellsProof), "#proof-cells")
+
+	return comp
+}
+
+// printProfileStats prints the vortex sizing parameters and proof-cell breakdown.
+// Called once after b.Run completes to avoid duplicate output from Go's probe+measurement calls.
+func printProfileStats(comp *wizard.CompiledIOP, t3, t4 int) {
+	if comp == nil {
+		return
+	}
+
+	// Print Vortex sizing parameters via the PcsCtxs field.
+	if vctx, ok := comp.PcsCtxs.(*vortex.Ctx); ok {
+		fmt.Printf("\n[vortex-params] numComs=%d depth=%d numOpening=%d MerkleProofSize=%d numRows=%d\n",
+			vctx.NumCommittedRounds(),
+			utils.Log2Ceil(vctx.NumEncodedCols()),
+			vctx.NbColsToOpen(),
+			vctx.MerkleProofSize(),
+			vctx.CommittedRowsCount,
+		)
+	}
+
+	// Detailed breakdown of proof cells by column name prefix.
+	type catCells struct{ count, cells int }
+	cats := map[string]*catCells{}
+	for _, colName := range comp.Columns.AllKeys() {
+		if comp.Columns.Status(colName) != column.Proof {
+			continue
+		}
+		col := comp.Columns.GetHandle(colName)
+		size := col.Size()
+		weight := size
+		if !col.IsBase() {
+			weight = 4 * size
+		}
+		s := string(colName)
+		var key string
+		switch {
+		case strings.Contains(s, "MERKLEPROOF"):
+			key = "MERKLEPROOF"
+		case strings.Contains(s, "MERKLEROOT"):
+			key = "MERKLEROOT"
+		case strings.Contains(s, "SELECTED_COL_SIS"):
+			key = "SELECTED_COL_SIS"
+		case strings.Contains(s, "SELECTED_COL_NON_SIS"):
+			key = "SELECTED_COL_NON_SIS"
+		case strings.Contains(s, "SELECTED_COL"):
+			key = "SELECTED_COL"
+		case strings.Contains(s, "LINEAR_COMBINATION"):
+			key = "LINEAR_COMBINATION(U_alpha)"
+		default:
+			key = "OTHER:" + s
+		}
+		if cats[key] == nil {
+			cats[key] = &catCells{}
+		}
+		cats[key].count++
+		cats[key].cells += weight
+	}
+	fmt.Printf("\n[proof-breakdown t3=%v t4=%v]\n", t3, t4)
+	total := 0
+	for k, v := range cats {
+		fmt.Printf("  %-35s cols=%4d  cells=%8d\n", k, v.count, v.cells)
+		total += v.cells
+	}
+	fmt.Printf("  %-35s cells=%8d\n", "TOTAL", total)
 }
 
 func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {

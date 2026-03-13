@@ -67,8 +67,11 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 		flagForSISRounds = []bool{}
 	)
 
-	// Append the precomputed roots and the corresponding flag
-	if ctx.IsNonEmptyPrecomputed() {
+	// Append the precomputed roots and the corresponding flag.
+	// When SkipPrecomputedMerkleProof is set, the precomputed columns are not
+	// included in the Merkle proof (their evaluations are authenticated via
+	// the Schwartz-Zippel linear-combination check), so we skip this step.
+	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
 		var precompRootF field.Octuplet
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -149,6 +152,40 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	vi.Alpha = randomCoin
 	vi.EntryList = entryList
 	vi.Ys = ctx.getYs(run)
+
+	if ctx.UseUAlphaCoefficients {
+		// Coefficient mode: skip Merkle column inclusion check (columns still verified)
+		// and use polynomial evaluation instead of Lagrange/codeword checks.
+		err := vortex_koalabear.VerifyCommonCoeff(ctx.VortexKoalaParams, proof, &vi)
+		if err != nil {
+			return err
+		}
+		// When SkipPrecomputedMerkleProof is set, proof.Columns includes the
+		// precomp sub-columns (needed for the linear-combination check above)
+		// but the merkle proofs / roots do not include the precomp round. We
+		// strip the precomp slice before calling CheckColumnInclusion only.
+		colsForInclusion := proof.Columns
+		if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
+			idx := ctx.precompIdx()
+			colsForInclusion = append(colsForInclusion[:idx:idx], colsForInclusion[idx+1:]...)
+		}
+		return vortex_koalabear.CheckColumnInclusion(ctx.VortexKoalaParams.Key, colsForInclusion,
+			merkleProofs, roots, WithSis)
+	}
+
+	if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
+		// Non-coeff mode with precomp merkle proof skipped: run common checks
+		// with full proof.Columns (includes precomp, needed for CheckLinComb),
+		// then run CheckColumnInclusion with precomp stripped.
+		err := vortex_koalabear.VerifyCommon(ctx.VortexKoalaParams, proof, &vi)
+		if err != nil {
+			return err
+		}
+		idx := ctx.precompIdx()
+		colsForInclusion := append(proof.Columns[:idx:idx], proof.Columns[idx+1:]...)
+		return vortex_koalabear.CheckColumnInclusion(ctx.VortexKoalaParams.Key, colsForInclusion,
+			merkleProofs, roots, WithSis)
+	}
 
 	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
 }

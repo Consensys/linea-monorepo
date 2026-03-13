@@ -27,13 +27,13 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// numRound denotes the total number of commitment rounds
 	// including SIS and non SIS rounds
 	numRound := ctx.VortexCtx.NumCommittedRounds()
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		numRound += 1
 	}
 	// Next we consider the number of rounds for which we apply the SIS hash
 	numRoundSis := ctx.VortexCtx.NumCommittedRoundsSis()
 	// We increase numRoundSis by 1 if sis is applied to the precomputed
-	if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if ctx.VortexCtx.IsSISAppliedToPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		numRoundSis += 1
 	}
 	// The number of non SIS rounds is the difference
@@ -71,7 +71,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 
 	// Register SIS-related columns if needed
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
-	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || (ctx.VortexCtx.IsSISAppliedToPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof) {
 		ctx.Columns.ConcatenatedSisHashQ = ctx.Comp.InsertCommit(roundQ, ctx.ConcatenatedSisHashQ(), concatSisHashQSize, true)
 		for j := 0; j < blockSize; j++ {
 			ctx.Columns.SisHashToHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.SisHashToHash(j), sisHashTotalChunks, true)
@@ -126,7 +126,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves)
 
 	// The below linear hash verification is for only sis rounds
-	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || (ctx.VortexCtx.IsSISAppliedToPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof) {
 
 		var cleanSisLeaves [blockSize][]ifaces.Column
 		var stackedSisLeaves [blockSize]*dedicated.StackedColumn
@@ -197,7 +197,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 	)
 
 	// Consider the precomputed polynomials
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		colSize := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 		colChunks := (colSize + blockSize - 1) / blockSize
 		precompPreimageChunksSizeUnpadded := colChunks * numLeavesUnpadded
@@ -302,7 +302,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		if len(ctx.NonSisMetaData.NonSisLeaves[i]) > 0 {
 			cleanLeaves[i] = append(cleanLeaves[i], ctx.NonSisMetaData.NonSisLeaves[i]...)
 		}
-		if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || (ctx.VortexCtx.IsSISAppliedToPrecomputed() && !ctx.VortexCtx.SkipPrecomputedMerkleProof) {
 			cleanLeaves[i] = append(cleanLeaves[i], ctx.Columns.SisRoundLeaves[i]...)
 		}
 		// Handle possibly non-power-of-two number of opened columns by
@@ -460,7 +460,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	lmp := newLinearHashMerkleProverActionBuilder(a)
 
 	// Handle the precomputed round
-	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		processPrecomputedRound(a, lmp, run, openingIndices)
 	}
 
@@ -468,7 +468,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	processRound(a, lmp, run, openingIndices)
 
 	numCommittedRound := a.Ctx.VortexCtx.NumCommittedRounds()
-	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		numCommittedRound += 1
 	}
 
@@ -490,7 +490,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		run.AssignColumn(a.Ctx.Columns.MerkleProofsLeaves[i].GetColID(), smartvectors.RightZeroPadded(lmp.MerkleLeaves[i], a.LeavesSize))
 		run.AssignColumn(a.Ctx.Columns.MerkleRoots[i].GetColID(), smartvectors.RightZeroPadded(lmp.MerkleRoots[i], a.LeavesSize))
 		// The below assignments are only done if SIS is applied to any of the rounds
-		if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || (a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof) {
 			// Assign the concatenated SIS hashes
 			run.AssignColumn(a.Ctx.Columns.SisHashToHash[i].GetColID(), smartvectors.RightZeroPadded(lmp.SisHashToHash[i], a.SisHashTotalChunks))
 			for j := 0; j < a.NumRoundSis; j++ {
@@ -499,7 +499,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			}
 		}
 	}
-	if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || (a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof) {
 		run.AssignColumn(a.Ctx.Columns.ConcatenatedSisHashQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatSisHashQ, a.ConcatSisHashQSize))
 
 	}
@@ -665,7 +665,7 @@ func processRound(
 	}
 	// If SIS is applied to the precomputed, we need to
 	// increase the sisRoundCount by 1
-	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		sisRoundCount++
 	}
 
@@ -673,7 +673,7 @@ func processRound(
 	numRound := lmp.TotalNumRounds
 	// We need to decrease the number of rounds by 1
 	// as precomputed round is considered seperately
-	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.Ctx.VortexCtx.SkipPrecomputedMerkleProof {
 		numRound -= 1
 	}
 

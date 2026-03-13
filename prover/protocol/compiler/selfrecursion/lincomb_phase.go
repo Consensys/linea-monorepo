@@ -25,11 +25,14 @@ import (
 //     is the opening point
 func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
-	// The reed-solomon check
-	reedsolomon.CheckReedSolomon(
-		ctx.Comp,
-		ctx.VortexCtx.BlowUpFactor,
-		ctx.Columns.Ualpha)
+	// The reed-solomon check (skipped in coefficient mode: Ualpha holds polynomial
+	// coefficients, not RS codeword evaluations, so the RS check does not apply).
+	if !ctx.VortexCtx.UseUAlphaCoefficients {
+		reedsolomon.CheckReedSolomon(
+			ctx.Comp,
+			ctx.VortexCtx.BlowUpFactor,
+			ctx.Columns.Ualpha)
+	}
 
 	// Create the verifier column ys
 	ctx.defineYs()

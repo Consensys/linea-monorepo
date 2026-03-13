@@ -110,6 +110,85 @@ func GnarkCheckStatementAndCodeWord(
 	return nil
 }
 
+// GnarkVerifyCoeff is like GnarkVerify but for coefficient-mode U_alpha.
+// proof.LinearCombination holds T polynomial coefficients (E4) instead of N evaluations.
+// A forward FFT hint reconstructs N evaluations for the column-consistency lookup check.
+func GnarkVerifyCoeff(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
+	koalaAPI := koalagnark.NewAPI(api)
+
+	// Expand T coefficients → N evaluations via forward FFT hint.
+	t := len(proof.LinearCombination)
+	n := params.RsParams.NbEncodedColumns()
+	fftfwd := fftFwdHint(koalaAPI.Type())
+	inputsUnpacked := make([]koalagnark.Element, t*4)
+	for i := 0; i < t; i++ {
+		inputsUnpacked[4*i] = proof.LinearCombination[i].B0.A0
+		inputsUnpacked[4*i+1] = proof.LinearCombination[i].B0.A1
+		inputsUnpacked[4*i+2] = proof.LinearCombination[i].B1.A0
+		inputsUnpacked[4*i+3] = proof.LinearCombination[i].B1.A1
+	}
+	evalsRaw, err := koalaAPI.NewHint(fftfwd, n*4, inputsUnpacked...)
+	if err != nil {
+		return err
+	}
+	evals := make([]koalagnark.Ext, n)
+	for i := range evals {
+		evals[i].B0.A0 = evalsRaw[4*i]
+		evals[i].B0.A1 = evalsRaw[4*i+1]
+		evals[i].B1.A0 = evalsRaw[4*i+2]
+		evals[i].B1.A1 = evalsRaw[4*i+3]
+	}
+
+	// Column-consistency check: lookup evals[entryList[j]] == Horner(columns[j], alpha)
+	err = GnarkCheckLinComb(api, evals, vi.EntryList, vi.Alpha, proof.Columns)
+	if err != nil {
+		return err
+	}
+
+	// Codeword + statement check using coefficients directly.
+	return GnarkCheckStatementAndCodeWordCoeff(api, fs, params, proof.LinearCombination, evals, vi.Ys, vi.X, vi.Alpha)
+}
+
+// GnarkCheckStatementAndCodeWordCoeff combines the Schwartz-Zippel codeword check
+// and statement check for coefficient-mode U_alpha.
+// linComb holds T coefficients; evals holds N evaluations (from forward FFT hint).
+func GnarkCheckStatementAndCodeWordCoeff(
+	api frontend.API,
+	fs fiatshamir.GnarkFS,
+	params Params,
+	linComb []koalagnark.Ext,
+	evals []koalagnark.Ext,
+	ys [][]koalagnark.Ext,
+	x, alpha koalagnark.Ext) error {
+
+	koalaAPI := koalagnark.NewAPI(api)
+
+	// Bind T coefficients into the Fiat-Shamir transcript (same role as res in eval mode).
+	fs.UpdateExt(linComb...)
+	challenge := fs.RandomFieldExt()
+
+	// Schwartz-Zippel: evalCan(linComb, challenge) == evalLag(evals, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, linComb, challenge)
+	evalLag := polynomials.GnarkEvaluateLagrangeExt(
+		api,
+		evals,
+		challenge,
+		params.RsParams.Domains[1].Generator,
+		params.RsParams.Domains[1].Cardinality)
+	koalaAPI.AssertIsEqualExt(evalCan, evalLag)
+
+	// Statement check: evalCan(linComb, x) == Horner(ys_joined, alpha)
+	alphaY := polynomials.GnarkEvalCanonicalExt(api, linComb, x)
+	var yjoined []koalagnark.Ext
+	for i := range ys {
+		yjoined = append(yjoined, ys[i]...)
+	}
+	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
+	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
+
+	return nil
+}
+
 func GnarkCheckLinComb(
 	api frontend.API, linComb []koalagnark.Ext,
 	entryList []frontend.Variable, alpha koalagnark.Ext,
