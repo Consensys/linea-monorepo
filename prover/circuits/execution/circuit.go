@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -26,11 +27,12 @@ type CircuitExecution struct {
 	LimitlessMode bool `gnark:"-"`
 	// CongloVK is used when the [LimitlessMode] is on and is helps checking
 	// the validity of the inner-proofs verification-key public input.
-	CongloVK [2]field.Element
+	// Each VK is an octuplet (8 koalabear field elements).
+	CongloVK [2]field.Octuplet
 	// VKMerkleRoot is used when the [LimitlessMode] is on and is helps checking
 	// the validity of the inner-proofs verification-key merkle root public
-	// input.
-	VKMerkleRoot field.Element
+	// input. It is an octuplet (8 koalabear field elements).
+	VKMerkleRoot field.Octuplet
 	// The wizard verifier circuit
 	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 	// The functional public inputs are the "actual" statement made by the
@@ -72,13 +74,18 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 //
 // The proof generation can be done using the [MakeProof] function as we would
 // do for the non-limitless execution proof.
-func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits) CircuitExecution {
+func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits, vkMerkleRoot field.Octuplet) CircuitExecution {
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
 		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs())
+
+	vk0 := congWiop.ExtraData[distributed.VerifyingKeyPublicInput].(field.Octuplet)
+	vk1 := congWiop.ExtraData[distributed.VerifyingKey2PublicInput].(field.Octuplet)
 
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
 	return CircuitExecution{
 		LimitlessMode:  true,
+		CongloVK:       [2]field.Octuplet{vk0, vk1},
+		VKMerkleRoot:   vkMerkleRoot,
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
