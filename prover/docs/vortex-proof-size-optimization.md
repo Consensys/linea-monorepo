@@ -1,80 +1,100 @@
 # Vortex Proof Size Optimization
 
-This document describes the optimizations applied to reduce the final vortex proof size output by
-`fullInitialCompilationSuite`.
+This document describes the four optimizations applied to reduce the final Vortex proof size
+produced by `fullInitialCompilationSuite` (`zkevm/full.go`).
 
 ---
 
 ## Background
 
+### Proof components
 
-The three main proof components in the final Vortex in `fullInitialCompilationSuite` (see `zkevm/full.go`) are:
+The three main components of the final Vortex proof are:
 
-| Component | Description |
-|---|---|
-| `U_alpha` | Random linear combination of all committed polynomials |
-| `SELECTED_COL` | Opened column values at K random positions |
-| `MERKLEPROOF` | Sibling hashes for Merkle path verification |
+| Component | Description | Scales with |
+|---|---|---|
+| `U_alpha` | Random linear combination of all committed polynomials | (codeword = blowup x polynomial degree) |
+| `SELECTED_COL` | Revealed column values at K randomly chosen positions | numRows (# committed polynomials) |
+| `MERKLEPROOF` | Sibling hashes for Merkle path verification | log₂(codeword) × K × numRounds |
 
+### Committed cells and their effect on proof size
+
+The Vortex commitment matrix has dimensions:
+
+```
+committed_cells = numRows × T
+
+  numRows  total number of committed polynomials across all rounds
+  T        polynomial degree  (= codewordSize / blowup)
+```
+
+Reducing `numRows` shrinks `SELECTED_COL`; reducing `T` shrinks `U_alpha` and `MERKLEPROOF`.
+A single large reduction in `committed_cells` can fundamentally reduce both factors.
 
 ---
 
 ## Optimization 1: GKR Poseidon2
 
-Without GKR: Every Poseidon2 hash call is proven via explicit polynomial columns — one column per intermediate round state, S-box, and round constant. For a batch of N hash calls, this explodes into O(N × permutation_rounds) committed columns.
+**Compiler step:** `poseidon2.CompileGKRPoseidon2`
 
-With GKR: The entire batch of Poseidon2 evaluations is proven via a sumcheck argument. The GKR verifier only requires a short transcript (the sumcheck messages), which becomes one small polynomial column — GKR_Poseidon2_TRANSCRIPT — regardless of how many hashes are batched.
+### Mechanism
 
+Without GKR, every Poseidon2 hash call is proven by explicit polynomial columns — one column
+per intermediate round state, S-box computation, and round constant. Batching N hash calls
+therefore produces O(N × permutation\_rounds) committed columns.
 
-### Why fewer committed cells → smaller proof
+With GKR, the entire batch is proven via a sumcheck argument. The GKR verifier needs only a
+short transcript column (`GKR_Poseidon2_TRANSCRIPT`) regardless of batch size, replacing the
+dense intermediate-state columns entirely.
 
-committed_cells = numRows × T
+### Effect on proof size
 
-numRows = total number of committed polynomials across all rounds
-T       = polynomial degree (= codewordSize / blowup)
+GKR primarily reduces `numRows` (fewer committed polynomials). This directly shrinks
+`SELECTED_COL`. Additionally, fewer columns fed into each self-recursion round means the
+next Vortex in the chain operates on a smaller matrix, compounding savings across all
+recursion levels.
 
-The Vortex proof components:
-
-- U_alpha and MERKLEPROOF are scale with T 
-
-- SELECTED_COL is scale with numRows
-
-So a smaller committed_cells could result two smaller factors (committed rows and polynomial degree T)
+| | Committed cells | Proof cells |
+|---|---|---|
+| Before GKR | 16,891,904 | 919,240 |
+| After GKR | 7,127,040 | 800,456 |
+| **Reduction** | **−57.8%** | **−118,784 (−12.9%)** |
 
 ---
 
-## Optimization 2: Reduce U_alpha size by the Blowup Factor
+## Optimization 2: Reduce U_alpha by the Blowup Factor
 
 **Option:** `WithUAlphaCoefficients()`
 
 ### Evaluation form vs. coefficient form
 
-In standard Vortex, `U_alpha` is the random linear combination of all committed polynomials,
-sent as a **Reed-Solomon codeword** of N evaluations over the extension field:
+In standard Vortex, `U_alpha` — the random linear combination of all committed polynomials —
+is sent as a Reed-Solomon codeword of N evaluations over the extension field:
 
 ```
 Eval mode:   N = T × blowup_factor   extension-field elements
-Coeff mode:  T                   extension-field elements
+Coeff mode:  T                        extension-field elements
 ```
 
-`WithUAlphaCoefficients()` switches to coefficient form: the prover sends T coefficients
-instead of N evaluations. 
-
+`WithUAlphaCoefficients()` switches to coefficient form: the prover sends T polynomial
+coefficients instead of N codeword evaluations. The verifier reconstructs the full codeword
+via a forward FFT (provided as a hint in the gnark circuit).
 
 ### Interaction with column size
 
-With a fixed size of commited cells, enlarging the codeword (increasing RS factor or targeting a larger `T`) reduces the number
-of rows per column — reducing `SELECTED_COL` size — at the cost of a larger `U_alpha` in
-eval mode. With coefficient mode, the codeword size can be enlarged 'freely' because U_alpha
-stays at T (not T x blowup_factor), so `SELECTED_COL` shrinks without penalty.
+With a fixed committed-cell budget, increasing `T` (larger polynomial degree) reduces
+`numRows`, which shrinks `SELECTED_COL`. In evaluation mode this comes at the cost of a
+larger `U_alpha` (N = T × blowup grows). In coefficient mode `U_alpha` stays at T regardless
+of blowup, so `T` can be increased 'freely' without any U_alpha penalty — `SELECTED_COL`
+shrinks while `U_alpha` stays relatively small.
 
-### Impact (Vortex-4, T=8192, blowup_factor=16)
+### Impact (Vortex-4, T=8192, blowup=16)
 
-| Mode | U_alpha cells | Bytes |
+| Mode | U_alpha size | Bytes |
 |---|---|---|
-| Eval (before) | N = 131,072 ext | 131,072 × 16 = **2,097,152** |
-| Coeff (after) | T = 8,192 ext | 8,192 × 16 = **131,072** |
-| **Saving** | 122,880 ext | **1,966,080 bytes (~1.9 MB)** |
+| Eval (before) | N = 131,072 ext elements | 131,072 × 16 = **2,097,152** |
+| Coeff (after) | T = 8,192 ext elements | 8,192 × 16 = **131,072** |
+| **Saving** | 122,880 ext elements | **~1.9 MB** |
 
 ---
 
@@ -82,34 +102,28 @@ stays at T (not T x blowup_factor), so `SELECTED_COL` shrinks without penalty.
 
 **Option:** `SkipSelfRecursionProofColumns()`
 
-### What is duplicated?
+### What is duplicated
 
 The Vortex prover registers three opened-column proof objects:
 
-- `SELECTED_COL` — all rounds combined (SIS + non-SIS), used by the verifier
+- `SELECTED_COL` — all rounds combined (SIS + non-SIS), consumed by the Schwartz-Zippel verifier
 - `SELECTED_COL_SIS` — SIS rounds only
 - `SELECTED_COL_NON_SIS` — non-SIS rounds only
 
-The relationship is:
+The split is needed by self-recursion: SIS openings are hashed via lattice-SIS and non-SIS
+openings via Poseidon2, and these are verified independently. The concatenated
+`SELECTED_COL` is also registered for the overall verifier:
 
 ```
 SELECTED_COL = concat(SELECTED_COL_NON_SIS, SELECTED_COL_SIS)
 ```
 
-The split exists because the **self-recursion** step needs SIS and non-SIS openings
-separately — SIS columns are hashed via lattice-SIS and non-SIS columns via Poseidon2,
-and these are verified independently. However, `SELECTED_COL` is also registered because
-the overall verifier (Schwartz-Zippel check) needs the concatenated view.
-
 ### Why they are dead weight on the final Vortex
 
-On the final Vortex (marked `PremarkAsSelfRecursed()`, no subsequent self-recursion),
-`SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` are registered as proof columns but
-**no verifier ever reads them**. 
-
-`SkipSelfRecursionProofColumns()` suppresses their registration entirely.
-
-
+On the final Vortex (marked `PremarkAsSelfRecursed()`) there is no subsequent self-recursion
+step, so `SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` are registered as proof columns but
+**no verifier ever reads them**. `SkipSelfRecursionProofColumns()` suppresses their
+registration entirely, saving one full copy of the split-column data.
 
 ---
 
@@ -119,23 +133,22 @@ On the final Vortex (marked `PremarkAsSelfRecursed()`, no subsequent self-recurs
 
 ### Why the precomputed Merkle proof is redundant
 
-For **committed** columns, the Merkle proof is necessary: the verifier cannot know
-`selectedCol[j]` without it, so it must verify the column is genuinely part of the
-committed codeword:
+For **committed** columns the Merkle proof is essential: without it the prover could supply
+a fabricated `selectedCol[j]` that satisfies the linear-combination check but does not
+correspond to the committed codeword.
 
-| Y_i source | Can prover fake selectedCol? | Merkle needed? |
+For **precomputed** columns the situation is different:
+
+| Column type | Can prover fake `selectedCol`? | Merkle proof needed? |
 |---|---|---|
-| Committed (prover claim) | Yes — by adjusting Y_i to match | **Yes** |
-| Precomputed (verifier computes) | No — Y_precomp is a fixed known value | **No** |
+| Committed | Yes — by back-solving Y_i | **Yes** |
+| Precomputed | No — Y_precomp is verifier-computed | **No** |
 
-For **precomputed** columns, `ExplicitPolynomialEval` (in `verifier.go`) runs at the last
-round and directly evaluates the known precomputed polynomials at the challenge point x,
-pinning `Y_precomp` to a fixed verifier-computed value. The Schwartz-Zippel check then
-enforces that `selectedCol_precomp` is consistent with `Y_precomp`. Since `Y_precomp` is
-fixed independently of the prover, the Merkle path adds no additional security.
-
-This redundancy was present from the beginning — `ExplicitPolynomialEval` has always
-run unconditionally (it is not guarded by `IsSelfrecursed`).
+`ExplicitPolynomialEval` (in `verifier.go`) runs unconditionally at the last round and
+evaluates each precomputed polynomial directly at the challenge point x, pinning `Y_precomp`
+to a fixed verifier-computed value. The Schwartz-Zippel check then enforces consistency
+with `selectedCol_precomp`. Since `Y_precomp` is independent of the prover, the Merkle path
+adds no additional security and can be dropped.
 
 ### MerkleProofSize formula
 
@@ -143,65 +156,71 @@ run unconditionally (it is not guarded by `IsSelfrecursed`).
 MerkleProofSize = NextPowerOfTwo(K × numRounds × depth) × 8
 ```
 
-where `depth = log2(codewordSize)`, K = NbColsToOpen, numRounds = committed rounds
-(precomputed excluded when `SkipPrecomputedMerkleProof` is set).
+where `depth = log₂(codewordSize)`, K = number of opened columns, and `numRounds` counts
+only committed rounds (precomputed round excluded when `SkipPrecomputedMerkleProof` is set).
 
-### Why the saving is binary (power-of-two boundary)
+### Why the saving is binary
 
 The saving only materialises when removing the precomputed round crosses a `NextPowerOfTwo`
 boundary downward. With the current parameters (K=64, 7 committed rounds, depth=17):
 
 | Rounds | K × rounds × depth | NextPow2 | Cells |
 |---|---|---|---|
-| 8 (with precomp) | 64 × 8 × 17 = 8,704 | **16,384** | 16,384 × 8 = **131,072** |
-| 7 (skip precomp) | 64 × 7 × 17 = 7,616 | **8,192** | 8,192 × 8 = **65,536** |
-| **Saving** | | | **65,536 cells = 262,144 bytes** |
+| 8 (with precomp) | 64 × 8 × 17 = 8,704 | 16,384 | 16,384 × 8 = **131,072** |
+| 7 (skip precomp) | 64 × 7 × 17 = 7,616 | 8,192 | 8,192 × 8 = **65,536** |
+| **Saving** | | | **65,536 cells (262,144 bytes)** |
 
-At depth=16 (T=4096), both cases map to NextPow2=8192, so there is no saving.
-The optimization is effective here because `WithTargetColSize(1<<13)` gives T=8192 →
+At depth=16 (T=4096) both cases round to NextPow2=8192 and there is no saving. The
+optimization is effective here because `WithTargetColSize(1<<13)` targets T=8192, giving
 depth=17.
 
-
----
-## Benchmarks compare
-
-baseline: 
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192                    1        2463224418 ns/op          16891904 #committed-cells            919240 #proof-cells 2616099528 B/op 27536786 allocs/op
-
-Opt1 GKR:
-
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192                    1        1012616333 ns/op           7127040 #committed-cells            800456 #proof-cells 1604045944 B/op 11868091 allocs/op
-
-Opt 2 WithUAlphaCoefficients
-
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192                    8         140331964 ns/op           7127040 #committed-cells            308936 #proof-cells 200118093 B/op   1483023 allocs/op
-
-Opt 3 SkipSelfRecursionProofColumns
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192                    7         146418357 ns/op           7127040 #committed-cells            243400 #proof-cells 228708181 B/op   1694843 allocs/op
-
-Opt4 SkipPrecomputedMerkleProof
-
-
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192                    5         204445118 ns/op           7127040 #committed-cells            177864 #proof-cells 320229758 B/op   2372886 allocs/op
-
-
 ---
 
-## Vortex Final Proof Breakdown (setup8.log)
+## Benchmark Results
 
-Compilation parameters from `fullInitialCompilationSuite` final Vortex (`full.go:141`):
+`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=8192.
+Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
+weighted ×4 when computing totals.
 
-```
+### Cumulative impact per optimization
+
+| Step | Optimization added | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |
+|---|---|---:|---:|---:|---:|---:|
+| 0 — bare baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB |
+| 1 | GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB |
+| 2 | + WithUAlphaCoefficients | 7,127,040 | — | 308,936 | −491,520 | ~1.2 MB |
+| 3 | + SkipSelfRecursionProofColumns | 7,127,040 | — | 243,400 | −65,536 | ~951 KB |
+| 4 | + SkipPrecomputedMerkleProof | 7,127,040 | — | **177,864** | −65,536 | **~695 KB** |
+| | **Total** | | **−57.8%** | | **−741,376 (−80.7%)** | |
+
+### Per-component breakdown (final Vortex only)
+
+The table below isolates the final-Vortex proof cells by component. The baseline is
+post-GKR (step 1); subsequent columns apply the remaining optimizations.
+
+| Component | post-GKR | +opt3 SkipSelfRec | +opt2 UAlphaCoeff | +opt4 SkipPrecomp |
+|---|---:|---:|---:|---:|
+| `U_alpha` | 524,288 | 524,288 | **32,768** | 32,768 |
+| `SELECTED_COL` | 65,536 | 65,536 | 65,536 | 65,536 |
+| `SELECTED_COL_NON_SIS` | 65,536 | **—** | — | — |
+| `MERKLEPROOF` | 131,072 | 131,072 | 131,072 | **65,536** |
+| `MERKLEROOT` + `OTHER` | ~14,024 | ~14,024 | ~14,024 | ~14,024 |
+| **Total** | **800,456** | **734,920** | **243,400** | **177,864** |
+
+---
+
+## Vortex-4 Final Proof Breakdown (setup.log)
+
+Compilation parameters for the final Vortex in `fullInitialCompilationSuite` (`full.go:141`):
+
+```go
 vortex.Compile(16, false,
-    ForceNumOpenedColumns(64),         // K = 64
+    ForceNumOpenedColumns(64),              // K = 64
     WithOptionalSISHashingThreshold(1<<20),
     PremarkAsSelfRecursed(),
-    WithUAlphaCoefficients(),          // opt 2
-    SkipSelfRecursionProofColumns(),   // opt 3
-    SkipPrecomputedMerkleProof(),      // opt 4
+    WithUAlphaCoefficients(),              // opt 2
+    SkipSelfRecursionProofColumns(),       // opt 3
+    SkipPrecomputedMerkleProof(),          // opt 4
 )
 ```
 
@@ -218,74 +237,20 @@ Compiled Vortex round  round=31  numComs=28   polynomialSize=8192  codewordSize=
 Compiled Vortex round  round=33  numComs=4    polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
 ```
 
-Parameters: T=8192, N=131072, RS=16, depth=17, K=64, 7 committed rounds, precomp=37 rows (non-SIS, skipped).
-Total numComs: 37 + (68+374+272+24+36+28+4) = 37 + 806 = **843** → NextPow2 = **1024**.
+Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, precomp=37 rows
+(non-SIS, Merkle proof skipped). Total polynomials: 37 + (68+374+272+24+36+28+4) = **843**
+→ NextPow2 = **1024**.
 
 | Component | Cells | Element type | Bytes |
-|---|---|---|---|
+|---|---:|---|---:|
 | U_alpha (coeff mode) | 8,192 | ext (16 B each) | **131,072** |
 | SELECTED_COL | 65,536 | base (4 B each) | **262,144** |
 | MERKLEPROOF | 65,536 | base (4 B each) | **262,144** |
 | **Total** | **139,264** | | **655,360 (~640 KB)** |
 
-
----
-
-## Step-by-Step Benchmark Results
-
-`BenchmarkOptimizationSteps` (realistic-segment, T3=4096, T4=8192).
-
-All cell counts use the base-field unit (4 bytes): extension-field elements (`U_alpha`) are
-weighted ×4 to convert to base-field cells.
-
-### Total proof cells per step
-
-| Step | Active optimizations | Total cells | Δ vs prev | Bytes |
-|---|---|---|---|---|
-| baseline | — | **800,456** | — | ~3.1 MB |
-| opt1 | SkipSelfRecursionProofColumns | **734,920** | −65,536 | ~2.9 MB |
-| opt1+2 | + WithUAlphaCoefficients | **243,400** | −491,520 | ~951 KB |
-| opt1+2+3 | + SkipPrecompFinalVortex | **177,864** | −65,536 | ~695 KB |
-| opt1+2+3+4 | + SkipPrecompAllVortexes | **177,864** | 0 | ~695 KB |
-
-### Per-component breakdown
-
-| Component | baseline | opt1 | opt1+2 | opt1+2+3 | opt1+2+3+4 |
-|---|---|---|---|---|---|
-| `U_alpha` | 524,288 | 524,288 | 32,768 | 32,768 | 32,768 |
-| `SELECTED_COL` | 65,536 | 65,536 | 65,536 | 65,536 | 65,536 |
-| `SELECTED_COL_NON_SIS` | 65,536 | — | — | — | — |
-| `MERKLEPROOF` | 131,072 | 131,072 | 131,072 | 65,536 | 65,536 |
-| `MERKLEROOT` + `OTHER` | ~14,024 | ~14,024 | ~14,024 | ~14,024 | ~14,024 |
-| **Total** | **800,456** | **734,920** | **243,400** | **177,864** | **177,864** |
-
-### Notes
-
-- **opt1** removes `SELECTED_COL_NON_SIS` (65,536 cells): the split columns are dead on the
-  final Vortex since no subsequent self-recursion reads them.
-- **opt2** reduces `U_alpha` from N=131,072 ext evaluations to T=8,192 ext coefficients.
-  Each ext element counts as 4 base cells, so the saving is (131,072 − 8,192) × 4 = **491,520
-  cells**.
-- **opt3** halves `MERKLEPROOF` from 131,072 → 65,536 by removing the precomputed round,
-  which crosses a NextPowerOfTwo boundary (8,704 → 7,616 → NPow2: 16,384 → 8,192).
-- **opt4** (SkipPrecomputedMerkleProof on all intermediate Vortexes) gives **zero benefit**
-  here because the intermediate Vortexes use SIS-hashed precomputed columns
-  (`IsSISAppliedToPrecomputed=true`) and their parameters do not cross a NextPow2 boundary.
-
----
-
-## Full-Pipeline Benchmark Result
-
-`BenchmarkProfileSelfRecursion` (realistic-segment, T3=4096, T4=8192, all optimizations active):
-
-```
-BenchmarkProfileSelfRecursion/realistic-segment/T3=4096/T4=8192-192
-    1   1015610395 ns/op   7127040 #committed-cells   177864 #proof-cells
-```
-
-**177,864 proof cells = ~695 KB** for the full pre-recursion chain. The figure is slightly
-larger than the 139,264 cells from the setup log breakdown because it includes Merkle roots,
-GKR transcript columns, and self-recursion auxiliary columns (counted in OTHER above).
+The full-pipeline benchmark reports **177,864 proof cells (~695 KB)**. The ~38,600-cell
+difference from the table above comes from Merkle roots, GKR transcript columns, and
+self-recursion auxiliary columns not listed here.
 
 ---
 
