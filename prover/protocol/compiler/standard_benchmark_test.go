@@ -184,8 +184,8 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 		// {1 << 12, 1 << 12},
 		{1 << 12, 1 << 13}, // (current best)
 
-		// {1 << 15, 1 << 13},
-		// {1 << 10, 1 << 13},
+		// {1 << 13, 1 << 13},
+		// {1 << 11, 1 << 13},
 	}
 	for _, bc := range benchCases {
 		for _, p := range candidates {
@@ -225,6 +225,8 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
+			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
+
 		),
 	)
 
@@ -241,6 +243,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			8, false,
 			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
+			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
 		),
 	)
 
@@ -257,6 +260,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			// vortex.WithUAlphaCoefficients(), // opt 5: coeff mode for intermediate rounds
 		),
 	)
 

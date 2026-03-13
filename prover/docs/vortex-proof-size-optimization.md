@@ -183,16 +183,20 @@ At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(
 Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
 weighted ×4 when computing totals.
 
-### Cumulative impact per optimization
+### Cumulative impact per optimization (final Vortex-4 only)
+
+The table below tracks only the final-vortex proof cells. Optimizations 1–4 apply
+exclusively to the final Vortex; optimization 5 also compresses intermediate rounds.
 
 | Step | Optimization added | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |
 |---|---|---:|---:|---:|---:|---:|
 | 0 — bare baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB |
 | 1 | GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB |
-| 2 | + WithUAlphaCoefficients | 7,127,040 | — | 308,936 | −491,520 | ~1.2 MB |
+| 2 | + WithUAlphaCoefficients (final) | 7,127,040 | — | 308,936 | −491,520 | ~1.2 MB |
 | 3 | + SkipSelfRecursionProofColumns | 7,127,040 | — | 243,400 | −65,536 | ~951 KB |
 | 4 | + SkipPrecomputedMerkleProof | 7,127,040 | — | **177,864** | −65,536 | **~695 KB** |
-| | **Total** | **−57.8%**|  | **−741,376 (−80.7%)** | | |
+| 5 | + WithUAlphaCoefficients (all rounds) | TBD | — | TBD | TBD | TBD |
+| | **Total (opts 1–4)** | **−57.8%**|  | **−741,376 (−80.7%)** | | |
 
 ---
 
@@ -233,7 +237,7 @@ Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, pr
 | U_alpha (coeff mode) | 8,192 | ext (16 B each) | **131,072** |
 | SELECTED_COL | 65,536 | base (4 B each) | **262,144** |
 | MERKLEPROOF | 65,536 | base (4 B each) | **262,144** |
-| **Total** | **139,264** | | **655,360 (~640 KB)** |
+| **Total** | | | **655,360 (~640 KB)** |
 
 The full-pipeline benchmark reports **177,864 proof cells (~695 KB)**. The ~38,600-cell
 difference from the table above comes from Merkle roots, GKR transcript columns, and
