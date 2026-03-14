@@ -6,6 +6,7 @@ package serde
 import (
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"unsafe"
@@ -110,11 +111,25 @@ func Deserialize(b []byte, v any) error {
 		return fmt.Errorf("v must be a pointer to a struct or value")
 	}
 
+	// Disable GC during deserialization: the decode phase performs millions of
+	// small allocations (14M+ reflect.New calls) that are all long-lived.
+	// Letting the GC run during this phase wastes significant CPU scanning
+	// the rapidly growing heap with nothing to collect.
+	prevGC := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(prevGC)
+
+	// Pre-size the ptrMap to avoid incremental rehashing.  Empirically,
+	// ~1 pointer entry per 5 KB of serialized data is a good estimate.
+	estimatedPtrs := len(b) / 5000
+	if estimatedPtrs < 1024 {
+		estimatedPtrs = 1024
+	}
+
 	// Init the decoder with the ptrMap to handle de-duplication of pointers
 	// during the reconstruction process (preserving cycles).
 	dec := &decoder{
 		data:   b,
-		ptrMap: make(map[int64]reflect.Value),
+		ptrMap: make(map[int64]reflect.Value, estimatedPtrs),
 	}
 
 	// Begin the "Pointer Swizzling" process starting from the PayloadOff.

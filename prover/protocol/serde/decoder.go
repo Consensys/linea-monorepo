@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unsafe"
+
+	"github.com/sirupsen/logrus"
 )
 
 // decoder maps the continguous block into memory and "swizzles" (converts) file offsets into real memory addresses
@@ -21,6 +24,43 @@ type decoder struct {
 	// When it encounters the offset for C the second time, it grabs the existing object from ptrMap.
 	// Benefit: This preserves cycles (A -> B -> A) and saves memory.
 	ptrMap map[int64]reflect.Value
+
+	// ancestors is a chain of read-only ptrMaps inherited from parent decoders
+	// during parallel struct decode.  lookupPtr checks ptrMap first, then each
+	// ancestor in order, giving O(1) amortised lookup with zero-copy inheritance
+	// from the parent that ran the sequential "seed" phase.
+	ancestors []map[int64]reflect.Value
+
+	// depth tracks struct nesting; parallel fan-out is attempted at depth <= 2.
+	depth int
+}
+
+// lookupPtr searches the decoder's own ptrMap, then walks the ancestor chain.
+// Writes always go to the local ptrMap; ancestors are read-only.
+func (dec *decoder) lookupPtr(offset int64) (reflect.Value, bool) {
+	if val, ok := dec.ptrMap[offset]; ok {
+		return val, true
+	}
+	for _, ancestor := range dec.ancestors {
+		if val, ok := ancestor[offset]; ok {
+			return val, true
+		}
+	}
+	return reflect.Value{}, false
+}
+
+// parallelFieldThreshold is the minimum number of indirect (non-POD) fields a
+// struct must have before we attempt to decode them in parallel.  For the
+// execution-circuit, the top-level ZkEvm struct has 22 pointer fields and the
+// CompiledIOP structs have 5-10 each; all well above this threshold.
+const parallelFieldThreshold = 4
+
+// fieldMeta describes a single exported struct field's position in the
+// serialized data and its type characteristics.
+type fieldMeta struct {
+	index  int
+	offset int64
+	info   typeInfo
 }
 
 func (dec *decoder) decode(target reflect.Value, offset int64) error {
@@ -77,7 +117,7 @@ func (dec *decoder) decodePtr(target reflect.Value, offset int64) error {
 		return nil
 	}
 	t := target.Type()
-	if val, ok := dec.ptrMap[offset]; ok {
+	if val, ok := dec.lookupPtr(offset); ok {
 		if val.Type().AssignableTo(t) {
 			target.Set(val)
 			return nil
@@ -287,7 +327,7 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 		ptrOffset := int64(ih.Offset)
 		// Check cache for this specific interface pointer - ensures that if the interface points to an object
 		// already reconstructed elsewhere, we reuse that instance (preserving referential integrity).
-		if val, ok := dec.ptrMap[ptrOffset]; ok {
+		if val, ok := dec.lookupPtr(ptrOffset); ok {
 			if val.Type().AssignableTo(concreteType) {
 				target.Set(val)
 				return nil
@@ -437,42 +477,182 @@ func (dec *decoder) decodePrimitive(target reflect.Value, offset int64) error {
 	return nil
 }
 
-// decodeStruct: handles the reconstruction of Go structs. Since Structs are "Heterogenous"
-// collection of fields, we loop through the struct schema (i.e. type definition) and
-// decode each field accordingly as per `decodeSeqItem`.
+// decodeStruct handles the reconstruction of Go structs.  It pre-computes
+// every field's file offset, then chooses between sequential and parallel
+// decode based on struct depth and the number of indirect fields.
+//
+// Parallel fan-out at depth <= 2:
+//
+//	depth 1 = ZkEvm struct:      InitialCompiledIOP decoded sequentially first
+//	                               (seeds ptrMap), remaining 21 fields in parallel.
+//	depth 2 = CompiledIOP struct: Columns decoded sequentially first (seeds
+//	                               ptrMap), QueriesNoParams / SubProvers / etc
+//	                               decoded in parallel.
+//
+// Each parallel goroutine inherits the parent's ptrMap via a read-only
+// ancestor chain so it benefits from all previously decoded shared pointers.
 func (dec *decoder) decodeStruct(target reflect.Value, offset int64) error {
+	dec.depth++
+	defer func() { dec.depth-- }()
+
+	// ---- Pre-compute field offsets ----
+	// We always need these to know where each field starts in the file,
+	// regardless of whether we take the parallel or sequential path.
+	numFields := target.NumField()
+	fields := make([]fieldMeta, 0, numFields)
 	currentOffSet := offset
-	for i := 0; i < target.NumField(); i++ {
+	for i := 0; i < numFields; i++ {
 		tf := target.Type().Field(i)
 		if !tf.IsExported() || strings.Contains(tf.Tag.Get(serdeStructTag), serdeStructTagOmit) {
 			continue
 		}
-
-		f := target.Field(i)
 		info := getTypeInfo(tf.Type)
+		fields = append(fields, fieldMeta{index: i, offset: currentOffSet, info: info})
+		currentOffSet += info.binSize
+	}
 
-		// Generic POD Fast-Path:
-		// If it's POD and we can get the address, we perform a bulk memory copy.
-		// This covers uint64, [4]uint64, and even nested POD structs.
-		if info.isPOD && f.CanAddr() {
+	// ---- Choose parallel vs sequential path ----
+	// Parallel fan-out at depth <= 2:
+	//   depth 1 = ZkEvm struct:      first field (InitialCompiledIOP) sequential,
+	//                                 remaining 21 fields in parallel.
+	//   depth 2 = CompiledIOP struct: first field (Columns) sequential,
+	//                                 QueriesNoParams / SubProvers / etc in parallel.
+	indirectCount := 0
+	for _, fm := range fields {
+		if !fm.info.isPOD {
+			indirectCount++
+		}
+	}
+
+	if dec.depth <= 2 && indirectCount >= parallelFieldThreshold {
+		return dec.decodeStructParallel(target, fields)
+	}
+	return dec.decodeStructSequential(target, fields)
+}
+
+// decodeStructSequential is the original field-by-field decode path.
+func (dec *decoder) decodeStructSequential(target reflect.Value, fields []fieldMeta) error {
+	for _, fm := range fields {
+		tf := target.Type().Field(fm.index)
+		f := target.Field(fm.index)
+
+		if fm.info.isPOD && f.CanAddr() {
 			dstPtr := unsafe.Pointer(f.UnsafeAddr())
-			srcPtr := unsafe.Pointer(&dec.data[currentOffSet])
-
-			// We use a raw memory copy. This bypasses the overhead of
-			// reflect.Value.SetInt/SetUint/Set/etc.
-			copy(unsafe.Slice((*byte)(dstPtr), info.binSize),
-				unsafe.Slice((*byte)(srcPtr), info.binSize))
-
-			currentOffSet += info.binSize
+			srcPtr := unsafe.Pointer(&dec.data[fm.offset])
+			copy(unsafe.Slice((*byte)(dstPtr), fm.info.binSize),
+				unsafe.Slice((*byte)(srcPtr), fm.info.binSize))
 			continue
 		}
-		// Decode the current field and then calculate the offset for the next field
-		// and then swap it with the `currentOffset`.
-		nextOffset, err := dec.decodeSeqItem(f, currentOffSet)
-		if err != nil {
+
+		if _, err := dec.decodeSeqItem(f, fm.offset); err != nil {
 			return fmt.Errorf("failed to decode field '%s': %w", tf.Name, err)
 		}
-		currentOffSet = nextOffset
+	}
+	return nil
+}
+
+// decodeStructParallel uses a two-phase strategy:
+//
+//  1. POD fields are bulk-copied (fast memcpy).
+//  2. The FIRST indirect field is decoded sequentially with the current decoder,
+//     seeding the ptrMap with shared data (e.g. Columns in CompiledIOP,
+//     InitialCompiledIOP in ZkEvm).
+//  3. All remaining indirect fields are decoded in parallel.  Each goroutine
+//     gets its own decoder whose ancestor chain includes the parent's ptrMap,
+//     giving it read-only access to every pointer decoded so far.  New pointers
+//     go into each child's local ptrMap — no locks required.
+func (dec *decoder) decodeStructParallel(target reflect.Value, fields []fieldMeta) error {
+	// Phase 1 — POD fields: fast, no allocation.
+	for _, fm := range fields {
+		if !fm.info.isPOD {
+			continue
+		}
+		f := target.Field(fm.index)
+		if f.CanAddr() {
+			dstPtr := unsafe.Pointer(f.UnsafeAddr())
+			srcPtr := unsafe.Pointer(&dec.data[fm.offset])
+			copy(unsafe.Slice((*byte)(dstPtr), fm.info.binSize),
+				unsafe.Slice((*byte)(srcPtr), fm.info.binSize))
+		}
+	}
+
+	// Collect indirect fields.
+	indirectFields := make([]fieldMeta, 0, len(fields))
+	for _, fm := range fields {
+		if !fm.info.isPOD {
+			indirectFields = append(indirectFields, fm)
+		}
+	}
+	if len(indirectFields) == 0 {
+		return nil
+	}
+
+	// Phase 2 — First indirect field: decode sequentially to seed the ptrMap
+	// with shared objects that the remaining fields will reference.
+	{
+		first := indirectFields[0]
+		tf := target.Type().Field(first.index)
+		f := target.Field(first.index)
+		if _, err := dec.decodeSeqItem(f, first.offset); err != nil {
+			return fmt.Errorf("failed to decode field '%s': %w", tf.Name, err)
+		}
+		logrus.Infof("[serde] field %s.%s decoded (sequential-seed)", target.Type().Name(), tf.Name)
+		indirectFields = indirectFields[1:]
+	}
+	if len(indirectFields) == 0 {
+		return nil
+	}
+
+	// Phase 3 — Remaining indirect fields in parallel.
+	// Build the ancestor chain for children: parent's ptrMap + parent's ancestors.
+	childAncestors := make([]map[int64]reflect.Value, 0, 1+len(dec.ancestors))
+	childAncestors = append(childAncestors, dec.ptrMap)
+	childAncestors = append(childAncestors, dec.ancestors...)
+
+	type errResult struct {
+		fieldName string
+		err       error
+	}
+
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		errList []errResult
+	)
+
+	for _, fm := range indirectFields {
+		wg.Add(1)
+		go func(fm fieldMeta) {
+			defer wg.Done()
+
+			tf := target.Type().Field(fm.index)
+
+			// Each goroutine gets its own decoder with a fresh local ptrMap
+			// and read-only access to the parent's accumulated entries via
+			// the ancestor chain.
+			child := &decoder{
+				data:      dec.data,
+				ptrMap:    make(map[int64]reflect.Value, 1024),
+				ancestors: childAncestors,
+				depth:     dec.depth, // inherit depth so nested structs can also parallelize
+			}
+
+			f := target.Field(fm.index)
+			if _, err := child.decodeSeqItem(f, fm.offset); err != nil {
+				mu.Lock()
+				errList = append(errList, errResult{tf.Name, err})
+				mu.Unlock()
+			}
+
+			logrus.Infof("[serde] field %s.%s decoded (parallel)", target.Type().Name(), tf.Name)
+		}(fm)
+	}
+
+	wg.Wait()
+
+	if len(errList) > 0 {
+		first := errList[0]
+		return fmt.Errorf("failed to decode field '%s': %w", first.fieldName, first.err)
 	}
 	return nil
 }

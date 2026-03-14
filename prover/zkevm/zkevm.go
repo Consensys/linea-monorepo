@@ -245,7 +245,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		z.Arithmetization.Assign(run, input.ExecTracesFPath)
+		z.Arithmetization.Assign(run, input.ExecTracesFPath, input.PreloadedTrace)
 
 		// Assign the state-manager module
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))

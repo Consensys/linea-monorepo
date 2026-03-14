@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 )
 
@@ -130,6 +131,12 @@ func mustProveAndPass(
 		// Try loading serialized inner circuit, fall back to compilation
 		var fullZkEvm *zkevm.ZkEvm
 		enabled, innerPath := cfg.ExecutionCircuitBin(string(circuitID))
+
+		// Start preloading the trace file in parallel with circuit loading
+		if w.ZkEVM.ExecTracesFPath != "" {
+			w.ZkEVM.PreloadedTrace = arithmetization.PreloadTraceFile(w.ZkEVM.ExecTracesFPath)
+		}
+
 		if enabled {
 			if _, err := os.Stat(innerPath); err == nil {
 				logrus.Infof("Loading serialized inner circuit from %s", innerPath)
