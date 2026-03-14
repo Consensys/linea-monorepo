@@ -32,7 +32,11 @@ func TestDefine(t *testing.T) {
 	schema, _ := CompileZkevmBin(binf, &mir.DEFAULT_OPTIMISATION_LEVEL)
 	//
 	for i := 0; i < limitRefl.NumField(); i++ {
-		limitRefl.Field(i).SetInt(1 << 10)
+		f := limitRefl.Field(i)
+		if f.Kind() == reflect.Bool {
+			continue
+		}
+		f.SetInt(1 << 10)
 	}
 
 	require.NoError(t, errBin)
