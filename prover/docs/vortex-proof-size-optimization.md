@@ -90,6 +90,9 @@ shrinks while `U_alpha` stays relatively small.
 | Coeff (after) | T = 8,192 ext elements | 8,192 × 16 = **131,072** |
 | **Saving** | 122,880 ext elements | **~1.9 MB** |
 
+
+Except for the proof size benefit, verifier circuit's Horner evaluation is ~16× cheaper in gnark constraints than Lagrange interpolation using the coeff mode. 
+
 ---
 
 ## Optimization 3: Skip Duplicated Proof Columns
@@ -196,7 +199,7 @@ weighted ×4 when computing totals.
 
 ---
 
-## Vortex-4 Final Proof Breakdown (setup.log)
+## Vortex-4 Final Proof Breakdown in the ZK-EVM full prover (setup.log)
 
 Compilation parameters for the final Vortex in `fullInitialCompilationSuite` (`full.go:141`):
 
