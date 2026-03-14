@@ -33,7 +33,7 @@ func TestDefine(t *testing.T) {
 	//
 	for i := 0; i < limitRefl.NumField(); i++ {
 		f := limitRefl.Field(i)
-		if f.Kind() == reflect.Bool {
+		if f.Kind() != reflect.Int && f.Kind() != reflect.Int64 {
 			continue
 		}
 		f.SetInt(1 << 10)
