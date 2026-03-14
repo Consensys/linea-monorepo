@@ -26,6 +26,11 @@ type Testcase interface {
 	Name() string
 }
 
+func init() {
+	serde.RegisterImplementation(assignUnivariatePA{})
+	serde.RegisterImplementation(autoAssignColumn{})
+}
+
 // AnonymousTestcase is an implementation of testcase allowing the caller to
 // explicitly provide his own functions for define, assign and mustFail.
 type AnonymousTestcase struct {
