@@ -126,9 +126,9 @@ registration entirely, saving one full copy of the split-column data.
 
 | Proof column | Before | After |
 |---|---|---|
-| `SELECTED_COL_NON_SIS` | cols=64, cells=65,536 | **removed** |
-| `SELECTED_COL` | cols=64, cells=65,536 | cols=64, cells=65,536 |
-| **Total opened-column cells** | **131,072** | **65,536 (−50%)** |
+| `SELECTED_COL_NON_SIS` | cols=64, cells=32,768 | **removed** |
+| `SELECTED_COL` | cols=64, cells=32,768 | cols=64, cells=32,768 |
+| **Total opened-column cells** | **65,536** | **32,768 (−50%)** |
 
 ---
 
