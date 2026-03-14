@@ -241,5 +241,5 @@ Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, pr
 
 
 There's a small discrepancy between the benchmark and the production data.
-The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces ~450 committed polynomials → NextPow2=**512**, while the full ZK-EVM has 843 → NextPow2=**1024**, doubling both components. 
+The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces 3.6M committed cells (~450 committed polynomials<512) → NextPow2=**512**, while the full ZK-EVM has 7M committed cells (843 committed polynomials>512) → NextPow2=**1024**, doubling both components. 
 
