@@ -95,8 +95,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		totalProofs = numGL + numLPP
 
-		proofGLs   = make([]*distributed.SegmentProof, numGL)
-		glErrGroup = &errgroup.Group{}
+		glPreloads     = make([]*glPreload, numGL)
+		glPreloadGroup = &errgroup.Group{}
+		proofGLs       = make([]*distributed.SegmentProof, numGL)
+		glProveGroup   = &errgroup.Group{}
 
 		lppPreloads     = make([]*lppPreload, numLPP)
 		lppPreloadGroup = &errgroup.Group{}
@@ -109,6 +111,17 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 		cong *distributed.RecursedSegmentCompilation
 	)
+
+	// Safety cleanup: close any GL preload closers not yet closed (e.g., on error paths)
+	defer func() {
+		glPreloadGroup.Wait() //nolint:errcheck // ensure preloads finish before closing
+		for i, p := range glPreloads {
+			if p != nil && p.closer != nil {
+				p.closer.Close()
+				glPreloads[i] = nil
+			}
+		}
+	}()
 
 	// Safety cleanup: close any LPP preload closers not yet closed (e.g., on error paths)
 	defer func() {
@@ -149,13 +162,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		close(chSetupDone)
 	}()
 
-	// -- 3. Launch GL proof jobs, sending each result to proofStream
-	glErrGroup.SetLimit(numConcurrentSubProverJobs)
-
+	// -- 3. Pre-load ALL GL and LPP witnesses and compiled circuits in parallel.
+	// Preloading is I/O-bound; launching all goroutines immediately maximizes
+	// overlap and avoids disk contention inside the CPU-bound proving pool.
 	for i := 0; i < numGL; i++ {
-		i := i // local copy for closure
-		glErrGroup.Go(func() error {
-			// If the overall context is done, exit early
+		i := i
+		glPreloadGroup.Go(func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -164,52 +176,34 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 			var (
 				jobErr  error
-				proofGL *distributed.SegmentProof
+				preload *glPreload
 			)
 
-			// RunGL may panic and therefore exit the goroutine without returning
-			// an error. Therefore it has to be wrapped in a recoverable function
-			// call so that the error handling mechanism work. If an error occur
-			// it is assigned to jobErr so that we can check it once the wrapper
-			// function returns.
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, r)
+						jobErr = fmt.Errorf("GL preload for witness index=%v panicked: %v", i, r)
 						logrus.Error(jobErr)
 						debug.PrintStack()
-						return
 					}
 				}()
 
 				var err error
-				proofGL, err = RunGL(cfg, i)
+				preload, err = PreloadGL(cfg, i)
 				if err != nil {
-					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
+					jobErr = fmt.Errorf("could not preload GL for witness index=%v: %w", i, err)
 				}
 			}()
 
 			if jobErr != nil {
-				// Return error to errgroup; caller (main) will cancel ctx
 				return jobErr
 			}
 
-			// Store local copy for shared randomness computation
-			proofGLs[i] = proofGL
-
-			// Safe send: if ctx cancelled, abort send
-			select {
-			case proofStream <- proofGL:
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+			glPreloads[i] = preload
+			return nil
 		})
 	}
 
-	// -- 3b. Pre-load LPP witnesses and compiled circuits in parallel with GL proving.
-	// Not using SetLimit: preloading is I/O-bound and all goroutines launch immediately,
-	// allowing maximal overlap with the CPU-bound GL proving phase.
 	for i := 0; i < numLPP; i++ {
 		i := i
 		lppPreloadGroup.Go(func() error {
@@ -249,8 +243,67 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		})
 	}
 
+	// -- 3b. Wait for GL preloads, then launch GL proving with the CPU-bound pool.
+	if err := glPreloadGroup.Wait(); err != nil {
+		cancel()
+		res := <-resultCh
+		if res.err != nil {
+			return nil, fmt.Errorf("GL preload error: %w (aggregator error: %v)", err, res.err)
+		}
+		return nil, fmt.Errorf("GL preload error: %w", err)
+	}
+
+	logrus.Infof("All %d GL witnesses and circuits pre-loaded, starting GL proving", numGL)
+
+	glProveGroup.SetLimit(numConcurrentSubProverJobs)
+	for i := 0; i < numGL; i++ {
+		i := i
+		glProveGroup.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			var (
+				jobErr  error
+				proofGL *distributed.SegmentProof
+			)
+
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, r)
+						logrus.Error(jobErr)
+						debug.PrintStack()
+					}
+				}()
+
+				var err error
+				proofGL, err = ProveGL(glPreloads[i])
+				if err != nil {
+					jobErr = fmt.Errorf("could not prove GL for witness index=%v: %w", i, err)
+				}
+			}()
+
+			if jobErr != nil {
+				return jobErr
+			}
+
+			// Store local copy for shared randomness computation
+			proofGLs[i] = proofGL
+
+			select {
+			case proofStream <- proofGL:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
+	}
+
 	// Wait for GLs
-	if err := glErrGroup.Wait(); err != nil {
+	if err := glProveGroup.Wait(); err != nil {
 		cancel()
 		res := <-resultCh
 		if res.err != nil {
@@ -515,33 +568,59 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 	return len(witnessGLs), len(witnessLPPs)
 }
 
-// RunGL runs the GL prover for the provided witness index
-func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentProof, err error) {
+// glPreload holds pre-loaded GL witness and compiled circuit data.
+// The closer must remain open until the proof is generated.
+type glPreload struct {
+	witnessIndex int
+	witness      *distributed.ModuleWitnessGL
+	compiled     *distributed.RecursedSegmentCompilation
+	closer       io.Closer
+}
 
-	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
+// PreloadGL loads the GL witness and compiled circuit from disk without
+// running the prover. This allows overlapping I/O with other work.
+func PreloadGL(cfg *config.Config, witnessIndex int) (*glPreload, error) {
+	logrus.Infof("Preloading GL witness and circuit for index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
 	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not load GL witness for index=%v: %w", witnessIndex, err)
 	}
-	defer closer.Close()
 
-	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	logrus.Infof("Loaded GL witness for index=%v, module=%v", witnessIndex, witness.ModuleName)
 
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
 	if err != nil {
-		return nil, fmt.Errorf("could not load compiled GL: %w", err)
+		closer.Close()
+		return nil, fmt.Errorf("could not load compiled GL for index=%v: %w", witnessIndex, err)
 	}
 
-	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	logrus.Infof("Preloaded GL circuit for index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofGL := compiledGL.ProveSegmentKoala(witness).ClearRuntime()
+	return &glPreload{
+		witnessIndex: witnessIndex,
+		witness:      witness,
+		compiled:     compiledGL,
+		closer:       closer,
+	}, nil
+}
 
-	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+// ProveGL generates the GL proof using pre-loaded data.
+func ProveGL(preload *glPreload) (*distributed.SegmentProof, error) {
+	defer func() {
+		preload.closer.Close()
+		preload.closer = nil
+	}()
 
-	return _proofGL, nil
+	logrus.Infof("Running GL proof for index=%v, module=%v", preload.witnessIndex, preload.witness.ModuleName)
+
+	proof := preload.compiled.ProveSegmentKoala(preload.witness).ClearRuntime()
+
+	logrus.Infof("Finished GL proof for index=%v, module=%v", preload.witnessIndex, preload.witness.ModuleName)
+
+	return proof, nil
 }
 
 // lppPreload holds pre-loaded LPP witness and compiled circuit data.
