@@ -102,7 +102,6 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 	}
 
 	newTuple := tuple
-	newTuple.Value = trace.NewValue
 	newTuple.LeafOpening.HVal = hash(trace.NewValue)
 
 	// We panic because if the consistency check passed
@@ -141,7 +140,6 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	leaf, _ := tuple.CheckAndLeaf()
 
 	newTuple := tuple
-	newTuple.Value = trace.NewValue
 	newTuple.LeafOpening.HVal = hash(trace.NewValue)
 
 	// We panic because if the consistency check passed

@@ -114,8 +114,8 @@ func (t *Status) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("could not parse Status as integer: %w, got `%v`", err, string(b))
 	}
 
-	if n < 0 || Status(n) > VerifierDefined {
-		return fmt.Errorf("could not parse the integer `%v` as Status, must be in range [0, 1]", n)
+	if n < 0 || n > int64(VerifierDefined) {
+		return fmt.Errorf("could not parse the integer `%v` as Status, must be in range [0, %d]", n, VerifierDefined)
 	}
 
 	*t = Status(n)

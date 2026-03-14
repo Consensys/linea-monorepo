@@ -978,7 +978,7 @@ func (run *ProverRuntime) GetPublicInput(name string) field.Element {
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return field.Element{} // unreachable, but satisfies the compiler
 }
 
 // HasPublicInput returns true if the public input with the provided name exists

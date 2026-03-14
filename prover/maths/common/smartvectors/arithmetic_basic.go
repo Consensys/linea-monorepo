@@ -274,7 +274,6 @@ func Sum(a SmartVector) (res field.Element) {
 
 	default:
 		utils.Panic("unsupported type: %T", v)
+		return res // unreachable, but satisfies the compiler
 	}
-
-	return res
 }
