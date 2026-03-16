@@ -352,8 +352,20 @@ public class Utilities {
     }
   }
 
+  private static String getGitExecutable() {
+    String configuredGit = System.getenv("GIT_EXECUTABLE");
+    if (configuredGit != null && !configuredGit.isEmpty()) {
+      // Use the configured git executable if it looks like an absolute path.
+      if (configuredGit.startsWith("/") || configuredGit.matches("^[A-Za-z]:\\\\.*")) {
+        return configuredGit;
+      }
+    }
+    // Fallback to relying on PATH for git resolution.
+    return "git";
+  }
+
   public static String getCurrentCommitHash() throws Exception {
-    ProcessBuilder pb = new ProcessBuilder("git", "rev-parse", "HEAD");
+    ProcessBuilder pb = new ProcessBuilder(getGitExecutable(), "rev-parse", "HEAD");
     pb.directory(new File("."));
     Process process = pb.start();
 
