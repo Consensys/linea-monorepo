@@ -89,40 +89,34 @@ public class AddressCollisionDelegationWarmingAndDeploymentTests extends TracerT
   private static Stream<Arguments> inputs() {
     final List<Arguments> arguments = new ArrayList<>();
 
-      for (int skip = 0; skip <= 1; skip++) {
-        for (AddressCollisions collision : AddressCollisions.values()) {
-          for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
-            for (WarmingScenario warming1 : WarmingScenario.values()) {
-              for (WarmingScenario warming2 : WarmingScenario.values()) {
-                for (WarmingScenario warming3 : WarmingScenario.values()) {
+    for (int skip = 0; skip <= 1; skip++) {
+      for (AddressCollisions collision : AddressCollisions.values()) {
+        for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
+          for (WarmingScenario warming1 : WarmingScenario.values()) {
+            for (WarmingScenario warming2 : WarmingScenario.values()) {
+              for (WarmingScenario warming3 : WarmingScenario.values()) {
 
-                  // not possible to have a sender and recipient collision
-                  if (((isDeployment == 1) || !(skip == 1))
-                      && senderRecipientCollision(collision)) {
-                    continue;
-                  }
-
-                  // there is no point as we skip the tx
-                  if ((skip == 1)
-                      && (List.of(warming1, warming2, warming3)
-                          .contains(WarmingScenario.WARMING_TO_BE_DEPLOYED_STORAGE))) {
-                    continue;
-                  }
-
-                  arguments.add(
-                      Arguments.of(
-                          skip == 1,
-                          collision,
-                          isDeployment == 1,
-                          warming1,
-                          warming2,
-                          warming3));
+                // not possible to have a sender and recipient collision
+                if (((isDeployment == 1) || !(skip == 1)) && senderRecipientCollision(collision)) {
+                  continue;
                 }
+
+                // there is no point as we skip the tx
+                if ((skip == 1)
+                    && (List.of(warming1, warming2, warming3)
+                        .contains(WarmingScenario.WARMING_TO_BE_DEPLOYED_STORAGE))) {
+                  continue;
+                }
+
+                arguments.add(
+                    Arguments.of(
+                        skip == 1, collision, isDeployment == 1, warming1, warming2, warming3));
               }
             }
           }
         }
       }
+    }
 
     return arguments.stream();
   }
@@ -216,87 +210,129 @@ public class AddressCollisionDelegationWarmingAndDeploymentTests extends TracerT
       TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.NO_DELEGATION, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.NO_DELEGATION,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest_delegationToSMC(
-    boolean skip,
-    AddressCollisions collision,
-    boolean deployment,
-    WarmingScenario warming1,
-    WarmingScenario warming2,
-    WarmingScenario warming3,
-    TestInfo testInfo) {
+      boolean skip,
+      AddressCollisions collision,
+      boolean deployment,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
+      TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.DELEGATED_TO_SMC, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.DELEGATED_TO_SMC,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest_delegationToEOA(
-    boolean skip,
-    AddressCollisions collision,
-    boolean deployment,
-    WarmingScenario warming1,
-    WarmingScenario warming2,
-    WarmingScenario warming3,
-    TestInfo testInfo) {
+      boolean skip,
+      AddressCollisions collision,
+      boolean deployment,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
+      TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.DELEGATED_TO_EOA, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.DELEGATED_TO_EOA,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest_delegationToItself(
-    boolean skip,
-    AddressCollisions collision,
-    boolean deployment,
-    WarmingScenario warming1,
-    WarmingScenario warming2,
-    WarmingScenario warming3,
-    TestInfo testInfo) {
+      boolean skip,
+      AddressCollisions collision,
+      boolean deployment,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
+      TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.DELEGATED_TO_ITSELF, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.DELEGATED_TO_ITSELF,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest_delegationToEOADelegatedToSMC(
-    boolean skip,
-    AddressCollisions collision,
-    boolean deployment,
-    WarmingScenario warming1,
-    WarmingScenario warming2,
-    WarmingScenario warming3,
-    TestInfo testInfo) {
+      boolean skip,
+      AddressCollisions collision,
+      boolean deployment,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
+      TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.DELEGATED_TO_EOA_DELEGATED_TO_SMC, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.DELEGATED_TO_EOA_DELEGATED_TO_SMC,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest_delegationToPRC(
-    boolean skip,
-    AddressCollisions collision,
-    boolean deployment,
-    WarmingScenario warming1,
-    WarmingScenario warming2,
-    WarmingScenario warming3,
-    TestInfo testInfo) {
+      boolean skip,
+      AddressCollisions collision,
+      boolean deployment,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
+      TestInfo testInfo) {
 
     runWithParameters(
-      AccountDelegationType.DELEGATED_TO_PRC, skip, collision, deployment, warming1, warming2, warming3, testInfo);
+        AccountDelegationType.DELEGATED_TO_PRC,
+        skip,
+        collision,
+        deployment,
+        warming1,
+        warming2,
+        warming3,
+        testInfo);
   }
 
   @Test
