@@ -310,8 +310,7 @@ public class MxpxThresholdTests extends TracerTestBase {
   }
 
   private static Stream<Arguments> sampleInputParamsUnit() {
-    return randomSampleByDayOfMonth(MXPX_THRESHOLD_SAMPLE_SIZE, inputs(inputValuesUnitTests))
-        .stream();
+    return inputs(inputValuesUnitTests).stream();
   }
 
   private static final List<Bytes32> inputValuesUnitTests =

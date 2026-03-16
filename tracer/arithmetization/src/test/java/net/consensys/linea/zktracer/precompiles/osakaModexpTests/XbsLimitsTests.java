@@ -93,7 +93,7 @@ public class XbsLimitsTests extends TracerTestBase {
 
   @Tag("nightly")
   @ParameterizedTest
-  @MethodSource("sampleModexpXbsLimitsTestsNighlySource")
+  @MethodSource("sampleModexpXbsLimitsTestsNightlySource")
   public void modexpXbsLimitTestsNightly(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
@@ -142,7 +142,7 @@ public class XbsLimitsTests extends TracerTestBase {
                                                       bbsType, ebsType, mbsType))))))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-  static Stream<Arguments> sampleModexpXbsLimitsTestsNighlySource() {
+  static Stream<Arguments> sampleModexpXbsLimitsTestsNightlySource() {
     return randomSampleByDayOfMonth(XBS_LIMIT_TEST_SAMPLE_SIZE, modexpXbsLimitsTestsNighlySource())
         .stream();
   }
