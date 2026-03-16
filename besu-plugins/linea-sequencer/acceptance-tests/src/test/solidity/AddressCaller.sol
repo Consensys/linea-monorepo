@@ -14,4 +14,20 @@ contract AddressCaller {
         // We don't care about success/failure, just that the CALL happens
         success;
     }
+
+    function delegateCallAddress(address target) public {
+        (bool success, ) = target.delegatecall("");
+        success;
+    }
+
+    function staticCallAddress(address target) public {
+        (bool success, ) = target.staticcall("");
+        success;
+    }
+
+    function callCodeAddress(address target) public {
+        assembly {
+            let result := callcode(gas(), target, 0, 0, 0, 0, 0)
+        }
+    }
 }

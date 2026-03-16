@@ -34,7 +34,9 @@ public class DenylistOperationTracer implements OperationTracer {
 
   @Override
   public void traceContextEnter(final MessageFrame frame) {
-    calledAddresses.get().add(frame.getRecipientAddress());
+    final Set<Address> addresses = calledAddresses.get();
+    addresses.add(frame.getRecipientAddress());
+    addresses.add(frame.getContractAddress());
   }
 
   public Set<Address> getCalledAddresses() {

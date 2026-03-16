@@ -126,9 +126,10 @@ class DenylistExecutionSelectorTest {
     return context;
   }
 
-  private MessageFrame mockFrame(final Address recipientAddress) {
+  private MessageFrame mockFrame(final Address address) {
     final MessageFrame frame = mock(MessageFrame.class);
-    when(frame.getRecipientAddress()).thenReturn(recipientAddress);
+    when(frame.getRecipientAddress()).thenReturn(address);
+    when(frame.getContractAddress()).thenReturn(address);
     return frame;
   }
 }

@@ -31,9 +31,10 @@ import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
 /**
- * Tests that the DenylistExecutionSelector rejects transactions which CALL a denied address
- * during EVM execution. This covers the EIP-7702 scenario where an EOA has a delegation set
- * by a prior transaction, and a subsequent transaction CALLs that EOA triggering code execution.
+ * Tests that the DenylistExecutionSelector rejects transactions which invoke a denied address
+ * during EVM execution via CALL, DELEGATECALL, STATICCALL, and CALLCODE opcodes.
+ * This covers the EIP-7702 scenario where an EOA has a delegation set by a prior transaction,
+ * and a subsequent transaction invokes that EOA triggering code execution.
  */
 class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
 
@@ -54,56 +55,66 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
 
   @Test
   fun transactionCallingDeniedAddressIsNotSelected() {
-    // Deploy a second contract to use as the denied target
-    val targetContract = deployAddressCaller()
+    // Deploy all contracts upfront before any denylist rejections,
+    // to avoid nonce gaps from rejected transactions affecting deployments
     val callerContract = deployAddressCaller()
-    val web3j = minerNode.nodeRequests().eth()
-    val txManager = RawTransactionManager(
-      web3j,
-      Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY),
-      CHAIN_ID,
-    )
-
-    // Deny the target contract address. The tx.to is the caller contract (not denied),
-    // so pre-processing allows it. But during execution, the caller contract CALLs
-    // the denied target, which the DenylistExecutionSelector catches in post-processing.
+    val targetContract = deployAddressCaller()
     val deniedAddress = targetContract.contractAddress
+
     tempDenyList.writeText(deniedAddress)
     reloadSelectorPlugin()
 
-    // Send a tx TO the caller contract, which internally CALLs the denied target
-    val txResponse = txManager.sendTransaction(
-      DefaultGasProvider.GAS_PRICE,
-      DefaultGasProvider.GAS_LIMIT,
-      callerContract.contractAddress,
-      callerContract.callAddress(deniedAddress).encodeFunctionCall(),
-      BigInteger.ZERO,
+    // Test all call-type opcodes: CALL, DELEGATECALL, STATICCALL, CALLCODE
+    val callFunctions = listOf(
+      "CALL" to callerContract.callAddress(deniedAddress).encodeFunctionCall(),
+      "DELEGATECALL" to callerContract.delegateCallAddress(deniedAddress).encodeFunctionCall(),
+      "STATICCALL" to callerContract.staticCallAddress(deniedAddress).encodeFunctionCall(),
+      "CALLCODE" to callerContract.callCodeAddress(deniedAddress).encodeFunctionCall(),
     )
 
-    // The tx enters the pool (tx.to is the caller contract, not denied)
-    assertThat(txResponse.transactionHash).isNotNull()
+    for ((opcode, encodedCall) in callFunctions) {
+      val web3j = minerNode.nodeRequests().eth()
+      val txManager = RawTransactionManager(
+        web3j,
+        Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY),
+        CHAIN_ID,
+      )
 
-    // Use a canary transfer to verify a block was mined
-    val canaryTxHash = accountTransactions
-      .createTransfer(accounts.secondaryBenefactor, accounts.secondaryBenefactor, 1)
-      .execute(minerNode.nodeRequests())
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(canaryTxHash.toHexString()))
+      val txResponse = txManager.sendTransaction(
+        DefaultGasProvider.GAS_PRICE,
+        DefaultGasProvider.GAS_LIMIT,
+        callerContract.contractAddress,
+        encodedCall,
+        BigInteger.ZERO,
+      )
 
-    // The denied tx should NOT be mined (rejected by DenylistExecutionSelector)
-    minerNode.verify(eth.expectNoTransactionReceipt(txResponse.transactionHash))
+      // The tx enters the pool (tx.to is the caller contract, not denied)
+      assertThat(txResponse.transactionHash)
+        .withFailMessage { "$opcode: tx hash should not be null" }
+        .isNotNull()
 
-    // Verify the exact rejection reason via the recording plugin
-    await()
-      .atMost(4, TimeUnit.SECONDS)
-      .pollInterval(50, TimeUnit.MILLISECONDS)
-      .untilAsserted {
-        assertThat(getRejectionReason(txResponse.transactionHash))
-          .withFailMessage { "Expected tx to be rejected with TX_FILTERED_ADDRESS_CALLED" }
-          .isEqualTo(LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_CALLED.toString())
-      }
+      // Use a canary transfer to verify a block was mined
+      val canaryTxHash = accountTransactions
+        .createTransfer(accounts.secondaryBenefactor, accounts.secondaryBenefactor, 1)
+        .execute(minerNode.nodeRequests())
+      minerNode.verify(eth.expectSuccessfulTransactionReceipt(canaryTxHash.toHexString()))
 
-    // It should be discarded from the pool
-    assertTransactionNotInThePool(txResponse.transactionHash)
+      // The denied tx should NOT be mined (rejected by DenylistExecutionSelector)
+      minerNode.verify(eth.expectNoTransactionReceipt(txResponse.transactionHash))
+
+      // Verify the exact rejection reason via the recording plugin
+      await()
+        .atMost(4, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .untilAsserted {
+          assertThat(getRejectionReason(txResponse.transactionHash))
+            .withFailMessage { "$opcode: Expected tx to be rejected with TX_FILTERED_ADDRESS_CALLED" }
+            .isEqualTo(LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_CALLED.toString())
+        }
+
+      // It should be discarded from the pool
+      assertTransactionNotInThePool(txResponse.transactionHash)
+    }
   }
 
   @Test
