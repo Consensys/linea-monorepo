@@ -16,7 +16,7 @@ serialization = false
 [data_availability]
 prover_mode = "dev"
 requests_root_dir = "/data/prover/v3/compression"
-dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
+dict_paths = ["/opt/linea/prover/lib/compressor/compressor_dict.bin", "/opt/linea/prover/lib/compressor/dict/25-04-21.bin"]
 
 #[invalidity]
 #prover_mode = "dev"
