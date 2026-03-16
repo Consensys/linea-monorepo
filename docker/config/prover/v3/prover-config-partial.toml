@@ -11,6 +11,7 @@ prover_mode = "partial"
 requests_root_dir = "/data/prover/v3/execution"
 conflated_traces_dir = "/"
 ignore_compatibility_check = true
+serialization = false
 
 [data_availability]
 prover_mode = "dev"
