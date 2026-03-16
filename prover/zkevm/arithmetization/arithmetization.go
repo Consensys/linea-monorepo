@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/schema/register"
-	"github.com/consensys/go-corset/pkg/trace/lt"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -95,21 +94,14 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 // according to the given schema.  The expansion process is about filling in
 // computed columns with concrete values, such for determining multiplicative
 // inverses, etc.
-func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, preloaded <-chan PreloadedTraceResult) {
+func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	var (
-		errs     []error
-		rawTrace lt.TraceFile
-		metadata typed.Map
-		errT     error
-	)
-
-	if preloaded != nil {
-		result := <-preloaded
-		rawTrace, metadata, errT = result.RawTrace, result.Metadata, result.Err
-	} else {
-		traceF := readTraceFile(traceFile)
+		errs []error
+		//
+		traceF = readTraceFile(traceFile)
+		// Parse trace file and extract raw column data.
 		rawTrace, metadata, errT = ReadLtTraces(traceF)
-	}
+	)
 
 	// Extract commit metadata from both files
 	zkevmBinCommit, zkevmBinCommitOk := a.Metadata.String("commit")

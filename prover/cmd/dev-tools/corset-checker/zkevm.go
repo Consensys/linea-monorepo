@@ -22,6 +22,6 @@ func MakeDefine(cfg *config.Config, optConfig *mir.OptimisationConfig) wizard.De
 
 func MakeProver(traceFile string) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
-		globalArith.Assign(run, traceFile, nil)
+		globalArith.Assign(run, traceFile)
 	}
 }

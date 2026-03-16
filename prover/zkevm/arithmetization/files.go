@@ -155,27 +155,6 @@ func readTraceFile(path string) io.ReadCloser {
 	return rc
 }
 
-// PreloadedTraceResult holds the result of a preloaded trace file read.
-type PreloadedTraceResult struct {
-	RawTrace lt.TraceFile
-	Metadata typed.Map
-	Err      error
-}
-
-// PreloadTraceFile starts reading and decompressing the trace file in a
-// background goroutine. The result is delivered on the returned channel.
-// This allows overlapping trace I/O with other work (e.g. circuit loading).
-func PreloadTraceFile(path string) <-chan PreloadedTraceResult {
-	ch := make(chan PreloadedTraceResult, 1)
-	go func() {
-		logrus.Infof("Preloading trace file in background: %q", path)
-		traceF := readTraceFile(path)
-		rawTrace, metadata, err := ReadLtTraces(traceF)
-		ch <- PreloadedTraceResult{RawTrace: rawTrace, Metadata: metadata, Err: err}
-	}()
-	return ch
-}
-
 // ReadLtTraces reads a given LT trace file which contains (unexpanded) column
 // data, and additionally extracts the metadata map from the zkevm.bin file. The
 // metadata contains information which can be used to cross-check the zkevm.bin
