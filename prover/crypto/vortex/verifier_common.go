@@ -3,7 +3,6 @@ package vortex
 import (
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
@@ -101,8 +100,8 @@ func CheckStatementCoeff(coefficients smartvectors.SmartVector, ys [][]fext.Elem
 
 // CheckLinCombCoeff is like CheckLinComb but for coefficient-mode U_alpha.
 // coefficients holds T polynomial coefficients (E4).
-// rsParams is used to obtain the N-th root of unity ω, so we can evaluate
-// U_alpha(ω^selectedColID) and compare with the alpha-Horner of the opened column.
+// rsParams is used to evaluate U_alpha at all N RS domain points via a single
+// FFT, then each queried column is checked by a direct index lookup.
 func CheckLinCombCoeff(
 	coefficients smartvectors.SmartVector,
 	entryList []int,
@@ -110,26 +109,19 @@ func CheckLinCombCoeff(
 	columns [][][]field.Element,
 	rsParams *reedsolomon.RsParams,
 ) error {
-	gen := rsParams.Domains[1].Generator // primitive N-th root of unity (base field)
+	// One FFT to get all N evaluations — O(N log N) vs O(K×T) Horner per query.
+	allEvals := rsParams.ExtCoefficientsToAllEvaluations(coefficients)
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
-		// Compute ω^selectedColID as a base field element, then embed in E4.
-		var omegaJ field.Element
-		omegaJ.Exp(gen, big.NewInt(int64(selectedColID)))
-		var omegaJFext fext.Element
-		fext.SetFromBase(&omegaJFext, &omegaJ)
-
-		// Evaluate U_alpha polynomial at ω^selectedColID
-		uAlphaAtJ := reedsolomon.ExtCoefficientsEvalAt(coefficients, omegaJFext)
-
 		// Build full column (concatenate across commitments)
 		fullCol := []field.Element{}
 		for i := range numCommitments {
 			fullCol = append(fullCol, columns[i][j]...)
 		}
 
-		// Check consistency: U_alpha(ω^j) == α-Horner of opened column
+		// Check consistency: U_alpha(ω^selectedColID) == α-Horner of opened column
+		uAlphaAtJ := allEvals[selectedColID]
 		y := vortex.EvalBasePolyHorner(fullCol, alpha)
 		if uAlphaAtJ != y {
 			return fmt.Errorf("linear combination (coeff mode) inconsistent at query %d (col %d): got %v want %v",

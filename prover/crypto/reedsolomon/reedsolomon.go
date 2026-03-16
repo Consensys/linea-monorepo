@@ -228,6 +228,25 @@ func (p *RsParams) ExtEvalToCoefficients(v smartvectors.SmartVector) smartvector
 	return smartvectors.NewRegularExt(coeffs[:t])
 }
 
+// ExtCoefficientsToAllEvaluations evaluates the degree-T polynomial given by
+// T monomial coefficients (E4) at all N = NbEncodedColumns() points of the RS
+// domain (ω_N^0, ω_N^1, ..., ω_N^{N-1}).  The returned slice has length N.
+//
+// It is cheaper than calling ExtCoefficientsEvalAt K times when K > blowup×log₂(N).
+func (p *RsParams) ExtCoefficientsToAllEvaluations(coefficients smartvectors.SmartVector) []fext.Element {
+	t := p.NbColumns()
+	n := p.NbEncodedColumns()
+
+	buf := make([]fext.Element, n)
+	for k := 0; k < t; k++ {
+		buf[k] = coefficients.GetExt(k)
+	}
+	// DIT FFT expects bit-reversed input; natural-order evaluations come out.
+	utils.BitReverse(buf)
+	p.Domains[1].FFTExt(buf, fft.DIT, fft.WithNbTasks(1))
+	return buf
+}
+
 // ExtCoefficientsEvalAt evaluates the polynomial given by T coefficients at
 // an extension field point x using Horner's method.
 func ExtCoefficientsEvalAt(coefficients smartvectors.SmartVector, x fext.Element) fext.Element {
