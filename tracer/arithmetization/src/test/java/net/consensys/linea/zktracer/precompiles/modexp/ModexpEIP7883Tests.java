@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer.precompiles.modexp;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -159,7 +160,9 @@ public class ModexpEIP7883Tests extends TracerTestBase {
   static Stream<Arguments> modexpEIP7883TestSource() {
     List<Arguments> arguments = new ArrayList<>(modexpEIP7883TestSourceNightly().toList());
     Collections.shuffle(arguments, new Random(LocalDate.now().toEpochDay()));
-    return arguments.stream().limit(arguments.size() / 40); // Execute 2.5 % of the tests
+
+    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments.stream().toList())
+        .stream(); // Execute 2.5 % of the tests
   }
 
   static Stream<Arguments> modexpEIP7883TestSourceNightly() {
