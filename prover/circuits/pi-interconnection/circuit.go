@@ -446,7 +446,7 @@ func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.V
 		// them in 4 uint32s.
 		bitsOfHalf := api.ToBinary(hash[i], 128)
 		for k := range 4 {
-			limbs := api.FromBinary(bitsOfHalf[k*32 : (k+1)*32])
+			limbs := api.FromBinary(bitsOfHalf[k*32 : (k+1)*32]...)
 			shouldBeNeg := api.Cmp(limbs, koalabear.Modulus())
 			cmpRes = api.Add(cmpRes, shouldBeNeg)
 		}
