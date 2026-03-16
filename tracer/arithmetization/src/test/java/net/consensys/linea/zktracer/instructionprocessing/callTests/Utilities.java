@@ -357,8 +357,11 @@ public class Utilities {
     pb.directory(new File("."));
     Process process = pb.start();
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    String hash = reader.readLine();
+    String hash;
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      hash = reader.readLine();
+    }
     process.waitFor();
 
     return hash;
