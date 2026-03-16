@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.precompiles;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpPricingOobCall.computeExponentLog;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
@@ -144,7 +143,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       callDataSize = 96 + bbs + ebs + mbs;
 
       final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-      final int multiplier = (forkPredatesOsaka(fork)) ? 8 : 16;
+      final int multiplier = 16;
       exponentLog = computeExponentLog(modexpInput, multiplier, callDataSize, bbs, ebs);
       // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through
       // EXTCODECOPY
@@ -205,9 +204,8 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     }
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    final long forkAppropriateGasLimit = forkPredatesOsaka(fork) ? 61_000_000L : MAX_GAS_LIMIT;
     bytecodeRunner.run(
-        forkAppropriateGasLimit,
+        MAX_GAS_LIMIT,
         precompileAddress == MODEXP ? additionalAccounts : List.of(),
         chainConfig,
         testInfo);

@@ -14,7 +14,6 @@
  */
 package net.consensys.linea.zktracer.precompiles.osakaModexpTests;
 
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.TraceOsaka.EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
@@ -84,7 +83,6 @@ public class XbsLimitsTests extends TracerTestBase {
   public void modexpXbsLimitTests(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
-    if (forkPredatesOsaka(fork)) return;
     body(scenario, bbsEbsMbsString, testInfo);
   }
 
