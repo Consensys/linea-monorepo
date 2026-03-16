@@ -155,9 +155,8 @@ public class ModexpEIP7883Tests extends TracerTestBase {
   }
 
   static Stream<Arguments> modexpEIP7883TestSource() {
-    List<Arguments> arguments = new ArrayList<>(modexpEIP7883TestSourceNightly().toList());
-
-    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments.stream().toList())
+    final List<Arguments> arguments = new ArrayList<>(modexpEIP7883TestSourceNightly().toList());
+    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments)
         .stream(); // Execute 2.5 % of the tests
   }
 

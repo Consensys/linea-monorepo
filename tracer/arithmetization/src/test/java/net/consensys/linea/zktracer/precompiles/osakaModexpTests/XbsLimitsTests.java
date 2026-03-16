@@ -152,8 +152,8 @@ public class XbsLimitsTests extends TracerTestBase {
   }
 
   static Stream<Arguments> modexpXbsLimitTestsSource() {
-    List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsNighlySource().toList());
-    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments.stream().toList())
+    final List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsNighlySource().toList());
+    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments)
         .stream(); // Execute 2.5 % of the tests
   }
 
