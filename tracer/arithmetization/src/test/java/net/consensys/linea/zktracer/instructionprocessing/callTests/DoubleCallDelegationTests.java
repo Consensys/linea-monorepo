@@ -49,7 +49,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class DoubleCallDelegationTests extends TracerTestBase {
 
   /*
-    https://github.com/Consensys/linea-monorepo/issues/2470
+  https://github.com/Consensys/linea-monorepo/issues/2470
+
+  In this test, a sender account sends a transaction to a root account, which executes a two CALL or STATICCALL
+  instruction to a caller account, which itself executes a CALL instruction to a callee account. Then the root
+  account executes some BALANCE instructions.
+  Both the caller and the callee can either be simple smart contracts or delegate to other accounts doing the CALL.
+  Every portion of code can optionally revert. Loop are also possible, either infinite or exiting after a certain number
+  of iterations.
 
                                                   ┌--------------┐
                                                   |this is where |
@@ -72,7 +79,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
                  |
                  |
                  └------[further test]
-     */
+   */
 
   final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   final Address senderAddress =
