@@ -8,13 +8,23 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "partial"
+requests_root_dir = "/data/prover/v3/execution"
+conflated_traces_dir = "/"
+ignore_compatibility_check = true
 serialization = false
 
 [data_availability]
 prover_mode = "dev"
+requests_root_dir = "/data/prover/v3/compression"
+
+#[invalidity]
+#prover_mode = "dev"
+#requests_root_dir = "/data/prover/v3/invalidity"
+#max_rlp_byte_size = 4096
 
 [aggregation]
 prover_mode = "dev"
+requests_root_dir = "/data/prover/v3/aggregation"
 num_proofs = [10]
 # allowed_inputs = [
 #     "execution-dummy",
