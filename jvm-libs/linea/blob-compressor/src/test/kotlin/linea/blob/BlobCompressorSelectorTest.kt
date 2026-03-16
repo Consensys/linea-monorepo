@@ -1,7 +1,10 @@
 package linea.blob
 
+import net.consensys.linea.nativecompressor.CompressorTestData
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.time.Duration.Companion.days
@@ -28,7 +31,7 @@ class BlobCompressorSelectorTest {
     assertNotNull(compressorV1)
     assertNotNull(compressorMid)
     assertEquals(compressorV1, compressorMid)
-    assert(compressorV2 != compressorV1)
+    assertTrue(compressorV2 != compressorV1)
   }
 
   @Test
@@ -57,5 +60,34 @@ class BlobCompressorSelectorTest {
     assertThrows<IllegalStateException> {
       selector.getBlobCompressor(before)
     }
+  }
+
+  @Test
+  fun `compresses data using both versions without exception`() {
+    val v2 = BlobCompressorVersion.V2
+    val v3 = BlobCompressorVersion.V3
+    val t2 = Instant.parse("2025-01-01T00:00:00Z")
+    val t3 = Instant.parse("2026-01-01T00:00:00Z")
+    val dataLimit = 1000000
+    val selector = BlobCompressorSelectorByTimestamp(
+      mapOf(v2 to t2, v3 to t3),
+      dataLimit,
+    )
+    val sampleBlock = CompressorTestData.blocksRlpEncoded.first()
+    val compressorV2 = selector.getBlobCompressor(t2)
+    val compressorV3 = selector.getBlobCompressor(t3)
+    assertTrue(compressorV2 != compressorV3)
+
+    compressorV2.startNewBatch()
+    compressorV2.appendBlock(sampleBlock)
+    val compressedV2 = compressorV2.getCompressedDataAndReset()
+    assertNotNull(compressedV2)
+
+    compressorV3.startNewBatch()
+    compressorV3.appendBlock(sampleBlock)
+    val compressedV3 = compressorV2.getCompressedDataAndReset()
+    assertNotNull(compressedV3)
+
+    assertThat(compressedV2).isNotEqualTo(compressedV3) // Different versions should produce different compressed data
   }
 }
