@@ -15,12 +15,12 @@ on:
         description: 'Target linea-besu-package image tag (i.e. [prefix]-[YYYYMMDDHHMMSS]-[commit]), if not given, would build the linea-besu-package image from source'
         required: false
         type: string
-        default: 'beta-v5.0-rc5-20260310071509-4d1eea0'
+        default: 'local'
       prover_image_tag:
         description: 'Target prover image tag, if not given, would build the prover image from source'
         required: false
         type: string
-        default: '8a419cc'
+        default: 'local'
 
 jobs:
   build-images-and-run-e2e-tests-with-partial-prover:
@@ -88,8 +88,8 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag }} \
-            PROVER_TAG=${{ inputs.prover_image_tag }} \
+            BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'beta-v5.0-rc5-20260310071509-4d1eea0' }} \
+            PROVER_TAG=${{ inputs.prover_image_tag || '8a419cc' }} \
             make start-env-with-tracing-v2-partial-prover CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
