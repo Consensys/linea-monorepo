@@ -46,7 +46,7 @@ jobs:
           pnpm-install-options: '--frozen-lockfile --prefer-offline --filter contracts --ignore-scripts'
       - name: Build besu from source 
         shell: bash
-        run: cd linea-besu-package && make build-besu-local-and-update-lib-version
+        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
       - name: Build coordinator and Unit tests
