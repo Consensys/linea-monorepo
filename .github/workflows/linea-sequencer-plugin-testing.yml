@@ -24,6 +24,12 @@ jobs:
         with:
           enable-ssh: false
 
+      - name: Build besu from source 
+        shell: bash
+        run: cd linea-besu-package && make build-besu-local-and-update-lib-version
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
       - name: spotless
         run: ./gradlew --parallel besu-plugins:linea-sequencer:spotlessCheck
 
@@ -65,6 +71,12 @@ jobs:
         uses: ./.github/actions/setup-tracer-environment
         with:
           enable-ssh: false
+
+      - name: Build besu from source 
+        shell: bash
+        run: cd linea-besu-package && make build-besu-local-and-update-lib-version
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests

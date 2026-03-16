@@ -44,6 +44,11 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           pnpm-install-options: '--frozen-lockfile --prefer-offline --filter contracts --ignore-scripts'
+      - name: Build besu from source 
+        shell: bash
+        run: cd linea-besu-package && make build-besu-local-and-update-lib-version
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
       - name: Build coordinator and Unit tests
         run: |
           ./gradlew -V coordinator:app:buildNeeded

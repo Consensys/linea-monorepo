@@ -50,12 +50,6 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
-      - name: Store distribution artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: distributions
-          path: tracer/arithmetization/build/libs
-
       - name: Run Spotless Check
         run: ./gradlew spotlessCheck
 
