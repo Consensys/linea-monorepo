@@ -241,6 +241,10 @@ tasks.register("besuNodeTests", Test) {
   forkEvery = 1
   maxParallelForks = 3
   environment("RUN_WITH_BESU_NODE", true)
+  // Disable JIT compilation to prevent JVM safepoint deadlocks caused by gnark's
+  // Go/cgo runtime threads hijacking Java threads in Go's goroutine scheduler.
+  // With JIT enabled, compiler-triggered safepoints deadlock against Go threads.
+  jvmArgs += ['-Xint']
   //
   useJUnitPlatform {
     excludeTags("nightly")
@@ -258,6 +262,8 @@ tasks.register("besuNodeFastReplayTests", Test) {
   forkEvery = 1
   maxParallelForks = 3
   environment("RUN_WITH_BESU_NODE", true)
+  // Disable JIT — see besuNodeTests comment for explanation
+  jvmArgs += ['-Xint']
   //
   useJUnitPlatform {
     includeTags("replay")
