@@ -4,11 +4,13 @@ import { Config } from "wagmi";
 import { type HistoryActionsForCompleteTxCaching } from "@/stores/historyStore";
 import {
   type AdapterModeId,
+  BridgeProvider,
   type BridgeMessage,
   BridgeTransaction,
   Chain,
   ChainLayer,
   ClaimType,
+  GithubTokenListToken,
   SupportedChainIds,
   Token,
 } from "@/types";
@@ -56,6 +58,21 @@ export interface ClaimParams {
   message: BridgeMessage;
   fromChain: Chain;
   toChain: Chain;
+  options?: Record<string, unknown>;
+  wagmiConfig: Config;
+}
+
+export interface DepositWarning {
+  text: string;
+  link?: { url: string; label: string };
+}
+
+export interface ClaimContext {
+  label: string;
+  errorMessage: string;
+  messages: DepositWarning[];
+  /** Present only when the connected wallet can execute the claim with these options. */
+  claimOptions?: Record<string, unknown>;
 }
 
 export interface HistoryParams {
@@ -105,23 +122,27 @@ export interface ReceivedAmountParams {
 export interface BridgeAdapter {
   readonly id: string;
   readonly name: string;
+  readonly provider: BridgeProvider;
+  readonly logoSrc: string;
   readonly modes?: readonly AdapterMode[];
   readonly defaultMode?: AdapterModeId;
   readonly hasAdvancedSettings?: boolean;
+  /** Custom label for the destination-chain bridging fee row (defaults to "<toChain.name> fee"). */
+  readonly bridgingFeeLabel?: string;
 
-  isEnabled?(): boolean;
+  isEnabled(): boolean;
+  matchesToken(token: GithubTokenListToken): boolean;
   canHandle(token: Token, fromChain: Chain, toChain: Chain): boolean;
 
   getEstimatedTime?(fromChainLayer: ChainLayer, mode: AdapterModeId | undefined): EstimatedTime;
 
   buildDepositTx(params: DepositParams): TransactionRequest | undefined;
-  buildClaimTx(params: ClaimParams): TransactionRequest | undefined;
 
   /**
-   * Enriches the message with data needed for claiming (e.g., Merkle proof for native L2→L1).
-   * Called before buildClaimTx when the transaction is ready to claim.
+   * Builds the claim transaction, fetching any prerequisite data
+   * (e.g., Merkle proof for native L2→L1) internally.
    */
-  prepareClaimMessage?(params: ClaimParams & { wagmiConfig: Config }): Promise<void>;
+  buildClaimTx?(params: ClaimParams): Promise<TransactionRequest | undefined>;
 
   getApprovalTarget(token: Token, fromChain: Chain): Address | undefined;
   computeReceivedAmount(params: ReceivedAmountParams): bigint;
@@ -139,6 +160,29 @@ export interface BridgeAdapter {
    * and resolves the claim type. The hook wraps this in useQuery.
    */
   getFees?(params: FeeParams): Promise<BridgeFees>;
+
+  /**
+   * Returns optional warnings to display in the deposit UI
+   * (e.g., low destination-chain liquidity).
+   */
+  getDepositWarnings?(params: {
+    token: Token;
+    fromChain: Chain;
+    toChain: Chain;
+    amount: bigint;
+    wagmiConfig: Config;
+  }): Promise<DepositWarning[] | undefined>;
+
+  /**
+   * Returns optional claim context (messages, terms, options) based on
+   * adapter-specific conditions (e.g., low liquidity). The returned
+   * `claimOptions` are forwarded to `buildClaimTx`.
+   */
+  getClaimContext?(params: {
+    transaction: BridgeTransaction;
+    connectedAddress?: Address;
+    wagmiConfig: Config;
+  }): Promise<ClaimContext | undefined>;
 
   /**
    * Looks up the claiming transaction hash on the destination chain
