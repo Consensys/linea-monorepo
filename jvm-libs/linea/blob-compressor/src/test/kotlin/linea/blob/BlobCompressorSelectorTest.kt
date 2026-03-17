@@ -11,6 +11,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
@@ -95,6 +97,7 @@ class BlobCompressorSelectorTest {
     assertThat(compressedV2).isNotEqualTo(compressedV3) // Different versions should produce different compressed data
   }
 
+  @OptIn(ExperimentalAtomicApi::class)
   @Test
   fun `compresses multiple blocks concurrently with v2 and v3 without exception`() {
     val v2 = BlobCompressorVersion.V2
@@ -113,6 +116,14 @@ class BlobCompressorSelectorTest {
 
     val sampleBlocks = CompressorTestData.blocksRlpEncoded.take(100)
     assertThat(sampleBlocks).isNotEmpty
+    val compressedV2 = compressBlocks(compressorV2, sampleBlocks)
+    val compressedV3 = compressBlocks(compressorV3, sampleBlocks)
+
+    assertThat(compressedV2).isNotEqualTo(compressBlocks(compressorV2, sampleBlocks))
+    assertThat(compressedV3).isNotEqualTo(compressBlocks(compressorV3, sampleBlocks))
+
+    val compressedV2Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
+    val compressedV3Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
 
     val errors = CopyOnWriteArrayList<Throwable>()
     val startBarrier = CyclicBarrier(3)
@@ -121,12 +132,7 @@ class BlobCompressorSelectorTest {
     val v2Thread = Thread {
       try {
         startBarrier.await()
-        sampleBlocks.forEach { block ->
-          compressorV2.startNewBatch()
-          compressorV2.appendBlock(block)
-          val compressed = compressorV2.getCompressedDataAndReset()
-          assertThat(compressed).isNotEmpty
-        }
+        compressedV2Parallel.store(compressBlocks(compressorV2, sampleBlocks))
       } catch (t: Throwable) {
         errors.add(t)
       } finally {
@@ -137,12 +143,7 @@ class BlobCompressorSelectorTest {
     val v3Thread = Thread {
       try {
         startBarrier.await()
-        sampleBlocks.forEach { block ->
-          compressorV3.startNewBatch()
-          compressorV3.appendBlock(block)
-          val compressed = compressorV3.getCompressedDataAndReset()
-          assertThat(compressed).isNotEmpty
-        }
+        compressedV3Parallel.store(compressBlocks(compressorV3, sampleBlocks))
       } catch (t: Throwable) {
         errors.add(t)
       } finally {
@@ -153,8 +154,18 @@ class BlobCompressorSelectorTest {
     v2Thread.start()
     v3Thread.start()
     startBarrier.await()
+    assertThat(compressedV2Parallel.load()).isEqualTo(compressedV2)
+    assertThat(compressedV3Parallel.load()).isEqualTo(compressedV3)
 
     assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
     assertThat(errors).isEmpty()
+  }
+
+  fun compressBlocks(compressor: BlobCompressor, blocks: List<ByteArray>): ByteArray {
+    blocks.forEach { block ->
+      compressor.startNewBatch()
+      compressor.appendBlock(block)
+    }
+    return compressor.getCompressedDataAndReset()
   }
 }
