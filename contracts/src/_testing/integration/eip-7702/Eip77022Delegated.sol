@@ -3,11 +3,11 @@ pragma solidity 0.8.33;
 
 import { Eip7702TestNested } from "./Eip7702TestNested.sol";
 
-/// @title Eip77022Deletegated
+/// @title Eip77022Delegated
 /// @notice Test contract for EIP-7702 (Set Code) functionality with nested contract calls.
 /// @author Consensys Software Inc.
 /// @custom:security-contact security-report@linea.build
-contract Eip77022Deletegated {
+contract Eip77022Delegated {
   /// @notice Mapping storing a value for each address.
   mapping(address => uint256) public storedValue;
 

@@ -1,0 +1,86 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Eip77022Delegated",
+  "sourceName": "src/_testing/integration/eip-7702/Eip77022Delegated.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "ValueSet",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_newValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_nestedContract",
+          "type": "address"
+        }
+      ],
+      "name": "setValue",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "storedValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506102328061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061003f575f3560e01c80633472df22146100435780633ccc0522146100585780638d48538d1461009f575b5f5ffd5b6100566100513660046101b2565b6100be565b005b61008d6100663660046101dc565b73ffffffffffffffffffffffffffffffffffffffff165f9081526020819052604090205490565b60405190815260200160405180910390f35b61008d6100ad3660046101dc565b5f6020819052908152604090205481565b335f818152602081815260409182902085905590518481527ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c910160405180910390a26040517f552410770000000000000000000000000000000000000000000000000000000081526004810183905273ffffffffffffffffffffffffffffffffffffffff82169063552410779066038d7ea4c68000906024015f604051808303818588803b15801561016f575f5ffd5b505af1158015610181573d5f5f3e3d5ffd5b50505050505050565b803573ffffffffffffffffffffffffffffffffffffffff811681146101ad575f5ffd5b919050565b5f5f604083850312156101c3575f5ffd5b823591506101d36020840161018a565b90509250929050565b5f602082840312156101ec575f5ffd5b6101f58261018a565b939250505056fea2646970667358221220e9f7c8c75de1fe214a74f605de7f15ab9590c4c2d3a014808ed0f0e2e785e73464736f6c63430008210033",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b506004361061003f575f3560e01c80633472df22146100435780633ccc0522146100585780638d48538d1461009f575b5f5ffd5b6100566100513660046101b2565b6100be565b005b61008d6100663660046101dc565b73ffffffffffffffffffffffffffffffffffffffff165f9081526020819052604090205490565b60405190815260200160405180910390f35b61008d6100ad3660046101dc565b5f6020819052908152604090205481565b335f818152602081815260409182902085905590518481527ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c910160405180910390a26040517f552410770000000000000000000000000000000000000000000000000000000081526004810183905273ffffffffffffffffffffffffffffffffffffffff82169063552410779066038d7ea4c68000906024015f604051808303818588803b15801561016f575f5ffd5b505af1158015610181573d5f5f3e3d5ffd5b50505050505050565b803573ffffffffffffffffffffffffffffffffffffffff811681146101ad575f5ffd5b919050565b5f5f604083850312156101c3575f5ffd5b823591506101d36020840161018a565b90509250929050565b5f602082840312156101ec575f5ffd5b6101f58261018a565b939250505056fea2646970667358221220e9f7c8c75de1fe214a74f605de7f15ab9590c4c2d3a014808ed0f0e2e785e73464736f6c63430008210033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

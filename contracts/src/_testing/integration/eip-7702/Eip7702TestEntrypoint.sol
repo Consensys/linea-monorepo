@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.33;
 
-import { Eip77022Deletegated } from "./Eip77022Deletegated.sol";
+import { Eip77022Delegated } from "./Eip77022Delegated.sol";
 
 /// @title Eip7702TestEntrypoint
 /// @notice Outer test contract that orchestrates calls through nested and delegated addresses via EIP-7702.
@@ -19,7 +19,7 @@ contract Eip7702TestEntrypoint {
   /// @param _nestedContract The address of the nested contract to call.
   function setValue(uint256 _newValue, address _delegatingAddress, address _nestedContract) external {
     // Calls the EOA with delegated code to set the value in the nested contract.
-    Eip77022Deletegated(_delegatingAddress).setValue(_newValue, _nestedContract);
+    Eip77022Delegated(_delegatingAddress).setValue(_newValue, _nestedContract);
     emit ValueSet(msg.sender, _newValue);
   }
 }
