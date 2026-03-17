@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
@@ -85,9 +89,72 @@ class BlobCompressorSelectorTest {
 
     compressorV3.startNewBatch()
     compressorV3.appendBlock(sampleBlock)
-    val compressedV3 = compressorV2.getCompressedDataAndReset()
+    val compressedV3 = compressorV3.getCompressedDataAndReset()
     assertNotNull(compressedV3)
 
     assertThat(compressedV2).isNotEqualTo(compressedV3) // Different versions should produce different compressed data
+  }
+
+  @Test
+  fun `compresses multiple blocks concurrently with v2 and v3 without exception`() {
+    val v2 = BlobCompressorVersion.V2
+    val v3 = BlobCompressorVersion.V3
+    val t2 = Instant.parse("2025-01-01T00:00:00Z")
+    val t3 = Instant.parse("2026-01-01T00:00:00Z")
+    val dataLimit = 1_000_000
+    val selector = BlobCompressorSelectorByTimestamp(
+      mapOf(v2 to t2, v3 to t3),
+      dataLimit,
+    )
+
+    val compressorV2 = selector.getBlobCompressor(t2)
+    val compressorV3 = selector.getBlobCompressor(t3)
+    assertTrue(compressorV2 != compressorV3)
+
+    val sampleBlocks = CompressorTestData.blocksRlpEncoded.take(100)
+    assertThat(sampleBlocks).isNotEmpty
+
+    val errors = CopyOnWriteArrayList<Throwable>()
+    val startBarrier = CyclicBarrier(3)
+    val doneLatch = CountDownLatch(2)
+
+    val v2Thread = Thread {
+      try {
+        startBarrier.await()
+        sampleBlocks.forEach { block ->
+          compressorV2.startNewBatch()
+          compressorV2.appendBlock(block)
+          val compressed = compressorV2.getCompressedDataAndReset()
+          assertThat(compressed).isNotEmpty
+        }
+      } catch (t: Throwable) {
+        errors.add(t)
+      } finally {
+        doneLatch.countDown()
+      }
+    }
+
+    val v3Thread = Thread {
+      try {
+        startBarrier.await()
+        sampleBlocks.forEach { block ->
+          compressorV3.startNewBatch()
+          compressorV3.appendBlock(block)
+          val compressed = compressorV3.getCompressedDataAndReset()
+          assertThat(compressed).isNotEmpty
+        }
+      } catch (t: Throwable) {
+        errors.add(t)
+      } finally {
+        doneLatch.countDown()
+      }
+    }
+
+    v2Thread.start()
+    v3Thread.start()
+    startBarrier.await()
+
+    assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
+    assertThat(errors).isEmpty()
   }
 }

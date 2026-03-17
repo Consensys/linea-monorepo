@@ -14,6 +14,15 @@ class BlobCompressorSelectorByTimestamp(
   private val dataLimit: Int,
 ) : BlobCompressorSelector<Instant> {
 
+  init {
+    require(
+      blobCompressorVersionSwitchTimestampMap.values.toSet().size
+        == blobCompressorVersionSwitchTimestampMap.size,
+    ) {
+      "Timestamps must be unique across BlobCompressor versions"
+    }
+  }
+
   private val blobCompressors = blobCompressorVersionSwitchTimestampMap.mapValues { (blobCompressorVersion, _) ->
     GoBackedBlobCompressor.getInstance(blobCompressorVersion, dataLimit)
   }
