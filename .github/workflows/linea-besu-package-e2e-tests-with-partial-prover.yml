@@ -88,7 +88,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'beta-v5.0-rc5-20260310071509-4d1eea0' }} \
+            BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'beta-v5-rc6-20260316125820-f438666' }} \
             PROVER_TAG=${{ inputs.prover_image_tag || '8a419cc' }} \
             make start-env-with-tracing-v2-partial-prover CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
