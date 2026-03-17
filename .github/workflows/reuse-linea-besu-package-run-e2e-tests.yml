@@ -147,6 +147,7 @@ jobs:
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt || true
           docker logs l1-el-node --since 1h &>> docker_logs/l1-el-node.txt || true
           if [[ "${{ inputs.e2e-tests-with-besu-fleet }}" == "true" ]]; then
+            docker logs l2-node-besu-leader --since 1h &>> docker_logs/l2-node-besu-leader.txt || true
             docker logs l2-node-besu-follower --since 1h &>> docker_logs/l2-node-besu-follower.txt || true
           fi
       - name: Archive debug logs
