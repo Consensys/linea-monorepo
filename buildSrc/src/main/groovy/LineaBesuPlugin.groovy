@@ -106,7 +106,7 @@ class LineaBesuPlugin implements Plugin<Project> {
     def pomExists = mavenLocalPom.exists()
     if (!pomExists) {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu:${version} is not in maven local")
-      return pomExists
+      return false
     } else {
       project.logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: Besu ${version} was found in maven local")
     }
