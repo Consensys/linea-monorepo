@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import kotlin.time.Instant;
-import kotlin.time.jdk8.InstantConversionsJDK8Kt;
 import linea.blob.BlobCompressorVersion;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
@@ -145,7 +144,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       paramLabel = "<MAP>",
       description =
           "Comma-separated map of BlobCompressorVersion to Instant, e.g. V1_2=2025-01-01T00:00:00Z,V2=2026-01-01T00:00:00Z")
-  private String blobCompressorVersionTimestampsRaw;
+  private String blobCompressorVersionTimestampsRaw =
+      String.format("%s=%s", BlobCompressorVersion.V2.name(), java.time.Instant.MIN);
 
   /**
    * Create Linea cli options.
@@ -266,11 +266,6 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
   }
 
   public Map<BlobCompressorVersion, Instant> getBlobCompressorVersionTimestamps() {
-    if (blobCompressorVersionTimestampsRaw != null
-        && !blobCompressorVersionTimestampsRaw.isEmpty()) {
-      return parseBlobCompressorVersionTimestamps(blobCompressorVersionTimestampsRaw);
-    }
-    return Map.of(
-        BlobCompressorVersion.V2, InstantConversionsJDK8Kt.toKotlinInstant(java.time.Instant.MIN));
+    return parseBlobCompressorVersionTimestamps(blobCompressorVersionTimestampsRaw);
   }
 }

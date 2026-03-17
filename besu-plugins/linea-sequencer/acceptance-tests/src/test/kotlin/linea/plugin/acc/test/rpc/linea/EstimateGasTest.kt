@@ -47,8 +47,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
-import java.time.Instant
-import kotlin.time.toKotlinInstant
+import kotlin.time.Instant
 
 open class EstimateGasTest : LineaPluginPoSTestBase() {
   protected lateinit var profitabilityCalculator: TransactionProfitabilityCalculator
@@ -83,7 +82,7 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
       profitabilityConf,
       CachingTransactionCompressor(
         BlobCompressorSelectorByTimestamp(
-          mapOf(BlobCompressorVersion.V2 to Instant.MIN.toKotlinInstant()),
+          mapOf(BlobCompressorVersion.V2 to Instant.DISTANT_PAST),
           128 * 1024,
         ),
       ),

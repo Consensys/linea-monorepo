@@ -80,8 +80,9 @@ dependencies {
   kapt("org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}")
   annotationProcessor "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
   implementation "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
-
   implementation project("${lineaSequencerProjectPath}:sequencer")
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}"
+
   testImplementation "build.linea:blob-compressor:${libs.versions.blobCompressor.get()}"
   testImplementation project(":tracer:arithmetization")
   testImplementation project(":jvm-libs:generic:serialization:jackson")
@@ -91,7 +92,6 @@ dependencies {
   testImplementation 'org.junit.jupiter:junit-jupiter-params'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testImplementation "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
-  implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}"
 }
 
 // Do not run acceptance tests with ./gradlew test, only with ./gradlew acceptanceTests
