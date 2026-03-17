@@ -88,4 +88,24 @@ export default class TestSetupCore {
   isLocal(): boolean {
     return this.env === "local";
   }
+
+  /** EIP-7702 predeployed addresses (local only). */
+  getEip7702Addresses(): { nested: `0x${string}`; delegated: `0x${string}`; entrypoint: `0x${string}` } | undefined {
+    const l2 = this.config.L2;
+    if (
+      "eip7702NestedAddress" in l2 &&
+      l2.eip7702NestedAddress &&
+      "eip7702DelegatedAddress" in l2 &&
+      l2.eip7702DelegatedAddress &&
+      "eip7702EntrypointAddress" in l2 &&
+      l2.eip7702EntrypointAddress
+    ) {
+      return {
+        nested: l2.eip7702NestedAddress as `0x${string}`,
+        delegated: l2.eip7702DelegatedAddress as `0x${string}`,
+        entrypoint: l2.eip7702EntrypointAddress as `0x${string}`,
+      };
+    }
+    return undefined;
+  }
 }
