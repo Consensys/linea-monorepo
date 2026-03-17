@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
-	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -563,71 +562,6 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 // SigmaS and SigmaT for a specific lookup table.
 type ZAssignmentTask ZCtx
 
-// columnWindowRange determines the active (non-padding) window across all
-// column inputs referenced by the given expression boards. It returns
-// (0, size) if the window cannot be narrowed (e.g. columns are dense).
-func columnWindowRange(run *wizard.ProverRuntime, size int, boards ...sym.ExpressionBoard) (start, stop int) {
-	start, stop = 0, size
-	foundWindow := false
-	seen := make(map[ifaces.ColID]bool)
-
-	for _, board := range boards {
-		for _, m := range board.ListVariableMetadata() {
-			col, ok := m.(ifaces.Column)
-			if !ok {
-				continue
-			}
-			id := col.GetColID()
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-
-			assignment := col.GetColAssignment(run)
-			if assignment == nil {
-				return 0, size
-			}
-
-			switch a := assignment.(type) {
-			case *sv.PaddedCircularWindow:
-				wStart := a.Offset()
-				wStop := a.Offset() + len(a.Window())
-				if wStop > a.Len() {
-					return 0, size
-				}
-				if !foundWindow {
-					start = wStart
-					stop = wStop
-					foundWindow = true
-				} else {
-					start = min(start, wStart)
-					stop = max(stop, wStop)
-				}
-			case *sv.PaddedCircularWindowExt:
-				wStart := a.Offset
-				wStop := a.Offset + len(a.Window_)
-				if wStop > a.Len() {
-					return 0, size
-				}
-				if !foundWindow {
-					start = wStart
-					stop = wStop
-					foundWindow = true
-				} else {
-					start = min(start, wStart)
-					stop = max(stop, wStop)
-				}
-			case *sv.Constant, *sv.ConstantExt:
-				continue // constants span the full range, don't constrain window
-			default:
-				return 0, size // unknown type, can't optimize
-			}
-		}
-	}
-
-	return start, stop
-}
-
 func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
@@ -667,94 +601,36 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 				run.AssignLocalPointExt(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1]))
 				continue
 			}
-
-			// We are dealing with extension denominators.
-			// Detect the active (non-padding) window from the input columns.
-			// If columns are PaddedCircularWindow with low utilization, we can
-			// batch-invert only the active sub-range and handle padding cheaply.
-			wStart, wEnd := columnWindowRange(run, z.Size,
-				z.ZDenominatorBoarded[frag], z.ZNumeratorBoarded[frag])
-			activeLen := wEnd - wStart
-
+			// we are dealing with extension denominators
+			numerator := se0
+			// denominator := se1
 			denominator := svDenominator.IntoRegVecSaveAllocExt()
-			totalLen := len(denominator)
+			packedZ := fext.ParBatchInvert(denominator, 0)
 
-			// Evaluate numerator
-			var numerator extensions.Vector
 			if len(numeratorMetadata) == 0 {
-				numerator = se0
 				for i := range numerator {
 					numerator[i].SetOne()
 				}
 			} else {
 				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
 				if vr, ok := evalResult.(*sv.RegularExt); ok {
+					// no need to copy here.
 					numerator = extensions.Vector(*vr)
 				} else {
-					numerator = se0
 					evalResult.WriteInSliceExt(numerator)
 				}
 			}
 
-			if activeLen < totalLen {
-				// SPARSE PATH: batch-invert only the active window and compute
-				// the constant padding fraction once.
-				//
-				// For padding positions, denominator and numerator are constant
-				// (they arise from constant padding values in the lookup
-				// columns + the random coin). We compute padFrac = padNum/padDen
-				// once and accumulate it per position in the prefix sum.
-				padPos := 0
-				if wStart == 0 {
-					padPos = totalLen - 1
-				}
-				var padInvDen, padFrac fext.Element
-				padInvDen.Inverse(&denominator[padPos])
-				padFrac.Mul(&numerator[padPos], &padInvDen)
+			vp := extensions.Vector(packedZ)
+			vp.Mul(vp, numerator)
 
-				// Batch-invert only the active sub-range.
-				activeInv := fext.ParBatchInvert(denominator[wStart:wEnd], 0)
-
-				// Build the Z prefix sum.
-				packedZ := make(extensions.Vector, totalLen)
-				var running fext.Element
-
-				// Phase 1: pre-padding [0, wStart)
-				for i := 0; i < wStart; i++ {
-					running.Add(&running, &padFrac)
-					packedZ[i] = running
-				}
-
-				// Phase 2: active window [wStart, wEnd)
-				for i := 0; i < activeLen; i++ {
-					var frac fext.Element
-					frac.Mul(&numerator[wStart+i], &activeInv[i])
-					running.Add(&running, &frac)
-					packedZ[wStart+i] = running
-				}
-
-				// Phase 3: post-padding [wEnd, totalLen)
-				for i := wEnd; i < totalLen; i++ {
-					running.Add(&running, &padFrac)
-					packedZ[i] = running
-				}
-
-				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt([]fext.Element(packedZ)))
-				run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[totalLen-1])
-			} else {
-				// DENSE PATH: original algorithm.
-				packedZ := fext.ParBatchInvert(denominator, 0)
-
-				vp := extensions.Vector(packedZ)
-				vp.Mul(vp, numerator)
-
-				for k := 1; k < len(packedZ); k++ {
-					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
-				}
-
-				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
-				run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+			for k := 1; k < len(packedZ); k++ {
+				packedZ[k].Add(&packedZ[k], &packedZ[k-1])
 			}
+
+			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
+			run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+
 		}
 	})
 

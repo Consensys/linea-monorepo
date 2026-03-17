@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -19,9 +18,6 @@ type Witness struct {
 	// ExecTracesFPath is the filepath toward the execution traces to use for
 	// proof trace generation.
 	ExecTracesFPath string
-	// PreloadedTrace, when non-nil, delivers the pre-read trace data so that
-	// Assign can skip the synchronous file read.
-	PreloadedTrace <-chan arithmetization.PreloadedTraceResult
 	// StateManager traces
 	SMTraces [][]statemanager.DecodedTrace
 	// TxSignatures lists the signatures of the transaction as found
