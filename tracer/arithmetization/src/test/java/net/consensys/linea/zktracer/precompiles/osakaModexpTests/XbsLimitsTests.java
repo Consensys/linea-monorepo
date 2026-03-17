@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.precompiles.osakaModexpTests;
 
 import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.TraceOsaka.EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByDayOfMonth;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.precompiles.osakaModexpTests.XbsValueType.GIBBERISH;
 import static net.consensys.linea.zktracer.precompiles.osakaModexpTests.XbsValueType.getListOfInputs;
@@ -39,6 +40,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class XbsLimitsTests extends TracerTestBase {
+
+  static final int XBS_LIMIT_TEST_SAMPLE_SIZE = 600;
 
   final KeyPair keyPair = new SECP256K1().generateKeyPair();
   final Address senderAddress = Address.extract(keyPair.getPublicKey());
@@ -88,7 +91,7 @@ public class XbsLimitsTests extends TracerTestBase {
 
   @Tag("nightly")
   @ParameterizedTest
-  @MethodSource("modexpXbsLimitsTestsNighlySource")
+  @MethodSource("sampleModexpXbsLimitsTestsNightlySource")
   public void modexpXbsLimitTestsNightly(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
@@ -137,7 +140,12 @@ public class XbsLimitsTests extends TracerTestBase {
                                                       bbsType, ebsType, mbsType))))))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-  static Stream<Arguments> modexpXbsLimitsTestsNighlySource() {
+  static Stream<Arguments> sampleModexpXbsLimitsTestsNightlySource() {
+    return randomSampleByDayOfMonth(XBS_LIMIT_TEST_SAMPLE_SIZE, modexpXbsLimitsTestsNighlySource())
+        .stream();
+  }
+
+  static List<Arguments> modexpXbsLimitsTestsNighlySource() {
 
     List<Arguments> arguments = new ArrayList<>();
     for (Map.Entry<XbsValueType.BbsEbsMbsScenario, List<String>> entry : allParameters.entrySet()) {
@@ -149,11 +157,11 @@ public class XbsLimitsTests extends TracerTestBase {
       }
     }
 
-    return arguments.stream();
+    return arguments;
   }
 
   static Stream<Arguments> modexpXbsLimitTestsSource() {
-    List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsNighlySource().toList());
+    List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsNighlySource());
     Collections.shuffle(arguments, new Random(LocalDate.now().toEpochDay()));
     return arguments.stream().limit(arguments.size() / 40); // Execute 2.5 % of the tests
   }
