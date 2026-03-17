@@ -338,6 +338,10 @@ public class Utilities {
    * @return
    */
   public static <T> List<T> randomSampleByCurrentCommitHash(int n, List<T> items) {
+    // If the sampling is bigger than the original list, just return the list
+    if (n >= items.size()) {
+      return items;
+    }
     try {
       // Determine current commit hash
       final String hash = getCurrentCommitHash();
