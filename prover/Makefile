@@ -47,6 +47,7 @@ go-corset:
 	go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION)
 
 extract-constraints-git-archive:
+	rm -rf ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints
 	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##
