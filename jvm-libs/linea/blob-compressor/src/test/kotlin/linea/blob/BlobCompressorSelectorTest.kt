@@ -114,13 +114,13 @@ class BlobCompressorSelectorTest {
     val compressorV3 = selector.getBlobCompressor(t3)
     assertTrue(compressorV2 != compressorV3)
 
-    val sampleBlocks = CompressorTestData.blocksRlpEncoded.take(100)
+    val sampleBlocks = CompressorTestData.blocksRlpEncoded
     assertThat(sampleBlocks).isNotEmpty
     val compressedV2 = compressBlocks(compressorV2, sampleBlocks)
     val compressedV3 = compressBlocks(compressorV3, sampleBlocks)
 
-    assertThat(compressedV2).isNotEqualTo(compressBlocks(compressorV2, sampleBlocks))
-    assertThat(compressedV3).isNotEqualTo(compressBlocks(compressorV3, sampleBlocks))
+    assertThat(compressedV2).isEqualTo(compressBlocks(compressorV2, sampleBlocks))
+    assertThat(compressedV3).isEqualTo(compressBlocks(compressorV3, sampleBlocks))
 
     val compressedV2Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
     val compressedV3Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
@@ -154,10 +154,10 @@ class BlobCompressorSelectorTest {
     v2Thread.start()
     v3Thread.start()
     startBarrier.await()
+    assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
+
     assertThat(compressedV2Parallel.load()).isEqualTo(compressedV2)
     assertThat(compressedV3Parallel.load()).isEqualTo(compressedV3)
-
-    assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
     assertThat(errors).isEmpty()
   }
 
