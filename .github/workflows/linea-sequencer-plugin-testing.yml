@@ -36,12 +36,6 @@ jobs:
       - name: Build
         run: ./gradlew besu-plugins:linea-sequencer:build
 
-      - name: Upload distribution artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: distributions
-          path: besu-plugins/linea-sequencer/sequencer/build/libs
-
       - name: Run unit tests
         run: ./gradlew besu-plugins:linea-sequencer:sequencer:test
 
