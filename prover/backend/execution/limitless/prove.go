@@ -34,10 +34,6 @@ var (
 	// jobs for the limitless prover. With ~35GB peak per job, 20 concurrent
 	// jobs uses ~700GB peak which fits comfortably in a 1.5TB machine.
 	numConcurrentSubProverJobs = 20
-	// numConcurrentCongloMerges governs the number of concurrent pairwise
-	// conglomeration merges. Each merge is lighter than a GL/LPP proof (~2.4min
-	// with ~1.3min initial + ~1.1min recursion), so we can run more in parallel.
-	numConcurrentCongloMerges = 10
 )
 
 // Prove function for the Assest struct
@@ -601,145 +597,80 @@ func ProveLPP(preload *lppPreload, sharedRandomness field.Octuplet) (*distribute
 	return proof, nil
 }
 
-// RunConglomerationHierarchical aggregates segment proofs into a single proof
-// using a parallel binary-tree reduction. Leaf proofs arrive via proofStream;
-// pairs are merged concurrently up to numConcurrentCongloMerges workers. Each
-// merge produces an intermediate proof that feeds back into the pool. The last
-// of the totalProofs-1 merges uses BLS for the outer circuit.
+// RunConglomerationHierarchical aggregates segment proofs into a single proof.
+// It returns the final proof or an error. It respects the passed context for cancellation.
 func RunConglomerationHierarchical(ctx context.Context,
 	mt *distributed.VerificationKeyMerkleTree,
 	cong *distributed.RecursedSegmentCompilation,
 	proofStream <-chan *distributed.SegmentProof, totalProofs int,
 ) (*distributed.SegmentProof, error) {
 
-	if totalProofs <= 0 {
-		return nil, fmt.Errorf("totalProofs must be > 0, got %d", totalProofs)
-	}
+	// Stack is a slice for channel-based pairing logic
+	var stack []*distributed.SegmentProof
+	proofsReceived := 0
 
-	// Special case: single proof, no merges needed.
-	if totalProofs == 1 {
+	// Main loop: block on either new proof, or cancellation.
+	for {
+		// First, aggregate while we have at least 2 items
+		for len(stack) >= 2 {
+
+			// _proof2 normally has already its runtime cleared
+			_proof1 := stack[len(stack)-1].ClearRuntime()
+			_proof2 := stack[len(stack)-2]
+			stack = stack[:len(stack)-2]
+
+			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
+				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
+				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
+
+			wit := &distributed.ModuleWitnessConglo{
+				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
+				VerificationKeyMerkleTree: *mt,
+			}
+
+			// The last conglomeration step (producing the single final proof) uses
+			// BLS so that the outer circuit can verify it.
+			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
+			var aggregated *distributed.SegmentProof
+			if isLastConglomeration {
+				aggregated = cong.ProveSegmentBLS(wit)
+			} else {
+				aggregated = cong.ProveSegmentKoala(wit)
+			}
+
+			stack = append(stack, aggregated)
+		}
+
+		// If we've received all proofs and have exactly one on the stack -> done
+		if proofsReceived >= totalProofs {
+			// Last item is the final proof
+			if len(stack) == 1 {
+				logrus.Infoln("Successfully finished running conglomeration prover.")
+				finalProof := stack[0]
+				// Clear stack
+				stack = nil
+				return finalProof, nil
+			}
+			return nil, fmt.Errorf("conglomeration finished but stack size=%d (expected 1)", len(stack))
+		}
+
+		// Wait for next proof or cancellation
 		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+
+		// Receive new proof from main proof stream
 		case p, ok := <-proofStream:
 			if !ok {
-				return nil, fmt.Errorf("proof stream closed before receiving the single proof")
-			}
-			return p, nil
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-
-	// Pool channel holds all proofs available for pairing: both leaf proofs
-	// from proofStream and intermediate results from merge workers.
-	pool := make(chan *distributed.SegmentProof, 2*totalProofs)
-
-	// Feed leaf proofs from proofStream into the pool.
-	go func() {
-		for p := range proofStream {
-			pool <- p
-		}
-	}()
-
-	var (
-		totalMerges = totalProofs - 1
-		eg          = &errgroup.Group{}
-		resultCh    = make(chan *distributed.SegmentProof, 1)
-	)
-	eg.SetLimit(numConcurrentCongloMerges)
-
-	logrus.Infof("Starting parallel conglomeration: %d proofs, %d merges, up to %d concurrent",
-		totalProofs, totalMerges, numConcurrentCongloMerges)
-
-	// Dispatcher loop: for each of the N-1 merges, pull a pair from the pool
-	// and launch a merge worker. eg.SetLimit blocks when the concurrency cap
-	// is reached, providing natural back-pressure. The binary-tree structure
-	// emerges organically: when many proofs are available, multiple pairs are
-	// merged in parallel at each level; results feed back into the pool for
-	// the next level.
-	for i := 0; i < totalMerges; i++ {
-		var p1, p2 *distributed.SegmentProof
-
-		select {
-		case p1 = <-pool:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-		select {
-		case p2 = <-pool:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-
-		isLast := (i == totalMerges-1)
-
-		logrus.Infof("Conglomerating sub-proofs [merge %d/%d%s] for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
-			i+1, totalMerges, func() string {
-				if isLast {
-					return " FINAL/BLS"
+				// sender closed channel prematurely
+				if len(stack) == 1 {
+					return stack[0], nil
 				}
-				return ""
-			}(),
-			p1.ProofType, p1.ModuleIndex, p1.SegmentIndex,
-			p2.ProofType, p2.ModuleIndex, p2.SegmentIndex)
-
-		eg.Go(func() error {
-			// Check for cancellation before starting expensive work
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
+				return nil, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
-
-			var (
-				merged *distributed.SegmentProof
-				jobErr error
-			)
-
-			// Recover from panics in the prover
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						jobErr = fmt.Errorf("conglo merge %d panicked: %v", i+1, r)
-						logrus.Error(jobErr)
-						debug.PrintStack()
-					}
-				}()
-
-				wit := &distributed.ModuleWitnessConglo{
-					SegmentProofs:             []distributed.SegmentProof{*p1.ClearRuntime(), *p2},
-					VerificationKeyMerkleTree: *mt,
-				}
-
-				if isLast {
-					merged = cong.ProveSegmentBLS(wit)
-				} else {
-					merged = cong.ProveSegmentKoala(wit)
-				}
-			}()
-
-			if jobErr != nil {
-				return jobErr
-			}
-
-			if isLast {
-				resultCh <- merged
-			} else {
-				pool <- merged
-			}
-			return nil
-		})
-	}
-
-	// Wait for all merge workers to complete
-	if err := eg.Wait(); err != nil {
-		return nil, fmt.Errorf("conglomeration failed: %w", err)
-	}
-
-	select {
-	case finalProof := <-resultCh:
-		logrus.Infoln("Successfully finished running parallel conglomeration prover.")
-		return finalProof, nil
-	default:
-		return nil, fmt.Errorf("conglomeration completed but no final proof produced")
+			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", p.ProofType, p.ModuleIndex, p.SegmentIndex)
+			stack = append(stack, p)
+			proofsReceived++
+		}
 	}
 }
