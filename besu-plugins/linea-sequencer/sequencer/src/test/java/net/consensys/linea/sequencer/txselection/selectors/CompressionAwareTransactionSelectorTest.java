@@ -51,7 +51,7 @@ class CompressionAwareTransactionSelectorTest {
   private static final TransactionCompressor TX_COMPRESSOR =
       new CachingTransactionCompressor(
           new BlobCompressorSelectorByTimestamp(
-              Map.of(BlobCompressorVersion.V2, Instant.Companion.getMIN$kotlin_stdlib()),
+              Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()),
               128 * 1024));
 
   private SelectorsStateManager selectorsStateManager;
@@ -71,7 +71,7 @@ class CompressionAwareTransactionSelectorTest {
   private static BlobCompressorSelectorByTimestamp compressorSelectorWithLimit(
       final int dataLimit) {
     return new BlobCompressorSelectorByTimestamp(
-        Map.of(BlobCompressorVersion.V2, Instant.Companion.getMIN$kotlin_stdlib()), dataLimit);
+        Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()), dataLimit);
   }
 
   @Test

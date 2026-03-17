@@ -81,7 +81,7 @@ public class ProfitabilityValidatorTest {
     final var transactionCompressor =
         new CachingTransactionCompressor(
             new BlobCompressorSelectorByTimestamp(
-                Map.of(BlobCompressorVersion.V2, Instant.Companion.getMIN$kotlin_stdlib()),
+                Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()),
                 128 * 1024));
 
     final var profitabilityCalculatorAlways =
