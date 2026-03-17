@@ -86,7 +86,7 @@ jobs:
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx2g
 
       - name: Build dist
         run: ./gradlew transaction-exclusion-api:app:installDist

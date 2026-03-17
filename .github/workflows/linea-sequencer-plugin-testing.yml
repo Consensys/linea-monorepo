@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx2g
 
       - name: spotless
         run: ./gradlew --parallel besu-plugins:linea-sequencer:spotlessCheck
@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx2g
 
       - name: Run acceptance tests
         run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests

@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx2g
       - name: Staterecovery - Build and Unit tests
         run: |
           ./gradlew besu-plugins:state-recovery:besu-plugin:buildNeeded

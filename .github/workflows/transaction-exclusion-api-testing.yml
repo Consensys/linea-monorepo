@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Xmx2g
       - name: Run tests with coverage
         if: ${{ inputs.coverage }}
         run: |
