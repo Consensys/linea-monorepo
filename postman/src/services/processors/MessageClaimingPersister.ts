@@ -38,7 +38,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     try {
       firstPendingMessage = await this.messageRepository.getFirstPendingMessage(this.config.direction);
       if (!firstPendingMessage) {
-        this.logger.info("No pending message status to update.");
+        this.logger.debug("No pending message status to update.");
         return;
       }
 
@@ -94,7 +94,8 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       });
       await this.updateReceiptStatus(firstPendingMessage, retryReceipt, receiptReceivedAt);
     } catch (e) {
-      this.logger.error(e, {
+      this.logger.error("Error processing pending message.", {
+        error: e,
         ...(firstPendingMessage ? { messageHash: firstPendingMessage.messageHash } : {}),
       });
     }
@@ -145,7 +146,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         this.config.receiptPollingInterval,
       );
     } catch (e) {
-      this.logger.error(e, { messageHash: message.messageHash });
+      this.logger.error("Failed to retry with bumped fee.", { error: e, messageHash: message.messageHash });
       return null;
     }
   }

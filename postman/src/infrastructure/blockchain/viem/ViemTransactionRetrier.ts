@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { type PublicClient, type WalletClient } from "viem";
 
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
@@ -11,9 +12,12 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
     private readonly walletClient: WalletClient,
     private readonly signerAddress: Address,
     private readonly maxFeePerGasCap: bigint,
+    private readonly logger: ILogger,
   ) {}
 
   public async retryWithHigherFee(transactionHash: Hash, attempt: number): Promise<TransactionSubmission> {
+    this.logger.debug("Retrying transaction with higher fee.", { transactionHash, attempt });
+
     const transaction = await this.publicClient.getTransaction({ hash: transactionHash });
     if (!transaction) {
       throw new Error(`Transaction with hash ${transactionHash} not found.`);
@@ -24,6 +28,13 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
       transaction.maxPriorityFeePerGas,
       attempt,
     );
+
+    this.logger.debug("Bumped fees computed.", {
+      transactionHash,
+      attempt,
+      maxFeePerGas: maxFeePerGas.toString(),
+      maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+    });
 
     const txHash = await this.walletClient.sendTransaction({
       account: transaction.from,
@@ -47,6 +58,8 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
   }
 
   public async cancelTransaction(nonce: number): Promise<Hash> {
+    this.logger.warn("Cancelling transaction.", { nonce, signerAddress: this.signerAddress });
+
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.getAggressiveFees();
 
     return this.walletClient.sendTransaction({

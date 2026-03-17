@@ -3,6 +3,7 @@ import { mock } from "jest-mock-extended";
 
 import { Direction } from "../../../core/enums";
 import { IPoller } from "../../../core/services/pollers/IPoller";
+import { wait } from "../../../core/utils/shared";
 import { testL2NetworkConfig } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { IntervalPoller, IProcessable } from "../IntervalPoller";
@@ -66,6 +67,33 @@ describe("IntervalPoller", () => {
       expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
         name: loggerName,
       });
+    });
+
+    it("Should log the error and continue polling when process throws", async () => {
+      const fastPoller = new IntervalPoller(
+        processorMock,
+        { direction: Direction.L1_TO_L2, pollingInterval: 10 },
+        logger,
+      );
+      const processError = new Error("processor blew up");
+      let callCount = 0;
+      jest.spyOn(processorMock, "process").mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) throw processError;
+      });
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+
+      fastPoller.start();
+      await wait(50);
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Unhandled error in polling loop — continuing.", {
+        direction: Direction.L1_TO_L2,
+        name: loggerName,
+        error: processError,
+      });
+      expect(callCount).toBeGreaterThanOrEqual(2);
+
+      fastPoller.stop();
     });
   });
 

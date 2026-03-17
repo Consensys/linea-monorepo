@@ -24,7 +24,7 @@ export class DatabaseCleanerProcessor implements IDatabaseCleanerProcessor {
       const affected = await this.messageRepository.deleteMessages(this.msBeforeNowToDelete);
       this.logger.info("Database cleanup result: deleted %s rows", affected);
     } catch (e) {
-      this.logger.error(e);
+      this.logger.error("Database cleanup failed.", { error: e });
     }
   }
 }

@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach, expect } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 import { type PublicClient, type WalletClient } from "viem";
@@ -12,11 +13,12 @@ const MAX_FEE_CAP = 100_000_000_000n;
 describe("ViemTransactionRetrier", () => {
   const publicClient = mock<PublicClient>();
   const walletClient = mock<WalletClient>();
+  const logger = mock<ILogger>();
   let retrier: ViemTransactionRetrier;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS, MAX_FEE_CAP);
+    retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS, MAX_FEE_CAP, logger);
   });
 
   describe("retryWithHigherFee", () => {
@@ -88,7 +90,7 @@ describe("ViemTransactionRetrier", () => {
 
     it("caps fees at maxFeePerGasCap", async () => {
       const smallCap = 500n;
-      retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS, smallCap);
+      retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS, smallCap, logger);
 
       publicClient.getTransaction.mockResolvedValue({
         from: TEST_ADDRESS as `0x${string}`,

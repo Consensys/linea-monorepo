@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { type PublicClient } from "viem";
 import { estimateGas as lineaEstimateGas } from "viem/linea";
 
@@ -13,6 +14,7 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
   constructor(
     private readonly client: PublicClient,
     private readonly config: LineaGasProviderConfig,
+    private readonly logger: ILogger,
   ) {}
 
   public async getGasFees(transactionRequest: TransactionRequest): Promise<LineaGasFees> {
@@ -29,10 +31,15 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
 
     const rawMaxFeePerGas = baseFeePerGas + priorityFeePerGas;
 
-    const maxFeePerGas =
-      this.config.enforceMaxGasFee && rawMaxFeePerGas > this.config.maxFeePerGasCap
-        ? this.config.maxFeePerGasCap
-        : rawMaxFeePerGas;
+    const capped = this.config.enforceMaxGasFee && rawMaxFeePerGas > this.config.maxFeePerGasCap;
+    const maxFeePerGas = capped ? this.config.maxFeePerGasCap : rawMaxFeePerGas;
+
+    if (capped) {
+      this.logger.debug("Linea gas fee capped to maxFeePerGasCap.", {
+        rawMaxFeePerGas: rawMaxFeePerGas.toString(),
+        cappedMaxFeePerGas: maxFeePerGas.toString(),
+      });
+    }
 
     return {
       gasLimit,

@@ -36,6 +36,7 @@ export interface IMessageReader {
   ): Promise<Message[]>;
   getMessageSent(direction: Direction, contractAddress: Address): Promise<Message | null>;
   getFirstPendingMessage(direction: Direction): Promise<Message | null>;
+  getMaxPendingNonce(direction: Direction): Promise<number | null>;
 }
 
 export interface IMessageRepository extends IMessageWriter, IMessageReader {}

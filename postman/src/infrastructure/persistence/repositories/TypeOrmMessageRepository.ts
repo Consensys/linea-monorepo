@@ -250,4 +250,18 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
       throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
     }
   }
+
+  async getMaxPendingNonce(direction: Direction): Promise<number | null> {
+    try {
+      const result = await this.createQueryBuilder("message")
+        .select("MAX(message.claimTxNonce)", "maxNonce")
+        .where("message.direction = :direction", { direction })
+        .andWhere("message.status = :status", { status: MessageStatus.PENDING })
+        .getRawOne();
+
+      return result?.maxNonce ?? null;
+    } catch (err: any) {
+      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
+    }
+  }
 }

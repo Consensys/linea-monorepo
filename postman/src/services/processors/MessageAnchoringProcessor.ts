@@ -47,7 +47,7 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
       }
 
       if (messages.length === 0) {
-        this.logger.info("No messages to process for anchoring.");
+        this.logger.debug("No messages to process for anchoring.");
         return;
       }
 
@@ -82,7 +82,8 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
 
       await this.messageRepository.saveMessages(messages);
     } catch (e) {
-      this.logger.error(e, {
+      this.logger.error("Error processing message anchoring.", {
+        error: e,
         direction: this.config.direction,
       });
     }

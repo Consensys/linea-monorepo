@@ -331,7 +331,8 @@ describe("TestMessageClaimingProcessor", () => {
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
       expect(rollbackSpy).toHaveBeenCalledWith(101);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith(actionRejectedError, {
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
+        error: actionRejectedError,
         parsedError: errorParser.parse(actionRejectedError),
         messageHash: expectedLoggingMessage.messageHash,
       });

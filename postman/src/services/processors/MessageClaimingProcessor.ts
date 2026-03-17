@@ -32,7 +32,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       nextMessageToClaim = await this.getNextMessageToClaim();
 
       if (!nextMessageToClaim) {
-        this.logger.info("No message to claim found.");
+        this.logger.debug("No message to claim found.");
         return;
       }
 
@@ -229,7 +229,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       await this.messageRepository.updateMessage(message);
     }
 
-    this.logger.error(e, {
+    this.logger.error("Error processing message claim.", {
+      error: e,
       parsedError,
       ...(message ? { messageHash: message.messageHash } : {}),
     });

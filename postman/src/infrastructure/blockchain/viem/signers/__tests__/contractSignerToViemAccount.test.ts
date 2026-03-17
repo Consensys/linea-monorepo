@@ -2,6 +2,7 @@ import { IContractSignerClient } from "@consensys/linea-shared-utils";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
+import { UnsupportedOperationError } from "../../../../../core/errors";
 import { contractSignerToViemAccount } from "../contractSignerToViemAccount";
 
 const SIGNER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as `0x${string}`;
@@ -35,7 +36,6 @@ describe("contractSignerToViemAccount", () => {
       chainId: 1,
     };
 
-    // sign() returns a 65-byte signature hex (r + s + v), NOT a full serialized tx
     const fakeSignatureHex =
       "0x" +
       "b94f5374fce5edbc8e2a8697c15331677e6ebf0b000000000000000000000000" +
@@ -51,17 +51,18 @@ describe("contractSignerToViemAccount", () => {
     expect(typeof result).toBe("string");
   });
 
-  it("signMessage throws with a clear error", async () => {
+  it("signMessage throws UnsupportedOperationError with signer address", async () => {
     const account = contractSignerToViemAccount(signerClient);
-    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(
-      "signMessage is not supported by IContractSignerClient",
-    );
+    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(UnsupportedOperationError);
+    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(/signMessage is not supported/);
+    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(new RegExp(SIGNER_ADDRESS));
   });
 
-  it("signTypedData throws with a clear error", async () => {
+  it("signTypedData throws UnsupportedOperationError with signer address", async () => {
     const account = contractSignerToViemAccount(signerClient);
-    await expect(
-      account.signTypedData({ domain: {}, types: {}, primaryType: "EIP712Domain", message: {} }),
-    ).rejects.toThrow("signTypedData is not supported by IContractSignerClient");
+    const call = () => account.signTypedData({ domain: {}, types: {}, primaryType: "EIP712Domain", message: {} });
+    await expect(call()).rejects.toThrow(UnsupportedOperationError);
+    await expect(call()).rejects.toThrow(/signTypedData is not supported/);
+    await expect(call()).rejects.toThrow(new RegExp(SIGNER_ADDRESS));
   });
 });

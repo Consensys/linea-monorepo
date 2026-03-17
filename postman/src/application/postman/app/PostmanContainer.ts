@@ -4,6 +4,7 @@ import { DataSource } from "typeorm";
 import { PostmanConfig } from "./config/config";
 import { L1ToL2App, L1ToL2Deps } from "./L1ToL2App";
 import { L2ToL1App, L2ToL1Deps } from "./L2ToL1App";
+import { Direction } from "../../../core/enums";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../core/metrics";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import {
@@ -17,7 +18,7 @@ import {
   ViemL2MessageServiceLogClient,
   ViemProvider,
   ViemTransactionSigner,
-  InMemoryNonceManager,
+  NonceManager,
   createChainContext,
   ViemTransactionRetrier,
   ViemReceiptPoller,
@@ -47,15 +48,26 @@ export async function buildPostmanServices(
     createChainContext(l2Config.rpcUrl, l2Config.claiming.signer, logger),
   ]);
 
-  const l1GasProvider = new ViemEthereumGasProvider(l1.publicClient, {
-    maxFeePerGasCap: l1Config.claiming.maxFeePerGasCap,
-    gasEstimationPercentile: l1Config.claiming.gasEstimationPercentile,
-    enforceMaxGasFee: l1Config.claiming.isMaxGasFeeEnforced,
-  });
-  const l2GasProvider = new ViemLineaGasProvider(l2.publicClient, {
-    maxFeePerGasCap: l2Config.claiming.maxFeePerGasCap,
-    enforceMaxGasFee: l2Config.claiming.isMaxGasFeeEnforced,
-  });
+  const l1SignerAddress = l1.account.address;
+  const l2SignerAddress = l2.account.address;
+
+  const l1GasProvider = new ViemEthereumGasProvider(
+    l1.publicClient,
+    {
+      maxFeePerGasCap: l1Config.claiming.maxFeePerGasCap,
+      gasEstimationPercentile: l1Config.claiming.gasEstimationPercentile,
+      enforceMaxGasFee: l1Config.claiming.isMaxGasFeeEnforced,
+    },
+    new WinstonLogger("L1GasProvider", loggerOptions),
+  );
+  const l2GasProvider = new ViemLineaGasProvider(
+    l2.publicClient,
+    {
+      maxFeePerGasCap: l2Config.claiming.maxFeePerGasCap,
+      enforceMaxGasFee: l2Config.claiming.isMaxGasFeeEnforced,
+    },
+    new WinstonLogger("L2GasProvider", loggerOptions),
+  );
 
   const lineaRollupClient = new ViemLineaRollupClient(
     l1.publicClient,
@@ -70,13 +82,13 @@ export async function buildPostmanServices(
     l2.walletClient,
     l2Config.messageServiceContractAddress,
     l2GasProvider,
-    l2.account.address,
+    l2SignerAddress,
   );
 
   const messageRepository = new TypeOrmMessageRepository(db);
 
-  const l1Provider = new ViemProvider(l1.publicClient);
-  const l2Provider = new ViemProvider(l2.publicClient);
+  const l1Provider = new ViemProvider(l1.publicClient, new WinstonLogger("L1Provider", loggerOptions));
+  const l2Provider = new ViemProvider(l2.publicClient, new WinstonLogger("L2Provider", loggerOptions));
   const calldataDecoder = new ViemCalldataDecoder();
   const errorParser = new ViemErrorParser();
   const sharedMetrics = { sponsorshipMetricsUpdater, transactionMetricsUpdater };
@@ -84,9 +96,10 @@ export async function buildPostmanServices(
   const services: PostmanServices = {};
 
   if (config.l1L2AutoClaimEnabled) {
-    const l2NonceManager = new InMemoryNonceManager(
+    const l2NonceManager = new NonceManager(
       l2Provider,
-      l2.account.address,
+      { getMaxPendingNonce: () => messageRepository.getMaxPendingNonce(Direction.L1_TO_L2) },
+      l2SignerAddress,
       l2Config.claiming.maxNonceDiff,
       new WinstonLogger("L2NonceManager", loggerOptions),
     );
@@ -95,17 +108,18 @@ export async function buildPostmanServices(
     const l2TransactionRetrier = new ViemTransactionRetrier(
       l2.publicClient,
       l2.walletClient,
-      l2.account.address,
+      l2SignerAddress,
       l2Config.claiming.maxFeePerGasCap,
+      new WinstonLogger("L2TransactionRetrier", loggerOptions),
     );
-    const l2ReceiptPoller = new ViemReceiptPoller(l2Provider);
+    const l2ReceiptPoller = new ViemReceiptPoller(l2Provider, new WinstonLogger("L2ReceiptPoller", loggerOptions));
     const transactionSigner = new ViemTransactionSigner(l2.signer, l2.chainId);
 
     const deps: L1ToL2Deps = {
       l1LogClient: new ViemLineaRollupLogClient(l1.publicClient, l1Config.messageServiceContractAddress),
       l1Provider,
       l2MessageServiceClient,
-      l2Provider: new ViemLineaProvider(l2.publicClient),
+      l2Provider: new ViemLineaProvider(l2.publicClient, new WinstonLogger("L2LineaProvider", loggerOptions)),
       l2NonceManager,
       l2TransactionRetrier,
       l2ReceiptPoller,
@@ -123,9 +137,10 @@ export async function buildPostmanServices(
   }
 
   if (config.l2L1AutoClaimEnabled) {
-    const l1NonceManager = new InMemoryNonceManager(
+    const l1NonceManager = new NonceManager(
       l1Provider,
-      l1.account.address,
+      { getMaxPendingNonce: () => messageRepository.getMaxPendingNonce(Direction.L2_TO_L1) },
+      l1SignerAddress,
       l1Config.claiming.maxNonceDiff,
       new WinstonLogger("L1NonceManager", loggerOptions),
     );
@@ -134,10 +149,11 @@ export async function buildPostmanServices(
     const l1TransactionRetrier = new ViemTransactionRetrier(
       l1.publicClient,
       l1.walletClient,
-      l1.account.address,
+      l1SignerAddress,
       l1Config.claiming.maxFeePerGasCap,
+      new WinstonLogger("L1TransactionRetrier", loggerOptions),
     );
-    const l1ReceiptPoller = new ViemReceiptPoller(l1Provider);
+    const l1ReceiptPoller = new ViemReceiptPoller(l1Provider, new WinstonLogger("L1ReceiptPoller", loggerOptions));
 
     const deps: L2ToL1Deps = {
       l2LogClient: new ViemL2MessageServiceLogClient(l2.publicClient, l2Config.messageServiceContractAddress),

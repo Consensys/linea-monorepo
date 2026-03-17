@@ -1,3 +1,4 @@
+import { WinstonLogger } from "@consensys/linea-shared-utils";
 import * as dotenv from "dotenv";
 
 import { loadPostmanOptionsFromEnv } from "./application/postman/app/config/envLoader";
@@ -5,6 +6,7 @@ import { PostmanApp } from "./application/postman/app/PostmanApp";
 
 dotenv.config();
 
+const bootstrapLogger = new WinstonLogger("Bootstrap");
 let app: PostmanApp | undefined;
 
 async function main() {
@@ -14,12 +16,14 @@ async function main() {
 }
 
 async function shutdown() {
+  bootstrapLogger.info("Shutdown signal received — draining services.");
   await app?.stop();
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error("", error);
+main().catch((error: unknown) => {
+  const safeError = error instanceof Error ? { message: error.message } : { message: String(error) };
+  bootstrapLogger.error("Fatal startup error.", safeError);
   process.exit(1);
 });
 

@@ -32,7 +32,6 @@ export class PostmanApp {
   constructor(options: PostmanOptions) {
     this.config = getConfig(options);
     this.logger = new WinstonLogger(PostmanApp.name, this.config.loggerOptions);
-    this.logger.info("Postman configuration:\n  %s", this.toLogfmt(this.redactConfig(this.config)));
 
     this.db = DB.create(this.config.databaseOptions);
     this.postmanMetricsService = new PostmanMetricsService();
@@ -77,41 +76,5 @@ export class PostmanApp {
     this.api?.stop();
     await this.db.destroy();
     this.logger.info("All services stopped.");
-  }
-
-  private redactConfig(config: PostmanConfig): Record<string, unknown> {
-    const redactNetworkConfig = (networkConfig: PostmanConfig["l1Config"]) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { signer: _, ...claimingWithoutSigner } = networkConfig.claiming;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { rpcUrl: __, ...networkWithoutRpcUrl } = networkConfig;
-      return {
-        ...networkWithoutRpcUrl,
-        claiming: claimingWithoutSigner,
-      };
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { databaseOptions: _, loggerOptions, ...rest } = config;
-    return {
-      ...rest,
-      l1Config: redactNetworkConfig(config.l1Config),
-      l2Config: redactNetworkConfig(config.l2Config),
-      loggerOptions: { level: loggerOptions?.level },
-    };
-  }
-
-  private toLogfmt(obj: Record<string, unknown>, prefix = ""): string {
-    const pairs: string[] = [];
-    for (const [key, value] of Object.entries(obj)) {
-      const fullKey = prefix ? `${prefix}.${key}` : key;
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        pairs.push(this.toLogfmt(value as Record<string, unknown>, fullKey));
-      } else {
-        const str = typeof value === "bigint" ? value.toString() : String(value ?? "");
-        pairs.push(str.includes(" ") || str.includes('"') || str === "" ? `${fullKey}="${str}"` : `${fullKey}=${str}`);
-      }
-    }
-    return pairs.join("\n  ");
   }
 }

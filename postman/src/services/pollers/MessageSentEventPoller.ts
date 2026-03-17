@@ -75,7 +75,7 @@ export class MessageSentEventPoller implements IPoller {
       const { fromBlock, fromBlockLogIndex } = await this.getInitialFromBlock();
       this.processEvents(fromBlock, fromBlockLogIndex);
     } catch (e) {
-      this.logger.error("Failed to get initial block number.", { error: e });
+      this.logger.error("Failed to get initial block number.", { error: e, direction: this.config.direction });
       await wait(this.config.pollingInterval);
       this.startProcessingEvents();
     }
@@ -98,15 +98,15 @@ export class MessageSentEventPoller implements IPoller {
       fromBlockLogIndex = nextFromBlockLogIndex;
     } catch (e) {
       if (e instanceof DatabaseAccessError) {
-        fromBlock = (e.rejectedMessage as Message & { logIndex: number }).sentBlockNumber;
-        fromBlockLogIndex = (e.rejectedMessage as Message & { logIndex: number }).logIndex;
+        fromBlock = (e.rejectedEntity as Message & { logIndex: number }).sentBlockNumber;
+        fromBlockLogIndex = (e.rejectedEntity as Message & { logIndex: number }).logIndex;
         this.logger.warn("Something went wrong with database access. Restarting.", {
           fromBlockNum: fromBlock,
           fromLogIndex: fromBlockLogIndex,
           errorMessage: e.message,
         });
       } else {
-        this.logger.error(e);
+        this.logger.error("Unexpected error processing events.", { error: e, direction: this.config.direction });
       }
     } finally {
       await wait(this.config.pollingInterval);

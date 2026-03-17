@@ -1,3 +1,4 @@
+import { isHex, size } from "viem/utils";
 import { z } from "zod";
 
 import type { Address } from "../../../../core/types/hex";
@@ -5,6 +6,10 @@ import type { Address } from "../../../../core/types/hex";
 const hexString = z
   .string()
   .regex(/^0x[0-9a-fA-F]+$/, "Must be a hex string starting with 0x") as z.ZodType<`0x${string}`>;
+
+const privateKeySchema = z.custom<`0x${string}`>((val) => {
+  return isHex(val) && size(val) === 32;
+}, "Invalid private key");
 
 const ethAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Must be a valid Ethereum address") as z.ZodType<Address>;
 
@@ -18,7 +23,7 @@ const web3SignerTlsConfigSchema = z.object({
 const signerConfigSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("private-key"),
-    privateKey: hexString,
+    privateKey: privateKeySchema,
   }),
   z.object({
     type: z.literal("web3signer"),

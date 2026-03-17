@@ -48,7 +48,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
       );
 
       if (messages.length === 0) {
-        this.logger.info("No anchored messages found to compute transaction size.");
+        this.logger.debug("No anchored messages found to compute transaction size.");
         return;
       }
 
@@ -96,14 +96,16 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
     if (!parsedError.retryable && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.messageRepository.updateMessage(message);
-      this.logger.error(e, {
+      this.logger.error("Non-retryable error computing transaction size.", {
+        error: e,
         parsedError,
         messageHash: message.messageHash,
       });
       return;
     }
 
-    this.logger.error(e, {
+    this.logger.error("Error computing transaction size.", {
+      error: e,
       parsedError,
     });
   }

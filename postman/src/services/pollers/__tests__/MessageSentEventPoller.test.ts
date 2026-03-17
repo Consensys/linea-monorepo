@@ -100,7 +100,10 @@ describe("TestMessageSentEventPoller", () => {
       await wait(500);
 
       expect(loggerErrorSpy).toHaveBeenCalled();
-      expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to get initial block number.", { error });
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to get initial block number.", {
+        error,
+        direction: Direction.L1_TO_L2,
+      });
       expect(l1QuerierMockSpy).toHaveBeenCalled();
 
       testMessageSentEventPoller.stop();
@@ -161,7 +164,10 @@ describe("TestMessageSentEventPoller", () => {
       await wait(500);
 
       expect(loggerErrorSpy).toHaveBeenCalled();
-      expect(loggerErrorSpy).toHaveBeenCalledWith(error);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Unexpected error processing events.", {
+        error,
+        direction: Direction.L1_TO_L2,
+      });
       expect(l1QuerierMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalled();
       expect(messageRepositoryMockSpy).toHaveBeenCalledWith(

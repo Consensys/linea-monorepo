@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
@@ -9,6 +10,7 @@ import type { PublicClient } from "viem";
 
 describe("ViemEthereumGasProvider", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
+  let logger: ReturnType<typeof mock<ILogger>>;
 
   const baseConfig: DefaultGasProviderConfig = {
     maxFeePerGasCap: 100_000_000_000n,
@@ -28,6 +30,7 @@ describe("ViemEthereumGasProvider", () => {
 
   beforeEach(() => {
     publicClient = mock<PublicClient>();
+    logger = mock<ILogger>();
   });
 
   afterEach(() => {
@@ -39,7 +42,7 @@ describe("ViemEthereumGasProvider", () => {
       publicClient.getBlockNumber.mockResolvedValue(100n);
       publicClient.getFeeHistory.mockResolvedValue(defaultFeeHistory as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       const fees = await provider.getGasFees();
 
       // maxPriorityFee = (1+2+1+2)/4 = 1.5gwei
@@ -52,7 +55,7 @@ describe("ViemEthereumGasProvider", () => {
       publicClient.getBlockNumber.mockResolvedValue(100n);
       publicClient.getFeeHistory.mockResolvedValue(defaultFeeHistory as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       await provider.getGasFees();
 
       expect(publicClient.getFeeHistory).toHaveBeenCalledWith({
@@ -71,7 +74,7 @@ describe("ViemEthereumGasProvider", () => {
         oldestBlock: 99n,
       } as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       const fees = await provider.getGasFees();
 
       // maxFee = 60gwei * 2 + 1gwei = 121gwei > cap(100gwei)
@@ -81,7 +84,7 @@ describe("ViemEthereumGasProvider", () => {
 
     it("returns maxFeePerGasCap for both fees when enforceMaxGasFee is true", async () => {
       const capConfig: DefaultGasProviderConfig = { ...baseConfig, enforceMaxGasFee: true };
-      const provider = new ViemEthereumGasProvider(publicClient, capConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, capConfig, logger);
       const fees = await provider.getGasFees();
 
       expect(fees.maxFeePerGas).toBe(100_000_000_000n);
@@ -99,7 +102,7 @@ describe("ViemEthereumGasProvider", () => {
         oldestBlock: 99n,
       } as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       await expect(provider.getGasFees()).rejects.toThrow(BaseError);
     });
 
@@ -107,7 +110,7 @@ describe("ViemEthereumGasProvider", () => {
       publicClient.getBlockNumber.mockResolvedValue(100n);
       publicClient.getFeeHistory.mockResolvedValue(defaultFeeHistory as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       await provider.getGasFees();
       await provider.getGasFees();
 
@@ -118,7 +121,7 @@ describe("ViemEthereumGasProvider", () => {
       publicClient.getBlockNumber.mockResolvedValueOnce(100n).mockResolvedValueOnce(101n);
       publicClient.getFeeHistory.mockResolvedValue(defaultFeeHistory as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       await provider.getGasFees();
       await provider.getGasFees();
 
@@ -134,7 +137,7 @@ describe("ViemEthereumGasProvider", () => {
         oldestBlock: 99n,
       } as never);
 
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       const fees = await provider.getGasFees();
 
       expect(fees.maxFeePerGas).toBe(100_000_000_000n);
@@ -144,7 +147,7 @@ describe("ViemEthereumGasProvider", () => {
 
   describe("getMaxFeePerGas", () => {
     it("returns the cap from config", () => {
-      const provider = new ViemEthereumGasProvider(publicClient, baseConfig);
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
       expect(provider.getMaxFeePerGas()).toBe(100_000_000_000n);
     });
   });

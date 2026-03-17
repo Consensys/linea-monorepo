@@ -99,7 +99,8 @@ describe("TestMessageClaimingPersister", () => {
       await messageClaimingPersister.process();
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith(getTxReceiptError, {
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing pending message.", {
+        error: getTxReceiptError,
         messageHash: testPendingMessage.messageHash,
       });
     });
@@ -243,7 +244,10 @@ describe("TestMessageClaimingPersister", () => {
 
       await messageClaimingPersister.process();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(retryError, { messageHash: testPendingMessage.messageHash });
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to retry with bumped fee.", {
+        error: retryError,
+        messageHash: testPendingMessage.messageHash,
+      });
     });
 
     it("Should cancel and reset message when max bumps per cycle exceeded", async () => {

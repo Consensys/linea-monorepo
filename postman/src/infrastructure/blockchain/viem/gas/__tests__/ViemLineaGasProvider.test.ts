@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
@@ -16,6 +17,7 @@ const TEST_TX_REQUEST: TransactionRequest = {
 
 describe("ViemLineaGasProvider", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
+  let logger: ReturnType<typeof mock<ILogger>>;
 
   const baseConfig: LineaGasProviderConfig = {
     maxFeePerGasCap: 100_000_000_000n,
@@ -24,6 +26,7 @@ describe("ViemLineaGasProvider", () => {
 
   beforeEach(() => {
     publicClient = mock<PublicClient>();
+    logger = mock<ILogger>();
   });
 
   afterEach(() => {
@@ -32,13 +35,13 @@ describe("ViemLineaGasProvider", () => {
 
   describe("getGasFees", () => {
     it("maps linea_estimateGas hex response to LineaGasFees", async () => {
-      publicClient.request.mockResolvedValue({
+      jest.spyOn(publicClient, "request").mockResolvedValue({
         gasLimit: "0x5208", // 21000
         baseFeePerGas: "0x3B9ACA00", // 1_000_000_000
         priorityFeePerGas: "0x3B9ACA00", // 1_000_000_000
       } as never);
 
-      const provider = new ViemLineaGasProvider(publicClient, baseConfig);
+      const provider = new ViemLineaGasProvider(publicClient, baseConfig, logger);
       const fees = await provider.getGasFees(TEST_TX_REQUEST);
 
       expect(fees.gasLimit).toBe(21000n);
@@ -47,13 +50,13 @@ describe("ViemLineaGasProvider", () => {
     });
 
     it("calls linea_estimateGas via viem/linea with correct params", async () => {
-      publicClient.request.mockResolvedValue({
+      jest.spyOn(publicClient, "request").mockResolvedValue({
         gasLimit: "0x5208",
         baseFeePerGas: "0x1",
         priorityFeePerGas: "0x1",
       } as never);
 
-      const provider = new ViemLineaGasProvider(publicClient, baseConfig);
+      const provider = new ViemLineaGasProvider(publicClient, baseConfig, logger);
       await provider.getGasFees(TEST_TX_REQUEST);
 
       expect(publicClient.request).toHaveBeenCalledWith(
@@ -70,27 +73,27 @@ describe("ViemLineaGasProvider", () => {
     });
 
     it("caps maxFeePerGas when enforceMaxGasFee is true and computed fee exceeds cap", async () => {
-      publicClient.request.mockResolvedValue({
+      jest.spyOn(publicClient, "request").mockResolvedValue({
         gasLimit: "0x5208",
         baseFeePerGas: "0x174876E800", // 100_000_000_000
         priorityFeePerGas: "0x174876E800", // 100_000_000_000
       } as never);
 
       const capConfig: LineaGasProviderConfig = { ...baseConfig, enforceMaxGasFee: true };
-      const provider = new ViemLineaGasProvider(publicClient, capConfig);
+      const provider = new ViemLineaGasProvider(publicClient, capConfig, logger);
       const fees = await provider.getGasFees(TEST_TX_REQUEST);
 
       expect(fees.maxFeePerGas).toBe(100_000_000_000n);
     });
 
     it("does not cap when enforceMaxGasFee is false", async () => {
-      publicClient.request.mockResolvedValue({
+      jest.spyOn(publicClient, "request").mockResolvedValue({
         gasLimit: "0x5208",
         baseFeePerGas: "0x174876E800", // 100_000_000_000
         priorityFeePerGas: "0x174876E800", // 100_000_000_000
       } as never);
 
-      const provider = new ViemLineaGasProvider(publicClient, baseConfig);
+      const provider = new ViemLineaGasProvider(publicClient, baseConfig, logger);
       const fees = await provider.getGasFees(TEST_TX_REQUEST);
 
       expect(fees.maxFeePerGas).toBe(200_000_000_000n);
@@ -99,7 +102,7 @@ describe("ViemLineaGasProvider", () => {
 
   describe("getMaxFeePerGas", () => {
     it("returns the cap from config", () => {
-      const provider = new ViemLineaGasProvider(publicClient, baseConfig);
+      const provider = new ViemLineaGasProvider(publicClient, baseConfig, logger);
       expect(provider.getMaxFeePerGas()).toBe(100_000_000_000n);
     });
   });

@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { BlockNumber, type BlockTag, type PublicClient } from "viem";
 
 import { GasFees } from "../../../../core/clients/blockchain/IGasProvider";
@@ -14,7 +15,10 @@ import {
 import { mapViemBlockToCoreBlock, mapViemReceiptToCoreReceipt, mapViemTransactionToCoreSubmission } from "../mappers";
 
 export class ViemProvider implements IProvider {
-  constructor(protected readonly client: PublicClient) {}
+  constructor(
+    protected readonly client: PublicClient,
+    protected readonly logger: ILogger,
+  ) {}
 
   public async getTransactionCount(address: Address, blockTag: BlockTag): Promise<number> {
     return this.client.getTransactionCount({
@@ -32,7 +36,8 @@ export class ViemProvider implements IProvider {
     try {
       const receipt = await this.client.getTransactionReceipt({ hash: txHash });
       return mapViemReceiptToCoreReceipt(receipt);
-    } catch {
+    } catch (error) {
+      this.logger.warn("Failed to fetch transaction receipt.", { txHash, error });
       return null;
     }
   }
@@ -46,7 +51,8 @@ export class ViemProvider implements IProvider {
         block = await this.client.getBlock({ blockNumber: blockNumber });
       }
       return mapViemBlockToCoreBlock(block);
-    } catch {
+    } catch (error) {
+      this.logger.warn("Failed to fetch block.", { blockNumber, error });
       return null;
     }
   }
@@ -67,7 +73,8 @@ export class ViemProvider implements IProvider {
     try {
       const tx = await this.client.getTransaction({ hash: transactionHash });
       return mapViemTransactionToCoreSubmission(tx);
-    } catch {
+    } catch (error) {
+      this.logger.warn("Failed to fetch transaction.", { transactionHash, error });
       return null;
     }
   }

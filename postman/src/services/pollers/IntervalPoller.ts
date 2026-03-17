@@ -33,7 +33,15 @@ export class IntervalPoller implements IPoller {
     this.isPolling = true;
 
     while (this.isPolling) {
-      await this.processor.process();
+      try {
+        await this.processor.process();
+      } catch (error) {
+        this.logger.error("Unhandled error in polling loop — continuing.", {
+          ...(this.config.direction ? { direction: this.config.direction } : {}),
+          name: this.logger.name,
+          error,
+        });
+      }
       await wait(this.config.pollingInterval);
     }
   }

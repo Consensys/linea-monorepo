@@ -52,13 +52,13 @@ describe("DatabaseCleanerProcessor", () => {
 
       expect(messageRepositorySpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
-      expect(loggerErrorSpy).toHaveBeenCalledWith(
-        new DatabaseAccessError(
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Database cleanup failed.", {
+        error: new DatabaseAccessError(
           DatabaseRepoName.MessageRepository,
           DatabaseErrorType.Delete,
           new Error("Error for testing"),
         ),
-      );
+      });
     });
   });
 });

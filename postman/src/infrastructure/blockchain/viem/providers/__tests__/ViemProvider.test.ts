@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { serializeTransaction, parseSignature } from "viem";
 
+import { TestLogger } from "../../../../../utils/testing/helpers";
 import { ViemProvider } from "../ViemProvider";
 
 import type { PublicClient } from "viem";
@@ -12,10 +12,11 @@ const TEST_TX_HASH = "0x20202020202020202020202020202020202020202020202020202020
 describe("ViemProvider", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
   let provider: ViemProvider;
+  const logger = new TestLogger("TestViemProvider");
 
   beforeEach(() => {
     publicClient = mock<PublicClient>();
-    provider = new ViemProvider(publicClient);
+    provider = new ViemProvider(publicClient, logger);
   });
 
   afterEach(() => {
@@ -70,9 +71,16 @@ describe("ViemProvider", () => {
       });
     });
 
-    it("returns null when receipt not found", async () => {
-      publicClient.getTransactionReceipt.mockRejectedValue(new Error("not found"));
+    it("returns null and logs warning when receipt not found", async () => {
+      const rpcError = new Error("not found");
+      publicClient.getTransactionReceipt.mockRejectedValue(rpcError);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
       await expect(provider.getTransactionReceipt(TEST_TX_HASH)).resolves.toBeNull();
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction receipt.", {
+        txHash: TEST_TX_HASH,
+        error: rpcError,
+      });
     });
   });
 
@@ -122,9 +130,16 @@ describe("ViemProvider", () => {
       expect(publicClient.getBlock).toHaveBeenCalledWith({ blockTag: "latest" });
     });
 
-    it("returns null on error", async () => {
-      publicClient.getBlock.mockRejectedValue(new Error("block not found"));
+    it("returns null and logs warning on error", async () => {
+      const rpcError = new Error("block not found");
+      publicClient.getBlock.mockRejectedValue(rpcError);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
       await expect(provider.getBlock(9999n)).resolves.toBeNull();
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch block.", {
+        blockNumber: 9999n,
+        error: rpcError,
+      });
     });
   });
 
@@ -171,9 +186,16 @@ describe("ViemProvider", () => {
       });
     });
 
-    it("returns null when transaction not found", async () => {
-      publicClient.getTransaction.mockRejectedValue(new Error("not found"));
+    it("returns null and logs warning when transaction not found", async () => {
+      const rpcError = new Error("not found");
+      publicClient.getTransaction.mockRejectedValue(rpcError);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
       await expect(provider.getTransaction(TEST_TX_HASH)).resolves.toBeNull();
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction.", {
+        transactionHash: TEST_TX_HASH,
+        error: rpcError,
+      });
     });
   });
 

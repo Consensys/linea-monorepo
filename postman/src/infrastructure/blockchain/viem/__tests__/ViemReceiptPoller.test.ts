@@ -1,3 +1,4 @@
+import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach, expect } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
@@ -19,11 +20,12 @@ const generateReceipt = (): TransactionReceipt => ({
 
 describe("ViemReceiptPoller", () => {
   const provider = mock<ITransactionProvider>();
+  const logger = mock<ILogger>();
   let poller: ViemReceiptPoller;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    poller = new ViemReceiptPoller(provider);
+    poller = new ViemReceiptPoller(provider, logger);
   });
 
   it("returns receipt immediately when available", async () => {

@@ -6,8 +6,9 @@ import { contractSignerToViemAccount } from "./contractSignerToViemAccount";
 import { createSignerClient } from "./createSignerClient";
 import { SignerConfig } from "./SignerConfig";
 
-async function getChainId(client: PublicClient, logger: ILogger): Promise<number> {
-  const deadlineMs = 60_000;
+const DEFAULT_CHAIN_ID_DEADLINE_MS = 60_000;
+
+async function getChainId(client: PublicClient, logger: ILogger, deadlineMs: number): Promise<number> {
   const baseDelayMs = 1_000;
   const startTime = Date.now();
   let attempt = 0;
@@ -32,13 +33,20 @@ async function getChainId(client: PublicClient, logger: ILogger): Promise<number
   throw new Error(`Failed to fetch chainId after ${deadlineMs}ms`);
 }
 
+export type ChainContextOptions = {
+  chainIdFetchDeadlineMs?: number;
+};
+
 export async function createChainContext(
   rpcUrl: string,
   signerConfig: SignerConfig,
   logger: ILogger,
+  options?: ChainContextOptions,
 ): Promise<ChainContext> {
+  const deadlineMs = options?.chainIdFetchDeadlineMs ?? DEFAULT_CHAIN_ID_DEADLINE_MS;
+
   const tempClient = createPublicClient({ transport: http(rpcUrl) });
-  const chainId = await getChainId(tempClient, logger);
+  const chainId = await getChainId(tempClient, logger, deadlineMs);
 
   const chain = defineChain({
     id: chainId,
