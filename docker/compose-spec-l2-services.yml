@@ -20,10 +20,22 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
+    environment:
+      MARU_USE_OVERRIDE_CONFIG: ${MARU_USE_OVERRIDE_CONFIG:-false}
+      MARU_COMMAND: exec java -Dlog4j2.configurationFile=configs/log4j.xml -jar maru.jar --genesis-file /initialization/genesis-maru.json --config configs/config.toml
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if [ "$$MARU_USE_OVERRIDE_CONFIG" = "true" ]; then
+          $$MARU_COMMAND --config configs/config.override.toml
+        else
+          $$MARU_COMMAND
+        fi
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./config/maru/sequencer.config.toml:/opt/consensys/maru/configs/config.toml:ro
+      - ./config/maru/sequencer.config.override.toml:/opt/consensys/maru/configs/config.override.toml:ro
       - ./config/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
       - ./config/maru/0x083e11f14b68d5ebeb4be3e3e0237ebbc5675ab5.key:/tmp/maru-db/private-key
       - ./config/l2-genesis-initialization:/initialization/:ro
@@ -119,6 +131,8 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
+    privileged: true # from shomei besu node
+    user: root # from shomei besu node
     ports:
       - "9045:8545"
       - "9046:8546"
@@ -133,12 +147,29 @@ services:
     restart: "no"
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx1g # from tracer besu node
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/l2-node-besu.config.toml
       - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
+      
+      # from shomei besu node
+      - --plugin-shomei-http-host="11.11.11.114"
+      - --plugin-shomei-http-port=8888
+      - --plugin-shomei-zktrace-comparison-mode=31
+      - --plugin-shomei-enable-zktracer=true
+      
+      # from tracer besu node
+      - --plugin-linea-conflated-trace-generation-traces-output-path="/data/traces/v2/conflated"
+      - --plugin-linea-rpc-concurrent-requests-limit=2
+      - --plugin-linea-tracer-readiness-server-host="0.0.0.0"
+      - --plugin-linea-tracer-readiness-server-port=8548
+      - --plugin-linea-tracer-readiness-max-blocks-behind=5
+      
+      - --rpc-http-api=ADMIN,DEBUG,NET,ETH,ENGINE,WEB3,PLUGINS,MINER,LINEA,SHOMEI
+      - --plugins=LineaEstimateGasEndpointPlugin,LineaExtraDataPlugin,LineaTransactionPoolValidatorPlugin,LineaBundleEndpointsPlugin,ForwardBundlesPlugin,TracerReadinessPlugin,TracesEndpointServicePlugin,LineCountsEndpointServicePlugin,CaptureEndpointServicePlugin,BesuShomeiRpcPlugin,ZkTrieLogPlugin
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
@@ -152,10 +183,55 @@ services:
       linea:
         ipv4_address: 11.11.11.119
 
+  l2-node-besu-leader:
+    hostname: l2-node-besu-leader
+    container_name: l2-node-besu-leader
+    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "9345:8545"
+      - "9346:8546"
+      - "9350:8550"
+      - "9351:8548"
+      - "30320:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/l2-node-besu.config.toml
+      - --genesis-file=/initialization/genesis-besu.json
+      - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
+      - --plugin-linea-node-type=RPC
+      - --plugin-fleet-node-role=LEADER # from fleet plugin
+      - --rpc-http-api=ADMIN,DEBUG,NET,ETH,ENGINE,WEB3,PLUGINS,LINEA,FLEET
+      - --plugins=LineaEstimateGasEndpointPlugin,LineaExtraDataPlugin,LineaTransactionPoolValidatorPlugin,LineaBundleEndpointsPlugin,ForwardBundlesPlugin,FleetPlugin
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+
+    volumes:
+      - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ../config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/l2-genesis-initialization:/initialization/:ro
+      - ../tmp/local/:/data/:rw
+    networks:
+      l1network:
+      linea:
+        ipv4_address: 11.11.11.121
+
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -180,6 +256,17 @@ services:
       - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
+      
+      # from fleet plugin
+      - --plugin-fleet-node-role=FOLLOWER
+      - --plugin-fleet-leader-http-host=l2-node-besu-leader
+      - --plugin-fleet-leader-http-port=8545
+      - --plugin-fleet-follower-http-host=l2-node-besu-follower
+      - --plugin-fleet-follower-http-port=8545
+      - --plugin-fleet-follower-heartbeat-delay=4
+      
+      - --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,LINEA,FLEET
+      - --plugins=LineaEstimateGasEndpointPlugin,LineaExtraDataPlugin,LineaTransactionPoolValidatorPlugin,LineaBundleEndpointsPlugin,ForwardBundlesPlugin,FleetPlugin
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
@@ -432,7 +519,7 @@ services:
     container_name: shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
-      zkbesu-shomei:
+      l2-node-besu:
         condition: service_started
     privileged: true
     user: root
@@ -449,7 +536,7 @@ services:
     environment:
       LOG4J_CONFIGURATION_FILE: /log4j.xml
     command:
-      - --besu-rpc-http-host=11.11.11.113
+      - --besu-rpc-http-host=11.11.11.119
       - --besu-rpc-http-port=8545
       - --rpc-http-host=11.11.11.114
       - --rpc-http-host-allow-list=*
@@ -467,7 +554,7 @@ services:
     container_name: shomei-frontend
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
-      zkbesu-shomei:
+      l2-node-besu:
         condition: service_started
     privileged: true
     user: root
@@ -485,7 +572,7 @@ services:
     environment:
       LOG4J_CONFIGURATION_FILE: /log4j.xml
     command:
-      - --besu-rpc-http-host=11.11.11.113
+      - --besu-rpc-http-host=11.11.11.119
       - --besu-rpc-http-port=8545
       - --rpc-http-host=11.11.11.107
       - --rpc-http-host-allow-list=*
