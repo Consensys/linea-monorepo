@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -548,7 +550,12 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
-	runtimes := []*wizard.ProverRuntime{}
+	var (
+		allGrandProduct     = fext.One()
+		allLogDerivativeSum = fext.Element{}
+		allHornerSum        = fext.Element{}
+		generalMSet         = multisethashing.MSetHash{}
+	)
 
 	for i, witness := range witnessGLs {
 
@@ -564,7 +571,10 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
-		runtimes = append(runtimes, rt)
+
+		generalMSetFromGLFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromGL := multisethashing.MSetHash(generalMSetFromGLFr)
+		generalMSet.Add(generalMSetFromGL)
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -605,8 +615,41 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 
-		runtimes = append(runtimes, rt)
+		generalMSetFromLPPFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromLPP := multisethashing.MSetHash(generalMSetFromLPPFr)
+		generalMSet.Add(generalMSetFromLPP)
+
+		logDerivativeSum := rt.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
+		grandProduct := rt.GetPublicInput(distributed.GrandProductPublicInput).Ext
+		hornerSum := rt.GetPublicInput(distributed.HornerPublicInput).Ext
+
+		logrus.Infof("LPP segment %v: log-derivative-sum=%v grand-product=%v horner-sum=%v",
+			i, logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
 	}
+
+	logrus.Infof("Checking accumulation cancellation invariants")
+
+	if !allGrandProduct.IsOne() {
+		utils.Panic("grand-product does not cancel: %v", allGrandProduct.String())
+	}
+
+	if !allHornerSum.IsZero() {
+		utils.Panic("horner does not cancel: %v", allHornerSum.String())
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		utils.Panic("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+	}
+
+	if !generalMSet.IsEmpty() {
+		utils.Panic("general multiset does not cancel")
+	}
+
+	logrus.Infof("All accumulation cancellation invariants passed")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
