@@ -11,7 +11,12 @@ import {
 import { estimateLineaGas, expectSuccessfulTransaction, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { Eip7702TestEntrypointAbi, TestEIP7702DelegationAbi, TestEIP7702DelegationAbiBytecode } from "./generated";
+import {
+  Eip7702TestEntrypointAbi,
+  Eip7702TestNestedAbi,
+  TestEIP7702DelegationAbi,
+  TestEIP7702DelegationAbiBytecode,
+} from "./generated";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
@@ -289,16 +294,33 @@ describe("EIP-7702 test suite", () => {
       await reloadDenyList(sequencerClient);
 
       const nonce2 = await sequencerClient.getTransactionCount({ address: accountB.address });
-      const sendTxPromise = accountBWalletClient.sendTransaction({
+
+      const setValueDataAlt = encodeFunctionData({
+        abi: Eip7702TestEntrypointAbi,
+        functionName: "setValue",
+        args: [43n, accountA.address, EIP7702_NESTED],
+      });
+
+      const txHash = await accountBWalletClient.sendTransaction({
         to: EIP7702_ENTRYPOINT,
-        data: setValueData,
+        data: setValueDataAlt,
         nonce: nonce2,
         gas: 200_000n,
         maxFeePerGas,
         maxPriorityFeePerGas,
       });
 
-      await expectBlockedTransaction(sendTxPromise);
+      // make sure the transaction is mined
+      await l2PublicClient.waitForTransactionReceipt({ hash: txHash });
+
+      // make sure the value is still 42
+      const value = await l2PublicClient.readContract({
+        address: EIP7702_NESTED,
+        abi: Eip7702TestNestedAbi,
+        functionName: "getValue",
+        args: [accountA.address],
+      });
+      expect(value).toBe(42n);
 
       removeFromDenyList([accountA.address]);
       await reloadDenyList(sequencerClient);
