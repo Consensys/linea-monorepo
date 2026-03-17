@@ -1,10 +1,9 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { compileExpression, useDotAccessOperator } from "filtrex";
 
-import { ILineaRollupLogClient } from "../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
-import { IProvider } from "../../core/clients/blockchain/IProvider";
-import { IL2MessageServiceLogClient } from "../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
-import { MessageFactory } from "../../core/entities/MessageFactory";
+import { IMessageSentEventLogClient } from "../../core/clients/blockchain/ILogClient";
+import { IBlockProvider } from "../../core/clients/blockchain/IProvider";
+import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../core/services/ICalldataDecoder";
@@ -22,7 +21,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
    * Initializes a new instance of the `MessageSentEventProcessor`.
    *
    * @param {IMessageRepository} messageRepository - Used for storing and retrieving message data.
-   * @param {ILineaRollupLogClient | IL2MessageServiceLogClient} logClient - For fetching message sent events from the blockchain.
+   * @param {IMessageSentEventLogClient} logClient - For fetching message sent events from the blockchain.
    * @param {IProvider} provider - Used to query blockchain data.
    * @param {ICalldataDecoder} calldataDecoder - Decodes function calldata for filter evaluation.
    * @param {MessageSentEventProcessorConfig} config - Network-specific settings including listener parameters and feature flags.
@@ -30,8 +29,8 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
    */
   constructor(
     private readonly messageRepository: IMessageRepository,
-    private readonly logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
-    private readonly provider: IProvider,
+    private readonly logClient: IMessageSentEventLogClient,
+    private readonly provider: IBlockProvider,
     private readonly calldataDecoder: ICalldataDecoder,
     protected readonly config: MessageSentEventProcessorConfig,
     private readonly logger: ILogger,
@@ -83,7 +82,7 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       );
       const messageStatusToInsert = shouldBeProcessed ? MessageStatus.SENT : MessageStatus.EXCLUDED;
 
-      const message = MessageFactory.createMessage({
+      const message = new Message({
         ...event,
         sentBlockNumber: event.blockNumber,
         direction: this.config.direction,

@@ -2,10 +2,9 @@ import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { ILineaRollupLogClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupLogClient";
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
-import { IL2MessageServiceLogClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
-import { MessageFactory } from "../../../core/entities/MessageFactory";
+import { IMessageSentEventLogClient } from "../../../core/clients/blockchain/ILogClient";
+import { IBlockProvider } from "../../../core/clients/blockchain/IProvider";
+import { Message } from "../../../core/entities/Message";
 import { Direction, MessageStatus } from "../../../core/enums";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
@@ -24,8 +23,8 @@ import { MessageSentEventProcessor } from "../MessageSentEventProcessor";
 class TestMessageSentEventProcessor extends MessageSentEventProcessor {
   constructor(
     databaseService: IMessageRepository,
-    logClient: ILineaRollupLogClient | IL2MessageServiceLogClient,
-    provider: IProvider,
+    logClient: IMessageSentEventLogClient,
+    provider: IBlockProvider,
     calldataDecoder: ICalldataDecoder,
     public readonly config: MessageSentEventProcessorConfig,
     logger: ILogger,
@@ -45,8 +44,8 @@ class TestMessageSentEventProcessor extends MessageSentEventProcessor {
 describe("TestMessageSentEventProcessor", () => {
   let messageSentEventProcessor: TestMessageSentEventProcessor;
   const databaseService = mock<IMessageRepository>();
-  const l1LogClientMock = mock<ILineaRollupLogClient>();
-  const provider = mock<IProvider>();
+  const l1LogClientMock = mock<IMessageSentEventLogClient>();
+  const provider = mock<IBlockProvider>();
   const calldataDecoder = mock<ICalldataDecoder>();
   const logger = new TestLogger(MessageSentEventProcessor.name);
 
@@ -83,7 +82,7 @@ describe("TestMessageSentEventProcessor", () => {
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEvent]);
-      const expectedMessageToInsert = MessageFactory.createMessage({
+      const expectedMessageToInsert = new Message({
         ...testMessageSentEvent,
         sentBlockNumber: testMessageSentEvent.blockNumber,
         direction: Direction.L1_TO_L2,
@@ -118,7 +117,7 @@ describe("TestMessageSentEventProcessor", () => {
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEvent]);
-      const expectedMessageToInsert = MessageFactory.createMessage({
+      const expectedMessageToInsert = new Message({
         ...testMessageSentEvent,
         sentBlockNumber: testMessageSentEvent.blockNumber,
         direction: Direction.L1_TO_L2,
@@ -173,7 +172,7 @@ describe("TestMessageSentEventProcessor", () => {
           calldata: encodedCalldata,
         },
       ]);
-      const expectedMessage1ToInsert = MessageFactory.createMessage({
+      const expectedMessage1ToInsert = new Message({
         ...testMessageSentEvent,
         sentBlockNumber: testMessageSentEvent.blockNumber,
         direction: Direction.L1_TO_L2,
@@ -182,7 +181,7 @@ describe("TestMessageSentEventProcessor", () => {
         claimCycleCount: 0,
       });
 
-      const expectedMessage2ToInsert = MessageFactory.createMessage({
+      const expectedMessage2ToInsert = new Message({
         ...{
           ...testMessageSentEvent,
           calldata: encodedCalldata,
@@ -221,7 +220,7 @@ describe("TestMessageSentEventProcessor", () => {
       const messageRepositoryInsertSpy = jest.spyOn(databaseService, "insertMessage");
       jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
       jest.spyOn(l1LogClientMock, "getMessageSentEvents").mockResolvedValue([testMessageSentEventWithCallData]);
-      const expectedMessageToInsert = MessageFactory.createMessage({
+      const expectedMessageToInsert = new Message({
         ...testMessageSentEventWithCallData,
         sentBlockNumber: testMessageSentEventWithCallData.blockNumber,
         direction: Direction.L1_TO_L2,

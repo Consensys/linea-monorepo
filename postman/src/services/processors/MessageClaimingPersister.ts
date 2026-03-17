@@ -1,11 +1,11 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 
-import { IProvider } from "../../core/clients/blockchain/IProvider";
+import { ITransactionProvider, IBlockProvider } from "../../core/clients/blockchain/IProvider";
 import { Message } from "../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../core/metrics";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { IMessageStatusReader, IRateLimitChecker } from "../../core/services/contracts/IMessageServiceContract";
 import { IReceiptPoller } from "../../core/services/IReceiptPoller";
 import { ITransactionRetrier } from "../../core/services/ITransactionRetrier";
 import {
@@ -17,10 +17,10 @@ import { TransactionReceipt } from "../../core/types";
 export class MessageClaimingPersister implements IMessageClaimingPersister {
   constructor(
     private readonly messageRepository: IMessageRepository,
-    private readonly messageServiceContract: IMessageServiceContract,
+    private readonly messageServiceContract: IMessageStatusReader & IRateLimitChecker,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
-    private readonly provider: IProvider,
+    private readonly provider: ITransactionProvider & IBlockProvider,
     private readonly transactionRetrier: ITransactionRetrier,
     private readonly receiptPoller: IReceiptPoller,
     private readonly config: MessageClaimingPersisterConfig,

@@ -1,16 +1,6 @@
-import { Address, Hash, MessageSent } from "../../../types";
+import { IMessageSentEventLogClient } from "../ILogClient";
 
-export type MessageSentEventFilters = {
-  from?: Address;
-  to?: Address;
-  messageHash?: Hash;
-};
+export type { MessageSentEventFilters, GetMessageSentEventsParams } from "../ILogClient";
 
-export interface ILineaRollupLogClient {
-  getMessageSentEvents(params: {
-    filters?: MessageSentEventFilters;
-    fromBlock?: bigint;
-    toBlock?: string | bigint;
-    fromBlockLogIndex?: number;
-  }): Promise<MessageSent[]>;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ILineaRollupLogClient extends IMessageSentEventLogClient {}

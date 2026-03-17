@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
+import { IBlockProvider } from "../../../core/clients/blockchain/IProvider";
 import { DEFAULT_INITIAL_FROM_BLOCK, DEFAULT_LISTENER_INTERVAL } from "../../../core/constants";
 import { Direction, DatabaseErrorType, DatabaseRepoName } from "../../../core/enums";
 import { DatabaseAccessError } from "../../../core/errors";
@@ -18,7 +18,7 @@ describe("TestMessageSentEventPoller", () => {
   const databaseService = mock<IMessageRepository>();
 
   const eventProcessorMock = mock<IMessageSentEventProcessor>();
-  const provider = mock<IProvider>();
+  const provider = mock<IBlockProvider>();
   const logger = new TestLogger(MessageSentEventPoller.name);
 
   beforeEach(() => {

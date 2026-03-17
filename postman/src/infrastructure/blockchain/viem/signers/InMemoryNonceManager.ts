@@ -1,6 +1,6 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 
-import { IProvider } from "../../../../core/clients/blockchain/IProvider";
+import { ITransactionCountProvider } from "../../../../core/clients/blockchain/IProvider";
 import { INonceManager } from "../../../../core/services/INonceManager";
 import { Address } from "../../../../core/types";
 
@@ -14,7 +14,7 @@ export class InMemoryNonceManager implements INonceManager {
   private readonly waitQueue: Array<(value: void) => void> = [];
 
   constructor(
-    private readonly provider: IProvider,
+    private readonly provider: ITransactionCountProvider,
     private readonly signerAddress: Address,
     maxNonceDiff: number,
     private readonly logger: ILogger,

@@ -1,13 +1,24 @@
 import { GasFees } from "./IGasProvider";
 import { Address, Hash, Hex, Block, TransactionReceipt, TransactionRequest, TransactionSubmission } from "../../types";
 
-export interface IProvider {
+export interface ITransactionCountProvider {
   getTransactionCount(address: Address, blockTag: string | number | bigint): Promise<number>;
+}
+
+export interface IBlockProvider {
   getBlockNumber(): Promise<number>;
-  getTransactionReceipt(txHash: Hash): Promise<TransactionReceipt | null>;
   getBlock(blockNumber: number | bigint | string): Promise<Block | null>;
-  estimateGas(transactionRequest: TransactionRequest): Promise<bigint>;
+}
+
+export interface ITransactionProvider {
+  getTransactionReceipt(txHash: Hash): Promise<TransactionReceipt | null>;
   getTransaction(transactionHash: Hash): Promise<TransactionSubmission | null>;
+}
+
+export interface IGasEstimator {
+  estimateGas(transactionRequest: TransactionRequest): Promise<bigint>;
   call(transactionRequest: TransactionRequest): Promise<Hex>;
   getFees(): Promise<GasFees>;
 }
+
+export interface IProvider extends ITransactionCountProvider, IBlockProvider, ITransactionProvider, IGasEstimator {}

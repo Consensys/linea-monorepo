@@ -2,7 +2,7 @@ import { ILogger } from "@consensys/linea-shared-utils";
 
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { IMessageStatusReader } from "../../core/services/contracts/IMessageServiceContract";
 import {
   IMessageAnchoringProcessor,
   MessageAnchoringProcessorConfig,
@@ -14,14 +14,13 @@ export class MessageAnchoringProcessor implements IMessageAnchoringProcessor {
   /**
    * Constructs a new instance of the `MessageAnchoringProcessor`.
    *
-   * @param {IMessageServiceContract} contractClient - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
-   * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
+   * @param {IMessageStatusReader} contractClient - Used to check on-chain message status.
    * @param {IMessageRepository} messageRepository - An instance of a class implementing the `IMessageRepository` interface, used for storing and retrieving message data.
    * @param {MessageAnchoringProcessorConfig} config - Configuration settings for the processor, including the maximum number of messages to fetch from the database for processing.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
-    private readonly contractClient: IMessageServiceContract,
+    private readonly contractClient: IMessageStatusReader,
     private readonly messageRepository: IMessageRepository,
     private readonly config: MessageAnchoringProcessorConfig,
     private readonly logger: ILogger,

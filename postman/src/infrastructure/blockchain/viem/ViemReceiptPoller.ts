@@ -1,11 +1,11 @@
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
+import { ITransactionProvider } from "../../../core/clients/blockchain/IProvider";
 import { BaseError } from "../../../core/errors";
 import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
 import { Hash, TransactionReceipt } from "../../../core/types";
 import { wait } from "../../../core/utils/shared";
 
 export class ViemReceiptPoller implements IReceiptPoller {
-  constructor(private readonly provider: IProvider) {}
+  constructor(private readonly provider: ITransactionProvider) {}
 
   public async poll(transactionHash: Hash, timeout: number, interval: number): Promise<TransactionReceipt> {
     const deadline = Date.now() + timeout;

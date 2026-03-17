@@ -1,9 +1,15 @@
 import { Proof } from "./IMerkleTreeService";
 import { MessageProps } from "../../../entities/Message";
-import { IMessageServiceContract } from "../../../services/contracts/IMessageServiceContract";
+import {
+  IMessageStatusReader,
+  IMessageClaimer,
+  IRateLimitChecker,
+  IContractTransactionErrorParser,
+} from "../../../services/contracts/IMessageServiceContract";
 import { Address, Hash, MessageSent, Overrides } from "../../../types";
 
-export interface ILineaRollupClient extends IMessageServiceContract {
+export interface ILineaRollupClient
+  extends IMessageStatusReader, IMessageClaimer, IRateLimitChecker, IContractTransactionErrorParser {
   getMessageProof(messageHash: Hash): Promise<Proof>;
   estimateClaimGas(
     message: (MessageSent | MessageProps) & { feeRecipient?: Address; messageBlockNumber?: number },

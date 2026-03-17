@@ -2,11 +2,11 @@ import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
 import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../../src/core/metrics";
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
+import { ITransactionProvider, IBlockProvider } from "../../../core/clients/blockchain/IProvider";
 import { Message } from "../../../core/entities/Message";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../../core/enums";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
+import { IMessageStatusReader, IRateLimitChecker } from "../../../core/services/contracts/IMessageServiceContract";
 import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
 import { IMessageClaimingPersister } from "../../../core/services/processors/IMessageClaimingPersister";
@@ -43,10 +43,10 @@ describe("TestMessageClaimingPersister", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
   let mockedDate: Date;
   const databaseService = mock<IMessageRepository>();
-  const messageServiceContract = mock<IMessageServiceContract>();
+  const messageServiceContract = mock<IMessageStatusReader & IRateLimitChecker>();
   const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
   const transactionMetricsUpdater = mock<ITransactionMetricsUpdater>();
-  const provider = mock<IProvider>();
+  const provider = mock<ITransactionProvider & IBlockProvider>();
   const transactionRetrier = mock<ITransactionRetrier>();
   const receiptPoller = mock<IReceiptPoller>();
   const logger = new TestLogger(MessageClaimingPersister.name);

@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { IProvider } from "../../../../../core/clients/blockchain/IProvider";
+import { ITransactionCountProvider } from "../../../../../core/clients/blockchain/IProvider";
 import { TestLogger } from "../../../../../utils/testing/helpers";
 import { InMemoryNonceManager } from "../InMemoryNonceManager";
 
 const SIGNER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 describe("InMemoryNonceManager", () => {
-  let provider: ReturnType<typeof mock<IProvider>>;
+  let provider: ReturnType<typeof mock<ITransactionCountProvider>>;
   let logger: TestLogger;
 
   beforeEach(() => {
-    provider = mock<IProvider>();
+    provider = mock<ITransactionCountProvider>();
     logger = new TestLogger("InMemoryNonceManager");
   });
 

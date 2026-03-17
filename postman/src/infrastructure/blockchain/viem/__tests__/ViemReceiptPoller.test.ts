@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, expect } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { IProvider } from "../../../../core/clients/blockchain/IProvider";
+import { ITransactionProvider } from "../../../../core/clients/blockchain/IProvider";
 import { BaseError } from "../../../../core/errors";
 import { Hash, TransactionReceipt } from "../../../../core/types";
 import { ViemReceiptPoller } from "../ViemReceiptPoller";
@@ -18,7 +18,7 @@ const generateReceipt = (): TransactionReceipt => ({
 });
 
 describe("ViemReceiptPoller", () => {
-  const provider = mock<IProvider>();
+  const provider = mock<ITransactionProvider>();
   let poller: ViemReceiptPoller;
 
   beforeEach(() => {

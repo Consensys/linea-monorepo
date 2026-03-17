@@ -1,6 +1,6 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 
-import { IProvider } from "../../core/clients/blockchain/IProvider";
+import { IBlockProvider } from "../../core/clients/blockchain/IProvider";
 import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { Message } from "../../core/entities/Message";
 import { Direction } from "../../core/enums";
@@ -31,7 +31,7 @@ export class MessageSentEventPoller implements IPoller {
    */
   constructor(
     private readonly eventProcessor: IMessageSentEventProcessor,
-    private readonly provider: IProvider,
+    private readonly provider: IBlockProvider,
     private readonly messageRepository: IMessageRepository,
     private readonly config: MessageSentEventPollerConfig,
     private readonly logger: ILogger,

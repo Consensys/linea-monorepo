@@ -1,10 +1,9 @@
 import { describe, it, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import { Direction, OnChainMessageStatus, MessageStatus } from "../../../core/enums";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { IMessageServiceContract } from "../../../core/services/contracts/IMessageServiceContract";
+import { IMessageStatusReader } from "../../../core/services/contracts/IMessageServiceContract";
 import { IMessageAnchoringProcessor } from "../../../core/services/processors/IMessageAnchoringProcessor";
 import { testL1NetworkConfig, testL2NetworkConfig, testMessage } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
@@ -13,8 +12,7 @@ import { MessageAnchoringProcessor } from "../MessageAnchoringProcessor";
 describe("TestMessageAnchoringProcessor", () => {
   let anchoringProcessor: IMessageAnchoringProcessor;
   const messageRepository = mock<IMessageRepository>();
-  const l2ContractClientMock = mock<IMessageServiceContract>();
-  const provider = mock<IProvider>();
+  const l2ContractClientMock = mock<IMessageStatusReader>();
   const logger = new TestLogger(MessageAnchoringProcessor.name);
   beforeEach(() => {
     anchoringProcessor = new MessageAnchoringProcessor(

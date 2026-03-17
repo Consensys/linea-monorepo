@@ -4,7 +4,7 @@ import { Message } from "../../core/entities/Message";
 import { OnChainMessageStatus, MessageStatus } from "../../core/enums";
 import { IErrorParser } from "../../core/errors/IErrorParser";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { IMessageStatusReader, IMessageClaimer } from "../../core/services/contracts/IMessageServiceContract";
 import { INonceManager } from "../../core/services/INonceManager";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
 import {
@@ -14,7 +14,7 @@ import {
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   constructor(
-    private readonly messageServiceContract: IMessageServiceContract,
+    private readonly messageServiceContract: IMessageStatusReader & IMessageClaimer,
     private readonly nonceManager: INonceManager,
     private readonly messageRepository: IMessageRepository,
     private readonly getNextMessageToClaim: () => Promise<Message | null>,
