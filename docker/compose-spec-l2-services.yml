@@ -186,7 +186,7 @@ services:
   l2-node-besu-leader:
     hostname: l2-node-besu-leader
     container_name: l2-node-besu-leader
-    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc7-20260317093900-c131e1a}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -231,7 +231,7 @@ services:
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc7-20260317093900-c131e1a}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
