@@ -74,17 +74,18 @@ jobs:
           load: true
           push: false
           tags: |
-            consensys/linea-besu-package${{ inputs.with_besu_fleet_plugin && '-with-fleet' || '' }}:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
+            consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
+            consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
 
       - name: Save Docker image as artifact
         run: |
           docker images
-          docker save consensys/linea-besu-package${{ inputs.with_besu_fleet_plugin && '-with-fleet' || '' }}:${{ steps.build-plugins-and-assemble.outputs.dockertag }} | gzip > linea-besu-package-image.tar.gz
+          docker save consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }} consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag }} | gzip > linea-besu-package-images.tar.gz
         shell: bash
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
         with:
           name: linea-besu-package
-          path: linea-besu-package-image.tar.gz
+          path: linea-besu-package-images.tar.gz
           retention-days: 1
