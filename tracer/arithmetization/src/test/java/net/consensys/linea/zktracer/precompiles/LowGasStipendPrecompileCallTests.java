@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.precompiles;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByDayOfMonth;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpPricingOobCall.computeExponentLog;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.JUMPDEST;
@@ -214,7 +214,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleLowGasStipendPrecompileTestSources() {
-    return randomSampleByDayOfMonth(
+    return randomSampleByCurrentCommitHash(
         LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE, fullGasStipendPrecompileCallP256TestSource())
         .stream();
   }
