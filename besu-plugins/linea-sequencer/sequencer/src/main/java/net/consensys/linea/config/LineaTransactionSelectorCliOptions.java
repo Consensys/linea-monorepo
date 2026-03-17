@@ -145,7 +145,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       description =
           "Comma-separated map of BlobCompressorVersion to Instant, e.g. V1_2=2025-01-01T00:00:00Z,V2=2026-01-01T00:00:00Z")
   private String blobCompressorVersionTimestampsRaw =
-      String.format("%s=%s", BlobCompressorVersion.V2.name(), java.time.Instant.MIN);
+      String.format("%s=%s", BlobCompressorVersion.V2.name(), Instant.Companion.getDISTANT_PAST());
 
   /**
    * Create Linea cli options.
