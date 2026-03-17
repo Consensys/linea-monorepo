@@ -3,7 +3,6 @@ package limitless
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -31,9 +30,8 @@ var (
 	// by a semaphore on top of this.
 	numConcurrentWitnessWritingGoroutines = 20
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
-	// jobs for the limitless prover. With ~35GB peak per job, 20 concurrent
-	// jobs uses ~700GB peak which fits comfortably in a 1.5TB machine.
-	numConcurrentSubProverJobs = 20
+	// jobs.
+	numConcurrentSubProverJobs = 4
 )
 
 // Prove function for the Assest struct
@@ -94,9 +92,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		proofGLs   = make([]*distributed.SegmentProof, numGL)
 		glErrGroup = &errgroup.Group{}
 
-		lppPreloads     = make([]*lppPreload, numLPP)
-		lppPreloadGroup = &errgroup.Group{}
-		lppProveGroup   = &errgroup.Group{}
+		lppErrGroup = &errgroup.Group{}
 
 		// Conglomeration proof pipeline setup: have a buffered channel proofStream
 		// with capacity large enough so producers won't block
@@ -105,17 +101,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 		cong *distributed.RecursedSegmentCompilation
 	)
-
-	// Safety cleanup: close any LPP preload closers not yet closed (e.g., on error paths)
-	defer func() {
-		lppPreloadGroup.Wait() //nolint:errcheck // ensure preloads finish before closing
-		for i, p := range lppPreloads {
-			if p != nil && p.closer != nil {
-				p.closer.Close()
-				lppPreloads[i] = nil
-			}
-		}
-	}()
 
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
@@ -128,21 +113,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
 		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs)
 		resultCh <- congResult{proof: proof, err: err}
-	}()
-
-	logrus.Infof("Using %d concurrent sub-prover jobs for limitless proving", numConcurrentSubProverJobs)
-
-	// Start loading the outer circuit setup early, in parallel with GL/LPP proving.
-	// This avoids a sequential load after conglomeration finishes.
-	var (
-		setup       circuits.Setup
-		errSetup    error
-		chSetupDone = make(chan struct{})
-	)
-	go func() {
-		logrus.Infof("Loading setup (early) - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
-		close(chSetupDone)
 	}()
 
 	// -- 3. Launch GL proof jobs, sending each result to proofStream
@@ -203,53 +173,14 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		})
 	}
 
-	// -- 3b. Pre-load LPP witnesses and compiled circuits in parallel with GL proving.
-	// Not using SetLimit: preloading is I/O-bound and all goroutines launch immediately,
-	// allowing maximal overlap with the CPU-bound GL proving phase.
-	for i := 0; i < numLPP; i++ {
-		i := i
-		lppPreloadGroup.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			var (
-				jobErr  error
-				preload *lppPreload
-			)
-
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						jobErr = fmt.Errorf("LPP preload for witness index=%v panicked: %v", i, r)
-						logrus.Error(jobErr)
-						debug.PrintStack()
-					}
-				}()
-
-				var err error
-				preload, err = PreloadLPP(cfg, i)
-				if err != nil {
-					jobErr = fmt.Errorf("could not preload LPP for witness index=%v: %w", i, err)
-				}
-			}()
-
-			if jobErr != nil {
-				return jobErr
-			}
-
-			lppPreloads[i] = preload
-			return nil
-		})
-	}
-
 	// Wait for GLs
 	if err := glErrGroup.Wait(); err != nil {
+		// Cancel overall flow (aggregator will observe ctx.Done)
 		cancel()
+		// Wait for aggregator to finish (so resultCh gets something)
 		res := <-resultCh
 		if res.err != nil {
+			// aggregator returned an error (likely due to cancel); return original error
 			return nil, fmt.Errorf("GL error: %w (aggregator error: %v)", err, res.err)
 		}
 		return nil, fmt.Errorf("GL error: %w", err)
@@ -260,23 +191,11 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
 	)
 
-	// -- 4b. Wait for LPP preloads to complete (likely already done during GL proving)
-	if err := lppPreloadGroup.Wait(); err != nil {
-		cancel()
-		res := <-resultCh
-		if res.err != nil {
-			return nil, fmt.Errorf("LPP preload error: %w (aggregator error: %v)", err, res.err)
-		}
-		return nil, fmt.Errorf("LPP preload error: %w", err)
-	}
-
-	logrus.Infof("All %d LPP witnesses and circuits pre-loaded, starting LPP proving with sharedRandomness", numLPP)
-
-	// -- 5. Launch LPP proof jobs using pre-loaded witnesses and circuits
-	lppProveGroup.SetLimit(numConcurrentSubProverJobs)
+	// -- 5. Launch LPP proof jobs, streaming each proof to pipeline
+	lppErrGroup.SetLimit(numConcurrentSubProverJobs)
 	for i := 0; i < numLPP; i++ {
 		i := i
-		lppProveGroup.Go(func() error {
+		lppErrGroup.Go(func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -288,19 +207,25 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				proofLPP *distributed.SegmentProof
 			)
 
+			// RunLPP may panic and therefore exit the goroutine without returning
+			// an error. Therefore it has to be wrapped in a recoverable function
+			// call so that the error handling mechanism work. If an error occur
+			// it is assigned to jobErr so that we can check it once the wrapper
+			// function returns.
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, r)
 						logrus.Error(jobErr)
 						debug.PrintStack()
+						return
 					}
 				}()
 
 				var err error
-				proofLPP, err = ProveLPP(lppPreloads[i], sharedRandomness)
+				proofLPP, err = RunLPP(cfg, i, sharedRandomness)
 				if err != nil {
-					jobErr = fmt.Errorf("could not prove LPP for witness index=%v: %w", i, err)
+					jobErr = fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
 				}
 			}()
 
@@ -318,7 +243,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	// Wait for LPPs
-	if err := lppProveGroup.Wait(); err != nil {
+	if err := lppErrGroup.Wait(); err != nil {
 		cancel()
 		res := <-resultCh
 		if res.err != nil {
@@ -340,7 +265,19 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	congFinalproof := res.proof
 
-	// -- 6. Wait for setup that was started loading early
+	// -- 5. Load setup (in background started earlier maybe)
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
+
+	// Wait for setup to finish loading
 	<-chSetupDone
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
@@ -540,61 +477,35 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 	return _proofGL, nil
 }
 
-// lppPreload holds pre-loaded LPP witness and compiled circuit data.
-// The closer must remain open until the proof is generated.
-type lppPreload struct {
-	witnessIndex int
-	witness      *distributed.ModuleWitnessLPP
-	compiled     *distributed.RecursedSegmentCompilation
-	closer       io.Closer
-}
+// RunLPP runs the LPP prover for the provided witness index
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet) (proofLPP *distributed.SegmentProof, err error) {
 
-// PreloadLPP loads the LPP witness and compiled circuit from disk without
-// requiring sharedRandomness. This allows overlapping I/O with GL proving.
-func PreloadLPP(cfg *config.Config, witnessIndex int) (*lppPreload, error) {
-	logrus.Infof("Preloading LPP witness and circuit for index=%v", witnessIndex)
+	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
 	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
 	if err != nil {
-		return nil, fmt.Errorf("could not load LPP witness for index=%v: %w", witnessIndex, err)
+		return nil, err
 	}
+	defer closer.Close()
 
-	logrus.Infof("Loaded LPP witness for index=%v, module=%v", witnessIndex, witness.ModuleName)
+	witness.InitialFiatShamirState = sharedRandomness
+
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
 	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
 	if err != nil {
-		closer.Close()
-		return nil, fmt.Errorf("could not load compiled LPP for index=%v: %w", witnessIndex, err)
+		return nil, fmt.Errorf("could not load compiled LPP: %w", err)
 	}
 
-	logrus.Infof("Preloaded LPP circuit for index=%v, module=%v", witnessIndex, witness.ModuleName)
+	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	return &lppPreload{
-		witnessIndex: witnessIndex,
-		witness:      witness,
-		compiled:     compiledLPP,
-		closer:       closer,
-	}, nil
-}
+	_proofLPP := compiledLPP.ProveSegmentKoala(witness).ClearRuntime()
 
-// ProveLPP generates the LPP proof using pre-loaded data and sharedRandomness.
-func ProveLPP(preload *lppPreload, sharedRandomness field.Octuplet) (*distributed.SegmentProof, error) {
-	defer func() {
-		preload.closer.Close()
-		preload.closer = nil
-	}()
+	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	preload.witness.InitialFiatShamirState = sharedRandomness
-
-	logrus.Infof("Running LPP proof for index=%v, module=%v", preload.witnessIndex, preload.witness.ModuleName)
-
-	proof := preload.compiled.ProveSegmentKoala(preload.witness).ClearRuntime()
-
-	logrus.Infof("Finished LPP proof for index=%v, module=%v", preload.witnessIndex, preload.witness.ModuleName)
-
-	return proof, nil
+	return _proofLPP, nil
 }
 
 // RunConglomerationHierarchical aggregates segment proofs into a single proof.
