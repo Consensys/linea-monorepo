@@ -135,3 +135,11 @@ jobs:
           if-no-files-found: error
           path: |
             docker_logs/**/*
+      
+      - name: Archive shared folder
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: end-2-end-shared-folder
+          path: |
+            tmp/local/**/*
