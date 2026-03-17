@@ -267,22 +267,25 @@ class CompressionAwareTransactionSelectorTest {
 
     // tx1: just below fastExecutionPathLimit → fast execution path; cumulative =
     // fastExecutionPathLimit - 1.
+    final Instant timestamp =
+        Instant.Companion.fromEpochSeconds(mockBlockHeader().getTimestamp(), 0L);
     final var tx1 = txFactory.createTransaction();
-    when(mockTxCompressor.getCompressedSize(tx1)).thenReturn(fastExecutionPathLimit - 1);
+    when(mockTxCompressor.getCompressedSize(tx1, timestamp)).thenReturn(fastExecutionPathLimit - 1);
     assertThat(evaluateTx(selector, wrapTx(tx1))).isEqualTo(SELECTED);
 
     // tx2: size 2 pushes conservative cumulative above fastExecutionPathLimit → slow execution
     // path.
     // appendBlock returns compressedSizeAfter = fastExecutionPathLimit / 2.
     final var tx2 = txFactory.createTransaction();
-    when(mockTxCompressor.getCompressedSize(tx2)).thenReturn(2);
+    when(mockTxCompressor.getCompressedSize(tx2, timestamp)).thenReturn(2);
     assertThat(evaluateTx(selector, wrapTx(tx2))).isEqualTo(SELECTED);
 
     // tx3: compressedSizeAfter + tx3Size <= fastExecutionPathLimit, so it fits on the fast
     // execution path.
     // With the fix, no slow-execution-path check is needed.
     final var tx3 = txFactory.createTransaction();
-    when(mockTxCompressor.getCompressedSize(tx3)).thenReturn(fastExecutionPathLimit / 2 - 1);
+    when(mockTxCompressor.getCompressedSize(tx3, timestamp))
+        .thenReturn(fastExecutionPathLimit / 2 - 1);
     assertThat(evaluateTx(selector, wrapTx(tx3))).isEqualTo(SELECTED);
 
     // Only tx2 should have triggered a slow-execution-path compression check.

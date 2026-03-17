@@ -165,8 +165,11 @@ public class CompressionAwareTransactionSelector
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
     final CompressionState state = getWorkingState();
-
-    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
+    final ProcessableBlockHeader pendingHeader = evaluationContext.getPendingBlockHeader();
+    final Instant timestamp = Instant.Companion.fromEpochSeconds(pendingHeader.getTimestamp(), 0L);
+    final BlobCompressor blobCompressor =
+        blobCompressorSelectorByTimestamp.getBlobCompressor(timestamp);
+    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction, timestamp);
     long newConservativeCumulative = state.cumulativeCompressedSize() + txCompressedSize;
 
     // Fast execution path: sum of per-tx compressed sizes is at or below the effective limit (blob
@@ -189,7 +192,6 @@ public class CompressionAwareTransactionSelector
     // Slow execution path: conservative estimate exceeded the limit.
     // Build the block RLP on this thread (cheap, CPU-only), then submit the native
     // reset+appendBlock to the background executor so it can overlap with EVM execution.
-    final ProcessableBlockHeader pendingHeader = evaluationContext.getPendingBlockHeader();
     final List<Transaction> tentativeTxs = new ArrayList<>(state.selectedTransactions());
     tentativeTxs.add(transaction);
     final byte[] blockRlp = buildBlockRlp(pendingHeader, tentativeTxs);
@@ -206,10 +208,6 @@ public class CompressionAwareTransactionSelector
     pendingSlowExecutionPathFuture =
         COMPRESSION_EXECUTOR.submit(
             () -> {
-              Instant timestamp =
-                  Instant.Companion.fromEpochSeconds(pendingHeader.getTimestamp(), 0L);
-              BlobCompressor blobCompressor =
-                  blobCompressorSelectorByTimestamp.getBlobCompressor(timestamp);
               blobCompressor.reset();
               return blobCompressor.appendBlock(blockRlp);
             });
