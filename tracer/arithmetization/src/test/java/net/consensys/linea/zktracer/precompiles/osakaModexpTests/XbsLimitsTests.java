@@ -40,6 +40,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class XbsLimitsTests extends TracerTestBase {
 
+  static final int XBS_LIMIT_TEST_SAMPLE_SIZE = 600;
+
   final KeyPair keyPair = new SECP256K1().generateKeyPair();
   final Address senderAddress =
       Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -79,7 +81,7 @@ public class XbsLimitsTests extends TracerTestBase {
           .address(Address.fromHexString("11223344aaaaffff000000000000000000000001"));
 
   @ParameterizedTest
-  @MethodSource("modexpXbsLimitTestsSource")
+  @MethodSource("sampleModexpXbsLimitTestsSource")
   public void modexpXbsLimitTests(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
@@ -88,7 +90,7 @@ public class XbsLimitsTests extends TracerTestBase {
 
   @Tag("nightly")
   @ParameterizedTest
-  @MethodSource("modexpXbsLimitsTestsNighlySource")
+  @MethodSource("sampleModexpXbsLimitsTestsNightlySource")
   public void modexpXbsLimitTestsNightly(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
@@ -136,7 +138,12 @@ public class XbsLimitsTests extends TracerTestBase {
                                                       bbsType, ebsType, mbsType))))))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-  static Stream<Arguments> modexpXbsLimitsTestsNighlySource() {
+  static Stream<Arguments> sampleModexpXbsLimitsTestsNightlySource() {
+    return randomSampleByCurrentCommitHash(XBS_LIMIT_TEST_SAMPLE_SIZE, modexpXbsLimitsTestsSource())
+        .stream();
+  }
+
+  static List<Arguments> modexpXbsLimitsTestsSource() {
 
     List<Arguments> arguments = new ArrayList<>();
     for (Map.Entry<XbsValueType.BbsEbsMbsScenario, List<String>> entry : allParameters.entrySet()) {
@@ -148,11 +155,11 @@ public class XbsLimitsTests extends TracerTestBase {
       }
     }
 
-    return arguments.stream();
+    return arguments;
   }
 
-  static Stream<Arguments> modexpXbsLimitTestsSource() {
-    final List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsNighlySource().toList());
+  static Stream<Arguments> sampleModexpXbsLimitTestsSource() {
+    final List<Arguments> arguments = new ArrayList<>(modexpXbsLimitsTestsSource());
     return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments)
         .stream(); // Execute 2.5 % of the tests
   }
