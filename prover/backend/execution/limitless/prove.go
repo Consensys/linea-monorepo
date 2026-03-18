@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -34,6 +35,9 @@ var (
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
 	// jobs.
 	numConcurrentSubProverJobs = 4
+	// numConcurrentMergeJobs governs the number of concurrent conglomeration
+	// merge operations during hierarchical reduction.
+	numConcurrentMergeJobs = 4
 )
 
 // Prove function for the Assest struct
@@ -335,19 +339,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// All producers finished successfully: close the proofStream so aggregator can finish
 	close(proofStream)
 
-	// Wait for final conglomeration proof
-	congStart := plog.phaseStart("conglomeration_wait")
-	res := <-resultCh
-	plog.phaseEnd("conglomeration_wait", congStart)
-	if res.err != nil {
-		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
-	}
-
-	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
-
-	congFinalproof := res.proof
-
-	// -- 5. Load setup (in background started earlier maybe)
+	// Start setup loading in background to overlap with conglomeration tail.
+	// Setup takes ~40s (loads proving key, SRS, circuit) and is independent of conglomeration.
 	setupStart := plog.phaseStart("setup_load")
 	var (
 		setup       circuits.Setup
@@ -360,7 +353,19 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		close(chSetupDone)
 	}()
 
-	// Wait for setup to finish loading
+	// Wait for final conglomeration proof (setup loads concurrently)
+	congStart := plog.phaseStart("conglomeration_wait")
+	res := <-resultCh
+	plog.phaseEnd("conglomeration_wait", congStart)
+	if res.err != nil {
+		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
+	}
+
+	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
+
+	congFinalproof := res.proof
+
+	// Wait for setup to finish (likely already done; conglo tail >> setup load time)
 	<-chSetupDone
 	plog.phaseEnd("setup_load", setupStart)
 	if errSetup != nil {
@@ -639,8 +644,13 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuple
 	return _proofLPP, nil
 }
 
-// RunConglomerationHierarchical aggregates segment proofs into a single proof.
-// It returns the final proof or an error. It respects the passed context for cancellation.
+// RunConglomerationHierarchical aggregates segment proofs into a single proof
+// using a pool of concurrent merge workers. During GL+LPP production, merges
+// overlap with proving. After production completes, up to numConcurrentMergeJobs
+// workers reduce the remaining proofs in parallel — this eliminates the
+// sequential tail that previously dominated wall-clock time.
+//
+// The function returns the final proof or an error, and respects ctx for cancellation.
 func RunConglomerationHierarchical(ctx context.Context,
 	mt *distributed.VerificationKeyMerkleTree,
 	cong *distributed.RecursedSegmentCompilation,
@@ -651,80 +661,123 @@ func RunConglomerationHierarchical(ctx context.Context,
 	congPhaseStart := plog.phaseStart("conglomeration")
 	defer plog.phaseEnd("conglomeration", congPhaseStart)
 
-	var stack []*distributed.SegmentProof
-	proofsReceived := 0
-	mergeCount := 0
+	// `remaining` tracks how many items are in the system (items slice + in-flight
+	// merge results). Each merge takes 2 items and produces 1, so remaining--.
+	// When remaining == 1 after decrement, the current merge is the final one (BLS).
+	var (
+		mu         sync.Mutex
+		cond       = sync.NewCond(&mu)
+		items      []*distributed.SegmentProof
+		remaining  = totalProofs
+		mergeCount int
+		cancelled  bool
+	)
 
-	// Main loop: block on either new proof, or cancellation.
-	for {
-		// First, aggregate while we have at least 2 items
-		for len(stack) >= 2 {
+	// Signal workers on context cancellation.
+	go func() {
+		<-ctx.Done()
+		mu.Lock()
+		cancelled = true
+		cond.Broadcast()
+		mu.Unlock()
+	}()
 
-			_proof1 := stack[len(stack)-1].ClearRuntime()
-			_proof2 := stack[len(stack)-2]
-			// Nil stack entries before truncating to prevent the underlying array
-			// from retaining references to consumed proofs (Go slice memory leak pattern)
-			stack[len(stack)-1] = nil
-			stack[len(stack)-2] = nil
-			stack = stack[:len(stack)-2]
-
-			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
-			mergeType := "koala"
-			if isLastConglomeration {
-				mergeType = "bls_final"
-			}
-
-			logrus.Infof("Conglomerating sub-proofs [merge %d, %s] for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
-				mergeCount, mergeType,
-				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
-				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
-
-			mergeStart := plog.jobStart("conglo_merge", mergeCount)
-
-			wit := &distributed.ModuleWitnessConglo{
-				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
-				VerificationKeyMerkleTree: *mt,
-			}
-
-			var aggregated *distributed.SegmentProof
-			if isLastConglomeration {
-				aggregated = cong.ProveSegmentBLS(wit)
-			} else {
-				aggregated = cong.ProveSegmentKoala(wit)
-			}
-
-			plog.jobEnd("conglo_merge", mergeCount, mergeType, mergeStart)
-			mergeCount++
-
-			stack = append(stack, aggregated)
+	// Drain proofStream into items.
+	go func() {
+		for proof := range proofStream {
+			mu.Lock()
+			items = append(items, proof)
+			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration",
+				proof.ProofType, proof.ModuleIndex, proof.SegmentIndex)
+			cond.Broadcast()
+			mu.Unlock()
 		}
+	}()
 
-		// If we've received all proofs and have exactly one on the stack -> done
-		if proofsReceived >= totalProofs {
-			if len(stack) == 1 {
-				logrus.Infoln("Successfully finished running conglomeration prover.")
-				finalProof := stack[0]
-				stack = nil
-				return finalProof, nil
-			}
-			return nil, fmt.Errorf("conglomeration finished but stack size=%d (expected 1)", len(stack))
-		}
+	var (
+		wg         sync.WaitGroup
+		finalProof *distributed.SegmentProof
+	)
 
-		// Wait for next proof or cancellation
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-
-		case proof, ok := <-proofStream:
-			if !ok {
-				if len(stack) == 1 {
-					return stack[0], nil
+	// Spawn merge workers. Each worker loops: wait for 2+ items, take a pair,
+	// merge, push the result back. Workers exit when remaining <= 1 or cancelled.
+	for w := 0; w < numConcurrentMergeJobs; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				mu.Lock()
+				for len(items) < 2 && remaining > 1 && !cancelled {
+					cond.Wait()
 				}
-				return nil, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
+				if cancelled || remaining <= 1 {
+					mu.Unlock()
+					return
+				}
+
+				// Take 2 items from the end (LIFO — matches prior behavior).
+				n := len(items)
+				p1 := items[n-1]
+				p2 := items[n-2]
+				items[n-1] = nil
+				items[n-2] = nil
+				items = items[:n-2]
+				remaining--
+				isLast := remaining == 1
+				idx := mergeCount
+				mergeCount++
+				mu.Unlock()
+
+				// Clear runtime on the first proof to free proving transients.
+				p1 = p1.ClearRuntime()
+
+				mergeType := "koala"
+				if isLast {
+					mergeType = "bls_final"
+				}
+
+				logrus.Infof("Conglomerating sub-proofs [merge %d, %s] for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
+					idx, mergeType,
+					p1.ProofType, p1.ModuleIndex, p1.SegmentIndex,
+					p2.ProofType, p2.ModuleIndex, p2.SegmentIndex)
+
+				mergeStart := plog.jobStart("conglo_merge", idx)
+
+				wit := &distributed.ModuleWitnessConglo{
+					SegmentProofs:             []distributed.SegmentProof{*p1, *p2},
+					VerificationKeyMerkleTree: *mt,
+				}
+
+				var aggregated *distributed.SegmentProof
+				if isLast {
+					aggregated = cong.ProveSegmentBLS(wit)
+				} else {
+					aggregated = cong.ProveSegmentKoala(wit)
+				}
+
+				plog.jobEnd("conglo_merge", idx, mergeType, mergeStart)
+
+				mu.Lock()
+				items = append(items, aggregated)
+				if isLast {
+					finalProof = aggregated
+				}
+				cond.Broadcast()
+				mu.Unlock()
 			}
-			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", proof.ProofType, proof.ModuleIndex, proof.SegmentIndex)
-			stack = append(stack, proof)
-			proofsReceived++
-		}
+		}()
 	}
+
+	wg.Wait()
+
+	if cancelled {
+		return nil, ctx.Err()
+	}
+
+	if finalProof != nil {
+		logrus.Infoln("Successfully finished running conglomeration prover.")
+		return finalProof, nil
+	}
+
+	return nil, fmt.Errorf("conglomeration finished without producing a final proof")
 }
