@@ -9,9 +9,13 @@
 package linea.plugin.acc.test
 
 import linea.plugin.acc.test.tests.web3j.generated.AddressCaller
+import linea.plugin.acc.test.tests.web3j.generated.Eip7702TestEntrypoint
+import linea.plugin.acc.test.tests.web3j.generated.Eip77022Delegated
+import linea.plugin.acc.test.tests.web3j.generated.Eip7702TestNested
 import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction
@@ -50,6 +54,7 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
     }
     return TestCommandLineOptionsBuilder()
       .set("--plugin-linea-deny-list-path=", tempDenyList.toString())
+      .set("--plugin-linea-delegate-code-tx-enabled=", "true")
       .build()
   }
 
@@ -118,6 +123,92 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
   }
 
   @Test
+  fun nestedDelegationCallToDeniedAddressIsDetected() {
+    val web3j = minerNode.nodeRequests().eth()
+    val relayer = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY)
+
+    val actor = Credentials.create(org.web3j.crypto.Keys.createEcKeyPair())
+
+    // Deploy all 3 contracts with the relayer before any denylist changes
+    val entrypoint = deployEip7702TestEntrypoint()
+    val delegated = deployEip77022Delegated()
+    val nested = deployEip7702TestNested()
+
+    // Fund actor so the delegated code can send 0.001 ETH to nested contract
+    val fundingManager = RawTransactionManager(web3j, relayer, CHAIN_ID)
+    val fundingTx = fundingManager.sendTransaction(
+      DefaultGasProvider.GAS_PRICE,
+      DefaultGasProvider.GAS_LIMIT,
+      actor.address,
+      "",
+      BigInteger("1000000000000000000"), // 1 ETH
+    )
+    val fundingProcessor = PollingTransactionReceiptProcessor(web3j, 1000L, BLOCK_PERIOD_SECONDS * 6)
+    fundingProcessor.waitForTransactionReceipt(fundingTx.transactionHash)
+
+    // Relayer sends EIP-7702 delegation tx on behalf of actor
+    val delegationResponse = sendEIP7702WithSeparateAuth(
+      web3j = web3j,
+      senderCredentials = relayer,
+      authSignerCredentials = actor,
+      delegationAddress = Address.fromHexStringStrict(delegated.contractAddress),
+    )
+    assertThat(delegationResponse.error).isNull()
+    assertThat(delegationResponse.transactionHash).isNotNull()
+
+    // Wait for delegation tx to be mined
+    val receiptProcessor = PollingTransactionReceiptProcessor(web3j, 1000L, BLOCK_PERIOD_SECONDS * 6)
+    receiptProcessor.waitForTransactionReceipt(delegationResponse.transactionHash)
+
+    // Add Actor's address to denylist and reload
+    tempDenyList.writeText(actor.address)
+    reloadSelectorPlugin()
+
+    // Relayer calls Entrypoint.setValue(42, actorAddress, nestedAddress)
+    // This triggers: Entrypoint -> CALL Actor (denied, has Delegated code) -> CALL Nested
+    val txManager = RawTransactionManager(web3j, relayer, CHAIN_ID)
+    val encodedCall = entrypoint.setValue(
+      BigInteger.valueOf(42),
+      actor.address,
+      nested.contractAddress,
+    ).encodeFunctionCall()
+
+    val txResponse = txManager.sendTransaction(
+      DefaultGasProvider.GAS_PRICE,
+      DefaultGasProvider.GAS_LIMIT,
+      entrypoint.contractAddress,
+      encodedCall,
+      BigInteger.ZERO,
+    )
+
+    assertThat(txResponse.transactionHash)
+      .withFailMessage { "tx hash should not be null — tx should enter pool since tx.to is Entrypoint" }
+      .isNotNull()
+
+    // Use a canary transfer to verify a block was mined
+    val canaryTxHash = accountTransactions
+      .createTransfer(accounts.secondaryBenefactor, accounts.secondaryBenefactor, 1)
+      .execute(minerNode.nodeRequests())
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(canaryTxHash.toHexString()))
+
+    // The tx should NOT be mined (rejected by DenylistExecutionSelector)
+    minerNode.verify(eth.expectNoTransactionReceipt(txResponse.transactionHash))
+
+    // Verify the exact rejection reason via the recording plugin
+    await()
+      .atMost(4, TimeUnit.SECONDS)
+      .pollInterval(50, TimeUnit.MILLISECONDS)
+      .untilAsserted {
+        assertThat(getRejectionReason(txResponse.transactionHash))
+          .withFailMessage { "Expected tx to be rejected with TX_FILTERED_ADDRESS_CALLED" }
+          .isEqualTo(LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_CALLED.toString())
+      }
+
+    // It should be discarded from the pool
+    assertTransactionNotInThePool(txResponse.transactionHash)
+  }
+
+  @Test
   fun transactionCallingNonDeniedAddressIsSelected() {
     val addressCaller = deployAddressCaller()
     val web3j = minerNode.nodeRequests().eth()
@@ -155,6 +246,42 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
     )
     val txManager = RawTransactionManager(web3j, credentials, CHAIN_ID, receiptProcessor)
     return AddressCaller.deploy(web3j, txManager, DefaultGasProvider()).send()
+  }
+
+  private fun deployEip7702TestEntrypoint(): Eip7702TestEntrypoint {
+    val web3j = minerNode.nodeRequests().eth()
+    val credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY)
+    val receiptProcessor = PollingTransactionReceiptProcessor(
+      web3j,
+      1000L,
+      BLOCK_PERIOD_SECONDS * 6,
+    )
+    val txManager = RawTransactionManager(web3j, credentials, CHAIN_ID, receiptProcessor)
+    return Eip7702TestEntrypoint.deploy(web3j, txManager, DefaultGasProvider()).send()
+  }
+
+  private fun deployEip77022Delegated(): Eip77022Delegated {
+    val web3j = minerNode.nodeRequests().eth()
+    val credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY)
+    val receiptProcessor = PollingTransactionReceiptProcessor(
+      web3j,
+      1000L,
+      BLOCK_PERIOD_SECONDS * 6,
+    )
+    val txManager = RawTransactionManager(web3j, credentials, CHAIN_ID, receiptProcessor)
+    return Eip77022Delegated.deploy(web3j, txManager, DefaultGasProvider()).send()
+  }
+
+  private fun deployEip7702TestNested(): Eip7702TestNested {
+    val web3j = minerNode.nodeRequests().eth()
+    val credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY)
+    val receiptProcessor = PollingTransactionReceiptProcessor(
+      web3j,
+      1000L,
+      BLOCK_PERIOD_SECONDS * 6,
+    )
+    val txManager = RawTransactionManager(web3j, credentials, CHAIN_ID, receiptProcessor)
+    return Eip7702TestNested.deploy(web3j, txManager, DefaultGasProvider()).send()
   }
 
   private fun reloadSelectorPlugin() {
