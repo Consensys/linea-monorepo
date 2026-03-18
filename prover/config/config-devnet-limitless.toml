@@ -12,8 +12,8 @@ conflated_traces_dir = "./"
 requests_root_dir = "./"
 ignore_compatibility_check=true
 keep_traces_until_block = 0
-serialization = false
-limitless_with_debug = true
+serialization = true
+limitless_with_debug = false
 
 [data_availability]
 prover_mode = "full"
