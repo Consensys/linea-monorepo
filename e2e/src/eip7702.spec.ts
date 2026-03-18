@@ -8,15 +8,15 @@ import {
   removeFromDenyList,
   withDenyListAddresses,
 } from "./common/test-helpers";
-import { estimateLineaGas, expectSuccessfulTransaction, sendTransactionWithRetry } from "./common/utils";
+import {
+  estimateLineaGas,
+  expectSuccessfulTransaction,
+  pollForBlockNumber,
+  sendTransactionWithRetry,
+} from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import {
-  Eip7702TestEntrypointAbi,
-  Eip7702TestNestedAbi,
-  TestEIP7702DelegationAbi,
-  TestEIP7702DelegationAbiBytecode,
-} from "./generated";
+import { Eip7702TestEntrypointAbi, TestEIP7702DelegationAbi, TestEIP7702DelegationAbiBytecode } from "./generated";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
@@ -226,104 +226,83 @@ describe("EIP-7702 test suite", () => {
   );
 
   it.concurrent(
-    "should block EIP-7702 entrypoint tx when authority is denylisted and allow after removal",
+    "nested delegation call to denied address is detected (tx not mined)",
     async () => {
       if (!EIP7702_NESTED || !EIP7702_DELEGATED || !EIP7702_ENTRYPOINT) {
         logger.debug("Skipping: EIP-7702 predeployed addresses not configured (local only).");
         return;
       }
-      const [accountA, accountB] = await l2AccountManager.generateAccounts(2);
-      const accountAWalletClient = context.l2WalletClient({ account: accountA });
-      const accountBWalletClient = context.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: accountB });
+      const [actor, relayer] = await l2AccountManager.generateAccounts(2);
+      const actorWalletClient = context.l2WalletClient({ account: actor });
+      const relayerWalletClient = context.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: relayer });
 
-      const authorization = await accountAWalletClient.signAuthorization({
+      // Relayer sends EIP-7702 delegation tx on behalf of actor
+      const authorization = await actorWalletClient.signAuthorization({
         contractAddress: EIP7702_DELEGATED,
-        executor: undefined,
+        executor: "self",
       });
 
-      const setValueData = encodeFunctionData({
-        abi: Eip7702TestEntrypointAbi,
-        functionName: "setValue",
-        args: [42n, accountA.address, EIP7702_NESTED],
-      });
-
-      // Use a no-op call for gas estimation; simulating the entrypoint would revert because
-      // A has no delegated code during simulation (EIP-7702 auth is only applied at execution).
       const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(l2PublicClient, {
-        account: accountB,
-        to: accountB.address,
+        account: relayer,
+        to: relayer.address,
         data: "0x",
       });
 
-      const nonce1 = await sequencerClient.getTransactionCount({ address: accountB.address });
-      const txHash1 = await accountBWalletClient.sendTransaction({
+      const nonceActor = await sequencerClient.getTransactionCount({ address: actor.address });
+      const txHashDelegation = await relayerWalletClient.sendTransaction({
         authorizationList: [authorization],
-        to: EIP7702_ENTRYPOINT,
-        data: setValueData,
-        nonce: nonce1,
-        gas: 200_000n,
+        to: "0x0000000000000000000000000000000000000000",
+        data: "0x",
+        nonce: nonceActor,
+        gas: 100_000n,
         maxFeePerGas,
         maxPriorityFeePerGas,
       });
 
-      const receipt1 = await l2PublicClient.waitForTransactionReceipt({ hash: txHash1 });
-      expect(receipt1.status).toEqual("success");
+      const receiptDelegation = await l2PublicClient.waitForTransactionReceipt({ hash: txHashDelegation });
+      expect(receiptDelegation.status).toEqual("success");
 
-      const logs = await l2PublicClient.getContractEvents({
-        address: EIP7702_ENTRYPOINT,
-        abi: Eip7702TestEntrypointAbi,
-        eventName: "ValueSet",
-        fromBlock: receipt1.blockNumber,
-        toBlock: receipt1.blockNumber,
+      await withDenyListAddresses(sequencerClient, [actor.address], async () => {
+        let startBlock = await l2PublicClient.getBlockNumber();
+
+        const blocksToWait = 10n;
+        let reached = await pollForBlockNumber(l2PublicClient, startBlock + blocksToWait);
+        expect(reached).toBe(true);
+
+        // Relayer calls Entrypoint.setValue(42, actorAddress, nestedAddress)
+        // This triggers: Entrypoint -> CALL Actor (denied, has Delegated code) -> CALL Nested
+        const setValueData = encodeFunctionData({
+          abi: Eip7702TestEntrypointAbi,
+          functionName: "setValue",
+          args: [42n, actor.address, EIP7702_NESTED],
+        });
+
+        const nonceB = await sequencerClient.getTransactionCount({ address: relayer.address });
+
+        // Wait for a few blocks; tx should NOT be mined (rejected by DenylistExecutionSelector)
+        startBlock = await l2PublicClient.getBlockNumber();
+
+        const txHash = await relayerWalletClient.sendTransaction({
+          to: EIP7702_ENTRYPOINT,
+          data: setValueData,
+          nonce: nonceB,
+          gas: 200_000n,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+        });
+
+        expect(txHash).toBeDefined();
+
+        reached = await pollForBlockNumber(l2PublicClient, startBlock + blocksToWait);
+
+        expect(reached).toBe(true);
+
+        for (let b = startBlock + 1n; b <= startBlock + blocksToWait; b++) {
+          const block = await l2PublicClient.getBlock({ blockNumber: b, includeTransactions: true });
+          const txHashes = block.transactions.map((t) => (typeof t === "string" ? t : t.hash));
+          expect(txHashes).not.toContain(txHash);
+        }
       });
-
-      expect(logs.length).toBeGreaterThan(0);
-      expect(logs.some((log) => log.args.sender === accountB.address && log.args.value === 42n)).toBe(true);
-
-      const innerLogs = await l2PublicClient.getContractEvents({
-        address: EIP7702_NESTED,
-        abi: Eip7702TestEntrypointAbi,
-        eventName: "ValueSet",
-        fromBlock: receipt1.blockNumber,
-        toBlock: receipt1.blockNumber,
-      });
-      expect(innerLogs.length).toBeGreaterThan(0);
-      expect(innerLogs.some((log) => log.args.sender === accountA.address && log.args.value === 42n)).toBe(true);
-
-      addToDenyList([accountA.address]);
-      await reloadDenyList(sequencerClient);
-
-      const nonce2 = await sequencerClient.getTransactionCount({ address: accountB.address });
-
-      const setValueDataAlt = encodeFunctionData({
-        abi: Eip7702TestEntrypointAbi,
-        functionName: "setValue",
-        args: [43n, accountA.address, EIP7702_NESTED],
-      });
-
-      const txHash = await accountBWalletClient.sendTransaction({
-        to: EIP7702_ENTRYPOINT,
-        data: setValueDataAlt,
-        nonce: nonce2,
-        gas: 200_000n,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-      });
-
-      // make sure the transaction is mined
-      await l2PublicClient.waitForTransactionReceipt({ hash: txHash });
-
-      // make sure the value is still 42
-      const value = await l2PublicClient.readContract({
-        address: EIP7702_NESTED,
-        abi: Eip7702TestNestedAbi,
-        functionName: "getValue",
-        args: [accountA.address],
-      });
-      expect(value).toBe(42n);
-
-      removeFromDenyList([accountA.address]);
-      await reloadDenyList(sequencerClient);
     },
     120_000,
   );

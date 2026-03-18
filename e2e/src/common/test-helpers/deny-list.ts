@@ -17,6 +17,9 @@ export async function reloadDenyList(client: DenyListControlClient): Promise<voi
   await client.pluginsReloadPluginConfig({
     pluginName: SequencerPluginName.TransactionPoolValidator,
   });
+  await client.pluginsReloadPluginConfig({
+    pluginName: SequencerPluginName.TransactionSelector,
+  });
 }
 
 export function addToDenyList(addresses: readonly string[], denyListPath: string = DEFAULT_DENY_LIST_PATH): void {

@@ -65,7 +65,7 @@ describe("deny-list helper", () => {
 
     // Assert
     expect(run).toHaveBeenCalledTimes(1);
-    expect(client.pluginsReloadPluginConfig).toHaveBeenCalledTimes(2);
+    expect(client.pluginsReloadPluginConfig).toHaveBeenCalledTimes(4);
     expect(readFileSync(denyListPath, "utf-8")).toEqual("");
   });
 
@@ -90,7 +90,7 @@ describe("deny-list helper", () => {
     ).rejects.toThrow("callback failed");
 
     // Assert
-    expect(client.pluginsReloadPluginConfig).toHaveBeenCalledTimes(2);
+    expect(client.pluginsReloadPluginConfig).toHaveBeenCalledTimes(4);
     expect(readFileSync(denyListPath, "utf-8")).toEqual("");
   });
 });
