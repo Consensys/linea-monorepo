@@ -34,7 +34,7 @@ func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
+	return GnarkCheckStatementAndCodeWordLagrange(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
 }
 
 func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordCircuit, *StatementAndCodeWordCircuit) {

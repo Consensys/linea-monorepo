@@ -280,13 +280,6 @@ type Ctx struct {
 	// full-recursion compiler.
 	IsSelfrecursed bool
 
-	// UseUAlphaCoefficients enables compact U_alpha mode: the prover sends T
-	// polynomial coefficients (E4 elements) instead of T×RS evaluations. This
-	// reduces proof-cells by ~245,760 for T=4096, RS=16. Security is maintained
-	// because degree < T is implicit from sending exactly T coefficients, and
-	// the K=64 column checks provide 256-bit binding security.
-	UseUAlphaCoefficients bool
-
 	// SkipSelfRecursionProofCols suppresses registration of the
 	// OpenedSISColumns and OpenedNonSISColumns proof columns. These columns
 	// exist solely so that a subsequent SelfRecurse step can read them. When
@@ -676,13 +669,9 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.LinCombRandCoinName(),
 		coin.FieldExt,
 	)
-	// registers the linear combination claimed by the prover.
-	// In coefficient mode, we send T polynomial coefficients instead of
-	// T×RS evaluations. This saves (RS-1) × T × 4 proof cells.
-	uAlphaSize := ctx.NumEncodedCols()
-	if ctx.UseUAlphaCoefficients {
-		uAlphaSize = utils.NextPowerOfTwo(ctx.NumCols)
-	}
+	// registers the linear combination claimed by the prover as T polynomial
+	// coefficients (coeff form), size = NextPow2(T), for both BLS and KoalaBear.
+	uAlphaSize := utils.NextPowerOfTwo(ctx.NumCols)
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),

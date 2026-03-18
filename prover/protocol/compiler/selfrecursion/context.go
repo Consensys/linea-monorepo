@@ -40,10 +40,17 @@ type Columns struct {
 	// Gathers the claimed evaluations to be proven
 	Ys ifaces.Column
 
-	// (Commitment, already computed)
+	// (Commitment, coeff mode only; nil in eval mode)
 	//
-	// LinearCombination claimed by the verifier
-	Ualpha ifaces.Column
+	// T polynomial coefficients committed by the prover in coefficient mode.
+	UalphaCoeff ifaces.Column
+
+	// (Commitment, always set)
+	//
+	// N RS-codeword evaluations — the lookup table for (Q, UalphaQ) ⊂ (I, UalphaEvals).
+	//   - Eval mode:  set during context init from vortexCtx.Items.Ualpha (the committed codeword).
+	//   - Coeff mode: set by CheckReedSolomonFromCoeff (FFT of UalphaCoeff).
+	UalphaEvals ifaces.Column
 
 	// (Proof, already computed)
 	//
@@ -282,7 +289,10 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		ctx.Columns.PrecompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
 	}
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha
-	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha
+	// Coefficient mode is the only supported mode in self-recursion.
+	// vortexCtx.Items.Ualpha holds T polynomial coefficients committed by the prover.
+	// UalphaEvals (N elements) is computed by RowLinearCombinationPhase via FFT.
+	ctx.Columns.UalphaCoeff = vortexCtx.Items.Ualpha
 	ctx.Coins.Q = vortexCtx.Items.Q
 	ctx.Columns.WholePreimagesSis = vortexCtx.Items.OpenedSISColumns
 	ctx.Columns.WholePreimagesNonSis = vortexCtx.Items.OpenedNonSISColumns
@@ -308,16 +318,16 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		}
 	}
 
-	// Likewise, assume that Ualpha has a status of `Proof` and then
-	// mark it as a `Committed`
-	if comp.Columns.Status(ctx.Columns.Ualpha.GetColID()) != column.Proof {
+	// Assume that UalphaCoeff (T coefficients, from the prover proof) has
+	// status Proof and mark it as Committed.
+	if comp.Columns.Status(ctx.Columns.UalphaCoeff.GetColID()) != column.Proof {
 		utils.Panic(
-			"Assumed Ualpha to be %v but status is %v",
+			"Assumed UalphaCoeff to be %v but status is %v",
 			column.Proof.String(),
-			comp.Columns.Status(ctx.Columns.Ualpha.GetColID()).String(),
+			comp.Columns.Status(ctx.Columns.UalphaCoeff.GetColID()).String(),
 		)
 	}
-	comp.Columns.SetStatus(ctx.Columns.Ualpha.GetColID(), column.Committed)
+	comp.Columns.SetStatus(ctx.Columns.UalphaCoeff.GetColID(), column.Committed)
 
 	// And for the `WholePreimageSis`, we mark it as `Ignored` and make the
 	// same assumption that theirs status is `Proof`

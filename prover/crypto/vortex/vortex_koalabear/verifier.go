@@ -66,38 +66,16 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 	return err
 }
 
+// VerifyCommon checks the linear combination and statement for coefficient-mode U_alpha.
+// proof.LinearCombination holds T polynomial coefficients (E4).
 func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
 
-	err := vortex.CheckIsCodeWord(params.RsParams, proof.LinearCombination)
-	if err != nil {
-		return err
-	}
-
-	err = vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns, params.RsParams)
 	if err != nil {
 		return err
 	}
 
 	err = vortex.CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
-	if err != nil {
-		return err
-	}
-
-	return err
-
-}
-
-// VerifyCommonCoeff is like VerifyCommon but for coefficient-mode U_alpha.
-// proof.LinearCombination holds T polynomial coefficients (E4) instead of N evaluations.
-// No RS codeword check is performed; column consistency uses polynomial evaluation.
-func VerifyCommonCoeff(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
-
-	err := vortex.CheckLinCombCoeff(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns, params.RsParams)
-	if err != nil {
-		return err
-	}
-
-	err = vortex.CheckStatementCoeff(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	if err != nil {
 		return err
 	}

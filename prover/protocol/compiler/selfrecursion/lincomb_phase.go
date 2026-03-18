@@ -15,24 +15,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// Linear combination phase,
+// RowLinearCombinationPhase implements Check 1 (Reed-Solomon) and Check 2
+// (Statement) of the Vortex verifier.
 //
-//   - Prover sends the linear combination that he claims as a commitment Uα
-//     But it's already provided during the context creation
-//   - Test the RS membership using the dedicated wizard below
-//   - Build a column from the alleged openings Ys
-//   - Check the consistency of CoeffEval(Ys,α) = Interpolate(Uα,x) where x
-//     is the opening point
+// Check 1 — Reed-Solomon check (Schwartz-Zippel):
+//
+//	UalphaCoeff (T elements) committed by prover. Prover hints
+//	UalphaEvals = FFT(UalphaCoeff) (N elements). Verifier checks:
+//	    CanonicalEval(UalphaCoeff, β) == LagrangeEval(UalphaEvals, β).
+//	After this step UalphaEvals (N) is set and available for the
+//	inclusion lookup (Q, UalphaQ) ⊂ (I, UalphaEvals) in ColSelection.
+//
+// Check 2 — Statement check:
+//
+//	Compute Ualpha(x) = CanonicalEval(UalphaCoeff, x)   [degree T-1, cheaper].
+//	Verify  Ualpha(x) == CanonicalEval(Ys, α)           [evaluations at alpha].
 func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
-	// The reed-solomon check (skipped in coefficient mode: Ualpha holds polynomial
-	// coefficients, not RS codeword evaluations, so the RS check does not apply).
-	if !ctx.VortexCtx.UseUAlphaCoefficients {
-		reedsolomon.CheckReedSolomon(
-			ctx.Comp,
-			ctx.VortexCtx.BlowUpFactor,
-			ctx.Columns.Ualpha)
-	}
+	// Check 1: Reed-Solomon check.
+	// UalphaCoeff (T coefficients, committed by prover) → FFT hint → UalphaEvals (N evaluations).
+	// Schwartz-Zippel: CanonicalEval(UalphaCoeff,β) == LagrangeEval(UalphaEvals,β).
+	ctx.Columns.UalphaEvals = reedsolomon.CheckReedSolomonFromCoeff(
+		ctx.Comp,
+		ctx.VortexCtx.BlowUpFactor,
+		ctx.Columns.UalphaCoeff)
 
 	// Create the verifier column ys
 	ctx.defineYs()
@@ -105,28 +111,20 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 	xAccessor := accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID))
 
-	if ctx.VortexCtx.UseUAlphaCoefficients {
-		// In coefficient mode, Ualpha holds T polynomial coefficients.
-		// Use canonical (Horner) evaluation instead of Lagrange interpolation.
-		pa, res := functionals.CoeffEvalNoRegisterPA(
-			ctx.Comp,
-			ctx.interpolateUAlphaX(),
-			xAccessor,
-			ctx.Columns.Ualpha,
-		)
-		if pa != nil {
-			ctx.Comp.RegisterProverAction(pa.Round, pa)
-		}
-		ctx.Accessors.InterpolateUalphaX = res
-	} else {
-		// In evaluation mode, Ualpha holds N Lagrange evaluations on the NTT domain.
-		ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
-			ctx.Comp,
-			ctx.interpolateUAlphaX(),
-			xAccessor,
-			ctx.Columns.Ualpha,
-		)
+	// Both modes: UalphaCoeff holds T polynomial coefficients (set by
+	// CheckReedSolomon in eval mode, committed directly in coeff mode).
+	// CanonicalEval(UalphaCoeff, x) is a degree-(T-1) Horner evaluation —
+	// cheaper than LagrangeEval(UalphaEvals, x) which is degree-(N-1).
+	pa, res := functionals.CoeffEvalNoRegisterPA(
+		ctx.Comp,
+		ctx.interpolateUAlphaX(),
+		xAccessor,
+		ctx.Columns.UalphaCoeff,
+	)
+	if pa != nil {
+		ctx.Comp.RegisterProverAction(pa.Round, pa)
 	}
+	ctx.Accessors.InterpolateUalphaX = res
 
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 

@@ -72,17 +72,6 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 	}
 }
 
-// WithUAlphaCoefficients instructs the Vortex compiler to send the polynomial
-// coefficients of U_alpha (T E4 elements) instead of the full evaluation form
-// (T×RS E4 elements). This reduces proof cells by ~(RS-1)/RS × T × 4 cells
-// while maintaining the same security level via the column consistency checks.
-// For T=4096 and RS=16 this saves 245,760 proof cells (~40% reduction overall).
-func WithUAlphaCoefficients() VortexOp {
-	return func(ctx *Ctx) {
-		ctx.UseUAlphaCoefficients = true
-	}
-}
-
 // SkipSelfRecursionProofColumns suppresses the registration of the
 // OpenedSISColumns and OpenedNonSISColumns proof columns. These are needed
 // only when a SelfRecurse step will follow this Vortex compilation. Passing

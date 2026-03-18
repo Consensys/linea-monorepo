@@ -204,10 +204,13 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 
-	uAlpha := proof.LinearCombination
-	if ctx.UseUAlphaCoefficients {
-		// Convert N evaluations → T coefficients via IFFT
-		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(uAlpha)
+	// Ualpha is stored as T polynomial coefficients (iFFT of the codeword)
+	// for both KoalaBear and BLS12-377 modes.
+	var uAlpha smartvectors.SmartVector
+	if !ctx.IsBLS {
+		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+	} else {
+		uAlpha = ctx.VortexBLSParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
 	}
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
 
@@ -259,11 +262,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 	proof := &vortex.OpeningProof{}
 	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 
-	uAlpha := proof.LinearCombination
-	if ctx.UseUAlphaCoefficients {
-		// Convert N evaluations → T coefficients via IFFT
-		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(uAlpha)
-	}
+	uAlpha := ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
 }
 

@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
-	cryptors "github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -116,30 +115,19 @@ type ColSelectionProverAction struct {
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
-	uAlphaSV := run.GetColumn(a.Ctx.Columns.Ualpha.GetColID())
+
+	// UalphaEvals always holds the N-element RS codeword regardless of mode:
+	// in eval mode it is the committed codeword; in coeff mode it is the
+	// FFT of UalphaCoeff committed by CheckReedSolomonFromCoeff.
+	evalsColID := a.Ctx.Columns.UalphaEvals.GetColID()
+	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(evalsColID))
 
 	uAlphaQ := make([]fext.Element, 0, a.Ctx.Columns.UalphaQ.Size())
 	uAlphaQFilter := make([]field.Element, 0, a.Ctx.Columns.UalphaQFilter.Size())
 
-	if a.Ctx.VortexCtx.UseUAlphaCoefficients {
-		// Coefficient mode: Ualpha holds T polynomial coefficients.
-		// Evaluate the polynomial at the RS domain point omega^qi for each selected column index.
-		domainGen := a.Ctx.VortexCtx.VortexKoalaParams.RsParams.Domains[1].Generator
-		for _, qi := range q {
-			var omegaJ field.Element
-			omegaJ.Exp(domainGen, big.NewInt(int64(qi)))
-			var x fext.Element
-			fext.SetFromBase(&x, &omegaJ)
-			eval := cryptors.ExtCoefficientsEvalAt(uAlphaSV, x)
-			uAlphaQ = append(uAlphaQ, eval)
-			uAlphaQFilter = append(uAlphaQFilter, field.One())
-		}
-	} else {
-		uAlpha := smartvectors.IntoRegVecExt(uAlphaSV)
-		for _, qi := range q {
-			uAlphaQ = append(uAlphaQ, uAlpha[qi])
-			uAlphaQFilter = append(uAlphaQFilter, field.One())
-		}
+	for _, qi := range q {
+		uAlphaQ = append(uAlphaQ, uAlpha[qi])
+		uAlphaQFilter = append(uAlphaQFilter, field.One())
 	}
 
 	// If the size of q is not a power of two, we pad it with zeros
@@ -199,29 +187,23 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 	})
 
 	// Declare an inclusion query to finalize the selection check.
-	// In coefficient mode (UseUAlphaCoefficients), Ualpha holds polynomial
-	// coefficients (size=NumCols) rather than per-column RS evaluations
-	// (size=NumEncodedCols). The lookup (Q,UalphaQ)⊂(I,Ualpha) requires I
-	// and Ualpha to have the same size, which they don't in coefficient mode.
-	// In coefficient mode the verifier evaluates Ualpha at the selected points
-	// directly, so the lookup is not needed.
-	if !ctx.VortexCtx.UseUAlphaCoefficients {
-		ctx.Comp.InsertInclusionConditionalOnIncluded(
-			roundQ,
-			ctx.selectQInclusion(),
-			[]ifaces.Column{
-				ctx.Columns.I,
-				ctx.Columns.Ualpha,
-			},
-			[]ifaces.Column{
-				ctx.Columns.Q,
-				ctx.Columns.UalphaQ,
-			},
-			ctx.Columns.UalphaQFilter,
-		)
-		// Add a binarity constraint for UAlphaQFilter
-		dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
-	}
+	// UalphaEvals is always the N-element RS codeword (set in both modes by
+	// RowLinearCombinationPhase), so the lookup table is uniform across modes.
+	ualphaEvalsCol := ctx.Columns.UalphaEvals
+	ctx.Comp.InsertInclusionConditionalOnIncluded(
+		roundQ,
+		ctx.selectQInclusion(),
+		[]ifaces.Column{
+			ctx.Columns.I,
+			ualphaEvalsCol,
+		},
+		[]ifaces.Column{
+			ctx.Columns.Q,
+			ctx.Columns.UalphaQ,
+		},
+		ctx.Columns.UalphaQFilter,
+	)
+	dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
 }
 
 type CollapsingProverAction struct {

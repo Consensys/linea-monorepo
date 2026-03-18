@@ -28,22 +28,21 @@ type GnarkVerifierInput struct {
 	EntryList []frontend.Variable
 }
 
-func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
+func GnarkVerifyLagrange(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
 	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
-	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
-	// since they both evaluate the same polynomial on the same domain
-	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = GnarkCheckStatementAndCodeWordLagrange(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
-// GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
-// to share the Lagrange basis computation, saving approximately n multiplications.
-func GnarkCheckStatementAndCodeWord(
+// GnarkCheckStatementAndCodeWordLagrange combines GnarkCheckStatement and the
+// codeword check for eval-mode U_alpha (N Lagrange evaluations as input).
+// Shares the Lagrange basis computation, saving approximately n multiplications.
+func GnarkCheckStatementAndCodeWordLagrange(
 	api frontend.API,
 	fs fiatshamir.GnarkFS,
 	params Params,
@@ -110,10 +109,10 @@ func GnarkCheckStatementAndCodeWord(
 	return nil
 }
 
-// GnarkVerifyCoeff is like GnarkVerify but for coefficient-mode U_alpha.
-// proof.LinearCombination holds T polynomial coefficients (E4) instead of N evaluations.
+// GnarkVerify verifies the vortex opening for coefficient-mode U_alpha.
+// proof.LinearCombination holds T polynomial coefficients (E4).
 // A forward FFT hint reconstructs N evaluations for the column-consistency lookup check.
-func GnarkVerifyCoeff(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
+func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 	koalaAPI := koalagnark.NewAPI(api)
 
 	// Expand T coefficients → N evaluations via forward FFT hint.
@@ -146,13 +145,13 @@ func GnarkVerifyCoeff(api frontend.API, fs fiatshamir.GnarkFS, params Params, pr
 	}
 
 	// Codeword + statement check using coefficients directly.
-	return GnarkCheckStatementAndCodeWordCoeff(api, fs, params, proof.LinearCombination, evals, vi.Ys, vi.X, vi.Alpha)
+	return GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, evals, vi.Ys, vi.X, vi.Alpha)
 }
 
-// GnarkCheckStatementAndCodeWordCoeff combines the Schwartz-Zippel codeword check
+// GnarkCheckStatementAndCodeWord combines the Schwartz-Zippel codeword check
 // and statement check for coefficient-mode U_alpha.
 // linComb holds T coefficients; evals holds N evaluations (from forward FFT hint).
-func GnarkCheckStatementAndCodeWordCoeff(
+func GnarkCheckStatementAndCodeWord(
 	api frontend.API,
 	fs fiatshamir.GnarkFS,
 	params Params,

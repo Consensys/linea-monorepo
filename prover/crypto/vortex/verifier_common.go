@@ -35,7 +35,7 @@ type VerifierInput struct {
 	EntryList []int
 }
 
-func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
+func CheckStatementLagrange(linComb smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
 
 	smartvectors_mixed.IsBase(linComb)
 
@@ -51,11 +51,7 @@ func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, al
 	return nil
 }
 
-func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v smartvectors.SmartVector) error {
-	return rsParams.IsCodewordExt(v)
-}
-
-func CheckLinComb(
+func CheckLinCombLagrange(
 	linComb smartvectors.SmartVector,
 	entryList []int,
 	alpha fext.Element,
@@ -85,9 +81,9 @@ func CheckLinComb(
 	return nil
 }
 
-// CheckStatementCoeff is like CheckStatement but for coefficient-mode U_alpha.
-// coefficients holds T polynomial coefficients (E4); evaluation at x uses Horner.
-func CheckStatementCoeff(coefficients smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
+// CheckStatement evaluates the polynomial in coefficient form at x using Horner
+// and checks consistency with the alleged evaluations ys folded at alpha.
+func CheckStatement(coefficients smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
 	yJoined := utils.Join(ys...)
 	alphaY := reedsolomon.ExtCoefficientsEvalAt(coefficients, x)
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
@@ -98,11 +94,10 @@ func CheckStatementCoeff(coefficients smartvectors.SmartVector, ys [][]fext.Elem
 	return nil
 }
 
-// CheckLinCombCoeff is like CheckLinComb but for coefficient-mode U_alpha.
-// coefficients holds T polynomial coefficients (E4).
-// rsParams is used to evaluate U_alpha at all N RS domain points via a single
-// FFT, then each queried column is checked by a direct index lookup.
-func CheckLinCombCoeff(
+// CheckLinComb checks the linear combination in coefficient mode: evaluates all
+// N RS domain points via a single FFT and verifies each queried column via
+// a direct index lookup.
+func CheckLinComb(
 	coefficients smartvectors.SmartVector,
 	entryList []int,
 	alpha fext.Element,

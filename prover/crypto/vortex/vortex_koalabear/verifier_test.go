@@ -56,8 +56,11 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 		}
 	}
 
-	// Generate the proof
+	// Generate the proof and convert U_alpha from N evaluations to T polynomial
+	// coefficients (coeff mode): the verifier now expects proof.LinearCombination
+	// to hold T coefficients, not N codeword evaluations.
 	proof, merkleProofs := Prove(vi.EntryList, encodedMatrices, trees, vi.Alpha)
+	proof.LinearCombination = vortexInstance.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
 
 	return &vortexInstance, proof, vi, commitments, merkleProofs
 }
