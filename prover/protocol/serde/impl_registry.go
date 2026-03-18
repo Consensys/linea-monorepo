@@ -312,6 +312,7 @@ func init() {
 
 	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
+	RegisterImplementation(reedsolomon.ReedSolomonFromCoeffProverAction{})
 	RegisterImplementation(column.FakeColumn{})
 	RegisterImplementation(selector.SubsampleProverAction{})
 	RegisterImplementation(selector.SubsampleVerifierAction{})

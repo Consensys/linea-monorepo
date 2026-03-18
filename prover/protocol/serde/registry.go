@@ -214,67 +214,65 @@ var IDToType = [...]reflect.Type{
 	reflect.TypeOf(recursion.AssignVortexUAlpha{}),                         // ID: 148
 	reflect.TypeOf(recursion.ConsistencyCheck{}),                           // ID: 149
 	reflect.TypeOf(recursion.RecursionCircuit{}),                           // ID: 150
-	reflect.TypeOf(reedsolomon.ReedSolomonProverAction{}),                  // ID: 151
-	reflect.TypeOf(reedsolomon.ReedSolomonVerifierAction{}),                // ID: 152
-	reflect.TypeOf(selector.SubsampleProverAction{}),                       // ID: 153
-	reflect.TypeOf(selector.SubsampleVerifierAction{}),                     // ID: 154
-	reflect.TypeOf(selfrecursion.ColSelectionProverAction{}),               // ID: 155
-	reflect.TypeOf(selfrecursion.CollapsingProverAction{}),                 // ID: 156
-	reflect.TypeOf(selfrecursion.CollapsingVerifierAction{}),               // ID: 157
-	reflect.TypeOf(selfrecursion.ConsistencyYsUalphaVerifierAction{}),      // ID: 158
-	reflect.TypeOf(selfrecursion.FoldPhaseProverAction{}),                  // ID: 159
-	reflect.TypeOf(selfrecursion.FoldPhaseVerifierAction{}),                // ID: 160
-	reflect.TypeOf(selfrecursion.LinearHashMerkleProverAction{}),           // ID: 161
-	reflect.TypeOf(selfrecursion.PreimageLimbsProverAction{}),              // ID: 162
-	reflect.TypeOf(sha2.SHA2Circuit{}),                                     // ID: 163
-	reflect.TypeOf(smartvectors.Constant{}),                                // ID: 164
-	reflect.TypeOf(smartvectors.PaddedCircularWindow{}),                    // ID: 165
-	reflect.TypeOf(smartvectors.Regular{}),                                 // ID: 166
-	reflect.TypeOf(spaghettifier.Spaghettification{}),                      // ID: 167
-	reflect.TypeOf(splitextension.AssignSplitColumnProverAction{}),         // ID: 168
-	reflect.TypeOf(splitextension.AssignUnivProverAction{}),                // ID: 169
-	reflect.TypeOf(splitextension.VerifierCtx{}),                           // ID: 170
-	reflect.TypeOf(stitchsplit.AssignLocalPointProverAction{}),             // ID: 171
-	reflect.TypeOf(stitchsplit.ProveRoundProverAction{}),                   // ID: 172
-	reflect.TypeOf(stitchsplit.QueryVerifierAction{}),                      // ID: 173
-	reflect.TypeOf(stitchsplit.SplitProverAction{}),                        // ID: 174
-	reflect.TypeOf(stitchsplit.StitchColumnsProverAction{}),                // ID: 175
-	reflect.TypeOf(stitchsplit.StitchSubColumnsProverAction{}),             // ID: 176
-	reflect.TypeOf(string("")),                                             // ID: 177
-	reflect.TypeOf(symbolic.Constant{}),                                    // ID: 178
-	reflect.TypeOf(symbolic.LinComb{}),                                     // ID: 179
-	reflect.TypeOf(symbolic.PolyEval{}),                                    // ID: 180
-	reflect.TypeOf(symbolic.Product{}),                                     // ID: 181
-	reflect.TypeOf(symbolic.StringVar("")),                                 // ID: 182
-	reflect.TypeOf(symbolic.Variable{}),                                    // ID: 183
-	reflect.TypeOf(uint(0)),                                                // ID: 184
-	reflect.TypeOf(uint16(0)),                                              // ID: 185
-	reflect.TypeOf(uint32(0)),                                              // ID: 186
-	reflect.TypeOf(uint64(0)),                                              // ID: 187
-	reflect.TypeOf(uint8(0)),                                               // ID: 188
-	reflect.TypeOf(univariates.NaturalizeProverAction{}),                   // ID: 189
-	reflect.TypeOf(univariates.NaturalizeVerifierAction{}),                 // ID: 190
-	reflect.TypeOf(variables.PeriodicSample{}),                             // ID: 191
-	reflect.TypeOf(variables.X{}),                                          // ID: 192
-	reflect.TypeOf(verifiercol.ConstCol{}),                                 // ID: 193
-	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}),   // ID: 194
-	reflect.TypeOf(verifiercol.FromAccessors{}),                            // ID: 195
-	reflect.TypeOf(verifiercol.FromYs{}),                                   // ID: 196
-	reflect.TypeOf(verifiercol.RepeatedAccessor{}),                         // ID: 197
-	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}),                  // ID: 198
-	reflect.TypeOf(vortex.Ctx{}),                                           // ID: 199
-	reflect.TypeOf(vortex.ExplicitPolynomialEval{}),                        // ID: 200
-	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}),      // ID: 201
-	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}),               // ID: 202
-	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}),                 // ID: 203
-	reflect.TypeOf(vortex.ShadowRowProverAction{}),                         // ID: 204
-	reflect.TypeOf(vortex.VortexVerifierAction{}),                          // ID: 205
-	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}),                           // ID: 206
-	reflect.TypeOf(zkded.AssignPIPProverAction{}),                          // ID: 207
-	reflect.TypeOf(zkded.LengthConsistencyCtx{}),                           // ID: 208
-	reflect.TypeOf(poseidon2.GKRIOProverAction{}),                          // ID: 209
-	reflect.TypeOf(poseidon2.GKRPoseidon2Context{}),                        // ID: 210
-	reflect.TypeOf(poseidon2.GKRPoseidon2VerifierAction{}),                 // ID: 211
+	reflect.TypeOf(reedsolomon.ReedSolomonFromCoeffProverAction{}),         // ID: 151
+	reflect.TypeOf(reedsolomon.ReedSolomonProverAction{}),                  // ID: 152
+	reflect.TypeOf(reedsolomon.ReedSolomonVerifierAction{}),                // ID: 153
+	reflect.TypeOf(selector.SubsampleProverAction{}),                       // ID: 154
+	reflect.TypeOf(selector.SubsampleVerifierAction{}),                     // ID: 155
+	reflect.TypeOf(selfrecursion.ColSelectionProverAction{}),               // ID: 156
+	reflect.TypeOf(selfrecursion.CollapsingProverAction{}),                 // ID: 157
+	reflect.TypeOf(selfrecursion.CollapsingVerifierAction{}),               // ID: 158
+	reflect.TypeOf(selfrecursion.ConsistencyYsUalphaVerifierAction{}),      // ID: 159
+	reflect.TypeOf(selfrecursion.FoldPhaseProverAction{}),                  // ID: 160
+	reflect.TypeOf(selfrecursion.FoldPhaseVerifierAction{}),                // ID: 161
+	reflect.TypeOf(selfrecursion.LinearHashMerkleProverAction{}),           // ID: 162
+	reflect.TypeOf(selfrecursion.PreimageLimbsProverAction{}),              // ID: 163
+	reflect.TypeOf(sha2.SHA2Circuit{}),                                     // ID: 164
+	reflect.TypeOf(smartvectors.Constant{}),                                // ID: 165
+	reflect.TypeOf(smartvectors.PaddedCircularWindow{}),                    // ID: 166
+	reflect.TypeOf(smartvectors.Regular{}),                                 // ID: 167
+	reflect.TypeOf(spaghettifier.Spaghettification{}),                      // ID: 168
+	reflect.TypeOf(splitextension.AssignSplitColumnProverAction{}),         // ID: 169
+	reflect.TypeOf(splitextension.AssignUnivProverAction{}),                // ID: 170
+	reflect.TypeOf(splitextension.VerifierCtx{}),                           // ID: 171
+	reflect.TypeOf(stitchsplit.AssignLocalPointProverAction{}),             // ID: 172
+	reflect.TypeOf(stitchsplit.ProveRoundProverAction{}),                   // ID: 173
+	reflect.TypeOf(stitchsplit.QueryVerifierAction{}),                      // ID: 174
+	reflect.TypeOf(stitchsplit.SplitProverAction{}),                        // ID: 175
+	reflect.TypeOf(stitchsplit.StitchColumnsProverAction{}),                // ID: 176
+	reflect.TypeOf(stitchsplit.StitchSubColumnsProverAction{}),             // ID: 177
+	reflect.TypeOf(string("")),                                             // ID: 178
+	reflect.TypeOf(symbolic.Constant{}),                                    // ID: 179
+	reflect.TypeOf(symbolic.LinComb{}),                                     // ID: 180
+	reflect.TypeOf(symbolic.PolyEval{}),                                    // ID: 181
+	reflect.TypeOf(symbolic.Product{}),                                     // ID: 182
+	reflect.TypeOf(symbolic.StringVar("")),                                 // ID: 183
+	reflect.TypeOf(symbolic.Variable{}),                                    // ID: 184
+	reflect.TypeOf(uint(0)),                                                // ID: 185
+	reflect.TypeOf(uint16(0)),                                              // ID: 186
+	reflect.TypeOf(uint32(0)),                                              // ID: 187
+	reflect.TypeOf(uint64(0)),                                              // ID: 188
+	reflect.TypeOf(uint8(0)),                                               // ID: 189
+	reflect.TypeOf(univariates.NaturalizeProverAction{}),                   // ID: 190
+	reflect.TypeOf(univariates.NaturalizeVerifierAction{}),                 // ID: 191
+	reflect.TypeOf(variables.PeriodicSample{}),                             // ID: 192
+	reflect.TypeOf(variables.X{}),                                          // ID: 193
+	reflect.TypeOf(verifiercol.ConstCol{}),                                 // ID: 194
+	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}),   // ID: 195
+	reflect.TypeOf(verifiercol.FromAccessors{}),                            // ID: 196
+	reflect.TypeOf(verifiercol.FromYs{}),                                   // ID: 197
+	reflect.TypeOf(verifiercol.RepeatedAccessor{}),                         // ID: 198
+	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}),                  // ID: 199
+	reflect.TypeOf(vortex.Ctx{}),                                           // ID: 200
+	reflect.TypeOf(vortex.ExplicitPolynomialEval{}),                        // ID: 201
+	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}),      // ID: 202
+	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}),               // ID: 203
+	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}),                 // ID: 204
+	reflect.TypeOf(vortex.ShadowRowProverAction{}),                         // ID: 205
+	reflect.TypeOf(vortex.VortexVerifierAction{}),                          // ID: 206
+	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}),                           // ID: 207
+	reflect.TypeOf(zkded.AssignPIPProverAction{}),                          // ID: 208
+	reflect.TypeOf(zkded.LengthConsistencyCtx{}),                           // ID: 209
 }
 
 // TypeToID maps a reflect.Type to a uint16 ID.
@@ -431,65 +429,63 @@ var TypeToID = map[reflect.Type]uint16{
 	reflect.TypeOf(recursion.AssignVortexUAlpha{}):                         148,
 	reflect.TypeOf(recursion.ConsistencyCheck{}):                           149,
 	reflect.TypeOf(recursion.RecursionCircuit{}):                           150,
-	reflect.TypeOf(reedsolomon.ReedSolomonProverAction{}):                  151,
-	reflect.TypeOf(reedsolomon.ReedSolomonVerifierAction{}):                152,
-	reflect.TypeOf(selector.SubsampleProverAction{}):                       153,
-	reflect.TypeOf(selector.SubsampleVerifierAction{}):                     154,
-	reflect.TypeOf(selfrecursion.ColSelectionProverAction{}):               155,
-	reflect.TypeOf(selfrecursion.CollapsingProverAction{}):                 156,
-	reflect.TypeOf(selfrecursion.CollapsingVerifierAction{}):               157,
-	reflect.TypeOf(selfrecursion.ConsistencyYsUalphaVerifierAction{}):      158,
-	reflect.TypeOf(selfrecursion.FoldPhaseProverAction{}):                  159,
-	reflect.TypeOf(selfrecursion.FoldPhaseVerifierAction{}):                160,
-	reflect.TypeOf(selfrecursion.LinearHashMerkleProverAction{}):           161,
-	reflect.TypeOf(selfrecursion.PreimageLimbsProverAction{}):              162,
-	reflect.TypeOf(sha2.SHA2Circuit{}):                                     163,
-	reflect.TypeOf(smartvectors.Constant{}):                                164,
-	reflect.TypeOf(smartvectors.PaddedCircularWindow{}):                    165,
-	reflect.TypeOf(smartvectors.Regular{}):                                 166,
-	reflect.TypeOf(spaghettifier.Spaghettification{}):                      167,
-	reflect.TypeOf(splitextension.AssignSplitColumnProverAction{}):         168,
-	reflect.TypeOf(splitextension.AssignUnivProverAction{}):                169,
-	reflect.TypeOf(splitextension.VerifierCtx{}):                           170,
-	reflect.TypeOf(stitchsplit.AssignLocalPointProverAction{}):             171,
-	reflect.TypeOf(stitchsplit.ProveRoundProverAction{}):                   172,
-	reflect.TypeOf(stitchsplit.QueryVerifierAction{}):                      173,
-	reflect.TypeOf(stitchsplit.SplitProverAction{}):                        174,
-	reflect.TypeOf(stitchsplit.StitchColumnsProverAction{}):                175,
-	reflect.TypeOf(stitchsplit.StitchSubColumnsProverAction{}):             176,
-	reflect.TypeOf(string("")):                                             177,
-	reflect.TypeOf(symbolic.Constant{}):                                    178,
-	reflect.TypeOf(symbolic.LinComb{}):                                     179,
-	reflect.TypeOf(symbolic.PolyEval{}):                                    180,
-	reflect.TypeOf(symbolic.Product{}):                                     181,
-	reflect.TypeOf(symbolic.StringVar("")):                                 182,
-	reflect.TypeOf(symbolic.Variable{}):                                    183,
-	reflect.TypeOf(uint(0)):                                                184,
-	reflect.TypeOf(uint16(0)):                                              185,
-	reflect.TypeOf(uint32(0)):                                              186,
-	reflect.TypeOf(uint64(0)):                                              187,
-	reflect.TypeOf(uint8(0)):                                               188,
-	reflect.TypeOf(univariates.NaturalizeProverAction{}):                   189,
-	reflect.TypeOf(univariates.NaturalizeVerifierAction{}):                 190,
-	reflect.TypeOf(variables.PeriodicSample{}):                             191,
-	reflect.TypeOf(variables.X{}):                                          192,
-	reflect.TypeOf(verifiercol.ConstCol{}):                                 193,
-	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}):   194,
-	reflect.TypeOf(verifiercol.FromAccessors{}):                            195,
-	reflect.TypeOf(verifiercol.FromYs{}):                                   196,
-	reflect.TypeOf(verifiercol.RepeatedAccessor{}):                         197,
-	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}):                  198,
-	reflect.TypeOf(vortex.Ctx{}):                                           199,
-	reflect.TypeOf(vortex.ExplicitPolynomialEval{}):                        200,
-	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}):      201,
-	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}):               202,
-	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}):                 203,
-	reflect.TypeOf(vortex.ShadowRowProverAction{}):                         204,
-	reflect.TypeOf(vortex.VortexVerifierAction{}):                          205,
-	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}):                           206,
-	reflect.TypeOf(zkded.AssignPIPProverAction{}):                          207,
-	reflect.TypeOf(zkded.LengthConsistencyCtx{}):                           208,
-	reflect.TypeOf(poseidon2.GKRIOProverAction{}):                          209,
-	reflect.TypeOf(poseidon2.GKRPoseidon2Context{}):                        210,
-	reflect.TypeOf(poseidon2.GKRPoseidon2VerifierAction{}):                 211,
+	reflect.TypeOf(reedsolomon.ReedSolomonFromCoeffProverAction{}):         151,
+	reflect.TypeOf(reedsolomon.ReedSolomonProverAction{}):                  152,
+	reflect.TypeOf(reedsolomon.ReedSolomonVerifierAction{}):                153,
+	reflect.TypeOf(selector.SubsampleProverAction{}):                       154,
+	reflect.TypeOf(selector.SubsampleVerifierAction{}):                     155,
+	reflect.TypeOf(selfrecursion.ColSelectionProverAction{}):               156,
+	reflect.TypeOf(selfrecursion.CollapsingProverAction{}):                 157,
+	reflect.TypeOf(selfrecursion.CollapsingVerifierAction{}):               158,
+	reflect.TypeOf(selfrecursion.ConsistencyYsUalphaVerifierAction{}):      159,
+	reflect.TypeOf(selfrecursion.FoldPhaseProverAction{}):                  160,
+	reflect.TypeOf(selfrecursion.FoldPhaseVerifierAction{}):                161,
+	reflect.TypeOf(selfrecursion.LinearHashMerkleProverAction{}):           162,
+	reflect.TypeOf(selfrecursion.PreimageLimbsProverAction{}):              163,
+	reflect.TypeOf(sha2.SHA2Circuit{}):                                     164,
+	reflect.TypeOf(smartvectors.Constant{}):                                165,
+	reflect.TypeOf(smartvectors.PaddedCircularWindow{}):                    166,
+	reflect.TypeOf(smartvectors.Regular{}):                                 167,
+	reflect.TypeOf(spaghettifier.Spaghettification{}):                      168,
+	reflect.TypeOf(splitextension.AssignSplitColumnProverAction{}):         169,
+	reflect.TypeOf(splitextension.AssignUnivProverAction{}):                170,
+	reflect.TypeOf(splitextension.VerifierCtx{}):                           171,
+	reflect.TypeOf(stitchsplit.AssignLocalPointProverAction{}):             172,
+	reflect.TypeOf(stitchsplit.ProveRoundProverAction{}):                   173,
+	reflect.TypeOf(stitchsplit.QueryVerifierAction{}):                      174,
+	reflect.TypeOf(stitchsplit.SplitProverAction{}):                        175,
+	reflect.TypeOf(stitchsplit.StitchColumnsProverAction{}):                176,
+	reflect.TypeOf(stitchsplit.StitchSubColumnsProverAction{}):             177,
+	reflect.TypeOf(string("")):                                             178,
+	reflect.TypeOf(symbolic.Constant{}):                                    179,
+	reflect.TypeOf(symbolic.LinComb{}):                                     180,
+	reflect.TypeOf(symbolic.PolyEval{}):                                    181,
+	reflect.TypeOf(symbolic.Product{}):                                     182,
+	reflect.TypeOf(symbolic.StringVar("")):                                 183,
+	reflect.TypeOf(symbolic.Variable{}):                                    184,
+	reflect.TypeOf(uint(0)):                                                185,
+	reflect.TypeOf(uint16(0)):                                              186,
+	reflect.TypeOf(uint32(0)):                                              187,
+	reflect.TypeOf(uint64(0)):                                              188,
+	reflect.TypeOf(uint8(0)):                                               189,
+	reflect.TypeOf(univariates.NaturalizeProverAction{}):                   190,
+	reflect.TypeOf(univariates.NaturalizeVerifierAction{}):                 191,
+	reflect.TypeOf(variables.PeriodicSample{}):                             192,
+	reflect.TypeOf(variables.X{}):                                          193,
+	reflect.TypeOf(verifiercol.ConstCol{}):                                 194,
+	reflect.TypeOf(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{}):   195,
+	reflect.TypeOf(verifiercol.FromAccessors{}):                            196,
+	reflect.TypeOf(verifiercol.FromYs{}):                                   197,
+	reflect.TypeOf(verifiercol.RepeatedAccessor{}):                         198,
+	reflect.TypeOf(vortex.ColumnAssignmentProverAction{}):                  199,
+	reflect.TypeOf(vortex.Ctx{}):                                           200,
+	reflect.TypeOf(vortex.ExplicitPolynomialEval{}):                        201,
+	reflect.TypeOf(vortex.LinearCombinationComputationProverAction{}):      202,
+	reflect.TypeOf(vortex.OpenSelectedColumnsProverAction{}):               203,
+	reflect.TypeOf(vortex.ReassignPrecomputedRootAction{}):                 204,
+	reflect.TypeOf(vortex.ShadowRowProverAction{}):                         205,
+	reflect.TypeOf(vortex.VortexVerifierAction{}):                          206,
+	reflect.TypeOf(zkded.AccumulateUpToMaxCtx{}):                           207,
+	reflect.TypeOf(zkded.AssignPIPProverAction{}):                          208,
+	reflect.TypeOf(zkded.LengthConsistencyCtx{}):                           209,
 }
