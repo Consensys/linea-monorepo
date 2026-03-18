@@ -5,13 +5,14 @@ import { mock } from "jest-mock-extended";
 import { LineaGasProviderConfig } from "../../../../../core/clients/blockchain/IGasProvider";
 import { BaseError } from "../../../../../core/errors/BaseError";
 import { TransactionRequest } from "../../../../../core/types";
+import { TEST_ADDRESS_1, TEST_ADDRESS_2 } from "../../../../../utils/testing/constants";
 import { ViemLineaGasProvider } from "../ViemLineaGasProvider";
 
 import type { PublicClient } from "viem";
 
 const TEST_TX_REQUEST: TransactionRequest = {
-  from: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  from: TEST_ADDRESS_1,
+  to: TEST_ADDRESS_2,
   data: "0x",
   value: 0n,
 };

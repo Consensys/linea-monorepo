@@ -10,7 +10,7 @@ import {
   DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
-import { DEFAULT_MAX_FEE_PER_GAS, testMessage, TEST_MESSAGE_HASH } from "../../../utils/testing/constants";
+import { DEFAULT_MAX_FEE_PER_GAS, testMessage } from "../../../utils/testing/constants";
 import { generateMessage } from "../../../utils/testing/helpers";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 

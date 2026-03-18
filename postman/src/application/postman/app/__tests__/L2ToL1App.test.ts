@@ -40,7 +40,7 @@ describe("L2ToL1App", () => {
 
     it("should call start on all pollers", () => {
       const pollers = (app as any).pollers;
-      const startSpies = pollers.map((p: { start: () => void }) => jest.spyOn(p, "start").mockResolvedValue(undefined));
+      const startSpies = pollers.map((p: { start: () => void }) => jest.spyOn(p, "start"));
 
       app.start();
 

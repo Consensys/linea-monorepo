@@ -5,14 +5,17 @@ import { parseTransaction, type PublicClient, serializeSignature, type WalletCli
 import { privateKeyToAccount } from "viem/accounts";
 
 import { ILineaGasProvider } from "../../../core/clients/blockchain/IGasProvider";
-import { DEFAULT_MAX_FEE_PER_GAS, testMessage } from "../../../utils/testing/constants";
+import {
+  DEFAULT_MAX_FEE_PER_GAS,
+  TEST_CONTRACT_ADDRESS_1,
+  TEST_L2_SIGNER_PRIVATE_KEY,
+  testMessage,
+} from "../../../utils/testing/constants";
 import { L2ClaimTransactionSizeCalculator } from "../L2ClaimTransactionSizeCalculator";
 import { ViemL2MessageServiceClient } from "../viem/clients/ViemL2MessageServiceClient";
 import { ViemTransactionSigner } from "../viem/signers/ViemTransactionSigner";
 
-const TEST_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const TEST_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000001";
-const account = privateKeyToAccount(TEST_PRIVATE_KEY);
+const account = privateKeyToAccount(TEST_L2_SIGNER_PRIVATE_KEY);
 
 describe("L2ClaimTransactionSizeCalculator", () => {
   let transactionSizeCalculator: L2ClaimTransactionSizeCalculator;
@@ -22,7 +25,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
   const l2ContractClient = new ViemL2MessageServiceClient(
     mock<PublicClient>(),
     mock<WalletClient>(),
-    TEST_CONTRACT_ADDRESS,
+    TEST_CONTRACT_ADDRESS_1,
     mock<ILineaGasProvider>(),
     account.address,
   );
@@ -51,7 +54,7 @@ describe("L2ClaimTransactionSizeCalculator", () => {
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
       });
 
-      expect(transactionSize).toEqual(85);
+      expect(transactionSize).toEqual(83);
     });
   });
 });

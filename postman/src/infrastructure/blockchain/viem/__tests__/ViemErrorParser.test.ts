@@ -31,7 +31,7 @@ import { ViemErrorParser } from "../ViemErrorParser";
 // RateLimitExceeded() error selector: keccak256("RateLimitExceeded()")[:4]
 const RATE_LIMIT_EXCEEDED_SELECTOR = "0xa74c1c5f";
 // Some other custom error selector (e.g. "SomeOtherError()")
-const OTHER_ERROR_SELECTOR = "0xdeadbeef";
+const OTHER_ERROR_SELECTOR = "0xb5326ac7";
 
 const TEST_ACCOUNT = privateKeyToAccount(TEST_L1_SIGNER_PRIVATE_KEY);
 

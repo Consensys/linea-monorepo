@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
+import { TEST_ADDRESS_1, TEST_TRANSACTION_HASH } from "../../../../../utils/testing/constants";
 import { TestLogger } from "../../../../../utils/testing/helpers";
 import { ViemProvider } from "../ViemProvider";
 
 import type { PublicClient } from "viem";
-
-const TEST_ADDRESS = "0x1000000000000000000000000000000000000001";
-const TEST_TX_HASH = "0x2020202020202020202020202020202020202020202020202020202020202020";
 
 describe("ViemProvider", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
@@ -33,9 +31,9 @@ describe("ViemProvider", () => {
   describe("getTransactionCount", () => {
     it("returns transaction count", async () => {
       publicClient.getTransactionCount.mockResolvedValue(5);
-      await expect(provider.getTransactionCount(TEST_ADDRESS, "latest")).resolves.toBe(5);
+      await expect(provider.getTransactionCount(TEST_ADDRESS_1, "latest")).resolves.toBe(5);
       expect(publicClient.getTransactionCount).toHaveBeenCalledWith({
-        address: TEST_ADDRESS,
+        address: TEST_ADDRESS_1,
         blockTag: "latest",
       });
     });
@@ -44,7 +42,7 @@ describe("ViemProvider", () => {
   describe("getTransactionReceipt", () => {
     it("returns mapped receipt when found", async () => {
       publicClient.getTransactionReceipt.mockResolvedValue({
-        transactionHash: TEST_TX_HASH,
+        transactionHash: TEST_TRANSACTION_HASH,
         blockNumber: 100n,
         status: "success",
         gasUsed: 21000n,
@@ -53,16 +51,16 @@ describe("ViemProvider", () => {
         blockHash: "0xabc",
         contractAddress: null,
         cumulativeGasUsed: 21000n,
-        from: TEST_ADDRESS,
+        from: TEST_ADDRESS_1,
         logsBloom: "0x",
-        to: TEST_ADDRESS,
+        to: TEST_ADDRESS_1,
         transactionIndex: 0,
         type: "eip1559",
       } as never);
 
-      const receipt = await provider.getTransactionReceipt(TEST_TX_HASH);
+      const receipt = await provider.getTransactionReceipt(TEST_TRANSACTION_HASH);
       expect(receipt).toMatchObject({
-        hash: TEST_TX_HASH,
+        hash: TEST_TRANSACTION_HASH,
         blockNumber: 100,
         status: "success",
         gasUsed: 21000n,
@@ -76,9 +74,9 @@ describe("ViemProvider", () => {
       publicClient.getTransactionReceipt.mockRejectedValue(rpcError);
       const loggerWarnSpy = jest.spyOn(logger, "warn");
 
-      await expect(provider.getTransactionReceipt(TEST_TX_HASH)).resolves.toBeNull();
+      await expect(provider.getTransactionReceipt(TEST_TRANSACTION_HASH)).resolves.toBeNull();
       expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction receipt.", {
-        txHash: TEST_TX_HASH,
+        txHash: TEST_TRANSACTION_HASH,
         error: rpcError,
       });
     });
@@ -96,7 +94,7 @@ describe("ViemProvider", () => {
         gasLimit: 30000000n,
         gasUsed: 15000000n,
         logsBloom: "0x",
-        miner: TEST_ADDRESS,
+        miner: TEST_ADDRESS_1,
         mixHash: "0x",
         nonce: "0x0000000000000000",
         parentHash: "0xparent",
@@ -146,7 +144,7 @@ describe("ViemProvider", () => {
   describe("estimateGas", () => {
     it("returns estimated gas", async () => {
       publicClient.estimateGas.mockResolvedValue(50000n);
-      const result = await provider.estimateGas({ to: TEST_ADDRESS });
+      const result = await provider.estimateGas({ to: TEST_ADDRESS_1 });
       expect(result).toBe(50000n);
     });
   });
@@ -154,18 +152,18 @@ describe("ViemProvider", () => {
   describe("getTransaction", () => {
     it("returns mapped transaction submission", async () => {
       publicClient.getTransaction.mockResolvedValue({
-        hash: TEST_TX_HASH,
+        hash: TEST_TRANSACTION_HASH,
         nonce: 7,
         gas: 21000n,
         maxFeePerGas: 2000000000n,
         maxPriorityFeePerGas: 1000000000n,
         blockHash: "0x",
         blockNumber: 100n,
-        from: TEST_ADDRESS,
+        from: TEST_ADDRESS_1,
         input: "0x",
         r: "0x",
         s: "0x",
-        to: TEST_ADDRESS,
+        to: TEST_ADDRESS_1,
         transactionIndex: 0,
         typeHex: "0x2",
         v: 0n,
@@ -176,9 +174,9 @@ describe("ViemProvider", () => {
         yParity: 0,
       } as never);
 
-      const tx = await provider.getTransaction(TEST_TX_HASH);
+      const tx = await provider.getTransaction(TEST_TRANSACTION_HASH);
       expect(tx).toMatchObject({
-        hash: TEST_TX_HASH,
+        hash: TEST_TRANSACTION_HASH,
         nonce: 7,
         gasLimit: 21000n,
         maxFeePerGas: 2000000000n,
@@ -191,9 +189,9 @@ describe("ViemProvider", () => {
       publicClient.getTransaction.mockRejectedValue(rpcError);
       const loggerWarnSpy = jest.spyOn(logger, "warn");
 
-      await expect(provider.getTransaction(TEST_TX_HASH)).resolves.toBeNull();
+      await expect(provider.getTransaction(TEST_TRANSACTION_HASH)).resolves.toBeNull();
       expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction.", {
-        transactionHash: TEST_TX_HASH,
+        transactionHash: TEST_TRANSACTION_HASH,
         error: rpcError,
       });
     });
@@ -202,13 +200,13 @@ describe("ViemProvider", () => {
   describe("call", () => {
     it("returns the response data", async () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" });
-      const result = await provider.call({ to: TEST_ADDRESS });
+      const result = await provider.call({ to: TEST_ADDRESS_1 });
       expect(result).toBe("0xdeadbeef");
     });
 
     it("returns 0x when data is undefined", async () => {
       publicClient.call.mockResolvedValue({ data: undefined });
-      const result = await provider.call({ to: TEST_ADDRESS });
+      const result = await provider.call({ to: TEST_ADDRESS_1 });
       expect(result).toBe("0x");
     });
   });

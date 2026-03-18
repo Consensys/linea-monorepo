@@ -3,25 +3,16 @@ import { MockProxy } from "jest-mock-extended";
 import { DataSource, EntityManager } from "typeorm";
 
 import { buildTestPostmanOptions } from "../../../../utils/testing/fixtures";
-import {
-  mockApplication,
-  mockDataSource,
-  mockLogger,
-  mockMessageMetricsUpdater,
-  mockMetricsService,
-  mockPoller,
-  mockSponsorshipMetricsUpdater,
-  mockTransactionMetricsUpdater,
-} from "../../../../utils/testing/mocks";
+import { mockApplication, mockDataSource, mockPoller } from "../../../../utils/testing/mocks";
 import { PostmanApp } from "../PostmanApp";
 import { PostmanServices } from "../PostmanContainer";
 
 const mockBuildPostmanServices = jest.fn();
-const mockGetConfig = jest.fn();
 const mockDBCreate = jest.fn();
 const mockCreatePostmanApi = jest.fn();
 
 jest.mock("@consensys/linea-shared-utils", () => ({
+  ...jest.requireActual("@consensys/linea-shared-utils"),
   WinstonLogger: jest.fn().mockImplementation(() => ({
     info: jest.fn(),
     warn: jest.fn(),
@@ -29,10 +20,6 @@ jest.mock("@consensys/linea-shared-utils", () => ({
     debug: jest.fn(),
     name: "test",
   })),
-}));
-
-jest.mock("../config/utils", () => ({
-  getConfig: (...args: unknown[]) => mockGetConfig(...args),
 }));
 
 jest.mock("../PostmanContainer", () => ({
@@ -47,21 +34,16 @@ jest.mock("../../../../infrastructure/api/PostmanApi", () => ({
   createPostmanApi: (...args: unknown[]) => mockCreatePostmanApi(...args),
 }));
 
-jest.mock("../../../../infrastructure/metrics/PostmanMetricsService", () => ({
-  PostmanMetricsService: jest.fn().mockImplementation(() => mockMetricsService()),
-}));
-
-jest.mock("../../../../infrastructure/metrics/MessageMetricsUpdater", () => ({
-  MessageMetricsUpdater: jest.fn().mockImplementation(() => mockMessageMetricsUpdater()),
-}));
-
-jest.mock("../../../../infrastructure/metrics/SponsorshipMetricsUpdater", () => ({
-  SponsorshipMetricsUpdater: jest.fn().mockImplementation(() => mockSponsorshipMetricsUpdater()),
-}));
-
-jest.mock("../../../../infrastructure/metrics/TransactionMetricsUpdater", () => ({
-  TransactionMetricsUpdater: jest.fn().mockImplementation(() => mockTransactionMetricsUpdater()),
-}));
+function mockEntityManagerWithQueryBuilder(): EntityManager {
+  const queryBuilder = {
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue([]),
+  };
+  return { createQueryBuilder: jest.fn().mockReturnValue(queryBuilder) } as unknown as EntityManager;
+}
 
 describe("PostmanApp", () => {
   let mockDs: MockProxy<DataSource>;
@@ -69,26 +51,16 @@ describe("PostmanApp", () => {
 
   beforeEach(() => {
     mockDs = mockDataSource();
-    mockDs.manager = {} as EntityManager;
-    mockDs.initialize = jest.fn().mockResolvedValue(undefined);
-    mockDs.destroy = jest.fn().mockResolvedValue(undefined);
-    mockDs.subscribers = [];
+    mockDs.initialize.mockResolvedValue(undefined as unknown as DataSource);
+    mockDs.destroy.mockResolvedValue(undefined);
+    Object.defineProperty(mockDs, "manager", { value: mockEntityManagerWithQueryBuilder(), writable: true });
 
     services = {
       l1ToL2App: { start: jest.fn(), stop: jest.fn() },
       l2ToL1App: { start: jest.fn(), stop: jest.fn() },
       databaseCleaningPoller: mockPoller(),
-    };
+    } as unknown as PostmanServices;
 
-    mockGetConfig.mockReturnValue({
-      l1Config: {},
-      l2Config: {},
-      l1L2AutoClaimEnabled: true,
-      l2L1AutoClaimEnabled: true,
-      databaseOptions: { type: "postgres" },
-      databaseCleanerConfig: { enabled: false },
-      apiConfig: { port: 3000 },
-    });
     mockDBCreate.mockReturnValue(mockDs);
     mockBuildPostmanServices.mockResolvedValue(services);
     mockCreatePostmanApi.mockReturnValue(mockApplication());
@@ -99,14 +71,7 @@ describe("PostmanApp", () => {
   });
 
   it("should construct without errors", () => {
-    const options = buildTestPostmanOptions();
-    expect(() => new PostmanApp(options)).not.toThrow();
-  });
-
-  it("should call getConfig during construction", () => {
-    const options = buildTestPostmanOptions();
-    new PostmanApp(options);
-    expect(mockGetConfig).toHaveBeenCalledWith(options);
+    expect(() => new PostmanApp(buildTestPostmanOptions())).not.toThrow();
   });
 
   describe("start", () => {
@@ -153,7 +118,6 @@ describe("PostmanApp", () => {
 
     it("should not throw when optional services are undefined", async () => {
       mockBuildPostmanServices.mockResolvedValue({});
-
       const app = new PostmanApp(buildTestPostmanOptions());
       await expect(app.start()).resolves.not.toThrow();
     });

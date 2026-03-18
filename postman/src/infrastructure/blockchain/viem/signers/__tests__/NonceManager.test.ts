@@ -3,10 +3,9 @@ import { mock } from "jest-mock-extended";
 
 import { ITransactionCountProvider } from "../../../../../core/clients/blockchain/IProvider";
 import { IDbNonceProvider } from "../../../../../core/services/IDbNonceProvider";
+import { TEST_SIGNER_ADDRESS } from "../../../../../utils/testing/constants";
 import { TestLogger } from "../../../../../utils/testing/helpers";
 import { NonceManager } from "../NonceManager";
-
-const SIGNER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 describe("NonceManager", () => {
   let provider: ReturnType<typeof mock<ITransactionCountProvider>>;
@@ -24,7 +23,7 @@ describe("NonceManager", () => {
   });
 
   function buildManager(maxNonceDiff = 5) {
-    return new NonceManager(provider, dbNonceProvider, SIGNER_ADDRESS, maxNonceDiff, logger);
+    return new NonceManager(provider, dbNonceProvider, TEST_SIGNER_ADDRESS, maxNonceDiff, logger);
   }
 
   describe("initialize", () => {
@@ -70,7 +69,7 @@ describe("NonceManager", () => {
       const manager = buildManager();
       await manager.initialize();
 
-      expect(provider.getTransactionCount).toHaveBeenCalledWith(SIGNER_ADDRESS, "pending");
+      expect(provider.getTransactionCount).toHaveBeenCalledWith(TEST_SIGNER_ADDRESS, "pending");
     });
   });
 

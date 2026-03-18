@@ -6,6 +6,17 @@ import { estimateContractGas, readContract } from "viem/actions";
 
 import { IEthereumGasProvider } from "../../../../../core/clients/blockchain/IGasProvider";
 import { OnChainMessageStatus } from "../../../../../core/enums";
+import {
+  TEST_ADDRESS_1,
+  TEST_ADDRESS_2,
+  TEST_CLAIM_VIA_ADDRESS,
+  TEST_CONTRACT_ADDRESS_1,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_MERKLE_ROOT,
+  TEST_MESSAGE_HASH,
+  TEST_TRANSACTION_HASH,
+  testMessageSentEvent,
+} from "../../../../../utils/testing/constants";
 import { ViemLineaRollupClient } from "../ViemLineaRollupClient";
 
 jest.mock("@consensys/linea-sdk-viem", () => ({
@@ -25,28 +36,6 @@ jest.mock("viem/actions", () => ({
   readContract: jest.fn(),
 }));
 
-const TEST_CONTRACT_ADDRESS = "0x1000000000000000000000000000000000000000" as `0x${string}`;
-const TEST_L2_CONTRACT_ADDRESS = "0x5000000000000000000000000000000000000000" as `0x${string}`;
-const TEST_TX_HASH = "0x2020202020202020202020202020202020202020202020202020202020202020" as `0x${string}`;
-const TEST_MESSAGE_HASH = "0x1010101010101010101010101010101010101010101010101010101010101010" as `0x${string}`;
-const TEST_ADDRESS_1 = "0x0000000000000000000000000000000000000001" as `0x${string}`;
-const TEST_ADDRESS_2 = "0x0000000000000000000000000000000000000002" as `0x${string}`;
-const TEST_MERKLE_ROOT = "0x3000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
-
-const testMessageSentEvent = {
-  messageHash: TEST_MESSAGE_HASH,
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_ADDRESS_2,
-  fee: 0n,
-  value: 0n,
-  messageNonce: 1n,
-  calldata: "0x" as `0x${string}`,
-  contractAddress: TEST_CONTRACT_ADDRESS,
-  blockNumber: 51,
-  transactionHash: TEST_TX_HASH,
-  logIndex: 1,
-};
-
 describe("ViemLineaRollupClient", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
   let walletClient: ReturnType<typeof mock<WalletClient>>;
@@ -63,9 +52,9 @@ describe("ViemLineaRollupClient", () => {
     client = new ViemLineaRollupClient(
       publicClient,
       walletClient,
-      TEST_CONTRACT_ADDRESS,
+      TEST_CONTRACT_ADDRESS_1,
       l2PublicClient,
-      TEST_L2_CONTRACT_ADDRESS,
+      TEST_CONTRACT_ADDRESS_2,
       gasProvider,
     );
   });
@@ -130,7 +119,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.getTransaction.mockResolvedValue(
         null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
       );
-      const result = await client.isRateLimitExceededError(TEST_TX_HASH);
+      const result = await client.isRateLimitExceededError(TEST_TRANSACTION_HASH);
       expect(result).toBe(false);
     });
 
@@ -151,7 +140,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "RateLimitExceeded", args: [] });
 
-      const result = await client.isRateLimitExceededError(TEST_TX_HASH);
+      const result = await client.isRateLimitExceededError(TEST_TRANSACTION_HASH);
       expect(result).toBe(true);
     });
   });
@@ -172,8 +161,8 @@ describe("ViemLineaRollupClient", () => {
         expect.objectContaining({
           l2Client: l2PublicClient,
           messageHash: TEST_MESSAGE_HASH,
-          lineaRollupAddress: TEST_CONTRACT_ADDRESS,
-          l2MessageServiceAddress: TEST_L2_CONTRACT_ADDRESS,
+          lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
+          l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
         }),
       );
     });
@@ -217,7 +206,7 @@ describe("ViemLineaRollupClient", () => {
         walletClient,
         expect.objectContaining({
           messageNonce: testMessageSentEvent.messageNonce,
-          lineaRollupAddress: TEST_CONTRACT_ADDRESS,
+          lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
         }),
       );
     });
@@ -241,7 +230,7 @@ describe("ViemLineaRollupClient", () => {
       expect(claimOnL1).toHaveBeenCalledWith(
         walletClient,
         expect.objectContaining({
-          lineaRollupAddress: TEST_CONTRACT_ADDRESS,
+          lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
           maxFeePerGas: 1000n,
           maxPriorityFeePerGas: 100n,
         }),
@@ -269,7 +258,6 @@ describe("ViemLineaRollupClient", () => {
     });
 
     it("uses claimViaAddress when provided", async () => {
-      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
       (getMessageProof as jest.Mock).mockResolvedValue({
         proof: [TEST_MERKLE_ROOT as `0x${string}`],
         root: TEST_MERKLE_ROOT as `0x${string}`,
@@ -278,12 +266,12 @@ describe("ViemLineaRollupClient", () => {
       gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
       (claimOnL1 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
 
-      await client.claim(testMessageSentEvent, { claimViaAddress });
+      await client.claim(testMessageSentEvent, { claimViaAddress: TEST_CLAIM_VIA_ADDRESS });
 
       expect(claimOnL1).toHaveBeenCalledWith(
         walletClient,
         expect.objectContaining({
-          lineaRollupAddress: claimViaAddress,
+          lineaRollupAddress: TEST_CLAIM_VIA_ADDRESS,
         }),
       );
     });
@@ -309,7 +297,7 @@ describe("ViemLineaRollupClient", () => {
       expect(estimateContractGas).toHaveBeenCalledWith(
         publicClient,
         expect.objectContaining({
-          address: TEST_CONTRACT_ADDRESS,
+          address: TEST_CONTRACT_ADDRESS_1,
           functionName: "claimMessageWithProof",
           account: TEST_ADDRESS_1,
         }),
@@ -339,7 +327,6 @@ describe("ViemLineaRollupClient", () => {
     });
 
     it("uses claimViaAddress when provided in opts", async () => {
-      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
       (getMessageProof as jest.Mock).mockResolvedValue({
         proof: [TEST_MERKLE_ROOT],
         root: TEST_MERKLE_ROOT,
@@ -349,12 +336,12 @@ describe("ViemLineaRollupClient", () => {
       walletClient.getAddresses.mockResolvedValue([TEST_ADDRESS_1] as never);
       (estimateContractGas as jest.Mock).mockResolvedValue(50000n);
 
-      await client.estimateClaimGas(testMessageSentEvent, { claimViaAddress });
+      await client.estimateClaimGas(testMessageSentEvent, { claimViaAddress: TEST_CLAIM_VIA_ADDRESS });
 
       expect(estimateContractGas).toHaveBeenCalledWith(
         publicClient,
         expect.objectContaining({
-          address: claimViaAddress,
+          address: TEST_CLAIM_VIA_ADDRESS,
         }),
       );
     });
@@ -402,7 +389,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [42n] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "SomeError", args: [42n] });
     });
 
@@ -413,7 +400,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.call.mockRejectedValue({ data: "0xcafebabe" as `0x${string}` });
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "CallError", args: [] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "CallError", args: [] });
     });
 
@@ -423,7 +410,7 @@ describe("ViemLineaRollupClient", () => {
       );
       publicClient.call.mockResolvedValue({ data: undefined } as never);
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0x");
     });
 
@@ -436,7 +423,7 @@ describe("ViemLineaRollupClient", () => {
         throw new Error("decode failed");
       });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0xdeadbeef");
     });
 
@@ -457,7 +444,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [1n] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
 
       expect(publicClient.call).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -476,7 +463,7 @@ describe("ViemLineaRollupClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: undefined });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "SomeError", args: [] });
     });
 
@@ -485,7 +472,7 @@ describe("ViemLineaRollupClient", () => {
         null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
       );
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0x");
     });
   });

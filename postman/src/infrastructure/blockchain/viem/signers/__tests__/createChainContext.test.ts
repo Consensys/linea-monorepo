@@ -1,6 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
 import { createPublicClient, createWalletClient } from "viem";
 
+import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "../../../../../utils/testing/constants";
 import { TestLogger } from "../../../../../utils/testing/helpers";
 import { contractSignerToViemAccount } from "../contractSignerToViemAccount";
 import { createChainContext } from "../createChainContext";
@@ -38,10 +39,10 @@ jest.mock("../contractSignerToViemAccount", () => ({
 
 describe("createChainContext", () => {
   const logger = new TestLogger("createChainContext");
-  const rpcUrl = "http://localhost:8545";
+  const rpcUrl = TEST_RPC_URL;
   const signerConfig: SignerConfig = {
     type: "private-key",
-    privateKey: "0x0000000000000000000000000000000000000000000000000000000000000001",
+    privateKey: TEST_L1_SIGNER_PRIVATE_KEY,
   };
 
   afterEach(() => {

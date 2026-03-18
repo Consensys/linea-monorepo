@@ -5,6 +5,17 @@ import { decodeErrorResult, type PublicClient, type WalletClient } from "viem";
 
 import { ILineaGasProvider } from "../../../../../core/clients/blockchain/IGasProvider";
 import { Direction, MessageStatus, OnChainMessageStatus } from "../../../../../core/enums";
+import {
+  TEST_ADDRESS_1,
+  TEST_ADDRESS_2,
+  TEST_CLAIM_VIA_ADDRESS,
+  TEST_CONTRACT_ADDRESS_1,
+  TEST_FEE_RECIPIENT_ADDRESS,
+  TEST_MESSAGE_HASH,
+  TEST_SIGNER_ADDRESS,
+  TEST_TRANSACTION_HASH,
+  testMessageSentEvent,
+} from "../../../../../utils/testing/constants";
 import { ViemL2MessageServiceClient } from "../ViemL2MessageServiceClient";
 
 jest.mock("@consensys/linea-sdk-viem", () => ({
@@ -21,27 +32,6 @@ jest.mock("viem/actions", () => ({
   getContractEvents: jest.fn(),
 }));
 
-const TEST_CONTRACT_ADDRESS = "0x2000000000000000000000000000000000000000" as `0x${string}`;
-const TEST_TX_HASH = "0x2020202020202020202020202020202020202020202020202020202020202020" as `0x${string}`;
-const TEST_MESSAGE_HASH = "0x1010101010101010101010101010101010101010101010101010101010101010" as `0x${string}`;
-const TEST_ADDRESS_1 = "0x0000000000000000000000000000000000000001" as `0x${string}`;
-const TEST_ADDRESS_2 = "0x0000000000000000000000000000000000000002" as `0x${string}`;
-const TEST_SIGNER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as `0x${string}`;
-
-const testMessageSentEvent = {
-  messageHash: TEST_MESSAGE_HASH,
-  messageSender: TEST_ADDRESS_1,
-  destination: TEST_ADDRESS_2,
-  fee: 0n,
-  value: 0n,
-  messageNonce: 1n,
-  calldata: "0x" as `0x${string}`,
-  contractAddress: TEST_CONTRACT_ADDRESS,
-  blockNumber: 51,
-  transactionHash: TEST_TX_HASH,
-  logIndex: 0,
-};
-
 describe("ViemL2MessageServiceClient", () => {
   let publicClient: ReturnType<typeof mock<PublicClient>>;
   let walletClient: ReturnType<typeof mock<WalletClient>>;
@@ -56,7 +46,7 @@ describe("ViemL2MessageServiceClient", () => {
     client = new ViemL2MessageServiceClient(
       publicClient,
       walletClient,
-      TEST_CONTRACT_ADDRESS,
+      TEST_CONTRACT_ADDRESS_1,
       gasProvider,
       TEST_SIGNER_ADDRESS,
     );
@@ -68,7 +58,7 @@ describe("ViemL2MessageServiceClient", () => {
 
   describe("getContractAddress", () => {
     it("returns the contract address", () => {
-      expect(client.getContractAddress()).toBe(TEST_CONTRACT_ADDRESS);
+      expect(client.getContractAddress()).toBe(TEST_CONTRACT_ADDRESS_1);
     });
   });
 
@@ -96,7 +86,7 @@ describe("ViemL2MessageServiceClient", () => {
       await client.getMessageStatus({ messageHash: TEST_MESSAGE_HASH });
       expect(getL1ToL2MessageStatus).toHaveBeenCalledWith(
         publicClient,
-        expect.objectContaining({ messageHash: TEST_MESSAGE_HASH, l2MessageServiceAddress: TEST_CONTRACT_ADDRESS }),
+        expect.objectContaining({ messageHash: TEST_MESSAGE_HASH, l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_1 }),
       );
     });
   });
@@ -113,7 +103,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.getTransaction.mockResolvedValue(
         null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
       );
-      const result = await client.isRateLimitExceededError(TEST_TX_HASH);
+      const result = await client.isRateLimitExceededError(TEST_TRANSACTION_HASH);
       expect(result).toBe(false);
     });
 
@@ -134,7 +124,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "RateLimitExceeded", args: [] });
 
-      const result = await client.isRateLimitExceededError(TEST_TX_HASH);
+      const result = await client.isRateLimitExceededError(TEST_TRANSACTION_HASH);
       expect(result).toBe(true);
     });
   });
@@ -149,7 +139,7 @@ describe("ViemL2MessageServiceClient", () => {
         messageNonce: 1n,
         calldata: "0x",
         messageHash: TEST_MESSAGE_HASH,
-        contractAddress: TEST_CONTRACT_ADDRESS,
+        contractAddress: TEST_CONTRACT_ADDRESS_1,
         sentBlockNumber: 51,
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
@@ -164,7 +154,6 @@ describe("ViemL2MessageServiceClient", () => {
     });
 
     it("uses provided feeRecipient instead of ZERO_ADDRESS", () => {
-      const feeRecipient = "0x7777777777777777777777777777777777777777" as `0x${string}`;
       const message = {
         messageSender: TEST_ADDRESS_1,
         destination: TEST_ADDRESS_2,
@@ -173,20 +162,20 @@ describe("ViemL2MessageServiceClient", () => {
         messageNonce: 1n,
         calldata: "0x",
         messageHash: TEST_MESSAGE_HASH,
-        contractAddress: TEST_CONTRACT_ADDRESS,
+        contractAddress: TEST_CONTRACT_ADDRESS_1,
         sentBlockNumber: 51,
         direction: Direction.L1_TO_L2,
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
         claimCycleCount: 0,
-        feeRecipient,
+        feeRecipient: TEST_FEE_RECIPIENT_ADDRESS,
       };
 
       const encoded = client.encodeClaimMessageTransactionData(
         message as Parameters<typeof client.encodeClaimMessageTransactionData>[0],
       );
       expect(encoded).toMatch(/^0x/);
-      expect(encoded.toLowerCase()).toContain(feeRecipient.slice(2).toLowerCase());
+      expect(encoded.toLowerCase()).toContain(TEST_FEE_RECIPIENT_ADDRESS.slice(2).toLowerCase());
     });
   });
 
@@ -200,7 +189,7 @@ describe("ViemL2MessageServiceClient", () => {
       expect(gasProvider.getGasFees).toHaveBeenCalledWith(
         expect.objectContaining({
           from: TEST_SIGNER_ADDRESS,
-          to: TEST_CONTRACT_ADDRESS,
+          to: TEST_CONTRACT_ADDRESS_1,
           value: 0n,
         }),
       );
@@ -208,15 +197,14 @@ describe("ViemL2MessageServiceClient", () => {
     });
 
     it("uses claimViaAddress when provided in opts", async () => {
-      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
       const mockFees = { maxFeePerGas: 100n, maxPriorityFeePerGas: 10n, gasLimit: 50000n };
       gasProvider.getGasFees.mockResolvedValue(mockFees);
 
-      await client.estimateClaimGasFees(testMessageSentEvent, { claimViaAddress });
+      await client.estimateClaimGasFees(testMessageSentEvent, { claimViaAddress: TEST_CLAIM_VIA_ADDRESS });
 
       expect(gasProvider.getGasFees).toHaveBeenCalledWith(
         expect.objectContaining({
-          to: claimViaAddress,
+          to: TEST_CLAIM_VIA_ADDRESS,
         }),
       );
     });
@@ -237,7 +225,7 @@ describe("ViemL2MessageServiceClient", () => {
         walletClient,
         expect.objectContaining({
           messageNonce: testMessageSentEvent.messageNonce,
-          l2MessageServiceAddress: TEST_CONTRACT_ADDRESS,
+          l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_1,
         }),
       );
     });
@@ -255,7 +243,7 @@ describe("ViemL2MessageServiceClient", () => {
       expect(claimOnL2).toHaveBeenCalledWith(
         walletClient,
         expect.objectContaining({
-          l2MessageServiceAddress: TEST_CONTRACT_ADDRESS,
+          l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_1,
           nonce: undefined,
           gas: undefined,
           maxFeePerGas: undefined,
@@ -265,29 +253,27 @@ describe("ViemL2MessageServiceClient", () => {
     });
 
     it("uses claimViaAddress when provided", async () => {
-      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
       (claimOnL2 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
 
-      await client.claim(testMessageSentEvent, { claimViaAddress });
+      await client.claim(testMessageSentEvent, { claimViaAddress: TEST_CLAIM_VIA_ADDRESS });
 
       expect(claimOnL2).toHaveBeenCalledWith(
         walletClient,
         expect.objectContaining({
-          l2MessageServiceAddress: claimViaAddress,
+          l2MessageServiceAddress: TEST_CLAIM_VIA_ADDRESS,
         }),
       );
     });
 
     it("uses feeRecipient from message when provided", async () => {
-      const feeRecipient = "0x7777777777777777777777777777777777777777" as `0x${string}`;
       (claimOnL2 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
 
-      await client.claim({ ...testMessageSentEvent, feeRecipient });
+      await client.claim({ ...testMessageSentEvent, feeRecipient: TEST_FEE_RECIPIENT_ADDRESS });
 
       expect(claimOnL2).toHaveBeenCalledWith(
         walletClient,
         expect.objectContaining({
-          feeRecipient,
+          feeRecipient: TEST_FEE_RECIPIENT_ADDRESS,
         }),
       );
     });
@@ -312,7 +298,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [42n] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "SomeError", args: [42n] });
     });
 
@@ -323,7 +309,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.call.mockRejectedValue({ data: "0xcafebabe" as `0x${string}` });
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "CallError", args: [] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "CallError", args: [] });
     });
 
@@ -333,7 +319,7 @@ describe("ViemL2MessageServiceClient", () => {
       );
       publicClient.call.mockResolvedValue({ data: undefined } as never);
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0x");
     });
 
@@ -346,7 +332,7 @@ describe("ViemL2MessageServiceClient", () => {
         throw new Error("decode failed");
       });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0xdeadbeef");
     });
 
@@ -367,7 +353,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [1n] });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
 
       expect(publicClient.call).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -386,7 +372,7 @@ describe("ViemL2MessageServiceClient", () => {
       publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
       (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: undefined });
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toEqual({ name: "SomeError", args: [] });
     });
 
@@ -395,7 +381,7 @@ describe("ViemL2MessageServiceClient", () => {
         null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
       );
 
-      const result = await client.parseTransactionError(TEST_TX_HASH);
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
       expect(result).toBe("0x");
     });
   });

@@ -3,16 +3,15 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
 import { UnsupportedOperationError } from "../../../../../core/errors";
+import { TEST_SIGNER_ADDRESS } from "../../../../../utils/testing/constants";
 import { contractSignerToViemAccount } from "../contractSignerToViemAccount";
-
-const SIGNER_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as `0x${string}`;
 
 describe("contractSignerToViemAccount", () => {
   let signerClient: ReturnType<typeof mock<IContractSignerClient>>;
 
   beforeEach(() => {
     signerClient = mock<IContractSignerClient>();
-    signerClient.getAddress.mockReturnValue(SIGNER_ADDRESS);
+    signerClient.getAddress.mockReturnValue(TEST_SIGNER_ADDRESS);
   });
 
   afterEach(() => {
@@ -21,7 +20,7 @@ describe("contractSignerToViemAccount", () => {
 
   it("returns an account with the correct address", () => {
     const account = contractSignerToViemAccount(signerClient);
-    expect(account.address).toBe(SIGNER_ADDRESS);
+    expect(account.address).toBe(TEST_SIGNER_ADDRESS);
   });
 
   it("signTransaction delegates to IContractSignerClient.sign and re-serializes", async () => {
@@ -55,14 +54,15 @@ describe("contractSignerToViemAccount", () => {
     const account = contractSignerToViemAccount(signerClient);
     await expect(account.signMessage({ message: "hello" })).rejects.toThrow(UnsupportedOperationError);
     await expect(account.signMessage({ message: "hello" })).rejects.toThrow(/signMessage is not supported/);
-    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(new RegExp(SIGNER_ADDRESS));
+    await expect(account.signMessage({ message: "hello" })).rejects.toThrow(new RegExp(TEST_SIGNER_ADDRESS));
   });
 
   it("signTypedData throws UnsupportedOperationError with signer address", async () => {
     const account = contractSignerToViemAccount(signerClient);
-    const call = () => account.signTypedData({ domain: {}, types: {}, primaryType: "EIP712Domain", message: {} });
+    const call = () =>
+      account.signTypedData({ domain: {}, types: {}, primaryType: "EIP712Domain", message: undefined });
     await expect(call()).rejects.toThrow(UnsupportedOperationError);
     await expect(call()).rejects.toThrow(/signTypedData is not supported/);
-    await expect(call()).rejects.toThrow(new RegExp(SIGNER_ADDRESS));
+    await expect(call()).rejects.toThrow(new RegExp(TEST_SIGNER_ADDRESS));
   });
 });

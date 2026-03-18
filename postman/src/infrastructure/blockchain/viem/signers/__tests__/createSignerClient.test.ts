@@ -2,6 +2,7 @@ import { ViemWalletSignerClientAdapter, Web3SignerClientAdapter } from "@consens
 import { describe, it, expect } from "@jest/globals";
 import { mainnet } from "viem/chains";
 
+import { TEST_L1_SIGNER_PRIVATE_KEY, TEST_RPC_URL } from "../../../../../utils/testing/constants";
 import { TestLogger } from "../../../../../utils/testing/helpers";
 import { createSignerClient } from "../createSignerClient";
 
@@ -22,17 +23,12 @@ describe("createSignerClient", () => {
   it("creates a ViemWalletSignerClientAdapter for private-key config", () => {
     const config: SignerConfig = {
       type: "private-key",
-      privateKey: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      privateKey: TEST_L1_SIGNER_PRIVATE_KEY,
     };
 
-    const client = createSignerClient(config, logger, "http://localhost:8545", mainnet);
+    const client = createSignerClient(config, logger, TEST_RPC_URL, mainnet);
 
-    expect(ViemWalletSignerClientAdapter).toHaveBeenCalledWith(
-      logger,
-      "http://localhost:8545",
-      config.privateKey,
-      mainnet,
-    );
+    expect(ViemWalletSignerClientAdapter).toHaveBeenCalledWith(logger, TEST_RPC_URL, config.privateKey, mainnet);
     expect(client).toBeDefined();
   });
 
@@ -43,7 +39,7 @@ describe("createSignerClient", () => {
       publicKey: "0xaabbccdd",
     };
 
-    const client = createSignerClient(config, logger, "http://localhost:8545", mainnet);
+    const client = createSignerClient(config, logger, TEST_RPC_URL, mainnet);
 
     expect(Web3SignerClientAdapter).toHaveBeenCalledWith(logger, config.endpoint, config.publicKey, "", "", "", "");
     expect(client).toBeDefined();
@@ -62,7 +58,7 @@ describe("createSignerClient", () => {
       },
     };
 
-    createSignerClient(config, logger, "http://localhost:8545", mainnet);
+    createSignerClient(config, logger, TEST_RPC_URL, mainnet);
 
     expect(Web3SignerClientAdapter).toHaveBeenCalledWith(
       logger,

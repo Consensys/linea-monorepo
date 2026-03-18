@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
 
 import {
   TEST_CONTRACT_ADDRESS_1,
@@ -11,10 +11,6 @@ import { withEnv } from "../../../../../utils/testing/helpers";
 import { loadPostmanOptionsFromEnv } from "../envLoader";
 
 describe("loadPostmanOptionsFromEnv", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   it("should load minimal config from environment variables", async () => {
     await withEnv(TEST_ENV_VARS, () => {
       const options = loadPostmanOptionsFromEnv();

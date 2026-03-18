@@ -42,7 +42,7 @@ describe("L1ToL2App", () => {
 
     it("should call start on all pollers", () => {
       const pollers = (app as any).pollers;
-      const startSpies = pollers.map((p: { start: () => void }) => jest.spyOn(p, "start").mockResolvedValue(undefined));
+      const startSpies = pollers.map((p: { start: () => void }) => jest.spyOn(p, "start"));
 
       app.start();
 
@@ -74,7 +74,7 @@ describe("L1ToL2App", () => {
   describe("getNextMessageToClaim closure", () => {
     it("should wire getNextMessageToClaim to call messageRepository.getFirstMessageToClaimOnL2", async () => {
       const deps = buildL1ToL2Deps();
-      deps.messageRepository.getFirstMessageToClaimOnL2.mockResolvedValue(null);
+      jest.spyOn(deps.messageRepository, "getFirstMessageToClaimOnL2").mockResolvedValue(null);
       const app = new L1ToL2App(deps);
 
       const pollers = (app as any).pollers;
