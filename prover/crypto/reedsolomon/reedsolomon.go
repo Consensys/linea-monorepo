@@ -120,20 +120,6 @@ func (p *RsParams) RsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVe
 	return smartvectors.NewRegular(expandedCoeffs)
 }
 
-// ExtEvalToCoefficients converts a Reed-Solomon codeword (N = T×RS E4 evaluations)
-// to its T polynomial coefficients. The returned slice has length NbColumns().
-// Panics if the input is not an RS codeword.
-func (p *RsParams) ExtEvalToCoefficients(v smartvectors.SmartVector) smartvectors.SmartVector {
-	n := p.NbEncodedColumns()
-	t := p.NbColumns()
-
-	coeffs := make([]fext.Element, n)
-	v.WriteInSliceExt(coeffs)
-	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
-	utils.BitReverse(coeffs)
-	return smartvectors.NewRegularExt(coeffs[:t])
-}
-
 // ExtCoefficientsToAllEvaluations evaluates the degree-T polynomial given by
 // T monomial coefficients (E4) at all N = NbEncodedColumns() points of the RS
 // domain (ω_N^0, ω_N^1, ..., ω_N^{N-1}).  The returned slice has length N.
