@@ -255,11 +255,12 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
+		// BaseSize increased from 4096 to 16384 for gnark columns to fit ~15K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		{BaseSize: 16384, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
+		{BaseSize: 16384, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
+		{BaseSize: 16384, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
@@ -274,7 +275,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
 		// this produced 2046 segments. This specific regex must appear BEFORE
 		// the generic ^blsdata\. to override it with a large BaseSize.
-		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
+		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
@@ -313,14 +315,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
 		// BLS_G2
+		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
 		//
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
 		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkMsmData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
 		{BaseSize: 8192, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedAddGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
 
 		// BLS POINT EVAL
 		//
@@ -328,15 +331,16 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
 		// BLS PAIR
+		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
 		//
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.IsActive},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
 
 		// STATIC
 		//
