@@ -40,6 +40,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
+	// Initialize JSONL performance event logger
+	plog := newPerfLogger()
+	defer plog.close()
+
 	// Setting the issue handler to exit on unsatisfied constraint and missing trace file,
 	// but not limit overflow.
 	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint | exit.ExitOnMissingTraceFile)
@@ -65,6 +69,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
+	bootStart := plog.phaseStart("bootstrapper")
 
 	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
 	if err != nil {
@@ -74,6 +79,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
 	)
+	plog.phaseEnd("bootstrapper", bootStart)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	// Use a parent context for the whole proving flow
@@ -111,11 +117,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
-		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs)
+		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs, plog)
 		resultCh <- congResult{proof: proof, err: err}
 	}()
 
 	// -- 3. Launch GL proof jobs, sending each result to proofStream
+	glPhaseStart := plog.phaseStart("GL")
 	glErrGroup.SetLimit(numConcurrentSubProverJobs)
 
 	for i := 0; i < numGL; i++ {
@@ -128,9 +135,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			default:
 			}
 
+			glJobStart := plog.jobStart("GL", i)
+
 			var (
-				jobErr  error
-				proofGL *distributed.SegmentProof
+				jobErr   error
+				proofGL  *distributed.SegmentProof
+				glModule string
 			)
 
 			// RunGL may panic and therefore exit the goroutine without returning
@@ -149,11 +159,16 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				}()
 
 				var err error
-				proofGL, err = RunGL(cfg, i)
+				proofGL, err = RunGL(cfg, i, plog)
 				if err != nil {
 					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
 				}
 			}()
+
+			if proofGL != nil {
+				glModule = fmt.Sprintf("type%d_mod%d_seg%d", proofGL.ProofType, proofGL.ModuleIndex, proofGL.SegmentIndex)
+			}
+			plog.jobEnd("GL", i, glModule, glJobStart)
 
 			if jobErr != nil {
 				// Return error to errgroup; caller (main) will cancel ctx
@@ -175,6 +190,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Wait for GLs
 	if err := glErrGroup.Wait(); err != nil {
+		plog.phaseEnd("GL", glPhaseStart)
 		// Cancel overall flow (aggregator will observe ctx.Done)
 		cancel()
 		// Wait for aggregator to finish (so resultCh gets something)
@@ -185,6 +201,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		}
 		return nil, fmt.Errorf("GL error: %w", err)
 	}
+	plog.phaseEnd("GL", glPhaseStart)
 
 	var (
 		//--4. Compute shared randomness after GL proofs succeeded
@@ -192,6 +209,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	)
 
 	// -- 5. Launch LPP proof jobs, streaming each proof to pipeline
+	lppPhaseStart := plog.phaseStart("LPP")
 	lppErrGroup.SetLimit(numConcurrentSubProverJobs)
 	for i := 0; i < numLPP; i++ {
 		i := i
@@ -202,9 +220,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			default:
 			}
 
+			lppJobStart := plog.jobStart("LPP", i)
+
 			var (
-				jobErr   error
-				proofLPP *distributed.SegmentProof
+				jobErr    error
+				proofLPP  *distributed.SegmentProof
+				lppModule string
 			)
 
 			// RunLPP may panic and therefore exit the goroutine without returning
@@ -223,11 +244,16 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				}()
 
 				var err error
-				proofLPP, err = RunLPP(cfg, i, sharedRandomness)
+				proofLPP, err = RunLPP(cfg, i, sharedRandomness, plog)
 				if err != nil {
 					jobErr = fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, err)
 				}
 			}()
+
+			if proofLPP != nil {
+				lppModule = fmt.Sprintf("type%d_mod%d_seg%d", proofLPP.ProofType, proofLPP.ModuleIndex, proofLPP.SegmentIndex)
+			}
+			plog.jobEnd("LPP", i, lppModule, lppJobStart)
 
 			if jobErr != nil {
 				return jobErr
@@ -244,6 +270,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Wait for LPPs
 	if err := lppErrGroup.Wait(); err != nil {
+		plog.phaseEnd("LPP", lppPhaseStart)
 		cancel()
 		res := <-resultCh
 		if res.err != nil {
@@ -251,12 +278,15 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		}
 		return nil, fmt.Errorf("LPP error: %w", err)
 	}
+	plog.phaseEnd("LPP", lppPhaseStart)
 
 	// All producers finished successfully: close the proofStream so aggregator can finish
 	close(proofStream)
 
 	// Wait for final conglomeration proof
+	congStart := plog.phaseStart("conglomeration_wait")
 	res := <-resultCh
+	plog.phaseEnd("conglomeration_wait", congStart)
 	if res.err != nil {
 		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
 	}
@@ -266,6 +296,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	congFinalproof := res.proof
 
 	// -- 5. Load setup (in background started earlier maybe)
+	setupStart := plog.phaseStart("setup_load")
 	var (
 		setup       circuits.Setup
 		errSetup    error
@@ -279,10 +310,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Wait for setup to finish loading
 	<-chSetupDone
+	plog.phaseEnd("setup_load", setupStart)
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
 	}
 
+	outerStart := plog.phaseStart("outer_proof")
 	out.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
@@ -291,6 +324,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		*witness.FuncInp,
 		witness.ZkEVM.ExecData,
 	)
+
+	plog.phaseEnd("outer_proof", outerStart)
 
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 
@@ -449,9 +484,11 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 }
 
 // RunGL runs the GL prover for the provided witness index
-func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentProof, err error) {
+func RunGL(cfg *config.Config, witnessIndex int, plog *perfLogger) (proofGL *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
+
+	ioStart := plog.jobStart("GL_io", witnessIndex)
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
@@ -469,8 +506,11 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 	}
 
 	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	plog.jobEnd("GL_io", witnessIndex, string(witness.ModuleName), ioStart)
 
+	proveStart := plog.jobStart("GL_prove", witnessIndex)
 	_proofGL := compiledGL.ProveSegmentKoala(witness).ClearRuntime()
+	plog.jobEnd("GL_prove", witnessIndex, string(witness.ModuleName), proveStart)
 
 	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -478,9 +518,11 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 }
 
 // RunLPP runs the LPP prover for the provided witness index
-func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet) (proofLPP *distributed.SegmentProof, err error) {
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet, plog *perfLogger) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
+
+	ioStart := plog.jobStart("LPP_io", witnessIndex)
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
@@ -500,8 +542,11 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuple
 	}
 
 	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	plog.jobEnd("LPP_io", witnessIndex, string(witness.ModuleName), ioStart)
 
+	proveStart := plog.jobStart("LPP_prove", witnessIndex)
 	_proofLPP := compiledLPP.ProveSegmentKoala(witness).ClearRuntime()
+	plog.jobEnd("LPP_prove", witnessIndex, string(witness.ModuleName), proveStart)
 
 	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -514,11 +559,16 @@ func RunConglomerationHierarchical(ctx context.Context,
 	mt *distributed.VerificationKeyMerkleTree,
 	cong *distributed.RecursedSegmentCompilation,
 	proofStream <-chan *distributed.SegmentProof, totalProofs int,
+	plog *perfLogger,
 ) (*distributed.SegmentProof, error) {
+
+	congPhaseStart := plog.phaseStart("conglomeration")
+	defer plog.phaseEnd("conglomeration", congPhaseStart)
 
 	// Stack is a slice for channel-based pairing logic
 	var stack []*distributed.SegmentProof
 	proofsReceived := 0
+	mergeCount := 0
 
 	// Main loop: block on either new proof, or cancellation.
 	for {
@@ -530,24 +580,33 @@ func RunConglomerationHierarchical(ctx context.Context,
 			_proof2 := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
-			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
+			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
+			mergeType := "koala"
+			if isLastConglomeration {
+				mergeType = "bls_final"
+			}
+
+			logrus.Infof("Conglomerating sub-proofs [merge %d, %s] for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
+				mergeCount, mergeType,
 				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
 				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
+
+			mergeStart := plog.jobStart("conglo_merge", mergeCount)
 
 			wit := &distributed.ModuleWitnessConglo{
 				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
 				VerificationKeyMerkleTree: *mt,
 			}
 
-			// The last conglomeration step (producing the single final proof) uses
-			// BLS so that the outer circuit can verify it.
-			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
 			var aggregated *distributed.SegmentProof
 			if isLastConglomeration {
 				aggregated = cong.ProveSegmentBLS(wit)
 			} else {
 				aggregated = cong.ProveSegmentKoala(wit)
 			}
+
+			plog.jobEnd("conglo_merge", mergeCount, mergeType, mergeStart)
+			mergeCount++
 
 			stack = append(stack, aggregated)
 		}
