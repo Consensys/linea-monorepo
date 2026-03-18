@@ -97,7 +97,7 @@ class EIP7702RuntimeDenylistTest : LineaPluginPoSTestBase() {
       val canaryTxHash = accountTransactions
         .createTransfer(accounts.secondaryBenefactor, accounts.secondaryBenefactor, 1)
         .execute(minerNode.nodeRequests())
-      minerNode.verify(eth.expectSuccessfulTransactionReceipt(canaryTxHash.toHexString()))
+      minerNode.verify(eth.expectSuccessfulTransactionReceipt(canaryTxHash.bytes.toHexString()))
 
       // The denied tx should NOT be mined (rejected by DenylistExecutionSelector)
       minerNode.verify(eth.expectNoTransactionReceipt(txResponse.transactionHash))

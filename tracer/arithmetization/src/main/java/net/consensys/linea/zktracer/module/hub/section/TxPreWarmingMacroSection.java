@@ -89,7 +89,7 @@ public class TxPreWarmingMacroSection {
               .makeWithTrm(
                   preWarmingAccountSnapshot,
                   postWarmingAccountSnapshot,
-                  address,
+                  address.getBytes(),
                   domSubStampsSubFragment,
                   TransactionProcessingType.USER));
 

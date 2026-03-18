@@ -26,6 +26,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -59,7 +60,8 @@ public class CallDelegationTests extends TracerTestBase {
 
   static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   static final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(
+          Bytes32.wrap(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()).getBytes()));
   static final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(10))
@@ -126,7 +128,7 @@ public class CallDelegationTests extends TracerTestBase {
               .push(0) // call data size
               .push(0) // call data offset
               .push(0) // value
-              .push(targetAccount.getAddress()) // address
+              .push(targetAccount.getAddress().getBytes()) // address
               .op(OpCode.GAS)
               .op(OpCode.CALL)
               // preparing for a potential revert
@@ -149,7 +151,7 @@ public class CallDelegationTests extends TracerTestBase {
               .push(0) // call data size
               .push(0) // call data offset
               .push(0) // value
-              .push(targetAccount.getAddress()) // address
+              .push(targetAccount.getAddress().getBytes()) // address
               .op(OpCode.GAS)
               .op(OpCode.CALL)
               // preparing for a potential revert

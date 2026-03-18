@@ -26,6 +26,7 @@ dependencies {
   implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
   implementation 'org.assertj:assertj-core'
   implementation 'org.junit.jupiter:junit-jupiter-api'
+  implementation "org.awaitility:awaitility:${libs.versions.awaitility.get()}"
 }
 
 node {
