@@ -237,6 +237,9 @@ type Ctx struct {
 			// List of the precomputeds columns that we are compiling if the
 			// the precomputed flag is set.
 			PrecomputedColums []ifaces.Column
+			// Polys caches the T-length Lagrange evaluation vectors for each
+			// precomputed column (set at compile time, used by getPrecomputedPols).
+			Polys []smartvectors.SmartVector
 			// Merkle Root of the precomputeds columns
 			MerkleRoot [blockSize]ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
@@ -337,6 +340,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		Items: struct {
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
+				Polys             []smartvectors.SmartVector
 				MerkleRoot        [blockSize]ifaces.Column
 				CommittedMatrix   vortex_koalabear.EncodedMatrix
 				Tree              *smt_koalabear.Tree
@@ -1026,6 +1030,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 		}
 		pols[i] = ctx.Comp.Precomputed.MustGet(precomputed.GetColID())
 	}
+
+	// Cache the T-length Lagrange evaluation vectors for getPrecomputedPols.
+	ctx.Items.Precomputeds.Polys = pols
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds

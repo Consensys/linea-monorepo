@@ -95,6 +95,12 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		return
 	}
 
+	// Store the T-length polynomial vectors so that ComputeLinearComb and
+	// LinearCombinationComputationProverAction can read them without going
+	// through the RS-encoded matrix (and so the recursion path can extract
+	// and re-inject them via Witness.PolynomialVectors).
+	run.State.InsertNew(ctx.VortexPolyStateName(round), pols)
+
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
 
@@ -153,116 +159,46 @@ type LinearCombinationComputationProverAction struct {
 	*Ctx
 }
 
-// Prover steps of Vortex that is run when committing to the linear combination
-// We stack the No SIS round matrices before the SIS round matrices in the committed matrix stack.
-// For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
-// we stack it on top of the No SIS round matrices if SIS is not used on it.
+// Prover steps of Vortex that is run when committing to the linear combination.
+// Uses the polylist approach: collects T-length Lagrange evaluation vectors
+// directly from run.Columns (and the precomputed table), computes the linear
+// combination ∑ᵢ alpha^i · p_i in evaluation space, then applies the T-point
+// inverse FFT to obtain the T monomial coefficients of Ualpha.
+//
+// This avoids reading the N-length RS-encoded matrices from run.State and the
+// N-point IFFT, making it 1/RsRate times cheaper in both LC and IFFT.
 func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime) {
-	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
-	)
-	// Add the precomputed columns
-	if ctx.IsNonEmptyPrecomputed() {
-		var precomputedSV = []smartvectors.SmartVector{}
-		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
-
-		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
-		if ctx.IsSISAppliedToPrecomputed() {
-			committedSVSIS = append(committedSVSIS, precomputedSV...)
-		} else {
-			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
-		}
-	}
-
-	// Collect all the committed polynomials : round by round
-	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
-		if ctx.RoundStatus[round] == IsEmpty {
-			continue
-		}
-
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
-
-		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
-		}
-	}
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
-
-	// And get the randomness
+	polys := ctx.collectPolys(pr)
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
-	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	vortex.LinearCombination(proof, polys, randomCoinLC)
 
-	// Ualpha is stored as T polynomial coefficients (iFFT of the codeword)
-	// for both KoalaBear and BLS12-377 modes.
+	// proof.LinearCombination holds T Lagrange evaluations of the LC polynomial
+	// (same domain as the input polys). Convert to T monomial coefficients via
+	// the T-point inverse FFT.
 	var uAlpha smartvectors.SmartVector
 	if !ctx.IsBLS {
-		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+		uAlpha = ctx.VortexKoalaParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 	} else {
-		uAlpha = ctx.VortexBLSParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+		uAlpha = ctx.VortexBLSParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 	}
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
-
 }
 
-// ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
-// the RS encoded matrix instead of using the basic one. It is slower than
-// the later but is recommended.
-func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
-
-	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
-	)
-
-	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
-	if ctx.IsSISAppliedToPrecomputed() {
-		committedSVSIS = append(committedSVSIS, ctx.Items.Precomputeds.CommittedMatrix...)
-	} else {
-		committedSVNoSIS = append(committedSVNoSIS, ctx.Items.Precomputeds.CommittedMatrix...)
-	}
-
-	// Collect all the committed polynomials : round by round
-	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to proceed.
-		if ctx.RoundStatus[round] == IsEmpty {
-			continue
-		}
-
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
-
-		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
-		}
-	}
-
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
-
-	// And get the randomness
+// ComputeLinearComb computes Ualpha = ∑ᵢ alpha^i · p_i in coefficient form,
+// where p_i are the T-length Lagrange evaluation vectors stored in run.State
+// by ColumnAssignmentProverAction (or re-injected by the recursion prover from
+// Witness.PolynomialVectors).  A T-point inverse FFT converts the result to
+// monomial coefficients.
+func (ctx *Ctx) ComputeLinearComb(run *wizard.ProverRuntime) {
+	polys := ctx.collectPolys(run)
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
-	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	vortex.LinearCombination(proof, polys, randomCoinLC)
 
-	uAlpha := ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+	uAlpha := ctx.VortexKoalaParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
 }
 
@@ -342,8 +278,8 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	}
 
-	// Free original committed columns from run.Columns — their data has been
-	// encoded into the Vortex matrices and is no longer needed in raw form.
+	// Free original committed columns from run.Columns and the poly vectors
+	// from run.State — both have been consumed by LinearCombinationComputationProverAction.
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
@@ -351,6 +287,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		for _, colName := range ctx.CommitmentsByRounds.MustGet(round) {
 			run.Columns.TryDel(colName)
 		}
+		run.State.Del(ctx.VortexPolyStateName(round))
 	}
 	runtime.GC()
 
@@ -427,6 +364,50 @@ func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvecto
 		pols[i] = run.Columns.MustGet(names[i])
 	}
 	return pols
+}
+
+// collectPolys gathers all committed polynomial vectors (T-length Lagrange
+// evaluations) in the ordering expected by the linear-combination:
+// NoSIS rows first (precomputed if !SIS, then round-by-round),
+// SIS rows second  (precomputed if  SIS, then round-by-round).
+//
+// Round polys are read from run.State (stored by ColumnAssignmentProverAction
+// under VortexPolyStateName).  Precomputed polys are read from the compile-time
+// table ctx.Comp.Precomputed and are always available.
+func (ctx *Ctx) collectPolys(run *wizard.ProverRuntime) []smartvectors.SmartVector {
+	var noSIS, sis []smartvectors.SmartVector
+
+	// Precomputed rows (always available from compile-time data)
+	if ctx.IsNonEmptyPrecomputed() {
+		precompPols := ctx.getPrecomputedPols()
+		if ctx.IsSISAppliedToPrecomputed() {
+			sis = append(sis, precompPols...)
+		} else {
+			noSIS = append(noSIS, precompPols...)
+		}
+	}
+
+	// Round rows from run.State (stored by ColumnAssignmentProverAction)
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+		pols := run.State.MustGet(ctx.VortexPolyStateName(round)).([]smartvectors.SmartVector)
+		if ctx.RoundStatus[round] == IsNoSis {
+			noSIS = append(noSIS, pols...)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			sis = append(sis, pols...)
+		}
+	}
+
+	return append(noSIS, sis...)
+}
+
+// getPrecomputedPols returns the cached T-length Lagrange evaluation vectors
+// for each precomputed column (stored in ctx.Items.Precomputeds.Polys at
+// compile time by commitToPrecomputeds).
+func (ctx *Ctx) getPrecomputedPols() []smartvectors.SmartVector {
+	return ctx.Items.Precomputeds.Polys
 }
 
 // pack a list of merkle-proofs in a vector as used in the merkle proof module

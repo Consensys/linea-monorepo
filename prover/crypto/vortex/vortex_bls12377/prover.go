@@ -10,17 +10,25 @@ import (
 )
 
 func Prove(
+	params *Params,
 	entryList []int,
+	polys [][]smartvectors.SmartVector,
 	encodedMatrices []EncodedMatrix,
-	trees []*smt_bls12377.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
+	trees []*smt_bls12377.Tree,
+	alpha fext.Element,
+) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
 
 	proof := &vortex.OpeningProof{}
 
-	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
-	for _, m := range encodedMatrices {
-		_encodedMatrices = append(_encodedMatrices, m...)
+	// Compute the linear combination from the T-length poly vectors (cheaper
+	// than from the N-length encoded matrices), then convert to monomial
+	// coefficients via the T-point IFFT.
+	allPolys := make([]smartvectors.SmartVector, 0)
+	for _, pl := range polys {
+		allPolys = append(allPolys, pl...)
 	}
-	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+	vortex.LinearCombination(proof, allPolys, alpha)
+	proof.LinearCombination = params.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 

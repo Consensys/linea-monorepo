@@ -77,6 +77,11 @@ type Witness struct {
 	// for each committed round. They are needed by the prover of the self-recursion.
 	CommittedMatrices []vortex_koalabear.EncodedMatrix
 
+	// PolynomialVectors are the T-length Lagrange evaluation vectors for each
+	// committed round. They are used by ComputeLinearComb (polylist approach)
+	// instead of the RS-encoded matrices.
+	PolynomialVectors [][]smartvectors.SmartVector
+
 	// SisHashes is the list of the SIS hashes of the vortex columns
 	// for each committed round. They are needed by the prover of the self-recursion.
 	SisHashes [][]field.Element
@@ -345,7 +350,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 		// Store the self-recursion artefacts for the vortex prover and the
 		// self-recursion prover.
-		numRound := max(len(wit[i].CommittedMatrices), len(wit[i].SisHashes), len(wit[i].Trees))
+		numRound := max(len(wit[i].CommittedMatrices), len(wit[i].SisHashes), len(wit[i].Trees), len(wit[i].PolynomialVectors))
 		for round := 0; round < numRound; round++ {
 
 			if round < len(wit[i].CommittedMatrices) && wit[i].CommittedMatrices[round] != nil {
@@ -362,6 +367,10 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 			if round < len(wit[i].Poseidon2Hashes) && wit[i].Poseidon2Hashes[round] != nil {
 				run.State.InsertNew(r.PcsCtx[i].NoSisHashName(round), wit[i].Poseidon2Hashes[round])
+			}
+
+			if round < len(wit[i].PolynomialVectors) && wit[i].PolynomialVectors[round] != nil {
+				run.State.InsertNew(r.PcsCtx[i].VortexPolyStateName(round), wit[i].PolynomialVectors[round])
 			}
 		}
 	}
@@ -410,6 +419,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 
 	dstVortexCtx := &vortex.Ctx{
 		// Direct Copy
+		Comp:                  translator.Target,
 		RunStateNamePrefix:    translator.Prefix,
 		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
 		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
@@ -455,6 +465,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
+		dstVortexCtx.Items.Precomputeds.Polys = srcVortexCtx.Items.Precomputeds.Polys
 	}
 	// Allocate the dst merkle roots
 	dstVortexCtx.Items.MerkleRoots = make([][blockSize]ifaces.Column, dstVortexCtx.MaxCommittedRound+1)

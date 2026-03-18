@@ -71,6 +71,18 @@ func (ctx *Ctx) SelectedColumnNonSISName() string {
 	return ctx.RunStateNamePrefix + "." + name
 }
 
+// VortexPolyStateName returns the run.State key under which the T-length
+// polynomial vectors (Lagrange evaluations) for the given round are stored.
+// They are written by ColumnAssignmentProverAction and consumed by
+// LinearCombinationComputationProverAction / ComputeLinearComb.
+func (ctx *Ctx) VortexPolyStateName(round int) string {
+	name := fmt.Sprintf("VORTEX_%v_POLYS_%v", ctx.SelfRecursionCount, round)
+	if len(ctx.RunStateNamePrefix) == 0 {
+		return name
+	}
+	return ctx.RunStateNamePrefix + "." + name
+}
+
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) VortexProverStateName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)

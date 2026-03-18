@@ -114,18 +114,24 @@ func (p *RsParams) RsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVe
 	return smartvectors.NewRegular(expandedCoeffs)
 }
 
-// ExtEvalToCoefficients converts a Reed-Solomon codeword (N = T×RS E4 evaluations)
-// to its T polynomial coefficients. The returned slice has length NbColumns().
-// Panics if the input is not an RS codeword.
-func (p *RsParams) ExtEvalToCoefficients(v smartvectors.SmartVector) smartvectors.SmartVector {
-	n := p.NbEncodedColumns()
+// LCEvalsToCoefficients converts T extension-field Lagrange evaluations of the
+// linear-combination polynomial into its T monomial coefficients.  The input
+// must be the result of vortex.LinearCombination applied to the T-length
+// committed polynomial vectors (Lagrange basis over the small Omega_T domain),
+// i.e. it has length NbColumns() = T.
+//
+// This is the small-domain analogue of ExtEvalToCoefficients: it applies the
+// T-point inverse FFT (Domains[0]) instead of the N-point one (Domains[1]).
+// The result is identical to ExtEvalToCoefficients applied to the full
+// N-length RS codeword but is 1/RsRate times cheaper to compute.
+func (p *RsParams) LCEvalsToCoefficients(v smartvectors.SmartVector) smartvectors.SmartVector {
 	t := p.NbColumns()
 
-	coeffs := make([]fext.Element, n)
+	coeffs := make([]fext.Element, t)
 	v.WriteInSliceExt(coeffs)
-	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	p.Domains[0].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	return smartvectors.NewRegularExt(coeffs[:t])
+	return smartvectors.NewRegularExt(coeffs)
 }
 
 // ExtCoefficientsToAllEvaluations evaluates the degree-T polynomial given by
@@ -163,4 +169,3 @@ func ExtCoefficientsEvalAt(coefficients smartvectors.SmartVector, x fext.Element
 	}
 	return res
 }
-
