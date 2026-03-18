@@ -8,7 +8,7 @@ permissions:
 on:
   push:
     branches:
-      - 2537-manual-ci-workflow-e2e-with-partial-prover
+      - 2537-manual-ci-workflow-e2e-with-partial-prover # TODO: this for testing, should be removed 
   workflow_dispatch:
     inputs:
       linea_besu_package_image_tag:
@@ -35,15 +35,6 @@ jobs:
       - name: Setup Tracer Environment (for linea-besu-package build)
         if: ${{ inputs.linea_besu_package_image_tag == '' }}
         uses: ./.github/actions/setup-tracer-environment
-        with:
-          enable-ssh: false
-
-      - name: Build linea-besu-package from source 
-        if: ${{ inputs.linea_besu_package_image_tag == '' }}
-        shell: bash
-        run: cd linea-besu-package && make build
-        env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: show folder structure
         if: ${{ inputs.linea_besu_package_image_tag == '' }}
@@ -87,6 +78,7 @@ jobs:
           retry_on: error
           retry_wait_seconds: 30
           timeout_minutes: 10
+          # TODO: hardcoded image tags for testing, should be removed 
           command: |
             BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'beta-v5-rc6-20260316125820-f438666' }} \
             PROVER_TAG=${{ inputs.prover_image_tag || '12b2d82' }} \
@@ -121,8 +113,6 @@ jobs:
           docker logs coordinator --since 1h &>> docker_logs/coordinator.txt || true
           docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt || true
           docker logs shomei --since 1h &>> docker_logs/shomei.txt || true
-          docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt || true
-          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt || true
           docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt || true
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt || true
           docker logs l1-el-node --since 1h &>> docker_logs/l1-el-node.txt || true
