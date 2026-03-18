@@ -1,5 +1,7 @@
 export type {
   AdapterMode,
+  ClaimContext,
+  DepositWarning,
   BridgeAdapter,
   BridgeFees,
   BridgeOptions,
@@ -13,4 +15,4 @@ export type {
   TransactionRequest,
   TransactionStep,
 } from "./types";
-export { getAdapter, getAdapterById, getAllAdapters } from "./registry";
+export { allAdapters, getAdapter, getAdapterById, getAllAdapters } from "./registry";

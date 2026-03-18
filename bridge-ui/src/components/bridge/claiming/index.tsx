@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useConnection } from "wagmi";
+import Link from "next/link";
+import { useConfig, useConnection } from "wagmi";
 
-import { getAdapter } from "@/adapters";
+import { type DepositWarning, getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import useBridgeFees from "@/hooks/fees/useBridgeFees";
+import useFees from "@/hooks/fees/useFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 import { useUiStore } from "@/stores/uiStore";
@@ -26,6 +28,7 @@ const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advance
 
 export default function Claiming() {
   const { isConnected } = useConnection();
+  const wagmiConfig = useConfig();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
 
@@ -33,16 +36,22 @@ export default function Claiming() {
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
 
   const amount = useFormStore((state) => state.amount);
-  const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
   const selectedMode = useFormStore((state) => state.selectedMode);
-  const claim = useFormStore((state) => state.claim);
-  const { resolvedClaimType } = useBridgeFees();
-  const effectiveClaimType = resolvedClaimType ?? claim;
-  const originChainBalanceTooLow = amount && balance < amount;
+
+  const { hasInsufficientFunds, isLoading: isFeesLoading, effectiveClaimType } = useFees();
 
   const adapter = getAdapter(token, fromChain, toChain);
   const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
+
+  const { data: depositWarnings, isLoading: isWarningsLoading } = useQuery<DepositWarning[] | undefined>({
+    queryKey: ["depositWarnings", adapter?.id, fromChain.id, toChain.id, token.symbol, amount?.toString()],
+    queryFn: () => adapter!.getDepositWarnings!({ token, fromChain, toChain, amount: amount ?? 0n, wagmiConfig }),
+    enabled: !!adapter?.getDepositWarnings && !!amount && amount > 0n,
+    staleTime: 30_000,
+  });
+
+  const warningLoading = isWarningsLoading && !!adapter?.getDepositWarnings && !!amount && amount > 0n;
 
   useEffect(() => {
     setLoading(true);
@@ -68,7 +77,7 @@ export default function Claiming() {
   }, [fromChain, adapter, loading]);
 
   if (!amount || amount <= 0n) return null;
-  if (isConnected && originChainBalanceTooLow) return null;
+  if (isConnected && hasInsufficientFunds) return null;
 
   return (
     <div className={styles["wrapper"]}>
@@ -84,7 +93,7 @@ export default function Claiming() {
         </div>
       </div>
 
-      {loading ? (
+      {loading || isFeesLoading || warningLoading ? (
         <Skeleton />
       ) : (
         <div className={styles.content}>
@@ -104,6 +113,19 @@ export default function Claiming() {
           </div>
         </div>
       )}
+      {depositWarnings?.map((warning, i) => (
+        <p key={i} className={styles.warning}>
+          {warning.text}
+          {warning.link && (
+            <>
+              {" "}
+              <Link href={warning.link.url} target="_blank" rel="noopener noreferrer">
+                {warning.link.label}
+              </Link>
+            </>
+          )}
+        </p>
+      ))}
       {showAdvancedSettingsModal && (
         <AdvancedSettings
           isModalOpen={showAdvancedSettingsModal}
