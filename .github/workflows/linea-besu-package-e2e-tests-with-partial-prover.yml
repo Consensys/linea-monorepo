@@ -36,6 +36,13 @@ jobs:
         if: ${{ inputs.linea_besu_package_image_tag == '' }}
         uses: ./.github/actions/setup-tracer-environment
 
+      - name: Build linea-besu-package from source 
+        if: ${{ inputs.linea_besu_package_image_tag == '' }}
+        shell: bash
+        run: cd linea-besu-package && make build
+        env:
+          JAVA_OPTS: -Xmx2g
+
       - name: show folder structure
         if: ${{ inputs.linea_besu_package_image_tag == '' }}
         shell: bash
