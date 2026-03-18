@@ -13,6 +13,7 @@ import {
 } from "../../../core/constants";
 import { Message } from "../../../core/entities/Message";
 import { Direction, MessageStatus, OnChainMessageStatus } from "../../../core/enums";
+import { IErrorParser } from "../../../core/errors/IErrorParser";
 import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
 import { INonceManager } from "../../../core/services/INonceManager";
 import { IMessageClaimingProcessor } from "../../../core/services/processors/IMessageClaimingProcessor";
@@ -296,6 +297,96 @@ describe("TestMessageClaimingProcessor", () => {
       expect(nonceManager.commitNonce).toHaveBeenCalledWith(101);
     });
 
+    it("Should reset message to previous status when chain claim() call fails", async () => {
+      const localAnchoredMessage = new Message(testAnchoredMessage);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      jest.spyOn(nonceManager, "acquireNonce").mockResolvedValue(101);
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      getNextMessageToClaim.mockResolvedValue(localAnchoredMessage);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
+      jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
+      jest.spyOn(lineaRollupContractMock, "claim").mockRejectedValue(new Error("chain call failed"));
+
+      await messageClaimingProcessor.process();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Claim transaction failed, resetting message status.", {
+        messageHash: localAnchoredMessage.messageHash,
+        previousStatus: expect.any(String),
+      });
+      expect(nonceManager.rollbackNonce).toHaveBeenCalledWith(101);
+    });
+
+    it("Should log 'underpriced will retry later' when message is already FEE_UNDERPRICED", async () => {
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      const underpricedMsg = new Message({
+        ...testUnderpricedAnchoredMessage,
+        status: MessageStatus.FEE_UNDERPRICED,
+      });
+      getNextMessageToClaim.mockResolvedValue(underpricedMsg);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
+      jest.spyOn(transactionValidationService, "evaluateTransaction").mockResolvedValueOnce({
+        hasZeroFee: false,
+        isRateLimitExceeded: false,
+        isUnderPriced: true,
+        isForSponsorship: false,
+        estimatedGasLimit: 100_000n,
+        threshold: 10,
+        maxPriorityFeePerGas: 1000000000n,
+        maxFeePerGas: 1000000000n,
+      });
+
+      await messageClaimingProcessor.process();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Message is underpriced, will retry later.", {
+        messageHash: underpricedMsg.messageHash,
+      });
+    });
+
+    it("Should set message as NON_EXECUTABLE when error is not retryable", async () => {
+      const mockErrorParser = mock<IErrorParser>();
+      mockErrorParser.parse.mockReturnValue({ retryable: false, message: "non-retryable" });
+      const localRepo = mock<IMessageRepository>();
+      const localGetNext = jest.fn();
+      const localAnchoredMessage = new Message(testAnchoredMessage);
+
+      const localProcessor = new MessageClaimingProcessor(
+        lineaRollupContractMock,
+        nonceManager,
+        localRepo,
+        localGetNext,
+        transactionValidationService,
+        mockErrorParser,
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxNumberOfRetries: DEFAULT_MAX_NUMBER_OF_RETRIES,
+          retryDelayInSeconds: DEFAULT_RETRY_DELAY_IN_SECONDS,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          direction: Direction.L2_TO_L1,
+          originContractAddress: TEST_CONTRACT_ADDRESS_2,
+        },
+        logger,
+      );
+
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      localGetNext.mockResolvedValue(localAnchoredMessage);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockRejectedValue(new Error("non-retryable"));
+
+      await localProcessor.process();
+
+      expect(localRepo.updateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ status: MessageStatus.NON_EXECUTABLE }),
+      );
+    });
+
     it("Should rollback nonce and log error if claim throws", async () => {
       const loggerErrorSpy = jest.spyOn(logger, "error");
       const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
@@ -335,6 +426,66 @@ describe("TestMessageClaimingProcessor", () => {
         error: actionRejectedError,
         parsedError: errorParser.parse(actionRejectedError),
         messageHash: expectedLoggingMessage.messageHash,
+      });
+    });
+  });
+
+  describe("edge cases", () => {
+    it("Should handle null maxFeePerGas and maxPriorityFeePerGas from claim transaction", async () => {
+      const freshMessage = new Message({
+        messageSender: testAnchoredMessage.messageSender,
+        destination: testAnchoredMessage.destination,
+        fee: testAnchoredMessage.fee,
+        value: testAnchoredMessage.value,
+        messageNonce: testAnchoredMessage.messageNonce,
+        calldata: testAnchoredMessage.calldata,
+        messageHash: testAnchoredMessage.messageHash,
+        contractAddress: testAnchoredMessage.contractAddress,
+        sentBlockNumber: testAnchoredMessage.sentBlockNumber,
+        direction: testAnchoredMessage.direction,
+        status: MessageStatus.ANCHORED,
+        claimNumberOfRetry: 0,
+        claimCycleCount: 0,
+      });
+      const messageRepositorySaveSpy = jest.spyOn(messageRepository, "updateMessage");
+      jest.spyOn(nonceManager, "acquireNonce").mockResolvedValue(101);
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      getNextMessageToClaim.mockResolvedValue(freshMessage);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
+      jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
+      jest.spyOn(lineaRollupContractMock, "claim").mockResolvedValue({
+        hash: TEST_TRANSACTION_HASH,
+        nonce: 101,
+        gasLimit: 100_000n,
+        maxFeePerGas: null as unknown as bigint,
+        maxPriorityFeePerGas: null as unknown as bigint,
+      });
+
+      await messageClaimingProcessor.process();
+
+      // null ?? undefined = undefined, and edit() skips undefined values,
+      // so claimTxMaxFeePerGas remains undefined (fresh message has no prior value)
+      const lastUpdateCall = messageRepositorySaveSpy.mock.calls[messageRepositorySaveSpy.mock.calls.length - 1][0];
+      expect(lastUpdateCall.claimTxMaxFeePerGas).toBeUndefined();
+      expect(lastUpdateCall.claimTxMaxPriorityFeePerGas).toBeUndefined();
+      expect(lastUpdateCall.claimTxHash).toBe(TEST_TRANSACTION_HASH);
+      expect(nonceManager.commitNonce).toHaveBeenCalledWith(101);
+    });
+
+    it("Should log error without messageHash when getNextMessageToClaim throws", async () => {
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+      const fetchError = new Error("failed to fetch next message");
+      getNextMessageToClaim.mockRejectedValue(fetchError);
+
+      await messageClaimingProcessor.process();
+
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
+        error: fetchError,
+        parsedError: errorParser.parse(fetchError),
       });
     });
   });

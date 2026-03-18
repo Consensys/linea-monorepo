@@ -91,4 +91,35 @@ describe("MessageMetricsUpdater", () => {
     });
     expect(gaugeValue).toBe(5);
   });
+
+  it("should increment by 1 when value argument is omitted", async () => {
+    messageMetricsUpdater.incrementMessageCount({
+      status: MessageStatus.PENDING,
+      direction: Direction.L1_TO_L2,
+    });
+    const gaugeValue = await messageMetricsUpdater.getMessageCount({
+      status: MessageStatus.PENDING,
+      direction: Direction.L1_TO_L2,
+    });
+    expect(gaugeValue).toBe(1);
+  });
+
+  it("should decrement by 1 when value argument is omitted", async () => {
+    messageMetricsUpdater.incrementMessageCount(
+      {
+        status: MessageStatus.PENDING,
+        direction: Direction.L1_TO_L2,
+      },
+      5,
+    );
+    messageMetricsUpdater.decrementMessageCount({
+      status: MessageStatus.PENDING,
+      direction: Direction.L1_TO_L2,
+    });
+    const gaugeValue = await messageMetricsUpdater.getMessageCount({
+      status: MessageStatus.PENDING,
+      direction: Direction.L1_TO_L2,
+    });
+    expect(gaugeValue).toBe(4);
+  });
 });

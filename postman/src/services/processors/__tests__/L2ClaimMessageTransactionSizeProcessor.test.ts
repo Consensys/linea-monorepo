@@ -91,6 +91,37 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
       });
     });
 
+    it("Should log generic error when error is retryable", async () => {
+      errorParser.parse.mockReturnValue({ retryable: true, message: "rate limited" });
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+      const error = new Error("rate limit hit");
+      jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
+      jest.spyOn(l2ContractClientMock, "estimateClaimGasFees").mockRejectedValue(error);
+
+      await transactionSizeProcessor.process();
+
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error computing transaction size.", {
+        error,
+        parsedError: { retryable: true, message: "rate limited" },
+      });
+    });
+
+    it("Should log generic error when message is null (error before message assignment)", async () => {
+      errorParser.parse.mockReturnValue({ retryable: false, message: "" });
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+      const error = new Error("db failure");
+      jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockRejectedValue(error);
+
+      await transactionSizeProcessor.process();
+
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error computing transaction size.", {
+        error,
+        parsedError: { retryable: false, message: "" },
+      });
+    });
+
     it("Should log as info and call updateMessage if the transaction size calculation succeed", async () => {
       const testGasLimit = 50_000n;
       const testTransactionSize = 100;

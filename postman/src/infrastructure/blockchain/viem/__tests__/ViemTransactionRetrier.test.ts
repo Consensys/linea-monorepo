@@ -110,6 +110,24 @@ describe("ViemTransactionRetrier", () => {
       expect(result.maxPriorityFeePerGas).toBe(500n);
     });
 
+    it("passes undefined to when transaction.to is null", async () => {
+      publicClient.getTransaction.mockResolvedValue({
+        from: TEST_ADDRESS as `0x${string}`,
+        nonce: 5,
+        gas: 100_000n,
+        maxFeePerGas: 1000n,
+        maxPriorityFeePerGas: 100n,
+        to: null,
+        value: 0n,
+        input: "0x" as `0x${string}`,
+      } as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>);
+      walletClient.sendTransaction.mockResolvedValue("0xretryhash" as `0x${string}`);
+
+      await retrier.retryWithHigherFee(TEST_TX_HASH, 1);
+
+      expect(walletClient.sendTransaction).toHaveBeenCalledWith(expect.objectContaining({ to: undefined }));
+    });
+
     it("fetches current fees when tx lacks maxFeePerGas", async () => {
       publicClient.getTransaction.mockResolvedValue({
         from: TEST_ADDRESS as `0x${string}`,
@@ -136,6 +154,26 @@ describe("ViemTransactionRetrier", () => {
   });
 
   describe("cancelTransaction", () => {
+    it("caps aggressive fees at maxFeePerGasCap", async () => {
+      const smallCap = 500n;
+      retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS, smallCap, logger);
+
+      publicClient.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 1000n,
+        maxPriorityFeePerGas: 1000n,
+      } as Awaited<ReturnType<PublicClient["estimateFeesPerGas"]>>);
+      walletClient.sendTransaction.mockResolvedValue("0xcancelhash" as `0x${string}`);
+
+      await retrier.cancelTransaction(10);
+
+      expect(walletClient.sendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxFeePerGas: 500n,
+          maxPriorityFeePerGas: 500n,
+        }),
+      );
+    });
+
     it("sends a zero-value self-transfer at given nonce", async () => {
       publicClient.estimateFeesPerGas.mockResolvedValue({
         maxFeePerGas: 1000n,

@@ -100,4 +100,52 @@ describe("createChainContext", () => {
       }),
     );
   });
+
+  describe("getChainId retry logic", () => {
+    it("should retry and succeed when getChainId fails initially", async () => {
+      const mockGetChainId = jest
+        .fn()
+        .mockRejectedValueOnce(new Error("RPC down"))
+        .mockResolvedValueOnce(MOCK_CHAIN_ID);
+      const warnSpy = jest.spyOn(logger, "warn");
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      const ctx = await createChainContext(rpcUrl, signerConfig, logger, {
+        chainIdFetchDeadlineMs: 10_000,
+      });
+
+      expect(ctx.chainId).toBe(MOCK_CHAIN_ID);
+      expect(mockGetChainId).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should throw after deadline is exceeded", async () => {
+      const error = new Error("RPC permanently down");
+      const mockGetChainId = jest.fn().mockRejectedValue(error);
+      const errorSpy = jest.spyOn(logger, "error");
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      await expect(createChainContext(rpcUrl, signerConfig, logger, { chainIdFetchDeadlineMs: 100 })).rejects.toThrow(
+        "RPC permanently down",
+      );
+
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it("should use the default deadline when options are not provided", async () => {
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: jest.fn().mockResolvedValue(MOCK_CHAIN_ID),
+      }));
+
+      const ctx = await createChainContext(rpcUrl, signerConfig, logger);
+
+      expect(ctx.chainId).toBe(MOCK_CHAIN_ID);
+    });
+  });
 });

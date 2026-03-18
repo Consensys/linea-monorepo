@@ -47,7 +47,31 @@ describe("Message Mappers", () => {
     });
   });
 
-  describe("mapMessageToMessageEntity", () => {
+  describe("mapMessageToMessageEntity with undefined dates", () => {
+    it("should use new Date() when createdAt and updatedAt are undefined", () => {
+      const now = new Date();
+      jest.useFakeTimers({ now });
+
+      const message = generateMessage({ createdAt: undefined, updatedAt: undefined });
+      const entity = mapMessageToMessageEntity(message);
+
+      expect(entity.createdAt).toStrictEqual(now);
+      expect(entity.updatedAt).toStrictEqual(now);
+
+      jest.useRealTimers();
+    });
+
+    it("should preserve explicit createdAt and updatedAt dates", () => {
+      const explicit = new Date("2025-01-15");
+      const message = generateMessage({ createdAt: explicit, updatedAt: explicit });
+      const entity = mapMessageToMessageEntity(message);
+
+      expect(entity.createdAt).toStrictEqual(explicit);
+      expect(entity.updatedAt).toStrictEqual(explicit);
+    });
+  });
+
+  describe("mapMessageEntityToMessage", () => {
     it("should map a message entity to a message", () => {
       const messageEntity = generateMessageEntity();
       expect(mapMessageEntityToMessage(messageEntity)).toStrictEqual(
@@ -79,6 +103,18 @@ describe("Message Mappers", () => {
           value: 2n,
         }),
       );
+    });
+
+    it("should default claimCycleCount to 0 when entity has undefined claimCycleCount", () => {
+      const entity = generateMessageEntity({ claimCycleCount: undefined as unknown as number });
+      const message = mapMessageEntityToMessage(entity);
+      expect(message.claimCycleCount).toBe(0);
+    });
+
+    it("should use explicit claimCycleCount when provided", () => {
+      const entity = generateMessageEntity({ claimCycleCount: 5 });
+      const message = mapMessageEntityToMessage(entity);
+      expect(message.claimCycleCount).toBe(5);
     });
   });
 });

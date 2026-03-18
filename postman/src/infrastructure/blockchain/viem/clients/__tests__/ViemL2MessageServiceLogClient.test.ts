@@ -72,5 +72,71 @@ describe("ViemL2MessageServiceLogClient", () => {
       const events = await logClient.getMessageSentEvents({});
       expect(events).toHaveLength(0);
     });
+
+    it("filters events by fromBlockLogIndex within the fromBlock", async () => {
+      getContractEventsMock.mockResolvedValue([
+        makeMessageSentEvent({ blockNumber: 100n, logIndex: 0, nonce: 1n }),
+        makeMessageSentEvent({ blockNumber: 100n, logIndex: 5, nonce: 2n }),
+        makeMessageSentEvent({ blockNumber: 100n, logIndex: 10, nonce: 3n }),
+        makeMessageSentEvent({ blockNumber: 101n, logIndex: 0, nonce: 4n }),
+      ] as never);
+
+      const events = await logClient.getMessageSentEvents({
+        fromBlock: 100n,
+        toBlock: 110n,
+        fromBlockLogIndex: 5,
+      });
+
+      expect(events).toHaveLength(3);
+      expect(events[0].logIndex).toBe(5);
+      expect(events[1].logIndex).toBe(10);
+      expect(events[2].logIndex).toBe(0);
+    });
+
+    it("converts number-typed block params to bigint via toBlockParam", async () => {
+      getContractEventsMock.mockResolvedValue([makeMessageSentEvent()] as never);
+
+      await logClient.getMessageSentEvents({
+        fromBlock: 90 as unknown as bigint,
+        toBlock: 110 as unknown as bigint,
+      });
+
+      expect(getContractEventsMock).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          fromBlock: 90n,
+          toBlock: 110n,
+        }),
+      );
+    });
+
+    it("uses fallback block params when fromBlock and toBlock are undefined", async () => {
+      getContractEventsMock.mockResolvedValue([makeMessageSentEvent()] as never);
+
+      await logClient.getMessageSentEvents({});
+
+      expect(getContractEventsMock).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          fromBlock: "earliest",
+          toBlock: "latest",
+        }),
+      );
+    });
+
+    it("passes string block tags through directly", async () => {
+      getContractEventsMock.mockResolvedValue([makeMessageSentEvent()] as never);
+
+      await logClient.getMessageSentEvents({
+        toBlock: "finalized" as unknown as bigint,
+      });
+
+      expect(getContractEventsMock).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          toBlock: "finalized",
+        }),
+      );
+    });
   });
 });

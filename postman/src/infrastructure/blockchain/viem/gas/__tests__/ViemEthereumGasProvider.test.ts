@@ -128,6 +128,19 @@ describe("ViemEthereumGasProvider", () => {
       expect(publicClient.getFeeHistory).toHaveBeenCalledTimes(2);
     });
 
+    it("handles undefined reward in feeHistory by using empty array fallback", async () => {
+      publicClient.getBlockNumber.mockResolvedValue(100n);
+      publicClient.getFeeHistory.mockResolvedValue({
+        baseFeePerGas: [10_000_000_000n, 10_000_000_000n],
+        reward: undefined,
+        gasUsedRatio: [],
+        oldestBlock: 99n,
+      } as never);
+
+      const provider = new ViemEthereumGasProvider(publicClient, baseConfig, logger);
+      await expect(provider.getGasFees()).rejects.toThrow();
+    });
+
     it("falls back to maxFeePerGasCap for both fees when computed fees are zero", async () => {
       publicClient.getBlockNumber.mockResolvedValue(100n);
       publicClient.getFeeHistory.mockResolvedValue({

@@ -1,4 +1,4 @@
-import { describe } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
 
 import {
   DEFAULT_CALLDATA_ENABLED,
@@ -35,7 +35,8 @@ import {
   TEST_L2_SIGNER_PRIVATE_KEY,
   TEST_RPC_URL,
 } from "../../../../../utils/testing/constants";
-import { getConfig, validateEventsFiltersConfig } from "../utils";
+import { postmanOptionsSchema } from "../schema";
+import { getConfig, isFunctionInterfaceValid, isValidFiltrexExpression, validateEventsFiltersConfig } from "../utils";
 
 describe("Config utils", () => {
   describe("getConfig", () => {
@@ -325,6 +326,177 @@ describe("Config utils", () => {
           },
         }),
       ).toThrow("Invalid calldataFunctionInterface: function receiveFromOtherLayer(address recipient uint256 amount)");
+    });
+
+    it("should not throw when no event filters are provided", () => {
+      expect(() => validateEventsFiltersConfig(undefined)).not.toThrow();
+    });
+  });
+
+  describe("getConfig — ZodError handling", () => {
+    it("should throw a descriptive error when zod validation fails", () => {
+      expect(() =>
+        getConfig({
+          l1Options: {
+            rpcUrl: "",
+            messageServiceContractAddress: "not-an-address" as `0x${string}`,
+            listener: {},
+            claiming: {
+              signer: { type: "private-key" as const, privateKey: "not-a-key" as `0x${string}` },
+            },
+          },
+          l2Options: {
+            rpcUrl: "",
+            messageServiceContractAddress: "not-an-address" as `0x${string}`,
+            listener: {},
+            claiming: {
+              signer: { type: "private-key" as const, privateKey: "not-a-key" as `0x${string}` },
+            },
+          },
+          l1L2AutoClaimEnabled: false,
+          l2L1AutoClaimEnabled: false,
+          databaseOptions: { type: "postgres" as const },
+        }),
+      ).toThrow("Invalid postman configuration:");
+    });
+
+    it("should include field paths in the validation error message", () => {
+      try {
+        getConfig({
+          l1Options: {
+            rpcUrl: "",
+            messageServiceContractAddress: "bad" as `0x${string}`,
+            listener: {},
+            claiming: {
+              signer: { type: "private-key" as const, privateKey: "bad" as `0x${string}` },
+            },
+          },
+          l2Options: {
+            rpcUrl: "",
+            messageServiceContractAddress: "bad" as `0x${string}`,
+            listener: {},
+            claiming: {
+              signer: { type: "private-key" as const, privateKey: "bad" as `0x${string}` },
+            },
+          },
+          l1L2AutoClaimEnabled: false,
+          l2L1AutoClaimEnabled: false,
+          databaseOptions: { type: "postgres" as const },
+        });
+        fail("Expected error to be thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error);
+        expect((e as Error).message).toContain("Invalid postman configuration:");
+        expect((e as Error).message).toContain("  - ");
+      }
+    });
+  });
+
+  describe("getConfig — non-ZodError rethrow", () => {
+    it("should rethrow non-ZodError errors from schema.parse", () => {
+      const parseSpy = jest.spyOn(postmanOptionsSchema, "parse").mockImplementation(() => {
+        throw new TypeError("unexpected failure");
+      });
+
+      expect(() =>
+        getConfig({
+          l1Options: {
+            rpcUrl: TEST_RPC_URL,
+            messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
+            listener: {},
+            claiming: { signer: { type: "private-key" as const, privateKey: TEST_L1_SIGNER_PRIVATE_KEY } },
+          },
+          l2Options: {
+            rpcUrl: TEST_RPC_URL,
+            messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
+            listener: {},
+            claiming: { signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY } },
+          },
+          l1L2AutoClaimEnabled: false,
+          l2L1AutoClaimEnabled: false,
+          databaseOptions: { type: "postgres" as const },
+        }),
+      ).toThrow(TypeError);
+
+      parseSpy.mockRestore();
+    });
+  });
+
+  describe("getConfig — L2 event filters", () => {
+    it("should include event filters for L2 when provided", () => {
+      const config = getConfig({
+        l1Options: {
+          rpcUrl: TEST_RPC_URL,
+          messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
+          listener: {},
+          claiming: { signer: { type: "private-key" as const, privateKey: TEST_L1_SIGNER_PRIVATE_KEY } },
+        },
+        l2Options: {
+          rpcUrl: TEST_RPC_URL,
+          messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
+          listener: {
+            eventFilters: {
+              fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+            },
+          },
+          claiming: { signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY } },
+        },
+        l1L2AutoClaimEnabled: false,
+        l2L1AutoClaimEnabled: false,
+        databaseOptions: { type: "postgres" as const },
+      });
+
+      expect(config.l2Config.listener.eventFilters).toEqual({
+        fromAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+      });
+    });
+
+    it("should include event filters for L1 when provided", () => {
+      const config = getConfig({
+        l1Options: {
+          rpcUrl: TEST_RPC_URL,
+          messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
+          listener: {
+            eventFilters: {
+              toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+            },
+          },
+          claiming: { signer: { type: "private-key" as const, privateKey: TEST_L1_SIGNER_PRIVATE_KEY } },
+        },
+        l2Options: {
+          rpcUrl: TEST_RPC_URL,
+          messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
+          listener: {},
+          claiming: { signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY } },
+        },
+        l1L2AutoClaimEnabled: false,
+        l2L1AutoClaimEnabled: false,
+        databaseOptions: { type: "postgres" as const },
+      });
+
+      expect(config.l1Config.listener.eventFilters).toEqual({
+        toAddressFilter: "0xc59d8de7f984AbC4913f0177bfb7BBdaFaC41fA6",
+      });
+    });
+  });
+
+  describe("isFunctionInterfaceValid", () => {
+    it("should return true for a valid function interface", () => {
+      expect(isFunctionInterfaceValid("function transfer(address to, uint256 amount)")).toBe(true);
+    });
+
+    it("should return false for an invalid function interface", () => {
+      expect(isFunctionInterfaceValid("not a valid function")).toBe(false);
+    });
+  });
+
+  describe("isValidFiltrexExpression", () => {
+    it("should return true for a valid expression", () => {
+      expect(isValidFiltrexExpression("calldata.amount > 0")).toBe(true);
+    });
+
+    it("should return false for an invalid expression", () => {
+      expect(isValidFiltrexExpression("amount = = 0")).toBe(false);
     });
   });
 });

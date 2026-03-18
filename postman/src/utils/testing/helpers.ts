@@ -73,3 +73,26 @@ export const generateMessageEntity = (overrides?: Partial<MessageEntity>): Messa
     ...overrides,
   };
 };
+
+/**
+ * Temporarily sets environment variables for the duration of a callback,
+ * then restores the original values (including deleting vars that weren't set before).
+ */
+export async function withEnv(vars: Record<string, string>, fn: () => Promise<void> | void): Promise<void> {
+  const originals: Record<string, string | undefined> = {};
+  for (const key of Object.keys(vars)) {
+    originals[key] = process.env[key];
+    process.env[key] = vars[key];
+  }
+  try {
+    await fn();
+  } finally {
+    for (const key of Object.keys(originals)) {
+      if (originals[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = originals[key];
+      }
+    }
+  }
+}

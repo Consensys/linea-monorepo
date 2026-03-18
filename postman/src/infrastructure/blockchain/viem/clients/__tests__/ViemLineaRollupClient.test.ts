@@ -1,13 +1,12 @@
 import { claimOnL1, getL2ToL1MessageStatus, getMessageProof } from "@consensys/linea-sdk-viem";
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { readContract } from "viem/actions";
+import { decodeErrorResult, type PublicClient, type WalletClient } from "viem";
+import { estimateContractGas, readContract } from "viem/actions";
 
 import { IEthereumGasProvider } from "../../../../../core/clients/blockchain/IGasProvider";
 import { OnChainMessageStatus } from "../../../../../core/enums";
 import { ViemLineaRollupClient } from "../ViemLineaRollupClient";
-
-import type { PublicClient, WalletClient } from "viem";
 
 jest.mock("@consensys/linea-sdk-viem", () => ({
   claimOnL1: jest.fn(),
@@ -16,6 +15,10 @@ jest.mock("@consensys/linea-sdk-viem", () => ({
   getMessagesByTransactionHash: jest.fn(),
   getTransactionReceiptByMessageHash: jest.fn(),
 }));
+jest.mock("viem", () => {
+  const actual = jest.requireActual("viem");
+  return { ...actual, decodeErrorResult: jest.fn() };
+});
 jest.mock("viem/actions", () => ({
   estimateContractGas: jest.fn(),
   getContractEvents: jest.fn(),
@@ -130,6 +133,27 @@ describe("ViemLineaRollupClient", () => {
       const result = await client.isRateLimitExceededError(TEST_TX_HASH);
       expect(result).toBe(false);
     });
+
+    it("returns true when parsed error name is RateLimitExceeded", async () => {
+      const mockTx = {
+        to: TEST_ADDRESS_2,
+        from: TEST_ADDRESS_1,
+        nonce: 1,
+        gas: 21000n,
+        input: "0x" as `0x${string}`,
+        value: 0n,
+        maxFeePerGas: 1000n,
+        maxPriorityFeePerGas: 100n,
+      };
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
+      (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "RateLimitExceeded", args: [] });
+
+      const result = await client.isRateLimitExceededError(TEST_TX_HASH);
+      expect(result).toBe(true);
+    });
   });
 
   describe("getMessageProof", () => {
@@ -150,6 +174,23 @@ describe("ViemLineaRollupClient", () => {
           messageHash: TEST_MESSAGE_HASH,
           lineaRollupAddress: TEST_CONTRACT_ADDRESS,
           l2MessageServiceAddress: TEST_L2_CONTRACT_ADDRESS,
+        }),
+      );
+    });
+
+    it("narrows block range when messageBlockNumber is provided", async () => {
+      const mockProof = {
+        proof: [TEST_MERKLE_ROOT as `0x${string}`],
+        root: TEST_MERKLE_ROOT as `0x${string}`,
+        leafIndex: 0,
+      };
+      (getMessageProof as jest.Mock).mockResolvedValue(mockProof);
+
+      await client.getMessageProof(TEST_MESSAGE_HASH, 51);
+      expect(getMessageProof).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          l2LogsBlockRange: { fromBlock: 51n, toBlock: 51n },
         }),
       );
     });
@@ -179,6 +220,273 @@ describe("ViemLineaRollupClient", () => {
           lineaRollupAddress: TEST_CONTRACT_ADDRESS,
         }),
       );
+    });
+
+    it("falls back to gasProvider fees and zero nonce/gasLimit when no overrides are provided", async () => {
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT as `0x${string}`],
+        root: TEST_MERKLE_ROOT as `0x${string}`,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      (claimOnL1 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
+
+      const result = await client.claim(testMessageSentEvent);
+
+      expect(result.hash).toBe("0xclaimhash");
+      expect(result.nonce).toBe(0);
+      expect(result.gasLimit).toBe(0n);
+      expect(result.maxFeePerGas).toBe(1000n);
+      expect(result.maxPriorityFeePerGas).toBe(100n);
+      expect(claimOnL1).toHaveBeenCalledWith(
+        walletClient,
+        expect.objectContaining({
+          lineaRollupAddress: TEST_CONTRACT_ADDRESS,
+          maxFeePerGas: 1000n,
+          maxPriorityFeePerGas: 100n,
+        }),
+      );
+    });
+
+    it("uses messageBlockNumber from message when present", async () => {
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT as `0x${string}`],
+        root: TEST_MERKLE_ROOT as `0x${string}`,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      (claimOnL1 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
+
+      const messageWithBlockNumber = { ...testMessageSentEvent, messageBlockNumber: 51 };
+      await client.claim(messageWithBlockNumber);
+
+      expect(getMessageProof).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          l2LogsBlockRange: { fromBlock: 51n, toBlock: 51n },
+        }),
+      );
+    });
+
+    it("uses claimViaAddress when provided", async () => {
+      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT as `0x${string}`],
+        root: TEST_MERKLE_ROOT as `0x${string}`,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      (claimOnL1 as jest.Mock).mockResolvedValue("0xclaimhash" as `0x${string}`);
+
+      await client.claim(testMessageSentEvent, { claimViaAddress });
+
+      expect(claimOnL1).toHaveBeenCalledWith(
+        walletClient,
+        expect.objectContaining({
+          lineaRollupAddress: claimViaAddress,
+        }),
+      );
+    });
+  });
+
+  describe("estimateClaimGas", () => {
+    it("calls getMessageProof, gasProvider, walletClient.getAddresses, and estimateContractGas", async () => {
+      const mockProof = {
+        proof: [TEST_MERKLE_ROOT],
+        root: TEST_MERKLE_ROOT,
+        leafIndex: 0,
+      };
+      (getMessageProof as jest.Mock).mockResolvedValue(mockProof);
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      walletClient.getAddresses.mockResolvedValue([TEST_ADDRESS_1] as never);
+      (estimateContractGas as jest.Mock).mockResolvedValue(50000n);
+
+      const result = await client.estimateClaimGas(testMessageSentEvent);
+
+      expect(getMessageProof).toHaveBeenCalled();
+      expect(gasProvider.getGasFees).toHaveBeenCalled();
+      expect(walletClient.getAddresses).toHaveBeenCalled();
+      expect(estimateContractGas).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          address: TEST_CONTRACT_ADDRESS,
+          functionName: "claimMessageWithProof",
+          account: TEST_ADDRESS_1,
+        }),
+      );
+      expect(result).toBe(50000n);
+    });
+
+    it("passes messageBlockNumber to getMessageProof when present in message", async () => {
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT],
+        root: TEST_MERKLE_ROOT,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      walletClient.getAddresses.mockResolvedValue([TEST_ADDRESS_1] as never);
+      (estimateContractGas as jest.Mock).mockResolvedValue(50000n);
+
+      const messageWithBlockNumber = { ...testMessageSentEvent, messageBlockNumber: 51 };
+      await client.estimateClaimGas(messageWithBlockNumber);
+
+      expect(getMessageProof).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          l2LogsBlockRange: { fromBlock: 51n, toBlock: 51n },
+        }),
+      );
+    });
+
+    it("uses claimViaAddress when provided in opts", async () => {
+      const claimViaAddress = "0x9000000000000000000000000000000000000000" as `0x${string}`;
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT],
+        root: TEST_MERKLE_ROOT,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      walletClient.getAddresses.mockResolvedValue([TEST_ADDRESS_1] as never);
+      (estimateContractGas as jest.Mock).mockResolvedValue(50000n);
+
+      await client.estimateClaimGas(testMessageSentEvent, { claimViaAddress });
+
+      expect(estimateContractGas).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          address: claimViaAddress,
+        }),
+      );
+    });
+
+    it("uses override fees when provided instead of gasProvider fees", async () => {
+      (getMessageProof as jest.Mock).mockResolvedValue({
+        proof: [TEST_MERKLE_ROOT],
+        root: TEST_MERKLE_ROOT,
+        leafIndex: 0,
+      });
+      gasProvider.getGasFees.mockResolvedValue({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 100n });
+      walletClient.getAddresses.mockResolvedValue([TEST_ADDRESS_1] as never);
+      (estimateContractGas as jest.Mock).mockResolvedValue(50000n);
+
+      await client.estimateClaimGas(testMessageSentEvent, {
+        overrides: { maxFeePerGas: 500n, maxPriorityFeePerGas: 50n },
+      });
+
+      expect(estimateContractGas).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          maxFeePerGas: 500n,
+          maxPriorityFeePerGas: 50n,
+        }),
+      );
+    });
+  });
+
+  describe("parseTransactionError", () => {
+    const mockTx = {
+      to: TEST_ADDRESS_2,
+      from: TEST_ADDRESS_1,
+      nonce: 1,
+      gas: 21000n,
+      input: "0x" as `0x${string}`,
+      value: 0n,
+      maxFeePerGas: 1000n,
+      maxPriorityFeePerGas: 100n,
+    };
+
+    it("returns decoded error when call returns revert data", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
+      (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [42n] });
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toEqual({ name: "SomeError", args: [42n] });
+    });
+
+    it("extracts error data from call exception", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockRejectedValue({ data: "0xcafebabe" as `0x${string}` });
+      (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "CallError", args: [] });
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toEqual({ name: "CallError", args: [] });
+    });
+
+    it("returns '0x' when call returns no data", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: undefined } as never);
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toBe("0x");
+    });
+
+    it("returns raw encoded data when decode throws", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
+      (decodeErrorResult as jest.Mock).mockImplementation(() => {
+        throw new Error("decode failed");
+      });
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toBe("0xdeadbeef");
+    });
+
+    it("passes undefined for null tx.to, tx.maxFeePerGas, and tx.maxPriorityFeePerGas", async () => {
+      const nullFieldsTx = {
+        to: null,
+        from: TEST_ADDRESS_1,
+        nonce: 1,
+        gas: 21000n,
+        input: "0x" as `0x${string}`,
+        value: 0n,
+        maxFeePerGas: null,
+        maxPriorityFeePerGas: null,
+      };
+      publicClient.getTransaction.mockResolvedValue(
+        nullFieldsTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
+      (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: [1n] });
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+
+      expect(publicClient.call).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: undefined,
+          maxFeePerGas: undefined,
+          maxPriorityFeePerGas: undefined,
+        }),
+      );
+      expect(result).toEqual({ name: "SomeError", args: [1n] });
+    });
+
+    it("returns empty args array when decoded.args is undefined", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockResolvedValue({ data: "0xdeadbeef" } as never);
+      (decodeErrorResult as jest.Mock).mockReturnValue({ errorName: "SomeError", args: undefined });
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toEqual({ name: "SomeError", args: [] });
+    });
+
+    it("returns '0x' when getTransaction returns null", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        null as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+
+      const result = await client.parseTransactionError(TEST_TX_HASH);
+      expect(result).toBe("0x");
     });
   });
 });

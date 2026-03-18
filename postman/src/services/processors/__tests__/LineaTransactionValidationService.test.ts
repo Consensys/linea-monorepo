@@ -10,7 +10,8 @@ import {
   DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
-import { DEFAULT_MAX_FEE_PER_GAS, testMessage } from "../../../utils/testing/constants";
+import { DEFAULT_MAX_FEE_PER_GAS, testMessage, TEST_MESSAGE_HASH } from "../../../utils/testing/constants";
+import { generateMessage } from "../../../utils/testing/helpers";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 
 describe("LineaTransactionValidationService", () => {
@@ -151,6 +152,19 @@ describe("LineaTransactionValidationService", () => {
       const criteria = await lineaTransactionValidationService.evaluateTransaction(testMessage);
 
       expect(criteria.isForSponsorship).toBe(false);
+    });
+
+    it("Should throw BaseError when compressedTransactionSize is undefined", async () => {
+      const estimatedGasLimit = 50_000n;
+      setup(estimatedGasLimit);
+      const messageWithoutSize = generateMessage({
+        compressedTransactionSize: undefined,
+        fee: 100000000000n,
+      });
+
+      await expect(lineaTransactionValidationService.evaluateTransaction(messageWithoutSize)).rejects.toThrow(
+        `compressedTransactionSize is undefined for message. messageHash=${messageWithoutSize.messageHash}`,
+      );
     });
 
     describe("isPostmanSponsorshipEnabled is true", () => {

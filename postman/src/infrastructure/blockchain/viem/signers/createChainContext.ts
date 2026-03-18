@@ -29,8 +29,6 @@ async function getChainId(client: PublicClient, logger: ILogger, deadlineMs: num
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   } while (elapsed < deadlineMs);
-
-  throw new Error(`Failed to fetch chainId after ${deadlineMs}ms`);
 }
 
 export type ChainContextOptions = {

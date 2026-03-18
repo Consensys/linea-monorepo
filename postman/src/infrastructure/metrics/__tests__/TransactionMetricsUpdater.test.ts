@@ -22,4 +22,14 @@ describe("TransactionMetricsUpdater", () => {
     );
     expect(histogramValues?.values.length).toBe(11);
   });
+
+  it("should record infura confirmation time histogram value", async () => {
+    transactionMetricsUpdater.addTransactionInfuraConfirmationTime("L1_TO_L2", 1.5);
+    transactionMetricsUpdater.addTransactionInfuraConfirmationTime("L1_TO_L2", 4);
+
+    const histogramValues = await metricsService.getHistogramMetricsValues(
+      LineaPostmanMetrics.TransactionInfuraConfirmationTime,
+    );
+    expect(histogramValues?.values.length).toBe(11);
+  });
 });

@@ -323,6 +323,27 @@ describe("TestMessageSentEventProcessor", () => {
       expect(result).toBeFalsy();
     });
 
+    it("Should handle array values in decoded calldata through convertBigInts", () => {
+      messageSentEventProcessor.config.isCalldataEnabled = true;
+      calldataDecoder.decode.mockReturnValue({
+        recipients: ["0x5eeea0e70ffe4f5419477056023c4b0aca016562", "0x1234567890abcdef1234567890abcdef12345678"],
+        amounts: [100000n, 200000n],
+      });
+
+      const result = messageSentEventProcessor.shouldProcessMessage(
+        {
+          ...testMessageSentEvent,
+          calldata: encodedCalldata,
+        },
+        testMessageSentEvent.messageHash,
+        {
+          criteriaExpression: `calldata.funcSignature == "0x26dfbc20"`,
+          calldataFunctionInterface: funcFragment,
+        },
+      );
+      expect(result).toBeTruthy();
+    });
+
     it("Should return true if event filter criteria is true", () => {
       messageSentEventProcessor.config.isCalldataEnabled = true;
       calldataDecoder.decode.mockReturnValue({

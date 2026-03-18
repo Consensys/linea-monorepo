@@ -1,7 +1,12 @@
 import { describe, it, expect } from "@jest/globals";
-import { encodeFunctionData, parseAbi } from "viem";
+import { encodeFunctionData, parseAbi, decodeFunctionData } from "viem";
 
 import { ViemCalldataDecoder } from "../ViemCalldataDecoder";
+
+jest.mock("viem", () => {
+  const actual = jest.requireActual("viem");
+  return { ...actual, decodeFunctionData: jest.fn(actual.decodeFunctionData) };
+});
 
 describe("ViemCalldataDecoder", () => {
   const decoder = new ViemCalldataDecoder();
@@ -72,6 +77,20 @@ describe("ViemCalldataDecoder", () => {
     expect(result.data).toBe("0xdeadbeef");
   });
 
+  it("falls back to index-based keys for unnamed parameters", () => {
+    const iface = "function foo(uint256, address)";
+    const abi = parseAbi([iface]);
+    const calldata = encodeFunctionData({
+      abi,
+      functionName: "foo",
+      args: [42n, "0xcccccccccccccccccccccccccccccccccccccccc"],
+    });
+
+    const result = decoder.decode(iface, calldata);
+    expect(result["0"]).toBe(42n);
+    expect((result["1"] as string).toLowerCase()).toBe("0xcccccccccccccccccccccccccccccccccccccccc");
+  });
+
   it("accepts human-readable ABI string matching ethers Interface format", () => {
     // Verify that parseAbi can handle the same format that ethers Interface accepted
     const iface = "function foo(uint256 bar, address baz)";
@@ -85,5 +104,16 @@ describe("ViemCalldataDecoder", () => {
     const result = decoder.decode(iface, calldata);
     expect(result.bar).toBe(42n);
     expect((result.baz as string).toLowerCase()).toBe("0xcccccccccccccccccccccccccccccccccccccccc");
+  });
+
+  it("returns empty record when decodeFunctionData returns a functionName not in the ABI", () => {
+    const iface = "function foo(uint256 bar)";
+    const abi = parseAbi([iface]);
+    const calldata = encodeFunctionData({ abi, functionName: "foo", args: [1n] });
+
+    (decodeFunctionData as jest.Mock).mockReturnValueOnce({ functionName: "nonExistent", args: [1n] });
+
+    const result = decoder.decode(iface, calldata);
+    expect(result).toEqual({});
   });
 });

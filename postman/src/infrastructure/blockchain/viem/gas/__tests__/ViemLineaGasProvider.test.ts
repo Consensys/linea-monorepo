@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { mock } from "jest-mock-extended";
 
 import { LineaGasProviderConfig } from "../../../../../core/clients/blockchain/IGasProvider";
+import { BaseError } from "../../../../../core/errors/BaseError";
 import { TransactionRequest } from "../../../../../core/types";
 import { ViemLineaGasProvider } from "../ViemLineaGasProvider";
 
@@ -84,6 +85,15 @@ describe("ViemLineaGasProvider", () => {
       const fees = await provider.getGasFees(TEST_TX_REQUEST);
 
       expect(fees.maxFeePerGas).toBe(100_000_000_000n);
+    });
+
+    it("throws when from address is missing", async () => {
+      const provider = new ViemLineaGasProvider(publicClient, baseConfig, logger);
+      const noFromRequest: TransactionRequest = { to: TEST_TX_REQUEST.to, data: "0x", value: 0n };
+      await expect(provider.getGasFees(noFromRequest)).rejects.toThrow(BaseError);
+      await expect(provider.getGasFees(noFromRequest)).rejects.toThrow(
+        "ViemLineaGasProvider: Transaction request must specify the 'from' address.",
+      );
     });
 
     it("does not cap when enforceMaxGasFee is false", async () => {

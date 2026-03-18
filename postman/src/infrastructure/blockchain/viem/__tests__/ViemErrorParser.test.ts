@@ -368,6 +368,28 @@ describe("ViemErrorParser", () => {
     });
   });
 
+  describe("ExecutionRevertedError without RpcRequestError wrapping", () => {
+    it("should return not retryable for bare ExecutionRevertedError", () => {
+      const execReverted = new ExecutionRevertedError({
+        cause: new ViemBaseError("inner"),
+        message: "execution reverted",
+      });
+      const error = new ViemBaseError("wrapped", { cause: execReverted });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(false);
+    });
+
+    it("should return retryable for bare ExecutionRevertedError with RateLimitExceeded in message", () => {
+      const execReverted = new ExecutionRevertedError({
+        cause: new ViemBaseError("inner"),
+        message: "execution reverted: RateLimitExceeded",
+      });
+      const error = new ViemBaseError("RateLimitExceeded", { cause: execReverted });
+      const result = parser.parse(error);
+      expect(result.retryable).toBe(true);
+    });
+  });
+
   describe("Default viem error", () => {
     it("should return retryable for unknown ViemBaseError", () => {
       const error = new ViemBaseError("unknown viem error");
@@ -382,6 +404,14 @@ describe("ViemErrorParser", () => {
       const error = new HttpRequestError({ url: "http://localhost" });
       const result = parser.parse(error);
       expect(result.message).toBe(error.shortMessage || error.message);
+    });
+
+    it("should fall back to error.message when shortMessage is empty", () => {
+      const error = new ViemBaseError("test message");
+      Object.defineProperty(error, "shortMessage", { value: "", configurable: true });
+      const result = parser.parse(error);
+      expect(result.message).toBe(error.message);
+      expect(result.message).not.toBe("");
     });
   });
 });

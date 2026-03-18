@@ -16,4 +16,16 @@ describe("BaseError", () => {
     expect(error.message).toStrictEqual("An error message.");
     expect((error.cause as Error).message).toStrictEqual("Inner error");
   });
+
+  it("Should use fallback message when no message is provided", () => {
+    const error = new BaseError();
+    expect(error.name).toStrictEqual("PostmanCoreError");
+    expect(error.message).toStrictEqual("An error occurred.");
+  });
+
+  it("Should use fallback message when an empty string is provided", () => {
+    const error = new BaseError("");
+    expect(error.name).toStrictEqual("PostmanCoreError");
+    expect(error.message).toStrictEqual("An error occurred.");
+  });
 });

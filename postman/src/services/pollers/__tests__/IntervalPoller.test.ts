@@ -113,5 +113,46 @@ describe("IntervalPoller", () => {
         name: loggerName,
       });
     });
+
+    it("Should omit direction from stop logs when not configured", () => {
+      const pollerNoDirection = new IntervalPoller(
+        processorMock,
+        { pollingInterval: testL2NetworkConfig.listener.pollingInterval },
+        logger,
+      );
+      const loggerInfoSpy = jest.spyOn(logger, "info");
+
+      pollerNoDirection.stop();
+
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(1, "Stopping poller.", {
+        name: loggerName,
+      });
+      expect(loggerInfoSpy).toHaveBeenNthCalledWith(2, "Poller stopped.", {
+        name: loggerName,
+      });
+    });
+  });
+
+  describe("error handling without direction", () => {
+    it("Should omit direction from error logs when not configured", async () => {
+      const pollerNoDirection = new IntervalPoller(processorMock, { pollingInterval: 10 }, logger);
+      const processError = new Error("processor blew up");
+      let callCount = 0;
+      jest.spyOn(processorMock, "process").mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) throw processError;
+      });
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+
+      pollerNoDirection.start();
+      await wait(50);
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Unhandled error in polling loop — continuing.", {
+        name: loggerName,
+        error: processError,
+      });
+
+      pollerNoDirection.stop();
+    });
   });
 });

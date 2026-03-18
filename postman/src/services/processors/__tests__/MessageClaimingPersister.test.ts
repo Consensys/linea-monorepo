@@ -362,6 +362,241 @@ describe("TestMessageClaimingPersister", () => {
       );
     });
 
+    it("Should update receipt status with processing time metrics for L1_TO_L2 direction", async () => {
+      const creationDate = new Date(2024, 1, 1, 0, 0, 0);
+      const blockTimestamp = creationDate.getTime() / 1_000 + 60;
+      const pendingMsgWithCreationDate = new Message({
+        ...testPendingMessage,
+        claimTxCreationDate: creationDate,
+        direction: Direction.L1_TO_L2,
+      });
+      const txReceipt = generateTransactionReceipt({ status: "success", blockNumber: 42 });
+
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsgWithCreationDate);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      jest.spyOn(provider, "getBlock").mockResolvedValue({ number: 42, timestamp: blockTimestamp } as never);
+      jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
+      const addProcessingTimeSpy = jest.spyOn(transactionMetricsUpdater, "addTransactionProcessingTime");
+      const addConfirmationTimeSpy = jest.spyOn(transactionMetricsUpdater, "addTransactionInfuraConfirmationTime");
+
+      await messageClaimingPersister.process();
+
+      expect(addProcessingTimeSpy).toHaveBeenCalledWith(Direction.L1_TO_L2, expect.any(Number));
+      expect(addConfirmationTimeSpy).toHaveBeenCalledWith(Direction.L1_TO_L2, expect.any(Number));
+    });
+
+    it("Should increment sponsorship fee when message isForSponsorship", async () => {
+      const pendingMsgForSponsorship = new Message({
+        ...testPendingMessage,
+        isForSponsorship: true,
+      });
+      const txReceipt = generateTransactionReceipt({ status: "success", gasUsed: 100_000n, gasPrice: 1_000_000n });
+
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsgForSponsorship);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      const sponsorshipSpy = jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
+
+      await messageClaimingPersister.process();
+
+      expect(sponsorshipSpy).toHaveBeenCalledWith(100_000n * 1_000_000n, Direction.L1_TO_L2);
+    });
+
+    it("Should handle cancelAndResetMessage when message is CLAIMED on-chain and receipt is found", async () => {
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimNumberOfRetry: 5,
+        claimCycleCount: 0,
+        claimTxNonce: 42,
+      });
+      messageClaimingPersister = new MessageClaimingPersister(
+        databaseService,
+        messageServiceContract,
+        sponsorshipMetricsUpdater,
+        transactionMetricsUpdater,
+        provider,
+        transactionRetrier,
+        receiptPoller,
+        {
+          direction: Direction.L1_TO_L2,
+          messageSubmissionTimeout: 0,
+          maxBumpsPerCycle: 5,
+          maxCycles: 2,
+          receiptPollingTimeout: 120_000,
+          receiptPollingInterval: 0,
+        },
+        logger,
+      );
+
+      const txReceipt = generateTransactionReceipt({ status: "success" });
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValueOnce(null).mockResolvedValueOnce(txReceipt);
+      jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
+      jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
+      const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
+
+      await messageClaimingPersister.process();
+
+      expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: MessageStatus.CLAIMED_SUCCESS }),
+      );
+    });
+
+    it("Should log warning when cancelAndResetMessage finds CLAIMED message but no receipt", async () => {
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimNumberOfRetry: 5,
+        claimCycleCount: 0,
+        claimTxNonce: 42,
+      });
+      messageClaimingPersister = new MessageClaimingPersister(
+        databaseService,
+        messageServiceContract,
+        sponsorshipMetricsUpdater,
+        transactionMetricsUpdater,
+        provider,
+        transactionRetrier,
+        receiptPoller,
+        {
+          direction: Direction.L1_TO_L2,
+          messageSubmissionTimeout: 0,
+          maxBumpsPerCycle: 5,
+          maxCycles: 2,
+          receiptPollingTimeout: 120_000,
+          receiptPollingInterval: 0,
+        },
+        logger,
+      );
+
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
+      jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
+      await messageClaimingPersister.process();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        "Message claimed on-chain but receipt not available, will retry later.",
+        expect.objectContaining({ messageHash: pendingMsg.messageHash }),
+      );
+    });
+
+    it("Should log error when cancelAndResetMessage throws", async () => {
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimNumberOfRetry: 5,
+        claimCycleCount: 0,
+        claimTxNonce: 42,
+      });
+      messageClaimingPersister = new MessageClaimingPersister(
+        databaseService,
+        messageServiceContract,
+        sponsorshipMetricsUpdater,
+        transactionMetricsUpdater,
+        provider,
+        transactionRetrier,
+        receiptPoller,
+        {
+          direction: Direction.L1_TO_L2,
+          messageSubmissionTimeout: 0,
+          maxBumpsPerCycle: 5,
+          maxCycles: 2,
+          receiptPollingTimeout: 120_000,
+          receiptPollingInterval: 0,
+        },
+        logger,
+      );
+
+      const cancelError = new Error("cancel failed");
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
+      jest.spyOn(messageServiceContract, "getMessageStatus").mockRejectedValue(cancelError);
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+
+      await messageClaimingPersister.process();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        "Failed to cancel and reset message.",
+        expect.objectContaining({ error: cancelError }),
+      );
+    });
+
+    it("Should return early when receipt is null and message has not exceeded submission timeout", async () => {
+      const recentDate = new Date();
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        updatedAt: recentDate,
+      });
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
+      const getMessageStatusSpy = jest.spyOn(messageServiceContract, "getMessageStatus");
+
+      await messageClaimingPersister.process();
+
+      expect(getMessageStatusSpy).not.toHaveBeenCalled();
+    });
+
+    it("Should log error without messageHash when getFirstPendingMessage throws", async () => {
+      const dbError = new Error("database connection lost");
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockRejectedValue(dbError);
+      const loggerErrorSpy = jest.spyOn(logger, "error");
+
+      await messageClaimingPersister.process();
+
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing pending message.", {
+        error: dbError,
+      });
+    });
+
+    it("Should log reverted message without processing time when claimTxCreationDate is not set", async () => {
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimTxCreationDate: undefined,
+      });
+      const txReceipt = generateTransactionReceipt({ status: "reverted" });
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      jest.spyOn(messageServiceContract, "isRateLimitExceededError").mockResolvedValue(false);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
+      await messageClaimingPersister.process();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith("Message claim transaction has been REVERTED.", {
+        messageHash: pendingMsg.messageHash,
+        transactionHash: txReceipt.hash,
+      });
+    });
+
+    it("Should log reverted message WITH processing time when claimTxCreationDate is set", async () => {
+      const creationDate = new Date(Date.now() - 5000);
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimTxCreationDate: creationDate,
+      });
+      const txReceipt = generateTransactionReceipt({ status: "reverted" });
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
+      jest.spyOn(provider, "getBlock").mockResolvedValue({
+        number: txReceipt.blockNumber,
+        timestamp: Math.floor(Date.now() / 1000),
+        hash: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      });
+      jest.spyOn(messageServiceContract, "isRateLimitExceededError").mockResolvedValue(false);
+      const loggerWarnSpy = jest.spyOn(logger, "warn");
+
+      await messageClaimingPersister.process();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        "Message claim transaction has been REVERTED.",
+        expect.objectContaining({
+          messageHash: pendingMsg.messageHash,
+          transactionHash: txReceipt.hash,
+          processingTimeInSeconds: expect.any(Number),
+          infuraConfirmationTimeInSeconds: expect.any(Number),
+        }),
+      );
+    });
+
     it("Should handle two consecutive process calls correctly", async () => {
       const retryTxReceipt = generateTransactionReceipt({ status: "success" });
       const retryTxResponse = generateTransactionSubmission({

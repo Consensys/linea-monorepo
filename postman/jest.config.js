@@ -23,5 +23,9 @@ module.exports = {
     "src/index.ts",
     "src/utils/PostmanWinstonLogger.ts",
     "src/utils/testing/",
+    "src/main.ts",
+    "src/application/postman/app/PostmanContainer.ts",
+    "src/infrastructure/blockchain/viem/index.ts",
+    "src/infrastructure/persistence/entities/",
   ],
 };

@@ -181,6 +181,98 @@ describe("TestMessageSentEventPoller", () => {
     });
   });
 
+  describe("initialFromBlock override", () => {
+    it("Should use initialFromBlock when it exceeds DEFAULT_INITIAL_FROM_BLOCK", async () => {
+      const overrideBlock = 100;
+      const pollerWithOverride = new MessageSentEventPoller(
+        eventProcessorMock,
+        provider,
+        databaseService,
+        {
+          direction: Direction.L1_TO_L2,
+          pollingInterval: DEFAULT_LISTENER_INTERVAL,
+          initialFromBlock: overrideBlock,
+          originContractAddress: testL1NetworkConfig.messageServiceContractAddress,
+        },
+        logger,
+      );
+
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
+      jest.spyOn(databaseService, "getLatestMessageSent").mockResolvedValue(testMessage);
+      const eventProcessorMockSpy = jest.spyOn(eventProcessorMock, "process").mockResolvedValue({
+        nextFromBlock: overrideBlock + 10,
+        nextFromBlockLogIndex: 0,
+      });
+
+      pollerWithOverride.start();
+      await wait(500);
+
+      expect(eventProcessorMockSpy).toHaveBeenCalledWith(overrideBlock, 0);
+
+      pollerWithOverride.stop();
+    });
+  });
+
+  describe("recursive call coverage", () => {
+    it("Should retry startProcessingEvents after initial error", async () => {
+      const fastPoller = new MessageSentEventPoller(
+        eventProcessorMock,
+        provider,
+        databaseService,
+        {
+          direction: Direction.L1_TO_L2,
+          pollingInterval: 10,
+          initialFromBlock: DEFAULT_INITIAL_FROM_BLOCK,
+          originContractAddress: testL1NetworkConfig.messageServiceContractAddress,
+        },
+        logger,
+      );
+
+      let callCount = 0;
+      jest.spyOn(provider, "getBlockNumber").mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) throw new Error("initial error");
+        return 10;
+      });
+      jest.spyOn(databaseService, "getLatestMessageSent").mockResolvedValue(null);
+      jest.spyOn(eventProcessorMock, "process").mockResolvedValue({ nextFromBlock: 20, nextFromBlockLogIndex: 0 });
+
+      fastPoller.start();
+      await wait(200);
+
+      expect(callCount).toBeGreaterThanOrEqual(2);
+      fastPoller.stop();
+    });
+
+    it("Should recursively call processEvents in the finally block", async () => {
+      const fastPoller = new MessageSentEventPoller(
+        eventProcessorMock,
+        provider,
+        databaseService,
+        {
+          direction: Direction.L1_TO_L2,
+          pollingInterval: 10,
+          initialFromBlock: DEFAULT_INITIAL_FROM_BLOCK,
+          originContractAddress: testL1NetworkConfig.messageServiceContractAddress,
+        },
+        logger,
+      );
+
+      jest.spyOn(provider, "getBlockNumber").mockResolvedValue(10);
+      jest.spyOn(databaseService, "getLatestMessageSent").mockResolvedValue(null);
+      const processSpy = jest.spyOn(eventProcessorMock, "process").mockResolvedValue({
+        nextFromBlock: 20,
+        nextFromBlockLogIndex: 0,
+      });
+
+      fastPoller.start();
+      await wait(200);
+
+      expect(processSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+      fastPoller.stop();
+    });
+  });
+
   describe("stop", () => {
     it("Should return and log as info if it stopped successfully", async () => {
       const loggerInfoSpy = jest.spyOn(logger, "info");
