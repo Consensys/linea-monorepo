@@ -5,14 +5,11 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark-crypto/utils"
+	koalaVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
-	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -21,6 +18,7 @@ import (
 
 type StatementAndCodeWordCircuit struct {
 	LinComb []koalagnark.Ext
+	Evals   []koalagnark.Ext
 	Ys      [][]koalagnark.Ext
 	X       koalagnark.Ext
 	Alpha   koalagnark.Ext
@@ -34,61 +32,51 @@ func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	return GnarkCheckStatementAndCodeWordLagrange(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
+	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.LinComb, c.Evals, c.Ys, c.X, c.Alpha)
 }
 
 func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordCircuit, *StatementAndCodeWordCircuit) {
-	sizeCodeWord := size * rate
 	rsParams := reedsolomon.NewRsParams(size, rate)
+	sizeCodeWord := size * rate
 
-	// Generate a valid codeword (linComb)
-	// Start with coefficients in canonical form (last entries are zero for RS codeword)
-	coeffs := make([]fext.Element, sizeCodeWord)
-	for i := 0; i < size; i++ {
+	// Generate T random coefficients
+	coeffs := make([]fext.Element, size)
+	for i := range coeffs {
 		coeffs[i].SetRandom()
 	}
-	// FFT to get Lagrange basis representation
-	d := fft.NewDomain(uint64(sizeCodeWord))
-	d.FFTExt(coeffs, fft.DIF)
-	utils.BitReverse(coeffs)
 
-	// linComb is now a valid RS codeword in Lagrange basis
-	linComb := make([]fext.Element, sizeCodeWord)
-	copy(linComb, coeffs)
+	// Forward FFT to get N evaluations on the RS domain
+	evals := rsParams.ExtCoefficientsToAllEvaluations(coeffs)
 
 	// Generate random evaluation point x and alpha
 	var x, alpha fext.Element
 	x.SetRandom()
 	alpha.SetRandom()
 
-	// Compute P(x) where P is the polynomial represented by linComb in Lagrange basis
-	// P(x) = Σᵢ Lᵢ(x) * linComb[i]
-	linCombSv := sv.NewRegularExt(linComb)
-	pXSlice := smartvectors_mixed.BatchEvaluateLagrange([]sv.SmartVector{linCombSv}, x)
-	pX := pXSlice[0]
+	// P(x) = Horner(coeffs, x)
+	pX := koalaVortex.EvalFextPolyHorner(coeffs, x)
 
-	// For the statement check to pass, we need:
-	// P(x) == eval(yjoined, alpha) where yjoined is the concatenation of all ys
-	//
-	// We construct ys such that yjoined evaluated at alpha equals pX
-	// Simplest approach: ys has one element [pX], so eval([pX], alpha) = pX
+	// ys: single element [pX], so Horner([pX], alpha) = pX
 	ys := [][]fext.Element{{pX}}
 
 	// Create circuit and witness
 	var circuit, witness StatementAndCodeWordCircuit
 
-	// Circuit (structure only)
-	circuit.LinComb = make([]koalagnark.Ext, sizeCodeWord)
+	circuit.LinComb = make([]koalagnark.Ext, size)
+	circuit.Evals = make([]koalagnark.Ext, sizeCodeWord)
 	circuit.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
 		circuit.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
 	}
 	circuit.params = Params{RsParams: rsParams}
 
-	// Witness (actual values)
-	witness.LinComb = make([]koalagnark.Ext, sizeCodeWord)
-	for i := 0; i < sizeCodeWord; i++ {
-		witness.LinComb[i] = koalagnark.NewExt(linComb[i])
+	witness.LinComb = make([]koalagnark.Ext, size)
+	for i := range coeffs {
+		witness.LinComb[i] = koalagnark.NewExt(coeffs[i])
+	}
+	witness.Evals = make([]koalagnark.Ext, sizeCodeWord)
+	for i := range evals {
+		witness.Evals[i] = koalagnark.NewExt(evals[i])
 	}
 	witness.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
