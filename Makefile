@@ -86,7 +86,7 @@ start-env-with-validium-and-tracing-v2-ci:
 
 ## Enable Fleet leader and follower besu nodes
 start-env-with-tracing-v2-fleet-ci:
-	make start-env COMPOSE_FILE=docker/compose-tracing-v2-fleet-ci-extension.yml LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
+	make start-env COMPOSE_FILE=docker/compose-tracing-v2-fleet-ci-extension.yml MARU_USE_OVERRIDE_CONFIG=true LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
 
 start-env-with-staterecovery: COMPOSE_PROFILES:=l1,l2,staterecovery
 start-env-with-staterecovery: L1_CONTRACT_VERSION:=6
