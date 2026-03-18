@@ -14,14 +14,16 @@ import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { INonceManager } from "../../../core/services/INonceManager";
 import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
+import { ITransactionValidationService } from "../../../core/services/ITransactionValidationService";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
 import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
 import {
   MessageAnchoringProcessor,
   MessageClaimingPersister,
   MessageClaimingProcessor,
   MessageSentEventProcessor,
+  ReceiptStatusResolver,
+  TransactionLifecycleManager,
 } from "../../../services/processors";
 
 export type L2ToL1Deps = {
@@ -34,6 +36,7 @@ export type L2ToL1Deps = {
   l1ReceiptPoller: IReceiptPoller;
   messageRepository: IMessageRepository;
   l1GasProvider: IEthereumGasProvider;
+  transactionValidationService: ITransactionValidationService;
   calldataDecoder: ICalldataDecoder;
   sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
   transactionMetricsUpdater: ITransactionMetricsUpdater;
@@ -57,6 +60,7 @@ export class L2ToL1App {
       l1ReceiptPoller,
       messageRepository,
       l1GasProvider,
+      transactionValidationService,
       calldataDecoder,
       sponsorshipMetricsUpdater,
       transactionMetricsUpdater,
@@ -114,18 +118,6 @@ export class L2ToL1App {
       log("L1MessageAnchoringPoller"),
     );
 
-    const validationService = new EthereumTransactionValidationService(
-      lineaRollupClient,
-      l1GasProvider,
-      {
-        profitMargin: l1Config.claiming.profitMargin,
-        maxClaimGasLimit: l1Config.claiming.maxClaimGasLimit,
-        isPostmanSponsorshipEnabled: l1Config.claiming.isPostmanSponsorshipEnabled,
-        maxPostmanSponsorGasLimit: l1Config.claiming.maxPostmanSponsorGasLimit,
-      },
-      log(`${EthereumTransactionValidationService.name}`),
-    );
-
     const getNextMessageToClaim = async () => {
       const { maxFeePerGas } = await l1GasProvider.getGasFees();
       return messageRepository.getFirstMessageToClaimOnL1(
@@ -143,7 +135,7 @@ export class L2ToL1App {
       l1NonceManager,
       messageRepository,
       getNextMessageToClaim,
-      validationService,
+      transactionValidationService,
       errorParser,
       {
         direction: Direction.L2_TO_L1,
@@ -164,21 +156,39 @@ export class L2ToL1App {
       log("L1MessageClaimingPoller"),
     );
 
-    const claimingPersister = new MessageClaimingPersister(
-      messageRepository,
+    const transactionLifecycleManager = new TransactionLifecycleManager(
       lineaRollupClient,
-      sponsorshipMetricsUpdater,
-      transactionMetricsUpdater,
       l1Provider,
       l1TransactionRetrier,
       l1ReceiptPoller,
+      messageRepository,
+      {
+        receiptPollingTimeout: l1Config.claiming.messageSubmissionTimeout,
+        receiptPollingInterval: l1Config.listener.receiptPollingInterval,
+      },
+      log(`L1${TransactionLifecycleManager.name}`),
+    );
+
+    const receiptStatusResolver = new ReceiptStatusResolver(
+      messageRepository,
+      lineaRollupClient,
+      l1Provider,
+      sponsorshipMetricsUpdater,
+      transactionMetricsUpdater,
+      { direction: Direction.L2_TO_L1 },
+      log(`L1${ReceiptStatusResolver.name}`),
+    );
+
+    const claimingPersister = new MessageClaimingPersister(
+      messageRepository,
+      l1Provider,
+      transactionLifecycleManager,
+      receiptStatusResolver,
       {
         direction: Direction.L2_TO_L1,
         messageSubmissionTimeout: l1Config.claiming.messageSubmissionTimeout,
         maxBumpsPerCycle: l1Config.claiming.maxBumpsPerCycle,
         maxCycles: l1Config.claiming.maxRetryCycles,
-        receiptPollingTimeout: l1Config.claiming.messageSubmissionTimeout,
-        receiptPollingInterval: l1Config.listener.receiptPollingInterval,
       },
       log(`L1${MessageClaimingPersister.name}`),
     );

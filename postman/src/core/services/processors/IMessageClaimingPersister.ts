@@ -9,6 +9,4 @@ export type MessageClaimingPersisterConfig = {
   messageSubmissionTimeout: number;
   maxBumpsPerCycle: number;
   maxCycles: number;
-  receiptPollingTimeout: number;
-  receiptPollingInterval: number;
 };

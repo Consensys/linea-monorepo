@@ -23,6 +23,7 @@ import { ITransactionRetrier } from "../../core/services/ITransactionRetrier";
 import { ITransactionSigner } from "../../core/services/ITransactionSigner";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
 import { IPoller } from "../../core/services/pollers/IPoller";
+import { IL2ClaimTransactionSizeCalculator } from "../../core/services/processors/IL2ClaimTransactionSizeCalculator";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
 
 export function mockLogger(): MockProxy<ILogger> {
@@ -91,6 +92,10 @@ export function mockErrorParser(): MockProxy<IErrorParser> {
 
 export function mockTransactionValidationService(): MockProxy<ITransactionValidationService> {
   return mock<ITransactionValidationService>();
+}
+
+export function mockL2ClaimTransactionSizeCalculator(): MockProxy<IL2ClaimTransactionSizeCalculator> {
+  return mock<IL2ClaimTransactionSizeCalculator>();
 }
 
 export function mockPoller(): MockProxy<IPoller> {

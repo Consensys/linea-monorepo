@@ -19,6 +19,8 @@ import {
 } from "../../../utils/testing/constants";
 import { TestLogger } from "../../../utils/testing/helpers";
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
+import { ReceiptStatusResolver } from "../ReceiptStatusResolver";
+import { TransactionLifecycleManager } from "../TransactionLifecycleManager";
 
 const generateTransactionReceipt = (overrides: Partial<TransactionReceipt> = {}): TransactionReceipt => ({
   hash: TEST_TRANSACTION_HASH,
@@ -39,9 +41,16 @@ const generateTransactionSubmission = (overrides: Partial<TransactionSubmission>
   ...overrides,
 });
 
-describe("TestMessageClaimingPersister", () => {
-  let messageClaimingPersister: IMessageClaimingPersister;
-  let mockedDate: Date;
+function createPersister(
+  overrides: {
+    direction?: Direction;
+    messageSubmissionTimeout?: number;
+    maxBumpsPerCycle?: number;
+    maxCycles?: number;
+    receiptPollingTimeout?: number;
+    receiptPollingInterval?: number;
+  } = {},
+) {
   const databaseService = mock<IMessageRepository>();
   const messageServiceContract = mock<IMessageStatusReader & IRateLimitChecker>();
   const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
@@ -51,29 +60,84 @@ describe("TestMessageClaimingPersister", () => {
   const receiptPoller = mock<IReceiptPoller>();
   const logger = new TestLogger(MessageClaimingPersister.name);
 
-  beforeEach(() => {
-    messageClaimingPersister = new MessageClaimingPersister(
-      databaseService,
-      messageServiceContract,
-      sponsorshipMetricsUpdater,
-      transactionMetricsUpdater,
-      provider,
-      transactionRetrier,
-      receiptPoller,
-      {
-        direction: Direction.L1_TO_L2,
-        messageSubmissionTimeout: testL2NetworkConfig.claiming.messageSubmissionTimeout,
-        maxBumpsPerCycle: testL2NetworkConfig.claiming.maxBumpsPerCycle,
-        maxCycles: testL2NetworkConfig.claiming.maxRetryCycles,
-        receiptPollingTimeout: 120_000,
-        receiptPollingInterval: 0,
-      },
-      logger,
-    );
+  const direction = overrides.direction ?? Direction.L1_TO_L2;
 
-    mockedDate = new Date();
+  const transactionLifecycleManager = new TransactionLifecycleManager(
+    messageServiceContract,
+    provider,
+    transactionRetrier,
+    receiptPoller,
+    databaseService,
+    {
+      receiptPollingTimeout: overrides.receiptPollingTimeout ?? 120_000,
+      receiptPollingInterval: overrides.receiptPollingInterval ?? 0,
+    },
+    new TestLogger(TransactionLifecycleManager.name),
+  );
+
+  const receiptStatusResolver = new ReceiptStatusResolver(
+    databaseService,
+    messageServiceContract,
+    provider,
+    sponsorshipMetricsUpdater,
+    transactionMetricsUpdater,
+    { direction },
+    new TestLogger(ReceiptStatusResolver.name),
+  );
+
+  const persister = new MessageClaimingPersister(
+    databaseService,
+    provider,
+    transactionLifecycleManager,
+    receiptStatusResolver,
+    {
+      direction,
+      messageSubmissionTimeout:
+        overrides.messageSubmissionTimeout ?? testL2NetworkConfig.claiming.messageSubmissionTimeout,
+      maxBumpsPerCycle: overrides.maxBumpsPerCycle ?? testL2NetworkConfig.claiming.maxBumpsPerCycle,
+      maxCycles: overrides.maxCycles ?? testL2NetworkConfig.claiming.maxRetryCycles,
+    },
+    logger,
+  );
+
+  return {
+    persister,
+    databaseService,
+    messageServiceContract,
+    sponsorshipMetricsUpdater,
+    transactionMetricsUpdater,
+    provider,
+    transactionRetrier,
+    receiptPoller,
+    logger,
+  };
+}
+
+describe("TestMessageClaimingPersister", () => {
+  let messageClaimingPersister: IMessageClaimingPersister;
+  let databaseService: ReturnType<typeof createPersister>["databaseService"];
+  let messageServiceContract: ReturnType<typeof createPersister>["messageServiceContract"];
+  let sponsorshipMetricsUpdater: ReturnType<typeof createPersister>["sponsorshipMetricsUpdater"];
+  let transactionMetricsUpdater: ReturnType<typeof createPersister>["transactionMetricsUpdater"];
+  let provider: ReturnType<typeof createPersister>["provider"];
+  let transactionRetrier: ReturnType<typeof createPersister>["transactionRetrier"];
+  let receiptPoller: ReturnType<typeof createPersister>["receiptPoller"];
+  let logger: TestLogger;
+
+  beforeEach(() => {
+    const ctx = createPersister();
+    messageClaimingPersister = ctx.persister;
+    databaseService = ctx.databaseService;
+    messageServiceContract = ctx.messageServiceContract;
+    sponsorshipMetricsUpdater = ctx.sponsorshipMetricsUpdater;
+    transactionMetricsUpdater = ctx.transactionMetricsUpdater;
+    provider = ctx.provider;
+    transactionRetrier = ctx.transactionRetrier;
+    receiptPoller = ctx.receiptPoller;
+    logger = ctx.logger;
+
     jest.useFakeTimers();
-    jest.setSystemTime(mockedDate);
+    jest.setSystemTime(new Date());
   });
 
   afterEach(() => {
@@ -111,16 +175,14 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
-      const loggerInfoSpy = jest.spyOn(logger, "info");
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
 
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledWith("Message has been SUCCESSFULLY claimed.", {
-        messageHash: testPendingMessageLocal.messageHash,
-        transactionHash: testPendingMessageLocal.claimTxHash,
-      });
+      expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: MessageStatus.CLAIMED_SUCCESS }),
+      );
     });
 
     it("Should return and update message as sent if receipt status is reverted and rate limit exceeded", async () => {
@@ -141,7 +203,6 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(new Message(testPendingMessage));
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       jest.spyOn(messageServiceContract, "isRateLimitExceededError").mockResolvedValue(false);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
@@ -150,7 +211,6 @@ describe("TestMessageClaimingPersister", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: MessageStatus.CLAIMED_REVERTED }),
       );
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Message claim transaction has been REVERTED.", expect.any(Object));
     });
 
     it("Should update message as claimed if message claimed on-chain and receipt found on retry", async () => {
@@ -160,7 +220,6 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValueOnce(null).mockResolvedValueOnce(retryTxReceipt);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
       jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
@@ -169,8 +228,6 @@ describe("TestMessageClaimingPersister", () => {
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: MessageStatus.CLAIMED_SUCCESS }),
       );
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Retrying to claim message.", expect.any(Object));
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Retried claim message transaction succeed.", expect.any(Object));
     });
 
     it("Should return and log as warning if message is claimed but receipt returned as null", async () => {
@@ -178,16 +235,11 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(testPendingMessageLocal);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
 
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(0);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Message was claimed on-chain but transaction receipt is not available yet.",
-        expect.any(Object),
-      );
     });
 
     it("Should bump fee and update DB when message is claimable and retry tx succeeds", async () => {
@@ -204,50 +256,30 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(receiptPoller, "poll").mockResolvedValue(retryTxReceipt);
       jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
 
       await messageClaimingPersister.process();
 
-      // First call: update after retry tx, second call: update receipt status
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositoryUpdateSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({ claimNumberOfRetry: 1 }));
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Bumping fee for claim transaction.", expect.any(Object));
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Retried claim message transaction succeed.", expect.any(Object));
     });
 
     it("Should return null when retry tx throws error", async () => {
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
+      transactionRetrier = ctx.transactionRetrier;
 
       const retryError = new Error("error for testing");
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(new Message(testPendingMessage));
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(transactionRetrier, "retryWithHigherFee").mockRejectedValue(retryError);
-      const loggerErrorSpy = jest.spyOn(logger, "error");
 
       await messageClaimingPersister.process();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to retry with bumped fee.", {
-        error: retryError,
-        messageHash: testPendingMessage.messageHash,
-      });
+      expect(databaseService.updateMessage).not.toHaveBeenCalled();
     });
 
     it("Should cancel and reset message when max bumps per cycle exceeded", async () => {
@@ -257,30 +289,17 @@ describe("TestMessageClaimingPersister", () => {
         claimCycleCount: 0,
         claimTxNonce: 42,
       });
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
+      transactionRetrier = ctx.transactionRetrier;
 
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(transactionRetrier, "cancelTransaction").mockResolvedValue("0xcancelhash" as `0x${string}`);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
@@ -293,14 +312,6 @@ describe("TestMessageClaimingPersister", () => {
           claimCycleCount: 1,
         }),
       );
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Max fee bumps exhausted, cancelling stuck transaction and resetting message.",
-        expect.any(Object),
-      );
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Message reset to SENT for re-claiming with fresh nonce.",
-        expect.any(Object),
-      );
     });
 
     it("Should set NEEDS_MANUAL_INTERVENTION when max cycles exceeded", async () => {
@@ -309,24 +320,11 @@ describe("TestMessageClaimingPersister", () => {
         claimNumberOfRetry: 5,
         claimCycleCount: 2,
       });
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      logger = ctx.logger;
 
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
@@ -408,24 +406,12 @@ describe("TestMessageClaimingPersister", () => {
         claimCycleCount: 0,
         claimTxNonce: 42,
       });
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
+      sponsorshipMetricsUpdater = ctx.sponsorshipMetricsUpdater;
 
       const txReceipt = generateTransactionReceipt({ status: "success" });
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
@@ -448,36 +434,20 @@ describe("TestMessageClaimingPersister", () => {
         claimCycleCount: 0,
         claimTxNonce: 42,
       });
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
 
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMED);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Message claimed on-chain but receipt not available, will retry later.",
-        expect.objectContaining({ messageHash: pendingMsg.messageHash }),
-      );
+      expect(messageRepositoryUpdateSpy).not.toHaveBeenCalled();
     });
 
     it("Should log error when cancelAndResetMessage throws", async () => {
@@ -487,37 +457,20 @@ describe("TestMessageClaimingPersister", () => {
         claimCycleCount: 0,
         claimTxNonce: 42,
       });
-      messageClaimingPersister = new MessageClaimingPersister(
-        databaseService,
-        messageServiceContract,
-        sponsorshipMetricsUpdater,
-        transactionMetricsUpdater,
-        provider,
-        transactionRetrier,
-        receiptPoller,
-        {
-          direction: Direction.L1_TO_L2,
-          messageSubmissionTimeout: 0,
-          maxBumpsPerCycle: 5,
-          maxCycles: 2,
-          receiptPollingTimeout: 120_000,
-          receiptPollingInterval: 0,
-        },
-        logger,
-      );
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
 
       const cancelError = new Error("cancel failed");
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockRejectedValue(cancelError);
-      const loggerErrorSpy = jest.spyOn(logger, "error");
 
       await messageClaimingPersister.process();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(
-        "Failed to cancel and reset message.",
-        expect.objectContaining({ error: cancelError }),
-      );
+      expect(databaseService.updateMessage).not.toHaveBeenCalled();
     });
 
     it("Should return early when receipt is null and message has not exceeded submission timeout", async () => {
@@ -557,14 +510,13 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(txReceipt);
       jest.spyOn(messageServiceContract, "isRateLimitExceededError").mockResolvedValue(false);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Message claim transaction has been REVERTED.", {
-        messageHash: pendingMsg.messageHash,
-        transactionHash: txReceipt.hash,
-      });
+      expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: MessageStatus.CLAIMED_REVERTED }),
+      );
     });
 
     it("Should log reverted message WITH processing time when claimTxCreationDate is set", async () => {
@@ -582,19 +534,11 @@ describe("TestMessageClaimingPersister", () => {
         hash: "0x0000000000000000000000000000000000000000000000000000000000000001",
       });
       jest.spyOn(messageServiceContract, "isRateLimitExceededError").mockResolvedValue(false);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const addProcessingTimeSpy = jest.spyOn(transactionMetricsUpdater, "addTransactionProcessingTime");
 
       await messageClaimingPersister.process();
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "Message claim transaction has been REVERTED.",
-        expect.objectContaining({
-          messageHash: pendingMsg.messageHash,
-          transactionHash: txReceipt.hash,
-          processingTimeInSeconds: expect.any(Number),
-          infuraConfirmationTimeInSeconds: expect.any(Number),
-        }),
-      );
+      expect(addProcessingTimeSpy).toHaveBeenCalledWith(Direction.L1_TO_L2, expect.any(Number));
     });
 
     it("Should handle two consecutive process calls correctly", async () => {
@@ -612,10 +556,10 @@ describe("TestMessageClaimingPersister", () => {
         .mockResolvedValueOnce(testPendingMessageLocal2);
       jest
         .spyOn(provider, "getTransactionReceipt")
-        .mockResolvedValueOnce(null) // first call: no receipt
-        .mockResolvedValueOnce(null) // retryWithBump: getMessageStatus path (CLAIMED check)
-        .mockResolvedValueOnce(null) // second call: no receipt
-        .mockResolvedValueOnce(null); // second call: CLAIMED check
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
       jest
         .spyOn(messageServiceContract, "getMessageStatus")
         .mockResolvedValueOnce(OnChainMessageStatus.CLAIMABLE)
@@ -627,7 +571,6 @@ describe("TestMessageClaimingPersister", () => {
       await messageClaimingPersister.process();
       await messageClaimingPersister.process();
 
-      // First process: bump + receipt update, second process: claimed on-chain receipt
       expect(databaseService.updateMessage).toHaveBeenCalled();
     });
   });

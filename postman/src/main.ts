@@ -17,7 +17,10 @@ async function main() {
 
 async function shutdown() {
   bootstrapLogger.info("Shutdown signal received — draining services.");
-  await app?.stop();
+  try {
+    await app?.stop();
+    // eslint-disable-next-line no-empty
+  } catch {}
   process.exit(0);
 }
 

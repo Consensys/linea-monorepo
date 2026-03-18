@@ -9,6 +9,7 @@ import {
   mockCalldataDecoder,
   mockErrorParser,
   mockEthereumGasProvider,
+  mockL2ClaimTransactionSizeCalculator,
   mockL2MessageServiceClient,
   mockL2MessageServiceLogClient,
   mockLineaProvider,
@@ -21,7 +22,7 @@ import {
   mockSponsorshipMetricsUpdater,
   mockTransactionMetricsUpdater,
   mockTransactionRetrier,
-  mockTransactionSigner,
+  mockTransactionValidationService,
 } from "./mocks";
 import { PostmanConfig, PostmanOptions } from "../../application/postman/app/config/config";
 import { L1ToL2Deps } from "../../application/postman/app/L1ToL2App";
@@ -157,7 +158,8 @@ export function buildL1ToL2Deps(overrides?: Partial<L1ToL2Deps>): L1ToL2Deps {
     l2ReceiptPoller: mockReceiptPoller(),
     messageRepository: mockMessageRepository(),
     calldataDecoder: mockCalldataDecoder(),
-    transactionSigner: mockTransactionSigner(),
+    transactionValidationService: mockTransactionValidationService(),
+    transactionSizeCalculator: mockL2ClaimTransactionSizeCalculator(),
     sponsorshipMetricsUpdater: mockSponsorshipMetricsUpdater(),
     transactionMetricsUpdater: mockTransactionMetricsUpdater(),
     errorParser: mockErrorParser(),
@@ -179,6 +181,7 @@ export function buildL2ToL1Deps(overrides?: Partial<L2ToL1Deps>): L2ToL1Deps {
     l1ReceiptPoller: mockReceiptPoller(),
     messageRepository: mockMessageRepository(),
     l1GasProvider: mockEthereumGasProvider(),
+    transactionValidationService: mockTransactionValidationService(),
     calldataDecoder: mockCalldataDecoder(),
     sponsorshipMetricsUpdater: mockSponsorshipMetricsUpdater(),
     transactionMetricsUpdater: mockTransactionMetricsUpdater(),

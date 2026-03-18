@@ -41,6 +41,9 @@ export class PostmanApp {
   }
 
   public async start(): Promise<void> {
+    await this.db.initialize();
+    this.logger.info("Database initialized.");
+
     this.services = await buildPostmanServices(
       this.config,
       this.db,
@@ -48,9 +51,6 @@ export class PostmanApp {
       this.transactionMetricsUpdater,
       this.logger,
     );
-
-    await this.db.initialize();
-    this.logger.info("Database initialized.");
 
     await this.messageMetricsUpdater.initialize();
     this.db.subscribers.push(

@@ -138,6 +138,86 @@ describe("createChainContext", () => {
       expect(errorSpy).toHaveBeenCalled();
     });
 
+    it("should throw the original RPC error, not a wrapper", async () => {
+      const rpcError = new Error("connection refused");
+      const mockGetChainId = jest.fn().mockRejectedValue(rpcError);
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      await expect(createChainContext(rpcUrl, signerConfig, logger, { chainIdFetchDeadlineMs: 50 })).rejects.toBe(
+        rpcError,
+      );
+    });
+
+    it("should throw when deadline is 0 (no retries allowed)", async () => {
+      const mockGetChainId = jest.fn().mockRejectedValue(new Error("should not reach"));
+      const errorSpy = jest.spyOn(logger, "error");
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      await expect(createChainContext(rpcUrl, signerConfig, logger, { chainIdFetchDeadlineMs: 0 })).rejects.toThrow(
+        "Failed to fetch chainId within 0ms deadline",
+      );
+
+      expect(mockGetChainId).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it("should log the attempt count and elapsed time on final failure", async () => {
+      const error = new Error("unstable RPC");
+      const mockGetChainId = jest.fn().mockRejectedValue(error);
+      const errorSpy = jest.spyOn(logger, "error");
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      await expect(createChainContext(rpcUrl, signerConfig, logger, { chainIdFetchDeadlineMs: 100 })).rejects.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/Failed to fetch chainId after \d+ms \(\d+ attempts?\)/),
+        expect.objectContaining({ error }),
+      );
+    });
+
+    it("should break from the loop when getChainId itself takes longer than the deadline", async () => {
+      const error = new Error("slow RPC call");
+      const mockGetChainId = jest.fn().mockRejectedValue(error);
+      const warnSpy = jest.spyOn(logger, "warn");
+
+      (createPublicClient as jest.Mock).mockImplementation(() => ({
+        getChainId: mockGetChainId,
+      }));
+
+      const deadline = 500;
+      const realDateNow = Date.now.bind(Date);
+      const baseTime = realDateNow();
+      let callCount = 0;
+
+      jest.spyOn(Date, "now").mockImplementation(() => {
+        callCount++;
+        // Call 1 (startTime): t=0
+        // Call 2 (while condition): t=0 → enters loop
+        // Call 3 (catch elapsed): t=deadline → triggers break
+        // Call 4 (final elapsed log): t=deadline
+        if (callCount <= 2) return baseTime;
+        return baseTime + deadline;
+      });
+
+      await expect(createChainContext(rpcUrl, signerConfig, logger, { chainIdFetchDeadlineMs: deadline })).rejects.toBe(
+        error,
+      );
+
+      expect(mockGetChainId).toHaveBeenCalledTimes(1);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      jest.restoreAllMocks();
+    });
+
     it("should use the default deadline when options are not provided", async () => {
       (createPublicClient as jest.Mock).mockImplementation(() => ({
         getChainId: jest.fn().mockResolvedValue(MOCK_CHAIN_ID),

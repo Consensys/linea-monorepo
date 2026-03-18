@@ -14,10 +14,9 @@ import { ICalldataDecoder } from "../../../core/services/ICalldataDecoder";
 import { INonceManager } from "../../../core/services/INonceManager";
 import { IReceiptPoller } from "../../../core/services/IReceiptPoller";
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
-import { ITransactionSigner } from "../../../core/services/ITransactionSigner";
+import { ITransactionValidationService } from "../../../core/services/ITransactionValidationService";
 import { IPoller } from "../../../core/services/pollers/IPoller";
-import { L2ClaimTransactionSizeCalculator } from "../../../infrastructure/blockchain/L2ClaimTransactionSizeCalculator";
-import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
+import { IL2ClaimTransactionSizeCalculator } from "../../../core/services/processors/IL2ClaimTransactionSizeCalculator";
 import { IntervalPoller, MessageSentEventPoller } from "../../../services/pollers";
 import {
   L2ClaimMessageTransactionSizeProcessor,
@@ -25,6 +24,8 @@ import {
   MessageClaimingPersister,
   MessageClaimingProcessor,
   MessageSentEventProcessor,
+  ReceiptStatusResolver,
+  TransactionLifecycleManager,
 } from "../../../services/processors";
 
 export type L1ToL2Deps = {
@@ -37,7 +38,8 @@ export type L1ToL2Deps = {
   l2ReceiptPoller: IReceiptPoller;
   messageRepository: IMessageRepository;
   calldataDecoder: ICalldataDecoder;
-  transactionSigner: ITransactionSigner;
+  transactionValidationService: ITransactionValidationService;
+  transactionSizeCalculator: IL2ClaimTransactionSizeCalculator;
   sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
   transactionMetricsUpdater: ITransactionMetricsUpdater;
   errorParser: IErrorParser;
@@ -60,7 +62,8 @@ export class L1ToL2App {
       l2ReceiptPoller,
       messageRepository,
       calldataDecoder,
-      transactionSigner,
+      transactionValidationService,
+      transactionSizeCalculator,
       sponsorshipMetricsUpdater,
       transactionMetricsUpdater,
       errorParser,
@@ -117,18 +120,6 @@ export class L1ToL2App {
       log("L2MessageAnchoringPoller"),
     );
 
-    const validationService = new LineaTransactionValidationService(
-      {
-        profitMargin: l2Config.claiming.profitMargin,
-        maxClaimGasLimit: l2Config.claiming.maxClaimGasLimit,
-        isPostmanSponsorshipEnabled: l2Config.claiming.isPostmanSponsorshipEnabled,
-        maxPostmanSponsorGasLimit: l2Config.claiming.maxPostmanSponsorGasLimit,
-      },
-      l2Provider,
-      l2MessageServiceClient,
-      log(`${LineaTransactionValidationService.name}`),
-    );
-
     const getNextMessageToClaim = () =>
       messageRepository.getFirstMessageToClaimOnL2(
         Direction.L1_TO_L2,
@@ -143,7 +134,7 @@ export class L1ToL2App {
       l2NonceManager,
       messageRepository,
       getNextMessageToClaim,
-      validationService,
+      transactionValidationService,
       errorParser,
       {
         direction: Direction.L1_TO_L2,
@@ -164,21 +155,39 @@ export class L1ToL2App {
       log("L2MessageClaimingPoller"),
     );
 
-    const claimingPersister = new MessageClaimingPersister(
-      messageRepository,
+    const transactionLifecycleManager = new TransactionLifecycleManager(
       l2MessageServiceClient,
-      sponsorshipMetricsUpdater,
-      transactionMetricsUpdater,
       l2Provider,
       l2TransactionRetrier,
       l2ReceiptPoller,
+      messageRepository,
+      {
+        receiptPollingTimeout: l2Config.claiming.messageSubmissionTimeout,
+        receiptPollingInterval: l2Config.listener.receiptPollingInterval,
+      },
+      log(`L2${TransactionLifecycleManager.name}`),
+    );
+
+    const receiptStatusResolver = new ReceiptStatusResolver(
+      messageRepository,
+      l2MessageServiceClient,
+      l2Provider,
+      sponsorshipMetricsUpdater,
+      transactionMetricsUpdater,
+      { direction: Direction.L1_TO_L2 },
+      log(`L2${ReceiptStatusResolver.name}`),
+    );
+
+    const claimingPersister = new MessageClaimingPersister(
+      messageRepository,
+      l2Provider,
+      transactionLifecycleManager,
+      receiptStatusResolver,
       {
         direction: Direction.L1_TO_L2,
         messageSubmissionTimeout: l2Config.claiming.messageSubmissionTimeout,
         maxBumpsPerCycle: l2Config.claiming.maxBumpsPerCycle,
         maxCycles: l2Config.claiming.maxRetryCycles,
-        receiptPollingTimeout: l2Config.claiming.messageSubmissionTimeout,
-        receiptPollingInterval: l2Config.listener.receiptPollingInterval,
       },
       log(`L2${MessageClaimingPersister.name}`),
     );
@@ -189,11 +198,10 @@ export class L1ToL2App {
       log("L2MessagePersistingPoller"),
     );
 
-    const sizeCalculator = new L2ClaimTransactionSizeCalculator(l2MessageServiceClient, transactionSigner);
     const sizeProcessor = new L2ClaimMessageTransactionSizeProcessor(
       messageRepository,
       l2MessageServiceClient,
-      sizeCalculator,
+      transactionSizeCalculator,
       { direction: Direction.L1_TO_L2, originContractAddress: l1Config.messageServiceContractAddress },
       log(`${L2ClaimMessageTransactionSizeProcessor.name}`),
       errorParser,

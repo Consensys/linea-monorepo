@@ -12,23 +12,25 @@ async function getChainId(client: PublicClient, logger: ILogger, deadlineMs: num
   const baseDelayMs = 1_000;
   const startTime = Date.now();
   let attempt = 0;
-  let elapsed = 0;
+  let lastError: unknown;
 
-  do {
+  while (Date.now() - startTime < deadlineMs) {
     try {
       return await client.getChainId();
     } catch (error) {
+      lastError = error;
       attempt++;
-      elapsed = Date.now() - startTime;
-      if (elapsed >= deadlineMs) {
-        logger.error(`Failed to fetch chainId after ${elapsed}ms (${attempt} attempts)`, { error });
-        throw error;
-      }
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= deadlineMs) break;
       const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), deadlineMs - elapsed);
       logger.warn(`Failed to fetch chainId, retrying in ${delay}ms (attempt ${attempt})`, { error });
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-  } while (elapsed < deadlineMs);
+  }
+
+  const elapsed = Date.now() - startTime;
+  logger.error(`Failed to fetch chainId after ${elapsed}ms (${attempt} attempts)`, { error: lastError });
+  throw lastError ?? new Error(`Failed to fetch chainId within ${deadlineMs}ms deadline`);
 }
 
 export type ChainContextOptions = {
