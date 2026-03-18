@@ -252,13 +252,20 @@ func (run *ProverRuntime) ExtractProof() Proof {
 			continue
 		}
 		messageValue := run.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
+		// Deep-copy the column name so the map key is a heap-allocated
+		// string independent of any mmap-backed buffer. Without this,
+		// the key's backing bytes may live in a circuit mmap region that
+		// gets released before the proof is consumed by conglomeration.
+		heapName := ifaces.ColID(string([]byte(name)))
+		messages.InsertNew(heapName, messageValue)
 	}
 
 	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
 	for round := 0; round <= run.currRound; round++ {
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
-			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+			// Deep-copy query name for same reason as column names above.
+			heapName := ifaces.QueryID(string([]byte(name)))
+			queriesParams.InsertNew(heapName, run.QueriesParams.MustGet(name))
 		}
 	}
 

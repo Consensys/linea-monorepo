@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"strconv"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -88,8 +90,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Final Conglomeration outcome
 	type congResult struct {
-		proof *distributed.SegmentProof
-		err   error
+		proof   *distributed.SegmentProof
+		err     error
+		congBuf *serde.MmapBackedBuffer // mmap buffer holding the conglomeration circuit
 	}
 
 	var (
@@ -111,21 +114,32 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		var err error
-		cong, err = zkevm.LoadCompiledConglomeration(cfg)
+		var (
+			err     error
+			congBuf *serde.MmapBackedBuffer
+		)
+		cong, congBuf, err = zkevm.LoadCompiledConglomerationMmap(cfg)
 		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
 		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs, plog)
-		resultCh <- congResult{proof: proof, err: err}
+		resultCh <- congResult{proof: proof, err: err, congBuf: congBuf}
 	}()
 
 	// -- 3. Launch GL proof jobs, sending each result to proofStream
 	glPhaseStart := plog.phaseStart("GL")
 	glErrGroup.SetLimit(numConcurrentSubProverJobs)
 
+	// Create ordered witness indices: descending order for longest-first scheduling
+	// This ensures larger jobs run first, improving pipeline utilization and reducing tail idle
+	glOrder := make([]int, numGL)
 	for i := 0; i < numGL; i++ {
+		glOrder[i] = numGL - 1 - i // Reverse order: [13,12,11,...,0]
+	}
+	plog.jobOrder("GL", glOrder)
+
+	for _, i := range glOrder {
 		i := i // local copy for closure
 		glErrGroup.Go(func() error {
 			// If the overall context is done, exit early
@@ -202,16 +216,47 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return nil, fmt.Errorf("GL error: %w", err)
 	}
 	plog.phaseEnd("GL", glPhaseStart)
+	plog.flush()
 
-	var (
-		//--4. Compute shared randomness after GL proofs succeeded
-		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
-	)
+	// -- 4. Compute shared randomness FIRST (while proofGLs is still valid)
+	sharedRandomness := distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
+
+	// Release proofGLs references — proofs were already sent to proofStream
+	// for conglomeration; this array is the only remaining reference from this goroutine.
+	for i := range proofGLs {
+		proofGLs[i] = nil
+	}
+	proofGLs = nil
+
+	// GC between GL and LPP phases to reclaim GL transient heap allocations.
+	// With mmap-backed circuit/witness loading, compiled circuits are already released
+	// via Munmap in RunGL. This GC targets remaining proving transients.
+	var memBefore runtime.MemStats
+	runtime.ReadMemStats(&memBefore)
+	heapBefore := float64(memBefore.HeapAlloc) / (1 << 30)
+	gcStart := time.Now()
+
+	runtime.GC()
+	debug.FreeOSMemory()
+
+	gcEnd := time.Now()
+	var memAfter runtime.MemStats
+	runtime.ReadMemStats(&memAfter)
+	heapAfter := float64(memAfter.HeapAlloc) / (1 << 30)
+	plog.gcStats(gcStart, gcEnd, heapBefore, heapAfter)
 
 	// -- 5. Launch LPP proof jobs, streaming each proof to pipeline
 	lppPhaseStart := plog.phaseStart("LPP")
 	lppErrGroup.SetLimit(numConcurrentSubProverJobs)
+
+	// Create ordered witness indices: descending order for longest-first scheduling
+	lppOrder := make([]int, numLPP)
 	for i := 0; i < numLPP; i++ {
+		lppOrder[i] = numLPP - 1 - i // Reverse order: [13,12,11,...,0]
+	}
+	plog.jobOrder("LPP", lppOrder)
+
+	for _, i := range lppOrder {
 		i := i
 		lppErrGroup.Go(func() error {
 			select {
@@ -279,6 +324,13 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return nil, fmt.Errorf("LPP error: %w", err)
 	}
 	plog.phaseEnd("LPP", lppPhaseStart)
+	plog.flush()
+
+	// Post-LPP GC: all compiled circuits were Munmap'd inside RunLPP, but proving
+	// transients remain on the Go heap. Reclaim before the conglo sequential tail
+	// so the 15+ serial merges run with lower memory pressure.
+	runtime.GC()
+	debug.FreeOSMemory()
 
 	// All producers finished successfully: close the proofStream so aggregator can finish
 	close(proofStream)
@@ -326,6 +378,11 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	)
 
 	plog.phaseEnd("outer_proof", outerStart)
+
+	// Release the conglomeration circuit mmap buffer now that MakeProof is done.
+	// cong.RecursionCompBLS pointed into this buffer.
+	cong = nil
+	res.congBuf.Release()
 
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 
@@ -483,72 +540,101 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 	return len(witnessGLs), len(witnessLPPs)
 }
 
-// RunGL runs the GL prover for the provided witness index
+// RunGL runs the GL prover for the provided witness index.
+// The circuit mmap buffer is released immediately after proving because
+// ExtractProof deep-copies all string map keys (column/query names), so
+// the proof no longer references the circuit mmap region.
 func RunGL(cfg *config.Config, witnessIndex int, plog *perfLogger) (proofGL *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
 
 	ioStart := plog.jobStart("GL_io", witnessIndex)
 
+	// Load witness into mmap-backed buffer for explicit memory release
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
-	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	witnessBuf, err := serde.LoadFromDiskMmapBacked(witnessFilePath, witness)
 	if err != nil {
 		return nil, err
 	}
-	defer closer.Close()
 
-	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	// Capture module name as a heap-allocated copy before mmap release
+	// (the original string bytes live in the mmap buffer)
+	moduleName := string([]byte(witness.ModuleName))
 
-	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, moduleName)
+
+	// Load compiled GL into mmap-backed buffer for explicit memory release
+	compiledGL, circBuf, err := zkevm.LoadCompiledGLMmap(cfg, witness.ModuleName)
 	if err != nil {
+		witnessBuf.Release()
 		return nil, fmt.Errorf("could not load compiled GL: %w", err)
 	}
 
-	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
-	plog.jobEnd("GL_io", witnessIndex, string(witness.ModuleName), ioStart)
+	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, moduleName)
+	plog.jobEnd("GL_io", witnessIndex, moduleName, ioStart)
 
 	proveStart := plog.jobStart("GL_prove", witnessIndex)
 	_proofGL := compiledGL.ProveSegmentKoala(witness).ClearRuntime()
-	plog.jobEnd("GL_prove", witnessIndex, string(witness.ModuleName), proveStart)
+	plog.jobEnd("GL_prove", witnessIndex, moduleName, proveStart)
 
-	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	// Release both mmap buffers immediately. The proof's RecursionWitness
+	// map keys (column/query names) have been deep-copied by ExtractProof,
+	// so nothing in the proof references the circuit mmap anymore.
+	compiledGL = nil
+	witness = nil
+	witnessBuf.Release()
+	circBuf.Release()
+
+	logrus.Infof("Finished GL-prover for witness index=%v, module=%v (witness+circuit released)", witnessIndex, moduleName)
 
 	return _proofGL, nil
 }
 
-// RunLPP runs the LPP prover for the provided witness index
+// RunLPP runs the LPP prover for the provided witness index.
+// Same immediate-release semantics as RunGL — see RunGL doc comment.
 func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet, plog *perfLogger) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
 	ioStart := plog.jobStart("LPP_io", witnessIndex)
 
+	// Load witness into mmap-backed buffer for explicit memory release
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
-	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	witnessBuf, err := serde.LoadFromDiskMmapBacked(witnessFilePath, witness)
 	if err != nil {
 		return nil, err
 	}
-	defer closer.Close()
 
 	witness.InitialFiatShamirState = sharedRandomness
 
-	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	// Capture module name as a heap-allocated copy before mmap release
+	moduleName := string([]byte(witness.ModuleName))
 
-	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witness.ModuleName)
+	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, moduleName)
+
+	// Load compiled LPP into mmap-backed buffer for explicit memory release
+	compiledLPP, circBuf, err := zkevm.LoadCompiledLPPMmap(cfg, witness.ModuleName)
 	if err != nil {
+		witnessBuf.Release()
 		return nil, fmt.Errorf("could not load compiled LPP: %w", err)
 	}
 
-	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
-	plog.jobEnd("LPP_io", witnessIndex, string(witness.ModuleName), ioStart)
+	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, moduleName)
+	plog.jobEnd("LPP_io", witnessIndex, moduleName, ioStart)
 
 	proveStart := plog.jobStart("LPP_prove", witnessIndex)
 	_proofLPP := compiledLPP.ProveSegmentKoala(witness).ClearRuntime()
-	plog.jobEnd("LPP_prove", witnessIndex, string(witness.ModuleName), proveStart)
+	plog.jobEnd("LPP_prove", witnessIndex, moduleName, proveStart)
 
-	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
+	// Release both mmap buffers immediately — see RunGL doc comment.
+	compiledLPP = nil
+	witness = nil
+	witnessBuf.Release()
+	circBuf.Release()
+
+	logrus.Infof("Finished LPP-prover for witness index=%v, module=%v (witness+circuit released)", witnessIndex, moduleName)
 
 	return _proofLPP, nil
 }
@@ -565,7 +651,6 @@ func RunConglomerationHierarchical(ctx context.Context,
 	congPhaseStart := plog.phaseStart("conglomeration")
 	defer plog.phaseEnd("conglomeration", congPhaseStart)
 
-	// Stack is a slice for channel-based pairing logic
 	var stack []*distributed.SegmentProof
 	proofsReceived := 0
 	mergeCount := 0
@@ -575,9 +660,12 @@ func RunConglomerationHierarchical(ctx context.Context,
 		// First, aggregate while we have at least 2 items
 		for len(stack) >= 2 {
 
-			// _proof2 normally has already its runtime cleared
 			_proof1 := stack[len(stack)-1].ClearRuntime()
 			_proof2 := stack[len(stack)-2]
+			// Nil stack entries before truncating to prevent the underlying array
+			// from retaining references to consumed proofs (Go slice memory leak pattern)
+			stack[len(stack)-1] = nil
+			stack[len(stack)-2] = nil
 			stack = stack[:len(stack)-2]
 
 			isLastConglomeration := proofsReceived >= totalProofs && len(stack) == 0
@@ -613,11 +701,9 @@ func RunConglomerationHierarchical(ctx context.Context,
 
 		// If we've received all proofs and have exactly one on the stack -> done
 		if proofsReceived >= totalProofs {
-			// Last item is the final proof
 			if len(stack) == 1 {
 				logrus.Infoln("Successfully finished running conglomeration prover.")
 				finalProof := stack[0]
-				// Clear stack
 				stack = nil
 				return finalProof, nil
 			}
@@ -629,17 +715,15 @@ func RunConglomerationHierarchical(ctx context.Context,
 		case <-ctx.Done():
 			return nil, ctx.Err()
 
-		// Receive new proof from main proof stream
-		case p, ok := <-proofStream:
+		case proof, ok := <-proofStream:
 			if !ok {
-				// sender closed channel prematurely
 				if len(stack) == 1 {
 					return stack[0], nil
 				}
 				return nil, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
-			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", p.ProofType, p.ModuleIndex, p.SegmentIndex)
-			stack = append(stack, p)
+			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", proof.ProofType, proof.ModuleIndex, proof.SegmentIndex)
+			stack = append(stack, proof)
 			proofsReceived++
 		}
 	}

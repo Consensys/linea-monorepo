@@ -929,6 +929,42 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 	return res, nil
 }
 
+// LoadCompiledGLMmap loads the compiled GL into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
+// LoadCompiledLPPMmap loads the compiled LPP into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
 // LoadDebugGL loads the debug GL from disk
 func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.ModuleGL, error) {
 
@@ -981,6 +1017,24 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 	defer closer.Close()
 
 	return conglo, nil
+}
+
+// LoadCompiledConglomerationMmap loads the conglomeration assets into mmap-backed memory.
+// The caller must call buf.Release() when done, after nilling all references to conglo.
+func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, conglomerationFile)
+		conglo   = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, conglo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conglo, buf, nil
 }
 
 func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {
