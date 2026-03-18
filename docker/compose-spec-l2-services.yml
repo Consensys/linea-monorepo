@@ -162,7 +162,7 @@ services:
       - --plugin-shomei-enable-zktracer=true
       
       # from tracer besu node
-      - --plugin-linea-conflated-trace-generation-traces-output-path="/data/traces/v2/conflated"
+      - --plugin-linea-conflated-trace-generation-traces-output-path=/data/traces/v2/conflated
       - --plugin-linea-rpc-concurrent-requests-limit=2
       - --plugin-linea-tracer-readiness-server-host="0.0.0.0"
       - --plugin-linea-tracer-readiness-server-port=8548
