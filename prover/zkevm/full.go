@@ -80,7 +80,7 @@ var (
 	// This is the compilation suite in use for the full prover
 	fullInitialCompilationSuite = CompilationSuite{
 		logdata.Log("initial-wizard"),
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
@@ -99,7 +99,7 @@ var (
 		selfrecursion.SelfRecurse,
 		logdata.Log("pre-recursion.post-selfrecursion-1"),
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
@@ -116,7 +116,7 @@ var (
 		selfrecursion.SelfRecurse,
 		logdata.Log("pre-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
@@ -133,7 +133,7 @@ var (
 		selfrecursion.SelfRecurse,
 		logdata.Log("pre-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
 			compiler.WithStitcherMinSize(16),
@@ -154,7 +154,7 @@ var (
 	// recursion step.
 	fullSecondCompilationSuite = CompilationSuite{
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<22),
 			compiler.WithStitcherMinSize(16),
@@ -171,7 +171,7 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("post-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
@@ -188,7 +188,7 @@ var (
 		selfrecursion.SelfRecurse,
 		// logdata.Log("post-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),

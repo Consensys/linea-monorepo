@@ -215,7 +215,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 
 	comp := wizard.Compile(
 		sbc.Define,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
@@ -233,7 +233,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
@@ -249,7 +249,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(t3),
 			compiler.WithStitcherMinSize(16),
@@ -265,7 +265,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 	selfrecursion.SelfRecurse(comp)
 	_ = wizard.ContinueCompilation(comp,
 		cleanup.CleanUp,
-		poseidon2.CompileGKRPoseidon2,
+		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(t4),
 			compiler.WithStitcherMinSize(16),
