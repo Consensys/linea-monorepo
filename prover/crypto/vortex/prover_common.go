@@ -1,11 +1,13 @@
 package vortex
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -16,24 +18,24 @@ type OpeningProof struct {
 	// of the j-th selected column of the i-th commitment
 	Columns [][][]field.Element
 
-	// Linear combination of the Reed-Solomon encoded polynomials to open.
-	LinearCombination smartvectors.SmartVector
+	// LinearCombination holds the T monomial coefficients of ∑ᵢ alpha^i * p_i,
+	// where p_i are the original (pre-encoding) polynomials.
+	LinearCombination []fext.Element
 }
 
-// Let x := randomCoin
-// computes ∑ᵢxⁱ * v[i]
-// n is the size of each vector v[i]
+// LinearCombination computes ∑ᵢ randomCoin^i * v[i] directly in the T-length
+// polynomial domain and converts the result to T monomial coefficients via a
+// T-length iFFT (using rsParams.PolyDomain). The input vectors v[i] must be
+// the original polynomials in Lagrange basis (length T = rsParams.NbColumns()),
+// NOT the RS-encoded codewords.
 //
-// TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
-func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
+// This avoids all N-length work: the linear combination runs over T instead of
+// N entries, and the iFFT is O(T log T) instead of O(N log N).
+func LinearCombination(proof *OpeningProof, rsParams *reedsolomon.RsParams, v []smartvectors.SmartVector, randomCoin fext.Element) {
 
-	if len(v) == 0 {
-		utils.Panic("attempted to open an empty witness")
-	}
-
-	n := v[0].Len()
-	linComb := make([]fext.Element, n)
-	parallel.Execute(len(linComb), func(start, stop int) {
+	t := rsParams.NbColumns()
+	linComb := make([]fext.Element, t)
+	parallel.Execute(t, func(start, stop int) {
 
 		x := fext.One()
 		scratch := make(vectorext.Vector, stop-start)
@@ -63,10 +65,13 @@ func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, random
 			scratch.ScalarMul(scratch, &x)
 			localLinComb.Add(localLinComb, scratch)
 			x.Mul(&x, &randomCoin)
-
 		}
 		copy(linComb[start:stop], localLinComb)
 	})
 
-	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
+	// T-length iFFT: Lagrange evaluations over the standard T-point NTT domain
+	// → monomial coefficients.
+	rsParams.PolyDomain.FFTInverseExt(linComb, fft.DIF, fft.WithNbTasks(1))
+	utils.BitReverse(linComb)
+	proof.LinearCombination = linComb
 }

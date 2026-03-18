@@ -1,6 +1,7 @@
 package vortex_koalabear
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -10,17 +11,20 @@ import (
 )
 
 func Prove(
+	rsParams *reedsolomon.RsParams,
 	entryList []int,
+	polyLists [][]smartvectors.SmartVector,
 	encodedMatrices []EncodedMatrix,
 	trees []*smt_koalabear.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_koalabear.Proof) {
 
 	proof := &vortex.OpeningProof{}
 
-	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
-	for _, m := range encodedMatrices {
-		_encodedMatrices = append(_encodedMatrices, m...)
+	// Flatten original T-length polynomials for the linear combination.
+	polys := make([]smartvectors.SmartVector, 0, len(polyLists))
+	for _, pl := range polyLists {
+		polys = append(polys, pl...)
 	}
-	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+	vortex.LinearCombination(proof, rsParams, polys, alpha)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 

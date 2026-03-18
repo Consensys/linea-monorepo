@@ -131,7 +131,7 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
+	proof.LinearCombination = run.GetColumn(ctx.LinCombName()).(*smartvectors.RegularExt).IntoRegVecSaveAllocExt()
 
 	// Collect the random entry List and the random coin
 	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
@@ -233,7 +233,7 @@ func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
 	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
+	proof.LinearCombination = run.GetColumn(ctx.LinCombName()).(*smartvectors.RegularExt).IntoRegVecSaveAllocExt()
 
 	// Collect the random entry List and the random coin
 	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())

@@ -132,50 +132,9 @@ registration entirely, saving one full copy of the split-column data.
 
 ---
 
-## Optimization 4: Skip Precomputed Merkle Proof
+## Optimization 4: Reduce Merkle Tree Rounds 
 
-**Option:** `SkipPrecomputedMerkleProof()`
-
-### Why the precomputed Merkle proof is redundant
-
-For **committed** columns the Merkle proof is essential: without it the prover could supply
-a fabricated `selectedCol[j]` that satisfies the linear-combination check but does not
-correspond to the committed codeword.
-
-For **precomputed** columns the situation is different:
-
-| Column type | Can prover fake `selectedCol`? | Merkle proof needed? |
-|---|---|---|
-| Committed | Yes — by back-solving Y_i | **Yes** |
-| Precomputed | No — Y_precomp is verifier-computed | **No** |
-
-`ExplicitPolynomialEval` (in `verifier.go`) runs unconditionally at the last round and
-evaluates each precomputed polynomial directly at the challenge point x, pinning `Y_precomp`
-to a fixed verifier-computed value. The Schwartz-Zippel check then enforces consistency
-with `selectedCol_precomp`. Since `Y_precomp` is independent of the prover, the Merkle path
-adds no additional security and can be dropped.
-
-### MerkleProofSize formula
-
-```
-MerkleProofSize = NextPowerOfTwo(K × numRounds × depth) × 8
-```
-
-where `depth = log₂(codewordSize)`, K = number of opened columns, and `numRounds` counts
-only committed rounds (precomputed round excluded when `SkipPrecomputedMerkleProof` is set).
-
-### Why the saving is binary
-
-The saving only materialises when removing the precomputed round crosses a `NextPowerOfTwo`
-boundary downward. With the current parameters (K=64, 7 committed rounds, depth=17):
-
-| Rounds | K × rounds × depth | NextPow2 | Cells |
-|---|---|---|---|
-| 8 (with precomp) | 64 × 8 × 17 = 8,704 | 16,384 | 16,384 × 8 = **131,072** |
-| 7 (skip precomp) | 64 × 7 × 17 = 7,616 | 8,192 | 8,192 × 8 = **65,536** |
-| **Saving** | | | **65,536 cells (262,144 bytes)** |
-
-At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(codeword)=17), 7,616 is below 8,192 and 8,704 above, so the optimization halved the merkle proof cells.
+TODO
 
 ---
 

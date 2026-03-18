@@ -14,6 +14,11 @@ type RsParams struct {
 	// Domain[0] for FFT^-1, Domain[1] for FFT
 	Domains [2]*fft.Domain
 
+	// PolyDomain is the standard T-point NTT domain (no coset shift).
+	// It is used to convert T Lagrange evaluations of the original polynomial
+	// directly into T monomial coefficients, avoiding any N-length work.
+	PolyDomain *fft.Domain
+
 	// Coset table Domain[0], bit reversed
 	CosetTableBitReverse field.Vector
 
@@ -34,6 +39,7 @@ func NewRsParams(size, rate int) *RsParams {
 
 	res.Domains[0] = fft.NewDomain(uint64(size), fft.WithShift(shift))
 	res.Domains[1] = fft.NewDomain(uint64(rate * size))
+	res.PolyDomain = fft.NewDomain(uint64(size))
 
 	cosetTable, err := res.Domains[0].CosetTable()
 	// TODO @thomas fixme handle error
@@ -133,34 +139,13 @@ func (p *RsParams) ExtEvalToCoefficients(v smartvectors.SmartVector) smartvector
 // domain (ω_N^0, ω_N^1, ..., ω_N^{N-1}).  The returned slice has length N.
 //
 // It is cheaper than calling ExtCoefficientsEvalAt K times when K > blowup×log₂(N).
-func (p *RsParams) ExtCoefficientsToAllEvaluations(coefficients smartvectors.SmartVector) []fext.Element {
-	t := p.NbColumns()
+func (p *RsParams) ExtCoefficientsToAllEvaluations(coefficients []fext.Element) []fext.Element {
 	n := p.NbEncodedColumns()
 
 	buf := make([]fext.Element, n)
-	for k := 0; k < t; k++ {
-		buf[k] = coefficients.GetExt(k)
-	}
+	copy(buf, coefficients)
 	// DIT FFT expects bit-reversed input; natural-order evaluations come out.
 	utils.BitReverse(buf)
 	p.Domains[1].FFTExt(buf, fft.DIT, fft.WithNbTasks(1))
 	return buf
 }
-
-// ExtCoefficientsEvalAt evaluates the polynomial given by T coefficients at
-// an extension field point x using Horner's method.
-func ExtCoefficientsEvalAt(coefficients smartvectors.SmartVector, x fext.Element) fext.Element {
-	n := coefficients.Len()
-	if n == 0 {
-		return fext.Element{}
-	}
-	// Horner: result = c[n-1] + x*(c[n-2] + x*(...c[1] + x*c[0]...))
-	res := coefficients.GetExt(n - 1)
-	for i := n - 2; i >= 0; i-- {
-		res.Mul(&res, &x)
-		ci := coefficients.GetExt(i)
-		res.Add(&res, &ci)
-	}
-	return res
-}
-

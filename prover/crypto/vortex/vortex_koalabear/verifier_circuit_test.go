@@ -57,10 +57,10 @@ func TestGnarkVerifier(t *testing.T) {
 			}
 		}
 	}
-	circuit.Proof.LinearCombination = make([]koalagnark.Ext, proof.LinearCombination.Len())
-	witness.Proof.LinearCombination = make([]koalagnark.Ext, proof.LinearCombination.Len())
-	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		witness.Proof.LinearCombination[i] = koalagnark.NewExt(proof.LinearCombination.GetExt(i))
+	circuit.Proof.LinearCombination = make([]koalagnark.Ext, len(proof.LinearCombination))
+	witness.Proof.LinearCombination = make([]koalagnark.Ext, len(proof.LinearCombination))
+	for i := range proof.LinearCombination {
+		witness.Proof.LinearCombination[i] = koalagnark.NewExt(proof.LinearCombination[i])
 	}
 
 	witness.Vi.Alpha = koalagnark.NewExt(vi.Alpha)

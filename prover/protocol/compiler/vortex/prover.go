@@ -159,111 +159,113 @@ type LinearCombinationComputationProverAction struct {
 // we stack it on top of the No SIS round matrices if SIS is not used on it.
 func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime) {
 	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
+		polsSIS   = []smartvectors.SmartVector{}
+		polsNoSIS = []smartvectors.SmartVector{}
 	)
-	// Add the precomputed columns
+
+	// T = polynomial size (same for BLS and KoalaBear)
+	var t int
+	if !ctx.IsBLS {
+		t = ctx.VortexKoalaParams.RsParams.NbColumns()
+	} else {
+		t = ctx.VortexBLSParams.RsParams.NbColumns()
+	}
+
+	// Add original precomputed polynomials (T-length from run.Columns), preserving
+	// shadow (zero) rows so alpha-power positions match the encoded-matrix ordering.
 	if ctx.IsNonEmptyPrecomputed() {
 		var precomputedSV = []smartvectors.SmartVector{}
-		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
-
-		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
+		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
+			precomputedSV = append(precomputedSV, pr.Columns.MustGet(col.GetColID()))
+		}
+		numShadow := len(ctx.Items.Precomputeds.CommittedMatrix) - len(ctx.Items.Precomputeds.PrecomputedColums)
+		for i := 0; i < numShadow; i++ {
+			precomputedSV = append(precomputedSV, smartvectors.NewConstant(field.Zero(), t))
+		}
 		if ctx.IsSISAppliedToPrecomputed() {
-			committedSVSIS = append(committedSVSIS, precomputedSV...)
+			polsSIS = append(polsSIS, precomputedSV...)
 		} else {
-			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
+			polsNoSIS = append(polsNoSIS, precomputedSV...)
 		}
 	}
 
-	// Collect all the committed polynomials : round by round
+	// Collect original polynomials round by round (T-length Lagrange from run.Columns)
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
-
-		// Push pols to the right stack
+		pols := ctx.getPols(pr, round)
 		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-
+			polsNoSIS = append(polsNoSIS, pols...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+			polsSIS = append(polsSIS, pols...)
 		}
 	}
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
+	// Stack NoSIS before SIS (mirrors the encoded-matrix ordering used by column selection)
+	allPols := append(polsNoSIS, polsSIS...)
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
-	// and compute and assign the random linear combination of the rows
+	// Compute the linear combination directly in the T-length polynomial domain.
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-
-	// Ualpha is stored as T polynomial coefficients (iFFT of the codeword)
-	// for both KoalaBear and BLS12-377 modes.
-	var uAlpha smartvectors.SmartVector
 	if !ctx.IsBLS {
-		uAlpha = ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+		vortex.LinearCombination(proof, ctx.VortexKoalaParams.RsParams, allPols, randomCoinLC)
 	} else {
-		uAlpha = ctx.VortexBLSParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
+		vortex.LinearCombination(proof, ctx.VortexBLSParams.RsParams, allPols, randomCoinLC)
 	}
-	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), smartvectors.NewRegularExt(proof.LinearCombination))
 
 }
 
-// ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
-// the RS encoded matrix instead of using the basic one. It is slower than
-// the later but is recommended.
+// ComputeLinearCombFromRsMatrix computes the linear combination from the
+// original polynomials (T-length) instead of the RS-encoded matrices.
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 
+	t := ctx.VortexKoalaParams.RsParams.NbColumns()
+
 	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
+		polsSIS   = []smartvectors.SmartVector{}
+		polsNoSIS = []smartvectors.SmartVector{}
 	)
 
-	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
-	if ctx.IsSISAppliedToPrecomputed() {
-		committedSVSIS = append(committedSVSIS, ctx.Items.Precomputeds.CommittedMatrix...)
-	} else {
-		committedSVNoSIS = append(committedSVNoSIS, ctx.Items.Precomputeds.CommittedMatrix...)
+	// Add original precomputed polynomials, preserving shadow rows as zeros
+	numShadow := len(ctx.Items.Precomputeds.CommittedMatrix) - len(ctx.Items.Precomputeds.PrecomputedColums)
+	for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
+		if ctx.IsSISAppliedToPrecomputed() {
+			polsSIS = append(polsSIS, run.Columns.MustGet(col.GetColID()))
+		} else {
+			polsNoSIS = append(polsNoSIS, run.Columns.MustGet(col.GetColID()))
+		}
+	}
+	for i := 0; i < numShadow; i++ {
+		shadow := smartvectors.NewConstant(field.Zero(), t)
+		if ctx.IsSISAppliedToPrecomputed() {
+			polsSIS = append(polsSIS, shadow)
+		} else {
+			polsNoSIS = append(polsNoSIS, shadow)
+		}
 	}
 
-	// Collect all the committed polynomials : round by round
+	// Collect original polynomials round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to proceed.
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
-
-		// Push pols to the right stack
+		pols := ctx.getPols(run, round)
 		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+			polsNoSIS = append(polsNoSIS, pols...)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+			polsSIS = append(polsSIS, pols...)
 		}
 	}
+	allPols := append(polsNoSIS, polsSIS...)
 
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
-
-	// And get the randomness
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
-	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-
-	uAlpha := ctx.VortexKoalaParams.RsParams.ExtEvalToCoefficients(proof.LinearCombination)
-	run.AssignColumn(ctx.Items.Ualpha.GetColID(), uAlpha)
+	vortex.LinearCombination(proof, ctx.VortexKoalaParams.RsParams, allPols, randomCoinLC)
+	run.AssignColumn(ctx.Items.Ualpha.GetColID(), smartvectors.NewRegularExt(proof.LinearCombination))
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
