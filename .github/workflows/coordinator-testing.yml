@@ -38,7 +38,7 @@ jobs:
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
         with:
-          java-version: '21'
+          java-version: '25'
       # Install pnpm to compile smart contracts
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs

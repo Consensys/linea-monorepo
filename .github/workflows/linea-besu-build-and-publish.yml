@@ -24,7 +24,7 @@ jobs:
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
         with:
-          java-version: '21'
+          java-version: '25'
       
       - name: Build besu from source and publish to maven including Cloudsmith
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PpublishToMaven=true
