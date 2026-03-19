@@ -170,7 +170,7 @@ task jacocoRootReport(type: JacocoReport) {
     xml.required = true
     // xml.enabled = true FIXME: deprecated, breaking latest versions of gradle.
     csv.required = true
-    html.destination file("build/reports/jacocoHtml")
+    html.outputLocation = file("build/reports/jacocoHtml")
   }
   onlyIf = { true }
 }
