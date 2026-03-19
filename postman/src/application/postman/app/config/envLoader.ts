@@ -1,5 +1,3 @@
-import { transports } from "winston";
-
 import { PostmanOptions } from "./config";
 import { SignerConfig } from "../../../../infrastructure/blockchain/viem/signers/SignerConfig";
 
@@ -127,7 +125,6 @@ export function loadPostmanOptionsFromEnv(): PostmanOptions {
     l2L1AutoClaimEnabled: process.env.L2_L1_AUTO_CLAIM_ENABLED === "true",
     loggerOptions: {
       level: process.env.LOG_LEVEL ?? "info",
-      transports: [new transports.Console()],
     },
     databaseOptions: {
       type: "postgres",
