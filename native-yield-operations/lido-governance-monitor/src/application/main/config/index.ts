@@ -6,6 +6,14 @@ import { z } from "zod";
 // Validation helpers that reject empty/whitespace-only strings
 const NonEmptyString = (message: string) => z.string().trim().min(1, message);
 const NonEmptyUrl = (message: string) => z.string().trim().url(message);
+const parseSafePositiveInteger = (value: string) => {
+  if (!/^\d+$/.test(value)) {
+    return Number.NaN;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isSafeInteger(parsedValue) ? parsedValue : Number.NaN;
+};
 
 // Validates and normalizes an Ethereum address to checksummed form
 const Address = z
@@ -84,9 +92,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
-      proposalDetailsDelayMs: /^\d+$/.test(discourseProposalDetailsDelayMs)
-        ? Number(discourseProposalDetailsDelayMs)
-        : Number.NaN,
+      proposalDetailsDelayMs: parseSafePositiveInteger(discourseProposalDetailsDelayMs),
       maxTopicsPerPoll: parseInt(env.MAX_TOPICS_PER_POLL ?? "20", 10),
     },
     anthropic: {
