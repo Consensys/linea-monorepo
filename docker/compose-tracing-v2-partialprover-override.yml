@@ -44,8 +44,3 @@ services:
             --gas-price-cap-time-of-day-multipliers config/gas-price-cap-time-of-day-multipliers.toml \
             config/coordinator-config.toml
         fi
-  
-  l2-node-besu:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: l2-node-besu
