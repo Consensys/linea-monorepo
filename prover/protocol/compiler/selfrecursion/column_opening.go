@@ -28,14 +28,7 @@ import (
 
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
-	// When SkipSelfRecursionProofCols is set, the opened column values are
-	// not included as wizard proof columns — they are verified entirely by
-	// the gnark recursion circuit (AllocRecursionCircuit). The wizard-level
-	// column-opening verification chain (LinearHashAndMerkle, CollapsingPhase,
-	// etc.) cannot run because it depends on those missing proof columns.
-	if ctx.VortexCtx.SkipSelfRecursionProofCols {
-		return
-	}
+
 	// Registers the limb expanded version of the preimages
 	ctx.ColSelection()
 	ctx.LinearHashAndMerkle()

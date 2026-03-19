@@ -178,7 +178,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// (same domain as the input polys). Convert to T monomial coefficients via
 	// the T-point inverse FFT.
 	var uAlpha smartvectors.SmartVector
-	if !ctx.IsBLS {
+	if (!ctx.IsBLS) {
 		uAlpha = ctx.VortexKoalaParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 	} else {
 		uAlpha = ctx.VortexBLSParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
@@ -323,26 +323,36 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	}
 	selectedCols := proof.Columns
 
-	// Assign the opened columns
+	// Assign the opened columns.
+	// In pure SIS/non-SIS cases, OpenedColumns shares the same column objects
+	// as OpenedSISColumns/OpenedNonSISColumns, so we only assign once.
 	ctx.assignOpenedColumns(run, entryList, selectedCols, NonSelfRecursion)
 
-	// Assign the SIS and non-SIS selected columns.
-	// They are only needed by a subsequent SelfRecurse step; skip if suppressed.
-	if !ctx.SkipSelfRecursionProofCols {
-		// Handle SIS round
+	// Assign the SIS and non-SIS selected columns separately only in mixed case.
+	// In pure cases, the assignment above already handled it since the columns are shared.
+	if !ctx.IsPureSIS && !ctx.IsPureNonSIS {
+		// Mixed case: need separate assignments for SIS and non-SIS columns
 		if len(committedMatricesSIS) > 0 {
 			vortex_koalabear.SelectColumnsAndMerkleProofs(&sisProof, entryList, committedMatricesSIS, treesSIS)
 			sisSelectedCols := sisProof.Columns
 			ctx.assignOpenedColumns(run, entryList, sisSelectedCols, SelfRecursionSIS)
 		}
-		// Handle non SIS round
 		if len(committedMatricesNoSIS) > 0 {
 			vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
 			nonSisSelectedCols := nonSisProof.Columns
 			ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 			ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
 		}
+	} else if ctx.IsPureNonSIS {
+		// Pure non-SIS case: store for self-recursion (columns already assigned above)
+		if len(committedMatricesNoSIS) > 0 {
+			vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
+			nonSisSelectedCols := nonSisProof.Columns
+			ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
+		}
 	}
+	// Pure SIS case: no additional action needed - columns already assigned above
+	// since OpenedColumns and OpenedSISColumns point to the same column objects.
 }
 
 // returns the list of all committed smartvectors for the given round

@@ -71,16 +71,3 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 		}{Enabled: true, Name: name}
 	}
 }
-
-// SkipSelfRecursionProofColumns suppresses the registration of the
-// OpenedSISColumns and OpenedNonSISColumns proof columns. These are needed
-// only when a SelfRecurse step will follow this Vortex compilation. Passing
-// this option to the outermost / final Vortex (where no further self-recursion
-// occurs) eliminates dead-weight proof cells: the verifier never reads these
-// columns, yet the prover would otherwise pay K × NextPowerOfTwo(rows) cells.
-func SkipSelfRecursionProofColumns() VortexOp {
-	return func(ctx *Ctx) {
-		ctx.SkipSelfRecursionProofCols = true
-	}
-}
-

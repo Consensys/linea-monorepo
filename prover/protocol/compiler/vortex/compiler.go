@@ -259,7 +259,10 @@ type Ctx struct {
 		Ualpha ifaces.Column
 		// Random column selection
 		Q coin.Info
-		// Opened columns, to be used in the Vortex compilation
+		// Opened columns, to be used in the Vortex compilation.
+		// In pure SIS case, this points to OpenedSISColumns.
+		// In pure non-SIS case, this points to OpenedNonSISColumns.
+		// In mixed case, this is a separate set of columns.
 		OpenedColumns []ifaces.Column
 		// Opened SIS columns, to be used in the Self recursion compilation
 		OpenedSISColumns []ifaces.Column
@@ -283,14 +286,13 @@ type Ctx struct {
 	// full-recursion compiler.
 	IsSelfrecursed bool
 
-	// SkipSelfRecursionProofCols suppresses registration of the
-	// OpenedSISColumns and OpenedNonSISColumns proof columns. These columns
-	// exist solely so that a subsequent SelfRecurse step can read them. When
-	// the Vortex compilation is the final step (no further self-recursion),
-	// they are dead weight: the prover fills them and no verifier ever reads
-	// them. Setting this flag when compiling the outermost / final Vortex
-	// saves K × NextPowerOfTwo(CommittedRowsCount) proof cells.
-	SkipSelfRecursionProofCols bool
+	// IsPureSIS indicates that all committed rows use SIS hashing (no non-SIS rounds).
+	// When true, OpenedColumns points directly to OpenedSISColumns to avoid duplication.
+	IsPureSIS bool
+
+	// IsPureNonSIS indicates that all committed rows use non-SIS (Poseidon2 only) hashing.
+	// When true, OpenedColumns points directly to OpenedNonSISColumns to avoid duplication.
+	IsPureNonSIS bool
 
 	// Additional options that tells the compiler to add a merkle root to the
 	// public inputs of the comp. This is useful for the distributed prover.
@@ -686,7 +688,43 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	numRows := utils.NextPowerOfTwo(ctx.CommittedRowsCount)
 	numRowsSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCountSIS)
 	numRowsNonSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCount - ctx.CommittedRowsCountSIS)
+
+	// Determine if we have a pure SIS or pure non-SIS case (no mixing).
+	// In practice, this is always true - each Vortex context has either all SIS
+	// or all non-SIS rounds, never both. This allows us to avoid duplicate columns.
+	ctx.IsPureSIS = numRowsSIS != 0 && numRowsNonSIS == 0
+	ctx.IsPureNonSIS = numRowsSIS == 0 && numRowsNonSIS != 0
+
 	for col := 0; col < ctx.NbColsToOpen(); col++ {
+		// Handle pure SIS case: SELECTED_COL_SIS is the same as SELECTED_COL
+		if ctx.IsPureSIS {
+			openedColSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColSISName(col),
+				numRowsSIS,
+				true,
+			)
+			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+			// Reuse SELECTED_COL_SIS as OpenedColumns (no separate SELECTED_COL needed)
+			ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedColSIS)
+			continue
+		}
+
+		// Handle pure non-SIS case: SELECTED_COL_NON_SIS is the same as SELECTED_COL
+		if ctx.IsPureNonSIS {
+			openedColNonSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColNonSISName(col),
+				numRowsNonSIS,
+				true,
+			)
+			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+			// Reuse SELECTED_COL_NON_SIS as OpenedColumns (no separate SELECTED_COL needed)
+			ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedColNonSIS)
+			continue
+		}
+
+		// Mixed case: register SELECTED_COL separately
 		openedCol := ctx.Comp.InsertProof(
 			lastRound+2,
 			ctx.SelectedColName(col),
@@ -694,27 +732,25 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
-		// These columns are only consumed by a subsequent SelfRecurse step.
-		// When this Vortex is the final compilation step, they are dead weight.
-		if !ctx.SkipSelfRecursionProofCols {
-			if numRowsSIS != 0 {
-				openedColSIS := ctx.Comp.InsertProof(
-					lastRound+2,
-					ctx.SelectedColSISName(col),
-					numRowsSIS,
-					true,
-				)
-				ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
-			}
-			if numRowsNonSIS != 0 {
-				openedColNonSIS := ctx.Comp.InsertProof(
-					lastRound+2,
-					ctx.SelectedColNonSISName(col),
-					numRowsNonSIS,
-					true,
-				)
-				ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
-			}
+
+		// Register SIS/non-SIS columns only in mixed case
+		if numRowsSIS != 0 {
+			openedColSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColSISName(col),
+				numRowsSIS,
+				true,
+			)
+			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+		}
+		if numRowsNonSIS != 0 {
+			openedColNonSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColNonSISName(col),
+				numRowsNonSIS,
+				true,
+			)
+			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
 		}
 	}
 

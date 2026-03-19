@@ -362,20 +362,30 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		comp.Columns.SetStatus(opened.GetColID(), column.Committed)
 	}
 
-	// Mark the opened columns from the vortex context as Ignored
+	// Mark the opened columns from the vortex context as Ignored.
+	// In pure SIS/non-SIS cases, OpenedColumns shares the same column objects
+	// as OpenedSISColumns/OpenedNonSISColumns, so they may already be marked
+	// as Committed above. We only mark them as Ignored if they're still Proof.
 	for _, opened := range vortexCtx.Items.OpenedColumns {
-		// Assume that the opened columns have a `Proof` status
-		if comp.Columns.Status(opened.GetColID()) != column.Proof {
+		status := comp.Columns.Status(opened.GetColID())
+		// In pure SIS/non-SIS cases, the column was already set to Committed above
+		// since OpenedColumns points to the same columns as OpenedSISColumns/OpenedNonSISColumns.
+		// In mixed case, it should still be Proof and we mark it as Ignored.
+		if status == column.Proof {
+			comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+		} else if status != column.Committed {
+			// Unexpected status - should be either Proof (mixed case) or Committed (pure case)
 			utils.Panic(
-				"Assumed the opened columns %v to be %v but status is %v (recursion context is %v)",
+				"Assumed the opened columns %v to be %v or %v but status is %v (recursion context is %v)",
 				opened.GetColID(),
 				column.Proof.String(),
-				comp.Columns.Status(opened.GetColID()),
+				column.Committed.String(),
+				status,
 				ctx.SelfRecursionCnt,
 			)
 		}
-		// Mark them as Ignored
-		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+		// If status is Committed (pure SIS/non-SIS case), leave it as Committed
+		// since self-recursion will use it via WholePreimagesSis/WholePreimagesNonSis
 	}
 
 	// And mark the merkle proof column as a Proof message

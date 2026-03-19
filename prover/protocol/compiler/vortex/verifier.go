@@ -343,9 +343,12 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 	)
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
+	// Use OpenedColumns directly since they may be named differently
+	// (SELECTED_COL, SELECTED_COL_SIS, or SELECTED_COL_NON_SIS) depending
+	// on whether we're in pure SIS, pure non-SIS, or mixed case.
 	fullSelectedCols := make([][]field.Element, len(entryList))
 	for j := range entryList {
-		fullSelectedCol := run.GetColumn(ctx.SelectedColName(j))
+		fullSelectedCol := run.GetColumn(ctx.Items.OpenedColumns[j].GetColID())
 		fullSelectedCols[j] = smartvectors.IntoRegVec(fullSelectedCol)
 	}
 

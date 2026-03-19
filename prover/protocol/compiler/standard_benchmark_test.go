@@ -281,8 +281,6 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 			vortex.PremarkAsSelfRecursed(),
-
-			vortex.SkipSelfRecursionProofColumns(),
 		),
 	)
 
