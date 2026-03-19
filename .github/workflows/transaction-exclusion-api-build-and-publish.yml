@@ -80,7 +80,19 @@ jobs:
         uses: ./.github/actions/setup-java-and-gradle
         with:
           distribution: temurin
+          java-version: 21
+
+      - name: Install JDK 25 for Java toolchains
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
           java-version: 25
+          distribution: temurin
+
+      - name: Restore JDK 21 as Gradle runtime JVM
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
 
       - name: Build besu from source 
         shell: bash
