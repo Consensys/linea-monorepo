@@ -27,6 +27,7 @@ describe("DiscourseFetcher", () => {
   let discourseClient: jest.Mocked<IDiscourseClient>;
   let normalizationService: jest.Mocked<INormalizationService>;
   let proposalRepository: jest.Mocked<Pick<IProposalRepository, "upsert">>;
+  let sleep: jest.MockedFunction<(milliseconds: number) => Promise<void>>;
 
   const createMockProposalList = (topics: Array<{ id: number; slug: string }>): RawDiscourseProposalList => ({
     topic_list: { topics },
@@ -54,6 +55,7 @@ describe("DiscourseFetcher", () => {
 
   beforeEach(() => {
     logger = createLoggerMock();
+    sleep = jest.fn().mockResolvedValue(undefined);
     discourseClient = {
       fetchLatestProposals: jest.fn(),
       fetchProposalDetails: jest.fn(),
@@ -72,10 +74,60 @@ describe("DiscourseFetcher", () => {
       normalizationService,
       proposalRepository as unknown as IProposalRepository,
       20,
+      2500,
+      sleep,
     );
   });
 
   describe("getLatestProposals", () => {
+    it("waits between topic detail requests when more than one topic is processed", async () => {
+      // Arrange
+      const topicList = createMockProposalList([
+        { id: 100, slug: "proposal-a" },
+        { id: 101, slug: "proposal-b" },
+      ]);
+      const detailsA = createMockProposal(100, "proposal-a");
+      const detailsB = createMockProposal(101, "proposal-b");
+      const normalizedA = createNormalizedInput("100");
+      const normalizedB = createNormalizedInput("101");
+
+      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
+      discourseClient.fetchProposalDetails.mockResolvedValueOnce(detailsA).mockResolvedValueOnce(detailsB);
+      normalizationService.normalizeDiscourseProposal.mockReturnValueOnce(normalizedA).mockReturnValueOnce(normalizedB);
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toEqual([normalizedA, normalizedB]);
+      expect(sleep).toHaveBeenCalledTimes(1);
+      expect(sleep).toHaveBeenCalledWith(2500);
+      expect(discourseClient.fetchProposalDetails.mock.invocationCallOrder[0]).toBeLessThan(
+        sleep.mock.invocationCallOrder[0],
+      );
+      expect(sleep.mock.invocationCallOrder[0]).toBeLessThan(
+        discourseClient.fetchProposalDetails.mock.invocationCallOrder[1],
+      );
+    });
+
+    it("does not wait when only one topic is processed", async () => {
+      // Arrange
+      const topicList = createMockProposalList([{ id: 100, slug: "proposal-a" }]);
+      const proposalDetails = createMockProposal(100, "proposal-a");
+      const normalizedInput = createNormalizedInput("100");
+
+      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
+      discourseClient.fetchProposalDetails.mockResolvedValue(proposalDetails);
+      normalizationService.normalizeDiscourseProposal.mockReturnValue(normalizedInput);
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toEqual([normalizedInput]);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
     it("fetches proposals, normalizes, and returns CreateProposalInput[]", async () => {
       // Arrange
       const topicList = createMockProposalList([{ id: 100, slug: "proposal-a" }]);

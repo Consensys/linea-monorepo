@@ -1,9 +1,13 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 import { IDiscourseClient } from "../../core/clients/IDiscourseClient.js";
 import { CreateProposalInput } from "../../core/entities/Proposal.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../../core/services/INormalizationService.js";
 import { IProposalFetcher } from "../../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
+
+type SleepFn = (milliseconds: number) => Promise<void>;
 
 export class DiscourseFetcher implements IProposalFetcher {
   constructor(
@@ -12,6 +16,8 @@ export class DiscourseFetcher implements IProposalFetcher {
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
     private readonly maxTopicsPerPoll: number = 20,
+    private readonly proposalDetailsDelayMs: number = 0,
+    private readonly sleepFn: SleepFn = sleep,
   ) {}
 
   async getLatestProposals(): Promise<CreateProposalInput[]> {
@@ -28,10 +34,14 @@ export class DiscourseFetcher implements IProposalFetcher {
 
     const results: CreateProposalInput[] = [];
 
-    for (const topic of topics) {
+    for (const [index, topic] of topics.entries()) {
       const result = await this.processTopic(topic.id);
       if (result) {
         results.push(result);
+      }
+
+      if (index < topics.length - 1 && this.proposalDetailsDelayMs > 0) {
+        await this.sleepFn(this.proposalDetailsDelayMs);
       }
     }
 
