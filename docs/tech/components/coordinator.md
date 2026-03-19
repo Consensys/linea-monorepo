@@ -285,7 +285,7 @@ docker buildx build \
 
 ```bash
 # With full stack
-LINEA_COORDINATOR_TAG=local make start-env-with-tracing-v2
+COORDINATOR_TAG=local make start-env-with-tracing-v2
 
 # Standalone (requires dependencies)
 java -jar coordinator/app/build/libs/coordinator.jar \
