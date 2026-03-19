@@ -88,7 +88,7 @@ export default function ClaimActions({ transaction, onCloseModal }: ClaimActions
           Cancel
         </Button>
       </div>
-      {switchChainError && (
+      {switchChainError && needsChainSwitch && (
         <p className={styles["error-text"]}>
           Chain switch failed. Please switch to {transaction.toChain.name} manually in your wallet and try again.
         </p>

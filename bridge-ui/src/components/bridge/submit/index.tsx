@@ -140,7 +140,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
           <WalletIcon />
         </button>
       </div>
-      {switchChainError && (
+      {switchChainError && needChainSwitch && (
         <p className={styles["error-text"]}>
           Chain switch failed. Please switch to {fromChain.name} manually in your wallet and try again.
         </p>
