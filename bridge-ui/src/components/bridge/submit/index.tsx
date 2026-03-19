@@ -42,9 +42,20 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
   const { bridge, transactionType, adapterId, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
 
   const chainId = useChainId();
-  const { mutate: switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
+  const {
+    mutate: switchChain,
+    isPending: isSwitchingChain,
+    error: switchChainError,
+    reset: resetSwitchChain,
+  } = useSwitchChain();
 
   const needChainSwitch = fromChain.id !== chainId;
+
+  useEffect(() => {
+    if (!needChainSwitch) {
+      resetSwitchChain();
+    }
+  }, [needChainSwitch, resetSwitchChain]);
 
   const { hasInsufficientFunds } = useFees();
 
