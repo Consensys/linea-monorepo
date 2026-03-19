@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"runtime"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -342,7 +344,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			run.Columns.TryDel(colName)
 		}
 	}
-	// runtime.GC() — disabled: per-round GC is too expensive on large heaps
+	runtime.GC()
 
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
 	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)

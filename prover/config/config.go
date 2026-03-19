@@ -277,15 +277,6 @@ type Execution struct {
 	// serialized file on disk via memory-mapping, instead of compiling it
 	// at proving time. The file is produced during setup by protocol/serde.
 	Serialization bool `mapstructure:"serialization"`
-
-	// LimitlessGCPercent overrides the Go GC target for the limitless prover.
-	// Set to -1 to disable background GC and rely on the memory limit instead.
-	// A zero value leaves the runtime default unchanged.
-	LimitlessGCPercent int `mapstructure:"limitless_gc_percent"`
-
-	// LimitlessMemoryLimitGiB sets a soft runtime memory ceiling for the
-	// limitless prover. A zero value leaves the runtime default unchanged.
-	LimitlessMemoryLimitGiB int `mapstructure:"limitless_memory_limit_gib"`
 }
 
 type DataAvailability struct {

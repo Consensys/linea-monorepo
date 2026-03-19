@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -205,7 +206,7 @@ func (pRuntime *ProverRuntime) Resume() *ProverRuntime {
 	for pRuntime.currRound+1 < round {
 		pRuntime.exec(fmt.Sprintf("next-after-round-%d", pRuntime.currRound), pRuntime.goNextRound)
 		pRuntime.exec(fmt.Sprintf("prover-steps-round-%d", pRuntime.currRound), pRuntime.runProverSteps)
-		// runtime.GC() — disabled: per-round GC is too expensive on large heaps
+		runtime.GC()
 	}
 	return pRuntime
 }
@@ -233,7 +234,7 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 	for pRuntime.currRound+1 < round {
 		pRuntime.exec(fmt.Sprintf("next-after-round-%d", pRuntime.currRound), pRuntime.goNextRound)
 		pRuntime.exec(fmt.Sprintf("prover-steps-round-%d", pRuntime.currRound), pRuntime.runProverSteps)
-		// runtime.GC() — disabled: per-round GC is too expensive on large heaps
+		runtime.GC()
 	}
 
 	return &pRuntime
