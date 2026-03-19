@@ -42,7 +42,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
   const { bridge, transactionType, adapterId, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
 
   const chainId = useChainId();
-  const { mutate: switchChain, isPending: isSwitchingChain } = useSwitchChain();
+  const { mutate: switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
 
   const needChainSwitch = fromChain.id !== chainId;
 
@@ -140,6 +140,11 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
           <WalletIcon />
         </button>
       </div>
+      {switchChainError && (
+        <p className={styles["error-text"]}>
+          Chain switch failed. Please switch to {fromChain.name} manually in your wallet and try again.
+        </p>
+      )}
       {showConfirmDestinationAddressModal && (
         <ConfirmDestinationAddress
           isModalOpen={showConfirmDestinationAddressModal}

@@ -18,7 +18,7 @@ type ClaimActionsProps = {
 export default function ClaimActions({ transaction, onCloseModal }: ClaimActionsProps) {
   const { chain } = useConnection();
   const { mutate: disconnect } = useDisconnect();
-  const { mutate: switchChain, isPending: isSwitchingChain } = useSwitchChain();
+  const { mutate: switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
 
   const {
     claim,
@@ -88,6 +88,11 @@ export default function ClaimActions({ transaction, onCloseModal }: ClaimActions
           Cancel
         </Button>
       </div>
+      {switchChainError && (
+        <p className={styles["error-text"]}>
+          Chain switch failed. Please switch to {transaction.toChain.name} manually in your wallet and try again.
+        </p>
+      )}
       {claimError && <p className={styles["error-text"]}>Claim failed. Please try again.</p>}
       {simulationFailed && !needsChainSwitch && claimContext && (
         <p className={styles["error-text"]}>{claimContext.errorMessage}</p>
