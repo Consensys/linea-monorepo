@@ -40,41 +40,6 @@ var (
 	numConcurrentMergeJobs = 4
 )
 
-type limitlessRuntimeTuning struct {
-	restoreGCPercent int
-	restoreMemLimit  int64
-	hasGCPercent     bool
-	hasMemLimit      bool
-}
-
-func applyLimitlessRuntimeTuning(cfg *config.Config) limitlessRuntimeTuning {
-	tuning := limitlessRuntimeTuning{}
-
-	if gcPercent := cfg.Execution.LimitlessGCPercent; gcPercent != 0 {
-		tuning.restoreGCPercent = debug.SetGCPercent(gcPercent)
-		tuning.hasGCPercent = true
-		logrus.Infof("Limitless runtime tuning: set GC percent to %d", gcPercent)
-	}
-
-	if memLimitGiB := cfg.Execution.LimitlessMemoryLimitGiB; memLimitGiB > 0 {
-		memLimitBytes := int64(memLimitGiB) << 30
-		tuning.restoreMemLimit = debug.SetMemoryLimit(memLimitBytes)
-		tuning.hasMemLimit = true
-		logrus.Infof("Limitless runtime tuning: set soft memory limit to %d GiB", memLimitGiB)
-	}
-
-	return tuning
-}
-
-func (t limitlessRuntimeTuning) restore() {
-	if t.hasGCPercent {
-		debug.SetGCPercent(t.restoreGCPercent)
-	}
-	if t.hasMemLimit {
-		debug.SetMemoryLimit(t.restoreMemLimit)
-	}
-}
-
 // Prove function for the Assest struct
 func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 
@@ -84,9 +49,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Initialize JSONL performance event logger
 	plog := newPerfLogger()
 	defer plog.close()
-
-	runtimeTuning := applyLimitlessRuntimeTuning(cfg)
-	defer runtimeTuning.restore()
 
 	// Setting the issue handler to exit on unsatisfied constraint and missing trace file,
 	// but not limit overflow.
@@ -270,6 +232,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 	proofGLs = nil
 
+	// GC between GL and LPP phases to reclaim GL transient heap allocations.
+	// With mmap-backed circuit/witness loading, compiled circuits are already released
+	// via Munmap in RunGL. This GC targets remaining proving transients.
 	var memBefore runtime.MemStats
 	runtime.ReadMemStats(&memBefore)
 	heapBefore := float64(memBefore.HeapAlloc) / (1 << 30)
@@ -365,6 +330,9 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	plog.phaseEnd("LPP", lppPhaseStart)
 	plog.flush()
 
+	// Post-LPP GC: all compiled circuits were Munmap'd inside RunLPP, but proving
+	// transients remain on the Go heap. Reclaim before the conglo sequential tail
+	// so the 15+ serial merges run with lower memory pressure.
 	runtime.GC()
 	debug.FreeOSMemory()
 
@@ -598,6 +566,7 @@ func RunGL(cfg *config.Config, witnessIndex int, plog *perfLogger) (proofGL *dis
 	// Capture module name as a heap-allocated copy before mmap release
 	// (the original string bytes live in the mmap buffer)
 	moduleName := string([]byte(witness.ModuleName))
+
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, moduleName)
 
 	// Load compiled GL into mmap-backed buffer for explicit memory release
@@ -647,6 +616,7 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuple
 
 	// Capture module name as a heap-allocated copy before mmap release
 	moduleName := string([]byte(witness.ModuleName))
+
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, moduleName)
 
 	// Load compiled LPP into mmap-backed buffer for explicit memory release
@@ -690,6 +660,7 @@ func RunConglomerationHierarchical(ctx context.Context,
 
 	congPhaseStart := plog.phaseStart("conglomeration")
 	defer plog.phaseEnd("conglomeration", congPhaseStart)
+
 	// `remaining` tracks how many items are in the system (items slice + in-flight
 	// merge results). Each merge takes 2 items and produces 1, so remaining--.
 	// When remaining == 1 after decrement, the current merge is the final one (BLS).
