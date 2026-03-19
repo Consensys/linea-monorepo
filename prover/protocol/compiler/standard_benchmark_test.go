@@ -180,12 +180,12 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 	// NTT limit: T × RS × 16 ≤ 2^24; RS=8 (T1), RS=16 (T3,T4) → T3,T4 ≥ 16.
 	type params struct{ t3, t4 int }
 	candidates := []params{
-		// {1 << 12, 1 << 14},
+		{1 << 12, 1 << 14}, // (current best)
+		// {1 << 12, 1 << 13},
 		// {1 << 12, 1 << 12},
-		{1 << 12, 1 << 12}, // (current best)
 
-		// {1 << 13, 1 << 13},
-		// {1 << 11, 1 << 13},
+		// {1 << 13, 1 << 14},
+		// {1 << 11, 1 << 14},
 	}
 	for _, bc := range benchCases {
 		for _, p := range candidates {
