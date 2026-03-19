@@ -164,6 +164,7 @@ var (
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
 		),
+
 		// logdata.Log("pre-recursion.post-vortex-1"),
 
 		// First round of self-recursion
