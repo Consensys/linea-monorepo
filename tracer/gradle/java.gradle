@@ -13,14 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 apply plugin: 'java-library'
 
-if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)) {
-  throw new GradleException("Java 25 or later is required to build Besu.\n" +
-    "  Detected version ${JavaVersion.current()}")
-}
-
 java {
+    // Keep Gradle runtime JVM flexible (e.g. JDK 21 in CI) while enforcing
+    // Java 25 for compilation via toolchains.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
     sourceCompatibility = 25
     targetCompatibility = 25
 
