@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const perfLogPath = "./limitless_perf.jsonl"
+var perfLogPath = fmt.Sprintf("./limitless_perf_%s.jsonl", time.Now().UTC().Format("20060102_150405"))
 
 // perfEvent is a single JSONL event capturing timing and resource usage.
 type perfEvent struct {
