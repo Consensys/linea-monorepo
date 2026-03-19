@@ -28,6 +28,15 @@ runs:
         with:
           java-version: '25'
 
+      - name: Clear incompatible Gradle script caches
+        shell: bash
+        run: |
+          # Groovy DSL caches restored from older runs can contain classes compiled for
+          # a classfile version the current Groovy parser cannot read (e.g. Java 25),
+          # causing "_BuildScript_ Unsupported class file major version 69" at startup.
+          rm -rf "$HOME"/.gradle/caches/*/groovy-dsl
+          rm -rf "$HOME"/.gradle/caches/*/scripts*
+
       - name: Build besu from source (if needed)
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist="$SKIP_DOWNLOAD_BESU_DIST"
