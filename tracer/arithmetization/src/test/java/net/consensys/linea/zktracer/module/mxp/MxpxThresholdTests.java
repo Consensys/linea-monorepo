@@ -118,8 +118,7 @@ public class MxpxThresholdTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleMxpxThresholdSource() {
-    return randomSampleByCurrentCommitHash(testMxpxThresholdSource())
-        .stream();
+    return randomSampleByCurrentCommitHash(testMxpxThresholdSource()).stream();
   }
 
   /**
@@ -211,7 +210,7 @@ public class MxpxThresholdTests extends TracerTestBase {
               MXP_THRESHOLD_MINUS_MXP_THRESHOLD_DIVIDED_BY_TWO));
     }
 
-    return randomSampleByCurrentCommitHash(arguments);
+    return arguments;
   }
 
   static BigInteger mxpxThreshold() {
@@ -304,7 +303,7 @@ public class MxpxThresholdTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleInputParamsNightly() {
-    return randomSampleByCurrentCommitHash(inputs(inputsValuesNightly)).stream();
+    return inputs(inputsValuesNightly).stream();
   }
 
   private static Stream<Arguments> sampleInputParamsUnit() {

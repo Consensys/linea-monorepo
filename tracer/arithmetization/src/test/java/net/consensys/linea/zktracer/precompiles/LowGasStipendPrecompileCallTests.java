@@ -211,8 +211,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleLowGasStipendPrecompileTestSources() {
-    return randomSampleByCurrentCommitHash(fullGasStipendPrecompileCallP256TestSource())
-        .stream();
+    return randomSampleByCurrentCommitHash(fullGasStipendPrecompileCallP256TestSource()).stream();
   }
 
   static List<Arguments> fullGasStipendPrecompileCallP256TestSource() {
@@ -249,7 +248,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, Integer.MAX_VALUE, false));
       }
     }
-    return randomSampleByCurrentCommitHash(arguments);
+    return arguments;
   }
 
   static List<Arguments> lowGasStipendPrecompileCallTestSource() {
@@ -364,7 +363,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       arguments.add(Arguments.of(MODEXP, ValueCase.ZERO, gasCase, null, true));
     }
 
-    return randomSampleByCurrentCommitHash(arguments);
+    return arguments;
   }
 
   // Support methods
