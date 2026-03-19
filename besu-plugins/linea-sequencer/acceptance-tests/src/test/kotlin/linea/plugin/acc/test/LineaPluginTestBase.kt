@@ -94,7 +94,6 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       "LineaTransactionPoolValidatorPlugin",
       "LineaTransactionSelectorPlugin",
       "LineaBundleEndpointsPlugin",
-      "ForwardBundlesPlugin",
       "LineaTransactionValidatorPlugin",
       "LineaForcedTransactionEndpointsPlugin",
     )
@@ -451,7 +450,7 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
     return PollingTransactionReceiptProcessor(
       web3j,
       maxOf(1000L, DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 1000L / 5),
-      DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 3,
+      DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 6,
     )
   }
 
@@ -644,4 +643,16 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       .withFailMessage { "Expected Besu logs to contain '$target'" }
       .contains(target)
   }
+
+  protected fun getRejectionReason(txHash: String): String? {
+    val response = org.web3j.protocol.core.Request<Any, RejectionReasonResponse>(
+      "test_getRejectionReason",
+      listOf(txHash),
+      minerNode.nodeRequests().web3jService,
+      RejectionReasonResponse::class.java,
+    ).send()
+    return response.result
+  }
+
+  class RejectionReasonResponse : org.web3j.protocol.core.Response<String>()
 }

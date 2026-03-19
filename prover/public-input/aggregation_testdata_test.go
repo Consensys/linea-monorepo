@@ -86,8 +86,6 @@ func (j *AggregatedProofJSON) ToAggregation() Aggregation {
 		L2MsgRootHashes:                         j.L2MerkleRoots,
 		L2MsgMerkleTreeDepth:                    j.L2MerkleTreesDepth,
 		ChainID:                                 j.ChainID,
-		BaseFee:                                 j.BaseFee,
-		CoinBase:                                coinBase,
 		L2MessageServiceAddr:                    l2MessageServiceAddr,
 		FilteredAddresses:                       filteredAddresses,
 	}

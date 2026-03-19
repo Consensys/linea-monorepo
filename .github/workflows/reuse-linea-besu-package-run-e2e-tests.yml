@@ -11,10 +11,6 @@ on:
         description: The tag to use for all linea-besu-package images
         required: true
         type: string
-      expected_traces_api_version:
-        description: The expected traces api version used by cooridinator
-        required: true
-        type: string
       e2e-tests-with-ssh:
         description: Run end to end tests with ability to ssh into environment
         required: false
@@ -49,7 +45,6 @@ jobs:
   run-e2e-tests:
     env:
       BESU_PACKAGE_TAG: ${{ inputs.linea_besu_package_tag }}
-      EXPECTED_TRACES_API_VERSION: ${{ inputs.expected_traces_api_version }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
@@ -65,7 +60,9 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F "e2e..." --frozen-lockfile --prefer-offline'
+          commands: |
+            pnpm run -F "e2e^..." build
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
@@ -79,20 +76,14 @@ jobs:
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v7
         with:
-          pattern: linea-besu-package*
-          path: ${{ github.workspace }}/linea-besu-package
+          pattern: linea-besu-package
+          path: ${{ github.workspace }}/tmp/artifacts
+          merge-multiple: true
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
-          gunzip -c $GITHUB_WORKSPACE/linea-besu-package/linea-besu-package-image.tar.gz | docker load
+          gunzip -c $GITHUB_WORKSPACE/tmp/artifacts/linea-besu-package-image.tar.gz | docker load
         shell: bash
-      - name: Replace expected traces api version in coordinator config file
-        shell: bash
-        run: |
-          sed -i 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"${{ env.EXPECTED_TRACES_API_VERSION }}"/' config/coordinator/coordinator-config-v2.toml
-          echo "EXPECTED_TRACES_API_VERSION=${{ env.EXPECTED_TRACES_API_VERSION }}"
-          echo "BESU_PACKAGE_TAG=${{ env.BESU_PACKAGE_TAG }}"
-          echo "$(grep expected-traces-api-version config/coordinator/coordinator-config-v2.toml)"
       - name: Spin up fresh environment with besu tracing with retry
         if: ${{ !inputs.e2e-tests-with-besu-fleet }}
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2

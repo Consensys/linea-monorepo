@@ -69,6 +69,10 @@ allprojects {
     dependsOn test
   }
 
+  tasks.withType(Javadoc).configureEach {
+    exclude '**/generated/**'
+  }
+
   tasks.withType(Test).configureEach {
     testLogging {
       events = [
@@ -124,7 +128,7 @@ allprojects {
         // spotless check applied to build.gradle (groovy) files
         groovyGradle {
           target '*.gradle'
-          greclipse("4.32")
+          greclipse("4.35")
           leadingTabsToSpaces(2)
           endWithNewline()
         }
@@ -170,6 +174,8 @@ task jacocoRootReport(type: JacocoReport) {
   }
   onlyIf = { true }
 }
+
+apply plugin: 'linea.besu-plugin'
 
 dockerCompose {
   localStack {

@@ -54,13 +54,15 @@ target-end-blocks = []
 timestamp-based-hard-forks = []
 
 [prover]
-version = "v3.0.0"
 [prover.execution]
 fs-requests-directory = "/data/prover/v3/execution/requests"
 fs-responses-directory = "/data/prover/v3/execution/responses"
 [prover.blob-compression]
 fs-requests-directory = "/data/prover/v3/compression/requests"
 fs-responses-directory = "/data/prover/v3/compression/responses"
+[prover.invalidity]
+fs-requests-directory = "/data/prover/v3/invalidity/requests"
+fs-responses-directory = "/data/prover/v3/invalidity/responses"
 [prover.proof-aggregation]
 fs-requests-directory = "/data/prover/v3/aggregation/requests"
 fs-responses-directory = "/data/prover/v3/aggregation/responses"
@@ -78,7 +80,7 @@ fs-responses-directory = "/data/prover/v3/aggregation/responses"
 #fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [traces]
-expected-traces-api-version = "beta-v4.4-rc7.4"
+expected-traces-api-version = "beta-v5.0-rc3"
 [traces.counters]
 endpoints = ["http://traces-node:8545/"]
 request-limit-per-endpoint = 1
@@ -250,6 +252,10 @@ trust-store-password = "changeit"
 
 [forced-transactions]
 disabled = true
+l1-highest-block-tag = "LATEST"
+processing-tick-interval = "PT5S"
+processing-delay = "PT0S"
+sequencer-endpoint = "http://sequencer:8545/"
 
 [l2-network-gas-pricing] # old [dynamic-gas-price-service]
 disabled = false
