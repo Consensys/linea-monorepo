@@ -329,6 +329,59 @@ describe("loadConfigFromEnv", () => {
     expect(config.riskAssessment.threshold).toBe(60);
   });
 
+  it("loads discourse proposal details delay from environment variables", () => {
+    // Arrange
+    const env = {
+      DATABASE_URL: "postgresql://localhost:5432/test",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      DISCOURSE_PROPOSAL_DETAILS_DELAY_MS: "750",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+    };
+
+    // Act
+    const config = loadConfigFromEnv(env);
+
+    // Assert
+    expect(config.discourse.proposalDetailsDelayMs).toBe(750);
+  });
+
+  it("uses the default discourse proposal details delay when env var is missing", () => {
+    // Arrange
+    const env = {
+      DATABASE_URL: "postgresql://localhost:5432/test",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+    };
+
+    // Act
+    const config = loadConfigFromEnv(env);
+
+    // Assert
+    expect(config.discourse.proposalDetailsDelayMs).toBe(250);
+  });
+
+  it("rejects a non-positive discourse proposal details delay", () => {
+    // Arrange
+    const env = {
+      DATABASE_URL: "postgresql://localhost:5432/test",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      DISCOURSE_PROPOSAL_DETAILS_DELAY_MS: "0",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+    };
+
+    // Act & Assert
+    expect(() => loadConfigFromEnv(env)).toThrow("Configuration validation failed");
+  });
+
   it("accepts optional maxAnalysisAttempts and maxNotifyAttempts from env", () => {
     // Arrange
     const env = {

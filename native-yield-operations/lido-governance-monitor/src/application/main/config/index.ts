@@ -21,6 +21,12 @@ export const ConfigSchema = z.object({
   discourse: z.object({
     // Lido Discourse forum API endpoint for fetching governance proposals
     proposalsUrl: NonEmptyUrl("Invalid Discourse proposals URL"),
+    // Delay before requesting proposal details from Discourse
+    proposalDetailsDelayMs: z
+      .number()
+      .int()
+      .positive("Discourse proposal details delay must be positive")
+      .default(250),
     // Maximum number of Discourse topics to process per polling cycle
     maxTopicsPerPoll: z.number().int().positive("Max topics per poll must be positive"),
   }),
@@ -77,6 +83,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
+      proposalDetailsDelayMs: parseInt(env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS ?? "250", 10),
       maxTopicsPerPoll: parseInt(env.MAX_TOPICS_PER_POLL ?? "20", 10),
     },
     anthropic: {
