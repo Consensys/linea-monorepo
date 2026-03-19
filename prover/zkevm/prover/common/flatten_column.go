@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -82,18 +81,17 @@ func NewFlattenColumn[E limbs.Endianness](
 	mask ifaces.Column,
 ) *FlattenColumn {
 	var (
-		onesColumnID = ifaces.ColIDf("%s_FLATTEN_ORIG_LIMBS_MASK", limbs.String())
+		onesColumnID = ifaces.ColIDf("FLATTEN_ONES_MASK_%v_%v", limbs.String(), mask.Size())
 		initialSize  = mask.Size()
 		nbLimbsCols  = limbs.NumLimbs()
-		// If the column already exists, we assume it is already registered by another circuit.
-		isDuplicated bool
 		onesColumn   ifaces.Column
 	)
 
 	if comp.Columns.Exists(onesColumnID) {
 		onesColumn = comp.Columns.GetHandle(onesColumnID)
 	} else {
-		onesColumn = verifiercol.NewConstantCol(field.One(), initialSize, string(onesColumnID))
+		onesColumn = comp.InsertCommit(0, onesColumnID, initialSize, true)
+		pragmas.MarkZeroPadded(onesColumn)
 	}
 
 	flattenSize := utils.NextPowerOfTwo(initialSize * nbLimbsCols)
@@ -102,8 +100,7 @@ func NewFlattenColumn[E limbs.Endianness](
 		OriginalMask:  mask,
 		OriginalLimbs: limbs.GetLimbs(),
 		NbLimbsCols:   nbLimbsCols,
-		OnesColumn:    onesColumn,
-		IsDuplicated:  isDuplicated,
+		OnesColumn:   onesColumn,
 	}
 
 	res.initColumns(comp)
@@ -231,21 +228,23 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 	}
 
 	l.Limbs = comp.InsertCommit(0, baseID, l.Size, true)
-	l.AuxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
-		precomputeAuxProjectionMask(l.Size, l.OriginalMask.Size(), l.NbLimbsCols))
+	l.AuxProjectionMask = comp.InsertCommit(0, auxProjectionMaskID, l.Size, true)
 
 	pragmas.MarkRightPadded(l.Limbs)
-
-	// This is needed to hint the distributer that this column is completely
-	// periodic and is no issue for splitting. We could as well replace it
-	// by a RepeatedPattern column but the fact that the repetition period is
-	// a power of two spares us the need to use more expensive and heavy
-	// [RepeatedPattern] column.
-	pragmas.MarkCompletelyPeriodic(l.AuxProjectionMask)
+	pragmas.MarkZeroPadded(l.AuxProjectionMask)
 }
 
 // Run maps trace limb columns and mask into the flattened columns.
 func (l *FlattenColumn) Run(run *wizard.ProverRuntime) {
+	if !run.Columns.Exists(l.OnesColumn.GetColID()) {
+		run.AssignColumn(l.OnesColumn.GetColID(), l.OriginalMask.GetColAssignment(run))
+	}
+
+	if !run.Columns.Exists(l.AuxProjectionMask.GetColID()) {
+		run.AssignColumn(l.AuxProjectionMask.GetColID(),
+			l.computeAuxProjectionMask(run))
+	}
+
 	l.assignMask(run)
 
 	if !run.Columns.Exists(l.Limbs.GetColID()) {
@@ -308,16 +307,32 @@ func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
 	}
 }
 
-// precomputeAuxProjectionMask creates a SmartVector with total size `size`,
-// where `nbMasked` positions are periodically set to one.
-func precomputeAuxProjectionMask(size, nbMarks, period int) smartvectors.SmartVector {
-	resSlice := make([]field.Element, size)
+// computeAuxProjectionMask builds the projection mask gated by the original
+// mask: position i*period gets a 1 only when OriginalMask[i] == 1.
+func (l *FlattenColumn) computeAuxProjectionMask(run *wizard.ProverRuntime) smartvectors.SmartVector {
+	maskCol := l.OriginalMask.GetColAssignment(run).IntoRegVecSaveAlloc()
 
+	lastActiveRow := lastNonZeroRow(maskCol)
+
+	resSlice := make([]field.Element, lastActiveRow*l.NbLimbsCols)
 	offset := 0
-	for i := 0; i < nbMarks; i++ {
-		resSlice[offset].SetOne()
-		offset += period
+	for i := 0; i < lastActiveRow; i++ {
+		if maskCol[i].IsOne() {
+			resSlice[offset].SetOne()
+		}
+		offset += l.NbLimbsCols
 	}
 
-	return smartvectors.NewRegular(resSlice)
+	return smartvectors.RightZeroPadded(resSlice, l.Size)
+}
+
+// lastNonZeroRow returns the index one past the last non-zero element in col,
+// or 0 if the entire slice is zero.
+func lastNonZeroRow(col []field.Element) int {
+	for i := len(col) - 1; i >= 0; i-- {
+		if !col[i].IsZero() {
+			return i + 1
+		}
+	}
+	return 0
 }
