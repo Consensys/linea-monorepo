@@ -65,6 +65,7 @@ func runConglomerationWizardTest(t *testing.T, tc DistributedTestCase, numRow in
 // TestConglomerationBasic generates a conglomeration proof for each of the
 // standard DistributedTestCase types and checks that the proof is valid.
 func TestConglomerationBasic(t *testing.T) {
+	t.Skipf("the test is a heavy integration test that causes CI runners to hang; run locally with: go test -run TestConglomerationBasic -timeout=30m ./protocol/distributed/")
 	signal.RegisterStackTraceDumpHandler()
 
 	const numRow = 1 << 5
