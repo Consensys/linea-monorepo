@@ -14,10 +14,6 @@ on:
       - "**/*.py"
       - "**/*.rs"
       - "**/*.sol"
-      - "**/*.cpp"
-      - "**/*.c"
-      - "**/*.h"
-      - "**/*.cs"
       - "**/*.zkasm"
       - "**/*.lisp"
       - "**/Makefile"
@@ -70,8 +66,7 @@ jobs:
             You are a senior software engineer performing a thorough code review on PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
 
             Review ONLY changed files with the following extensions or names:
-            .js .jsx .ts .tsx .java .kt .go .py .rs .sol .cpp .c .h .cs .rb .php .swift .scala
-            .sh .bash .gradle .gradle.kts .mk .dockerfile .zkasm .lisp
+            .js .jsx .ts .tsx .java .kt .go .py .rs .sol .sh .bash .gradle .gradle.kts .mk .dockerfile .zkasm .lisp
             Makefile gradlew gradle.properties settings.gradle settings.gradle.kts Dockerfile Dockerfile.*
 
             For each issue you find, post an inline pull request review comment on the exact file and line where the problem occurs.
