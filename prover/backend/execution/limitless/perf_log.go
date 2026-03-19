@@ -39,6 +39,9 @@ type perfLogger struct {
 }
 
 func newPerfLogger() *perfLogger {
+	if os.Getenv("LIMITLESS_PERF_LOG") != "true" {
+		return nil
+	}
 	f, err := os.Create(perfLogPath)
 	if err != nil {
 		logrus.Warnf("perf_log: could not create %s: %v (perf logging disabled)", perfLogPath, err)
