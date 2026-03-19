@@ -1,4 +1,4 @@
-import { setTimeout as sleep } from "node:timers/promises";
+import { wait } from "@consensys/linea-shared-utils";
 
 import { IDiscourseClient } from "../../core/clients/IDiscourseClient.js";
 import { CreateProposalInput } from "../../core/entities/Proposal.js";
@@ -17,7 +17,7 @@ export class DiscourseFetcher implements IProposalFetcher {
     private readonly proposalRepository: IProposalRepository,
     private readonly maxTopicsPerPoll: number = 20,
     private readonly proposalDetailsDelayMs: number = 0,
-    private readonly sleepFn: SleepFn = sleep,
+    private readonly sleepFn: SleepFn = wait,
   ) {}
 
   async getLatestProposals(): Promise<CreateProposalInput[]> {
@@ -41,6 +41,7 @@ export class DiscourseFetcher implements IProposalFetcher {
       }
 
       if (index < topics.length - 1 && this.proposalDetailsDelayMs > 0) {
+        // Throttle Discourse topic detail requests because the endpoint returned 429s in production.
         await this.sleepFn(this.proposalDetailsDelayMs);
       }
     }
