@@ -4,8 +4,19 @@ plugins {
 
 java {
   // Keep buildSrc bytecode at 21 to avoid Groovy/ASM classfile parsing issues on Java 25.
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
   sourceCompatibility = JavaVersion.VERSION_21
   targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+  options.release = 21
+}
+
+tasks.withType(org.gradle.api.tasks.compile.GroovyCompile).configureEach {
+  options.release = 21
 }
 
 repositories {
