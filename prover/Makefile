@@ -47,6 +47,7 @@ go-corset:
 	go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION)
 
 extract-constraints-git-archive:
+	rm -rf ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints
 	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##
@@ -54,6 +55,10 @@ extract-constraints-git-archive:
 ##
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
 	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make GIT_COMMIT=$(CONSTRAINTS_COMMIT_HASH) zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+
+setup-devnet: bin/prover
+	bin/prover setup --config ./config/config-devnet-limitless.toml --circuits "execution-limitless" --assets-dir ./prover-assets
+
 
 ##
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)

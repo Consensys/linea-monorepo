@@ -190,7 +190,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
+		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
+		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
@@ -228,7 +229,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
+		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
@@ -257,11 +259,12 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
+		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
@@ -276,7 +279,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
 		// this produced 2046 segments. This specific regex must appear BEFORE
 		// the generic ^blsdata\. to override it with a large BaseSize.
-		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
+		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
 		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
@@ -316,14 +320,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
 		// BLS_G2
+		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
 		//
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
 		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkMsmData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
 		{BaseSize: 8192, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedAddGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
 
 		// BLS POINT EVAL
 		//
@@ -331,15 +336,16 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
 		// BLS PAIR
+		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
 		//
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.IsActive},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
 
 		// STATIC
 		//
@@ -969,6 +975,42 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 	return res, nil
 }
 
+// LoadCompiledGLMmap loads the compiled GL into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
+// LoadCompiledLPPMmap loads the compiled LPP into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
 // LoadDebugGL loads the debug GL from disk
 func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.ModuleGL, error) {
 
@@ -1021,6 +1063,24 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 	defer closer.Close()
 
 	return conglo, nil
+}
+
+// LoadCompiledConglomerationMmap loads the conglomeration assets into mmap-backed memory.
+// The caller must call buf.Release() when done, after nilling all references to conglo.
+func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, conglomerationFile)
+		conglo   = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, conglo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conglo, buf, nil
 }
 
 func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {
