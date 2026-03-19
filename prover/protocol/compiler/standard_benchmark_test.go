@@ -225,7 +225,6 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
-
 		),
 	)
 
@@ -284,7 +283,6 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 
 			vortex.PremarkAsSelfRecursed(),
 
 			vortex.SkipSelfRecursionProofColumns(),
-			// vortex.SkipPrecomputedMerkleProof(),
 		),
 	)
 
@@ -304,12 +302,15 @@ func printProfileStats(comp *wizard.CompiledIOP, t3, t4 int) {
 
 	// Print Vortex sizing parameters via the PcsCtxs field.
 	if vctx, ok := comp.PcsCtxs.(*vortex.Ctx); ok {
-		fmt.Printf("\n[vortex-params] numComs=%d depth=%d numOpening=%d MerkleProofSize=%d numRows=%d\n",
+		fmt.Printf("\n[vortex-params] numComs=%d depth=%d numOpening=%d MerkleProofSize=%d numRows=%d CommittedRowsCount=%d CommittedRowsCountSIS=%d numPrecomputed=%d\n",
 			vctx.NumCommittedRounds(),
 			utils.Log2Ceil(vctx.NumEncodedCols()),
 			vctx.NbColsToOpen(),
 			vctx.MerkleProofSize(),
 			vctx.CommittedRowsCount,
+			vctx.CommittedRowsCount,
+			vctx.CommittedRowsCountSIS,
+			len(vctx.Items.Precomputeds.PrecomputedColums),
 		)
 	}
 

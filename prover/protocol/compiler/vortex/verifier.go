@@ -68,10 +68,7 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	)
 
 	// Append the precomputed roots and the corresponding flag.
-	// When SkipPrecomputedMerkleProof is set, the precomputed columns are not
-	// included in the Merkle proof (their evaluations are authenticated via
-	// the Schwartz-Zippel linear-combination check), so we skip this step.
-	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
+	if ctx.IsNonEmptyPrecomputed() {
 		var precompRootF field.Octuplet
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -158,16 +155,7 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 		return err
 	}
 
-	// When SkipPrecomputedMerkleProof is set, proof.Columns includes the
-	// precomp sub-columns (needed for the linear-combination check above)
-	// but the merkle proofs / roots do not include the precomp round. We
-	// strip the precomp slice before calling CheckColumnInclusion only.
-	colsForInclusion := proof.Columns
-	if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
-		idx := ctx.precompIdx()
-		colsForInclusion = append(colsForInclusion[:idx:idx], colsForInclusion[idx+1:]...)
-	}
-	return vortex_koalabear.CheckColumnInclusion(ctx.VortexKoalaParams.Key, colsForInclusion,
+	return vortex_koalabear.CheckColumnInclusion(ctx.VortexKoalaParams.Key, proof.Columns,
 		merkleProofs, roots, WithSis)
 }
 

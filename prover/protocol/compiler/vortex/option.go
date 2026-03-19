@@ -84,16 +84,3 @@ func SkipSelfRecursionProofColumns() VortexOp {
 	}
 }
 
-// SkipPrecomputedMerkleProof omits the precomputed columns from the Merkle
-// column-inclusion check. The precomputed polynomial evaluations are already
-// authenticated by the Schwartz-Zippel linear-combination check (the Ys used
-// in the verifier come directly from the wizard's own evaluation of the
-// precomputed polynomials, not from the proof). The extra Merkle proof is
-// therefore redundant and can be safely dropped. Skipping it reduces
-// MerkleProofSize when the removal of one commitment slot causes the product
-// depth × numComs × K to cross a power-of-two boundary downward.
-func SkipPrecomputedMerkleProof() VortexOp {
-	return func(ctx *Ctx) {
-		ctx.SkipPrecomputedMerkleProof = true
-	}
-}

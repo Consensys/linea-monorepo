@@ -314,16 +314,6 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)
 
-		// When SkipPrecomputedMerkleProof is active, the precomputed
-		// commitment's Merkle proof is not included in the packed columns
-		// (the precomputed values are authenticated via the SZ check).
-		// We remove the precomp entry from merkleProofs before packing but
-		// keep proof.Columns intact (precomp selected cols are still needed).
-		if ctx.IsNonEmptyPrecomputed() && ctx.SkipPrecomputedMerkleProof {
-			idx := ctx.precompIdx()
-			merkleProofs = append(merkleProofs[:idx], merkleProofs[idx+1:]...)
-		}
-
 		packedMProofs := ctx.packMerkleProofs(merkleProofs)
 
 		for i := range ctx.Items.MerkleProofs {
@@ -540,7 +530,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
 	}
 	numEntries := len(entryList)

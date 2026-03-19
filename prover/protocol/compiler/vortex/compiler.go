@@ -292,16 +292,6 @@ type Ctx struct {
 	// saves K × NextPowerOfTwo(CommittedRowsCount) proof cells.
 	SkipSelfRecursionProofCols bool
 
-	// SkipPrecomputedMerkleProof omits the precomputed columns from the
-	// Merkle-proof column-inclusion check. The precomputed polynomial
-	// evaluations are already authenticated through the Schwartz-Zippel
-	// linear-combination check (the Ys used in gnarkGetYs come from the
-	// wizard's own evaluation of the precomputed polynomials, not from the
-	// proof), so the additional Merkle proof is redundant. Skipping it saves
-	// one commitment slot in MerkleProofSize, which can halve the MERKLEPROOF
-	// column count when numComs × depth × K crosses a power-of-two boundary.
-	SkipPrecomputedMerkleProof bool
-
 	// Additional options that tells the compiler to add a merkle root to the
 	// public inputs of the comp. This is useful for the distributed prover.
 	AddMerkleRootToPublicInputsOpt struct {
@@ -990,10 +980,8 @@ func (ctx *Ctx) MerkleProofSize() int {
 		numComs    = ctx.NumCommittedRounds()
 		numOpening = ctx.NbColsToOpen()
 	)
-	// The number of rounds increases by 1 for committing to the precomputed,
-	// unless SkipPrecomputedMerkleProof is set (precomp values are already
-	// authenticated via the Schwartz-Zippel linear-combination check).
-	if ctx.IsNonEmptyPrecomputed() && !ctx.SkipPrecomputedMerkleProof {
+	// The number of rounds increases by 1 for committing to the precomputed.
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs += 1
 	}
 

@@ -145,7 +145,6 @@ var (
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.SkipSelfRecursionProofColumns(),
-			vortex.SkipPrecomputedMerkleProof(),
 		),
 		logdata.Log("pre-recursion.post-vortex-4"),
 	}
