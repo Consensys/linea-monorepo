@@ -16,7 +16,7 @@ export class DiscourseFetcher implements IProposalFetcher {
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
     private readonly maxTopicsPerPoll: number = 20,
-    private readonly proposalDetailsDelayMs: number = 0,
+    private readonly proposalDetailsDelayMs: number = 250,
     private readonly sleepFn: SleepFn = wait,
   ) {}
 
