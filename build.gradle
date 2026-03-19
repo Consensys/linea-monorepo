@@ -93,6 +93,10 @@ allprojects {
     systemProperty("L2_RPC_URL", "http://localhost:8545")
     systemProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")
     systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-besu.json")
+    // Mockito/Byte Buddy support for Java 25 class files is still evolving.
+    // Enable experimental parsing to keep test instrumentation working while
+    // modules compile to Java 25 bytecode.
+    systemProperty("net.bytebuddy.experimental", "true")
 
     systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
