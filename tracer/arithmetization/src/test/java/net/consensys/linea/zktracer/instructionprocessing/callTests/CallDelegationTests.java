@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
-import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
+import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
 
 import java.util.ArrayList;
 import java.util.List;

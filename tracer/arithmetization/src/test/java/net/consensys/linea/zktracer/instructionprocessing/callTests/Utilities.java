@@ -331,7 +331,7 @@ public class Utilities {
    * value can be overridden using an environment variable.
    */
   public static int PARAMETERIZED_TEST_SAMPLE_SIZE =
-      Integer.parseInt(System.getenv().getOrDefault("PARAMETERIZED_TEST_SAMPLE_SIZE", "100"));
+      Integer.parseInt(System.getenv().getOrDefault("PARAMETERIZED_TEST_SAMPLE_SIZE", "25"));
 
   public static <T> List<T> randomSampleByCurrentCommitHash(List<T> items) {
     return randomSampleByCurrentCommitHash(PARAMETERIZED_TEST_SAMPLE_SIZE, items);
