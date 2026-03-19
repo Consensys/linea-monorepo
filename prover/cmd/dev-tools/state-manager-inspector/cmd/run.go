@@ -54,7 +54,11 @@ func fetchAndInspect(cmd *cobra.Command, args []string) error {
 
 	// Defer only after we made sure the files was successfully open, otherwise
 	// it will panic in the defer.
-	defer reportFile.Close()
+	defer func() {
+		if err := reportFile.Close(); err != nil {
+			logrus.Errorf("failed to close report file: %v", err)
+		}
+	}()
 
 	var (
 		numBlocksArg               = stopArg - startArg

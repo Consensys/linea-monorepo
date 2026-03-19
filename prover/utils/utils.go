@@ -46,7 +46,7 @@ func DivCeil(a, b int) int {
 func DivExact(a, b int) int {
 	res := a / b
 	if res*b != a {
-		panic("inexact division")
+		Panic("inexact division: %v / %v", a, b)
 	}
 	return res
 }

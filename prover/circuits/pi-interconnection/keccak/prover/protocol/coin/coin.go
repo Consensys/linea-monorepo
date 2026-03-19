@@ -91,8 +91,8 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("could not parse Type as integer: %w, got `%v`", err, string(b))
 	}
 
-	if n < 0 || Type(n) > IntegerVec {
-		return fmt.Errorf("could not parse the integer `%v` as Type, must be in range [0, 1]", n)
+	if n < 0 || n > int64(IntegerVec) {
+		return fmt.Errorf("could not parse the integer `%v` as Type, must be in range [0, %d]", n, IntegerVec)
 	}
 
 	*t = Type(n)

@@ -13,7 +13,7 @@ import (
 // A constant vector is a vector obtained by repeated "length" time the same value
 type ConstantExt struct {
 	Value  fext.Element
-	length int
+	Length int
 }
 
 // Construct a new "Constant" smart-vector
@@ -21,11 +21,11 @@ func NewConstantExt(val fext.Element, length int) *ConstantExt {
 	if length <= 0 {
 		utils.Panic("zero or negative length are not allowed")
 	}
-	return &ConstantExt{Value: val, length: length}
+	return &ConstantExt{Value: val, Length: length}
 }
 
 // Return the length of the smart-vector
-func (c *ConstantExt) Len() int { return c.length }
+func (c *ConstantExt) Len() int { return c.Length }
 
 // Returns an entry of the constant
 func (c *ConstantExt) GetBase(int) (field.Element, error) {
@@ -50,15 +50,15 @@ func (c *ConstantExt) SubVector(start, stop int) SmartVector {
 	if start == stop {
 		utils.Panic("zero length are not allowed")
 	}
-	assertCorrectBound(start, c.length)
+	assertCorrectBound(start, c.Length)
 	// The +1 is because we accept if "stop = length"
-	assertCorrectBound(stop, c.length+1)
+	assertCorrectBound(stop, c.Length+1)
 	return NewConstantExt(c.Value, stop-start)
 }
 
 // Returns a rotated version of the slice
 func (c *ConstantExt) RotateRight(int) SmartVector {
-	return NewConstantExt(c.Value, c.length)
+	return NewConstantExt(c.Value, c.Length)
 }
 
 // Write the constant vector in a slice
@@ -77,11 +77,11 @@ func (c *ConstantExt) Val() fext.Element {
 }
 
 func (c *ConstantExt) Pretty() string {
-	return fmt.Sprintf("Constant[%v;%v]", c.Value.String(), c.length)
+	return fmt.Sprintf("Constant[%v;%v]", c.Value.String(), c.Length)
 }
 
 func (c *ConstantExt) DeepCopy() SmartVector {
-	return NewConstantExt(c.Value, c.length)
+	return NewConstantExt(c.Value, c.Length)
 }
 
 func (c *ConstantExt) IntoRegVecSaveAlloc() []field.Element {

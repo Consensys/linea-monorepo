@@ -9,7 +9,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     *******************************************************************************************
 
     *******************************************************************************************
-    LINEA_SEPOLIA_PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat setRateLimit \
     --message-service-address <address> \
@@ -26,9 +26,7 @@ task("setRateLimit", "Sets the rate limit on a Message Service contract")
   .setAction(async (taskArgs, hre) => {
     const ethers = hre.ethers;
 
-    const { deployments, getNamedAccounts } = hre;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { deployer } = await getNamedAccounts();
+    const { deployments } = hre;
     const { get } = deployments;
 
     const messageServiceContractType = getTaskCliOrEnvValue(taskArgs, "messageServiceType", "MESSAGE_SERVICE_TYPE");

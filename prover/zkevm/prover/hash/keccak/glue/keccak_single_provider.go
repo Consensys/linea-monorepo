@@ -27,8 +27,9 @@ type KeccakSingleProvider struct {
 	MaxNumKeccakF int
 
 	// prover actions for  internal modules
-	ImportPad, Packing wizard.ProverAction
-	KeccakOverBlocks   *KeccakOverBlocks
+	ImportPad        *importpad.Importation
+	Packing          *packing.Packing
+	KeccakOverBlocks *KeccakOverBlocks
 }
 
 // NewKeccakSingleProvider implements the utilities for proving keccak hash

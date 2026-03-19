@@ -471,7 +471,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)
-	return field.Element{}
+	return field.Element{} // unreachable, but satisfies the compiler
 }
 
 // Fs returns the Fiat-Shamir state

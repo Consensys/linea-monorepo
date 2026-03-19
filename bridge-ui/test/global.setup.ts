@@ -12,9 +12,10 @@ import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { waitForTransactionReceipt } from "viem/actions";
 import { estimateGas } from "viem/linea";
 
-import { localL1Network, localL2Network } from "@/constants";
+import { localL1Network, localL2Network } from "@/constants/chains";
 
 import {
+  L1_ACCOUNT_PRIVATE_KEY,
   L1_TEST_ERC2O_CONTRACT_ADDRESS,
   L2_ACCOUNT_PRIVATE_KEY,
   L2_TEST_ERC2O_CONTRACT_ADDRESS,
@@ -36,7 +37,9 @@ setup("Global setup", async () => {
   await sendERC20TokenToAccount();
 
   console.log("Sending ETH to L2 account on L1...");
-  await sendETHToL2Account();
+  await sendETHToL2AccountOnL1();
+  console.log("Sending ETH to L1 account on L2...");
+  await sendETHToL1AccountOnL2();
 });
 
 async function generateL2Traffic() {
@@ -110,6 +113,10 @@ async function sendERC20TokenToAccount() {
     maxFeePerGas: maxFeePerGas,
   });
 
+  console.log(
+    `ERC20 mint transaction sent on L1. transactionHash=${transactionHash} maxPriorityFeePerGas=${maxPriorityFeePerGas.toString()} maxFeePerGas=${maxFeePerGas?.toString()}`,
+  );
+  console.log("Waiting for L1 transaction to be confirmed...");
   await waitForTransactionReceipt(walletClient, { hash: transactionHash, confirmations: 1 });
 
   const l2Account = privateKeyToAccount(L2_ACCOUNT_PRIVATE_KEY);
@@ -125,7 +132,7 @@ async function sendERC20TokenToAccount() {
     transport: http(LOCAL_L2_NETWORK.rpcUrl),
   });
 
-  const { priorityFeePerGas, baseFeePerGas, gasLimit } = await estimateGas(l2WalletClient, {
+  const { priorityFeePerGas, baseFeePerGas } = await estimateGas(l2WalletClient, {
     account: l2WalletClient.account,
     to: L2_TEST_ERC2O_CONTRACT_ADDRESS,
     value: 0n,
@@ -182,10 +189,14 @@ async function sendERC20TokenToAccount() {
       functionName: "mint",
       args: [l2Account.address, parseEther("1000")],
     }),
-    maxPriorityFeePerGas: priorityFeePerGas,
-    maxFeePerGas: priorityFeePerGas + baseFeePerGas,
-    gas: gasLimit,
+    maxPriorityFeePerGas: priorityFeePerGas * 2n,
+    maxFeePerGas: (priorityFeePerGas + baseFeePerGas) * 2n,
   });
+
+  console.log(
+    `ERC20 mint transaction sent on L2. transactionHash=${transactionHashL2} maxPriorityFeePerGas=${(priorityFeePerGas * 2n).toString()} maxFeePerGas=${((priorityFeePerGas + baseFeePerGas) * 2n).toString()}`,
+  );
+  console.log("Waiting for L2 transaction to be confirmed...");
 
   await waitForTransactionReceipt(l2WalletClient, { hash: transactionHashL2, confirmations: 1 });
 
@@ -207,7 +218,7 @@ async function sendERC20TokenToAccount() {
   console.log(`L2 Token balance after minting: ${formatEther(l2Balance)} tokens`);
 }
 
-async function sendETHToL2Account() {
+async function sendETHToL2AccountOnL1() {
   const l1Account = mnemonicToAccount(process.env.E2E_TEST_SEED_PHRASE, { accountIndex: 0, addressIndex: 6 });
 
   const walletClient = createWalletClient({
@@ -235,4 +246,39 @@ async function sendETHToL2Account() {
 
   const balance = await publicClient.getBalance({ address: l2Account.address });
   console.log(`L2 account ETH balance on L1: ${formatEther(balance)} ETH`);
+}
+
+async function sendETHToL1AccountOnL2() {
+  const l2Account = privateKeyToAccount(L2_ACCOUNT_PRIVATE_KEY);
+
+  const walletClient = createWalletClient({
+    chain: localL2Network,
+    transport: http(LOCAL_L2_NETWORK.rpcUrl),
+    account: l2Account,
+  });
+
+  const publicClient = createPublicClient({
+    chain: localL2Network,
+    transport: http(LOCAL_L2_NETWORK.rpcUrl),
+  });
+
+  const l1Account = privateKeyToAccount(L1_ACCOUNT_PRIVATE_KEY);
+
+  const { priorityFeePerGas, baseFeePerGas } = await estimateGas(publicClient, {
+    account: l2Account,
+    to: l1Account.address,
+    value: parseEther("100"),
+  });
+
+  const transactionHash = await walletClient.sendTransaction({
+    to: l1Account.address,
+    value: parseEther("100"),
+    maxPriorityFeePerGas: priorityFeePerGas,
+    maxFeePerGas: baseFeePerGas + priorityFeePerGas,
+  });
+
+  await waitForTransactionReceipt(walletClient, { hash: transactionHash, confirmations: 1 });
+
+  const balance = await publicClient.getBalance({ address: l1Account.address });
+  console.log(`L1 account ETH balance on L2: ${formatEther(balance)} ETH`);
 }

@@ -164,9 +164,7 @@ func addRoundKeyCompute(round int, input *[width]field.Element) {
 	for i := 0; i < len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i++ {
 		input[i].Add(&input[i], &gnarkposeidon2.GetDefaultParameters().RoundKeys[round][i])
 	}
-	for i := len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i < width; i++ {
-		input[i] = input[i]
-	}
+	// No-op: elements beyond the round key length are unchanged.
 }
 
 // SBoxCompute applies the  s-box on input[index]

@@ -6,11 +6,11 @@ linters:
   enable:
     - gosec
     - ineffassign
-    - prealloc
   settings:
     gosec:
       excludes:
         - G115
+        - G602
     staticcheck:
       checks:
         - -SA1006

@@ -3,6 +3,7 @@ package serde
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"runtime"
 	"sync"
 	"syscall"
@@ -59,11 +60,40 @@ type InterfaceHeader struct {
 	// 1 byte: Number of pointer dereferences (e.g., ***T)
 	PtrIndirection uint8
 
-	// Reserved: 5 bytes of explicit padding.
-	// Together with TypeID (2) and Indirection (1), these 5 bytes ensure
-	// that the 'Offset' field starts exactly at the 8th byte.
-	// This allows the 64-bit 'Ref' to be naturally aligned.
-	// Total header size: 2 + 1 + 5 + 8 = 16 bytes.
+	// Reserved: 5 bytes used for two distinct purposes depending on TypeID.
+	//
+	// Case A — named type (TypeID < 0xFFFF, i.e. a type from IDToType):
+	//   All 5 bytes are unused padding.  Their only role is to push 'Offset'
+	//   to byte-offset 8 so the 64-bit Ref stays naturally aligned.
+	//   Total header size: 2 + 1 + 5 + 8 = 16 bytes.
+	//
+	// Case B — composite type (TypeID == compositeTypeID == 0xFFFF):
+	//   PtrIndirection is unused (always 0).
+	//   Reserved[0]   composite kind:
+	//                   compositeKindSlice      (1) — []ElemType
+	//                   compositeKindMap        (2) — map[KeyType]ValType
+	//                   compositeKindArray      (3) — [N]ElemType
+	//                   compositeKindEmptyStruct(4) — struct{} (zero-size)
+	//   Reserved[1:3] primary element TypeID field (little-endian uint16):
+	//                   elem type for slice/array; key type for map; unused for EmptyStruct.
+	//   Reserved[3:5] secondary field (little-endian uint16):
+	//                   val TypeID field for map; array length for array; unused otherwise.
+	//
+	// Element TypeID fields (Reserved[1:3] and Reserved[3:5] for map values) encode
+	// both the registry TypeID and a pointer-indirection level:
+	//   bits  0–13  base TypeID from IDToType  (supports up to 16 383 registered types)
+	//   bits 14–15  pointer indirection: 0=T  1=*T  2=**T  3=***T
+	// The sentinel compositeElemEmptyStruct (0xFFFF) in a TypeID field represents
+	// the zero-size struct{} type, which has no entry in the TypeToID registry.
+	// Array length (Reserved[3:5] for arrays) is always raw, never a TypeID field.
+	//
+	// Offset points to the serialised slice/map/array data, exactly as it would
+	// be for a top-level value of that type.  For compositeKindEmptyStruct, Offset
+	// is always 0 (struct{} has no data).
+	//
+	// Case B is used when the serialized data contains boxed composites such as
+	// interface{}(map[string]T), interface{}([]T), interface{}([N]T), or interface{}(struct{})
+	// because those types cannot be registered in the TypeToID registry.
 	Reserved [5]uint8
 
 	// 8 bytes: File or memory offset to the actual data
@@ -91,6 +121,42 @@ type FileSlice struct {
 	// Original capacity (used to restore slice header)
 	Cap int64
 }
+
+// compositeTypeID is a sentinel TypeID stored in InterfaceHeader.TypeID to
+// signal that the interface holds a composite type (slice, map, array, or struct{})
+// rather than a named type from the TypeToID registry.  0xFFFF is safely above the
+// current maximum registered ID and cannot be confused with a real entry.
+const compositeTypeID = uint16(0xFFFF)
+
+// Composite kind codes stored in InterfaceHeader.Reserved[0].
+const (
+	compositeKindSlice       = uint8(1)
+	compositeKindMap         = uint8(2)
+	compositeKindArray       = uint8(3)
+	compositeKindEmptyStruct = uint8(4) // struct{} directly behind an interface
+)
+
+// compositeElemEmptyStruct is a sentinel stored in the 2-byte TypeID sub-fields
+// of InterfaceHeader.Reserved (Reserved[1:3] or Reserved[3:5]) to represent
+// struct{} as a composite element, map key, or map value type.  0xFFFF is safe
+// because a valid TypeID sub-field either equals this sentinel or has bits 0–13
+// within the current registry range (< 16 384).
+const compositeElemEmptyStruct = uint16(0xFFFF)
+
+// compositeTypeMask and compositeIndirectionShift split a 2-byte composite
+// TypeID sub-field into a base TypeID (bits 0–13, max 16 383) and a pointer
+// indirection level (bits 14–15, range 0–3).
+//
+// This lets [](*Foo), map[K](*V), and [N](*T) be encoded without registering
+// the pointer types, as long as the base types are in TypeToID.
+const (
+	compositeTypeMask         = uint16(0x3FFF)
+	compositeIndirectionShift = uint(14)
+)
+
+// emptyStructType is the reflect.Type for struct{}, the zero-size empty struct.
+// It is used as a sentinel in the composite encoding path.
+var emptyStructType = reflect.TypeOf(struct{}{})
 
 func SizeOf[T any]() int64 {
 	var z T

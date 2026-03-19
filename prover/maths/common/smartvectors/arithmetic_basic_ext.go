@@ -158,13 +158,13 @@ func BatchInvertExt(x SmartVector) SmartVector {
 
 	switch v := x.(type) {
 	case *ConstantExt:
-		res := &ConstantExt{length: v.length}
+		res := &ConstantExt{Length: v.Length}
 		res.Value.Inverse(&v.Value)
 		return res
 	case *PaddedCircularWindowExt:
 		res := &PaddedCircularWindowExt{
-			totLen:  v.totLen,
-			offset:  v.offset,
+			TotLen:  v.TotLen,
+			Offset:  v.Offset,
 			Window_: fext.BatchInvert(v.Window_),
 		}
 		res.PaddingVal_.Inverse(&v.PaddingVal_)
@@ -187,7 +187,7 @@ func IsZeroExt(x SmartVector) SmartVector {
 	switch v := x.(type) {
 
 	case *ConstantExt:
-		res := &ConstantExt{length: v.length}
+		res := &ConstantExt{Length: v.Length}
 		if v.Value == fext.Zero() {
 			res.Value = fext.One()
 		}
@@ -195,8 +195,8 @@ func IsZeroExt(x SmartVector) SmartVector {
 
 	case *PaddedCircularWindowExt:
 		res := &PaddedCircularWindowExt{
-			totLen:  v.totLen,
-			offset:  v.offset,
+			TotLen:  v.TotLen,
+			Offset:  v.Offset,
 			Window_: make([]fext.Element, len(v.Window_)),
 		}
 
@@ -252,13 +252,13 @@ func SumExt(a SmartVector) (res fext.Element) {
 		for i := range v.Window_ {
 			res.Add(&res, &v.Window_[i])
 		}
-		constTerm := fext.NewFromUint(uint64(v.totLen-len(v.Window_)), 0, 0, 0)
+		constTerm := fext.NewFromUint(uint64(v.TotLen-len(v.Window_)), 0, 0, 0)
 		constTerm.Mul(&constTerm, &v.PaddingVal_)
 		res.Add(&res, &constTerm)
 		return res
 
 	case *ConstantExt:
-		res := fext.NewFromUint(uint64(v.length), 0, 0, 0)
+		res := fext.NewFromUint(uint64(v.Length), 0, 0, 0)
 		res.Mul(&res, &v.Value)
 		return res
 
@@ -271,7 +271,6 @@ func SumExt(a SmartVector) (res fext.Element) {
 
 	default:
 		utils.Panic("unsupported type: %T", v)
+		return res // unreachable, but satisfies the compiler
 	}
-
-	return res
 }

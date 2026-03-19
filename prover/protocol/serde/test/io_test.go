@@ -582,7 +582,7 @@ func TestZkEVM_Store(t *testing.T) {
 
 	// 2. Store to Disk
 	// We use 'false' for compression to test the raw mmap capability
-	err := serde.StoreToDisk(path, z, false)
+	err := serde.StoreToDisk(path, getTestZkEVM(), false)
 	require.NoError(t, err, "StoreToDisk failed for ZkEVM")
 
 	// 3. Verify file creation
@@ -610,7 +610,7 @@ func TestZkEVM_Load(t *testing.T) {
 	// We use reflection to ensure we create the exact pointer type expected by LoadFromDisk
 	// z is likely a struct or a pointer to a struct.
 	// reflect.New creates a pointer to the type of z.
-	destPtr := reflect.New(reflect.TypeOf(z))
+	destPtr := reflect.New(reflect.TypeOf(getTestZkEVM()))
 
 	// 3. Load from Disk
 	closer, err := serde.LoadFromDisk(path, destPtr.Interface(), false)
@@ -630,7 +630,7 @@ func TestZkEVM_Load(t *testing.T) {
 	t.Log("Running DeepCmp on ZkEVM... this might take a moment.")
 
 	// FailFast = true to stop on the first error
-	isMatch := serde.DeepCmp(z, loadedVal, true)
+	isMatch := serde.DeepCmp(getTestZkEVM(), loadedVal, true)
 
 	if !isMatch {
 		t.Fatal("DeepCmp failed: Loaded ZkEVM object does not match the original")

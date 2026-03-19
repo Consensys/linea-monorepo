@@ -6,6 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -42,6 +44,9 @@ type KeccakFBlocks struct {
 	IsBlockBaseB  ifaces.Column
 	IsBlockActive ifaces.Column // active part of the blocks (technicaly it is the active part of the keccakf module).
 	KeccakfSize   int           // size of the keccakf module
+	// ColRound is a repeated pattern, used to skip errors in the audit phase of the
+	// distributed prover
+	ColRound *dedicated.RepeatedPattern
 }
 
 // it first applies to-basex to get laneX, then a projection query to map lanex to blocks
@@ -66,8 +71,14 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs LaneInfo, keccakfSize int
 	io.IsFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFirstBlock"), keccakfSize, true)
 	io.IsBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsBlockBaseB"), keccakfSize, true)
 	io.IsBlockActive = comp.InsertCommit(0, ifaces.ColIDf("IsBlockActive"), keccakfSize, true)
-	colRound := comp.InsertPrecomputed(ifaces.ColIDf("KeccakFRound"),
-		smartvectors.NewRegular(vector.PeriodicOne(keccak.NumRound, keccakfSize)))
+	io.ColRound = dedicated.NewRepeatedPattern(
+		comp,
+		0,
+		vector.PeriodicOne(keccak.NumRound, keccakfSize),
+		verifiercol.NewConstantCol(field.One(), keccakfSize, "ColRound_KeccakFRound"),
+		"COL_ROUND",
+	)
+	colRound := io.ColRound.Natural
 
 	io.Blocks = make([][NumSlices]ifaces.Column, nbOfLanesPerBlock)
 	for i := range io.Blocks {
@@ -183,6 +194,8 @@ func (io *KeccakFBlocks) Run(run *wizard.ProverRuntime, traces keccak.PermTraces
 
 	// run base conversion to get laneX from lane
 	io.Bc.Run(run)
+	// assign the repeated pattern for colRound
+	io.ColRound.Assign(run)
 	// assign the blocks and flags
 	io.AssignBlockFlags(run, traces)
 	io.AssignBlocks(run, traces)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
@@ -48,6 +49,19 @@ var AllCircuits = []circuits.CircuitID{
 	circuits.EmulationDummyCircuitID, // we want to generate Verifier.sol for this one
 }
 
+// PayloadCircuits defines the ordered list of payload circuits that can be aggregated.
+// This order corresponds to circuit IDs 0-5 in GlobalCircuitIDMapping.
+// Infrastructure circuits (emulation, aggregation, pi-interconnection, emulation-dummy)
+// are NOT included here.
+var PayloadCircuits = []string{
+	"execution-dummy",         // ID 0
+	"data-availability-dummy", // ID 1
+	"execution",               // ID 2
+	"execution-large",         // ID 3
+	"execution-limitless",     // ID 4
+	"data-availability-v2",    // ID 5
+}
+
 // Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
 func Setup(ctx context.Context, args SetupArgs) error {
 	const cmdName = "setup"
@@ -73,6 +87,10 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to create assets directory: %w", cmdName, err)
 	}
 
+	if err := copyConfigToAssets(cfg, args.ConfigFile, cmdName); err != nil {
+		return fmt.Errorf("%s failed to copy config file to the assets directory: %w", cmdName, err)
+	}
+
 	// srs provider
 	srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 	if err != nil {
@@ -88,7 +106,8 @@ func Setup(ctx context.Context, args SetupArgs) error {
 			// we skip aggregation/emulation circuits in this first loop since the setup is more complex
 			continue
 		}
-		logrus.Infof("Setting up circuit %s", c)
+
+		logrus.Infof("--- Start of circuit %s setup ---", c)
 
 		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
@@ -119,15 +138,15 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
 
-	// Collect verifying keys for ALL circuits (using global circuit ID mapping)
+	// Collect verifying keys for payload circuits only (IDs 0-5)
 	// The IsAllowedCircuitID bitmask in the config determines which ones are actually allowed at runtime
-	allVks, err := collectAllVerifyingKeys(ctx, cfg, srsProvider)
+	payloadVks, err := collectPayloadVerifyingKeys(ctx, cfg, srsProvider)
 	if err != nil {
 		return err
 	}
 
 	// Setup aggregation circuits
-	allowedVkForEmulation, err := setupAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits, &piSetup, allVks)
+	allowedVkForEmulation, err := setupAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits, &piSetup, payloadVks)
 	if err != nil {
 		return err
 	}
@@ -140,7 +159,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 	}
 
 	logrus.Infof("Done setting up circuits and writing the assets to disk :)")
-
 	return nil
 }
 
@@ -166,7 +184,9 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 	// Derive the asset paths
 	setupPath := cfg.PathForSetup(string(circuit))
 	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
+	logrus.Infof("Manifest path: %s", manifestPath)
 
+	// check if setup can be skipped
 	if !force {
 		// we may want to skip setup if the files already exist
 		// and the checksums match
@@ -176,7 +196,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 			if err != nil {
 				return fmt.Errorf("failed to compute circuit digest for circuit %s: %w", circuit, err)
 			}
-
+			logrus.Infof("Manifest checksum: %s, Computed circuit digest: %s", manifest.Checksums.Circuit, circuitDigest)
 			if manifest.Checksums.Circuit == circuitDigest {
 				logrus.Infof("skipping %s (already setup)", circuit)
 				return nil
@@ -191,8 +211,15 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
-	logrus.Infof("writing assets for %s", circuit)
-	return setup.WriteTo(setupPath)
+	// write the assets
+	err = setup.WriteTo(setupPath)
+	if err != nil {
+		return fmt.Errorf("failed to write assets for circuit %s: %w", circuit, err)
+	}
+
+	logrus.Infof("Successfully wrote circuit %s to %s", circuit, setupPath)
+	logrus.Infof("--- End of circuit %s setup ---", circuit)
+	return nil
 }
 
 // serializeInnerCircuit serializes the compiled inner circuit (wizard IOP) to disk
@@ -207,9 +234,9 @@ func serializeInnerCircuit(cfg *config.Config, c circuits.CircuitID) error {
 	if c == circuits.ExecutionLargeCircuitID {
 		limits.SetLargeMode()
 	}
+
 	// FullZkEvm is memoized via sync.Once — returns the cached compiled instance
 	zkEvm := zkevm.FullZkEvm(&limits, cfg)
-
 	logrus.Infof("Serializing inner circuit for %s to %s", c, innerCircuitPath)
 	if err := serde.StoreToDisk(innerCircuitPath, zkEvm, false); err != nil {
 		return fmt.Errorf("failed to serialize inner circuit for %s: %w", c, err)
@@ -223,6 +250,7 @@ func parseCircuitInputs(circuitsStr string) (map[circuits.CircuitID]bool, error)
 	for _, c := range AllCircuits {
 		inCircuits[c] = false
 	}
+
 	for _, c := range strings.Split(circuitsStr, ",") {
 		circuitID := circuits.CircuitID(c)
 		if _, ok := inCircuits[circuitID]; !ok {
@@ -237,41 +265,46 @@ func parseCircuitInputs(circuitsStr string) (map[circuits.CircuitID]bool, error)
 func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupArgs,
 ) (circuits.Builder, map[string]any, error) {
 	extraFlags := make(map[string]any)
+
 	switch c {
-	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
+	case circuits.ExecutionCircuitID:
 		limits := cfg.TracesLimits
-		if c == circuits.ExecutionLargeCircuitID {
-			limits.SetLargeMode()
-		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
+	case circuits.ExecutionLargeCircuitID:
+		limits := cfg.TracesLimits
+		limits.SetLargeMode()
+		extraFlags["cfg_checksum"] = limits.Checksum()
+		zkEvm := zkevm.FullZkEvmLarge(&limits, cfg)
+		return execution.NewBuilder(zkEvm), extraFlags, nil
+
 	case circuits.ExecutionLimitlessCircuitID:
+		executionLimitlessPath := cfg.PathForSetup("execution-limitless")
+		limits := cfg.TracesLimits
+		extraFlags["cfg_checksum"] = limits.Checksum()
 
-		panic("uncomment when the limitless prover works")
+		logrus.Info("Setting up limitless prover assets")
+		asset := zkevm.NewLimitlessZkEVM(cfg)
 
-		// executionLimitlessPath := cfg.PathForSetup("execution-limitless")
-		// limits := cfg.TracesLimits
-		// extraFlags["cfg_checksum"] = limits.Checksum()
+		// Unlike for the other circuits, the limitless prover assets are written
+		// to disk directly before returning the circuit builder. The reason is
+		// that the limitless prover assets are large and we want to avoid keeping
+		// them in memory. The second reason is that returning them alongside the
+		// build would change the structure of the function for just one case.
+		logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
+		if err := asset.Store(cfg); err != nil {
+			return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
+		}
 
-		// logrus.Info("Setting up limitless prover assets")
-		// asset := zkevm.NewLimitlessZkEVM(cfg)
+		compCong := asset.DistWizard.CompiledConglomeration
+		vkMerkleRoot := asset.DistWizard.VerificationKeyMerkleTree.GetRoot()
 
-		// // Unlike for the other circuits, the limitless prover assets are written
-		// // to disk directly before returning the circuit builder. The reason is
-		// // that the limitless prover assets are large and we want to avoid keeping
-		// // them in memory. The second reason is that returning them alongside the
-		// // build would change the structure of the function for just one case.
-		// logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
-		// if err := asset.Store(cfg); err != nil {
-		// 	return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
-		// }
-		// compCong := asset.DistWizard.CompiledConglomeration
-		// asset = nil
-		// runtime.GC()
+		asset = nil
+		runtime.GC()
 
-		// return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
+		return execution.NewBuilderLimitless(compCong.RecursionCompBLS, &limits, vkMerkleRoot), extraFlags, nil
 
 	case circuits.DataAvailabilityV2CircuitID:
 		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
@@ -292,15 +325,17 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	}
 }
 
-// collectAllVerifyingKeys: Gathers verifying keys for ALL circuits in circuits.GlobalCircuitIDMapping.
-// The aggregation circuit always has access to all VKs. The IsAllowedCircuitID bitmask
-// in the config controls which circuits are actually allowed at runtime.
-func collectAllVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
-	allCircuitNames := circuits.GetAllCircuitNames()
-	allVks := make([]plonk.VerifyingKey, len(allCircuitNames))
+// collectPayloadVerifyingKeys gathers verifying keys for payload circuits only (IDs 0-5).
+// These are the circuits that can be aggregated. Infrastructure circuits (emulation,
+// aggregation, pi-interconnection, emulation-dummy) are excluded.
+// The returned slice is indexed by payload circuit ID (0-5).
+func collectPayloadVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
+	payloadVks := make([]plonk.VerifyingKey, len(PayloadCircuits))
 
-	for i, circuitName := range allCircuitNames {
-		if isDummyCircuit(circuitName) {
+	for i, circuitName := range PayloadCircuits {
+		logrus.Infof("Collecting verifying key for payload circuit %s (ID %d)", circuitName, i)
+
+		if isPayloadDummyCircuit(circuitName) {
 			curveID, mockID, err := getDummyCircuitParams(circuitName)
 			if err != nil {
 				return nil, err
@@ -309,20 +344,32 @@ func collectAllVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvide
 			if err != nil {
 				return nil, err
 			}
-			allVks[i] = vk
+			payloadVks[i] = vk
 			continue
 		}
 
-		// derive the asset paths
+		// Read VK from disk for non-dummy circuits
 		setupPath := cfg.PathForSetup(circuitName)
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
+
 		vk := plonk.NewVerifyingKey(ecc.BLS12_377)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
 			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", circuitName, err)
 		}
-		allVks[i] = vk
+		payloadVks[i] = vk
 	}
-	return allVks, nil
+
+	return payloadVks, nil
+}
+
+// isPayloadDummyCircuit returns true if the circuit is a dummy circuit for payload testing.
+// Note: emulation-dummy is NOT a payload dummy - it's an infrastructure circuit dummy.
+func isPayloadDummyCircuit(cID string) bool {
+	switch circuits.CircuitID(cID) {
+	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID:
+		return true
+	}
+	return false
 }
 
 // getDummyCircuitParams returns the curve and mock ID for a dummy circuit.
@@ -342,25 +389,44 @@ func getDummyCircuitParams(cID string) (ecc.ID, circuits.MockCircuitID, error) {
 // setupAggregationCircuits: Configures aggregation circuits and collects their verifying keys for emulation.
 func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force bool,
 	srsProvider circuits.SRSProvider, inCircuits map[circuits.CircuitID]bool,
-	piSetup *circuits.Setup, allowedVkForAggregation []plonk.VerifyingKey,
+	piSetup *circuits.Setup, payloadVks []plonk.VerifyingKey,
 ) ([]plonk.VerifyingKey, error) {
 	if !inCircuits[circuits.AggregationCircuitID] {
+		// Aggregation was not requested, but emulation may still need the
+		// aggregation verifying keys. Try to read them from disk.
+		if inCircuits[circuits.EmulationCircuitID] {
+			allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
+			for _, numProofs := range cfg.Aggregation.NumProofs {
+				c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
+				setupPath := cfg.PathForSetup(string(c))
+				vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
+
+				vk := plonk.NewVerifyingKey(ecc.BW6_761)
+				if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
+					return nil, fmt.Errorf("failed to read verifying key for circuit %s (needed by emulation): %w", c, err)
+				}
+				allowedVkForEmulation = append(allowedVkForEmulation, vk)
+			}
+			return allowedVkForEmulation, nil
+		}
 		return nil, nil
 	}
 
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	extraFlags := map[string]any{
-		"allowedVkForAggregationDigests": listOfChecksums(allowedVkForAggregation),
+		"allowedVkForAggregationDigests": listOfChecksums(payloadVks),
 	}
 
 	allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
+
 	for _, numProofs := range cfg.Aggregation.NumProofs {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
-		// Always pass ALL verifying keys - the IsAllowedCircuitID bitmask controls which are actually allowed
-		builder := aggregation.NewBuilder(numProofs, *piSetup, allowedVkForAggregation)
+		// Pass payload VKs to aggregation builder
+		builder := aggregation.NewBuilder(numProofs, *piSetup, payloadVks)
+
 		if err := updateSetup(ctx, cfg, force, srsProvider, c, builder, extraFlags); err != nil {
 			return nil, err
 		}
@@ -368,22 +434,15 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 		// read the verifying key
 		setupPath := cfg.PathForSetup(string(c))
 		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
+
 		vk := plonk.NewVerifyingKey(ecc.BW6_761)
 		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
 			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", c, err)
 		}
 		allowedVkForEmulation = append(allowedVkForEmulation, vk)
 	}
+
 	return allowedVkForEmulation, nil
-}
-
-func isDummyCircuit(cID string) bool {
-	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID, circuits.EmulationDummyCircuitID:
-		return true
-	}
-	return false
-
 }
 
 func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder) (plonk.VerifyingKey, error) {
@@ -393,6 +452,7 @@ func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, ci
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
 	}
+
 	setup, err := circuits.MakeSetup(ctx, circuit, ccs, srsProvider, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
@@ -417,4 +477,32 @@ func listOfChecksums[T io.WriterTo](assets []T) []string {
 		res[i] = utils.HexEncodeToString(digest)
 	}
 	return res
+}
+
+// copyConfigToAssets creates the config directory under assets dir with environment and copies the config file
+func copyConfigToAssets(cfg *config.Config, configFilePath string, cmdName string) error {
+	configDir := filepath.Join(cfg.AssetsDir, cfg.Version, cfg.Environment, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("%s failed to create config directory: %w", cmdName, err)
+	}
+
+	configFileDst := filepath.Join(configDir, filepath.Base(configFilePath))
+
+	srcFile, err := os.Open(configFilePath)
+	if err != nil {
+		return fmt.Errorf("%s failed to open config file for copying: %w", cmdName, err)
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(configFileDst)
+	if err != nil {
+		return fmt.Errorf("%s failed to create destination config file: %w", cmdName, err)
+	}
+	defer dstFile.Close()
+
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("%s failed to copy config file: %w", cmdName, err)
+	}
+
+	return nil
 }

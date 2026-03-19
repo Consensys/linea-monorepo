@@ -257,7 +257,13 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 	// InterfaceHeader always points to the start of that data.
 	ih := (*InterfaceHeader)(unsafe.Pointer(&dec.data[offset]))
 	traceLog("Header Read: TypeID=%d Ind=%d Offset=%d", ih.TypeID, ih.PtrIndirection, ih.Offset)
-	if int(ih.TypeID) < 0 || int(ih.TypeID) >= len(IDToType) {
+
+	// Composite types (slice, map, array) are encoded with a sentinel TypeID.
+	if ih.TypeID == compositeTypeID {
+		return dec.decodeBoxedComposite(target, ih)
+	}
+
+	if int(ih.TypeID) >= len(IDToType) {
 		return fmt.Errorf("invalid type ID: %d", ih.TypeID)
 	}
 	concreteType := IDToType[ih.TypeID]
@@ -296,6 +302,85 @@ func (dec *decoder) decodeInterface(target reflect.Value, offset int64) error {
 		if err := dec.decode(concreteVal, int64(ih.Offset)); err != nil {
 			return err
 		}
+	}
+	target.Set(concreteVal)
+	return nil
+}
+
+// resolveCompositeTypeField reconstructs a reflect.Type from the 2-byte TypeID
+// sub-field stored in InterfaceHeader.Reserved for boxed composite descriptors.
+// It is the inverse of encodeCompositeTypeField.
+//
+//   - compositeElemEmptyStruct (0xFFFF) → struct{}
+//   - otherwise: bits 14–15 = pointer indirection, bits 0–13 = base TypeID
+func resolveCompositeTypeField(field uint16) (reflect.Type, error) {
+	if field == compositeElemEmptyStruct {
+		return emptyStructType, nil
+	}
+	indirection := int(field >> compositeIndirectionShift)
+	baseID := field & compositeTypeMask
+	if int(baseID) >= len(IDToType) {
+		return nil, fmt.Errorf("decodeBoxedComposite: base TypeID %d out of range (registry size %d)", baseID, len(IDToType))
+	}
+	t := IDToType[baseID]
+	for i := 0; i < indirection; i++ {
+		t = reflect.PointerTo(t)
+	}
+	return t, nil
+}
+
+// decodeBoxedComposite reconstructs a slice, map, array, or struct{} that was
+// stored inside an interface value and encoded with the compositeTypeID sentinel.
+// The type description is read from the InterfaceHeader.Reserved bytes:
+//
+//	Reserved[0]   = composite kind (compositeKindSlice / Map / Array / EmptyStruct)
+//	Reserved[1:3] = primary TypeID field  (elem for slice/array; key for map; unused for EmptyStruct)
+//	Reserved[3:5] = secondary field       (val TypeID field for map; raw array length; unused otherwise)
+func (dec *decoder) decodeBoxedComposite(target reflect.Value, ih *InterfaceHeader) error {
+	kind := ih.Reserved[0]
+
+	// compositeKindEmptyStruct carries no type or data: just set the zero struct{}.
+	if kind == compositeKindEmptyStruct {
+		target.Set(reflect.Zero(emptyStructType))
+		return nil
+	}
+
+	primaryField := uint16(ih.Reserved[1]) | uint16(ih.Reserved[2])<<8
+	secondaryRaw := uint16(ih.Reserved[3]) | uint16(ih.Reserved[4])<<8
+
+	primaryType, err := resolveCompositeTypeField(primaryField)
+	if err != nil {
+		return fmt.Errorf("decodeBoxedComposite primary: %w", err)
+	}
+
+	var compositeType reflect.Type
+	switch kind {
+	case compositeKindSlice:
+		compositeType = reflect.SliceOf(primaryType)
+
+	case compositeKindMap:
+		valType, err := resolveCompositeTypeField(secondaryRaw)
+		if err != nil {
+			return fmt.Errorf("decodeBoxedComposite map value: %w", err)
+		}
+		compositeType = reflect.MapOf(primaryType, valType)
+
+	case compositeKindArray:
+		// secondaryRaw is the raw array length, not a TypeID field.
+		compositeType = reflect.ArrayOf(int(secondaryRaw), primaryType)
+
+	default:
+		return fmt.Errorf("decodeBoxedComposite: unknown composite kind %d", kind)
+	}
+
+	if ih.Offset.IsNull() {
+		target.Set(reflect.Zero(compositeType))
+		return nil
+	}
+
+	concreteVal := reflect.New(compositeType).Elem()
+	if err := dec.decode(concreteVal, int64(ih.Offset)); err != nil {
+		return err
 	}
 	target.Set(concreteVal)
 	return nil

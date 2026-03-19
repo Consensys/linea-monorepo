@@ -224,8 +224,8 @@ func newPublicInput(
 	edc.DefinePadderPacker(comp, &padderPacker, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 
 	// ExecutionDataCollector: Hashing
-	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "MIMC_HASHER")
-	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "EXECUTION_DATA_COLLECTOR_POSEIDON2_HASHER")
+	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_POSEIDON2_HASHER")
 
 	// ExecutionDataCollector evaluation: we create a flattened column that
 	// interleaves all 8 OuterColumns so that the Schwarz-Zipfel polynomial

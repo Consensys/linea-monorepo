@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"path"
+	"reflect"
 	"runtime"
 	"time"
 
@@ -251,13 +252,20 @@ func (run *ProverRuntime) ExtractProof() Proof {
 			continue
 		}
 		messageValue := run.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
+		// Deep-copy the column name so the map key is a heap-allocated
+		// string independent of any mmap-backed buffer. Without this,
+		// the key's backing bytes may live in a circuit mmap region that
+		// gets released before the proof is consumed by conglomeration.
+		heapName := ifaces.ColID(string([]byte(name)))
+		messages.InsertNew(heapName, messageValue)
 	}
 
 	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
 	for round := 0; round <= run.currRound; round++ {
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
-			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+			// Deep-copy query name for same reason as column names above.
+			heapName := ifaces.QueryID(string([]byte(name)))
+			queriesParams.InsertNew(heapName, run.QueriesParams.MustGet(name))
 		}
 	}
 
@@ -577,7 +585,6 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasLeftPaddedPragma:
 
 		if !hasLeftPaddedRange {
-			// logrus.Warnf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a right-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion
@@ -595,7 +602,6 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	case hasRightPaddedPragma:
 
 		if !hasRightPaddedRange {
-			// logrus.Warnf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
 			// This conversion to regular ensures that the witness won't be
 			// stored as a left-padded column. The size reduction might later
 			// find a padding opportunity in the right direction. The conversion
@@ -1083,7 +1089,13 @@ func (run *ProverRuntime) GetPublicInput(name string) (res fext.GenericFieldElem
 			return res
 		}
 	}
-	utils.Panic("could not find public input nb %v", name)
+
+	pubNames := []string{}
+	for i := range allPubs {
+		pubNames = append(pubNames, allPubs[i].Name)
+	}
+
+	utils.Panic("could not find public input `%v` -> %v", name, pubNames)
 	return fext.GenericFieldElem{}
 
 }
@@ -1139,11 +1151,19 @@ func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
 // exec: executes the `action` with the performance monitor if active
 func (runtime *ProverRuntime) exec(name string, action any) {
 
-	logrus.Infof("[prover runtime] started running prover step: name=%v step=%T", name, action)
 	t := time.Now()
 
 	defer func() {
-		logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, time.Since(t))
+		totalTime := time.Since(t)
+		typeString := "<bare-func>"
+		if proverAction, ok := action.(ProverAction); ok {
+			typeString = reflect.TypeOf(proverAction).String()
+		}
+		if totalTime > 100*time.Millisecond {
+			logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v, type=%v", name, totalTime, typeString)
+		} else {
+			logrus.Debugf("[prover runtime] done running prover step. name=%v, time=%v, type=%v", name, totalTime, typeString)
+		}
 	}()
 
 	// Define helper excute function

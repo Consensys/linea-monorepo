@@ -46,8 +46,11 @@
 .gocache
 .vscode
 .idea
-.claude/
 .ipynb_checkpoints
+# Ignore .cursor config but commit shared team rules (BUGBOT.md, rules/).
+.cursor/*
+!.cursor/BUGBOT.md
+!.cursor/rules/
 
 atlassian-ide-plugin.xml
 circuit.bin
@@ -73,6 +76,9 @@ proving_key.bin
 **/src/*/generated
 **/.direnv
 
+# Prisma generated clients
+/native-yield-operations/lido-governance-monitor/prisma/client/
+
 bin/
 build/
 cache_forge/
@@ -86,6 +92,7 @@ target/
 tmp/
 typechain/
 typechain-types/
+generated/
 __pycache__/
 
 /besu-plugins/linea-sequencer/**/site
@@ -138,6 +145,7 @@ __pycache__/
 
 /docker/config/l2-genesis-initialization/*.json
 /docker/config/l2-genesis-initialization/*.toml
+/docker/config/l2-genesis-initialization/fork-timestamp.txt
 
 !.gitkeep
 !operations/bin/
@@ -155,3 +163,15 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
+# Prover serde testdata
+!prover/protocol/serde/testdata/*.txt
+# Usually the profiling pdfs
+prover/*.pdf
+# Usually request/response files
+prover/*.json 
+# Usually helper shell scripts to run the prover
+prover/*.sh
+
+.claude/settings.local.json
+contracts/.claude/settings.local.json
+*.analysis-report.html

@@ -1,4 +1,4 @@
-package splitextension
+package splitextension_test
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -174,7 +175,7 @@ func TestSplitextension(t *testing.T) {
 				run.AssignUnivariateExt(qName, testCase.X, y...)
 			}
 
-			comp := wizard.Compile(define, CompileSplitExtToBase, dummy.Compile)
+			comp := wizard.Compile(define, splitextension.CompileSplitExtToBase, dummy.Compile)
 			proof := wizard.Prove(comp, genWitness)
 			assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 		})

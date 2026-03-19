@@ -24,13 +24,12 @@ num_proofs = [10]
 # Conversion to is_allowed_circuit_id bitmask:
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
 #   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
-#   execution (ID 3, bit 3) = 0 → DISALLOWED
-#   execution-large (ID 4, bit 4) = 0 → DISALLOWED
-#   execution-limitless (ID 5, bit 5) = 0 → DISALLOWED
-#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-# Binary: 0b01000011 = 67 (decimal)
-is_allowed_circuit_id = 67
+#   execution (ID 2, bit 2) = 0 → DISALLOWED
+#   execution-large (ID 3, bit 3) = 0 → DISALLOWED
+#   execution-limitless (ID 4, bit 4) = 0 → DISALLOWED
+#   data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
+# Binary: 0b100011 = 35 (decimal)
+is_allowed_circuit_id = 35
 verifier_id = 0
 
 [layer2]
@@ -64,8 +63,9 @@ modules = [
     {module = "RLP_ADDR", limit = 4096, limit_large = 8192},
     {module = "RLP_TXN", limit = 131072, limit_large = 262144},
     {module = "RLP_TXN_RCPT", limit = 65536, limit_large = 131072},
+    {module = "RLP_AUTH", limit = 16384, limit_large = 32768},
     {module = "ROM", limit = 8388608, limit_large = 8388608},
-    {module = "ROMLEX", limit = 1024, limit_large = 2048},
+    {module = "ROM_LEX", limit = 1024, limit_large = 2048},
     {module = "SHAKIRA_DATA", limit = 65536, limit_large = 65536},
     {module = "SHF", limit = 262144, limit_large = 524288},
     {module = "STP", limit = 16384, limit_large = 32768},
@@ -91,11 +91,11 @@ modules = [
     {module = "BIN_REFERENCE_TABLE", limit = 262144, limit_large = 262144, is_not_scalable = true},
     {module = "SHF_REFERENCE_TABLE", limit = 4096, limit_large = 4096, is_not_scalable = true},
     {module = "INSTRUCTION_DECODER", limit = 512, limit_large = 512, is_not_scalable = true},
-    {module = "U20", limit = 131072, limit_large = 262144},
-    {module = "U32", limit = 131072, limit_large = 262144},
-    {module = "U36", limit = 131072, limit_large = 262144},
-    {module = "U64", limit = 131072, limit_large = 262144},
-    {module = "U128", limit = 131072, limit_large = 262144},
+    {module = "U20", limit = 2097152, limit_large = 4194304},
+    {module = "U32", limit = 2097152, limit_large = 4194304},
+    {module = "U36", limit = 2097152, limit_large = 4194304},
+    {module = "U64", limit = 2097152, limit_large = 4194304},
+    {module = "U128", limit = 2097152, limit_large = 4194304},
     {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
     {module = "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", limit = 256, limit_large = 512},
     {module = "PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", limit = 16, limit_large = 32},

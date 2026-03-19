@@ -44,15 +44,20 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 
 	// This constraint ensures that the recombined bits are equal to the
 	// original column.
-	for i := 0; i < len(packed); i++ {
+	for i := 0; i*16 < numBits; i++ {
 		bd.IsPackedLimbNotZero = append(bd.IsPackedLimbNotZero, comp.InsertCommit(round, ifaces.ColIDf("IS_PACKED_NOT_ZERO_%v", i), packed[0].Size(), true))
 	}
 
 	for i := len(packed) - 1; i >= 0; i-- {
 		ind := len(packed) - i - 1
 
-		if ind < len(bd.Bits)/16 {
-			break
+		if ind*16 >= numBits {
+			continue
+		}
+
+		s := bitExpr[ind*16:]
+		if len(s) > 16 {
+			s = s[:16]
 		}
 
 		comp.InsertGlobal(
@@ -62,7 +67,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 				bd.IsPackedLimbNotZero[ind],
 				symbolic.Sub(
 					packed[i],
-					symbolic.NewPolyEval(symbolic.NewConstant(2), bitExpr[ind*16:ind*16+16]),
+					symbolic.NewPolyEval(symbolic.NewConstant(2), s),
 				),
 			),
 		)
@@ -79,6 +84,9 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	// Obtain packed elements from
 	elements := make([][]field.Element, 0, len(bd.Packed))
 	for i, packed := range bd.Packed {
+		// ind mirrors the mapping in BitDecompose's constraint loop:
+		// packed[len-1] (LSB limb) → IsPackedLimbNotZero[0], etc.
+		ind := len(bd.Packed) - 1 - i
 
 		v := packed.GetColAssignment(run)
 		var packedElements []field.Element
@@ -95,7 +103,11 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 			packedElementsIsZero = append(packedElementsIsZero, isPackedLimbNotZero)
 		}
 
-		run.AssignColumn(bd.IsPackedLimbNotZero[i].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
+		// Guard mirrors the `if ind*16 >= numBits { continue }` in BitDecompose:
+		// packed limbs beyond numBits have no corresponding IsPackedLimbNotZero entry.
+		if ind < len(bd.IsPackedLimbNotZero) {
+			run.AssignColumn(bd.IsPackedLimbNotZero[ind].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
+		}
 
 		elements = append(elements, packedElements)
 	}

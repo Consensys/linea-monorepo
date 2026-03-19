@@ -16,7 +16,9 @@ import (
 // ProverTaskAtRound implements the [wizard.ProverAction] interface and is
 // responsible for assigning the Z polynomials of all the queries for which the
 // Z polynomial needs to be assigned in the current round
-type ProverTaskAtRound []*ZCtx
+type ProverTaskAtRound struct {
+	Zs []*ZCtx
+}
 
 // Run implements the [wizard.ProverAction interface]. The tasks will spawn
 // a goroutine for each tasks and wait for all of them to finish. The approach
@@ -24,11 +26,11 @@ type ProverTaskAtRound []*ZCtx
 // (e.g. less than 1000s).
 func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 	wg := &sync.WaitGroup{}
-	wg.Add(len(p))
+	wg.Add(len(p.Zs))
 
-	for i := range p {
+	for i := range p.Zs {
 		go func(i int) {
-			p[i].run(run)
+			p.Zs[i].run(run)
 			wg.Done()
 		}(i)
 	}

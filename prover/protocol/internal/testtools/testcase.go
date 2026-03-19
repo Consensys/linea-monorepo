@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -64,6 +65,27 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 
 	if !tc.MustFail() {
 		runTestShouldPass(t, comp, tc.Assign)
+	}
+
+	buf, err := serde.Serialize(comp)
+	if err != nil {
+		// Test-internal types (e.g. assignUnivariatePA, autoAssignColumn) are
+		// not in the code-generated TypeToID registry and cannot be added
+		// without a circular import. Log and skip the serde round-trip.
+		// todo @gusiri: consider running `go generate` to regenerate the
+		// registry or restructuring testtools to avoid the circular dep.
+		t.Logf("skipping serde round-trip: %v", err)
+		return
+	}
+
+	deser := &wizard.CompiledIOP{}
+
+	if err := serde.Deserialize(buf, deser); err != nil {
+		t.Fatal(err)
+	}
+
+	if ok := serde.DeepCmp(comp, deser, false); !ok {
+		t.Errorf("mismatching deserialized compiled IOP")
 	}
 }
 

@@ -1,44 +1,23 @@
 # required for `source`
 SHELL := /usr/bin/env bash
-CORSET_ROOT := $(shell pwd)/../go-corset
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := aefc4cd8bdb8b3b96ae93062d785fe2034de4e9f
+# beta-v5.0-rc5
+CONSTRAINTS_COMMIT_HASH := 4d1eea0c4b78c7742b292764319fb4ae3b9ac83b
+GO_CORSET_VERSION := v1.2.6
+
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
+# Find where Go installs binaries
+GOBIN := $(shell go env GOBIN)
+ifeq ($(GOBIN),)
+    GOBIN := $(shell go env GOPATH)/bin
+endif
+# Ensure that we are using go-corset from go install
+GO_CORSET := PATH="$(GOBIN):$$PATH"
 
 LINUX_AMD64_FLAGS := CGO_ENABLED=1 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" GOOS="linux" GOARCH="amd64"
 DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
-
-# Ensure that we are using go-corset from the monorepo
-GO_CORSET := PATH="${CORSET_ROOT}/bin":$$PATH
-
-# Define the list of Go packages to test
-PACKAGES := \
-	github.com/consensys/linea-monorepo/prover/maths/... \
-  github.com/consensys/linea-monorepo/prover/crypto/... \
-	github.com/consensys/linea-monorepo/prover/symbolic/... \
-  github.com/consensys/linea-monorepo/prover/utils/types/... \
-	github.com/consensys/linea-monorepo/prover/protocol/accessors/... \
-	github.com/consensys/linea-monorepo/prover/protocol/query/... \
-	github.com/consensys/linea-monorepo/prover/protocol/wizard/... \
-	github.com/consensys/linea-monorepo/prover/protocol/wizardutils/... \
-  github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion/... \
-  github.com/consensys/linea-monorepo/prover/protocol/dedicated/... \
-  github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion/... \
-
-
 
 # these targets are not defined as depending on source files,
 # so they should be recompiled by default “just in case”.
@@ -60,24 +39,26 @@ PACKAGES := \
 	testdata \
 	extract-constraints-git-archive \
 
-# Default target: runs all tests
-all: test test-compilers  test-compilers-gnark test-benchmark-gnark
 
 ##
 ## This rule produces the go-corset binary
 ##
 go-corset:
-	cd ${CORSET_ROOT} && make build
-
+	go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION)
 
 extract-constraints-git-archive:
+	rm -rf ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints
 	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
-	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make GIT_COMMIT=$(CONSTRAINTS_COMMIT_HASH) zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+
+setup-devnet: bin/prover
+	bin/prover setup --config ./config/config-devnet-limitless.toml --circuits "execution-limitless" --assets-dir ./prover-assets
+
 
 ##
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)
@@ -168,21 +149,8 @@ lib/compressor-and-shnarf-calculator-local: lib/compressor lib/shnarf_calculator
 ## Run all the unit-tests
 ##
 test:
-	@echo "Running all Go tests for Linea Monorepo prover packages..."
-	@for pkg in $(PACKAGES); do \
-		echo "--> Running tests for $$pkg"; \
-		go test -tags debug -skip TestAlignment $$pkg || exit 1; \
-	done
-	@echo "All tests completed successfully."
+	go test -tags debug ./...
 
-test-compilers:
-	go test -timeout 30s -run ^TestCompilers$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
-
-test-compilers-gnark:
-	go test -run ^TestCompilersWithGnarkVerifier$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
-
-test-benchmark-gnark:
-	go test -benchmem -timeout=1h -run=^$$ -bench ^BenchmarkCompilerWithSelfRecursionAndGnarkVerifier$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
 ##
 ## Run the CI linting
 ##
@@ -201,9 +169,3 @@ cgo-flags:
 make update-testdata-for-coordinator:
 	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/linea-monorepo/prover/backend/testing -v
 	cp -f backend/testing/**/*-*-zkProof.json ../testdata/prover/output
-
-# Target to clean Go build cache (optional, but good practice)
-clean:
-	@echo "Cleaning Go build cache..."
-	@go clean -testcache
-	@echo "Go build cache cleaned."

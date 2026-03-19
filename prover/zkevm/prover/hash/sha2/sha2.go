@@ -36,8 +36,9 @@ type Sha2SingleProvider struct {
 	MaxNumSha2F int
 
 	// prover actions for  internal modules
-	Pa_importPad, Pa_packing wizard.ProverAction
-	Pa_cSha2                 *sha2BlockModule
+	Pa_importPad *importpad.Importation
+	Pa_packing   *packing.Packing
+	Pa_cSha2     *sha2BlockModule
 }
 
 // NewSha2ZkEvm constructs the Sha2 module as used in Linea's zkEVM.
@@ -119,8 +120,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 			Selector:             packing.Repacked.IsLaneActive,
 			IsFirstLaneOfNewHash: packing.Repacked.IsBeginningOfNewHash,
 		}
-		cSha2 = newSha2BlockModule(comp, cSha2Inp)
-		// WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
+		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
 	)
 
 	comp.InsertProjection("SHA2_RES_HI",

@@ -6,6 +6,7 @@ import linea.coordinator.config.v2.toml.RequestRetriesToml
 import linea.coordinator.config.v2.toml.parseConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -19,6 +20,7 @@ class DataBaseConfigParsingTest {
       username = "someuser"
       password = "somepassword"
       schema = "linea_coordinator"
+      schema_version = 5
       read_pool_size = 10
       read_pipelining_limit = 11
       transactional_pool_size = 12
@@ -26,6 +28,7 @@ class DataBaseConfigParsingTest {
       max-retries = 3
       backoff-delay = "PT1S"
       timeout = "PT40S"
+      ignore-first-exceptions-until-time-elapsed = "PT1H"
       failures-warning-threshold = 2
       """.trimIndent()
 
@@ -35,6 +38,7 @@ class DataBaseConfigParsingTest {
         username = "someuser",
         password = Masked("somepassword"),
         schema = "linea_coordinator",
+        schemaVersion = 5,
         readPoolSize = 10,
         readPipeliningLimit = 11,
         transactionalPoolSize = 12,
@@ -45,6 +49,7 @@ class DataBaseConfigParsingTest {
           backoffDelay = 1.seconds,
           timeout = 40.seconds,
           failuresWarningThreshold = 2u,
+          ignoreFirstExceptionsUntilTimeElapsed = 1.hours,
         ),
       )
 
@@ -62,6 +67,7 @@ class DataBaseConfigParsingTest {
         username = "someuser",
         password = Masked("somepassword"),
         schema = "linea_coordinator",
+        schemaVersion = 4,
         readPoolSize = 10,
         readPipeliningLimit = 10,
         transactionalPoolSize = 10,
@@ -71,6 +77,7 @@ class DataBaseConfigParsingTest {
           maxRetries = null,
           backoffDelay = 1.seconds,
           timeout = 10.minutes,
+          ignoreFirstExceptionsUntilTimeElapsed = null,
           failuresWarningThreshold = 3u,
         ),
       )

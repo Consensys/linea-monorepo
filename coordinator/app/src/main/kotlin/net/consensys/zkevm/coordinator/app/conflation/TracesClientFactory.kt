@@ -7,6 +7,7 @@ import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.traces.TracesCounters
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 
 data class TracesClients(
   val tracesCountersClient: TracesGeneratorJsonRpcClientV2,
@@ -21,7 +22,7 @@ object TracesClientFactory {
     ignoreTracesGeneratorErrors: Boolean,
     expectedTracesApiVersion: String,
     fallBackTracesCounters: TracesCounters,
-    logger: org.apache.logging.log4j.Logger,
+    logger: Logger,
   ): TracesGeneratorJsonRpcClientV2 {
     return TracesGeneratorJsonRpcClientV2(
       vertx = vertx,
@@ -49,10 +50,10 @@ object TracesClientFactory {
     rpcClientFactory: VertxHttpJsonRpcClientFactory,
     configs: TracesConfig,
     fallBackTracesCounters: TracesCounters,
+    log: Logger? = null,
   ): TracesClients {
     return when {
       configs.common != null -> {
-        val logger = LogManager.getLogger("clients.traces")
         val commonClient =
           createTracesClient(
             vertx,
@@ -61,7 +62,7 @@ object TracesClientFactory {
             configs.ignoreTracesGeneratorErrors,
             configs.expectedTracesApiVersion,
             fallBackTracesCounters,
-            logger,
+            log ?: LogManager.getLogger("clients.traces"),
           )
         TracesClients(tracesCountersClient = commonClient, tracesConflationClient = commonClient)
       }
@@ -75,7 +76,7 @@ object TracesClientFactory {
             configs.ignoreTracesGeneratorErrors,
             configs.expectedTracesApiVersion,
             fallBackTracesCounters,
-            LogManager.getLogger("clients.traces.counters"),
+            log ?: LogManager.getLogger("clients.traces.counters"),
           )
         val conflationClient =
           createTracesClient(
@@ -85,7 +86,7 @@ object TracesClientFactory {
             configs.ignoreTracesGeneratorErrors,
             configs.expectedTracesApiVersion,
             fallBackTracesCounters,
-            LogManager.getLogger("clients.traces.conflation"),
+            log ?: LogManager.getLogger("clients.traces.conflation"),
           )
         TracesClients(tracesCountersClient = countersClient, tracesConflationClient = conflationClient)
       }

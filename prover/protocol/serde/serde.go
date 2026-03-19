@@ -6,6 +6,8 @@ package serde
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 	"unsafe"
 )
 
@@ -31,6 +33,21 @@ func Serialize(v any) ([]byte, error) {
 		return nil, err
 	}
 
+	// Report all unregistered interface types discovered during encoding in one go,
+	// so the caller can fix impl_registry.go without having to re-run repeatedly.
+	if len(enc.missingTypes) > 0 {
+		names := make([]string, 0, len(enc.missingTypes))
+		for t := range enc.missingTypes {
+			names = append(names, t.String())
+		}
+		sort.Strings(names)
+		return nil, fmt.Errorf(
+			"serialization failed: %d unregistered concrete type(s) need to be added to impl_registry.go:\n  - %s",
+			len(names),
+			strings.Join(names, "\n  - "),
+		)
+	}
+
 	// Construct the final metadata. PayloadOff points to the "Root" object.
 	finalHeader := FileHeader{
 		Magic:       Magic,
@@ -53,6 +70,11 @@ func Serialize(v any) ([]byte, error) {
 // pointers, slices, and strings that point directly into the input buffer 'b'.
 // The caller MUST ensure that 'b' remains valid and unmodified for the lifetime of 'v'.
 func Deserialize(b []byte, v any) error {
+
+	if v == nil {
+		return fmt.Errorf("nil pointer passed to Deserialize")
+	}
+
 	// Sanity check: ensure the buffer is at least as large as our header.
 	if len(b) < int(SizeOf[FileHeader]()) {
 		return fmt.Errorf("buffer too small to contain header")

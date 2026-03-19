@@ -81,7 +81,7 @@ type ModuleGL struct {
 	ReceivedValuesGlobal ifaces.Column
 
 	// ReceivedValuesGlobalAccs the list of the accessors to [ReceivedValuesGlobal]
-	// which are used to compute the
+	// which are used to compute the completion local-constraints.
 	ReceivedValuesGlobalAccs []ifaces.Accessor
 
 	// ReceivedValuesGlobalHash is the hash of the [ReceivedValuesGlobal]. It is
@@ -97,6 +97,11 @@ type ModuleGL struct {
 
 	// PublicInputs contains the public inputs of the module.
 	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
+
+	// ExplicitlyVerifiedGlobalCsCompletion is a list of expressions containing
+	// no columns (and thus can't be used to generate local-constraints) whose
+	// cancellation are checked by a verifier action.
+	ExplicitlyVerifiedGlobalCsCompletion []*sym.Expression
 }
 
 // ModuleGLAssignSendReceiveGlobal is an implementation of the [wizard.ProverRuntime]
@@ -402,7 +407,7 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
 		newExpr            = newGlobal.Expression
-		newExprRound       = wizardutils.LastRoundToEval(newExpr)
+		newExprRound       = 1
 		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
 		firstRowToComplete = min(-offsetRange.Max, 0)
 		lastRowToComplete  = max(-offsetRange.Min, 0)
@@ -450,8 +455,14 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 			},
 		)
 
-		// TODO @alex: we actually need a cancellator criterion for the local
-		// constraints.
+		// This check that expression actually contains columns (it might not)
+		// and if it does, it will tell verifier to explicitly check the
+		// expression but will not register a local constraint.
+		if cols := column.ColumnsOfExpression(localExpr); len(cols) == 0 {
+			m.ExplicitlyVerifiedGlobalCsCompletion = append(m.ExplicitlyVerifiedGlobalCsCompletion, localExpr)
+			continue
+		}
+
 		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
 		m.Wiop.InsertLocal(
 			newExprRound,
@@ -522,13 +533,27 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	// The columns are inserted at round 1 because we want it to store informations
 	// about potentially either GL or LPP columns.
-	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1, true)
-	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 1, true)
+	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 8, true)
+	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 8, true)
 
+	// Since, everything that is sent has to be received by the next
+	// instance of the same module. We have that the number of elements
+	// to be received is equal to the number of elements sent, giving
+	// us the following sanity-check.
+	if len(m.ReceivedValuesGlobalMap) != len(m.SentValuesGlobal) {
+		utils.Panic(
+			"number of received values must be equal to the number of sent values: %v != %v",
+			len(m.ReceivedValuesGlobalMap), len(m.SentValuesGlobal),
+		)
+	}
+
+	// Each logical received value occupies fext.ExtensionDegree consecutive
+	// base-field positions in the column; for base-field values only the first
+	// coordinate is non-zero (the rest are asserted to be zero at proving time).
 	m.ReceivedValuesGlobal = m.Wiop.InsertProof(
 		1,
 		ifaces.ColID("RECEIVED_VALUES_GLOBAL"),
-		utils.NextPowerOfTwo(len(m.ReceivedValuesGlobalMap)),
+		utils.NextPowerOfTwo(fext.ExtensionDegree*len(m.ReceivedValuesGlobalMap)),
 		true,
 	)
 
@@ -536,18 +561,24 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	m.ReceivedValuesGlobalAccs = make([]ifaces.Accessor, len(m.ReceivedValuesGlobalMap))
 	for i := range m.ReceivedValuesGlobalAccs {
-		m.ReceivedValuesGlobalAccs[i] = accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, i)
-	}
-
-	// Since, everything that is sent has to be received by the next
-	// instance of the same module. We have that the number of elements
-	// to be received is equal to the number of elements sent, giving
-	// us the following sanity-check.
-	if len(m.ReceivedValuesGlobalAccs) != len(m.SentValuesGlobal) {
-		utils.Panic(
-			"number of received values must be equal to the number of sent values: %v != %v",
-			len(m.ReceivedValuesGlobalAccs), len(m.SentValuesGlobal),
-		)
+		if m.SentValuesGlobal[i].IsBase() {
+			// Base-field value: a single FromPublicColumn accessor at position
+			// 4*i. The other three positions (4i+1, 4i+2, 4i+3) are zero and
+			// will be asserted at both proving and verifying time.
+			m.ReceivedValuesGlobalAccs[i] = accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i)
+		} else {
+			// Extension-field value: a composite accessor reading all four
+			// coordinates from consecutive column positions.
+			m.ReceivedValuesGlobalAccs[i] = &accessors.Extension{
+				Title: fmt.Sprintf("RECEIVED_VALUE_GLOBAL_EXT_%d", i),
+				Coords: [4]ifaces.Accessor{
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+1),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+2),
+					accessors.NewFromPublicColumn(m.ReceivedValuesGlobal, fext.ExtensionDegree*i+3),
+				},
+			}
+		}
 	}
 }
 
@@ -562,13 +593,22 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	if len(a.ReceivedValuesGlobalMap) > 0 {
 
+		// vslice are the values to be hashed for the "sent" values.
+		// For base-field sent values, we append one element to vslice.
+		// For extension-field sent values, we append all four coordinates.
 		vslice := []field.Element{}
 
 		for i := range a.SentValuesGlobal {
 			lo := a.SentValuesGlobal[i]
-			v := lo.Pol.GetColAssignmentAt(run, 0)
-			run.AssignLocalPoint(lo.ID, v)
-			vslice = append(vslice, v)
+			if lo.IsBase() {
+				v := lo.Pol.GetColAssignmentAt(run, 0)
+				run.AssignLocalPoint(lo.ID, v)
+				vslice = append(vslice, v)
+			} else {
+				vExt := lo.Pol.GetColAssignmentAtExt(run, 0)
+				run.AssignLocalPointExt(lo.ID, vExt)
+				vslice = append(vslice, vExt.B0.A0, vExt.B0.A1, vExt.B1.A0, vExt.B1.A1)
+			}
 		}
 
 		hashSend := poseidon2_koalabear.HashVec(vslice...)
@@ -585,12 +625,48 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 			utils.Panic("len(rcvData: %v) != len(a.ReceivedValuesGlobalAccs: %v)", len(rcvData), len(a.ReceivedValuesGlobalAccs))
 		}
 
+		// Hard assertion: for every received value that is paired with a
+		// base-field sent value, the upper three extension coordinates must be
+		// zero. A violation here indicates a bug in the segmentation logic.
+		for i, rcvVal := range rcvData {
+			if a.SentValuesGlobal[i].IsBase() {
+				if !rcvVal.B0.A1.IsZero() || !rcvVal.B1.A0.IsZero() || !rcvVal.B1.A1.IsZero() {
+					utils.Panic(
+						"received value at index %d is paired with a base-field sent value but has non-zero extension coordinates: %v",
+						i, rcvVal,
+					)
+				}
+			}
+		}
+
+		// Flatten []fext.Element into a []field.Element with 4 base-field
+		// entries per logical value, then assign the proof column.
+		rcvFlat := make([]field.Element, len(rcvData)*fext.ExtensionDegree)
+		for i, rcvVal := range rcvData {
+			rcvFlat[fext.ExtensionDegree*i] = rcvVal.B0.A0
+			rcvFlat[fext.ExtensionDegree*i+1] = rcvVal.B0.A1
+			rcvFlat[fext.ExtensionDegree*i+2] = rcvVal.B1.A0
+			rcvFlat[fext.ExtensionDegree*i+3] = rcvVal.B1.A1
+		}
+
 		run.AssignColumn(
 			a.ReceivedValuesGlobal.GetColID(),
-			smartvectors.RightZeroPadded(rcvData, a.ReceivedValuesGlobal.Size()),
+			smartvectors.RightZeroPadded(rcvFlat, a.ReceivedValuesGlobal.Size()),
 		)
 
-		hashRcv := poseidon2_koalabear.HashVec(rcvData...)
+		// rcvSlice is the list of values to be hashed for the "received" side.
+		// Build the hash input for received values using the same conditional
+		// logic as for sent values so that the two hashes are comparable.
+		rcvSlice := []field.Element{}
+		for i, rcvVal := range rcvData {
+			if a.SentValuesGlobal[i].IsBase() {
+				rcvSlice = append(rcvSlice, rcvVal.B0.A0)
+			} else {
+				rcvSlice = append(rcvSlice, rcvVal.B0.A0, rcvVal.B0.A1, rcvVal.B1.A0, rcvVal.B1.A1)
+			}
+		}
+
+		hashRcv := poseidon2_koalabear.HashVec(rcvSlice...)
 
 		run.AssignColumn(
 			a.ReceivedValuesGlobalHash.GetColID(),
@@ -615,9 +691,14 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		hashSendComputed field.Octuplet
 	)
 
+	// Hash sent values: one element for base-field values, four for extension.
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.WriteElements(v.BaseY)
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.WriteElements(v.BaseY)
+		} else {
+			hsh.WriteElements(v.ExtY.B0.A0, v.ExtY.B0.A1, v.ExtY.B1.A0, v.ExtY.B1.A1)
+		}
 	}
 
 	hashSendComputed = hsh.SumElement()
@@ -636,9 +717,36 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		numReceived     = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	// Hard assertion: for base-field received values the three upper
+	// coordinates stored in the column must be zero.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			if !rcvGlobalCol[fext.ExtensionDegree*i+1].IsZero() ||
+				!rcvGlobalCol[fext.ExtensionDegree*i+2].IsZero() ||
+				!rcvGlobalCol[fext.ExtensionDegree*i+3].IsZero() {
+				return fmt.Errorf(
+					"received value at index %d is paired with a base-field sent value but has non-zero extension coordinates",
+					i,
+				)
+			}
+		}
+	}
+
 	hsh.Reset()
 
-	hsh.WriteElements(rcvGlobalCol[:numReceived]...)
+	// Hash received values using the same conditional logic as for sent values.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.WriteElements(rcvGlobalCol[fext.ExtensionDegree*i])
+		} else {
+			hsh.WriteElements(
+				rcvGlobalCol[fext.ExtensionDegree*i],
+				rcvGlobalCol[fext.ExtensionDegree*i+1],
+				rcvGlobalCol[fext.ExtensionDegree*i+2],
+				rcvGlobalCol[fext.ExtensionDegree*i+3],
+			)
+		}
+	}
 
 	hashRcvComputed = hsh.SumElement()
 
@@ -650,6 +758,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	}
 
 	a.ModuleGL.checkMultiSetHash(run)
+
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExt(run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		if !res.IsZero() {
+			return fmt.Errorf("not zero: %v", res)
+		}
+	}
 
 	return nil
 }
@@ -667,9 +782,19 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
+	// Hash sent values: one element for base-field values, four for extension.
+	// IsBase() is a static (compile-time) property so the branch is resolved
+	// during circuit construction, not at proof time.
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hsh.Write(v.BaseY.Native())
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.Write(v.BaseY.Native())
+		} else {
+			hsh.Write(v.ExtY.B0.A0.Native())
+			hsh.Write(v.ExtY.B0.A1.Native())
+			hsh.Write(v.ExtY.B1.A0.Native())
+			hsh.Write(v.ExtY.B1.A1.Native())
+		}
 	}
 
 	hashSendComputed := hsh.Sum()
@@ -685,10 +810,28 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	// Hard circuit constraints: for base-field received values the three upper
+	// coordinates stored in the column must be zero.
+	for i := 0; i < numReceived; i++ {
+		if a.SentValuesGlobal[i].IsBase() {
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+1].Native(), 0)
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+2].Native(), 0)
+			api.AssertIsEqual(rcvGlobalCol[fext.ExtensionDegree*i+3].Native(), 0)
+		}
+	}
+
 	hsh.Reset()
 
+	// Hash received values using the same conditional logic as for sent values.
 	for i := 0; i < numReceived; i++ {
-		hsh.Write(rcvGlobalCol[i].Native())
+		if a.SentValuesGlobal[i].IsBase() {
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i].Native())
+		} else {
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+1].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+2].Native())
+			hsh.Write(rcvGlobalCol[fext.ExtensionDegree*i+3].Native())
+		}
 	}
 
 	hashRcvComputed := hsh.Sum()
@@ -700,6 +843,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	a.ModuleGL.checkGnarkMultiSetHash(api, run)
+
+	koalaAPI := koalagnark.NewAPI(api)
+
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExtGnark(api, run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		koalaAPI.AssertIsEqualExt(res, koalagnark.NewExt(fext.Zero()))
+	}
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
@@ -752,8 +902,13 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.DefinitionInput.LocalOpenings {
 		newLo := run.GetLocalPointEval(a.DefinitionInput.LocalOpenings[i].ID)
-		y := newLo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
+		if newLo.Pol.IsBase() {
+			y := newLo.Pol.GetColAssignmentAt(run, 0)
+			run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
+		} else {
+			y := newLo.Pol.GetColAssignmentAtExt(run, 0)
+			run.AssignLocalPointExt(a.DefinitionInput.LocalOpenings[i].ID, y)
+		}
 	}
 }
 
@@ -790,22 +945,14 @@ func (modGl *ModuleGL) declarePublicInput() {
 
 	// This adds the functional inputs by multiplying them with the value of
 	// isFirst.
-	for i := range defInp.PublicInputs {
+	for _, pi := range defInp.PublicInputs {
 
-		pubInputAcc := accessors.NewConstant(field.Zero())
+		pubInputAcc := accessors.NewFromExpression(sym.Mul(
+			modGl.TranslateAccessor(pi.Acc),
+			accessors.NewFromPublicColumn(modGl.IsFirst, 0),
+		), "IS_FIRST_MULT_"+pi.Name)
 
-		if defInp.PublicInputs[i].Acc != nil {
-			pubInputAcc = modGl.TranslateAccessor(defInp.PublicInputs[i].Acc)
-			pubInputAcc = accessors.NewFromExpression(sym.Mul(
-				pubInputAcc,
-				accessors.NewFromPublicColumn(modGl.IsFirst, 0),
-			), "IS_FIRST_MULT_"+defInp.PublicInputs[i].Name)
-		}
-
-		modGl.Wiop.InsertPublicInput(
-			defInp.PublicInputs[i].Name,
-			pubInputAcc,
-		)
+		modGl.Wiop.InsertPublicInput(pi.Name, pubInputAcc)
 	}
 
 	// This section adds the dummy public inputs for the log-derivative, grand-product
@@ -851,7 +998,14 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 	var lppCommitments field.Octuplet
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(piName).Base
+		}
+
 	}
 
 	var (
@@ -916,7 +1070,13 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	)
 
 	for i := range lppCommitments {
-		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.GetSpec().HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(piName).Base
+		}
 	}
 
 	multiSetSharedRandomness.Insert(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
@@ -995,25 +1155,33 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
-		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
-		lppCommitments[i] = koalagnark.NewElement(wrapped.Native())
+
+		// When running in limitless-debug mode, the public input lppMerkleRoot
+		// does not exists and its value is irrelevant. That's why we set it to
+		// zero.
+		piName := fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)
+		if run.GetSpec().HasPublicInput(piName) {
+			lppCommitments[i] = run.GetPublicInput(api, piName)
+		} else {
+			lppCommitments[i] = koalagnark.NewElement(field.Zero())
+		}
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
-	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex}
+	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex.Native()}
 	for i := range lppCommitments {
-		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
+		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].Native())
 	}
 	multiSetSharedRandomness.Insert(api, lppCommitmentsVars...)
 	multiSetGeneral.Add(api, multiSetSharedRandomness)
 
-	api.AssertIsBoolean(isFirst)
-	api.AssertIsBoolean(isLast)
+	api.AssertIsBoolean(isFirst.Native())
+	api.AssertIsBoolean(isLast.Native())
 
 	// This checks that isFirst and isLast are well assigned wrt to the segment
 	// index
-	api.AssertIsEqual(isFirst, api.IsZero(segmentIndex))
-	api.AssertIsEqual(isLast, api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1)))
+	api.AssertIsEqual(isFirst.Native(), api.IsZero(segmentIndex.Native()))
+	api.AssertIsEqual(isLast.Native(), api.IsZero(api.Sub(numSegmentOfCurrModule.Native(), segmentIndex.Native(), 1)))
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
@@ -1022,7 +1190,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalSentHash := column.GetColAssignmentGnarkOctuplet(modGL.SentValuesGlobalHash, run)
 		msetInput := []frontend.Variable{
 			moduleIndex,
-			segmentIndex,
+			segmentIndex.Native(),
 			typeOfProof,
 			globalSentHash[0].Native(),
 			globalSentHash[1].Native(),
@@ -1036,7 +1204,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput[:]...)
 		for i := range mSetOfSentGlobal.Inner {
-			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
+			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast.Native()))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
 		}
 
@@ -1046,7 +1214,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(modGL.ReceivedValuesGlobalHash, run)
 		msetInput = []frontend.Variable{
 			moduleIndex,
-			api.Sub(segmentIndex, 1),
+			api.Sub(segmentIndex.Native(), 1),
 			typeOfProof,
 			globalRcvdHash[0].Native(),
 			globalRcvdHash[1].Native(),
@@ -1060,7 +1228,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput...)
 		for i := range mSetOfReceivedGlobal.Inner {
-			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
+			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst.Native()))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])
 		}
 	}

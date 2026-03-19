@@ -11,7 +11,6 @@ import {
   GENERAL_PAUSE_TYPE,
   INBOX_STATUS_CLAIMED,
   INBOX_STATUS_RECEIVED,
-  INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   L1_L2_MESSAGE_SETTER_ROLE,
   L1_L2_PAUSE_TYPE,
@@ -32,12 +31,12 @@ import {
   buildAccessErrorMessage,
   calculateRollingHash,
   calculateRollingHashFromCollection,
-  encodeSendMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
 } from "../../common/helpers";
+import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import { generateRoleAssignments } from "../../../../common/helpers";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
@@ -171,7 +170,7 @@ describe("L2MessageService", () => {
         L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       );
 
-      await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(l2MessageService, deployCall, "InitializedVersionWrong", [0, 3]);
     });
 
     it.skip("Can upgrade existing contract", async () => {
@@ -292,7 +291,7 @@ describe("L2MessageService", () => {
       it("Should succeed if 'MessageSent' event is emitted", async () => {
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           securityCouncil.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -321,7 +320,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should send an ether only message with fees emitting the MessageSent event", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE - ethers.parseEther("0.0001"),
@@ -350,7 +349,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should send max limit ether only message with no fee emitting the MessageSent event", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           securityCouncil.address,
           notAuthorizedAccount.address,
           0n,
@@ -422,7 +421,7 @@ describe("L2MessageService", () => {
 
         const initialRateLimitUsed = await l2MessageService.currentPeriodAmountInWei();
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -459,7 +458,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_VALUE_1ETH - MINIMUM_FEE,
@@ -497,7 +496,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MINIMUM_FEE + MESSAGE_FEE - MINIMUM_FEE,
@@ -538,7 +537,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -616,7 +615,7 @@ describe("L2MessageService", () => {
 
     describe("When the contract is not paused", () => {
       it("Should succeed if 'MessageClaimed' event is emitted", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -649,7 +648,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the message hash does not exist", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -679,7 +678,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send fees to recipient, left over fee to destination", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -721,7 +720,7 @@ describe("L2MessageService", () => {
         const factory = await ethers.getContractFactory("TestReceivingContract");
         const testContract = (await factory.deploy()) as TestReceivingContract;
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           await testContract.getAddress(),
           MESSAGE_FEE,
@@ -757,7 +756,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send the fees to set recipient, and NOT refund fee to EOA", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           LOW_NO_REFUND_MESSAGE_FEE,
@@ -800,7 +799,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send fees to EOA with calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -839,7 +838,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and no fees to EOA with calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -878,7 +877,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and no fees to EOA with no calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -932,7 +931,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the message hash has been claimed", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -974,7 +973,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send the fees to msg.sender", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -983,7 +982,7 @@ describe("L2MessageService", () => {
           EMPTY_CALLDATA,
         );
 
-        const expectedSecondBytes = await encodeSendMessage(
+        const expectedSecondBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -1043,7 +1042,7 @@ describe("L2MessageService", () => {
       // todo also add lower than 5000 gas check for the balances to be equal
 
       it("Should execute the claim message when there are no fees", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           0n,
@@ -1089,7 +1088,7 @@ describe("L2MessageService", () => {
       it("Should provide the correct origin sender", async () => {
         const sendCalldata = generateKeccak256Hash("setSender()").substring(0, 10);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1132,7 +1131,7 @@ describe("L2MessageService", () => {
       it("Should fail on reentry when sending to recipient", async () => {
         const callSignature = generateKeccak256Hash("doReentry()").substring(0, 10);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1167,7 +1166,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors through receive", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1206,7 +1205,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors through fallback", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1245,7 +1244,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors on empty receive (makeItReceive function)", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1286,7 +1285,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the fee recipient fails errors", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           admin.address,
           MESSAGE_FEE,
@@ -1409,30 +1408,40 @@ describe("L2MessageService", () => {
   });
 
   describe("L2MessageService Upgradeable Tests", () => {
+    it("Should set initialized version to 3 on fresh deploy", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      const slotValue = await testL2MessageService.getSlotValue(0);
+      expect(slotValue).equal(3);
+    });
+
     it("Should deploy and manually upgrade the L2MessageService contract", async function () {
       const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
 
       let slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(0);
       await testL2MessageService.setSlotValue(177, 1);
 
-      // simulating reentry value at slot 1
+      // simulating reentry value at slot 177
       slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(1);
 
-      // Deploy new TokenBridge implementation
-      const newTokenBridgeFactory = await ethers.getContractFactory(
+      // Deploy new L2MessageService implementation
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
         "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
       );
 
-      const newTokenBridge = await upgrades.upgradeProxy(testL2MessageService, newTokenBridgeFactory, {
+      const newL2MessageService = await upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
         call: { fn: "reinitializeV3" },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      await newTokenBridge.waitForDeployment();
+      await newL2MessageService.waitForDeployment();
 
       // reentry slot cleared
       slotValue = await testL2MessageService.getSlotValue(177);
@@ -1441,6 +1450,31 @@ describe("L2MessageService", () => {
       // version changed
       slotValue = await testL2MessageService.getSlotValue(0);
       expect(slotValue).equal(3);
+    });
+
+    it("Should revert reinitializeV3 if old reentrancy guard slot indicates ENTERED", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
+
+      // Set legacy reentrancy guard slot 1 to OZ ENTERED value (2) — the assembly checks sload(1)
+      await testL2MessageService.setSlotValue(177, 2);
+
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
+        "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
+      );
+
+      await expectRevertWithCustomError(
+        testL2MessageService,
+        upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
+          call: { fn: "reinitializeV3" },
+          kind: "transparent",
+          unsafeAllowRenames: true,
+          unsafeAllow: ["incorrect-initializer-order"],
+        }),
+        "ReentrantCall",
+      );
     });
   });
 });

@@ -3,14 +3,19 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import SearchIcon from "@/assets/icons/search.svg";
 import Modal from "@/components/modal";
 import { useDevice, useTokenPrices, useTokens } from "@/hooks";
-import { useTokenStore, useChainStore, useConfigStore, useFormStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { ChainLayer, ClaimType, Token } from "@/types";
-import { safeGetAddress, isEmptyObject, isEth, isCctp } from "@/utils";
+import { safeGetAddress } from "@/utils/format";
+import { isEmptyObject } from "@/utils/misc";
+import { isEth, isCctp } from "@/utils/tokens";
 
 import TokenDetails from "./token-details";
 import styles from "./token-modal.module.scss";
@@ -21,7 +26,7 @@ interface TokenModalProps {
 }
 
 export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProps) {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const setClaim = useFormStore((state) => state.setClaim);
@@ -71,7 +76,7 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
       // For L2->L1, there is only manual claiming. This is set in the parent component BridgeForm, and we take care here to not override it.
       if (fromChain.layer === ChainLayer.L1) {
         if (isCctp(token)) setClaim(ClaimType.MANUAL);
-        // Initial claim type is AUTO_SPONSORED, this can change when bridge fee computed in useBridgingFee
+        // Initial claim type is AUTO_SPONSORED, resolved by adapter.getFees()
         else setClaim(ClaimType.AUTO_SPONSORED);
       }
       onCloseModal();

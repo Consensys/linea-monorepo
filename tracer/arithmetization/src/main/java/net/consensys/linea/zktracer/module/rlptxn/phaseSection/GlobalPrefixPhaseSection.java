@@ -43,7 +43,7 @@ public class GlobalPrefixPhaseSection extends PhaseSection {
         tracedValues.rlpLtByteSize(innerRlpSize(besuRlpLt.size()));
         tracedValues.rlpLxByteSize(innerRlpSize(besuRlpLx.size()));
       }
-      case ACCESS_LIST, EIP1559 -> {
+      case ACCESS_LIST, EIP1559, DELEGATE_CODE -> {
         // the innerRlp method already concatenate with the first byte "transaction  type"
         tracedValues.rlpLtByteSize(innerRlpSize(besuRlpLt.size() - 1));
         tracedValues.rlpLxByteSize(innerRlpSize(besuRlpLx.size() - 1));
@@ -63,7 +63,7 @@ public class GlobalPrefixPhaseSection extends PhaseSection {
   }
 
   @Override
-  protected void traceComputationsRows(
+  protected void traceComputationRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     // First Computation Row: byte type prefix
     traceTransactionConstantValues(trace, tracedValues);

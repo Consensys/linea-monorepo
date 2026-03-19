@@ -74,7 +74,9 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			size   = col.Size()
 		)
 
-		// Unify weights for base and non-base columns
+		// Normalizes everything to base-cell units
+		// Base columns: 1 KoalaBear element = 1 base cell (32 bits)
+		// Extension columns: 1 ext element = 4 base cells (128 bits for degree-4 extension)
 		weight := size
 		if !col.IsBase() {
 			weight = 4 * size
@@ -94,6 +96,7 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			cellCount.NumCellsVerificationKeys += weight
 			cellCount.NumColumnsVerificationKeys++
 		}
+
 	}
 
 	for _, qName := range listOfQueries {

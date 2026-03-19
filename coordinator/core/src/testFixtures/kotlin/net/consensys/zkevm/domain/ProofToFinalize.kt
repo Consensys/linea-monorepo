@@ -1,11 +1,11 @@
 package net.consensys.zkevm.domain
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 fun createProofToFinalize(
   firstBlockNumber: Long,
@@ -28,6 +28,11 @@ fun createProofToFinalize(
       ?: startBlockTime.minus(2.seconds),
   finalTimestamp: Instant = startBlockTime.plus((2L * (finalBlockNumber - firstBlockNumber)).seconds),
   l2MessagingBlockOffsets: ByteArray = ByteArray(32),
+  parentAggregationFtxNumber: ULong = 0UL,
+  parentAggregationFtxRollingHash: ByteArray = ByteArray(32),
+  finalFtxNumber: ULong = 0UL,
+  finalFtxRollingHash: ByteArray = ByteArray(32),
+  filteredAddresses: List<ByteArray> = emptyList(),
 ): ProofToFinalize {
   return ProofToFinalize(
     aggregatedProof = Random.nextBytes(32).setFirstByteToZero(),
@@ -45,6 +50,11 @@ fun createProofToFinalize(
     l2MerkleRoots = listOf(Random.nextBytes(32).setFirstByteToZero()),
     l2MerkleTreesDepth = 0,
     l2MessagingBlocksOffsets = l2MessagingBlockOffsets,
+    parentAggregationFtxNumber = parentAggregationFtxNumber,
+    parentAggregationFtxRollingHash = parentAggregationFtxRollingHash,
+    finalFtxNumber = finalFtxNumber,
+    finalFtxRollingHash = finalFtxRollingHash,
+    filteredAddresses = filteredAddresses,
   )
 }
 

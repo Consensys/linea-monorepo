@@ -55,52 +55,43 @@ const (
 //
 // Mainnet (production circuits only):
 //
-//	allowed_inputs = ["execution", "execution-large", "execution-limitless",
-//	                  "data-availability-v2"]
-//	Conversion to is_allowed_circuit_id bitmask:
-//	  execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
-//	  data-availability-dummy (ID 1, bit 1) = 0 → DISALLOWED
-//	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
-//	  execution (ID 3, bit 3) = 1 → ALLOWED
-//	  execution-large (ID 4, bit 4) = 1 → ALLOWED
-//	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-//	Binary: 0b01111000 = 120 (decimal)
-//	is_allowed_circuit_id = 120
+//	execution (ID 2, bit 2) = 1 → ALLOWED
+//	execution-large (ID 3, bit 3) = 1 → ALLOWED
+//	execution-limitless (ID 4, bit 4) = 1 → ALLOWED
+//	data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
+//
+// Binary: 0b00111100 = 60 (decimal)
+// is_allowed_circuit_id = 60
 //
 // Sepolia/Testnet (includes dummy circuits for testing):
 //
-//	allowed_inputs = ["execution-dummy", "data-availability-dummy",
-//	                  "execution", "execution-large", "execution-limitless",
-//	                  "data-availability-v2"]
-//	Conversion to is_allowed_circuit_id bitmask:
-//	  execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-//	  data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-//	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
-//	  execution (ID 3, bit 3) = 1 → ALLOWED
-//	  execution-large (ID 4, bit 4) = 1 → ALLOWED
-//	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-//	Binary: 0b01111011 = 123 (decimal)
-//	is_allowed_circuit_id = 123
+//	execution-dummy (ID 0, bit 0) = 1 → ALLOWED
+//	data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
+//	execution (ID 2, bit 2) = 1 → ALLOWED
+//	execution-large (ID 3, bit 3) = 1 → ALLOWED
+//	execution-limitless (ID 4, bit 4) = 1 → ALLOWED
+//	data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
+//
+// Binary: 0b00111111 = 63 (decimal)
+// is_allowed_circuit_id = 63
 //
 // Use ComputeIsAllowedCircuitID() to calculate the bitmask from circuit names.
 var GlobalCircuitIDMapping = map[string]uint{
-	// Dummy circuits (LSBs, bits 0-2) - for testing environments
+	// Dummy payload circuits (bits 0-1) - for testing environments
 	"execution-dummy":         0,
 	"data-availability-dummy": 1,
-	"emulation-dummy":         2,
 
-	// Production payload circuits (bits 3-6) - aggregated inner proofs
-	"execution":            3,
-	"execution-large":      4,
-	"execution-limitless":  5,
-	"data-availability-v2": 6,
+	// Production payload circuits (bits 2-5) - aggregated inner proofs
+	"execution":            2,
+	"execution-large":      3,
+	"execution-limitless":  4,
+	"data-availability-v2": 5,
 
-	// Infrastructure circuits (bits 8-10) - NOT included in is_allowed_circuit_id bitmask
+	// Infrastructure circuits (bits 8+) - NOT included in is_allowed_circuit_id bitmask
 	"emulation":                    8,
 	"aggregation":                  9,
 	"public-input-interconnection": 10,
+	"emulation-dummy":              11, // Dummy for infrastructure circuit
 }
 
 // GetAllCircuitNames returns all circuit names in the global mapping, sorted by circuit ID.

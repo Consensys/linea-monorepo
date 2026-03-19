@@ -3,8 +3,8 @@ import { type ReactNode } from "react";
 import { ModalProvider } from "@/contexts/ModalProvider";
 import { QueryProvider } from "@/contexts/query.context";
 import { Web3Provider } from "@/contexts/Web3Provider";
-import { getTokenConfig } from "@/services/tokenService";
-import { TokenStoreProvider } from "@/stores";
+import { getTokenConfig } from "@/lib/tokens";
+import { TokenStoreProvider } from "@/stores/tokenStoreProvider";
 
 type ProvidersProps = {
   children: ReactNode;

@@ -1,6 +1,6 @@
 import { Address } from "viem";
 
-import { NATIVE_BRIDGE_SUPPORTED_CHAIN_IDS } from "@/constants";
+import { NATIVE_BRIDGE_SUPPORTED_CHAIN_IDS } from "@/constants/chains";
 
 export type SupportedChainIds = (typeof NATIVE_BRIDGE_SUPPORTED_CHAIN_IDS)[number];
 
@@ -36,5 +36,7 @@ export type Chain = {
   cctpDomain: number;
   cctpTokenMessengerV2Address: Address;
   cctpMessageTransmitterV2Address: Address;
+  hyperlanePortalLiteAddress?: Address;
+  hyperlaneMailboxAddress?: Address;
   localNetwork?: boolean; // Optional field for local networks
 };

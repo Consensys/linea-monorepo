@@ -2,7 +2,7 @@ import { Address } from "viem";
 import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
 
 import { config } from "@/config";
-import { localL1Network, localL2Network } from "@/constants";
+import { localL1Network, localL2Network } from "@/constants/chains";
 import { Chain, ChainLayer, SupportedChainIds } from "@/types";
 
 const getChainName = (chainId: number) => {
@@ -41,6 +41,12 @@ export const generateChain = (chain: ViemChain): Chain => {
     cctpDomain: config.chains[chain.id].cctpDomain,
     cctpTokenMessengerV2Address: config.chains[chain.id].cctpTokenMessengerV2Address as Address,
     cctpMessageTransmitterV2Address: config.chains[chain.id].cctpMessageTransmitterV2Address as Address,
+    ...(config.chains[chain.id].hyperlanePortalLiteAddress
+      ? { hyperlanePortalLiteAddress: config.chains[chain.id].hyperlanePortalLiteAddress as Address }
+      : {}),
+    ...(config.chains[chain.id].hyperlaneMailboxAddress
+      ? { hyperlaneMailboxAddress: config.chains[chain.id].hyperlaneMailboxAddress as Address }
+      : {}),
     // Optional field for local networks for testing purposes
     ...(chain.custom?.localNetwork ? { localNetwork: true } : {}),
   };

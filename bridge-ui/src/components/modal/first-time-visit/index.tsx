@@ -8,7 +8,7 @@ import CloseIcon from "@/assets/icons/close.svg";
 import LineaIcon from "@/assets/logos/linea.svg";
 import Modal from "@/components/modal";
 import Button from "@/components/ui/button";
-import { useConfigStore } from "@/stores";
+import { useConfigStore } from "@/stores/configStore";
 
 import styles from "./first-time-visit.module.scss";
 
@@ -99,14 +99,16 @@ export default function FirstVisitModal() {
   const modalType = pathToModalType[pathname];
   const data = modalType ? modalData[modalType] : null;
 
+  const agreeToTerms = useConfigStore.useAgreeToTerms();
+
   useEffect(() => {
-    if (!modalType || !rehydrated) return;
+    if (!modalType || !rehydrated || !agreeToTerms) return;
 
     if (!visited[modalType]) {
       setShowModal(true);
       setShouldRenderModal(true);
     }
-  }, [modalType, visited, rehydrated]);
+  }, [modalType, visited, rehydrated, agreeToTerms]);
 
   const handleClose = useCallback(() => {
     if (!modalType) return;

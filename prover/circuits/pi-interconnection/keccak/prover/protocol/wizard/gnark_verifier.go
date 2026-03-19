@@ -693,7 +693,7 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) frontend
 	}
 
 	utils.Panic("could not find public input nb %v, list of public inputs: %v", name, allPubNames)
-	return field.Element{}
+	return field.Element{} // unreachable, but satisfies the compiler
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit

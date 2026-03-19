@@ -26,6 +26,9 @@ on:
       native_yield_automation_service_changed:
         required: true
         type: string
+      lido_governance_monitor_changed:
+        required: true
+        type: string
     outputs:
       commit_tag:
         value: ${{ jobs.check_image_tags_exist.outputs.commit_tag }}
@@ -34,15 +37,17 @@ on:
       develop_tag:
         value: ${{ jobs.check_image_tags_exist.outputs.develop_tag }}
       image_tagged_coordinator:
-        value: ${{ jobs.image_tag_push.outputs.image_tagged_coordinator }}
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_coordinator || 'false' }}
       image_tagged_prover:
-        value: ${{ jobs.image_tag_push.outputs.image_tagged_prover }}
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_prover || 'false' }}
       image_tagged_postman:
-        value: ${{ jobs.image_tag_push.outputs.image_tagged_postman }}
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_postman || 'false' }}
       image_tagged_native_yield_automation_service:
-        value: ${{ jobs.image_tag_push.outputs.image_tagged_native_yield_automation_service }}
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_native_yield_automation_service || 'false' }}
+      image_tagged_lido_governance_monitor:
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_lido_governance_monitor || 'false' }}
       image_tagged_transaction_exclusion_api:
-        value: ${{ jobs.image_tag_push.outputs.image_tagged_transaction_exclusion_api }}
+        value: ${{ jobs.image_tag_push.outputs.image_tagged_transaction_exclusion_api || 'false' }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -63,73 +68,74 @@ jobs:
     outputs:
       last_commit_tag_exists_coordinator: ${{ steps.check_image_tags_exist_coordinator.outputs.last_commit_tag_exists }}
       last_commit_tag_exists_native_yield_automation_service: ${{ steps.check_image_tags_exist_native_yield_automation_service.outputs.last_commit_tag_exists }}
+      last_commit_tag_exists_lido_governance_monitor: ${{ steps.check_image_tags_exist_lido_governance_monitor.outputs.last_commit_tag_exists }}
       last_commit_tag_exists_postman: ${{ steps.check_image_tags_exist_postman.outputs.last_commit_tag_exists }}
       last_commit_tag_exists_prover: ${{ steps.check_image_tags_exist_prover.outputs.last_commit_tag_exists }}
       last_commit_tag_exists_transaction_exclusion_api: ${{ steps.check_image_tags_exist_transaction_exclusion_api.outputs.last_commit_tag_exists }}
-      commit_tag: ${{ steps.compute-version-tags.outputs.COMMIT_TAG }}
-      last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
-      develop_tag: ${{ steps.compute-version-tags.outputs.DEVELOP_TAG }}
+      commit_tag: ${{ steps.compute-version-tags.outputs.commit_tag }}
+      last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
+      develop_tag: ${{ steps.compute-version-tags.outputs.develop_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Compute version tags
         id: compute-version-tags
-        run: |
-          # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "COMMIT_TAG=$(git rev-parse --short=7 ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
-          else
-            echo "COMMIT_TAG=$(git rev-parse --short=7 $GITHUB_SHA)" >> $GITHUB_OUTPUT
-          fi
-          echo LAST_COMMIT_TAG=$(git rev-parse --short=7 "${{ env.EVENT_BEFORE }}") >> $GITHUB_OUTPUT
-          echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT
-      
+        uses: ./.github/actions/compute-version-tags
+
       - name: Show version tags
         run: |
-          echo "COMMIT_TAG: ${{ steps.compute-version-tags.outputs.COMMIT_TAG }}"
-          echo "LAST_COMMIT_TAG: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}"
-          echo "DEVELOP_TAG: ${{ steps.compute-version-tags.outputs.DEVELOP_TAG }}"
+          echo "COMMIT_TAG: ${{ steps.compute-version-tags.outputs.commit_tag }}"
+          echo "LAST_COMMIT_TAG: ${{ steps.compute-version-tags.outputs.last_commit_tag }}"
+          echo "DEVELOP_TAG: ${{ steps.compute-version-tags.outputs.develop_tag }}"
           echo "github.ref: ${{ github.ref }}"
 
       - name: Check image tags exist for coordinator
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.coordinator_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.coordinator_changed == 'false' }}
         id: check_image_tags_exist_coordinator
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-coordinator
 
       - name: Check image tags exist for postman
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.postman_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.postman_changed == 'false' }}
         id: check_image_tags_exist_postman
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-postman
 
       - name: Check image tags exist for native-yield-automation-service
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.native_yield_automation_service_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.native_yield_automation_service_changed == 'false' }}
         id: check_image_tags_exist_native_yield_automation_service
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-native-yield-automation-service
+
+      - name: Check image tags exist for lido-governance-monitor
+        uses: ./.github/actions/check-image-tags-exist
+        if: ${{ github.ref == 'refs/heads/main' && inputs.lido_governance_monitor_changed == 'false' }}
+        id: check_image_tags_exist_lido_governance_monitor
+        with:
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
+          image_name: consensys/linea-lido-governance-monitor
 
       - name: Check image tags exist for prover
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.prover_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.prover_changed == 'false' }}
         id: check_image_tags_exist_prover
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-prover
 
       - name: Check image tags exist for transaction-exclusion-api
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.transaction_exclusion_api_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.transaction_exclusion_api_changed == 'false' }}
         id: check_image_tags_exist_transaction_exclusion_api
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-transaction-exclusion-api
 
   image_tag_push:
@@ -140,6 +146,7 @@ jobs:
     outputs:
       image_tagged_coordinator: ${{ steps.image_tag_push_coordinator.outputs.image_tagged }}
       image_tagged_native_yield_automation_service: ${{ steps.image_tag_push_native_yield_automation_service.outputs.image_tagged }}
+      image_tagged_lido_governance_monitor: ${{ steps.image_tag_push_lido_governance_monitor.outputs.image_tagged }}
       image_tagged_prover: ${{ steps.image_tag_push_prover.outputs.image_tagged }}
       image_tagged_postman: ${{ steps.image_tag_push_postman.outputs.image_tagged }}
       image_tagged_transaction_exclusion_api: ${{ steps.image_tag_push_transaction_exclusion_api.outputs.image_tagged }}
@@ -186,6 +193,19 @@ jobs:
           develop_tag: ${{ needs.check_image_tags_exist.outputs.develop_tag }}
           image_name: consensys/linea-native-yield-automation-service
           last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_native_yield_automation_service }}
+          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag and push lido-governance-monitor image
+        id: image_tag_push_lido_governance_monitor
+        uses: ./.github/actions/image-tag-and-push
+        if: ${{ inputs.lido_governance_monitor_changed == 'false' }}
+        with:
+          commit_tag: ${{ needs.check_image_tags_exist.outputs.commit_tag }}
+          last_commit_tag: ${{ needs.check_image_tags_exist.outputs.last_commit_tag }}
+          develop_tag: ${{ needs.check_image_tags_exist.outputs.develop_tag }}
+          image_name: consensys/linea-lido-governance-monitor
+          last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists_lido_governance_monitor }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 

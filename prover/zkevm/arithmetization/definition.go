@@ -98,6 +98,7 @@ func (s *schemaScanner) scanColumns() {
 			var name = wizardName(modDecl.Name().String(), colDecl.Name())
 			//
 			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
+			pragmas.AddModuleRef(col, modDecl.Name().String())
 			pragmas.MarkLeftPadded(col)
 		}
 	}
@@ -259,6 +260,14 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 	case air.RangeConstraint[koalabear.Element]:
 		rc := cs.Unwrap()
+
+		// Sanity check:  If a RangeConstraint ever has more than one source/bitwidth, the second iteration will panic
+		// because the first iteration already registered that QueryID in the CompiledIOP. In practice
+		// the len is always expected to be either 0 (no-op) or 1 (single pass).
+		if len(rc.Bitwidths) > 1 {
+			utils.Panic("multiple bitwidths for range constraints not supported")
+		}
+
 		for i, bitwidth := range rc.Bitwidths {
 			// Determine bound for this range constraint
 			bound := field.NewElement(2)

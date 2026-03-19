@@ -98,7 +98,7 @@ func TestDeepCmp_MutexField_SkippedEvenWithCustomMarshaller(t *testing.T) {
 	a.Mu.Lock() // Lock a's mutex to make them differ
 	// Note: we can't unlock in defer because the test would deadlock
 	// if DeepCmp tried to compare the mutex internals.
-	assert.True(t, DeepCmp(a, b, true), "mutex field should be skipped")
+	assert.True(t, DeepCmp(&a, &b, true), "mutex field should be skipped")
 }
 
 func TestDeepCmp_MutexPtrField_SkippedEvenWithCustomMarshaller(t *testing.T) {

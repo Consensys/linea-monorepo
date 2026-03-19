@@ -58,14 +58,12 @@ const (
 )
 
 var (
-	fullZkEvm               *ZkEvm
-	fullZkEvmCheckOnly      *ZkEvm
-	fullZkEvmSetup          *ZkEvm
-	fullZkEvmSetupLarge     *ZkEvm
-	onceFullZkEvm           = sync.Once{}
-	onceFullZkEvmCheckOnly  = sync.Once{}
-	onceFullZkEvmSetup      = sync.Once{}
-	onceFullZkEvmSetupLarge = sync.Once{}
+	fullZkEvm              *ZkEvm
+	fullZkEvmLarge         *ZkEvm
+	fullZkEvmCheckOnly     *ZkEvm
+	onceFullZkEvm          = sync.Once{}
+	onceFullZkEvmLarge     = sync.Once{}
+	onceFullZkEvmCheckOnly = sync.Once{}
 
 	// This is the SIS instance, that has been found to minimize the overhead of
 	// recursion. It is changed w.r.t to the estimated because the estimated one
@@ -148,6 +146,79 @@ var (
 		logdata.Log("pre-recursion.post-vortex-4"),
 	}
 
+	// This is the compilation suite in use for the full prover (large variant)
+	// Increases TargetColSize to fit within 2^27 SRS (134M constraints)
+	// Stage 1 doubled from 1<<19 to 1<<20 (must be power of two)
+	fullInitialCompilationSuiteLarge = CompilationSuite{
+		// logdata.Log("initial-wizard"),
+		poseidon2.CompilePoseidon2,
+		plonkinwizard.Compile,
+		compiler.Arcane(
+			compiler.WithStitcherMinSize(16),
+			compiler.WithTargetColSize(1<<20), // doubled from 1<<19
+			// compiler.WithDebugMode("initial-compiler-step-0"),
+			// compiler.GenCSVAfterExpansion("zkevm_first_compilation.csv"),
+		),
+		vortex.Compile(
+			2, false,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+		),
+		// logdata.Log("pre-recursion.post-vortex-1"),
+
+		// First round of self-recursion
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-1"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-1"),
+		),
+		vortex.Compile(
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
+			vortex.WithSISParams(&sisInstance),
+		),
+		// logdata.Log("pre-recursion.post-vortex-2"),
+
+		// Second round of self-recursion
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-2"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-2"),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+
+		// Fourth round of self-recursion
+		// logdata.Log("pre-recursion.post-vortex-3"),
+		selfrecursion.SelfRecurse,
+		// logdata.Log("pre-recursion.post-selfrecursion-3"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-3"),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
+		),
+		// logdata.Log("pre-recursion.post-vortex-4"),
+	}
+
 	// This is the compilation suite in use for the full prover *after* the
 	// recursion step.
 	fullSecondCompilationSuite = CompilationSuite{
@@ -192,11 +263,7 @@ var (
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("final-compiler-step-2"),
 		),
-		vortex.Compile(
-			16, true,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithOptionalSISHashingThreshold(1<<20),
-		),
+		vortex.Compile(16, true, vortex.ForceNumOpenedColumns(64)),
 	}
 )
 
@@ -217,6 +284,18 @@ func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	return fullZkEvm
 }
 
+// FullZkEvmLarge is similar to FullZkEvm but uses the large compilation suite
+// with doubled TargetColSize values to reduce constraint count.
+func FullZkEvmLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+
+	onceFullZkEvmLarge.Do(func() {
+		// Initialize the Full zkEVM arithmetization with large compilation suite
+		fullZkEvmLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuiteLarge, &fullSecondCompilationSuite)
+	})
+
+	return fullZkEvmLarge
+}
+
 func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
@@ -225,24 +304,6 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	})
 
 	return fullZkEvmCheckOnly
-}
-
-func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
-
-	onceFullZkEvmSetup.Do(func() {
-		fullZkEvmSetup = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
-	})
-
-	return fullZkEvmSetup
-}
-
-func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
-
-	onceFullZkEvmSetupLarge.Do(func() {
-		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
-	})
-
-	return fullZkEvmSetupLarge
 }
 
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.

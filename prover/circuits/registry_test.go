@@ -24,7 +24,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"execution-limitless",
 				"data-availability-v2",
 			},
-			expectedBitmask: 120, // 0b01111000 = 2^3 + 2^4 + 2^5 + 2^6
+			expectedBitmask: 60, // 0b111100 = 2^2 + 2^3 + 2^4 + 2^5
 			expectError:     false,
 		},
 		{
@@ -37,7 +37,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"execution-limitless",
 				"data-availability-v2",
 			},
-			expectedBitmask: 123, // 0b01111011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^5 + 2^6
+			expectedBitmask: 63, // 0b111111 = 2^0 + 2^1 + 2^2 + 2^3 + 2^4 + 2^5
 			expectError:     false,
 		},
 		{
@@ -49,7 +49,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"execution-large",
 				"data-availability-v2",
 			},
-			expectedBitmask: 91, // 0b01011011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^6
+			expectedBitmask: 47, // 0b101111 = 2^0 + 2^1 + 2^2 + 2^3 + 2^5
 			expectError:     false,
 		},
 		{
@@ -59,7 +59,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"data-availability-dummy",
 				"execution",
 			},
-			expectedBitmask: 11, // 0b00001011 = 2^0 + 2^1 + 2^3
+			expectedBitmask: 7, // 0b000111 = 2^0 + 2^1 + 2^2
 			expectError:     false,
 		},
 		{
@@ -69,7 +69,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"data-availability-dummy",
 				"data-availability-v2",
 			},
-			expectedBitmask: 67, // 0b01000011 = 2^0 + 2^1 + 2^6
+			expectedBitmask: 35, // 0b100011 = 2^0 + 2^1 + 2^5
 			expectError:     false,
 		},
 		{
@@ -77,7 +77,7 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 			allowedCircuits: []string{
 				"execution",
 			},
-			expectedBitmask: 8, // 0b00001000 = 2^3
+			expectedBitmask: 4, // 0b000100 = 2^2
 			expectError:     false,
 		},
 		{
@@ -127,17 +127,26 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 			errorContains:   "infrastructure circuit",
 		},
 		{
-			name: "all payload circuits (0-6)",
+			name: "infrastructure circuit - emulation-dummy",
+			allowedCircuits: []string{
+				"execution",
+				"emulation-dummy",
+			},
+			expectedBitmask: 0,
+			expectError:     true,
+			errorContains:   "infrastructure circuit",
+		},
+		{
+			name: "all payload circuits (0-5)",
 			allowedCircuits: []string{
 				"execution-dummy",
 				"data-availability-dummy",
-				"emulation-dummy",
 				"execution",
 				"execution-large",
 				"execution-limitless",
 				"data-availability-v2",
 			},
-			expectedBitmask: 127, // 0b01111111 = all bits 0-6 set
+			expectedBitmask: 63, // 0b111111 = all bits 0-5 set
 			expectError:     false,
 		},
 	}
@@ -169,44 +178,38 @@ func TestIsCircuitAllowed(t *testing.T) {
 	}{
 		{
 			name:      "mainnet allows execution",
-			bitmask:   120, // mainnet
-			circuitID: 3,   // execution
+			bitmask:   60, // mainnet
+			circuitID: 2,  // execution
 			expected:  true,
 		},
 		{
 			name:      "mainnet disallows execution-dummy",
-			bitmask:   120,
+			bitmask:   60,
 			circuitID: 0, // execution-dummy
 			expected:  false,
 		},
 		{
 			name:      "sepolia allows execution-dummy",
-			bitmask:   123, // sepolia
-			circuitID: 0,   // execution-dummy
+			bitmask:   63, // sepolia
+			circuitID: 0,  // execution-dummy
 			expected:  true,
 		},
 		{
 			name:      "sepolia allows execution-large",
-			bitmask:   123,
-			circuitID: 4, // execution-large
+			bitmask:   63,
+			circuitID: 3, // execution-large
 			expected:  true,
-		},
-		{
-			name:      "sepolia disallows emulation-dummy",
-			bitmask:   123,
-			circuitID: 2, // emulation-dummy
-			expected:  false,
 		},
 		{
 			name:      "zero bitmask disallows everything",
 			bitmask:   0,
-			circuitID: 3,
+			circuitID: 2,
 			expected:  false,
 		},
 		{
 			name:      "all bits set allows everything",
-			bitmask:   127, // 0b01111111
-			circuitID: 6,   // data-availability-v2
+			bitmask:   63, // 0b111111
+			circuitID: 5,  // data-availability-v2
 			expected:  true,
 		},
 	}
@@ -227,7 +230,7 @@ func TestGetAllowedCircuitNames(t *testing.T) {
 	}{
 		{
 			name:    "mainnet configuration",
-			bitmask: 120,
+			bitmask: 60,
 			expectedCircuits: []string{
 				"execution",
 				"execution-large",
@@ -237,7 +240,7 @@ func TestGetAllowedCircuitNames(t *testing.T) {
 		},
 		{
 			name:    "sepolia configuration",
-			bitmask: 123,
+			bitmask: 63,
 			expectedCircuits: []string{
 				"execution-dummy",
 				"data-availability-dummy",
@@ -254,7 +257,7 @@ func TestGetAllowedCircuitNames(t *testing.T) {
 		},
 		{
 			name:    "only dummy circuits",
-			bitmask: 3, // 0b00000011 = bits 0,1
+			bitmask: 3, // 0b000011 = bits 0,1
 			expectedCircuits: []string{
 				"execution-dummy",
 				"data-availability-dummy",
@@ -286,13 +289,13 @@ func TestRoundTripComputeAndCheck(t *testing.T) {
 	require.NoError(t, err)
 
 	// These should be allowed
-	assert.True(t, IsCircuitAllowed(bitmask, 3), "execution should be allowed")
-	assert.True(t, IsCircuitAllowed(bitmask, 4), "execution-large should be allowed")
-	assert.True(t, IsCircuitAllowed(bitmask, 6), "data-availability-v2 should be allowed")
+	assert.True(t, IsCircuitAllowed(bitmask, 2), "execution should be allowed")
+	assert.True(t, IsCircuitAllowed(bitmask, 3), "execution-large should be allowed")
+	assert.True(t, IsCircuitAllowed(bitmask, 5), "data-availability-v2 should be allowed")
 
 	// These should NOT be allowed
 	assert.False(t, IsCircuitAllowed(bitmask, 0), "execution-dummy should not be allowed")
-	assert.False(t, IsCircuitAllowed(bitmask, 5), "execution-limitless should not be allowed")
+	assert.False(t, IsCircuitAllowed(bitmask, 4), "execution-limitless should not be allowed")
 	assert.False(t, IsCircuitAllowed(bitmask, 1), "data-availability-dummy should not be allowed")
 
 	// Get allowed names and verify
@@ -301,17 +304,19 @@ func TestRoundTripComputeAndCheck(t *testing.T) {
 }
 
 func TestGlobalCircuitIDMapping(t *testing.T) {
-	// Verify the mapping contains expected entries
+	// Verify the mapping contains expected entries for payload circuits
 	assert.Equal(t, uint(0), GlobalCircuitIDMapping["execution-dummy"])
 	assert.Equal(t, uint(1), GlobalCircuitIDMapping["data-availability-dummy"])
-	assert.Equal(t, uint(2), GlobalCircuitIDMapping["emulation-dummy"])
-	assert.Equal(t, uint(3), GlobalCircuitIDMapping["execution"])
-	assert.Equal(t, uint(4), GlobalCircuitIDMapping["execution-large"])
-	assert.Equal(t, uint(5), GlobalCircuitIDMapping["execution-limitless"])
-	assert.Equal(t, uint(6), GlobalCircuitIDMapping["data-availability-v2"])
+	assert.Equal(t, uint(2), GlobalCircuitIDMapping["execution"])
+	assert.Equal(t, uint(3), GlobalCircuitIDMapping["execution-large"])
+	assert.Equal(t, uint(4), GlobalCircuitIDMapping["execution-limitless"])
+	assert.Equal(t, uint(5), GlobalCircuitIDMapping["data-availability-v2"])
+
+	// Verify infrastructure circuits
 	assert.Equal(t, uint(8), GlobalCircuitIDMapping["emulation"])
 	assert.Equal(t, uint(9), GlobalCircuitIDMapping["aggregation"])
 	assert.Equal(t, uint(10), GlobalCircuitIDMapping["public-input-interconnection"])
+	assert.Equal(t, uint(11), GlobalCircuitIDMapping["emulation-dummy"])
 
 	// Verify no duplicate IDs
 	seen := make(map[uint]string)
@@ -322,7 +327,7 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 		seen[id] = name
 	}
 
-	// Verify we have exactly 10 circuits (IDs: 0,1,2,3,4,5,6,8,9,10)
+	// Verify we have exactly 10 circuits (IDs: 0,1,2,3,4,5,8,9,10,11)
 	assert.Equal(t, 10, len(GlobalCircuitIDMapping))
 }
 
@@ -339,13 +344,13 @@ func TestExampleUsage(t *testing.T) {
 	// Compute the bitmask
 	bitmask, err := ComputeIsAllowedCircuitID(mainnetAllowedInputs)
 	require.NoError(t, err)
-	assert.Equal(t, uint64(120), bitmask)
+	assert.Equal(t, uint64(60), bitmask)
 
 	// Verify it matches what's in the config
 	t.Logf("Mainnet is_allowed_circuit_id = %d (binary: 0b%b)", bitmask, bitmask)
 
 	// Check specific circuits
-	assert.True(t, IsCircuitAllowed(bitmask, 3), "execution should be allowed in mainnet")
+	assert.True(t, IsCircuitAllowed(bitmask, 2), "execution should be allowed in mainnet")
 	assert.False(t, IsCircuitAllowed(bitmask, 0), "execution-dummy should not be allowed in mainnet")
 
 	// Get human-readable list
@@ -354,16 +359,15 @@ func TestExampleUsage(t *testing.T) {
 }
 
 // CircuitConfig represents a visual configuration of allowed circuits.
-// Each field corresponds to a circuit ID (0-6 for payload circuits).
+// Each field corresponds to a circuit ID (0-5 for payload circuits).
 // Set to true to allow the circuit, false to disallow.
 type CircuitConfig struct {
 	ExecutionDummy        bool // ID 0
 	DataAvailabilityDummy bool // ID 1
-	EmulationDummy        bool // ID 2
-	Execution             bool // ID 3
-	ExecutionLarge        bool // ID 4
-	ExecutionLimitless    bool // ID 5
-	DataAvailabilityV2    bool // ID 6
+	Execution             bool // ID 2
+	ExecutionLarge        bool // ID 3
+	ExecutionLimitless    bool // ID 4
+	DataAvailabilityV2    bool // ID 5
 }
 
 // ToBitmask converts a CircuitConfig to a bitmask value.
@@ -375,20 +379,17 @@ func (c CircuitConfig) ToBitmask() uint64 {
 	if c.DataAvailabilityDummy {
 		bitmask |= 1 << 1
 	}
-	if c.EmulationDummy {
+	if c.Execution {
 		bitmask |= 1 << 2
 	}
-	if c.Execution {
+	if c.ExecutionLarge {
 		bitmask |= 1 << 3
 	}
-	if c.ExecutionLarge {
+	if c.ExecutionLimitless {
 		bitmask |= 1 << 4
 	}
-	if c.ExecutionLimitless {
-		bitmask |= 1 << 5
-	}
 	if c.DataAvailabilityV2 {
-		bitmask |= 1 << 6
+		bitmask |= 1 << 5
 	}
 	return bitmask
 }
@@ -398,16 +399,13 @@ func (c CircuitConfig) String() string {
 	return fmt.Sprintf(`Circuit Configuration:
   ID 0 - execution-dummy:         %v
   ID 1 - data-availability-dummy: %v
-  ID 2 - emulation-dummy:         %v
-  ID 3 - execution:               %v
-  ID 4 - execution-large:         %v
-  ID 5 - execution-limitless:     %v
-  ID 6 - data-availability-v2:    %v
-  
-  Bitmask: %d (binary: 0b%07b)`,
+  ID 2 - execution:               %v
+  ID 3 - execution-large:         %v
+  ID 4 - execution-limitless:     %v
+  ID 5 - data-availability-v2:    %v
+  Bitmask: %d (binary: 0b%06b)`,
 		c.ExecutionDummy,
 		c.DataAvailabilityDummy,
-		c.EmulationDummy,
 		c.Execution,
 		c.ExecutionLarge,
 		c.ExecutionLimitless,
@@ -436,78 +434,72 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 			config: CircuitConfig{
 				ExecutionDummy:        false,
 				DataAvailabilityDummy: false,
-				EmulationDummy:        false,
 				Execution:             true,
 				ExecutionLarge:        true,
 				ExecutionLimitless:    true,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 120, // 0b01111000
+			expectedBitmask: 60, // 0b111100
 		},
 		{
 			name: "Sepolia/Testnet (includes dummy circuits)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				EmulationDummy:        false,
 				Execution:             true,
 				ExecutionLarge:        true,
 				ExecutionLimitless:    true,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 123, // 0b01111011
+			expectedBitmask: 63, // 0b111111
 		},
 		{
 			name: "Devnet (no execution-limitless)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				EmulationDummy:        false,
 				Execution:             true,
 				ExecutionLarge:        true,
 				ExecutionLimitless:    false,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 91, // 0b01011011
+			expectedBitmask: 47, // 0b101111
 		},
 		{
 			name: "Integration-full (minimal)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				EmulationDummy:        false,
 				Execution:             true,
 				ExecutionLarge:        false,
 				ExecutionLimitless:    false,
 				DataAvailabilityV2:    false,
 			},
-			expectedBitmask: 11, // 0b00001011
+			expectedBitmask: 7, // 0b000111
 		},
 		{
 			name: "Integration-development (dummy + data-availability)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				EmulationDummy:        false,
 				Execution:             false,
 				ExecutionLarge:        false,
 				ExecutionLimitless:    false,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 67, // 0b01000011
+			expectedBitmask: 35, // 0b100011
 		},
 		{
 			name: "All payload circuits enabled",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				EmulationDummy:        true,
 				Execution:             true,
 				ExecutionLarge:        true,
 				ExecutionLimitless:    true,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 127, // 0b01111111
+			expectedBitmask: 63, // 0b111111
 		},
 	}
 
@@ -520,7 +512,7 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 
 			// Verify bitmask matches expected
 			assert.Equal(t, tt.expectedBitmask, bitmask,
-				"Expected bitmask %d (0b%07b), got %d (0b%07b)",
+				"Expected bitmask %d (0b%06b), got %d (0b%06b)",
 				tt.expectedBitmask, tt.expectedBitmask, bitmask, bitmask)
 
 			// Also verify using the official ComputeIsAllowedCircuitID function
@@ -530,9 +522,6 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 			}
 			if tt.config.DataAvailabilityDummy {
 				allowedCircuits = append(allowedCircuits, "data-availability-dummy")
-			}
-			if tt.config.EmulationDummy {
-				allowedCircuits = append(allowedCircuits, "emulation-dummy")
 			}
 			if tt.config.Execution {
 				allowedCircuits = append(allowedCircuits, "execution")
@@ -565,11 +554,10 @@ func TestCalculateCustomBitmask(t *testing.T) {
 	config := CircuitConfig{
 		ExecutionDummy:        false, // ID 0: Set true to allow execution-dummy
 		DataAvailabilityDummy: false, // ID 1: Set true to allow data-availability-dummy
-		EmulationDummy:        false, // ID 2: Set true to allow emulation-dummy
-		Execution:             true,  // ID 3: Set true to allow execution
-		ExecutionLarge:        true,  // ID 4: Set true to allow execution-large
-		ExecutionLimitless:    true,  // ID 5: Set true to allow execution-limitless
-		DataAvailabilityV2:    true,  // ID 6: Set true to allow data-availability-v2
+		Execution:             true,  // ID 2: Set true to allow execution
+		ExecutionLarge:        true,  // ID 3: Set true to allow execution-large
+		ExecutionLimitless:    true,  // ID 4: Set true to allow execution-limitless
+		DataAvailabilityV2:    true,  // ID 5: Set true to allow data-availability-v2
 	}
 	// ==========================================
 

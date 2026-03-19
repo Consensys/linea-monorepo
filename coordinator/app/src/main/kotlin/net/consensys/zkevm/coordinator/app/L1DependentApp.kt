@@ -2,7 +2,6 @@ package net.consensys.zkevm.coordinator.app
 
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
-import kotlinx.datetime.Clock
 import linea.LongRunningService
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
@@ -15,6 +14,7 @@ import linea.domain.BlockNumberAndHash
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
 import linea.kotlin.toKWeiUInt
+import linea.persistence.ftx.ForcedTransactionsDao
 import linea.web3j.SmartContractErrors
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -68,6 +68,7 @@ import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -77,10 +78,12 @@ class L1DependentApp(
   private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   private val batchesRepository: BatchesRepository,
   private val blobsRepository: BlobsRepository,
+  private val forcedTransactionsDao: ForcedTransactionsDao,
   private val aggregationsRepository: AggregationsRepository,
   private val sqlClient: SqlClient,
   private val smartContractErrors: SmartContractErrors,
   private val metricsFacade: MetricsFacade,
+  private val clock: Clock,
 ) : LongRunningService {
   private val log = LogManager.getLogger(this::class.java)
 
@@ -150,6 +153,8 @@ class L1DependentApp(
     val l1EthApiClient = createEthApiClient(
       rpcUrl = configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.fees-fetcher"),
+      vertx = vertx,
+      requestRetryConfig = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1RequestRetries,
     )
 
     FeeHistoryFetcherImpl(
@@ -161,14 +166,21 @@ class L1DependentApp(
     )
   }
 
-  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnly =
+  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnly = run {
+    val web3j = createWeb3jHttpClient(
+      rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
+      log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
+    )
     Web3JLineaRollupSmartContractClientReadOnly(
       contractAddress = configs.protocol.l1.contractAddress,
-      web3j = createWeb3jHttpClient(
-        rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
+      web3j = web3j,
+      ethLogsClient = createEthApiClient(
+        web3jClient = web3j,
+        requestRetryConfig = configs.l1FinalizationMonitor.l1RequestRetries,
+        vertx = vertx,
       ),
     )
+  }
 
   private val l1FinalizationMonitor = run {
     FinalizationMonitorImpl(
@@ -181,6 +193,8 @@ class L1DependentApp(
       l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.finalization-monitor"),
+        requestRetryConfig = configs.l1FinalizationMonitor.l2RequestRetries,
+        vertx = vertx,
       ),
       vertx = vertx,
     )
@@ -190,6 +204,8 @@ class L1DependentApp(
     val l2EthApiClient: EthApiClient = createEthApiClient(
       rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
       log = LogManager.getLogger("clients.l2.eth.shomei-frontend"),
+      requestRetryConfig = configs.l1FinalizationMonitor.l2RequestRetries,
+      vertx = vertx,
     )
     setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig = configs.type2StateProofProvider,
@@ -229,6 +245,8 @@ class L1DependentApp(
         createEthApiClient(
           rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
           log = LogManager.getLogger("clients.l2.eth.gascap-provider"),
+          vertx = vertx,
+          requestRetryConfig = configs.l1FinalizationMonitor.l2RequestRetries,
         )
 
       GasPriceCapProviderImpl(
@@ -488,9 +506,11 @@ class L1DependentApp(
     batchesRepository = batchesRepository,
     blobsRepository = blobsRepository,
     aggregationsRepository = aggregationsRepository,
+    forcedTransactionsDao = forcedTransactionsDao,
     lastFinalizedBlock = lastFinalizedBlock,
     metricsFacade = metricsFacade,
     httpJsonRpcClientFactory = httpJsonRpcClientFactory,
+    clock = clock,
   )
 
   private val l2NetworkGasPricingService: L2NetworkGasPricingService? =
@@ -566,10 +586,14 @@ class L1DependentApp(
       val l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l2NetworkGasPricing.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.l2pricing"),
+        vertx = vertx,
+        requestRetryConfig = configs.l2NetworkGasPricing.l2RequestRetries,
       )
       val l1EthApiClient = createEthApiClient(
         rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
         log = LogManager.getLogger("clients.l1.eth.l1pricing"),
+        vertx = vertx,
+        requestRetryConfig = configs.l2NetworkGasPricing.l1RequestRetries,
       )
       L2NetworkGasPricingService(
         vertx = vertx,
@@ -595,6 +619,8 @@ class L1DependentApp(
       val l1EthApiClient = createEthApiClient(
         rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
         log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
+        vertx = vertx,
+        requestRetryConfig = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1RequestRetries,
       )
 
       val l1FeeHistoryFetcher: GasPriceCapFeeHistoryFetcher = GasPriceCapFeeHistoryFetcherImpl(

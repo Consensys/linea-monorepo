@@ -49,6 +49,12 @@ func DegreeReduce(degreeBound int) func(comp *wizard.CompiledIOP) {
 					// The min degree **must** larger than domainSize and small than
 					// the degree bound.
 					MinDegreeForCandidate: 2,
+					// Degree-0 terms (accessors, coins) must not be counted against
+					// the NLast budget: they cannot increase the degree of a
+					// sub-product and, without this, a product whose degree-0
+					// children outnumber NLast would exhaust the budget before
+					// reaching any degree-1 factor, producing zero candidates.
+					MinWeightForTerm: 1,
 					// Note: don't increase it too much because it can have dramatic
 					// effects on the efficiency of the algorithm.
 					NLast: 15,
