@@ -77,13 +77,16 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 
 export function loadConfigFromEnv(env: Record<string, string | undefined>): Config {
+  const discourseProposalDetailsDelayMs = env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS ?? "250";
   const rawConfig = {
     database: {
       url: env.DATABASE_URL ?? "",
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
-      proposalDetailsDelayMs: parseInt(env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS ?? "250", 10),
+      proposalDetailsDelayMs: /^\d+$/.test(discourseProposalDetailsDelayMs)
+        ? Number(discourseProposalDetailsDelayMs)
+        : Number.NaN,
       maxTopicsPerPoll: parseInt(env.MAX_TOPICS_PER_POLL ?? "20", 10),
     },
     anthropic: {
