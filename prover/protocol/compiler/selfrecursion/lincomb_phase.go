@@ -35,7 +35,7 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 	// Check 1: Reed-Solomon check.
 	// UalphaCoeff (T coefficients, committed by prover) → FFT hint → UalphaEvals (N evaluations).
 	// Schwartz-Zippel: CanonicalEval(UalphaCoeff,β) == LagrangeEval(UalphaEvals,β).
-	ctx.Columns.UalphaEvals = reedsolomon.CheckReedSolomonFromCoeff(
+	ctx.Columns.UalphaEvals = reedsolomon.CheckReedSolomon(
 		ctx.Comp,
 		ctx.VortexCtx.BlowUpFactor,
 		ctx.Columns.UalphaCoeff)

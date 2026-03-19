@@ -18,40 +18,11 @@ import (
 )
 
 const (
-	REED_SOLOMON_COEFF       string = "REED_SOLOMON_COEFF"
 	REED_SOLOMON_EVALS       string = "REED_SOLOMON_EVALS"
 	REED_SOLOMON_EVAL_CHECK  string = "REED_SOLOMON_EVAL_CHECK"
 	REED_SOLOMON_COEFF_CHECK string = "REED_SOLOMON_COEFF_CHECK"
 	REED_SOLOMON_BETA        string = "REED_SOLOMON_BETA"
 )
-
-type ReedSolomonProverAction struct {
-	H       ifaces.Column
-	Coeff   ifaces.Column
-	CodeDim int
-}
-
-func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
-	witness := a.H.GetColAssignment(assi)
-	domain := fft.NewDomain(uint64(witness.Len()), fft.WithCache())
-
-	if a.H.IsBase() {
-		coeffs := make([]field.Element, witness.Len())
-		witness.WriteInSlice(coeffs)
-		domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(2))
-		utils.BitReverse(coeffs)
-		// Take only the first `CodeDim` coefficients
-		assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
-		return
-	}
-
-	coeffs := make([]fext.Element, witness.Len())
-	witness.WriteInSliceExt(coeffs)
-	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(2))
-	utils.BitReverse(coeffs)
-	// Take only the first `CodeDim` coefficients
-	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegularExt(coeffs[:a.CodeDim]))
-}
 
 type ReedSolomonVerifierAction struct {
 	CoeffCheck ifaces.Accessor
@@ -76,15 +47,15 @@ func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkR
 	koalaAPI.AssertIsEqualExt(y, y_)
 }
 
-// CheckReedSolomonFromCoeff is the reverse of CheckReedSolomon: it takes a
-// polynomial given in coefficient form (size T) and commits to its RS codeword
-// (size T×rate). Consistency is verified via Schwartz-Zippel:
+// CheckReedSolomon takes a polynomial given in coefficient form (size T) and
+// commits to its RS codeword (size T×rate). Consistency is verified via
+// Schwartz-Zippel:
 //
 //	CanonicalEval(coeff, β) == LagrangeEval(evals, β)
 //
 // The returned column holds the N codeword evaluations and can be used
 // directly with an inclusion lookup (Q, UalphaQ) ⊂ (I, evals).
-func CheckReedSolomonFromCoeff(comp *wizard.CompiledIOP, rate int, coeff ifaces.Column) ifaces.Column {
+func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, coeff ifaces.Column) ifaces.Column {
 	round := coeff.Round()
 	evalSize := coeff.Size() * rate
 
@@ -101,7 +72,7 @@ func CheckReedSolomonFromCoeff(comp *wizard.CompiledIOP, rate int, coeff ifaces.
 		coin.FieldExt,
 	)
 
-	comp.RegisterProverAction(round, &ReedSolomonFromCoeffProverAction{
+	comp.RegisterProverAction(round, &ReedSolomonProverAction{
 		Coeff:    coeff,
 		Evals:    evals,
 		EvalSize: evalSize,
@@ -130,13 +101,13 @@ func CheckReedSolomonFromCoeff(comp *wizard.CompiledIOP, rate int, coeff ifaces.
 	return evals
 }
 
-type ReedSolomonFromCoeffProverAction struct {
+type ReedSolomonProverAction struct {
 	Coeff    ifaces.Column
 	Evals    ifaces.Column
 	EvalSize int
 }
 
-func (a *ReedSolomonFromCoeffProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	coeffSV := a.Coeff.GetColAssignment(assi)
 	domain := fft.NewDomain(uint64(a.EvalSize), fft.WithCache())
 
@@ -156,62 +127,4 @@ func (a *ReedSolomonFromCoeffProverAction) Run(assi *wizard.ProverRuntime) {
 	utils.BitReverse(coeffSlice)
 	domain.FFTExt(coeffSlice, fft.DIT, fft.WithNbTasks(2))
 	assi.AssignColumn(a.Evals.GetColID(), smartvectors.NewRegularExt(coeffSlice))
-}
-
-// CheckReedSolomon verifies that evals (N elements) is a valid RS codeword of
-// degree < N/rate. The prover hints the T = N/rate polynomial coefficients via
-// an iFFT (hint = coefficients). Soundness is established by Schwartz-Zippel:
-//
-//	CanonicalEval(coeff, β) == LagrangeEval(evals, β)
-//
-// The returned column holds the T polynomial coefficients and can be used
-// for cheaper Horner evaluations (degree T-1 vs N-1).
-func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, evals ifaces.Column) ifaces.Column {
-
-	round := evals.Round()
-	codeDim := evals.Size() / rate
-	coeff := comp.InsertCommit(
-		round,
-		ifaces.ColIDf("%v_%v", REED_SOLOMON_COEFF, evals.GetColID()),
-		codeDim,
-		evals.IsBase(),
-	)
-
-	beta := comp.InsertCoin(
-		round+1,
-		coin.Namef("%v_%v", REED_SOLOMON_BETA, evals.GetColID()),
-		coin.FieldExt,
-	)
-
-	// Prover computes iFFT(evals) and stores the first T=codeDim coefficients.
-	comp.RegisterProverAction(round, &ReedSolomonProverAction{
-		H:       evals,
-		Coeff:   coeff,
-		CodeDim: codeDim,
-	})
-
-	// Schwartz-Zippel: CanonicalEval(coeff, β) == LagrangeEval(evals, β).
-	// In the gnark circuit both sides are computed from their respective
-	// committed columns (coeff as hint, evals as the committed codeword).
-	coeffCheck := functionals.CoeffEval(
-		comp,
-		fmt.Sprintf("%v_%v", REED_SOLOMON_COEFF_CHECK, evals.GetColID()),
-		beta,
-		coeff,
-	)
-
-	evalCheck := functionals.Interpolation(
-		comp,
-		fmt.Sprintf("%v_%v", REED_SOLOMON_EVAL_CHECK, evals.GetColID()),
-		accessors.NewFromCoin(beta),
-		evals,
-	)
-
-	comp.RegisterVerifierAction(round+1, &ReedSolomonVerifierAction{
-		CoeffCheck: coeffCheck,
-		EvalCheck:  evalCheck,
-		HColID:     evals.GetColID(),
-	})
-
-	return coeff
 }
