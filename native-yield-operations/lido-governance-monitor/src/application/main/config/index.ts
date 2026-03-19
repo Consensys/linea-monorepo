@@ -12,7 +12,7 @@ const parseSafePositiveInteger = (value: string) => {
   }
 
   const parsedValue = Number(value);
-  return Number.isSafeInteger(parsedValue) ? parsedValue : Number.NaN;
+  return Number.isSafeInteger(parsedValue) && parsedValue > 0 ? parsedValue : Number.NaN;
 };
 
 // Validates and normalizes an Ethereum address to checksummed form
