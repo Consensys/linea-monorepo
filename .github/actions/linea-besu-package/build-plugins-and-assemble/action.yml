@@ -70,13 +70,7 @@ runs:
     - name: Setup Tracer Environment
       uses: ./.github/actions/setup-tracer-environment
       with:
-        enable-ssh: false
-    
-    - name: Build besu from source 
-      shell: bash
-      run: cd linea-besu-package && make build-besu-local-and-update-lib-version
-      env:
-        JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+        skip-download-besu-dist: false
 
     - name: Compute linea-besu-package metadata
       id: metadata
@@ -92,7 +86,7 @@ runs:
       shell: bash
       run: cd linea-besu-package && make build-tracer-and-sequencer
       env:
-        JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+        JAVA_OPTS: -Xmx2g
         TRACER_PLUGIN_VERSION: ${{ steps.metadata.outputs.tracer_plugin_version }}
         SEQUENCER_PLUGIN_VERSION: ${{ steps.metadata.outputs.sequencer_plugin_version }}
 
