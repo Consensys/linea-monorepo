@@ -36,6 +36,10 @@ runs:
           # causing "_BuildScript_ Unsupported class file major version 69" at startup.
           rm -rf "$HOME"/.gradle/caches/*/groovy-dsl
           rm -rf "$HOME"/.gradle/caches/*/scripts*
+          # Also clear generated Gradle API jars and instrumented jars restored from cache,
+          # as stale variants can trigger the same parser failure during configuration.
+          rm -rf "$HOME"/.gradle/caches/*/generated-gradle-jars
+          rm -rf "$HOME"/.gradle/caches/jars-*
 
       - name: Build besu from source (if needed)
         shell: bash
