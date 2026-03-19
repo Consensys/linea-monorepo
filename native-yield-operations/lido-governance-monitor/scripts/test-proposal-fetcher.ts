@@ -35,6 +35,29 @@ import { DiscourseFetcher } from "../src/services/fetchers/DiscourseFetcher.js";
 import { NormalizationService } from "../src/services/NormalizationService.js";
 import { ProposalFetcher } from "../src/services/ProposalFetcher.js";
 
+const parseSafePositiveInteger = (value: string): number => {
+  if (!/^\d+$/.test(value)) {
+    return Number.NaN;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isSafeInteger(parsedValue) && parsedValue > 0 ? parsedValue : Number.NaN;
+};
+
+const readPositiveIntegerEnvVar = (name: string, defaultValue: number): number => {
+  const rawValue = process.env[name];
+  if (rawValue === undefined) {
+    return defaultValue;
+  }
+
+  const parsedValue = parseSafePositiveInteger(rawValue);
+  if (Number.isNaN(parsedValue)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return parsedValue;
+};
+
 async function main() {
   // Check required env vars
   const requiredEnvVars = ["DATABASE_URL", "DISCOURSE_PROPOSALS_URL"];
@@ -52,9 +75,7 @@ async function main() {
   const databaseUrl = process.env.DATABASE_URL as string;
   const discourseProposalsUrl = process.env.DISCOURSE_PROPOSALS_URL as string;
   const maxProposals = process.env.MAX_PROPOSALS ? Number.parseInt(process.env.MAX_PROPOSALS, 10) : 3;
-  const discourseProposalDetailsDelayMs = process.env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS
-    ? Number.parseInt(process.env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS, 10)
-    : 250;
+  const discourseProposalDetailsDelayMs = readPositiveIntegerEnvVar("DISCOURSE_PROPOSAL_DETAILS_DELAY_MS", 250);
   const shouldCleanup = process.env.CLEANUP === "true";
 
   const logger = new WinstonLogger("ProposalFetcher.integration");
