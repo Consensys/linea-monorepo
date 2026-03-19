@@ -25,4 +25,4 @@ runs:
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
         with:
-          java-version: '21'
+          java-version: '25'

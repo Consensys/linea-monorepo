@@ -38,7 +38,7 @@ jobs:
         uses: ./.github/actions/setup-java-and-gradle
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
       - name: Run tests with coverage
         if: ${{ inputs.coverage }}
         run: |

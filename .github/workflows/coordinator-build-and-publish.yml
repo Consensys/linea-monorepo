@@ -80,7 +80,7 @@ jobs:
         uses: ./.github/actions/setup-java-and-gradle
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Build dist
         run: ./gradlew coordinator:app:installDist
