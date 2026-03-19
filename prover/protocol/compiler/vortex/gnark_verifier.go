@@ -214,9 +214,12 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
+	// Use OpenedColumns directly since they may be named differently
+	// (SELECTED_COL, SELECTED_COL_SIS, or SELECTED_COL_NON_SIS) depending
+	// on whether we're in pure SIS, pure non-SIS, or mixed case.
 	fullSelectedCols := make([][]koalagnark.Element, ctx.NbColsToOpen())
 	for j := 0; j < ctx.NbColsToOpen(); j++ {
-		fullSelectedCols[j] = vr.GetColumn(ctx.SelectedColName(j))
+		fullSelectedCols[j] = vr.GetColumn(ctx.Items.OpenedColumns[j].GetColID())
 	}
 
 	// Split the columns per commitment for the verification

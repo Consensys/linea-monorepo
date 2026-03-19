@@ -21,6 +21,7 @@ import (
 
 type StatementAndCodeWordCircuit struct {
 	LinComb []koalagnark.Ext
+	Evals   []koalagnark.Ext // N evaluations (from FFT of LinComb)
 	Ys      [][]koalagnark.Ext
 	X       koalagnark.Ext
 	Alpha   koalagnark.Ext
@@ -34,7 +35,7 @@ func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	return GnarkCheckStatementAndCodeWordLagrange(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
+	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.LinComb, c.Evals, c.Ys, c.X, c.Alpha)
 }
 
 func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordCircuit, *StatementAndCodeWordCircuit) {
@@ -47,24 +48,29 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 	for i := 0; i < size; i++ {
 		coeffs[i].SetRandom()
 	}
-	// FFT to get Lagrange basis representation
+
+	// Keep a copy of coefficients for linComb (T coefficients padded to N)
+	linComb := make([]fext.Element, sizeCodeWord)
+	copy(linComb, coeffs)
+
+	// FFT to get Lagrange basis representation (N evaluations)
 	d := fft.NewDomain(uint64(sizeCodeWord))
 	d.FFTExt(coeffs, fft.DIF)
 	utils.BitReverse(coeffs)
 
-	// linComb is now a valid RS codeword in Lagrange basis
-	linComb := make([]fext.Element, sizeCodeWord)
-	copy(linComb, coeffs)
+	// evals is now a valid RS codeword in Lagrange basis
+	evals := make([]fext.Element, sizeCodeWord)
+	copy(evals, coeffs)
 
 	// Generate random evaluation point x and alpha
 	var x, alpha fext.Element
 	x.SetRandom()
 	alpha.SetRandom()
 
-	// Compute P(x) where P is the polynomial represented by linComb in Lagrange basis
-	// P(x) = Σᵢ Lᵢ(x) * linComb[i]
-	linCombSv := sv.NewRegularExt(linComb)
-	pXSlice := smartvectors_mixed.BatchEvaluateLagrange([]sv.SmartVector{linCombSv}, x)
+	// Compute P(x) where P is the polynomial represented by evals in Lagrange basis
+	// P(x) = Σᵢ Lᵢ(x) * evals[i]
+	evalsSv := sv.NewRegularExt(evals)
+	pXSlice := smartvectors_mixed.BatchEvaluateLagrange([]sv.SmartVector{evalsSv}, x)
 	pX := pXSlice[0]
 
 	// For the statement check to pass, we need:
@@ -79,6 +85,7 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 
 	// Circuit (structure only)
 	circuit.LinComb = make([]koalagnark.Ext, sizeCodeWord)
+	circuit.Evals = make([]koalagnark.Ext, sizeCodeWord)
 	circuit.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
 		circuit.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
@@ -87,8 +94,10 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 
 	// Witness (actual values)
 	witness.LinComb = make([]koalagnark.Ext, sizeCodeWord)
+	witness.Evals = make([]koalagnark.Ext, sizeCodeWord)
 	for i := 0; i < sizeCodeWord; i++ {
 		witness.LinComb[i] = koalagnark.NewExt(linComb[i])
+		witness.Evals[i] = koalagnark.NewExt(evals[i])
 	}
 	witness.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {

@@ -178,7 +178,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// (same domain as the input polys). Convert to T monomial coefficients via
 	// the T-point inverse FFT.
 	var uAlpha smartvectors.SmartVector
-	if (!ctx.IsBLS) {
+	if !ctx.IsBLS {
 		uAlpha = ctx.VortexKoalaParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 	} else {
 		uAlpha = ctx.VortexBLSParams.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
@@ -328,8 +328,8 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// as OpenedSISColumns/OpenedNonSISColumns, so we only assign once.
 	ctx.assignOpenedColumns(run, entryList, selectedCols, NonSelfRecursion)
 
-	// Assign the SIS and non-SIS selected columns separately only in mixed case.
-	// In pure cases, the assignment above already handled it since the columns are shared.
+	// For self-recursion support: store selected columns and assign SIS/non-SIS columns
+	// only in mixed case (where separate columns exist).
 	if !ctx.IsPureSIS && !ctx.IsPureNonSIS {
 		// Mixed case: need separate assignments for SIS and non-SIS columns
 		if len(committedMatricesSIS) > 0 {
@@ -343,13 +343,12 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			ctx.assignOpenedColumns(run, entryList, nonSisSelectedCols, SelfRecursionPoseidon2Only)
 			ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
 		}
-	} else if ctx.IsPureNonSIS {
-		// Pure non-SIS case: store for self-recursion (columns already assigned above)
-		if len(committedMatricesNoSIS) > 0 {
-			vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
-			nonSisSelectedCols := nonSisProof.Columns
-			ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
-		}
+	} else if ctx.IsPureNonSIS && len(committedMatricesNoSIS) > 0 {
+		// Pure non-SIS case: only store for self-recursion, columns already assigned above
+		// since OpenedColumns and OpenedNonSISColumns point to the same column objects.
+		vortex_koalabear.SelectColumnsAndMerkleProofs(&nonSisProof, entryList, committedMatricesNoSIS, treesNoSIS)
+		nonSisSelectedCols := nonSisProof.Columns
+		ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
 	}
 	// Pure SIS case: no additional action needed - columns already assigned above
 	// since OpenedColumns and OpenedSISColumns point to the same column objects.
@@ -633,15 +632,25 @@ func (ctx *Ctx) assignOpenedColumns(
 		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
 			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
 		}
-		if mode == NonSelfRecursion {
-			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionSIS {
-			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionPoseidon2Only {
-			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
-		}
-	}
 
+		var colID ifaces.ColID
+		if mode == NonSelfRecursion {
+			colID = ctx.Items.OpenedColumns[j].GetColID()
+		} else if mode == SelfRecursionSIS {
+			colID = ctx.Items.OpenedSISColumns[j].GetColID()
+		} else if mode == SelfRecursionPoseidon2Only {
+			colID = ctx.Items.OpenedNonSISColumns[j].GetColID()
+		}
+
+		// Check if column is already assigned (can happen in recursion when
+		// OpenedColumns shares the same objects as OpenedSISColumns/OpenedNonSISColumns
+		// in pure SIS/non-SIS cases)
+		if _, exists := pr.Columns.TryGet(colID); exists {
+			continue
+		}
+
+		pr.AssignColumn(colID, assignable)
+	}
 }
 
 // storeSelectedColumnsForNonSisRound stores the selected columns in the prover state
