@@ -56,6 +56,11 @@ services:
       file: compose-spec-l2-services.yml
       service: traces-node
 
+  conflation-backtesting-traces-node:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: conflation-backtesting-traces-node
+
   prover-v3:
     extends:
       file: compose-spec-l2-services.yml
