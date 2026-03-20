@@ -152,20 +152,3 @@ func (p *RsParams) ExtCoefficientsToAllEvaluations(coefficients smartvectors.Sma
 	p.Domains[1].FFTExt(buf, fft.DIT, fft.WithNbTasks(1))
 	return buf
 }
-
-// ExtCoefficientsEvalAt evaluates the polynomial given by T coefficients at
-// an extension field point x using Horner's method.
-func ExtCoefficientsEvalAt(coefficients smartvectors.SmartVector, x fext.Element) fext.Element {
-	n := coefficients.Len()
-	if n == 0 {
-		return fext.Element{}
-	}
-	// Horner: result = c[n-1] + x*(c[n-2] + x*(...c[1] + x*c[0]...))
-	res := coefficients.GetExt(n - 1)
-	for i := n - 2; i >= 0; i-- {
-		res.Mul(&res, &x)
-		ci := coefficients.GetExt(i)
-		res.Add(&res, &ci)
-	}
-	return res
-}

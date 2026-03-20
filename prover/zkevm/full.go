@@ -133,7 +133,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
+			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-3"),
 		),

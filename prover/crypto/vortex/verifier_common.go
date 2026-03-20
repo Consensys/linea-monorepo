@@ -38,7 +38,11 @@ type VerifierInput struct {
 // and checks consistency with the alleged evaluations ys folded at alpha.
 func CheckStatement(coefficients smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
 	yJoined := utils.Join(ys...)
-	alphaY := reedsolomon.ExtCoefficientsEvalAt(coefficients, x)
+
+	res := make([]fext.Element, coefficients.Len())
+	coefficients.WriteInSliceExt(res)
+
+	alphaY := vortex.EvalFextPolyHorner(res, x)
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
 
 	if alphaY != alphaYPrime {
@@ -57,7 +61,7 @@ func CheckLinComb(
 	columns [][][]field.Element,
 	rsParams *reedsolomon.RsParams,
 ) error {
-	// One FFT to get all N evaluations — O(N log N) vs O(K×T) Horner per query.
+	// One FFT to get all N evaluations
 	allEvals := rsParams.ExtCoefficientsToAllEvaluations(coefficients)
 	numCommitments := len(columns)
 

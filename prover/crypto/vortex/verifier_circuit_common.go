@@ -33,8 +33,8 @@ type GnarkVerifierInput struct {
 // A forward FFT hint reconstructs N evaluations for the column-consistency lookup check.
 func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
-	// compute the codeword, verify the correctness
-	evals, err := GnarkCheckReedSolomon(api, fs, params, proof)
+	// compute the codeword, verify the correctness: evalCan(linComb, challenge) == evalLag(evals, challenge)
+	evals, err := GnarkCheckReedSolomon(api, fs, params, proof.LinearCombination)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof G
 		return err
 	}
 
-	// statement check using coefficients directly.
+	// statement check using coefficients directly: Horner(linComb, x) == Horner(ys_joined, alpha)
 	return GnarkCheckStatement(api, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 }
 
@@ -53,7 +53,7 @@ func GnarkCheckReedSolomon(
 	api frontend.API,
 	fs fiatshamir.GnarkFS,
 	params Params,
-	proof GnarkProof,
+	linComb []koalagnark.Ext,
 ) ([]koalagnark.Ext, error) {
 	// Implement Reed-Solomon codeword check
 	koalaAPI := koalagnark.NewAPI(api)
@@ -64,10 +64,10 @@ func GnarkCheckReedSolomon(
 	fftfwd := fftFwdHint(koalaAPI.Type())
 	inputsUnpacked := make([]koalagnark.Element, t*4)
 	for i := 0; i < t; i++ {
-		inputsUnpacked[4*i] = proof.LinearCombination[i].B0.A0
-		inputsUnpacked[4*i+1] = proof.LinearCombination[i].B0.A1
-		inputsUnpacked[4*i+2] = proof.LinearCombination[i].B1.A0
-		inputsUnpacked[4*i+3] = proof.LinearCombination[i].B1.A1
+		inputsUnpacked[4*i] = linComb[i].B0.A0
+		inputsUnpacked[4*i+1] = linComb[i].B0.A1
+		inputsUnpacked[4*i+2] = linComb[i].B1.A0
+		inputsUnpacked[4*i+3] = linComb[i].B1.A1
 	}
 	evalsRaw, err := koalaAPI.NewHint(fftfwd, n*4, inputsUnpacked...)
 	if err != nil {
@@ -82,11 +82,11 @@ func GnarkCheckReedSolomon(
 	}
 
 	// Bind T coefficients into the Fiat-Shamir transcript (same role as res in eval mode).
-	fs.UpdateExt(proof.LinearCombination...)
+	fs.UpdateExt(linComb...)
 	challenge := fs.RandomFieldExt()
 
 	// Schwartz-Zippel: evalCan(linComb, challenge) == evalLag(evals, challenge)
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, proof.LinearCombination, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, linComb, challenge)
 	evalLag := polynomials.GnarkEvaluateLagrangeExt(
 		api,
 		evalsOut,
@@ -108,7 +108,7 @@ func GnarkCheckStatement(
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	// Statement check: evalCan(linComb, x) == Horner(ys_joined, alpha)
+	// Statement check: Horner(linComb, x) == Horner(ys_joined, alpha)
 	alphaY := polynomials.GnarkEvalCanonicalExt(api, linComb, x)
 	var yjoined []koalagnark.Ext
 	for i := range ys {
