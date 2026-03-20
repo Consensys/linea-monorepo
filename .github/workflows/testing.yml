@@ -95,7 +95,7 @@ jobs:
 
   linea-sequencer:
     uses: ./.github/workflows/linea-sequencer-plugin-testing.yml
-    if: ${{ inputs.linea_sequencer_changed == 'true' }}
+    if: ${{ inputs.linea_sequencer_changed == 'true' || inputs.tracer_changed == 'true' }}
     secrets: inherit
 
   # tracer:
@@ -135,10 +135,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Tracer Environment # configures Go, Java, Gradle, and gets submodules
+      - name: Setup Tracer Environment # configures Go, Java, and Gradle
         uses: ./.github/actions/setup-tracer-environment
-        with:
-          enable-ssh: false
 
       - name: Download Jacoco execution data from coordinator
         if: needs.coordinator.result != 'skipped'

@@ -108,10 +108,6 @@ type CollectedFields struct {
 	LastFinalizedBlockNumber uint
 	FinalBlockNumber         uint
 
-	// ParentAggregation block hash
-	ParentAggregationBlockHash string
-	FinalBlockHash             string
-
 	// IsProoflessJob marks that the job is proofless and that the
 	// response is to be written in a dedicated folder.
 	IsProoflessJob bool

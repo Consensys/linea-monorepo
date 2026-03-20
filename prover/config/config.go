@@ -78,17 +78,23 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
-	if withValidation && err != nil {
-		return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
+	if err != nil {
+		if withValidation {
+			return nil, fmt.Errorf("failed to extract Layer2.MsgSvcContract address: %w", err)
+		}
+	} else {
+		cfg.Layer2.MsgSvcContract = addr.Address()
 	}
-	cfg.Layer2.MsgSvcContract = addr.Address()
 
 	// Extract the coinbase address from the string
 	addr, err = common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
-	if withValidation && err != nil {
-		return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
+	if err != nil {
+		if withValidation {
+			return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
+		}
+	} else {
+		cfg.Layer2.CoinBase = addr.Address()
 	}
-	cfg.Layer2.CoinBase = addr.Address()
 
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
@@ -101,6 +107,9 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	cfg.PublicInputInterconnection.BaseFee = uint64(cfg.Layer2.BaseFee)
 	cfg.PublicInputInterconnection.CoinBase = cfg.Layer2.CoinBase
 	cfg.PublicInputInterconnection.L2MsgServiceAddr = cfg.Layer2.MsgSvcContract
+
+	cfg.TracesLimits.normalizeToLowercase()
+	cfg.TracesLimits.sortReverseAlphabetical()
 
 	return &cfg, nil
 }
@@ -159,8 +168,7 @@ type Config struct {
 		CoinBase    common.Address `mapstructure:"-"`
 	}
 
-	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
-	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
+	TracesLimits TracesLimits `mapstructure:"traces_limits" validate:"required"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {

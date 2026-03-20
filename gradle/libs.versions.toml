@@ -2,7 +2,7 @@
 docker = { id = "com.avast.gradle.docker-compose", version = "0.17.12" }
 web3j = { id = "org.web3j", version.ref = "web3jPlugin" }
 web3jSolidity = { id = "org.web3j.solidity", version = "0.5.0" }
-spotless = { id = "com.diffplug.spotless", version = "8.1.0" }
+spotless = { id = "com.diffplug.spotless", version = "8.2.1" }
 jreleaser = {id = "org.jreleaser", version = "1.15.0"}
 dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "2.9" }
 lombok = { id = "io.freefair.lombok", version = "8.6" }
@@ -36,9 +36,14 @@ besuShomeiPluginVersion = "v0.8.4"
 undercouchDownload = "5.6.0"
 
 # Runtime
-besu = "25.12.0-linea4.1"
-blobCompressor = "3.0.0-rc4"
-blobShnarfCalculator = "3.0.0"
+# Besu commit hash from https://github.com/besu-eth/besu
+# when updates it, should run "gradlew buildAndUpdateBesuVersionInLibsVersions" to
+# checkout and build Besu from source, and will auto-update the "besu" version below
+besuCommit = "d68679d6887abf8c407f99456cf2502004fa2bad"
+
+besu = "25.12.0-d68679d"
+blobCompressor = "3.0.1"
+blobShnarfCalculator = "3.0.1"
 bouncycastle = "1.79"
 caffeine = "3.1.6"
 gson = "2.11.0"
@@ -58,6 +63,7 @@ tuweni = "2.7.1"
 vertx = "4.5.14"
 web3j = "5.0.2"
 web3jPlugin = "4.14.0"
+secp = "1.4.2"
 
 # Other
 googleJavaFormat = "1.27.0"

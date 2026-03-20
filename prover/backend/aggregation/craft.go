@@ -88,7 +88,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
 			cf.ParentStateRootHash = po.ParentStateRootHash
-			cf.ParentAggregationBlockHash = po.ParentBlockHash.Hex()
 			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 			cf.LastFinalizedFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		}
@@ -137,7 +136,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
-			cf.FinalBlockHash = blockdata.BlockHash.Hex()
 		}
 
 		if len(rollingHashUpdateEvents) != 0 {
@@ -238,26 +236,24 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	}
 
 	resp = &Response{
-		DataHashes:                              cf.DataHashes,
-		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
-		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
-		FinalTimestamp:                          cf.FinalTimestamp,
-		L1RollingHash:                           cf.L1RollingHash,
-		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
-		L2MerkleRoots:                           cf.L2MsgRootHashes,
-		L2MsgTreesDepth:                         cf.L2MsgTreeDepth,
-		L2MessagingBlocksOffsets:                cf.L2MessagingBlocksOffsets,
-		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
-		FinalBlockNumber:                        cf.FinalBlockNumber,
-		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		FinalShnarf:                             cf.FinalShnarf,
-		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
-		FinalFtxNumber:                          cf.FinalFtxNumber,
-		ParentAggregationFtxNumber:              cf.LastFinalizedFtxNumber,
-		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
-		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
-		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+		DataHashes:                          cf.DataHashes,
+		DataParentHash:                      cf.DataParentHash,
+		ParentStateRootHash:                 cf.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp: cf.ParentAggregationLastBlockTimestamp,
+		FinalTimestamp:                      cf.FinalTimestamp,
+		L1RollingHash:                       cf.L1RollingHash,
+		L1RollingHashMessageNumber:          cf.L1RollingHashMessageNumber,
+		L2MerkleRoots:                       cf.L2MsgRootHashes,
+		L2MsgTreesDepth:                     cf.L2MsgTreeDepth,
+		L2MessagingBlocksOffsets:            cf.L2MessagingBlocksOffsets,
+		LastFinalizedBlockNumber:            cf.LastFinalizedBlockNumber,
+		FinalBlockNumber:                    cf.FinalBlockNumber,
+		ParentAggregationFinalShnarf:        cf.ParentAggregationFinalShnarf,
+		FinalShnarf:                         cf.FinalShnarf,
+		FinalFtxRollingHash:                 cf.FinalFtxRollingHash,
+		FinalFtxNumber:                      cf.FinalFtxNumber,
+		ParentAggregationFtxNumber:          cf.LastFinalizedFtxNumber,
+		ParentAggregationFtxRollingHash:     cf.LastFinalizedFtxRollingHash,
 		// chain configuration
 		ChainID:              uint64(cfg.Layer2.ChainID),
 		BaseFee:              uint64(cfg.Layer2.BaseFee),

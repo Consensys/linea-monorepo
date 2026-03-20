@@ -374,6 +374,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 
 	aggregationPI := r.Aggregation.Sum(&hshK)
+
 	a.AggregationPublicInput[0] = aggregationPI[:16]
 	a.AggregationPublicInput[1] = aggregationPI[16:]
 

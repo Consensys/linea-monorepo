@@ -26,10 +26,10 @@ export const navList: NavItemProps[] = [
   },
   {
     title: "Native Bridge",
-    description: "Bridge from Ethereum via Linea’s official bridge",
+    description: "Bridge from Ethereum via Linea's official bridge",
     icon: <NativeBridgeIcon />,
     label: "No Fees",
-    labelId: "no-fees-pill",
+    hideWhenNoFeesPillHidden: true,
     href: "/native-bridge",
   },
   {
