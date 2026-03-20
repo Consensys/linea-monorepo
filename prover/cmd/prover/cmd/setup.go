@@ -19,6 +19,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
+	gnarkio "github.com/consensys/gnark/io"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
@@ -461,17 +462,25 @@ func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, ci
 	return setup.VerifyingKey, nil
 }
 
-// listOfChecksums Computes a list of SHA256 checksums for a list of assets, the result is given
-// in hexstring.
+// listOfChecksums computes a list of SHA256 checksums for a list of assets.
+// It uses WriteRawTo (uncompressed/raw encoding) to match the prove-time
+// checksum computed by circuits.ObjectChecksum / writeToWriter.
+//
+// IMPORTANT: All gnark VKs implement WriteRawTo. Using WriteTo instead would
+// produce compressed-encoding hashes that differ from prove-time hashes,
+// causing aggregation VK mismatch failures at runtime.
 func listOfChecksums[T io.WriterTo](assets []T) []string {
 	res := make([]string, len(assets))
 	h := sha256.New()
 	for i := range assets {
 		h.Reset()
-		_, err := assets[i].WriteTo(h)
-		if err != nil {
-			// It is unexpected that writing in a hasher could possibly fail.
-			panic(err)
+		raw, ok := any(assets[i]).(gnarkio.WriterRawTo)
+		if !ok {
+			panic(fmt.Sprintf("listOfChecksums: asset at index %d (type %T) does not implement gnarkio.WriterRawTo; "+
+				"using WriteTo would produce a different hash than prove-time objectChecksum", i, assets[i]))
+		}
+		if _, err := raw.WriteRawTo(h); err != nil {
+			panic(fmt.Sprintf("listOfChecksums: WriteRawTo failed for asset %d: %v", i, err))
 		}
 		digest := h.Sum(nil)
 		res[i] = utils.HexEncodeToString(digest)

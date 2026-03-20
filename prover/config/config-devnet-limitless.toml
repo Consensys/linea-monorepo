@@ -22,7 +22,7 @@ dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-2
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/beta-v2-rc11/prover-aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
 # allowed_inputs = ["execution-dummy", "execution", "execution-large", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask:
@@ -30,10 +30,10 @@ num_proofs = [10, 20, 50, 100, 200, 400]
 #   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
 #   execution (ID 2, bit 2) = 1 → ALLOWED
 #   execution-large (ID 3, bit 3) = 1 → ALLOWED
-#   execution-limitless (ID 4, bit 4) = 0 → DISALLOWED
+#   execution-limitless (ID 4, bit 4) = 1 → ALLOWED
 #   data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
-# Binary: 0b101111 = 47 (decimal)
-is_allowed_circuit_id = 47
+# Binary: 0b111111 = 63 (decimal)
+is_allowed_circuit_id = 63
 verifier_id = 0
 
 [public_input_interconnection]
