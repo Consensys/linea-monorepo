@@ -137,18 +137,26 @@ deploy-contracts:
 	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
 	cd .. && \
 	if [ "$(LINEA_PROTOCOL_CONTRACTS_ONLY)" = "false" ]; then \
-		$(MAKE) -j7 $(LINEA_L1_CONTRACT_DEPLOYMENT_TARGET) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20 deploy-l2-evm-opcode-tester; \
+		$(MAKE) -j8 $(LINEA_L1_CONTRACT_DEPLOYMENT_TARGET) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20 deploy-l2-evm-opcode-tester deploy-eip7702-contracts; \
 	else \
 		$(MAKE) -j6 $(LINEA_L1_CONTRACT_DEPLOYMENT_TARGET) deploy-l2messageservice; \
 	fi
 
 
 deploy-l2-evm-opcode-tester:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
-		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployCancunEvmTestingFramework.ts
+	# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+	cd contracts/; \
+	DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
+	RPC_URL=http:\\localhost:8545/ \
+	npx ts-node local-deployments-artifacts/deployCancunEvmTestingFramework.ts
+
+deploy-eip7702-contracts:
+	# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+	# Uses L2 deployer key; nonce = L2_NONCE + post-l2messageservice + post-tokenbridge + post-l2-test-erc20 (when L2_NONCE set by deploy-contracts)
+	cd contracts/; \
+	DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+	RPC_URL=http:\\localhost:8545/ \
+	npx ts-node local-deployments-artifacts/deployEIP7702Contracts.ts
 
 evm-opcode-tester-execute-all-opcodes: OPCODE_TEST_CONTRACT_ADDRESS:=0xa50a51c09a5c451C52BB714527E1974b686D8e77
 evm-opcode-tester-execute-all-opcodes: NUMBER_OF_RUNS:=3

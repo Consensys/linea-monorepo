@@ -8,13 +8,24 @@ import {
   removeFromDenyList,
   withDenyListAddresses,
 } from "./common/test-helpers";
-import { estimateLineaGas, expectSuccessfulTransaction, sendTransactionWithRetry } from "./common/utils";
+import {
+  estimateLineaGas,
+  expectSuccessfulTransaction,
+  pollForBlockNumber,
+  sendTransactionWithRetry,
+} from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { TestEIP7702DelegationAbi, TestEIP7702DelegationAbiBytecode } from "./generated";
+import { Eip7702TestEntrypointAbi, TestEIP7702DelegationAbi, TestEIP7702DelegationAbiBytecode } from "./generated";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
+
+/** Predeployed EIP-7702 contract addresses from local stack (deployEIP7702Contracts, nonces 14–16). */
+const eip7702Addresses = context.getEip7702Addresses();
+const EIP7702_NESTED = eip7702Addresses ? getAddress(eip7702Addresses.nested) : null;
+const EIP7702_DELEGATED = eip7702Addresses ? getAddress(eip7702Addresses.delegated) : null;
+const EIP7702_ENTRYPOINT = eip7702Addresses ? getAddress(eip7702Addresses.entrypoint) : null;
 
 enum DelegationScenarioType {
   DenylistedAuthority,
@@ -210,6 +221,88 @@ describe("EIP-7702 test suite", () => {
         removeFromDenyList([scenario.denyListAddress]);
         await reloadDenyList(sequencerClient);
       }
+    },
+    120_000,
+  );
+
+  it.concurrent(
+    "nested delegation call to denied address is detected (tx not mined)",
+    async () => {
+      if (!EIP7702_NESTED || !EIP7702_DELEGATED || !EIP7702_ENTRYPOINT) {
+        logger.debug("Skipping: EIP-7702 predeployed addresses not configured (local only).");
+        return;
+      }
+      const [actor, relayer] = await l2AccountManager.generateAccounts(2);
+      const actorWalletClient = context.l2WalletClient({ account: actor });
+      const relayerWalletClient = context.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: relayer });
+
+      // Relayer sends EIP-7702 delegation tx on behalf of actor
+      const authorization = await actorWalletClient.signAuthorization({
+        contractAddress: EIP7702_DELEGATED,
+        executor: "self",
+      });
+
+      const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(l2PublicClient, {
+        account: relayer,
+        to: relayer.address,
+        data: "0x",
+      });
+
+      const nonceActor = await sequencerClient.getTransactionCount({ address: actor.address });
+      const txHashDelegation = await relayerWalletClient.sendTransaction({
+        authorizationList: [authorization],
+        to: "0x0000000000000000000000000000000000000000",
+        data: "0x",
+        nonce: nonceActor,
+        gas: 100_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
+
+      const receiptDelegation = await l2PublicClient.waitForTransactionReceipt({ hash: txHashDelegation });
+      expect(receiptDelegation.status).toEqual("success");
+
+      await withDenyListAddresses(sequencerClient, [actor.address], async () => {
+        let startBlock = await l2PublicClient.getBlockNumber();
+
+        const blocksToWait = 10n;
+        let reached = await pollForBlockNumber(l2PublicClient, startBlock + blocksToWait);
+        expect(reached).toBe(true);
+
+        // Relayer calls Entrypoint.setValue(42, actorAddress, nestedAddress)
+        // This triggers: Entrypoint -> CALL Actor (denied, has Delegated code) -> CALL Nested
+        const setValueData = encodeFunctionData({
+          abi: Eip7702TestEntrypointAbi,
+          functionName: "setValue",
+          args: [42n, actor.address, EIP7702_NESTED],
+        });
+
+        const nonceB = await sequencerClient.getTransactionCount({ address: relayer.address });
+
+        // Wait for a few blocks; tx should NOT be mined (rejected by DenylistExecutionSelector)
+        startBlock = await l2PublicClient.getBlockNumber();
+
+        const txHash = await relayerWalletClient.sendTransaction({
+          to: EIP7702_ENTRYPOINT,
+          data: setValueData,
+          nonce: nonceB,
+          gas: 200_000n,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+        });
+
+        expect(txHash).toBeDefined();
+
+        reached = await pollForBlockNumber(l2PublicClient, startBlock + blocksToWait);
+
+        expect(reached).toBe(true);
+
+        for (let b = startBlock + 1n; b <= startBlock + blocksToWait; b++) {
+          const block = await l2PublicClient.getBlock({ blockNumber: b, includeTransactions: true });
+          const txHashes = block.transactions.map((t) => (typeof t === "string" ? t : t.hash));
+          expect(txHashes).not.toContain(txHash);
+        }
+      });
     },
     120_000,
   );

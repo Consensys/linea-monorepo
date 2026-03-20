@@ -1,0 +1,53 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Eip7702TestEntrypoint",
+  "sourceName": "src/_testing/integration/eip-7702/Eip7702TestEntrypoint.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "ValueSet",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_newValue",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_delegatingAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nestedContract",
+          "type": "address"
+        }
+      ],
+      "name": "setValue",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506101968061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80636c63b80a1461002d575b5f5ffd5b61004061003b366004610127565b610042565b005b6040517f3472df220000000000000000000000000000000000000000000000000000000081526004810184905273ffffffffffffffffffffffffffffffffffffffff8281166024830152831690633472df22906044015f604051808303815f87803b1580156100af575f5ffd5b505af11580156100c1573d5f5f3e3d5ffd5b50506040518581523392507ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c915060200160405180910390a2505050565b803573ffffffffffffffffffffffffffffffffffffffff81168114610122575f5ffd5b919050565b5f5f5f60608486031215610139575f5ffd5b83359250610149602085016100ff565b9150610157604085016100ff565b9050925092509256fea26469706673582212200697a99ad30f76f214e493a4ab2e86bcaa2afd849a0db32464e705f3752fc5b364736f6c63430008210033",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80636c63b80a1461002d575b5f5ffd5b61004061003b366004610127565b610042565b005b6040517f3472df220000000000000000000000000000000000000000000000000000000081526004810184905273ffffffffffffffffffffffffffffffffffffffff8281166024830152831690633472df22906044015f604051808303815f87803b1580156100af575f5ffd5b505af11580156100c1573d5f5f3e3d5ffd5b50506040518581523392507ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c915060200160405180910390a2505050565b803573ffffffffffffffffffffffffffffffffffffffff81168114610122575f5ffd5b919050565b5f5f5f60608486031215610139575f5ffd5b83359250610149602085016100ff565b9150610157604085016100ff565b9050925092509256fea26469706673582212200697a99ad30f76f214e493a4ab2e86bcaa2afd849a0db32464e705f3752fc5b364736f6c63430008210033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

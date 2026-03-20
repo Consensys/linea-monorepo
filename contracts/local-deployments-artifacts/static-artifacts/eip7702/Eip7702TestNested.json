@@ -1,0 +1,81 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Eip7702TestNested",
+  "sourceName": "src/_testing/integration/eip-7702/Eip7702TestNested.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        }
+      ],
+      "name": "ValueSet",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "getValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "newValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "setValue",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "storedValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506101978061001c5f395ff3fe608060405260043610610033575f3560e01c80633ccc052214610037578063552410771461008a5780638d48538d1461009f575b5f5ffd5b348015610042575f5ffd5b50610078610051366004610110565b73ffffffffffffffffffffffffffffffffffffffff165f9081526020819052604090205490565b60405190815260200160405180910390f35b61009d61009836600461014a565b6100ca565b005b3480156100aa575f5ffd5b506100786100b9366004610110565b5f6020819052908152604090205481565b335f818152602081815260409182902084905590518381527ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c910160405180910390a250565b5f60208284031215610120575f5ffd5b813573ffffffffffffffffffffffffffffffffffffffff81168114610143575f5ffd5b9392505050565b5f6020828403121561015a575f5ffd5b503591905056fea264697066735822122011d94bd2ef2c681b2e9924e2d8d449ade40710b32d2708cd2f7bd39aab1ff9be64736f6c63430008210033",
+  "deployedBytecode": "0x608060405260043610610033575f3560e01c80633ccc052214610037578063552410771461008a5780638d48538d1461009f575b5f5ffd5b348015610042575f5ffd5b50610078610051366004610110565b73ffffffffffffffffffffffffffffffffffffffff165f9081526020819052604090205490565b60405190815260200160405180910390f35b61009d61009836600461014a565b6100ca565b005b3480156100aa575f5ffd5b506100786100b9366004610110565b5f6020819052908152604090205481565b335f818152602081815260409182902084905590518381527ff3f57717dff9f5f10af315efdbfadc60c42152c11fc0c3c413bbfbdc661f143c910160405180910390a250565b5f60208284031215610120575f5ffd5b813573ffffffffffffffffffffffffffffffffffffffff81168114610143575f5ffd5b9392505050565b5f6020828403121561015a575f5ffd5b503591905056fea264697066735822122011d94bd2ef2c681b2e9924e2d8d449ade40710b32d2708cd2f7bd39aab1ff9be64736f6c63430008210033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

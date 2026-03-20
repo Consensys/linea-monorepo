@@ -34,6 +34,9 @@ export const BaseL2ConfigSchema = BaseConfigSchema.extend({
   shomeiFrontendEndpoint: urlSchema.optional(),
   sequencerEndpoint: urlSchema.optional(),
   transactionExclusionEndpoint: urlSchema.optional(),
+  eip7702NestedAddress: addressSchema.optional(),
+  eip7702DelegatedAddress: addressSchema.optional(),
+  eip7702EntrypointAddress: addressSchema.optional(),
 });
 
 export const LocalL2ConfigSchema = BaseL2ConfigSchema.extend({

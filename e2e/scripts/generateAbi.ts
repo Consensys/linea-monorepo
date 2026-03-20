@@ -23,6 +23,8 @@ const INCLUDE_FILES: string[] = [
   "OpcodeTester",
   "Poseidon2",
   "TestEIP7702Delegation",
+  "Eip7702TestEntrypoint",
+  "Eip7702TestNested",
 ];
 
 async function main() {
