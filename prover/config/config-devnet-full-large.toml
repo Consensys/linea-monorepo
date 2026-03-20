@@ -9,30 +9,31 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "full"
 conflated_traces_dir = "./"
-requests_root_dir = "./shared/v3/prover-execution/"
+requests_root_dir = "./"
 ignore_compatibility_check=false
 keep_traces_until_block = 0
 serialization = true
 
 [data_availability]
 prover_mode = "full"
-requests_root_dir = "./shared/v3/prover-compression/"
+requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "./shared/v3/prover-aggregation/requests/"
+requests_root_dir = "/home/ubuntu/beta-v2-rc11/prover-aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
 # allowed_inputs = ["execution-dummy", "execution", "execution-large", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask:
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
 #   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-#   execution (ID 2, bit 2) = 0 → DISALLOWED
-#   execution-large (ID 3, bit 3) = 0 → DISALLOWED
-#   execution-limitless (ID 4, bit 4) = 1 → ALLOWED
-#   data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
-# Binary: 0b110011 = 51 (decimal)
-is_allowed_circuit_id = 51
+#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
+#   execution (ID 3, bit 3) = 1 → ALLOWED
+#   execution-large (ID 4, bit 4) = 1 → ALLOWED
+#   execution-limitless (ID 5, bit 5) = 0 → DISALLOWED
+#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+# Binary: 0b01011011 = 91 (decimal)
+is_allowed_circuit_id = 91
 verifier_id = 0
 
 [public_input_interconnection]

@@ -454,16 +454,16 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 			expectedBitmask: 63, // 0b111111
 		},
 		{
-			name: "Devnet (no execution-limitless)",
+			name: "Devnet (limitless only, no execution/execution-large)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				Execution:             true,
-				ExecutionLarge:        true,
-				ExecutionLimitless:    false,
+				Execution:             false,
+				ExecutionLarge:        false,
+				ExecutionLimitless:    true,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 47, // 0b101111
+			expectedBitmask: 51, // 0b110011
 		},
 		{
 			name: "Integration-full (minimal)",
