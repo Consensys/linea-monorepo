@@ -16,7 +16,7 @@ var (
 	modulePrecompileSha2Blocks                 = "PRECOMPILE_SHA2_BLOCKS"
 	modulePrecompileRipemdBlocks               = "PRECOMPILE_RIPEMD_BLOCKS"
 	modulePrecompileModexpEffectiveCalls       = "PRECOMPILE_MODEXP_EFFECTIVE_CALLS"
-	modulePrecompileModexpEffectiveCallsLarge  = "PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096"
+	modulePrecompileModexpEffectiveCalls8192   = "PRECOMPILE_MODEXP_EFFECTIVE_CALLS_4096"
 	modulePrecompileEcaddEffectiveCalls        = "PRECOMPILE_ECADD_EFFECTIVE_CALLS"
 	modulePrecompileEcmulEffectiveCalls        = "PRECOMPILE_ECMUL_EFFECTIVE_CALLS"
 	modulePrecompileEcpairingEffectiveCalls    = "PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS"
@@ -159,10 +159,11 @@ func (tl *TracesLimits) mustFindModuleLimits(module string) ModuleLimit {
 
 // ScaleUp increases the scaling factor
 func (tl *TracesLimits) ScaleUp(by int) {
-	if tl.ScalingFactor == 0 {
-		tl.ScalingFactor = 1
+	if tl.ScalingFactor <= 1 {
+		tl.ScalingFactor = by
+	} else {
+		tl.ScalingFactor *= by
 	}
-	tl.ScalingFactor *= by
 }
 
 // GetLimit returns the limits of a module
@@ -177,13 +178,8 @@ func (tl *TracesLimits) GetLimit(module string) int {
 		res = ml.LimitLarge
 	}
 
-	scalingFactor := tl.ScalingFactor
-	if scalingFactor == 0 {
-		scalingFactor = 1
-	}
-
-	if !ml.IsNotScalable {
-		res *= scalingFactor
+	if !ml.IsNotScalable && tl.ScalingFactor > 1 {
+		res *= tl.ScalingFactor
 	}
 
 	return res
@@ -219,8 +215,8 @@ func (tl *TracesLimits) PrecompileModexpEffectiveCalls() int {
 
 // PrecompileModexpEffectiveCalls8192 returns the limits corresponding to the
 // name of the method. (auto-generated)
-func (tl *TracesLimits) PrecompileModexpEffectiveCallsLarge() int {
-	name := modulePrecompileModexpEffectiveCallsLarge
+func (tl *TracesLimits) PrecompileModexpEffectiveCalls8192() int {
+	name := modulePrecompileModexpEffectiveCalls8192
 	return tl.GetLimit(name)
 }
 
@@ -441,7 +437,6 @@ func GetTestTracesLimits() *TracesLimits {
 			{Module: "rlp_addr", Limit: 4096, LimitLarge: 8192},
 			{Module: "rlp_txn", Limit: 131072, LimitLarge: 262144},
 			{Module: "rlp_txn_rcpt", Limit: 65536, LimitLarge: 131072},
-			{Module: "rlp_auth", Limit: 16384, LimitLarge: 32768},
 			{Module: "rom", Limit: 8388608, LimitLarge: 8388608},
 			{Module: "rom_lex", Limit: 1024, LimitLarge: 2048},
 			{Module: "shakira_data", Limit: 65536, LimitLarge: 65536},
