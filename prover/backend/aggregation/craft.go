@@ -133,6 +133,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.ProofClaimSources = append(cf.ProofClaimSources, execReqFPath)
 
 			pi := po.FuncInput()
 
@@ -191,6 +192,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.ProofClaimSources = append(cf.ProofClaimSources, decompReqFPath)
 			cf.DecompressionPI = append(cf.DecompressionPI, dp.Request)
 		}
 	}

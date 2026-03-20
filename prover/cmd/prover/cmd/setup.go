@@ -416,7 +416,8 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 	// we need to compute the digest of the verifying keys & store them in the manifest
 	// for the aggregation circuits to be able to check compatibility at run time with the proofs
 	extraFlags := map[string]any{
-		"allowedVkForAggregationDigests": listOfChecksums(payloadVks),
+		"allowedVkForAggregationDigests":      listOfChecksums(payloadVks),
+		"allowedVkForAggregationCircuitNames": PayloadCircuits,
 	}
 
 	allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))

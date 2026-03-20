@@ -546,7 +546,7 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 
 // TestCalculateCustomBitmask is a helper test you can modify to calculate
 // a bitmask for a custom configuration. Modify the config below and run
-// with `go test -v -run TestCalculateCustomBitmask` to see the result.
+// with `go test -v -run TestCalculateCustomBitmask ./circuits/` to see the result.
 func TestCalculateCustomBitmask(t *testing.T) {
 	// ==========================================
 	// MODIFY THIS CONFIGURATION AS NEEDED

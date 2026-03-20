@@ -179,13 +179,21 @@ func makeBw6Proof(
 		bestSize                    = math.MaxInt
 		bestAllowedVkForAggregation []string
 		errs                        []error
+		allAllowedVKs               = make(map[string]bool) // union of allowed VKs across all setups
 	)
 
 	// Log the verifying keys present in sub-proofs for diagnostics
 	subProofVKs := collectSubProofVKSummary(cf.ProofClaims)
-	logrus.Infof("aggregation: %v sub-proof claims with %v distinct verifying key(s):", numProofClaims, len(subProofVKs))
+	logrus.Debugf("aggregation: %v sub-proof claims with %v distinct verifying key(s)", numProofClaims, len(subProofVKs))
 	for vk, indices := range subProofVKs {
-		logrus.Infof("  VK %v used by %v sub-proof(s) at indices %v", vk, len(indices), indices)
+		logrus.Debugf("  VK %v used by %v sub-proof(s):", vk, len(indices))
+		for _, idx := range indices {
+			src := "<unknown>"
+			if idx < len(cf.ProofClaimSources) {
+				src = cf.ProofClaimSources[idx]
+			}
+			logrus.Debugf("    [%v] %v", idx, src)
+		}
 	}
 
 	// first we discover available setups
@@ -209,10 +217,17 @@ func makeBw6Proof(
 		if err != nil {
 			return nil, 0, fmt.Errorf("could not read the allowedVkForAggregationDigests: %w", err)
 		}
+		// Try to read circuit names (may not exist in older manifests)
+		allowedVkCircuitNames, _ := manifest.GetStringArray("allowedVkForAggregationCircuitNames")
+
+		for _, vk := range allowedVkForAggregation {
+			allAllowedVKs[vk] = true
+		}
 
 		// This reject condition may take longer
-		if err = doesBw6CircuitSupportVKeys(allowedVkForAggregation, cf.ProofClaims); err != nil {
-			logrus.Warnf("skipped setup aggregation-%v: VK mismatch. Allowed VKs in this setup's manifest: %v", maxNbProofs, allowedVkForAggregation)
+		if err = doesBw6CircuitSupportVKeys(allowedVkForAggregation, cf.ProofClaims, cf.ProofClaimSources); err != nil {
+			logrus.Warnf("skipped setup aggregation-%v: VK mismatch.", maxNbProofs)
+			logAllowedVKs(maxNbProofs, allowedVkForAggregation, allowedVkCircuitNames)
 			errs = append(errs, fmt.Errorf("skipped setup for aggregation-%v proof circuit: %w", maxNbProofs, err))
 			continue
 		}
@@ -225,6 +240,8 @@ func makeBw6Proof(
 	}
 
 	if bestSize == math.MaxInt {
+		// Print actionable summary: list the files that need to be regenerated
+		logMismatchedFiles(cf.ProofClaims, cf.ProofClaimSources, allAllowedVKs)
 
 		err := fmt.Errorf(
 			"could not find a setup large enough for %v proofs: the biggest available size is %v",
@@ -307,6 +324,19 @@ func makeBn254Proof(
 
 }
 
+// logAllowedVKs logs the allowed VKs for a given aggregation setup, with
+// circuit names if available (from the manifest's allowedVkForAggregationCircuitNames).
+func logAllowedVKs(maxNbProofs int, vks []string, circuitNames []string) {
+	logrus.Warnf("  Allowed VKs in aggregation-%v setup manifest:", maxNbProofs)
+	for i, vk := range vks {
+		name := fmt.Sprintf("circuit-id-%d", i)
+		if i < len(circuitNames) {
+			name = circuitNames[i]
+		}
+		logrus.Warnf("    [%d] %-25s -> %s", i, name, vk)
+	}
+}
+
 // collectSubProofVKSummary returns a map from VK hex string to the list of
 // sub-proof indices using that VK. This is used for diagnostic logging.
 func collectSubProofVKSummary(proofClaims []aggregation.ProofClaimAssignment) map[string][]int {
@@ -318,11 +348,48 @@ func collectSubProofVKSummary(proofClaims []aggregation.ProofClaimAssignment) ma
 	return vkToIndices
 }
 
+// logMismatchedFiles prints an actionable summary of which sub-proof response
+// files need to be regenerated. It checks each sub-proof's VK against the union
+// of all allowed VKs across all aggregation setups that were tried, and lists
+// only the files whose VK is not in any setup's allowed list.
+func logMismatchedFiles(proofClaims []aggregation.ProofClaimAssignment, sources []string, allAllowedVKs map[string]bool) {
+	type mismatchEntry struct {
+		index int
+		file  string
+		vk    string
+	}
+
+	var mismatched []mismatchEntry
+	for i, claim := range proofClaims {
+		vk := claim.VerifyingKeyShasum.Hex()
+		if !allAllowedVKs[vk] {
+			src := "<unknown>"
+			if i < len(sources) {
+				src = sources[i]
+			}
+			mismatched = append(mismatched, mismatchEntry{index: i, file: src, vk: vk})
+		}
+	}
+
+	if len(mismatched) == 0 {
+		return
+	}
+
+	logrus.Errorf("=== AGGREGATION FAILED: Sub-proof VK mismatch ===")
+	logrus.Errorf("%d/%d sub-proof response files contain a verifyingKeyShaSum not recognized by any aggregation setup.", len(mismatched), len(proofClaims))
+	logrus.Errorf("These sub-proof files were generated with an incompatible prover binary and must be regenerated:")
+	for _, m := range mismatched {
+		logrus.Errorf("  [%d] %s", m.index, m.file)
+		logrus.Errorf("       verifyingKeyShaSum in file: %s", m.vk)
+	}
+	logrus.Errorf("=================================================")
+}
+
 // This function is used to detect if a a BW6 circuit is compatible with a list
 // proof's verifier keys. Namely, it takes the list of supported keys, parse them
 // as hex-bytes-32 and check that all the proof claims verifier keys are included
 // in the list of supported verifier keys.
-func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregation.ProofClaimAssignment) error {
+func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregation.ProofClaimAssignment, sources []string) error {
 	// Parse the required verifying keys into a list of bytes32
 	suppBytes32 := make([]types.FullBytes32, len(supportedVkeys))
 	for i := range suppBytes32 {
@@ -356,9 +423,19 @@ func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregati
 			len(unSupportedIdxs), len(proofClaims),
 		)
 		for vk, indices := range unsupportedVKs {
-			detail += fmt.Sprintf("    VK %v -> sub-proof indices %v\n", vk, indices)
+			detail += fmt.Sprintf("    VK %v -> sub-proof indices:\n", vk)
+			for _, idx := range indices {
+				src := "<unknown>"
+				if idx < len(sources) {
+					src = sources[idx]
+				}
+				detail += fmt.Sprintf("      [%d] %s\n", idx, src)
+			}
 		}
-		detail += fmt.Sprintf("  Allowed VKs in this setup: %v\n", supportedVkeys)
+		detail += "  Allowed VKs in this setup:\n"
+		for i, vk := range supportedVkeys {
+			detail += fmt.Sprintf("    [%d] %s\n", i, vk)
+		}
 		detail += "  The sub-proofs were likely generated with an incompatible setup version. " +
 			"Re-generate the sub-proofs using the same setup version as the aggregation circuit, or re-generate the aggregation setup to match the sub-proof VKs."
 		return fmt.Errorf("%s", detail)
