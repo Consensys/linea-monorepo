@@ -8,6 +8,8 @@
  */
 package net.consensys.linea.utils;
 
+import kotlin.time.Clock;
+import kotlin.time.Instant;
 import org.hyperledger.besu.datatypes.Transaction;
 
 /**
@@ -21,7 +23,12 @@ public interface TransactionCompressor {
    * transaction hash to improve performance.
    *
    * @param transaction the transaction for which to get the compressed size
+   * @param blockTimestamp the timestamp of the block which is expected to include this transaction
    * @return the compressed size of the transaction
    */
-  int getCompressedSize(Transaction transaction);
+  int getCompressedSize(Transaction transaction, Instant blockTimestamp);
+
+  default int getCompressedSize(Transaction transaction) {
+    return getCompressedSize(transaction, Clock.System.INSTANCE.now());
+  }
 }

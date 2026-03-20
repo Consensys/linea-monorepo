@@ -20,10 +20,19 @@ apply from: lineaSequencerProject.file("gradle/java.gradle")
 apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
 apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
+configurations.all {
+  resolutionStrategy.eachDependency { details ->
+    if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name.startsWith('kotlin-stdlib')) {
+      details.useVersion "${libs.versions.kotlin.get()}"
+    }
+  }
+}
+
 dependencies {
   implementation project(":tracer:arithmetization")
   implementation "build.linea:blob-compressor:${libs.versions.blobCompressor.get()}"
   implementation "build.linea.internal:kotlin:${libs.versions.lineaKotlin.get()}"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}"
 
   testImplementation 'org.assertj:assertj-core'
 
