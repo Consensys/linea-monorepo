@@ -2,8 +2,6 @@
 package serde
 
 import (
-	"reflect"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -61,6 +59,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"reflect"
 )
 
 // IDToType maps a uint16 ID to the concrete reflect.Type.
