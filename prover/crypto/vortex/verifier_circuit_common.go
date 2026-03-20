@@ -28,80 +28,90 @@ type GnarkVerifierInput struct {
 	EntryList []frontend.Variable
 }
 
+// GnarkVerify verifies the vortex opening for coefficient-mode U_alpha.
+// proof.LinearCombination holds T polynomial coefficients (E4).
+// A forward FFT hint reconstructs N evaluations for the column-consistency lookup check.
 func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	// compute the codeword, verify the correctness: evalCan(linComb, challenge) == evalLag(evals, challenge)
+	evals, err := GnarkCheckReedSolomon(api, fs, params, proof.LinearCombination)
 	if err != nil {
 		return err
 	}
 
-	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
-	// since they both evaluate the same polynomial on the same domain
-	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
-	return err
+	// Column-consistency check: lookup evals[entryList[j]] == Horner(columns[j], alpha)
+	err = GnarkCheckLinComb(api, evals, vi.EntryList, vi.Alpha, proof.Columns)
+	if err != nil {
+		return err
+	}
+
+	// statement check using coefficients directly: Horner(linComb, x) == Horner(ys_joined, alpha)
+	return GnarkCheckStatement(api, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 }
 
-// GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
-// to share the Lagrange basis computation, saving approximately n multiplications.
-func GnarkCheckStatementAndCodeWord(
+func GnarkCheckReedSolomon(
 	api frontend.API,
 	fs fiatshamir.GnarkFS,
 	params Params,
+	linComb []koalagnark.Ext,
+) ([]koalagnark.Ext, error) {
+	// Implement Reed-Solomon codeword check
+	koalaAPI := koalagnark.NewAPI(api)
+
+	// Expand T coefficients → N evaluations via forward FFT hint.
+	t := params.RsParams.NbColumns()
+	n := params.RsParams.NbEncodedColumns()
+	fftfwd := fftFwdHint(koalaAPI.Type())
+	inputsUnpacked := make([]koalagnark.Element, t*4)
+	for i := 0; i < t; i++ {
+		inputsUnpacked[4*i] = linComb[i].B0.A0
+		inputsUnpacked[4*i+1] = linComb[i].B0.A1
+		inputsUnpacked[4*i+2] = linComb[i].B1.A0
+		inputsUnpacked[4*i+3] = linComb[i].B1.A1
+	}
+	evalsRaw, err := koalaAPI.NewHint(fftfwd, n*4, inputsUnpacked...)
+	if err != nil {
+		return nil, err
+	}
+	evalsOut := make([]koalagnark.Ext, n)
+	for i := range evalsOut {
+		evalsOut[i].B0.A0 = evalsRaw[4*i]
+		evalsOut[i].B0.A1 = evalsRaw[4*i+1]
+		evalsOut[i].B1.A0 = evalsRaw[4*i+2]
+		evalsOut[i].B1.A1 = evalsRaw[4*i+3]
+	}
+
+	// Bind T coefficients into the Fiat-Shamir transcript (same role as res in eval mode).
+	fs.UpdateExt(linComb...)
+	challenge := fs.RandomFieldExt()
+
+	// Schwartz-Zippel: evalCan(linComb, challenge) == evalLag(evals, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, linComb, challenge)
+	evalLag := polynomials.GnarkEvaluateLagrangeExt(
+		api,
+		evalsOut,
+		challenge,
+		params.RsParams.Domains[1].Generator,
+		params.RsParams.Domains[1].Cardinality)
+	koalaAPI.AssertIsEqualExt(evalCan, evalLag)
+	return evalsOut, nil
+
+}
+
+// GnarkCheckStatement performs statement check for coefficient-mode U_alpha.
+// linComb holds T coefficients; evals holds N evaluations (from forward FFT hint).
+func GnarkCheckStatement(
+	api frontend.API,
 	linComb []koalagnark.Ext,
 	ys [][]koalagnark.Ext,
 	x, alpha koalagnark.Ext) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftInvHint(koalaAPI.Type())
-	sizeFextUnpacked := len(linComb) * 4
-	inputs := make([]koalagnark.Element, sizeFextUnpacked)
-	for i := 0; i < len(linComb); i++ {
-		inputs[4*i] = linComb[i].B0.A0
-		inputs[4*i+1] = linComb[i].B0.A1
-		inputs[4*i+2] = linComb[i].B1.A0
-		inputs[4*i+3] = linComb[i].B1.A1
-	}
-	resLen := 4 * params.RsParams.NbColumns()
-	_res, err := koalaAPI.NewHint(fftinv, resLen, inputs...)
-	if err != nil {
-		return err
-	}
-
-	res := make([]koalagnark.Ext, resLen/4)
-	for i := range res {
-		res[i].B0.A0 = _res[4*i]
-		res[i].B0.A1 = _res[4*i+1]
-		res[i].B1.A0 = _res[4*i+2]
-		res[i].B1.A1 = _res[4*i+3]
-	}
-	fs.UpdateExt(res...)
-	challenge := fs.RandomFieldExt()
-
-	// === Part 2: Codeword check (Schwartz-Zippel) ===
-	// Evaluate linComb at alpha (for codeword check).
-	// Alpha is used as the evaluation point for the fft AND for the folding.
-	evalLag := polynomials.GnarkEvaluateLagrangeExt(
-		api,
-		linComb,
-		challenge,
-		params.RsParams.Domains[1].Generator,
-		params.RsParams.Domains[1].Cardinality)
-
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
-
-	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
-
-	// this is already implied by the Schwartz-Zippel above as the FFT Inverse hint outputs
-	// a polynomial of degree < nbColumns, so we skip this step
-
-	// === Part 4: Statement check ===
-	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
-
+	// Statement check: Horner(linComb, x) == Horner(ys_joined, alpha)
+	alphaY := polynomials.GnarkEvalCanonicalExt(api, linComb, x)
 	var yjoined []koalagnark.Ext
-	for i := 0; i < len(ys); i++ {
+	for i := range ys {
 		yjoined = append(yjoined, ys[i]...)
 	}
 	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)

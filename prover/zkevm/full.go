@@ -115,7 +115,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
 			// compiler.WithDebugMode("initial-compiler-step-2"),
 		),

@@ -1,10 +1,7 @@
 package reedsolomon
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -117,99 +114,41 @@ func (p *RsParams) RsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVe
 	return smartvectors.NewRegular(expandedCoeffs)
 }
 
-// IsCodeword returns nil iff the argument `v` is a correct codeword and an
-// error is returned otherwise.
-func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
-	if v.Len() != p.NbEncodedColumns() {
-		return fmt.Errorf("invalid length for a codeword")
-	}
-	coeffs := make([]field.Element, p.NbEncodedColumns())
-	v.WriteInSlice(coeffs)
-	p.Domains[1].FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
-	utils.BitReverse(coeffs)
-	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
-		c := coeffs[i]
-		if !c.IsZero() {
-			return fmt.Errorf("not a reed-solomon codeword")
-		}
-	}
+// LCEvalsToCoefficients converts T extension-field Lagrange evaluations of the
+// linear-combination polynomial into its T monomial coefficients.  The input
+// must be the result of vortex.LinearCombination applied to the T-length
+// committed polynomial vectors (Lagrange basis over the small Omega_T domain),
+// i.e. it has length NbColumns() = T.
+//
+// This is the small-domain analogue of ExtEvalToCoefficients: it applies the
+// T-point inverse FFT (Domains[0]) instead of the N-point one (Domains[1]).
+// The result is identical to ExtEvalToCoefficients applied to the full
+// N-length RS codeword but is 1/RsRate times cheaper to compute.
+func (p *RsParams) LCEvalsToCoefficients(v smartvectors.SmartVector) smartvectors.SmartVector {
+	t := p.NbColumns()
 
-	return nil
-}
-
-// rsEncode encodes a vector `v` and returns the corresponding the Reed-Solomon
-// codeword. The input vector is interpreted as a polynomial in Lagrange basis
-// over a domain of n-roots of unity Omega_n and returns its representation in
-// the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
-// inverse-rate of the code. The code is systematic as the original vector is
-// interleaved within the encoded vector.
-func (p *RsParams) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
-
-	// Short path, v is a constant vector. It's encoding is also a constant vector
-	// with the same value.
-	if cons, ok := v.(*smartvectors.Constant); ok {
-		return smartvectors.NewConstant(cons.Val(), p.NbEncodedColumns())
-	}
-
-	expandedCoeffs := make([]fext.Element, p.NbEncodedColumns())
-
-	// copy the input
-	v.WriteInSliceExt(expandedCoeffs[:v.Len()])
-
-	const rho = 2
-	if rho != p.Rate {
-		smallDomain := p.Domains[0]
-		largeDomain := p.Domains[1]
-
-		smallDomain.FFTInverseExt(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
-
-		n := v.Len()
-		rho := p.Rate
-
-		// this loop dispatches the values that are all located at the beginning
-		// of the domain to the entire domain by homothety
-		for j := n - 1; j > 0; j-- {
-			expandedCoeffs[rho*j] = expandedCoeffs[j]
-			expandedCoeffs[j] = fext.Element{}
-		}
-
-		largeDomain.FFTExt(expandedCoeffs, fft.DIT, fft.WithNbTasks(1))
-
-		return smartvectors.NewRegularExt(expandedCoeffs)
-	}
-
-	// fast path; we avoid the bit reverse operations and work on the smaller domain.
-	inputCoeffs := extensions.Vector(expandedCoeffs[:p.NbColumns()])
-
-	p.Domains[0].FFTInverseExt(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
-	inputCoeffs.MulByElement(inputCoeffs, p.CosetTableBitReverse)
-
-	p.Domains[0].FFTExt(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
-	for j := p.NbColumns() - 1; j >= 0; j-- {
-		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
-		expandedCoeffs[rho*j] = v.GetExt(j)
-	}
-
-	return smartvectors.NewRegularExt(expandedCoeffs)
-}
-
-// IsCodeword returns nil iff the argument `v` is a correct codeword and an
-// error is returned otherwise.
-func (p *RsParams) IsCodewordExt(v smartvectors.SmartVector) error {
-
-	if v.Len() != p.NbEncodedColumns() {
-		return fmt.Errorf("invalid length for a codeword")
-	}
-	coeffs := make([]fext.Element, p.NbEncodedColumns())
+	coeffs := make([]fext.Element, t)
 	v.WriteInSliceExt(coeffs)
-	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	p.Domains[0].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
-		c := coeffs[i]
-		if !c.IsZero() {
-			return fmt.Errorf("not a reed-solomon codeword")
-		}
-	}
+	return smartvectors.NewRegularExt(coeffs)
+}
 
-	return nil
+// ExtCoefficientsToAllEvaluations evaluates the degree-T polynomial given by
+// T monomial coefficients (E4) at all N = NbEncodedColumns() points of the RS
+// domain (ω_N^0, ω_N^1, ..., ω_N^{N-1}).  The returned slice has length N.
+//
+// It is cheaper than calling ExtCoefficientsEvalAt K times when K > blowup×log₂(N).
+func (p *RsParams) ExtCoefficientsToAllEvaluations(coefficients smartvectors.SmartVector) []fext.Element {
+	t := p.NbColumns()
+	n := p.NbEncodedColumns()
+
+	buf := make([]fext.Element, n)
+	for k := 0; k < t; k++ {
+		buf[k] = coefficients.GetExt(k)
+	}
+	// DIT FFT expects bit-reversed input; natural-order evaluations come out.
+	utils.BitReverse(buf)
+	p.Domains[1].FFTExt(buf, fft.DIT, fft.WithNbTasks(1))
+	return buf
 }

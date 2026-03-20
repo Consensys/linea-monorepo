@@ -237,6 +237,9 @@ type Ctx struct {
 			// List of the precomputeds columns that we are compiling if the
 			// the precomputed flag is set.
 			PrecomputedColums []ifaces.Column
+			// Polys caches the T-length Lagrange evaluation vectors for each
+			// precomputed column (set at compile time, used by getPrecomputedPols).
+			Polys []smartvectors.SmartVector
 			// Merkle Root of the precomputeds columns
 			MerkleRoot [blockSize]ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
@@ -256,7 +259,10 @@ type Ctx struct {
 		Ualpha ifaces.Column
 		// Random column selection
 		Q coin.Info
-		// Opened columns, to be used in the Vortex compilation
+		// Opened columns, to be used in the Vortex compilation.
+		// In pure SIS case, this points to OpenedSISColumns.
+		// In pure non-SIS case, this points to OpenedNonSISColumns.
+		// In mixed case, this is a separate set of columns.
 		OpenedColumns []ifaces.Column
 		// Opened SIS columns, to be used in the Self recursion compilation
 		OpenedSISColumns []ifaces.Column
@@ -279,6 +285,14 @@ type Ctx struct {
 	// be activated by the PreMarkAsSelfRecursed option which is used by the
 	// full-recursion compiler.
 	IsSelfrecursed bool
+
+	// IsPureSIS indicates that all committed rows use SIS hashing (no non-SIS rounds).
+	// When true, OpenedColumns points directly to OpenedSISColumns to avoid duplication.
+	IsPureSIS bool
+
+	// IsPureNonSIS indicates that all committed rows use non-SIS (Poseidon2 only) hashing.
+	// When true, OpenedColumns points directly to OpenedNonSISColumns to avoid duplication.
+	IsPureNonSIS bool
 
 	// Additional options that tells the compiler to add a merkle root to the
 	// public inputs of the comp. This is useful for the distributed prover.
@@ -318,6 +332,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		Items: struct {
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
+				Polys             []smartvectors.SmartVector
 				MerkleRoot        [blockSize]ifaces.Column
 				CommittedMatrix   vortex_koalabear.EncodedMatrix
 				Tree              *smt_koalabear.Tree
@@ -403,6 +418,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	startingRound := ctx.startingRound()
 
 	if round < startingRound {
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 
@@ -597,8 +613,6 @@ func (ctx *Ctx) generateVortexParams() {
 		sisParams = &ringsis.StdParams
 	}
 	if ctx.IsBLS {
-		// koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		// ctx.VortexKoalaParams = &koalaParams
 		blsParams := vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
 		ctx.VortexBLSParams = &blsParams
 	} else {
@@ -651,11 +665,13 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.LinCombRandCoinName(),
 		coin.FieldExt,
 	)
-	// registers the linear combination claimed by the prover
+	// registers the linear combination claimed by the prover as T polynomial
+	// coefficients (coeff form), size = NextPow2(T), for both BLS and KoalaBear.
+	uAlphaSize := utils.NextPowerOfTwo(ctx.NumCols)
 	ctx.Items.Ualpha = ctx.Comp.InsertProof(
 		lastRound+1,
 		ctx.LinCombName(),
-		ctx.NumEncodedCols(),
+		uAlphaSize,
 		false,
 	)
 
@@ -672,7 +688,43 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	numRows := utils.NextPowerOfTwo(ctx.CommittedRowsCount)
 	numRowsSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCountSIS)
 	numRowsNonSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCount - ctx.CommittedRowsCountSIS)
+
+	// Determine if we have a pure SIS or pure non-SIS case (no mixing).
+	// In practice, this is always true - each Vortex context has either all SIS
+	// or all non-SIS rounds, never both. This allows us to avoid duplicate columns.
+	ctx.IsPureSIS = numRowsSIS != 0 && numRowsNonSIS == 0
+	ctx.IsPureNonSIS = numRowsSIS == 0 && numRowsNonSIS != 0
+
 	for col := 0; col < ctx.NbColsToOpen(); col++ {
+		// Handle pure SIS case: SELECTED_COL_SIS is the same as SELECTED_COL
+		if ctx.IsPureSIS {
+			openedColSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColSISName(col),
+				numRowsSIS,
+				true,
+			)
+			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+			// Reuse SELECTED_COL_SIS as OpenedColumns (no separate SELECTED_COL needed)
+			ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedColSIS)
+			continue
+		}
+
+		// Handle pure non-SIS case: SELECTED_COL_NON_SIS is the same as SELECTED_COL
+		if ctx.IsPureNonSIS {
+			openedColNonSIS := ctx.Comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColNonSISName(col),
+				numRowsNonSIS,
+				true,
+			)
+			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+			// Reuse SELECTED_COL_NON_SIS as OpenedColumns (no separate SELECTED_COL needed)
+			ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedColNonSIS)
+			continue
+		}
+
+		// Mixed case: register SELECTED_COL separately
 		openedCol := ctx.Comp.InsertProof(
 			lastRound+2,
 			ctx.SelectedColName(col),
@@ -680,6 +732,8 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
+
+		// Register SIS/non-SIS columns only in mixed case
 		if numRowsSIS != 0 {
 			openedColSIS := ctx.Comp.InsertProof(
 				lastRound+2,
@@ -748,18 +802,14 @@ func (ctx *Ctx) NumEncodedCols() int {
 
 // We check if there are non zero numbers of precomputed columns to commit to.
 func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
-	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
-		return true
-	} else {
-		return false
-	}
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > 0
 }
 
 // IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed
 // columns. This happens when the number of precomputed columns is greater than
 // the ApplySISHashThreshold.
 func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
-	if ctx.Items.Precomputeds.PrecomputedColums == nil {
+	if len(ctx.Items.Precomputeds.PrecomputedColums) == 0 {
 		return false
 	}
 	if ctx.IsBLS {
@@ -950,7 +1000,7 @@ func (ctx *Ctx) MerkleProofSize() int {
 		numComs    = ctx.NumCommittedRounds()
 		numOpening = ctx.NbColsToOpen()
 	)
-	// The number of rounds increases by 1 for committing to the precomputed
+	// The number of rounds increases by 1 for committing to the precomputed.
 	if ctx.IsNonEmptyPrecomputed() {
 		numComs += 1
 	}
@@ -988,6 +1038,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 		}
 		pols[i] = ctx.Comp.Precomputed.MustGet(precomputed.GetColID())
 	}
+
+	// Cache the T-length Lagrange evaluation vectors for getPrecomputedPols.
+	ctx.Items.Precomputeds.Polys = pols
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds

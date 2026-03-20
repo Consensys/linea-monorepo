@@ -367,6 +367,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	startingRound := ctx.startingRound()
 
 	if round < startingRound {
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 

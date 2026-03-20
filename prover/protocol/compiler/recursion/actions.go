@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -51,6 +52,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	var (
 		pcs               = run.Spec.PcsCtxs.(*vortex.Ctx)
 		committedMatrices []vortex_koalabear.EncodedMatrix
+		polynomialVectors [][]smartvectors.SmartVector
 		sisHashes         [][]field.Element
 		trees             []*smt_koalabear.Tree
 		mimcHashes        [][]field.Element
@@ -62,6 +64,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 
 		var (
 			committedMatrix, _ = run.State.TryGet(pcs.VortexProverStateName(round))
+			polyVectors, _     = run.State.TryGet(pcs.VortexPolyStateName(round))
 			sisHash, _         = run.State.TryGet(pcs.SisHashName(round))
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
 			mimcHash, _        = run.State.TryGet(pcs.NoSisHashName(round))
@@ -71,6 +74,12 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			committedMatrices = append(committedMatrices, committedMatrix.(vortex_koalabear.EncodedMatrix))
 		} else {
 			committedMatrices = append(committedMatrices, nil)
+		}
+
+		if polyVectors != nil {
+			polynomialVectors = append(polynomialVectors, polyVectors.([]smartvectors.SmartVector))
+		} else {
+			polynomialVectors = append(polynomialVectors, nil)
 		}
 
 		if sisHash != nil {
@@ -105,6 +114,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
+		PolynomialVectors: polynomialVectors,
 		SisHashes:         sisHashes,
 		Poseidon2Hashes:   mimcHashes,
 		Trees:             trees,
@@ -117,7 +127,7 @@ func (pa AssignVortexUAlpha) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
-		ctx.ComputeLinearCombFromRsMatrix(run)
+		ctx.ComputeLinearComb(run)
 	}
 }
 

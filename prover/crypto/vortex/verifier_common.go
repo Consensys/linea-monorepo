@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -35,52 +34,51 @@ type VerifierInput struct {
 	EntryList []int
 }
 
-func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
-
-	smartvectors_mixed.IsBase(linComb)
-
-	// Check the consistency of Ys and proof.Linear combination
+// CheckStatement evaluates the polynomial in coefficient form at x using Horner
+// and checks consistency with the alleged evaluations ys folded at alpha.
+func CheckStatement(coefficients smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
 	yJoined := utils.Join(ys...)
-	alphaY := smartvectors.EvaluateFextPolyLagrange(linComb, x)
+
+	res := make([]fext.Element, coefficients.Len())
+	coefficients.WriteInSliceExt(res)
+
+	alphaY := vortex.EvalFextPolyHorner(res, x)
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
 
 	if alphaY != alphaYPrime {
-		return fmt.Errorf("RowLincomb and Y are inconsistent")
+		return fmt.Errorf("RowLincomb (coeff mode) and Y are inconsistent")
 	}
-
 	return nil
 }
 
-func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v smartvectors.SmartVector) error {
-	return rsParams.IsCodewordExt(v)
-}
-
+// CheckLinComb checks the linear combination in coefficient mode: evaluates all
+// N RS domain points via a single FFT and verifies each queried column via
+// a direct index lookup.
 func CheckLinComb(
-	linComb smartvectors.SmartVector,
+	coefficients smartvectors.SmartVector,
 	entryList []int,
 	alpha fext.Element,
 	columns [][][]field.Element,
-) (err error) {
-
+	rsParams *reedsolomon.RsParams,
+) error {
+	// One FFT to get all N evaluations
+	allEvals := rsParams.ExtCoefficientsToAllEvaluations(coefficients)
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
-		// Will carry the concatenation of the columns for the same entry j
+		// Build full column (concatenate across commitments)
 		fullCol := []field.Element{}
-
 		for i := range numCommitments {
-			// Entries of the selected columns #j contained in the commitment #i.
 			fullCol = append(fullCol, columns[i][j]...)
 		}
 
-		// Check the linear combination is consistent with the opened column
+		// Check consistency: U_alpha(ω^selectedColID) == α-Horner of opened column
+		uAlphaAtJ := allEvals[selectedColID]
 		y := vortex.EvalBasePolyHorner(fullCol, alpha)
-
-		if y != linComb.GetExt(selectedColID) {
-			other := linComb.GetExt(selectedColID)
-			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
+		if uAlphaAtJ != y {
+			return fmt.Errorf("linear combination (coeff mode) inconsistent at query %d (col %d): got %v want %v",
+				j, selectedColID, uAlphaAtJ.String(), y.String())
 		}
 	}
-
 	return nil
 }
