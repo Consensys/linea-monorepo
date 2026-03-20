@@ -1,4 +1,4 @@
-import { Direction } from "@consensys/linea-sdk";
+import { TransactionRequest } from "../../types";
 
 export type GasFees = {
   maxFeePerGas: bigint;
@@ -7,19 +7,6 @@ export type GasFees = {
 
 export type LineaGasFees = GasFees & {
   gasLimit: bigint;
-};
-
-export type FeeHistory = {
-  oldestBlock: number;
-  reward: string[][];
-  baseFeePerGas: string[];
-  gasUsedRatio: number[];
-};
-
-export type LineaEstimateGasResponse = {
-  baseFeePerGas: string;
-  priorityFeePerGas: string;
-  gasLimit: string;
 };
 
 type BaseGasProviderConfig = {
@@ -33,24 +20,15 @@ export type DefaultGasProviderConfig = BaseGasProviderConfig & {
 
 export type LineaGasProviderConfig = BaseGasProviderConfig;
 
-export type GasProviderConfig = DefaultGasProviderConfig & {
-  direction: Direction;
-  enableLineaEstimateGas: boolean;
-};
-
-export interface IGasProvider<TransactionRequest> {
+export interface IGasProvider {
   getGasFees(transactionRequest?: TransactionRequest): Promise<GasFees | LineaGasFees>;
   getMaxFeePerGas(): bigint;
 }
 
-export interface IEthereumGasProvider<TransactionRequest> extends IGasProvider<TransactionRequest> {
+export interface IEthereumGasProvider extends IGasProvider {
   getGasFees(): Promise<GasFees>;
 }
 
-export interface ILineaGasProvider<TransactionRequest> extends IGasProvider<TransactionRequest> {
+export interface ILineaGasProvider extends IGasProvider {
   getGasFees(transactionRequest: TransactionRequest): Promise<LineaGasFees>;
-}
-
-export function isLineaGasFees(fees: GasFees | LineaGasFees): fees is LineaGasFees {
-  return "gasLimit" in fees;
 }
