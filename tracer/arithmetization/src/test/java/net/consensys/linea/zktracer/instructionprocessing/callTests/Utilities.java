@@ -331,7 +331,7 @@ public class Utilities {
     try {
       return Double.parseDouble(rawValue);
     } catch (NumberFormatException e) {
-      // Fall back to the default value if the environment variable is not a valid integer.
+      // Fall back to the default value if the environment variable is not valid.
       return 0.2;
     }
   }
@@ -340,7 +340,7 @@ public class Utilities {
    * Provides a sampling ratio for parameterized tests to use in any given testing run (e.g. sample
    * 20% of tests). This can value can be overridden using an environment variable.
    */
-  public static double PARAMETERIZED_TEST_SAMPLE_SIZE = getParameterizedTestSampleSize();
+  public static final double PARAMETERIZED_TEST_SAMPLE_SIZE = getParameterizedTestSampleSize();
 
   public static <T> List<T> randomSampleByCurrentCommitHash(List<T> items) {
     int n = (int) (((double) items.size()) * PARAMETERIZED_TEST_SAMPLE_SIZE);
