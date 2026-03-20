@@ -266,6 +266,14 @@ func makeBw6Proof(
 
 	assignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
 
+	// Pre-flight check: validate that all assigned circuit IDs are allowed by
+	// the IsAllowedCircuitID bitmask BEFORE running the expensive BW6 prover.
+	// Without this check, disallowed circuits would only be caught inside the
+	// circuit constraints, producing a cryptic "assertIsEqual 0==1" error.
+	if err := validateCircuitIDsAllowed(cfg.Aggregation.IsAllowedCircuitID, cf.ProofClaims, cf.ProofClaimSources, bestAllowedVkForAggregation); err != nil {
+		return nil, 0, err
+	}
+
 	// Although the public input is restrained to fit on the BN254 scalar field,
 	// the BW6 field is larger. This allows us to represent the public input as a
 	// single field element.
@@ -480,4 +488,55 @@ func assignCircuitIDToProofClaims(supportedVkeys []string, proofClaims []aggrega
 		}
 
 	}
+}
+
+// validateCircuitIDsAllowed checks that all proof claims have circuit IDs that
+// are allowed by the IsAllowedCircuitID bitmask. This is a pre-flight check
+// that runs before the expensive BW6 prover to give a clear error message
+// instead of a cryptic constraint failure inside the circuit.
+func validateCircuitIDsAllowed(bitmask uint64, proofClaims []aggregation.ProofClaimAssignment, sources []string, vkList []string) error {
+	type disallowedEntry struct {
+		index     int
+		file      string
+		circuitID int
+		name      string
+	}
+
+	var disallowed []disallowedEntry
+	for i, claim := range proofClaims {
+		cid := uint(claim.CircuitID)
+		if !circuits.IsCircuitAllowed(bitmask, cid) {
+			src := "<unknown>"
+			if i < len(sources) {
+				src = sources[i]
+			}
+			name := circuits.CircuitNameByID(cid)
+			disallowed = append(disallowed, disallowedEntry{
+				index: i, file: src, circuitID: claim.CircuitID, name: name,
+			})
+		}
+	}
+
+	if len(disallowed) == 0 {
+		return nil
+	}
+
+	logrus.Errorf("=== AGGREGATION FAILED: Disallowed circuit ID ===")
+	logrus.Errorf("%d/%d sub-proof(s) use a circuit ID that is not allowed by is_allowed_circuit_id=%d (binary: 0b%b).",
+		len(disallowed), len(proofClaims), bitmask, bitmask)
+	logrus.Errorf("Allowed circuits: %v", circuits.GetAllowedCircuitNames(bitmask))
+	logrus.Errorf("Disallowed sub-proofs:")
+	for _, d := range disallowed {
+		logrus.Errorf("  [%d] %s -> circuit ID %d (%s)", d.index, d.file, d.circuitID, d.name)
+	}
+	logrus.Errorf("To fix: either regenerate the sub-proofs using an allowed circuit, or update is_allowed_circuit_id in your config to allow circuit ID %d (%s).",
+		disallowed[0].circuitID, disallowed[0].name)
+	logrus.Errorf("=================================================")
+
+	return fmt.Errorf(
+		"aggregation rejected: %d/%d sub-proof(s) use disallowed circuit ID %d (%s); is_allowed_circuit_id=%d only allows %v",
+		len(disallowed), len(proofClaims),
+		disallowed[0].circuitID, disallowed[0].name,
+		bitmask, circuits.GetAllowedCircuitNames(bitmask),
+	)
 }

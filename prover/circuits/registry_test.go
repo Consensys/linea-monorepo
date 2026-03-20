@@ -331,6 +331,31 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 	assert.Equal(t, 10, len(GlobalCircuitIDMapping))
 }
 
+func TestCircuitNameByID(t *testing.T) {
+	tests := []struct {
+		id       uint
+		expected string
+	}{
+		{0, "execution-dummy"},
+		{1, "data-availability-dummy"},
+		{2, "execution"},
+		{3, "execution-large"},
+		{4, "execution-limitless"},
+		{5, "data-availability-v2"},
+		{8, "emulation"},
+		{9, "aggregation"},
+		{10, "public-input-interconnection"},
+		{11, "emulation-dummy"},
+		{99, "circuit-id-99"}, // unknown ID
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, CircuitNameByID(tt.id))
+		})
+	}
+}
+
 // Example test showing how to use these functions for config validation
 func TestExampleUsage(t *testing.T) {
 	// Example: User wants to configure mainnet
