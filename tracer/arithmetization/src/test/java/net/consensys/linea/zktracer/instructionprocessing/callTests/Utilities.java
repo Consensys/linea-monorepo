@@ -326,8 +326,8 @@ public class Utilities {
     }
   }
 
-  private static double getParameterizedTestSampleSize() {
-    final String rawValue = System.getenv().getOrDefault("PARAMETERIZED_TEST_SAMPLE_SIZE", "0.2");
+  private static double getParameterizedTestsSampleSize() {
+    final String rawValue = System.getenv().getOrDefault("PARAMETERIZED_TESTS_SAMPLE_SIZE", "0.2");
     try {
       return Double.parseDouble(rawValue);
     } catch (NumberFormatException e) {
@@ -340,10 +340,10 @@ public class Utilities {
    * Provides a sampling ratio for parameterized tests to use in any given testing run (e.g. sample
    * 20% of tests). This can value can be overridden using an environment variable.
    */
-  public static final double PARAMETERIZED_TEST_SAMPLE_SIZE = getParameterizedTestSampleSize();
+  public static final double PARAMETERIZED_TESTS_SAMPLE_SIZE = getParameterizedTestsSampleSize();
 
   public static <T> List<T> randomSampleByCurrentCommitHash(List<T> items) {
-    int n = (int) (((double) items.size()) * PARAMETERIZED_TEST_SAMPLE_SIZE);
+    int n = (int) (((double) items.size()) * PARAMETERIZED_TESTS_SAMPLE_SIZE);
     // Ensure minimal number of tests (this protects against small tests items which would otherwise
     // be sampled to 0).
     n = Math.max(15, n);
