@@ -13,12 +13,13 @@ void downloadFileUsingWget(
   String command = "curl -L -H 'Accept:application/octet-stream' -o ${outputFilePath} ${url}"
   //  println("# " + command)
 
-  def execResult = exec {
-    commandLine 'bash', '-c', command
-  }
-
-  if (execResult.exitValue != 0) {
-    execResult.rethrowFailure()
+  def process = ['bash', '-c', command].execute()
+  def out = new StringBuilder()
+  def err = new StringBuilder()
+  process.consumeProcessOutput(out, err)
+  def exitCode = process.waitFor()
+  if (exitCode != 0) {
+    throw new GradleException("curl command failed (exit=${exitCode}): ${err}")
   }
 }
 

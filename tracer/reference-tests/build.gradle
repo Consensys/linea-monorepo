@@ -20,7 +20,7 @@ plugins {
   alias(libs.plugins.lombok)
 }
 jacoco {
-  toolVersion = '0.8.12'
+  toolVersion = '0.8.14'
 }
 
 def lineaTracerProject = project(lineaTracerProjectPath)
@@ -98,6 +98,12 @@ tasks.register("jacocoReferenceExecutionSpecBlockchainTestsReport", JacocoReport
 
   sourceSets project(":tracer:arithmetization").sourceSets.main
   executionData(referenceExecutionSpecBlockchainTests)
+}
+
+// Gradle 9: fail if no tests discovered is now the default; disable for this module
+// since tests are generated from fixtures and only run via referenceExecutionSpecBlockchainTests
+tasks.named('test') {
+  failOnNoDiscoveredTests = false
 }
 
 dependencies {

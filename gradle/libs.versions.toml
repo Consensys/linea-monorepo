@@ -4,7 +4,7 @@ web3j = { id = "org.web3j", version.ref = "web3jPlugin" }
 web3jSolidity = { id = "org.web3j.solidity", version = "0.5.0" }
 spotless = { id = "com.diffplug.spotless", version = "8.2.1" }
 jreleaser = {id = "org.jreleaser", version = "1.23.0"}
-dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "2.9" }
+dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "3.1.1" }
 lombok = { id = "io.freefair.lombok", version = "9.2.0" }
 gradleVersions = { id = "com.github.ben-manes.versions", version = "0.51.0" }
 dependencyManagement = { id = "io.spring.dependency-management", version = "1.1.5" }
@@ -64,8 +64,9 @@ vertx = "4.5.14"
 web3j = "5.0.2"
 web3jPlugin = "5.0.2"
 secp = "1.4.2"
+jacoco = "0.8.14"
 
 # Other
 googleJavaFormat = "1.27.0"
-dependencyLicenseReport = "2.9"
+dependencyLicenseReport = "3.1.1"
 web3jSokt = "0.4.0"
