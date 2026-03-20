@@ -7,9 +7,9 @@ import (
 )
 
 func TestCanGenerateFullZkEVM(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping heavy full ZkEVM generation test in short mode")
-	}
+	// if testing.Short() {
+	// 	t.Skip("skipping heavy full ZkEVM generation test in short mode")
+	// }
 
 	cfg, err := config.NewConfigFromFileUnchecked("../config/config-mainnet-limitless.toml")
 	if err != nil {
