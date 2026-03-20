@@ -205,18 +205,34 @@ combined column and no duplication, regardless of whether self-recursion follows
 
 ## Benchmark Results
 
-`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=16384, `-benchtime=1x`.
+`BenchmarkProfileSelfRecursion/realistic-segment` — T4=16384, `-benchtime=1x`.
 Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
 weighted ×4 when computing totals.
 
+Baseline uses T3=32768 (evaluation mode, no optimizations).
+After applies both optimizations with T3=4096 (coefficient mode enables the smaller T3).
+
 ### Cumulative impact per optimization
 
-| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size | Compile time | Compile mem |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| 0 — baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB | 2.45 s | 2.44 GB |
-| 1 | + U_alpha coefficient mode | 3,686,400 | −78.2% | 243,400 | — | ~951 KB | 0.87 s | 1.30 GB |
-| 2 | + Proof column deduplication | 3,686,400 | — | 210,632 | −32,768 | ~823 KB | 0.85 s | 1.30 GB |
-| | **Total** | **−78.2%** | | **−708,608 (−77.1%)** | | | | |
+| Step | Optimizations active | T3 | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 0 — baseline | none (eval mode) | 32,768 | 27,901,952 | — | 1,443,528 | — | ~5.5 MB |
+| 1 | + U_alpha coefficient mode | 4,096 | 17,235,968 | −38.2% | 329,416 | −1,114,112 | ~1.3 MB |
+| 2 | + Proof column deduplication | 4,096 | 17,235,968 | — | 263,880 | −65,536 | ~1.0 MB |
+| | **Total** | | **−38.2%** | | **−1,179,648 (−81.7%)** | | |
+
+### Proof breakdown after both optimizations (T3=4096, T4=16384)
+
+Vortex params: numComs=7, depth=18, numOpening=64, MerkleProofSize=16384, numRows=1015 (all non-SIS).
+
+| Component | Cols | Cells |
+|---|---:|---:|
+| LINEAR_COMBINATION (U_alpha) | 1 | 65,536 |
+| MERKLEPROOF | 8 | 131,072 |
+| SELECTED_COL_NON_SIS | 64 | 65,536 |
+| MERKLEROOT | 200 | 200 |
+| OTHER (self-recursion coins + duals) | 6 | 1,536 |
+| **TOTAL** | | **263,880** |
 
 ---
 
