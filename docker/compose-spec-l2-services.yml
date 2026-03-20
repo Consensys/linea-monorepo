@@ -358,7 +358,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 512M
     environment:
       config__override__type2-state-proof-provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
       config__override__l1-submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
