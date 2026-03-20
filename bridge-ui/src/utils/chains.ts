@@ -41,7 +41,15 @@ export const generateChain = (chain: ViemChain): Chain => {
     cctpDomain: config.chains[chain.id].cctpDomain,
     cctpTokenMessengerV2Address: config.chains[chain.id].cctpTokenMessengerV2Address as Address,
     cctpMessageTransmitterV2Address: config.chains[chain.id].cctpMessageTransmitterV2Address as Address,
-    // Optional field for local networks for testing purposes
+    ...(config.chains[chain.id].hyperlanePortalLiteAddress
+      ? { hyperlanePortalLiteAddress: config.chains[chain.id].hyperlanePortalLiteAddress as Address }
+      : {}),
+    ...(config.chains[chain.id].hyperlaneMailboxAddress
+      ? { hyperlaneMailboxAddress: config.chains[chain.id].hyperlaneMailboxAddress as Address }
+      : {}),
+    ...(config.chains[chain.id].yieldProviderAddress
+      ? { yieldProviderAddress: config.chains[chain.id].yieldProviderAddress as Address }
+      : {}),
     ...(chain.custom?.localNetwork ? { localNetwork: true } : {}),
   };
 };
@@ -51,7 +59,6 @@ export const generateChains = (chains: ViemChain[]): Chain[] => {
 };
 
 export const getChainNetworkLayer = (chainId: number) => {
-  // For non-local networks, we can safely assume the layer based on the chain ID
   switch (chainId) {
     case linea.id:
     case lineaSepolia.id:

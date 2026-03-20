@@ -3,10 +3,8 @@ package linea.coordinator.config.v2.toml
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.web3j.SmartContractErrors
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
-import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracesCountersV4
 import net.consensys.linea.traces.TracesCountersV5
-import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.traces.TracingModuleV4
 import net.consensys.linea.traces.TracingModuleV5
 
@@ -27,10 +25,6 @@ data class CoordinatorConfigFileToml(
   val api: ApiConfigToml = ApiConfigToml(),
 )
 
-data class TracesLimitsConfigFileV2Toml(
-  val tracesLimits: Map<TracingModuleV2, UInt>,
-)
-
 data class TracesLimitsConfigFileV4Toml(
   val tracesLimits: Map<TracingModuleV4, UInt>,
 )
@@ -47,7 +41,6 @@ data class SmartContractErrorCodesConfigFileToml(val smartContractErrors: SmartC
 
 data class CoordinatorConfigToml(
   val configs: CoordinatorConfigFileToml,
-  val tracesLimitsV2: TracesLimitsConfigFileV2Toml?,
   val tracesLimitsV4: TracesLimitsConfigFileV4Toml?,
   val tracesLimitsV5: TracesLimitsConfigFileV5Toml?,
   val l1DynamicGasPriceCapTimeOfDayMultipliers: GasPriceCapTimeOfDayMultipliersConfigFileToml? = null,
@@ -59,7 +52,6 @@ data class CoordinatorConfigToml(
       conflation =
       configs.conflation.reified(
         defaults = configs.defaults,
-        tracesCountersLimitsV2 = tracesLimitsV2?.let { TracesCountersV2(it.tracesLimits) },
         tracesCountersLimitsV4 = tracesLimitsV4?.let { TracesCountersV4(it.tracesLimits) },
         tracesCountersLimitsV5 = tracesLimitsV5?.let { TracesCountersV5(it.tracesLimits) },
       ),
@@ -81,13 +73,7 @@ data class CoordinatorConfigToml(
           ?: emptyMap(),
       ),
       forcedTransactions =
-      this.configs.forcedTransactions?.reified(
-        l1DefaultEndpoint = this.configs.defaults.l1Endpoint,
-        l1DefaultRequestRetries = this.configs.defaults.l1RequestRetries,
-      ) ?: ForcedTransactionsConfigToml().reified(
-        l1DefaultEndpoint = this.configs.defaults.l1Endpoint,
-        l1DefaultRequestRetries = this.configs.defaults.l1RequestRetries,
-      ),
+      this.configs.forcedTransactions?.reified(defaults = this.configs.defaults),
       messageAnchoring =
       this.configs.messageAnchoring.reified(
         l1DefaultEndpoint = this.configs.defaults.l1Endpoint,

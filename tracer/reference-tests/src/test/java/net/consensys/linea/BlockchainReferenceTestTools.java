@@ -119,8 +119,7 @@ public class BlockchainReferenceTestTools {
         "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_rlp_size_at_limit_with_all_typed_transactions*");
     PARAMS.ignore(
         "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_3\\]\\[Prague\\]");
-    PARAMS.ignore(
-        "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_4\\]\\[Prague\\]");
+    // PARAMS.ignore("prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_4\\]\\[Prague\\]");
 
     // type 3 (BLOB):
     PARAMS.ignore("/cancun/eip4844_blobs/");
@@ -130,15 +129,14 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore(
         "/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_boundary*");
     PARAMS.ignore("/osaka/eip7594*");
+    PARAMS.ignore(
+        "eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over1-blockchain_test_from_state_test\\]");
+    PARAMS.ignore("fork_Osaka-tx_type_3-evm_code_type_LEGACY");
 
-    // type 4 (7702):
-    PARAMS.ignore(
-        "tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
-    PARAMS.ignore("/prague/eip7702_set_code_tx/");
-    PARAMS.ignore(
-        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
-    PARAMS.ignore(
-        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
+    // // type 4 (7702):
+    // PARAMS.ignore("tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
+    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
+    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
 
     // tests that timeout and pass locally
     // Log when launching locally
@@ -201,6 +199,8 @@ public class BlockchainReferenceTestTools {
         "randomStatetest645\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--v1\\]");
     PARAMS.ignore(
         "test_p256verify.py::test_precompile_as_tx_entry_point\\[fork_Osaka-blockchain_test_from_state_test-valid_entry_point\\]\\[Osaka\\]");
+    PARAMS.ignore(
+        "/prague/eip7702_set_code_tx/test_set_code_txs_2.py::test_gas_diff_pointer_vs_direct_call\\[fork_Osaka-blockchain_test-access_list_to_AccessListTo");
 
     // Consumes a huge amount of memory.
     PARAMS.ignore(
@@ -400,75 +400,6 @@ public class BlockchainReferenceTestTools {
 
     // EIP-7251 not supported by Linea: "World State Root does not match expected value"
     PARAMS.ignore("/prague/eip7251_consolidations/");
-
-    // Prior to Osaka MODEXP had unsupported arguments in the arithmetization
-    if (forkPredatesOsaka(fork)) {
-      // massive mbs
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d2-g[0-3]\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_.*-blockchain_test_from_state_test-EIP-198-case3-raw-input-out-of-gas\\]");
-      PARAMS.ignore(
-          "modexp_modsize0_returndatasizeFiller\\.json::modexp_modsize0_returndatasize\\[fork_.*-blockchain_test_from_state_test-d4\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-modulus-length-0x20000020-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-modulus-length-0x40000020-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-modulus-length-0x80000020-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-modulus-length-0xffffffff-out-of-gas\\]\\[Prague\\]");
-
-      // massive bbs
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d28-g[0-3]\\]");
-      PARAMS.ignore(
-          "test_precompiles.py::test_precompiles\\[fork_.*-address_0x0000000000000000000000000000000000000005-precompile_exists_True-blockchain_test_from_state_test\\]");
-
-      // massive ebs
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d29-g[0-3]\\]");
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d30-g[0-3]\\]");
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d36-g[0-3]\\]");
-      PARAMS.ignore(
-          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d37-g[0-3]\\]");
-      PARAMS.ignore(
-          "randomStatetest650Filler.json::randomStatetest650\\[fork_.*-blockchain_test_from_state_test-\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-ModExpInput_base_0x-exponent_0x-modulus_0x-declared_exponent_length_4294967296-declared_modulus_length_1-ModExpOutput_call_success_False-returned_data_0x00\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-exponent-length-0x10000000-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-exponent-length-0x20000000-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-exponent-length-0x40000000-out-of-gas\\]\\[Prague\\]");
-      PARAMS.ignore(
-          "test_modexp.py::test_modexp\\[fork_Prague-blockchain_test_from_state_test-large-exponent-length-0x80000000-out-of-gas\\]\\[Prague\\]");
-
-      // byte sizes 512 < xbs ≤ 1024
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_modexp_variable_gas_cost_exceed_tx_gas_cap\\[fork_.*-blockchain_test_from_state_test-Z16-gas-cap-test\\]");
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-guido-3-even\\]");
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-pow0x10001\\]");
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-qube\\]");
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-square\\]");
-
-      // massive xbs'
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_modexp_invalid_inputs\\[fork_.*-blockchain_test_from_state_test--invalid-case-[1-3]\\]");
-
-      // Osaka legal xbs's (at most one being 1024)
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z[2347]\\]");
-      PARAMS.ignore(
-          "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z1[2-5]\\]");
-    }
 
     if (forkPredatesAmsterdam(fork)) {
       // EIP-7610 is proposed for Amsterdam (and will be supported by Linea) but previous fork
