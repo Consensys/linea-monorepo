@@ -1,7 +1,11 @@
 # Vortex Proof Size Optimization
 
-This document describes the four optimizations applied to reduce the final Vortex proof size
+This document describes the two optimizations applied to reduce the final Vortex proof size
 produced by `fullInitialCompilationSuite` (`zkevm/full.go`).
+
+> **Note:** GKR Poseidon2 compression (previously Optimization 1) is tracked in a separate
+> branch (`prover/gkr-poseidon2`). A prior optimization, `SkipPrecomputedMerkleProof`, was
+> removed: the precomputed round is now always included in the Merkle proof column.
 
 ---
 
@@ -33,33 +37,10 @@ A single large reduction in `committed_cells` can fundamentally reduce both fact
 
 ---
 
-## Optimization 1: GKR Poseidon2
+## Optimization 1: Reduce U_alpha by the Blowup Factor
 
-**Compiler step:** `poseidon2.CompileGKRPoseidon2`
-
-### Mechanism
-
-Without GKR, every Poseidon2 hash call is proven by `poseidon2.checkPoseidon2BlockCompressionExpression` — 206 committed cells. Batching N hash calls therefore produces O(N × 206) committed cells.
-
-With GKR, the entire batch is proven via a sumcheck argument. The GKR verifier needs only a
-short transcript column (`GKR_Poseidon2_TRANSCRIPT`) regardless of batch size, replacing the
-dense intermediate-state columns entirely.
-
-### Effect on proof size
-
-GKR primarily reduces committed cells (`numRows` × fewer committed polynomials). This directly shrinks `SELECTED_COL` and the Vortex matrix, and fewer columns fed into each self-recursion round compounds the savings across all recursion levels.
-
-| | Committed cells | Proof cells |
-|---|---|---|
-| Before GKR | 16,891,904 | 919,240 |
-| After GKR | 7,127,040 | 800,456 |
-| **Reduction** | **−57.8%** | **−118,784 (−12.9%)** |
-
----
-
-## Optimization 2: Reduce U_alpha by the Blowup Factor
-
-**Option:** `WithUAlphaCoefficients()`
+> **Current behavior:** Coefficient mode is the default. The `WithUAlphaCoefficients()` option
+> no longer exists; `UseUAlphaCoefficients = true` is set unconditionally in the compiler.
 
 ### Evaluation form vs. coefficient form
 
@@ -71,8 +52,8 @@ Eval mode:   N = T × blowup_factor   extension-field elements
 Coeff mode:  T                       extension-field elements
 ```
 
-`WithUAlphaCoefficients()` switches to coefficient form: the prover sends T polynomial
-coefficients instead of N codeword evaluations. 
+This work switches to coefficient form: the prover sends T polynomial
+coefficients instead of N codeword evaluations.
 
 ### Interaction with column size
 
@@ -90,92 +71,153 @@ shrinks while `U_alpha` stays relatively small.
 | Coeff (after) | T = 8,192 ext elements | 8,192 × 16 = **131,072** |
 | **Saving** | 122,880 ext elements | **~1.9 MB** |
 
-
-Except for the proof size benefit, verifier circuit's Horner evaluation is ~16× cheaper in gnark constraints than Lagrange interpolation using the coeff mode. 
+Beyond the proof size benefit (U_alpha is 16× smaller), coefficient mode is also cheaper to
+compute: the prover builds U_alpha directly from T-length coefficient vectors instead of
+N-length encoded rows. The verifier circuit's Horner evaluation is ~16× cheaper in gnark
+constraints than Lagrange interpolation in evaluation mode.
 
 ---
 
-## Optimization 3: Skip Duplicated Proof Columns
+### Vortex Verification
 
-**Option:** `SkipSelfRecursionProofColumns()`
+This section describes how the Vortex verifier checks correctness in both evaluation mode and
+coefficient mode, to explain the mode switch and its cost implications.
 
-### What is duplicated
+The verifier checks four conditions:
 
-The Vortex prover registers three opened-column proof objects:
+#### 1. ReedSolomon Check
+
+Verify/compute that $U_{\alpha,\text{Eval}}$ is a codeword of $U_{\alpha,\text{Coeff}}$.
+
+- **[evaluation mode only]** Compute iFFT to obtain $U_{\alpha,\text{Coeff}}$; verify $U_{\alpha,\text{Coeff}}[j] = 0$ for $j \geq \text{CoeffDegree}$.
+
+- **[coefficient mode only]** Compute FFT to obtain $U_{\alpha,\text{Eval}}$.
+
+- **[gnark circuit and self-recursion only]** Check:
+$$\text{LagrangeEval}(U_{\alpha,\text{Eval}}, \text{challenge}) = \text{CanonicalEval}(U_{\alpha,\text{Coeff}}, \text{challenge})$$
+This check applies only in the gnark circuit. The native verifier runs the FFT itself as a
+deterministic computation on trusted input — there is nothing to prove. But the gnark circuit
+computes the FFT using a hint, so it must prove the hint is correct via Schwartz-Zippel.
+
+> **Schwartz-Zippel appears in both modes symmetrically**
+>
+> | Mode | Direction | What the gnark hint verifies |
+> |---|---|---|
+> | Eval mode  | N evals → iFFT → T coeffs | hint = coefficients |
+> | Coeff mode | T coeffs → FFT → N evals | hint = evaluations |
+>
+> Both use the same Schwartz-Zippel structure. It is the same check, just for opposite FFT directions.
+
+**Same Cost**
+
+#### 2. Statement Check
+
+Compute $U_\alpha(x)$. Note that $U_{\alpha,\text{Coeff}}$ and $U_{\alpha,\text{Eval}}$ represent
+the same polynomial:
+
+$$U_\alpha(x) = \text{LagrangeEval}(U_{\alpha,\text{Eval}}, x) = \text{CanonicalEval}(U_{\alpha,\text{Coeff}}, x)$$
+
+> $\text{CanonicalEval}(U_{\alpha,\text{Coeff}}, X)$ is a degree-$(T-1)$ polynomial, which is cheaper
+> to evaluate than the degree-$(T \times \text{blowup} - 1)$ polynomial $\text{LagrangeEval}(U_{\alpha,\text{Eval}}, X)$.
+
+Verify the evaluation:
+
+$$U_\alpha(x) = \text{CanonicalEval}(y, \alpha)$$
+
+where $\text{CanonicalEval}(y, \alpha) = y_0 + \alpha \cdot y_1 + \alpha^2 \cdot y_2 + \ldots$
+
+**$\text{CanonicalEval}(U_{\alpha,\text{Coeff}}, X)$ is cheaper**
+
+#### 3. Linear Combination Check
+
+Look up $U_{\alpha,\text{Eval}}$ at $Q$. Verify the linear combination: for $q_i \in Q$, $i \leq K$ opened columns:
+
+$$\text{CanonicalEval}(\mathbf{col}_i, \alpha) = U_{\alpha,\text{Eval}}[q_i]$$
+
+where $\text{CanonicalEval}(\mathbf{col}_i, \alpha) = \mathbf{col}_i[0] + \alpha \cdot \mathbf{col}_i[1] + \alpha^2 \cdot \mathbf{col}_i[2] + \ldots + \alpha^{N-1} \cdot \mathbf{col}_{N-1}$.
+
+**Same Cost**
+
+#### 4. Merkle Proof Verification
+
+Ensure the commitment is consistent with the provided column:
+
+$$H(\mathbf{col}_i) = h_{q_i}$$
+
+Check that column $\mathbf{col}_i$ is consistent with $(\text{merkleproof}[i], \text{root}[i])$.
+The leaves are:
+
+- $\text{Poseidon2}(\text{sis}(\mathbf{col}_i))$ using SIS hash, or
+- $\text{Poseidon2}(\mathbf{col}_i)$ using non-SIS hash
+
+**Gnark circuit:** only checks the non-SIS case.
+
+**Same Cost**
+
+---
+
+#### How Self-Recursion Verifies the Above Checks
+
+**RowLinearCombinationPhase**
+1. ReedSolomon Check: `reedsolomon.CheckReedSolomon`
+2. Statement Check: `ctx.consistencyBetweenYsAndUalpha()`
+
+**ColumnOpeningPhase**
+3. Linear Combination Check: `ColSelection` performs the lookup and `CollapsingPhase` verifies the evaluation equations: the K individual equations are collapsed into one by sampling a collapse coin
+
+**LinearHashAndMerkle**
+4. Merkle proof verification: `LinearHashAndMerkle`
+
+---
+
+## Optimization 2: Automatic Proof Column Deduplication
+
+> **Current behavior:** Deduplication is automatic. The `SkipSelfRecursionProofColumns()` option
+> no longer exists. The compiler now detects pure-SIS and pure-non-SIS contexts and reuses the
+> split column as `SELECTED_COL` directly, eliminating the duplicate automatically.
+
+### What was duplicated
+
+The Vortex prover previously registered three opened-column proof objects:
 
 - `SELECTED_COL` — all rounds combined (SIS + non-SIS), consumed by the Schwartz-Zippel verifier
 - `SELECTED_COL_SIS` — SIS rounds only
 - `SELECTED_COL_NON_SIS` — non-SIS rounds only
 
-The split is needed by self-recursion: SIS openings are hashed via lattice-SIS and non-SIS
+The split was needed by self-recursion: SIS openings are hashed via lattice-SIS and non-SIS
 openings via Poseidon2, and these are verified independently. The concatenated
-`SELECTED_COL` is also registered for the overall verifier:
+`SELECTED_COL` was also registered for the overall verifier:
 
 ```
 SELECTED_COL = concat(SELECTED_COL_NON_SIS, SELECTED_COL_SIS)
 ```
 
-### Why they are dead weight on the final Vortex
+### Why the split columns were dead weight on the final Vortex
 
 On the final Vortex (marked `PremarkAsSelfRecursed()`) there is no subsequent self-recursion
-step, so `SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` are registered as proof columns but
-**no verifier ever reads them**. `SkipSelfRecursionProofColumns()` suppresses their
-registration entirely, saving one full copy of the split-column data.
+step, so `SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` were registered as proof columns but
+**no verifier ever reads them**. Suppressing them saved one full copy of the split-column data.
+
+### Current mechanism
+
+In practice every Vortex context is either pure-SIS or pure-non-SIS (never mixed). The
+compiler now detects this:
+
+```go
+ctx.IsPureSIS    = numRowsSIS != 0 && numRowsNonSIS == 0
+ctx.IsPureNonSIS = numRowsSIS == 0 && numRowsNonSIS != 0
+```
+
+In the pure case the split column is reused directly as `SELECTED_COL` — there is no separate
+combined column and no duplication, regardless of whether self-recursion follows.
 
 ### Impact
 
-| Proof column | Before | After |
+| Proof column | Before (explicit option) | After (automatic) |
 |---|---|---|
-| `SELECTED_COL_NON_SIS` | cols=64, cells=32,768 | **removed** |
+| `SELECTED_COL_NON_SIS` | cols=64, cells=32,768 | **removed** (reused as `SELECTED_COL`) |
 | `SELECTED_COL` | cols=64, cells=32,768 | cols=64, cells=32,768 |
 | **Total opened-column cells** | **65,536** | **32,768 (−50%)** |
-
----
-
-## Optimization 4: Skip Precomputed Merkle Proof
-
-**Option:** `SkipPrecomputedMerkleProof()`
-
-### Why the precomputed Merkle proof is redundant
-
-For **committed** columns the Merkle proof is essential: without it the prover could supply
-a fabricated `selectedCol[j]` that satisfies the linear-combination check but does not
-correspond to the committed codeword.
-
-For **precomputed** columns the situation is different:
-
-| Column type | Can prover fake `selectedCol`? | Merkle proof needed? |
-|---|---|---|
-| Committed | Yes — by back-solving Y_i | **Yes** |
-| Precomputed | No — Y_precomp is verifier-computed | **No** |
-
-`ExplicitPolynomialEval` (in `verifier.go`) runs unconditionally at the last round and
-evaluates each precomputed polynomial directly at the challenge point x, pinning `Y_precomp`
-to a fixed verifier-computed value. The Schwartz-Zippel check then enforces consistency
-with `selectedCol_precomp`. Since `Y_precomp` is independent of the prover, the Merkle path
-adds no additional security and can be dropped.
-
-### MerkleProofSize formula
-
-```
-MerkleProofSize = NextPowerOfTwo(K × numRounds × depth) × 8
-```
-
-where `depth = log₂(codewordSize)`, K = number of opened columns, and `numRounds` counts
-only committed rounds (precomputed round excluded when `SkipPrecomputedMerkleProof` is set).
-
-### Why the saving is binary
-
-The saving only materialises when removing the precomputed round crosses a `NextPowerOfTwo`
-boundary downward. With the current parameters (K=64, 7 committed rounds, depth=17):
-
-| Rounds | K × rounds × depth | NextPow2 | Cells |
-|---|---|---|---|
-| 8 (with precomp) | 64 × 8 × 17 = 8,704 | 16,384 | 16,384 × 8 = **131,072** |
-| 7 (skip precomp) | 64 × 7 × 17 = 7,616 | 8,192 | 8,192 × 8 = **65,536** |
-| **Saving** | | | **65,536 cells (262,144 bytes)** |
-
-At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(codeword)=17), 7,616 is below 8,192 and 8,704 above, so the optimization halved the merkle proof cells.
 
 ---
 
@@ -185,17 +227,19 @@ At depth=17 (`WithTargetColSize(1<<13)` results codeword=1<<13 x 16, depth=log2(
 Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
 weighted ×4 when computing totals.
 
+> **Note:** GKR Poseidon2 (previously Step 1, −57.8% committed cells) is tracked in a separate
+> branch and is not reflected below. The numbers for Steps 1–2 were measured cumulatively on
+> top of a GKR baseline (800,456 proof cells) and need re-measurement from the non-GKR
+> baseline (919,240 proof cells).
+
 ### Cumulative impact per optimization
 
-
-| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size |  Compile time | Compile mem |
+| Step | Optimizations active | Committed cells | Δ committed | Proof cells | Δ proof cells | Proof size | Compile time | Compile mem |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | 0 — baseline | none | 16,891,904 | — | 919,240 | — | ~3.5 MB | 2.45 s | 2.44 GB |
-| 1 | + GKR Poseidon2 | 7,127,040 | −57.8% | 800,456 | −118,784 | ~3.1 MB | 0.95 s | 1.49 GB |
-| 2 | + WithUAlphaCoefficients (all rounds) | 3,686,400 | −48.3% | 243,400 | −557,056 | ~951 KB | 0.87 s | 1.30 GB |
-| 3 | + SkipSelfRecursionProofColumns | 3,686,400 | — | 210,632 | −32,768 | ~823 KB | 0.85 s | 1.30 GB |
-| 4 | + SkipPrecomputedMerkleProof | 3,686,400 | — | **145,096** | −65,536 | **~567 KB** | 0.88 s | 1.30 GB |
-| | **Total** | **−78.2%** | | **−774,144 (−84.2%)** | | | | |
+| 1 | + U_alpha coefficient mode | 3,686,400 | −78.2% | 243,400 | — | ~951 KB | 0.87 s | 1.30 GB |
+| 2 | + Proof column deduplication | 3,686,400 | — | 210,632 | −32,768 | ~823 KB | 0.85 s | 1.30 GB |
+| | **Total** | **−78.2%** | | **−708,608 (−77.1%)** | | | | |
 
 ---
 
@@ -205,12 +249,9 @@ Compilation parameters for the final Vortex in `fullInitialCompilationSuite` (`f
 
 ```go
 vortex.Compile(16, false,
-    ForceNumOpenedColumns(64),              // K = 64
+    ForceNumOpenedColumns(64),
     WithOptionalSISHashingThreshold(1<<20),
     PremarkAsSelfRecursed(),
-    WithUAlphaCoefficients(),              // opt 2
-    SkipSelfRecursionProofColumns(),       // opt 3
-    SkipPrecomputedMerkleProof(),          // opt 4
 )
 ```
 
@@ -228,18 +269,17 @@ Compiled Vortex round  round=33  numComs=4    polynomialSize=8192  codewordSize=
 ```
 
 Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, precomp=37 rows
-(non-SIS, Merkle proof skipped). Total polynomials: 37 + (68+374+272+24+36+28+4) = **843**
-→ NextPow2 = **1024**.
+(non-SIS). Total polynomials: 37 + (68+374+272+24+36+28+4) = **843** → NextPow2 = **1024**.
+
+MerkleProofSize: depth × (numCommitted + numPrecomp) × K = 17 × (7+1) × 64 = 8,704
+→ NextPow2 = 16,384 → cells = 131,072.
 
 | Component | Cells | Element type | Bytes |
 |---|---:|---|---:|
 | U_alpha (coeff mode) | 8,192 | ext (16 B each) | **131,072** |
 | SELECTED_COL | 65,536 | base (4 B each) | **262,144** |
-| MERKLEPROOF | 65,536 | base (4 B each) | **262,144** |
-| **Total** | | | **655,360 (~640 KB)** |
-
-
+| MERKLEPROOF | 131,072 | base (4 B each) | **524,288** |
+| **Total** | | | **917,504 (~896 KB)** |
 
 There's a small discrepancy between the benchmark and the production data.
-The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces 3.6M committed cells (~450 committed polynomials<512) → NextPow2=**512**, while the full ZK-EVM has 7M committed cells (843 committed polynomials>512) → NextPow2=**1024**, doubling both components. 
-
+The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces 3.6M committed cells (~450 committed polynomials<512) → NextPow2=**512**, while the full ZK-EVM has 7M committed cells (843 committed polynomials>512) → NextPow2=**1024**, doubling both components.
