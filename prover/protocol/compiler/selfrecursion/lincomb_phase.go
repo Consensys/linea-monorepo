@@ -111,8 +111,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 	xAccessor := accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID))
 
-	// Both modes: UalphaCoeff holds T polynomial coefficients (set by
-	// CheckReedSolomon in eval mode, committed directly in coeff mode).
+	// UalphaCoeff holds T polynomial coefficients.
 	// CanonicalEval(UalphaCoeff, x) is a degree-(T-1) Horner evaluation —
 	// cheaper than LagrangeEval(UalphaEvals, x) which is degree-(N-1).
 	pa, res := functionals.CoeffEvalNoRegisterPA(

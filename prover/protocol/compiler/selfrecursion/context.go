@@ -40,16 +40,15 @@ type Columns struct {
 	// Gathers the claimed evaluations to be proven
 	Ys ifaces.Column
 
-	// (Commitment, coeff mode only; nil in eval mode)
+	// (Commitment)
 	//
-	// T polynomial coefficients committed by the prover in coefficient mode.
+	// T polynomial coefficients committed by the prover.
 	UalphaCoeff ifaces.Column
 
-	// (Commitment, always set)
+	// (Commitment)
 	//
 	// N RS-codeword evaluations — the lookup table for (Q, UalphaQ) ⊂ (I, UalphaEvals).
-	//   - Eval mode:  set during context init from vortexCtx.Items.Ualpha (the committed codeword).
-	//   - Coeff mode: set by CheckReedSolomonFromCoeff (FFT of UalphaCoeff).
+	// Set by CheckReedSolomon (FFT of UalphaCoeff).
 	UalphaEvals ifaces.Column
 
 	// (Proof, already computed)

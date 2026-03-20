@@ -814,7 +814,7 @@ func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 // columns. This happens when the number of precomputed columns is greater than
 // the ApplySISHashThreshold.
 func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
-	if ctx.Items.Precomputeds.PrecomputedColums == nil {
+	if len(ctx.Items.Precomputeds.PrecomputedColums) == 0 {
 		return false
 	}
 	if ctx.IsBLS {

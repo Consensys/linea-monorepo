@@ -111,7 +111,7 @@ func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 
 	// UalphaEvals always holds the N-element RS codeword regardless of mode:
 	// in eval mode it is the committed codeword; in coeff mode it is the
-	// FFT of UalphaCoeff committed by CheckReedSolomonFromCoeff.
+	// FFT of UalphaCoeff committed by CheckReedSolomon.
 	evalsColID := a.Ctx.Columns.UalphaEvals.GetColID()
 	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(evalsColID))
 

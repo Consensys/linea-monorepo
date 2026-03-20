@@ -150,13 +150,7 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	vi.EntryList = entryList
 	vi.Ys = ctx.getYs(run)
 
-	err := vortex_koalabear.VerifyCommon(ctx.VortexKoalaParams, proof, &vi)
-	if err != nil {
-		return err
-	}
-
-	return vortex_koalabear.CheckColumnInclusion(ctx.VortexKoalaParams.Key, proof.Columns,
-		merkleProofs, roots, WithSis)
+	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
 }
 
 func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
