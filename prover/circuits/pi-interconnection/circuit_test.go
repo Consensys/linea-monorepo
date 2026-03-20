@@ -98,38 +98,3 @@ func (c *testMerkleCircuit) Define(api frontend.API) error {
 
 	return nil
 }
-
-// todo @gusiri: TestMaxNbCircuitsSum needs rework for the koala bear field transition.
-// The circuit now uses isActuallyKoalaHash (which calls api.FromBinary/api.Cmp with
-// koalabear.Modulus()), but this test compiles with ecc.BLS12_377.ScalarField().
-// The test should be updated to compile/verify against the small field, or the
-// approach to counting public inputs should be adapted.
-// func TestMaxNbCircuitsSum(t *testing.T) {
-// 	parameters := gopter.DefaultTestParameters()
-// 	parameters.MinSuccessfulTests = 3
-// 	parameters.Rng.Seed(0x123456789abcdef0)
-//
-// 	properties := gopter.NewProperties(parameters)
-//
-// 	properties.Property("provides the correct number of public inputs", prop.ForAll(
-// 		func(maxNbDecompression, maxNbExecution int) bool {
-// 			cfg := config.PublicInput{
-// 				MaxNbDataAvailability: maxNbDecompression,
-// 				MaxNbExecution:        maxNbExecution,
-// 				MaxNbCircuits:         20,
-// 				ExecutionMaxNbMsg:     2,
-// 				L2MsgMerkleDepth:      5,
-// 				L2MsgMaxNbMerkle:      2,
-// 				MockKeccakWizard:      true,
-// 			}
-//
-// 			c, err := pi_interconnection.Compile(cfg, nil)
-// 			assert.NoError(t, err)
-// 			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
-// 			assert.NoError(t, err)
-// 			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution == pi_interconnection.GetMaxNbCircuitsSum(cs)
-// 		}, gen.IntRange(1, 10), gen.IntRange(1, 10),
-// 	))
-//
-// 	properties.TestingRun(t)
-// }
