@@ -8,8 +8,9 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "./"
+conflated_traces_dir = "./backend/testing/k"
 requests_root_dir = "./"
+limitless_with_debug = true
 ignore_compatibility_check=false
 keep_traces_until_block = 0
 serialization = true
