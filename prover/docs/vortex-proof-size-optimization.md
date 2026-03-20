@@ -238,41 +238,36 @@ Vortex params: numComs=7, depth=18, numOpening=64, MerkleProofSize=16384, numRow
 
 ## Vortex-4 Final Proof Breakdown in the ZK-EVM full prover (setup.log)
 
-Compilation parameters for the final Vortex in `fullInitialCompilationSuite` (`full.go:141`):
+This section compares the above benchmark result with the final Vortex in `fullInitialCompilationSuite` (`full.go:141`):
 
-```go
-vortex.Compile(16, false,
-    ForceNumOpenedColumns(64),
-    WithOptionalSISHashingThreshold(1<<20),
-    PremarkAsSelfRecursed(),
-)
-```
 
-Setup log (2026-03-13):
+
+Setup log (2026-03-20):
 
 ```
-processed the precomputed columns  nbPrecomputedRows=37  isSISAppliedForCommitment=false
-Compiled Vortex round  round=26  numComs=68   polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=27  numComs=374  polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=28  numComs=272  polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=29  numComs=24   polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=30  numComs=36   polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=31  numComs=28   polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
-Compiled Vortex round  round=33  numComs=4    polynomialSize=8192  codewordSize=131072  columnHashingMode=Poseidon2
+processed the precomputed columns nbPrecomputedRows=27 nbShadowRows=0 where isSISAppliedForCommitment=false
+Compiled Vortex round  round=26  numComs=20   numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=27  numComs=668  numUnconstrained=64  polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=28  numComs=232  numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=29  numComs=16   numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=30  numComs=20   numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=31  numComs=28   numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+Compiled Vortex round  round=33  numComs=4    numUnconstrained=0   polynomialSize=16384  codewordSize=262144  columnHashingMode=Poseidon2  merkleHashingField=Koalabear
+[wizard.analytic] msg=pre-recursion.post-vortex-4  NumColumnsCommitted=0  NumColumnsProof=1805  NumColumnsPrecomputed=0
 ```
 
-Parameters: T=8192, N=131,072, blowup=16, depth=17, K=64, 7 committed rounds, precomp=37 rows
-(non-SIS). Total polynomials: 37 + (68+374+272+24+36+28+4) = **843** → NextPow2 = **1024**.
+Parameters: T=16384, N=262,144, blowup=16, depth=18, K=64, 7 committed rounds, precomp=27 rows
+(non-SIS, `isSISAppliedForCommitment=false`). Precomputed round counted as 1 in the Merkle proof.
+Total polynomials: 988 committed + 27 precomp = **1,015** → NextPow2 = **1,024**.
 
-MerkleProofSize: depth × (numCommitted + numPrecomp) × K = 17 × (7+1) × 64 = 8,704
-→ NextPow2 = 16,384 → cells = 131,072.
+MerkleProofSize: depth × (numCommitted + numPrecomp) × K = 18 × (7+1) × 64 = 9,216
+→ NextPow2 = 16,384 nodes × 8 elem/node (Poseidon2/KoalaBear) = **131,072** base cells.
 
 | Component | Cells | Element type | Bytes |
 |---|---:|---|---:|
-| U_alpha (coeff mode) | 8,192 | ext (16 B each) | **131,072** |
+| U_alpha (coeff mode) | 16,384 | ext (16 B each) | **262,144** |
 | SELECTED_COL | 65,536 | base (4 B each) | **262,144** |
 | MERKLEPROOF | 131,072 | base (4 B each) | **524,288** |
-| **Total** | | | **917,504 (~896 KB)** |
+| **Total** | | | **1,048,576 (~1 MB)** |
 
-There's a small discrepancy between the benchmark and the production data.
-The benchmark `SELECTED_COL` is half the production values because the synthetic circuit (Fibo/Lookup/Permutation modules) produces 3.6M committed cells (~450 committed polynomials<512) → NextPow2=**512**, while the full ZK-EVM has 7M committed cells (843 committed polynomials>512) → NextPow2=**1024**, doubling both components.
+This is consistent with the benchmark result
