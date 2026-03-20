@@ -127,14 +127,8 @@ class ConflationBacktestingApp(
         endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
         requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
       ),
-      counters = mainCoordinatorConfig.traces.counters?.copy(
-        endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
-        requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
-      ),
-      conflation = mainCoordinatorConfig.traces.conflation?.copy(
-        endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
-        requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
-      ),
+      counters = null,
+      conflation = null,
     ),
     stateManager = mainCoordinatorConfig.stateManager.copy(
       endpoints = listOf(conflationBacktestingAppConfig.shomeiApi.endpoint),

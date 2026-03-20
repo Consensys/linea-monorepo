@@ -230,6 +230,43 @@ services:
       linea:
         ipv4_address: 11.11.11.115
 
+  conflation-backtesting-traces-node:
+    hostname: conflation-backtesting-traces-node
+    container_name: conflation-backtesting-traces-node
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    ports:
+      - "7745:8545"
+      - "7746:8546"
+      - "7750:8550"
+      - "7751:8548"
+      - "30311:30303"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      JAVA_OPTS: -Xmx1g
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/conflation-backtesting-traces-node.config.toml
+      - --genesis-file=/initialization/genesis-besu.json
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/conflation-backtesting-traces-node/conflation-backtesting-traces-node-config.toml:/var/lib/besu/conflation-backtesting-traces-node.config.toml:ro
+      - ./config/conflation-backtesting-traces-node/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/l2-genesis-initialization:/initialization/:ro
+      - ../tmp/local/:/data/:rw
+    networks:
+      linea:
+        ipv4_address: 11.11.11.118
+
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
@@ -291,6 +328,7 @@ services:
 #        condition: service_started
     ports:
       - "9545:9545"
+      - "9546:9546"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9545/health || exit 1"]
       interval: 1s
