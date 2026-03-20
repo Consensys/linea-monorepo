@@ -418,6 +418,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	startingRound := ctx.startingRound()
 
 	if round < startingRound {
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 
@@ -612,8 +613,6 @@ func (ctx *Ctx) generateVortexParams() {
 		sisParams = &ringsis.StdParams
 	}
 	if ctx.IsBLS {
-		// koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		// ctx.VortexKoalaParams = &koalaParams
 		blsParams := vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
 		ctx.VortexBLSParams = &blsParams
 	} else {
@@ -803,11 +802,7 @@ func (ctx *Ctx) NumEncodedCols() int {
 
 // We check if there are non zero numbers of precomputed columns to commit to.
 func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
-	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
-		return true
-	} else {
-		return false
-	}
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > 0
 }
 
 // IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed
@@ -993,21 +988,6 @@ func (ctx *Ctx) NumCommittedRoundsNoSis() int {
 	}
 
 	return res
-}
-
-// precompIdx returns the index of the precomputed commitment inside the
-// combined noSIS+SIS slice that is passed to SelectColumnsAndMerkleProofs.
-// The combined slice is: [noSIS rounds..., SIS rounds...], with the
-// precomputed entry prepended to whichever sub-slice matches its hash type.
-// Therefore:
-//   - if SIS is applied to precomputed → it sits at index NumCommittedRoundsNoSis()
-//     (after all noSIS rounds)
-//   - otherwise → it sits at index 0 (before all noSIS rounds)
-func (ctx *Ctx) precompIdx() int {
-	if ctx.IsSISAppliedToPrecomputed() {
-		return ctx.NumCommittedRoundsNoSis()
-	}
-	return 0
 }
 
 // MerkleProofSize Returns the size of the allocated Merkle proof vector
