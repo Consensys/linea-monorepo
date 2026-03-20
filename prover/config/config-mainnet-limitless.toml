@@ -27,6 +27,7 @@ dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-2
 prover_mode = "full"
 requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
+verifier_id = 1
 # allowed_inputs = ["execution", "execution-large", "execution-limitless", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (MAINNET - no dummy circuits):
 #   execution-dummy (ID 0, bit 0) = 0 → DISALLOWED
@@ -35,9 +36,10 @@ num_proofs = [10, 20, 50, 100, 200, 400]
 #   execution-large (ID 3, bit 3) = 1 → ALLOWED
 #   execution-limitless (ID 4, bit 4) = 1 → ALLOWED
 #   data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
+# To customize, edit and run: go test -v -run TestCalculateCustomBitmask ./circuits/
 # Binary: 0b111100 = 60 (decimal)
 is_allowed_circuit_id = 60
-verifier_id = 1
+
 
 [public_input_interconnection]
 max_nb_data_availability = 400
