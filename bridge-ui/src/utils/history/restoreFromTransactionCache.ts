@@ -22,6 +22,7 @@ export function restoreFromTransactionCache(
   if (cachedCompletedTx) {
     if (isTimestampTooOld(cachedCompletedTx.timestamp)) {
       historyStoreActions.deleteCompleteTx(cacheKey);
+      return false; // Cached transaction expired, re-process from chain
     }
     transactionsMap.set(mapKey, cachedCompletedTx);
     return true; // Found valid cached transaction, skip processing
