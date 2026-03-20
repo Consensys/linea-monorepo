@@ -56,5 +56,3 @@ metrics-port=9545
 # Disable external plugins
 Xplugins-external-enabled=false
 Xeth-capability-max=68
-Xin-process-rpc-enabled=true
-Xin-process-rpc-apis=["MINER", "ETH"]

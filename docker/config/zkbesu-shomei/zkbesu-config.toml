@@ -15,7 +15,7 @@ rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
 rpc-http-port=8545
 rpc-http-cors-origins=["*"]
-rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","MINER","SHOMEI"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","ENGINE","WEB3","PLUGINS","MINER","SHOMEI"]
 rpc-http-max-active-connections=200
 
 # ws
@@ -42,6 +42,3 @@ cache-last-block-headers-preload-enabled=true
 cache-last-block-headers=50
 
 bonsai-parallel-tx-processing-enabled=false
-
-Xin-process-rpc-enabled=true
-Xin-process-rpc-apis=["MINER", "ETH"]
