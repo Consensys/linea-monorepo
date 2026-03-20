@@ -7,8 +7,6 @@ import { INormalizationService } from "../../core/services/INormalizationService
 import { IProposalFetcher } from "../../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 
-type SleepFn = (milliseconds: number) => Promise<void>;
-
 export class DiscourseFetcher implements IProposalFetcher {
   constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
@@ -17,7 +15,7 @@ export class DiscourseFetcher implements IProposalFetcher {
     private readonly proposalRepository: IProposalRepository,
     private readonly maxTopicsPerPoll: number = 20,
     private readonly proposalDetailsDelayMs: number = 250,
-    private readonly sleepFn: SleepFn = wait,
+    private readonly sleepFn: typeof wait = wait,
   ) {}
 
   async getLatestProposals(): Promise<CreateProposalInput[]> {
