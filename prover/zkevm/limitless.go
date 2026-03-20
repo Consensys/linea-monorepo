@@ -562,6 +562,8 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		allLogDerivativeSum = fext.Element{}
 		allHornerSum        = fext.Element{}
 		generalMSet         = multisethashing.MSetHash{}
+
+		perPartSums = map[string]fext.GenericFieldElem{}
 	)
 
 	for i, witness := range witnessGLs {
@@ -636,6 +638,19 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
 		allHornerSum.Add(&allHornerSum, &hornerSum)
 		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+
+		if debugLPP.LogDerivativeSum != nil {
+			perParts, err := debugLPP.LogDerivativeSum.ComputePerPart(rt)
+			if err != nil {
+				logrus.Warnf("LPP segment %v: per-part computation error: %v", i, err)
+			} else {
+				for _, pp := range perParts {
+					acc := perPartSums[pp.Name]
+					acc.Add(&pp.Sum)
+					perPartSums[pp.Name] = acc
+				}
+			}
+		}
 	}
 
 	logrus.Infof("Checking accumulation cancellation invariants")
@@ -649,6 +664,31 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	}
 
 	if !allLogDerivativeSum.IsZero() {
+		logrus.Errorf("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+
+		perTableSums := map[string]fext.GenericFieldElem{}
+		for name, sum := range perPartSums {
+			tableName := name
+			if idx := strings.LastIndex(name, "_T_"); idx >= 0 {
+				tableName = name[:idx]
+			} else if idx := strings.LastIndex(name, "_S_"); idx >= 0 {
+				tableName = name[:idx]
+			}
+			acc := perTableSums[tableName]
+			acc.Add(&sum)
+			perTableSums[tableName] = acc
+		}
+
+		logrus.Infof("Per-table log-derivative breakdown (%d tables):", len(perTableSums))
+		nonZeroCount := 0
+		for tableName, sum := range perTableSums {
+			if !sum.IsZero() {
+				nonZeroCount++
+				logrus.Errorf("  NON-ZERO table %q = %v", tableName, sum.String())
+			}
+		}
+		logrus.Infof("Found %d non-zero tables out of %d total", nonZeroCount, len(perTableSums))
+
 		utils.Panic("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
 	}
 
