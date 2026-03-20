@@ -25,7 +25,7 @@ func TestNoSisTransversalHashMatchesReference(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rows := makeNoSisRows(tc.numRows, tc.numCols)
 			params := NewParams(2, tc.numCols/2, tc.numRows, 6, 16)
-			got, _ := params.noSisTransversalHash(rows)
+			got := params.noSisTransversalHash(rows)
 			want := referenceNoSisTransversalHash(rows)
 			require.Equal(t, want, got)
 		})
@@ -51,7 +51,7 @@ func BenchmarkNoSisTransversalHash(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_, _ = params.noSisTransversalHash(rows)
+				_ = params.noSisTransversalHash(rows)
 			}
 		})
 
@@ -92,7 +92,7 @@ func BenchmarkVortexHashPathsByRows(b *testing.B) {
 				b.ReportMetric(float64(sisChunks), "sis_chunks")
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					_, _ = params.noSisTransversalHash(encodedRows)
+					_ = params.noSisTransversalHash(encodedRows)
 				}
 			})
 
@@ -102,7 +102,7 @@ func BenchmarkVortexHashPathsByRows(b *testing.B) {
 				b.ReportMetric(float64(sisChunks), "sis_chunks")
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
-					_, _, _ = params.sisTransversalHash(encodedRows)
+					_, _ = params.sisTransversalHash(encodedRows)
 				}
 			})
 		})
