@@ -344,7 +344,10 @@ public class Utilities {
 
   public static <T> List<T> randomSampleByCurrentCommitHash(List<T> items) {
     int n = (int) (((double) items.size()) * PARAMETERIZED_TEST_SAMPLE_SIZE);
-    System.out.println("SAMPLING " + items.size() + " ITEMS DOWN TO " + n);
+    // Ensure minimal number of tests (this protects against small tests items which would otherwise
+    // be sampled to 0).
+    n = Math.max(15, n);
+    // Sample away
     return randomSampleByCurrentCommitHash(n, items);
   }
 
