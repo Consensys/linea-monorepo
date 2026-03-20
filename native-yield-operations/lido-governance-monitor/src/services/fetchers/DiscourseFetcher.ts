@@ -15,7 +15,6 @@ export class DiscourseFetcher implements IProposalFetcher {
     private readonly proposalRepository: IProposalRepository,
     private readonly maxTopicsPerPoll: number = 20,
     private readonly proposalDetailsDelayMs: number = 250,
-    private readonly sleepFn: typeof wait = wait,
   ) {}
 
   async getLatestProposals(): Promise<CreateProposalInput[]> {
@@ -40,7 +39,7 @@ export class DiscourseFetcher implements IProposalFetcher {
 
       if (index < topics.length - 1 && this.proposalDetailsDelayMs > 0) {
         // Throttle Discourse topic detail requests because the endpoint returned 429s in production.
-        await this.sleepFn(this.proposalDetailsDelayMs);
+        await wait(this.proposalDetailsDelayMs);
       }
     }
 

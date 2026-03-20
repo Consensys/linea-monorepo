@@ -1,3 +1,4 @@
+import { wait } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { IDiscourseClient } from "../../../core/clients/IDiscourseClient.js";
@@ -27,7 +28,6 @@ describe("DiscourseFetcher", () => {
   let discourseClient: jest.Mocked<IDiscourseClient>;
   let normalizationService: jest.Mocked<INormalizationService>;
   let proposalRepository: jest.Mocked<Pick<IProposalRepository, "upsert">>;
-  let sleep: jest.MockedFunction<(milliseconds: number) => Promise<void>>;
 
   const createMockProposalList = (topics: Array<{ id: number; slug: string }>): RawDiscourseProposalList => ({
     topic_list: { topics },
@@ -55,7 +55,7 @@ describe("DiscourseFetcher", () => {
 
   beforeEach(() => {
     logger = createLoggerMock();
-    sleep = jest.fn().mockResolvedValue(undefined);
+    jest.mocked(wait).mockClear();
     discourseClient = {
       fetchLatestProposals: jest.fn(),
       fetchProposalDetails: jest.fn(),
@@ -75,7 +75,6 @@ describe("DiscourseFetcher", () => {
       proposalRepository as unknown as IProposalRepository,
       20,
       2500,
-      sleep,
     );
   });
 
@@ -100,12 +99,12 @@ describe("DiscourseFetcher", () => {
 
       // Assert
       expect(result).toEqual([normalizedA, normalizedB]);
-      expect(sleep).toHaveBeenCalledTimes(1);
-      expect(sleep).toHaveBeenCalledWith(2500);
+      expect(wait).toHaveBeenCalledTimes(1);
+      expect(wait).toHaveBeenCalledWith(2500);
       expect(discourseClient.fetchProposalDetails.mock.invocationCallOrder[0]).toBeLessThan(
-        sleep.mock.invocationCallOrder[0],
+        jest.mocked(wait).mock.invocationCallOrder[0],
       );
-      expect(sleep.mock.invocationCallOrder[0]).toBeLessThan(
+      expect(jest.mocked(wait).mock.invocationCallOrder[0]).toBeLessThan(
         discourseClient.fetchProposalDetails.mock.invocationCallOrder[1],
       );
     });
@@ -125,7 +124,7 @@ describe("DiscourseFetcher", () => {
 
       // Assert
       expect(result).toEqual([normalizedInput]);
-      expect(sleep).not.toHaveBeenCalled();
+      expect(wait).not.toHaveBeenCalled();
     });
 
     it("fetches proposals, normalizes, and returns CreateProposalInput[]", async () => {
@@ -168,13 +167,14 @@ describe("DiscourseFetcher", () => {
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
       discourseClient.fetchProposalDetails.mockResolvedValue(undefined);
 
-      // Create fetcher with maxTopicsPerPoll=2
+      // Create fetcher with maxTopicsPerPoll=2; delay 0 so this test only asserts topic slicing.
       const limitedFetcher = new DiscourseFetcher(
         logger,
         discourseClient,
         normalizationService,
         proposalRepository as unknown as IProposalRepository,
         2,
+        0,
       );
 
       // Act
