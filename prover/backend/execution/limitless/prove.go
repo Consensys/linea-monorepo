@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -70,7 +72,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		// The return of "out" is to avoid panics later on in the process.
 		return &out, nil
 	}
-/*
+
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
 	bootStart := plog.phaseStart("bootstrapper")
@@ -388,7 +390,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	res.congBuf.Release()
 
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
-*/
+
 	return &out, nil
 }
 
