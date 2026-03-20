@@ -164,3 +164,6 @@ __pycache__/
 !prover/zkevm/prover/bls/testdata/*.go
 
 .claude/settings.local.json
+contracts/.claude/settings.local.json
+*.analysis-report.html
+.worktrees/

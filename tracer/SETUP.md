@@ -1,14 +1,14 @@
 # Linea Arithmetization (zkEVM)
 
-A Linea tracing implementation for [Hyperledger Besu](https://github.com/hyperledger/besu) based on
+A Linea tracing implementation for [Besu](https://github.com/besu-eth/besu) based on
 an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
 
 ## Development Setup
 
-### Install Java 17
+### Install Java 21
 
 ```
-brew install openjdk@17
+brew install openjdk@21
 ```
 
 ### Install the Go toolchain

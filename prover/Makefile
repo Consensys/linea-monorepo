@@ -3,8 +3,9 @@ SHELL := /usr/bin/env bash
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := b88da9e199b6b7c8a413902f6035dd2774c43def
-GO_CORSET_VERSION := v1.1.28
+# beta-v5.0-rc5
+CONSTRAINTS_COMMIT_HASH := f438666752756039446de0042de35f4e88f80056
+GO_CORSET_VERSION := v1.2.7
 
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
 # Find where Go installs binaries
@@ -52,7 +53,7 @@ extract-constraints-git-archive:
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
-	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make GIT_COMMIT=$(CONSTRAINTS_COMMIT_HASH) zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
 
 ##
 ## Generate the setup for all provers job for sepolia (to be run with S3 access)

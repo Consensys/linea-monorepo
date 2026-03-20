@@ -162,6 +162,12 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
       .orElse(genesis)
   }
 
+  protected fun stopBackgroundBlockBuilding() {
+    buildBlocksInBackground = false
+    consensusScheduler.shutdown()
+    consensusScheduler.awaitTermination(blockTimeSeconds!! * 2, TimeUnit.SECONDS)
+  }
+
   protected fun buildNewBlocksInBackground() {
     consensusScheduler.scheduleAtFixedRate(
       {
@@ -311,6 +317,52 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
       )
 
     return minerNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()))
+  }
+
+  /**
+   * Sends an EIP-7702 transaction where the authorization signer can differ from the sender.
+   * Useful for testing deny-list checks on the recovered authority address.
+   */
+  protected fun sendEIP7702WithSeparateAuth(
+    web3j: Web3j,
+    senderCredentials: Credentials,
+    authSignerCredentials: Credentials,
+    delegationAddress: Address,
+  ): EthSendTransaction {
+    val nonce = web3j
+      .ethGetTransactionCount(senderCredentials.address, DefaultBlockParameterName.PENDING)
+      .send()
+      .transactionCount
+
+    val codeDelegation = org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
+      .chainId(BigInteger.valueOf(CHAIN_ID))
+      .address(delegationAddress)
+      .nonce(0)
+      .signAndBuild(
+        secp256k1.createKeyPair(
+          secp256k1.createPrivateKey(authSignerCredentials.ecKeyPair.privateKey),
+        ),
+      )
+
+    val tx = Transaction.builder()
+      .type(TransactionType.DELEGATE_CODE)
+      .chainId(BigInteger.valueOf(CHAIN_ID))
+      .nonce(nonce.toLong())
+      .maxPriorityFeePerGas(Wei.of(GAS_PRICE))
+      .maxFeePerGas(Wei.of(GAS_PRICE))
+      .gasLimit(GAS_LIMIT.toLong())
+      .to(Address.fromHexStringStrict(senderCredentials.address))
+      .value(Wei.ZERO)
+      .payload(Bytes.EMPTY)
+      .accessList(emptyList())
+      .codeDelegations(listOf(codeDelegation))
+      .signAndBuild(
+        secp256k1.createKeyPair(
+          secp256k1.createPrivateKey(senderCredentials.ecKeyPair.privateKey),
+        ),
+      )
+
+    return web3j.ethSendRawTransaction(tx.encoded().toHexString()).send()
   }
 
   /**
