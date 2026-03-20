@@ -93,8 +93,5 @@ func TestPointEvalNoCircuit(t *testing.T) {
 }
 
 func TestPointEvalWithCircuit(t *testing.T) {
-	if raceEnabled {
-		t.Skip("skipping under -race: gnark has known data races in emulated field operations")
-	}
 	testPointEval(t, true)
 }
