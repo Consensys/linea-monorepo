@@ -259,7 +259,7 @@ type AggregationFPISnark struct {
 	FinalRollingHashNumber frontend.Variable
 	FinalFtxRollingHash    frontend.Variable
 	FinalFtxNumber         frontend.Variable
-	L2MsgMerkleTreeDepth int
+	L2MsgMerkleTreeDepth   int
 }
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
