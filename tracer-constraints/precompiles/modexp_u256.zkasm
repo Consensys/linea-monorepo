@@ -1,0 +1,44 @@
+;; MODEXP precompile where all input are at most 256 bits long (ie are 32 bytes ie EWORD)
+
+include "../alu/mod.zkasm"
+include "../alu/ext.zkasm"
+include "../util/modulus.zkasm"
+
+fn modexp_u256(base u256, exponent u256, modulus=2 u256) -> (result=1 u256){
+  var exp_0, exp_1, base_0 u1
+  exp_0 = exponent == 0 ? 1 : 0
+  exp_1 = exponent == 1 ? 1 : 0
+  base_0 = base == 0 ? 1 : 0
+  ;; some trivial output
+  if exp_0 == 1 goto exit_1
+  if base_0 == 1 goto exit_0
+  if exp_1 == 1 goto exit_modulus
+
+  ;; exponent = 2*e_next + remainder
+  ;; b ** e mod n == ((b**2) ** e_next mod n) * (b ** remainder mod n)
+  var e_next u255
+  var remainder u1
+  e_next, remainder = exponent
+
+  ;; ((b**2) ** e_next mod n) == (b_sq mod (n)) ** e_next mod n
+  var b_next, res_sq u256
+  b_next = ext(EVM_INST_MULMOD, base, base, modulus)
+  res_sq = modexp_u256(b_next, e_next, modulus)
+
+  var tmp u256
+  tmp = ext(EVM_INST_MULMOD, res_sq, base, modulus)
+  result = remainder == 1 ? tmp : res_sq
+  return
+
+exit_modulus:
+  result = mod(EVM_INST_MOD, base, modulus)
+  return
+
+exit_0:
+  result = 0
+  return
+
+exit_1:
+  result = 1
+  return
+}
