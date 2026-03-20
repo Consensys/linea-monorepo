@@ -2,7 +2,7 @@ GO_CORSET ?= go-corset
 GIT_COMMIT := $(shell git rev-parse HEAD)
 GIT_TAGS := $(shell git -P tag --points-at)
 TIMESTAMP := $(shell date)
-GO_CORSET_COMPILE := ${GO_CORSET} compile --field=KOALABEAR_16 --air -Dtags="${GIT_TAGS}" -Dcommit="${GIT_COMMIT}" -Dtimestamp="${TIMESTAMP}"
+GO_CORSET_COMPILE := ${GO_CORSET} compile -Dtags="${GIT_TAGS}" -Dcommit="${GIT_COMMIT}" -Dtimestamp="${TIMESTAMP}"
 
 # Modules setting
 ## Some modules set below are fork specific. Eg. For OOB, OOB_LONDON is the OOB module for London and OOB_SHANGHAI the OOB module for Shanghai.
