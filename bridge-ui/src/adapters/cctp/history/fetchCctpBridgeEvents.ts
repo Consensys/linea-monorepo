@@ -72,9 +72,13 @@ export async function fetchCctpBridgeEvents(
           transactionHash,
           fromChain.cctpDomain,
           fromChain.testnet,
-        ).catch(() => undefined);
+        ).catch((error) => {
+          console.warn(`Failed to fetch CCTP message for ${transactionHash}:`, error);
+          return undefined;
+        });
 
         if (isUndefined(cctpMessage)) {
+          // Incomplete payload: do not cache (avoids persisting bad data; each refresh retries the API).
           transactionsMap.set(transactionHash, {
             adapterId: "cctp",
             status: TransactionStatus.PENDING,
@@ -85,6 +89,7 @@ export async function fetchCctpBridgeEvents(
             bridgingTx: log.transactionHash,
             message: {
               amountSent: BigInt(log.args.amount),
+              // Placeholder nonce — claim is prevented by missing attestation/message fields (see CCTP adapter claim checks).
               nonce: "0x" as `0x${string}`,
             },
             mode: getCctpModeFromFinalityThreshold(log.args.minFinalityThreshold),
@@ -93,9 +98,10 @@ export async function fetchCctpBridgeEvents(
         }
 
         const nonce = cctpMessage.eventNonce;
-        const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce, wagmiConfig).catch(
-          () => TransactionStatus.PENDING,
-        );
+        const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce, wagmiConfig).catch((error) => {
+          console.warn(`Failed to resolve CCTP transaction status for ${transactionHash}:`, error);
+          return TransactionStatus.PENDING;
+        });
 
         const tx: BridgeTransaction = {
           adapterId: "cctp",
