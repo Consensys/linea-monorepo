@@ -103,7 +103,11 @@ type Deserializer struct {
 	expressions      []*symbolic.Expression // Cache of deserialized expressions
 	warnings         []string               // Collects warnings for debugging.
 
-	muPtr sync.RWMutex
+	muPtr  sync.RWMutex
+	muCol  sync.Mutex // protects columns cache
+	muCoin sync.Mutex // protects coins cache
+	muQry  sync.Mutex // protects queries cache
+	muExpr sync.Mutex // protects expressions cache
 
 	// CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
 }
@@ -415,21 +419,32 @@ func (de *Deserializer) UnpackColumn(v BackReference) (reflect.Value, *serdeErro
 		return reflect.Value{}, newSerdeErrorf("invalid column backreference: %v", v)
 	}
 
-	// It's the first time that 'd' sees the column: it unpacks it from the
-	// pre-unmarshalled object
-	if de.columns[v] == nil {
-		packedStruct := de.PackedObject.Columns[v]
-		packedNatVal, err := de.UnpackStructObject(packedStruct, TypeOfPackedColumn)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(column)")
-		}
+	de.muCol.Lock()
+	if de.columns[v] != nil {
+		nat := *de.columns[v]
+		de.muCol.Unlock()
+		return reflect.ValueOf(nat), nil
+	}
+	de.muCol.Unlock()
 
-		packedNat := packedNatVal.Interface().(column.PackedNatural)
-		nat := packedNat.Unpack()
-		de.columns[v] = &nat
+	// Unpack outside the lock to avoid holding it during expensive work
+	packedStruct := de.PackedObject.Columns[v]
+	packedNatVal, err := de.UnpackStructObject(packedStruct, TypeOfPackedColumn)
+	if err != nil {
+		return reflect.Value{}, err.wrapPath("(column)")
 	}
 
-	return reflect.ValueOf(*de.columns[v]), nil
+	packedNat := packedNatVal.Interface().(column.PackedNatural)
+	nat := packedNat.Unpack()
+
+	de.muCol.Lock()
+	if de.columns[v] == nil {
+		de.columns[v] = &nat
+	}
+	result := *de.columns[v]
+	de.muCol.Unlock()
+
+	return reflect.ValueOf(result), nil
 }
 
 // PackColumnID serializes an ifaces.ColID (string), returning a BackReference to its index in PackedObject.ColumnIDs.
@@ -468,28 +483,39 @@ func (de *Deserializer) UnpackCoin(v BackReference) (reflect.Value, *serdeError)
 		return reflect.Value{}, newSerdeErrorf("invalid coin back-reference=%v", v)
 	}
 
-	if de.coins[v] == nil {
-		packedCoin := de.PackedObject.Coins[v]
+	de.muCoin.Lock()
+	if de.coins[v] != nil {
+		c := *de.coins[v]
+		de.muCoin.Unlock()
+		return reflect.ValueOf(c), nil
+	}
+	de.muCoin.Unlock()
 
-		sizes := []int{}
-		if packedCoin.Size > 0 {
-			sizes = append(sizes, packedCoin.Size)
-		}
-		if packedCoin.UpperBound > 0 {
-			sizes = append(sizes, int(packedCoin.UpperBound))
-		}
+	packedCoin := de.PackedObject.Coins[v]
 
-		unpacked := coin.NewInfo(
-			coin.Name(packedCoin.Name),
-			coin.Type(packedCoin.Type),
-			packedCoin.Round,
-			sizes...,
-		)
-
-		de.coins[v] = &unpacked
+	sizes := []int{}
+	if packedCoin.Size > 0 {
+		sizes = append(sizes, packedCoin.Size)
+	}
+	if packedCoin.UpperBound > 0 {
+		sizes = append(sizes, int(packedCoin.UpperBound))
 	}
 
-	return reflect.ValueOf(*de.coins[v]), nil
+	unpacked := coin.NewInfo(
+		coin.Name(packedCoin.Name),
+		coin.Type(packedCoin.Type),
+		packedCoin.Round,
+		sizes...,
+	)
+
+	de.muCoin.Lock()
+	if de.coins[v] == nil {
+		de.coins[v] = &unpacked
+	}
+	result := *de.coins[v]
+	de.muCoin.Unlock()
+
+	return reflect.ValueOf(result), nil
 }
 
 // AsPackedCoin converts a coin.Info to a PackedCoin for serialization.
@@ -557,24 +583,39 @@ func (de *Deserializer) UnpackQuery(v BackReference, t reflect.Type) (reflect.Va
 		return reflect.Value{}, newSerdeErrorf("invalid query backreference: %v", v)
 	}
 
-	if de.queries[v] == nil {
-		packedQuery := de.PackedObject.Queries[v]
-		query, err := de.UnpackStructObject(packedQuery, typeConcrete)
-		if err != nil {
-			return reflect.Value{}, err.wrapPath("(query)")
+	de.muQry.Lock()
+	if de.queries[v] != nil {
+		qIfaces := *de.queries[v]
+		de.muQry.Unlock()
+		qValue := reflect.ValueOf(qIfaces)
+		if qValue.Type() != t {
+			return reflect.Value{}, newSerdeErrorf("the deserialized query does not have the expected type, %v != %v", t.String(), qValue.Type().String())
 		}
+		return qValue, nil
+	}
+	de.muQry.Unlock()
 
-		if t.Kind() == reflect.Ptr {
-			query = query.Addr()
-		}
-
-		q := query.Interface().(ifaces.Query)
-		de.queries[v] = &q
+	packedQuery := de.PackedObject.Queries[v]
+	query, err := de.UnpackStructObject(packedQuery, typeConcrete)
+	if err != nil {
+		return reflect.Value{}, err.wrapPath("(query)")
 	}
 
+	if t.Kind() == reflect.Ptr {
+		query = query.Addr()
+	}
+
+	q := query.Interface().(ifaces.Query)
+
+	de.muQry.Lock()
+	if de.queries[v] == nil {
+		de.queries[v] = &q
+	}
+	qIfaces := *de.queries[v]
+	de.muQry.Unlock()
+
 	var (
-		qIfaces = *de.queries[v]
-		qValue  = reflect.ValueOf(qIfaces)
+		qValue = reflect.ValueOf(qIfaces)
 	)
 
 	if qValue.Type() != t {
@@ -702,18 +743,30 @@ func (de *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serde
 		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
 	}
 
-	if de.expressions[v] == nil {
-		preExpr := de.PackedObject.Expressions[v]
-		expr, err := de.UnpackStructObject(preExpr, TypeOfExpression)
-		if err != nil {
-			return reflect.Value{}, err
-		}
+	de.muExpr.Lock()
+	if de.expressions[v] != nil {
+		result := de.expressions[v]
+		de.muExpr.Unlock()
+		return reflect.ValueOf(result), nil
+	}
+	de.muExpr.Unlock()
 
-		unpacked := expr.Interface().(symbolic.Expression)
-		de.expressions[v] = &unpacked
+	preExpr := de.PackedObject.Expressions[v]
+	expr, err := de.UnpackStructObject(preExpr, TypeOfExpression)
+	if err != nil {
+		return reflect.Value{}, err
 	}
 
-	return reflect.ValueOf(de.expressions[v]), nil
+	unpacked := expr.Interface().(symbolic.Expression)
+
+	de.muExpr.Lock()
+	if de.expressions[v] == nil {
+		de.expressions[v] = &unpacked
+	}
+	result := de.expressions[v]
+	de.muExpr.Unlock()
+
+	return reflect.ValueOf(result), nil
 }
 
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
@@ -1101,9 +1154,8 @@ func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *se
 		return reflect.Value{}, newSerdeErrorf("invalid pointer backreference: %v", v)
 	}
 
-	de.muPtr.RLock()
+	de.muPtr.Lock()
 	val := de.pointedValues[backRef]
-	de.muPtr.RUnlock()
 
 	if (val == reflect.Value{}) {
 
@@ -1112,8 +1164,6 @@ func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *se
 		// backreference. This can happen when ser/de a structure with recursive
 		// pointers.
 		ptrValue := reflect.New(t.Elem())
-
-		de.muPtr.Lock()
 		de.pointedValues[backRef] = ptrValue
 		de.muPtr.Unlock()
 
@@ -1126,9 +1176,15 @@ func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *se
 		de.muPtr.Lock()
 		ptrValue.Elem().Set(elem)
 		de.muPtr.Unlock()
+	} else {
+		de.muPtr.Unlock()
 	}
 
-	return de.pointedValues[backRef], nil
+	de.muPtr.RLock()
+	result := de.pointedValues[backRef]
+	de.muPtr.RUnlock()
+
+	return result, nil
 }
 
 // UnpackPrimitive converts a primitive value to the target type using reflection.

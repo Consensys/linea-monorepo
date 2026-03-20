@@ -44,9 +44,6 @@ type Aggregation struct {
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
 
-	// @gusiri
-	// TODO: Make sure the dynamic chain configuration is hashed correctly
-
 	if hsh == nil {
 		hsh = sha3.NewLegacyKeccak256()
 	}
@@ -218,8 +215,6 @@ type AggregationFPISnark struct {
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 
-	// @gusiri
-	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
 		LastFinalizedBlockNumber:          uint64(fpi.LastFinalizedBlockNumber),
 		LastFinalizedBlockTimestamp:       uint64(fpi.ParentAggregationLastBlockTimestamp),
@@ -372,7 +367,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	processValue(pi.L2MessageServiceAddress, "L2MessageServiceAddress")
 	api.Println("Final MiMC state:", state)
 
-	// To do: @gusiri remove print statements after integration testing is done
+	// TODO: @gusiri keep api.Println until dynamic chain config is released and stable.
 	// Convert the final state to bytes (32 bytes)
 	// Use the existing utils.ToBytes function
 	return state

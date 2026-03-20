@@ -133,22 +133,23 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.ProofClaimSources = append(cf.ProofClaimSources, execReqFPath)
 
 			pi := po.FuncInput()
 
 			if po.ChainID != cfg.Layer2.ChainID {
-				return nil, fmt.Errorf("execution #%d: expected Chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
+				return nil, fmt.Errorf("execution #%d: dynamic chain config mismatch: Chain ID from config (layer2.chain_id) is %d (0x%x), but execution proof has %d (0x%x)", i, cfg.Layer2.ChainID, cfg.Layer2.ChainID, po.ChainID, po.ChainID)
 			}
 			if po.BaseFee != cfg.Layer2.BaseFee {
-				return nil, fmt.Errorf("execution #%d: expected Base Fee %x, encountered %x", i, cfg.Layer2.BaseFee, po.BaseFee)
+				return nil, fmt.Errorf("execution #%d: dynamic chain config mismatch: Base Fee from config (layer2.base_fee) is %d (0x%x), but execution proof has %d (0x%x)", i, cfg.Layer2.BaseFee, cfg.Layer2.BaseFee, po.BaseFee, po.BaseFee)
 			}
 
 			if pi.CoinBase != types.EthAddress(cfg.Layer2.CoinBase) {
-				return nil, fmt.Errorf("execution #%d: expected CoinBase addr %x, encountered %x", i, cfg.Layer2.CoinBase, pi.CoinBase)
+				return nil, fmt.Errorf("execution #%d: dynamic chain config mismatch: CoinBase from config (layer2.coin_base) is 0x%x, but execution proof has 0x%x", i, cfg.Layer2.CoinBase, pi.CoinBase)
 			}
 
 			if pi.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
-				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
+				return nil, fmt.Errorf("execution #%d: dynamic chain config mismatch: L2 Message Service from config (layer2.message_service_contract) is 0x%x, but execution proof has 0x%x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
 			}
 
 			// make sure public input and collected values match
@@ -191,6 +192,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.ProofClaimSources = append(cf.ProofClaimSources, decompReqFPath)
 			cf.DecompressionPI = append(cf.DecompressionPI, dp.Request)
 		}
 	}

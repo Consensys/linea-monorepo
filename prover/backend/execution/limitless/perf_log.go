@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const perfLogPath = "./limitless_perf.jsonl"
+var perfLogPath = fmt.Sprintf("./limitless_perf_%s.jsonl", time.Now().UTC().Format("20060102_150405"))
 
 // perfEvent is a single JSONL event capturing timing and resource usage.
 type perfEvent struct {
@@ -39,6 +39,9 @@ type perfLogger struct {
 }
 
 func newPerfLogger() *perfLogger {
+	if os.Getenv("LIMITLESS_PERF_LOG") != "true" {
+		return nil
+	}
 	f, err := os.Create(perfLogPath)
 	if err != nil {
 		logrus.Warnf("perf_log: could not create %s: %v (perf logging disabled)", perfLogPath, err)

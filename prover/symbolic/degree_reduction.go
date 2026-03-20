@@ -492,10 +492,10 @@ func rebuildExpression(original *Expression, newChildren []*Expression) *Express
 		new = NewPolyEval(newChildren[0], newChildren[1:])
 	default:
 		// For other operators, return original (should not happen for valid expressions)
-		original.uncacheDegree()
+		original.cachedDegree = nil
 		return original
 	}
-	new.uncacheDegree()
+	// No need to uncache: newly created expressions have cachedDegree=nil.
 	return new
 }
 
@@ -542,9 +542,8 @@ func buildFactoredProduct(replacement *Expression, remaining []factorPair) *Expr
 		exponents = append(exponents, f.exp)
 	}
 
-	p := NewProduct(children, exponents)
-	p.uncacheDegree()
-	return p
+	// No need to uncache: NewProduct returns a fresh expression with cachedDegree=nil.
+	return NewProduct(children, exponents)
 }
 
 // weightedSubMultisetIterator provides iteration over all non-trivial sub-multisets
