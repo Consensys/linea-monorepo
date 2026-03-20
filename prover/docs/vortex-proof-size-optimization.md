@@ -3,9 +3,6 @@
 This document describes the two optimizations applied to reduce the final Vortex proof size
 produced by `fullInitialCompilationSuite` (`zkevm/full.go`).
 
-> **Note:** GKR Poseidon2 compression (previously Optimization 1) is tracked in a separate
-> branch (`prover/gkr-poseidon2`). A prior optimization, `SkipPrecomputedMerkleProof`, was
-> removed: the precomputed round is now always included in the Merkle proof column.
 
 ---
 
@@ -39,8 +36,6 @@ A single large reduction in `committed_cells` can fundamentally reduce both fact
 
 ## Optimization 1: Reduce U_alpha by the Blowup Factor
 
-> **Current behavior:** Coefficient mode is the default. The `WithUAlphaCoefficients()` option
-> no longer exists; `UseUAlphaCoefficients = true` is set unconditionally in the compiler.
 
 ### Evaluation form vs. coefficient form
 
@@ -63,13 +58,13 @@ larger `U_alpha` (N = T × blowup grows). In coefficient mode `U_alpha` stays at
 of blowup, so `T` can be increased 'freely' without any U_alpha penalty — `SELECTED_COL`
 shrinks while `U_alpha` stays relatively small.
 
-### Impact (Vortex-4, T=8192, blowup=16)
+### Impact (Vortex-4, T=16384, blowup=16)
 
 | Mode | U_alpha size | Bytes |
 |---|---|---|
-| Eval (before) | N = 131,072 ext elements | 131,072 × 16 = **2,097,152** |
-| Coeff (after) | T = 8,192 ext elements | 8,192 × 16 = **131,072** |
-| **Saving** | 122,880 ext elements | **~1.9 MB** |
+| Eval (before) | N = 262,144 ext elements | 262,144 × 16 = **4,194,304** |
+| Coeff (after) | T = 16,384 ext elements | 16,384 × 16 = **262,144** |
+| **Saving** | 245,760 ext elements | **~3.8 MB** |
 
 Beyond the proof size benefit (U_alpha is 16× smaller), coefficient mode is also cheaper to
 compute: the prover builds U_alpha directly from T-length coefficient vectors instead of
@@ -89,7 +84,7 @@ The verifier checks four conditions:
 
 Verify/compute that $U_{\alpha,\text{Eval}}$ is a codeword of $U_{\alpha,\text{Coeff}}$.
 
-- **[evaluation mode only]** Compute iFFT to obtain $U_{\alpha,\text{Coeff}}$; verify $U_{\alpha,\text{Coeff}}[j] = 0$ for $j \geq \text{CoeffDegree}$.
+- **[evaluation mode only]** Compute iFFT to obtain $U_{\alpha,\text{Coeff}}$; verify $U_{\alpha,\text{Coeff}}[j] = 0$ for $j \geq T$.
 
 - **[coefficient mode only]** Compute FFT to obtain $U_{\alpha,\text{Eval}}$.
 
@@ -108,7 +103,7 @@ computes the FFT using a hint, so it must prove the hint is correct via Schwartz
 >
 > Both use the same Schwartz-Zippel structure. It is the same check, just for opposite FFT directions.
 
-**Same Cost**
+
 
 #### 2. Statement Check
 
@@ -117,8 +112,8 @@ the same polynomial:
 
 $$U_\alpha(x) = \text{LagrangeEval}(U_{\alpha,\text{Eval}}, x) = \text{CanonicalEval}(U_{\alpha,\text{Coeff}}, x)$$
 
-> $\text{CanonicalEval}(U_{\alpha,\text{Coeff}}, X)$ is a degree-$(T-1)$ polynomial, which is cheaper
-> to evaluate than the degree-$(T \times \text{blowup} - 1)$ polynomial $\text{LagrangeEval}(U_{\alpha,\text{Eval}}, X)$.
+> $\text{CanonicalEval}(U_{\alpha,\text{Coeff}}, X)$ is a degree-(T-1) polynomial, which is **cheaper**
+> to evaluate than the degree-(N - 1)  polynomial $\text{LagrangeEval}(U_{\alpha,\text{Eval}}, X)$.
 
 Verify the evaluation:
 
@@ -126,7 +121,6 @@ $$U_\alpha(x) = \text{CanonicalEval}(y, \alpha)$$
 
 where $\text{CanonicalEval}(y, \alpha) = y_0 + \alpha \cdot y_1 + \alpha^2 \cdot y_2 + \ldots$
 
-**$\text{CanonicalEval}(U_{\alpha,\text{Coeff}}, X)$ is cheaper**
 
 #### 3. Linear Combination Check
 
@@ -134,9 +128,7 @@ Look up $U_{\alpha,\text{Eval}}$ at $Q$. Verify the linear combination: for $q_i
 
 $$\text{CanonicalEval}(\mathbf{col}_i, \alpha) = U_{\alpha,\text{Eval}}[q_i]$$
 
-where $\text{CanonicalEval}(\mathbf{col}_i, \alpha) = \mathbf{col}_i[0] + \alpha \cdot \mathbf{col}_i[1] + \alpha^2 \cdot \mathbf{col}_i[2] + \ldots + \alpha^{N-1} \cdot \mathbf{col}_{N-1}$.
 
-**Same Cost**
 
 #### 4. Merkle Proof Verification
 
@@ -152,7 +144,7 @@ The leaves are:
 
 **Gnark circuit:** only checks the non-SIS case.
 
-**Same Cost**
+
 
 ---
 
@@ -172,10 +164,6 @@ The leaves are:
 
 ## Optimization 2: Automatic Proof Column Deduplication
 
-> **Current behavior:** Deduplication is automatic. The `SkipSelfRecursionProofColumns()` option
-> no longer exists. The compiler now detects pure-SIS and pure-non-SIS contexts and reuses the
-> split column as `SELECTED_COL` directly, eliminating the duplicate automatically.
-
 ### What was duplicated
 
 The Vortex prover previously registered three opened-column proof objects:
@@ -191,12 +179,6 @@ openings via Poseidon2, and these are verified independently. The concatenated
 ```
 SELECTED_COL = concat(SELECTED_COL_NON_SIS, SELECTED_COL_SIS)
 ```
-
-### Why the split columns were dead weight on the final Vortex
-
-On the final Vortex (marked `PremarkAsSelfRecursed()`) there is no subsequent self-recursion
-step, so `SELECTED_COL_SIS` and `SELECTED_COL_NON_SIS` were registered as proof columns but
-**no verifier ever reads them**. Suppressing them saved one full copy of the split-column data.
 
 ### Current mechanism
 
@@ -215,22 +197,17 @@ combined column and no duplication, regardless of whether self-recursion follows
 
 | Proof column | Before (explicit option) | After (automatic) |
 |---|---|---|
-| `SELECTED_COL_NON_SIS` | cols=64, cells=32,768 | **removed** (reused as `SELECTED_COL`) |
-| `SELECTED_COL` | cols=64, cells=32,768 | cols=64, cells=32,768 |
-| **Total opened-column cells** | **65,536** | **32,768 (−50%)** |
+| `SELECTED_COL_NON_SIS` | cols=64, cells=65,536 | cols=64, cells=65,536 |
+| `SELECTED_COL` | cols=64, cells=65,536 | **removed** (reused as `SELECTED_COL_NON_SIS`) |
+| **Total opened-column cells** | **131,072** | **65,536 (−50%)** |
 
 ---
 
 ## Benchmark Results
 
-`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=8192, `-benchtime=1x`.
+`BenchmarkProfileSelfRecursion` — realistic-segment, T3=4096, T4=16384, `-benchtime=1x`.
 Cell counts use the base-field unit (4 bytes); extension-field elements in `U_alpha` are
 weighted ×4 when computing totals.
-
-> **Note:** GKR Poseidon2 (previously Step 1, −57.8% committed cells) is tracked in a separate
-> branch and is not reflected below. The numbers for Steps 1–2 were measured cumulatively on
-> top of a GKR baseline (800,456 proof cells) and need re-measurement from the non-GKR
-> baseline (919,240 proof cells).
 
 ### Cumulative impact per optimization
 
