@@ -557,6 +557,15 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
+	type hornerSegInfo struct {
+		Module       string
+		SegmentIndex int
+		N0, N1       int
+		Count        int
+		DataSize     int
+		Contribution fext.Element
+	}
+
 	var (
 		allGrandProduct     = fext.One()
 		allLogDerivativeSum = fext.Element{}
@@ -564,6 +573,10 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		generalMSet         = multisethashing.MSetHash{}
 
 		perPartSums = map[string]fext.GenericFieldElem{}
+
+		perHornerPartContrib = map[string]fext.Element{}
+		perHornerPartSegs    = map[string][]hornerSegInfo{}
+		moduleSegmentCounter = map[distributed.ModuleName]int{}
 	)
 
 	for i, witness := range witnessGLs {
@@ -651,6 +664,33 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 				}
 			}
 		}
+
+		if debugLPP.Horner != nil {
+			hornerParams := rt.GetHornerParams(debugLPP.Horner.ID)
+			ppResults := hornerParams.GetPerPartResults(rt, *debugLPP.Horner)
+			segIdx := moduleSegmentCounter[witness.ModuleName]
+			moduleSegmentCounter[witness.ModuleName] = segIdx + 1
+
+			for _, pp := range ppResults {
+				logrus.Infof("  Horner part %q: sign=%v count=%d N0=%d N1=%d dataSize=%d contribution=%v (module=%v seg=%d)",
+					pp.Name, pp.SignNegative, pp.Count, pp.N0, pp.N1, pp.DataSize, pp.Contribution.String(),
+					witness.ModuleName, segIdx)
+
+				acc := perHornerPartContrib[pp.Name]
+				acc.Add(&acc, &pp.Contribution)
+				perHornerPartContrib[pp.Name] = acc
+
+				perHornerPartSegs[pp.Name] = append(perHornerPartSegs[pp.Name], hornerSegInfo{
+					Module:       string(witness.ModuleName),
+					SegmentIndex: segIdx,
+					N0:           pp.N0,
+					N1:           pp.N1,
+					Count:        pp.Count,
+					DataSize:     pp.DataSize,
+					Contribution: pp.Contribution,
+				})
+			}
+		}
 	}
 
 	logrus.Infof("Checking accumulation cancellation invariants")
@@ -660,6 +700,68 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	}
 
 	if !allHornerSum.IsZero() {
+		logrus.Errorf("horner does not cancel: %v", allHornerSum.String())
+
+		projSums := map[string]fext.Element{}
+		projCounts := map[string][2]int{}
+		for name, contrib := range perHornerPartContrib {
+			projName := name
+			side := "?"
+			if strings.HasSuffix(name, "_A") {
+				projName = name[:len(name)-2]
+				side = "A"
+			} else if strings.HasSuffix(name, "_B") {
+				projName = name[:len(name)-2]
+				side = "B"
+			}
+			_ = side
+
+			acc := projSums[projName]
+			acc.Add(&acc, &contrib)
+			projSums[projName] = acc
+		}
+
+		logrus.Infof("=== Per-projection Horner breakdown ===")
+		nonZero := 0
+		for projName, sum := range projSums {
+			if sum.IsZero() {
+				continue
+			}
+			nonZero++
+			logrus.Errorf("  NON-ZERO projection %q sum=%v", projName, sum.String())
+
+			nameA := projName + "_A"
+			nameB := projName + "_B"
+			if segs, ok := perHornerPartSegs[nameA]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=A module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=A totalSegments=%d totalCount=%d", len(segs), totalCount)
+				projCounts[projName] = [2]int{totalCount, projCounts[projName][1]}
+			}
+			if segs, ok := perHornerPartSegs[nameB]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=B module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=B totalSegments=%d totalCount=%d", len(segs), totalCount)
+				c := projCounts[projName]
+				c[1] = totalCount
+				projCounts[projName] = c
+			}
+
+			c := projCounts[projName]
+			if c[0] != c[1] {
+				logrus.Errorf("    COUNT MISMATCH: A_total=%d B_total=%d", c[0], c[1])
+			}
+		}
+		logrus.Infof("Found %d non-zero projections out of %d total", nonZero, len(projSums))
+
 		utils.Panic("horner does not cancel: %v", allHornerSum.String())
 	}
 
