@@ -15,6 +15,19 @@ task compileAll
 // instead of deleting and re-adding code all the time
 def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null
 
+// runs during Gradle's configuration phase, which happens on every Gradle's invocation
+exec {
+  commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+}
+
+// tasks.register('installGitHooks') {
+//   doLast {
+//     exec {
+//       commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+//     }
+//   }
+// }
+
 allprojects {
   repositories {
     mavenCentral()
