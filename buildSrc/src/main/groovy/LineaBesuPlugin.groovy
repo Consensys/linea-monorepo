@@ -87,7 +87,6 @@ class LineaBesuPlugin implements Plugin<Project> {
     project.tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
       group = 'Build'
       description = 'Updates gradle/libs.versions.toml besu field to the locally-built besu version'
-      //dependsOn project.rootProject.tasks.named('installGitHooks')
       dependsOn 'checkoutAndBuildBesu'
       doLast {
         def localBesuVersion = project.rootProject.ext.resolvedBesuVer
