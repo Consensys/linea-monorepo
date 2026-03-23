@@ -19,6 +19,10 @@ prover_mode = "full"
 requests_root_dir = "/home/ubuntu/test_sepolia/prover-compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
+[invalidity]
+prover_mode = "dev"
+requests_root_dir = "/home/ubuntu/test_sepolia/prover-invalidity"
+
 [aggregation]
 prover_mode = "full"
 requests_root_dir = "/home/ubuntu/test_sepolia/prover-aggregation"
@@ -36,7 +40,9 @@ l2_msg_max_nb_merkle = 200
 
 [layer2]
 chain_id = 59141
+base_fee = 7
 message_service_contract = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7"
+coin_base = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E"
 
 [traces_limits]
 modules = [

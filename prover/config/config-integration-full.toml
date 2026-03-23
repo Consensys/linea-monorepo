@@ -12,6 +12,10 @@ prover_mode = "full"
 [blob_decompression]
 prover_mode = "dev"
 
+[invalidity]
+prover_mode = "dev"
+requests_root_dir = "./"
+
 [aggregation]
 prover_mode = "full"
 num_proofs = [10]
@@ -20,7 +24,9 @@ verifier_id = 1
 
 [layer2]
 chain_id = 59144
+base_fee = 7
 message_service_contract = "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec"
+coin_base = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E"
 
 [traces_limits]
 modules = [

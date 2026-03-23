@@ -18,6 +18,10 @@ prover_mode = "full"
 requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
+[invalidity]
+prover_mode = "dev"
+requests_root_dir = "./"
+
 [aggregation]
 prover_mode = "full"
 requests_root_dir = "./"
@@ -35,7 +39,9 @@ l2_msg_max_nb_merkle = 200
 
 [layer2]
 chain_id = 59139
+base_fee = 7
 message_service_contract = "0x33bf916373159a8c1b54b025202517bfdbb7863d"
+coin_base = "0x8F81e2E3F8b46467523463835F965fFE476E1c9E"
 
 [traces_limits]
 modules = [
