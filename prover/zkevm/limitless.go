@@ -266,7 +266,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
 		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
-		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
+		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
+		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
@@ -284,7 +285,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
-		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
+		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
@@ -305,9 +307,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
 		// G2_CHECK
 		//
