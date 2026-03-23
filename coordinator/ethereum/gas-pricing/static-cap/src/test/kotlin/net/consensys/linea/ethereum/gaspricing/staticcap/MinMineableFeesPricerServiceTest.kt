@@ -84,13 +84,20 @@ class MinMineableFeesPricerServiceTest {
         gasPriceUpdater = mockGasPriceUpdater,
       )
     monitor.start().get()
-    await()
-      .atMost(5.seconds.toJavaDuration())
-      .untilAsserted {
-        verify(mockFeesFetcher, atLeastOnce()).getL1EthGasPriceData()
-        verify(mockFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
-        verify(mockGasPriceUpdater, atLeastOnce()).updateMinerGasPrice(expectedGasPrice.toULong())
-      }
+    runCatching {
+
+    }
+    runCatching {
+      await()
+        .atMost(5.seconds.toJavaDuration())
+        .untilAsserted {
+          verify(mockFeesFetcher, atLeastOnce()).getL1EthGasPriceData()
+          verify(mockFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
+          verify(mockGasPriceUpdater, atLeastOnce()).updateMinerGasPrice(expectedGasPrice.toULong())
+        }
+    }.also {
+      monitor.stop()
+    }.getOrThrow()
   }
 
   @Test
