@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -263,6 +265,9 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
+		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
+		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
@@ -280,6 +285,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
+		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
@@ -300,7 +307,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
 		// G2_CHECK
 		//
@@ -554,7 +565,27 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
-	runtimes := []*wizard.ProverRuntime{}
+	type hornerSegInfo struct {
+		Module       string
+		SegmentIndex int
+		N0, N1       int
+		Count        int
+		DataSize     int
+		Contribution fext.Element
+	}
+
+	var (
+		allGrandProduct     = fext.One()
+		allLogDerivativeSum = fext.Element{}
+		allHornerSum        = fext.Element{}
+		generalMSet         = multisethashing.MSetHash{}
+
+		perPartSums = map[string]fext.GenericFieldElem{}
+
+		perHornerPartContrib = map[string]fext.Element{}
+		perHornerPartSegs    = map[string][]hornerSegInfo{}
+		moduleSegmentCounter = map[distributed.ModuleName]int{}
+	)
 
 	for i, witness := range witnessGLs {
 
@@ -570,7 +601,10 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
-		runtimes = append(runtimes, rt)
+
+		generalMSetFromGLFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromGL := multisethashing.MSetHash(generalMSetFromGLFr)
+		generalMSet.Add(generalMSetFromGL)
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -611,8 +645,168 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 
-		runtimes = append(runtimes, rt)
+		generalMSetFromLPPFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromLPP := multisethashing.MSetHash(generalMSetFromLPPFr)
+		generalMSet.Add(generalMSetFromLPP)
+
+		logDerivativeSum := rt.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
+		grandProduct := rt.GetPublicInput(distributed.GrandProductPublicInput).Ext
+		hornerSum := rt.GetPublicInput(distributed.HornerPublicInput).Ext
+
+		logrus.Infof("LPP segment %v: log-derivative-sum=%v grand-product=%v horner-sum=%v",
+			i, logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+
+		if debugLPP.LogDerivativeSum != nil {
+			perParts, err := debugLPP.LogDerivativeSum.ComputePerPart(rt)
+			if err != nil {
+				logrus.Warnf("LPP segment %v: per-part computation error: %v", i, err)
+			} else {
+				for _, pp := range perParts {
+					acc := perPartSums[pp.Name]
+					acc.Add(&pp.Sum)
+					perPartSums[pp.Name] = acc
+				}
+			}
+		}
+
+		if debugLPP.Horner != nil {
+			hornerParams := rt.GetHornerParams(debugLPP.Horner.ID)
+			ppResults := hornerParams.GetPerPartResults(rt, *debugLPP.Horner)
+			segIdx := moduleSegmentCounter[witness.ModuleName]
+			moduleSegmentCounter[witness.ModuleName] = segIdx + 1
+
+			for _, pp := range ppResults {
+				logrus.Infof("  Horner part %q: sign=%v count=%d N0=%d N1=%d dataSize=%d contribution=%v (module=%v seg=%d)",
+					pp.Name, pp.SignNegative, pp.Count, pp.N0, pp.N1, pp.DataSize, pp.Contribution.String(),
+					witness.ModuleName, segIdx)
+
+				acc := perHornerPartContrib[pp.Name]
+				acc.Add(&acc, &pp.Contribution)
+				perHornerPartContrib[pp.Name] = acc
+
+				perHornerPartSegs[pp.Name] = append(perHornerPartSegs[pp.Name], hornerSegInfo{
+					Module:       string(witness.ModuleName),
+					SegmentIndex: segIdx,
+					N0:           pp.N0,
+					N1:           pp.N1,
+					Count:        pp.Count,
+					DataSize:     pp.DataSize,
+					Contribution: pp.Contribution,
+				})
+			}
+		}
 	}
+
+	logrus.Infof("Checking accumulation cancellation invariants")
+
+	if !allGrandProduct.IsOne() {
+		utils.Panic("grand-product does not cancel: %v", allGrandProduct.String())
+	}
+
+	if !allHornerSum.IsZero() {
+		logrus.Errorf("horner does not cancel: %v", allHornerSum.String())
+
+		projSums := map[string]fext.Element{}
+		projCounts := map[string][2]int{}
+		for name, contrib := range perHornerPartContrib {
+			projName := name
+			side := "?"
+			if strings.HasSuffix(name, "_A") {
+				projName = name[:len(name)-2]
+				side = "A"
+			} else if strings.HasSuffix(name, "_B") {
+				projName = name[:len(name)-2]
+				side = "B"
+			}
+			_ = side
+
+			acc := projSums[projName]
+			acc.Add(&acc, &contrib)
+			projSums[projName] = acc
+		}
+
+		logrus.Infof("=== Per-projection Horner breakdown ===")
+		nonZero := 0
+		for projName, sum := range projSums {
+			if sum.IsZero() {
+				continue
+			}
+			nonZero++
+			logrus.Errorf("  NON-ZERO projection %q sum=%v", projName, sum.String())
+
+			nameA := projName + "_A"
+			nameB := projName + "_B"
+			if segs, ok := perHornerPartSegs[nameA]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=A module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=A totalSegments=%d totalCount=%d", len(segs), totalCount)
+				projCounts[projName] = [2]int{totalCount, projCounts[projName][1]}
+			}
+			if segs, ok := perHornerPartSegs[nameB]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=B module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=B totalSegments=%d totalCount=%d", len(segs), totalCount)
+				c := projCounts[projName]
+				c[1] = totalCount
+				projCounts[projName] = c
+			}
+
+			c := projCounts[projName]
+			if c[0] != c[1] {
+				logrus.Errorf("    COUNT MISMATCH: A_total=%d B_total=%d", c[0], c[1])
+			}
+		}
+		logrus.Infof("Found %d non-zero projections out of %d total", nonZero, len(projSums))
+
+		utils.Panic("horner does not cancel: %v", allHornerSum.String())
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		logrus.Errorf("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+
+		perTableSums := map[string]fext.GenericFieldElem{}
+		for name, sum := range perPartSums {
+			tableName := name
+			if idx := strings.LastIndex(name, "_T_"); idx >= 0 {
+				tableName = name[:idx]
+			} else if idx := strings.LastIndex(name, "_S_"); idx >= 0 {
+				tableName = name[:idx]
+			}
+			acc := perTableSums[tableName]
+			acc.Add(&sum)
+			perTableSums[tableName] = acc
+		}
+
+		logrus.Infof("Per-table log-derivative breakdown (%d tables):", len(perTableSums))
+		nonZeroCount := 0
+		for tableName, sum := range perTableSums {
+			if !sum.IsZero() {
+				nonZeroCount++
+				logrus.Errorf("  NON-ZERO table %q = %v", tableName, sum.String())
+			}
+		}
+		logrus.Infof("Found %d non-zero tables out of %d total", nonZeroCount, len(perTableSums))
+
+		utils.Panic("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+	}
+
+	if !generalMSet.IsEmpty() {
+		utils.Panic("general multiset does not cancel")
+	}
+
+	logrus.Infof("All accumulation cancellation invariants passed (horner,log-derivative-sum,general-multiset,grand-product)")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting

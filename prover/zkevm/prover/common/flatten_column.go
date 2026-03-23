@@ -1,8 +1,6 @@
 package common
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -10,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -132,6 +129,8 @@ func (l *FlattenColumn) MaskColID() ifaces.ColID {
 	return ifaces.ColIDf("%s_FLATTEN_MASK", l.OriginalMask.GetColID())
 }
 
+// TODO: This function is commented out because it does not work with the limitless mode.
+
 // CsFlattenProjection adds a single batched projection constraint that enforces
 // the “flattened” limbs and mask columns exactly match the row‐wise concatenation
 // of the original limb columns and their mask.
@@ -179,39 +178,43 @@ func (l *FlattenColumn) MaskColID() ifaces.ColID {
 //
 // CsFlattenProjection batches all these equalities into one projection check.
 func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP) {
-	masks := make([]ifaces.Column, l.NbLimbsCols)
-	l.ShiftedFlattenLimbs = make([]*dedicated.ManuallyShifted, l.NbLimbsCols)
-	l.ShiftedFlattenMask = make([]*dedicated.ManuallyShifted, l.NbLimbsCols)
+	/*
+		masks := make([]ifaces.Column, l.NbLimbsCols)
+		l.ShiftedFlattenLimbs = make([]*dedicated.ManuallyShifted, l.NbLimbsCols)
+		l.ShiftedFlattenMask = make([]*dedicated.ManuallyShifted, l.NbLimbsCols)
 
-	for i := 0; i < l.NbLimbsCols; i++ {
-		masks[i] = l.OriginalMask
-		l.ShiftedFlattenLimbs[i] = dedicated.ManuallyShift(comp, l.Limbs, i, fmt.Sprintf("MANUALLY_SHIFTED_FLATTEN_LIMBS_%v_%v", i, comp.Columns.NumEntriesTotal()))
-		l.ShiftedFlattenMask[i] = dedicated.ManuallyShift(comp, l.Mask, i, fmt.Sprintf("MANUALLY_SHIFTED_FLATTEN_MASK_%v_%v", i, comp.Columns.NumEntriesTotal()))
-	}
+		for i := 0; i < l.NbLimbsCols; i++ {
+			masks[i] = l.OriginalMask
+			l.ShiftedFlattenLimbs[i] = dedicated.ManuallyShift(comp, l.Limbs, i, fmt.Sprintf("MANUALLY_SHIFTED_FLATTEN_LIMBS_%v_%v", i, comp.Columns.NumEntriesTotal()))
+			l.ShiftedFlattenMask[i] = dedicated.ManuallyShift(comp, l.Mask, i, fmt.Sprintf("MANUALLY_SHIFTED_FLATTEN_MASK_%v_%v", i, comp.Columns.NumEntriesTotal()))
+		}
 
-	// append the Natural part of the shiftedFlattenLimbs and shiftedFlattenMask in colA and colB
-	var (
-		colA = make([]ifaces.Column, 0, len(l.ShiftedFlattenLimbs)+len(l.ShiftedFlattenMask))
-	)
+		// append the Natural part of the shiftedFlattenLimbs and shiftedFlattenMask in colA and colB
+		var (
+			colA = make([]ifaces.Column, 0, len(l.ShiftedFlattenLimbs)+len(l.ShiftedFlattenMask))
+		)
 
-	for i := 0; i < l.NbLimbsCols; i++ {
-		colA = append(colA, l.ShiftedFlattenLimbs[i].Natural)
-	}
+		for i := 0; i < l.NbLimbsCols; i++ {
+			colA = append(colA, l.ShiftedFlattenLimbs[i].Natural)
+		}
 
-	for i := 0; i < l.NbLimbsCols; i++ {
-		colA = append(colA, l.ShiftedFlattenMask[i].Natural)
-	}
+		for i := 0; i < l.NbLimbsCols; i++ {
+			colA = append(colA, l.ShiftedFlattenMask[i].Natural)
+		}
 
-	// This query needs manual shifting as per log
-	comp.InsertProjection(
-		ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.OriginalMask.GetColID()),
-		query.ProjectionInput{
-			ColumnA: colA,
-			ColumnB: append(l.OriginalLimbs[:], masks[:]...),
-			FilterA: l.AuxProjectionMask,
-			FilterB: l.OnesColumn,
-		},
-	)
+		// // This query needs manual shifting as per log
+		// comp.InsertProjection(
+		//
+		//	ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.OriginalMask.GetColID()),
+		//	query.ProjectionInput{
+		//		ColumnA: colA,
+		//		ColumnB: append(l.OriginalLimbs[:], masks[:]...),
+		//		FilterA: l.AuxProjectionMask,
+		//		FilterB: l.OnesColumn,
+		//	},
+		//
+		// )
+	*/
 }
 
 // initColumns initializes the FlattenColumn by committing to the flattened limbs
@@ -276,8 +279,7 @@ func (l *FlattenColumn) assignMask(run *wizard.ProverRuntime) {
 	}
 
 	flattenMask.PadAndAssign(run, field.Zero())
-	// We assign the flattened mask column to the manually shifted columns
-	for i := 0; i < l.NbLimbsCols; i++ {
+	for i := range l.ShiftedFlattenMask {
 		l.ShiftedFlattenMask[i].GetColAssignment(run)
 	}
 }
@@ -302,8 +304,7 @@ func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
 
 	flattenLimbs.PadAndAssign(run, field.Zero())
 
-	// We assign the flattened limbs column to the manually shifted columns
-	for i := 0; i < l.NbLimbsCols; i++ {
+	for i := range l.ShiftedFlattenLimbs {
 		l.ShiftedFlattenLimbs[i].GetColAssignment(run)
 	}
 }

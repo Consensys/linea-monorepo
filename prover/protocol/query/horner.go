@@ -199,6 +199,48 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 	return n1s, finalResult
 }
 
+// HornerPartResult holds per-part diagnostic data from a Horner evaluation.
+type HornerPartResult struct {
+	Name         string
+	SignNegative bool
+	RawResult    fext.Element
+	Count        int
+	N0           int
+	N1           int
+	Contribution fext.Element
+	DataSize     int
+}
+
+// GetPerPartResults computes per-part Horner results without aggregating them. This is used for debugging purposes.
+func (p *HornerParams) GetPerPartResults(run ifaces.Runtime, q Horner) []HornerPartResult {
+	results := make([]HornerPartResult, len(q.Parts))
+	for i, part := range q.Parts {
+		res, count := getResultOfParts(run, &part)
+
+		n0 := p.Parts[i].N0
+		x := part.X.GetValExt(run)
+		xN0 := new(fext.Element).Exp(x, big.NewInt(int64(n0)))
+
+		contribution := res
+		contribution.Mul(&contribution, xN0)
+		if part.SignNegative {
+			contribution.Neg(&contribution)
+		}
+
+		results[i] = HornerPartResult{
+			Name:         part.Name,
+			SignNegative: part.SignNegative,
+			RawResult:    res,
+			Count:        count,
+			N0:           n0,
+			N1:           n0 + count,
+			Contribution: contribution,
+			DataSize:     part.Size(),
+		}
+	}
+	return results
+}
+
 // getResultOfParts computes the result of a part i of the [HornerQuery]. It
 // returns the result of the evaluation and the selector count.
 func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
