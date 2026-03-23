@@ -20,7 +20,7 @@ plugins {
   alias(libs.plugins.lombok)
 }
 jacoco {
-  toolVersion = '0.8.14'
+  toolVersion = libs.versions.jacoco.get()
 }
 
 def lineaTracerProject = project(lineaTracerProjectPath)
