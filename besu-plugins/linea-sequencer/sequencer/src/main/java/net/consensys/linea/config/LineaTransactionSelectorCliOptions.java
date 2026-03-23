@@ -16,9 +16,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,6 +60,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       "--plugin-linea-events-bundle-deny-list-path";
   public static final String BLOB_COMPRESSOR_VERSION_TIMESTAMPS =
       "--plugin-linea-blob-compressor-version-timestamps";
+  public static final String BLOB_COMPRESSOR_VERSION_TIMESTAMPS_DEFAULT =
+      String.format("%s=%s", BlobCompressorVersion.V2.name(), Instant.Companion.getDISTANT_PAST());
 
   @Positive
   @CommandLine.Option(
@@ -138,14 +142,24 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       description = "Path to the file containing the events deny list for bundles")
   private String eventsBundleDenyListPath;
 
+  private static final class BlobCompressorVersionCandidates implements Iterable<String> {
+    @Override
+    public Iterator<String> iterator() {
+      return Arrays.stream(BlobCompressorVersion.values()).map(Enum::name).iterator();
+    }
+  }
+
   @CommandLine.Option(
       names = {BLOB_COMPRESSOR_VERSION_TIMESTAMPS},
       hidden = true,
       paramLabel = "<MAP>",
+      completionCandidates = BlobCompressorVersionCandidates.class,
       description =
-          "Comma-separated map of BlobCompressorVersion to Instant, e.g. V1_2=2025-01-01T00:00:00Z,V2=2026-01-01T00:00:00Z")
-  private String blobCompressorVersionTimestampsRaw =
-      String.format("%s=%s", BlobCompressorVersion.V2.name(), Instant.Companion.getDISTANT_PAST());
+          "Comma-separated map of BlobCompressorVersion to Instant, "
+              + "e.g. V1_2=2025-01-01T00:00:00Z,V2=2026-01-01T00:00:00Z ."
+              + "Available versions: ${COMPLETION-CANDIDATES} . "
+              + "(default: ${DEFAULT-VALUE})")
+  private String blobCompressorVersionTimestampsRaw = BLOB_COMPRESSOR_VERSION_TIMESTAMPS_DEFAULT;
 
   /**
    * Create Linea cli options.
