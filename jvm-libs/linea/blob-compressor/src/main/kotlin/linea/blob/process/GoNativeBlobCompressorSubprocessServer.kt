@@ -58,8 +58,14 @@ object GoNativeBlobCompressorSubprocessServer {
             compressor.StartNewBatch()
             voidResp()
           }
-          "Write" -> boolResp(compressor.Write(data(line), data(line).size))
-          "CanWrite" -> boolResp(compressor.CanWrite(data(line), data(line).size))
+          "Write" -> {
+            val d = data(line)
+            boolResp(compressor.Write(d, d.size))
+          }
+          "CanWrite" -> {
+            val d = data(line)
+            boolResp(compressor.CanWrite(d, d.size))
+          }
           "Error" -> strResp(compressor.Error())
           "Len" -> intResp(compressor.Len())
           "Bytes" -> {
@@ -67,9 +73,18 @@ object GoNativeBlobCompressorSubprocessServer {
             compressor.Bytes(buf)
             hexResp(buf)
           }
-          "WorstCompressedBlockSize" -> intResp(compressor.WorstCompressedBlockSize(data(line), data(line).size))
-          "WorstCompressedTxSize" -> intResp(compressor.WorstCompressedTxSize(data(line), data(line).size))
-          "RawCompressedSize" -> intResp(compressor.RawCompressedSize(data(line), data(line).size))
+          "WorstCompressedBlockSize" -> {
+            val d = data(line)
+            intResp(compressor.WorstCompressedBlockSize(d, d.size))
+          }
+          "WorstCompressedTxSize" -> {
+            val d = data(line)
+            intResp(compressor.WorstCompressedTxSize(d, d.size))
+          }
+          "RawCompressedSize" -> {
+            val d = data(line)
+            intResp(compressor.RawCompressedSize(d, d.size))
+          }
           else -> errResp("unknown method: $method")
         }
       }.getOrElse { errResp(it.message ?: it.javaClass.simpleName) }
@@ -85,7 +100,7 @@ object GoNativeBlobCompressorSubprocessServer {
   private fun boolResp(b: Boolean) = """{"ok":true,"bool":$b}"""
   private fun intResp(n: Int) = """{"ok":true,"int":$n}"""
   private fun strResp(s: String?) = if (s != null) """{"ok":true,"str":${jsonStr(s)}}""" else """{"ok":true}"""
-  private fun hexResp(b: ByteArray) = """{"ok":true,"hex":"${java.util.HexFormat.of().formatHex(b)}"}"""
+  private fun hexResp(b: ByteArray) = """{"ok":true,"hex":"${HexFormat.of().formatHex(b)}"}"""
   private fun errResp(msg: String) = """{"ok":false,"error":${jsonStr(msg)}}"""
 
   // ── helpers ───────────────────────────────────────────────────────────────

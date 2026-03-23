@@ -169,60 +169,62 @@ class GoBackedBlobCompressorTest {
   fun `compresses multiple blocks concurrently with two v2 process isolated instances without exception`() {
     val v2 = BlobCompressorVersion.V2
     val compressorV2 = GoBackedBlobCompressor.getInstance(v2, DATA_LIMIT)
-    val compressorV2A = GoBackedBlobCompressor.getProcessIsolatedInstance(
+    GoBackedBlobCompressor.getProcessIsolatedInstance(
       v2,
       DATA_LIMIT,
-    )
-    val compressorV2B = GoBackedBlobCompressor.getProcessIsolatedInstance(
-      v2,
-      DATA_LIMIT,
-    )
-    assertTrue(compressorV2A != compressorV2B)
+    ).use { compressorV2A ->
+      GoBackedBlobCompressor.getProcessIsolatedInstance(
+        v2,
+        DATA_LIMIT,
+      ).use { compressorV2B ->
+        assertTrue(compressorV2A != compressorV2B)
 
-    val sampleBlocks = CompressorTestData.blocksRlpEncoded
-    assertThat(sampleBlocks).isNotEmpty
-    val compressedV2 = compressBlocks(compressorV2, sampleBlocks)
+        val sampleBlocks = CompressorTestData.blocksRlpEncoded
+        assertThat(sampleBlocks).isNotEmpty
+        val compressedV2 = compressBlocks(compressorV2, sampleBlocks)
 
-    assertThat(compressedV2).isEqualTo(compressBlocks(compressorV2A, sampleBlocks))
-    assertThat(compressedV2).isEqualTo(compressBlocks(compressorV2B, sampleBlocks))
+        assertThat(compressedV2).isEqualTo(compressBlocks(compressorV2A, sampleBlocks))
+        assertThat(compressedV2).isEqualTo(compressBlocks(compressorV2B, sampleBlocks))
 
-    val compressedV2AParallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
-    val compressedV2BParallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
+        val compressedV2AParallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
+        val compressedV2BParallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
 
-    val errors = CopyOnWriteArrayList<Throwable>()
-    val startBarrier = CyclicBarrier(3)
-    val doneLatch = CountDownLatch(2)
+        val errors = CopyOnWriteArrayList<Throwable>()
+        val startBarrier = CyclicBarrier(3)
+        val doneLatch = CountDownLatch(2)
 
-    val v2AThread = Thread {
-      try {
+        val v2AThread = Thread {
+          try {
+            startBarrier.await()
+            compressedV2AParallel.store(compressBlocks(compressorV2A, sampleBlocks))
+          } catch (t: Throwable) {
+            errors.add(t)
+          } finally {
+            doneLatch.countDown()
+          }
+        }
+
+        val v2BThread = Thread {
+          try {
+            startBarrier.await()
+            compressedV2BParallel.store(compressBlocks(compressorV2B, sampleBlocks))
+          } catch (t: Throwable) {
+            errors.add(t)
+          } finally {
+            doneLatch.countDown()
+          }
+        }
+
+        v2AThread.start()
+        v2BThread.start()
         startBarrier.await()
-        compressedV2AParallel.store(compressBlocks(compressorV2A, sampleBlocks))
-      } catch (t: Throwable) {
-        errors.add(t)
-      } finally {
-        doneLatch.countDown()
+        assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
+
+        assertThat(compressedV2AParallel.load()).isEqualTo(compressedV2)
+        assertThat(compressedV2BParallel.load()).isEqualTo(compressedV2)
+        assertThat(errors).isEmpty()
       }
     }
-
-    val v2BThread = Thread {
-      try {
-        startBarrier.await()
-        compressedV2BParallel.store(compressBlocks(compressorV2B, sampleBlocks))
-      } catch (t: Throwable) {
-        errors.add(t)
-      } finally {
-        doneLatch.countDown()
-      }
-    }
-
-    v2AThread.start()
-    v2BThread.start()
-    startBarrier.await()
-    assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
-
-    assertThat(compressedV2AParallel.load()).isEqualTo(compressedV2)
-    assertThat(compressedV2BParallel.load()).isEqualTo(compressedV2)
-    assertThat(errors).isEmpty()
   }
 
   @OptIn(ExperimentalAtomicApi::class)
