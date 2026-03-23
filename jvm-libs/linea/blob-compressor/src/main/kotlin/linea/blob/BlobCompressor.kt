@@ -1,11 +1,13 @@
 package linea.blob
 
+import linea.blob.process.GoNativeBlobCompressorSubprocessFactory
 import linea.kotlin.encodeHex
 import org.apache.logging.log4j.LogManager
+import java.io.Closeable
 
 class BlobCompressionException(message: String) : RuntimeException(message)
 
-interface BlobCompressor {
+interface BlobCompressor : Closeable {
 
   val version: BlobCompressorVersion
 
@@ -60,6 +62,33 @@ class GoBackedBlobCompressor private constructor(
       }
       return GoBackedBlobCompressor(goNativeBlobCompressor, compressorVersion)
     }
+
+    /**
+     * Creates a [GoBackedBlobCompressor] whose compressor runs in a dedicated
+     * child JVM process, giving it an isolated Go runtime (separate address
+     * space, GC and goroutine scheduler).
+     *
+     * Call [close] on the returned [GoBackedBlobCompressor] to terminate
+     * the subprocess when the compressor is no longer needed.
+     */
+    @JvmStatic
+    fun getProcessIsolatedInstance(
+      compressorVersion: BlobCompressorVersion,
+      dataLimit: Int,
+    ): GoBackedBlobCompressor {
+      require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
+
+      val goNativeBlobCompressorSubprocess = GoNativeBlobCompressorSubprocessFactory.create(compressorVersion)
+      val initialized = goNativeBlobCompressorSubprocess.Init(
+        dataLimit = dataLimit,
+        dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString(),
+      )
+      if (!initialized) {
+        goNativeBlobCompressorSubprocess.close()
+        throw InstantiationException(goNativeBlobCompressorSubprocess.Error())
+      }
+      return GoBackedBlobCompressor(goNativeBlobCompressorSubprocess, compressorVersion)
+    }
   }
 
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
@@ -103,5 +132,14 @@ class GoBackedBlobCompressor private constructor(
 
   override fun compressedSize(data: ByteArray): Int {
     return goNativeBlobCompressor.RawCompressedSize(data, data.size)
+  }
+
+  /**
+   * Closes the underlying compressor.  This is a no-op for the default
+   * JNA-backed instance.  When the compressor was created via
+   * [getProcessIsolatedInstance] it terminates the child JVM process.
+   */
+  override fun close() {
+    (goNativeBlobCompressor as? Closeable)?.close()
   }
 }
