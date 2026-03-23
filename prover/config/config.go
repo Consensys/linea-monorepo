@@ -76,9 +76,6 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	// Set the logging level
 	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
-	logrus.Infof("chain config: environment=%s chain_id=%d base_fee=%d coin_base=%s message_service_contract=%s",
-		cfg.Environment, cfg.Layer2.ChainID, cfg.Layer2.BaseFee, cfg.Layer2.CoinBaseStr, cfg.Layer2.MsgSvcContractStr)
-
 	// Extract the Layer2.MsgSvcContract address from the string
 	lsMsgSvcAddress, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
 	if withValidation && err != nil {

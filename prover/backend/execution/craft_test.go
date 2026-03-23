@@ -103,9 +103,13 @@ func TestValidateChainConfig_CoinbaseMismatch(t *testing.T) {
 
 	block := makeBlock(1, blockCoinBase, big.NewInt(7))
 
-	assert.Panics(t, func() {
+	msg := recoverPanicMsg(func() {
 		sanityCheckChainConfig(cfg, []ethtypes.Block{block})
 	})
+	assert.True(t, len(msg) > 0, "expected panic")
+	assert.Contains(t, msg, "coinBase")
+	assert.Contains(t, msg, "CONFIG")
+	assert.Contains(t, msg, "BLOCK")
 }
 
 func TestValidateChainConfig_BaseFeeMismatch(t *testing.T) {
@@ -184,7 +188,60 @@ func TestSanityCheckChainConfig_SepoliaVsMainnet(t *testing.T) {
 		makeDynamicTx(big.NewInt(59144)),
 	)
 
-	assert.Panics(t, func() {
+	msg := recoverPanicMsg(func() {
 		sanityCheckChainConfig(cfg, []ethtypes.Block{block})
 	})
+
+	// Should report both coinBase and chainID mismatches in one panic
+	assert.Contains(t, msg, "coinBase")
+	assert.Contains(t, msg, "chainID")
+	assert.Contains(t, msg, "59141")
+	assert.Contains(t, msg, "59144")
+	assert.Contains(t, msg, sepoliaCoinBase.Hex())
+	assert.Contains(t, msg, mainnetCoinBase.Hex())
+}
+
+func TestSanityCheckChainConfig_AllMismatches(t *testing.T) {
+	// Config: Sepolia
+	sepoliaCoinBase := ethcommon.HexToAddress("0xA27342f1b74c0cfB2cda74bac1628d0C1A9752f2")
+	cfg := makeConfig(59141, 7, sepoliaCoinBase, ethcommon.HexToAddress("0x971e727e956690b9957be6d51Ec16E73AcAC83A7"))
+
+	// Block: Mainnet with every field different
+	mainnetCoinBase := ethcommon.HexToAddress("0x8F81e2E3F8b46467523463835F965fFE476E1c9E")
+	block := makeBlock(100, mainnetCoinBase, big.NewInt(42),
+		makeDynamicTx(big.NewInt(59144)),
+	)
+
+	msg := recoverPanicMsg(func() {
+		sanityCheckChainConfig(cfg, []ethtypes.Block{block})
+	})
+
+	// All three mismatches should appear in one message
+	assert.Contains(t, msg, "coinBase")
+	assert.Contains(t, msg, "baseFee")
+	assert.Contains(t, msg, "chainID")
+	// Table headers should be present
+	assert.Contains(t, msg, "CONFIG")
+	assert.Contains(t, msg, "BLOCK")
+}
+
+// recoverPanicMsg runs fn and returns the panic message as a string.
+// Returns empty string if fn did not panic.
+func recoverPanicMsg(fn func()) (msg string) {
+	defer func() {
+		if r := recover(); r != nil {
+			msg = func() string {
+				switch v := r.(type) {
+				case string:
+					return v
+				case error:
+					return v.Error()
+				default:
+					return ""
+				}
+			}()
+		}
+	}()
+	fn()
+	return ""
 }
