@@ -46,7 +46,7 @@ if git diff --cached -- "$FILE" | grep -e '^[+-]\s*besu\s*=\s*"'; then
       sed -i.bak "s/^[[:space:]]*besu[[:space:]]*=.*/$ORIGINAL_BESU_LINE/" "$FILE"
 
       # Clean up
-      rm -f /tmp/libs.versions.toml.orig /tmp/libs.versions.toml.staged /tmp/libs.versions.toml.staged.bak
+      rm -f "$FILE.bak" /tmp/libs.versions.toml.orig /tmp/libs.versions.toml.staged /tmp/libs.versions.toml.staged.bak
 
       echo "The 'besu' field has been reverted to: $ORIGINAL_BESU_LINE"
       echo "The rest of your changes to $FILE (if any) will still be committed."
