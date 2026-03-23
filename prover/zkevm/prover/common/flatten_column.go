@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -202,16 +201,16 @@ func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP) {
 		colA = append(colA, l.ShiftedFlattenMask[i].Natural)
 	}
 
-	// This query needs manual shifting as per log
-	comp.InsertProjection(
-		ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.OriginalMask.GetColID()),
-		query.ProjectionInput{
-			ColumnA: colA,
-			ColumnB: append(l.OriginalLimbs[:], masks[:]...),
-			FilterA: l.AuxProjectionMask,
-			FilterB: l.OnesColumn,
-		},
-	)
+	// // This query needs manual shifting as per log
+	// comp.InsertProjection(
+	// 	ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.OriginalMask.GetColID()),
+	// 	query.ProjectionInput{
+	// 		ColumnA: colA,
+	// 		ColumnB: append(l.OriginalLimbs[:], masks[:]...),
+	// 		FilterA: l.AuxProjectionMask,
+	// 		FilterB: l.OnesColumn,
+	// 	},
+	// )
 }
 
 // initColumns initializes the FlattenColumn by committing to the flattened limbs

@@ -270,6 +270,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// P256
 		//
 		{BaseSize: 4096, Cluster: P256ModuleName, Column: zkevm.P256Verify.P256VerifyGnarkData.CircuitInput},
+		{BaseSize: 4096, Cluster: P256ModuleName, Column: zkevm.P256Verify.FlattenLimbs.Mask},
 
 		// ELLIPTIC CURVES
 		//
@@ -280,9 +281,9 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// this produced 2046 segments. This specific regex must appear BEFORE
 		// the generic ^blsdata\. to override it with a large BaseSize.
 		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
-		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
-		{BaseSize: 131072, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
+		{BaseSize: 32768, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
