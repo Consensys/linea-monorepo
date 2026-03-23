@@ -76,6 +76,9 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	// Set the logging level
 	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
+	logrus.Infof("chain config: environment=%s chain_id=%d base_fee=%d coin_base=%s message_service_contract=%s",
+		cfg.Environment, cfg.Layer2.ChainID, cfg.Layer2.BaseFee, cfg.Layer2.CoinBaseStr, cfg.Layer2.MsgSvcContractStr)
+
 	// Extract the Layer2.MsgSvcContract address from the string
 	lsMsgSvcAddress, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
 	if withValidation && err != nil {
@@ -123,9 +126,10 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
 
 type Config struct {
-	// Environment stores the environment in which the application is running.
-	// It enables us have a clear domain separation for generated assets.
-	Environment string `validate:"required,oneof=mainnet sepolia devnet integration-development integration-full integration-benchmark"`
+	// Environment is informational only — it indicates which environment (e.g. devnet, sepolia, mainnet)
+	// the config file targets. It is not used for setup paths or any runtime logic;
+	// all environments share the same setup and are differentiated only by layer2 public inputs.
+	Environment string `mapstructure:"environment"`
 
 	// TODO @gbotrel define explicitly where we use that and for why;
 	// if we supply as is to coordinator in responses, coordinator should parse semver
@@ -173,9 +177,9 @@ func (cfg *Config) Logger() *logrus.Logger {
 }
 
 // PathForSetup returns the path to the setup directory for the given circuitID.
-// e.g. .../prover-assets/0.1.0/mainnet/execution
+// e.g. .../prover-assets/0.1.0/execution
 func (cfg *Config) PathForSetup(circuitID string) string {
-	return path.Join(cfg.AssetsDir, cfg.Version, cfg.Environment, circuitID)
+	return path.Join(cfg.AssetsDir, cfg.Version, circuitID)
 }
 
 // PathForSRS returns the path to the SRS directory.
