@@ -237,6 +237,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 			sym.Mul(
 				acc.Exists,
 				sym.Mul(hasEmptyCodeHashExpressions...),
+				acc.LineaCodeHash[i], // for delegated accounts, the codehash is zero
 				sym.Sub(acc.LineaCodeHash[i], emptyCodeHash[i]),
 			),
 		)

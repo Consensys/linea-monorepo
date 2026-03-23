@@ -16,11 +16,8 @@ prover_mode = "dev"
 [aggregation]
 prover_mode = "dev"
 num_proofs = [10]
-# allowed_inputs = [
-#     "execution-dummy",
-#     "data-availability-dummy",
-#     "data-availability-v2",
-# ]
+verifier_id = 0
+# allowed_inputs = [ "execution-dummy", "data-availability-dummy", "data-availability-v2" ]
 # Conversion to is_allowed_circuit_id bitmask:
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
 #   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
@@ -28,9 +25,9 @@ num_proofs = [10]
 #   execution-large (ID 3, bit 3) = 0 → DISALLOWED
 #   execution-limitless (ID 4, bit 4) = 0 → DISALLOWED
 #   data-availability-v2 (ID 5, bit 5) = 1 → ALLOWED
+# To customize, edit and run: go test -v -run TestCalculateCustomBitmask ./circuits/
 # Binary: 0b100011 = 35 (decimal)
 is_allowed_circuit_id = 35
-verifier_id = 0
 
 [layer2]
 chain_id = 1337

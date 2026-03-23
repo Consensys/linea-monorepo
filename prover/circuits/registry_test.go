@@ -331,6 +331,31 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 	assert.Equal(t, 10, len(GlobalCircuitIDMapping))
 }
 
+func TestCircuitNameByID(t *testing.T) {
+	tests := []struct {
+		id       uint
+		expected string
+	}{
+		{0, "execution-dummy"},
+		{1, "data-availability-dummy"},
+		{2, "execution"},
+		{3, "execution-large"},
+		{4, "execution-limitless"},
+		{5, "data-availability-v2"},
+		{8, "emulation"},
+		{9, "aggregation"},
+		{10, "public-input-interconnection"},
+		{11, "emulation-dummy"},
+		{99, "circuit-id-99"}, // unknown ID
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, CircuitNameByID(tt.id))
+		})
+	}
+}
+
 // Example test showing how to use these functions for config validation
 func TestExampleUsage(t *testing.T) {
 	// Example: User wants to configure mainnet
@@ -454,16 +479,16 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 			expectedBitmask: 63, // 0b111111
 		},
 		{
-			name: "Devnet (no execution-limitless)",
+			name: "Devnet (limitless only, no execution/execution-large)",
 			config: CircuitConfig{
 				ExecutionDummy:        true,
 				DataAvailabilityDummy: true,
-				Execution:             true,
-				ExecutionLarge:        true,
-				ExecutionLimitless:    false,
+				Execution:             false,
+				ExecutionLarge:        false,
+				ExecutionLimitless:    true,
 				DataAvailabilityV2:    true,
 			},
-			expectedBitmask: 47, // 0b101111
+			expectedBitmask: 51, // 0b110011
 		},
 		{
 			name: "Integration-full (minimal)",
@@ -546,7 +571,7 @@ func TestVisualCircuitConfiguration(t *testing.T) {
 
 // TestCalculateCustomBitmask is a helper test you can modify to calculate
 // a bitmask for a custom configuration. Modify the config below and run
-// with `go test -v -run TestCalculateCustomBitmask` to see the result.
+// with `go test -v -run TestCalculateCustomBitmask ./circuits/` to see the result.
 func TestCalculateCustomBitmask(t *testing.T) {
 	// ==========================================
 	// MODIFY THIS CONFIGURATION AS NEEDED

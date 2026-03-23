@@ -182,3 +182,14 @@ func GetAllowedCircuitNames(bitmask uint64) []string {
 
 	return allowed
 }
+
+// CircuitNameByID returns the circuit name for a given circuit ID.
+// If the ID is not found, it returns "circuit-id-N".
+func CircuitNameByID(id uint) string {
+	for name, cid := range GlobalCircuitIDMapping {
+		if cid == id {
+			return name
+		}
+	}
+	return fmt.Sprintf("circuit-id-%d", id)
+}

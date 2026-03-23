@@ -65,6 +65,9 @@ func runConglomerationWizardTest(t *testing.T, tc DistributedTestCase, numRow in
 // TestConglomerationBasic generates a conglomeration proof for each of the
 // standard DistributedTestCase types and checks that the proof is valid.
 func TestConglomerationBasic(t *testing.T) {
+	// if testing.Short() {
+	// 	t.Skip("skipping heavy conglomeration test in short mode")
+	// }
 	signal.RegisterStackTraceDumpHandler()
 
 	const numRow = 1 << 5
