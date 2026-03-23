@@ -79,15 +79,19 @@ class GoBackedBlobCompressor private constructor(
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
       val goNativeBlobCompressorSubprocess = GoNativeBlobCompressorSubprocessFactory.create(compressorVersion)
-      val initialized = goNativeBlobCompressorSubprocess.Init(
-        dataLimit = dataLimit,
-        dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString(),
-      )
-      if (!initialized) {
+      try {
+        val initialized = goNativeBlobCompressorSubprocess.Init(
+          dataLimit = dataLimit,
+          dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString(),
+        )
+        if (!initialized) {
+          throw InstantiationException(goNativeBlobCompressorSubprocess.Error())
+        }
+        return GoBackedBlobCompressor(goNativeBlobCompressorSubprocess, compressorVersion)
+      } catch (e: Throwable) {
         goNativeBlobCompressorSubprocess.close()
-        throw InstantiationException(goNativeBlobCompressorSubprocess.Error())
+        throw e
       }
-      return GoBackedBlobCompressor(goNativeBlobCompressorSubprocess, compressorVersion)
     }
   }
 
