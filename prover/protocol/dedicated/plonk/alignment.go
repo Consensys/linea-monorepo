@@ -325,7 +325,14 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 // csProjection ensures the data in the [Alignment.Data] column is the same as
 // the data provided by the [Alignment.CircuitInput].
 func (a *Alignment) csProjection(comp *wizard.CompiledIOP) {
-	comp.InsertProjection(ifaces.QueryIDf("%v_PROJECTION", a.Name), query.ProjectionInput{ColumnA: []ifaces.Column{a.DataToCircuit}, ColumnB: []ifaces.Column{a.CircuitInput}, FilterA: a.DataToCircuitMask, FilterB: a.ActualCircuitInputMask.Natural})
+	comp.InsertProjection(
+		ifaces.QueryIDf("%v_PROJECTION", a.Name),
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{a.DataToCircuit},
+			ColumnB: []ifaces.Column{a.CircuitInput},
+			FilterA: a.DataToCircuitMask,
+			FilterB: a.ActualCircuitInputMask.Natural,
+		})
 }
 
 // Assign assigns the colums in the Alignment structure at runtime.
