@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -56,7 +55,6 @@ func newP256Verify(comp *wizard.CompiledIOP, limits *Limits, src *P256VerifyData
 		Limits:               limits,
 	}
 	flattenLimbs.CsFlattenProjection(comp)
-	pragmas.AddModuleRef(res.FlattenLimbs.Mask, NAME_P256_VERIFY)
 
 	return res
 }

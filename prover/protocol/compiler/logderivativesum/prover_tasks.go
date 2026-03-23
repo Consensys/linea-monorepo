@@ -499,9 +499,9 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 					// out-of-bounds indices.
 					multiplicity := field.One()
 					switch {
-					case k == 0 && startSeg < 0 && !hasFilter:
+					case k == 0 && startSeg < 0:
 						multiplicity = field.NewElement(uint64(-startSeg + 1))
-					case k == size-1 && stopSeg > size && !hasFilter:
+					case k == size-1 && stopSeg > size:
 						multiplicity = field.NewElement(uint64(stopSeg - size + 1))
 					}
 
