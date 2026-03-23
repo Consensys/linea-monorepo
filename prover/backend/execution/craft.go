@@ -2,6 +2,7 @@ package execution
 
 import (
 	"bytes"
+	"math/big"
 	"path"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -15,6 +16,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Craft prover's functional inputs
@@ -26,8 +29,16 @@ func CraftProverOutput(
 	var (
 		l2BridgeAddress = cfg.Layer2.MsgSvcContract
 		blocks          = req.Blocks()
-		execDataBuf     = &bytes.Buffer{}
-		rsp             = Response{
+	)
+
+	// Sanity-check that the layer2 config matches the block data.
+	// This catches config mismatches early instead of failing deep
+	// in the circuit verification.
+	sanityCheckChainConfig(cfg, blocks)
+
+	var (
+		execDataBuf = &bytes.Buffer{}
+		rsp         = Response{
 			BlocksData:           make([]BlockData, len(blocks)),
 			ChainID:              cfg.Layer2.ChainID,
 			BaseFee:              cfg.Layer2.BaseFee,
@@ -248,4 +259,57 @@ func getBlockHashList(rsp *Response) []types.FullBytes32 {
 		res = append(res, rsp.BlocksData[i].BlockHash)
 	}
 	return res
+}
+
+// sanityCheckChainConfig sanity-checks that the [layer2] config values (chainID,
+// baseFee, coinBase) are consistent with the block headers and transactions in
+// the request. This catches configuration mismatches early (e.g. running with
+// the wrong config file) instead of failing deep inside the circuit prover.
+func sanityCheckChainConfig(cfg *config.Config, blocks []ethtypes.Block) {
+	if len(blocks) == 0 {
+		return
+	}
+
+	cfgChainID := new(big.Int).SetUint64(uint64(cfg.Layer2.ChainID))
+	cfgBaseFee := new(big.Int).SetUint64(uint64(cfg.Layer2.BaseFee))
+	cfgCoinBase := ethcommon.Address(cfg.Layer2.CoinBase)
+
+	for i := range blocks {
+		block := &blocks[i]
+		header := block.Header()
+
+		// Check coinbase
+		if header.Coinbase != cfgCoinBase {
+			utils.Panic(
+				"chain config mismatch: block %d has coinbase %s but config specifies %s",
+				header.Number, header.Coinbase.Hex(), cfgCoinBase.Hex(),
+			)
+		}
+
+		// Check baseFee (may be nil for pre-EIP-1559 blocks)
+		if header.BaseFee != nil && header.BaseFee.Cmp(cfgBaseFee) != 0 {
+			utils.Panic(
+				"chain config mismatch: block %d has baseFee %s but config specifies %s",
+				header.Number, header.BaseFee.String(), cfgBaseFee.String(),
+			)
+		}
+
+		// Check chainID from transactions (skip legacy txs which derive
+		// chainID from V and may panic if unsigned).
+		for _, tx := range block.Transactions() {
+			if tx.Type() == ethtypes.LegacyTxType {
+				continue
+			}
+			txChainID := tx.ChainId()
+			if txChainID != nil && txChainID.Sign() > 0 && txChainID.Cmp(cfgChainID) != 0 {
+				utils.Panic(
+					"chain config mismatch: block %d tx %s has chainID %s but config specifies %s",
+					header.Number, tx.Hash().Hex(), txChainID.String(), cfgChainID.String(),
+				)
+			}
+		}
+	}
+
+	logrus.Infof("Chain config validation passed: chainID=%d baseFee=%d coinBase=%s",
+		cfg.Layer2.ChainID, cfg.Layer2.BaseFee, cfgCoinBase.Hex())
 }
