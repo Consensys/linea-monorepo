@@ -85,9 +85,6 @@ class MinMineableFeesPricerServiceTest {
       )
     monitor.start().get()
     runCatching {
-
-    }
-    runCatching {
       await()
         .atMost(5.seconds.toJavaDuration())
         .untilAsserted {
