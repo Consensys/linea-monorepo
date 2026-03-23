@@ -271,6 +271,7 @@ class LineaTransactionSelectorFactoryTest {
   }
 
   static class FailedTransactionSelectionResultProvider implements ArgumentsProvider {
+    @SuppressWarnings("deprecation")
     @Override
     public Stream<? extends Arguments> provideArguments(
         org.junit.jupiter.api.extension.ExtensionContext context) {

@@ -24,6 +24,26 @@ allprojects {
   apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
   apply plugin: 'jacoco'
 
+  // Override JUnit version from Besu BOM to ensure Java 25 compatibility
+  configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+      if (details.requested.group in [
+            'org.junit.platform',
+            'org.junit.jupiter',
+            'org.junit'
+          ]) {
+        def junitVersion = details.requested.group == 'org.junit.platform' ? '1.13.4' : "${libs.versions.junit.get()}"
+        details.useVersion(junitVersion)
+        details.because('Java 25 requires JUnit 5.13+ for ASM compatibility')
+      }
+    }
+  }
+
+  // Gradle 9 requires junit-platform-launcher on the test runtime classpath
+  dependencies {
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  }
+
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
