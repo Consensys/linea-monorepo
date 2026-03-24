@@ -27,7 +27,6 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
-import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
@@ -760,7 +759,7 @@ public final class Hub implements Module {
       final Transaction tx = currentTransaction.getBesuTransaction();
 
       checkArgument(
-          recipientAddress.getBytes().equals(effectiveToAddress(tx).getBytes()),
+          recipientAddress.getBytes().equals(currentTransaction.getEffectiveRecipient().getBytes()),
           "Mismatch between frame and transaction recipient");
       checkArgument(
           senderAddress.getBytes().equals(tx.getSender().getBytes()),

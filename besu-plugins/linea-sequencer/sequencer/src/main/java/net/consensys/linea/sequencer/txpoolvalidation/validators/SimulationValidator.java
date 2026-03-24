@@ -18,6 +18,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.exceptions.TracingExceptions;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
@@ -100,8 +101,13 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
               lineCountingTracer,
               EnumSet.of(ALLOW_FUTURE_NONCE));
 
-      ModuleLimitsValidationResult moduleLimitResult =
-          moduleLineCountValidator.validate(lineCountingTracer.getModulesLineCount());
+      ModuleLimitsValidationResult moduleLimitResult;
+      try {
+        moduleLimitResult = moduleLineCountValidator.validate(lineCountingTracer.getModulesLineCount());
+      } catch (TracingExceptions e) {
+        log.warn("Tracer failed during simulation of tx {}: {}", transaction.getHash(), e.getMessage());
+        return Optional.of("Tracer error during simulation: " + e.getMessage());
+      }
 
       logSimulationResult(
           transaction, isLocal, hasPriority, maybeSimulationResults, moduleLimitResult);
