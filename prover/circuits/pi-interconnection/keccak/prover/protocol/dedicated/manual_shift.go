@@ -44,7 +44,7 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 	var (
 		size = root.Size()
 		res  = ManuallyShifted{
-			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size).(column.Natural),
+			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(fmt.Sprintf("%v_%v_%v", name, offset, root.Size()))+"_COL", size).(column.Natural),
 			Root:    root,
 			Offset:  offset,
 		}
@@ -52,7 +52,7 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 
 	comp.InsertGlobal(
 		root.Round(),
-		ifaces.QueryID(name)+"_CONSTRAINT",
+		ifaces.QueryID(fmt.Sprintf("%v_%v_%v", name, offset, root.Size()))+"_CONSTRAINT",
 		symbolic.Sub(
 			res.Natural,
 			column.Shift(root, offset),

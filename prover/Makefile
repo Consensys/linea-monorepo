@@ -38,6 +38,7 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 	go-corset \
 	testdata \
 	extract-constraints-git-archive \
+	setup \
 
 
 ##
@@ -56,21 +57,11 @@ extract-constraints-git-archive:
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
 	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make GIT_COMMIT=$(CONSTRAINTS_COMMIT_HASH) zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
 
-setup-devnet: bin/prover
-	bin/prover setup --config ./config/config-devnet-limitless.toml --circuits "execution-limitless" --assets-dir ./prover-assets
-
-
 ##
-## Generate the setup for all provers job for sepolia (to be run with S3 access)
+## Generate the setup (shared across all environments; layer2 config differentiate environments)
 ##
-setup-sepolia: bin/prover
-	bin/prover setup --config ./config/config-sepolia-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
-
-##
-## Generate the setup for all provers job for mainnet (to be run with S3 access)
-##
-setup-mainnet: bin/prover
-	bin/prover setup --config ./config/config-mainnet-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+setup: bin/prover
+	bin/prover setup --config ./config/config-devnet-limitless.toml --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)

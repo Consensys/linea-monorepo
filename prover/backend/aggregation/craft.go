@@ -73,6 +73,11 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			// as the first block's state root hash.
 			if cf.ParentStateRootHashContract.IsZero() {
 				cf.ParentStateRootHashContract = po.ParentStateRootHash.ToBytes32()
+			} else if !isKoalaBearHash(cf.ParentStateRootHashContract) {
+				logrus.WithFields(logrus.Fields{
+					"parentStateRootHashContract": cf.ParentStateRootHashContract.Hex(),
+					"firstExecutionParentHash":    po.ParentStateRootHash.Hex(),
+				}).Warn("BLS-to-KoalaBear transition detected: parentStateRootHashContract is a BLS hash, circuit will fall back to first execution's initial state root hash")
 			}
 		}
 
@@ -309,6 +314,19 @@ func validate(cf *CollectedFields) (err error) {
 	}
 
 	return err
+}
+
+// isKoalaBearHash checks whether a FullBytes32 represents a valid koalabear
+// octuplet (8 x 32-bit limbs, each < 0x7f000001). Returns false for BLS hashes.
+func isKoalaBearHash(h types.FullBytes32) bool {
+	const koalaMod = 0x7f000001
+	for i := 0; i < 8; i++ {
+		limb := binary.BigEndian.Uint32(h[4*i : 4*i+4])
+		if limb >= koalaMod {
+			return false
+		}
+	}
+	return true
 }
 
 // Pack an array of boolean into an offset list. The offset list encodes the

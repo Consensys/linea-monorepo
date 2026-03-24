@@ -74,7 +74,7 @@ func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.A
 		target         = distributed.GetPublicInputListGnark(api, &wvc, distributed.TargetNbSegmentPublicInputBase, numModule)
 		countGL        = distributed.GetPublicInputListGnark(api, &wvc, distributed.SegmentCountGLPublicInputBase, numModule)
 		countLPP       = distributed.GetPublicInputListGnark(api, &wvc, distributed.SegmentCountLPPPublicInputBase, numModule)
-		_              = distributed.GetPublicInputListGnark(api, &wvc, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSet    = distributed.GetPublicInputListGnark(api, &wvc, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		sharedRandMSet = distributed.GetPublicInputListGnark(api, &wvc, distributed.SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
 	)
 
@@ -85,9 +85,9 @@ func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.A
 	}
 
 	// LogDerivativeSum, GrandProduct, HornerSum are extension field elements
-	_ = wvc.GetPublicInputExt(api, distributed.LogDerivativeSumPublicInput)
+	logDerivativeSum := wvc.GetPublicInputExt(api, distributed.LogDerivativeSumPublicInput)
 	gdProduct := wvc.GetPublicInputExt(api, distributed.GrandProductPublicInput)
-	_ = wvc.GetPublicInputExt(api, distributed.HornerPublicInput)
+	hornerSum := wvc.GetPublicInputExt(api, distributed.HornerPublicInput)
 
 	// VK and VKMerkleRoot are octuplets (8 indexed public inputs each)
 	var vk0, vk1, vkMerkleRoot [8]koalagnark.Element
@@ -102,21 +102,13 @@ func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.A
 		api.AssertIsEqual(target[module], countLPP[module])
 	}
 
-	// TODO(protocol-bug): The generalMSet, logDerivativeSum, and hornerSum
-	// should cancel to zero across all segments but they currently don't in
-	// production traces. The GrandProduct (multiplicative) correctly equals 1.
-	// This is a pre-existing protocol-level issue in the distributed prover's
-	// additive accumulation across segments. All individual segment proofs and
-	// the conglomeration hierarchy pass their internal verification.
-	// These checks are temporarily disabled until the protocol team fixes the
-	// root cause. Re-enable once the distributed prover correctly handles
-	// cross-segment multiset/logderivative/horner accumulation.
-	//
-	// for k := range generalMSet {
-	// 	api.AssertIsEqual(generalMSet[k], 0)
-	// }
-	// koalaAPI.AssertIsEqualExt(logDerivativeSum, koalaAPI.ZeroExt())
-	// koalaAPI.AssertIsEqualExt(hornerSum, koalaAPI.ZeroExt())
+	for k := range generalMSet {
+		api.AssertIsEqual(generalMSet[k], 0)
+	}
+
+	// Extension field assertions for log-derivative, horner and grand-product
+	koalaAPI.AssertIsEqualExt(logDerivativeSum, koalaAPI.ZeroExt())
+	koalaAPI.AssertIsEqualExt(hornerSum, koalaAPI.ZeroExt())
 	koalaAPI.AssertIsEqualExt(gdProduct, koalaAPI.OneExt())
 
 	// Hash the shared randomness multiset using Poseidon2 over KoalaBear

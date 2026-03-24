@@ -28,12 +28,12 @@ const (
 // testCompilationParams defines compilation parameters for testing segment compilation
 // Note: ColumnProfileMPTS is left nil to avoid profile size constraints during testing
 var testCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 24,
+	FixedNbRowPlonkCircuit:       1 << 25,
 	FixedNbRowExternalHasher:     1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
 	InitialCompilerSizeConglo:    1 << 18,
-	ColumnProfileMPTS:            []int{264, 1400, 300, 15, 15, 28, 4, 4},
+	ColumnProfileMPTS:            []int{264, 1400, 256, 24, 12, 28, 8, 8},
 	ColumnProfileMPTSPrecomputed: 45,
 	FullDebugMode:                false,
 }

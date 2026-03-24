@@ -489,9 +489,9 @@ func listOfChecksums[T io.WriterTo](assets []T) []string {
 	return res
 }
 
-// copyConfigToAssets creates the config directory under assets dir with environment and copies the config file
+// copyConfigToAssets creates the config directory under assets dir and copies the config file
 func copyConfigToAssets(cfg *config.Config, configFilePath string, cmdName string) error {
-	configDir := filepath.Join(cfg.AssetsDir, cfg.Version, cfg.Environment, "config")
+	configDir := filepath.Join(cfg.AssetsDir, cfg.Version, "config")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return fmt.Errorf("%s failed to create config directory: %w", cmdName, err)
 	}
