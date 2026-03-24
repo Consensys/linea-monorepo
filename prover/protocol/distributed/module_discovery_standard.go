@@ -1219,8 +1219,12 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 		switch paddingInfo {
 		case noPaddingInformation:
-			qbm, _ := ls.Disc.QbmOf(col)
-			utils.Panic("cannot guess how to pad the column, you may want to recheck your module grouping because the current one is not padded but grouped with padded modules, newLen=%v, stop=%v, start=%v, col=%v, qbm=%v module=%v", newLen, stop, start, col.ID, qbm.ModuleName, module)
+			// The column is "full" (data spans [0, fullSize) with no padding).
+			// When the LPP module requires more segments than this column can
+			// fill, treat it as right-padded: extend beyond fullSize so that
+			// SegmentOfColumn pads the extra segments with the last value (or
+			// zeros if MarkZeroPadded).
+			return 0, newLen
 		case constantPaddingInformation:
 			return 0, 0 // There should not be anyway to end up in that situation
 		case leftPaddingInformation:
