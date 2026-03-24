@@ -64,6 +64,10 @@ processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:ge
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
 
+  // Gradle 9: custom Test tasks must explicitly wire the test source set
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+
   inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
 
   useJUnitPlatform {
