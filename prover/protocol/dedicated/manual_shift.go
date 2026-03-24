@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -37,7 +38,7 @@ type ManuallyShifted struct {
 // [ManuallyShifted] for more details.
 func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, name string) *ManuallyShifted {
 
-	colName_ := ifaces.ColID(name) + "_COL"
+	colName_ := ifaces.ColID(fmt.Sprintf("%v_%v_%v", name, offset, root.Size())) + "_COL"
 	alreadyExists := len(name) > 0 && comp.Columns.Exists(colName_)
 
 	if len(name) == 0 {
@@ -49,7 +50,7 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 	}
 
 	var (
-		colName = ifaces.ColID(name) + "_COL"
+		colName = ifaces.ColID(fmt.Sprintf("%v_%v_%v", name, offset, root.Size())) + "_COL"
 		size    = root.Size()
 		res     = ManuallyShifted{
 			Natural: comp.InsertCommit(root.Round(), colName, size, root.IsBase()).(column.Natural),
@@ -60,12 +61,14 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 
 	comp.InsertGlobal(
 		root.Round(),
-		ifaces.QueryID(name)+"_CONSTRAINT",
+		ifaces.QueryID(fmt.Sprintf("%v_%v_%v", name, offset, root.Size()))+"_CONSTRAINT",
 		symbolic.Sub(
 			res.Natural,
 			column.Shift(root, offset),
 		),
 	)
+
+	pragmas.MarkZeroPadded(res.Natural)
 
 	return &res
 }
@@ -86,16 +89,16 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 	valVec := val.IntoRegVecSaveAlloc()
 
 	if m.Offset < 0 {
-		// For negative offset, rotate left: move the last |Offset| elements to the front
-		// Example: [a, b, c, d] with offset=-1 becomes [d, a, b, c]
-		shiftedVal := append(valVec[size+m.Offset:], valVec[:size+m.Offset]...)
+		// For negative offset, prepend zeros and drop the last |Offset| elements.
+		// Zero-padding is required for compatibility with the distributed system's
+		// segment boundary handling.
+		shiftedVal := append(make([]field.Element, -m.Offset), valVec[:size+m.Offset]...)
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
 	if m.Offset > 0 {
-		// For positive offset, rotate right: move the first Offset elements to the end
-		// Example: [a, b, c, d] with offset=1 becomes [b, c, d, a]
-		shiftedVal := append(valVec[m.Offset:], valVec[:m.Offset]...)
+		// For positive offset, drop the first Offset elements and append zeros.
+		shiftedVal := append(valVec[m.Offset:], make([]field.Element, m.Offset)...)
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
