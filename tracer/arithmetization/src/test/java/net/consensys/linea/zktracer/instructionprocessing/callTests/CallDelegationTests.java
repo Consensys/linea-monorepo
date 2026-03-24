@@ -28,11 +28,9 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -61,8 +59,7 @@ public class CallDelegationTests extends TracerTestBase {
    */
 
   final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-  final Address senderAddress =
-      Address.extract(senderKeyPair.getPublicKey());
+  final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
   final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(10))
