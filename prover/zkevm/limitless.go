@@ -578,10 +578,10 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	}
 
 	type perSegmentMSetInfo struct {
-		ModuleName   distributed.ModuleName
-		ModuleIndex  int
-		SegmentIndex int
-		ProofType    string // "GL" or "LPP"
+		ModuleName       distributed.ModuleName
+		ModuleIndex      int
+		SegmentIndex     int
+		ProofType        string // "GL" or "LPP"
 		MSetContribution multisethashing.MSetHash
 	}
 
