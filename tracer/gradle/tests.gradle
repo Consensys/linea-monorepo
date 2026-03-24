@@ -160,6 +160,12 @@ tasks.withType(Test).configureEach {
 // Test Tasks
 // =============================================================================
 
+// Gradle 9: custom Test tasks must explicitly wire the test source set
+tasks.withType(Test).matching { it.name != 'test' }.configureEach {
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+}
+
 tasks.test.configure {
   // Following required as some unit tests run BESU checks
   dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
