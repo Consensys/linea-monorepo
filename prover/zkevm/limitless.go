@@ -574,6 +574,14 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		Contribution fext.Element
 	}
 
+	type perSegmentMSetInfo struct {
+		ModuleName   distributed.ModuleName
+		ModuleIndex  int
+		SegmentIndex int
+		ProofType    string // "GL" or "LPP"
+		MSetContribution multisethashing.MSetHash
+	}
+
 	var (
 		allGrandProduct     = fext.One()
 		allLogDerivativeSum = fext.Element{}
@@ -585,6 +593,9 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		perHornerPartContrib = map[string]fext.Element{}
 		perHornerPartSegs    = map[string][]hornerSegInfo{}
 		moduleSegmentCounter = map[distributed.ModuleName]int{}
+
+		// Per-segment multiset contributions for detailed diagnostics
+		perSegmentMSets []perSegmentMSetInfo
 	)
 
 	for i, witness := range witnessGLs {
@@ -605,6 +616,15 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		generalMSetFromGLFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		generalMSetFromGL := multisethashing.MSetHash(generalMSetFromGLFr)
 		generalMSet.Add(generalMSetFromGL)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "GL",
+			MSetContribution: generalMSetFromGL,
+		})
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -648,6 +668,15 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		generalMSetFromLPPFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		generalMSetFromLPP := multisethashing.MSetHash(generalMSetFromLPPFr)
 		generalMSet.Add(generalMSetFromLPP)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "LPP",
+			MSetContribution: generalMSetFromLPP,
+		})
 
 		logDerivativeSum := rt.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
 		grandProduct := rt.GetPublicInput(distributed.GrandProductPublicInput).Ext
@@ -803,10 +832,166 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	}
 
 	if !generalMSet.IsEmpty() {
+		logrus.Errorf("general multiset does not cancel")
+
+		// Per-segment breakdown to identify which segments contribute non-zero residuals
+		logrus.Infof("=== Per-segment general multiset breakdown ===")
+		for _, info := range perSegmentMSets {
+			if !info.MSetContribution.IsEmpty() {
+				// Log the first few non-zero elements for diagnostics
+				nonZeroIdx := -1
+				var nonZeroVal field.Element
+				for k := 0; k < multisethashing.MSetHashSize; k++ {
+					if !info.MSetContribution[k].IsZero() {
+						nonZeroIdx = k
+						nonZeroVal = info.MSetContribution[k]
+						break
+					}
+				}
+				logrus.Errorf("  NON-ZERO %v module=%v (index=%d) segment=%d first_nonzero_at=%d val=%v",
+					info.ProofType, info.ModuleName, info.ModuleIndex, info.SegmentIndex, nonZeroIdx, nonZeroVal.String())
+			}
+		}
+
 		utils.Panic("general multiset does not cancel")
 	}
 
 	logrus.Infof("All accumulation cancellation invariants passed (horner,log-derivative-sum,general-multiset,grand-product)")
+
+	// --- Conglomeration completion checks (mirrors checkLimitlessConglomerationCompletion) ---
+	// These checks verify that the segment counts match the expected target for
+	// each module, which is what the outer proof circuit enforces via
+	// checkLimitlessConglomerationCompletion.
+	logrus.Infof("Checking conglomeration completion invariants (segment counts)")
+
+	numModules := len(lz.DistWizard.Disc.Modules)
+	glSegmentCounts := make([]int, numModules)
+	lppSegmentCounts := make([]int, numModules)
+
+	for _, w := range witnessGLs {
+		glSegmentCounts[w.ModuleIndex]++
+	}
+	for _, w := range witnessLPPs {
+		lppSegmentCounts[w.ModuleIndex]++
+	}
+
+	// The target segment count is the same across all witnesses; take it from
+	// the first GL witness (it always exists because there is at least one
+	// module).
+	var targetSegmentCounts []int
+	if len(witnessGLs) > 0 {
+		targetSegmentCounts = witnessGLs[0].TotalSegmentCount
+	} else if len(witnessLPPs) > 0 {
+		targetSegmentCounts = witnessLPPs[0].TotalSegmentCount
+	}
+
+	segCountMismatch := false
+	for m := 0; m < numModules; m++ {
+		target := 0
+		if targetSegmentCounts != nil && m < len(targetSegmentCounts) {
+			target = targetSegmentCounts[m]
+		}
+		moduleName := lz.DistWizard.Disc.Modules[m].ModuleName
+
+		if glSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): GL count=%d, target=%d",
+				moduleName, m, glSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+		if lppSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): LPP count=%d, target=%d",
+				moduleName, m, lppSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+
+		logrus.Infof("module %v (index=%d): target=%d GL=%d LPP=%d",
+			moduleName, m, target, glSegmentCounts[m], lppSegmentCounts[m])
+	}
+
+	if segCountMismatch {
+		utils.Panic("conglomeration completion check failed: segment count mismatch detected (see errors above)")
+	}
+
+	logrus.Infof("All conglomeration completion invariants passed (segment-counts)")
+
+	// --- LPP column data consistency check ---
+	// In production, GL inserts hash(moduleIndex, segmentIndex, lppMerkleRoot)
+	// into the general multiset, and LPP removes hash(moduleIndex,
+	// segmentIndex, lppMerkleRoot). The lppMerkleRoot is the Vortex Merkle
+	// root of round-0 columns. In both GL and LPP modules, round-0 columns
+	// are the LPP columns. For the multiset to cancel, GL and LPP must have
+	// identical LPP column data.
+	//
+	// This check verifies that the LPP column data extracted during
+	// segmentation is identical between GL and LPP witnesses for each
+	// (module, segment) pair. A mismatch here would cause the Vortex
+	// Merkle roots to differ in production, resulting in a general multiset
+	// cancellation failure.
+	logrus.Infof("Checking LPP column data consistency between GL and LPP witnesses")
+
+	// Build a lookup of LPP witnesses by (moduleIndex, segmentIndex)
+	type moduleSegKey struct {
+		ModuleIndex  int
+		SegmentIndex int
+	}
+	lppWitnessMap := make(map[moduleSegKey]*distributed.ModuleWitnessLPP)
+	for _, w := range witnessLPPs {
+		lppWitnessMap[moduleSegKey{w.ModuleIndex, w.SegmentModuleIndex}] = w
+	}
+
+	lppColMismatch := false
+	for i, glW := range witnessGLs {
+		key := moduleSegKey{glW.ModuleIndex, glW.SegmentModuleIndex}
+		lppW, ok := lppWitnessMap[key]
+		if !ok {
+			logrus.Errorf("GL witness %d (module=%v index=%d segment=%d) has no matching LPP witness",
+				i, glW.ModuleName, glW.ModuleIndex, glW.SegmentModuleIndex)
+			lppColMismatch = true
+			continue
+		}
+
+		// Get LPP column IDs from the blueprint
+		blueprintLPP := lz.DistWizard.BlueprintLPPs[glW.ModuleIndex]
+		for _, colID := range blueprintLPP.LPPColumnSets {
+			glData, glHas := glW.Columns[colID]
+			lppData, lppHas := lppW.Columns[colID]
+
+			if !glHas && !lppHas {
+				continue
+			}
+			if glHas != lppHas {
+				logrus.Errorf("LPP column %v: GL has=%v LPP has=%v (module=%v segment=%d)",
+					colID, glHas, lppHas, glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			glVec := smartvectors.IntoRegVec(glData)
+			lppVec := smartvectors.IntoRegVec(lppData)
+
+			if len(glVec) != len(lppVec) {
+				logrus.Errorf("LPP column %v length mismatch: GL=%d LPP=%d (module=%v segment=%d)",
+					colID, len(glVec), len(lppVec), glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			for j := range glVec {
+				if glVec[j] != lppVec[j] {
+					logrus.Errorf("LPP column %v data mismatch at row %d: GL=%v LPP=%v (module=%v segment=%d)",
+						colID, j, glVec[j].String(), lppVec[j].String(), glW.ModuleName, glW.SegmentModuleIndex)
+					lppColMismatch = true
+					break // one mismatch per column is enough
+				}
+			}
+		}
+	}
+
+	if lppColMismatch {
+		utils.Panic("LPP column data consistency check failed: GL and LPP witnesses have different LPP column data (see errors above). This would cause Vortex Merkle root mismatch in production.")
+	}
+
+	logrus.Infof("All conglomeration completion checks passed (segment-counts, LPP-column-consistency)")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
