@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
