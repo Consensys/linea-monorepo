@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.PRE_WARMING;
 import static net.consensys.linea.zktracer.types.AddressUtils.precompileAddressOsaka;
+
 import java.util.*;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;

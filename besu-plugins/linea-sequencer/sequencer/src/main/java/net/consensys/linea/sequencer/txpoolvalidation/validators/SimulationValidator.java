@@ -18,7 +18,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.exceptions.TracingExceptions;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
@@ -30,6 +29,7 @@ import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.exceptions.TracingExceptions;
 import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
@@ -103,9 +103,11 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
 
       ModuleLimitsValidationResult moduleLimitResult;
       try {
-        moduleLimitResult = moduleLineCountValidator.validate(lineCountingTracer.getModulesLineCount());
+        moduleLimitResult =
+            moduleLineCountValidator.validate(lineCountingTracer.getModulesLineCount());
       } catch (TracingExceptions e) {
-        log.warn("Tracer failed during simulation of tx {}: {}", transaction.getHash(), e.getMessage());
+        log.warn(
+            "Tracer failed during simulation of tx {}: {}", transaction.getHash(), e.getMessage());
         return Optional.of("Tracer error during simulation: " + e.getMessage());
       }
 
