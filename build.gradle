@@ -55,7 +55,8 @@ allprojects {
             'org.junit.jupiter',
             'org.junit'
           ]) {
-        def junitVersion = details.requested.group == 'org.junit.platform' ? '1.13.4' : "${libs.versions.junit.get()}"
+        def junitVersion = details.requested.group == 'org.junit.platform' ?
+            "${libs.versions.junitPlatform.get()}" : "${libs.versions.junit.get()}"
         details.useVersion(junitVersion)
         details.because('Java 25 requires JUnit 5.13+ for ASM compatibility')
       }
