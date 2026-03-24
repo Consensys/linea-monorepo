@@ -38,6 +38,7 @@ l2_msg_max_nb_merkle = 200
 chain_id = 59141
 message_service_contract = "0x971e727e956690b9957be6d51Ec16E73AcAC83A7"
 
+
 [traces_limits]
 modules = [
     {module = "", limit = 131072, limit_large = 262144}, # default module limit
@@ -60,7 +61,7 @@ modules = [
     {module = "MMU", limit = 1048576, limit_large = 2097152},
     {module = "MOD", limit = 131072, limit_large = 262144},
     {module = "MUL", limit = 65536, limit_large = 131072},
-    {module = "MXP", limit = 524288, limit_large = 1048576},
+    {module = "MXP", limit = 1048576, limit_large = 2097152},
     {module = "OOB", limit = 262144, limit_large = 524288},
     {module = "RLP_ADDR", limit = 4096, limit_large = 8192},
     {module = "RLP_TXN", limit = 131072, limit_large = 262144},
@@ -94,8 +95,8 @@ modules = [
     {module = "SHF_REFERENCE_TABLE", limit = 4096, limit_large = 4096, is_not_scalable = true},
     {module = "INSTRUCTION_DECODER", limit = 512, limit_large = 512, is_not_scalable = true},
     {module = "U20", limit = 2097152, limit_large = 4194304},
-    {module = "U32", limit = 2097152, limit_large = 4194304},
-    {module = "U36", limit = 2097152, limit_large = 4194304},
+    {module = "U32", limit = 4194304, limit_large = 8388608},
+    {module = "U36", limit = 4194304, limit_large = 8388608},
     {module = "U64", limit = 2097152, limit_large = 4194304},
     {module = "U128", limit = 2097152, limit_large = 4194304},
     {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
