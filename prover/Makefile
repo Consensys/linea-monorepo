@@ -3,8 +3,8 @@ SHELL := /usr/bin/env bash
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-# beta-v5.0-rc5
-CONSTRAINTS_COMMIT_HASH := f438666752756039446de0042de35f4e88f80056
+# beta-v5.2-20260323165125-797dad0
+CONSTRAINTS_COMMIT_HASH := 797dad09ae3b5f8b498eb74ccb4cf2fb13a89aba
 GO_CORSET_VERSION := v1.2.7
 
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
@@ -61,7 +61,7 @@ zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
 ## Generate the setup (shared across all environments; layer2 config differentiate environments)
 ##
 setup: bin/prover
-	bin/prover setup --config ./config/config-devnet-limitless.toml --assets-dir ./prover-assets
+	bin/prover setup --config ./config/config-devnet-limitless.toml --circuits "execution-limitless" --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
