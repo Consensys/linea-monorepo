@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -33,7 +33,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -64,7 +63,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
       final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
 
     selectors =
@@ -82,7 +81,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             deniedAddresses,
             transactionProfitabilityCalculator,
             transactionCompressor,
-            blobCompressor);
+            blobCompressorSelectorByTimestamp);
   }
 
   /**
@@ -97,6 +96,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param deniedEvents The transaction event deny list
    * @param deniedBundleEvents The bundle transaction event deny list
    * @param deniedAddresses The denied addresses set
+   * @param blobCompressorSelectorByTimestamp
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
@@ -113,7 +113,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
       final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
@@ -134,14 +134,14 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
     if (txSelectorConfiguration.blobSizeLimit() != null
         && transactionCompressor != null
-        && blobCompressor != null) {
+        && blobCompressorSelectorByTimestamp != null) {
       selectorsList.add(
           new CompressionAwareTransactionSelector(
               selectorsStateManager,
               txSelectorConfiguration.blobSizeLimit(),
               txSelectorConfiguration.compressedBlockHeaderOverhead(),
               transactionCompressor,
-              blobCompressor));
+              blobCompressorSelectorByTimestamp));
     }
 
     selectorsList.add(
