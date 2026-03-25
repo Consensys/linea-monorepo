@@ -40,10 +40,16 @@ type Columns struct {
 	// Gathers the claimed evaluations to be proven
 	Ys ifaces.Column
 
-	// (Commitment, already computed)
+	// (Commitment)
 	//
-	// LinearCombination claimed by the verifier
-	Ualpha ifaces.Column
+	// T polynomial coefficients committed by the prover.
+	UalphaCoeff ifaces.Column
+
+	// (Commitment)
+	//
+	// N RS-codeword evaluations — the lookup table for (Q, UalphaQ) ⊂ (I, UalphaEvals).
+	// Set by CheckReedSolomon (FFT of UalphaCoeff).
+	UalphaEvals ifaces.Column
 
 	// (Proof, already computed)
 	//
@@ -282,7 +288,10 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		ctx.Columns.PrecompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
 	}
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha
-	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha
+	// Coefficient mode is the only supported mode in self-recursion.
+	// vortexCtx.Items.Ualpha holds T polynomial coefficients committed by the prover.
+	// UalphaEvals (N elements) is computed by RowLinearCombinationPhase via FFT.
+	ctx.Columns.UalphaCoeff = vortexCtx.Items.Ualpha
 	ctx.Coins.Q = vortexCtx.Items.Q
 	ctx.Columns.WholePreimagesSis = vortexCtx.Items.OpenedSISColumns
 	ctx.Columns.WholePreimagesNonSis = vortexCtx.Items.OpenedNonSISColumns
@@ -308,16 +317,16 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		}
 	}
 
-	// Likewise, assume that Ualpha has a status of `Proof` and then
-	// mark it as a `Committed`
-	if comp.Columns.Status(ctx.Columns.Ualpha.GetColID()) != column.Proof {
+	// Assume that UalphaCoeff (T coefficients, from the prover proof) has
+	// status Proof and mark it as Committed.
+	if comp.Columns.Status(ctx.Columns.UalphaCoeff.GetColID()) != column.Proof {
 		utils.Panic(
-			"Assumed Ualpha to be %v but status is %v",
+			"Assumed UalphaCoeff to be %v but status is %v",
 			column.Proof.String(),
-			comp.Columns.Status(ctx.Columns.Ualpha.GetColID()).String(),
+			comp.Columns.Status(ctx.Columns.UalphaCoeff.GetColID()).String(),
 		)
 	}
-	comp.Columns.SetStatus(ctx.Columns.Ualpha.GetColID(), column.Committed)
+	comp.Columns.SetStatus(ctx.Columns.UalphaCoeff.GetColID(), column.Committed)
 
 	// And for the `WholePreimageSis`, we mark it as `Ignored` and make the
 	// same assumption that theirs status is `Proof`
@@ -352,20 +361,30 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		comp.Columns.SetStatus(opened.GetColID(), column.Committed)
 	}
 
-	// Mark the opened columns from the vortex context as Ignored
+	// Mark the opened columns from the vortex context as Ignored.
+	// In pure SIS/non-SIS cases, OpenedColumns shares the same column objects
+	// as OpenedSISColumns/OpenedNonSISColumns, so they may already be marked
+	// as Committed above. We only mark them as Ignored if they're still Proof.
 	for _, opened := range vortexCtx.Items.OpenedColumns {
-		// Assume that the opened columns have a `Proof` status
-		if comp.Columns.Status(opened.GetColID()) != column.Proof {
+		status := comp.Columns.Status(opened.GetColID())
+		// In pure SIS/non-SIS cases, the column was already set to Committed above
+		// since OpenedColumns points to the same columns as OpenedSISColumns/OpenedNonSISColumns.
+		// In mixed case, it should still be Proof and we mark it as Ignored.
+		if status == column.Proof {
+			comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+		} else if status != column.Committed {
+			// Unexpected status - should be either Proof (mixed case) or Committed (pure case)
 			utils.Panic(
-				"Assumed the opened columns %v to be %v but status is %v (recursion context is %v)",
+				"Assumed the opened columns %v to be %v or %v but status is %v (recursion context is %v)",
 				opened.GetColID(),
 				column.Proof.String(),
-				comp.Columns.Status(opened.GetColID()),
+				column.Committed.String(),
+				status,
 				ctx.SelfRecursionCnt,
 			)
 		}
-		// Mark them as Ignored
-		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+		// If status is Committed (pure SIS/non-SIS case), leave it as Committed
+		// since self-recursion will use it via WholePreimagesSis/WholePreimagesNonSis
 	}
 
 	// And mark the merkle proof column as a Proof message

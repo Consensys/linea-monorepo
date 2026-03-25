@@ -66,14 +66,11 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 	return err
 }
 
+// VerifyCommon checks the linear combination and statement for coefficient-mode U_alpha.
+// proof.LinearCombination holds T polynomial coefficients (E4).
 func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
 
-	err := vortex.CheckIsCodeWord(params.RsParams, proof.LinearCombination)
-	if err != nil {
-		return err
-	}
-
-	err = vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns, params.RsParams)
 	if err != nil {
 		return err
 	}
@@ -83,6 +80,5 @@ func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.Verifie
 		return err
 	}
 
-	return err
-
+	return nil
 }

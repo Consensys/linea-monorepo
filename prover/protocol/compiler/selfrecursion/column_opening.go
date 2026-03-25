@@ -28,6 +28,7 @@ import (
 
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
+
 	// Registers the limb expanded version of the preimages
 	ctx.ColSelection()
 	ctx.LinearHashAndMerkle()
@@ -107,10 +108,16 @@ type ColSelectionProverAction struct {
 
 func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
 	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
-	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
+
+	// UalphaEvals always holds the N-element RS codeword regardless of mode:
+	// in eval mode it is the committed codeword; in coeff mode it is the
+	// FFT of UalphaCoeff committed by CheckReedSolomon.
+	evalsColID := a.Ctx.Columns.UalphaEvals.GetColID()
+	uAlpha := smartvectors.IntoRegVecExt(run.GetColumn(evalsColID))
 
 	uAlphaQ := make([]fext.Element, 0, a.Ctx.Columns.UalphaQ.Size())
 	uAlphaQFilter := make([]field.Element, 0, a.Ctx.Columns.UalphaQFilter.Size())
+
 	for _, qi := range q {
 		uAlphaQ = append(uAlphaQ, uAlpha[qi])
 		uAlphaQFilter = append(uAlphaQFilter, field.One())
@@ -172,13 +179,16 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		UAlphaQFilterID: ctx.Columns.UalphaQFilter.GetColID(),
 	})
 
-	// Declare an inclusion query to finalize the selection check
+	// Declare an inclusion query to finalize the selection check.
+	// UalphaEvals is always the N-element RS codeword (set in both modes by
+	// RowLinearCombinationPhase), so the lookup table is uniform across modes.
+	ualphaEvalsCol := ctx.Columns.UalphaEvals
 	ctx.Comp.InsertInclusionConditionalOnIncluded(
 		roundQ,
 		ctx.selectQInclusion(),
 		[]ifaces.Column{
 			ctx.Columns.I,
-			ctx.Columns.Ualpha,
+			ualphaEvalsCol,
 		},
 		[]ifaces.Column{
 			ctx.Columns.Q,
@@ -186,7 +196,6 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		},
 		ctx.Columns.UalphaQFilter,
 	)
-	// Add a binarity constraint for UAlphaQFilter
 	dedicated.MustBeBinary(ctx.Comp, ctx.Columns.UalphaQFilter, roundQ)
 }
 

@@ -13,7 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -170,86 +172,190 @@ func BenchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B) {
 	}
 }
 func BenchmarkProfileSelfRecursion(b *testing.B) {
+	// Empirically: both committed-cells and proof-cells decrease with smaller T3/T4.
+	// Dominant cost = numSISRounds × T × RS (the Ualpha polynomial per SIS round).
+	// Smaller T → smaller Ualpha per round → fewer proof-cells.
+	// T1 has zero effect on either metric.
+	// Sweep smaller T3/T4 to find the true minimum.
+	// NTT limit: T × RS × 16 ≤ 2^24; RS=8 (T1), RS=16 (T3,T4) → T3,T4 ≥ 16.
+	type params struct{ t3, t4 int }
+	candidates := []params{
+		{1 << 12, 1 << 14}, // (current best)
+		// {1 << 12, 1 << 13},
+		// {1 << 12, 1 << 12},
+
+		// {1 << 13, 1 << 14},
+		// {1 << 11, 1 << 14},
+	}
 	for _, bc := range benchCases {
-		b.Run(bc.Name, func(b *testing.B) {
-			profileSelfRecursionCompilation(b, bc)
-		})
+		for _, p := range candidates {
+			p := p
+			// Go's benchmark framework calls the sub-benchmark function twice
+			// (probe + measurement). Capture the compiled IOP from the last call
+			// and print the stats once after b.Run returns.
+			var lastComp *wizard.CompiledIOP
+			b.Run(fmt.Sprintf("%s/T3=%d/T4=%d", bc.Name, p.t3, p.t4), func(b *testing.B) {
+				lastComp = profileSelfRecursionCompilation(b, bc, p.t3, p.t4)
+			})
+			printProfileStats(lastComp, p.t3, p.t4)
+		}
 	}
 }
 
-func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
+// profileSelfRecursionCompilation applies the same compilation pipeline as
+// fullInitialCompilationSuite in zkevm/full.go. poseidon2.CompilePoseidon2 and
+// plonkinwizard.Compile are no-ops when the circuit has no matching queries.
+//
+// go test -timeout=10h -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
+func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase, t3, t4 int) *wizard.CompiledIOP {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	const NbOpenedColumns = 64
-	const RsInverseRate = 16
+	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	// nbIteration = 2 is the best setting with minimun proof size
-	// go test -timeout=10h -test.fullpath=true -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
-	for nbIteration := 1; nbIteration < 5; nbIteration++ {
+	comp := wizard.Compile(
+		sbc.Define,
+		poseidon2.CompilePoseidon2,
+		plonkinwizard.Compile,
+		compiler.Arcane(
+			compiler.WithStitcherMinSize(16),
+			compiler.WithTargetColSize(1<<19),
+		),
+		vortex.Compile(
+			2, false,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+		),
+	)
 
-		fmt.Printf("\n\n\n\n-------------------------------------------\n nbIteration = %v\n\n", nbIteration)
+	// First round of self-recursion
+	selfrecursion.SelfRecurse(comp)
+	_ = wizard.ContinueCompilation(comp,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(16),
+		),
+		vortex.Compile(
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
+			vortex.WithSISParams(&sisInstance),
+		),
+	)
 
-		for lastIterationTargetRowSize := 9; lastIterationTargetRowSize < 14; lastIterationTargetRowSize++ {
+	// Second round of self-recursion (T3 controls polynomial degree here)
+	selfrecursion.SelfRecurse(comp)
+	_ = wizard.ContinueCompilation(comp,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(t3),
+			compiler.WithStitcherMinSize(16),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+	)
 
-			lastIterationParams := selfRecursionParameters{
-				NbOpenedColumns: NbOpenedColumns,
-				RsInverseRate:   RsInverseRate,
-				TargetRowSize:   1 << lastIterationTargetRowSize,
-			}
+	// Third round of self-recursion
+	selfrecursion.SelfRecurse(comp)
+	_ = wizard.ContinueCompilation(comp,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(t4),
+			compiler.WithStitcherMinSize(16),
+		),
+	)
 
-			for midIterationsTargetRowSize := 6; midIterationsTargetRowSize < 14; midIterationsTargetRowSize++ {
+	// Capture committed cells before the final vortex consumes them.
+	statsPreFinalVortex := logdata.GetWizardStats(comp)
 
-				midIterationsParams := selfRecursionParameters{
-					NbOpenedColumns: NbOpenedColumns,
-					RsInverseRate:   RsInverseRate,
-					TargetRowSize:   1 << midIterationsTargetRowSize,
-				}
+	_ = wizard.ContinueCompilation(comp,
+		vortex.Compile(
 
-				for initIterationTargetColSize := 13; initIterationTargetColSize < 20; initIterationTargetColSize++ {
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
+		),
+	)
 
-					iterationParams := selfRecursionIterationParameters{
-						InitTargetColSize: 1 << initIterationTargetColSize,
-						MidTargetRowSize:  midIterationsParams.TargetRowSize,
-						LastTargetRowSize: lastIterationParams.TargetRowSize,
-					}
+	statsPostFinalVortex := logdata.GetWizardStats(comp)
+	b.ReportMetric(float64(statsPreFinalVortex.NumCellsCommitted), "#committed-cells")
+	b.ReportMetric(float64(statsPostFinalVortex.NumCellsProof), "#proof-cells")
 
-					b.Run(fmt.Sprintf("%+v", iterationParams), func(b *testing.B) {
-						comp := wizard.Compile(
-							// Round of recursion 0
-							sbc.Define,
-							compiler.Arcane(
-								compiler.WithTargetColSize(1<<initIterationTargetColSize),
-								compiler.WithStitcherMinSize(1<<8),
-							),
-							vortex.Compile(
-								RsInverseRate,
-								false,
-								vortex.WithOptionalSISHashingThreshold(512),
-								vortex.ForceNumOpenedColumns(NbOpenedColumns),
-								vortex.WithSISParams(&ringsis.StdParams),
-							),
-						)
+	return comp
+}
 
-						for i := 0; i < nbIteration-1; i++ {
-							applySelfRecursionThenArcane(comp, midIterationsParams)
-							applyVortex(comp, midIterationsParams, false)
-						}
-
-						statsVortex := logdata.GetWizardStats(comp)
-
-						applySelfRecursionThenArcane(comp, lastIterationParams)
-
-						statsArcane := logdata.GetWizardStats(comp)
-
-						b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
-						b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
-
-					})
-				}
-			}
-		}
+// printProfileStats prints the vortex sizing parameters and proof-cell breakdown.
+// Called once after b.Run completes to avoid duplicate output from Go's probe+measurement calls.
+func printProfileStats(comp *wizard.CompiledIOP, t3, t4 int) {
+	if comp == nil {
+		return
 	}
+
+	// Print Vortex sizing parameters via the PcsCtxs field.
+	if vctx, ok := comp.PcsCtxs.(*vortex.Ctx); ok {
+		fmt.Printf("\n[vortex-params] numComs=%d depth=%d numOpening=%d MerkleProofSize=%d numRows=%d CommittedRowsCount=%d CommittedRowsCountSIS=%d numPrecomputed=%d\n",
+			vctx.NumCommittedRounds(),
+			utils.Log2Ceil(vctx.NumEncodedCols()),
+			vctx.NbColsToOpen(),
+			vctx.MerkleProofSize(),
+			vctx.CommittedRowsCount,
+			vctx.CommittedRowsCount,
+			vctx.CommittedRowsCountSIS,
+			len(vctx.Items.Precomputeds.PrecomputedColums),
+		)
+	}
+
+	// Detailed breakdown of proof cells by column name prefix.
+	type catCells struct{ count, cells int }
+	cats := map[string]*catCells{}
+	for _, colName := range comp.Columns.AllKeys() {
+		if comp.Columns.Status(colName) != column.Proof {
+			continue
+		}
+		col := comp.Columns.GetHandle(colName)
+		size := col.Size()
+		weight := size
+		if !col.IsBase() {
+			weight = 4 * size
+		}
+		s := string(colName)
+		var key string
+		switch {
+		case strings.Contains(s, "MERKLEPROOF"):
+			key = "MERKLEPROOF"
+		case strings.Contains(s, "MERKLEROOT"):
+			key = "MERKLEROOT"
+		case strings.Contains(s, "SELECTED_COL_SIS"):
+			key = "SELECTED_COL_SIS"
+		case strings.Contains(s, "SELECTED_COL_NON_SIS"):
+			key = "SELECTED_COL_NON_SIS"
+		case strings.Contains(s, "SELECTED_COL"):
+			key = "SELECTED_COL"
+		case strings.Contains(s, "LINEAR_COMBINATION"):
+			key = "LINEAR_COMBINATION(U_alpha)"
+		default:
+			key = "OTHER:" + s
+		}
+		if cats[key] == nil {
+			cats[key] = &catCells{}
+		}
+		cats[key].count++
+		cats[key].cells += weight
+	}
+	fmt.Printf("\n[proof-breakdown t3=%v t4=%v]\n", t3, t4)
+	total := 0
+	for k, v := range cats {
+		fmt.Printf("  %-35s cols=%4d  cells=%8d\n", k, v.count, v.cells)
+		total += v.cells
+	}
+	fmt.Printf("  %-35s cells=%8d\n", "TOTAL", total)
 }
 
 func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
