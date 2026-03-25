@@ -107,6 +107,9 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 }
 
 func TestSerdeZkEVM(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping heavy test in short mode")
+	}
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	runSerdeTest(t, getTestZkEVM(), "ZKEVM", true, false)
 }
@@ -559,6 +562,9 @@ func TestSerdeIOP6(t *testing.T) {
 
 // Test function that runs sanity checks for all scenarios with multiple test cases
 func TestSerdeIOPAll(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping heavy test in short mode")
+	}
 	for _, scenario := range serdeScenarios {
 		if !scenario.test {
 			continue
