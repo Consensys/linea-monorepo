@@ -98,5 +98,5 @@ plugin-linea-max-block-gas=55000000
 plugin-linea-l1l2-bridge-contract="0x33bf916373159A8c1b54b025202517BfDbB7863D"
 plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"
 plugin-linea-deny-list-path="config/denylist.sepolia.txt"
-plugin-linea-blob-tx-enabled=true
+plugin-linea-blob-tx-enabled=false
 plugin-linea-delegate-code-tx-enabled=true
