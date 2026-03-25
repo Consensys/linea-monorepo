@@ -1,5 +1,5 @@
 environment = "devnet"
-version = "6.2.0"                              # TODO @gbotrel hunt all version definitions.
+version = "6.2.1"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -9,8 +9,8 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "limitless"
 conflated_traces_dir = "./"
-requests_root_dir = "./shared/r8a/prover-execution/"
-ignore_compatibility_check=true
+requests_root_dir = "./shared/v3/prover-execution/"
+ignore_compatibility_check=false
 keep_traces_until_block = 0
 serialization = true
 limitless_with_debug = false
@@ -65,15 +65,15 @@ modules = [
     {module = "EXT", limit = 524288, limit_large = 1048576},
     {module = "GAS", limit = 65536, limit_large = 131072},
     {module = "HUB", limit = 2097152, limit_large = 4194304},
-    {module = "HUBx4", limit = 8388608, limit_large = 16777216},
+    {module = "HUB×4", limit = 8388608, limit_large = 16777216},
     {module = "LOG_DATA", limit = 65536, limit_large = 131072},
     {module = "LOG_INFO", limit = 4096, limit_large = 8192},
     {module = "MMIO", limit = 2097152, limit_large = 4194304},
-    {module = "MMIOx3", limit = 8388608, limit_large = 16777216},
+    {module = "MMIO×3", limit = 8388608, limit_large = 16777216},
     {module = "MMU", limit = 1048576, limit_large = 2097152},
     {module = "MOD", limit = 131072, limit_large = 262144},
     {module = "MUL", limit = 65536, limit_large = 131072},
-    {module = "MXP", limit = 524288, limit_large = 1048576},
+    {module = "MXP", limit = 1048576, limit_large = 2097152},
     {module = "OOB", limit = 262144, limit_large = 524288},
     {module = "RLP_ADDR", limit = 4096, limit_large = 8192},
     {module = "RLP_TXN", limit = 131072, limit_large = 262144},
@@ -106,11 +106,11 @@ modules = [
     {module = "BIN_REFERENCE_TABLE", limit = 262144, limit_large = 262144, is_not_scalable = true},
     {module = "SHF_REFERENCE_TABLE", limit = 4096, limit_large = 4096, is_not_scalable = true},
     {module = "INSTRUCTION_DECODER", limit = 512, limit_large = 512, is_not_scalable = true},
-    {module = "U20", limit = 2097152, limit_large = 4194304},
-    {module = "U32", limit = 2097152, limit_large = 4194304},
-    {module = "U36", limit = 2097152, limit_large = 4194304},
-    {module = "U64", limit = 2097152, limit_large = 4194304},
-    {module = "U128", limit = 2097152, limit_large = 4194304},
+    {module = "U20", limit = 4194304, limit_large = 8388608},
+    {module = "U32", limit = 4194304, limit_large = 8388608},
+    {module = "U36", limit = 4194304, limit_large = 8388608},
+    {module = "U64", limit = 4194304, limit_large = 8388608},
+    {module = "U128", limit = 4194304, limit_large = 8388608},
     {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
     {module = "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", limit = 256, limit_large = 512},
     {module = "PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
