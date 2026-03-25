@@ -9,10 +9,12 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -24,6 +26,7 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
+import net.consensys.linea.utils.TransactionCompressor;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -57,7 +60,9 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final Map<Address, Set<TransactionEventFilter>> deniedEvents,
       final Map<Address, Set<TransactionEventFilter>> deniedBundleEvents,
       final Set<Address> deniedAddresses,
-      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
+      final TransactionCompressor transactionCompressor,
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
 
     selectors =
@@ -73,7 +78,9 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             deniedEvents,
             deniedBundleEvents,
             deniedAddresses,
-            transactionProfitabilityCalculator);
+            transactionProfitabilityCalculator,
+            transactionCompressor,
+            blobCompressorSelectorByTimestamp);
   }
 
   /**
@@ -88,6 +95,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param deniedEvents The transaction event deny list
    * @param deniedBundleEvents The bundle transaction event deny list
    * @param deniedAddresses The denied addresses set
+   * @param blobCompressorSelectorByTimestamp
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
@@ -102,7 +110,9 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final Map<Address, Set<TransactionEventFilter>> deniedEvents,
       final Map<Address, Set<TransactionEventFilter>> deniedBundleEvents,
       final Set<Address> deniedAddresses,
-      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
+      final TransactionCompressor transactionCompressor,
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
@@ -112,22 +122,44 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             tracerConfiguration,
             invalidTransactionByLineCountCache);
 
-    return List.of(
-        new AllowedAddressTransactionSelector(deniedAddresses),
-        new MaxBlockCallDataTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
+    final List<PluginTransactionSelector> selectorsList = new ArrayList<>();
+    selectorsList.add(new AllowedAddressTransactionSelector(deniedAddresses));
+
+    if (txSelectorConfiguration.maxBlockCallDataSize() != null) {
+      selectorsList.add(
+          new MaxBlockCallDataTransactionSelector(
+              selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()));
+    }
+
+    if (txSelectorConfiguration.blobSizeLimit() != null
+        && transactionCompressor != null
+        && blobCompressorSelectorByTimestamp != null) {
+      selectorsList.add(
+          new CompressionAwareTransactionSelector(
+              selectorsStateManager,
+              txSelectorConfiguration.blobSizeLimit(),
+              txSelectorConfiguration.compressedBlockHeaderOverhead(),
+              transactionCompressor,
+              blobCompressorSelectorByTimestamp));
+    }
+
+    selectorsList.add(
         new MaxBlockGasTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
+            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()));
+    selectorsList.add(
         new ProfitableTransactionSelector(
             blockchainService,
             profitabilityConfiguration,
             maybeProfitabilityMetrics,
-            transactionProfitabilityCalculator),
-        new BundleConstraintTransactionSelector(),
+            transactionProfitabilityCalculator));
+    selectorsList.add(new BundleConstraintTransactionSelector());
+    selectorsList.add(
         new MaxBundleGasPerBlockTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
-        traceLineLimitTransactionSelector,
-        new TransactionEventSelector(deniedEvents, deniedBundleEvents));
+            selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()));
+    selectorsList.add(traceLineLimitTransactionSelector);
+    selectorsList.add(new TransactionEventSelector(deniedEvents, deniedBundleEvents));
+
+    return List.copyOf(selectorsList);
   }
 
   /**

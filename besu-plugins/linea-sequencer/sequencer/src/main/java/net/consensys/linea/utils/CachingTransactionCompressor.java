@@ -12,6 +12,10 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import kotlin.time.Instant;
+import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorSelectorByTimestamp;
+import linea.blob.BlobCompressorVersion;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -23,10 +27,16 @@ import org.hyperledger.besu.datatypes.Transaction;
  */
 @Slf4j
 public class CachingTransactionCompressor implements TransactionCompressor {
-  private static final long DEFAULT_CACHE_SIZE = 10000;
-  private final Cache<Hash, Integer> compressedSizeCache;
+  record CacheKey(Hash transactionHash, BlobCompressorVersion compressorVersion) {}
 
-  public CachingTransactionCompressor(long cacheSize) {
+  private static final long DEFAULT_CACHE_SIZE = 10000;
+  private final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp;
+  private final Cache<CacheKey, Integer> compressedSizeCache;
+
+  public CachingTransactionCompressor(
+      final long cacheSize,
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
+    this.blobCompressorSelectorByTimestamp = blobCompressorSelectorByTimestamp;
     compressedSizeCache =
         CacheBuilder.newBuilder()
             .maximumSize(cacheSize)
@@ -34,13 +44,15 @@ public class CachingTransactionCompressor implements TransactionCompressor {
             .build();
   }
 
-  public CachingTransactionCompressor() {
-    this(DEFAULT_CACHE_SIZE);
+  public CachingTransactionCompressor(
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
+    this(DEFAULT_CACHE_SIZE, blobCompressorSelectorByTimestamp);
   }
 
-  private int calculateCompressedSize(final Transaction transaction) {
-    final byte[] bytes = transaction.encoded().toArrayUnsafe();
-    return Compressor.instance.compressedSize(bytes);
+  private int calculateCompressedSize(
+      final Transaction transaction, final BlobCompressor blobCompressor) {
+    final byte[] encoded = TxEncodingUtils.encodeForCompressor(transaction);
+    return blobCompressor.compressedSize(encoded);
   }
 
   /**
@@ -52,10 +64,13 @@ public class CachingTransactionCompressor implements TransactionCompressor {
    * @return the compressed size of the transaction
    */
   @Override
-  public int getCompressedSize(final Transaction transaction) {
+  public int getCompressedSize(final Transaction transaction, final Instant blockTimestamp) {
+    final BlobCompressor blobCompressor =
+        blobCompressorSelectorByTimestamp.getBlobCompressor(blockTimestamp);
     try {
       return compressedSizeCache.get(
-          transaction.getHash(), () -> calculateCompressedSize(transaction));
+          new CacheKey(transaction.getHash(), blobCompressor.getVersion()),
+          () -> calculateCompressedSize(transaction, blobCompressor));
     } catch (ExecutionException e) {
       log.atWarn()
           .setMessage(
@@ -63,7 +78,7 @@ public class CachingTransactionCompressor implements TransactionCompressor {
           .addArgument(transaction::getHash)
           .setCause(e)
           .log();
-      return calculateCompressedSize(transaction);
+      return calculateCompressedSize(transaction, blobCompressor);
     }
   }
 }

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.BundlePoolService;
@@ -50,7 +51,6 @@ import net.consensys.linea.sequencer.forced.LineaForcedTransactionPool;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
 import net.consensys.linea.utils.CachingTransactionCompressor;
-import net.consensys.linea.utils.Compressor;
 import net.consensys.linea.utils.TransactionCompressor;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -88,8 +88,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
   protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
+  protected static BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp;
+  protected static TransactionCompressor transactionCompressor;
   protected static TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
+  public static final int DEFAULT_COMPRESSED_SIZE_LIMIT = 128 * 1024;
   // Shared reloadable deny lists - centralized management for all plugins
   protected static ReloadableSet<Address> sharedDeniedAddresses;
   protected static ReloadableSet<Address> sharedBundleDeniedAddresses;
@@ -99,11 +102,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean reloadInProgress = new AtomicBoolean(false);
-
-  static {
-    // force the initialization of the gnark compress native library to fail fast in case of issues
-    Compressor.instance.compressedSize(new byte[1024]);
-  }
 
   private ServiceManager serviceManager;
 
@@ -306,9 +304,22 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         new InvalidTransactionByLineCountCache(
             transactionSelectorConfiguration().overLinesLimitCacheSize());
 
+    // Initialise the native compressor once with the authoritative limit so that
+    // CachingTransactionCompressor and CompressionAwareTransactionSelector share
+    // the same instance. Fall back to the default when no blob size limit is configured.
+    final int effectiveBlobLimit =
+        transactionSelectorConfiguration().blobSizeLimit() != null
+            ? transactionSelectorConfiguration().blobSizeLimit()
+            : DEFAULT_COMPRESSED_SIZE_LIMIT;
+    blobCompressorSelectorByTimestamp =
+        new BlobCompressorSelectorByTimestamp(
+            transactionSelectorConfiguration().blobCompressorVersionActivationTimes(),
+            effectiveBlobLimit);
+
     final LineaProfitabilityConfiguration profitabilityConfiguration = profitabilityConfiguration();
-    final TransactionCompressor transactionCompressor =
-        new CachingTransactionCompressor(profitabilityConfiguration.compressedTxCacheSize());
+    transactionCompressor =
+        new CachingTransactionCompressor(
+            profitabilityConfiguration.compressedTxCacheSize(), blobCompressorSelectorByTimestamp);
     transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConfiguration, transactionCompressor);
 
@@ -410,6 +421,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     reloadInProgress.set(false);
     blockchainService = null;
     metricsSystem = null;
+    blobCompressorSelectorByTimestamp = null;
     sharedDeniedAddresses = null;
     sharedBundleDeniedAddresses = null;
     sharedDeniedEvents = null;

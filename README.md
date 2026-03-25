@@ -24,13 +24,23 @@ It serves developers by making the Linea tech stack open source under the [Apach
 
 [Linea](https://linea.build) is a developer-ready layer 2 network scaling Ethereum. It's secured with a zero-knowledge rollup, built on lattice-based cryptography, and powered by [Consensys](https://consensys.io).
 
-Linea is compatible with the execution clients [Besu](https://github.com/hyperledger/besu/) or [Geth](https://github.com/ethereum/go-ethereum). To run a full node, an execution client is paired with the consensus client [Maru](https://github.com/Consensys/maru).
+Linea is compatible with the execution clients [Besu](https://github.com/besu-eth/besu/) or [Geth](https://github.com/ethereum/go-ethereum). To run a full node, an execution client is paired with the consensus client [Maru](https://github.com/Consensys/maru).
 
 ## Get started
 
 If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
 
 For developers looking to build services locally (such as, the coordinator), see our detailed [Local Development Guide](docs/local-development-guide.md).
+
+## Agent Documentation
+
+For AI coding agents and developer tools:
+
+- Canonical instructions: [AGENTS.md](AGENTS.md)
+- Claude Code entry point: [CLAUDE.md](CLAUDE.md)
+- GitHub Copilot entry point: [.github/copilot-instructions.md](.github/copilot-instructions.md)
+- Cursor documentation index: [.cursor/rules/documentation.mdc](.cursor/rules/documentation.mdc)
+- Cursor review/rule set: [.cursor/BUGBOT.md](.cursor/BUGBOT.md)
 
 ## Looking for the Linea code?
 

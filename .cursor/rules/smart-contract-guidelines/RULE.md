@@ -1,6 +1,6 @@
 ---
 description: Linea Smart Contract Development Guidelines
-globs: contracts/**/*.sol, contracts-tge/**/*.sol
+globs: contracts/**/*.sol, contracts/token-generation-event/**/*.sol
 alwaysApply: false
 ---
 
@@ -163,8 +163,8 @@ When extending Linea contracts:
 ## Deployment
 
 - Set `VERIFY_CONTRACT=true` for block explorer verification
-- Use network-specific private keys (e.g., `SEPOLIA_PRIVATE_KEY`)
-- See `contracts/docs/deployment.md` for full parameter reference
+- Use deployer private key: `DEPLOYER_PRIVATE_KEY` (all networks)
+- See `contracts/docs/deployment/README.md` for full parameter reference
 
 ## Testing
 

@@ -39,7 +39,9 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F "e2e..." --frozen-lockfile --prefer-offline'
+          commands: |
+            pnpm run -F "e2e^..." build
 
       - name: Create directory for conflated traces
         run: |
@@ -79,7 +81,7 @@ jobs:
         id: run_e2e_tests
         timeout-minutes: 6
         run: |
-          pnpm run -F e2e test:e2e:local
+          pnpm run -F e2e test:local
 
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
@@ -90,10 +92,8 @@ jobs:
           docker logs coordinator --since 1h &>> docker_logs/coordinator.txt || true
           docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt || true
           docker logs shomei --since 1h &>> docker_logs/shomei.txt || true
-          docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt || true
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt || true
           docker logs postman --since 1h &>> docker_logs/postman.txt || true
-          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt || true
           docker logs l2-node-besu --since 1h &>> docker_logs/l2-node-besu.txt || true
           docker logs transaction-exclusion-api --since 1h &>> docker_logs/transaction-exclusion-api.txt || true
           docker logs sequencer --since 1h &>> docker_logs/sequencer.txt || true

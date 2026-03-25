@@ -1,5 +1,6 @@
 // Random
 export { generateRandomUUIDv4 } from "./random";
+export { toLowercaseLines } from "./string";
 
 // Polling / waiting
 export { awaitUntil, AwaitUntilTimeoutError } from "./wait";
@@ -14,6 +15,8 @@ export { pollForBlockNumber, getBlockByNumberOrBlockTag } from "./block";
 
 // Gas
 export { estimateLineaGas } from "./gas";
+export { normalizeEip1559Fees } from "./fees";
+export type { Eip1559Fees } from "./fees";
 
 // Traffic
 export { sendTransactionsToGenerateTrafficWithInterval } from "./traffic";
@@ -22,4 +25,8 @@ export { sendTransactionsToGenerateTrafficWithInterval } from "./traffic";
 export { execDockerCommand, getDockerImageTag } from "./docker";
 
 // Transaction
-export { getRawTransactionHex, getTransactionHash, sendMessage } from "./transaction";
+export { expectSuccessfulTransaction, getRawTransactionHex, getTransactionHash } from "./transaction";
+
+// Retry
+export { sendTransactionWithRetry } from "./retry";
+export type { FeeOverrides, SendTransactionWithRetryOptions, TransactionResult } from "./retry";

@@ -16,6 +16,7 @@ import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITAB
 import com.google.auto.service.AutoService;
 import java.math.BigInteger;
 import java.util.Optional;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
@@ -107,6 +108,12 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                     metricsSystem))
             : Optional.empty();
 
+    // blobCompressor is initialised in AbstractLineaSharedPrivateOptionsPlugin with the effective
+    // limit. Only pass it to the factory when a blob size limit is explicitly configured so that
+    // CompressionAwareTransactionSelector is only active when intentionally enabled.
+    final BlobCompressorSelectorByTimestamp blobCompressorSelector =
+        txSelectorConfiguration.blobSizeLimit() != null ? blobCompressorSelectorByTimestamp : null;
+
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             blockchainService,
@@ -123,7 +130,9 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             sharedDeniedEvents,
             sharedDeniedBundleEvents,
             sharedDeniedAddresses,
-            transactionProfitabilityCalculator));
+            transactionProfitabilityCalculator,
+            transactionCompressor,
+            blobCompressorSelector));
   }
 
   @Override
