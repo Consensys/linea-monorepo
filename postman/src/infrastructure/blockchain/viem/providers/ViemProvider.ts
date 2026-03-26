@@ -37,7 +37,7 @@ export class ViemProvider implements IProvider {
       const receipt = await this.client.getTransactionReceipt({ hash: txHash });
       return mapViemReceiptToCoreReceipt(receipt);
     } catch (error) {
-      this.logger.warn("Failed to fetch transaction receipt.", { txHash, error });
+      this.logger.debug("Failed to fetch transaction receipt.", { txHash, error });
       return null;
     }
   }
@@ -52,7 +52,7 @@ export class ViemProvider implements IProvider {
       }
       return mapViemBlockToCoreBlock(block);
     } catch (error) {
-      this.logger.warn("Failed to fetch block.", { blockNumber, error });
+      this.logger.debug("Failed to fetch block.", { blockNumber, error });
       return null;
     }
   }
@@ -74,7 +74,7 @@ export class ViemProvider implements IProvider {
       const tx = await this.client.getTransaction({ hash: transactionHash });
       return mapViemTransactionToCoreSubmission(tx);
     } catch (error) {
-      this.logger.warn("Failed to fetch transaction.", { transactionHash, error });
+      this.logger.debug("Failed to fetch transaction.", { transactionHash, error });
       return null;
     }
   }

@@ -72,10 +72,10 @@ describe("ViemProvider", () => {
     it("returns null and logs warning when receipt not found", async () => {
       const rpcError = new Error("not found");
       publicClient.getTransactionReceipt.mockRejectedValue(rpcError);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const loggerDebugSpy = jest.spyOn(logger, "debug");
 
       await expect(provider.getTransactionReceipt(TEST_TRANSACTION_HASH)).resolves.toBeNull();
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction receipt.", {
+      expect(loggerDebugSpy).toHaveBeenCalledWith("Failed to fetch transaction receipt.", {
         txHash: TEST_TRANSACTION_HASH,
         error: rpcError,
       });
@@ -131,10 +131,10 @@ describe("ViemProvider", () => {
     it("returns null and logs warning on error", async () => {
       const rpcError = new Error("block not found");
       publicClient.getBlock.mockRejectedValue(rpcError);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const loggerDebugSpy = jest.spyOn(logger, "debug");
 
       await expect(provider.getBlock(9999n)).resolves.toBeNull();
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch block.", {
+      expect(loggerDebugSpy).toHaveBeenCalledWith("Failed to fetch block.", {
         blockNumber: 9999n,
         error: rpcError,
       });
@@ -187,10 +187,10 @@ describe("ViemProvider", () => {
     it("returns null and logs warning when transaction not found", async () => {
       const rpcError = new Error("not found");
       publicClient.getTransaction.mockRejectedValue(rpcError);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
+      const loggerDebugSpy = jest.spyOn(logger, "debug");
 
       await expect(provider.getTransaction(TEST_TRANSACTION_HASH)).resolves.toBeNull();
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Failed to fetch transaction.", {
+      expect(loggerDebugSpy).toHaveBeenCalledWith("Failed to fetch transaction.", {
         transactionHash: TEST_TRANSACTION_HASH,
         error: rpcError,
       });
