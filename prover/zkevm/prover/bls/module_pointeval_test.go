@@ -93,5 +93,6 @@ func TestPointEvalNoCircuit(t *testing.T) {
 }
 
 func TestPointEvalWithCircuit(t *testing.T) {
+	skipIfRace(t)
 	testPointEval(t, true)
 }
