@@ -16,6 +16,8 @@ sonarQube = { id = "org.sonarqube", version = "4.3.1.3277" }
 
 [libraries]
 jreleaser = { group = "org.jreleaser", name = "jreleaser-gradle-plugin", version = "1.23.0" }
+bouncycastle-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
 
 [versions]
 # Build

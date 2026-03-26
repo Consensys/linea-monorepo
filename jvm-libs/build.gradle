@@ -1,6 +1,10 @@
 buildscript {
   dependencies {
     classpath(libs.jreleaser)
+    // Force BC version compatible with JReleaser — Gradle's bundled BC is older and
+    // leaks into the buildscript classloader, causing NoSuchMethodError at runtime.
+    classpath(libs.bouncycastle.bcprov)
+    classpath(libs.bouncycastle.bcpkix)
   }
 }
 
