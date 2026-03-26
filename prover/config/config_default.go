@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	DefaultDeferToOtherLargeCodes     = []int{137}        // List of exit codes for which the job will put back the job to be reexecuted in large mode.
+	DefaultDeferToOtherLargeCodes     = []int{136, 137}     // List of exit codes for which the job will put back the job to be reexecuted in large mode. 136 = too many segments, 137 = OOM.
 	DefaultRetryLocallyWithLargeCodes = []int{77, 333, 2} // List of exit codes for which the job will retry in large mode
 )
 
