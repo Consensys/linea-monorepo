@@ -30,7 +30,7 @@ jobs:
         uses: anthropics/claude-code-action@5d0cc745cd0cce4c0e9e0b3511de26c3bc285eb5 #v1.0.71
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-opus-4-6
+          claude_args: --model claude-opus-4-6
           direct_prompt: |
             You are reviewing the full Kotlin/JVM codebase in the `coordinator/` and
             `jvm-libs/` modules of the Linea monorepo.
