@@ -73,7 +73,6 @@ Before contributing, ensure you're familiar with:
 - [Linea docs](https://docs.linea.build)
 - [Linea blog](https://linea.mirror.xyz)
 - [Support](https://support.linea.build)
-- [Discord](https://discord.gg/linea)
 - [X](https://x.com/LineaBuild)
 
 ### Update reference tests

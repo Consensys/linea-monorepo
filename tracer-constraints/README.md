@@ -65,5 +65,4 @@ Before contributing, ensure you're familiar with:
 - [Linea docs](https://docs.linea.build) managed from a [public repo](https://github.com/Consensys/doc.linea)
 - [Linea blog](https://linea.mirror.xyz)
 - [Support](https://support.linea.build)
-- [Discord](https://discord.gg/linea)
 - [X](https://x.com/LineaBuild)

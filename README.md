@@ -3,9 +3,6 @@
 <a href="https://x.com/LineaBuild">
   <img src="https://img.shields.io/twitter/follow/LineaBuild?style=for-the-badge" alt="X (formerly Twitter) Follow" height="20">
 </a>
-<a href="https://discord.com/invite/consensys">
-  <img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" height="20">
-</a>
 <a href="https://github.com/Consensys/linea-monorepo/blob/main/LICENSE-APACHE">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="Apache 2.0 License" height="20">
 </a>
@@ -88,5 +85,4 @@ Before contributing, ensure you're familiar with:
 - [Linea docs](https://docs.linea.build) managed from a [public repo](https://github.com/Consensys/doc.linea)
 - [Linea blog](https://linea.mirror.xyz)
 - [Support](https://support.linea.build)
-- [Discord](https://discord.gg/linea)
 - [X](https://x.com/LineaBuild)
