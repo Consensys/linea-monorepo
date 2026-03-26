@@ -231,26 +231,11 @@ describe("SlackClient", () => {
     it("includes the proposal date from sourceCreatedAt in the shared fields", async () => {
       // Arrange
       const mockProposal = createMockProposal({
-        sourceCreatedAt: new Date("2024-01-15T08:30:00Z"),
-        createdAt: new Date("2025-02-20T10:00:00Z"),
-        analyzedAt: new Date("2026-03-26T05:40:38Z"),
+        sourceCreatedAt: new Date("2024-01-15T00:30:00Z"),
+        createdAt: new Date("2025-02-20T12:00:00Z"),
+        analyzedAt: new Date("2026-03-26T12:00:00Z"),
       });
       const mockAssessment = createMockAssessment();
-      const expectedProposalDate = mockProposal.sourceCreatedAt.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const createdAtDate = mockProposal.createdAt.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const analyzedAtDate = mockProposal.analyzedAt?.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
@@ -259,9 +244,9 @@ describe("SlackClient", () => {
       // Assert
       const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
       const sharedFields = callBody.blocks[1].fields.map((field: { text: string }) => field.text);
-      expect(sharedFields).toContain(`*Proposal Date:* ${expectedProposalDate}`);
-      expect(sharedFields).not.toContain(`*Proposal Date:* ${createdAtDate}`);
-      expect(sharedFields).not.toContain(`*Proposal Date:* ${analyzedAtDate}`);
+      expect(sharedFields).toContain("*Proposal Date:* Jan 15, 2024");
+      expect(sharedFields).not.toContain("*Proposal Date:* Feb 20, 2025");
+      expect(sharedFields).not.toContain("*Proposal Date:* Mar 26, 2026");
     });
   });
 
@@ -446,26 +431,11 @@ describe("SlackClient", () => {
     it("includes the proposal date from sourceCreatedAt in the shared fields", async () => {
       // Arrange
       const mockProposal = createMockProposal({
-        sourceCreatedAt: new Date("2024-01-15T08:30:00Z"),
-        createdAt: new Date("2025-02-20T10:00:00Z"),
-        analyzedAt: new Date("2026-03-26T05:40:38Z"),
+        sourceCreatedAt: new Date("2024-01-15T00:30:00Z"),
+        createdAt: new Date("2025-02-20T12:00:00Z"),
+        analyzedAt: new Date("2026-03-26T12:00:00Z"),
       });
       const mockAssessment = createMockAssessment();
-      const expectedProposalDate = mockProposal.sourceCreatedAt.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const createdAtDate = mockProposal.createdAt.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-      const analyzedAtDate = mockProposal.analyzedAt?.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
@@ -474,9 +444,9 @@ describe("SlackClient", () => {
       // Assert
       const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
       const sharedFields = callBody.blocks[2].fields.map((field: { text: string }) => field.text);
-      expect(sharedFields).toContain(`*Proposal Date:* ${expectedProposalDate}`);
-      expect(sharedFields).not.toContain(`*Proposal Date:* ${createdAtDate}`);
-      expect(sharedFields).not.toContain(`*Proposal Date:* ${analyzedAtDate}`);
+      expect(sharedFields).toContain("*Proposal Date:* Jan 15, 2024");
+      expect(sharedFields).not.toContain("*Proposal Date:* Feb 20, 2025");
+      expect(sharedFields).not.toContain("*Proposal Date:* Mar 26, 2026");
     });
   });
 
