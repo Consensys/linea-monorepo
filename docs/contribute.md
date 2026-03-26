@@ -64,7 +64,7 @@ Once you submit a pull request, it will be reviewed by the maintainers. They may
 
 We use GitOps, ArgoCD, Helm, and Kubernetes for our release process. When changes are merged into the main branch, they can be deployed to a testnet environment using ArgoCD and Helm. After successful testing in the testnet environment, the changes can be promoted to the mainnet environment.
 
-Deployments to testnet and mainnet are **performed by Consensys engineers** in coordination with the Release Manager, DevOps, and SRE teams. Contributors do not run production deployments themselves; follow the release workflow below and the [Release to testnet](#release-to-testnet) / [Release to mainnet](#release-to-mainnet) sections.
+Deployments to testnet and mainnet are done by Consensys engineers.
 
 The Release Manager is responsible for the technical soundness of each release. This includes:
 * Ensuring that any code deployed to any environment (including Devnet) has corresponding E2E test coverage. If blockers prevent E2E coverage, they must be flagged and tracked before deployment proceeds.
