@@ -62,6 +62,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
+      - name: Clear JReleaser tool cache
+        run: rm -rf ~/.jreleaser/caches
+
       - name: Build and Release to Maven Central
         run: ./gradlew --stacktrace --info -p jvm-libs jreleaserRelease -Pversion=$VERSION
         env:

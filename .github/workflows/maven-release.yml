@@ -55,6 +55,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
 
+      - name: Clear JReleaser tool cache
+        run: rm -rf ~/.jreleaser/caches
+
       - name: Build and Release to Maven Central
         # ./gradlew clean is necessary because the build is cached
         # and cause issues with JReleaser
