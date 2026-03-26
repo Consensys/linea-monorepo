@@ -104,7 +104,7 @@ class GoBackedBlobCompressor private constructor(
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
       val dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString()
-      val nativeInstance = if (compressorVersion == BlobCompressorVersion.V4) {
+      val nativeInstance = if (!compressorVersion.isLegacy) {
         val lib = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
         val errOut = PointerByReference()
         val handle = lib.Init(dataLimit, dictPath, errOut)

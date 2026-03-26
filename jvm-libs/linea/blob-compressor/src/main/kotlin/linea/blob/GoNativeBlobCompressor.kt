@@ -102,11 +102,11 @@ interface GoNativeBlobCompressor {
 /** JNA binding for the legacy (pre-handle) native compressor library. One global compressor state per loaded library. */
 interface GoNativeBlobCompressorLegacyJnaLib : GoNativeBlobCompressor, Library
 
-enum class BlobCompressorVersion(val version: String) {
-  V1_2("v1.2.0"),
-  V2("v2.1.0"),
-  V3("v3.0.1"),
-  V4("v4.0.0"),
+enum class BlobCompressorVersion(val version: String, val isLegacy: Boolean) {
+  V1_2("v1.2.0", true),
+  V2("v2.1.0", true),
+  V3("v3.0.1", true),
+  V4("v4.0.0", false),
 }
 
 /**
@@ -115,7 +115,7 @@ enum class BlobCompressorVersion(val version: String) {
  * can coexist within the same process. [Free] must be called when the instance is no longer needed.
  */
 interface GoNativeBlobCompressorJnaLib : Library {
-  fun Init(dataLimit: Int, dictPath: String, errOut: PointerByReference?): Int
+  fun Init(dataLimit: Int, dictPath: String, errOut: PointerByReference): Int
   fun Free(handle: Int)
   fun Reset(handle: Int)
   fun StartNewBatch(handle: Int)
@@ -150,6 +150,9 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getLegacyInstance(version: BlobCompressorVersion): GoNativeBlobCompressor {
+      require(version.isLegacy) {
+        "$version uses the handle-based API; use getInstance() instead"
+      }
       synchronized(loadedLegacyVersions) {
         return loadedLegacyVersions[version]
           ?: loadLegacyLib(version)
@@ -159,6 +162,9 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getInstance(version: BlobCompressorVersion): GoNativeBlobCompressorJnaLib {
+      require(!version.isLegacy) {
+        "$version uses the legacy API; use getLegacyInstance() instead"
+      }
       synchronized(loadedVersions) {
         return loadedVersions[version]
           ?: loadLib(version)
