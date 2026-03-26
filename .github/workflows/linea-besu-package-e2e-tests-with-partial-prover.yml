@@ -88,7 +88,7 @@ jobs:
           # TODO: hardcoded image tags for testing, should be removed 
           command: |
             BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'beta-v5.2-20260323165125-797dad0' }} \
-            PROVER_TAG=${{ inputs.prover_image_tag || '359264b' }} \
+            PROVER_TAG=${{ inputs.prover_image_tag || '5407ca7' }} \
             make start-env-with-tracing-v2-partialprover CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
