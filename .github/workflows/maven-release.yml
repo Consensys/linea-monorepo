@@ -60,20 +60,32 @@ jobs:
         # pomchecker, which fails if a partial extraction exists from a prior run.
         run: rm -rf ~/.jreleaser/caches
 
-      - name: Build and Release to Maven Central
-        # ./gradlew clean is necessary because the build is cached
-        # and cause issues with JReleaser
-        run: ./gradlew --stacktrace ${{github.event.inputs.libToRelease}}:jreleaserRelease -Pversion=${{github.event.inputs.version}}
+      - name: Deploy to Maven Central
+        # TODO: Try reverting after Gradle 9
+        # jreleaserDeploy handles GPG signing + Maven Central upload without
+        # creating Git tags, which avoids a JGit classloader conflict:
+        # Gradle bundles its own JGit (parent-first loading wins) that is missing
+        # TagCommand.setGpgSigner(GpgObjectSigner) required by JReleaser 1.23.
+        run: ./gradlew --stacktrace ${{github.event.inputs.libToRelease}}:jreleaserDeploy -Pversion=${{github.event.inputs.version}}
         env:
-          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
-          JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
           JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
           JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+        run: |
+          ARTIFACT_ID=$(echo "${{ github.event.inputs.libToRelease }}" | awk -F: '{print $NF}')
+          VERSION="${{ github.event.inputs.version }}"
+          TAG_NAME="maven-${ARTIFACT_ID}-v${VERSION}"
+          gh release create "${TAG_NAME}" \
+            --repo "${{ github.repository }}" \
+            --title "Maven package: ${ARTIFACT_ID} v${VERSION}" \
+            --notes "Published to Maven Central" \
+            --latest=false
 
       # Persist logs
       - name: JReleaser release output

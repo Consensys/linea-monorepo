@@ -78,34 +78,16 @@ task createJreleaserOutputDir {
   }
 }
 
-jreleaserRelease.dependsOn(prePublishValidation)
-jreleaserRelease.dependsOn(createJreleaserOutputDir)
+jreleaserDeploy.dependsOn(prePublishValidation)
+jreleaserDeploy.dependsOn(createJreleaserOutputDir)
 
 
 // JReleaser configuration
-// https://jreleaser.org/guide/latest/reference/release/github.html
-// JRelease DSL does not have access to project properties, so we need to define them here
-def _releaseName = "Maven package: $project.group:$_artifactId:${project.version}"
-def _tagName = "maven-${_artifactId}-v${project.version}"
-
+// https://jreleaser.org/guide/latest/reference/deploy/maven/maven-central.html
+// GitHub release/tag creation is handled by `gh release create` in the workflow
+// to avoid a JGit classloader conflict with Gradle's bundled JGit.
 jreleaser {
   gitRootSearch = true
-  release {
-    github {
-      releaseName = _releaseName
-      tagName = _tagName
-      overwrite = true
-      files = false
-      artifacts = false
-      changelog {
-        enabled = false
-      }
-      commitAuthor {
-        name = 'Linea automations'
-        email = 'linea-automations@consensys.net'
-      }
-    }
-  }
   signing {
     active = 'ALWAYS'
     armored = true
@@ -117,6 +99,10 @@ jreleaser {
           active = 'ALWAYS'
           url = 'https://central.sonatype.com/api/v1/publisher'
           stagingRepository(stagingDeployDir)
+          // The self-hosted CI runner cannot reach the pomchecker download URL,
+          // so local pre-validation is skipped. Maven Central enforces identical
+          // POM rules server-side and will reject non-compliant artifacts anyway.
+          applyMavenCentralRules = false
         }
       }
     }
