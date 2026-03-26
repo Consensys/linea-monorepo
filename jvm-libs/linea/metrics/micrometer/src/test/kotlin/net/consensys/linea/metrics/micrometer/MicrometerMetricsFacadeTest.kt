@@ -124,6 +124,54 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
+  fun `createHistogram with percentileBuckets publishes specified percentiles`() {
+    val percentiles = listOf(0.5, 0.95, 0.99)
+    val histogram = metricsFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
+      name = "some.percentile.metric",
+      description = "Histogram with percentiles",
+      tags = listOf(Tag("key1", "value1")),
+      baseUnit = "seconds",
+      percentileBuckets = percentiles,
+    )
+
+    // Record enough data to produce meaningful percentiles
+    for (i in 1..100) {
+      histogram.record(i.toDouble())
+    }
+
+    val createdHistogram = meterRegistry.find("linea.test.test.category.some.percentile.metric").summary()
+    assertThat(createdHistogram).isNotNull
+    assertThat(createdHistogram!!.count()).isEqualTo(100L)
+
+    val percentileSnapshots = createdHistogram.takeSnapshot().percentileValues()
+    assertThat(percentileSnapshots).isNotEmpty
+    val reportedPercentiles = percentileSnapshots.map { it.percentile() }
+    assertThat(reportedPercentiles).containsAll(percentiles)
+  }
+
+  @Test
+  fun `createHistogram without percentileBuckets does not publish specific percentiles`() {
+    val histogram = metricsFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
+      name = "some.no.percentile.metric",
+      description = "Histogram without percentiles",
+      baseUnit = "seconds",
+    )
+
+    for (i in 1..100) {
+      histogram.record(i.toDouble())
+    }
+
+    val createdHistogram = meterRegistry.find("linea.test.test.category.some.no.percentile.metric").summary()
+    assertThat(createdHistogram).isNotNull
+    assertThat(createdHistogram!!.count()).isEqualTo(100L)
+
+    val percentileSnapshots = createdHistogram.takeSnapshot().percentileValues()
+    assertThat(percentileSnapshots).isEmpty()
+  }
+
+  @Test
   fun `createSimpleTimer creates timer with specified parameters`() {
     fun mockTimer() {
       Thread.sleep(200L)
