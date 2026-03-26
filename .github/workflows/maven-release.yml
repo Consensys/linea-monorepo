@@ -54,6 +54,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
+      - name: Clear JReleaser tool cache
+        # Self-hosted runners persist /home/runner between runs. JReleaser uses
+        # Files.createDirectory (not createDirectories) when unpacking tools like
+        # pomchecker, which fails if a partial extraction exists from a prior run.
+        run: rm -rf ~/.jreleaser/caches
+
       - name: Build and Release to Maven Central
         # ./gradlew clean is necessary because the build is cached
         # and cause issues with JReleaser
