@@ -13,7 +13,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import java.math.BigInteger;
+import java.util.Map;
 import java.util.Optional;
+import kotlin.time.Instant;
+import linea.blob.BlobCompressorSelectorByTimestamp;
+import linea.blob.BlobCompressorVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
@@ -43,7 +47,7 @@ public class ProfitabilityValidatorTest {
   public static final Address RECIPIENT =
       Address.fromHexString("0x0000000000000000000000000000000000001001");
   private static final Wei PROFITABLE_GAS_PRICE = Wei.of(11_000_000);
-  private static final Wei UNPROFITABLE_GAS_PRICE = Wei.of(200_000);
+  private static final Wei UNPROFITABLE_GAS_PRICE = Wei.of(50_000);
   public static final double TX_POOL_MIN_MARGIN = 0.5;
   private static final SECPSignature FAKE_SIGNATURE;
 
@@ -74,7 +78,10 @@ public class ProfitabilityValidatorTest {
     final var profitabilityConfBuilder =
         LineaProfitabilityCliOptions.create().toDomainObject().toBuilder()
             .txPoolMinMargin(TX_POOL_MIN_MARGIN);
-    final var transactionCompressor = new CachingTransactionCompressor();
+    final var transactionCompressor =
+        new CachingTransactionCompressor(
+            new BlobCompressorSelectorByTimestamp(
+                Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()), 128 * 1024));
 
     final var profitabilityCalculatorAlways =
         new TransactionProfitabilityCalculator(

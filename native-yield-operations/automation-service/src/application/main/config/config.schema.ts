@@ -21,7 +21,9 @@ const BooleanFromString = z.preprocess(
     }
     return val; // Trigger validation error
   },
-  z.boolean({ errorMap: () => ({ message: 'Expected "true", "false", "1", "0", or boolean.' }) }),
+  z.boolean({
+    message: 'Expected "true", "false", "1", "0", or boolean.',
+  }),
 );
 
 export const configSchema = z
@@ -37,6 +39,9 @@ export const configSchema = z
     // Beacon chain API endpoint URL for Ethereum 2.0 consensus layer.
     // See API documentation - https://ethereum.github.io/beacon-APIs/
     BEACON_CHAIN_RPC_URL: z.string().url(),
+    // Optional reference beacon chain API endpoint for staleness detection.
+    // When set, the service compares epoch from this node against the primary to detect drift.
+    REFERENCE_BEACON_CHAIN_RPC_URL: z.string().url().optional(),
     // GraphQL endpoint URL for Consensys Staking API. Expected to require OAuth2 token.
     STAKING_GRAPHQL_URL: z.string().url(),
     // IPFS gateway base URL for retrieving Lido StakingVault report data.
@@ -107,8 +112,9 @@ export const configSchema = z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-    // Maximum number of validator withdrawal requests that will be batched in a single transaction.
-    MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
+    // Maximum number of validator withdrawal requests (partial withdrawals and validator exits)
+    // batched in a single transaction. Set to 0 to disable all withdrawal submissions.
+    MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().nonnegative(),
     /**
      * The available withdrawal balance must exceed this amount before any withdrawal operation proceeds.
      * This prevents gas-inefficient transactions for very small amounts.
@@ -173,7 +179,7 @@ export const configSchema = z
      */
     LOG_LEVEL: z
       .enum(["error", "warn", "info", "verbose", "debug", "silly"], {
-        errorMap: () => ({ message: "LOG_LEVEL must be one of: error, warn, info, verbose, debug, silly" }),
+        message: "LOG_LEVEL must be one of: error, warn, info, verbose, debug, silly",
       })
       .optional(),
   })

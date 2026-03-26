@@ -13,6 +13,7 @@ import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 public class LineaTransactionSelectionResult extends TransactionSelectionResult {
   private enum LineaStatus implements TransactionSelectionResult.Status {
     BLOCK_CALLDATA_OVERFLOW(false, false, false),
+    BLOCK_COMPRESSED_SIZE_OVERFLOW(false, false, false),
     BLOCK_MODULE_LINE_COUNT_FULL(true, false, false),
     TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS(false, true, true),
     TX_TOO_LARGE_FOR_REMAINING_USER_GAS(false, false, false),
@@ -25,7 +26,8 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     BUNDLE_TOO_LARGE_FOR_REMAINING_BUNDLE_BLOCK_GAS(false, false, false),
     DENIED_LOG_TOPIC(false, true, true),
     TX_FILTERED_ADDRESS_FROM(false, true, true),
-    TX_FILTERED_ADDRESS_TO(false, true, true);
+    TX_FILTERED_ADDRESS_TO(false, true, true),
+    TX_FILTERED_ADDRESS_AUTHORIZATION(false, true, true);
 
     private final boolean stop;
     private final boolean discard;
@@ -74,6 +76,8 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
 
   public static final TransactionSelectionResult BLOCK_CALLDATA_OVERFLOW =
       new LineaTransactionSelectionResult(LineaStatus.BLOCK_CALLDATA_OVERFLOW);
+  public static final TransactionSelectionResult BLOCK_COMPRESSED_SIZE_OVERFLOW =
+      new LineaTransactionSelectionResult(LineaStatus.BLOCK_COMPRESSED_SIZE_OVERFLOW);
   public static final TransactionSelectionResult BLOCK_MODULE_LINE_COUNT_FULL =
       new LineaTransactionSelectionResult(LineaStatus.BLOCK_MODULE_LINE_COUNT_FULL);
   public static final TransactionSelectionResult TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS =
@@ -101,4 +105,6 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
       new LineaTransactionSelectionResult(LineaStatus.TX_FILTERED_ADDRESS_FROM);
   public static final TransactionSelectionResult TX_FILTERED_ADDRESS_TO =
       new LineaTransactionSelectionResult(LineaStatus.TX_FILTERED_ADDRESS_TO);
+  public static final TransactionSelectionResult TX_FILTERED_ADDRESS_AUTHORIZATION =
+      new LineaTransactionSelectionResult(LineaStatus.TX_FILTERED_ADDRESS_AUTHORIZATION);
 }

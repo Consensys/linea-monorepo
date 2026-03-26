@@ -27,7 +27,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )

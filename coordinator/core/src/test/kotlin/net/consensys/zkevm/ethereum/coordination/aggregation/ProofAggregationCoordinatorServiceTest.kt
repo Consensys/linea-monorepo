@@ -4,17 +4,18 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlockIntervals
-import linea.kotlin.trimToSecondPrecision
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
+import net.consensys.zkevm.domain.AggregationProofIndex
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.domain.ProofToFinalize
+import net.consensys.zkevm.domain.InvalidityProofIndex
 import net.consensys.zkevm.domain.ProofsToAggregate
+import net.consensys.zkevm.domain.createProofToFinalize
 import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
@@ -28,10 +29,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
-import java.util.function.Supplier
 import kotlin.random.Random
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -60,24 +58,10 @@ class ProofAggregationCoordinatorServiceTest {
     return BlobAndBatchCounters(blobCounters = blobCounters, executionProofs = batches)
   }
 
-  private val aggregationProofResponse =
-    ProofToFinalize(
-      aggregatedProof = "mock_aggregatedProof".toByteArray(),
-      aggregatedVerifierIndex = 1,
-      aggregatedProofPublicInput = "mock_aggregatedProofPublicInput".toByteArray(),
-      dataHashes = listOf("mock_dataHashes_1".toByteArray()),
-      dataParentHash = "mock_dataParentHash".toByteArray(),
-      parentStateRootHash = "mock_parentStateRootHash".toByteArray(),
-      parentAggregationLastBlockTimestamp = Clock.System.now().trimToSecondPrecision(),
-      finalTimestamp = Clock.System.now().trimToSecondPrecision(),
-      firstBlockNumber = 1,
-      finalBlockNumber = 23,
-      l1RollingHash = "mock_l1RollingHash".toByteArray(),
-      l1RollingHashMessageNumber = 4,
-      l2MerkleRoots = listOf("mock_l2MerkleRoots".toByteArray()),
-      l2MerkleTreesDepth = 5,
-      l2MessagingBlocksOffsets = "mock_l2MessagingBlocksOffsets".toByteArray(),
-    )
+  private val aggregationProofResponse = createProofToFinalize(
+    firstBlockNumber = 11,
+    finalBlockNumber = 23,
+  )
 
   @Test
   fun `test aggregation flow`(vertx: Vertx) {
@@ -86,7 +70,7 @@ class ProofAggregationCoordinatorServiceTest {
     val mockAggregationsRepository = mock<AggregationsRepository>()
     val mockProofAggregationClient = mock<ProofAggregationProverClientV2>()
     val mockAggregationL2StateProvider = mock<AggregationL2StateProvider>()
-    val mockLastFinalizedBlockNumberSupplier = mock<Supplier<ULong>>()
+    val mockInvalidityProofProvider = mock<InvalidityProofProvider>()
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry)
 
@@ -98,25 +82,25 @@ class ProofAggregationCoordinatorServiceTest {
       )
 
     var provenAggregation = 0UL
-    var provenConsecutiveAggregation = 0UL
 
-    val provenAggregationEndBlockNumberConsumer = Consumer<ULong> { provenAggregation = it }
-    val provenConsecutiveAggregationEndBlockNumberConsumer = Consumer<ULong> { provenConsecutiveAggregation = it }
     val proofAggregationCoordinatorService =
       ProofAggregationCoordinatorService(
         vertx = vertx,
         config = config,
         nextBlockNumberToPoll = 10L,
         aggregationCalculator = mockAggregationCalculator,
-        aggregationsRepository = mockAggregationsRepository,
+        aggregationProofHandler = { aggregation ->
+          provenAggregation = aggregation.endBlockNumber
+          mockAggregationsRepository.saveNewAggregation(aggregation)
+        },
         consecutiveProvenBlobsProvider = mockAggregationsRepository::findConsecutiveProvenBlobs,
         proofAggregationClient = mockProofAggregationClient,
         aggregationL2StateProvider = mockAggregationL2StateProvider,
         metricsFacade = metricsFacade,
-        provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer,
-        provenConsecutiveAggregationEndBlockNumberConsumer = provenConsecutiveAggregationEndBlockNumberConsumer,
-        lastFinalizedBlockNumberSupplier = { mockLastFinalizedBlockNumberSupplier.get() },
+        invalidityProofProvider = mockInvalidityProofProvider,
       )
+    proofAggregationCoordinatorService.aggregationProofPoller.start()
+
     verify(mockAggregationCalculator).onAggregation(proofAggregationCoordinatorService)
 
     val blob1 = listOf(createBlob(11u, 19u), createBlob(20u, 33u), createBlob(34u, 41u))
@@ -165,12 +149,16 @@ class ProofAggregationCoordinatorServiceTest {
         parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(123456),
         parentAggregationLastL1RollingHashMessageNumber = 12UL,
         parentAggregationLastL1RollingHash = ByteArray(32),
+        parentAggregationLastFtxNumber = 0UL,
+        parentAggregationLastFtxRollingHash = ByteArray(32),
       )
     val rollingInfo2 =
       AggregationL2State(
         parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(123458),
         parentAggregationLastL1RollingHashMessageNumber = 14UL,
         parentAggregationLastL1RollingHash = ByteArray(32),
+        parentAggregationLastFtxNumber = 0UL,
+        parentAggregationLastFtxRollingHash = ByteArray(32),
       )
 
     val exception1Count = AtomicInteger(100)
@@ -198,6 +186,17 @@ class ProofAggregationCoordinatorServiceTest {
         }
       }
 
+    val agg1StartBlockNumber = compressionBlobs1.first().blobCounters.startBlockNumber
+    val expectedInvalidityProofs = listOf(
+      InvalidityProofIndex(
+        ftxNumber = 1UL,
+        simulatedExecutionBlockNumber = agg1StartBlockNumber - 1UL,
+      ),
+    )
+
+    whenever(mockInvalidityProofProvider.getInvalidityProofs(any(), any()))
+      .thenReturn(SafeFuture.completedFuture(expectedInvalidityProofs))
+
     val proofsToAggregate1 =
       ProofsToAggregate(
         compressionProofIndexes =
@@ -209,9 +208,12 @@ class ProofAggregationCoordinatorServiceTest {
           )
         },
         executionProofs = executionProofs1,
+        invalidityProofs = expectedInvalidityProofs,
         parentAggregationLastBlockTimestamp = rollingInfo1.parentAggregationLastBlockTimestamp,
         parentAggregationLastL1RollingHashMessageNumber = rollingInfo1.parentAggregationLastL1RollingHashMessageNumber,
         parentAggregationLastL1RollingHash = rollingInfo1.parentAggregationLastL1RollingHash,
+        parentAggregationLastFtxNumber = rollingInfo1.parentAggregationLastFtxNumber,
+        parentAggregationLastFtxRollingHash = rollingInfo1.parentAggregationLastFtxRollingHash,
       )
 
     val proofsToAggregate2 =
@@ -225,9 +227,12 @@ class ProofAggregationCoordinatorServiceTest {
           )
         },
         executionProofs = executionProofs2,
+        invalidityProofs = expectedInvalidityProofs,
         parentAggregationLastBlockTimestamp = rollingInfo2.parentAggregationLastBlockTimestamp,
         parentAggregationLastL1RollingHashMessageNumber = rollingInfo2.parentAggregationLastL1RollingHashMessageNumber,
         parentAggregationLastL1RollingHash = rollingInfo2.parentAggregationLastL1RollingHash,
+        parentAggregationLastFtxNumber = rollingInfo2.parentAggregationLastFtxNumber,
+        parentAggregationLastFtxRollingHash = rollingInfo2.parentAggregationLastFtxRollingHash,
       )
 
     val aggregationProof1 = aggregationProofResponse.copy(finalBlockNumber = 23)
@@ -240,6 +245,11 @@ class ProofAggregationCoordinatorServiceTest {
         batchCount = compressionBlobs1.sumOf { it.blobCounters.numberOfBatches }.toULong(),
         aggregationProof = aggregationProof1,
       )
+    val aggregation1ProofIndex = AggregationProofIndex(
+      startBlockNumber = aggregation1.startBlockNumber,
+      endBlockNumber = aggregation1.endBlockNumber,
+      hash = Random.nextBytes(32),
+    )
 
     val aggregation2 =
       Aggregation(
@@ -248,24 +258,31 @@ class ProofAggregationCoordinatorServiceTest {
         batchCount = compressionBlobs2.sumOf { it.blobCounters.numberOfBatches }.toULong(),
         aggregationProof = aggregationProof2,
       )
+    val aggregation2ProofIndex = AggregationProofIndex(
+      startBlockNumber = aggregation2.startBlockNumber,
+      endBlockNumber = aggregation2.endBlockNumber,
+      hash = Random.nextBytes(32),
+    )
 
-    whenever(mockProofAggregationClient.requestProof(any()))
+    whenever(mockProofAggregationClient.createProofRequest(any()))
       .thenAnswer {
         if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate1) {
-          SafeFuture.completedFuture(aggregationProof1)
+          SafeFuture.completedFuture(aggregation1ProofIndex)
         } else if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate2) {
-          SafeFuture.completedFuture(aggregationProof2)
+          SafeFuture.completedFuture(aggregation2ProofIndex)
         } else {
           throw IllegalStateException()
         }
       }
 
-    whenever(mockLastFinalizedBlockNumberSupplier.get())
+    whenever(mockProofAggregationClient.findProofResponse(any<AggregationProofIndex>()))
       .thenAnswer {
-        aggregation1.startBlockNumber - 1UL
-      }
-      .thenAnswer {
-        aggregation2.startBlockNumber - 1UL
+        val proofIndex = it.getArgument<AggregationProofIndex>(0)
+        when (proofIndex) {
+          aggregation1ProofIndex -> SafeFuture.completedFuture(aggregationProof1)
+          aggregation2ProofIndex -> SafeFuture.completedFuture(aggregationProof2)
+          else -> SafeFuture.completedFuture(null)
+        }
       }
 
     whenever(
@@ -307,10 +324,10 @@ class ProofAggregationCoordinatorServiceTest {
         assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(23.0)
         assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
         assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
-        verify(mockProofAggregationClient).requestProof(proofsToAggregate1)
+        verify(mockProofAggregationClient).createProofRequest(proofsToAggregate1)
+        verify(mockProofAggregationClient).findProofResponse(aggregation1ProofIndex)
         verify(mockAggregationsRepository).saveNewAggregation(aggregation1)
         assertThat(provenAggregation).isEqualTo(aggregation1.endBlockNumber)
-        assertThat(provenConsecutiveAggregation).isEqualTo(aggregation1.endBlockNumber)
       }
 
     // Second aggregation should Trigger
@@ -326,10 +343,10 @@ class ProofAggregationCoordinatorServiceTest {
         assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(27.0)
         assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
         assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
-        verify(mockProofAggregationClient).requestProof(proofsToAggregate2)
+        verify(mockProofAggregationClient).createProofRequest(proofsToAggregate2)
+        verify(mockProofAggregationClient).findProofResponse(aggregation2ProofIndex)
         verify(mockAggregationsRepository).saveNewAggregation(aggregation2)
         assertThat(provenAggregation).isEqualTo(aggregation2.endBlockNumber)
-        assertThat(provenConsecutiveAggregation).isEqualTo(aggregation2.endBlockNumber)
       }
   }
 }
