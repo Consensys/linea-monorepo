@@ -671,11 +671,8 @@ class L1DependentApp(
         batchesRepository = batchesRepository,
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
+        forcedTransactionsDao = forcedTransactionsDao,
       ),
-      "forced transaction records cleanup" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
-        update.forcedTransactionNumber?.let { forcedTransactionsDao.deleteFtxUpToInclusive(it) }
-          ?: SafeFuture.completedFuture(Unit)
-      },
       "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
         highestAcceptedFinalizationTracker(update.blockNumber)
       },
