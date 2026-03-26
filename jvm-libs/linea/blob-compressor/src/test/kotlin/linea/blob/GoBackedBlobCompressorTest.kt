@@ -1,5 +1,6 @@
 package linea.blob
 
+import com.sun.jna.ptr.PointerByReference
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -71,6 +72,15 @@ class GoBackedBlobCompressorTest {
         assertThat(c1.getCompressedData().size).isEqualTo(res.compressedSizeAfter)
       }
     }
+  }
+
+  @Test
+  fun `init with bad dictionary path returns native error message`() {
+    val lib = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V4)
+    val errOut = PointerByReference()
+    val handle = lib.Init(DATA_LIMIT, "/nonexistent/dictionary.bin", errOut)
+    assertThat(handle).isEqualTo(-1)
+    assertThat(errOut.value?.getString(0)).isNotBlank()
   }
 
   @Test

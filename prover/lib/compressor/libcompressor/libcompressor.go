@@ -21,9 +21,9 @@ type instance struct {
 }
 
 var (
-	instances   = map[C.int]*instance{}
-	nextHandle  C.int = 1
-	registryMu  sync.Mutex
+	instances        = map[C.int]*instance{}
+	nextHandle C.int = 1
+	registryMu sync.Mutex
 )
 
 func getInstance(handle C.int) *instance {
@@ -39,14 +39,15 @@ func getInstance(handle C.int) *instance {
 // Init initializes a new compressor instance.
 // The dataLimit argument is the maximum size of the compressed data.
 // Returns a positive handle on success, or -1 on failure.
-// If -1 is returned, no handle is allocated and no Error() call is needed.
+// On failure, errOut is set to a newly allocated C string describing the error; the caller must free it.
 //
 //export Init
-func Init(dataLimit int, dictPath *C.char) C.int {
+func Init(dataLimit int, dictPath *C.char, errOut **C.char) C.int {
 	fPath := C.GoString(dictPath)
 
 	blobMaker, err := blob_v2.NewBlobMaker(dataLimit, fPath)
 	if err != nil {
+		*errOut = C.CString(err.Error())
 		return -1
 	}
 
