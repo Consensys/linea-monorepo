@@ -4,6 +4,7 @@ import com.sun.jna.Library
 import com.sun.jna.Native
 import linea.jvm.ResourcesUtil.copyResourceToTmpDir
 
+/** JVM-facing API of the native blob compressor library. Implemented by both the legacy and current JNA bindings. */
 interface GoNativeBlobCompressor {
 
   /**
@@ -97,6 +98,7 @@ interface GoNativeBlobCompressor {
   fun RawCompressedSize(data: ByteArray, data_len: Int): Int
 }
 
+/** JNA binding for the legacy (pre-handle) native compressor library. One global compressor state per loaded library. */
 interface GoNativeBlobCompressorLegacyJnaLib : GoNativeBlobCompressor, Library
 
 enum class BlobCompressorVersion(val version: String) {
@@ -106,6 +108,11 @@ enum class BlobCompressorVersion(val version: String) {
   V4("v4.0.0"),
 }
 
+/**
+ * JNA binding for the current native compressor library.
+ * [Init] returns an integer handle identifying an independent compressor instance; multiple instances
+ * can coexist within the same process. [Free] must be called when the instance is no longer needed.
+ */
 interface GoNativeBlobCompressorJnaLib : Library {
   fun Init(dataLimit: Int, dictPath: String): Int
   fun Free(handle: Int)
@@ -121,6 +128,11 @@ interface GoNativeBlobCompressorJnaLib : Library {
   fun RawCompressedSize(handle: Int, data: ByteArray, data_len: Int): Int
 }
 
+/**
+ * Loads and caches the native compressor shared library for each [BlobCompressorVersion].
+ * Legacy versions (pre-handle API) are cached in [loadedLegacyVersions]; current versions are cached in [loadedVersions].
+ * The cached object is the raw JNA library binding — it is not an initialised compressor instance.
+ */
 class GoNativeBlobCompressorFactory {
   companion object {
     private const val DICTIONARY_NAME = "compressor-dictionaries/v2025-04-21.bin"
