@@ -11,22 +11,9 @@ const SLACK_LIMITS = {
   SECTION_TEXT_MAX_LENGTH: 3000,
 } as const;
 
-const PROPOSAL_DATE_FORMAT = {
-  LOCALE: "en-US",
-  OPTIONS: {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  },
-} as const;
-
 const SHARED_SECTION_TITLE = {
   WHAT_CHANGED: "What Changed:",
   IMPACT_ON_NATIVE_YIELD: "What Is The Impact On Native Yield?",
-} as const;
-
-const SHARED_FIELD_LABEL = {
-  PROPOSAL_DATE: "Proposal Date",
 } as const;
 
 export class SlackClient implements ISlackClient {
@@ -197,7 +184,11 @@ export class SlackClient implements ISlackClient {
   }
 
   private formatProposalDate(sourceCreatedAt: Date): string {
-    return sourceCreatedAt.toLocaleDateString(PROPOSAL_DATE_FORMAT.LOCALE, PROPOSAL_DATE_FORMAT.OPTIONS);
+    return sourceCreatedAt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   }
 
   private buildTitledSectionBlocks(title: string, body: string): object[] {
@@ -245,7 +236,7 @@ export class SlackClient implements ISlackClient {
           { type: "mrkdwn", text: `*Effective Risk:* ${effectiveRisk}/100` },
           { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
           { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
-          { type: "mrkdwn", text: `*${SHARED_FIELD_LABEL.PROPOSAL_DATE}:* ${proposalDate}` },
+          { type: "mrkdwn", text: `*Proposal Date:* ${proposalDate}` },
         ],
       },
       {
