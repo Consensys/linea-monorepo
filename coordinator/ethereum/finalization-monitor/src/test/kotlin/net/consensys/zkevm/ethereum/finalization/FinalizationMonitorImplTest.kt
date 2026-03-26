@@ -3,7 +3,9 @@ package net.consensys.zkevm.ethereum.finalization
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import linea.contract.l1.LineaRollupContractVersion
+import linea.contract.l1.LineaRollupFinalizedState
+import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.ethapi.EthApiBlockClient
@@ -30,29 +32,39 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class FinalizationMonitorImplTest {
   private val expectedBlockNumber = 2UL
+  private val expectedFinalizedState = LineaRollupFinalizedState(
+    blockNumber = expectedBlockNumber,
+    blockTimestamp = Instant.DISTANT_PAST,
+    messageNumber = 1UL,
+    forcedTransactionNumber = 1UL,
+  )
   private val pollingInterval = 20.milliseconds
   private val config = FinalizationMonitorImpl.Config(pollingInterval)
   private lateinit var mockL2Client: EthApiBlockClient
-  private lateinit var contractMock: LineaRollupSmartContractClientReadOnly
+  private lateinit var contractMock: Web3JLineaRollupSmartContractClientReadOnly
   private val mockBlockNumberReturn = mock<EthBlockNumber>()
 
   @BeforeEach
   fun setup() {
     mockL2Client = mock<EthApiBlockClient>(defaultAnswer = RETURNS_DEEP_STUBS)
-    contractMock = mock<LineaRollupSmartContractClientReadOnly>(defaultAnswer = RETURNS_DEEP_STUBS)
+    contractMock = mock<Web3JLineaRollupSmartContractClientReadOnly>(defaultAnswer = RETURNS_DEEP_STUBS)
 
     whenever(mockBlockNumberReturn.blockNumber).thenReturn(BigInteger.TWO)
+    whenever(contractMock.getVersion()).thenReturn(
+      SafeFuture.completedFuture(LineaRollupContractVersion.V8),
+    )
   }
 
   @Test
   fun start_startsPollingProcess(vertx: Vertx, testContext: VertxTestContext) {
-    whenever(contractMock.finalizedL2BlockNumber(eq(BlockParameter.Tag.FINALIZED)))
-      .thenReturn(SafeFuture.completedFuture(expectedBlockNumber))
+    whenever(contractMock.getLatestFinalizedState(eq(BlockParameter.Tag.FINALIZED)))
+      .thenReturn(SafeFuture.completedFuture(expectedFinalizedState))
 
     val expectedBlockHash = ByteArrayExt.random32()
     val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
@@ -77,7 +89,7 @@ class FinalizationMonitorImplTest {
               mockL2Client,
               atLeastOnce(),
             ).ethGetBlockByNumberTxHashes(eq(BlockParameter.fromNumber(expectedBlockNumber)))
-            verify(contractMock, atLeastOnce()).finalizedL2BlockNumber(BlockParameter.Tag.FINALIZED)
+            verify(contractMock, atLeastOnce()).getLatestFinalizedState(BlockParameter.Tag.FINALIZED)
           }
       }
       .thenCompose { finalizationMonitorImpl.stop() }
@@ -88,10 +100,13 @@ class FinalizationMonitorImplTest {
   @Test
   fun finalizationUpdatesAreSentToTheRightHandlers(vertx: Vertx, testContext: VertxTestContext) {
     var blockNumber = 0
-    whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {
-      blockNumber += 1
-      SafeFuture.completedFuture(blockNumber.toULong())
-    }
+    whenever(contractMock.getLatestFinalizedState(eq(BlockParameter.Tag.FINALIZED)))
+      .thenAnswer {
+        blockNumber += 1
+        SafeFuture.completedFuture(
+          expectedFinalizedState.copy(blockNumber = blockNumber.toULong()),
+        )
+      }
 
     val expectedBlockHash = intToBytes32(blockNumber).toArray()
     val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
@@ -143,10 +158,13 @@ class FinalizationMonitorImplTest {
   @Test
   fun finalizationUpdatesDontCrashTheWholeMonitorInCaseOfErrors(vertx: Vertx, testContext: VertxTestContext) {
     var blockNumber = 0
-    whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {
-      blockNumber += 1
-      SafeFuture.completedFuture(blockNumber.toULong())
-    }
+    whenever(contractMock.getLatestFinalizedState(eq(BlockParameter.Tag.FINALIZED)))
+      .thenAnswer {
+        blockNumber += 1
+        SafeFuture.completedFuture(
+          expectedFinalizedState.copy(blockNumber = blockNumber.toULong()),
+        )
+      }
 
     val expectedBlockHash = intToBytes32(blockNumber).toArray()
     val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
@@ -204,15 +222,18 @@ class FinalizationMonitorImplTest {
     var blockNumber = 0
     var errorThrown = false
     var eventsReceivedBeforeError = 0
-    whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {
-      blockNumber += 1
-      if (blockNumber in 3..4) {
-        errorThrown = true
-        eventsReceivedBeforeError = updatesReceived.size
-        throw Exception("Web3 client failure for the testing!")
+    whenever(contractMock.getLatestFinalizedState(eq(BlockParameter.Tag.FINALIZED)))
+      .thenAnswer {
+        blockNumber += 1
+        if (blockNumber in 3..4) {
+          errorThrown = true
+          eventsReceivedBeforeError = updatesReceived.size
+          throw Exception("Web3 client failure for the testing!")
+        }
+        SafeFuture.completedFuture(
+          expectedFinalizedState.copy(blockNumber = blockNumber.toULong()),
+        )
       }
-      SafeFuture.completedFuture(blockNumber.toULong())
-    }
 
     val expectedBlockHash = intToBytes32(blockNumber).toArray()
     val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
@@ -248,10 +269,13 @@ class FinalizationMonitorImplTest {
   @Test
   fun finalizationUpdatesHandledInOrderTheyWereSet(vertx: Vertx, testContext: VertxTestContext) {
     var blockNumber = 0
-    whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {
-      blockNumber += 1
-      SafeFuture.completedFuture(blockNumber.toULong())
-    }
+    whenever(contractMock.getLatestFinalizedState(eq(BlockParameter.Tag.FINALIZED)))
+      .thenAnswer {
+        blockNumber += 1
+        SafeFuture.completedFuture(
+          expectedFinalizedState.copy(blockNumber = blockNumber.toULong()),
+        )
+      }
 
     val expectedBlockHash = intToBytes32(blockNumber).toArray()
     val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
