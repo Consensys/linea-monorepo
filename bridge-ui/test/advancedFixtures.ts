@@ -61,7 +61,10 @@ export const test = metaMaskFixtures(setup).extend<{
   clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {
       const nativeBridgeLink = page.getByTestId("nav-item-Native-Bridge");
-      await nativeBridgeLink.click();
+      await expect(nativeBridgeLink).toBeVisible();
+      // Web3Auth modal can remain above the page after wallet connect and intercept pointer events (CI flake).
+      await page.keyboard.press("Escape");
+      await nativeBridgeLink.click({ force: true });
       return nativeBridgeLink;
     });
   },
