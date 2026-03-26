@@ -75,6 +75,42 @@ class GoBackedBlobCompressorTest {
   }
 
   @Test
+  fun `test compression data limit exceeded`() {
+    newCompressor().use { compressor ->
+      var blocks = TEST_DATA.iterator()
+      var result = compressor.appendBlock(blocks.next())
+      assertThat(result.blockAppended).isTrue()
+      while (result.blockAppended) {
+        val blockRlp = blocks.next()
+        val canAppend = compressor.canAppendBlock(blockRlp)
+        result = compressor.appendBlock(blockRlp)
+        assertThat(canAppend).isEqualTo(result.blockAppended)
+        if (!blocks.hasNext()) {
+          blocks = TEST_DATA.iterator()
+        }
+      }
+      assertThat(result.blockAppended).isFalse()
+      assertThat(result.compressedSizeBefore).isGreaterThan(0)
+      assertThat(result.compressedSizeAfter).isEqualTo(result.compressedSizeBefore)
+    }
+  }
+
+  @Test
+  fun `test batches`() {
+    newCompressor().use { compressor ->
+      val blocks = TEST_DATA.iterator()
+      var res = compressor.appendBlock(blocks.next())
+      assertThat(res.blockAppended).isTrue()
+
+      compressor.startNewBatch()
+
+      res = compressor.appendBlock(blocks.next())
+      assertThat(res.blockAppended).isTrue()
+      assertThat(compressor.getCompressedData().size).isGreaterThan(0)
+    }
+  }
+
+  @Test
   fun `init with bad dictionary path returns native error message`() {
     val lib = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V4)
     val errOut = PointerByReference()
