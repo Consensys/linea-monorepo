@@ -97,12 +97,28 @@ interface GoNativeBlobCompressor {
   fun RawCompressedSize(data: ByteArray, data_len: Int): Int
 }
 
-interface GoNativeBlobCompressorJnaLib : GoNativeBlobCompressor, Library
+interface GoNativeBlobCompressorLegacyJnaLib : GoNativeBlobCompressor, Library
 
 enum class BlobCompressorVersion(val version: String) {
   V1_2("v1.2.0"),
   V2("v2.1.0"),
   V3("v3.0.1"),
+  V4("v4.0.0"),
+}
+
+interface GoNativeBlobCompressorJnaLib : Library {
+  fun Init(dataLimit: Int, dictPath: String): Int
+  fun Free(handle: Int)
+  fun Reset(handle: Int)
+  fun StartNewBatch(handle: Int)
+  fun Write(handle: Int, data: ByteArray, data_len: Int): Boolean
+  fun CanWrite(handle: Int, data: ByteArray, data_len: Int): Boolean
+  fun Error(handle: Int): String?
+  fun Len(handle: Int): Int
+  fun Bytes(handle: Int, out: ByteArray)
+  fun WorstCompressedBlockSize(handle: Int, data: ByteArray, data_len: Int): Int
+  fun WorstCompressedTxSize(handle: Int, data: ByteArray, data_len: Int): Int
+  fun RawCompressedSize(handle: Int, data: ByteArray, data_len: Int): Int
 }
 
 class GoNativeBlobCompressorFactory {
@@ -114,10 +130,22 @@ class GoNativeBlobCompressorFactory {
     private fun getLibFileName(version: String) = "blob_compressor_jna_$version"
 
     @JvmStatic
-    private val loadedVersions = mutableMapOf<BlobCompressorVersion, GoNativeBlobCompressor>()
+    private val loadedLegacyVersions = mutableMapOf<BlobCompressorVersion, GoNativeBlobCompressor>()
 
     @JvmStatic
-    fun getInstance(version: BlobCompressorVersion): GoNativeBlobCompressor {
+    private val loadedVersions = mutableMapOf<BlobCompressorVersion, GoNativeBlobCompressorJnaLib>()
+
+    @JvmStatic
+    fun getLegacyInstance(version: BlobCompressorVersion): GoNativeBlobCompressor {
+      synchronized(loadedLegacyVersions) {
+        return loadedLegacyVersions[version]
+          ?: loadLegacyLib(version)
+            .also { loadedLegacyVersions[version] = it }
+      }
+    }
+
+    @JvmStatic
+    fun getInstance(version: BlobCompressorVersion): GoNativeBlobCompressorJnaLib {
       synchronized(loadedVersions) {
         return loadedVersions[version]
           ?: loadLib(version)
@@ -125,7 +153,21 @@ class GoNativeBlobCompressorFactory {
       }
     }
 
-    private fun loadLib(version: BlobCompressorVersion): GoNativeBlobCompressor {
+    private fun loadLegacyLib(version: BlobCompressorVersion): GoNativeBlobCompressor {
+      val extractedLibFile = Native.extractFromResourcePath(
+        getLibFileName(version.version),
+        GoNativeBlobCompressorFactory::class.java.classLoader,
+      )
+
+      return Native.load(
+        /* name = */
+        extractedLibFile.toString(),
+        /* interfaceClass = */
+        GoNativeBlobCompressorLegacyJnaLib::class.java,
+      )
+    }
+
+    private fun loadLib(version: BlobCompressorVersion): GoNativeBlobCompressorJnaLib {
       val extractedLibFile = Native.extractFromResourcePath(
         getLibFileName(version.version),
         GoNativeBlobCompressorFactory::class.java.classLoader,
