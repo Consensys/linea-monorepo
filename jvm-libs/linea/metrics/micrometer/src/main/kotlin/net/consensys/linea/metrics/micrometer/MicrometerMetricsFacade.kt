@@ -70,6 +70,7 @@ class MicrometerMetricsFacade(
     tags: List<Tag>,
     isRatio: Boolean,
     baseUnit: String?,
+    publishPercentileHistogram: Boolean,
     percentileBuckets: List<Double>?,
   ): Histogram {
     category.toValidMicrometerName().requireValidMicrometerName()
@@ -79,8 +80,10 @@ class MicrometerMetricsFacade(
     val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
       .description(description)
       .baseUnit(baseUnit)
-      .publishPercentileHistogram()
       .also {
+        if (publishPercentileHistogram) {
+          it.publishPercentileHistogram()
+        }
         if (percentileBuckets != null) {
           it.publishPercentiles(*percentileBuckets.toDoubleArray())
         }

@@ -61,6 +61,7 @@ interface MetricsFacade {
     tags: List<Tag> = emptyList(),
     isRatio: Boolean = false,
     baseUnit: String? = null,
+    publishPercentileHistogram: Boolean = false,
     percentileBuckets: List<Double>? = null,
   ): Histogram
 
