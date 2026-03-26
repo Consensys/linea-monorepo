@@ -99,10 +99,6 @@ allprojects {
       // testing tools have 100+ errors because of this
       // skipping them for now
       options.compilerArgs.addAll(['-Xlint:rawtypes'])
-    } else {
-      // testing-tools use generated code with deprecated APIs; suppress deprecation warnings
-      options.compilerArgs.remove('-Xlint:deprecation')
-      options.compilerArgs.remove('-Werror')
     }
   }
 
