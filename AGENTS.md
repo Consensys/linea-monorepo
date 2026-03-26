@@ -110,7 +110,7 @@ pnpm -F bridge-ui run build
 | Bridge UI unit | `pnpm -F bridge-ui run test:unit` |
 | Bridge UI E2E | `pnpm -F bridge-ui run test:e2e:headless` |
 | Coordinator (Kotlin) | `./gradlew :coordinator:app:test` |
-| Prover (Go) | `cd prover && go test ./... -tags nocorset,fuzzlight -timeout 30m` |
+| Prover (Go) | See [CONTRIBUTING.md](CONTRIBUTING.md#before-submitting-a-pr) (`gofmt`, `golangci-lint`, `go test` with `-tags nocorset,fuzzlight`) |
 | Native libs | `pnpm -F @consensys/linea-native-libs run test` |
 | Shared utils | `pnpm -F @consensys/linea-shared-utils run test` |
 | Automation service | `pnpm -F @consensys/linea-native-yield-automation-service run test` |
