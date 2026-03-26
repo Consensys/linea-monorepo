@@ -91,7 +91,6 @@ jobs:
         with:
           name: failedBlockchainReferenceTests-${{ inputs.zkevm_fork }}.json
           path: ${{ github.workspace }}/tmp/${{ github.head_ref || github.ref_name }}/
-          retention-days: 7
 
       - name: Upload test report
         if: always()
@@ -99,7 +98,6 @@ jobs:
         with:
           name: blockchain-reference-tests-report-${{ inputs.zkevm_fork }}
           path: tracer/reference-tests/build/reports/tests/**/*
-          retention-days: 7
 
       - name: Upload jacoco exec spec blockchain tests coverage report
         if: always()
@@ -107,7 +105,6 @@ jobs:
         with:
           name: jacoco-blockchain-tests-coverage-report-${{ inputs.zkevm_fork }}
           path: tracer/reference-tests/build/reports/jacoco/jacocoReferenceExecutionSpecBlockchainTestsReport/**/*
-          retention-days: 7
 
       - name: Upload jacoco blockchain tests exec file
         if: always()
@@ -115,7 +112,6 @@ jobs:
         with:
           name: jacoco-blockchain-tests-exec-file-${{ inputs.zkevm_fork }}
           path: tracer/reference-tests/build/jacoco/referenceExecutionSpecBlockchainTests.exec
-          retention-days: 7
 
       - name: Extract Metrics
         id: metrics
