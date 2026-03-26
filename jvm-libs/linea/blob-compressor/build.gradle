@@ -44,3 +44,7 @@ task downloadNativeLibs {
 compileKotlin {
   dependsOn tasks.downloadNativeLibs
 }
+
+processResources {
+  dependsOn tasks.downloadNativeLibs
+}

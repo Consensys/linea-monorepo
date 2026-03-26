@@ -38,6 +38,10 @@ compileKotlin {
   dependsOn tasks.downloadNativeLibs
 }
 
+processResources {
+  dependsOn tasks.downloadNativeLibs
+}
+
 task cleanResources(type: Delete) {
   fileTree(project.layout.projectDirectory.dir('src/main/resources'))
       .filter {
