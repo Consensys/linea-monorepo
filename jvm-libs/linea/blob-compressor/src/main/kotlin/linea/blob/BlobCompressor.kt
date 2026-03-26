@@ -40,7 +40,10 @@ interface BlobCompressor {
   fun compressedSize(data: ByteArray): Int
 }
 
-// Private adapter so GoBackedBlobCompressor is insulated from the two native API shapes.
+/**
+ * Uniform view of a single initialised compressor instance, insulating [GoBackedBlobCompressor] from
+ * the two native API shapes (legacy global-state and current handle-based).
+ */
 private interface NativeCompressorInstance : AutoCloseable {
   fun reset()
   fun startNewBatch()
@@ -52,6 +55,7 @@ private interface NativeCompressorInstance : AutoCloseable {
   fun rawCompressedSize(data: ByteArray, len: Int): Int
 }
 
+/** Adapts the legacy (pre-handle) [GoNativeBlobCompressor] API to [NativeCompressorInstance]. [close] is a no-op because the legacy library owns a single global compressor state with no per-instance resource to release. */
 private class LegacyNativeCompressorInstance(
   private val lib: GoNativeBlobCompressor,
 ) : NativeCompressorInstance {
@@ -66,7 +70,8 @@ private class LegacyNativeCompressorInstance(
   override fun close() {} // global singleton in the native lib; nothing to free
 }
 
-private class HandleNativeCompressorInstance(
+/** Adapts the handle-based [GoNativeBlobCompressorJnaLib] API to [NativeCompressorInstance]. [close] calls [GoNativeBlobCompressorJnaLib.Free] to release the native compressor instance identified by [handle]. */
+private class NativeCompressorInstanceImpl(
   private val lib: GoNativeBlobCompressorJnaLib,
   private val handle: Int,
 ) : NativeCompressorInstance {
@@ -81,6 +86,12 @@ private class HandleNativeCompressorInstance(
   override fun close() = lib.Free(handle)
 }
 
+/**
+ * [BlobCompressor] backed by the Go native compressor library.
+ * Obtain instances via the [getInstance] factory method.
+ * Implements [AutoCloseable]: for current (handle-based) versions this releases the native compressor instance;
+ * for legacy versions [close] is a no-op.
+ */
 class GoBackedBlobCompressor private constructor(
   private val nativeInstance: NativeCompressorInstance,
   override val version: BlobCompressorVersion,
@@ -96,7 +107,7 @@ class GoBackedBlobCompressor private constructor(
         val lib = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
         val handle = lib.Init(dataLimit, dictPath)
         if (handle == -1) throw InstantiationException("Failed to initialize compressor")
-        HandleNativeCompressorInstance(lib, handle)
+        NativeCompressorInstanceImpl(lib, handle)
       } else {
         val lib = GoNativeBlobCompressorFactory.getLegacyInstance(compressorVersion)
         if (!lib.Init(dataLimit, dictPath)) throw InstantiationException(lib.Error())
