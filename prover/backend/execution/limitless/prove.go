@@ -79,7 +79,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// (1 TiB RAM), defer the job to the full-large prover (3 TiB RAM).
 	// The controller will rename the request with a .large suffix for the
 	// full-large instance to pick up.
-	if numGL > 100 && !cfg.Execution.CanRunFullLarge {
+	fullProverSegmentsThreshold := 180
+	if numGL > fullProverSegmentsThreshold && !cfg.Execution.CanRunFullLarge {
 		exit.OnTooManySegments(numGL)
 	}
 
