@@ -101,9 +101,10 @@ jobs:
       - name: Create GitHub Issue with findings
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch || 'main' }}
         run: |
           DATE=$(date -u +%Y-%m-%d)
-          BRANCH=${{ github.event.inputs.branch || 'main' }}
+          BRANCH="${INPUT_BRANCH}"
           COMMIT=$(git rev-parse --short=7 HEAD)
           TITLE="Coordinator review ${DATE} ${BRANCH} ${COMMIT}"
 
