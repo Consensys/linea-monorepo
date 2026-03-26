@@ -1,5 +1,6 @@
 package linea.blob
 
+import com.sun.jna.ptr.PointerByReference
 import linea.kotlin.encodeHex
 import org.apache.logging.log4j.LogManager
 
@@ -105,8 +106,9 @@ class GoBackedBlobCompressor private constructor(
       val dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString()
       val nativeInstance = if (compressorVersion == BlobCompressorVersion.V4) {
         val lib = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
-        val handle = lib.Init(dataLimit, dictPath)
-        if (handle == -1) throw InstantiationException("Failed to initialize compressor")
+        val errOut = PointerByReference()
+        val handle = lib.Init(dataLimit, dictPath, errOut)
+        if (handle == -1) throw InstantiationException(errOut.value?.getString(0) ?: "Failed to initialize compressor")
         NativeCompressorInstanceImpl(lib, handle)
       } else {
         val lib = GoNativeBlobCompressorFactory.getLegacyInstance(compressorVersion)

@@ -2,6 +2,7 @@ package linea.blob
 
 import com.sun.jna.Library
 import com.sun.jna.Native
+import com.sun.jna.ptr.PointerByReference
 import linea.jvm.ResourcesUtil.copyResourceToTmpDir
 
 /** JVM-facing API of the native blob compressor library. Implemented by both the legacy and current JNA bindings. */
@@ -114,7 +115,7 @@ enum class BlobCompressorVersion(val version: String) {
  * can coexist within the same process. [Free] must be called when the instance is no longer needed.
  */
 interface GoNativeBlobCompressorJnaLib : Library {
-  fun Init(dataLimit: Int, dictPath: String): Int
+  fun Init(dataLimit: Int, dictPath: String, errOut: PointerByReference?): Int
   fun Free(handle: Int)
   fun Reset(handle: Int)
   fun StartNewBatch(handle: Int)
