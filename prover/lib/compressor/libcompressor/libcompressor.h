@@ -82,7 +82,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern int Init(GoInt dataLimit, char* dictPath);
+extern int Init(GoInt dataLimit, char* dictPath, char** errOut);
 extern void Free(int handle);
 extern void Reset(int handle);
 extern GoUint8 Write(int handle, char* input, int inputLength);
