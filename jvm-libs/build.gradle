@@ -1,8 +1,14 @@
 buildscript {
+  configurations.classpath {
+    // JReleaser 1.23.0 requires bcprov-jdk18on >= 1.79 (writeUnsignedByteArray).
+    // Exclude legacy BC artifact names so the jdk18on variants below win unambiguously.
+    exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
+    exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    exclude group: 'org.bouncycastle', module: 'bcpkix-jdk15on'
+    exclude group: 'org.bouncycastle', module: 'bcpkix-jdk15to18'
+  }
   dependencies {
     classpath(libs.jreleaser)
-    // Force BC version compatible with JReleaser — Gradle's bundled BC is older and
-    // leaks into the buildscript classloader, causing NoSuchMethodError at runtime.
     classpath(libs.bouncycastle.bcprov)
     classpath(libs.bouncycastle.bcpkix)
   }
