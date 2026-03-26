@@ -63,21 +63,21 @@ class GoBackedBlobCompressorTest {
   @Test
   fun `test reset`() {
     val blocks = TEST_DATA.iterator()
-    assertThat(compressor.goNativeBlobCompressor.Len()).isZero()
+    assertThat(compressor.getCompressedData()).isEmpty()
     var res = compressor.appendBlock(blocks.next())
     assertThat(res.blockAppended).isTrue()
     assertThat(res.compressedSizeBefore).isZero()
     assertThat(res.compressedSizeAfter).isGreaterThan(0)
-    assertThat(res.compressedSizeAfter).isEqualTo(compressor.goNativeBlobCompressor.Len())
+    assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
 
     compressor.reset()
 
-    assertThat(compressor.goNativeBlobCompressor.Len()).isZero()
+    assertThat(compressor.getCompressedData()).isEmpty()
     res = compressor.appendBlock(blocks.next())
     assertThat(res.blockAppended).isTrue()
     assertThat(res.compressedSizeBefore).isZero()
     assertThat(res.compressedSizeAfter).isGreaterThan(0)
-    assertThat(res.compressedSizeAfter).isEqualTo(compressor.goNativeBlobCompressor.Len())
+    assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
   }
 
   @Test

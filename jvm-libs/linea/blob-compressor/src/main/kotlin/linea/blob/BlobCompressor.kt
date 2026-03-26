@@ -40,38 +40,85 @@ interface BlobCompressor {
   fun compressedSize(data: ByteArray): Int
 }
 
+// Private adapter so GoBackedBlobCompressor is insulated from the two native API shapes.
+private interface NativeCompressorInstance : AutoCloseable {
+  fun reset()
+  fun startNewBatch()
+  fun write(data: ByteArray, len: Int): Boolean
+  fun canWrite(data: ByteArray, len: Int): Boolean
+  fun error(): String?
+  fun len(): Int
+  fun bytes(out: ByteArray)
+  fun rawCompressedSize(data: ByteArray, len: Int): Int
+}
+
+private class LegacyNativeCompressorInstance(
+  private val lib: GoNativeBlobCompressor,
+) : NativeCompressorInstance {
+  override fun reset() = lib.Reset()
+  override fun startNewBatch() = lib.StartNewBatch()
+  override fun write(data: ByteArray, len: Int) = lib.Write(data, len)
+  override fun canWrite(data: ByteArray, len: Int) = lib.CanWrite(data, len)
+  override fun error() = lib.Error()
+  override fun len() = lib.Len()
+  override fun bytes(out: ByteArray) = lib.Bytes(out)
+  override fun rawCompressedSize(data: ByteArray, len: Int) = lib.RawCompressedSize(data, len)
+  override fun close() {} // global singleton in the native lib; nothing to free
+}
+
+private class HandleNativeCompressorInstance(
+  private val lib: GoNativeBlobCompressorJnaLib,
+  private val handle: Int,
+) : NativeCompressorInstance {
+  override fun reset() = lib.Reset(handle)
+  override fun startNewBatch() = lib.StartNewBatch(handle)
+  override fun write(data: ByteArray, len: Int) = lib.Write(handle, data, len)
+  override fun canWrite(data: ByteArray, len: Int) = lib.CanWrite(handle, data, len)
+  override fun error() = lib.Error(handle)
+  override fun len() = lib.Len(handle)
+  override fun bytes(out: ByteArray) = lib.Bytes(handle, out)
+  override fun rawCompressedSize(data: ByteArray, len: Int) = lib.RawCompressedSize(handle, data, len)
+  override fun close() = lib.Free(handle)
+}
+
 class GoBackedBlobCompressor private constructor(
-  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
+  private val nativeInstance: NativeCompressorInstance,
   override val version: BlobCompressorVersion,
-) : BlobCompressor {
+) : BlobCompressor, AutoCloseable {
 
   companion object {
     @JvmStatic
     fun getInstance(compressorVersion: BlobCompressorVersion, dataLimit: Int): GoBackedBlobCompressor {
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
-      val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
-      val initialized = goNativeBlobCompressor.Init(
-        dataLimit = dataLimit,
-        dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString(),
-      )
-      if (!initialized) {
-        throw InstantiationException(goNativeBlobCompressor.Error())
+      val dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString()
+      val nativeInstance = if (compressorVersion == BlobCompressorVersion.V4) {
+        val lib = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
+        val handle = lib.Init(dataLimit, dictPath)
+        if (handle == -1) throw InstantiationException("Failed to initialize compressor")
+        HandleNativeCompressorInstance(lib, handle)
+      } else {
+        val lib = GoNativeBlobCompressorFactory.getLegacyInstance(compressorVersion)
+        if (!lib.Init(dataLimit, dictPath)) throw InstantiationException(lib.Error())
+        LegacyNativeCompressorInstance(lib)
       }
-      return GoBackedBlobCompressor(goNativeBlobCompressor, compressorVersion)
+
+      return GoBackedBlobCompressor(nativeInstance, compressorVersion)
     }
   }
 
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
 
+  override fun close() = nativeInstance.close()
+
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
-    return goNativeBlobCompressor.CanWrite(blockRLPEncoded, blockRLPEncoded.size)
+    return nativeInstance.canWrite(blockRLPEncoded, blockRLPEncoded.size)
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {
-    val compressionSizeBefore = goNativeBlobCompressor.Len()
-    val appended = goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
-    val compressedSizeAfter = goNativeBlobCompressor.Len()
+    val compressionSizeBefore = nativeInstance.len()
+    val appended = nativeInstance.write(blockRLPEncoded, blockRLPEncoded.size)
+    val compressedSizeAfter = nativeInstance.len()
     log.trace(
       "block compressed: blockRlpSize={} compressionDataBefore={} compressionDataAfter={} compressionRatio={}",
       blockRLPEncoded.size,
@@ -79,7 +126,7 @@ class GoBackedBlobCompressor private constructor(
       compressedSizeAfter,
       1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size),
     )
-    val error = goNativeBlobCompressor.Error()
+    val error = nativeInstance.error()
     if (error != null) {
       log.error("Failure while writing the following RLP encoded block: {}", blockRLPEncoded.encodeHex())
       throw BlobCompressionException(error)
@@ -88,20 +135,20 @@ class GoBackedBlobCompressor private constructor(
   }
 
   override fun startNewBatch() {
-    goNativeBlobCompressor.StartNewBatch()
+    nativeInstance.startNewBatch()
   }
 
   override fun getCompressedData(): ByteArray {
-    val compressedData = ByteArray(goNativeBlobCompressor.Len())
-    goNativeBlobCompressor.Bytes(compressedData)
+    val compressedData = ByteArray(nativeInstance.len())
+    nativeInstance.bytes(compressedData)
     return compressedData
   }
 
   override fun reset() {
-    goNativeBlobCompressor.Reset()
+    nativeInstance.reset()
   }
 
   override fun compressedSize(data: ByteArray): Int {
-    return goNativeBlobCompressor.RawCompressedSize(data, data.size)
+    return nativeInstance.rawCompressedSize(data, data.size)
   }
 }
