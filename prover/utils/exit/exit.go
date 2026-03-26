@@ -20,6 +20,10 @@ const (
 	// unsatisfiedConstraintExitCode is the exit code used to tell the parent
 	// process know that a constraint is not satisfied.
 	unsatisfiedConstraintsExitCode = 78
+	// tooManySegmentsExitCode is the exit code used to tell the controller
+	// that the number of segments is too high for the regular prover and
+	// should be deferred to the full-large prover.
+	tooManySegmentsExitCode = 136
 )
 
 const (
@@ -96,4 +100,12 @@ func OnUnsatisfiedConstraints(err error) {
 	}
 
 	panic(UnsatisfiedConstraintError{err})
+}
+
+// OnTooManySegments reports that the number of GL segments exceeds what the
+// regular full prover can handle and exits with [tooManySegmentsExitCode].
+func OnTooManySegments(numGL int) {
+	logrus.Warnf("[TOO MANY SEGMENTS] %d segments exceeds the limit for the limitless prover on a full machine, deferring to full-large", numGL)
+	debug.PrintStack()
+	os.Exit(tooManySegmentsExitCode)
 }

@@ -76,13 +76,11 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	// Guard: if the number of GL modules is too high for a regular full prover
-	// (1 TiB RAM), defer the job to the full-large prover (3 TiB RAM) by
-	// exiting with code 136 (CodeTooManySegments in the controller). The
-	// controller will rename the request with a .large suffix for the
+	// (1 TiB RAM), defer the job to the full-large prover (3 TiB RAM).
+	// The controller will rename the request with a .large suffix for the
 	// full-large instance to pick up.
 	if numGL > 100 && !cfg.Execution.CanRunFullLarge {
-		logrus.Warnf("Too many GL segments (%d) for full prover, deferring to full-large", numGL)
-		os.Exit(136)
+		exit.OnTooManySegments(numGL)
 	}
 
 	// Use a parent context for the whole proving flow
