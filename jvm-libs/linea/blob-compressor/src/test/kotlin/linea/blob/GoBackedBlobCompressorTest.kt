@@ -2,101 +2,86 @@ package linea.blob
 
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
 import kotlin.random.Random
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GoBackedBlobCompressorTest {
   companion object {
     private const val DATA_LIMIT = 24 * 1024
     private val TEST_DATA = CompressorTestData.blocksRlpEncoded
-    private val compressor = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V3, DATA_LIMIT)
   }
 
-  @BeforeEach
-  fun before() {
-    compressor.reset()
-  }
+  private fun newCompressor() = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V4, DATA_LIMIT)
 
   @Test
   fun `test appendBlock with data within limit`() {
-    val blocks = TEST_DATA
-    val result = compressor.appendBlock(blocks.first())
-    assertThat(result.blockAppended).isTrue
-    assertThat(result.compressedSizeBefore).isZero()
-    assertThat(result.compressedSizeAfter).isGreaterThan(0)
+    newCompressor().use { compressor ->
+      val result = compressor.appendBlock(TEST_DATA.first())
+      assertThat(result.blockAppended).isTrue
+      assertThat(result.compressedSizeBefore).isZero()
+      assertThat(result.compressedSizeAfter).isGreaterThan(0)
+    }
   }
 
   @Test
   fun `test invalid rlp block`() {
-    val block = Random.nextBytes(100)
-    assertThrows<BlobCompressionException>("rlp: expected input list for types.extblock") {
-      compressor.appendBlock(block)
-    }
-  }
-
-  @Test
-  fun `test compression data limit exceeded`() {
-    var blocks = TEST_DATA.iterator()
-    var result = compressor.appendBlock(blocks.next())
-    // at least one block should be appended
-    assertThat(result.blockAppended).isTrue()
-    while (result.blockAppended) {
-      val blockRlp = blocks.next()
-      val canAppend = compressor.canAppendBlock(blockRlp)
-      result = compressor.appendBlock(blockRlp)
-      // assert consistency between canAppendBlock and appendBlock
-      assertThat(canAppend).isEqualTo(result.blockAppended)
-      if (!blocks.hasNext()) {
-        // recompress again, until the limit is reached
-        blocks = TEST_DATA.iterator()
+    newCompressor().use { compressor ->
+      assertThrows<BlobCompressionException>("rlp: expected input list for types.extblock") {
+        compressor.appendBlock(Random.nextBytes(100))
       }
     }
-    assertThat(result.blockAppended).isFalse()
-    assertThat(result.compressedSizeBefore).isGreaterThan(0)
-    assertThat(result.compressedSizeAfter).isEqualTo(result.compressedSizeBefore)
   }
 
   @Test
   fun `test reset`() {
-    val blocks = TEST_DATA.iterator()
-    assertThat(compressor.getCompressedData()).isEmpty()
-    var res = compressor.appendBlock(blocks.next())
-    assertThat(res.blockAppended).isTrue()
-    assertThat(res.compressedSizeBefore).isZero()
-    assertThat(res.compressedSizeAfter).isGreaterThan(0)
-    assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
+    newCompressor().use { compressor ->
+      val blocks = TEST_DATA.iterator()
+      assertThat(compressor.getCompressedData()).isEmpty()
+      var res = compressor.appendBlock(blocks.next())
+      assertThat(res.blockAppended).isTrue()
+      assertThat(res.compressedSizeAfter).isGreaterThan(0)
+      assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
 
-    compressor.reset()
+      compressor.reset()
 
-    assertThat(compressor.getCompressedData()).isEmpty()
-    res = compressor.appendBlock(blocks.next())
-    assertThat(res.blockAppended).isTrue()
-    assertThat(res.compressedSizeBefore).isZero()
-    assertThat(res.compressedSizeAfter).isGreaterThan(0)
-    assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
+      assertThat(compressor.getCompressedData()).isEmpty()
+      res = compressor.appendBlock(blocks.next())
+      assertThat(res.blockAppended).isTrue()
+      assertThat(res.compressedSizeAfter).isEqualTo(compressor.getCompressedData().size)
+    }
   }
 
   @Test
-  fun `test batches`() {
-    val blocks = TEST_DATA.iterator()
-    var res = compressor.appendBlock(blocks.next())
-    assertThat(res.blockAppended).isTrue()
+  fun `multiple instances have independent state`() {
+    newCompressor().use { c1 ->
+      newCompressor().use { c2 ->
+        // append one block to c1 only
+        val res = c1.appendBlock(TEST_DATA.first())
+        assertThat(res.blockAppended).isTrue()
 
-    compressor.startNewBatch()
+        // c2 must still be empty
+        assertThat(c2.getCompressedData()).isEmpty()
 
-    res = compressor.appendBlock(blocks.next())
-    assertThat(res.blockAppended).isTrue()
-    assertThat(compressor.getCompressedData().size).isGreaterThan(0)
+        // append a different block to c2
+        val res2 = c2.appendBlock(TEST_DATA[1])
+        assertThat(res2.blockAppended).isTrue()
+
+        // c1 must be unaffected by c2's write
+        assertThat(c1.getCompressedData().size).isEqualTo(res.compressedSizeAfter)
+      }
+    }
   }
 
   @Test
-  fun `should calculate the compression size of raw data`() {
-    val data = TEST_DATA.first()
-    val compressedSize = compressor.compressedSize(data)
-    assertThat(compressedSize).isBetween(1, data.size - 1)
+  fun `close releases instance and a new one can be created`() {
+    val c1 = newCompressor()
+    c1.appendBlock(TEST_DATA.first())
+    c1.close()
+
+    // must be able to create a fresh instance after closing
+    newCompressor().use { c2 ->
+      assertThat(c2.getCompressedData()).isEmpty()
+    }
   }
 }

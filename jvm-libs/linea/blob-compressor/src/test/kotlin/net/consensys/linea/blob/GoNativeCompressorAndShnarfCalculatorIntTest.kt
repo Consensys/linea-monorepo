@@ -31,17 +31,17 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
 
     @JvmStatic
     fun enumerateValidBlobCompressorAndShnarfCalculatorPair(): Stream<Arguments> {
-      val compressorV1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      val compressorV1 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V1_2)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      val compressorV2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      val compressorV2 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V2)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      val compressorV3 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
+      val compressorV3 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
@@ -87,19 +87,19 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorSupportsMultipleInstances {
     @Test
     fun `should support multiple instances`() {
-      val compressorInstance1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V1_2)
+      val compressorInstance1 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V1_2)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
 
-      val compressorInstance2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      val compressorInstance2 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V2)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
 
-      val compressorInstance3 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
+      val compressorInstance3 = GoNativeBlobCompressorFactory.getLegacyInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
