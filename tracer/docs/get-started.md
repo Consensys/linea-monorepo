@@ -43,7 +43,7 @@ brew install pre-commit
 ```
 
 Then run `pre-commit install` to set up git hook scripts.
-Used hooks can be found [here](../../.pre-commit-config.yaml).
+Used hooks can be found [here](../.pre-commit-config.yaml).
 
 ______________________________________________________________________
 
