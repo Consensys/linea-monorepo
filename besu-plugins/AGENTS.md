@@ -52,7 +52,7 @@ besu-plugins/
 
 ### Acceptance Tests
 
-- Use Web3j contract wrappers generated from Solidity 0.8.19 (acceptance-test fixtures only; protocol contracts use 0.8.33 per `contracts/AGENTS.md`)
+- Use Web3j contract wrappers generated from Solidity 0.8.19
 - Max parallel forks: CI = runtime.processors, local = 3
 - Parallel execution disabled by default
 - Includes REST-assured for HTTP testing and Wiremock for mocking
