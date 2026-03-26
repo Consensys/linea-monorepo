@@ -40,6 +40,7 @@ import net.consensys.zkevm.ethereum.coordination.SimpleCompositeSafeFutureHandle
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationProofHandlerImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker
+import net.consensys.zkevm.ethereum.coordination.aggregation.HardForkAggregationTargetEndBlocks
 import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
@@ -191,6 +192,11 @@ class ConflationApp(
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
+  private val hardForkAggregationTargetEndBlocks =
+    HardForkAggregationTargetEndBlocks(
+      configuredTargetEndBlocks = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
+    )
+
   private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
     configs = configs,
     lastProcessedBlockNumber = lastProcessedBlockNumber,
@@ -244,6 +250,7 @@ class ConflationApp(
       blobCalculator = compressedBlobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = batchesLimit,
+      hardForkAggregationTargetEndBlocks = hardForkAggregationTargetEndBlocks,
     )
   }
 
@@ -386,7 +393,7 @@ class ConflationApp(
         noL2ActivityTimeout = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
         waitForNoL2ActivityToTriggerAggregation =
         configs.conflation.proofAggregation.waitForNoL2ActivityToTriggerAggregation,
-        targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
+        targetEndBlockNumbersProvider = hardForkAggregationTargetEndBlocks,
         metricsFacade = metricsFacade,
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
         hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
