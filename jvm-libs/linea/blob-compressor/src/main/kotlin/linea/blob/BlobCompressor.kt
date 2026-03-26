@@ -109,7 +109,12 @@ class GoBackedBlobCompressor private constructor(
         val errOut = PointerByReference()
         val handle = lib.Init(dataLimit, dictPath, errOut)
         if (handle == -1) throw InstantiationException(errOut.value?.getString(0) ?: "Failed to initialize compressor")
-        NativeCompressorInstanceImpl(lib, handle)
+        try {
+          NativeCompressorInstanceImpl(lib, handle)
+        } catch (e: Throwable) {
+          lib.Free(handle)
+          throw e
+        }
       } else {
         val lib = GoNativeBlobCompressorFactory.getLegacyInstance(compressorVersion)
         if (!lib.Init(dataLimit, dictPath)) throw InstantiationException(lib.Error())
