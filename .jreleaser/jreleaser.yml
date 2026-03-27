@@ -1,0 +1,35 @@
+project:
+  name: linea
+  description: Linea Java libraries
+  authors:
+    - name: Linea team
+      email: linea-automations@consensys.net
+  license: Apache-2.0
+  links:
+    homepage: https://linea.build/
+
+release:
+  github:
+    overwrite: true
+    tagName: "{{env.JRELEASER_TAG_NAME}}"
+    releaseName: "{{env.JRELEASER_RELEASE_NAME}}"
+    files: false
+    artifacts: false
+    changelog:
+      enabled: false
+    commitAuthor:
+      name: Linea automations
+      email: linea-automations@consensys.net
+
+signing:
+  active: ALWAYS
+  armored: true
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: ALWAYS
+        url: https://central.sonatype.com/api/v1/publisher
+        stagingRepositories:
+          - build/staging-deploy
