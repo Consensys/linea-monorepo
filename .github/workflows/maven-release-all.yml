@@ -62,13 +62,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
-      - name: Build and Release to Maven Central
-        run: ./gradlew --stacktrace --info -p jvm-libs jreleaserRelease -Pversion=$VERSION
+      - name: Set release metadata
+        run: |
+          echo "JRELEASER_TAG_NAME=maven-jvm-libs-v${VERSION}" >> $GITHUB_ENV
+          echo "JRELEASER_RELEASE_NAME=Maven release: all JVM libs v${VERSION}" >> $GITHUB_ENV
+
+      - name: Release to Maven Central
+        uses: jreleaser/release-action@v2
+        with:
+          arguments: release
+          version: 1.23.0
+          setup-java: false
         env:
-          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
-          JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
+          JRELEASER_PROJECT_VERSION: ${{ env.VERSION }}
+          JRELEASER_TAG_NAME: ${{ env.JRELEASER_TAG_NAME }}
+          JRELEASER_RELEASE_NAME: ${{ env.JRELEASER_RELEASE_NAME }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
@@ -82,5 +91,5 @@ jobs:
         with:
           name: jreleaser-release
           path: |
-            build/jreleaser/trace.log
-            build/jreleaser/output.properties
+            out/jreleaser/trace.log
+            out/jreleaser/output.properties

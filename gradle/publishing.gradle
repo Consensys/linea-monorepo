@@ -1,5 +1,4 @@
 apply plugin: 'maven-publish'
-apply plugin: 'org.jreleaser'
 
 java {
   // necessary for maven publishing
@@ -69,42 +68,3 @@ task prePublishValidation {
   }
 }
 
-task createJreleaserOutputDir {
-  doLast {
-    // workaround for JRleaser poor support for multi-module projects
-    // see issue https://github.com/jreleaser/jreleaser/discussions/1237
-    project.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs()
-    rootProject.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs()
-  }
-}
-
-jreleaserDeploy.dependsOn(prePublishValidation)
-jreleaserDeploy.dependsOn(createJreleaserOutputDir)
-
-
-// JReleaser configuration
-// https://jreleaser.org/guide/latest/reference/deploy/maven/maven-central.html
-// GitHub release/tag creation is handled by `gh release create` in the workflow
-// to avoid a JGit classloader conflict with Gradle's bundled JGit.
-jreleaser {
-  gitRootSearch = true
-  signing {
-    active = 'ALWAYS'
-    armored = true
-  }
-  deploy {
-    maven {
-      mavenCentral {
-        sonatype {
-          active = 'ALWAYS'
-          url = 'https://central.sonatype.com/api/v1/publisher'
-          stagingRepository(stagingDeployDir)
-          // The self-hosted CI runner cannot reach the pomchecker download URL,
-          // so local pre-validation is skipped. Maven Central enforces identical
-          // POM rules server-side and will reject non-compliant artifacts anyway.
-          applyMavenCentralRules = false
-        }
-      }
-    }
-  }
-}

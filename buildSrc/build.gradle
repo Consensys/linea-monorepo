@@ -7,12 +7,6 @@ repositories {
   gradlePluginPortal()
 }
 
-configurations.all {
-  // web3j:codegen brings in bcprov-jdk18on:1.80, which leaks into parent classloaders
-  // and shadows JReleaser's required 1.83+ (writeUnsignedByteArray added in 1.81).
-  resolutionStrategy.force "org.bouncycastle:bcprov-jdk18on:${libs.versions.bouncycastle.get()}"
-}
-
 dependencies {
   implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")
   implementation("org.web3j:codegen:${libs.versions.web3jPlugin.get()}")

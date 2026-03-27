@@ -54,38 +54,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
-      - name: Clear JReleaser tool cache
-        # Self-hosted runners persist /home/runner between runs. JReleaser uses
-        # Files.createDirectory (not createDirectories) when unpacking tools like
-        # pomchecker, which fails if a partial extraction exists from a prior run.
-        run: rm -rf ~/.jreleaser/caches
+      - name: Set release metadata
+        run: |
+          ARTIFACT_ID=$(echo "${{ github.event.inputs.libToRelease }}" | awk -F: '{print $NF}')
+          VERSION="${{ github.event.inputs.version }}"
+          echo "JRELEASER_TAG_NAME=maven-${ARTIFACT_ID}-v${VERSION}" >> $GITHUB_ENV
+          echo "JRELEASER_RELEASE_NAME=Maven package: ${ARTIFACT_ID} v${VERSION}" >> $GITHUB_ENV
 
-      - name: Deploy to Maven Central
-        # TODO: Try reverting after Gradle 9
-        # jreleaserDeploy handles GPG signing + Maven Central upload without
-        # creating Git tags, which avoids a JGit classloader conflict:
-        # Gradle bundles its own JGit (parent-first loading wins) that is missing
-        # TagCommand.setGpgSigner(GpgObjectSigner) required by JReleaser 1.23.
-        run: ./gradlew --stacktrace ${{github.event.inputs.libToRelease}}:jreleaserDeploy -Pversion=${{github.event.inputs.version}}
+      - name: Release to Maven Central
+        # JReleaser runs as a standalone GitHub Action (separate JVM), completely
+        # avoiding the classloader conflicts that occurred when using JReleaser
+        # as a Gradle plugin (JGit/BouncyCastle version shadowing by buildSrc).
+        uses: jreleaser/release-action@v2
+        with:
+          arguments: release
+          version: 1.23.0
+          setup-java: false
         env:
+          JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
+          JRELEASER_TAG_NAME: ${{ env.JRELEASER_TAG_NAME }}
+          JRELEASER_RELEASE_NAME: ${{ env.JRELEASER_RELEASE_NAME }}
+          JRELEASER_GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
           JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
           JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
-
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
-        run: |
-          ARTIFACT_ID=$(echo "${{ github.event.inputs.libToRelease }}" | awk -F: '{print $NF}')
-          VERSION="${{ github.event.inputs.version }}"
-          TAG_NAME="maven-${ARTIFACT_ID}-v${VERSION}"
-          gh release create "${TAG_NAME}" \
-            --repo "${{ github.repository }}" \
-            --title "Maven package: ${ARTIFACT_ID} v${VERSION}" \
-            --notes "Published to Maven Central" \
-            --latest=false
 
       # Persist logs
       - name: JReleaser release output
@@ -94,5 +88,5 @@ jobs:
         with:
           name: jreleaser-release
           path: |
-            build/jreleaser/trace.log
-            build/jreleaser/output.properties
+            out/jreleaser/trace.log
+            out/jreleaser/output.properties
