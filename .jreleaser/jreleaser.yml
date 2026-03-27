@@ -2,11 +2,13 @@ project:
   name: linea
   description: Linea Java libraries
   authors:
-    - name: Linea team
-      email: linea-automations@consensys.net
+    - Linea team
   license: Apache-2.0
   links:
     homepage: https://linea.build/
+  languages:
+    java:
+      groupId: build.linea
 
 release:
   github:
@@ -23,7 +25,8 @@ release:
 
 signing:
   active: ALWAYS
-  armored: true
+  pgp:
+    armored: true
 
 deploy:
   maven:
@@ -31,5 +34,9 @@ deploy:
       sonatype:
         active: ALWAYS
         url: https://central.sonatype.com/api/v1/publisher
+        # namespace is set per-run via JRELEASER_MAVENCENTRAL_NAMESPACE env var:
+        #   - public libs  -> build.linea
+        #   - internal libs -> build.linea.internal
+        #   - all-libs release -> build.linea (covers build.linea.internal sub-namespace)
         stagingRepositories:
           - build/staging-deploy

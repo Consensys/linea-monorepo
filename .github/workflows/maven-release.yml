@@ -24,7 +24,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 #v5.2.0
@@ -56,10 +56,10 @@ jobs:
 
       - name: Set release metadata
         run: |
-          ARTIFACT_ID=$(echo "${{ github.event.inputs.libToRelease }}" | awk -F: '{print $NF}')
+          PROJECT_NAME=$(echo "${{ github.event.inputs.libToRelease }}" | awk -F: '{print $NF}')
           VERSION="${{ github.event.inputs.version }}"
-          echo "JRELEASER_TAG_NAME=maven-${ARTIFACT_ID}-v${VERSION}" >> $GITHUB_ENV
-          echo "JRELEASER_RELEASE_NAME=Maven package: ${ARTIFACT_ID} v${VERSION}" >> $GITHUB_ENV
+          echo "JRELEASER_TAG_NAME=maven-${PROJECT_NAME}-v${VERSION}" >> $GITHUB_ENV
+          echo "JRELEASER_RELEASE_NAME=Maven package: ${PROJECT_NAME} v${VERSION}" >> $GITHUB_ENV
 
       - name: Setup JReleaser
         # Install the JReleaser CLI as a tool so we can run it in a `run:` step
@@ -71,8 +71,7 @@ jobs:
           version: 1.23.0
 
       - name: Release to Maven Central
-        working-directory: ${{ github.workspace }}
-        run: jreleaser release
+        run: ./gradlew ${{github.event.inputs.libToRelease}}:jreleaserRelease
         env:
           JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
           JRELEASER_TAG_NAME: ${{ env.JRELEASER_TAG_NAME }}

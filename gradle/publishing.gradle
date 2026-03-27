@@ -68,3 +68,15 @@ task prePublishValidation {
   }
 }
 
+// Runs jreleaser as a separate OS process — no Gradle classloader involvement, no BC/JGit conflicts.
+// project.group is either build.linea (public libs) or build.linea.internal (internal libs),
+// so the correct Maven Central namespace is derived automatically without hardcoding it in CI.
+tasks.register('jreleaserRelease', Exec) {
+  group = 'release'
+  description = 'Release this artifact to Maven Central via JReleaser CLI'
+  environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
+  commandLine 'jreleaser', 'release',
+      '--basedir', rootProject.projectDir.absolutePath,
+      '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+}
+

@@ -11,6 +11,18 @@ Set<String> publicApiLibs = [
   "l2-message-service"
 ]
 
+// Single JReleaser run for all JVM libs.
+// project.group == build.linea (inherited from root), which is the parent namespace
+// that covers build.linea.internal sub-namespace in Maven Central.
+tasks.register('jreleaserRelease', Exec) {
+  group = 'release'
+  description = 'Release all JVM libs to Maven Central via JReleaser CLI'
+  environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
+  commandLine 'jreleaser', 'release',
+      '--basedir', rootProject.projectDir.absolutePath,
+      '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+}
+
 subprojects {
   // Note that artifacts with generated code only will be skipped if :publish is called without preceding :build
   def hasGeneratedSources = it.fileTree(dir: 'build/generated', includes: ['**/*.java', '**/*.kt']).files.size() > 0
