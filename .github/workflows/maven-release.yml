@@ -67,7 +67,7 @@ jobs:
         # as a Gradle plugin (JGit/BouncyCastle version shadowing by buildSrc).
         uses: jreleaser/release-action@v2
         with:
-          arguments: release
+          arguments: release --basedir=${{ github.workspace }}
           version: 1.23.0
           setup-java: false
         env:
