@@ -33,7 +33,20 @@ interface Crypto {
  * SECP256K1 implementation of cryptographic operations.
  */
 object SecpCrypto : Crypto {
-  val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+  val signatureAlgorithm: org.hyperledger.besu.crypto.SignatureAlgorithm
+
+  init {
+    // CRITICAL: Cache the singleton so Besu's internal code (BftMessage.readPayload,
+    // Util.signatureToAddress, CommitPayload.readFrom) returns the cached instance
+    // instead of creating a new SECP256K1 + BouncyCastleProvider on every call.
+    // Without this, each SignatureAlgorithmFactory.getInstance() call inside Besu
+    // triggers BouncyCastleProvider.setup() which registers hundreds of algorithms
+    // into a ConcurrentHashMap — consuming ~75% of event loop CPU time.
+    if (!SignatureAlgorithmFactory.isInstanceSet()) {
+      SignatureAlgorithmFactory.setDefaultInstance()
+    }
+    signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+  }
 
   override fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator =
     Validator(privateKeyToAddress(rawPrivateKey))
