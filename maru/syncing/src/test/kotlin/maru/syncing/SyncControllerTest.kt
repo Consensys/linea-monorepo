@@ -329,4 +329,77 @@ class SyncControllerTest {
     assertThat(fakeClSyncService.lastSyncTarget).isEqualTo(103UL)
     assertThat(controller.getCLSyncStatus()).isEqualTo(CLSyncStatus.SYNCING)
   }
+
+  @Test
+  fun `when elSyncEnabled is false isELSynced and getElSyncStatus always report SYNCED`() {
+    val controller =
+      createSyncController(
+        blockNumber = 0UL,
+        clSyncService = fakeClSyncService,
+        desyncTolerance = 1UL,
+        elSyncEnabled = false,
+      )
+
+    assertThat(controller.isELSynced()).isTrue()
+    assertThat(controller.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCED)
+  }
+
+  @Test
+  fun `when elSyncEnabled is false isNodeFullInSync depends only on CL`() {
+    val controller =
+      createSyncController(
+        blockNumber = 0UL,
+        clSyncService = fakeClSyncService,
+        desyncTolerance = 1UL,
+        elSyncEnabled = false,
+      )
+
+    assertThat(controller.isNodeFullInSync()).isFalse()
+
+    controller.updateClSyncStatus(CLSyncStatus.SYNCED)
+
+    controller.updateElSyncStatus(ELSyncStatus.SYNCING)
+
+    assertThat(controller.isNodeFullInSync()).isTrue()
+  }
+
+  @Test
+  fun `when elSyncEnabled is false updateElSyncStatus is a no-op`() {
+    val elStatusUpdates = mutableListOf<ELSyncStatus>()
+    val controller =
+      createSyncController(
+        blockNumber = 0UL,
+        clSyncService = fakeClSyncService,
+        desyncTolerance = 1UL,
+        elSyncEnabled = false,
+      )
+    controller.onElSyncStatusUpdate { elStatusUpdates.add(it) }
+
+    controller.updateElSyncStatus(ELSyncStatus.SYNCED)
+    controller.updateElSyncStatus(ELSyncStatus.SYNCING)
+
+    assertThat(elStatusUpdates).isEmpty()
+    assertThat(controller.getElSyncStatus()).isEqualTo(ELSyncStatus.SYNCED)
+  }
+
+  @Test
+  fun `when elSyncEnabled is false CL going SYNCING does not force EL status`() {
+    val elStatusUpdates = mutableListOf<ELSyncStatus>()
+    val controller =
+      createSyncController(
+        blockNumber = 0UL,
+        clSyncService = fakeClSyncService,
+        desyncTolerance = 1UL,
+        elSyncEnabled = false,
+      )
+    controller.onElSyncStatusUpdate { elStatusUpdates.add(it) }
+
+    controller.updateClSyncStatus(CLSyncStatus.SYNCING)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCED)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCING)
+    controller.updateClSyncStatus(CLSyncStatus.SYNCED)
+
+    assertThat(elStatusUpdates).isEmpty()
+    assertThat(controller.isELSynced()).isTrue()
+  }
 }

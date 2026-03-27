@@ -169,7 +169,7 @@ class CLSyncServiceImplTest {
     clSyncService =
       CLSyncServiceImpl(
         beaconChain = targetBeaconChain,
-        executorService = Executors.newCachedThreadPool(),
+        executorService = executorService,
         validatorProvider = StaticValidatorProvider(validators),
         allowEmptyBlocks = true,
         peerLookup = peerLookup,
@@ -179,12 +179,22 @@ class CLSyncServiceImplTest {
       )
 
     try {
-      targetP2pNetwork.start()
-      sourceP2pNetwork.start()
+      targetP2pNetwork.start().get()
+      sourceP2pNetwork.start().get()
       targetP2pNetwork.addStaticPeer(createPeerAddress(sourceNodePort))
 
-      awaitUntilAsserted { assertNetworkHasPeers(network = targetP2pNetwork, peers = 1) }
-      awaitUntilAsserted { assertNetworkHasPeers(network = sourceP2pNetwork, peers = 1) }
+      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkHasPeers(
+          network = targetP2pNetwork,
+          peers = 1,
+        )
+      }
+      awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
+        assertNetworkHasPeers(
+          network = sourceP2pNetwork,
+          peers = 1,
+        )
+      }
     } catch (e: Exception) {
       targetP2pNetwork.stop()
       sourceP2pNetwork.stop()
@@ -197,7 +207,8 @@ class CLSyncServiceImplTest {
     clSyncService.stop()
     targetP2pNetwork.stop()
     sourceP2pNetwork.stop()
-    executorService.shutdown()
+    executorService.shutdownNow()
+    executorService.awaitTermination(5, TimeUnit.SECONDS)
   }
 
   @Test

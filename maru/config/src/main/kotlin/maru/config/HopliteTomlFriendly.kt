@@ -56,6 +56,7 @@ data class QbftOptionsDtoToml(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration? = null,
+  val roundExpiryCoefficient: Double = 2.0,
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
@@ -66,6 +67,7 @@ data class QbftOptionsDtoToml(
       minBlockBuildTime = minBlockBuildTime,
       messageQueueLimit = messageQueueLimit,
       roundExpiry = roundExpiry,
+      roundExpiryCoefficient = roundExpiryCoefficient,
       duplicateMessageLimit = duplicateMessageLimit,
       futureMessageMaxDistance = futureMessageMaxDistance,
       futureMessagesLimit = futureMessagesLimit,
@@ -84,6 +86,7 @@ data class QbftOptionsDtoToml(
     if (futureMessagesLimit != other.futureMessagesLimit) return false
     if (minBlockBuildTime != other.minBlockBuildTime) return false
     if (roundExpiry != other.roundExpiry) return false
+    if (roundExpiryCoefficient != other.roundExpiryCoefficient) return false
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
 
     return true
@@ -95,7 +98,8 @@ data class QbftOptionsDtoToml(
     result = 31 * result + futureMessageMaxDistance.hashCode()
     result = 31 * result + futureMessagesLimit.hashCode()
     result = 31 * result + minBlockBuildTime.hashCode()
-    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + (roundExpiry?.hashCode() ?: 0)
+    result = 31 * result + roundExpiryCoefficient.hashCode()
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }

@@ -38,11 +38,12 @@ class BeaconSyncControllerImpl(
   private val desyncTolerance: ULong,
   clState: CLSyncStatus = CLSyncStatus.SYNCING,
   elState: ELSyncStatus = ELSyncStatus.SYNCING,
+  private val elSyncEnabled: Boolean = true,
 ) : SyncStatusProvider,
   BeaconSyncTargetUpdateHandler {
   private val log = LogManager.getLogger(this.javaClass)
   private val lock = ReentrantReadWriteLock()
-  private var currentState = SyncState(clState, elState)
+  private var currentState = SyncState(clState, if (elSyncEnabled) elState else ELSyncStatus.SYNCED)
 
   private val clSyncHandlers = InOrderFanoutSubscriptionManager<CLSyncStatus>()
   private val elSyncHandlers = InOrderFanoutSubscriptionManager<ELSyncStatus>()
@@ -94,7 +95,7 @@ class BeaconSyncControllerImpl(
         if (previousState.clStatus == newStatus) return@write emptyList()
 
         currentState =
-          if (newStatus == CLSyncStatus.SYNCING) {
+          if (newStatus == CLSyncStatus.SYNCING && elSyncEnabled) {
             previousState.copy(clStatus = newStatus, elStatus = ELSyncStatus.SYNCING)
           } else {
             previousState.copy(clStatus = newStatus)
@@ -123,6 +124,7 @@ class BeaconSyncControllerImpl(
   }
 
   fun updateElSyncStatus(newStatus: ELSyncStatus) {
+    if (!elSyncEnabled) return
     val callbacks: List<() -> Unit> =
       lock.write {
         log.debug("Updating EL sync status to {}", newStatus)
@@ -203,6 +205,7 @@ class BeaconSyncControllerImpl(
       metricsFacade: MetricsFacade,
       peerChainTrackerConfig: PeerChainTracker.Config,
       elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService,
+      elSyncEnabled: Boolean = true,
       desyncTolerance: ULong,
       pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
@@ -225,6 +228,7 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           clSyncService = clSyncService,
           desyncTolerance = desyncTolerance,
+          elSyncEnabled = elSyncEnabled,
         )
 
       val elSyncService = elSyncServiceFactory(controller::updateElSyncStatus)
