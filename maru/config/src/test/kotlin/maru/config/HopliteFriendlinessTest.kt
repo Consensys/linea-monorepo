@@ -365,6 +365,7 @@ class HopliteFriendlinessTest {
     min-block-build-time=200m
     message-queue-limit = 1001
     round-expiry = "10 seconds"
+    round-expiry-coefficient = 3.5
     duplicateMessageLimit = 99
     future-message-max-distance = 11
     future-messages-limit = 100
@@ -379,6 +380,7 @@ class HopliteFriendlinessTest {
         minBlockBuildTime = 200.milliseconds,
         messageQueueLimit = 1001,
         roundExpiry = 10.seconds,
+        roundExpiryCoefficient = 3.5,
         duplicateMessageLimit = 99,
         futureMessageMaxDistance = 11,
         futureMessagesLimit = 100,

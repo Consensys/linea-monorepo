@@ -44,8 +44,6 @@ class SyncSealedBlockImporterFactory {
     val beaconBlockValidatorFactory =
       createBeaconBlockValidatorFactory(beaconChain, validatorProvider, allowEmptyBlocks)
 
-    // Create TransactionalSealedBeaconBlockImporter without BeaconBlockImporter
-    // We'll handle state transitions and database commits directly
     val transactionalSealedBeaconBlockImporter =
       TransactionalSealedBeaconBlockImporter(
         beaconChain = beaconChain,

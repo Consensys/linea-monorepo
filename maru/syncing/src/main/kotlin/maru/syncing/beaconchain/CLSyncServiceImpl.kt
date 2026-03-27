@@ -31,8 +31,8 @@ import org.hyperledger.besu.plugin.services.MetricsSystem
 
 class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,
-  private val validatorProvider: ValidatorProvider,
-  private val allowEmptyBlocks: Boolean,
+  validatorProvider: ValidatorProvider,
+  allowEmptyBlocks: Boolean,
   private var executorService: ExecutorService,
   pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
   peerLookup: PeerLookup,

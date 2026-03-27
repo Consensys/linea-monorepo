@@ -134,6 +134,7 @@ data class QbftConfig(
   val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration? = null,
+  val roundExpiryCoefficient: Double = 2.0,
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
@@ -155,6 +156,7 @@ data class QbftConfig(
     if (futureMessagesLimit != other.futureMessagesLimit) return false
     if (minBlockBuildTime != other.minBlockBuildTime) return false
     if (roundExpiry != other.roundExpiry) return false
+    if (roundExpiryCoefficient != other.roundExpiryCoefficient) return false
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
 
     return true
@@ -166,7 +168,8 @@ data class QbftConfig(
     result = 31 * result + futureMessageMaxDistance.hashCode()
     result = 31 * result + futureMessagesLimit.hashCode()
     result = 31 * result + minBlockBuildTime.hashCode()
-    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + (roundExpiry?.hashCode() ?: 0)
+    result = 31 * result + roundExpiryCoefficient.hashCode()
     result = 31 * result + feeRecipient.contentHashCode()
     return result
   }
@@ -176,6 +179,7 @@ data class QbftConfig(
       "minBlockBuildTime=$minBlockBuildTime, " +
       "messageQueueLimit=$messageQueueLimit, " +
       "roundExpiry=$roundExpiry, " +
+      "roundExpiryCoefficient=$roundExpiryCoefficient, " +
       "duplicateMessageLimit=$duplicateMessageLimit, " +
       "futureMessageMaxDistance=$futureMessageMaxDistance, " +
       "futureMessagesLimit=$futureMessagesLimit, " +
@@ -232,7 +236,7 @@ data class ApiConfig(
 data class SyncingConfig(
   val peerChainHeightPollingInterval: Duration,
   val syncTargetSelection: SyncTargetSelection,
-  val elSyncStatusRefreshInterval: Duration,
+  val elSyncStatusRefreshInterval: Duration? = null,
   val desyncTolerance: ULong = 5UL,
   val download: Download = Download(),
 ) {
