@@ -157,12 +157,12 @@ func runTestcaseWithPhantomRomEntries(t *testing.T) {
 	)
 
 	// sharedKeccak is a code hash present in both ROM and SS (the normal case).
-	sharedKeccak := GenerateRandomLimbs(common.NbLimbU256, rand.New(utils.NewRandSource(42)))
-	sharedPoseidon := GenerateRandomLimbs(poseidon2.BlockSize, rand.New(utils.NewRandSource(43)))
+	sharedKeccak := GenerateRandomLimbs(common.NbLimbU256, rand.New(utils.NewRandSource(42)))     //nolint:gosec
+	sharedPoseidon := GenerateRandomLimbs(poseidon2.BlockSize, rand.New(utils.NewRandSource(43))) //nolint:gosec
 
 	// phantomKeccak is only in ROM — no SS entry — simulating an OOG reverted CREATE2.
-	phantomKeccak := GenerateRandomLimbs(common.NbLimbU256, rand.New(utils.NewRandSource(44)))
-	phantomPoseidon := GenerateRandomLimbs(poseidon2.BlockSize, rand.New(utils.NewRandSource(45)))
+	phantomKeccak := GenerateRandomLimbs(common.NbLimbU256, rand.New(utils.NewRandSource(44)))     //nolint:gosec
+	phantomPoseidon := GenerateRandomLimbs(poseidon2.BlockSize, rand.New(utils.NewRandSource(45))) //nolint:gosec
 
 	// Ensure phantom keccak > shared keccak so phantom sorts after shared.
 	// That puts SS (pointing at shared) ahead of ROM (pointing at phantom)
