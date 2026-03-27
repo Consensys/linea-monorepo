@@ -61,15 +61,18 @@ jobs:
           echo "JRELEASER_TAG_NAME=maven-${ARTIFACT_ID}-v${VERSION}" >> $GITHUB_ENV
           echo "JRELEASER_RELEASE_NAME=Maven package: ${ARTIFACT_ID} v${VERSION}" >> $GITHUB_ENV
 
-      - name: Release to Maven Central
-        # JReleaser runs as a standalone GitHub Action (separate JVM), completely
-        # avoiding the classloader conflicts that occurred when using JReleaser
-        # as a Gradle plugin (JGit/BouncyCastle version shadowing by buildSrc).
-        uses: jreleaser/release-action@v2
+      - name: Setup JReleaser
+        # Install the JReleaser CLI as a tool so we can run it in a `run:` step
+        # with an explicit working-directory pointing at the repo root.
+        # Using jreleaser/release-action@v2 directly is unreliable because it
+        # invokes JReleaser from an unrelated CWD outside the repository.
+        uses: jreleaser/release-action/setup@v2
         with:
-          arguments: release -grs
           version: 1.23.0
-          setup-java: false
+
+      - name: Release to Maven Central
+        working-directory: ${{ github.workspace }}
+        run: jreleaser release
         env:
           JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
           JRELEASER_TAG_NAME: ${{ env.JRELEASER_TAG_NAME }}
