@@ -41,6 +41,9 @@ func MockDiscoveryWizard() *wizard.CompiledIOP {
 }
 
 func TestStandardDiscoveryOnZkEVM(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping heavy test in short mode")
+	}
 
 	var (
 		z    = zkevm.GetTestZkEVM()

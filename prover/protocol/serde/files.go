@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -263,4 +264,119 @@ func formatSize(bytes int) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// MmapBackedBuffer holds a buffer allocated via anonymous mmap (MAP_ANON|MAP_PRIVATE).
+// Unlike Go heap allocations, mmap memory can be explicitly returned to the OS via
+// Munmap, bypassing Go's garbage collector entirely.
+type MmapBackedBuffer struct {
+	data []byte
+}
+
+// Release unmaps the buffer, immediately returning memory to the OS.
+// After calling Release, any Go objects deserialized onto this buffer become invalid.
+// The caller MUST nil all Go references to deserialized objects before calling Release.
+func (b *MmapBackedBuffer) Release() {
+	if b != nil && b.data != nil {
+		if err := syscall.Munmap(b.data); err != nil {
+			logrus.Warnf("munmap release failed: %v", err)
+		}
+		b.data = nil
+	}
+}
+
+// LoadFromDiskMmapBacked loads a compressed serialized asset from disk, decompressing
+// it into an anonymous mmap-backed buffer instead of Go heap memory.
+//
+// Unlike LoadFromDisk (compressed path), where decompressed data lives on the Go heap
+// and can only be freed by GC (which may never return pages to the OS), this function
+// places decompressed data in mmap memory that can be instantly reclaimed via
+// MmapBackedBuffer.Release() → syscall.Munmap.
+//
+// Go's GC does not track mmap-allocated memory, so:
+//   - The large decompressed data does NOT increase Go heap size or GC pressure
+//   - Release() returns physical+virtual memory instantly (no GC cycle needed)
+//   - The Go runtime never attempts to scan or free this memory
+//
+// The caller MUST call buf.Release() when the asset is no longer needed.
+// Before calling Release(), nil all Go references to the deserialized asset.
+func LoadFromDiskMmapBacked(filePath string, assetPtr any) (*MmapBackedBuffer, error) {
+	logrus.Infof("Loading compressed asset to mmap buffer: %s...", filePath)
+
+	// 1. Read compressed file from disk (respects IO semaphore)
+	_ = diskReadSemaphore.Acquire(context.Background(), 1)
+	compressedData, err := os.ReadFile(filePath)
+	diskReadSemaphore.Release(1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// 2. Peek at the serde FileHeader (first 32 bytes of decompressed data) to
+	//    learn the total decompressed size (FileHeader.DataSize). This requires
+	//    only a minimal partial decompression (one zstd block) and lets us
+	//    pre-allocate the mmap region before full decompression — eliminating
+	//    the ~25-50 GiB temporary heap buffer that io.ReadAll required per module.
+	peekDecoder, err := zstd.NewReader(bytes.NewReader(compressedData))
+	if err != nil {
+		return nil, fmt.Errorf("decompression setup failed: %w", err)
+	}
+	headerBuf := make([]byte, SizeOf[FileHeader]())
+	if _, err := io.ReadFull(peekDecoder, headerBuf); err != nil {
+		peekDecoder.Close()
+		return nil, fmt.Errorf("failed to read serde header from %s: %w", filePath, err)
+	}
+	peekDecoder.Close()
+
+	serdeHeader := (*FileHeader)(unsafe.Pointer(&headerBuf[0]))
+	if serdeHeader.Magic != Magic {
+		return nil, fmt.Errorf("invalid magic bytes in %s", filePath)
+	}
+	decompSize := int(serdeHeader.DataSize)
+
+	// 3. Allocate anonymous mmap region of exact decompressed size.
+	// MAP_ANON|MAP_PRIVATE: pages are lazily allocated by the kernel on first
+	// write and can be returned instantly via Munmap.
+	mmapData, err := syscall.Mmap(-1, 0, decompSize,
+		syscall.PROT_READ|syscall.PROT_WRITE,
+		syscall.MAP_ANON|syscall.MAP_PRIVATE)
+	if err != nil {
+		return nil, fmt.Errorf("mmap allocation failed (%s): %w", formatSize(decompSize), err)
+	}
+
+	// 4. Stream-decompress directly into the mmap buffer. The zstd decoder
+	//    reads compressed blocks and writes decoded output straight to the mmap
+	//    region, using only its internal block buffer (~128 KB) on the heap.
+	//    With 4 concurrent loads, this saves ~180 GiB of peak heap compared to
+	//    the previous io.ReadAll + copy approach.
+	var tDecomp time.Duration
+	var decompErr error
+	tDecomp = profiling.TimeIt(func() {
+		decoder, err := zstd.NewReader(bytes.NewReader(compressedData))
+		if err != nil {
+			decompErr = err
+			return
+		}
+		defer decoder.Close()
+		_, decompErr = io.ReadFull(decoder, mmapData)
+	})
+	compressedData = nil // allow GC to collect compressed data
+	if decompErr != nil {
+		_ = syscall.Munmap(mmapData)
+		return nil, fmt.Errorf("decompression failed: %w", decompErr)
+	}
+
+	// 5. Deserialize (overlay Go headers onto mmap buffer)
+	var deserErr error
+	tDeser := profiling.TimeIt(func() {
+		deserErr = Deserialize(mmapData, assetPtr)
+	})
+	if deserErr != nil {
+		_ = syscall.Munmap(mmapData)
+		return nil, fmt.Errorf("deserialization failed: %w", deserErr)
+	}
+
+	logrus.Infof("Loaded %s to mmap [Size: %s] | Deser: %s | Decomp: %s",
+		filePath, formatSize(len(mmapData)), tDeser, tDecomp)
+
+	return &MmapBackedBuffer{data: mmapData}, nil
 }

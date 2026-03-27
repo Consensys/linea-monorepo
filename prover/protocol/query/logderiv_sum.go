@@ -402,6 +402,29 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	return fext.NewGenFieldFromExt(res), nil
 }
 
+// PerPartResult holds the name and the log-derivative sum contribution of a
+// single part.
+type PerPartResult struct {
+	Name string
+	Sum  fext.GenericFieldElem
+}
+
+// ComputePerPart returns the log-derivative sum contribution of each part
+// individually. This is useful for debugging: when the overall sum does not
+// cancel, this identifies which specific lookup query is broken.
+func (r LogDerivativeSum) ComputePerPart(run ifaces.Runtime) ([]PerPartResult, error) {
+	results := make([]PerPartResult, len(r.Inputs.Parts))
+	for k := range r.Inputs.Parts {
+		part := &r.Inputs.Parts[k]
+		val, err := computeLogDerivativeSumPair(run, part.Num, part.Den, part.Size)
+		if err != nil {
+			return nil, fmt.Errorf("part %q (size=%d): %w", part.Name, part.Size, err)
+		}
+		results[k] = PerPartResult{Name: part.Name, Sum: val}
+	}
+	return results, nil
+}
+
 func (q LogDerivativeSum) UUID() uuid.UUID {
 	return q.uuid
 }

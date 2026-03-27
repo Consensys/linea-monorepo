@@ -14,17 +14,15 @@
  */
 package net.consensys.linea.zktracer.precompiles.modexp;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.common.base.Preconditions;
 import java.math.BigInteger;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -127,11 +125,11 @@ public class ModexpEIP7883Tests extends TracerTestBase {
     // First place the parameters in memory
     // Copy to targetOffset the code of codeOwnerAccount
     program
-        .push(callDataAsBytecodeAddress)
+        .push(callDataAsBytecodeAddress.getBytes())
         .op(OpCode.EXTCODESIZE) // size
         .push(0) // offset
         .push(0) // targetOffset
-        .push(callDataAsBytecodeAddress) // address
+        .push(callDataAsBytecodeAddress.getBytes()) // address
         .op(OpCode.EXTCODECOPY);
 
     // Do the call
@@ -140,7 +138,7 @@ public class ModexpEIP7883Tests extends TracerTestBase {
         .push(cds) // retOffset
         .push(cds) // argSize
         .push(0) // argOffset
-        .push(Address.MODEXP) // address
+        .push(Address.MODEXP.getBytes()) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL)
         .op(OpCode.RETURNDATASIZE)
@@ -157,9 +155,9 @@ public class ModexpEIP7883Tests extends TracerTestBase {
   }
 
   static Stream<Arguments> modexpEIP7883TestSource() {
-    List<Arguments> arguments = new ArrayList<>(modexpEIP7883TestSourceNightly().toList());
-    Collections.shuffle(arguments, new Random(LocalDate.now().toEpochDay()));
-    return arguments.stream().limit(arguments.size() / 40); // Execute 2.5 % of the tests
+    final List<Arguments> arguments = new ArrayList<>(modexpEIP7883TestSourceNightly().toList());
+    return randomSampleByCurrentCommitHash(arguments.size() / 40, arguments)
+        .stream(); // Execute 2.5 % of the tests
   }
 
   static Stream<Arguments> modexpEIP7883TestSourceNightly() {

@@ -247,9 +247,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
-		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
-		// For submodules with Plonk circuits, BaseSize represents the required number of public
-		// inputs and must not be reduced.
+		// Store the original BaseSize from advice for each submodule as the minimum allowed
+		// segment size. BaseSize is the advised minimum from the module definition and serves
+		// as a floor during the reduction loop below.
+		//
+		// BUG FIX: Previously, baseSizes was only enforced for submodules that had
+		// precomputed columns (HasPrecomputed). Non-precomputed submodules had no floor,
+		// allowing the reduction loop to shrink their segment size down to as low as 2 rows.
+		// This caused modules like BN-EC-OPS, BLS-G2, and BLS-PAIRING to be split into
+		// thousands of tiny segments (e.g., BN-EC-OPS: 2046 segments, BLS-G2: 600,
+		// BLS-PAIRING: 578), producing ~3238 GL and ~3238 LPP circuits total.
+		// This made the limitless prover run effectively forever.
+		//
+		// The fix applies baseSizes as a floor for ALL submodules (not just precomputed ones).
+		// This ensures that every submodule respects its advised minimum segment size,
+		// keeping segment counts reasonable while still allowing weight-based optimization.
 		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
 		copy(baseSizes, disc.Modules[i].NewSizes)
 
@@ -286,12 +298,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			for j := range disc.Modules[i].SubModules {
 				numRow := disc.Modules[i].NewSizes[j]
 				if !disc.Modules[i].SubModules[j].HasPrecomputed {
-					numRow /= reduction
-					// Only enforce BaseSize floor for submodules with Plonk circuits, as they have
-					// strict requirements for the number of public inputs matching the circuit size
-					if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && numRow < baseSizes[j] {
-						numRow = baseSizes[j]
-					}
+					// Apply reduction but never go below the advised BaseSize.
+					// Without this floor, large reduction factors (e.g., 512) can
+					// shrink a submodule from BaseSize=1024 to size=2, creating an
+					// enormous number of segments per module.
+					numRow = max(numRow/reduction, baseSizes[j])
 				}
 
 				if numRow < 1 {
@@ -309,13 +320,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 		}
 
+		// Apply the best reduction found above to each submodule's segment size.
+		// The baseSizes floor is enforced again here to be consistent with the
+		// weight estimation loop (same logic, same floor).
 		for j := range disc.Modules[i].SubModules {
 			if !disc.Modules[i].SubModules[j].HasPrecomputed {
-				disc.Modules[i].NewSizes[j] /= bestReduction
-				// Only enforce BaseSize floor for submodules with Plonk circuits
-				if disc.Modules[i].SubModules[j].NbConstraintsOfPlonkCirc > 0 && disc.Modules[i].NewSizes[j] < baseSizes[j] {
-					disc.Modules[i].NewSizes[j] = baseSizes[j]
-				}
+				disc.Modules[i].NewSizes[j] = max(disc.Modules[i].NewSizes[j]/bestReduction, baseSizes[j])
 			}
 		}
 	}

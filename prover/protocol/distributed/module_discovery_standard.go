@@ -217,9 +217,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
-		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
-		// For submodules with Plonk circuits, BaseSize represents the required number of public
-		// inputs and must not be reduced.
+		// Store the original BaseSize from advice for each submodule as the minimum allowed
+		// segment size. BaseSize is the advised minimum from the module definition and serves
+		// as a floor during the reduction loop below.
+		//
+		// BUG FIX: Previously, baseSizes was only enforced for Plonk circuit submodules
+		// (those with NbConstraintsOfPlonkCirc > 0). Non-Plonk submodules had no floor,
+		// allowing the reduction loop to shrink their segment size down to as low as 2 rows.
+		// This caused modules like BN-EC-OPS, BLS-G2, and BLS-PAIRING to be split into
+		// thousands of tiny segments (e.g., BN-EC-OPS: 2046 segments, BLS-G2: 600,
+		// BLS-PAIRING: 578), producing ~3238 GL and ~3238 LPP circuits total.
+		// This made the limitless prover run effectively forever.
+		//
+		// The fix applies baseSizes as a floor for ALL submodules (not just Plonk ones).
+		// This ensures that every submodule respects its advised minimum segment size,
+		// keeping segment counts reasonable while still allowing weight-based optimization.
 		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
 		copy(baseSizes, disc.Modules[i].NewSizes)
 
@@ -260,10 +272,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				switch {
 				case subModule.CantChangeSize:
 					numRow = subModule.OriginalSize
-				case subModule.NbConstraintsOfPlonkCirc > 0:
-					numRow = max(numRow/reduction, baseSizes[j])
 				default:
-					numRow /= reduction
+					// Apply reduction but never go below the advised BaseSize.
+					// Without this floor, large reduction factors (e.g., 512) can
+					// shrink a submodule from BaseSize=1024 to size=2, creating an
+					// enormous number of segments per module.
+					numRow = max(numRow/reduction, baseSizes[j])
 				}
 
 				if numRow < 1 {
@@ -281,6 +295,9 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 		}
 
+		// Apply the best reduction found above to each submodule's segment size.
+		// The baseSizes floor is enforced again here to be consistent with the
+		// weight estimation loop (same logic, same floor).
 		for j := range disc.Modules[i].SubModules {
 			subModule := disc.Modules[i].SubModules[j]
 			bestSize := disc.Modules[i].NewSizes[j] / bestReduction
@@ -288,10 +305,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			switch {
 			case subModule.CantChangeSize:
 				disc.Modules[i].NewSizes[j] = subModule.OriginalSize
-			case subModule.NbConstraintsOfPlonkCirc > 0:
-				disc.Modules[i].NewSizes[j] = max(baseSizes[j], bestSize)
 			default:
-				disc.Modules[i].NewSizes[j] = bestSize
+				disc.Modules[i].NewSizes[j] = max(baseSizes[j], bestSize)
 			}
 		}
 	}
@@ -1204,8 +1219,12 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 		switch paddingInfo {
 		case noPaddingInformation:
-			qbm, _ := ls.Disc.QbmOf(col)
-			utils.Panic("cannot guess how to pad the column, you may want to recheck your module grouping because the current one is not padded but grouped with padded modules, newLen=%v, stop=%v, start=%v, col=%v, qbm=%v module=%v", newLen, stop, start, col.ID, qbm.ModuleName, module)
+			// The column is "full" (data spans [0, fullSize) with no padding).
+			// When the LPP module requires more segments than this column can
+			// fill, treat it as right-padded: extend beyond fullSize so that
+			// SegmentOfColumn pads the extra segments with the last value (or
+			// zeros if MarkZeroPadded).
+			return 0, newLen
 		case constantPaddingInformation:
 			return 0, 0 // There should not be anyway to end up in that situation
 		case leftPaddingInformation:

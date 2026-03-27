@@ -1,4 +1,4 @@
-import { getAddress, zeroAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 
 import { configSchema, Config } from "./config.schema";
 
@@ -19,6 +19,10 @@ export const config: Config = {
       cctpMessageTransmitterV2Address: getAddress("0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"),
       hyperlanePortalLiteAddress: getAddress("0x36f586A30502AE3afb555b8aA4dCc05d233c2ecE"),
       hyperlaneMailboxAddress: getAddress("0xc005dc82818d67AF737725bD4bf75435d065D239"),
+      ...(process.env.NEXT_PUBLIC_MAINNET_L1_YIELD_PROVIDER &&
+      isAddress(process.env.NEXT_PUBLIC_MAINNET_L1_YIELD_PROVIDER)
+        ? { yieldProviderAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_L1_YIELD_PROVIDER) }
+        : {}),
     },
     59144: {
       iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-rounded.svg`,
@@ -64,31 +68,6 @@ export const config: Config = {
       cctpTokenMessengerV2Address: getAddress("0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"),
       cctpMessageTransmitterV2Address: getAddress("0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"),
     },
-    // Local networks for testing purposes
-    ...(process.env.NEXT_PUBLIC_E2E_TEST_MODE === "true"
-      ? {
-          31648428: {
-            iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/ethereum-rounded.svg`,
-            messageServiceAddress: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-            tokenBridgeAddress: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-            gasLimitSurplus: 6000n,
-            profitMargin: 2n,
-            cctpDomain: 0,
-            cctpTokenMessengerV2Address: zeroAddress, // Not used in E2E tests
-            cctpMessageTransmitterV2Address: zeroAddress, // Not used in E2E tests
-          },
-          1337: {
-            iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/linea-sepolia.svg`,
-            messageServiceAddress: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987",
-            tokenBridgeAddress: "0x5C95Bcd50E6D1B4E3CDC478484C9030Ff0a7D493",
-            gasLimitSurplus: 6000n,
-            profitMargin: 2n,
-            cctpDomain: 0,
-            cctpTokenMessengerV2Address: zeroAddress, // Not used in E2E tests
-            cctpMessageTransmitterV2Address: zeroAddress, // Not used in E2E tests
-          },
-        }
-      : {}),
   },
   walletConnectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID ?? "",
   storage: {
@@ -109,7 +88,6 @@ export const config: Config = {
     mainnet: process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST ?? "",
     sepolia: process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST ?? "",
   },
-  e2eTestMode: process.env.NEXT_PUBLIC_E2E_TEST_MODE === "true",
 };
 
 export async function getConfiguration(): Promise<Config> {

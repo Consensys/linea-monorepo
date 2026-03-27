@@ -411,11 +411,35 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.FirstExecutionInitialStateRootHash[0] = r.Executions[0].InitialStateRootHash[:16]
 	a.FirstExecutionInitialStateRootHash[1] = r.Executions[0].InitialStateRootHash[16:]
 
+	if parentHash, decErr := utils.HexDecodeString(r.Aggregation.ParentStateRootHash); decErr == nil && !isKoalaBearHashBytes(parentHash) {
+		logrus.WithFields(logrus.Fields{
+			"parentStateRootHash":            r.Aggregation.ParentStateRootHash,
+			"firstExecutionInitialStateRoot": fmt.Sprintf("%x", r.Executions[0].InitialStateRootHash),
+		}).Warn("BLS-to-KoalaBear transition: aggregation ParentStateRootHash is not a valid koalabear octuplet, circuit will use first execution's initial state root hash instead")
+	}
+
 	a.InvalidityFPI, a.InvalidityPublicInput = assignInvalidity(r, len(a.InvalidityFPI))
 
 	// get the filtered addresses
 	a.FilteredAddressesFPISnark.Addresses = getFilteredAddresses(r, len(a.InvalidityFPI))
+
 	return
+}
+
+// isKoalaBearHashBytes checks whether a 32-byte slice represents a valid
+// koalabear octuplet (8 x 32-bit big-endian limbs, each < 0x7f000001).
+func isKoalaBearHashBytes(b []byte) bool {
+	if len(b) != 32 {
+		return false
+	}
+	const koalaMod = 0x7f000001
+	for i := 0; i < 8; i++ {
+		limb := uint32(b[4*i])<<24 | uint32(b[4*i+1])<<16 | uint32(b[4*i+2])<<8 | uint32(b[4*i+3])
+		if limb >= koalaMod {
+			return false
+		}
+	}
+	return true
 }
 
 // MerkleRoot computes the merkle root of data using the given hasher.

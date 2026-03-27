@@ -99,38 +99,6 @@ export async function formatToken(token: GithubTokenListToken): Promise<Token | 
 }
 
 export const getTokenConfig = cache(async (): Promise<NetworkTokens> => {
-  if (config.e2eTestMode) {
-    return {
-      MAINNET: [
-        ...defaultTokensConfig.MAINNET,
-        {
-          type: ["canonical-bridge"],
-          name: "TestERC20",
-          symbol: "TERC20",
-          decimals: 18,
-          L1: "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
-          L2: "0xCC1B08B17301e090cbb4c1F5598Cbaa096d591FB",
-          image: "",
-          isDefault: true,
-          bridgeProvider: BridgeProvider.NATIVE,
-        },
-      ],
-      SEPOLIA: [
-        ...defaultTokensConfig.SEPOLIA,
-        {
-          type: ["canonical-bridge"],
-          name: "TestERC20",
-          symbol: "TERC20",
-          decimals: 18,
-          L1: "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
-          L2: "0xCC1B08B17301e090cbb4c1F5598Cbaa096d591FB",
-          image: "",
-          isDefault: true,
-          bridgeProvider: BridgeProvider.NATIVE,
-        },
-      ],
-    };
-  }
   const updatedTokensConfig = { ...defaultTokensConfig };
 
   const sortPriorityTokensFirst = (tokens: Token[]): Token[] => {

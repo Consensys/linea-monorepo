@@ -141,7 +141,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
               + "0000000000000000000000000000000000000000000000000000000000000000"
               + "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
               + "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
-  static final int multiplier = (forkPredatesOsaka(fork)) ? 8 : 16;
+  static final int multiplier = 16;
   static final int exponentLog =
       computeExponentLog(modexpInput, multiplier, 96 + bbs + ebs + mbs, bbs, ebs);
   static final Address modexpInputAsByteCodeOwnerAddress = Address.fromHexString("0xC0DE05");
@@ -478,7 +478,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
         .push(cds) // callDataSize
         .push(0) // callDataOffset
         .push(transfersValue ? 1 : 0) // value
-        .push(precompileFlag.getAddress()) // address
+        .push(precompileFlag.getAddress().getBytes()) // address
         .push(gas) // gas
         .compile();
   }

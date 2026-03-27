@@ -314,12 +314,16 @@ func ReadFromJSON(path string, v interface{}) error {
 	return json.NewDecoder(f).Decode(v)
 }
 
-func WriteToJSON(path string, v interface{}) error {
+func WriteToJSON(path string, v interface{}) (err error) {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 	return json.NewEncoder(f).Encode(v)
 }
 

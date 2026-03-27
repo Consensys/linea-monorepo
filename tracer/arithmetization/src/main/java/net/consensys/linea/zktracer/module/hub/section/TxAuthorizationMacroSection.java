@@ -132,7 +132,8 @@ public class TxAuthorizationMacroSection {
       final Address authorityAddress = delegation.authorizer().get();
 
       // senderIsAuthority update
-      authorizationFragment.senderIsAuthority(senderAddress.equals(authorityAddress));
+      authorizationFragment.senderIsAuthority(
+          senderAddress.getBytes().equals(authorityAddress.getBytes()));
 
       AccountSnapshot authoritySnapshot;
       if (latestAccountSnapshots.containsKey(authorityAddress)) {
@@ -180,7 +181,7 @@ public class TxAuthorizationMacroSection {
                 .makeWithTrmDuringTxAuth(
                     authoritySnapshot,
                     authoritySnapshotNew,
-                    authoritySnapshot.address(),
+                    authoritySnapshot.address().getBytes(),
                     DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                     TransactionProcessingType.USER)
                 .checkForDelegationAuthorizationPhase(hub);
@@ -214,7 +215,7 @@ public class TxAuthorizationMacroSection {
               .makeWithTrmDuringTxAuth(
                   authoritySnapshot,
                   authoritySnapshotNew,
-                  authoritySnapshot.address(),
+                  authoritySnapshot.address().getBytes(),
                   DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER)
               .checkForDelegationAuthorizationPhase(hub);
@@ -236,12 +237,12 @@ public class TxAuthorizationMacroSection {
 
   boolean senderIsAuthorityTuple(CodeDelegation delegation, Address senderAddress) {
     return delegation.authorizer().isPresent()
-        && delegation.authorizer().get().equals(senderAddress);
+        && delegation.authorizer().get().getBytes().equals(senderAddress.getBytes());
   }
 
   /**
    * Logic shamelessly stolen from <a
-   * href=https://github.com/hyperledger/besu/blob/bba22edc005cabab975efe39d98977b666f2bc83/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/CodeDelegationProcessor.java#L86">CodeDelegationProcessor.java</a>
+   * href=https://github.com/besu-eth/besu/blob/bba22edc005cabab975efe39d98977b666f2bc83/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/CodeDelegationProcessor.java#L86">CodeDelegationProcessor.java</a>
    *
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
@@ -263,7 +264,7 @@ public class TxAuthorizationMacroSection {
 
     // sanity check
     checkState(
-        authority.get().equals(latestAccountSnapshot.address()),
+        authority.get().getBytes().equals(latestAccountSnapshot.address().getBytes()),
         "Account snapshot / delegation authority mismatch:"
             + "snapshot address:  %s,"
             + "authority address: %s",

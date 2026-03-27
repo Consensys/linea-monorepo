@@ -8,7 +8,10 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -59,16 +62,24 @@ var (
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:   1 << 24,
+	// Increased from 1<<24 to 1<<25 because HUB-A-GL produces ~22.8M
+	// constraints in its recursion circuit, which exceeds 2^24 = 16.7M.
+	// DomainSizePlonk = nextPowerOf2(22877653 + 12346) = 2^25, so 2^25 rows
+	// are the minimum that can accommodate HUB-A. This value is global because
+	// all segments must share the same Plonk verifier structure for the
+	// conglomeration circuit.
+	FixedNbRowPlonkCircuit:   1 << 25,
 	FixedNbRowExternalHasher: 1 << 19, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:       1 << 10,
 	InitialCompilerSize:      1 << 18,
 	InitialCompilerSizeOverride: map[string]int{
-		HubAModuleName + "-GL": 1 << 17,
-		HubBModuleName + "-GL": 1 << 17,
+		HubAModuleName + "-GL":  1 << 17,
+		HubBModuleName + "-GL":  1 << 17,
+		HubAModuleName + "-LPP": 1 << 17,
+		HubBModuleName + "-LPP": 1 << 17,
 	},
 	InitialCompilerSizeConglo:    1 << 18,
-	ColumnProfileMPTS:            []int{270, 2177, 304, 12, 12, 28, 4, 4},
+	ColumnProfileMPTS:            []int{264, 1400, 256, 24, 12, 28, 8, 8},
 	ColumnProfileMPTSPrecomputed: 45,
 	FullDebugMode:                false,
 }
@@ -111,6 +122,12 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
+		// BaseSize set to fit P75 module heights in 1 segment (reduces segment count).
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u32\.`},
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u36\.`},
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u64\.`},
+		{BaseSize: 1048576, Cluster: ArithOpsModuleName, Regexp: `^u128\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^u113\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
@@ -155,11 +172,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^mxp\.`},
 		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^oob\.`},
 		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmio\.`},
+		{BaseSize: 1048576, Cluster: HubBModuleName, Regexp: `^mmio×3\.`},
 		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmu\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^stp\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas_out_of_pocket\.`},
-		{BaseSize: 1048576, Cluster: HubBModuleName, Regexp: `^mmio×3\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^call_gas_extra\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc_pricing\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc\.`},
@@ -182,7 +199,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
+		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
+		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
@@ -215,22 +233,23 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// TINY-STUFFS
 		//
-		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ExecDataSchwarzZipfelX},
+		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
+		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.BlockDataFetcher.LastTimestamp[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedL2L1.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedRollingHash.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedRollingMsg.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.RollingHashFetcher.ExistsMsg},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.BlockTxnMetadata.BlockID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.TxnDataFetcher.AbsTxNum},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingMsg.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.RollingHashFetcher.ExistsMsg},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
@@ -238,22 +257,26 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
 		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^txndata\.`},
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.RlpTxnFetcher.NBytes},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.ExecDataCollector.AbsTxID},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.CounterColumnPadded},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.OneColumn},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.SplitOuter[0]},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ExecPoseidonHasher.Hash[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ChainIDFetcher.NBytesChainID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.L2L1LogCompacter.CompactifiedSelector},
-		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecutionPI.ExecDataSchwarzZipfelEval.Pol),
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.RlpTxnFetcher.NBytes},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.CounterColumnPadded},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.OneColumn},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.SplitOuter[0]},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecPoseidonHasher.Hash[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDFetcher.NBytesChainID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.L2L1LogCompacter.CompactifiedSelector},
+		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
+		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
-		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
+		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
+		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
@@ -262,9 +285,24 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ELLIPTIC CURVES
 		//
+		// The blsdata FLATTEN_LIMBS column (blsdata.LIMB'0_FLATTEN_LIMBS) has
+		// ~1M rows (NextPowerOfTwo(blsdata_size * 8)). It shares a QBM with
+		// MANUALLY_SHIFTED_FLATTEN_LIMBS columns (via ManuallyShift global
+		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
+		// this produced 2046 segments. This specific regex must appear BEFORE
+		// the generic ^blsdata\. to override it with a large BaseSize.
+		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
+		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
+		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
+		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
+		// column ID. This advice covers both. The FlattenLimbs column and its
+		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
@@ -278,7 +316,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
 		// G2_CHECK
 		//
@@ -295,14 +337,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
 		// BLS_G2
+		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
 		//
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
 		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkMsmData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
 		{BaseSize: 8192, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedAddGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
 
 		// BLS POINT EVAL
 		//
@@ -310,15 +353,16 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
 		// BLS PAIR
+		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
 		//
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
 		{BaseSize: 4096, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.IsActive},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
-		{BaseSize: 1024, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
 
 		// STATIC
 		//
@@ -530,7 +574,38 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
-	runtimes := []*wizard.ProverRuntime{}
+	type hornerSegInfo struct {
+		Module       string
+		SegmentIndex int
+		N0, N1       int
+		Count        int
+		DataSize     int
+		Contribution fext.Element
+	}
+
+	type perSegmentMSetInfo struct {
+		ModuleName       distributed.ModuleName
+		ModuleIndex      int
+		SegmentIndex     int
+		ProofType        string // "GL" or "LPP"
+		MSetContribution multisethashing.MSetHash
+	}
+
+	var (
+		allGrandProduct     = fext.One()
+		allLogDerivativeSum = fext.Element{}
+		allHornerSum        = fext.Element{}
+		generalMSet         = multisethashing.MSetHash{}
+
+		perPartSums = map[string]fext.GenericFieldElem{}
+
+		perHornerPartContrib = map[string]fext.Element{}
+		perHornerPartSegs    = map[string][]hornerSegInfo{}
+		moduleSegmentCounter = map[distributed.ModuleName]int{}
+
+		// Per-segment multiset contributions for detailed diagnostics
+		perSegmentMSets []perSegmentMSetInfo
+	)
 
 	for i, witness := range witnessGLs {
 
@@ -546,7 +621,19 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
-		runtimes = append(runtimes, rt)
+
+		generalMSetFromGLFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromGL := multisethashing.MSetHash(generalMSetFromGLFr)
+		generalMSet.Add(generalMSetFromGL)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "GL",
+			MSetContribution: generalMSetFromGL,
+		})
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -587,8 +674,333 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// done at the prover level.
 		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 
-		runtimes = append(runtimes, rt)
+		generalMSetFromLPPFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromLPP := multisethashing.MSetHash(generalMSetFromLPPFr)
+		generalMSet.Add(generalMSetFromLPP)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "LPP",
+			MSetContribution: generalMSetFromLPP,
+		})
+
+		logDerivativeSum := rt.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
+		grandProduct := rt.GetPublicInput(distributed.GrandProductPublicInput).Ext
+		hornerSum := rt.GetPublicInput(distributed.HornerPublicInput).Ext
+
+		logrus.Infof("LPP segment %v: log-derivative-sum=%v grand-product=%v horner-sum=%v",
+			i, logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+
+		if debugLPP.LogDerivativeSum != nil {
+			perParts, err := debugLPP.LogDerivativeSum.ComputePerPart(rt)
+			if err != nil {
+				logrus.Warnf("LPP segment %v: per-part computation error: %v", i, err)
+			} else {
+				for _, pp := range perParts {
+					acc := perPartSums[pp.Name]
+					acc.Add(&pp.Sum)
+					perPartSums[pp.Name] = acc
+				}
+			}
+		}
+
+		if debugLPP.Horner != nil {
+			hornerParams := rt.GetHornerParams(debugLPP.Horner.ID)
+			ppResults := hornerParams.GetPerPartResults(rt, *debugLPP.Horner)
+			segIdx := moduleSegmentCounter[witness.ModuleName]
+			moduleSegmentCounter[witness.ModuleName] = segIdx + 1
+
+			for _, pp := range ppResults {
+				logrus.Infof("  Horner part %q: sign=%v count=%d N0=%d N1=%d dataSize=%d contribution=%v (module=%v seg=%d)",
+					pp.Name, pp.SignNegative, pp.Count, pp.N0, pp.N1, pp.DataSize, pp.Contribution.String(),
+					witness.ModuleName, segIdx)
+
+				acc := perHornerPartContrib[pp.Name]
+				acc.Add(&acc, &pp.Contribution)
+				perHornerPartContrib[pp.Name] = acc
+
+				perHornerPartSegs[pp.Name] = append(perHornerPartSegs[pp.Name], hornerSegInfo{
+					Module:       string(witness.ModuleName),
+					SegmentIndex: segIdx,
+					N0:           pp.N0,
+					N1:           pp.N1,
+					Count:        pp.Count,
+					DataSize:     pp.DataSize,
+					Contribution: pp.Contribution,
+				})
+			}
+		}
 	}
+
+	logrus.Infof("Checking accumulation cancellation invariants")
+
+	if !allGrandProduct.IsOne() {
+		utils.Panic("grand-product does not cancel: %v", allGrandProduct.String())
+	}
+
+	if !allHornerSum.IsZero() {
+		logrus.Errorf("horner does not cancel: %v", allHornerSum.String())
+
+		projSums := map[string]fext.Element{}
+		projCounts := map[string][2]int{}
+		for name, contrib := range perHornerPartContrib {
+			projName := name
+			side := "?"
+			if strings.HasSuffix(name, "_A") {
+				projName = name[:len(name)-2]
+				side = "A"
+			} else if strings.HasSuffix(name, "_B") {
+				projName = name[:len(name)-2]
+				side = "B"
+			}
+			_ = side
+
+			acc := projSums[projName]
+			acc.Add(&acc, &contrib)
+			projSums[projName] = acc
+		}
+
+		logrus.Infof("=== Per-projection Horner breakdown ===")
+		nonZero := 0
+		for projName, sum := range projSums {
+			if sum.IsZero() {
+				continue
+			}
+			nonZero++
+			logrus.Errorf("  NON-ZERO projection %q sum=%v", projName, sum.String())
+
+			nameA := projName + "_A"
+			nameB := projName + "_B"
+			if segs, ok := perHornerPartSegs[nameA]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=A module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=A totalSegments=%d totalCount=%d", len(segs), totalCount)
+				projCounts[projName] = [2]int{totalCount, projCounts[projName][1]}
+			}
+			if segs, ok := perHornerPartSegs[nameB]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=B module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=B totalSegments=%d totalCount=%d", len(segs), totalCount)
+				c := projCounts[projName]
+				c[1] = totalCount
+				projCounts[projName] = c
+			}
+
+			c := projCounts[projName]
+			if c[0] != c[1] {
+				logrus.Errorf("    COUNT MISMATCH: A_total=%d B_total=%d", c[0], c[1])
+			}
+		}
+		logrus.Infof("Found %d non-zero projections out of %d total", nonZero, len(projSums))
+
+		utils.Panic("horner does not cancel: %v", allHornerSum.String())
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		logrus.Errorf("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+
+		perTableSums := map[string]fext.GenericFieldElem{}
+		for name, sum := range perPartSums {
+			tableName := name
+			if idx := strings.LastIndex(name, "_T_"); idx >= 0 {
+				tableName = name[:idx]
+			} else if idx := strings.LastIndex(name, "_S_"); idx >= 0 {
+				tableName = name[:idx]
+			}
+			acc := perTableSums[tableName]
+			acc.Add(&sum)
+			perTableSums[tableName] = acc
+		}
+
+		logrus.Infof("Per-table log-derivative breakdown (%d tables):", len(perTableSums))
+		nonZeroCount := 0
+		for tableName, sum := range perTableSums {
+			if !sum.IsZero() {
+				nonZeroCount++
+				logrus.Errorf("  NON-ZERO table %q = %v", tableName, sum.String())
+			}
+		}
+		logrus.Infof("Found %d non-zero tables out of %d total", nonZeroCount, len(perTableSums))
+
+		utils.Panic("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+	}
+
+	if !generalMSet.IsEmpty() {
+		logrus.Errorf("general multiset does not cancel")
+
+		// Per-segment breakdown to identify which segments contribute non-zero residuals
+		logrus.Infof("=== Per-segment general multiset breakdown ===")
+		for _, info := range perSegmentMSets {
+			if !info.MSetContribution.IsEmpty() {
+				// Log the first few non-zero elements for diagnostics
+				nonZeroIdx := -1
+				var nonZeroVal field.Element
+				for k := 0; k < multisethashing.MSetHashSize; k++ {
+					if !info.MSetContribution[k].IsZero() {
+						nonZeroIdx = k
+						nonZeroVal = info.MSetContribution[k]
+						break
+					}
+				}
+				logrus.Errorf("  NON-ZERO %v module=%v (index=%d) segment=%d first_nonzero_at=%d val=%v",
+					info.ProofType, info.ModuleName, info.ModuleIndex, info.SegmentIndex, nonZeroIdx, nonZeroVal.String())
+			}
+		}
+
+		utils.Panic("general multiset does not cancel")
+	}
+
+	logrus.Infof("All accumulation cancellation invariants passed (horner,log-derivative-sum,general-multiset,grand-product)")
+
+	// --- Conglomeration completion checks (mirrors checkLimitlessConglomerationCompletion) ---
+	// These checks verify that the segment counts match the expected target for
+	// each module, which is what the outer proof circuit enforces via
+	// checkLimitlessConglomerationCompletion.
+	logrus.Infof("Checking conglomeration completion invariants (segment counts)")
+
+	numModules := len(lz.DistWizard.Disc.Modules)
+	glSegmentCounts := make([]int, numModules)
+	lppSegmentCounts := make([]int, numModules)
+
+	for _, w := range witnessGLs {
+		glSegmentCounts[w.ModuleIndex]++
+	}
+	for _, w := range witnessLPPs {
+		lppSegmentCounts[w.ModuleIndex]++
+	}
+
+	// The target segment count is the same across all witnesses; take it from
+	// the first GL witness (it always exists because there is at least one
+	// module).
+	var targetSegmentCounts []int
+	if len(witnessGLs) > 0 {
+		targetSegmentCounts = witnessGLs[0].TotalSegmentCount
+	} else if len(witnessLPPs) > 0 {
+		targetSegmentCounts = witnessLPPs[0].TotalSegmentCount
+	}
+
+	segCountMismatch := false
+	for m := 0; m < numModules; m++ {
+		target := 0
+		if targetSegmentCounts != nil && m < len(targetSegmentCounts) {
+			target = targetSegmentCounts[m]
+		}
+		moduleName := lz.DistWizard.Disc.Modules[m].ModuleName
+
+		if glSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): GL count=%d, target=%d",
+				moduleName, m, glSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+		if lppSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): LPP count=%d, target=%d",
+				moduleName, m, lppSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+
+		logrus.Infof("module %v (index=%d): target=%d GL=%d LPP=%d",
+			moduleName, m, target, glSegmentCounts[m], lppSegmentCounts[m])
+	}
+
+	if segCountMismatch {
+		utils.Panic("conglomeration completion check failed: segment count mismatch detected (see errors above)")
+	}
+
+	logrus.Infof("All conglomeration completion invariants passed (segment-counts)")
+
+	// --- LPP column data consistency check ---
+	// In production, GL inserts hash(moduleIndex, segmentIndex, lppMerkleRoot)
+	// into the general multiset, and LPP removes hash(moduleIndex,
+	// segmentIndex, lppMerkleRoot). The lppMerkleRoot is the Vortex Merkle
+	// root of round-0 columns. In both GL and LPP modules, round-0 columns
+	// are the LPP columns. For the multiset to cancel, GL and LPP must have
+	// identical LPP column data.
+	//
+	// This check verifies that the LPP column data extracted during
+	// segmentation is identical between GL and LPP witnesses for each
+	// (module, segment) pair. A mismatch here would cause the Vortex
+	// Merkle roots to differ in production, resulting in a general multiset
+	// cancellation failure.
+	logrus.Infof("Checking LPP column data consistency between GL and LPP witnesses")
+
+	// Build a lookup of LPP witnesses by (moduleIndex, segmentIndex)
+	type moduleSegKey struct {
+		ModuleIndex  int
+		SegmentIndex int
+	}
+	lppWitnessMap := make(map[moduleSegKey]*distributed.ModuleWitnessLPP)
+	for _, w := range witnessLPPs {
+		lppWitnessMap[moduleSegKey{w.ModuleIndex, w.SegmentModuleIndex}] = w
+	}
+
+	lppColMismatch := false
+	for i, glW := range witnessGLs {
+		key := moduleSegKey{glW.ModuleIndex, glW.SegmentModuleIndex}
+		lppW, ok := lppWitnessMap[key]
+		if !ok {
+			logrus.Errorf("GL witness %d (module=%v index=%d segment=%d) has no matching LPP witness",
+				i, glW.ModuleName, glW.ModuleIndex, glW.SegmentModuleIndex)
+			lppColMismatch = true
+			continue
+		}
+
+		// Get LPP column IDs from the blueprint
+		blueprintLPP := lz.DistWizard.BlueprintLPPs[glW.ModuleIndex]
+		for _, colID := range blueprintLPP.LPPColumnSets {
+			glData, glHas := glW.Columns[colID]
+			lppData, lppHas := lppW.Columns[colID]
+
+			if !glHas && !lppHas {
+				continue
+			}
+			if glHas != lppHas {
+				logrus.Errorf("LPP column %v: GL has=%v LPP has=%v (module=%v segment=%d)",
+					colID, glHas, lppHas, glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			glVec := smartvectors.IntoRegVec(glData)
+			lppVec := smartvectors.IntoRegVec(lppData)
+
+			if len(glVec) != len(lppVec) {
+				logrus.Errorf("LPP column %v length mismatch: GL=%d LPP=%d (module=%v segment=%d)",
+					colID, len(glVec), len(lppVec), glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			for j := range glVec {
+				if glVec[j] != lppVec[j] {
+					logrus.Errorf("LPP column %v data mismatch at row %d: GL=%v LPP=%v (module=%v segment=%d)",
+						colID, j, glVec[j].String(), lppVec[j].String(), glW.ModuleName, glW.SegmentModuleIndex)
+					lppColMismatch = true
+					break // one mismatch per column is enough
+				}
+			}
+		}
+	}
+
+	if lppColMismatch {
+		utils.Panic("LPP column data consistency check failed: GL and LPP witnesses have different LPP column data (see errors above). This would cause Vortex Merkle root mismatch in production.")
+	}
+
+	logrus.Infof("All conglomeration completion checks passed (segment-counts, LPP-column-consistency)")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
@@ -907,6 +1319,42 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 	return res, nil
 }
 
+// LoadCompiledGLMmap loads the compiled GL into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
+// LoadCompiledLPPMmap loads the compiled LPP into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+		res      = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
 // LoadDebugGL loads the debug GL from disk
 func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.ModuleGL, error) {
 
@@ -959,6 +1407,24 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 	defer closer.Close()
 
 	return conglo, nil
+}
+
+// LoadCompiledConglomerationMmap loads the conglomeration assets into mmap-backed memory.
+// The caller must call buf.Release() when done, after nilling all references to conglo.
+func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, conglomerationFile)
+		conglo   = &distributed.RecursedSegmentCompilation{}
+	)
+
+	buf, err := serde.LoadFromDiskMmapBacked(filePath, conglo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conglo, buf, nil
 }
 
 func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {

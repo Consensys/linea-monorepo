@@ -117,28 +117,6 @@ var GlobalCircuitIDMapping = map[string]uint{
 	"public-input-interconnection": 17,
 }
 
-// GetAllCircuitNames returns all circuit names in the global mapping, sorted by circuit ID.
-func GetAllCircuitNames() []string {
-	// Create reverse mapping
-	idToName := make(map[uint]string)
-	maxID := uint(0)
-	for name, id := range GlobalCircuitIDMapping {
-		idToName[id] = name
-		if id > maxID {
-			maxID = id
-		}
-	}
-
-	// Build sorted list
-	result := make([]string, 0, len(GlobalCircuitIDMapping))
-	for i := uint(0); i <= maxID; i++ {
-		if name, exists := idToName[i]; exists {
-			result = append(result, name)
-		}
-	}
-	return result
-}
-
 // ComputeIsAllowedCircuitID computes the is_allowed_circuit_id bitmask from a list of
 // allowed circuit names. This is useful for:
 // - Validating config files
@@ -161,8 +139,8 @@ func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
 			return 0, fmt.Errorf("unknown circuit name: %s", name)
 		}
 
-		// Infrastructure circuits (15+) should not be in the bitmask
-		if id >= 15 {
+		// Infrastructure circuits (8-10) should not be in the bitmask
+		if id >= 8 {
 			return 0, fmt.Errorf("circuit '%s' (ID %d) is an infrastructure circuit and should not be included in is_allowed_circuit_id", name, id)
 		}
 
@@ -197,11 +175,22 @@ func GetAllowedCircuitNames(bitmask uint64) []string {
 	var allowed []string
 
 	for name, id := range GlobalCircuitIDMapping {
-		// Only check payload circuits (0-14)
-		if id < 15 && IsCircuitAllowed(bitmask, id) {
+		// Only check payload circuits (0-7)
+		if id < 8 && IsCircuitAllowed(bitmask, id) {
 			allowed = append(allowed, name)
 		}
 	}
 
 	return allowed
+}
+
+// CircuitNameByID returns the circuit name for a given circuit ID.
+// If the ID is not found, it returns "circuit-id-N".
+func CircuitNameByID(id uint) string {
+	for name, cid := range GlobalCircuitIDMapping {
+		if cid == id {
+			return name
+		}
+	}
+	return fmt.Sprintf("circuit-id-%d", id)
 }

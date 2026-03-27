@@ -65,7 +65,6 @@ yarn-debug.log*
 yarn-error.log*
 proving_key.bin
 
-.cache-synpress/
 .externalToolBuilders/
 .gradle/
 .idea/
@@ -175,3 +174,4 @@ prover/*.sh
 .claude/settings.local.json
 contracts/.claude/settings.local.json
 *.analysis-report.html
+.worktrees/

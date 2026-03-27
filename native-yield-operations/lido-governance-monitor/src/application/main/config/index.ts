@@ -6,6 +6,14 @@ import { z } from "zod";
 // Validation helpers that reject empty/whitespace-only strings
 const NonEmptyString = (message: string) => z.string().trim().min(1, message);
 const NonEmptyUrl = (message: string) => z.string().trim().url(message);
+const parseSafePositiveInteger = (value: string) => {
+  if (!/^\d+$/.test(value)) {
+    return Number.NaN;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isSafeInteger(parsedValue) && parsedValue > 0 ? parsedValue : Number.NaN;
+};
 
 // Validates and normalizes an Ethereum address to checksummed form
 const Address = z
@@ -21,6 +29,8 @@ export const ConfigSchema = z.object({
   discourse: z.object({
     // Lido Discourse forum API endpoint for fetching governance proposals
     proposalsUrl: NonEmptyUrl("Invalid Discourse proposals URL"),
+    // Delay before requesting proposal details from Discourse
+    proposalDetailsDelayMs: z.number().int().positive("Discourse proposal details delay must be positive").default(250),
     // Maximum number of Discourse topics to process per polling cycle
     maxTopicsPerPoll: z.number().int().positive("Max topics per poll must be positive"),
   }),
@@ -71,12 +81,14 @@ export const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 
 export function loadConfigFromEnv(env: Record<string, string | undefined>): Config {
+  const discourseProposalDetailsDelayMs = env.DISCOURSE_PROPOSAL_DETAILS_DELAY_MS ?? "250";
   const rawConfig = {
     database: {
       url: env.DATABASE_URL ?? "",
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
+      proposalDetailsDelayMs: parseSafePositiveInteger(discourseProposalDetailsDelayMs),
       maxTopicsPerPoll: parseInt(env.MAX_TOPICS_PER_POLL ?? "20", 10),
     },
     anthropic: {
@@ -109,7 +121,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
 
   const result = ConfigSchema.safeParse(rawConfig);
   if (!result.success) {
-    const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+    const errors = result.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
     throw new Error(`Configuration validation failed: ${errors}`);
   }
 

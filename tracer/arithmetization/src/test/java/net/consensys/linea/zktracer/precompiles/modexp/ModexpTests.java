@@ -14,7 +14,6 @@
  */
 package net.consensys.linea.zktracer.precompiles.modexp;
 
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
@@ -63,7 +62,7 @@ public class ModexpTests extends TracerTestBase {
             .push(0)
             .push(0)
             .push(0)
-            .push(Address.MODEXP) // address
+            .push(Address.MODEXP.getBytes()) // address
             .push(0xffff) // gas
             .op(OpCode.CALL)
             .op(OpCode.POP)
@@ -253,7 +252,7 @@ public class ModexpTests extends TracerTestBase {
         .push(Bytes.fromHexString("0100")) // r@o
         .push(callDataSize) // cds
         .push(Bytes.fromHexString("")) // cdo
-        .push(Address.MODEXP) // address (here: MODEXP)
+        .push(Address.MODEXP.getBytes()) // address (here: MODEXP)
         .push(Bytes.fromHexString("ffff")) // gas
         .op(OpCode.DELEGATECALL)
         .op(OpCode.POP);
@@ -391,7 +390,7 @@ public class ModexpTests extends TracerTestBase {
             .push(98) // cds = 96 + bbs => trigger a MMU Call where the sourceOffset = referenceSize
             .push(0) // cdo
             .push(0) // value
-            .push(Address.MODEXP) // address
+            .push(Address.MODEXP.getBytes()) // address
             .push(0xffff) // gas
             .op(OpCode.CALL)
             .op(OpCode.POP)
@@ -449,7 +448,7 @@ public class ModexpTests extends TracerTestBase {
                     + mbs) // cds = 96 + bbs => trigger a MMU Call where the sourceOffset =
             .push(0) // cdo
             .push(0) // value
-            .push(Address.MODEXP) // address
+            .push(Address.MODEXP.getBytes()) // address
             .push(0xffffffff) // gas
             .op(OpCode.CALL)
             .op(OpCode.POP)
@@ -463,10 +462,7 @@ public class ModexpTests extends TracerTestBase {
         throw e;
       }
     }
-    if (forkPredatesOsaka(fork)) {
-      assertEquals(Integer.MAX_VALUE, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
-    } else {
-      assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
-    }
+
+    assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
   }
 }

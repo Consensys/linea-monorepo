@@ -123,6 +123,10 @@ type CollectedFields struct {
 	// The proof claims for the execution prover
 	ProofClaims []aggregation.ProofClaimAssignment
 
+	// ProofClaimSources tracks the source file path for each entry in ProofClaims,
+	// in the same order. Used for diagnostic logging.
+	ProofClaimSources []string
+
 	ExecutionPI       []public_input.Execution
 	DecompressionPI   []dataavailability.Request
 	InvalidityPI      []public_input.Invalidity

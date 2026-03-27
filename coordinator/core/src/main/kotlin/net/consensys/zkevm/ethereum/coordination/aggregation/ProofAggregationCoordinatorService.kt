@@ -2,11 +2,8 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Vertx
 import linea.LongRunningService
-import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockIntervals
 import linea.domain.toBlockIntervalsString
-import linea.ethapi.EthApiClient
-import linea.persistence.ftx.ForcedTransactionsDao
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
@@ -14,20 +11,16 @@ import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
+import net.consensys.zkevm.domain.AggregationProofIndex
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.domain.InvalidityProofIndex
-import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
-import net.consensys.zkevm.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.function.Consumer
-import java.util.function.Supplier
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -39,14 +32,11 @@ class ProofAggregationCoordinatorService(
   private val metricsFacade: MetricsFacade,
   private var nextBlockNumberToPoll: Long,
   private val aggregationCalculator: AggregationCalculator,
-  private val aggregationsRepository: AggregationsRepository,
-  private val forcedTransactionsDao: ForcedTransactionsDao,
+  private val aggregationProofHandler: AggregationProofHandler,
+  private val invalidityProofProvider: InvalidityProofProvider,
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
-  private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { },
-  private val provenConsecutiveAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { },
-  private val lastFinalizedBlockNumberSupplier: Supplier<ULong> = Supplier<ULong> { 0UL },
   private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
 ) : AggregationHandler, VertxPeriodicPollingService(
   vertx = vertx,
@@ -59,6 +49,13 @@ class ProofAggregationCoordinatorService(
     val pollingInterval: Duration,
     val proofsLimit: UInt,
     val proofGenerationRetryBackoffDelay: Duration,
+  )
+
+  internal val aggregationProofPoller: AggregationProofPoller = AggregationProofPoller(
+    aggregationProofClient = proofAggregationClient,
+    aggregationProofHandler = aggregationProofHandler,
+    log = log,
+    vertx = vertx,
   )
 
   private val pendingBlobs = ConcurrentLinkedQueue<BlobAndBatchCounters>()
@@ -194,58 +191,25 @@ class ProofAggregationCoordinatorService(
         )
       },
     ) {
-      log.debug("requesting aggregation proof: aggregation={}", blobsToAggregate.intervalString())
+      log.debug("creating aggregation proof request: aggregation={}", blobsToAggregate.intervalString())
       aggregationProofCreation(blockIntervals, compressionProofIndexes)
     }
-      .thenPeek {
-        log.info("aggregation proof generated: aggregation={}", blobsToAggregate.intervalString())
-      }
-      .thenCompose { aggregationProof ->
-        val aggregation =
+      .thenApply { aggregationProofIndex ->
+        val unProvenAggregation =
           Aggregation(
             startBlockNumber = blobsToAggregate.startBlockNumber,
             endBlockNumber = blobsToAggregate.endBlockNumber,
             batchCount = batchCount.toULong(),
-            aggregationProof = aggregationProof,
+            aggregationProof = null,
           )
-        aggregationsRepository
-          .saveNewAggregation(aggregation = aggregation)
-          .thenPeek {
-            provenAggregationEndBlockNumberConsumer.accept(aggregation.endBlockNumber)
-          }
-          .whenException {
-            log.error(
-              "Error saving proven aggregation to DB: aggregation={} errorMessage={}",
-              blobsToAggregate.intervalString(),
-              it.message,
-              it,
-            )
-          }
-          .thenPeek {
-            aggregationsRepository.findHighestConsecutiveEndBlockNumber(
-              lastFinalizedBlockNumberSupplier.get().toLong() + 1L,
-            )
-              .thenApply { it ->
-                if (it != null) {
-                  provenConsecutiveAggregationEndBlockNumberConsumer.accept(it.toULong())
-                }
-              }
-              .whenException {
-                log.warn(
-                  "Failed to get consecutive aggregation end block number from DB: aggregation={} errorMessage={}",
-                  blobsToAggregate.intervalString(),
-                  it.message,
-                  it,
-                )
-              }
-          }
+        aggregationProofPoller.addProofRequestsInProgressForPolling(aggregationProofIndex, unProvenAggregation)
       }
   }
 
   private fun aggregationProofCreation(
     executionProofsIndexes: BlockIntervals,
     compressionProofIndexes: List<CompressionProofIndex>,
-  ): SafeFuture<ProofToFinalize> {
+  ): SafeFuture<AggregationProofIndex> {
     val blobsToAggregate = executionProofsIndexes.toBlockInterval()
     return aggregationL2StateProvider
       .getAggregationL2State(blockNumber = blobsToAggregate.startBlockNumber.toLong() - 1)
@@ -258,7 +222,7 @@ class ProofAggregationCoordinatorService(
         )
       }
       .thenCompose { rollingInfo ->
-        getInvalidityProofs(
+        invalidityProofProvider.getInvalidityProofs(
           ftxStartingNumber = rollingInfo.parentAggregationLastFtxNumber.inc(),
           aggregationStartingBlockNumber = blobsToAggregate.startBlockNumber,
         ).thenApply { invalidityProofIndexes ->
@@ -274,34 +238,15 @@ class ProofAggregationCoordinatorService(
             parentAggregationLastFtxRollingHash = rollingInfo.parentAggregationLastFtxRollingHash,
           )
         }
-          .thenCompose(proofAggregationClient::requestProof)
+          .thenCompose(proofAggregationClient::createProofRequest)
           .whenException {
             log.debug(
-              "Error getting aggregation proof: aggregation={} errorMessage={}",
+              "Error creating aggregation proof request: aggregation={} errorMessage={}",
               executionProofsIndexes.toBlockInterval().intervalString(),
               it.message,
               it,
             )
           }
-      }
-  }
-
-  private fun getInvalidityProofs(
-    ftxStartingNumber: ULong,
-    aggregationStartingBlockNumber: ULong,
-  ): SafeFuture<List<InvalidityProofIndex>> {
-    return forcedTransactionsDao
-      .findByStartingNumber(
-        ftxStartingNumberInclusive = ftxStartingNumber,
-        endSimulatedExecutionBlockNumberInclusive = aggregationStartingBlockNumber,
-      )
-      .thenApply {
-        it.map { ftxRecord ->
-          InvalidityProofIndex(
-            ftxNumber = ftxRecord.ftxNumber,
-            simulatedExecutionBlockNumber = ftxRecord.simulatedExecutionBlockNumber,
-          )
-        }
       }
   }
 
@@ -315,19 +260,15 @@ class ProofAggregationCoordinatorService(
       maxProofsPerAggregation: UInt,
       maxBlobsPerAggregation: UInt?,
       startBlockNumberInclusive: ULong,
-      aggregationsRepository: AggregationsRepository,
-      forcedTransactionsDao: ForcedTransactionsDao,
+      aggregationProofHandler: AggregationProofHandler,
+      invalidityProofProvider: InvalidityProofProvider,
+      aggregationL2StateProvider: AggregationL2StateProvider,
       consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
       proofAggregationClient: ProofAggregationProverClientV2,
-      l2EthApiClient: EthApiClient,
-      l2MessageService: L2MessageServiceSmartContractClientReadOnly,
       noL2ActivityTimeout: Duration,
       waitForNoL2ActivityToTriggerAggregation: Boolean,
       targetEndBlockNumbers: List<ULong>,
       metricsFacade: MetricsFacade,
-      provenAggregationEndBlockNumberConsumer: Consumer<ULong>,
-      provenConsecutiveAggregationEndBlockNumberConsumer: Consumer<ULong>,
-      lastFinalizedBlockNumberSupplier: Supplier<ULong>,
       aggregationSizeMultipleOf: UInt,
       hardForkTimestamps: List<Instant> = emptyList(),
       initialTimestamp: Instant,
@@ -397,19 +338,11 @@ class ProofAggregationCoordinatorService(
           metricsFacade = metricsFacade,
           nextBlockNumberToPoll = startBlockNumberInclusive.toLong(),
           aggregationCalculator = globalAggregationCalculator,
-          aggregationsRepository = aggregationsRepository,
-          forcedTransactionsDao = forcedTransactionsDao,
+          aggregationProofHandler = aggregationProofHandler,
+          invalidityProofProvider = invalidityProofProvider,
           consecutiveProvenBlobsProvider = consecutiveProvenBlobsProvider,
           proofAggregationClient = proofAggregationClient,
-          aggregationL2StateProvider =
-          AggregationL2StateProviderImpl(
-            ethApiClient = l2EthApiClient,
-            messageService = l2MessageService,
-            forcedTransactionsDao = forcedTransactionsDao,
-          ),
-          provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer,
-          provenConsecutiveAggregationEndBlockNumberConsumer = provenConsecutiveAggregationEndBlockNumberConsumer,
-          lastFinalizedBlockNumberSupplier = lastFinalizedBlockNumberSupplier,
+          aggregationL2StateProvider = aggregationL2StateProvider,
         )
 
       return LongRunningService.compose(deadlineCheckRunner, proofAggregationService)
@@ -418,5 +351,17 @@ class ProofAggregationCoordinatorService(
 
   override fun handleError(error: Throwable) {
     log.error("Error polling blobs for aggregation: errorMessage={}", error.message, error)
+  }
+
+  override fun start(): SafeFuture<Unit> {
+    return aggregationProofPoller.start().thenCompose {
+      super.start()
+    }
+  }
+
+  override fun stop(): SafeFuture<Unit> {
+    return super.stop().thenCompose {
+      aggregationProofPoller.stop()
+    }
   }
 }

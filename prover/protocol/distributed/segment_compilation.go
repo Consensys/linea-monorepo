@@ -159,7 +159,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		}
 	}
 
-	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+	sisInstance := ringsis.StdParams //ringsis.Params{LogTwoBound: 16, LogTwoDegree: 9}
 
 	wizard.ContinueCompilation(modIOP,
 		// Compile Poseidon2 queries that may have been created during pre-compilation

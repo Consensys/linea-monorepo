@@ -55,9 +55,6 @@ type Aggregation struct {
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
 
-	// @gusiri
-	// TODO: Make sure the dynamic chain configuration is hashed correctly
-
 	if hsh == nil {
 		hsh = sha3.NewLegacyKeccak256()
 	}
@@ -203,11 +200,6 @@ func (pi *AggregationFPI) ToSnarkType(maxNbFilteredAddresses int) AggregationFPI
 
 	utils.Copy(s.ParentShnarf[:], pi.ParentShnarf[:])
 	utils.Copy(s.FinalShnarf[:], pi.FinalShnarf[:])
-
-	// Set the standalone ChainID and L2MessageServiceAddr (parroted from chain config)
-	s.ChainID = pi.ChainID
-	s.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
-
 	for i := range s.L2MsgMerkleTreeRoots {
 		utils.Copy(s.L2MsgMerkleTreeRoots[i][:], pi.L2MsgMerkleTreeRoots[i][:])
 	}
@@ -239,11 +231,8 @@ type AggregationFPIQSnark struct {
 	LastFinalizedRollingHashNumber frontend.Variable
 	LastFinalizedFtxRollingHash    frontend.Variable
 	LastFinalizedFtxNumber         frontend.Variable
-
-	ChainID                    frontend.Variable // WARNING: Currently not bound in Sum
-	L2MessageServiceAddr       frontend.Variable // WARNING: Currently not bound in Sum
-	ChainConfigurationFPISnark ChainConfigurationFPISnark
-	FilteredAddressesFPISnark  FilteredAddressesFPISnark
+	ChainConfigurationFPISnark     ChainConfigurationFPISnark
+	FilteredAddressesFPISnark      FilteredAddressesFPISnark
 }
 
 type ChainConfigurationFPISnark struct {
@@ -294,8 +283,6 @@ type AggregationFPISnark struct {
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 
-	// @gusiri
-	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
 		LastFinalizedBlockNumber:          uint64(fpi.LastFinalizedBlockNumber),
 		LastFinalizedBlockTimestamp:       uint64(fpi.ParentAggregationLastBlockTimestamp),
@@ -334,7 +321,6 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	if err = copyFromHex(s.FinalShnarf[:], fpi.FinalShnarf); err != nil {
 		return
 	}
-
 	for i := range s.L2MsgMerkleTreeRoots {
 		if err = copyFromHex(s.L2MsgMerkleTreeRoots[i][:], fpi.L2MsgRootHashes[i]); err != nil {
 			return
@@ -478,7 +464,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	processValue(pi.L2MessageServiceAddress, "L2MessageServiceAddress")
 	api.Println("Final MiMC state:", state)
 
-	// To do: @gusiri remove print statements after integration testing is done
+	// TODO: @gusiri keep api.Println until dynamic chain config is released and stable.
 	// Convert the final state to bytes (32 bytes)
 	// Use the existing utils.ToBytes function
 	return state

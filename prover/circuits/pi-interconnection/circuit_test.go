@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
@@ -19,7 +14,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )

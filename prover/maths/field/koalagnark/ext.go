@@ -16,8 +16,7 @@ func init() {
 		inverseE2Hint,
 		inverseExtHintNative, inverseExtHintEmulated,
 		divExtHintNative, divExtHintEmulated,
-		mulExtHintNative, mulExtHintEmulated,
-		octupletElementIsLessHint)
+		mulExtHintNative, mulExtHintEmulated)
 }
 
 // E2 is a quadratic extension element .

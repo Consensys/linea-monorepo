@@ -82,14 +82,16 @@ func TestManualShifter(t *testing.T) {
 				// B has values [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 				run.AssignColumn("B_proj", smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
 				// FilterA selects all rows: [1, 1, 1, 1, 1, 1, 1, 1]
+				// After ManuallyShifted(filterA, +1) with zero-padding, the
+				// effective filter becomes [1, 1, 1, 1, 1, 1, 1, 0] — 7 rows.
 				filterAVals := make([]field.Element, 8)
 				for i := 0; i < 8; i++ {
 					filterAVals[i] = field.One()
 				}
 				run.AssignColumn("FilterA_proj", smartvectors.NewRegular(filterAVals))
-				// FilterB selects first 8 rows: [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+				// FilterB must select the same number of rows (7) to match
 				filterBVals := make([]field.Element, 16)
-				for i := 0; i < 8; i++ {
+				for i := 0; i < 7; i++ {
 					filterBVals[i] = field.One()
 				}
 				run.AssignColumn("FilterB_proj", smartvectors.NewRegular(filterBVals))

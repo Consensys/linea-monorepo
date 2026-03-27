@@ -48,6 +48,9 @@ func LinearCombinationMixed(vecs []SmartVector, x fext.Element) (result SmartVec
 		if asRotated, ok := v.(*RotatedExt); ok {
 			v = rotatedAsRegularExt(asRotated)
 		}
+		if asRotated, ok := v.(*Rotated); ok {
+			v = rotatedAsRegular(asRotated)
+		}
 
 		switch casted := v.(type) {
 		case *Constant:
