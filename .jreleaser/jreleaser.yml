@@ -40,3 +40,4 @@ deploy:
         #   - all-libs release -> build.linea (covers build.linea.internal sub-namespace)
         stagingRepositories:
           - build/staging-deploy
+        maxRetries: 5
