@@ -54,17 +54,56 @@ class RequestTest {
   @Test
   fun translateSepoliaLoadTestRequestSucceeds() {
     // Arrange
-    val resource = checkNotNull(this.javaClass.classLoader.getResource("sepolia/load-test.json"))
-    val swaggerRequest =
-      JSON.createGson().create().fromJson(
-        InputStreamReader(resource.openStream()),
-        net.consensys.zkevm.load.swagger.Request::class.java,
-      )
+    val swaggerRequest = loadRequestFromResource("sepolia/load-test.json")
 
     // Act
     val request = Request.translate(swaggerRequest)
 
     // Assert
     assertNotNull(request)
+  }
+
+  @Test
+  fun translateLocalLoadTestRequestSucceeds() {
+    // Arrange
+    val swaggerRequest = loadRequestFromResource("local/load-test.json")
+
+    // Act
+    val request = Request.translate(swaggerRequest)
+
+    // Assert
+    assertNotNull(request)
+  }
+
+  @Test
+  fun translateLocalDeployContractRequestSucceeds() {
+    // Arrange
+    val swaggerRequest = loadRequestFromResource("local/deploy-contract.json")
+
+    // Act
+    val request = Request.translate(swaggerRequest)
+
+    // Assert
+    assertNotNull(request)
+  }
+
+  @Test
+  fun translateDevnetDeployContractRequestSucceeds() {
+    // Arrange
+    val swaggerRequest = loadRequestFromResource("devnet/deploy-contract.json")
+
+    // Act
+    val request = Request.translate(swaggerRequest)
+
+    // Assert
+    assertNotNull(request)
+  }
+
+  private fun loadRequestFromResource(path: String): net.consensys.zkevm.load.swagger.Request {
+    val resource = checkNotNull(this.javaClass.classLoader.getResource(path))
+    return JSON.createGson().create().fromJson(
+      InputStreamReader(resource.openStream()),
+      net.consensys.zkevm.load.swagger.Request::class.java,
+    )
   }
 }

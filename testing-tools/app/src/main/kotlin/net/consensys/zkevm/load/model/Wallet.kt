@@ -35,6 +35,6 @@ data class Wallet(
   }
 
   override fun toString(): String {
-    return "Wallet(address=$address, id=$id, theoreticalNonce=${theoreticalNonceValue}, initialNonce=$initialNonce)"
+    return "Wallet(address=$address, id=$id, theoreticalNonce=$theoreticalNonceValue, initialNonce=$initialNonce)"
   }
 }
