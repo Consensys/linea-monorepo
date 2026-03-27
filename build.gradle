@@ -11,6 +11,15 @@ plugins {
 
 task compileAll
 
+// JReleaser tool provider JAR — downloaded once, shared by jreleaserRelease tasks in subprojects.
+// Using java -jar instead of the CLI binary avoids a separate GitHub Action install step.
+configurations {
+  jreleaserTool
+}
+dependencies {
+  jreleaserTool(libs.jreleaser.tool.provider)
+}
+
 // to allow to have unused vars/imports,etc for faster debugging/prototyping
 // instead of deleting and re-adding code all the time
 def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null

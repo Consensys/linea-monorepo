@@ -73,10 +73,15 @@ task prePublishValidation {
 // so the correct Maven Central namespace is derived automatically without hardcoding it in CI.
 tasks.register('jreleaserRelease', Exec) {
   group = 'release'
-  description = 'Release this artifact to Maven Central via JReleaser CLI'
+  description = 'Release this artifact to Maven Central via JReleaser'
   environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
-  commandLine 'jreleaser', 'release',
-      '--basedir', rootProject.projectDir.absolutePath,
-      '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+  // Resolved lazily: the fat JAR is downloaded by Gradle, no separate CLI install needed.
+  doFirst {
+    commandLine 'java', '-jar',
+        rootProject.configurations.jreleaserTool.singleFile.absolutePath,
+        'release',
+        '--basedir', rootProject.projectDir.absolutePath,
+        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+  }
 }
 

@@ -61,15 +61,6 @@ jobs:
           echo "JRELEASER_TAG_NAME=maven-${PROJECT_NAME}-v${VERSION}" >> $GITHUB_ENV
           echo "JRELEASER_RELEASE_NAME=Maven package: ${PROJECT_NAME} v${VERSION}" >> $GITHUB_ENV
 
-      - name: Setup JReleaser
-        # Install the JReleaser CLI as a tool so we can run it in a `run:` step
-        # with an explicit working-directory pointing at the repo root.
-        # Using jreleaser/release-action@v2 directly is unreliable because it
-        # invokes JReleaser from an unrelated CWD outside the repository.
-        uses: jreleaser/release-action/setup@v2
-        with:
-          version: 1.23.0
-
       - name: Release to Maven Central
         run: ./gradlew ${{github.event.inputs.libToRelease}}:jreleaserRelease
         env:

@@ -16,11 +16,15 @@ Set<String> publicApiLibs = [
 // that covers build.linea.internal sub-namespace in Maven Central.
 tasks.register('jreleaserRelease', Exec) {
   group = 'release'
-  description = 'Release all JVM libs to Maven Central via JReleaser CLI'
+  description = 'Release all JVM libs to Maven Central via JReleaser'
   environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
-  commandLine 'jreleaser', 'release',
-      '--basedir', rootProject.projectDir.absolutePath,
-      '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+  doFirst {
+    commandLine 'java', '-jar',
+        rootProject.configurations.jreleaserTool.singleFile.absolutePath,
+        'release',
+        '--basedir', rootProject.projectDir.absolutePath,
+        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+  }
 }
 
 subprojects {

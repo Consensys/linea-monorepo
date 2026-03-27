@@ -67,11 +67,6 @@ jobs:
           echo "JRELEASER_TAG_NAME=maven-jvm-libs-v${VERSION}" >> $GITHUB_ENV
           echo "JRELEASER_RELEASE_NAME=Maven release: all JVM libs v${VERSION}" >> $GITHUB_ENV
 
-      - name: Setup JReleaser
-        uses: jreleaser/release-action/setup@v2
-        with:
-          version: 1.23.0
-
       - name: Release to Maven Central
         run: ./gradlew -p jvm-libs jreleaserRelease
         env:
