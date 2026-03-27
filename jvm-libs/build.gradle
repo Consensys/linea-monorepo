@@ -18,12 +18,25 @@ tasks.register('jreleaserRelease', Exec) {
   group = 'release'
   description = 'Release all JVM libs to Maven Central via JReleaser'
   environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
+  [
+    'JRELEASER_PROJECT_VERSION',
+    'JRELEASER_TAG_NAME',
+    'JRELEASER_RELEASE_NAME',
+    'JRELEASER_GITHUB_TOKEN',
+    'JRELEASER_GPG_PASSPHRASE',
+    'JRELEASER_GPG_SECRET_KEY',
+    'JRELEASER_GPG_PUBLIC_KEY',
+    'JRELEASER_MAVENCENTRAL_USERNAME',
+    'JRELEASER_MAVENCENTRAL_PASSWORD',
+  ].each { name -> environment name, providers.environmentVariable(name).getOrElse('') }
   doFirst {
-    commandLine 'java', '-jar',
+    def cmd = ['java', '-jar',
         rootProject.configurations.jreleaserTool.singleFile.absolutePath,
         'release',
         '--basedir', rootProject.projectDir.absolutePath,
-        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath]
+    if (rootProject.hasProperty('jreleaserDryRun')) cmd << '--dry-run'
+    commandLine cmd
   }
 }
 

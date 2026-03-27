@@ -71,17 +71,35 @@ task prePublishValidation {
 // Runs jreleaser as a separate OS process — no Gradle classloader involvement, no BC/JGit conflicts.
 // project.group is either build.linea (public libs) or build.linea.internal (internal libs),
 // so the correct Maven Central namespace is derived automatically without hardcoding it in CI.
+//
+// IMPORTANT: env vars are forwarded explicitly via providers.environmentVariable() because
+// Gradle daemon's System.getenv() does not reflect step-level env vars set in CI — only the
+// Gradle client's environment (accessible via providers) does.
 tasks.register('jreleaserRelease', Exec) {
   group = 'release'
   description = 'Release this artifact to Maven Central via JReleaser'
+  // Namespace derived from Gradle project group — the source of truth, overrides any external value.
   environment 'JRELEASER_MAVENCENTRAL_NAMESPACE', project.group.toString()
-  // Resolved lazily: the fat JAR is downloaded by Gradle, no separate CLI install needed.
+  // Forward all JRELEASER_* vars from the build client's environment to the subprocess.
+  [
+    'JRELEASER_PROJECT_VERSION',
+    'JRELEASER_TAG_NAME',
+    'JRELEASER_RELEASE_NAME',
+    'JRELEASER_GITHUB_TOKEN',
+    'JRELEASER_GPG_PASSPHRASE',
+    'JRELEASER_GPG_SECRET_KEY',
+    'JRELEASER_GPG_PUBLIC_KEY',
+    'JRELEASER_MAVENCENTRAL_USERNAME',
+    'JRELEASER_MAVENCENTRAL_PASSWORD',
+  ].each { name -> environment name, providers.environmentVariable(name).getOrElse('') }
   doFirst {
-    commandLine 'java', '-jar',
+    def cmd = ['java', '-jar',
         rootProject.configurations.jreleaserTool.singleFile.absolutePath,
         'release',
         '--basedir', rootProject.projectDir.absolutePath,
-        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath]
+    if (rootProject.hasProperty('jreleaserDryRun')) cmd << '--dry-run'
+    commandLine cmd
   }
 }
 
