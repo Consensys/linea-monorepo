@@ -194,6 +194,42 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   @Test
+  fun `finishBlockBuilding waits for FCU to complete before calling getPayload`() {
+    val newHeadHash = Bytes32.random()
+    val newSafeHash = Bytes32.random()
+    val newFinalizedHash = Bytes32.random()
+
+    val pendingFcu = SafeFuture<Response<TekuForkChoiceUpdatedResult>>()
+    whenever(executionLayerEngineApiClient.forkChoiceUpdate(any(), anyOrNull()))
+      .thenReturn(pendingFcu)
+
+    executionLayerManager.setHeadAndStartBlockBuilding(
+      headHash = newHeadHash.toArray(),
+      safeHash = newSafeHash.toArray(),
+      finalizedHash = newFinalizedHash.toArray(),
+      nextBlockTimestamp = 0UL,
+      feeRecipient = feeRecipient,
+    )
+
+    val finishFuture = executionLayerManager.finishBlockBuilding()
+
+    // FCU hasn't completed yet — getPayload must NOT have been called
+    verify(executionLayerEngineApiClient, times(0)).getPayload(any())
+    assertThat(finishFuture.isDone).isFalse()
+
+    // Now complete the FCU
+    val payloadId = Bytes8(Bytes.random(8))
+    val payloadStatus = PayloadStatusV1(TekuExecutionPayloadStatus.VALID, Bytes32.random(), null)
+    val executionPayload = DataGenerators.randomExecutionPayload()
+    mockGetPayloadWithRandomData(payloadId, executionPayload)
+    pendingFcu.complete(Response.fromPayloadReceivedAsJson(TekuForkChoiceUpdatedResult(payloadStatus, payloadId)))
+
+    val result = finishFuture.get()
+    assertThat(result).isEqualTo(executionPayload)
+    verify(executionLayerEngineApiClient, times(1)).getPayload(eq(payloadId))
+  }
+
+  @Test
   fun `finishBlockBuilding can't be called before setHeadAndStartBlockBuilding`() {
     val result = executionLayerManager.finishBlockBuilding()
     assertThat(result.isCompletedExceptionally).isTrue()
