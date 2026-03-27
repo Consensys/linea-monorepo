@@ -13,10 +13,14 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
+const SHORT_ZERO_ADDRESS = "0x0";
+
 async function main() {
   const rpcUrl = requireEnv("RPC_URL");
   const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
-  const targetAddress = process.env.TARGET_ADDRESS ?? ethers.ZeroAddress;
+  const targetAddressEnv = process.env.TARGET_ADDRESS?.trim();
+  const targetAddress =
+    targetAddressEnv == null || targetAddressEnv === SHORT_ZERO_ADDRESS ? ethers.ZeroAddress : targetAddressEnv;
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const signer = new ethers.Wallet(privateKey, provider);
@@ -32,7 +36,7 @@ async function main() {
   console.log("\n=== SELF-SPONSORED EIP-7702 TRANSACTION ===");
   console.log("Same wallet signs authorization and sends the transaction.");
   if (isRevocation) {
-    console.log("TARGET_ADDRESS not set - sending revocation (zero address) to remove delegation.");
+    console.log("TARGET_ADDRESS not set or set to 0x0 - sending revocation (zero address) to remove delegation.");
   }
 
   // +1 nonce offset: sender nonce is incremented before authorization processing
