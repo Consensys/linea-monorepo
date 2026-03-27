@@ -30,11 +30,16 @@ tasks.register('jreleaserRelease', Exec) {
     'JRELEASER_MAVENCENTRAL_PASSWORD',
   ].each { name -> environment name, providers.environmentVariable(name).getOrElse('') }
   doFirst {
-    def cmd = ['java', '-jar',
-        rootProject.configurations.jreleaserTool.singleFile.absolutePath,
-        'release',
-        '--basedir', rootProject.projectDir.absolutePath,
-        '--config-file', rootProject.file('.jreleaser/jreleaser.yml').absolutePath]
+    def cmd = [
+      'java',
+      '-jar',
+      rootProject.configurations.jreleaserTool.singleFile.absolutePath,
+      'release',
+      '--basedir',
+      rootProject.projectDir.absolutePath,
+      '--config-file',
+      rootProject.file('.jreleaser/jreleaser.yml').absolutePath
+    ]
     if (rootProject.hasProperty('jreleaserDryRun')) cmd << '--dry-run'
     commandLine cmd
   }
