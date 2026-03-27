@@ -67,7 +67,7 @@ jobs:
           JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
           JRELEASER_TAG_NAME: ${{ env.JRELEASER_TAG_NAME }}
           JRELEASER_RELEASE_NAME: ${{ env.JRELEASER_RELEASE_NAME }}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+          JRELEASER_GITHUB_TOKEN: ${{ github.token }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
