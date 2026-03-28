@@ -239,15 +239,21 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// TINY-STUFFS
 		//
 		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
-		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
+		// BaseSize increased to match limit_large=2048 to guarantee 1 segment worst case.
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
+		// BaseSize set to 131072 to handle loginfo's Corset perspective expansion.
+		// loginfo columns live in hub's shared register space via XOR overlays,
+		// so the QBM column height equals the shared register size (~130K in
+		// the analyzed block), NOT loginfo's own trace limit (4096/8192).
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
+		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
 		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
+		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
+		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
@@ -256,8 +262,9 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
-		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
-		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlputils\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
