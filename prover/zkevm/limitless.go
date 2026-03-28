@@ -59,6 +59,11 @@ var (
 	conglomerationFile            = "dw-compiled-conglomeration.bin"
 	executionLimitlessPath        = "execution-limitless"
 	verificationKeyMerkleTreeFile = "verification-key-merkle-tree.bin"
+
+	// Chunked variants (directory names without .bin extension)
+	compileLppChunkedTemplate = "dw-compiled-lpp-%v"
+	compileGlChunkedTemplate  = "dw-compiled-gl-%v"
+	conglomerationChunkedFile = "dw-compiled-conglomeration"
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
@@ -1161,13 +1166,29 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
-		if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
-			return err
+		if isChunkedAssetName(asset.Name) {
+			// Large compiled circuits use chunked lz4 for parallel I/O
+			chunkedDir := path.Join(assetDir, strings.TrimSuffix(asset.Name, ".bin"))
+			if err := serde.StoreChunked(chunkedDir, asset.Object); err != nil {
+				return err
+			}
+		} else {
+			if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+				return err
+			}
 		}
 	}
 
 	logrus.Info("limitless prover assets written to disk")
 	return nil
+}
+
+// isChunkedAssetName returns true for compiled-gl, compiled-lpp, and
+// conglomeration assets that benefit from chunked parallel I/O.
+func isChunkedAssetName(name string) bool {
+	return strings.HasPrefix(name, "dw-compiled-gl-") ||
+		strings.HasPrefix(name, "dw-compiled-lpp-") ||
+		name == conglomerationFile
 }
 
 // LoadBootstrapperAsync loads the bootstrapper from disk.
@@ -1324,12 +1345,22 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
-		res      = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileGlChunkedTemplate, moduleName))
+		res        = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1342,12 +1373,22 @@ func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (
 func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
-		res      = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileLppChunkedTemplate, moduleNames))
+		res        = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1414,12 +1455,22 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, conglomerationFile)
-		conglo   = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, conglomerationChunkedFile)
+		conglo     = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, conglo)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, conglo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return conglo, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, conglomerationFile)
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, conglo)
 	if err != nil {
 		return nil, nil, err
 	}
