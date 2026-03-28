@@ -11,7 +11,7 @@ prover_mode = "limitless"
 conflated_traces_dir = "./"
 requests_root_dir = "./shared/v3/prover-execution/"
 ignore_compatibility_check=false
-keep_traces_until_block = 0
+keep_traces_until_block = 9999999999
 serialization = true
 limitless_with_debug = false
 
