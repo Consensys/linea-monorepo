@@ -517,7 +517,9 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 }
 
 // GetScaledUpBootstrapper returns a bootstrapper where all the limits have
-// been increased.
+// been increased. Column names are size-independent (after the naming fix),
+// so the existing disc's column-to-module mappings remain valid — only the
+// sizes need scaling.
 func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
 
 	traceLimits := cfg.TracesLimits
@@ -525,7 +527,10 @@ func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModul
 
 	zkevm := FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 	distributed.CompileManualShifter(zkevm.InitialCompiledIOP)
-	return distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc), zkevm
+
+	bootstrapper := distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc)
+
+	return bootstrapper, zkevm
 }
 
 // RunStatRecords runs only the bootstrapper and returns a list of stat records

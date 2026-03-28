@@ -24,8 +24,9 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 		isActive, fullyActive, size = cleanIsActive(isActiveAny)
 		// callerName disambiguates the column name independently of the number
 		// of columns registered in the IOP (which varies with trace-limit
-		// scaling).
-		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v_%v", callerName, period, round)
+		// scaling). Period is intentionally excluded because it can be
+		// size-dependent (e.g. keccak COL_ROUND where period = keccakfSize).
+		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", callerName, round)
 	)
 
 	var (
