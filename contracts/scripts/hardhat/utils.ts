@@ -31,9 +31,23 @@ function jsonSafeForUi(value: unknown): unknown {
   return value;
 }
 
+function openZeppelinProxyKindFromOpts(opts?: DeployProxyOptions): "transparent" | "uups" | "beacon" {
+  const k = opts?.kind;
+  if (k === "transparent" || k === "uups" || k === "beacon") {
+    return k;
+  }
+  return "transparent";
+}
+
 function pushUiDeployContext(
   contractName: string,
-  details: { constructorArgs?: unknown; initializerArgs?: unknown; proxyOptions?: string; notes?: string },
+  details: {
+    constructorArgs?: unknown;
+    initializerArgs?: unknown;
+    proxyOptions?: string;
+    notes?: string;
+    openZeppelinProxyKind?: "transparent" | "uups" | "beacon";
+  },
 ): void {
   if (process.env.DEPLOY_WITH_UI !== "true") {
     return;
@@ -45,6 +59,7 @@ function pushUiDeployContext(
     initializerArgs: details.initializerArgs,
     proxyOptions: details.proxyOptions,
     notes: details.notes,
+    openZeppelinProxyKind: details.openZeppelinProxyKind,
   });
 }
 
@@ -160,6 +175,7 @@ async function deployUpgradableFromFactory(
     initializerArgs: jsonSafeForUi(args ?? []),
     constructorArgs: jsonSafeForUi(opts?.constructorArgs),
     proxyOptions: tryStringifyProxyOpts(opts),
+    openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await upgrades.deployProxy(factory.connect(runner), args, opts);
   if (!skipLog) {
@@ -199,6 +215,7 @@ async function deployUpgradableWithAbiAndByteCode(
     initializerArgs: jsonSafeForUi(args ?? []),
     constructorArgs: jsonSafeForUi(opts?.constructorArgs),
     proxyOptions: tryStringifyProxyOpts(opts),
+    openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await upgrades.deployProxy(factory, args, opts);
 
@@ -237,6 +254,7 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
     constructorArgs: jsonSafeForUi(constructorArgs),
     initializerArgs: jsonSafeForUi(initializerArgs),
     proxyOptions: tryStringifyProxyOpts(opts),
+    openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await upgrades.deployProxy(factory.connect(runner), initializerArgs, {
     ...opts,

@@ -15,11 +15,22 @@ import {
   isAddress,
   toQuantity,
 } from "ethers";
-import { DeployFunction } from "hardhat-deploy/types";
 import { ethers as hardhatEthers } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { SupportedChainIds } from "../../common/supportedNetworks";
+
+/**
+ * Mirrors hardhat-deploy's `DeployFunction` without importing `hardhat-deploy/types`, which is not a
+ * resolvable runtime module under Node's native ESM resolver (this file is loaded via `require` from `hardhat.config`).
+ */
+export type DeployFunction = ((hre: HardhatRuntimeEnvironment) => Promise<void | boolean>) & {
+  skip?: (env: HardhatRuntimeEnvironment) => Promise<boolean>;
+  tags?: string[];
+  dependencies?: string[];
+  runAtTheEnd?: boolean;
+  id?: string;
+};
 
 type HexString = `0x${string}`;
 
@@ -58,6 +69,8 @@ export type DeploymentUiTransactionDetails = {
   /** Short summary of proxy options when relevant */
   proxyOptions?: string;
   notes?: string;
+  /** Set for OpenZeppelin `deployProxy` flows (`transparent` | `uups` | `beacon`). */
+  openZeppelinProxyKind?: "transparent" | "uups" | "beacon";
 };
 
 type TransactionPrompt = {
@@ -84,12 +97,19 @@ type SessionWalletState = {
 
 type SessionState = {
   sessionId: string;
+  /** Currently executing deploy script file name (updates across a multi-script batch). */
   deployFile: string;
   networkName: string;
   chain: ChainMetadata;
   wallet: SessionWalletState | null;
   pendingRequest: TransactionPrompt | null;
   startedAt: string;
+  /** 1-based index of deploy scripts that entered `withDeploymentUiSession` in this session. */
+  deployScriptOrdinal: number;
+  /** True while `deploy:runDeploy` is running (multi-tag / multi-file batch). */
+  batchRunActive: boolean;
+  /** Comma-separated tags from `--tags`, if any. */
+  batchTagsSummary: string | null;
 };
 
 type PendingTransaction = {
@@ -103,6 +123,7 @@ type DeploymentUiContext = {
   networkName: string;
   chain: ChainMetadata;
   provider: Provider;
+  batchTagsSummary: string | null;
 };
 
 const DEPLOY_UI_DIR = resolve(__dirname, "../../deploy-ui");
@@ -126,6 +147,25 @@ const TX_LOOKUP_TIMEOUT_MS = 12_000;
 const TX_LOOKUP_INTERVAL_MS = 200;
 
 let activeSession: DeploymentUiSession | undefined;
+
+/**
+ * True while hardhat-deploy `deploy:runDeploy` is executing (entire tag batch).
+ * Session close is deferred until the batch ends; individual `withDeploymentUiSession` wrappers skip close.
+ */
+let deployUiRunBatchActive = false;
+let deployUiBatchTagsLabel: string | null = null;
+
+async function closeActiveDeployUiSession(): Promise<void> {
+  if (!activeSession) {
+    return;
+  }
+
+  try {
+    await activeSession.close();
+  } finally {
+    activeSession = undefined;
+  }
+}
 
 /**
  * SIGKILL any process listening on `port` (Next dev often survives pnpm SIGKILL).
@@ -234,6 +274,11 @@ async function waitForChildEarlyExit(proc: ChildProcess, timeoutMs: number): Pro
 
 function isUiDeploymentEnabled(): boolean {
   return process.env.DEPLOY_WITH_UI === "true";
+}
+
+/** When false (default), the Next.js dev server is left running after the HTTP bridge closes so the tab stays usable. */
+function shutdownNextDevWithBridge(): boolean {
+  return process.env.DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV === "true";
 }
 
 function getExplorerUrls(chainId: number): string[] {
@@ -521,19 +566,70 @@ async function normalizeAddress(value: AddressLike | null | undefined): Promise<
   return isAddress(address) ? address : address;
 }
 
+function transactionTypeNumber(transactionRequest: TransactionRequest): number | undefined {
+  const raw = transactionRequest.type;
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw === "bigint") {
+    return Number(raw);
+  }
+  if (typeof raw === "number") {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    const parsed = Number.parseInt(raw, raw.startsWith("0x") ? 16 : 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+/**
+ * Wallets reject `eth_sendTransaction` if both legacy `gasPrice` and EIP-1559 fee fields are set.
+ * Hardhat networks often define `gasPrice` while ethers also fills `maxFeePerGas` from the RPC.
+ */
+function normalizeGasFeeFieldsForWallet(params: {
+  gasPrice: HexString | undefined;
+  maxFeePerGas: HexString | undefined;
+  maxPriorityFeePerGas: HexString | undefined;
+  type: number | undefined;
+}): Pick<SerializedTransactionRequest, "gasPrice" | "maxFeePerGas" | "maxPriorityFeePerGas"> {
+  const { gasPrice, maxFeePerGas, maxPriorityFeePerGas, type } = params;
+  const hasEip1559Suggestion = maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined;
+
+  if (type === 0 || type === 1) {
+    return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined };
+  }
+  if (type === 2) {
+    return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas };
+  }
+  if (hasEip1559Suggestion) {
+    return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas };
+  }
+  return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined };
+}
+
 async function serializeTransactionRequest(
   transactionRequest: TransactionRequest,
 ): Promise<SerializedTransactionRequest> {
+  const gasPrice = toHexQuantityString(transactionRequest.gasPrice as bigint | number | string | undefined);
+  const maxFeePerGas = toHexQuantityString(transactionRequest.maxFeePerGas as bigint | number | string | undefined);
+  const maxPriorityFeePerGas = toHexQuantityString(
+    transactionRequest.maxPriorityFeePerGas as bigint | number | string | undefined,
+  );
+  const feeFields = normalizeGasFeeFieldsForWallet({
+    gasPrice,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+    type: transactionTypeNumber(transactionRequest),
+  });
+
   return {
     to: await normalizeAddress(transactionRequest.to),
     data: transactionRequest.data ? (transactionRequest.data.toString() as HexString) : undefined,
     value: toHexQuantityString(transactionRequest.value as bigint | number | string | undefined),
     gas: toHexQuantityString(transactionRequest.gasLimit as bigint | number | string | undefined),
-    gasPrice: toHexQuantityString(transactionRequest.gasPrice as bigint | number | string | undefined),
-    maxFeePerGas: toHexQuantityString(transactionRequest.maxFeePerGas as bigint | number | string | undefined),
-    maxPriorityFeePerGas: toHexQuantityString(
-      transactionRequest.maxPriorityFeePerGas as bigint | number | string | undefined,
-    ),
+    ...feeFields,
     nonce: toHexQuantityString(transactionRequest.nonce as number | undefined),
     type: toHexQuantityString(transactionRequest.type as number | undefined),
     chainId: toHexQuantityString(transactionRequest.chainId as bigint | number | string | undefined),
@@ -574,11 +670,13 @@ async function openBrowser(url: string) {
 
 class DeploymentUiSession {
   private readonly sessionId = randomUUID();
-  /** High-entropy secret; passed to the local UI only via the opened URL (then ideally moved to sessionStorage). */
-  /** Opaque value; passed to the UI in the opened URL and required as `x-deploy-ui-session-token` on bridge HTTP calls. */
+  /** Opaque secret; required as `x-deploy-ui-session-token` on bridge HTTP calls. */
   private readonly sessionSecret = randomBytes(32).toString("base64url");
   private readonly startedAt = new Date().toISOString();
   private readonly context: DeploymentUiContext;
+  private readonly batchTagsSummary: string | null;
+  private activeDeployFile: string;
+  private deployScriptOrdinal = 0;
   private server?: Server;
   private serverPort?: number;
   private uiPort?: number;
@@ -594,6 +692,21 @@ class DeploymentUiSession {
 
   public constructor(context: DeploymentUiContext) {
     this.context = context;
+    this.batchTagsSummary = context.batchTagsSummary;
+    this.activeDeployFile = context.deployFile;
+  }
+
+  /** Called when each wrapped deploy script starts (same session across a batch). */
+  public notifyDeployScriptStart(deployFile: string): void {
+    this.deployScriptOrdinal += 1;
+    this.activeDeployFile = deployFile;
+    if (deployUiRunBatchActive) {
+      const tagPart =
+        this.batchTagsSummary && this.batchTagsSummary.length > 0 ? `tags ${this.batchTagsSummary} · ` : "";
+      console.log(`DEPLOY_WITH_UI: script ${this.deployScriptOrdinal} in this deploy run (${tagPart}${deployFile})`);
+    } else {
+      console.log(`DEPLOY_WITH_UI: deploy script ${deployFile}`);
+    }
   }
 
   public async start(): Promise<void> {
@@ -673,7 +786,7 @@ class DeploymentUiSession {
     );
     await waitForHttpOk(uiUrl, UI_READY_TIMEOUT_MS);
     console.log(
-      `DEPLOY_WITH_UI is enabled for ${this.context.deployFile}. Waiting for browser wallet approval at ${uiUrl}`,
+      `DEPLOY_WITH_UI is enabled for ${this.activeDeployFile}. Waiting for browser wallet approval at ${uiUrl}`,
     );
     await openBrowser(uiUrl);
     this.started = true;
@@ -685,7 +798,7 @@ class DeploymentUiSession {
     }
 
     this.closed = true;
-    this.failPendingState(new Error(`DEPLOY_WITH_UI session closed for ${this.context.deployFile}`));
+    this.failPendingState(new Error(`DEPLOY_WITH_UI session closed during ${this.activeDeployFile}`));
 
     const apiPort = this.serverPort;
     const nextDevPort = this.uiPort;
@@ -708,11 +821,24 @@ class DeploymentUiSession {
       }
     }
 
-    await this.stopUiProcess();
-    if (nextDevPort !== undefined) {
-      killTcpListenersOnPort(nextDevPort);
+    if (shutdownNextDevWithBridge()) {
+      await this.stopUiProcess();
+      if (nextDevPort !== undefined) {
+        killTcpListenersOnPort(nextDevPort);
+      }
+      removeNextDevLockFile(DEPLOY_UI_DIR);
+      console.log("DEPLOY_WITH_UI: Next.js deploy UI dev server stopped (DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true).");
+    } else {
+      if (nextDevPort !== undefined) {
+        console.log(
+          `DEPLOY_WITH_UI: HTTP bridge closed. Deploy UI still at http://${LOCALHOST}:${nextDevPort} — tab stays open; set DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true to stop Next.js with Hardhat.`,
+        );
+      } else {
+        console.log(
+          "DEPLOY_WITH_UI: HTTP bridge closed (Next.js UI port unknown). Set DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true to force child teardown when used.",
+        );
+      }
     }
-    removeNextDevLockFile(DEPLOY_UI_DIR);
   }
 
   private async stopUiProcess(): Promise<void> {
@@ -755,12 +881,15 @@ class DeploymentUiSession {
   public getState(): SessionState {
     return {
       sessionId: this.sessionId,
-      deployFile: this.context.deployFile,
+      deployFile: this.activeDeployFile,
       networkName: this.context.networkName,
       chain: this.context.chain,
       wallet: this.walletState,
       pendingRequest: this.pendingRequest?.prompt ?? null,
       startedAt: this.startedAt,
+      deployScriptOrdinal: this.deployScriptOrdinal,
+      batchRunActive: deployUiRunBatchActive,
+      batchTagsSummary: this.batchTagsSummary,
     };
   }
 
@@ -783,7 +912,7 @@ class DeploymentUiSession {
       const timeout = setTimeout(() => {
         this.walletResolvers = this.walletResolvers.filter((resolver) => resolver !== onWallet);
         this.walletRejectors = this.walletRejectors.filter((rejector) => rejector !== onReject);
-        rejectWallet(new Error(`Timed out while waiting for a wallet connection for ${this.context.deployFile}`));
+        rejectWallet(new Error(`Timed out while waiting for a wallet connection for ${this.activeDeployFile}`));
       }, SESSION_TIMEOUT_MS);
 
       const onWallet = (wallet: SessionWalletState) => {
@@ -809,9 +938,7 @@ class DeploymentUiSession {
     await this.start();
 
     if (this.pendingRequest) {
-      throw new Error(
-        `DEPLOY_WITH_UI only supports one in-flight transaction per deploy file (${this.context.deployFile})`,
-      );
+      throw new Error(`DEPLOY_WITH_UI only supports one in-flight transaction at a time (${this.activeDeployFile})`);
     }
 
     const extra = this.takeNextTransactionDetails();
@@ -1139,10 +1266,12 @@ async function getOrCreateSession(
       networkName: hre.network.name,
       chain: await getChainMetadata(hre),
       provider: hre.ethers.provider,
+      batchTagsSummary: deployUiBatchTagsLabel,
     });
   }
 
   await activeSession.start();
+  activeSession.notifyDeployScriptStart(deployFile);
   return activeSession;
 }
 
@@ -1196,18 +1325,51 @@ export function setDeploymentUiNextTransactionContext(details: DeploymentUiTrans
 
 export function withDeploymentUiSession(deployFile: string, deployFunction: DeployFunction): DeployFunction {
   const wrapped: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const session = await getOrCreateSession(hre, deployFile);
+    await getOrCreateSession(hre, deployFile);
 
     try {
       await deployFunction(hre);
     } finally {
-      try {
-        await session?.close();
-      } finally {
-        activeSession = undefined;
+      if (!deployUiRunBatchActive) {
+        await closeActiveDeployUiSession();
       }
     }
   };
 
   return wrapped;
+}
+
+/**
+ * Wraps hardhat-deploy `deploy:runDeploy` so DEPLOY_WITH_UI keeps one browser session for the whole
+ * tag batch. Registered from `hardhat.config.ts`.
+ */
+export async function deployUiRunDeploySubtaskAction(
+  args: { tags?: string },
+  hre: HardhatRuntimeEnvironment,
+  runSuper: (taskArgs: unknown, env: HardhatRuntimeEnvironment) => Promise<unknown>,
+): Promise<unknown> {
+  void hre;
+  if (!isUiDeploymentEnabled()) {
+    return runSuper(args, hre);
+  }
+
+  const tagLabel = typeof args.tags === "string" ? args.tags.trim() : "";
+
+  deployUiRunBatchActive = true;
+  deployUiBatchTagsLabel = tagLabel.length > 0 ? tagLabel : null;
+
+  console.log(
+    `DEPLOY_WITH_UI: one browser session for this entire deploy run${
+      tagLabel ? ` (--tags ${tagLabel})` : ""
+    }. Scripts run sequentially; the HTTP bridge stops when the run completes (Next.js tab stays up unless DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true).`,
+  );
+
+  try {
+    return await runSuper(args, hre);
+  } finally {
+    deployUiRunBatchActive = false;
+    deployUiBatchTagsLabel = null;
+    await closeActiveDeployUiSession();
+    console.log("DEPLOY_WITH_UI: Hardhat deploy run complete.");
+  }
 }

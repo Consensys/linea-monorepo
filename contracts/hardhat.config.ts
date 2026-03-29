@@ -6,7 +6,8 @@ import * as dotenv from "dotenv";
 import "hardhat-deploy";
 import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, subtask } from "hardhat/config";
+import { TASK_DEPLOY_RUN_DEPLOY } from "hardhat-deploy";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
 import { SupportedChainIds } from "./common/supportedNetworks";
 import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
@@ -22,9 +23,20 @@ import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST";
 import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 import "solidity-docgen";
+import { createRequire } from "node:module";
 import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
+
+const requireFromConfig = createRequire(__filename);
+
+/** Lazy `require` avoids HH9 (deployment-ui pulls in `hardhat`) and avoids native `import()` of `.ts`, which uses Node ESM resolution (directory `common/` vs `common.ts`, CJS `hardhat`, type-only `ethers` exports). */
+subtask(TASK_DEPLOY_RUN_DEPLOY).setAction(async (args, hre, runSuper) => {
+  const { deployUiRunDeploySubtaskAction } = requireFromConfig(
+    "./scripts/hardhat/deployment-ui.ts",
+  ) as typeof import("./scripts/hardhat/deployment-ui");
+  return deployUiRunDeploySubtaskAction(args, hre, runSuper);
+});
 
 const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000");
 const EMPTY_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
