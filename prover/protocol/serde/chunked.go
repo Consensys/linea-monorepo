@@ -109,6 +109,7 @@ func StoreChunkedWithSize(basePath string, asset any, chunkSize int) error {
 	eg := &errgroup.Group{}
 	eg.SetLimit(maxWorkers)
 
+	var compErr error
 	var tComp time.Duration
 	tComp = profiling.TimeIt(func() {
 		for i := range numChunks {
@@ -146,10 +147,11 @@ func StoreChunkedWithSize(basePath string, asset any, chunkSize int) error {
 				return atomicWrite(chunkPath, compressed)
 			})
 		}
+		compErr = eg.Wait()
 	})
 
-	if err := eg.Wait(); err != nil {
-		return err
+	if compErr != nil {
+		return compErr
 	}
 
 	// 4. Write manifest
@@ -212,6 +214,7 @@ func LoadChunkedMmapBacked(basePath string, assetPtr any) (*MmapBackedBuffer, er
 	eg := &errgroup.Group{}
 	eg.SetLimit(maxWorkers)
 
+	var loadErr error
 	var tLoad time.Duration
 	tLoad = profiling.TimeIt(func() {
 		for i := range numChunks {
@@ -242,11 +245,12 @@ func LoadChunkedMmapBacked(basePath string, assetPtr any) (*MmapBackedBuffer, er
 				return nil
 			})
 		}
+		loadErr = eg.Wait()
 	})
 
-	if err := eg.Wait(); err != nil {
+	if loadErr != nil {
 		_ = syscall.Munmap(mmapData)
-		return nil, err
+		return nil, loadErr
 	}
 
 	// 4. Deserialize
