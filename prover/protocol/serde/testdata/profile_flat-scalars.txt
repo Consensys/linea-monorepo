@@ -1,4 +1,0 @@
-Serialization Size Profile
-==========================
-
-[serde_test.flatScalars]: 13 B (100.0%)

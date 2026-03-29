@@ -1,4 +1,0 @@
-Serialization Size Profile
-==========================
-
-[*big.Int]: 33 B (100.0%)
