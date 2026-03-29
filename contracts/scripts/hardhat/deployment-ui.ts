@@ -1,0 +1,971 @@
+import { ChildProcess, execFileSync, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
+import { join, resolve } from "node:path";
+import {
+  AbstractSigner,
+  AddressLike,
+  Provider,
+  TypedDataDomain,
+  TypedDataField,
+  TransactionRequest,
+  TransactionResponse,
+  isAddress,
+  toQuantity,
+} from "ethers";
+import { DeployFunction } from "hardhat-deploy/types";
+import { ethers as hardhatEthers } from "hardhat";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getBlockchainNode, getL2BlockchainNode } from "../../common";
+import { SupportedChainIds } from "../../common/supportedNetworks";
+
+type HexString = `0x${string}`;
+
+type NativeCurrency = {
+  name: string;
+  symbol: string;
+  decimals: number;
+};
+
+type ChainMetadata = {
+  chainId: number;
+  chainName: string;
+  rpcUrls: string[];
+  blockExplorerUrls: string[];
+  nativeCurrency: NativeCurrency;
+};
+
+type SerializedTransactionRequest = {
+  to?: string;
+  data?: HexString;
+  value?: HexString;
+  gas?: HexString;
+  gasPrice?: HexString;
+  maxFeePerGas?: HexString;
+  maxPriorityFeePerGas?: HexString;
+  nonce?: HexString;
+  type?: HexString;
+  chainId?: HexString;
+};
+
+/** Optional human-readable context shown in the deploy UI (constructor / initializer args, etc.). */
+export type DeploymentUiTransactionDetails = {
+  contractName?: string;
+  constructorArgs?: unknown;
+  initializerArgs?: unknown;
+  /** Short summary of proxy options when relevant */
+  proxyOptions?: string;
+  notes?: string;
+};
+
+type TransactionPrompt = {
+  id: string;
+  label: string;
+  description: string;
+  createdAt: string;
+  request: SerializedTransactionRequest;
+  deploymentDetails?: DeploymentUiTransactionDetails | null;
+};
+
+type TransactionOutcome = {
+  requestId: string;
+  hash: string;
+  from: string;
+  chainId: number;
+};
+
+type SessionWalletState = {
+  address: string;
+  chainId: number;
+  connectedAt: string;
+};
+
+type SessionState = {
+  sessionId: string;
+  deployFile: string;
+  networkName: string;
+  chain: ChainMetadata;
+  wallet: SessionWalletState | null;
+  pendingRequest: TransactionPrompt | null;
+  startedAt: string;
+};
+
+type PendingTransaction = {
+  prompt: TransactionPrompt;
+  resolve: (value: TransactionOutcome) => void;
+  reject: (reason?: Error) => void;
+};
+
+type DeploymentUiContext = {
+  deployFile: string;
+  networkName: string;
+  chain: ChainMetadata;
+  provider: Provider;
+};
+
+const DEPLOY_UI_DIR = resolve(__dirname, "../../deploy-ui");
+const DEPLOY_UI_PACKAGE_NAME = "@consensys/linea-contract-deploy-ui";
+const MONOREPO_ROOT = resolve(DEPLOY_UI_DIR, "../..");
+const LOCALHOST = "127.0.0.1";
+const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
+const UI_READY_TIMEOUT_MS = 60 * 1000;
+const UI_POLL_INTERVAL_MS = 500;
+const REQUEST_POLL_INTERVAL_MS = 1000;
+const UI_PROCESS_KILL_TIMEOUT_MS = 5000;
+const SERVER_CLOSE_TIMEOUT_MS = 3000;
+
+let activeSession: DeploymentUiSession | undefined;
+
+/**
+ * SIGKILL any process listening on `port` (Next dev often survives pnpm SIGKILL).
+ * Best-effort on Unix; no-op on Windows.
+ */
+function killTcpListenersOnPort(port: number): void {
+  if (process.platform === "win32") {
+    return;
+  }
+
+  const attempts: readonly [string, string[]][] = [
+    ["lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"]],
+    ["lsof", ["-ti", `:${port}`]],
+  ];
+
+  for (const [cmd, args] of attempts) {
+    try {
+      const out = execFileSync(cmd, args, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        maxBuffer: 512 * 1024,
+      }).trim();
+      if (!out) {
+        continue;
+      }
+
+      for (const line of out.split("\n")) {
+        const pid = Number.parseInt(line.trim(), 10);
+        if (Number.isFinite(pid) && pid > 0) {
+          try {
+            process.kill(pid, "SIGKILL");
+          } catch {
+            /* process may have exited */
+          }
+        }
+      }
+      return;
+    } catch {
+      /* try next lsof variant or no listeners */
+    }
+  }
+}
+
+/**
+ * Next.js 16+ keeps a singleton dev server via `.next/dev/lock` (JSON with pid/port).
+ * A stale lock or orphan PID makes `next dev` exit immediately — with stdio ignored the CLI only "hangs" until HTTP wait times out.
+ */
+function clearNextDevSingletonLock(deployUiDir: string): void {
+  const lockPath = join(deployUiDir, ".next", "dev", "lock");
+  if (!existsSync(lockPath)) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(lockPath, "utf8")) as { pid?: number; port?: number };
+
+    if (typeof parsed.pid === "number" && parsed.pid > 0) {
+      try {
+        process.kill(parsed.pid, 0);
+        process.kill(parsed.pid, "SIGTERM");
+      } catch {
+        /* process does not exist — stale lock */
+      }
+    }
+
+    if (typeof parsed.port === "number") {
+      killTcpListenersOnPort(parsed.port);
+    }
+  } catch {
+    /* invalid lock */
+  }
+
+  try {
+    unlinkSync(lockPath);
+  } catch {
+    /* lock recreated or permission */
+  }
+}
+
+function removeNextDevLockFile(deployUiDir: string): void {
+  const lockPath = join(deployUiDir, ".next", "dev", "lock");
+  try {
+    if (existsSync(lockPath)) {
+      unlinkSync(lockPath);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+async function waitForChildEarlyExit(proc: ChildProcess, timeoutMs: number): Promise<number | null> {
+  return await new Promise<number | null>((resolveEarly) => {
+    const timer = setTimeout(() => {
+      proc.off("exit", onExit);
+      resolveEarly(null);
+    }, timeoutMs);
+
+    const onExit = (code: number | null) => {
+      clearTimeout(timer);
+      resolveEarly(code);
+    };
+
+    proc.once("exit", onExit);
+  });
+}
+
+function isUiDeploymentEnabled(): boolean {
+  return process.env.DEPLOY_WITH_UI === "true";
+}
+
+function getExplorerUrls(chainId: number): string[] {
+  switch (chainId) {
+    case SupportedChainIds.MAINNET:
+      return ["https://etherscan.io"];
+    case SupportedChainIds.SEPOLIA:
+      return ["https://sepolia.etherscan.io"];
+    case SupportedChainIds.HOODI:
+      return ["https://hoodi.etherscan.io"];
+    case SupportedChainIds.LINEA:
+      return ["https://lineascan.build"];
+    case SupportedChainIds.LINEA_SEPOLIA:
+      return ["https://sepolia.lineascan.build"];
+    case SupportedChainIds.LINEA_DEVNET:
+      return [];
+    default:
+      return [];
+  }
+}
+
+function getChainName(networkName: string, chainId: number): string {
+  switch (chainId) {
+    case SupportedChainIds.MAINNET:
+      return "Ethereum Mainnet";
+    case SupportedChainIds.SEPOLIA:
+      return "Sepolia";
+    case SupportedChainIds.HOODI:
+      return "Hoodi";
+    case SupportedChainIds.LINEA:
+      return "Linea Mainnet";
+    case SupportedChainIds.LINEA_SEPOLIA:
+      return "Linea Sepolia";
+    case SupportedChainIds.LINEA_DEVNET:
+      return "Linea Devnet";
+    case 31648428:
+      return "Linea Local L1 (Docker)";
+    default:
+      return networkName;
+  }
+}
+
+function getRpcUrl(hre: HardhatRuntimeEnvironment): string {
+  const networkConfig = hre.network.config as { url?: string };
+
+  if (typeof networkConfig.url === "string" && networkConfig.url.length > 0) {
+    return networkConfig.url;
+  }
+
+  switch (hre.network.name) {
+    case "zkevm_dev":
+      return getBlockchainNode();
+    case "l2":
+      return getL2BlockchainNode() ?? "";
+    case "hardhat":
+      return "http://127.0.0.1:8545";
+    default:
+      return "";
+  }
+}
+
+async function getChainMetadata(hre: HardhatRuntimeEnvironment): Promise<ChainMetadata> {
+  const network = await hre.ethers.provider.getNetwork();
+  const chainId = Number(network.chainId);
+
+  return {
+    chainId,
+    chainName: getChainName(hre.network.name, chainId),
+    rpcUrls: [getRpcUrl(hre)].filter(Boolean),
+    blockExplorerUrls: getExplorerUrls(chainId),
+    nativeCurrency: {
+      name: "Ether",
+      symbol: "ETH",
+      decimals: 18,
+    },
+  };
+}
+
+function isSigner(value: unknown): value is AbstractSigner {
+  return typeof value === "object" && value !== null && "provider" in value && "sendTransaction" in value;
+}
+
+function isProviderLike(value: unknown): value is Provider & { getSigner?: () => Promise<AbstractSigner> } {
+  return typeof value === "object" && value !== null && "getNetwork" in value;
+}
+
+async function getFreePort(): Promise<number> {
+  return await new Promise((resolvePort, reject) => {
+    const server = createServer();
+
+    server.listen(0, LOCALHOST, () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : undefined;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        if (!port) {
+          reject(new Error("Failed to allocate a local port for DEPLOY_WITH_UI"));
+          return;
+        }
+
+        resolvePort(port);
+      });
+    });
+
+    server.on("error", reject);
+  });
+}
+
+async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of request) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+
+  if (chunks.length === 0) {
+    return undefined;
+  }
+
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+/**
+ * Sends JSON and optionally runs `onFullySent` after the response is flushed.
+ * Deferring deploy continuation until `finish` avoids closing the HTTP server while the
+ * browser is still reading the `/api/respond` body (which surfaces as "Failed to fetch").
+ */
+function writeJson(response: ServerResponse, statusCode: number, payload: unknown, onFullySent?: () => void) {
+  response.statusCode = statusCode;
+  response.setHeader("Content-Type", "application/json");
+  response.setHeader("Connection", "close");
+  if (onFullySent) {
+    response.once("finish", () => {
+      queueMicrotask(onFullySent);
+    });
+  }
+  response.end(JSON.stringify(payload));
+}
+
+/** Next dev UI and this API use different ports — browsers require CORS for fetch. */
+function applyDeployUiCors(request: IncomingMessage, response: ServerResponse): void {
+  const origin = request.headers.origin;
+  response.setHeader("Access-Control-Allow-Origin", typeof origin === "string" ? origin : "*");
+  if (typeof origin === "string") {
+    response.setHeader("Vary", "Origin");
+  }
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function toHexQuantityString(value: bigint | number | string | undefined): HexString | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return toQuantity(value) as HexString;
+}
+
+async function normalizeAddress(value: AddressLike | null | undefined): Promise<string | undefined> {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const address = typeof value === "string" ? value : await Promise.resolve(value.toString());
+  return isAddress(address) ? address : address;
+}
+
+async function serializeTransactionRequest(
+  transactionRequest: TransactionRequest,
+): Promise<SerializedTransactionRequest> {
+  return {
+    to: await normalizeAddress(transactionRequest.to),
+    data: transactionRequest.data ? (transactionRequest.data.toString() as HexString) : undefined,
+    value: toHexQuantityString(transactionRequest.value as bigint | number | string | undefined),
+    gas: toHexQuantityString(transactionRequest.gasLimit as bigint | number | string | undefined),
+    gasPrice: toHexQuantityString(transactionRequest.gasPrice as bigint | number | string | undefined),
+    maxFeePerGas: toHexQuantityString(transactionRequest.maxFeePerGas as bigint | number | string | undefined),
+    maxPriorityFeePerGas: toHexQuantityString(
+      transactionRequest.maxPriorityFeePerGas as bigint | number | string | undefined,
+    ),
+    nonce: toHexQuantityString(transactionRequest.nonce as number | undefined),
+    type: toHexQuantityString(transactionRequest.type as number | undefined),
+    chainId: toHexQuantityString(transactionRequest.chainId as bigint | number | string | undefined),
+  };
+}
+
+async function waitForHttpOk(url: string, timeoutMs: number) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // Keep polling until the timeout expires.
+    }
+
+    await new Promise((resolveSleep) => setTimeout(resolveSleep, UI_POLL_INTERVAL_MS));
+  }
+
+  throw new Error(`Timed out while waiting for the deploy UI to start at ${url}`);
+}
+
+async function openBrowser(url: string) {
+  if (process.env.DEPLOY_WITH_UI_OPEN_BROWSER === "false") {
+    return;
+  }
+
+  const command = process.platform === "darwin" ? "open" : "xdg-open";
+  const child = spawn(command, [url], {
+    stdio: "ignore",
+    detached: true,
+  });
+  child.unref();
+}
+
+class DeploymentUiSession {
+  private readonly sessionId = randomUUID();
+  private readonly startedAt = new Date().toISOString();
+  private readonly context: DeploymentUiContext;
+  private server?: Server;
+  private serverPort?: number;
+  private uiPort?: number;
+  private uiProcess?: ChildProcess;
+  private started = false;
+  private closed = false;
+  private pendingRequest?: PendingTransaction;
+  private nextTransactionDetails?: DeploymentUiTransactionDetails;
+  private walletState: SessionWalletState | null = null;
+  private walletResolvers: Array<(wallet: SessionWalletState) => void> = [];
+  private walletRejectors: Array<(error: Error) => void> = [];
+  private signer?: DeploymentUiSigner;
+
+  public constructor(context: DeploymentUiContext) {
+    this.context = context;
+  }
+
+  public async start(): Promise<void> {
+    if (this.started) {
+      return;
+    }
+
+    this.serverPort = await getFreePort();
+    this.uiPort = await getFreePort();
+    this.server = createServer((request, response) => {
+      void this.handleRequest(request, response).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!response.headersSent) {
+          try {
+            applyDeployUiCors(request, response);
+            writeJson(response, 500, { error: message });
+          } catch {
+            response.destroy();
+          }
+        } else {
+          response.destroy();
+        }
+      });
+    });
+    await new Promise<void>((resolveServer, rejectServer) => {
+      this.server?.listen(this.serverPort, LOCALHOST, () => resolveServer());
+      this.server?.on("error", rejectServer);
+    });
+
+    clearNextDevSingletonLock(DEPLOY_UI_DIR);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 400));
+
+    // Run from monorepo root + filter: deploy-ui often has no local node_modules under pnpm.
+    // Never use "pipe" without draining: Next/Turbopack logs fill buffers and the child blocks before listening.
+    this.uiProcess = spawn(
+      "pnpm",
+      [
+        "--filter",
+        DEPLOY_UI_PACKAGE_NAME,
+        "exec",
+        "next",
+        "dev",
+        "--hostname",
+        LOCALHOST,
+        "--port",
+        String(this.uiPort),
+      ],
+      {
+        cwd: MONOREPO_ROOT,
+        env: { ...process.env },
+        stdio: process.env.DEPLOY_WITH_UI_DEBUG === "true" ? "inherit" : "ignore",
+      },
+    );
+
+    this.uiProcess.on("exit", (code) => {
+      if (!this.closed && code !== 0) {
+        this.failPendingState(new Error(`Deploy UI process exited unexpectedly with code ${code ?? "unknown"}`));
+      }
+    });
+
+    const earlyExitCode = await waitForChildEarlyExit(this.uiProcess, 3500);
+    if (earlyExitCode !== null) {
+      throw new Error(
+        `Deploy UI (next dev) exited early with code ${earlyExitCode}. ` +
+          `Next.js 16 allows only one dev server per app — close any other \`next dev\` for contracts/deploy-ui, or remove a stale .next/dev/lock. ` +
+          `Re-run with DEPLOY_WITH_UI_DEBUG=true to see Next logs.`,
+      );
+    }
+
+    const uiUrl = this.getUiUrl();
+    console.log(
+      `DEPLOY_WITH_UI: starting Next dev on http://${LOCALHOST}:${this.uiPort} (bridge API on ${this.getApiBaseUrl()})…`,
+    );
+    await waitForHttpOk(uiUrl, UI_READY_TIMEOUT_MS);
+    console.log(
+      `DEPLOY_WITH_UI is enabled for ${this.context.deployFile}. Waiting for browser wallet approval at ${uiUrl}`,
+    );
+    await openBrowser(uiUrl);
+    this.started = true;
+  }
+
+  public async close(): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+
+    this.closed = true;
+    this.failPendingState(new Error(`DEPLOY_WITH_UI session closed for ${this.context.deployFile}`));
+
+    const apiPort = this.serverPort;
+    const nextDevPort = this.uiPort;
+
+    if (this.server) {
+      const server = this.server;
+      this.server = undefined;
+      server.closeAllConnections?.();
+      await Promise.race([
+        new Promise<void>((resolveServer) => {
+          server.close(() => resolveServer());
+        }),
+        new Promise<void>((resolveTimeout) => {
+          setTimeout(resolveTimeout, SERVER_CLOSE_TIMEOUT_MS);
+        }),
+      ]);
+      server.closeAllConnections?.();
+      if (apiPort !== undefined) {
+        killTcpListenersOnPort(apiPort);
+      }
+    }
+
+    await this.stopUiProcess();
+    if (nextDevPort !== undefined) {
+      killTcpListenersOnPort(nextDevPort);
+    }
+    removeNextDevLockFile(DEPLOY_UI_DIR);
+  }
+
+  private async stopUiProcess(): Promise<void> {
+    const proc = this.uiProcess;
+    if (!proc) {
+      return;
+    }
+
+    this.uiProcess = undefined;
+
+    await new Promise<void>((resolveStop) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolveStop();
+      };
+
+      const timer = setTimeout(() => {
+        try {
+          proc.kill("SIGKILL");
+        } catch {
+          /* process may already be gone */
+        }
+        finish();
+      }, UI_PROCESS_KILL_TIMEOUT_MS);
+
+      proc.once("exit", finish);
+      try {
+        proc.kill("SIGTERM");
+      } catch {
+        finish();
+      }
+    });
+  }
+
+  public getState(): SessionState {
+    return {
+      sessionId: this.sessionId,
+      deployFile: this.context.deployFile,
+      networkName: this.context.networkName,
+      chain: this.context.chain,
+      wallet: this.walletState,
+      pendingRequest: this.pendingRequest?.prompt ?? null,
+      startedAt: this.startedAt,
+    };
+  }
+
+  public getSigner(provider?: Provider): DeploymentUiSigner {
+    if (!this.signer || (provider && this.signer.provider !== provider)) {
+      this.signer = new DeploymentUiSigner(provider ?? this.context.provider, this);
+    }
+
+    return this.signer;
+  }
+
+  public async waitForWallet(): Promise<SessionWalletState> {
+    await this.start();
+
+    if (this.walletState) {
+      return this.walletState;
+    }
+
+    return await new Promise<SessionWalletState>((resolveWallet, rejectWallet) => {
+      const timeout = setTimeout(() => {
+        this.walletResolvers = this.walletResolvers.filter((resolver) => resolver !== onWallet);
+        this.walletRejectors = this.walletRejectors.filter((rejector) => rejector !== onReject);
+        rejectWallet(new Error(`Timed out while waiting for a wallet connection for ${this.context.deployFile}`));
+      }, SESSION_TIMEOUT_MS);
+
+      const onWallet = (wallet: SessionWalletState) => {
+        clearTimeout(timeout);
+        resolveWallet(wallet);
+      };
+
+      const onReject = (error: Error) => {
+        clearTimeout(timeout);
+        rejectWallet(error);
+      };
+
+      this.walletResolvers.push(onWallet);
+      this.walletRejectors.push(onReject);
+    });
+  }
+
+  public async requestTransaction(
+    transactionRequest: TransactionRequest,
+    label: string,
+    description: string,
+  ): Promise<TransactionOutcome> {
+    await this.start();
+
+    if (this.pendingRequest) {
+      throw new Error(
+        `DEPLOY_WITH_UI only supports one in-flight transaction per deploy file (${this.context.deployFile})`,
+      );
+    }
+
+    const extra = this.takeNextTransactionDetails();
+    const prompt: TransactionPrompt = {
+      id: randomUUID(),
+      label,
+      description,
+      createdAt: new Date().toISOString(),
+      request: await serializeTransactionRequest(transactionRequest),
+      deploymentDetails: extra,
+    };
+
+    return await new Promise<TransactionOutcome>((resolvePrompt, rejectPrompt) => {
+      this.pendingRequest = {
+        prompt,
+        resolve: resolvePrompt,
+        reject: rejectPrompt,
+      };
+    });
+  }
+
+  public async waitForTransaction(hash: string): Promise<TransactionResponse> {
+    const provider = this.context.provider;
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < SESSION_TIMEOUT_MS) {
+      const transaction = await provider.getTransaction(hash);
+      if (transaction) {
+        return transaction;
+      }
+
+      await new Promise((resolveSleep) => setTimeout(resolveSleep, REQUEST_POLL_INTERVAL_MS));
+    }
+
+    throw new Error(
+      `Timed out while waiting for transaction ${hash} to become available on ${this.context.networkName}`,
+    );
+  }
+
+  private async handleRequest(request: IncomingMessage, response: ServerResponse) {
+    applyDeployUiCors(request, response);
+
+    if (request.method === "OPTIONS") {
+      response.statusCode = 204;
+      response.setHeader("Connection", "close");
+      response.end();
+      return;
+    }
+
+    const url = new URL(request.url ?? "/", `http://${LOCALHOST}`);
+
+    if (request.method === "GET" && url.pathname === "/health") {
+      writeJson(response, 200, { ok: true, sessionId: this.sessionId });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/session") {
+      writeJson(response, 200, this.getState());
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/wallet") {
+      const payload = (await readJsonBody(request)) as { address: string; chainId: number };
+      this.walletState = {
+        address: payload.address,
+        chainId: payload.chainId,
+        connectedAt: new Date().toISOString(),
+      };
+
+      const resolvers = this.walletResolvers.splice(0);
+      this.walletRejectors = [];
+      const walletSnapshot = this.walletState;
+      writeJson(response, 200, { ok: true }, () => {
+        for (const resolver of resolvers) {
+          queueMicrotask(() => resolver(walletSnapshot));
+        }
+      });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/respond") {
+      const payload = (await readJsonBody(request)) as TransactionOutcome;
+
+      if (!this.pendingRequest || this.pendingRequest.prompt.id !== payload.requestId) {
+        writeJson(response, 400, { error: "No matching pending transaction request was found." });
+        return;
+      }
+
+      const { resolve: resolveOutcome } = this.pendingRequest;
+      this.pendingRequest = undefined;
+      writeJson(response, 200, { ok: true }, () => {
+        queueMicrotask(() => resolveOutcome(payload));
+      });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/error") {
+      const payload = (await readJsonBody(request)) as { requestId: string; message: string };
+
+      let rejectOutcome: ((reason: Error) => void) | undefined;
+      if (this.pendingRequest && this.pendingRequest.prompt.id === payload.requestId) {
+        rejectOutcome = this.pendingRequest.reject;
+        this.pendingRequest = undefined;
+      }
+
+      writeJson(response, 200, { ok: true }, () => {
+        if (rejectOutcome) {
+          queueMicrotask(() => rejectOutcome!(new Error(payload.message)));
+        }
+      });
+      return;
+    }
+
+    writeJson(response, 404, { error: "Not found" });
+  }
+
+  private failPendingState(error: Error) {
+    if (this.pendingRequest) {
+      this.pendingRequest.reject(error);
+      this.pendingRequest = undefined;
+    }
+
+    for (const rejector of this.walletRejectors.splice(0)) {
+      rejector(error);
+    }
+
+    this.walletResolvers = [];
+  }
+
+  private getUiUrl(): string {
+    return `http://${LOCALHOST}:${this.uiPort}?apiBaseUrl=${encodeURIComponent(this.getApiBaseUrl())}`;
+  }
+
+  private getApiBaseUrl(): string {
+    return `http://${LOCALHOST}:${this.serverPort}`;
+  }
+
+  public setNextTransactionDetails(details: DeploymentUiTransactionDetails): void {
+    this.nextTransactionDetails = details;
+  }
+
+  private takeNextTransactionDetails(): DeploymentUiTransactionDetails | undefined {
+    const details = this.nextTransactionDetails;
+    this.nextTransactionDetails = undefined;
+    if (!details) {
+      return undefined;
+    }
+    const hasAny = Object.values(details).some((v) => v !== undefined && v !== null && v !== "");
+    return hasAny ? details : undefined;
+  }
+}
+
+class DeploymentUiSigner extends AbstractSigner {
+  private readonly session: DeploymentUiSession;
+
+  public constructor(provider: Provider, session: DeploymentUiSession) {
+    super(provider);
+    this.session = session;
+  }
+
+  public override connect(provider: Provider | null): AbstractSigner {
+    if (!provider) {
+      throw new Error("DEPLOY_WITH_UI requires a provider-backed signer");
+    }
+
+    return new DeploymentUiSigner(provider, this.session);
+  }
+
+  public override async getAddress(): Promise<string> {
+    const wallet = await this.session.waitForWallet();
+    return wallet.address;
+  }
+
+  public override async signTransaction(transaction: TransactionRequest): Promise<string> {
+    void transaction;
+    throw new Error("DEPLOY_WITH_UI signs and sends through the browser wallet only.");
+  }
+
+  public override async signMessage(message: string | Uint8Array): Promise<string> {
+    void message;
+    throw new Error("DEPLOY_WITH_UI does not support signMessage for contract deployments.");
+  }
+
+  public override async signTypedData(
+    domain: TypedDataDomain,
+    types: Record<string, Array<TypedDataField>>,
+    value: Record<string, unknown>,
+  ): Promise<string> {
+    void domain;
+    void types;
+    void value;
+    throw new Error("DEPLOY_WITH_UI does not support signTypedData for contract deployments.");
+  }
+
+  public override async sendTransaction(transactionRequest: TransactionRequest): Promise<TransactionResponse> {
+    const label = transactionRequest.to ? "Contract transaction" : "Contract deployment";
+    const description = transactionRequest.to
+      ? `Send transaction to ${String(transactionRequest.to)}`
+      : "Send contract deployment transaction";
+    const outcome = await this.session.requestTransaction(transactionRequest, label, description);
+    return await this.session.waitForTransaction(outcome.hash);
+  }
+}
+
+async function getOrCreateSession(
+  hre: HardhatRuntimeEnvironment,
+  deployFile: string,
+): Promise<DeploymentUiSession | undefined> {
+  if (!isUiDeploymentEnabled()) {
+    return undefined;
+  }
+
+  if (!activeSession) {
+    activeSession = new DeploymentUiSession({
+      deployFile,
+      networkName: hre.network.name,
+      chain: await getChainMetadata(hre),
+      provider: hre.ethers.provider,
+    });
+  }
+
+  await activeSession.start();
+  return activeSession;
+}
+
+function requireActiveSession(): DeploymentUiSession {
+  if (!activeSession) {
+    throw new Error("DEPLOY_WITH_UI is enabled but no active deployment UI session exists.");
+  }
+
+  return activeSession;
+}
+
+export async function getDeploymentSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
+  if (isUiDeploymentEnabled()) {
+    return requireActiveSession().getSigner(hre.ethers.provider);
+  }
+
+  const { deployer } = await hre.getNamedAccounts();
+  return await hre.ethers.getSigner(deployer);
+}
+
+export async function resolveDeploymentRunner(
+  runnerOrProvider?: AbstractSigner | Provider | null,
+): Promise<AbstractSigner> {
+  if (isSigner(runnerOrProvider)) {
+    return runnerOrProvider;
+  }
+
+  if (isUiDeploymentEnabled()) {
+    const provider = isProviderLike(runnerOrProvider) ? runnerOrProvider : undefined;
+    return requireActiveSession().getSigner(provider);
+  }
+
+  if (isProviderLike(runnerOrProvider) && typeof runnerOrProvider.getSigner === "function") {
+    return await runnerOrProvider.getSigner();
+  }
+
+  return await hardhatEthers.provider.getSigner();
+}
+
+/**
+ * Attach constructor/initializer context for the next browser-signed transaction only.
+ * No-op when DEPLOY_WITH_UI is not enabled or no session is active. Deploy helpers call this automatically.
+ */
+export function setDeploymentUiNextTransactionContext(details: DeploymentUiTransactionDetails): void {
+  if (!isUiDeploymentEnabled() || !activeSession) {
+    return;
+  }
+
+  activeSession.setNextTransactionDetails(details);
+}
+
+export function withDeploymentUiSession(deployFile: string, deployFunction: DeployFunction): DeployFunction {
+  const wrapped: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    const session = await getOrCreateSession(hre, deployFile);
+
+    try {
+      await deployFunction(hre);
+    } finally {
+      try {
+        await session?.close();
+      } finally {
+        activeSession = undefined;
+      }
+    }
+  };
+
+  return wrapped;
+}

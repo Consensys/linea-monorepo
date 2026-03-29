@@ -1,4 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
+import { withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
@@ -15,7 +16,7 @@ import {
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = withDeploymentUiSession("04_deploy_L2MessageService.ts", async function () {
   const contractName = "L2MessageService";
 
   const l2MessageServiceSecurityCouncil = getRequiredEnvVar("L2_SECURITY_COUNCIL");
@@ -56,6 +57,6 @@ const func: DeployFunction = async function () {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContract(contractAddress);
-};
+});
 export default func;
 func.tags = ["L2MessageService"];

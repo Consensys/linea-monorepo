@@ -1,28 +1,32 @@
-import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
+import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
 import { tryVerifyContractWithConstructorArgs, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 
-const func: DeployFunction = async function () {
-  const contractName = "LineaSequencerUptimeFeed";
-  const provider = ethers.provider;
+const func: DeployFunction = withDeploymentUiSession(
+  "13_deploy_BaseSequencerUptimeFeed.ts",
+  async function (hre: HardhatRuntimeEnvironment) {
+    const contractName = "LineaSequencerUptimeFeed";
+    const signer = await getDeploymentSigner(hre);
 
-  const initialStatus = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_INITIAL_STATUS");
-  const adminAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_ADMIN");
-  const feedUpdaterAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_UPDATER");
+    const initialStatus = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_INITIAL_STATUS");
+    const adminAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_ADMIN");
+    const feedUpdaterAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_UPDATER");
 
-  const args = [initialStatus, adminAddress, feedUpdaterAddress];
+    const args = [initialStatus, adminAddress, feedUpdaterAddress];
 
-  const contract = await deployFromFactory(contractName, provider, ...args);
+    const contract = await deployFromFactory(contractName, signer, ...args);
 
-  await LogContractDeployment(contractName, contract);
-  const contractAddress = await contract.getAddress();
+    await LogContractDeployment(contractName, contract);
+    const contractAddress = await contract.getAddress();
 
-  await tryVerifyContractWithConstructorArgs(
-    contractAddress,
-    "src/operational/LineaSequencerUptimeFeed.sol:LineaSequencerUptimeFeed",
-    args,
-  );
-};
+    await tryVerifyContractWithConstructorArgs(
+      contractAddress,
+      "src/operational/LineaSequencerUptimeFeed.sol:LineaSequencerUptimeFeed",
+      args,
+    );
+  },
+);
 export default func;
 func.tags = ["LineaSequencerUptimeFeed"];

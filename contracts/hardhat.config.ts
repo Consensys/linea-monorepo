@@ -29,6 +29,15 @@ dotenv.config();
 const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000");
 const EMPTY_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
+/** LocalAccountsProvider rejects all-zero keys; UI signing uses an empty list and JsonRpc only. */
+function deployerAccounts(): string[] {
+  if (process.env.DEPLOY_WITH_UI === "true") {
+    return [];
+  }
+
+  return [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH];
+}
+
 const blockchainNode = getBlockchainNode();
 const l2BlockchainNode = getL2BlockchainNode();
 
@@ -69,42 +78,43 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
     },
     mainnet: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
     sepolia: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
     hoodi: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: "https://hoodi.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: SupportedChainIds.HOODI,
     },
     linea_mainnet: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: "https://linea-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: 59144,
     },
     linea_sepolia: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: "https://linea-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: SupportedChainIds.LINEA_SEPOLIA,
     },
     custom: {
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       url: process.env.CUSTOM_RPC_URL ? process.env.CUSTOM_RPC_URL : "",
     },
     zkevm_dev: {
       gasPrice: 1322222229,
       url: blockchainNode,
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       timeout: BLOCKCHAIN_TIMEOUT,
-      chainId: SupportedChainIds.LINEA_DEVNET,
+      // No fixed chainId: docker L1 is 31648428 (docker/config/l1-node/el/genesis.json);
+      // hosted devnet (e.g. rpc.devnet.linea.build) uses 59139. Hardhat HH101 if config ≠ RPC.
     },
     l2: {
       url: l2BlockchainNode ?? "",
-      accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
+      accounts: deployerAccounts(),
       allowUnlimitedContractSize: true,
     },
   },

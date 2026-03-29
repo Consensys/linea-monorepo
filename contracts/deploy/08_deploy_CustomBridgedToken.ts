@@ -1,9 +1,10 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = withDeploymentUiSession("08_deploy_CustomBridgedToken.ts", async function () {
   const contractName = "CustomBridgedToken";
 
   const CustomTokenBridge_name = getRequiredEnvVar("CUSTOMTOKENBRIDGE_NAME");
@@ -36,7 +37,7 @@ const func: DeployFunction = async function () {
   );
 
   await tryVerifyContract(contractAddress);
-};
+});
 
 export default func;
 func.tags = ["CustomBridgedToken"];

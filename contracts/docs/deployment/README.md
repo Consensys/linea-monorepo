@@ -64,6 +64,28 @@ Dependent on which network you are using, the corresponding API Key or RPC URL m
 
 <br />
 
+## UI-backed signing
+
+The default deployment flow continues to use `DEPLOYER_PRIVATE_KEY`.
+
+If you prefer to sign and send deployment transactions from a browser wallet instead of passing a private key in the CLI or `.env`, set:
+
+```shell
+DEPLOY_WITH_UI=true npx hardhat deploy --network sepolia --tags <contract tags, comma delimited list>
+```
+
+Notes:
+
+- `DEPLOY_WITH_UI=true` is opt-in. If it is not set, deployments continue to use the existing private-key flow.
+- The contracts deploy flow starts a short-lived local UI session for each deploy file, so chained `--tags A,B,C` runs do not reuse the same signing session across files.
+- The browser UI will prompt for wallet connection, chain switching, and transaction approval.
+- Verification still runs after deployment exactly as before.
+- Raw pre-signed system-contract scripts such as `EIP2935SystemContract` and `EIP4788SystemContract` do not use the browser signer flow because they broadcast fixed serialized transactions instead of requesting a wallet signature.
+
+For a **local stack walkthrough** (ports, L1 chain id `31648428`, example `TestERC20` command), see [deploy-ui/README.md](../../deploy-ui/README.md).
+
+<br />
+
 ## Order of Precedence
 
  When deploying, if required variables such as deployed contract addresses are not defined in the .env or provided as CLI arguments, the script will look and check if it can use the addresses stored in the deployments/<network_name>/ folder. 

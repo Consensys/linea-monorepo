@@ -8,6 +8,24 @@ This section describes the scripts that can be run to deploy multiple contracts 
 
 <br />
 
+## UI-backed chained deployments
+
+Chained `--tags` deployments also support the browser-wallet flow:
+
+```shell
+DEPLOY_WITH_UI=true npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+```
+
+When `DEPLOY_WITH_UI=true` is set:
+
+- each deploy file in the tag list gets its own localhost signing session
+- the local UI is started and stopped between deploy files to avoid session conflicts
+- multiple transactions inside a single deploy file continue to use the same session so follow-up deploy steps can receive prior transaction results
+
+If `DEPLOY_WITH_UI` is not set, the existing `DEPLOYER_PRIVATE_KEY` flow remains unchanged.
+
+<br />
+
 ## L1MessageService Chained Deployments
 
 This will run the script that deploys PlonkVerifier, LineaRollup, Timelock contracts.

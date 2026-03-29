@@ -1,4 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
+import { withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
@@ -16,7 +17,7 @@ import {
   ADDRESS_ZERO,
 } from "../common/constants";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = withDeploymentUiSession("03_deploy_Validium.ts", async function () {
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
@@ -63,7 +64,7 @@ const func: DeployFunction = async function () {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContract(contractAddress);
-};
+});
 
 export default func;
 func.tags = ["Validium"];

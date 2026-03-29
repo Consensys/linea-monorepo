@@ -1,28 +1,34 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function () {
-  const contractName = "V3DexSwapAdapter";
+const func: DeployFunction = withDeploymentUiSession(
+  "20_deploy_V3DexSwapAdapter.ts",
+  async function (hre: HardhatRuntimeEnvironment) {
+    const contractName = "V3DexSwapAdapter";
+    const signer = await getDeploymentSigner(hre);
 
-  const router = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_ROUTER");
-  const wethToken = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_WETH_TOKEN");
-  const lineaToken = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_LINEA_TOKEN");
-  const poolTickSpacing = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_POOL_TICK_SPACING");
+    const router = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_ROUTER");
+    const wethToken = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_WETH_TOKEN");
+    const lineaToken = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_LINEA_TOKEN");
+    const poolTickSpacing = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_POOL_TICK_SPACING");
 
-  const factory = await ethers.getContractFactory(contractName);
-  const contract = await factory.deploy(router, wethToken, lineaToken, poolTickSpacing);
+    const factory = await ethers.getContractFactory(contractName, signer);
+    const contract = await factory.connect(signer).deploy(router, wethToken, lineaToken, poolTickSpacing);
 
-  await LogContractDeployment(contractName, contract);
-  const contractAddress = await contract.getAddress();
+    await LogContractDeployment(contractName, contract);
+    const contractAddress = await contract.getAddress();
 
-  const args = [router, wethToken, lineaToken, poolTickSpacing];
-  await tryVerifyContractWithConstructorArgs(
-    contractAddress,
-    "src/operational/V3DexSwapAdapter.sol:V3DexSwapAdapter",
-    args,
-  );
-};
+    const args = [router, wethToken, lineaToken, poolTickSpacing];
+    await tryVerifyContractWithConstructorArgs(
+      contractAddress,
+      "src/operational/V3DexSwapAdapter.sol:V3DexSwapAdapter",
+      args,
+    );
+  },
+);
 
 export default func;
 func.tags = ["V3DexSwapAdapter"];
