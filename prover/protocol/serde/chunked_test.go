@@ -116,7 +116,7 @@ func TestChunkedManifest_Corrupt(t *testing.T) {
 	basePath := filepath.Join(dir, "corrupt")
 
 	// Write a too-small manifest
-	err := os.WriteFile(basePath+".chunked", []byte{0x01, 0x02}, 0644)
+	err := os.WriteFile(basePath+".chunked", []byte{0x01, 0x02}, 0600)
 	require.NoError(t, err)
 
 	var dummy testPayload
@@ -133,7 +133,7 @@ func TestChunkedManifest_BadMagic(t *testing.T) {
 	// Write a manifest with correct size but wrong magic
 	buf := make([]byte, 16)
 	buf[0] = 0xFF // wrong magic
-	err := os.WriteFile(basePath+".chunked", buf, 0644)
+	err := os.WriteFile(basePath+".chunked", buf, 0600)
 	require.NoError(t, err)
 
 	var dummy testPayload
