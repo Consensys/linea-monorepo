@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
-	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -18,8 +17,6 @@ type Witness struct {
 	// ExecTracesFPath is the filepath toward the execution traces to use for
 	// proof trace generation.
 	ExecTracesFPath string
-	// StateManager traces
-	SMTraces [][]statemanager.DecodedTrace
 	// TxSignatures lists the signatures of the transaction as found
 	// chronologically in the block.
 	TxSignatures []ethereum.Signature

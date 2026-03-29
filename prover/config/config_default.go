@@ -3,7 +3,6 @@ package config
 import (
 	"time"
 
-	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/spf13/viper"
 )
 
@@ -43,7 +42,6 @@ func setDefaultValues() {
 	viper.SetDefault("execution.serialization", false)
 
 	viper.SetDefault("data_availability.max_nb_batches", 100)
-	viper.SetDefault("data_availability.max_uncompressed_nb_bytes", v1.MaxUncompressedBytes)
 	viper.SetDefault("data_availability.dict_nb_bytes", 65536)
 }
 

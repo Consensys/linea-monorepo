@@ -1,4 +1,0 @@
-go test fuzz v1
-[]byte("\xff\xff0\xff1\xfd")
-[]byte("0")
-byte('\x11')
