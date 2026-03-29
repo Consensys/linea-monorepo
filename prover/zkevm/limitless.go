@@ -121,7 +121,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ARITH-OPS
 		//
-		{BaseSize: 16384, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
+		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
@@ -137,18 +138,21 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_xoan_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^mul\.`},
-		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^add\.`},
-		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^mod\.`},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^mul\.`},
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^add\.`},
+		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^mod\.`},
 		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^min256_64\.`},
-		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
-		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
+		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
 		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^maxlog\.`},
-		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
+		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^counts_nz_[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^divide\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max_u[0-9]+\.`},
@@ -164,7 +168,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
-		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
+		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
@@ -245,7 +250,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// BaseSize set to 131072 to handle loginfo's Corset perspective expansion.
 		// loginfo columns live in hub's shared register space via XOR overlays,
 		// so the QBM column height equals the shared register size (~130K in
-		// the analyzed block), NOT loginfo's own trace limit (4096/8192).
+		// block 29944798), NOT loginfo's own trace limit (4096/8192).
 		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
 		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
