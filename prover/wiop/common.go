@@ -79,12 +79,6 @@ func (pd PaddingDirection) String() string {
 	}
 }
 
-// Runtime is the execution context passed to evaluation methods. It provides
-// access to column assignments, coin values, and prover messages at runtime.
-//
-// TODO: Replace with the full Runtime definition once the runtime layer is
-// implemented.
-type Runtime struct{}
 
 // ConcreteVector is the evaluated assignment of a [VectorPromise]. Plain holds
 // the field elements in their natural order; Padding is the constant value
