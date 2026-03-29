@@ -14,19 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
 
 const (
@@ -325,91 +313,9 @@ func FullZKEVMWithSuite(
 			OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
 			IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 		},
-		Statemanager: statemanager.Settings{
-			AccSettings: accumulator.Settings{
-				MaxNumProofs:    tl.ShomeiMerkleProofs(),
-				Name:            "SM_ACCUMULATOR",
-				MerkleTreeDepth: 40,
-			},
-			LineaCodeHashSize: tl.GetLimit("rom"),
-		},
 		Metadata: wizard.VersionMetadata{
 			Title:   "linea/evm-execution/full",
 			Version: "beta-v1",
-		},
-		Keccak: keccak.Settings{
-			MaxNumKeccakf: tl.BlockKeccak(),
-		},
-		Ecdsa: ecdsa.Settings{
-			MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls(),
-			MaxNbTx:            tl.BlockTransactions(),
-			NbInputInstance:    NbInputPerInstanceEcdsa,
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls()+tl.BlockTransactions(), NbInputPerInstanceEcdsa),
-		},
-		Modexp: modexp.Settings{
-			MaxNbInstance256:   tl.PrecompileModexpEffectiveCalls(),
-			MaxNbInstanceLarge: tl.PrecompileModexpEffectiveCalls8192(),
-		},
-		Ecadd: ecarith.Limits{
-			// 14 was found the right number to have just under 2^19 constraints
-			// per circuit.
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcaddEffectiveCalls(), NbInputPerInstancesEcAdd),
-			NbInputInstances:   NbInputPerInstancesEcAdd,
-		},
-		Ecmul: ecarith.Limits{
-			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls(), NbInputPerInstancesEcMul),
-			NbInputInstances:   NbInputPerInstancesEcMul,
-		},
-		Ecpair: ecpair.Limits{
-			NbMillerLoopInputInstances:   NbInputPerInstanceEcPairMillerLoop,
-			NbMillerLoopCircuits:         utils.DivCeil(tl.PrecompileEcpairingMillerLoops(), NbInputPerInstanceEcPairMillerLoop),
-			NbFinalExpInputInstances:     NbInputPerInstanceEcPairFinalExp,
-			NbFinalExpCircuits:           utils.DivCeil(tl.PrecompileEcpairingEffectiveCalls(), NbInputPerInstanceEcPairFinalExp),
-			NbG2MembershipInputInstances: NbInputPerInstanceEcPairG2Check,
-			NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls(), NbInputPerInstanceEcPairG2Check),
-		},
-		Sha2: sha2.Settings{
-			MaxNumSha2F:                    tl.PrecompileSha2Blocks(),
-			NbInstancesPerCircuitSha2Block: NbInputPerInstanceSha2Block,
-		},
-		Bls: bls.Limits{
-			LimitG1AddCalls:            tl.PrecompileBlsG1AddEffectiveCalls(),
-			LimitG2AddCalls:            tl.PrecompileBlsG2AddEffectiveCalls(),
-			LimitG1MsmCalls:            tl.PrecompileBlsG1MsmEffectiveCalls(),
-			LimitG2MsmCalls:            tl.PrecompileBlsG2MsmEffectiveCalls(),
-			LimitMillerLoopCalls:       tl.PrecompileBlsPairingCheckMillerLoops(),
-			LimitFinalExpCalls:         tl.PrecompileBlsFinalExponentiations(),
-			LimitG1MembershipCalls:     tl.PrecompileBlsG1MembershipCalls(),
-			LimitG2MembershipCalls:     tl.PrecompileBlsG2MembershipCalls(),
-			LimitMapFpToG1Calls:        tl.PrecompileBlsMapFpToG1EffectiveCalls(),
-			LimitMapFp2ToG2Calls:       tl.PrecompileBlsMapFp2ToG2EffectiveCalls(),
-			LimitC1MembershipCalls:     tl.PrecompileBlsC1MembershipCalls(),
-			LimitC2MembershipCalls:     tl.PrecompileBlsC2MembershipCalls(),
-			LimitPointEvalCalls:        tl.PrecompileBlsPointEvaluationEffectiveCalls(),
-			LimitPointEvalFailureCalls: tl.PrecompilePointEvaluationFailureEffectiveCalls(),
-
-			NbG1AddInputInstances:            NbInputPerInstanceBLSG1Add,
-			NbG2AddInputInstances:            NbInputPerInstanceBLSG2Add,
-			NbG1MulInputInstances:            NbInputPerInstanceBLSG1Msm,
-			NbG2MulInputInstances:            NbInputPerInstanceBLSG2Msm,
-			NbMillerLoopInputInstances:       NbInputPerInstanceBLSMillerLoop,
-			NbFinalExpInputInstances:         NbInputPerInstanceBLSFinalExp,
-			NbG1MembershipInputInstances:     NbInputPerInstanceBLSG1Membership,
-			NbG2MembershipInputInstances:     NbInputPerInstanceBLSG2Membership,
-			NbC1MembershipInputInstances:     NbInputPerInstanceBLSC1Membership,
-			NbC2MembershipInputInstances:     NbInputPerInstanceBLSC2Membership,
-			NbG1MapToInputInstances:          NbInputPerInstanceBLSG1Map,
-			NbG2MapToInputInstances:          NbInputPerInstanceBLSG2Map,
-			NbPointEvalInputInstances:        NbInputPerInstanceBLSPointEval,
-			NbPointEvalFailureInputInstances: NbInputPerInstanceBLSPointEvalFailure,
-		},
-		P256Verify: p256verify.Limits{
-			LimitCalls:       tl.PrecompileP256VerifyEffectiveCalls(),
-			NbInputInstances: NbInputPerInstanceP256Verify,
-		},
-		PublicInput: publicInput.Settings{
-			Name:          "PUBLIC_INPUT",
-			BlockL2L1Logs: tl.BlockL2L1Logs(),
 		},
 	}
 

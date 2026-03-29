@@ -18,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -189,47 +188,18 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 524288, Cluster: KeccakModuleName, Regexp: `^rom\.`},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^rlptxn\.`},
 		{BaseSize: 65536, Cluster: KeccakModuleName, Regexp: `^shakiradata\.`},
-		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
-		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
-		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
-		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
-		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
-		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
-		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
-		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
-		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.ImportPad.IsPadded},
-		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.FilterSpaghetti},
-		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^keccak\.`},
 
 		// MODEXP 256
 		//
 		{BaseSize: 65536, Cluster: Modexp256ModuleName, Regexp: `^blake2fmodexpdata\.`},
-		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.Small.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_prc_blake`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^blake2f`},
 
-		// MODEXP 8192
-		//
-		{BaseSize: 256, Cluster: ModexpLargeModuleName, Column: zkevm.Modexp.Large.IsActive},
-
-		// SHA2
-		//
-		{BaseSize: 512, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_cSha2.GnarkCircuitConnector.IsActive},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.Inputs.Spaghetti.CleanLimbSp},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.Inputs.Spaghetti.PA.TagSpaghetti},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Block.AccNumLane},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_cSha2.Hash[0]},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_importPad.Index},
-		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.IsLaneActive},
-
 		// TINY-STUFFS
 		//
-		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
-		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
 		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
@@ -237,45 +207,20 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingMsg.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.RollingHashFetcher.ExistsMsg},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
-		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlputils\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
 		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^txndata\.`},
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.RlpTxnFetcher.NBytes},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.CounterColumnPadded},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.OneColumn},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.SplitOuter[0]},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecPoseidonHasher.Hash[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDFetcher.NBytesChainID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.L2L1LogCompacter.CompactifiedSelector},
-		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
 		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
-		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
-		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
-		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
 		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
 		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
-		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
-
-		// P256
-		//
-		{BaseSize: 4096, Cluster: P256ModuleName, Column: zkevm.P256Verify.P256VerifyGnarkData.CircuitInput},
 
 		// ELLIPTIC CURVES
 		//
@@ -291,72 +236,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
-		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
 		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
 		// column ID. This advice covers both. The FlattenLimbs column and its
 		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
-		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
-		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1g2\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2_discount\.`},
-
-		// ECPAIRING
-		//
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.IsActive},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
-		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
-		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
-		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
-
-		// G2_CHECK
-		//
-		{BaseSize: 1024, Cluster: BnG2CheckModuleName, Column: zkevm.Ecpair.AlignedG2MembershipData.IsActive},
-
-		// BLS_G1
-		//
-		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.UnalignedMsmData.CurrentAccumulator[0]},
-		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.GnarkDataMsm},
-		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkMsmData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Map.AlignedGnarkData.CircuitInput},
-		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Add.AlignedAddGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Add.AlignedCurveMembershipGnarkData.CircuitInput},
-		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
-
-		// BLS_G2
-		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
-		//
-		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
-		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
-		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkMsmData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
-		{BaseSize: 8192, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedAddGnarkData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
-
-		// BLS POINT EVAL
-		//
-		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedGnarkData.CircuitInput},
-		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
-
-		// BLS PAIR
-		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
-		//
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
-		{BaseSize: 4096, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.IsActive},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
 
 		// STATIC
 		//
@@ -368,62 +256,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^power\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^instdecoder\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^blsreftable\.`},
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Packing.Decomposed.Inputs.Lookup.ColNumber),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.Theta.LookupTable[0]),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBase2),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBaseChi),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBaseTheta),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.Bc.Lookup.ColMAXNBYTE),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecdsa.Ant.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[0].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[1].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[2].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[3].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[4].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[5].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[6].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[7].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[8].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[9].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[10].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[11].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[12].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[13].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[14].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[15].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.ColRound.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[0].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[1].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[2].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[3].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[4].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[5].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[6].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[7].PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecadd.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecmul.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedG2MembershipData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedFinalExpCircuit.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedMillerLoopCircuit.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Sha2.Pa_cSha2.GnarkCircuitConnector.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Sha2.Pa_cSha2.CanBeBlockOfInstance.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Add.AlignedAddGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Add.AlignedCurveMembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Msm.AlignedGnarkMsmData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Map.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Add.AlignedAddGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Msm.AlignedGnarkMsmData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Map.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedMillerLoopData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedFinalExpData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.PointEval.AlignedFailureGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.PointEval.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.P256Verify.P256VerifyGnarkData.ActualCircuitInputMask.PatternPrecomp),
 	}
 }
 
@@ -441,12 +273,6 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 	// These are the slow and expensive operations.
 	dw.CompileSegments(LimitlessCompilationParams).Conglomerate(LimitlessCompilationParams)
-
-	// This is needed because the outer-circuit will expect the conglomeration
-	// wizard to provide the public-inputs metadata.
-	dw.CompiledConglomeration.RecursionCompBLS.
-		ExtraData[publicInput.PublicInputExtractorMetadata] = zkevm.
-		InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,

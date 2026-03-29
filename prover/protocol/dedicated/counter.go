@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // NewCyclicCounter creates a structured [CyclicCounter]. When passing period
@@ -38,7 +37,7 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 	)
 
 	if !fullyActive {
-		commonconstraints.MustZeroWhenInactive(comp, isActive, rc.Natural)
+		MustZeroWhenInactive(comp, isActive, rc.Natural)
 	}
 
 	comp.InsertLocal(

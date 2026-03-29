@@ -1,4 +1,4 @@
-package commonconstraints
+package dedicated
 
 import (
 	"strings"
@@ -39,19 +39,10 @@ func MustZeroWhenInactive(comp *wizard.CompiledIOP, isActive any, cs ...ifaces.C
 	}
 }
 
-// MustBeBinary constrains the current column to be binary.
-func MustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%v_MUST_BE_BINARY", c.GetColID()),
-		sym.Mul(c, sym.Sub(c, 1)),
-	)
-}
-
 // MustBeActivationColumns constrains all the columns of the form "IsActive" to have
 // the correct form: the column is binary and it cannot transition from 0 to 1.
 func MustBeActivationColumns(comp *wizard.CompiledIOP, c ifaces.Column, option ...any) {
-	MustBeBinary(comp, c)
+	MustBeBinary(comp, c, 0)
 
 	// must have activation form where option is not zero.
 	var res *sym.Expression
@@ -79,7 +70,7 @@ func MustBeMutuallyExclusiveBinaryFlags(comp *wizard.CompiledIOP, isActive iface
 	)
 
 	for i := range flags {
-		MustBeBinary(comp, flags[i])
+		MustBeBinary(comp, flags[i], 0)
 		flagsNames = append(flagsNames, string(flags[i].GetColID()))
 		flagsAny = append(flagsAny, flags[i])
 	}

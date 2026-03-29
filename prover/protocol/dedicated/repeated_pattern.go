@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // NewRepeatedPattern creates a new [RepeatedPattern] column. Any can be either a column or
@@ -46,7 +45,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 	// advice for the repeated pattern for module discoverer
 	pragmas.AddModuleRef(res.PatternPrecomp, moduleName)
 
-	commonconstraints.MustZeroWhenInactive(comp, isActive, res.Natural)
+	MustZeroWhenInactive(comp, isActive, res.Natural)
 
 	comp.InsertInclusionConditionalOnIncluded(
 		round,

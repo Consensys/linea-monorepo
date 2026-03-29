@@ -2,7 +2,6 @@ package execution
 
 import (
 	"math/big"
-	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -11,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 // checkPublicInputs checks that the values in fi are consistent with the
@@ -221,8 +219,6 @@ func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
 	}
 
 	var (
-		pie = getPublicInputExtractor(wvc)
-
 		extrSZX       = getPublicInputExt(api, wvc, pie.DataSZX)
 		extrSZY       = getPublicInputExt(api, wvc, pie.DataSZY)
 		extrKoalaHash = getPublicInputArr(api, wvc, pie.DataChecksum[:])
@@ -255,8 +251,6 @@ func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
 // from the wvc to their purported BLS hash held in the gnarkFuncInp.
 func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
 
-	pie := getPublicInputExtractor(wvc)
-
 	if len(pie.L2Messages) != len(gnarkFuncInp.L2MessageHashes.Values) {
 		utils.Panic("L2MessageHashes length mismatch: %d != %d", len(pie.L2Messages), len(gnarkFuncInp.L2MessageHashes.Values))
 	}
@@ -280,19 +274,6 @@ func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 			api.AssertIsEqual(funcL2MessageHashWords[j], extrL2MessageHashWords[j])
 		}
 	}
-}
-
-// getPublicInputExtractor extracts the public input from the wizard circuit
-func getPublicInputExtractor(wvc *wizard.VerifierCircuit) *publicInput.FunctionalInputExtractor {
-	extraData, extraDataFound := wvc.Spec.ExtraData[publicInput.PublicInputExtractorMetadata]
-	if !extraDataFound {
-		panic("public input extractor not found")
-	}
-	pie, ok := extraData.(*publicInput.FunctionalInputExtractor)
-	if !ok {
-		panic("public input extractor not of the right type: " + reflect.TypeOf(extraData).String())
-	}
-	return pie
 }
 
 // getPublicInputExt returns a field extension public input coordinates in array

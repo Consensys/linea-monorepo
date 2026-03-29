@@ -65,21 +65,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
-	zkded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 func init() {
@@ -173,28 +158,15 @@ func init() {
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
 
-	// Circuit implementations
-	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
-	RegisterImplementation(modexp.Modexp{})
-	RegisterImplementation(modexp.Module{})
-	RegisterImplementation(ecarith.MultiECAddCircuit{})
-	RegisterImplementation(ecarith.MultiECMulCircuit{})
-	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
-	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
-	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
-	RegisterImplementation(sha2.SHA2Circuit{})
-
 	// Dedicated and common types
 	RegisterImplementation(byte32cmp.MultiLimbCmp{})
 	RegisterImplementation(byte32cmp.OneLimbCmpCtx{})
 	RegisterImplementation(byte32cmp.DecompositionCtx{})
 	RegisterImplementation(dedicated.IsZeroCtx{})
-	RegisterImplementation(common.HashingCtx{})
 
 	// Prover actions (added to fix missing concrete type warnings)
 	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
 	RegisterImplementation(bigrange.BigRangeProverAction{})
-	RegisterImplementation(keccak.ShakiraProverAction{})
 	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
 	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
@@ -218,15 +190,6 @@ func init() {
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 	RegisterImplementation(univariates.NaturalizeProverAction{})
 	RegisterImplementation(univariates.NaturalizeVerifierAction{})
-	RegisterImplementation(gen_acc.GenericDataAccumulator{})
-	RegisterImplementation(gen_acc.GenericInfoAccumulator{})
-	RegisterImplementation(keccak.KeccakSingleProvider{})
-	RegisterImplementation(packing.Packing{})
-	RegisterImplementation(spaghettifier.Spaghettification{})
-	RegisterImplementation(importpad.Sha2Padder{})
-	RegisterImplementation(importpad.KeccakPadder{})
-	RegisterImplementation(importpad.Importation{})
-	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(cleanup.CleanupProverAction{})
 	RegisterImplementation(dummy.DummyVerifierAction{})
 	RegisterImplementation(dummy.DummyProverAction{})
@@ -323,43 +286,16 @@ func init() {
 	RegisterImplementation(splitextension.VerifierCtx{})
 	RegisterImplementation(splitextension.AssignUnivProverAction{})
 
-	// G1 circuit types
-	RegisterImplementation(bls.MultiAddCircuitG1{})
-	RegisterImplementation(bls.MultiMulCircuitG1{})
-	RegisterImplementation(bls.MultiMapCircuitG1{})
-	RegisterImplementation(bls.MultiCheckableG1NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG1NonCurve{})
-
-	// G2 circuit types
-	RegisterImplementation(bls.MultiAddCircuitG2{})
-	RegisterImplementation(bls.MultiMulCircuitG2{})
-	RegisterImplementation(bls.MultiMapCircuitG2{})
-	RegisterImplementation(bls.MultiCheckableG2NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG2NonCurve{})
-
-	// Non-generic pairing and point eval circuits
-	RegisterImplementation(bls.MultiMillerLoopMulCircuit{})
-	RegisterImplementation(bls.MultiMillerLoopFinalExpCircuit{})
-	RegisterImplementation(bls.MultiPointEvalCircuit{})
-	RegisterImplementation(bls.MultiPointEvalFailureCircuit{})
-
-	RegisterImplementation(p256verify.MultiP256VerifyInstanceCircuit{})
-	RegisterImplementation(zkded.AssignPIPProverAction{})
-	RegisterImplementation(zkded.LengthConsistencyCtx{})
-	RegisterImplementation(zkded.AccumulateUpToMaxCtx{})
-	RegisterImplementation(byte32cmp.MultiLimbAdd{})
 	RegisterImplementation(limbs.LimbsLittleEndian{})
 	RegisterImplementation(limbs.LimbsBigEndian{})
 	RegisterImplementation(emulated.AssignEmulatedColumnsProverAction{})
 	RegisterImplementation(emulated.MultiplicationAssignmentProverAction{})
-	RegisterImplementation(common.TwoByTwoCombination{})
 	RegisterImplementation(dummy.DoneOperation{})
 	RegisterImplementation(dummy.DoneOperationSet{})
 
 	RegisterImplementation(degreereduction.DegreeReductionStep{})
 
 	// Public input extractor (stored in CompiledIOP.ExtraData as any)
-	RegisterImplementation(publicInput.FunctionalInputExtractor{})
 	RegisterImplementation(koalabear.Element{})
 	RegisterImplementation(field.Element{})
 }

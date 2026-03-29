@@ -7,16 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // ZkEvm defines the wizard responsible for proving execution of the zk
@@ -30,49 +20,6 @@ type ZkEvm struct {
 	// Arithmetization definition function. Generated during the compilation
 	// process.
 	Arithmetization *arithmetization.Arithmetization `json:"arithmetization"`
-	// Keccak module in use. Generated during the compilation process.
-	Keccak *keccak.KeccakZkEVM `json:"keccak"`
-	// State manager module in use. Generated during the compilation process.
-	StateManager *statemanager.StateManager `json:"stateManager"`
-	// PublicInput gives access to the public inputs of the wizard-IOP and is
-	// used to access them to define the outer-circuit.
-	PublicInput *publicInput.PublicInput `json:"publicInput"`
-	// Ecdsa is the module responsible for verifying the Ecdsa tx signatures and
-	// ecrecover
-	Ecdsa *ecdsa.EcdsaZkEvm `json:"ecdsa"`
-	// Modexp is the module responsible for proving the calls to the Modexp
-	// precompile
-	Modexp *modexp.Module `json:"modexp"`
-	// Ecadd is the module responsible for proving the calls to the Ecadd
-	// precompile
-	Ecadd *ecarith.EcAdd `json:"ecadd"`
-	// Ecmul is the module responsible for proving the calls to the Ecmul
-	// precompile
-	Ecmul *ecarith.EcMul `json:"ecmul"`
-	// Ecpair is the module responsible for the proving the calls the ecpairing
-	// precompile
-	Ecpair *ecpair.ECPair `json:"ecpair"`
-	// Sha2 is the module responsible for doing the computation of the Sha2
-	// precompile.
-	Sha2 *sha2.Sha2SingleProvider `json:"sha2"`
-	// BlsG1Add is responsible for BLS G1 addition precompile.
-	BlsG1Add *bls.BlsAdd `json:"blsG1Add"`
-	// BlsG2Add is responsible for BLS G2 addition precompile.
-	BlsG2Add *bls.BlsAdd `json:"blsG2Add"`
-	// BlsG1Msm is responsible for BLS G1 multi-scalar multiplicaton precompile.
-	BlsG1Msm *bls.BlsMsm `json:"blsG1Msm"`
-	// BlsG2Msm is responsible for BLS G2 multi-scalar multiplication precompile.
-	BlsG2Msm *bls.BlsMsm `json:"blsG2Msm"`
-	// BlsG1Map is responsible for BLS Fp map to G1 precompile.
-	BlsG1Map *bls.BlsMap `json:"blsG1Map"`
-	// BlsG2Map is responsible for BLS Fp2 map to G2 precompile.
-	BlsG2Map *bls.BlsMap `json:"blsG2Map"`
-	// BlsPairingCheck is responsible for BLS pairing check precompile.
-	BlsPairingCheck *bls.BlsPair `json:"blsPairingCheck"`
-	// PointEval is responsible for EIP-4844 point evaluation precompile.
-	PointEval *bls.BlsPointEval `json:"pointEval"`
-	// P256Verify is responsible for P256 signature verification precompile.
-	P256Verify *p256verify.P256Verify `json:"p256Verify"`
 }
 
 // NewZkEVM instantiates a new ZkEvm instance. The function returns a fully
@@ -121,11 +68,6 @@ func NewZkEVM(
 			defineRecursion,
 			*settings.PostRecursionCompilationSuite...,
 		)
-
-		// This sets the public input extractor metadata in the recursion IOP
-		res.RecursionCompiledIOP.
-			ExtraData[publicInput.PublicInputExtractorMetadata] = res.
-			InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 	}
 
 	return res
@@ -186,48 +128,11 @@ func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 
 	var (
-		comp            = b.CompiledIOP
-		arith           = arithmetization.NewArithmetization(b, s.Arithmetization)
-		ecdsa           = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa, arith)
-		stateManager    = statemanager.NewStateManager(comp, s.Statemanager, arith)
-		keccak          = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders(), arith)
-		modexp          = modexp.NewModuleZkEvm(comp, s.Modexp, arith)
-		ecadd           = ecarith.NewEcAddZkEvm(comp, &s.Ecadd, arith)
-		ecmul           = ecarith.NewEcMulZkEvm(comp, &s.Ecmul, arith)
-		ecpair          = ecpair.NewECPairZkEvm(comp, &s.Ecpair, arith)
-		sha2            = sha2.NewSha2ZkEvm(comp, s.Sha2, arith)
-		blsG1Add        = bls.NewG1AddZkEvm(comp, &s.Bls, arith)
-		blsG1Msm        = bls.NewG1MsmZkEvm(comp, &s.Bls, arith)
-		blsG1Map        = bls.NewG1MapZkEvm(comp, &s.Bls, arith)
-		blsG2Add        = bls.NewG2AddZkEvm(comp, &s.Bls, arith)
-		blsG2Msm        = bls.NewG2MsmZkEvm(comp, &s.Bls, arith)
-		blsG2Map        = bls.NewG2MapZkEvm(comp, &s.Bls, arith)
-		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls, arith)
-		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls, arith)
-		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify, arith)
-		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary, arith)
+		arith = arithmetization.NewArithmetization(b, s.Arithmetization)
 	)
 
 	return &ZkEvm{
 		Arithmetization: arith,
-		Ecdsa:           ecdsa,
-		StateManager:    stateManager,
-		Keccak:          keccak,
-		Modexp:          modexp,
-		Ecadd:           ecadd,
-		Ecmul:           ecmul,
-		Ecpair:          ecpair,
-		Sha2:            sha2,
-		BlsG1Add:        blsG1Add,
-		BlsG2Add:        blsG2Add,
-		BlsG1Msm:        blsG1Msm,
-		BlsG2Msm:        blsG2Msm,
-		BlsG1Map:        blsG1Map,
-		BlsG2Map:        blsG2Map,
-		BlsPairingCheck: blsPairingCheck,
-		PointEval:       pointEval,
-		P256Verify:      p256verify,
-		PublicInput:     &publicInput,
 	}
 }
 
@@ -246,25 +151,6 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		// because the following modules use the content of these columns to
 		// assign themselves.
 		z.Arithmetization.Assign(run, input.ExecTracesFPath)
-
-		// Assign the state-manager module
-		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-		z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
-		z.Keccak.Run(run)
-		z.Ecadd.Assign(run)
-		z.Ecmul.Assign(run)
-		z.Ecpair.Assign(run)
-		z.Sha2.Run(run)
-		z.BlsG1Add.Assign(run)
-		z.BlsG2Add.Assign(run)
-		z.BlsG1Msm.Assign(run)
-		z.BlsG2Msm.Assign(run)
-		z.BlsG1Map.Assign(run)
-		z.BlsG2Map.Assign(run)
-		z.BlsPairingCheck.Assign(run)
-		z.PointEval.Assign(run)
-		z.P256Verify.Assign(run)
-		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
 	}
 }
 

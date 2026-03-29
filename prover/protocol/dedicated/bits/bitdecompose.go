@@ -6,8 +6,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
+
+// LimbBytes is the size of one limb in bytes
+const LimbBytes = 2
 
 // BitDecomposed represents the output of a bit decomposition of
 // a slice of columns. The struct implements the [wizard.ProverAction] interface
@@ -158,7 +160,7 @@ func combineElements(elements []field.Element) field.Element {
 	var bytes []byte
 	for _, element := range elements {
 		elementBytes := element.Bytes()
-		bytes = append(bytes, elementBytes[len(elementBytes)-common.LimbBytes:]...)
+		bytes = append(bytes, elementBytes[len(elementBytes)-LimbBytes:]...)
 	}
 
 	var res field.Element
