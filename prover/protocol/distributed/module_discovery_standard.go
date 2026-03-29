@@ -135,10 +135,11 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		// adviceOfColumn lists
 		adviceOfColumn    = collection.MakeDeterministicMap[ifaces.ColID, *ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
 		adviceMappingErrs = []error{}
+		adviceUseCount    = make([]int, len(disc.Advices))
 	)
 
 	for _, col := range comp.Columns.All() {
-		for _, adv := range disc.Advices {
+		for i, adv := range disc.Advices {
 
 			if !adv.DoesMatch(col) {
 				continue
@@ -151,6 +152,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				}
 			}
 
+			adviceUseCount[i]++
 			break
 		}
 	}
@@ -193,6 +195,19 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		if len(conflictingAdvices) > 0 {
 			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("conflicting advice for QBM: %v, first advice: %++v, conflicting advices: %++v", qbm.Ds.Rank.Keys, adviceFound, conflictingAdvices))
 			continue
+		}
+
+		advicesNotUses := []*ModuleDiscoveryAdvice{}
+		for i := range disc.Advices {
+			if adviceUseCount[i] == 0 {
+				advicesNotUses = append(advicesNotUses, disc.Advices[i])
+			}
+		}
+
+		if len(advicesNotUses) > 0 {
+			adviceMappingErrs = append(adviceMappingErrs,
+				fmt.Errorf("could not find advice for QBM: %v, advices not used: %v", qbm.Ds.Rank.Keys, advicesNotUses),
+			)
 		}
 
 		newModule := moduleSets[adviceFound.Cluster]
