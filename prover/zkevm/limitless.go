@@ -121,14 +121,12 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ARITH-OPS
 		//
-		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
-		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
+		{BaseSize: 16384, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
-		// BaseSize set to fit P75 module heights in 1 segment (reduces segment count).
 		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u32\.`},
 		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u36\.`},
 		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u64\.`},
@@ -138,21 +136,18 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_xoan_u[0-9]+\.`},
-		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
-		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^mul\.`},
-		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^add\.`},
-		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^mod\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^mul\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^add\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^mod\.`},
 		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^min256_64\.`},
-		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
-		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
-		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
 		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^maxlog\.`},
-		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
-		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
+		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^counts_nz_[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^divide\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max_u[0-9]+\.`},
@@ -168,8 +163,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
-		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
-		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
@@ -209,7 +203,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
 		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
@@ -244,21 +237,14 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// TINY-STUFFS
 		//
 		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
-		// BaseSize increased to match limit_large=2048 to guarantee 1 segment worst case.
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
+		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
-		// BaseSize set to 131072 to handle loginfo's Corset perspective expansion.
-		// loginfo columns live in hub's shared register space via XOR overlays,
-		// so the QBM column height equals the shared register size (~130K in
-		// block 29944798), NOT loginfo's own trace limit (4096/8192).
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
-		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
-		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
-		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
-		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
-		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
@@ -267,9 +253,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
-		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
-		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
+		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlputils\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
@@ -285,14 +270,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
-		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
-		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
-		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
@@ -302,23 +284,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ELLIPTIC CURVES
 		//
-		// The blsdata FLATTEN_LIMBS column (blsdata.LIMB'0_FLATTEN_LIMBS) has
-		// ~1M rows (NextPowerOfTwo(blsdata_size * 8)). It shares a QBM with
-		// MANUALLY_SHIFTED_FLATTEN_LIMBS columns (via ManuallyShift global
-		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
-		// this produced 2046 segments. This specific regex must appear BEFORE
-		// the generic ^blsdata\. to override it with a large BaseSize.
-		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
-		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
-		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
-		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
-		// column ID. This advice covers both. The FlattenLimbs column and its
-		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
@@ -333,10 +303,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
 		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
 		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
 		// G2_CHECK
@@ -354,7 +322,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
 		// BLS_G2
-		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
 		//
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
 		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
@@ -370,7 +337,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
 		// BLS PAIR
-		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
 		//
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
