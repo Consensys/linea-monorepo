@@ -9,13 +9,13 @@ spot_instance_reclaim_time_seconds = 120
 termination_grace_period_seconds = 1800
 
 [execution]
-prover_mode = "limitless"
+prover_mode = "full"
 conflated_traces_dir = "./"
-requests_root_dir = "./shared/v3/prover-execution/"
-ignore_compatibility_check=false
-keep_traces_until_block = 9999999999
-serialization = true
-limitless_with_debug = false
+requests_root_dir = "./"
+limitless_with_debug = true
+ignore_compatibility_check = false
+keep_traces_until_block = 0
+serialization = false
 
 
 [data_availability]
