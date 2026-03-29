@@ -37,15 +37,9 @@ mv -f .samples-test-eip4844/* ${SOLTESTDIR_EIP4844}/test
 rm -rf .samples-simple-calldata .samples-multiproof-calldata .samples-test-calldata
 rm -rf .samples-simple-eip4844 .samples-multiproof-eip4844 .samples-test-eip4844
 
-# gnark now generates the verifier with the correct pragma, imports, interface,
-# constants, constructor, and functions via ExportOption. We only need to rename
-# the contract and adjust import paths for the test copy.
-
-# Production verifier: rename contract (imports and interface already correct)
 cp ../contracts/test/hardhat/_testData/compressedData/Verifier1.sol ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
 sed -i.bak 's/contract PlonkVerifier /contract PlonkVerifierForDataAggregation /g' ../contracts/src/verifiers/PlonkVerifierForDataAggregation.sol
 
-# Test verifier: rename contract and adjust import paths for the test location
 cp ../contracts/test/hardhat/_testData/compressedData/Verifier1.sol ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
 sed -i.bak 's/contract PlonkVerifier /contract TestPlonkVerifierForDataAggregation /g' ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
 sed -i.bak 's|from "../libraries/Mimc.sol"|from "../../../libraries/Mimc.sol"|g' ../contracts/src/_testing/unit/verifiers/TestPlonkVerifierForDataAggregation.sol
