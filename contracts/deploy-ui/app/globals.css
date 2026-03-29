@@ -1,0 +1,313 @@
+/**
+ * Visual language aligned with https://linea.build/ (theme-v2 marketing site).
+ * Fonts are loaded from linea.build asset URLs (same as the public site).
+ */
+
+@font-face {
+  font-family: "Atyp Text";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("https://linea.build/assets/fonts/AtypText-Regular-subset.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atyp Text";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("https://linea.build/assets/fonts/AtypText-Medium-subset.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atyp Text";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("https://linea.build/assets/fonts/AtypText-Semibold-subset.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atyp Display";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("https://linea.build/assets/fonts/AtypDisplay-Semibold-subset.woff2") format("woff2");
+}
+
+:root {
+  /* From linea.build hero / UI accents */
+  --linea-cyan: #61dfff;
+  --linea-deep-purple: #190066;
+  --linea-card: #1d1d1d;
+  --linea-card-border: #505050;
+  --linea-page: #070714;
+  --linea-page-mid: #0e0e1a;
+  --linea-text: #f3f4f6;
+  --linea-text-muted: #9ca3af;
+  --linea-text-subtle: #6b7280;
+  --linea-code-bg: #0a0a12;
+  --linea-code-border: #2a2a3a;
+  --linea-danger-bg: #2a1117;
+  --linea-danger-border: #7f1d1d;
+  --linea-danger-text: #fecaca;
+  --linea-session-end-bg: #0f1f35;
+  --linea-session-end-border: #1e3a5f;
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.deploy-ui-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Atyp Text", ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--linea-text);
+  background-color: var(--linea-page);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(97, 223, 255, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 50%, rgba(25, 0, 102, 0.35), transparent 50%),
+    linear-gradient(180deg, var(--linea-page) 0%, var(--linea-page-mid) 45%, var(--linea-page) 100%);
+}
+
+.deploy-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.deploy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 28px;
+  border-bottom: 1px solid rgba(80, 80, 80, 0.6);
+  background: rgba(7, 7, 20, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.deploy-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.deploy-header__logo {
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.deploy-header__badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--linea-text-muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(97, 223, 255, 0.35);
+  background: rgba(97, 223, 255, 0.06);
+}
+
+.deploy-main {
+  flex: 1;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.deploy-card {
+  border-radius: var(--radius-card);
+  padding: 22px 24px;
+  background: var(--linea-card);
+  border: 1px solid var(--linea-card-border);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.deploy-card:hover {
+  border-color: rgba(97, 223, 255, 0.35);
+}
+
+.deploy-card--hero {
+  border-color: rgba(97, 223, 255, 0.25);
+  background: linear-gradient(145deg, rgba(29, 29, 29, 1) 0%, rgba(25, 0, 102, 0.18) 100%);
+}
+
+.deploy-card__title {
+  margin: 0 0 8px;
+  font-family: "Atyp Display", "Atyp Text", sans-serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.deploy-card__subtitle {
+  margin: 0;
+  color: var(--linea-text-muted);
+  font-size: 0.95rem;
+}
+
+.deploy-card h2 {
+  margin: 0 0 12px;
+  font-family: "Atyp Display", "Atyp Text", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.deploy-card h3 {
+  margin: 16px 0 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--linea-text-subtle);
+}
+
+.deploy-card p {
+  margin: 0 0 10px;
+  color: var(--linea-text-muted);
+}
+
+.deploy-card p:last-child {
+  margin-bottom: 0;
+}
+
+.deploy-meta-row {
+  margin-bottom: 8px;
+  color: var(--linea-text-muted);
+  font-size: 0.9375rem;
+}
+
+.deploy-meta-row:last-child {
+  margin-bottom: 0;
+}
+
+.deploy-meta-row strong {
+  color: var(--linea-text);
+  font-weight: 500;
+}
+
+.deploy-code {
+  max-height: 320px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  border-radius: var(--radius-control);
+  background: var(--linea-code-bg);
+  padding: 16px;
+  border: 1px solid var(--linea-code-border);
+  margin: 0 0 12px;
+  color: #d1d5db;
+}
+
+.deploy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.deploy-btn {
+  border: 0;
+  border-radius: var(--radius-control);
+  padding: 11px 20px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.deploy-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.deploy-btn--primary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* Primary: cyan fill like linea.build interactive accent */
+.deploy-btn--primary {
+  background: var(--linea-cyan);
+  color: #050508;
+}
+
+.deploy-btn--primary:not(:disabled):hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 24px rgba(97, 223, 255, 0.35);
+}
+
+.deploy-btn--secondary {
+  background: transparent;
+  color: var(--linea-text);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.deploy-btn--secondary:not(:disabled):hover {
+  border-color: var(--linea-cyan);
+  color: var(--linea-cyan);
+}
+
+.deploy-card--error {
+  border-color: var(--linea-danger-border);
+  background: var(--linea-danger-bg);
+}
+
+.deploy-card--error h2 {
+  color: var(--linea-danger-text);
+}
+
+.deploy-card--error p {
+  color: var(--linea-danger-text);
+}
+
+.deploy-card--muted {
+  border-color: var(--linea-session-end-border);
+  background: var(--linea-session-end-bg);
+}
+
+.deploy-connect-error {
+  color: #fca5a5;
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+.deploy-pending-label {
+  color: var(--linea-text);
+  font-weight: 600;
+  margin-bottom: 8px;
+}

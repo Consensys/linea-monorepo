@@ -1,5 +1,5 @@
 import { ChildProcess, execFileSync, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { join, resolve } from "node:path";
@@ -11,6 +11,7 @@ import {
   TypedDataField,
   TransactionRequest,
   TransactionResponse,
+  getAddress,
   isAddress,
   toQuantity,
 } from "ethers";
@@ -114,6 +115,15 @@ const UI_POLL_INTERVAL_MS = 500;
 const REQUEST_POLL_INTERVAL_MS = 1000;
 const UI_PROCESS_KILL_TIMEOUT_MS = 5000;
 const SERVER_CLOSE_TIMEOUT_MS = 3000;
+/**
+ * Authenticates requests to the loopback bridge (any local process could otherwise hit the API).
+ * Must match the header the deploy UI sends. Not branded: this is a generic Hardhat↔browser session secret.
+ */
+const DEPLOY_UI_SESSION_TOKEN_HEADER = "x-deploy-ui-session-token";
+/** Reject huge JSON bodies on the local bridge (DoS / accidental OOM). */
+const MAX_JSON_BODY_BYTES = 256 * 1024;
+const TX_LOOKUP_TIMEOUT_MS = 12_000;
+const TX_LOOKUP_INTERVAL_MS = 200;
 
 let activeSession: DeploymentUiSession | undefined;
 
@@ -336,11 +346,17 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+async function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<unknown> {
   const chunks: Buffer[] = [];
+  let total = 0;
 
   for await (const chunk of request) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    total += buf.length;
+    if (total > maxBytes) {
+      throw new Error(`Request body exceeds ${maxBytes} bytes`);
+    }
+    chunks.push(buf);
   }
 
   if (chunks.length === 0) {
@@ -348,6 +364,94 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   }
 
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+function isValidTxHash(value: unknown): value is string {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
+}
+
+function normalizeCalldataHex(data: string | null | undefined): string {
+  if (data === undefined || data === null || data === "" || data === "0x") {
+    return "0x";
+  }
+  const d = data.toLowerCase();
+  return d.startsWith("0x") ? d : `0x${d}`;
+}
+
+function hexQuantityToBigInt(hex: HexString | undefined): bigint {
+  if (hex === undefined || hex === "0x") {
+    return 0n;
+  }
+  return BigInt(hex);
+}
+
+async function getTransactionWithRetry(
+  provider: Provider,
+  hash: string,
+  timeoutMs: number,
+  intervalMs: number,
+): Promise<TransactionResponse | null> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const tx = await provider.getTransaction(hash);
+    if (tx) {
+      return tx;
+    }
+    await new Promise((resolveSleep) => setTimeout(resolveSleep, intervalMs));
+  }
+  return null;
+}
+
+/**
+ * Ensures the hash the browser reported is the same tx Hardhat asked for (same sender, to, data, value).
+ * Without this, any local process could POST /api/respond with a valid unrelated tx hash.
+ */
+function onChainTransactionMatchesPrompt(
+  tx: TransactionResponse,
+  promptRequest: SerializedTransactionRequest,
+  expectedFrom: string,
+): boolean {
+  let normalizedFrom: string;
+  try {
+    normalizedFrom = getAddress(expectedFrom);
+  } catch {
+    return false;
+  }
+
+  try {
+    if (!tx.from || getAddress(tx.from) !== normalizedFrom) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  const expectedTo = promptRequest.to;
+  if (expectedTo === undefined || expectedTo === null || expectedTo === "") {
+    if (tx.to !== null && tx.to !== undefined) {
+      return false;
+    }
+  } else {
+    try {
+      if (!tx.to || getAddress(tx.to) !== getAddress(expectedTo)) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  if (normalizeCalldataHex(tx.data) !== normalizeCalldataHex(promptRequest.data)) {
+    return false;
+  }
+
+  const expectedValue = hexQuantityToBigInt(promptRequest.value);
+  const actualValue = tx.value ?? 0n;
+  if (actualValue !== expectedValue) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -367,15 +471,37 @@ function writeJson(response: ServerResponse, statusCode: number, payload: unknow
   response.end(JSON.stringify(payload));
 }
 
-/** Next dev UI and this API use different ports — browsers require CORS for fetch. */
-function applyDeployUiCors(request: IncomingMessage, response: ServerResponse): void {
+/**
+ * Only allow the local Next dev origin. Reflecting arbitrary Origin would let any website trigger
+ * credentialess cross-origin requests to the bridge from the user's browser (mitigated by Private
+ * Network Access in some browsers, but we still avoid wildcard / reflection).
+ */
+function applyDeployUiCors(request: IncomingMessage, response: ServerResponse, uiPort: number): void {
+  const allowedOrigin = `http://${LOCALHOST}:${uiPort}`;
   const origin = request.headers.origin;
-  response.setHeader("Access-Control-Allow-Origin", typeof origin === "string" ? origin : "*");
-  if (typeof origin === "string") {
+  if (origin === allowedOrigin) {
+    response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Headers", `Content-Type, ${DEPLOY_UI_SESSION_TOKEN_HEADER}`);
+}
+
+function isValidDeployUiSessionToken(expected: string, request: IncomingMessage): boolean {
+  const received = request.headers[DEPLOY_UI_SESSION_TOKEN_HEADER];
+  if (typeof received !== "string" || received.length === 0) {
+    return false;
+  }
+  try {
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(received, "utf8");
+    if (a.length !== b.length) {
+      return false;
+    }
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 function toHexQuantityString(value: bigint | number | string | undefined): HexString | undefined {
@@ -448,6 +574,9 @@ async function openBrowser(url: string) {
 
 class DeploymentUiSession {
   private readonly sessionId = randomUUID();
+  /** High-entropy secret; passed to the local UI only via the opened URL (then ideally moved to sessionStorage). */
+  /** Opaque value; passed to the UI in the opened URL and required as `x-deploy-ui-session-token` on bridge HTTP calls. */
+  private readonly sessionSecret = randomBytes(32).toString("base64url");
   private readonly startedAt = new Date().toISOString();
   private readonly context: DeploymentUiContext;
   private server?: Server;
@@ -477,10 +606,14 @@ class DeploymentUiSession {
     this.server = createServer((request, response) => {
       void this.handleRequest(request, response).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
+        const status =
+          typeof message === "string" && message.includes("exceeds") && message.includes("bytes") ? 413 : 500;
         if (!response.headersSent) {
           try {
-            applyDeployUiCors(request, response);
-            writeJson(response, 500, { error: message });
+            if (this.uiPort !== undefined) {
+              applyDeployUiCors(request, response, this.uiPort);
+            }
+            writeJson(response, status, { error: message });
           } catch {
             response.destroy();
           }
@@ -719,12 +852,22 @@ class DeploymentUiSession {
   }
 
   private async handleRequest(request: IncomingMessage, response: ServerResponse) {
-    applyDeployUiCors(request, response);
+    if (this.uiPort === undefined) {
+      writeJson(response, 503, { error: "Deploy UI session is not ready." });
+      return;
+    }
+
+    applyDeployUiCors(request, response, this.uiPort);
 
     if (request.method === "OPTIONS") {
       response.statusCode = 204;
       response.setHeader("Connection", "close");
       response.end();
+      return;
+    }
+
+    if (!isValidDeployUiSessionToken(this.sessionSecret, request)) {
+      writeJson(response, 401, { error: "Missing or invalid deploy UI session token." });
       return;
     }
 
@@ -741,9 +884,30 @@ class DeploymentUiSession {
     }
 
     if (request.method === "POST" && url.pathname === "/api/wallet") {
-      const payload = (await readJsonBody(request)) as { address: string; chainId: number };
+      const payload = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as { address: string; chainId: number };
+      if (typeof payload.address !== "string" || !isAddress(payload.address)) {
+        writeJson(response, 400, { error: "Invalid wallet address." });
+        return;
+      }
+      if (typeof payload.chainId !== "number" || !Number.isInteger(payload.chainId)) {
+        writeJson(response, 400, { error: "Invalid chainId." });
+        return;
+      }
+
+      /* Do not require the wallet to already be on the deployment chain: MetaMask often connects on
+       * the wrong network first, and rejecting here left waitForWallet() pending forever. Chain is
+       * enforced before send in the UI (ensureTargetChain) and again in POST /api/respond. */
+
+      let normalizedAddress: string;
+      try {
+        normalizedAddress = getAddress(payload.address);
+      } catch {
+        writeJson(response, 400, { error: "Invalid wallet address." });
+        return;
+      }
+
       this.walletState = {
-        address: payload.address,
+        address: normalizedAddress,
         chainId: payload.chainId,
         connectedAt: new Date().toISOString(),
       };
@@ -760,23 +924,100 @@ class DeploymentUiSession {
     }
 
     if (request.method === "POST" && url.pathname === "/api/respond") {
-      const payload = (await readJsonBody(request)) as TransactionOutcome;
+      const raw = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as Record<string, unknown>;
+      if (!raw || typeof raw !== "object") {
+        writeJson(response, 400, { error: "Invalid JSON body." });
+        return;
+      }
 
-      if (!this.pendingRequest || this.pendingRequest.prompt.id !== payload.requestId) {
+      if (typeof raw.requestId !== "string" || raw.requestId.length === 0) {
+        writeJson(response, 400, { error: "Missing or invalid requestId." });
+        return;
+      }
+      if (!isValidTxHash(raw.hash)) {
+        writeJson(response, 400, { error: "Missing or invalid transaction hash." });
+        return;
+      }
+      if (typeof raw.from !== "string" || !isAddress(raw.from)) {
+        writeJson(response, 400, { error: "Missing or invalid from address." });
+        return;
+      }
+      if (typeof raw.chainId !== "number" || !Number.isInteger(raw.chainId)) {
+        writeJson(response, 400, { error: "Missing or invalid chainId." });
+        return;
+      }
+      if (raw.chainId !== this.context.chain.chainId) {
+        writeJson(response, 400, { error: "chainId does not match this deployment session." });
+        return;
+      }
+
+      if (!this.walletState) {
+        writeJson(response, 400, { error: "Register the wallet with the session before submitting a transaction." });
+        return;
+      }
+
+      let normalizedFrom: string;
+      try {
+        normalizedFrom = getAddress(raw.from);
+      } catch {
+        writeJson(response, 400, { error: "Invalid from address." });
+        return;
+      }
+
+      if (normalizedFrom !== this.walletState.address) {
+        writeJson(response, 400, { error: "from does not match the wallet registered for this session." });
+        return;
+      }
+
+      if (!this.pendingRequest || this.pendingRequest.prompt.id !== raw.requestId) {
         writeJson(response, 400, { error: "No matching pending transaction request was found." });
         return;
       }
 
+      const onChain = await getTransactionWithRetry(
+        this.context.provider,
+        raw.hash,
+        TX_LOOKUP_TIMEOUT_MS,
+        TX_LOOKUP_INTERVAL_MS,
+      );
+
+      if (!onChain) {
+        writeJson(response, 400, {
+          error:
+            "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
+        });
+        return;
+      }
+
+      if (!onChainTransactionMatchesPrompt(onChain, this.pendingRequest.prompt.request, this.walletState.address)) {
+        writeJson(response, 400, {
+          error: "On-chain transaction does not match the pending deployment request (to, data, value, or sender).",
+        });
+        return;
+      }
+
+      const outcome: TransactionOutcome = {
+        requestId: raw.requestId,
+        hash: raw.hash,
+        from: normalizedFrom,
+        chainId: raw.chainId,
+      };
+
       const { resolve: resolveOutcome } = this.pendingRequest;
       this.pendingRequest = undefined;
       writeJson(response, 200, { ok: true }, () => {
-        queueMicrotask(() => resolveOutcome(payload));
+        queueMicrotask(() => resolveOutcome(outcome));
       });
       return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/error") {
-      const payload = (await readJsonBody(request)) as { requestId: string; message: string };
+      const payload = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as { requestId: string; message: string };
+      if (typeof payload.requestId !== "string") {
+        writeJson(response, 400, { error: "Missing requestId." });
+        return;
+      }
+      const message = typeof payload.message === "string" ? payload.message.slice(0, 4000) : "Wallet or network error";
 
       let rejectOutcome: ((reason: Error) => void) | undefined;
       if (this.pendingRequest && this.pendingRequest.prompt.id === payload.requestId) {
@@ -786,7 +1027,7 @@ class DeploymentUiSession {
 
       writeJson(response, 200, { ok: true }, () => {
         if (rejectOutcome) {
-          queueMicrotask(() => rejectOutcome!(new Error(payload.message)));
+          queueMicrotask(() => rejectOutcome!(new Error(message)));
         }
       });
       return;
@@ -809,7 +1050,8 @@ class DeploymentUiSession {
   }
 
   private getUiUrl(): string {
-    return `http://${LOCALHOST}:${this.uiPort}?apiBaseUrl=${encodeURIComponent(this.getApiBaseUrl())}`;
+    const base = `http://${LOCALHOST}:${this.uiPort}?apiBaseUrl=${encodeURIComponent(this.getApiBaseUrl())}`;
+    return `${base}&sessionToken=${encodeURIComponent(this.sessionSecret)}`;
   }
 
   private getApiBaseUrl(): string {

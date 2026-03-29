@@ -1,11 +1,13 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { http, type Chain } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected } from "wagmi/connectors";
+
+import { LineaWordmark } from "./components/LineaWordmark";
 
 declare global {
   interface Window {
@@ -132,49 +134,19 @@ const wagmiConfig = createConfig({
   >,
 });
 
-function sectionStyle(): CSSProperties {
-  return {
-    border: "1px solid #243041",
-    borderRadius: 12,
-    backgroundColor: "#121a2f",
-    padding: 20,
-  };
-}
+/**
+ * Must match `DEPLOY_UI_SESSION_TOKEN_HEADER` in `contracts/scripts/hardhat/deployment-ui.ts`
+ * (HTTP headers are case-insensitive; Node normalizes to lowercase).
+ */
+const DEPLOY_UI_SESSION_TOKEN_HEADER = "X-Deploy-Ui-Session-Token";
 
-function rawTransactionPreviewStyle(): CSSProperties {
-  return {
-    maxHeight: 320,
-    overflow: "auto",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
-    whiteSpace: "pre-wrap",
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-    fontSize: 12,
-    lineHeight: 1.45,
-    borderRadius: 10,
-    backgroundColor: "#0f172a",
-    padding: 16,
-    border: "1px solid #243041",
-    marginBottom: 12,
-  };
-}
-
-function buttonStyle(disabled = false): CSSProperties {
-  return {
-    border: 0,
-    borderRadius: 10,
-    padding: "10px 16px",
-    fontWeight: 600,
-    cursor: disabled ? "not-allowed" : "pointer",
-    backgroundColor: disabled ? "#334155" : "#3b82f6",
-    color: "#f8fafc",
-  };
-}
-
-async function postJson(url: string, payload: unknown) {
+async function postJson(url: string, payload: unknown, sessionSecret: string) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      [DEPLOY_UI_SESSION_TOKEN_HEADER]: sessionSecret,
+    },
     body: JSON.stringify(payload),
   });
 
@@ -187,6 +159,10 @@ async function postJson(url: string, payload: unknown) {
 function ContractsDeployUiPage() {
   const searchParams = useSearchParams();
   const apiBaseUrl = searchParams.get("apiBaseUrl");
+  const sessionSecretFromUrl =
+    searchParams.get("sessionToken") ?? searchParams.get("bridgeToken");
+  const [sessionSecret, setSessionSecret] = useState<string | null>(null);
+  const [sessionAuthReady, setSessionAuthReady] = useState(false);
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: isConnecting, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
@@ -205,6 +181,31 @@ function ContractsDeployUiPage() {
     setWalletUiReady(true);
   }, []);
 
+  useEffect(() => {
+    if (!apiBaseUrl) {
+      setSessionSecret(null);
+      setSessionAuthReady(true);
+      return;
+    }
+
+    const storageKey = `deployUiSessionSecret:${apiBaseUrl}`;
+    const legacyStorageKey = `lineaDeployUiBridgeToken:${apiBaseUrl}`;
+
+    if (sessionSecretFromUrl) {
+      sessionStorage.setItem(storageKey, sessionSecretFromUrl);
+      setSessionSecret(sessionSecretFromUrl);
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("sessionToken");
+      nextUrl.searchParams.delete("bridgeToken");
+      window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      setSessionAuthReady(true);
+      return;
+    }
+
+    setSessionSecret(sessionStorage.getItem(storageKey) ?? sessionStorage.getItem(legacyStorageKey));
+    setSessionAuthReady(true);
+  }, [apiBaseUrl, sessionSecretFromUrl]);
+
   const sessionUrl = useMemo(() => {
     if (!apiBaseUrl) {
       return undefined;
@@ -214,8 +215,23 @@ function ContractsDeployUiPage() {
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    if (!sessionUrl) {
+    if (!sessionAuthReady) {
+      return;
+    }
+
+    if (!apiBaseUrl) {
       setActionError("Missing apiBaseUrl query parameter.");
+      return;
+    }
+
+    if (!sessionSecret) {
+      setActionError(
+        "Missing session token. Open this UI using the full URL from Hardhat (DEPLOY_WITH_UI), not a bookmark without sessionToken.",
+      );
+      return;
+    }
+
+    if (!sessionUrl) {
       return;
     }
 
@@ -226,7 +242,9 @@ function ContractsDeployUiPage() {
     let cancelled = false;
     const load = async () => {
       try {
-        const response = await fetch(sessionUrl);
+        const response = await fetch(sessionUrl, {
+          headers: { [DEPLOY_UI_SESSION_TOKEN_HEADER]: sessionSecret },
+        });
         if (!response.ok) {
           if (!cancelled && hadSuccessfulBridgeFetch.current) {
             setSessionEnded(true);
@@ -264,23 +282,32 @@ function ContractsDeployUiPage() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [sessionUrl, sessionEnded]);
+  }, [sessionUrl, sessionEnded, sessionAuthReady, sessionSecret, apiBaseUrl]);
 
   useEffect(() => {
-    if (!apiBaseUrl || !isConnected || !address || !window.ethereum || sessionEnded) {
+    if (!apiBaseUrl || !sessionSecret || !isConnected || !address || !window.ethereum || sessionEnded) {
       return;
     }
 
     const syncWalletState = async () => {
-      const currentChainIdHex = await window.ethereum?.request<string>({ method: "eth_chainId" });
-      if (!currentChainIdHex) {
-        return;
-      }
+      try {
+        const currentChainIdHex = await window.ethereum?.request<string>({ method: "eth_chainId" });
+        if (!currentChainIdHex) {
+          return;
+        }
 
-      await postJson(`${apiBaseUrl}/api/wallet`, {
-        address,
-        chainId: parseInt(currentChainIdHex, 16),
-      });
+        await postJson(
+          `${apiBaseUrl}/api/wallet`,
+          {
+            address,
+            chainId: parseInt(currentChainIdHex, 16),
+          },
+          sessionSecret,
+        );
+        setActionError(null);
+      } catch (error) {
+        setActionError((error as Error).message ?? "Failed to register wallet with the deploy bridge.");
+      }
     };
 
     void syncWalletState();
@@ -299,7 +326,7 @@ function ContractsDeployUiPage() {
       window.ethereum?.removeListener?.("accountsChanged", accountsChanged);
       window.ethereum?.removeListener?.("chainChanged", chainChanged);
     };
-  }, [address, apiBaseUrl, isConnected, sessionEnded]);
+  }, [address, apiBaseUrl, sessionSecret, isConnected, sessionEnded]);
 
   const ensureTargetChain = async (chain: ChainMetadata) => {
     if (!window.ethereum) {
@@ -345,7 +372,7 @@ function ContractsDeployUiPage() {
   };
 
   const approvePendingRequest = async () => {
-    if (!apiBaseUrl || !session?.pendingRequest || !window.ethereum || !address) {
+    if (!apiBaseUrl || !sessionSecret || !session?.pendingRequest || !window.ethereum || !address) {
       return;
     }
 
@@ -365,22 +392,30 @@ function ContractsDeployUiPage() {
         ],
       });
 
-      await postJson(`${apiBaseUrl}/api/respond`, {
-        requestId: session.pendingRequest.id,
-        hash,
-        from: address,
-        chainId: session.chain.chainId,
-      });
+      await postJson(
+        `${apiBaseUrl}/api/respond`,
+        {
+          requestId: session.pendingRequest.id,
+          hash,
+          from: address,
+          chainId: session.chain.chainId,
+        },
+        sessionSecret,
+      );
       setStatusMessage(`Submitted ${session.pendingRequest.label}`);
     } catch (error) {
       const message = (error as Error).message;
       setActionError(message);
 
       if (session.pendingRequest) {
-        await postJson(`${apiBaseUrl}/api/error`, {
-          requestId: session.pendingRequest.id,
-          message,
-        });
+        await postJson(
+          `${apiBaseUrl}/api/error`,
+          {
+            requestId: session.pendingRequest.id,
+            message,
+          },
+          sessionSecret,
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -388,104 +423,115 @@ function ContractsDeployUiPage() {
   };
 
   return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: 24, display: "grid", gap: 16 }}>
-      <section style={sectionStyle()}>
-        <h1 style={{ marginTop: 0 }}>Contracts Deploy UI</h1>
-        <p style={{ marginBottom: 0, color: "#cbd5e1" }}>{statusMessage}</p>
-      </section>
+    <div className="deploy-shell">
+      <header className="deploy-header">
+        <div className="deploy-header__brand">
+          <LineaWordmark className="deploy-header__logo" />
+          <span className="deploy-header__badge">Contracts · local</span>
+        </div>
+      </header>
 
-      {sessionEnded ? (
-        <section
-          style={{
-            ...sectionStyle(),
-            borderColor: "#1e3a5f",
-            backgroundColor: "#0f1f35",
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Session disconnected</h2>
-          <p style={{ marginBottom: 0, color: "#cbd5e1" }}>
-            The Hardhat deploy bridge has stopped. Polling is disabled. If you are not running another deployment, you
-            can close this browser tab.
+      <main className="deploy-main">
+        <section className="deploy-card deploy-card--hero">
+          <h1 className="deploy-card__title">Deploy with your wallet</h1>
+          <p className="deploy-card__subtitle">{statusMessage}</p>
+        </section>
+
+        {sessionEnded ? (
+          <section className="deploy-card deploy-card--muted">
+            <h2>Session disconnected</h2>
+            <p>
+              The Hardhat deploy bridge has stopped. Polling is disabled. If you are not running another deployment,
+              you can close this browser tab.
+            </p>
+          </section>
+        ) : null}
+
+        <section className="deploy-card">
+          <h2>Wallet</h2>
+          <p>
+            {!walletUiReady
+              ? "Preparing wallet connection…"
+              : isConnected && address
+                ? `Connected as ${address}`
+                : "Connect the wallet that should sign this deploy file."}
+          </p>
+          <div className="deploy-actions">
+            {!walletUiReady ? null : !isConnected && injectedConnector ? (
+              <button
+                type="button"
+                className="deploy-btn deploy-btn--primary"
+                disabled={isConnecting}
+                onClick={() => connect({ connector: injectedConnector })}
+              >
+                {isConnecting ? "Connecting..." : "Connect wallet"}
+              </button>
+            ) : null}
+            {!walletUiReady ? null : isConnected ? (
+              <button type="button" className="deploy-btn deploy-btn--secondary" onClick={() => disconnect()}>
+                Disconnect
+              </button>
+            ) : null}
+          </div>
+          {connectError ? <p className="deploy-connect-error">{connectError.message}</p> : null}
+        </section>
+
+        <section className="deploy-card">
+          <h2>Deployment target</h2>
+          <p className="deploy-meta-row">
+            <strong>Deploy file:</strong> {session?.deployFile ?? "Loading…"}
+          </p>
+          <p className="deploy-meta-row">
+            <strong>Network:</strong> {session?.networkName ?? "Loading…"}
+          </p>
+          <p className="deploy-meta-row">
+            <strong>Chain:</strong> {session?.chain.chainName ?? "Loading…"}
+          </p>
+          <p className="deploy-meta-row">
+            <strong>Chain ID:</strong> {session?.chain.chainId ?? "Loading…"}
           </p>
         </section>
-      ) : null}
 
-      <section style={sectionStyle()}>
-        <h2 style={{ marginTop: 0 }}>Wallet</h2>
-        <p>
-          {!walletUiReady
-            ? "Preparing wallet connection…"
-            : isConnected && address
-              ? `Connected as ${address}`
-              : "Connect the wallet that should sign this deploy file."}
-        </p>
-        <div style={{ display: "flex", gap: 12 }}>
-          {!walletUiReady ? null : !isConnected && injectedConnector ? (
-            <button
-              style={buttonStyle(isConnecting)}
-              disabled={isConnecting}
-              onClick={() => connect({ connector: injectedConnector })}
-            >
-              {isConnecting ? "Connecting..." : "Connect Wallet"}
-            </button>
-          ) : null}
-          {!walletUiReady ? null : isConnected ? (
-            <button style={buttonStyle(false)} onClick={() => disconnect()}>
-              Disconnect
-            </button>
-          ) : null}
-        </div>
-        {connectError ? <p style={{ color: "#fca5a5" }}>{connectError.message}</p> : null}
-      </section>
-
-      <section style={sectionStyle()}>
-        <h2 style={{ marginTop: 0 }}>Deployment Target</h2>
-        <p style={{ marginBottom: 8 }}>Deploy file: {session?.deployFile ?? "Loading..."}</p>
-        <p style={{ marginBottom: 8 }}>Network: {session?.networkName ?? "Loading..."}</p>
-        <p style={{ marginBottom: 8 }}>Chain: {session?.chain.chainName ?? "Loading..."}</p>
-        <p style={{ marginBottom: 0 }}>Chain ID: {session?.chain.chainId ?? "Loading..."}</p>
-      </section>
-
-      <section style={sectionStyle()}>
-        <h2 style={{ marginTop: 0 }}>Pending Request</h2>
-        {session?.pendingRequest ? (
-          <>
-            <p style={{ marginBottom: 8 }}>
-              <strong>{session.pendingRequest.label}</strong>
-            </p>
-            <p style={{ marginTop: 0 }}>{session.pendingRequest.description}</p>
-            {session.pendingRequest.deploymentDetails ? (
-              <>
-                <h3 style={{ fontSize: 14, marginBottom: 8, color: "#94a3b8" }}>
-                  Deployment parameters (from Hardhat)
-                </h3>
-                <pre style={rawTransactionPreviewStyle()}>
-                  {JSON.stringify(session.pendingRequest.deploymentDetails, null, 2)}
-                </pre>
-              </>
-            ) : null}
-            <h3 style={{ fontSize: 14, marginBottom: 8, color: "#94a3b8" }}>Raw transaction request</h3>
-            <pre style={rawTransactionPreviewStyle()}>{JSON.stringify(session.pendingRequest.request, null, 2)}</pre>
-            <button
-              style={buttonStyle(isSubmitting || !walletUiReady || !isConnected)}
-              disabled={isSubmitting || !walletUiReady || !isConnected}
-              onClick={() => void approvePendingRequest()}
-            >
-              {isSubmitting ? "Submitting..." : "Switch Chain, Sign, and Send"}
-            </button>
-          </>
-        ) : (
-          <p style={{ marginBottom: 0 }}>No transaction is waiting for approval yet.</p>
-        )}
-      </section>
-
-      {actionError ? (
-        <section style={{ ...sectionStyle(), borderColor: "#7f1d1d", backgroundColor: "#2a1117" }}>
-          <h2 style={{ marginTop: 0 }}>Error</h2>
-          <p style={{ marginBottom: 0, color: "#fecaca" }}>{actionError}</p>
+        <section className="deploy-card">
+          <h2>Pending request</h2>
+          {session?.pendingRequest ? (
+            <>
+              <p className="deploy-pending-label">{session.pendingRequest.label}</p>
+              <p>{session.pendingRequest.description}</p>
+              {session.pendingRequest.deploymentDetails ? (
+                <>
+                  <h3>Deployment parameters (Hardhat)</h3>
+                  <pre className="deploy-code">
+                    {JSON.stringify(session.pendingRequest.deploymentDetails, null, 2)}
+                  </pre>
+                </>
+              ) : null}
+              <h3>Raw transaction request</h3>
+              <pre className="deploy-code">{JSON.stringify(session.pendingRequest.request, null, 2)}</pre>
+              <div className="deploy-actions">
+                <button
+                  type="button"
+                  className="deploy-btn deploy-btn--primary"
+                  disabled={isSubmitting || !walletUiReady || !isConnected}
+                  onClick={() => void approvePendingRequest()}
+                >
+                  {isSubmitting ? "Submitting…" : "Switch chain, sign, and send"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p>No transaction is waiting for approval yet.</p>
+          )}
         </section>
-      ) : null}
-    </main>
+
+        {actionError ? (
+          <section className="deploy-card deploy-card--error">
+            <h2>Error</h2>
+            <p>{actionError}</p>
+          </section>
+        ) : null}
+      </main>
+    </div>
   );
 }
 
