@@ -1,6 +1,11 @@
 package wiop
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+
+	field "github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+)
 
 // Expression is the interface satisfied by all symbolic arithmetic expressions
 // in the framework. An expression is a node in an expression AST that
@@ -156,6 +161,12 @@ type ArithmeticOperation struct {
 	// isMultiValuedCached caches the result of the IsMultiValued traversal.
 	// A nil pointer means the value has not been computed yet.
 	isMultiValuedCached *bool
+	// once ensures the expression is compiled exactly once, even under
+	// concurrent calls to EvaluateVector.
+	once sync.Once
+	// prog is the compiled bytecode representation of this subtree. It is
+	// nil until the first call to EvaluateVector.
+	prog *compiledProgram
 }
 
 // NewArithmeticOperation constructs an ArithmeticOperation, enforcing the
@@ -244,12 +255,15 @@ func (a *ArithmeticOperation) IsSized() bool {
 // EvaluateVector implements [Expression].
 // Panics if IsMultiValued() is false.
 //
-// TODO: Implement once Runtime is defined.
-func (a *ArithmeticOperation) EvaluateVector(_ Runtime) ConcreteVector {
+// On the first call the expression subtree is compiled into a [compiledProgram]
+// and cached. Subsequent calls reuse the compiled program directly.
+func (a *ArithmeticOperation) EvaluateVector(rt Runtime) ConcreteVector {
 	if !a.IsMultiValued() {
 		panic("wiop: EvaluateVector() called on a scalar ArithmeticOperation; check IsMultiValued() first")
 	}
-	panic("wiop: ArithmeticOperation.EvaluateVector not yet implemented")
+	a.once.Do(func() { a.prog = compileExpr(a) })
+	result := a.prog.evaluateVector(rt)
+	return ConcreteVector{Plain: []field.FieldVec{result}, promise: a}
 }
 
 // EvaluateSingle implements [Expression].
