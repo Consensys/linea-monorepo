@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
