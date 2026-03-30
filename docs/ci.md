@@ -81,7 +81,7 @@
 
 ### 2. `check-and-tag-images` (reuse-check-images-tags-and-push.yml)
 
-**What it does:** For each Docker image (coordinator, prover, postman, transaction-exclusion-api, native-yield-automation-service, lido-governance-monitor), checks whether an image tagged with the current commit SHA already exists in the registry. If it does, that image is reused in all subsequent steps. If not, the image tag is reserved for later.
+**What it does:** For each Docker image (`coordinator`, `prover`, `postman`, `transaction-exclusion-api`, `native-yield-automation-service`, `lido-governance-monitor`), checks whether an image tagged with the current commit SHA already exists in the registry. If it does, that image is reused in all subsequent steps. If not, the image tag is reserved for later.
 
 **Outputs:** `commit_tag`, `develop_tag`, and per-image `image_tagged_*` flags that tell `docker-build` whether to skip rebuilding a particular image.
 
