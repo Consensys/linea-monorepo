@@ -44,6 +44,9 @@ chaos-experiment-workflow:
 	@kubectl apply -f experiments/workflow-linea-resilience.yaml
 
 experiment_name ?= linea-resilience
+experiment_duration ?= 2m
+# Converts experiment_duration (2m / 120s / 120) to plain seconds for use with sleep.
+experiment_duration_s = $(shell echo '$(experiment_duration)' | awk '/m$$/{sub("m",""); print $$1*60; next} /s$$/{sub("s",""); print $$1; next} {print $$1}')
 wait-experiment-done:
 	@echo "Waiting for $(experiment_name) workflow to finish..."; \
 	timeout=$${WAIT_TIMEOUT_SECONDS:-3000}; interval=$${WAIT_INTERVAL_SECONDS:-10}; elapsed=0; \
@@ -64,6 +67,25 @@ chaos-experiment-workflow-and-wait:
 	@$(MAKE) chaos-experiment-workflow
 	@$(MAKE) wait-experiment-done experiment_name=linea-resilience
 	@$(MAKE) wait-all-running
+
+chaos-experiment-multi-validator-latency-%-and-wait:
+	# Clean up ALL NetworkChaos resources left from any previous experiment
+	-@kubectl --kubeconfig $(KUBECONFIG) delete networkchaos --all \
+		-n chaos-mesh --wait=true >/dev/null 2>&1 || true
+	# Kill validators to reset in-memory Micrometer metrics to zero
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) delete pods \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator
+	# Allow StatefulSet controllers time to create replacement pods before waiting
+	@sleep 5
+	# Wait for all replacement validator pods to be Ready
+	@kubectl --kubeconfig $(KUBECONFIG) -n $(NAMESPACE) wait pod \
+		-l app.kubernetes.io/component=maru,app.kubernetes.io/component-role=validator \
+		--for=condition=ready --timeout=90s
+	# Apply NetworkChaos — remains active until deleted after metrics are collected
+	@sed 's/__LATENCY__/$*/g' experiments/network-chaos-multi-validator-latency.yaml \
+		| kubectl --kubeconfig $(KUBECONFIG) apply -f -
+	@echo "Injecting $* latency — experiment window: $(experiment_duration) ($(experiment_duration_s)s)"
+	@sleep $(experiment_duration_s)
 
 .PHONY: chaos-mesh-install-with-curl \
 	chaos-mesh-install \

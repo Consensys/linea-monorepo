@@ -11,8 +11,10 @@ data:
   configs-defaults.toml: |-
     {{- .Values.configFiles.configsDefaultsToml | nindent 4 }}
   {{ end }}
+  {{ if .Values.configFiles.configsToml }}
   configs.toml: |-
     {{- .Values.configFiles.configsToml | nindent 4 }}
+  {{ end }}
   log4j.xml: |-
     {{- .Values.configFiles.log4j | nindent 4 }}
   private-key.txt: |-

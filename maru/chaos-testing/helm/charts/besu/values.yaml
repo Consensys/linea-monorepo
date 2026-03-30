@@ -2,6 +2,10 @@ replicaCount: 3
 image:
   name: hyperledger/besu:25.11.0
   pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
 service:
   name: besu
   headless: true
@@ -30,6 +34,7 @@ configFiles:
     data-path="/opt/besu/data"
     host-allowlist=["*"]
     sync-mode="FULL"
+    sync-min-peers=1
     p2p-port=30303
 
     min-gas-price=0
@@ -69,7 +74,8 @@ configFiles:
     snapsync-server-enabled=true
 
     # mining
-    Xpos-block-creation-repetition-min-duration=100
+    Xpos-block-creation-repetition-min-duration=15
+    Xpos-block-finalization-timeout-ms=10
   genesisJson: |
     {
       "@_WARNING": "THIS FILE IS FOR LOCAL DEVELOPMENT ONLY! DO NOT REUSE ELSEWHERE",

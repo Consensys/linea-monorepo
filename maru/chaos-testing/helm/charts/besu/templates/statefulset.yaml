@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "besu.labels" . | nindent 8 }}
     spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: besu
           image: "{{ .Values.image.name }}"
@@ -27,6 +31,10 @@ spec:
             {{- if $.Values.bootnodes }}
             - --bootnodes={{ $.Values.bootnodes }}
             {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: data
               mountPath: /opt/besu/data
