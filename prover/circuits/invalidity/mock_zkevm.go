@@ -227,4 +227,3 @@ func registerSinglePI(comp *wizard.CompiledIOP, name string) {
 func assignSinglePI(run *wizard.ProverRuntime, name string, val field.Element) {
 	run.AssignColumn(ifaces.ColID(name+"_PI_COLUMN"), smartvectors.NewConstant(val, 1))
 }
-
