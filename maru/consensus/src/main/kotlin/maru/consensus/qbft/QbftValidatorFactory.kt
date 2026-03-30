@@ -51,6 +51,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
 import maru.p2p.ValidationResult
+import maru.syncing.SyncStatusProvider
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
@@ -93,6 +94,8 @@ class QbftValidatorFactory(
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
   /** Optional: called when a block is committed by the QBFT consensus (mined). */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
+  /** Sync status provider for registering beacon sync completion callbacks. */
+  private val syncStatusProvider: SyncStatusProvider,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -279,6 +282,14 @@ class QbftValidatorFactory(
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
     p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
+
+    // When the CL sync pipeline completes, notify QBFT that the chain head may have advanced
+    // externally (e.g., blocks imported from other validators while this node was out of the mesh).
+    // Without this, QBFT stays at the stale height because QbftNewChainHead events are only
+    // emitted when QBFT commits a block through its own consensus.
+    syncStatusProvider.onBeaconSyncComplete {
+      bftEventQueue.add(QbftNewChainHead(blockChain.chainHeadHeader))
+    }
 
     return QbftConsensusValidator(
       qbftController = qbftController,

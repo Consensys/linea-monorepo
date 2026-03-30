@@ -38,8 +38,21 @@ object Checks {
       }
   }
 
-  fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> =
-    (1..blocksMined)
+  fun BesuNode.getMinedBlocks(blocksMined: Int): List<EthBlock.Block> {
+    // Fast-exit: one cheap eth_blockNumber call before issuing N block-fetch requests.
+    // This keeps TCP connection usage low when the node is still catching up, since most
+    // poll iterations during the await window will return here after a single HTTP round-trip
+    // instead of opening N parallel connections each time.
+    val currentBlockNum =
+      this
+        .nodeRequests()
+        .eth()
+        .ethBlockNumber()
+        .send()
+        ?.blockNumber ?: BigInteger.ZERO
+    if (currentBlockNum < BigInteger.valueOf(blocksMined.toLong())) return emptyList()
+
+    return (1..blocksMined)
       .map {
         this
           .nodeRequests()
@@ -49,14 +62,14 @@ object Checks {
             false,
           ).sendAsync()
       }.mapNotNull { it?.get()?.block }
+  }
 
   fun BesuNode.getBlockNumber(): BigInteger =
     this
       .nodeRequests()
       .eth()
       .ethBlockNumber()
-      .sendAsync()
-      .get()
+      .send()
       .blockNumber
 
   /**
@@ -75,10 +88,11 @@ object Checks {
   fun checkAllNodesHaveSameBlocks(
     expectedBlockCount: Int,
     vararg besuNodes: BesuNode,
+    timeout: kotlin.time.Duration = 30.seconds,
   ) {
     await
       .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
+      .timeout(timeout.toJavaDuration())
       .untilAsserted {
         require(besuNodes.isNotEmpty()) { "At least one node must be provided" }
 
