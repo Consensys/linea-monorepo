@@ -1386,6 +1386,7 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
 
   // Lazy require: operational tasks import this module while Hardhat loads config; a top-level
   // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { ethers: hhEthers } = require("hardhat") as typeof import("hardhat");
   return await hhEthers.provider.getSigner();
 }
