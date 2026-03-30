@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
 import linea.contract.l1.LineaRollupContractVersion
-import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.contract.l1.LineaRollupSmartContractClientReadOnlyWithFinalizedState
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiBlockClient
 import linea.timer.TimerSchedule
@@ -18,7 +18,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class FinalizationMonitorImpl(
   private val config: Config,
-  private val contract: Web3JLineaRollupSmartContractClientReadOnly,
+  private val contract: LineaRollupSmartContractClientReadOnlyWithFinalizedState,
   private val l2EthApiClient: EthApiBlockClient,
   private val vertx: Vertx,
   private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java),

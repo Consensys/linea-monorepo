@@ -28,9 +28,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
   val contractAddress: String,
   private val ethLogsClient: EthLogsClient,
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java),
-) :
-  LineaRollupSmartContractClientReadOnly,
-  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
+) : LineaRollupSmartContractClientReadOnlyWithFinalizedState {
 
   protected fun contractClientV8AtBlock(blockParameter: BlockParameter): LineaRollupV8 {
     return contractClientAtBlock(blockParameter, LineaRollupV8::class.java)

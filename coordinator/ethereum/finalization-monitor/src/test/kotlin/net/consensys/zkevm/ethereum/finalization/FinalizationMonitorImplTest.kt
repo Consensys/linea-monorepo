@@ -5,7 +5,7 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
-import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.contract.l1.LineaRollupSmartContractClientReadOnlyWithFinalizedState
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.ethapi.EthApiBlockClient
@@ -47,13 +47,13 @@ class FinalizationMonitorImplTest {
   private val pollingInterval = 20.milliseconds
   private val config = FinalizationMonitorImpl.Config(pollingInterval)
   private lateinit var mockL2Client: EthApiBlockClient
-  private lateinit var contractMock: Web3JLineaRollupSmartContractClientReadOnly
+  private lateinit var contractMock: LineaRollupSmartContractClientReadOnlyWithFinalizedState
   private val mockBlockNumberReturn = mock<EthBlockNumber>()
 
   @BeforeEach
   fun setup() {
     mockL2Client = mock<EthApiBlockClient>(defaultAnswer = RETURNS_DEEP_STUBS)
-    contractMock = mock<Web3JLineaRollupSmartContractClientReadOnly>(defaultAnswer = RETURNS_DEEP_STUBS)
+    contractMock = mock<LineaRollupSmartContractClientReadOnlyWithFinalizedState>(defaultAnswer = RETURNS_DEEP_STUBS)
 
     whenever(mockBlockNumberReturn.blockNumber).thenReturn(BigInteger.TWO)
     whenever(contractMock.getVersion()).thenReturn(

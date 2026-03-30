@@ -3,6 +3,7 @@ package net.consensys.zkevm.coordinator.app
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
 import linea.LongRunningService
+import linea.contract.l1.LineaRollupSmartContractClientReadOnlyWithFinalizedState
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
@@ -165,7 +166,7 @@ class L1DependentApp(
     )
   }
 
-  val lineaRollupClientForFinalizationMonitor: Web3JLineaRollupSmartContractClientReadOnly = run {
+  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnlyWithFinalizedState = run {
     val web3j = createWeb3jHttpClient(
       rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
@@ -714,7 +715,7 @@ class L1DependentApp(
     fun setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig: Type2StateProofManagerConfig,
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
-      lineaRollupClient: Web3JLineaRollupSmartContractClientReadOnly,
+      lineaRollupClient: LineaRollupSmartContractClientReadOnlyWithFinalizedState,
       l2EthApiClient: EthApiClient,
       vertx: Vertx,
     ): LongRunningService {
