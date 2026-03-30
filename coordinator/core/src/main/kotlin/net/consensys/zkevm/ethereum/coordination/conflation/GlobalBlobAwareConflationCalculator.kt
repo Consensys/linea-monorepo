@@ -8,7 +8,7 @@ import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.ethereum.coordination.aggregation.HardForkAggregationTargetEndBlocks
+import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -27,7 +27,7 @@ class GlobalBlobAwareConflationCalculator(
   private val blobCalculator: ConflationCalculatorByDataCompressed,
   private val batchesLimit: UInt,
   metricsFacade: MetricsFacade,
-  private val hardForkAggregationTargetEndBlocks: HardForkAggregationTargetEndBlocks,
+  private val dynamicBlockNumberSet: DynamicBlockNumberSet,
   private val log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java),
 ) : TracesConflationCalculator {
   private var conflationHandler: (ConflationCalculationResult) -> SafeFuture<*> = NOOP_CONSUMER
@@ -162,7 +162,7 @@ class GlobalBlobAwareConflationCalculator(
       numberOfBatches >= batchesLimit
     ) {
       if (conflation.conflationTrigger == ConflationTrigger.HARD_FORK) {
-        hardForkAggregationTargetEndBlocks.registerAggregationEndBlockInclusive(conflation.endBlockNumber)
+        dynamicBlockNumberSet.addBlockNumber(conflation.endBlockNumber)
       }
       fireBlobTriggerAndResetState(conflation.conflationTrigger)
     } else {

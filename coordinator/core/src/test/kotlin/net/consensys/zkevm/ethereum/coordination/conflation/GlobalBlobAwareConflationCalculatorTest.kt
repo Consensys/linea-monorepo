@@ -14,7 +14,7 @@ import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.ethereum.coordination.aggregation.HardForkAggregationTargetEndBlocks
+import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressor
 import net.consensys.zkevm.ethereum.coordination.blob.FakeBlobCompressor
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -45,7 +45,7 @@ class GlobalBlobAwareConflationCalculatorTest {
   private lateinit var calculator: GlobalBlobAwareConflationCalculator
   private lateinit var calculatorByTargetBlockNumber: ConflationCalculatorByTargetBlockNumbers
   private lateinit var calculatorByTimestampHardFork: TimestampHardForkConflationCalculator
-  private lateinit var hardForkAggregationTargetEndBlocks: HardForkAggregationTargetEndBlocks
+  private lateinit var dynamicBlockNumberSet: DynamicBlockNumberSet
   private val lastBlockNumber: ULong = 0uL
   private lateinit var safeBlockProvider: SafeBlockProvider
   private lateinit var fakeClock: FakeFixedClock
@@ -207,14 +207,14 @@ class GlobalBlobAwareConflationCalculatorTest {
         deferredTriggerConflationCalculators = listOf(calculatorByDealine),
         emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
       )
-    hardForkAggregationTargetEndBlocks = HardForkAggregationTargetEndBlocks()
+    dynamicBlockNumberSet = DynamicBlockNumberSet()
     calculator =
       GlobalBlobAwareConflationCalculator(
         conflationCalculator = globalCalculator,
         blobCalculator = calculatorByDataCompressed,
         batchesLimit = defaultBatchesLimit,
         metricsFacade = metricsFacade,
-        hardForkAggregationTargetEndBlocks = hardForkAggregationTargetEndBlocks,
+        dynamicBlockNumberSet = dynamicBlockNumberSet,
       )
     conflations = mutableListOf()
     blobs = mutableListOf()
@@ -266,7 +266,7 @@ class GlobalBlobAwareConflationCalculatorTest {
     assertThat(blobs[0].startBlockTime).isEqualTo(blockCounters[0].blockTimestamp)
     assertThat(blobs[0].endBlockTime).isEqualTo(blockCounters[3].blockTimestamp)
 
-    assertThat(hardForkAggregationTargetEndBlocks()).containsExactly(4uL)
+    assertThat(dynamicBlockNumberSet).containsExactly(4uL)
   }
 
   @Test

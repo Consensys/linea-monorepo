@@ -23,7 +23,7 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
 import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.ethereum.coordination.aggregation.HardForkAggregationTargetEndBlocks
+import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobShnarfMetaData
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
@@ -159,9 +159,9 @@ class ConflationBacktestingApp(
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock.timestamp.toLong())
 
-  private val hardForkAggregationTargetEndBlocks =
-    HardForkAggregationTargetEndBlocks(
-      configuredTargetEndBlocks =
+  private val dynamicTargetEndBlockNumberSet =
+    DynamicBlockNumberSet(
+      initialBlockNumbers =
       backtestingCoordinatorConfig.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
     )
 
@@ -183,6 +183,7 @@ class ConflationBacktestingApp(
         configs = backtestingCoordinatorConfig,
         compressedBlobCalculator = compressedBlobCalculator,
         lastProcessedTimestamp = lastProcessedTimestamp,
+        dynamicTargetEndBlockNumberSet = dynamicTargetEndBlockNumberSet,
         logger = log,
         metricsFacade = metricsFacade,
       ),
@@ -199,7 +200,7 @@ class ConflationBacktestingApp(
       blobCalculator = compressedBlobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = batchesLimit,
-      hardForkAggregationTargetEndBlocks = hardForkAggregationTargetEndBlocks,
+      dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
       log = log,
     )
   }

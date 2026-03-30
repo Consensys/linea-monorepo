@@ -267,7 +267,7 @@ class ProofAggregationCoordinatorService(
       proofAggregationClient: ProofAggregationProverClientV2,
       noL2ActivityTimeout: Duration,
       waitForNoL2ActivityToTriggerAggregation: Boolean,
-      targetEndBlockNumbersProvider: () -> List<ULong> = { emptyList() },
+      targetEndBlockNumbers: Set<ULong>,
       metricsFacade: MetricsFacade,
       aggregationSizeMultipleOf: UInt,
       hardForkTimestamps: List<Instant> = emptyList(),
@@ -289,7 +289,7 @@ class ProofAggregationCoordinatorService(
         forcedTransactionTriggerAggCalculator,
         AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = maxProofsPerAggregation),
         AggregationTriggerCalculatorByTargetBlockNumbers(
-          targetEndBlockNumbersProvider = targetEndBlockNumbersProvider,
+          targetEndBlockNumbers = targetEndBlockNumbers,
         ),
       )
       if (maxBlobsPerAggregation != null) {

@@ -31,6 +31,7 @@ import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -40,7 +41,6 @@ import net.consensys.zkevm.ethereum.coordination.SimpleCompositeSafeFutureHandle
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationProofHandlerImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker
-import net.consensys.zkevm.ethereum.coordination.aggregation.HardForkAggregationTargetEndBlocks
 import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
@@ -192,9 +192,9 @@ class ConflationApp(
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
-  private val hardForkAggregationTargetEndBlocks =
-    HardForkAggregationTargetEndBlocks(
-      configuredTargetEndBlocks = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
+  private val dynamicTargetEndBlockNumberSet =
+    DynamicBlockNumberSet(
+      initialBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
     )
 
   private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
@@ -224,6 +224,7 @@ class ConflationApp(
       configs = configs,
       compressedBlobCalculator = compressedBlobCalculator,
       lastProcessedTimestamp = lastProcessedTimestamp,
+      dynamicTargetEndBlockNumberSet = dynamicTargetEndBlockNumberSet,
       logger = logger,
       metricsFacade = metricsFacade,
     ).also {
@@ -250,7 +251,7 @@ class ConflationApp(
       blobCalculator = compressedBlobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = batchesLimit,
-      hardForkAggregationTargetEndBlocks = hardForkAggregationTargetEndBlocks,
+      dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
     )
   }
 
@@ -393,7 +394,7 @@ class ConflationApp(
         noL2ActivityTimeout = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
         waitForNoL2ActivityToTriggerAggregation =
         configs.conflation.proofAggregation.waitForNoL2ActivityToTriggerAggregation,
-        targetEndBlockNumbersProvider = hardForkAggregationTargetEndBlocks,
+        targetEndBlockNumbers = dynamicTargetEndBlockNumberSet,
         metricsFacade = metricsFacade,
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
         hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
