@@ -41,6 +41,14 @@ tasks.register('acceptanceTest', Test) { test ->
   classpath = sourceSets.acceptanceTest.runtimeClasspath
   testClassesDirs = sourceSets.acceptanceTest.output.classesDirs
 
+  // Forward any -Dexperiment.* flags from the Gradle command line into the test JVM.
+  // Example: ./gradlew acceptanceTest -Dexperiment.latency=100ms
+  System.properties.each { key, value ->
+    if (key.toString().startsWith("experiment.")) {
+      systemProperty key, value
+    }
+  }
+
   testLogging {
     events TestLogEvent.FAILED,
       TestLogEvent.SKIPPED,

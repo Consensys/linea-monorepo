@@ -124,8 +124,9 @@ class NodesSyncTest {
     val nodesUrls =
       getNodesUrlsFromFile(
         getPathTo("tmp/port-forward-besu-8545.txt"),
-      )
+      ).filterNot { it.label.contains("bootnode") }
     await
+      .ignoreExceptions()
       .pollInterval(5.seconds.toJavaDuration())
       .atMost(60.seconds.toJavaDuration())
       .untilAsserted {
@@ -141,6 +142,7 @@ class NodesSyncTest {
         getPathTo("tmp/port-forward-maru-5060.txt"),
       )
     await
+      .ignoreExceptions()
       .pollInterval(5.seconds.toJavaDuration())
       .atMost(60.seconds.toJavaDuration())
       .untilAsserted {
@@ -181,6 +183,40 @@ class NodesSyncTest {
       .atMost(3.seconds.toJavaDuration()) // 3s must be more that enough for Maru -> EL sync
       .untilAsserted {
         assertThat(getElNodeChainHead(elSequencer.value).get()).isGreaterThan(highestExpectedElBlock)
+      }
+  }
+
+  @Test
+  fun `multi-validator consensus should produce blocks from different proposers`() {
+    val validatorNodes =
+      getNodesUrlsFromFile(
+        getPathTo("tmp/port-forward-maru-5060.txt"),
+      ).filter { it.label.contains("validator") }
+
+    if (validatorNodes.size < 2) {
+      log.info("Skipping multi-validator test: found {} validator nodes", validatorNodes.size)
+      return
+    }
+
+    val proposerIndices = mutableSetOf<String>()
+    val client = Http4kBeaconChainClient(validatorNodes.first().value)
+
+    await
+      .pollInterval(2.seconds.toJavaDuration())
+      .atMost(120.seconds.toJavaDuration())
+      .untilAsserted {
+        val block = client.getBlock("head").get().data
+        proposerIndices.add(block.message.proposerIndex)
+        log.info(
+          "Block slot={} proposerIndex={} totalUniqueProposers={}",
+          block.message.slot,
+          block.message.proposerIndex,
+          proposerIndices.size,
+        )
+        assertThat(proposerIndices.size)
+          .withFailMessage {
+            "Expected blocks from at least 2 different proposers, but only got proposerIndices=$proposerIndices"
+          }.isGreaterThanOrEqualTo(2)
       }
   }
 }

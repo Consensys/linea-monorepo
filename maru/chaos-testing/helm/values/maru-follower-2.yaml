@@ -8,5 +8,8 @@ configFiles:
     [fork-transition]
     l2-eth-api-endpoint = { endpoint = "http://besu-follower-2-0.besu-follower-2.default.svc.cluster.local:8545" }
 
+    [syncing]
+    el-sync-status-refresh-interval = "1 seconds"
+
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-follower-2-0.besu-follower-2.default.svc.cluster.local:8550" }

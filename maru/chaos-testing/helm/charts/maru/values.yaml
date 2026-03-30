@@ -2,6 +2,10 @@ replicaCount: 1
 image:
   name: consensys/maru:develop
   pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
 service:
   type: ClusterIP
   ports:
@@ -34,11 +38,11 @@ probes:
      scheme: HTTP
     # exec:
     #   command: ["/bin/sh", "-c", "pgrep java"]
-    initialDelaySeconds: 2
-    periodSeconds: 1
+    initialDelaySeconds: 30
+    periodSeconds: 5
     timeoutSeconds: 10
     successThreshold: 1
-    failureThreshold: 3
+    failureThreshold: 6
   readiness:
     enabled: true
     type: httpGet  # Options: httpGet, tcpSocket, exec
@@ -50,11 +54,11 @@ probes:
       scheme: HTTP
     # exec:
     #   command: ["/bin/sh", "-c", "nc -z localhost 5060"]
-    initialDelaySeconds: 2
-    periodSeconds: 1
+    initialDelaySeconds: 30
+    periodSeconds: 5
     timeoutSeconds: 5
     successThreshold: 1
-    failureThreshold: 3
+    failureThreshold: 6
 
 configFiles:
   privateKey: |
@@ -82,7 +86,6 @@ configFiles:
 
     [syncing]
     peer-chain-height-polling-interval = "1 seconds"
-    el-sync-status-refresh-interval = "1 seconds"
     use-unconditional-random-download-peer = false
     sync-target-selection = "Highest"
 
@@ -119,6 +122,9 @@ configFiles:
       <Logger name="maru" level="INFO"/>
       <Logger name="maru.syncing" level="DEBUG"/>
       <Logger name="maru.clients" level="DEBUG"/>
+      <Logger name="maru.executionlayer.manager" level="DEBUG"/>
+      <Logger name="maru.consensus.qbft" level="DEBUG"/>
+      <Logger name="maru.consensus.blockimport" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
       </Root>

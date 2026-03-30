@@ -95,6 +95,55 @@ jobs:
           make chaos-health-check # just make sure that the cluster is healthy before starting the chaos tests
           make chaos-experiment-workflow-and-health-check
 
+      - name: Collect pod logs
+        if: failure()
+        run: |
+          export KUBECONFIG=~/.kube/k3s-server
+          mkdir -p chaos-testing/tmp/pod-logs
+          echo "Collecting logs from all pods..."
+          for pod in $(kubectl get pods -n default -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+            echo "Collecting logs for $pod"
+            kubectl logs "$pod" -n default --tail=5000 > "chaos-testing/tmp/pod-logs/${pod}.log" 2>&1 || true
+            # Also collect previous container logs (if pod restarted)
+            kubectl logs "$pod" -n default --previous --tail=5000 > "chaos-testing/tmp/pod-logs/${pod}-previous.log" 2>&1 || true
+          done
+          # Collect pod status/describe for context
+          kubectl get pods -n default -o wide > "chaos-testing/tmp/pod-logs/pod-status.txt" 2>&1 || true
+          kubectl describe pods -n default > "chaos-testing/tmp/pod-logs/pod-describe.txt" 2>&1 || true
+          echo "Log collection complete"
+          ls -la chaos-testing/tmp/pod-logs/
+
+      - name: Collect port-forward logs
+        if: failure()
+        run: |
+          echo "Collecting port-forward logs..."
+          if [ -d chaos-testing/tmp/pf ]; then
+            ls -la chaos-testing/tmp/pf/
+          else
+            echo "No port-forward log directory found"
+          fi
+          # Also collect port-forward summary files
+          for f in chaos-testing/tmp/port-forward-*.txt; do
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              cat "$f"
+            fi
+          done
+          # Check for any surviving port-forward processes
+          ps -o pid=,command= -ax | grep 'kubectl port-forward' | grep -v grep > chaos-testing/tmp/pod-logs/port-forward-processes.txt 2>&1 || true
+          echo "Port-forward process collection complete"
+
+      - name: Store reports and pod logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-test-reports-and-logs
+          path: |
+            **/build/reports/tests/
+            chaos-testing/tmp/pod-logs/
+            chaos-testing/tmp/pf/
+            chaos-testing/tmp/port-forward-*.txt
+
       # SSH debugging session - on failure (if requested)
       - name: Setup upterm session after failure
         if: ${{ (failure() || steps.chaos-tests.outcome == 'failure') && inputs.ssh_debug_on_failure == true }}
@@ -102,11 +151,3 @@ jobs:
         with:
           ## If no one connects shut down ssh server after timeout.
           wait-timeout-minutes: 20
-
-      - name: Store reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test reports
-          path: |
-            **/build/reports/tests/
