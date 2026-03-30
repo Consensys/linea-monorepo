@@ -61,7 +61,7 @@ zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
 ## Generate the setup (shared across all environments; layer2 config differentiate environments)
 ##
 setup: bin/prover
-	bin/prover setup --config ./config/config-sepolia-limitless.toml --circuits "execution-limitless" --assets-dir ./prover-assets
+	bin/prover setup --config ./config/config-mainnet-limitless.toml --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)
