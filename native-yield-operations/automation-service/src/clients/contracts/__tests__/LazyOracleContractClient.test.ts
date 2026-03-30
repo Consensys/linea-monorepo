@@ -1,12 +1,14 @@
-import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
-import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
-import { InvalidInputRpcError } from "viem";
 import { jest, describe, it, expect, beforeEach, afterEach, beforeAll } from "@jest/globals";
+import { InvalidInputRpcError } from "viem";
+import { encodeFunctionData, getContract } from "viem";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
-import { LazyOracleABI } from "../../../core/abis/LazyOracle.js";
 import { LazyOracleErrorsABI } from "../../../core/abis/errors/LazyOracleErrors.js";
+import { LazyOracleABI } from "../../../core/abis/LazyOracle.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+
+import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
+import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
 
 const LazyOracleCombinedABI = [...LazyOracleABI, ...LazyOracleErrorsABI] as const;
 
@@ -18,8 +20,6 @@ jest.mock("viem", () => {
     encodeFunctionData: jest.fn(),
   };
 });
-
-import { encodeFunctionData, getContract } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;

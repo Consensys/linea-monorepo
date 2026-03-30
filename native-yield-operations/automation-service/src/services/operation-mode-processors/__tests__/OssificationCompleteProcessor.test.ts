@@ -1,14 +1,16 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger, attempt, msToSeconds, wait } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
-import type { IOperationModeMetricsRecorder } from "../../../core/metrics/IOperationModeMetricsRecorder.js";
-import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
-import type { TransactionReceipt, Address } from "viem";
-import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
+import { ResultAsync } from "neverthrow";
+
+import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { OssificationCompleteProcessor } from "../OssificationCompleteProcessor.js";
-import { ResultAsync } from "neverthrow";
-import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
+
+import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
+import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
+import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import type { IOperationModeMetricsRecorder } from "../../../core/metrics/IOperationModeMetricsRecorder.js";
+import type { TransactionReceipt, Address } from "viem";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils") as typeof import("@consensys/linea-shared-utils");
@@ -19,8 +21,6 @@ jest.mock("@consensys/linea-shared-utils", () => {
     msToSeconds: jest.fn(),
   };
 });
-
-import { wait, attempt, msToSeconds } from "@consensys/linea-shared-utils";
 
 const YIELD_PROVIDER_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
 const MAX_INACTION_MS = 5_000;

@@ -1,15 +1,15 @@
 import { jest, describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
-import type { PublicClient, TransactionReceipt, Address } from "viem";
-import { DashboardABI } from "../../../core/abis/Dashboard.js";
+import { getContract, parseEventLogs } from "viem";
+
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
+import { DashboardABI } from "../../../core/abis/Dashboard.js";
+
+import type { PublicClient, TransactionReceipt, Address } from "viem";
 
 jest.mock("viem", () => ({
   getContract: jest.fn(),
   parseEventLogs: jest.fn(),
 }));
-
-import { getContract, parseEventLogs } from "viem";
-
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
 

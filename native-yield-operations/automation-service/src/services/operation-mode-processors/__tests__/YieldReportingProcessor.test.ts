@@ -1,23 +1,24 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
-import type { Address, TransactionReceipt, Hex } from "viem";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
+import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
+import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
+import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { YieldReportingProcessor } from "../YieldReportingProcessor.js";
+
+import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
+import type { UpdateVaultDataParams } from "../../../core/clients/contracts/ILazyOracle.js";
+import type { ILineaRollupYieldExtension } from "../../../core/clients/contracts/ILineaRollupYieldExtension.js";
+import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
+import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
+import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
+import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAccountingReportClient.js";
+import type { YieldReport } from "../../../core/entities/YieldReport.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IOperationModeMetricsRecorder } from "../../../core/metrics/IOperationModeMetricsRecorder.js";
-import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
-import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
-import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAccountingReportClient.js";
-import type { ILineaRollupYieldExtension } from "../../../core/clients/contracts/ILineaRollupYieldExtension.js";
-import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
-import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
-import type { UpdateVaultDataParams } from "../../../core/clients/contracts/ILazyOracle.js";
-import type { YieldReport } from "../../../core/entities/YieldReport.js";
-import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
-import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
-import { YieldReportingProcessor } from "../YieldReportingProcessor.js";
+import type { Address, TransactionReceipt, Hex } from "viem";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils") as typeof import("@consensys/linea-shared-utils");
@@ -28,8 +29,6 @@ jest.mock("@consensys/linea-shared-utils", () => {
     weiToGweiNumber: jest.fn(),
   };
 });
-
-import { attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
 
 // Semantic constants
 const YIELD_PROVIDER = "0x1111111111111111111111111111111111111111" as Address;
