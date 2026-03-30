@@ -197,22 +197,19 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			continue
 		}
 
-		advicesNotUses := []*ModuleDiscoveryAdvice{}
-		for i := range disc.Advices {
-			if adviceUseCount[i] == 0 {
-				advicesNotUses = append(advicesNotUses, disc.Advices[i])
-			}
-		}
-
-		if len(advicesNotUses) > 0 {
-			adviceMappingErrs = append(adviceMappingErrs,
-				fmt.Errorf("could not find advice for QBM: %v, advices not used: %v", qbm.Ds.Rank.Keys, advicesNotUses),
-			)
-		}
-
 		newModule := moduleSets[adviceFound.Cluster]
 		newModule.SubModules = append(newModule.SubModules, qbm)
 		newModule.NewSizes = append(newModule.NewSizes, adviceFound.BaseSize)
+	}
+
+	// Check for advices that matched zero columns.
+	for i := range disc.Advices {
+		if adviceUseCount[i] == 0 {
+			adviceMappingErrs = append(adviceMappingErrs,
+				fmt.Errorf("advice matched no columns: cluster=%v, baseSize=%v, advice=%+v",
+					disc.Advices[i].Cluster, disc.Advices[i].BaseSize, disc.Advices[i]),
+			)
+		}
 	}
 
 	if len(adviceMappingErrs) > 0 {
