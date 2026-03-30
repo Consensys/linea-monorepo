@@ -471,9 +471,7 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 }
 
 // GetScaledUpBootstrapper returns a bootstrapper where all the limits have
-// been increased. Column names are size-independent (after the naming fix),
-// so the existing disc's column-to-module mappings remain valid — only the
-// sizes need scaling.
+// been increased.
 func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
 
 	traceLimits := cfg.TracesLimits
