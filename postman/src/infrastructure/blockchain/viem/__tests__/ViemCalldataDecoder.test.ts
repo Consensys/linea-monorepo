@@ -1,6 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
 import { encodeFunctionData, parseAbi, decodeFunctionData } from "viem";
 
+import { TestLogger } from "../../../../utils/testing/helpers";
 import { ViemCalldataDecoder } from "../ViemCalldataDecoder";
 
 jest.mock("viem", () => {
@@ -9,9 +10,10 @@ jest.mock("viem", () => {
 });
 
 describe("ViemCalldataDecoder", () => {
-  const decoder = new ViemCalldataDecoder();
+  const logger = new TestLogger(ViemCalldataDecoder.name);
+  const decoder = new ViemCalldataDecoder(logger);
 
-  it("throws an error if the calldata does not match the function signature", () => {
+  it("returns empty record if the calldata does not match the function signature", () => {
     const abi = parseAbi(["function foo(uint256 bar)"]);
     const calldata = encodeFunctionData({
       abi,
@@ -19,28 +21,27 @@ describe("ViemCalldataDecoder", () => {
       args: [123n],
     });
 
-    // Intentionally use a different function signature from the one encoded
-    expect(() => {
-      decoder.decode("function baz(address quux)", calldata);
-    }).toThrow('Encoded function signature "0x2fbebd38" not found on ABI');
+    const result = decoder.decode("function baz(address quux)", calldata);
+    expect(result).toEqual({});
   });
 
-  it("throws an error if the calldata is malformed", () => {
-    // This calldata is too short and doesn't match any signature
-    const malformedCalldata = "0xdeadbeef";
-    expect(() => {
-      decoder.decode("function foo(uint256)", malformedCalldata);
-    }).toThrow('Encoded function signature "0xdeadbeef" not found on ABI.');
+  it("returns empty record when calldata is only a 4-byte selector", () => {
+    const selectorOnly = "0xdeadbeef";
+    const result = decoder.decode("function foo(uint256)", selectorOnly);
+    expect(result).toEqual({});
   });
 
-  it("throws an error if the ABI is malformed", () => {
-    // Missing closing parenthesis
+  it("returns empty record when calldata is shorter than a selector", () => {
+    const result = decoder.decode("function foo(uint256)", "0xdead");
+    expect(result).toEqual({});
+  });
+
+  it("returns empty record if the ABI is malformed", () => {
     const malformedAbiString = "function foo(uint256 bar";
-    const calldata = "0x"; // Any value, the ABI parsing should fail first
+    const calldata = "0xdeadbeef0000000000000000000000000000000000000000000000000000000000000001";
 
-    expect(() => {
-      decoder.decode(malformedAbiString, calldata);
-    }).toThrow("Unknown signature.");
+    const result = decoder.decode(malformedAbiString, calldata);
+    expect(result).toEqual({});
   });
 
   it("decodes a simple uint256 argument", () => {
@@ -104,6 +105,17 @@ describe("ViemCalldataDecoder", () => {
     const result = decoder.decode(iface, calldata);
     expect(result.bar).toBe(42n);
     expect((result.baz as string).toLowerCase()).toBe("0xcccccccccccccccccccccccccccccccccccccccc");
+  });
+
+  it("returns empty record when decodeFunctionData returns undefined args", () => {
+    const iface = "function foo(uint256 bar)";
+    const abi = parseAbi([iface]);
+    const calldata = encodeFunctionData({ abi, functionName: "foo", args: [1n] });
+
+    (decodeFunctionData as jest.Mock).mockReturnValueOnce({ functionName: "foo", args: undefined });
+
+    const result = decoder.decode(iface, calldata);
+    expect(result).toEqual({});
   });
 
   it("returns empty record when decodeFunctionData returns a functionName not in the ABI", () => {

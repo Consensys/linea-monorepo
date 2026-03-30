@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import { Address, Hex, PublicClient, SendTransactionParameters, WalletClient, encodeFunctionData } from "viem";
-import { getTransactionCount, readContract } from "viem/actions";
+import { getTransactionCount, readContract, waitForTransactionReceipt } from "viem/actions";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -137,7 +137,6 @@ async function sendMessages(
   count: number,
 ) {
   let nonce = await getTransactionCount(client, { address: client.account!.address, blockTag: "latest" });
-
   const txData = encodeFunctionData({
     abi: SEND_MESSAGE_ABI,
     functionName: "sendMessage",
@@ -156,7 +155,11 @@ async function sendMessages(
     return tx;
   });
 
-  await Promise.all(promises);
+  const txHashes = await Promise.all(promises);
+
+  const receipts = await Promise.all(txHashes.map((tx) => waitForTransactionReceipt(client, { hash: tx })));
+
+  console.log("receipts", receipts.map((receipt) => [receipt.transactionHash, receipt.status]).join("\n"));
 }
 
 async function getNextMessageNumber(client: PublicClient, contractAddress: Address): Promise<bigint> {

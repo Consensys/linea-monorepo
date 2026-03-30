@@ -103,7 +103,7 @@ async function buildSharedInfrastructure(
     l1,
     l2,
     messageRepository: new TypeOrmMessageRepository(db),
-    calldataDecoder: new ViemCalldataDecoder(),
+    calldataDecoder: new ViemCalldataDecoder(new WinstonLogger("ViemCalldataDecoder", loggerOptions)),
     errorParser: new ViemErrorParser(),
     lineaRollupClient,
     l2MessageServiceClient,
