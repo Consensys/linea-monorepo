@@ -42,7 +42,10 @@ class QbftGossiperTest {
   }
 
   @Test
-  fun `should not send message when replayed is false even if message data is available`() {
+  fun `should not send non-replayed messages because Besu calls ValidatorMulticaster directly`() {
+    // When a validator creates a PROPOSE/PREPARE/COMMIT message, Besu's round/height manager
+    // calls ValidatorMulticaster.send() directly before calling gossiper.send(msg, replayed=false).
+    // LibP2P handles propagation at that point, so the gossiper does not need to act here.
     whenever(mockQbftMessage.data).thenReturn(mockMessageData)
 
     gossiper.send(mockQbftMessage, replayed = false)

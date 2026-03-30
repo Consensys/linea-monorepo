@@ -69,5 +69,5 @@ fun QbftMessage.toQbftReceivedMessageEvent(): QbftReceivedMessageEvent =
 
     override fun getType(): BftEvents.Type = BftEvents.Type.MESSAGE
 
-    override fun toString(): String = toString()
+    override fun toString(): String = "QbftReceivedMessageEvent(message=${this@toQbftReceivedMessageEvent})"
   }

@@ -31,7 +31,7 @@ class LineaFinalizationProvider(
   private val l2EthApi: EthApiClient,
   private val pollingUpdateInterval: Duration,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-  private val timerFactory: TimerFactory,
+  timerFactory: TimerFactory,
   private val log: Logger = LogManager.getLogger(LineaFinalizationProvider::class.java),
 ) : PeriodicPollingService(
     name = "l1-finalization-poller",
@@ -69,10 +69,10 @@ class LineaFinalizationProvider(
   init {
     // initialize the last finalized block with the latest finalized block on L2
     l2EthApi
-      .getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED)
+      .ethGetBlockByNumberTxHashes(BlockParameter.Tag.FINALIZED)
       .exceptionallyCompose { error ->
         log.error("failed to get FINALIZED block, will fallback to EARLIEST. error={}", error.message)
-        l2EthApi.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.EARLIEST)
+        l2EthApi.ethGetBlockByNumberTxHashes(BlockParameter.Tag.EARLIEST)
       }.get()
       .also { block ->
         lastFinalizedBlock =
@@ -125,20 +125,20 @@ class LineaFinalizationProvider(
 
   private fun getHighestBlockAvailableUpToBlock(finalizedBlockNumber: ULong): SafeFuture<BlockData<ByteArray>> =
     l2EthApi
-      .findBlockByNumberWithoutTransactionsData(finalizedBlockNumber.toBlockParameter())
+      .ethFindBlockByNumberTxHashes(finalizedBlockNumber.toBlockParameter())
       .thenCompose { block ->
         if (block == null) {
           // If this node is behind (syncing) won't have the block locally to retrieve its hash
           // until it catches up, we will default to the lastest available block while it catches up until
           // the finalized block
           l2EthApi
-            .getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST)
+            .ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST)
             .thenCompose { latestBlock ->
               if (latestBlock.number > finalizedBlockNumber) {
                 // this that in meantime the code has caught up to the finalized block,
                 // let's fetch it again
                 l2EthApi
-                  .getBlockByNumberWithoutTransactionsData(finalizedBlockNumber.toBlockParameter())
+                  .ethGetBlockByNumberTxHashes(finalizedBlockNumber.toBlockParameter())
               } else {
                 SafeFuture.completedFuture(latestBlock)
               }

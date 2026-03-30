@@ -11,13 +11,10 @@ package maru.consensus
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import linea.timer.Timer
 import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.SubscriptionNotifier
-import maru.syncing.CLSyncStatus
-import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
@@ -27,46 +24,9 @@ class ProtocolStarter(
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val forkTransitionCheckInterval: Duration,
   private val clock: Clock = Clock.systemUTC(),
-  private val timerFactory: TimerFactory,
+  timerFactory: TimerFactory,
   private val forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
 ) : Protocol {
-  companion object {
-    fun create(
-      forksSchedule: ForksSchedule,
-      protocolFactory: ProtocolFactory,
-      nextBlockTimestampProvider: NextBlockTimestampProvider,
-      syncStatusProvider: SyncStatusProvider,
-      forkTransitionCheckInterval: Duration = 1.seconds,
-      clock: Clock = Clock.systemUTC(),
-      timerFactory: TimerFactory,
-      forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
-    ): ProtocolStarter {
-      val protocolStarter =
-        ProtocolStarter(
-          forksSchedule = forksSchedule,
-          protocolFactory = protocolFactory,
-          nextBlockTimestampProvider = nextBlockTimestampProvider,
-          forkTransitionCheckInterval = forkTransitionCheckInterval,
-          clock = clock,
-          timerFactory = timerFactory,
-          forkTransitionNotifier = forkTransitionNotifier,
-        )
-      syncStatusProvider.onClSyncStatusUpdate {
-        if (it == CLSyncStatus.SYNCING) {
-          protocolStarter.pause()
-        }
-      }
-      syncStatusProvider.onBeaconSyncComplete {
-        try {
-          protocolStarter.start()
-        } catch (th: Throwable) {
-          throw th
-        }
-      }
-      return protocolStarter
-    }
-  }
-
   data class ProtocolWithFork(
     val protocol: Protocol,
     val fork: ForkSpec,
@@ -85,7 +45,7 @@ class ProtocolStarter(
       period = forkTransitionCheckInterval,
       timerSchedule = linea.timer.TimerSchedule.FIXED_RATE,
       errorHandler = {},
-      task = Runnable { pollTask() },
+      task = { pollTask() },
     )
 
   private fun pollTask() {
@@ -96,7 +56,7 @@ class ProtocolStarter(
     }
   }
 
-  private fun checkAndHandleForkTransition() {
+  private fun checkAndHandleForkTransition(): Boolean {
     val currentTimestamp = clock.instant().epochSecond.toULong()
     val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(currentTimestamp)
     val nextForkSpec = forksSchedule.getForkByTimestamp(nextBlockTimestamp)
@@ -112,8 +72,10 @@ class ProtocolStarter(
       )
 
       performForkTransition(currentProtocolWithFork, nextForkSpec)
+      return true
     } else {
       log.trace("currentTimestamp={}, but fork switch isn't required", currentTimestamp)
+      return false
     }
   }
 
@@ -122,8 +84,9 @@ class ProtocolStarter(
     currentProtocolWithFork: ProtocolWithFork?,
     nextForkSpec: ForkSpec,
   ) {
-    val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
+    currentProtocolWithFork?.protocol?.close()
 
+    val newProtocol: Protocol = protocolFactory.create(nextForkSpec)
     val newProtocolWithFork =
       ProtocolWithFork(
         newProtocol,
@@ -131,7 +94,6 @@ class ProtocolStarter(
       )
     log.debug("switching protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
     currentProtocolWithForkReference.set(newProtocolWithFork)
-    currentProtocolWithFork?.protocol?.close()
 
     newProtocol.start()
     log.debug("started new protocol {}", newProtocol)
@@ -140,7 +102,11 @@ class ProtocolStarter(
 
   override fun start() {
     synchronized(this) {
-      checkAndHandleForkTransition()
+      val transitioned = checkAndHandleForkTransition()
+      if (!transitioned) {
+        // Restart case: fork didn't change but protocol was paused — re-start it
+        currentProtocolWithForkReference.get()?.protocol?.start()
+      }
       poller.start()
       log.debug("Starting fork transition polling with interval {}", forkTransitionCheckInterval)
     }

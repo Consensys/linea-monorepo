@@ -19,9 +19,6 @@ import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator as BesuQbftBlockCreator
 
-/**
- * Maru's QbftBlockCreator factory
- */
 class QbftBlockCreatorFactory(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,

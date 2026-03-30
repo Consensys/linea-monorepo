@@ -115,10 +115,10 @@ class MaruLineaFinalizationTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          validatorEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number,
         ).isGreaterThanOrEqualTo(0UL)
       }
   }
@@ -150,7 +150,7 @@ class MaruLineaFinalizationTest {
       .atMost(5.seconds.toJavaDuration())
       .ignoreExceptions() // sometimes besu fails to return the latest block ¯\_(ツ)_/¯
       .until {
-        followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number == 3UL
+        followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number == 3UL
       }
 
     await
@@ -158,10 +158,10 @@ class MaruLineaFinalizationTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+          validatorEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.FINALIZED).get().number,
         ).isBetween(2UL, 3UL)
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.FINALIZED).get().number,
         ).isBetween(2UL, 3UL)
       }
 
@@ -180,7 +180,7 @@ class MaruLineaFinalizationTest {
       .atMost(20.seconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {
-        assertThat(followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.LATEST).get().number)
+        assertThat(followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST).get().number)
           .isGreaterThan(6UL)
       }
 
@@ -189,10 +189,10 @@ class MaruLineaFinalizationTest {
       .ignoreExceptions()
       .untilAsserted {
         assertThat(
-          validatorEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+          validatorEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.FINALIZED).get().number,
         ).isEqualTo(4UL)
         assertThat(
-          followerEthApiClient.getBlockByNumberWithoutTransactionsData(BlockParameter.Tag.FINALIZED).get().number,
+          followerEthApiClient.ethGetBlockByNumberTxHashes(BlockParameter.Tag.FINALIZED).get().number,
         ).isEqualTo(4UL)
       }
   }

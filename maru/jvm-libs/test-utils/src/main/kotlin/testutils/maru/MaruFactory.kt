@@ -91,9 +91,21 @@ class MaruFactory(
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
-        desyncTolerance = 0UL,
+        // desyncTolerance intentionally uses the Config default (5 blocks) for followers.
         download = SyncingConfig.Download(),
       )
+
+    /**
+     * Validators need desyncTolerance=0 to avoid a race condition in Besu's
+     * QbftController.consumeMessage: it discards QBFT messages where
+     * sequenceNumber <= blockchain.chainHeadBlockNumber. When the sync pipeline imports multiple
+     * blocks at once (desyncTolerance > 0), BeaconChain advances progressively on the sync thread
+     * while the QBFT event processor concurrently dequeues gossiped messages — messages correctly
+     * queued as "future" get discarded as "old" because the chain head raced past them.
+     * With desyncTolerance=0, sync imports 1 block at a time, keeping the race window minimal.
+     */
+    val defaultValidatorSyncingConfig =
+      defaultSyncingConfig.copy(desyncTolerance = 0UL)
 
     fun enumeratingSyncingConfigs(): List<SyncingConfig> {
       val syncTargetSelectionForMostFrequent =
@@ -421,14 +433,15 @@ class MaruFactory(
     dataDir: Path,
     overridingP2PNetwork: P2PNetwork? = null,
     allowEmptyBlocks: Boolean = false,
-    syncingConfig: SyncingConfig = defaultSyncingConfig,
+    syncingConfig: SyncingConfig = defaultValidatorSyncingConfig,
+    qbftOptions: QbftConfig = validatorQbftOptions,
   ): MaruApp {
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = validatorQbftOptions,
+        qbftOptions = qbftOptions,
         allowEmptyBlocks = allowEmptyBlocks,
         syncingConfig = syncingConfig,
       )
@@ -447,7 +460,7 @@ class MaruFactory(
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
-    syncingConfig: SyncingConfig = defaultSyncingConfig,
+    syncingConfig: SyncingConfig = defaultValidatorSyncingConfig,
     p2pNetworkFactory: (
       ByteArray,
       P2PConfig,
@@ -694,7 +707,7 @@ class MaruFactory(
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
     followers: FollowersConfig = FollowersConfig(emptyMap()),
-    syncingConfig: SyncingConfig = defaultSyncingConfig,
+    syncingConfig: SyncingConfig = defaultValidatorSyncingConfig,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =

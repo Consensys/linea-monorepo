@@ -57,7 +57,7 @@ class DifficultyAwareQbft(
     val difficultyAwareQbftConfig = forkSpec.configuration as DifficultyAwareQbftConfig
     try {
       if (postTtdProtocol != null) {
-        // Maybe it was stopped and started after the TTD was reached and poller stopped once
+        // TTD already reached; poller should have been stopped but may fire one extra time.
         stopPoller()
         return
       }

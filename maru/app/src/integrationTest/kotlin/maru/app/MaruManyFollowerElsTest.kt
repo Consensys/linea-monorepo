@@ -161,7 +161,7 @@ class MaruManyFollowerElsTest {
 
   @Test
   fun `Maru follower with FollowersConfig imports blocks when started after validator has produced blocks`() {
-    val initialBlocksToProduce = 5
+    val initialBlocksToProduce = 10
     log.info("Producing $initialBlocksToProduce blocks before starting Maru follower")
     repeat(initialBlocksToProduce) {
       transactionsHelper.run {

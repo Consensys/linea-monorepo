@@ -17,11 +17,9 @@ import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.subscription.SubscriptionNotifier
-import maru.syncing.SyncStatusProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.mock
 import testutils.maru.TestablePeriodicTimerFactory
 
 class ProtocolStarterTest {
@@ -59,8 +57,6 @@ class ProtocolStarterTest {
     }
   private val forkSpec1 = ForkSpec(0UL, 5u, protocolConfig1)
   private val forkSpec2 = ForkSpec(15UL, 2u, protocolConfig2)
-
-  private val mockSyncStatusProvider = mock<SyncStatusProvider>()
 
   val forkTransitions = mutableListOf<ForkSpec>()
   val forkTransitionNotifier =
@@ -317,7 +313,7 @@ class ProtocolStarterTest {
         Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC)
       }
 
-    return ProtocolStarter.create(
+    return ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
       nextBlockTimestampProvider =
@@ -325,7 +321,6 @@ class ProtocolStarterTest {
           clock = clock,
           forksSchedule = forksSchedule,
         ),
-      syncStatusProvider = mockSyncStatusProvider,
       forkTransitionCheckInterval = 1.seconds,
       clock = clock,
       timerFactory = timerFactory,
