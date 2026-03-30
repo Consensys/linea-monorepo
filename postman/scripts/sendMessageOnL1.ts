@@ -193,12 +193,15 @@ async function anchorMessageHashesOnL2(
     args: [messageHashes, startingMessageNumber, finalMessageNumber, finalRollingHash],
   });
 
-  await l2WalletClient.sendTransaction({
+  const txHash = await l2WalletClient.sendTransaction({
     account: l2WalletClient.account!,
     to: l2ContractAddress,
     data: txData,
     value: 0n,
   } as SendTransactionParameters);
+
+  const receipt = await waitForTransactionReceipt(l2WalletClient, { hash: txHash });
+  console.log("anchoring receipt", receipt.transactionHash, receipt.status);
 }
 
 async function main(args: typeof argv) {
