@@ -11,6 +11,7 @@ Do **not** follow this guide for day-to-day use. Operators should leave `HARDHAT
 | Area | Path / symbol |
 |------|----------------|
 | Bridge + session logic | `contracts/scripts/hardhat/signer-ui-bridge.ts` |
+| Shared signer-mode helper | `contracts/scripts/hardhat/signer-mode.ts` |
 | Next.js app | `contracts/signer-ui/` (package `@consensys/linea-contract-signer-ui`) |
 | Hardhat hook | `subtask(TASK_DEPLOY_RUN_DEPLOY)` in `contracts/hardhat.config.ts` |
 | Config branch | `deployerAccounts()` UI branch in `contracts/hardhat.config.ts` |
@@ -23,7 +24,8 @@ Do **not** follow this guide for day-to-day use. Operators should leave `HARDHAT
 ## 1. `hardhat.config.ts`
 
 1. Remove the `subtask(TASK_DEPLOY_RUN_DEPLOY).setAction(...)` block that `require()`s `./scripts/hardhat/signer-ui-bridge.ts`.
-2. Simplify **`deployerAccounts()`**: delete the `HARDHAT_SIGNER_UI` branch and the non-zero key validation; always return `[normalizedPrivateKey]` from env (or your preferred account wiring).
+2. Remove the shared signer-mode validation/helper import (`./scripts/hardhat/signer-mode.ts`) if you no longer need browser-signing exclusivity checks.
+3. Simplify **`deployerAccounts()`**: delete the `HARDHAT_SIGNER_UI` branch and the non-zero key validation; always return `[normalizedPrivateKey]` from env (or your preferred account wiring).
 
 ## 2. Delete UI and bridge implementation
 

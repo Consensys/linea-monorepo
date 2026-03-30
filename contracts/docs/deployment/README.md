@@ -68,6 +68,8 @@ Dependent on which network you are using, the corresponding API Key or RPC URL m
 
 The default flow continues to use **`DEPLOYER_PRIVATE_KEY`** (or the configured named account). No UI is involved unless you opt in.
 
+`HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` are **mutually exclusive**. If both are set, Hardhat errors immediately instead of guessing which signer to use.
+
 To sign and send transactions from a **browser wallet** (MetaMask, Rabby, etc.) instead of putting a private key in the environment:
 
 ```shell
@@ -81,6 +83,7 @@ Selected **operational Hardhat tasks** (under `scripts/operational/`) also suppo
 | Topic | Details |
 |-------|---------|
 | **Opt-in** | Only `HARDHAT_SIGNER_UI=true` enables the UI. Any other value or unset → normal private-key / named-account flow. |
+| **Exclusive signer mode** | `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` cannot be set together. Hardhat fails fast when both are present. |
 | **Chained `--tags`** | One **Hardhat deploy run** uses **one** browser session for the whole tag list: local HTTP bridge + Next.js app, sequential deploy scripts, session ends when the run finishes (not per-file restarts). |
 | **Accounts in config** | With UI mode, `hardhat.config.ts` passes an empty `accounts` array for the network so Hardhat does not load `DEPLOYER_PRIVATE_KEY`; the wallet you connect in the browser is the signer. |
 | **Security** | The bridge requires a per-run session token (embedded in the UI URL). Transactions are checked against the pending request before Hardhat continues. |
@@ -92,7 +95,7 @@ Selected **operational Hardhat tasks** (under `scripts/operational/`) also suppo
 
 | Variable | Effect |
 |----------|--------|
-| `HARDHAT_SIGNER_UI=true` | Enable browser signing. |
+| `HARDHAT_SIGNER_UI=true` | Enable browser signing. Must not be combined with `DEPLOYER_PRIVATE_KEY`. |
 | `HARDHAT_SIGNER_UI_OPEN_BROWSER=false` | Print the UI URL only; do not open a tab automatically. |
 | `HARDHAT_SIGNER_UI_DEBUG=true` | Forward `next dev` logs to the terminal. |
 | `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` | After `hardhat deploy`, keep the Next.js dev server when the bridge closes (default is to stop it). |

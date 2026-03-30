@@ -24,11 +24,18 @@ import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 import "solidity-docgen";
 import { createRequire } from "node:module";
+import {
+  assertExclusiveSignerMode,
+  hasConfiguredDeployerPrivateKey,
+  isSignerUiEnabled,
+} from "./scripts/hardhat/signer-mode";
 import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
 
 const requireFromConfig = createRequire(__filename);
+
+assertExclusiveSignerMode();
 
 /** Lazy `require` avoids HH9 (signer-ui-bridge pulls in `hardhat`) and avoids native `import()` of `.ts`, which uses Node ESM resolution (directory `common/` vs `common.ts`, CJS `hardhat`, type-only `ethers` exports). */
 subtask(TASK_DEPLOY_RUN_DEPLOY).setAction(async (args, hre, runSuper) => {
@@ -48,15 +55,17 @@ const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000
  * LocalAccountsProvider / @ethereumjs/util).
  */
 function deployerAccounts(): string[] {
-  if (process.env.HARDHAT_SIGNER_UI === "true") {
+  assertExclusiveSignerMode();
+
+  if (isSignerUiEnabled()) {
     return [];
   }
 
-  const raw = process.env.DEPLOYER_PRIVATE_KEY?.trim();
-  if (!raw) {
+  if (!hasConfiguredDeployerPrivateKey()) {
     return [];
   }
 
+  const raw = process.env.DEPLOYER_PRIVATE_KEY!.trim();
   const normalized = raw.startsWith("0x") ? raw : `0x${raw}`;
   let scalar: bigint;
   try {

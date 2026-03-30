@@ -2,6 +2,7 @@ import { ChildProcess, execFileSync, spawn } from "node:child_process";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import {
   AbstractSigner,
@@ -18,6 +19,7 @@ import {
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { SupportedChainIds } from "../../common/supportedNetworks";
+import { assertExclusiveSignerMode, hasConfiguredDeployerPrivateKey, isSignerUiEnabled } from "./signer-mode";
 
 /**
  * Mirrors hardhat-deploy's `DeployFunction` without importing `hardhat-deploy/types`, which is not a
@@ -145,6 +147,7 @@ type SignerUiContext = {
 const SIGNER_UI_DIR = resolve(__dirname, "../../signer-ui");
 const SIGNER_UI_PACKAGE_NAME = "@consensys/linea-contract-signer-ui";
 const MONOREPO_ROOT = resolve(SIGNER_UI_DIR, "../..");
+const requireFromSignerUiBridge = createRequire(__filename);
 const LOCALHOST = "127.0.0.1";
 const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
 const UI_READY_TIMEOUT_MS = 60 * 1000;
@@ -168,6 +171,7 @@ const DEFAULT_SHUTDOWN_GRACE_MS = 2000;
 const MAX_SESSION_OUTCOME_MESSAGE_CHARS = 500;
 
 let activeSession: SignerUiSession | undefined;
+let privateKeyUsageWarningShown = false;
 
 /**
  * True while hardhat-deploy `deploy:runDeploy` is executing (entire tag batch).
@@ -178,6 +182,46 @@ let signerUiHardhatDeployBatchTags: string | null = null;
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+function loadHardhatRuntime(): typeof import("hardhat") {
+  return requireFromSignerUiBridge("hardhat") as typeof import("hardhat");
+}
+
+type PrivateKeyWarningDetails = {
+  networkName?: string;
+  scriptContext?: string;
+  uiSupported?: boolean;
+};
+
+export function warnIfUsingPrivateKeySigning(details: PrivateKeyWarningDetails = {}): void {
+  assertExclusiveSignerMode();
+
+  if (privateKeyUsageWarningShown || isSignerUiEnabled() || !hasConfiguredDeployerPrivateKey()) {
+    return;
+  }
+
+  privateKeyUsageWarningShown = true;
+
+  const suffixParts = [details.networkName ? `network=${details.networkName}` : undefined, details.scriptContext]
+    .filter((value): value is string => value !== undefined && value.length > 0)
+    .join(" ");
+
+  const uiRecommendation =
+    details.uiSupported === false
+      ? "This script is not wired to HARDHAT_SIGNER_UI yet, so the private-key flow remains required here."
+      : "Re-run the same command with HARDHAT_SIGNER_UI=true to sign in the browser wallet instead.";
+
+  console.warn("");
+  console.warn("=".repeat(100));
+  console.warn("PRIVATE KEY SIGNING ACTIVE");
+  console.warn(`DEPLOYER_PRIVATE_KEY is being used for transaction signing${suffixParts ? ` (${suffixParts})` : ""}.`);
+  console.warn(
+    "Keeping the deployer key in the local environment is not recommended when the browser signer UI can be used.",
+  );
+  console.warn(uiRecommendation);
+  console.warn("=".repeat(100));
+  console.warn("");
 }
 
 function parseNonNegativeIntEnv(name: string, defaultMs: number): number {
@@ -1355,6 +1399,8 @@ function requireActiveSession(): SignerUiSession {
 }
 
 export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
+  assertExclusiveSignerMode();
+
   if (isSignerUiEnabled()) {
     return requireActiveSession().getSigner(hre.ethers.provider);
   }
@@ -1366,11 +1412,17 @@ export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<Abstr
     );
   }
 
+  warnIfUsingPrivateKeySigning({
+    networkName: hre.network.name,
+  });
+
   const { deployer } = await hre.getNamedAccounts();
   return await hre.ethers.getSigner(deployer);
 }
 
 export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provider | null): Promise<AbstractSigner> {
+  assertExclusiveSignerMode();
+
   if (isSigner(runnerOrProvider)) {
     return runnerOrProvider;
   }
@@ -1381,13 +1433,14 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
   }
 
   if (isProviderLike(runnerOrProvider) && typeof runnerOrProvider.getSigner === "function") {
+    warnIfUsingPrivateKeySigning();
     return await runnerOrProvider.getSigner();
   }
 
-  // Lazy require: operational tasks import this module while Hardhat loads config; a top-level
+  // Lazy load: operational tasks import this module while Hardhat loads config; a top-level
   // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { ethers: hhEthers } = require("hardhat") as typeof import("hardhat");
+  warnIfUsingPrivateKeySigning();
+  const { ethers: hhEthers } = loadHardhatRuntime();
   return await hhEthers.provider.getSigner();
 }
 

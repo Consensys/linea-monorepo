@@ -1,5 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import { requireEnv } from "../hardhat/utils";
+import { warnIfUsingPrivateKeySigning } from "../hardhat/signer-ui-bridge";
 
 /*
     *******************************************************************************************
@@ -18,6 +19,11 @@ import { requireEnv } from "../hardhat/utils";
 */
 
 async function main() {
+  warnIfUsingPrivateKeySigning({
+    scriptContext: "scripts/operational/changeProxyAdmin.ts",
+    uiSupported: false,
+  });
+
   const newProxyAdmin = requireEnv("NEW_PROXY_ADMIN_ADDRESS");
   const proxyAddress = requireEnv("PROXY_ADDRESS");
   const contractType = requireEnv("CONTRACT_TYPE");

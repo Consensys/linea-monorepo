@@ -2,6 +2,8 @@
 
 When `HARDHAT_SIGNER_UI=true`, Hardhat deploy scripts can route transactions through this Next.js app so you approve them in a browser wallet (MetaMask, Rabby, etc.) instead of putting `DEPLOYER_PRIVATE_KEY` in the environment.
 
+`HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` are mutually exclusive. If both are set, Hardhat fails immediately rather than guessing between browser signing and private-key signing.
+
 The Hardhat side (`contracts/scripts/hardhat/signer-ui-bridge.ts`) starts a **local HTTP bridge** (session API + CORS), spawns **`pnpm exec next dev`** for this package on a free port, prints/opens the UI URL, and blocks until each transaction is **verified on-chain** against the pending request.
 
 ## Prerequisites
@@ -79,7 +81,7 @@ npx hardhat deploy --network l2 --tags <YourL2Tag>
 
 | Variable | Effect |
 |----------|--------|
-| `HARDHAT_SIGNER_UI=true` | Enable browser signing. When unset or not `true`, scripts use `DEPLOYER_PRIVATE_KEY` / named accounts. |
+| `HARDHAT_SIGNER_UI=true` | Enable browser signing. When unset or not `true`, scripts use `DEPLOYER_PRIVATE_KEY` / named accounts. Must not be combined with `DEPLOYER_PRIVATE_KEY`. |
 | `HARDHAT_SIGNER_UI_OPEN_BROWSER=false` | Do not auto-open a tab; open the URL from the terminal. |
 | `HARDHAT_SIGNER_UI_DEBUG=true` | Forward `next dev` stdout/stderr to the terminal. |
 | `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` | After `hardhat deploy`, **keep** the Next.js dev server running when the bridge closes (default is to stop Next). |

@@ -1,5 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import { requireEnv } from "../hardhat/utils";
+import { warnIfUsingPrivateKeySigning } from "../hardhat/signer-ui-bridge";
 
 /*
     *******************************************************************************************
@@ -22,6 +23,11 @@ import { requireEnv } from "../hardhat/utils";
 */
 
 async function main() {
+  warnIfUsingPrivateKeySigning({
+    scriptContext: "scripts/operational/transferProxyAdminOwnership.ts",
+    uiSupported: false,
+  });
+
   const proxyAdminOwnerAddress = requireEnv("PROXY_ADMIN_OWNER_ADDRESS");
   const proxyAddress = requireEnv("PROXY_ADDRESS");
   const contractType = requireEnv("CONTRACT_TYPE");
