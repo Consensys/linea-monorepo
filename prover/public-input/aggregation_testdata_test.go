@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/sha3"
 )
 
 // AggregatedProofJSON matches the JSON structure of aggregatedProof files
@@ -151,6 +152,124 @@ func TestAggregationPublicInputFromTestData(t *testing.T) {
 			assert.Equal(t, expectedPI, computedPI,
 				"Public input mismatch for %s\nExpected: %s\nComputed: %s",
 				tc.name, expectedPI, computedPI)
+		})
+	}
+}
+
+// BlobSubmissionJSON matches the JSON structure of blocks-*.json files
+type BlobSubmissionJSON struct {
+	PrevShnarf         string `json:"prevShnarf"`
+	SnarkHash          string `json:"snarkHash"`
+	FinalStateRootHash string `json:"finalStateRootHash"`
+	ExpectedX          string `json:"expectedX"`
+	ExpectedY          string `json:"expectedY"`
+	ExpectedShnarf     string `json:"expectedShnarf"`
+}
+
+// computeShnarf recomputes shnarf = keccak256(prevShnarf || snarkHash || finalStateRootHash || x || y)
+func computeShnarf(prevShnarf, snarkHash, finalStateRootHash, x, y []byte) []byte {
+	h := sha3.NewLegacyKeccak256()
+	h.Write(prevShnarf)
+	h.Write(snarkHash)
+	h.Write(finalStateRootHash)
+	h.Write(x)
+	h.Write(y)
+	return h.Sum(nil)
+}
+
+func TestShnarfFromTestData(t *testing.T) {
+	workspaceRoot := findWorkspaceRoot(t)
+	testDataBase := filepath.Join(workspaceRoot, "contracts/test/hardhat/_testData")
+
+	testCases := []struct {
+		name           string
+		aggregatedPath string
+		blobFiles      []string // ordered blob submission files for this aggregation range
+	}{
+		{
+			name:           "EIP4844/multipleProofs/aggregatedProof-1-81",
+			aggregatedPath: "compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json",
+			blobFiles: []string{
+				"compressedDataEip4844/multipleProofs/blocks-1-46.json",
+				"compressedDataEip4844/multipleProofs/blocks-47-81.json",
+			},
+		},
+		{
+			name:           "EIP4844/multipleProofs/aggregatedProof-82-139",
+			aggregatedPath: "compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json",
+			blobFiles: []string{
+				"compressedDataEip4844/multipleProofs/blocks-82-110.json",
+				"compressedDataEip4844/multipleProofs/blocks-111-139.json",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			aggPath := filepath.Join(testDataBase, tc.aggregatedPath)
+			aggData, err := os.ReadFile(aggPath)
+			if err != nil {
+				t.Skipf("Skipping %s: aggregated proof not found at %s", tc.name, aggPath)
+				return
+			}
+
+			var aggProof AggregatedProofJSON
+			require.NoError(t, json.Unmarshal(aggData, &aggProof), "Failed to parse aggregated proof JSON")
+
+			var lastExpectedShnarf string
+
+			for i, blobFile := range tc.blobFiles {
+				blobPath := filepath.Join(testDataBase, blobFile)
+				blobData, err := os.ReadFile(blobPath)
+				require.NoError(t, err, "Failed to read blob file %s", blobFile)
+
+				var blob BlobSubmissionJSON
+				require.NoError(t, json.Unmarshal(blobData, &blob), "Failed to parse blob JSON %s", blobFile)
+
+				prevShnarf, err := utils.HexDecodeString(blob.PrevShnarf)
+				require.NoError(t, err)
+				snarkHash, err := utils.HexDecodeString(blob.SnarkHash)
+				require.NoError(t, err)
+				finalStateRoot, err := utils.HexDecodeString(blob.FinalStateRootHash)
+				require.NoError(t, err)
+				xBytes, err := utils.HexDecodeString(blob.ExpectedX)
+				require.NoError(t, err)
+				yBytes, err := utils.HexDecodeString(blob.ExpectedY)
+				require.NoError(t, err)
+
+				computed := computeShnarf(prevShnarf, snarkHash, finalStateRoot, xBytes, yBytes)
+				computedHex := utils.HexEncodeToString(computed)
+
+				assert.Equal(t, blob.ExpectedShnarf, computedHex,
+					"Shnarf mismatch for blob %s (index %d)", blobFile, i)
+
+				// Verify chain continuity: this blob's prevShnarf == previous blob's expectedShnarf
+				if i > 0 {
+					assert.Equal(t, lastExpectedShnarf, blob.PrevShnarf,
+						"Shnarf chain broken between blob %d and %d", i-1, i)
+				}
+				lastExpectedShnarf = blob.ExpectedShnarf
+			}
+
+			// The aggregated proof's finalShnarf must equal the last blob's expectedShnarf
+			assert.Equal(t, aggProof.FinalShnarf, lastExpectedShnarf,
+				"FinalShnarf in aggregated proof does not match last blob's expectedShnarf")
+
+			// The first blob's prevShnarf must equal the aggregated proof's parentAggregationFinalShnarf
+			if len(tc.blobFiles) > 0 {
+				firstBlobPath := filepath.Join(testDataBase, tc.blobFiles[0])
+				firstBlobData, err := os.ReadFile(firstBlobPath)
+				require.NoError(t, err)
+				var firstBlob BlobSubmissionJSON
+				require.NoError(t, json.Unmarshal(firstBlobData, &firstBlob))
+
+				assert.Equal(t, aggProof.ParentAggregationFinalShnarf, firstBlob.PrevShnarf,
+					"ParentAggregationFinalShnarf does not match first blob's prevShnarf")
+			}
+
+			t.Logf("Verified shnarf chain for %d blobs", len(tc.blobFiles))
+			t.Logf("ParentAggregationFinalShnarf: %s", aggProof.ParentAggregationFinalShnarf)
+			t.Logf("FinalShnarf: %s", aggProof.FinalShnarf)
 		})
 	}
 }
