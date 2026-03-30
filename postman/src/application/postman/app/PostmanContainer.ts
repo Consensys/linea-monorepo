@@ -138,7 +138,7 @@ function buildL1ToL2Deps(
   const l2TransactionRetrier = new ViemTransactionRetrier(
     l2.publicClient,
     l2.walletClient,
-    l2SignerAddress,
+    l2.account,
     l2Config.claiming.maxFeePerGasCap,
     new WinstonLogger("L2TransactionRetrier", loggerOptions),
   );
@@ -215,7 +215,7 @@ function buildL2ToL1Deps(
   const l1TransactionRetrier = new ViemTransactionRetrier(
     l1.publicClient,
     l1.walletClient,
-    l1SignerAddress,
+    l1.account,
     l1Config.claiming.maxFeePerGasCap,
     new WinstonLogger("L1TransactionRetrier", loggerOptions),
   );

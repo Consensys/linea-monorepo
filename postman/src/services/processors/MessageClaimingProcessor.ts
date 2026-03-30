@@ -111,14 +111,12 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxFeePerGas: bigint,
   ): Promise<void> {
     const previousStatus = message.status;
+    const isRetry = message.status === MessageStatus.FEE_UNDERPRICED;
 
     // Step 1: Reserve nonce in DB (pure persistence)
     message.edit({
       claimTxNonce: nonce,
       status: MessageStatus.PENDING,
-      ...(message.status === MessageStatus.FEE_UNDERPRICED
-        ? { claimNumberOfRetry: message.claimNumberOfRetry + 1, claimLastRetriedAt: new Date() }
-        : {}),
     });
     await this.messageRepository.updateMessage(message);
 
@@ -138,8 +136,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         },
       );
     } catch (e) {
-      // Chain call failed — tx was NOT sent. Reset message to previous status
-      // so it can be picked up again by the next claiming cycle.
       this.logger.warn("Claim transaction failed, resetting message status.", {
         messageHash: message.messageHash,
         previousStatus,
@@ -149,13 +145,14 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       throw e;
     }
 
-    // Step 3: Record tx details in DB (pure persistence)
+    // Step 3: Record tx details and bump retry counter (only on retries)
     message.edit({
       claimTxCreationDate,
       claimTxGasLimit: Number(tx.gasLimit),
       claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
       claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
       claimTxHash: tx.hash,
+      ...(isRetry ? { claimNumberOfRetry: message.claimNumberOfRetry + 1, claimLastRetriedAt: new Date() } : {}),
     });
     await this.messageRepository.updateMessage(message);
   }

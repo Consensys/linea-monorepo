@@ -1,8 +1,8 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { type PublicClient, type WalletClient } from "viem";
+import { type LocalAccount, type PublicClient, type WalletClient } from "viem";
 
 import { ITransactionRetrier } from "../../../core/services/ITransactionRetrier";
-import { Address, Hash, TransactionSubmission } from "../../../core/types";
+import { Hash, TransactionSubmission } from "../../../core/types";
 
 const BASE_BUMP_PERCENT = 10n;
 
@@ -10,7 +10,7 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
   constructor(
     private readonly publicClient: PublicClient,
     private readonly walletClient: WalletClient,
-    private readonly signerAddress: Address,
+    private readonly account: LocalAccount,
     private readonly maxFeePerGasCap: bigint,
     private readonly logger: ILogger,
   ) {}
@@ -37,7 +37,7 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
     });
 
     const txHash = await this.walletClient.sendTransaction({
-      account: transaction.from,
+      account: this.account,
       to: transaction.to ?? undefined,
       value: transaction.value,
       data: transaction.input,
@@ -58,13 +58,13 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
   }
 
   public async cancelTransaction(nonce: number): Promise<Hash> {
-    this.logger.warn("Cancelling transaction.", { nonce, signerAddress: this.signerAddress });
+    this.logger.warn("Cancelling transaction.", { nonce, signerAddress: this.account.address });
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.getAggressiveFees();
 
     return this.walletClient.sendTransaction({
-      account: this.signerAddress,
-      to: this.signerAddress,
+      account: this.account,
+      to: this.account.address,
       value: 0n,
       data: "0x",
       nonce,

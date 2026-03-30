@@ -1,7 +1,7 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { describe, it, beforeEach, expect } from "@jest/globals";
 import { mock } from "jest-mock-extended";
-import { type PublicClient, type WalletClient } from "viem";
+import { type LocalAccount, type PublicClient, type WalletClient } from "viem";
 
 import { TEST_ADDRESS_1, TEST_TRANSACTION_HASH } from "../../../../utils/testing/constants";
 import { ViemTransactionRetrier } from "../ViemTransactionRetrier";
@@ -12,11 +12,12 @@ describe("ViemTransactionRetrier", () => {
   const publicClient = mock<PublicClient>();
   const walletClient = mock<WalletClient>();
   const logger = mock<ILogger>();
+  const account = { address: TEST_ADDRESS_1 } as LocalAccount;
   let retrier: ViemTransactionRetrier;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS_1, MAX_FEE_CAP, logger);
+    retrier = new ViemTransactionRetrier(publicClient, walletClient, account, MAX_FEE_CAP, logger);
   });
 
   describe("retryWithHigherFee", () => {
@@ -88,7 +89,7 @@ describe("ViemTransactionRetrier", () => {
 
     it("caps fees at maxFeePerGasCap", async () => {
       const smallCap = 500n;
-      retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS_1, smallCap, logger);
+      retrier = new ViemTransactionRetrier(publicClient, walletClient, account, smallCap, logger);
 
       publicClient.getTransaction.mockResolvedValue({
         from: TEST_ADDRESS_1,
@@ -154,7 +155,7 @@ describe("ViemTransactionRetrier", () => {
   describe("cancelTransaction", () => {
     it("caps aggressive fees at maxFeePerGasCap", async () => {
       const smallCap = 500n;
-      retrier = new ViemTransactionRetrier(publicClient, walletClient, TEST_ADDRESS_1, smallCap, logger);
+      retrier = new ViemTransactionRetrier(publicClient, walletClient, account, smallCap, logger);
 
       publicClient.estimateFeesPerGas.mockResolvedValue({
         maxFeePerGas: 1000n,
@@ -183,7 +184,7 @@ describe("ViemTransactionRetrier", () => {
 
       expect(hash).toBe("0xcancelhash");
       expect(walletClient.sendTransaction).toHaveBeenCalledWith({
-        account: TEST_ADDRESS_1,
+        account,
         to: TEST_ADDRESS_1,
         value: 0n,
         data: "0x",
