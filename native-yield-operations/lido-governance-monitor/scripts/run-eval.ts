@@ -158,6 +158,11 @@ async function main(): Promise<void> {
   }
 
   const threshold = parseInt(process.env.RISK_THRESHOLD ?? "60", 10);
+  if (isNaN(threshold)) {
+    console.error("RISK_THRESHOLD must be a number");
+    process.exitCode = 1;
+    return;
+  }
   const model = process.env.CLAUDE_MODEL ?? "claude-sonnet-4-20250514";
   const maxOutputTokens = parseInt(process.env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "4096", 10);
   const maxProposalChars = parseInt(process.env.ANTHROPIC_MAX_PROPOSAL_CHARS ?? "700000", 10);
@@ -191,12 +196,18 @@ async function main(): Promise<void> {
 
     console.log(`[${i + 1}/${proposals.length}] Analyzing: ${proposal.title.substring(0, 60)}...`);
 
-    const assessment: Assessment | undefined = await aiClient.analyzeProposal({
-      proposalTitle: proposal.title,
-      proposalText: proposal.rawProposalText,
-      proposalUrl: proposal.url,
-      proposalType: mapSourceToProposalType(proposal.source),
-    });
+    let assessment: Assessment | undefined;
+    try {
+      assessment = await aiClient.analyzeProposal({
+        proposalTitle: proposal.title,
+        proposalText: proposal.rawProposalText,
+        proposalUrl: proposal.url,
+        proposalType: mapSourceToProposalType(proposal.source),
+      });
+    } catch (err) {
+      console.warn(`  -> SDK threw for ${proposal.sourceId}: ${err}`);
+      assessment = undefined;
+    }
 
     if (!assessment) {
       results.push({
@@ -206,6 +217,7 @@ async function main(): Promise<void> {
         status: "ai_failure",
       });
     } else {
+      // ClaudeAIClient.parseAndValidate() always sets effectiveRisk before returning
       const effectiveRisk = assessment.effectiveRisk!;
       results.push({
         sourceId: proposal.sourceId,
