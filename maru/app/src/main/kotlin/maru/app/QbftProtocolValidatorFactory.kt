@@ -17,15 +17,15 @@ import maru.consensus.ProtocolFactory
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.SealedBeaconBlockHandlerAdapter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
+import maru.consensus.qbft.QbftEventMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
+import maru.core.SealedBeaconBlock
 import maru.database.BeaconChain
 import maru.executionlayer.ExecutionLayerFactory.buildExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockBroadcaster
-import maru.syncing.CLSyncStatus
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -43,16 +43,18 @@ class QbftProtocolValidatorFactory(
   private val p2pNetwork: P2PNetwork,
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
-  private val syncStatusProvider: SyncStatusProvider,
   private val forksSchedule: ForksSchedule,
   private val payloadValidationEnabled: Boolean,
+  /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
+  private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called when a block is committed by QBFT consensus. */
+  private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
-      "Unexpected fork specification! ${
-        forkSpec
-          .configuration
-      } instead of ${QbftConsensusConfig::class.simpleName}"
+      "Unexpected fork specification! ${forkSpec.configuration} instead of ${QbftConsensusConfig::class.simpleName}"
     }
     val qbftConsensusConfig = forkSpec.configuration as QbftConsensusConfig
 
@@ -92,17 +94,10 @@ class QbftProtocolValidatorFactory(
         allowEmptyBlocks = allowEmptyBlocks,
         forksSchedule = forksSchedule,
         payloadValidationEnabled = payloadValidationEnabled,
+        onBlockTimerFired = onBlockTimerFired,
+        onMessageReceived = onMessageReceived,
+        onBlockMined = onBlockMined,
       )
-    val qbftProtocol = qbftValidatorFactory.create(forkSpec)
-    syncStatusProvider.onFullSyncComplete {
-      qbftProtocol.start()
-    }
-    syncStatusProvider.onClSyncStatusUpdate {
-      if (it == CLSyncStatus.SYNCING) {
-        qbftProtocol.pause()
-      }
-    }
-
-    return qbftProtocol
+    return qbftValidatorFactory.create(forkSpec)
   }
 }

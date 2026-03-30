@@ -53,6 +53,7 @@ val configTemplate: MaruConfig =
         peerChainHeightPollingInterval = 1.seconds,
         syncTargetSelection = SyncTargetSelection.Highest,
         elSyncStatusRefreshInterval = 500.milliseconds,
+        desyncTolerance = 0UL,
       ),
     observability =
       ObservabilityConfig(

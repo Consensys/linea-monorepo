@@ -10,9 +10,9 @@ package maru.app
 
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import linea.contract.l1.LineaContractVersion
+import kotlin.time.Clock
+import kotlin.time.Instant
+import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import linea.kotlin.encodeHex
@@ -50,7 +50,7 @@ data class FinalizedBlock(
 class FakeLineaRollupSmartContractClient(
   val contractAddress: String = Random.nextBytes(20).encodeHex(),
   @get:Synchronized @set:Synchronized
-  var contractVersion: LineaContractVersion = LineaContractVersion.V6,
+  var contractVersion: LineaRollupContractVersion = LineaRollupContractVersion.V6,
   _finalizedBlocks: List<FinalizedBlock> = listOf(FinalizedBlock(0uL, Clock.System.now(), Random.nextBytes(32))),
   _messageRollingHashes: Map<ULong, ByteArray> = emptyMap(),
 ) : LineaRollupSmartContractClientReadOnly {
@@ -86,12 +86,13 @@ class FakeLineaRollupSmartContractClient(
 
   override fun getAddress(): String = contractAddress
 
-  override fun getVersion(): SafeFuture<LineaContractVersion> = SafeFuture.completedFuture(contractVersion)
+  override fun getVersion(blockParameter: BlockParameter): SafeFuture<LineaRollupContractVersion> =
+    SafeFuture.completedFuture(contractVersion)
 
   override fun finalizedL2BlockNumber(blockParameter: BlockParameter): SafeFuture<ULong> =
     SafeFuture.completedFuture(lastFinalizedBlock().number)
 
-  override fun finalizedL2BlockTimestamp(blockParameter: BlockParameter): SafeFuture<ULong> =
+  fun finalizedL2BlockTimestamp(blockParameter: BlockParameter): SafeFuture<ULong> =
     SafeFuture.completedFuture(lastFinalizedBlock().timestamp.epochSeconds.toULong())
 
   override fun getMessageRollingHash(

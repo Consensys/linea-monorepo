@@ -24,6 +24,7 @@ import maru.consensus.QbftConsensusConfig
 import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
@@ -33,7 +34,7 @@ import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
 import maru.services.LongRunningService
 import maru.subscription.InOrderFanoutSubscriptionManager
-import maru.syncing.SyncStatusProvider
+import maru.syncing.SyncController
 import net.consensys.linea.async.get
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
@@ -62,13 +63,31 @@ class MaruApp(
   private val l2EthWeb3j: Web3j?,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient?,
   private val apiServer: ApiServer,
-  private val syncStatusProvider: SyncStatusProvider,
-  private val syncControllerManager: LongRunningService,
+  private val syncControllerManager: SyncController,
   private val timerFactory: TimerFactory,
 ) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private fun getPrivateKeyWithoutPrefix() = SecpCrypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
+
+  /**
+   * Micrometer-based consensus metrics. Non-null when this node is a validator (config.qbft != null).
+   * Records QBFT phase latencies as histograms, queryable via Prometheus in K8S or via MeterRegistry in tests.
+   */
+  private val consensusMetrics: ConsensusMetrics? =
+    if (config.qbft != null) {
+      ConsensusMetrics(
+        metricsFacade = metricsFacade,
+        currentHeightProvider = {
+          beaconChain
+            .getLatestBeaconState()
+            .beaconBlockHeader.number
+            .toLong()
+        },
+      )
+    } else {
+      null
+    }
 
   init {
     if (config.qbft == null) {
@@ -116,6 +135,15 @@ class MaruApp(
 
   fun apiPort(): UInt = apiServer.port().toUInt()
 
+  /**
+   * Optional observer called when a sealed beacon block is committed to the BeaconChain database
+   * via the QBFT consensus path (validator nodes only).
+   * Parameters: (sealedBeaconBlock: SealedBeaconBlock).
+   * Note: this callback is NOT invoked for blocks imported via the follower or CL-sync paths.
+   * Must be set before [start].
+   */
+  var onBlockCommitted: ((SealedBeaconBlock) -> Unit)? = null
+
   private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
@@ -136,6 +164,13 @@ class MaruApp(
       start("Finalization Provider") { finalizationProvider.start().get() }
     }
     start("P2P Network") { p2pNetwork.start().get() }
+    // Gate consensus start on CL sync: register before syncControllerManager.start() so the
+    // callback fires on the first sync completion (which is immediate for a node at genesis).
+    // We intentionally do NOT pause consensus on subsequent CLSyncStatus.SYNCING transitions:
+    // with desyncTolerance tuned appropriately, QBFT handles brief catch-up gaps naturally
+    // without needing an external pause, and pausing on every sync event would stall block
+    // production whenever a peer momentarily reports a higher head.
+    syncControllerManager.onBeaconSyncComplete { protocolStarter.start() }
     start("Sync Service") { syncControllerManager.start().get() }
     start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
@@ -220,9 +255,14 @@ class MaruApp(
           p2pNetwork = p2pNetwork,
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
-          syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
           payloadValidationEnabled = config.validatorElNode!!.payloadValidationEnabled,
+          onBlockTimerFired = { blockNumber -> consensusMetrics?.recordTimerFire(blockNumber) },
+          onMessageReceived = { msgCode, seqNum -> consensusMetrics?.recordMessageReceived(msgCode, seqNum) },
+          onBlockMined = { sealedBlock ->
+            consensusMetrics?.recordBlockCommitted(sealedBlock)
+            onBlockCommitted?.invoke(sealedBlock)
+          },
         )
       } else {
         QbftFollowerFactory(
@@ -245,7 +285,7 @@ class MaruApp(
         timerFactory = timerFactory,
       )
     val protocolStarter =
-      ProtocolStarter.create(
+      ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
         protocolFactory =
           OmniProtocolFactory(
@@ -253,7 +293,6 @@ class MaruApp(
             difficultyAwareQbftFactory = difficultyAwareQbftFactory,
           ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-        syncStatusProvider = syncStatusProvider,
         forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,

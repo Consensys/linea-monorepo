@@ -13,8 +13,15 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftGossiper
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 
 /**
- * Gossiper that only rebroadcasts messages from the future message buffer since these may have been discarded.
- * Since we are using libp2p with topics there is no rebroadcasting the current messages.
+ * Gossiper for libp2p-based QBFT consensus.
+ *
+ * This implementation is intentionally a no-op for all messages:
+ * - Non-replayed messages (locally created): Besu's round/height manager calls
+ *   [P2PValidatorMulticaster.send] directly when creating PROPOSE/PREPARE/COMMIT messages.
+ *   LibP2P flood-publish handles propagation to peers.
+ * - Replayed messages (drained from the future buffer): these were received from P2P peers and
+ *   were already propagated by libp2p at that time. Their content is still in libp2p's seen
+ *   cache, so re-publishing them would fail with MessageAlreadySeenException.
  */
 class QbftGossiper(
   val p2PValidatorMulticaster: P2PValidatorMulticaster,

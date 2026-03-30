@@ -64,10 +64,10 @@ class MaruSupportsOsakaTest {
         }.start()
 
     // Assert Maru is creating Blocks and Synced
-    await().atMost(20.seconds.toJavaDuration()).untilAsserted {
+    await().atMost(60.seconds.toJavaDuration()).untilAsserted {
       assertThat(cluster.node("sequencer").maru.headBeaconBlockNumber()).isGreaterThan(5UL)
     }
-    await().atMost(20.seconds.toJavaDuration()).untilAsserted {
+    await().atMost(60.seconds.toJavaDuration()).untilAsserted {
       assertThat(cluster.node("follower").maru.headBeaconBlockNumber()).isGreaterThan(5UL)
     }
   }

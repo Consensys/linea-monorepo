@@ -20,13 +20,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * Return the receiver object for a CallableReference.
  * It does not work for regular lambdas, as they do not have a receiver object.
  */
-private fun findReceiverObjRef(subscriberMethodRef: Any): Any? {
-  return if (subscriberMethodRef is CallableReference) {
-    return subscriberMethodRef.boundReceiver
+private fun findReceiverObjRef(subscriberMethodRef: Any): Any? =
+  if (subscriberMethodRef is CallableReference) {
+    subscriberMethodRef.boundReceiver
   } else {
     null
   }
-}
 
 @OptIn(ExperimentalReflectionOnLambdas::class)
 private fun <T> getSubscriberId(subscriber: (T) -> Any?): String {

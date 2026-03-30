@@ -44,7 +44,6 @@ import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
-import maru.test.util.NetworkUtil.findFreePort
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.tuweni.bytes.Bytes32
@@ -102,8 +101,6 @@ class CLSyncServiceImplTest {
     }
   }
 
-  private var sourceNodePort: UInt = 0u
-  private var targetNodePort: UInt = 0u
   private val synced = AtomicBoolean(false)
   private lateinit var signatureAlgorithm: SignatureAlgorithm
   private lateinit var keypair: KeyPair
@@ -137,13 +134,11 @@ class CLSyncServiceImplTest {
     targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
     sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
-    sourceNodePort = findFreePort()
-    targetNodePort = findFreePort()
     targetP2pNetwork =
       createNetwork(
         targetBeaconChain,
         targetNodeKey,
-        targetNodePort,
+        0u,
         InMemoryP2PState(),
         JvmTimerFactory(),
       )
@@ -151,7 +146,7 @@ class CLSyncServiceImplTest {
       createNetwork(
         sourceBeaconChain,
         sourceNodeKey,
-        sourceNodePort,
+        0u,
         InMemoryP2PState(),
         JvmTimerFactory(),
       )
@@ -181,7 +176,7 @@ class CLSyncServiceImplTest {
     try {
       targetP2pNetwork.start().get()
       sourceP2pNetwork.start().get()
-      targetP2pNetwork.addStaticPeer(createPeerAddress(sourceNodePort))
+      targetP2pNetwork.addStaticPeer(createPeerAddress(sourceP2pNetwork.port))
 
       awaitUntilAsserted(timeout = 30L, timeUnit = TimeUnit.SECONDS) {
         assertNetworkHasPeers(

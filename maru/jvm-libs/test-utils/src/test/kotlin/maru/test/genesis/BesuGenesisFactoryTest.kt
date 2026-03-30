@@ -10,7 +10,7 @@ package maru.test.genesis
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlin.random.Random
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
@@ -20,7 +20,6 @@ import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 import org.assertj.core.api.Assertions
-import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test

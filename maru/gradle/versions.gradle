@@ -175,12 +175,13 @@ dependencyManagement {
     dependency "org.hyperledger.besu.internal:besu-plugins-rocksdb:$besuVersion"
 
     dependency "com.michael-bull.kotlin-result:kotlin-result:1.1.16"
+    dependency 'org.jetbrains.kotlinx:kotlinx-datetime:0.7.0'
 
     imports {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20251114145306"
+    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20260327160734"
 
 
     dependency "build.linea.internal:metrics:$lineaPackagesVersion"

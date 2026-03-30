@@ -23,6 +23,13 @@ class QbftEventMultiplexer(
 ) {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
+  /**
+   * Optional observer called immediately when BLOCK_TIMER_EXPIRY fires, before the event is
+   * dispatched to the QBFT state machine. Parameters: (blockNumber).
+   * Intended for benchmarking/testing — the callback implementer captures timestamps themselves.
+   */
+  var onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null
+
   fun handleEvent(event: BftEvent) {
     try {
       log.trace("Received event type: {}, event: {},", event.type, event)
@@ -36,7 +43,9 @@ class QbftEventMultiplexer(
         }
 
         BftEvents.Type.BLOCK_TIMER_EXPIRY -> {
-          eventHandler.handleBlockTimerExpiry(event as BlockTimerExpiry)
+          val timerExpiry = event as BlockTimerExpiry
+          onBlockTimerFired?.invoke(timerExpiry.roundIdentifier.sequenceNumber)
+          eventHandler.handleBlockTimerExpiry(timerExpiry)
         }
 
         BftEvents.Type.MESSAGE -> {

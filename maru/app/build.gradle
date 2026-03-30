@@ -45,12 +45,14 @@ dependencies {
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
+  implementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   implementation("org.hyperledger.besu.internal:besu-metrics-core")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("tech.pegasys.teku.internal:p2p")
   implementation("tech.pegasys.teku.internal:eth2")
   implementation ("tech.pegasys.discovery:discovery")
 
+  integrationTestImplementation 'org.jetbrains.kotlinx:kotlinx-datetime'
   integrationTestImplementation(project(":jvm-libs:test-utils"))
   integrationTestImplementation(testFixtures(project(":p2p")))
   integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"

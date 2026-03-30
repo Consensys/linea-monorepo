@@ -48,6 +48,7 @@ dependencies {
   implementation "build.linea.internal:long-running-service"
 
   implementation 'tech.pegasys.discovery:discovery'
+  implementation 'org.jetbrains.kotlinx:kotlinx-datetime'
 
   implementation(project(":core"))
 

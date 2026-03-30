@@ -340,7 +340,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       validatorELNodeEngineApiWeb3JClient = engineApiWeb3jClient,
       apiServer = apiServer,
       syncControllerManager = syncControllerImpl,
-      syncStatusProvider = syncControllerImpl,
       timerFactory = timerFactory,
     )
   }
@@ -364,15 +363,21 @@ class MaruAppFactory : MaruAppFactoryCreator {
     ): FinalizationProvider =
       config.linea
         ?.let { lineaConfig ->
+          val web3jClient =
+            createWeb3jHttpClient(
+              rpcUrl = lineaConfig.l1EthApiEndpoint.endpoint.toString(),
+              log = LogManager.getLogger("clients.l1.eth.ftx"),
+            )
           val contractClient =
             overridingLineaContractClient
               ?: Web3JLineaRollupSmartContractClientReadOnly(
-                web3j =
-                  createWeb3jHttpClient(
-                    rpcUrl = lineaConfig.l1EthApiEndpoint.endpoint.toString(),
-                    log = LogManager.getLogger("maru.clients.l1.linea"),
-                  ),
+                web3j = web3jClient,
                 contractAddress = lineaConfig.contractAddress.encodeHex(),
+                ethLogsClient =
+                  createEthApiClient(
+                    web3jClient = web3jClient,
+                    vertx = vertx,
+                  ),
                 log = LogManager.getLogger("maru.clients.l1.linea"),
               )
           val l2Endpoint = lineaConfig.l2EthApiEndpoint
@@ -458,11 +463,13 @@ class MaruAppFactory : MaruAppFactoryCreator {
 
     private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
       when (config) {
-        is SyncingConfig.SyncTargetSelection.Highest ->
+        is SyncingConfig.SyncTargetSelection.Highest -> {
           HighestHeadTargetSelector()
+        }
 
-        is SyncingConfig.SyncTargetSelection.MostFrequent ->
+        is SyncingConfig.SyncTargetSelection.MostFrequent -> {
           MostFrequentHeadTargetSelector(config.peerChainHeightGranularity)
+        }
       }
 
     private fun getOrGeneratePrivateKey(privateKeyPath: Path): ByteArray {

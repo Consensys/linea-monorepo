@@ -41,6 +41,7 @@ import maru.consensus.state.StateTransitionImpl
 import maru.consensus.validation.BeaconBlockValidatorFactoryImpl
 import maru.core.BeaconState
 import maru.core.Protocol
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.crypto.Hashing
 import maru.crypto.SecpCrypto
@@ -86,6 +87,12 @@ class QbftValidatorFactory(
   private val allowEmptyBlocks: Boolean,
   private val forksSchedule: ForksSchedule,
   private val payloadValidationEnabled: Boolean,
+  /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
+  private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
+  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
+  /** Optional: called when a block is committed by the QBFT consensus (mined). */
+  private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
@@ -104,20 +111,21 @@ class QbftValidatorFactory(
     val proposerSelector = ProposerSelectorImpl
     val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
     val localValidator = Validator(localAddress.toArray())
+    val prevRandaoProvider =
+      PrevRandaoProviderImpl(
+        signer = Signing.ULongSigner(nodeKey),
+        hasher = Hashing::keccak,
+      )
     val sealedBeaconBlockImporter =
       createSealedBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
         beaconChain = beaconChain,
-        proposerSelector = proposerSelector,
-        localNodeIdentity = localValidator,
         stateTransition = stateTransition,
         finalizationStateProvider = finalizationStateProvider,
-        prevRandaoProvider =
-          PrevRandaoProviderImpl(
-            signer = Signing.ULongSigner(nodeKey),
-            hasher = Hashing::keccak,
-          ),
+        prevRandaoProvider = prevRandaoProvider,
         feeRecipient = qbftOptions.feeRecipient,
+        localValidator = localValidator,
+        proposerSelector = proposerSelector,
       )
 
     val qbftBlockCreatorFactory =
@@ -127,16 +135,9 @@ class QbftValidatorFactory(
         validatorProvider = validatorProvider,
         beaconChain = beaconChain,
         finalizationStateProvider = finalizationStateProvider,
-        prevRandaoProvider =
-          PrevRandaoProviderImpl(
-            signer = Signing.ULongSigner(nodeKey),
-            hasher = Hashing::keccak,
-          ),
+        prevRandaoProvider = prevRandaoProvider,
         feeRecipient = qbftOptions.feeRecipient,
-        eagerQbftBlockCreatorConfig =
-          EagerQbftBlockCreator.Config(
-            qbftOptions.minBlockBuildTime,
-          ),
+        eagerQbftBlockCreatorConfig = EagerQbftBlockCreator.Config(qbftOptions.minBlockBuildTime),
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, qbftOptions)
@@ -148,7 +149,7 @@ class QbftValidatorFactory(
       if (protocolConfig.validatorSet.size == 1) {
         ConstantRoundTimeExpiryCalculator((roundExpiry))
       } else {
-        LinearRoundTimeExpiryCalculator(roundExpiry)
+        LinearRoundTimeExpiryCalculator(roundExpiry, qbftOptions.roundExpiryCoefficient)
       }
     val roundTimer =
       RoundTimer(
@@ -173,11 +174,14 @@ class QbftValidatorFactory(
 
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
     minedBlockObservers.subscribe { qbftBlock ->
-      newBlockHandler.handleSealedBlock(qbftBlock.toSealedBeaconBlock())
+      val sealedBlock = qbftBlock.toSealedBeaconBlock()
+      newBlockHandler.handleSealedBlock(sealedBlock)
       bftEventQueue.add(QbftNewChainHead(qbftBlock.header))
+      onBlockMined?.invoke(sealedBlock)
     }
 
-    val blockImporter = QbftBlockImporterAdapter(sealedBeaconBlockImporter)
+    val blockImporter =
+      QbftBlockImporterAdapter(sealedBeaconBlockImporter)
 
     val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter(stateTransition)
@@ -247,9 +251,19 @@ class QbftValidatorFactory(
         /* blockEncoder = */ blockCodec,
       )
 
-    val eventMultiplexer = QbftEventMultiplexer(qbftController)
+    val eventMultiplexer =
+      QbftEventMultiplexer(qbftController).also {
+        it.onBlockTimerFired = onBlockTimerFired
+      }
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
-    val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
+    val eventQueueExecutor =
+      Executors.newSingleThreadExecutor(
+        Thread
+          .ofPlatform()
+          .name("qbft-event-loop-${localAddress.toHexString().takeLast(8)}")
+          .daemon(true)
+          .factory(),
+      )
 
     val messageDecoder = MinimalQbftMessageDecoder(SecpCrypto)
     val qbftMessageProcessor =
@@ -259,7 +273,9 @@ class QbftValidatorFactory(
         localAddress = localAddress,
         bftEventQueue = bftEventQueue,
         messageDecoder = messageDecoder,
-      )
+      ).also {
+        it.onMessageReceived = onMessageReceived
+      }
 
     // Subscribe to QBFT messages from P2P network and validate before adding to event queue
     p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
@@ -274,26 +290,31 @@ class QbftValidatorFactory(
 
   private fun createSealedBeaconBlockImporter(
     executionLayerManager: ExecutionLayerManager,
-    proposerSelector: ProposerSelector,
-    localNodeIdentity: Validator,
     beaconChain: BeaconChain,
     stateTransition: StateTransition,
     finalizationStateProvider: FinalizationProvider,
     prevRandaoProvider: PrevRandaoProvider<ULong>,
     feeRecipient: ByteArray,
+    localValidator: Validator,
+    proposerSelector: ProposerSelector,
   ): SealedBeaconBlockImporter<ValidationResult> {
     val shouldBuildNextBlock =
-      { beaconState: BeaconState, roundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: ULong ->
-        // We shouldn't build next block if this fork ends
+      { beaconState: BeaconState, nextBlockRoundIdentifier: ConsensusRoundIdentifier, nextBlockTimestamp: ULong ->
+        // We shouldn't build next block if this fork ends.
         val nextForkTimestamp =
           forksSchedule.getNextForkByTimestamp(beaconState.beaconBlockHeader.timestamp)?.timestampSeconds
             ?: ULong.MAX_VALUE
         if (nextBlockTimestamp >= nextForkTimestamp) {
           false
         } else {
-          val nextProposerAddress =
-            proposerSelector.getProposerForBlock(beaconState, roundIdentifier).get().address
-          nextProposerAddress.contentEquals(localNodeIdentity.address)
+          // Build only if this node is the round-0 proposer for the next block.
+          // Round-change proposers (round 1+) are covered by EagerQbftBlockCreator which
+          // sends FCU and waits for the block to build before delegating to DelayedQbftBlockCreator.
+          val round0Proposer =
+            proposerSelector
+              .getProposerForBlock(beaconState, ConsensusRoundIdentifier(nextBlockRoundIdentifier.sequenceNumber, 0))
+              .get() // ProposerSelectorImpl is synchronous (pure computation)
+          localValidator.address.contentEquals(round0Proposer.address)
         }
       }
     val beaconBlockImporter =

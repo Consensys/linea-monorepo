@@ -29,9 +29,17 @@ fun interface BeaconBlockImporter {
   ): SafeFuture<*>
 }
 
+/**
+ * A block importer that calls engine_newPayload before delegating to [delegate] for the
+ * engine_forkchoiceUpdated (setHead) step. This is the "full" follower import path used for
+ * EL nodes that have not yet validated the block themselves.
+ *
+ * Decorator pattern: wraps any [NewBlockHandler]<[ValidationResult]> and prepends the
+ * newPayload step. The default [create] factory composes it with [SetHeadOnlyBlockImporter].
+ */
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
-  private val finalizationStateProvider: FinalizationProvider,
+  private val delegate: NewBlockHandler<ValidationResult>,
   private val importerName: String,
 ) : NewBlockHandler<ValidationResult> {
   companion object {
@@ -42,7 +50,12 @@ class FollowerBeaconBlockImporter(
     ): NewBlockHandler<ValidationResult> =
       FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
-        finalizationStateProvider = finalizationStateProvider,
+        delegate =
+          SetHeadOnlyBlockImporter(
+            executionLayerManager = executionLayerManager,
+            finalizationStateProvider = finalizationStateProvider,
+            importerName = importerName,
+          ),
         importerName = importerName,
       )
   }
@@ -61,16 +74,34 @@ class FollowerBeaconBlockImporter(
           e,
         )
       }.thenCompose {
-        val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
-        executionLayerManager
-          .setHead(
-            headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-            safeHash = finalizationState.safeBlockHash,
-            finalizedHash = finalizationState.finalizedBlockHash,
-          ).thenApply {
-            log.debug("Imported elBlockNumber={} to {}", executionPayload.blockNumber, importerName)
-            ValidationResult.fromForkChoiceUpdatedResult(it)
-          }
+        delegate.handleNewBlock(beaconBlock)
+      }
+  }
+}
+
+/**
+ * A block importer that only calls engine_forkchoiceUpdated (setHead) without calling engine_newPayload.
+ * Used when engine_newPayload was already called during block validation (e.g., PROPOSAL validation
+ * in the QBFT follower path), so calling it again during block import would be redundant.
+ */
+class SetHeadOnlyBlockImporter(
+  private val executionLayerManager: ExecutionLayerManager,
+  private val finalizationStateProvider: FinalizationProvider,
+  private val importerName: String,
+) : NewBlockHandler<ValidationResult> {
+  private val log = LogManager.getLogger(this.javaClass)
+
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ValidationResult> {
+    val executionPayload = beaconBlock.beaconBlockBody.executionPayload
+    val finalizationState = finalizationStateProvider(beaconBlock.beaconBlockBody)
+    return executionLayerManager
+      .setHead(
+        headHash = executionPayload.blockHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+      ).thenApply {
+        log.debug("Set head for elBlockNumber={} on {}", executionPayload.blockNumber, importerName)
+        ValidationResult.fromForkChoiceUpdatedResult(it)
       }
   }
 }

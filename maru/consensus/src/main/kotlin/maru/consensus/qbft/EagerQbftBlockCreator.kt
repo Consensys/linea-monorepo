@@ -52,7 +52,6 @@ class EagerQbftBlockCreator(
         ?.beaconBlock
         ?: throw IllegalStateException("Parent block not found in the database")
     val finalizedState = finalizationStateProvider(parentBeaconBlock.beaconBlockBody)
-
     val headHash =
       // If the parent block is genesis, we use the latest EL block hash as the head hash to start the block building
       if (parentBeaconBlock.beaconBlockHeader.number == 0UL) {
