@@ -100,7 +100,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag sdk-core release
-        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        if: ${{ !inputs.dry_run }}
         env:
           RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
@@ -181,7 +181,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag sdk-viem release
-        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        if: ${{ !inputs.dry_run }}
         env:
           RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
