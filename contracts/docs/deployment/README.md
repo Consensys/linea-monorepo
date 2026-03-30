@@ -70,6 +70,8 @@ The default flow continues to use **`DEPLOYER_PRIVATE_KEY`** (or the configured 
 
 `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` are **mutually exclusive**. If both are set, Hardhat errors immediately instead of guessing which signer to use.
 
+The signer UI under `contracts/signer-ui/` is local operator tooling launched by Hardhat. It is not a published package or an importable library.
+
 To sign and send transactions from a **browser wallet** (MetaMask, Rabby, etc.) instead of putting a private key in the environment:
 
 ```shell

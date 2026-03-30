@@ -12,7 +12,7 @@ Do **not** follow this guide for day-to-day use. Operators should leave `HARDHAT
 |------|----------------|
 | Bridge + session logic | `contracts/scripts/hardhat/signer-ui-bridge.ts` |
 | Shared signer-mode helper | `contracts/scripts/hardhat/signer-mode.ts` |
-| Next.js app | `contracts/signer-ui/` (package `@consensys/linea-contract-signer-ui`) |
+| Next.js app | `contracts/signer-ui/` (local private Next.js app) |
 | Hardhat hook | `subtask(TASK_DEPLOY_RUN_DEPLOY)` in `contracts/hardhat.config.ts` |
 | Config branch | `deployerAccounts()` UI branch in `contracts/hardhat.config.ts` |
 | Deploy script wrappers | `withSignerUiSession`, `getUiSigner`, `setUiTransactionContext` across `contracts/deploy/*.ts` |

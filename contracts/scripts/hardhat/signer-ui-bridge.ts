@@ -145,8 +145,6 @@ type SignerUiContext = {
 };
 
 const SIGNER_UI_DIR = resolve(__dirname, "../../signer-ui");
-const SIGNER_UI_PACKAGE_NAME = "@consensys/linea-contract-signer-ui";
-const MONOREPO_ROOT = resolve(SIGNER_UI_DIR, "../..");
 const requireFromSignerUiBridge = createRequire(__filename);
 const LOCALHOST = "127.0.0.1";
 const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
@@ -852,23 +850,14 @@ class SignerUiSession {
     clearNextDevSingletonLock(SIGNER_UI_DIR);
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 400));
 
-    // Run from monorepo root + filter: signer-ui often has no local node_modules under pnpm.
+    // Launch the local signer-ui app by directory. It remains a private workspace app for deps/tooling,
+    // but runtime does not depend on a workspace package name.
     // Never use "pipe" without draining: Next/Turbopack logs fill buffers and the child blocks before listening.
     this.uiProcess = spawn(
       "pnpm",
-      [
-        "--filter",
-        SIGNER_UI_PACKAGE_NAME,
-        "exec",
-        "next",
-        "dev",
-        "--hostname",
-        LOCALHOST,
-        "--port",
-        String(this.uiPort),
-      ],
+      ["--dir", SIGNER_UI_DIR, "exec", "next", "dev", "--hostname", LOCALHOST, "--port", String(this.uiPort)],
       {
-        cwd: MONOREPO_ROOT,
+        cwd: SIGNER_UI_DIR,
         env: { ...process.env },
         stdio: process.env.HARDHAT_SIGNER_UI_DEBUG === "true" ? "inherit" : "ignore",
       },

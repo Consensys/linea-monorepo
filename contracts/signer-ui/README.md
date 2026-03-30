@@ -1,10 +1,12 @@
 # Hardhat signer UI (browser signing)
 
-When `HARDHAT_SIGNER_UI=true`, Hardhat deploy scripts can route transactions through this Next.js app so you approve them in a browser wallet (MetaMask, Rabby, etc.) instead of putting `DEPLOYER_PRIVATE_KEY` in the environment.
+When `HARDHAT_SIGNER_UI=true`, Hardhat deploy scripts can route transactions through this local Next.js app so you approve them in a browser wallet (MetaMask, Rabby, etc.) instead of putting `DEPLOYER_PRIVATE_KEY` in the environment.
 
 `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` are mutually exclusive. If both are set, Hardhat fails immediately rather than guessing between browser signing and private-key signing.
 
-The Hardhat side (`contracts/scripts/hardhat/signer-ui-bridge.ts`) starts a **local HTTP bridge** (session API + CORS), spawns **`pnpm exec next dev`** for this package on a free port, prints/opens the UI URL, and blocks until each transaction is **verified on-chain** against the pending request.
+The Hardhat side (`contracts/scripts/hardhat/signer-ui-bridge.ts`) starts a **local HTTP bridge** (session API + CORS), launches **`pnpm --dir contracts/signer-ui exec next dev`** on a free port, prints/opens the UI URL, and blocks until each transaction is **verified on-chain** against the pending request.
+
+This app is local operator tooling for the contracts package. It is not intended to be published, imported, or consumed as a standalone package.
 
 ## Prerequisites
 
