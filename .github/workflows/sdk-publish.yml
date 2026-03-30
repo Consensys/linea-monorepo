@@ -106,8 +106,20 @@ jobs:
         run: |
           VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
           TAG="sdk-core-v${VERSION}"
+
+          REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+          if [[ -n "$REMOTE_SHA" ]]; then
+            if [[ "$REMOTE_SHA" == "$RELEASE_SHA" ]]; then
+              echo "::notice::Tag $TAG already exists at $RELEASE_SHA, skipping"
+              exit 0
+            else
+              echo "::error::Tag $TAG already exists but points at $REMOTE_SHA, expected $RELEASE_SHA. Resolve this tag collision manually."
+              exit 1
+            fi
+          fi
+
           git tag "$TAG" "$RELEASE_SHA"
-          git push origin "$TAG" 2>/dev/null || echo "::notice::Tag $TAG already exists"
+          git push origin "$TAG"
 
   publish-sdk-viem:
     needs: [guard, publish-sdk-core]
@@ -175,8 +187,20 @@ jobs:
         run: |
           VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
           TAG="sdk-viem-v${VERSION}"
+
+          REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+          if [[ -n "$REMOTE_SHA" ]]; then
+            if [[ "$REMOTE_SHA" == "$RELEASE_SHA" ]]; then
+              echo "::notice::Tag $TAG already exists at $RELEASE_SHA, skipping"
+              exit 0
+            else
+              echo "::error::Tag $TAG already exists but points at $REMOTE_SHA, expected $RELEASE_SHA. Resolve this tag collision manually."
+              exit 1
+            fi
+          fi
+
           git tag "$TAG" "$RELEASE_SHA"
-          git push origin "$TAG" 2>/dev/null || echo "::notice::Tag $TAG already exists"
+          git push origin "$TAG"
 
   notify:
     needs: [publish-sdk-core, publish-sdk-viem]
