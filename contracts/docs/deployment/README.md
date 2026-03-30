@@ -64,25 +64,42 @@ Dependent on which network you are using, the corresponding API Key or RPC URL m
 
 <br />
 
-## UI-backed signing
+## Browser wallet signing (`DEPLOY_WITH_UI`)
 
-The default deployment flow continues to use `DEPLOYER_PRIVATE_KEY`.
+The default deployment flow continues to use **`DEPLOYER_PRIVATE_KEY`** (or the configured named account). No UI is involved unless you opt in.
 
-If you prefer to sign and send deployment transactions from a browser wallet instead of passing a private key in the CLI or `.env`, set:
+To sign and send deployment transactions from a **browser wallet** (MetaMask, Rabby, etc.) instead of putting a private key in the environment:
 
 ```shell
 DEPLOY_WITH_UI=true npx hardhat deploy --network sepolia --tags <contract tags, comma delimited list>
 ```
 
-Notes:
+### Behaviour summary
 
-- `DEPLOY_WITH_UI=true` is opt-in. If it is not set, deployments continue to use the existing private-key flow.
-- The contracts deploy flow starts a short-lived local UI session for each deploy file, so chained `--tags A,B,C` runs do not reuse the same signing session across files.
-- The browser UI will prompt for wallet connection, chain switching, and transaction approval.
-- Verification still runs after deployment exactly as before.
-- Raw pre-signed system-contract scripts such as `EIP2935SystemContract` and `EIP4788SystemContract` do not use the browser signer flow because they broadcast fixed serialized transactions instead of requesting a wallet signature.
+| Topic | Details |
+|-------|---------|
+| **Opt-in** | Only `DEPLOY_WITH_UI=true` enables the UI. Any other value or unset → normal private-key / named-account flow. |
+| **Chained `--tags`** | One **Hardhat deploy run** uses **one** browser session for the whole tag list: local HTTP bridge + Next.js app, sequential deploy scripts, session ends when the run finishes (not per-file restarts). |
+| **Accounts in config** | With UI mode, `hardhat.config.ts` passes an empty `accounts` array for the network so Hardhat does not load `DEPLOYER_PRIVATE_KEY`; the wallet you connect in the browser is the deployer. |
+| **Security** | The bridge requires a per-run session token (embedded in the UI URL). Transactions are checked against the pending request before Hardhat continues. |
+| **After the run** | By default the **Next.js dev server keeps running** so the tab stays usable (history in session storage). Set `DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true` if you want Hardhat to tear down Next.js when the bridge closes (e.g. automation). |
+| **Verification** | Unchanged: `VERIFY_CONTRACT` and explorer keys behave as for private-key deploys. |
+| **Limitations** | Scripts that broadcast **fixed pre-signed** transactions (e.g. some L2 predeploy / system-contract paths) do not use the browser signer. OpenZeppelin upgradeable deploys may reuse implementation/ProxyAdmin from `.openzeppelin/`, so you may see fewer wallet prompts than “implementation + admin + proxy”. |
 
-For a **local stack walkthrough** (ports, L1 chain id `31648428`, example `TestERC20` command), see [deploy-ui/README.md](../../deploy-ui/README.md).
+### Environment variables (UI)
+
+| Variable | Effect |
+|----------|--------|
+| `DEPLOY_WITH_UI=true` | Enable browser signing. |
+| `DEPLOY_WITH_UI_OPEN_BROWSER=false` | Print the UI URL only; do not open a tab automatically. |
+| `DEPLOY_WITH_UI_DEBUG=true` | Forward `next dev` logs to the terminal. |
+| `DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true` | Stop the Next.js child process when the HTTP bridge closes (default is to leave it running). |
+
+### Further reading
+
+- **Operator guide** (ports, `zkevm_dev`, `TestERC20` example): [deploy-ui/README.md](../../deploy-ui/README.md)
+- **Chained tag runs**: [chained-deployments.md](chained-deployments.md)
+- **Removing this feature** (repo maintainers): [deploy-ui-removal.md](deploy-ui-removal.md)
 
 <br />
 
@@ -139,3 +156,7 @@ For a **local stack walkthrough** (ports, L1 chain id `31648428`, example `TestE
 ### Chained Deployments
 
 Multi-contract deployment sequences: [chained-deployments.md](chained-deployments.md)
+
+### Optional deploy UI maintenance
+
+How to fully remove the browser-signing stack from the repo: [deploy-ui-removal.md](deploy-ui-removal.md)

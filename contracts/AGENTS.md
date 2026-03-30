@@ -129,6 +129,13 @@ Named imports only. Explicit inheritance of key ancestors. Blank line after impo
 - Run `pnpm -F contracts run lint:fix` before committing any Solidity changes
 - For detailed rules, see `.agents/skills/developing-smart-contracts/` and `.cursor/rules/smart-contract-guidelines/`
 
+## Deploy scripts and optional browser UI (`DEPLOY_WITH_UI`)
+
+- **Default:** deployments use **`DEPLOYER_PRIVATE_KEY`** (and `namedAccounts`) like any standard Hardhat project.
+- **Opt-in UI:** set `DEPLOY_WITH_UI=true` to sign in a browser via the local Next.js app under `contracts/deploy-ui/`, driven by `contracts/scripts/hardhat/deployment-ui.ts`. Deploy scripts use `withDeploymentUiSession`, `getDeploymentSigner`, and helpers in `scripts/hardhat/utils.ts` that call `setDeploymentUiNextTransactionContext` for richer UI labels.
+- **Docs:** [contracts/docs/deployment/README.md](docs/deployment/README.md) (overview), [contracts/deploy-ui/README.md](deploy-ui/README.md) (operator walkthrough), [contracts/docs/deployment/deploy-ui-removal.md](docs/deployment/deploy-ui-removal.md) (how to delete the feature).
+- **Lint:** `contracts/eslint.config.mjs` ignores `deploy-ui/**` so Next’s `.next` output is not parsed by the contracts ESLint project.
+
 ## `local-deployments-artifacts/`
 
 Hardhat compilation artifacts consumed by the E2E test pipeline (`e2e/scripts/generateAbi.ts`).
