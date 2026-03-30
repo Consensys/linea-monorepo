@@ -33,10 +33,16 @@ let attempt: typeof import("@consensys/linea-shared-utils").attempt;
 let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
 let weiToGweiNumber: typeof import("@consensys/linea-shared-utils").weiToGweiNumber;
 let YieldReportingProcessor: typeof import("../YieldReportingProcessor.js").YieldReportingProcessor;
+let attemptMock: jest.MockedFunction<typeof attempt>;
+let msToSecondsMock: jest.MockedFunction<typeof msToSeconds>;
+let weiToGweiNumberMock: jest.MockedFunction<typeof weiToGweiNumber>;
 
 beforeAll(async () => {
   ({ attempt, msToSeconds, weiToGweiNumber } = await import("@consensys/linea-shared-utils"));
   ({ YieldReportingProcessor } = await import("../YieldReportingProcessor.js"));
+  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
+  msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
+  weiToGweiNumberMock = weiToGweiNumber as jest.MockedFunction<typeof weiToGweiNumber>;
 });
 
 // Semantic constants
@@ -113,9 +119,6 @@ describe("YieldReportingProcessor", () => {
   let yieldExtension: jest.Mocked<ILineaRollupYieldExtension<TransactionReceipt>>;
   let beaconClient: jest.Mocked<IBeaconChainStakingClient>;
   let vaultHubClient: jest.Mocked<IVaultHub<TransactionReceipt>>;
-  const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
-  const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
-  const weiToGweiNumberMock = weiToGweiNumber as jest.MockedFunction<typeof weiToGweiNumber>;
 
   beforeEach(() => {
     jest.clearAllMocks();

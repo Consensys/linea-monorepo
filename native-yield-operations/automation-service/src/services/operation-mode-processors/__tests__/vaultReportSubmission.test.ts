@@ -19,13 +19,13 @@ jest.mock("@consensys/linea-shared-utils", () => {
 
 let attempt: typeof import("@consensys/linea-shared-utils").attempt;
 let submitVaultReportIfNotFresh: typeof import("../vaultReportSubmission.js").submitVaultReportIfNotFresh;
+let attemptMock: jest.MockedFunction<typeof attempt>;
 
 beforeAll(async () => {
   ({ attempt } = await import("@consensys/linea-shared-utils"));
   ({ submitVaultReportIfNotFresh } = await import("../vaultReportSubmission.js"));
+  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
 });
-
-const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
 
 // Semantic constants
 const VAULT_ADDRESS = "0x2222222222222222222222222222222222222222" as Address;

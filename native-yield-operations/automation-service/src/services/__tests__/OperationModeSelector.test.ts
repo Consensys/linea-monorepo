@@ -113,8 +113,6 @@ describe("OperationModeSelector", () => {
     ossificationCompleteProcessor = {
       process: jest.fn(),
     } as jest.Mocked<IOperationModeProcessor>;
-
-    waitMock = wait as jest.MockedFunction<typeof wait>;
     waitMock.mockResolvedValue(undefined);
   });
 

@@ -27,10 +27,14 @@ jest.mock("@consensys/linea-shared-utils", () => {
 let attempt: typeof import("@consensys/linea-shared-utils").attempt;
 let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
 let OssificationPendingProcessor: typeof import("../OssificationPendingProcessor.js").OssificationPendingProcessor;
+let attemptMock: jest.MockedFunction<typeof attempt>;
+let msToSecondsMock: jest.MockedFunction<typeof msToSeconds>;
 
 beforeAll(async () => {
   ({ attempt, msToSeconds } = await import("@consensys/linea-shared-utils"));
   ({ OssificationPendingProcessor } = await import("../OssificationPendingProcessor.js"));
+  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
+  msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
 });
 
 // Semantic constants
@@ -117,8 +121,6 @@ describe("OssificationPendingProcessor", () => {
   let lidoReportClient: jest.Mocked<ILidoAccountingReportClient>;
   let beaconClient: jest.Mocked<IBeaconChainStakingClient>;
   let vaultHubClient: jest.Mocked<IVaultHub<TransactionReceipt>>;
-  const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
-  const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
 
   const createProcessor = (shouldSubmitVaultReport: boolean = true) =>
     new OssificationPendingProcessor(
