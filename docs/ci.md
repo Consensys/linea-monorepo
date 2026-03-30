@@ -114,7 +114,7 @@ Fans out to a set of per-component test workflows in parallel. Each receives a b
 | lido-governance-monitor | `lido-governance-monitor-testing.yml` |
 | staterecovery | disabled (pending fixes) |
 
-After all component jobs finish, a `jacoco-report` job aggregates JVM coverage data (coordinator + linea-sequencer + staterecovery + transaction-exclusion-api) and uploads to Codecov under the `kotlin` flag.
+After all component jobs finish, a `jacoco-report` job aggregates JVM coverage data (`coordinator` + `linea-sequencer` + `staterecovery` + `transaction-exclusion-api`) and uploads to Codecov under the `kotlin` flag.
 
 ---
 
