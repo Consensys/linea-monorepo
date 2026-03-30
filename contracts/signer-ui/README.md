@@ -26,7 +26,8 @@ For chained tags, e.g. `--tags PlonkVerifier,LineaRollup,Timelock`, Hardhat keep
 - **Submitted transaction history** with tx hash, from/to, constructor/proxy context, and raw request JSON; stored in **session storage** so it survives closing the HTTP bridge.
 - **In-page anchors** `#signer-tx-<requestId>` after each successful submit; **Jump to** links and **Copy page link** for bookmarks.
 - **Proxy hints** (OpenZeppelin transparent / UUPS / beacon) when deploy helpers pass metadata from `contracts/scripts/hardhat/utils.ts`.
-- After Hardhat finishes, the **Next.js dev server usually keeps running** so the tab stays loaded; set `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` if you want Hardhat to stop Next.js when the bridge closes.
+- After a full **`hardhat deploy`** run (success or failure), Hardhat **stops the Next.js dev server by default** so the process exits cleanly; the browser tab stays open with history in session storage. Set `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` to leave Next running (legacy behavior). For **non-deploy** sessions (operational scripts, etc.), Next still runs unless you set `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true`.
+- The bridge sends a **terminal session outcome** (`complete` / `error`) before closing so the UI **stops polling** immediately instead of only noticing a dead bridge.
 
 ## Network: `zkevm_dev` (local L1)
 
@@ -81,7 +82,10 @@ npx hardhat deploy --network l2 --tags <YourL2Tag>
 | `HARDHAT_SIGNER_UI=true` | Enable browser signing. When unset or not `true`, scripts use `DEPLOYER_PRIVATE_KEY` / named accounts. |
 | `HARDHAT_SIGNER_UI_OPEN_BROWSER=false` | Do not auto-open a tab; open the URL from the terminal. |
 | `HARDHAT_SIGNER_UI_DEBUG=true` | Forward `next dev` stdout/stderr to the terminal. |
-| `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` | Stop the Next.js child when the HTTP bridge closes (default: leave Next.js running). |
+| `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` | After `hardhat deploy`, **keep** the Next.js dev server running when the bridge closes (default is to stop Next). |
+| `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` | For **non-deploy** signer UI sessions, stop the Next.js child when the HTTP bridge closes. |
+| `HARDHAT_SIGNER_UI_SHUTDOWN_DRAIN_MS` | Optional. Milliseconds to allow the UI to poll terminal `sessionOutcome` before the bridge closes after deploy (default `1500`). |
+| `HARDHAT_SIGNER_UI_SHUTDOWN_GRACE_MS` | Optional. Milliseconds after the bridge closes before SIGTERM on Next when stopping it (default `2000`). |
 
 ## Manual UI dev (optional)
 

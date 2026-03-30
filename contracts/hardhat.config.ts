@@ -42,8 +42,10 @@ const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000
 
 /**
  * `HARDHAT_SIGNER_UI=true` → no local keys (browser wallet via signer-ui bridge).
- * Otherwise require a non-zero `DEPLOYER_PRIVATE_KEY`. All-zero placeholders are rejected by
- * LocalAccountsProvider / @ethereumjs/util (`Expected valid bigint: 0 < bigint < curve.n`).
+ * If `DEPLOYER_PRIVATE_KEY` is unset → `[]` so `hardhat compile`, `clean`, etc. work without secrets
+ * (same as typical Hardhat: RPC-only until you sign). Deploy/sign on a live network then needs a key
+ * or `HARDHAT_SIGNER_UI=true`. If a key *is* set, it must be valid non-zero hex (all-zero breaks
+ * LocalAccountsProvider / @ethereumjs/util).
  */
 function deployerAccounts(): string[] {
   if (process.env.HARDHAT_SIGNER_UI === "true") {
@@ -52,9 +54,7 @@ function deployerAccounts(): string[] {
 
   const raw = process.env.DEPLOYER_PRIVATE_KEY?.trim();
   if (!raw) {
-    throw new Error(
-      "DEPLOYER_PRIVATE_KEY is not set. Export a real private key, or set HARDHAT_SIGNER_UI=true to sign via the browser.",
-    );
+    return [];
   }
 
   const normalized = raw.startsWith("0x") ? raw : `0x${raw}`;

@@ -109,6 +109,23 @@ type SessionState = {
   batchRunActive: boolean;
   /** Comma-separated tags from `--tags`, if any. */
   batchTagsSummary: string | null;
+  /**
+   * Set just before the deploy batch closes the bridge so the UI can stop polling gracefully.
+   * `null` while the run is in progress.
+   */
+  sessionOutcome: "complete" | "error" | null;
+  /** Short Hardhat error message when `sessionOutcome === "error"`. */
+  outcomeMessage: string | null;
+};
+
+/** Options for `SignerUiSession.close` / internal `closeActiveSignerUiSession`. */
+type CloseSignerUiSessionOptions = {
+  /**
+   * When `true`, stop the Next.js dev child after closing the bridge.
+   * When `false`, never stop Next from this close.
+   * When omitted, use `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV === "true"`.
+   */
+  shutdownNextDev?: boolean;
 };
 
 type PendingTransaction = {
@@ -144,6 +161,11 @@ const HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER = "x-hardhat-signer-ui-session-toke
 const MAX_JSON_BODY_BYTES = 256 * 1024;
 const TX_LOOKUP_TIMEOUT_MS = 12_000;
 const TX_LOOKUP_INTERVAL_MS = 200;
+/** Time to allow the browser to poll terminal `sessionOutcome` before the bridge closes (deploy batch only). */
+const DEFAULT_SHUTDOWN_DRAIN_MS = 1500;
+/** After the bridge port closes, wait before SIGTERM on Next so the UI can observe connection loss first. */
+const DEFAULT_SHUTDOWN_GRACE_MS = 2000;
+const MAX_SESSION_OUTCOME_MESSAGE_CHARS = 500;
 
 let activeSession: SignerUiSession | undefined;
 
@@ -154,13 +176,46 @@ let activeSession: SignerUiSession | undefined;
 let signerUiHardhatDeployBatchActive = false;
 let signerUiHardhatDeployBatchTags: string | null = null;
 
-async function closeActiveSignerUiSession(): Promise<void> {
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+function parseNonNegativeIntEnv(name: string, defaultMs: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") {
+    return defaultMs;
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) {
+    return defaultMs;
+  }
+  return n;
+}
+
+function truncateSessionOutcomeMessage(message: string): string {
+  if (message.length <= MAX_SESSION_OUTCOME_MESSAGE_CHARS) {
+    return message;
+  }
+  return `${message.slice(0, MAX_SESSION_OUTCOME_MESSAGE_CHARS - 1)}…`;
+}
+
+function resolveShutdownNextDev(explicit?: boolean): boolean {
+  if (explicit === true) {
+    return true;
+  }
+  if (explicit === false) {
+    return false;
+  }
+  return shutdownNextDevWithBridge();
+}
+
+async function closeActiveSignerUiSession(options?: CloseSignerUiSessionOptions): Promise<void> {
   if (!activeSession) {
     return;
   }
 
   try {
-    await activeSession.close();
+    await activeSession.close(options);
   } finally {
     activeSession = undefined;
   }
@@ -688,11 +743,22 @@ class SignerUiSession {
   private walletResolvers: Array<(wallet: SessionWalletState) => void> = [];
   private walletRejectors: Array<(error: Error) => void> = [];
   private signer?: SignerUiSigner;
+  private sessionOutcome: "complete" | "error" | null = null;
+  private sessionOutcomeMessage: string | null = null;
 
   public constructor(context: SignerUiContext) {
     this.context = context;
     this.batchTagsSummary = context.batchTagsSummary;
     this.activeScriptContext = context.scriptContext;
+  }
+
+  /**
+   * Called by the deploy subtask after success or failure, before a drain delay and `close()`,
+   * so `/api/session` can report a terminal outcome to the browser.
+   */
+  public setTerminalSessionOutcome(outcome: "complete" | "error", message?: string): void {
+    this.sessionOutcome = outcome;
+    this.sessionOutcomeMessage = message ? truncateSessionOutcomeMessage(message) : null;
   }
 
   /** Called when each wrapped script starts (same session across a Hardhat deploy batch). */
@@ -791,7 +857,7 @@ class SignerUiSession {
     this.started = true;
   }
 
-  public async close(): Promise<void> {
+  public async close(options?: CloseSignerUiSessionOptions): Promise<void> {
     if (this.closed) {
       return;
     }
@@ -801,6 +867,7 @@ class SignerUiSession {
 
     const apiPort = this.serverPort;
     const nextDevPort = this.uiPort;
+    const shouldStopNext = resolveShutdownNextDev(options?.shutdownNextDev);
 
     if (this.server) {
       const server = this.server;
@@ -820,19 +887,18 @@ class SignerUiSession {
       }
     }
 
-    if (shutdownNextDevWithBridge()) {
+    if (shouldStopNext) {
+      await sleep(parseNonNegativeIntEnv("HARDHAT_SIGNER_UI_SHUTDOWN_GRACE_MS", DEFAULT_SHUTDOWN_GRACE_MS));
       await this.stopUiProcess();
       if (nextDevPort !== undefined) {
         killTcpListenersOnPort(nextDevPort);
       }
       removeNextDevLockFile(SIGNER_UI_DIR);
-      console.log(
-        "HARDHAT_SIGNER_UI: Next.js signer UI dev server stopped (HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true).",
-      );
+      console.log("HARDHAT_SIGNER_UI: Next.js signer UI dev server stopped.");
     } else {
       if (nextDevPort !== undefined) {
         console.log(
-          `HARDHAT_SIGNER_UI: HTTP bridge closed. Signer UI still at http://${LOCALHOST}:${nextDevPort} — tab stays open; set HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true to stop Next.js with Hardhat.`,
+          `HARDHAT_SIGNER_UI: HTTP bridge closed. Signer UI still at http://${LOCALHOST}:${nextDevPort} — tab stays open. Stop Next with HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true (non-deploy), or after deploy set HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true to keep Next running.`,
         );
       } else {
         console.log(
@@ -891,6 +957,8 @@ class SignerUiSession {
       scriptOrdinal: this.scriptOrdinal,
       batchRunActive: signerUiHardhatDeployBatchActive,
       batchTagsSummary: this.batchTagsSummary,
+      sessionOutcome: this.sessionOutcome,
+      outcomeMessage: this.sessionOutcomeMessage,
     };
   }
 
@@ -1291,6 +1359,13 @@ export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<Abstr
     return requireActiveSession().getSigner(hre.ethers.provider);
   }
 
+  const signers = await hre.ethers.getSigners();
+  if (signers.length === 0) {
+    throw new Error(
+      "No JSON-RPC account is configured for this network. Set DEPLOYER_PRIVATE_KEY (or your network accounts in hardhat.config), or set HARDHAT_SIGNER_UI=true to sign in the browser.",
+    );
+  }
+
   const { deployer } = await hre.getNamedAccounts();
   return await hre.ethers.getSigner(deployer);
 }
@@ -1389,15 +1464,35 @@ export async function signerUiHardhatDeployRunSubtaskAction(
   console.log(
     `HARDHAT_SIGNER_UI: one browser session for this entire deploy run${
       tagLabel ? ` (--tags ${tagLabel})` : ""
-    }. Scripts run sequentially; the HTTP bridge stops when the run completes (Next.js tab stays up unless HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true).`,
+    }. Scripts run sequentially; the bridge reports outcome then closes. Next.js stops after deploy unless HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true.`,
   );
+
+  let deployThrew = false;
+  let deployFailureMessage: string | undefined;
 
   try {
     return await runSuper(args, hre);
+  } catch (error: unknown) {
+    deployThrew = true;
+    deployFailureMessage = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     signerUiHardhatDeployBatchActive = false;
     signerUiHardhatDeployBatchTags = null;
-    await closeActiveSignerUiSession();
-    console.log("HARDHAT_SIGNER_UI: Hardhat deploy run complete.");
+
+    const session = activeSession;
+    if (session) {
+      session.setTerminalSessionOutcome(deployThrew ? "error" : "complete", deployFailureMessage);
+      await sleep(parseNonNegativeIntEnv("HARDHAT_SIGNER_UI_SHUTDOWN_DRAIN_MS", DEFAULT_SHUTDOWN_DRAIN_MS));
+    }
+
+    const shutdownNextDev = process.env.HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY !== "true";
+    await closeActiveSignerUiSession({ shutdownNextDev });
+
+    if (deployThrew) {
+      console.log("HARDHAT_SIGNER_UI: Hardhat deploy run failed — signer UI session closed.");
+    } else {
+      console.log("HARDHAT_SIGNER_UI: Hardhat deploy run complete.");
+    }
   }
 }

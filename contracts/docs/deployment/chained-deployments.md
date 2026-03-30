@@ -21,7 +21,7 @@ When `HARDHAT_SIGNER_UI=true` is set:
 - **Single session per `hardhat deploy` invocation** — Hardhat overrides the `deploy:runDeploy` subtask so the local HTTP bridge and Next.js UI stay up until **all** scripts for the requested tags have finished (no restart between deploy files).
 - **Multiple transactions in one deploy file** still share that same session (sequential wallet approvals).
 - The UI can show **batch context** (tags, current script) and keep a **submitted-transaction history** in the browser (session storage) after the bridge closes.
-- By default the **Next.js process is not killed** when Hardhat exits, so the tab can remain readable; use `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` to stop Next.js with the bridge.
+- By default the **Next.js process is stopped** when the deploy run ends (success or failure), alongside the HTTP bridge; the tab stays open with history in session storage. Set `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` to keep Next running. The bridge reports a terminal outcome so the UI stops polling cleanly.
 
 If `HARDHAT_SIGNER_UI` is not set (or not `true`), the existing **`DEPLOYER_PRIVATE_KEY`** / named-account flow is unchanged.
 

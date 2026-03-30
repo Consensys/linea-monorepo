@@ -42,7 +42,13 @@ task("setRateLimit", "Sets the rate limit on a Message Service contract")
         messageServiceAddress = (await get(messageServiceContractType)).address;
       }
 
-      const withdrawLimitInWei = getTaskCliOrEnvValue(taskArgs, "withdrawlimit", "WITHDRAW_LIMIT_IN_WEI");
+      const withdrawLimitRaw = getTaskCliOrEnvValue(taskArgs, "withdrawLimit", "WITHDRAW_LIMIT_IN_WEI");
+      if (withdrawLimitRaw === undefined || String(withdrawLimitRaw).trim() === "") {
+        throw new Error(
+          "Missing withdraw limit. Pass --withdraw-limit <wei> or set WITHDRAW_LIMIT_IN_WEI (Hardhat exposes this as withdrawLimit on the task).",
+        );
+      }
+      const withdrawLimitInWei = BigInt(String(withdrawLimitRaw).trim());
 
       const signer = await getUiSigner(hre);
       const messageService = await ethers.getContractAt(messageServiceContractType, messageServiceAddress, signer);

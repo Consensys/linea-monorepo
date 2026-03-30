@@ -74,6 +74,9 @@ type SessionState = {
   scriptOrdinal?: number;
   batchRunActive?: boolean;
   batchTagsSummary?: string | null;
+  /** Set by the bridge just before a deploy batch closes so the UI can stop polling. */
+  sessionOutcome?: "complete" | "error" | null;
+  outcomeMessage?: string | null;
 };
 
 /** One wallet-submitted tx for this browser session; persisted so the UI stays useful after the bridge closes. */
@@ -93,6 +96,10 @@ type CompletedDeploymentTx = {
 
 function signerUiHistoryStorageKey(apiBaseUrl: string, sessionId: string): string {
   return `signerUiTxHistory:${apiBaseUrl}:${sessionId}`;
+}
+
+function signerUiLastSessionIdStorageKey(apiBaseUrl: string): string {
+  return `signerUiLastSessionId:${apiBaseUrl}`;
 }
 
 function loadDeployHistoryFromStorage(key: string): CompletedDeploymentTx[] {
@@ -273,6 +280,8 @@ function ContractsDeployUiPage() {
   const [walletUiReady, setWalletUiReady] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const hadSuccessfulBridgeFetch = useRef(false);
+  /** After terminal `sessionOutcome`, ignore late poll results (e.g. connection errors). */
+  const pollingTerminatedRef = useRef(false);
   /** Prevents double submission before React re-renders (wallet popup / network switch). */
   const approveTransactionFlowRef = useRef(false);
 
@@ -286,9 +295,29 @@ function ContractsDeployUiPage() {
     if (!apiBaseUrl || !session?.sessionId) {
       return;
     }
+    try {
+      sessionStorage.setItem(signerUiLastSessionIdStorageKey(apiBaseUrl), session.sessionId);
+    } catch {
+      /* storage full or disabled */
+    }
     const key = signerUiHistoryStorageKey(apiBaseUrl, session.sessionId);
     setDeployHistory(loadDeployHistoryFromStorage(key));
   }, [apiBaseUrl, session?.sessionId]);
+
+  /** Rehydrate tx history after Fast Refresh before `/api/session` returns (sessionId in sessionStorage). */
+  useEffect(() => {
+    if (typeof window === "undefined" || !apiBaseUrl || !sessionAuthReady) {
+      return;
+    }
+    if (session?.sessionId) {
+      return;
+    }
+    const lastId = sessionStorage.getItem(signerUiLastSessionIdStorageKey(apiBaseUrl));
+    if (!lastId) {
+      return;
+    }
+    setDeployHistory(loadDeployHistoryFromStorage(signerUiHistoryStorageKey(apiBaseUrl, lastId)));
+  }, [apiBaseUrl, sessionAuthReady, session?.sessionId]);
 
   useEffect(() => {
     if (!apiBaseUrl) {
@@ -330,6 +359,21 @@ function ContractsDeployUiPage() {
     if (!sessionEnded) {
       return statusMessage;
     }
+    if (session?.sessionOutcome === "error") {
+      if (deployHistory.length > 0) {
+        return "Run failed. Submitted transactions are preserved below; polling has stopped.";
+      }
+      return "Run failed. Polling has stopped; check the terminal for details.";
+    }
+    if (session?.sessionOutcome === "complete") {
+      if (deployHistory.length > 0 && session.pendingRequest === null) {
+        return "Run complete. The Hardhat bridge has closed; submitted transactions are saved below and polling has stopped.";
+      }
+      if (deployHistory.length > 0) {
+        return "Run complete. Submitted transactions are preserved below; polling has stopped.";
+      }
+      return "Run complete. The Hardhat bridge has closed; polling has stopped.";
+    }
     if (deployHistory.length > 0 && session?.pendingRequest === null) {
       return "Run complete. The Hardhat bridge has closed; submitted transactions are saved below and polling has stopped.";
     }
@@ -337,7 +381,7 @@ function ContractsDeployUiPage() {
       return "Session ended. Submitted transactions are preserved below; polling has stopped.";
     }
     return "Signer session ended (bridge closed). Polling has stopped.";
-  }, [sessionEnded, deployHistory.length, session?.pendingRequest, statusMessage]);
+  }, [sessionEnded, deployHistory.length, session?.pendingRequest, session?.sessionOutcome, statusMessage]);
 
   useEffect(() => {
     if (!sessionAuthReady) {
@@ -365,28 +409,52 @@ function ContractsDeployUiPage() {
     }
 
     let cancelled = false;
+    pollingTerminatedRef.current = false;
+
     const load = async () => {
+      if (pollingTerminatedRef.current) {
+        return;
+      }
       try {
         const response = await fetch(sessionUrl, {
           headers: { [HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER]: sessionSecret },
         });
         if (!response.ok) {
-          if (!cancelled && hadSuccessfulBridgeFetch.current) {
+          if (!cancelled && !pollingTerminatedRef.current && hadSuccessfulBridgeFetch.current) {
             setSessionEnded(true);
-          } else if (!cancelled && !hadSuccessfulBridgeFetch.current) {
+          } else if (!cancelled && !pollingTerminatedRef.current && !hadSuccessfulBridgeFetch.current) {
             setActionError(`Session request failed (${response.status}).`);
           }
           return;
         }
         const data = (await response.json()) as SessionState;
-        if (!cancelled) {
+        if (cancelled || pollingTerminatedRef.current) {
+          return;
+        }
+
+        if (data.sessionOutcome === "complete" || data.sessionOutcome === "error") {
+          pollingTerminatedRef.current = true;
           hadSuccessfulBridgeFetch.current = true;
           setSession(data);
-          setStatusMessage(`Connected to ${data.scriptContext} on ${data.networkName}`);
+          setSessionEnded(true);
+          if (data.sessionOutcome === "error") {
+            const detail = data.outcomeMessage?.trim();
+            setStatusMessage(detail ? `Run failed: ${detail}` : "Run failed. Check the terminal for details.");
+          } else {
+            setStatusMessage(
+              "Run complete. The Hardhat bridge is closing; submitted transactions stay in the list below.",
+            );
+          }
           setActionError(null);
+          return;
         }
+
+        hadSuccessfulBridgeFetch.current = true;
+        setSession(data);
+        setStatusMessage(`Connected to ${data.scriptContext} on ${data.networkName}`);
+        setActionError(null);
       } catch {
-        if (!cancelled) {
+        if (!cancelled && !pollingTerminatedRef.current) {
           if (hadSuccessfulBridgeFetch.current) {
             setSessionEnded(true);
           } else {
