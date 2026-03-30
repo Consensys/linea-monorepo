@@ -158,6 +158,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// Hub
 		//
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 262144, Cluster: HubAModuleName, Regexp: `^hub\.`},
 		{BaseSize: 1048576, Cluster: HubAModuleName, Regexp: `^hub×4\.`},
 		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^mxp\.`},
@@ -223,7 +224,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
