@@ -1,9 +1,7 @@
 import { mock, MockProxy } from "jest-mock-extended";
-import { getContract, parseEventLogs } from "viem";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
 import { VaultHubABI } from "../../../core/abis/VaultHub.js";
-import { VaultHubContractClient } from "../VaultHubContractClient.js";
 
 import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
@@ -16,8 +14,19 @@ jest.mock("viem", () => {
     parseEventLogs: jest.fn(),
   };
 });
-const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
-const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
+
+let getContract: typeof import("viem").getContract;
+let parseEventLogs: typeof import("viem").parseEventLogs;
+let mockedGetContract: jest.MockedFunction<typeof getContract>;
+let mockedParseEventLogs: jest.MockedFunction<typeof parseEventLogs>;
+let VaultHubContractClient: typeof import("../VaultHubContractClient.js").VaultHubContractClient;
+
+beforeAll(async () => {
+  ({ getContract, parseEventLogs } = await import("viem"));
+  ({ VaultHubContractClient } = await import("../VaultHubContractClient.js"));
+  mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
+  mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
+});
 describe("VaultHubContractClient", () => {
   // Test constants
   const VAULT_HUB_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
