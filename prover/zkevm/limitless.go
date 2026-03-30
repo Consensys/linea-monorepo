@@ -127,12 +127,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u32\.`},
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u36\.`},
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u64\.`},
-		{BaseSize: 1048576, Cluster: ArithOpsModuleName, Regexp: `^u128\.`},
-		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^u113\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_xoan_u[0-9]+\.`},
@@ -145,8 +139,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^maxlog\.`},
 		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^counts_nz_[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^divide\.`},
@@ -154,19 +146,14 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^negate\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^pow\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signed_divide\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^xor_on_xor\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^zero_check\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^abs\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^rpad_[0-9]+_[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
 		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u512_u256\.`},
 
 		// Hub
@@ -183,7 +170,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas_out_of_pocket\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^call_gas_extra\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc_pricing\.`},
-		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^jump_target_check\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_gas_cost\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_cds_valid\.`},
@@ -192,7 +178,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_check\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^rpad_[0-9]+\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^abort_check\.`},
-		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^get_ms\.`},
 
 		// Keccak
 		//
@@ -218,7 +203,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.Small.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_prc_blake`},
-		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^blake2f`},
 
 		// MODEXP 8192
 		//
@@ -289,12 +273,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
-		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1g2\.`},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2_discount\.`},
 
 		// ECPAIRING
@@ -338,7 +318,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// BLS PAIR
 		//
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
@@ -350,11 +329,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// STATIC
 		//
 		{BaseSize: 16, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_16$`},
-		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_30$`},
 		{BaseSize: 128, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_72$`},
 		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_136`},
-		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_144`},
-		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^power\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^instdecoder\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^blsreftable\.`},
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Packing.Decomposed.Inputs.Lookup.ColNumber),
