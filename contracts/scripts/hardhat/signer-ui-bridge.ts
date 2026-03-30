@@ -96,6 +96,28 @@ type SessionWalletState = {
   connectedAt: string;
 };
 
+type TransactionProgressStage =
+  | "awaiting_wallet_approval"
+  | "submitted_waiting_for_rpc"
+  | "validating_submitted_transaction"
+  | "waiting_for_hardhat_confirmation"
+  | "failed";
+
+type TransactionProgress = {
+  requestId: string;
+  stage: TransactionProgressStage;
+  message: string;
+  updatedAt: string;
+};
+
+type WorkflowStatusStage = "waiting_for_transaction_receipt" | "waiting_for_contract_verification";
+
+type WorkflowStatus = {
+  stage: WorkflowStatusStage;
+  message: string;
+  updatedAt: string;
+};
+
 type SessionState = {
   sessionId: string;
   /** Currently executing script or task identifier (updates across a multi-script batch). */
@@ -104,6 +126,8 @@ type SessionState = {
   chain: ChainMetadata;
   wallet: SessionWalletState | null;
   pendingRequest: TransactionPrompt | null;
+  transactionProgress: TransactionProgress | null;
+  workflowStatus: WorkflowStatus | null;
   startedAt: string;
   /** 1-based index of scripts that entered `withSignerUiSession` in this session. */
   scriptOrdinal: number;
@@ -543,56 +567,71 @@ async function getTransactionWithRetry(
   return null;
 }
 
+function formatMismatchValue(value: string | bigint | null | undefined): string {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (value === undefined) {
+    return "undefined";
+  }
+  if (value === null) {
+    return "null";
+  }
+  return value;
+}
+
 /**
  * Ensures the hash the browser reported is the same tx Hardhat asked for (same sender, to, data, value).
  * Without this, any local process could POST /api/respond with a valid unrelated tx hash.
  */
-function onChainTransactionMatchesPrompt(
+function getOnChainTransactionPromptMismatch(
   tx: TransactionResponse,
   promptRequest: SerializedTransactionRequest,
   expectedFrom: string,
-): boolean {
+): string | null {
   let normalizedFrom: string;
   try {
     normalizedFrom = getAddress(expectedFrom);
   } catch {
-    return false;
+    return "Expected sender address is invalid.";
   }
 
   try {
     if (!tx.from || getAddress(tx.from) !== normalizedFrom) {
-      return false;
+      return `Sender mismatch: expected ${normalizedFrom}, got ${formatMismatchValue(tx.from)}.`;
     }
   } catch {
-    return false;
+    return `Sender mismatch: expected ${normalizedFrom}, got ${formatMismatchValue(tx.from)}.`;
   }
 
   const expectedTo = promptRequest.to;
   if (expectedTo === undefined || expectedTo === null || expectedTo === "") {
     if (tx.to !== null && tx.to !== undefined) {
-      return false;
+      return `Recipient mismatch: expected contract creation (null), got ${formatMismatchValue(tx.to)}.`;
     }
   } else {
     try {
       if (!tx.to || getAddress(tx.to) !== getAddress(expectedTo)) {
-        return false;
+        return `Recipient mismatch: expected ${expectedTo}, got ${formatMismatchValue(tx.to)}.`;
       }
     } catch {
-      return false;
+      return `Recipient mismatch: expected ${expectedTo}, got ${formatMismatchValue(tx.to)}.`;
     }
   }
 
-  if (normalizeCalldataHex(tx.data) !== normalizeCalldataHex(promptRequest.data)) {
-    return false;
+  const normalizedActualData = normalizeCalldataHex(tx.data);
+  const normalizedExpectedData = normalizeCalldataHex(promptRequest.data);
+  if (normalizedActualData !== normalizedExpectedData) {
+    return `Calldata mismatch: expected ${normalizedExpectedData}, got ${normalizedActualData}.`;
   }
 
   const expectedValue = hexQuantityToBigInt(promptRequest.value);
   const actualValue = tx.value ?? 0n;
   if (actualValue !== expectedValue) {
-    return false;
+    return `Value mismatch: expected ${expectedValue.toString()}, got ${actualValue.toString()}.`;
   }
 
-  return true;
+  return null;
 }
 
 /**
@@ -780,6 +819,8 @@ class SignerUiSession {
   private started = false;
   private closed = false;
   private pendingRequest?: PendingTransaction;
+  private transactionProgress: TransactionProgress | null = null;
+  private workflowStatus: WorkflowStatus | null = null;
   private nextTransactionDetails?: UiTransactionDetails;
   private walletState: SessionWalletState | null = null;
   private walletResolvers: Array<(wallet: SessionWalletState) => void> = [];
@@ -986,6 +1027,8 @@ class SignerUiSession {
       chain: this.context.chain,
       wallet: this.walletState,
       pendingRequest: this.pendingRequest?.prompt ?? null,
+      transactionProgress: this.transactionProgress,
+      workflowStatus: this.workflowStatus,
       startedAt: this.startedAt,
       scriptOrdinal: this.scriptOrdinal,
       batchRunActive: signerUiHardhatDeployBatchActive,
@@ -1001,6 +1044,37 @@ class SignerUiSession {
     }
 
     return this.signer;
+  }
+
+  private setTransactionProgress(requestId: string, stage: TransactionProgressStage, message: string): void {
+    this.transactionProgress = {
+      requestId,
+      stage,
+      message,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  public clearTransactionProgress(requestId?: string): void {
+    if (!this.transactionProgress) {
+      return;
+    }
+    if (requestId && this.transactionProgress.requestId !== requestId) {
+      return;
+    }
+    this.transactionProgress = null;
+  }
+
+  public setWorkflowStatus(stage: WorkflowStatusStage, message: string): void {
+    this.workflowStatus = {
+      stage,
+      message,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  public clearWorkflowStatus(): void {
+    this.workflowStatus = null;
   }
 
   public async waitForWallet(): Promise<SessionWalletState> {
@@ -1061,12 +1135,22 @@ class SignerUiSession {
         resolve: resolvePrompt,
         reject: rejectPrompt,
       };
+      this.setTransactionProgress(prompt.id, "awaiting_wallet_approval", `Waiting for wallet approval for ${label}.`);
     });
   }
 
   public async waitForTransaction(hash: string): Promise<TransactionResponse> {
     const provider = this.context.provider;
     const startedAt = Date.now();
+    const requestId = this.transactionProgress?.requestId;
+
+    if (requestId) {
+      this.setTransactionProgress(
+        requestId,
+        "waiting_for_hardhat_confirmation",
+        `Validation passed. Waiting for Hardhat/provider confirmation for transaction ${hash}.`,
+      );
+    }
 
     while (Date.now() - startedAt < SESSION_TIMEOUT_MS) {
       const transaction = await provider.getTransaction(hash);
@@ -1075,6 +1159,14 @@ class SignerUiSession {
       }
 
       await new Promise((resolveSleep) => setTimeout(resolveSleep, REQUEST_POLL_INTERVAL_MS));
+    }
+
+    if (requestId) {
+      this.setTransactionProgress(
+        requestId,
+        "failed",
+        `Timed out while waiting for transaction ${hash} to become available on ${this.context.networkName}.`,
+      );
     }
 
     throw new Error(
@@ -1205,6 +1297,12 @@ class SignerUiSession {
         return;
       }
 
+      this.setTransactionProgress(
+        raw.requestId,
+        "submitted_waiting_for_rpc",
+        "Transaction submitted in the wallet. Waiting for the RPC to return the transaction.",
+      );
+
       const onChain = await getTransactionWithRetry(
         this.context.provider,
         raw.hash,
@@ -1213,6 +1311,11 @@ class SignerUiSession {
       );
 
       if (!onChain) {
+        this.setTransactionProgress(
+          raw.requestId,
+          "failed",
+          "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
+        );
         writeJson(response, 400, {
           error:
             "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
@@ -1220,9 +1323,25 @@ class SignerUiSession {
         return;
       }
 
-      if (!onChainTransactionMatchesPrompt(onChain, this.pendingRequest.prompt.request, this.walletState.address)) {
+      this.setTransactionProgress(
+        raw.requestId,
+        "validating_submitted_transaction",
+        "Validating that the submitted transaction matches the pending Hardhat request.",
+      );
+
+      const mismatch = getOnChainTransactionPromptMismatch(
+        onChain,
+        this.pendingRequest.prompt.request,
+        this.walletState.address,
+      );
+      if (mismatch) {
+        this.setTransactionProgress(
+          raw.requestId,
+          "failed",
+          `Submitted transaction did not match the pending Hardhat request. ${mismatch}`,
+        );
         writeJson(response, 400, {
-          error: "On-chain transaction does not match the pending signer UI request (to, data, value, or sender).",
+          error: `On-chain transaction does not match the pending signer UI request. ${mismatch}`,
         });
         return;
       }
@@ -1236,6 +1355,11 @@ class SignerUiSession {
 
       const { resolve: resolveOutcome } = this.pendingRequest;
       this.pendingRequest = undefined;
+      this.setTransactionProgress(
+        raw.requestId,
+        "waiting_for_hardhat_confirmation",
+        `Validation passed. Waiting for Hardhat/provider confirmation for transaction ${raw.hash}.`,
+      );
       writeJson(response, 200, { ok: true }, () => {
         queueMicrotask(() => resolveOutcome(outcome));
       });
@@ -1252,6 +1376,7 @@ class SignerUiSession {
 
       let rejectOutcome: ((reason: Error) => void) | undefined;
       if (this.pendingRequest && this.pendingRequest.prompt.id === payload.requestId) {
+        this.setTransactionProgress(payload.requestId, "failed", message);
         rejectOutcome = this.pendingRequest.reject;
         this.pendingRequest = undefined;
       }
@@ -1269,6 +1394,7 @@ class SignerUiSession {
 
   private failPendingState(error: Error) {
     if (this.pendingRequest) {
+      this.setTransactionProgress(this.pendingRequest.prompt.id, "failed", error.message);
       this.pendingRequest.reject(error);
       this.pendingRequest = undefined;
     }
@@ -1352,7 +1478,11 @@ class SignerUiSigner extends AbstractSigner {
       ? `Send transaction to ${String(transactionRequest.to)}`
       : "Send contract creation transaction";
     const outcome = await this.session.requestTransaction(transactionRequest, label, description);
-    return await this.session.waitForTransaction(outcome.hash);
+    try {
+      return await this.session.waitForTransaction(outcome.hash);
+    } finally {
+      this.session.clearTransactionProgress(outcome.requestId);
+    }
   }
 }
 
@@ -1443,6 +1573,25 @@ export function setUiTransactionContext(details: UiTransactionDetails): void {
   }
 
   activeSession.setNextTransactionDetails(details);
+}
+
+export function setUiWorkflowStatus(
+  stage: "waiting_for_transaction_receipt" | "waiting_for_contract_verification",
+  message: string,
+): void {
+  if (!isSignerUiEnabled() || !activeSession) {
+    return;
+  }
+
+  activeSession.setWorkflowStatus(stage, message);
+}
+
+export function clearUiWorkflowStatus(): void {
+  if (!isSignerUiEnabled() || !activeSession) {
+    return;
+  }
+
+  activeSession.clearWorkflowStatus();
 }
 
 export function withSignerUiSession(scriptContext: string, deployFunction: DeployFunction): DeployFunction {

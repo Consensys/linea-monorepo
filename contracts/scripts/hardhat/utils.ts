@@ -3,7 +3,13 @@ import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
 import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
-import { isSignerUiEnabled, resolveUiRunner, setUiTransactionContext } from "./signer-ui-bridge";
+import {
+  clearUiWorkflowStatus,
+  isSignerUiEnabled,
+  resolveUiRunner,
+  setUiTransactionContext,
+  setUiWorkflowStatus,
+} from "./signer-ui-bridge";
 
 type RunnerOrProvider = AbstractSigner | Provider | JsonRpcProvider | HardhatEthersHelpers["provider"] | null;
 
@@ -104,7 +110,13 @@ async function deployFromFactory(
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  let afterDeploy;
+  try {
+    afterDeploy = await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
   const timeDiff = performance.now() - startTime;
   if (!skipLog) {
     console.log(
@@ -145,7 +157,13 @@ async function deployFromFactoryWithOpts(
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  let afterDeploy;
+  try {
+    afterDeploy = await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
   const timeDiff = performance.now() - startTime;
   if (!skipLog) {
     console.log(
@@ -186,7 +204,13 @@ async function deployUpgradableFromFactory(
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  let afterDeploy;
+  try {
+    afterDeploy = await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
   const timeDiff = performance.now() - startTime;
   if (!skipLog) {
     console.log(
@@ -227,7 +251,13 @@ async function deployUpgradableWithAbiAndByteCode(
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  let afterDeploy;
+  try {
+    afterDeploy = await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
   if (!skipLog) {
     console.log(`${contractName} artifact has been deployed in tx-hash=${afterDeploy.deploymentTransaction()?.hash}`);
   }
@@ -268,7 +298,13 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  let afterDeploy;
+  try {
+    afterDeploy = await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
   const timeDiff = performance.now() - startTime;
   if (!skipLog) {
     console.log(

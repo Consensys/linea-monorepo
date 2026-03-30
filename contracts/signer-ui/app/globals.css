@@ -174,6 +174,14 @@ body.signer-ui-body {
   flex-shrink: 0;
 }
 
+.deploy-quick-action__waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 56px;
+}
+
 .deploy-proxy-tip {
   margin-top: 14px;
   margin-bottom: 0;
@@ -504,6 +512,82 @@ body.signer-ui-body {
   background: rgba(97, 223, 255, 0.1);
   color: var(--linea-cyan);
   border: 1px solid rgba(97, 223, 255, 0.35);
+}
+
+.deploy-progress {
+  margin: 10px 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--linea-code-border);
+  background: rgba(10, 10, 18, 0.7);
+}
+
+.deploy-progress--active {
+  border-color: rgba(97, 223, 255, 0.3);
+  background: rgba(97, 223, 255, 0.05);
+}
+
+.deploy-progress--error {
+  border-color: var(--linea-danger-border);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.deploy-progress__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.deploy-progress__copy {
+  min-width: 0;
+}
+
+.deploy-progress__stage {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--linea-text);
+}
+
+.deploy-progress__message {
+  margin: 0;
+  color: var(--linea-text-muted);
+  font-size: 0.92rem;
+}
+
+.deploy-progress--error .deploy-progress__stage,
+.deploy-progress--error .deploy-progress__message {
+  color: var(--linea-danger-text);
+}
+
+.deploy-spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border-radius: 999px;
+  border: 2px solid rgba(97, 223, 255, 0.2);
+  border-top-color: var(--linea-cyan);
+  animation: deploy-spin 0.9s linear infinite;
+}
+
+.deploy-spinner--large {
+  width: 28px;
+  height: 28px;
+  margin-top: 0;
+  border-width: 3px;
+}
+
+@keyframes deploy-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .deploy-bookmark-row {

@@ -1,38 +1,113 @@
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { clearUiWorkflowStatus, setUiWorkflowStatus } from "../../scripts/hardhat/signer-ui-bridge";
 import { delay } from "./general";
 
-type HardhatRun = (task: string, args?: Record<string, unknown>) => Promise<unknown>;
+const VERIFY_TIMEOUT_MS = 90_000;
+const VERIFY_PROPAGATION_DELAY_MS = 30_000;
+const VERIFY_CHILD_SCRIPT = resolve(__dirname, "../../scripts/hardhat/run-verify-task.ts");
 
-async function getHardhatRun(): Promise<HardhatRun> {
-  // Use dynamic import to avoid loading hardhat during config initialization
+async function getCurrentHardhatNetworkName(): Promise<string> {
   const hreModule = await import("hardhat");
-  const run: HardhatRun | undefined = hreModule.run ?? (hreModule.default as { run?: HardhatRun } | undefined)?.run;
+  const networkName =
+    hreModule.network?.name ?? (hreModule.default as { network?: { name?: string } } | undefined)?.network?.name;
 
-  if (!run) {
-    throw new Error("Hardhat runtime not available; ensure this helper runs under Hardhat.");
+  if (!networkName) {
+    throw new Error("Hardhat network name is not available; ensure verification runs under Hardhat.");
   }
 
-  return run;
+  return networkName;
+}
+
+async function runVerifyTaskWithTimeout(
+  task: string,
+  args: Record<string, unknown>,
+): Promise<"completed" | "timed_out"> {
+  const networkName = await getCurrentHardhatNetworkName();
+
+  return await new Promise<"completed" | "timed_out">((resolveRun) => {
+    const child = spawn(
+      "pnpm",
+      ["exec", "hardhat", "run", "--no-compile", "--network", networkName, VERIFY_CHILD_SCRIPT],
+      {
+        cwd: resolve(__dirname, "../.."),
+        env: {
+          ...process.env,
+          HARDHAT_VERIFY_TASK: task,
+          HARDHAT_VERIFY_ARGS: JSON.stringify(args),
+        },
+        stdio: "inherit",
+      },
+    );
+
+    let settled = false;
+    const finish = (result: "completed" | "timed_out") => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      resolveRun(result);
+    };
+
+    const timeout = setTimeout(() => {
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        /* child may already be gone */
+      }
+      setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          /* child may already be gone */
+        }
+      }, 1000).unref();
+      finish("timed_out");
+    }, VERIFY_TIMEOUT_MS);
+
+    child.once("exit", () => {
+      finish("completed");
+    });
+    child.once("error", (error) => {
+      console.log(`Error happened during verification: ${error}`);
+      finish("completed");
+    });
+  });
+}
+
+async function verifyBestEffort(task: string, args: Record<string, unknown>, contractAddress: string): Promise<void> {
+  setUiWorkflowStatus(
+    "waiting_for_contract_verification",
+    `Waiting for contract verification for ${contractAddress}. Explorer propagation may take around 30 seconds.`,
+  );
+  console.log("Waiting 30 seconds for contract propagation...");
+  await delay(VERIFY_PROPAGATION_DELAY_MS);
+  console.log("Etherscan verification ongoing...");
+
+  try {
+    const result = await runVerifyTaskWithTimeout(task, args);
+    if (result === "timed_out") {
+      console.log(
+        `Verification timed out after ${VERIFY_TIMEOUT_MS / 1000}s. Continuing deploy; you can verify ${contractAddress} separately later.`,
+      );
+    }
+  } finally {
+    clearUiWorkflowStatus();
+  }
+
+  console.log("Etherscan verification done.");
 }
 
 export async function tryVerifyContract(contractAddress: string, contractForVerification?: string) {
   if (process.env.VERIFY_CONTRACT === "true") {
-    console.log("Waiting 30 seconds for contract propagation...");
-    await delay(30000);
-    console.log("Etherscan verification ongoing...");
-    // Verify contract
-    try {
-      const run = await getHardhatRun();
-      const verifyArgs: Record<string, unknown> = {
-        address: contractAddress,
-      };
-      if (contractForVerification) {
-        verifyArgs.contract = contractForVerification;
-      }
-      await run("verify", verifyArgs);
-    } catch (err) {
-      console.log(`Error happened during verification: ${err}`);
+    const verifyArgs: Record<string, unknown> = {
+      address: contractAddress,
+    };
+    if (contractForVerification) {
+      verifyArgs.contract = contractForVerification;
     }
-    console.log("Etherscan verification done.");
+    await verifyBestEffort("verify", verifyArgs, contractAddress);
   }
 }
 
@@ -43,22 +118,15 @@ export async function tryVerifyContractWithConstructorArgs(
   libraries?: Record<string, string>,
 ) {
   if (process.env.VERIFY_CONTRACT === "true") {
-    console.log("Waiting 30 seconds for contract propagation...");
-    await delay(30000);
-    console.log("Etherscan verification ongoing...");
-
-    // Verify contract
-    try {
-      const run = await getHardhatRun();
-      await run("verify:verify", {
+    await verifyBestEffort(
+      "verify:verify",
+      {
         address: contractAddress,
         contract: contractForVerification,
         constructorArguments: args,
         libraries: libraries,
-      });
-    } catch (err) {
-      console.log(`Error happened during verification: ${err}`);
-    }
-    console.log("Etherscan verification done.");
+      },
+      contractAddress,
+    );
   }
 }

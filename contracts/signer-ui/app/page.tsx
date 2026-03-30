@@ -70,6 +70,22 @@ type SessionState = {
     connectedAt: string;
   } | null;
   pendingRequest: TransactionPrompt | null;
+  transactionProgress?: {
+    requestId: string;
+    stage:
+      | "awaiting_wallet_approval"
+      | "submitted_waiting_for_rpc"
+      | "validating_submitted_transaction"
+      | "waiting_for_hardhat_confirmation"
+      | "failed";
+    message: string;
+    updatedAt: string;
+  } | null;
+  workflowStatus?: {
+    stage: "waiting_for_transaction_receipt" | "waiting_for_contract_verification";
+    message: string;
+    updatedAt: string;
+  } | null;
   startedAt: string;
   scriptOrdinal?: number;
   batchRunActive?: boolean;
@@ -93,6 +109,63 @@ type CompletedDeploymentTx = {
   request: TransactionPrompt["request"];
   transactionDetails: TransactionPrompt["transactionDetails"];
 };
+
+function progressStageLabel(stage: NonNullable<SessionState["transactionProgress"]>["stage"]): string {
+  switch (stage) {
+    case "awaiting_wallet_approval":
+      return "Awaiting wallet approval";
+    case "submitted_waiting_for_rpc":
+      return "Waiting for RPC broadcast";
+    case "validating_submitted_transaction":
+      return "Validating submitted transaction";
+    case "waiting_for_hardhat_confirmation":
+      return "Waiting for Hardhat confirmation";
+    case "failed":
+      return "Transaction failed";
+  }
+}
+
+function progressTone(stage: NonNullable<SessionState["transactionProgress"]>["stage"]): "active" | "error" {
+  return stage === "failed" ? "error" : "active";
+}
+
+function PendingTransactionProgress({ progress }: { progress: NonNullable<SessionState["transactionProgress"]> }) {
+  const tone = progressTone(progress.stage);
+  return (
+    <div className={`deploy-progress deploy-progress--${tone}`} aria-live="polite">
+      <div className="deploy-progress__row">
+        {tone === "active" ? <span className="deploy-spinner" aria-hidden="true" /> : null}
+        <div className="deploy-progress__copy">
+          <p className="deploy-progress__stage">{progressStageLabel(progress.stage)}</p>
+          <p className="deploy-progress__message">{progress.message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function workflowStageLabel(stage: NonNullable<SessionState["workflowStatus"]>["stage"]): string {
+  switch (stage) {
+    case "waiting_for_transaction_receipt":
+      return "Waiting for transaction receipt";
+    case "waiting_for_contract_verification":
+      return "Waiting for contract verification";
+  }
+}
+
+function WorkflowStatusPanel({ workflow }: { workflow: NonNullable<SessionState["workflowStatus"]> }) {
+  return (
+    <div className="deploy-progress deploy-progress--active" aria-live="polite">
+      <div className="deploy-progress__row">
+        <span className="deploy-spinner" aria-hidden="true" />
+        <div className="deploy-progress__copy">
+          <p className="deploy-progress__stage">{workflowStageLabel(workflow.stage)}</p>
+          <p className="deploy-progress__message">{workflow.message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function signerUiHistoryStorageKey(apiBaseUrl: string, sessionId: string): string {
   return `signerUiTxHistory:${apiBaseUrl}:${sessionId}`;
@@ -264,8 +337,7 @@ async function postJson(url: string, payload: unknown, sessionSecret: string) {
 function ContractsDeployUiPage() {
   const searchParams = useSearchParams();
   const apiBaseUrl = searchParams.get("apiBaseUrl");
-  const sessionSecretFromUrl =
-    searchParams.get("sessionToken") ?? searchParams.get("bridgeToken");
+  const sessionSecretFromUrl = searchParams.get("sessionToken") ?? searchParams.get("bridgeToken");
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [sessionAuthReady, setSessionAuthReady] = useState(false);
   const { address, isConnected } = useAccount();
@@ -352,8 +424,7 @@ function ContractsDeployUiPage() {
     return `${apiBaseUrl}/api/session`;
   }, [apiBaseUrl]);
 
-  const deployRunLooksComplete =
-    sessionEnded && deployHistory.length > 0 && session?.pendingRequest === null;
+  const deployRunLooksComplete = sessionEnded && deployHistory.length > 0 && session?.pendingRequest === null;
 
   const heroSubtitle = useMemo(() => {
     if (!sessionEnded) {
@@ -656,6 +727,15 @@ function ContractsDeployUiPage() {
   };
 
   const pending = session?.pendingRequest;
+  const progress = session?.transactionProgress;
+  const workflow = session?.workflowStatus;
+  const isPostSubmitProgress =
+    progress !== undefined &&
+    progress !== null &&
+    progress.stage !== "awaiting_wallet_approval" &&
+    progress.stage !== "failed" &&
+    pending?.id === progress.requestId;
+  const hasWorkflowStatus = workflow !== undefined && workflow !== null;
   const signPendingDisabled = isSubmitting || !walletUiReady || !isConnected || !pending;
 
   return (
@@ -671,32 +751,42 @@ function ContractsDeployUiPage() {
         <section className="deploy-card deploy-card--hero">
           <h1 className="deploy-card__title">Sign with your wallet</h1>
           <p className="deploy-card__subtitle">{heroSubtitle}</p>
+          {hasWorkflowStatus ? <WorkflowStatusPanel workflow={workflow} /> : null}
         </section>
 
         {pending && !sessionEnded ? (
           <section className="deploy-card deploy-quick-action" aria-label="Quick sign current transaction">
             <div className="deploy-quick-action__row">
               <div className="deploy-quick-action__text">
-                <h2 className="deploy-quick-action__title">Sign current transaction</h2>
+                <h2 className="deploy-quick-action__title">
+                  {isPostSubmitProgress ? "Current transaction in progress" : "Sign current transaction"}
+                </h2>
                 <p className="deploy-quick-action__label">{pending.label}</p>
                 <TransactionKindBadges details={pending.transactionDetails} />
+                {progress && pending.id === progress.requestId ? (
+                  <PendingTransactionProgress progress={progress} />
+                ) : null}
               </div>
-              <button
-                type="button"
-                className="deploy-btn deploy-btn--primary deploy-quick-action__btn"
-                disabled={signPendingDisabled}
-                onClick={() => void approvePendingRequest()}
-              >
-                {isSubmitting ? "Wallet or network in progress…" : "Switch chain, sign, and send"}
-              </button>
+              {isPostSubmitProgress ? (
+                <div className="deploy-quick-action__waiting" aria-hidden="true">
+                  <span className="deploy-spinner deploy-spinner--large" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="deploy-btn deploy-btn--primary deploy-quick-action__btn"
+                  disabled={signPendingDisabled}
+                  onClick={() => void approvePendingRequest()}
+                >
+                  {isSubmitting ? "Wallet or network in progress…" : "Switch chain, sign, and send"}
+                </button>
+              )}
             </div>
           </section>
         ) : null}
 
         {sessionEnded ? (
-          <section
-            className={`deploy-card ${deployRunLooksComplete ? "deploy-card--complete" : "deploy-card--muted"}`}
-          >
+          <section className={`deploy-card ${deployRunLooksComplete ? "deploy-card--complete" : "deploy-card--muted"}`}>
             <h2>{deployRunLooksComplete ? "Run complete" : "Session disconnected"}</h2>
             <p>
               {deployRunLooksComplete
@@ -782,6 +872,12 @@ function ContractsDeployUiPage() {
               <p className="deploy-pending-label">{session.pendingRequest.label}</p>
               <TransactionKindBadges details={session.pendingRequest.transactionDetails} />
               <p>{session.pendingRequest.description}</p>
+              {progress && session.pendingRequest.id === progress.requestId ? (
+                <>
+                  <h3>Progress</h3>
+                  <PendingTransactionProgress progress={progress} />
+                </>
+              ) : null}
               {session.pendingRequest.transactionDetails ? (
                 <>
                   <h3>Transaction context (Hardhat)</h3>
@@ -796,7 +892,7 @@ function ContractsDeployUiPage() {
                 <button
                   type="button"
                   className="deploy-btn deploy-btn--primary"
-                  disabled={signPendingDisabled}
+                  disabled={signPendingDisabled || isPostSubmitProgress}
                   onClick={() => void approvePendingRequest()}
                 >
                   {isSubmitting ? "Wallet or network in progress…" : "Switch chain, sign, and send"}
@@ -804,7 +900,14 @@ function ContractsDeployUiPage() {
               </div>
             </>
           ) : (
-            <p>No transaction is waiting for approval yet.</p>
+            <>
+              {hasWorkflowStatus ? <WorkflowStatusPanel workflow={workflow} /> : null}
+              <p>
+                {hasWorkflowStatus
+                  ? "No wallet approval is pending right now."
+                  : "No transaction is waiting for approval yet."}
+              </p>
+            </>
           )}
         </section>
 
@@ -915,9 +1018,7 @@ function ContractsDeployUiPage() {
                       {item.transactionDetails ? (
                         <div className="deploy-history-details">
                           <h3>Transaction context</h3>
-                          <pre className="deploy-code">
-                            {JSON.stringify(item.transactionDetails, null, 2)}
-                          </pre>
+                          <pre className="deploy-code">{JSON.stringify(item.transactionDetails, null, 2)}</pre>
                         </div>
                       ) : null}
                       <div className="deploy-history-details">
