@@ -34,20 +34,25 @@ jobs:
 
       - name: Resolve package directory
         id: pkg
+        env:
+          PACKAGE: ${{ inputs.package }}
         run: |
-          case "${{ inputs.package }}" in
+          case "$PACKAGE" in
             sdk-core) echo "dir=sdk/sdk-core" >> "$GITHUB_OUTPUT" ;;
             sdk-viem) echo "dir=sdk/sdk-viem" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Compute next version
         id: version
+        env:
+          PKG_DIR: ${{ steps.pkg.outputs.dir }}
+          BUMP: ${{ inputs.bump }}
+          PACKAGE: ${{ inputs.package }}
         run: |
-          PKG_DIR="${{ steps.pkg.outputs.dir }}"
           CURRENT=$(node -p "require('./$PKG_DIR/package.json').version")
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 
-          case "${{ inputs.bump }}" in
+          case "$BUMP" in
             major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
             minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
             patch) PATCH=$((PATCH + 1)) ;;
@@ -56,33 +61,45 @@ jobs:
           NEXT="${MAJOR}.${MINOR}.${PATCH}"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "next=$NEXT" >> "$GITHUB_OUTPUT"
-          echo "Bumping ${{ inputs.package }} from $CURRENT to $NEXT (${{ inputs.bump }})"
+          echo "Bumping $PACKAGE from $CURRENT to $NEXT ($BUMP)"
 
-      - name: Check version is not already published
+      - name: Check version is not already released
+        env:
+          PACKAGE: ${{ inputs.package }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
         run: |
-          TAG="${{ inputs.package }}-v${{ steps.version.outputs.next }}"
+          TAG="${PACKAGE}-v${NEXT_VERSION}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists. Version ${{ steps.version.outputs.next }} has already been released."
+            echo "::error::Tag $TAG already exists. Version $NEXT_VERSION has already been released."
+            exit 1
+          fi
+
+          NPM_NAME="@consensys/linea-${PACKAGE}"
+          if npm view "${NPM_NAME}@${NEXT_VERSION}" version 2>/dev/null; then
+            echo "::error::${NPM_NAME}@${NEXT_VERSION} is already published on npm."
             exit 1
           fi
 
       - name: Bump version in package.json
+        env:
+          PKG_DIR: ${{ steps.pkg.outputs.dir }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
         run: |
-          PKG_DIR="${{ steps.pkg.outputs.dir }}"
           node -e "
             const fs = require('fs');
-            const path = './$PKG_DIR/package.json';
-            const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
-            pkg.version = '${{ steps.version.outputs.next }}';
-            fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+            const p = './' + process.env.PKG_DIR + '/package.json';
+            const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+            pkg.version = process.env.NEXT_VERSION;
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
           "
 
       - name: Generate changelog entry
         id: changelog
+        env:
+          PKG_DIR: ${{ steps.pkg.outputs.dir }}
+          PACKAGE: ${{ inputs.package }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
         run: |
-          PKG_DIR="${{ steps.pkg.outputs.dir }}"
-          PACKAGE="${{ inputs.package }}"
-          NEXT="${{ steps.version.outputs.next }}"
           DATE=$(date +%Y-%m-%d)
           CHANGELOG="$PKG_DIR/CHANGELOG.md"
 
@@ -104,16 +121,18 @@ jobs:
           {
             echo "$HEADER"
             echo ""
-            echo "## $NEXT ($DATE)"
+            echo "## $NEXT_VERSION ($DATE)"
             echo ""
             echo "$COMMITS"
+            echo ""
             echo "$BODY"
           } > "$CHANGELOG"
 
+          DELIMITER="COMMITS_$(openssl rand -hex 8)"
           {
-            echo "commits<<EOF"
+            echo "commits<<${DELIMITER}"
             echo "$COMMITS"
-            echo "EOF"
+            echo "$DELIMITER"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create release PR
