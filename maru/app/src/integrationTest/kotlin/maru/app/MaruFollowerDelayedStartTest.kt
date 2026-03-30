@@ -66,7 +66,7 @@ class MaruFollowerDelayedStartTest {
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start().get()
 
-    val blocksToProduce = 5
+    val blocksToProduce = 10
     repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(

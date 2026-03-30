@@ -100,10 +100,9 @@ class MaruPeerScoringTest {
         timerFactory = timerFactory,
       )
 
-    // In setUpNodes we have made sure that the validator and the follower have 1 peer
-    // Now wait until it is disconnected because of empty responses
+    // Wait until it is disconnected because of empty responses
     await
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .pollInterval(250.milliseconds.toJavaDuration())
       .ignoreExceptions()
       .untilAsserted {

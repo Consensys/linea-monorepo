@@ -14,6 +14,9 @@ configFiles:
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-sequencer-0-0.besu-sequencer-0.default.svc.cluster.local:8550" }
 
+    [syncing]
+    desync-tolerance = 0
+
   genesisJson: |
     {
       "chainId": 1337,

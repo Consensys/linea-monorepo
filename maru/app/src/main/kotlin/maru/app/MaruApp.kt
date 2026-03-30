@@ -263,6 +263,7 @@ class MaruApp(
             consensusMetrics?.recordBlockCommitted(sealedBlock)
             onBlockCommitted?.invoke(sealedBlock)
           },
+          syncStatusProvider = syncControllerManager,
         )
       } else {
         QbftFollowerFactory(

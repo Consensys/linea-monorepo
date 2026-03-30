@@ -9,6 +9,7 @@
 package maru.app
 
 import java.io.File
+import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.Checks.checkAllNodesHaveSameBlocks
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
 import testutils.besu.BesuFactory
@@ -175,6 +177,10 @@ class MaruConsensusSwitchTest {
     currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
     log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
     assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
+
+    // Wait for both nodes to have all blocks before verifying contents.
+    // The follower may still be syncing when the validator has already committed all blocks.
+    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 60.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
