@@ -250,7 +250,7 @@ func (mod Module) Assign(run *wizard.ProverRuntime) {
 			newCRom = cRom + 1
 		}
 
-		if cSS < len(ssData) && newCRom >= len(romData) {
+		if cSS < len(ssData) && cRom >= len(romData) {
 			newCSS = cSS + 1
 		}
 

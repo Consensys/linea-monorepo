@@ -59,6 +59,11 @@ var (
 	conglomerationFile            = "dw-compiled-conglomeration.bin"
 	executionLimitlessPath        = "execution-limitless"
 	verificationKeyMerkleTreeFile = "verification-key-merkle-tree.bin"
+
+	// Chunked variants (directory names without .bin extension)
+	compileLppChunkedTemplate = "dw-compiled-lpp-%v"
+	compileGlChunkedTemplate  = "dw-compiled-gl-%v"
+	conglomerationChunkedFile = "dw-compiled-conglomeration"
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
@@ -122,13 +127,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
-		// BaseSize set to fit P75 module heights in 1 segment (reduces segment count).
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u32\.`},
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u36\.`},
-		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u64\.`},
-		{BaseSize: 1048576, Cluster: ArithOpsModuleName, Regexp: `^u128\.`},
-		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^u113\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_xoan_u[0-9]+\.`},
@@ -141,8 +139,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^maxlog\.`},
 		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^counts_nz_[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^divide\.`},
@@ -150,23 +146,19 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^negate\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^pow\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signed_divide\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^xor_on_xor\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^zero_check\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^abs\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^rpad_[0-9]+_[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
 		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
-		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u512_u256\.`},
 
 		// Hub
 		//
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 262144, Cluster: HubAModuleName, Regexp: `^hub\.`},
 		{BaseSize: 1048576, Cluster: HubAModuleName, Regexp: `^hub×4\.`},
 		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^mxp\.`},
@@ -179,7 +171,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas_out_of_pocket\.`},
 		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^call_gas_extra\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc_pricing\.`},
-		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^jump_target_check\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_gas_cost\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_cds_valid\.`},
@@ -188,7 +179,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_check\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^rpad_[0-9]+\.`},
 		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^abort_check\.`},
-		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^get_ms\.`},
 
 		// Keccak
 		//
@@ -199,7 +189,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
 		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
 		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
@@ -215,7 +204,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.Small.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_prc_blake`},
-		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^blake2f`},
 
 		// MODEXP 8192
 		//
@@ -236,9 +224,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
-		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
-		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
@@ -268,14 +254,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
-		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
 		//
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
-		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
-		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
 		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
@@ -285,29 +268,13 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ELLIPTIC CURVES
 		//
-		// The blsdata FLATTEN_LIMBS column (blsdata.LIMB'0_FLATTEN_LIMBS) has
-		// ~1M rows (NextPowerOfTwo(blsdata_size * 8)). It shares a QBM with
-		// MANUALLY_SHIFTED_FLATTEN_LIMBS columns (via ManuallyShift global
-		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
-		// this produced 2046 segments. This specific regex must appear BEFORE
-		// the generic ^blsdata\. to override it with a large BaseSize.
-		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
-		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
 		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
-		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
-		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
-		// column ID. This advice covers both. The FlattenLimbs column and its
-		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
-		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1g2\.`},
-		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2_discount\.`},
 
 		// ECPAIRING
@@ -316,10 +283,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
 		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
 		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
-		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
 		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
 		// G2_CHECK
@@ -337,7 +302,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
 		// BLS_G2
-		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
 		//
 		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
 		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
@@ -353,9 +317,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
 		// BLS PAIR
-		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
 		//
-		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
 		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
@@ -367,11 +329,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		// STATIC
 		//
 		{BaseSize: 16, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_16$`},
-		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_30$`},
 		{BaseSize: 128, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_72$`},
 		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_136`},
-		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_144`},
-		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^power\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^instdecoder\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^blsreftable\.`},
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Packing.Decomposed.Inputs.Lookup.ColNumber),
@@ -520,7 +479,10 @@ func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModul
 
 	zkevm := FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 	distributed.CompileManualShifter(zkevm.InitialCompiledIOP)
-	return distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc), zkevm
+
+	bootstrapper := distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc)
+
+	return bootstrapper, zkevm
 }
 
 // RunStatRecords runs only the bootstrapper and returns a list of stat records
@@ -1161,13 +1123,29 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
-		if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
-			return err
+		if isChunkedAssetName(asset.Name) {
+			// Large compiled circuits use chunked lz4 for parallel I/O
+			chunkedDir := path.Join(assetDir, strings.TrimSuffix(asset.Name, ".bin"))
+			if err := serde.StoreChunked(chunkedDir, asset.Object); err != nil {
+				return err
+			}
+		} else {
+			if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+				return err
+			}
 		}
 	}
 
 	logrus.Info("limitless prover assets written to disk")
 	return nil
+}
+
+// isChunkedAssetName returns true for compiled-gl, compiled-lpp, and
+// conglomeration assets that benefit from chunked parallel I/O.
+func isChunkedAssetName(name string) bool {
+	return strings.HasPrefix(name, "dw-compiled-gl-") ||
+		strings.HasPrefix(name, "dw-compiled-lpp-") ||
+		name == conglomerationFile
 }
 
 // LoadBootstrapperAsync loads the bootstrapper from disk.
@@ -1324,12 +1302,22 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
-		res      = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileGlChunkedTemplate, moduleName))
+		res        = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1342,12 +1330,22 @@ func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (
 func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
-		res      = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileLppChunkedTemplate, moduleNames))
+		res        = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, res)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1414,12 +1412,22 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
 
 	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, conglomerationFile)
-		conglo   = &distributed.RecursedSegmentCompilation{}
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, conglomerationChunkedFile)
+		conglo     = &distributed.RecursedSegmentCompilation{}
 	)
 
-	buf, err := serde.LoadFromDiskMmapBacked(filePath, conglo)
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, conglo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return conglo, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, conglomerationFile)
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, conglo)
 	if err != nil {
 		return nil, nil, err
 	}

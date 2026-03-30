@@ -16,15 +16,14 @@ import (
 
 // NewCyclicCounter creates a structured [CyclicCounter]. When passing period
 // = math.MaxInt it turns into a non-periodic counter.
-func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny any) *CyclicCounter {
+func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny any, callerName string) *CyclicCounter {
 
 	var (
 		isActive, fullyActive, size = cleanIsActive(isActiveAny)
-		numCols                     = comp.Columns.NumEntriesTotal()
 		// The appending of the round to the name is necessary to disambiguate
 		// the name of the column when serializing. This is particularly useful
 		// for self-recursion columns.
-		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v_%v", numCols, period, round)
+		name = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", callerName, round)
 	)
 
 	var (

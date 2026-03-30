@@ -492,5 +492,8 @@ func GetTestTracesLimits() *TracesLimits {
 		},
 	}
 
+	traceLimits.normalizeToLowercase()
+	traceLimits.sortReverseAlphabetical()
+
 	return traceLimits
 }
