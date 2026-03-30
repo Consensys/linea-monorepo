@@ -119,7 +119,7 @@ function buildExpectedDefaultConfig() {
     l1L2AutoClaimEnabled: false,
     l2Config: {
       claiming: buildDefaultClaimingConfig(TEST_L2_SIGNER_PRIVATE_KEY),
-      enableLineaEstimateGas: false,
+      enableLineaEstimateGas: true,
       isCalldataEnabled: DEFAULT_CALLDATA_ENABLED,
       isEOAEnabled: DEFAULT_EOA_ENABLED,
       l2MessageTreeDepth: DEFAULT_L2_MESSAGE_TREE_DEPTH,

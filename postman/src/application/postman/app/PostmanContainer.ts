@@ -76,7 +76,9 @@ async function buildSharedInfrastructure(
     l2.publicClient,
     {
       maxFeePerGasCap: l2Config.claiming.maxFeePerGasCap,
+      gasEstimationPercentile: l2Config.claiming.gasEstimationPercentile,
       enforceMaxGasFee: l2Config.claiming.isMaxGasFeeEnforced,
+      enableLineaEstimateGas: l2Config.enableLineaEstimateGas,
     },
     new WinstonLogger("L2GasProvider", loggerOptions),
   );

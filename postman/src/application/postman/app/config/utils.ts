@@ -118,7 +118,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       isEOAEnabled: l2Options.isEOAEnabled ?? DEFAULT_EOA_ENABLED,
       isCalldataEnabled: l2Options.isCalldataEnabled ?? DEFAULT_CALLDATA_ENABLED,
       l2MessageTreeDepth: l2Options.l2MessageTreeDepth ?? DEFAULT_L2_MESSAGE_TREE_DEPTH,
-      enableLineaEstimateGas: l2Options.enableLineaEstimateGas ?? false,
+      enableLineaEstimateGas: l2Options.enableLineaEstimateGas ?? true,
       listener: resolveListenerConfig(l2Options.listener),
       claiming: resolveClaimingConfig(l2Options.claiming),
     },

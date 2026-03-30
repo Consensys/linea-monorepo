@@ -344,6 +344,26 @@ describe("TestMessageSentEventProcessor", () => {
       expect(result).toBeTruthy();
     });
 
+    it("Should skip inherited properties in decoded calldata during convertBigInts", () => {
+      messageSentEventProcessor.config.isCalldataEnabled = true;
+      const decoded = Object.create({ inherited: 999n });
+      decoded.amount = 100000n;
+      calldataDecoder.decode.mockReturnValue(decoded);
+
+      const result = messageSentEventProcessor.shouldProcessMessage(
+        {
+          ...testMessageSentEvent,
+          calldata: encodedCalldata,
+        },
+        testMessageSentEvent.messageHash,
+        {
+          criteriaExpression: `calldata.funcSignature == "0x26dfbc20" and calldata.amount > 0`,
+          calldataFunctionInterface: funcFragment,
+        },
+      );
+      expect(result).toBeTruthy();
+    });
+
     it("Should return true if event filter criteria is true", () => {
       messageSentEventProcessor.config.isCalldataEnabled = true;
       calldataDecoder.decode.mockReturnValue({

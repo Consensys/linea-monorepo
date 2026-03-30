@@ -313,6 +313,16 @@ describe("ViemL2MessageServiceClient", () => {
       expect(result).toEqual({ name: "CallError", args: [] });
     });
 
+    it("returns '0x' when call throws without revert data", async () => {
+      publicClient.getTransaction.mockResolvedValue(
+        mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,
+      );
+      publicClient.call.mockRejectedValue(new Error("execution reverted"));
+
+      const result = await client.parseTransactionError(TEST_TRANSACTION_HASH);
+      expect(result).toBe("0x");
+    });
+
     it("returns '0x' when call returns no data", async () => {
       publicClient.getTransaction.mockResolvedValue(
         mockTx as unknown as Awaited<ReturnType<PublicClient["getTransaction"]>>,

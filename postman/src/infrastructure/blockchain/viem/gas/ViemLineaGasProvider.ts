@@ -7,6 +7,7 @@ import {
   LineaGasFees,
   LineaGasProviderConfig,
 } from "../../../../core/clients/blockchain/IGasProvider";
+import { DEFAULT_GAS_ESTIMATION_PERCENTILE } from "../../../../core/constants";
 import { BaseError } from "../../../../core/errors";
 import { TransactionRequest } from "../../../../core/types";
 
@@ -22,30 +23,67 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
       throw new BaseError("ViemLineaGasProvider: Transaction request must specify the 'from' address.");
     }
 
+    if (this.config.enableLineaEstimateGas === false) {
+      return this.getGasFeesViaStandardEstimation(transactionRequest);
+    }
+
+    return this.getGasFeesViaLineaEstimation(transactionRequest);
+  }
+
+  private async getGasFeesViaLineaEstimation(transactionRequest: TransactionRequest): Promise<LineaGasFees> {
     const { gasLimit, baseFeePerGas, priorityFeePerGas } = await lineaEstimateGas(this.client, {
-      account: transactionRequest.from,
+      account: transactionRequest.from!,
       to: transactionRequest.to,
       data: transactionRequest.data,
       value: transactionRequest.value,
     });
 
-    const rawMaxFeePerGas = baseFeePerGas + priorityFeePerGas;
+    return this.applyFeeCap(gasLimit, baseFeePerGas + priorityFeePerGas, priorityFeePerGas);
+  }
 
+  private async getGasFeesViaStandardEstimation(transactionRequest: TransactionRequest): Promise<LineaGasFees> {
+    const [gasLimit, feeHistory] = await Promise.all([
+      this.client.estimateGas({
+        account: transactionRequest.from!,
+        to: transactionRequest.to,
+        data: transactionRequest.data,
+        value: transactionRequest.value,
+      }),
+      this.client.getFeeHistory({
+        blockCount: 4,
+        blockTag: "latest",
+        rewardPercentiles: [this.config.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE],
+      }),
+    ]);
+
+    const rewards = feeHistory.reward ?? [];
+    const maxPriorityFeePerGas =
+      rewards.length > 0 ? rewards.reduce((acc, r) => acc + r[0], 0n) / BigInt(rewards.length) : 0n;
+
+    const latestBaseFee = feeHistory.baseFeePerGas[feeHistory.baseFeePerGas.length - 1];
+    const rawMaxFeePerGas = latestBaseFee * 2n + maxPriorityFeePerGas;
+
+    this.logger.debug("Gas fees estimated via standard eth_estimateGas + getFeeHistory.", {
+      gasLimit: gasLimit.toString(),
+      maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+      rawMaxFeePerGas: rawMaxFeePerGas.toString(),
+    });
+
+    return this.applyFeeCap(gasLimit, rawMaxFeePerGas, maxPriorityFeePerGas);
+  }
+
+  private applyFeeCap(gasLimit: bigint, rawMaxFeePerGas: bigint, maxPriorityFeePerGas: bigint): LineaGasFees {
     const capped = this.config.enforceMaxGasFee && rawMaxFeePerGas > this.config.maxFeePerGasCap;
     const maxFeePerGas = capped ? this.config.maxFeePerGasCap : rawMaxFeePerGas;
 
     if (capped) {
-      this.logger.debug("Linea gas fee capped to maxFeePerGasCap.", {
+      this.logger.debug("Gas fee capped to maxFeePerGasCap.", {
         rawMaxFeePerGas: rawMaxFeePerGas.toString(),
         cappedMaxFeePerGas: maxFeePerGas.toString(),
       });
     }
 
-    return {
-      gasLimit,
-      maxFeePerGas,
-      maxPriorityFeePerGas: priorityFeePerGas,
-    };
+    return { gasLimit, maxFeePerGas, maxPriorityFeePerGas };
   }
 
   public getMaxFeePerGas(): bigint {

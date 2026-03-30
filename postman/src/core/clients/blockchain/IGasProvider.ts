@@ -18,7 +18,10 @@ export type DefaultGasProviderConfig = BaseGasProviderConfig & {
   gasEstimationPercentile: number;
 };
 
-export type LineaGasProviderConfig = BaseGasProviderConfig;
+export type LineaGasProviderConfig = BaseGasProviderConfig & {
+  enableLineaEstimateGas?: boolean;
+  gasEstimationPercentile?: number;
+};
 
 export interface IGasProvider {
   getGasFees(transactionRequest?: TransactionRequest): Promise<GasFees | LineaGasFees>;

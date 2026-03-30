@@ -450,6 +450,29 @@ describe("TestMessageClaimingPersister", () => {
       expect(messageRepositoryUpdateSpy).not.toHaveBeenCalled();
     });
 
+    it("Should skip cancelTransaction when claimTxNonce is undefined", async () => {
+      const pendingMsg = new Message({
+        ...testPendingMessage,
+        claimNumberOfRetry: 5,
+        claimCycleCount: 0,
+      });
+      const ctx = createPersister({ messageSubmissionTimeout: 0, maxBumpsPerCycle: 5, maxCycles: 2 });
+      messageClaimingPersister = ctx.persister;
+      provider = ctx.provider;
+      databaseService = ctx.databaseService;
+      messageServiceContract = ctx.messageServiceContract;
+
+      jest.spyOn(databaseService, "getFirstPendingMessage").mockResolvedValue(pendingMsg);
+      jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
+      jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.UNKNOWN);
+      const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
+
+      await messageClaimingPersister.process();
+
+      expect(ctx.transactionRetrier.cancelTransaction).not.toHaveBeenCalled();
+      expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(expect.objectContaining({ status: MessageStatus.SENT }));
+    });
+
     it("Should log error when cancelAndResetMessage throws", async () => {
       const pendingMsg = new Message({
         ...testPendingMessage,
