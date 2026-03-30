@@ -1,10 +1,10 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
-import { withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 
-const func: DeployFunction = withDeploymentUiSession("08_deploy_CustomBridgedToken.ts", async function () {
+const func: DeployFunction = withSignerUiSession("08_deploy_CustomBridgedToken.ts", async function () {
   const contractName = "CustomBridgedToken";
 
   const CustomTokenBridge_name = getRequiredEnvVar("CUSTOMTOKENBRIDGE_NAME");

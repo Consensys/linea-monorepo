@@ -1,18 +1,14 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-  getDeploymentSigner,
-  setDeploymentUiNextTransactionContext,
-  withDeploymentUiSession,
-} from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, setUiTransactionContext, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "11_deploy_TestERC20.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const contractName = "TestERC20";
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     const tokenName = getRequiredEnvVar("TEST_ERC20_NAME");
     const tokenSymbol = getRequiredEnvVar("TEST_ERC20_SYMBOL");
@@ -20,7 +16,7 @@ const func: DeployFunction = withDeploymentUiSession(
 
     const TestERC20Factory = await ethers.getContractFactory(contractName, signer);
     const supplyWei = ethers.parseEther(initialSupply);
-    setDeploymentUiNextTransactionContext({
+    setUiTransactionContext({
       contractName,
       constructorArgs: [tokenName, tokenSymbol, supplyWei.toString()],
       notes: `TEST_ERC20_INITIAL_SUPPLY env: ${initialSupply} (interpreted as ether, passed as wei to the contract)`,

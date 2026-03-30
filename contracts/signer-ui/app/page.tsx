@@ -49,7 +49,7 @@ type TransactionPrompt = {
     type?: string;
     chainId?: string;
   };
-  deploymentDetails?: {
+  transactionDetails?: {
     contractName?: string;
     constructorArgs?: unknown;
     initializerArgs?: unknown;
@@ -61,7 +61,7 @@ type TransactionPrompt = {
 
 type SessionState = {
   sessionId: string;
-  deployFile: string;
+  scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
   wallet: {
@@ -71,7 +71,7 @@ type SessionState = {
   } | null;
   pendingRequest: TransactionPrompt | null;
   startedAt: string;
-  deployScriptOrdinal?: number;
+  scriptOrdinal?: number;
   batchRunActive?: boolean;
   batchTagsSummary?: string | null;
 };
@@ -88,11 +88,11 @@ type CompletedDeploymentTx = {
   chainName: string;
   blockExplorerUrls: string[];
   request: TransactionPrompt["request"];
-  deploymentDetails: TransactionPrompt["deploymentDetails"];
+  transactionDetails: TransactionPrompt["transactionDetails"];
 };
 
-function deployUiHistoryStorageKey(apiBaseUrl: string, sessionId: string): string {
-  return `deployUiTxHistory:${apiBaseUrl}:${sessionId}`;
+function signerUiHistoryStorageKey(apiBaseUrl: string, sessionId: string): string {
+  return `signerUiTxHistory:${apiBaseUrl}:${sessionId}`;
 }
 
 function loadDeployHistoryFromStorage(key: string): CompletedDeploymentTx[] {
@@ -122,8 +122,8 @@ function transactionExplorerUrl(blockExplorerUrls: string[], txHash: string): st
 }
 
 /** Stable fragment for in-page links / `:target` (request ids are UUIDs). */
-function deployTxFragmentId(requestId: string): string {
-  return `deploy-tx-${requestId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+function signerTxFragmentId(requestId: string): string {
+  return `signer-tx-${requestId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
 function scrollToHistoryFragment(frag: string): void {
@@ -134,7 +134,7 @@ function scrollToHistoryFragment(frag: string): void {
   window.setTimeout(run, 100);
 }
 
-function deploymentKindBadgeLabels(details: TransactionPrompt["deploymentDetails"]): string[] {
+function transactionKindBadgeLabels(details: TransactionPrompt["transactionDetails"]): string[] {
   if (!details) {
     return [];
   }
@@ -153,13 +153,13 @@ function deploymentKindBadgeLabels(details: TransactionPrompt["deploymentDetails
   return labels;
 }
 
-function DeploymentKindBadges({ details }: { details: TransactionPrompt["deploymentDetails"] }) {
-  const labels = deploymentKindBadgeLabels(details);
+function TransactionKindBadges({ details }: { details: TransactionPrompt["transactionDetails"] }) {
+  const labels = transactionKindBadgeLabels(details);
   if (labels.length === 0) {
     return null;
   }
   return (
-    <div className="deploy-kind-badges" aria-label="Deployment type">
+    <div className="deploy-kind-badges" aria-label="Transaction context">
       {labels.map((label, index) => (
         <span key={`${label}-${index}`} className="deploy-kind-badge">
           {label}
@@ -233,17 +233,17 @@ const wagmiConfig = createConfig({
 });
 
 /**
- * Must match `DEPLOY_UI_SESSION_TOKEN_HEADER` in `contracts/scripts/hardhat/deployment-ui.ts`
+ * Must match `HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER` in `contracts/scripts/hardhat/signer-ui-bridge.ts`
  * (HTTP headers are case-insensitive; Node normalizes to lowercase).
  */
-const DEPLOY_UI_SESSION_TOKEN_HEADER = "X-Deploy-Ui-Session-Token";
+const HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER = "x-hardhat-signer-ui-session-token";
 
 async function postJson(url: string, payload: unknown, sessionSecret: string) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      [DEPLOY_UI_SESSION_TOKEN_HEADER]: sessionSecret,
+      [HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER]: sessionSecret,
     },
     body: JSON.stringify(payload),
   });
@@ -266,7 +266,7 @@ function ContractsDeployUiPage() {
   const { disconnect } = useDisconnect();
   const [session, setSession] = useState<SessionState | null>(null);
   const [deployHistory, setDeployHistory] = useState<CompletedDeploymentTx[]>([]);
-  const [statusMessage, setStatusMessage] = useState<string>("Waiting for deployment session...");
+  const [statusMessage, setStatusMessage] = useState<string>("Waiting for Hardhat signer session...");
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   /** Wagmi reconnect differs SSR vs first client paint — gate wallet UI until mount. */
@@ -286,7 +286,7 @@ function ContractsDeployUiPage() {
     if (!apiBaseUrl || !session?.sessionId) {
       return;
     }
-    const key = deployUiHistoryStorageKey(apiBaseUrl, session.sessionId);
+    const key = signerUiHistoryStorageKey(apiBaseUrl, session.sessionId);
     setDeployHistory(loadDeployHistoryFromStorage(key));
   }, [apiBaseUrl, session?.sessionId]);
 
@@ -297,7 +297,7 @@ function ContractsDeployUiPage() {
       return;
     }
 
-    const storageKey = `deployUiSessionSecret:${apiBaseUrl}`;
+    const storageKey = `signerUiSessionSecret:${apiBaseUrl}`;
     const legacyStorageKey = `lineaDeployUiBridgeToken:${apiBaseUrl}`;
 
     if (sessionSecretFromUrl) {
@@ -331,12 +331,12 @@ function ContractsDeployUiPage() {
       return statusMessage;
     }
     if (deployHistory.length > 0 && session?.pendingRequest === null) {
-      return "Deploy run complete. The Hardhat bridge has closed; submitted transactions are saved below and polling has stopped.";
+      return "Run complete. The Hardhat bridge has closed; submitted transactions are saved below and polling has stopped.";
     }
     if (deployHistory.length > 0) {
       return "Session ended. Submitted transactions are preserved below; polling has stopped.";
     }
-    return "Deploy session ended (bridge closed). Polling has stopped.";
+    return "Signer session ended (bridge closed). Polling has stopped.";
   }, [sessionEnded, deployHistory.length, session?.pendingRequest, statusMessage]);
 
   useEffect(() => {
@@ -351,7 +351,7 @@ function ContractsDeployUiPage() {
 
     if (!sessionSecret) {
       setActionError(
-        "Missing session token. Open this UI using the full URL from Hardhat (DEPLOY_WITH_UI), not a bookmark without sessionToken.",
+        "Missing session token. Open this UI using the full URL from Hardhat (HARDHAT_SIGNER_UI), not a bookmark without sessionToken.",
       );
       return;
     }
@@ -368,7 +368,7 @@ function ContractsDeployUiPage() {
     const load = async () => {
       try {
         const response = await fetch(sessionUrl, {
-          headers: { [DEPLOY_UI_SESSION_TOKEN_HEADER]: sessionSecret },
+          headers: { [HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER]: sessionSecret },
         });
         if (!response.ok) {
           if (!cancelled && hadSuccessfulBridgeFetch.current) {
@@ -382,7 +382,7 @@ function ContractsDeployUiPage() {
         if (!cancelled) {
           hadSuccessfulBridgeFetch.current = true;
           setSession(data);
-          setStatusMessage(`Connected to ${data.deployFile} on ${data.networkName}`);
+          setStatusMessage(`Connected to ${data.scriptContext} on ${data.networkName}`);
           setActionError(null);
         }
       } catch {
@@ -390,7 +390,7 @@ function ContractsDeployUiPage() {
           if (hadSuccessfulBridgeFetch.current) {
             setSessionEnded(true);
           } else {
-            setActionError("Failed to reach the deploy bridge. Check apiBaseUrl and that Hardhat started the session.");
+            setActionError("Failed to reach the signer bridge. Check apiBaseUrl and that Hardhat started the session.");
           }
         }
       }
@@ -412,7 +412,7 @@ function ContractsDeployUiPage() {
       return;
     }
     const raw = window.location.hash.slice(1);
-    if (!raw.startsWith("deploy-tx-")) {
+    if (!raw.startsWith("signer-tx-")) {
       return;
     }
     window.setTimeout(() => scrollToHistoryFragment(raw), 0);
@@ -440,7 +440,7 @@ function ContractsDeployUiPage() {
         );
         setActionError(null);
       } catch (error) {
-        setActionError((error as Error).message ?? "Failed to register wallet with the deploy bridge.");
+        setActionError((error as Error).message ?? "Failed to register wallet with the signer bridge.");
       }
     };
 
@@ -483,7 +483,7 @@ function ContractsDeployUiPage() {
     } catch (error) {
       const switchError = error as { code?: number; message?: string };
       if (switchError.code !== 4902) {
-        throw new Error(switchError.message ?? "Failed to switch to the deployment chain.");
+        throw new Error(switchError.message ?? "Failed to switch to the target chain.");
       }
     }
 
@@ -541,7 +541,7 @@ function ContractsDeployUiPage() {
         sessionSecret,
       );
 
-      const historyKey = deployUiHistoryStorageKey(apiBaseUrl, session.sessionId);
+      const historyKey = signerUiHistoryStorageKey(apiBaseUrl, session.sessionId);
       const entry: CompletedDeploymentTx = {
         requestId: session.pendingRequest.id,
         completedAt: new Date().toISOString(),
@@ -553,7 +553,7 @@ function ContractsDeployUiPage() {
         chainName: session.chain.chainName,
         blockExplorerUrls: session.chain.blockExplorerUrls,
         request: { ...session.pendingRequest.request },
-        deploymentDetails: session.pendingRequest.deploymentDetails ?? null,
+        transactionDetails: session.pendingRequest.transactionDetails ?? null,
       };
       flushSync(() => {
         setDeployHistory((prev) => {
@@ -563,7 +563,7 @@ function ContractsDeployUiPage() {
         });
       });
 
-      const frag = deployTxFragmentId(entry.requestId);
+      const frag = signerTxFragmentId(entry.requestId);
       scrollToHistoryFragment(frag);
 
       setStatusMessage(`Submitted ${session.pendingRequest.label} — jumped to #${frag} in the list below.`);
@@ -601,7 +601,7 @@ function ContractsDeployUiPage() {
 
       <main className="deploy-main">
         <section className="deploy-card deploy-card--hero">
-          <h1 className="deploy-card__title">Deploy with your wallet</h1>
+          <h1 className="deploy-card__title">Sign with your wallet</h1>
           <p className="deploy-card__subtitle">{heroSubtitle}</p>
         </section>
 
@@ -611,7 +611,7 @@ function ContractsDeployUiPage() {
               <div className="deploy-quick-action__text">
                 <h2 className="deploy-quick-action__title">Sign current transaction</h2>
                 <p className="deploy-quick-action__label">{pending.label}</p>
-                <DeploymentKindBadges details={pending.deploymentDetails} />
+                <TransactionKindBadges details={pending.transactionDetails} />
               </div>
               <button
                 type="button"
@@ -629,13 +629,13 @@ function ContractsDeployUiPage() {
           <section
             className={`deploy-card ${deployRunLooksComplete ? "deploy-card--complete" : "deploy-card--muted"}`}
           >
-            <h2>{deployRunLooksComplete ? "Deploy run complete" : "Session disconnected"}</h2>
+            <h2>{deployRunLooksComplete ? "Run complete" : "Session disconnected"}</h2>
             <p>
               {deployRunLooksComplete
-                ? "Hardhat finished and closed the local HTTP bridge. The Next.js UI usually keeps running so this tab stays loaded. Details below are kept in session storage; use #deploy-tx-… links to jump to each signed transaction."
+                ? "Hardhat finished and closed the local HTTP bridge. The Next.js UI usually keeps running so this tab stays loaded. Details below are kept in session storage; use #signer-tx-… links to jump to each signed transaction."
                 : deployHistory.length > 0
                   ? "The bridge stopped before the last poll showed an idle session—check Hardhat for errors. Any transactions you already signed are listed below."
-                  : "The Hardhat deploy bridge has stopped. Polling is disabled. If you are not running another deployment, you can close this browser tab."}
+                  : "The Hardhat signer bridge has stopped. Polling is disabled. If you are not running another script, you can close this browser tab."}
             </p>
           </section>
         ) : null}
@@ -647,7 +647,7 @@ function ContractsDeployUiPage() {
               ? "Preparing wallet connection…"
               : isConnected && address
                 ? `Connected as ${address}`
-                : "Connect the wallet that should sign this deploy file."}
+                : "Connect the wallet that should sign for this Hardhat script."}
           </p>
           <div className="deploy-actions">
             {!walletUiReady ? null : !isConnected && injectedConnector ? (
@@ -670,7 +670,7 @@ function ContractsDeployUiPage() {
         </section>
 
         <section className="deploy-card">
-          <h2>Deployment target</h2>
+          <h2>Session target</h2>
           {session?.batchRunActive ? (
             <p className="deploy-batch-note">
               <strong>Batch run:</strong>{" "}
@@ -680,11 +680,11 @@ function ContractsDeployUiPage() {
             </p>
           ) : null}
           <p className="deploy-meta-row">
-            <strong>Current deploy file:</strong> {session?.deployFile ?? "Loading…"}
-            {session && (session.deployScriptOrdinal ?? 0) > 0 ? (
+            <strong>Script / operation:</strong> {session?.scriptContext ?? "Loading…"}
+            {session && (session.scriptOrdinal ?? 0) > 0 ? (
               <span className="deploy-meta-row--subtle">
                 {" "}
-                (script {session.deployScriptOrdinal}
+                (step {session.scriptOrdinal}
                 {session.batchRunActive ? " in this batch" : ""})
               </span>
             ) : null}
@@ -712,13 +712,13 @@ function ContractsDeployUiPage() {
           {session?.pendingRequest ? (
             <>
               <p className="deploy-pending-label">{session.pendingRequest.label}</p>
-              <DeploymentKindBadges details={session.pendingRequest.deploymentDetails} />
+              <TransactionKindBadges details={session.pendingRequest.transactionDetails} />
               <p>{session.pendingRequest.description}</p>
-              {session.pendingRequest.deploymentDetails ? (
+              {session.pendingRequest.transactionDetails ? (
                 <>
-                  <h3>Deployment parameters (Hardhat)</h3>
+                  <h3>Transaction context (Hardhat)</h3>
                   <pre className="deploy-code">
-                    {JSON.stringify(session.pendingRequest.deploymentDetails, null, 2)}
+                    {JSON.stringify(session.pendingRequest.transactionDetails, null, 2)}
                   </pre>
                 </>
               ) : null}
@@ -745,14 +745,14 @@ function ContractsDeployUiPage() {
             <h2>Submitted transactions ({deployHistory.length})</h2>
             <p>
               {sessionEnded
-                ? "Saved for this deploy session in your browser (session storage). Starting a new Hardhat run opens a new session."
+                ? "Saved for this signer session in your browser (session storage). Starting a new Hardhat run opens a new session."
                 : "Each approval is appended here. After Hardhat exits, this list stays visible and polling stops."}
             </p>
             <nav className="deploy-history-toc" aria-label="Jump to signed transaction">
               <span className="deploy-history-toc__title">Jump to</span>
               <ul>
                 {[...deployHistory].reverse().map((item) => {
-                  const frag = deployTxFragmentId(item.requestId);
+                  const frag = signerTxFragmentId(item.requestId);
                   return (
                     <li key={`jump-${item.requestId}`}>
                       <a
@@ -773,14 +773,14 @@ function ContractsDeployUiPage() {
             <ul className="deploy-history-list">
               {[...deployHistory].reverse().map((item) => {
                 const explorerHref = transactionExplorerUrl(item.blockExplorerUrls, item.txHash);
-                const frag = deployTxFragmentId(item.requestId);
+                const frag = signerTxFragmentId(item.requestId);
                 return (
                   <li key={item.requestId} id={frag} className="deploy-history-item">
                     <details>
                       <summary>
                         <div className="deploy-history-summary-box">
                           <span className="deploy-history-summary-text">{item.label}</span>
-                          <DeploymentKindBadges details={item.deploymentDetails} />
+                          <TransactionKindBadges details={item.transactionDetails} />
                         </div>
                       </summary>
                       <div className="deploy-history-meta">
@@ -844,11 +844,11 @@ function ContractsDeployUiPage() {
                           </button>
                         </div>
                       </div>
-                      {item.deploymentDetails ? (
+                      {item.transactionDetails ? (
                         <div className="deploy-history-details">
-                          <h3>Deployment parameters</h3>
+                          <h3>Transaction context</h3>
                           <pre className="deploy-code">
-                            {JSON.stringify(item.deploymentDetails, null, 2)}
+                            {JSON.stringify(item.transactionDetails, null, 2)}
                           </pre>
                         </div>
                       ) : null}

@@ -1,8 +1,8 @@
-# Contract deploy UI (browser signing)
+# Hardhat signer UI (browser signing)
 
-When `DEPLOY_WITH_UI=true`, Hardhat deploy scripts can route transactions through this Next.js app so you approve them in a browser wallet (MetaMask, Rabby, etc.) instead of putting `DEPLOYER_PRIVATE_KEY` in the environment.
+When `HARDHAT_SIGNER_UI=true`, Hardhat deploy scripts can route transactions through this Next.js app so you approve them in a browser wallet (MetaMask, Rabby, etc.) instead of putting `DEPLOYER_PRIVATE_KEY` in the environment.
 
-The Hardhat side (`contracts/scripts/hardhat/deployment-ui.ts`) starts a **local HTTP bridge** (session API + CORS), spawns **`pnpm exec next dev`** for this package on a free port, prints/opens the UI URL, and blocks until each transaction is **verified on-chain** against the pending request.
+The Hardhat side (`contracts/scripts/hardhat/signer-ui-bridge.ts`) starts a **local HTTP bridge** (session API + CORS), spawns **`pnpm exec next dev`** for this package on a free port, prints/opens the UI URL, and blocks until each transaction is **verified on-chain** against the pending request.
 
 ## Prerequisites
 
@@ -24,9 +24,9 @@ For chained tags, e.g. `--tags PlonkVerifier,LineaRollup,Timelock`, Hardhat keep
 
 - **Sticky “Sign current transaction”** bar at the top while a request is pending (same action as the pending card below).
 - **Submitted transaction history** with tx hash, from/to, constructor/proxy context, and raw request JSON; stored in **session storage** so it survives closing the HTTP bridge.
-- **In-page anchors** `#deploy-tx-<requestId>` after each successful submit; **Jump to** links and **Copy page link** for bookmarks.
+- **In-page anchors** `#signer-tx-<requestId>` after each successful submit; **Jump to** links and **Copy page link** for bookmarks.
 - **Proxy hints** (OpenZeppelin transparent / UUPS / beacon) when deploy helpers pass metadata from `contracts/scripts/hardhat/utils.ts`.
-- After Hardhat finishes, the **Next.js dev server usually keeps running** so the tab stays loaded; set `DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true` if you want Hardhat to stop Next.js when the bridge closes.
+- After Hardhat finishes, the **Next.js dev server usually keeps running** so the tab stays loaded; set `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` if you want Hardhat to stop Next.js when the bridge closes.
 
 ## Network: `zkevm_dev` (local L1)
 
@@ -51,11 +51,11 @@ L1_RPC_URL=http://127.0.0.1:8445 \
 TEST_ERC20_NAME="LocalUI" \
 TEST_ERC20_SYMBOL="LUI" \
 TEST_ERC20_INITIAL_SUPPLY="1000000" \
-DEPLOY_WITH_UI=true \
+HARDHAT_SIGNER_UI=true \
 npx hardhat deploy --network zkevm_dev --tags TestERC20
 ```
 
-1. Open the printed URL (or rely on auto-open unless `DEPLOY_WITH_UI_OPEN_BROWSER=false`).
+1. Open the printed URL (or rely on auto-open unless `HARDHAT_SIGNER_UI_OPEN_BROWSER=false`).
 2. Use the full URL including `sessionToken` — it authenticates the browser to the bridge.
 3. Connect the wallet and switch chain if prompted.
 4. Approve the transaction; the CLI continues when the tx matches the pending request on the RPC.
@@ -70,7 +70,7 @@ Set **`L2_RPC_URL`** (e.g. `http://127.0.0.1:8545` for the default stack). Add t
 cd contracts
 
 L2_RPC_URL=http://127.0.0.1:8545 \
-DEPLOY_WITH_UI=true \
+HARDHAT_SIGNER_UI=true \
 npx hardhat deploy --network l2 --tags <YourL2Tag>
 ```
 
@@ -78,17 +78,17 @@ npx hardhat deploy --network l2 --tags <YourL2Tag>
 
 | Variable | Effect |
 |----------|--------|
-| `DEPLOY_WITH_UI=true` | Enable browser signing. When unset or not `true`, scripts use `DEPLOYER_PRIVATE_KEY` / named accounts. |
-| `DEPLOY_WITH_UI_OPEN_BROWSER=false` | Do not auto-open a tab; open the URL from the terminal. |
-| `DEPLOY_WITH_UI_DEBUG=true` | Forward `next dev` stdout/stderr to the terminal. |
-| `DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true` | Stop the Next.js child when the HTTP bridge closes (default: leave Next.js running). |
+| `HARDHAT_SIGNER_UI=true` | Enable browser signing. When unset or not `true`, scripts use `DEPLOYER_PRIVATE_KEY` / named accounts. |
+| `HARDHAT_SIGNER_UI_OPEN_BROWSER=false` | Do not auto-open a tab; open the URL from the terminal. |
+| `HARDHAT_SIGNER_UI_DEBUG=true` | Forward `next dev` stdout/stderr to the terminal. |
+| `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` | Stop the Next.js child when the HTTP bridge closes (default: leave Next.js running). |
 
 ## Manual UI dev (optional)
 
 You normally do **not** run the UI yourself — Hardhat starts it. For layout/CSS work only:
 
 ```bash
-cd contracts/deploy-ui
+cd contracts/signer-ui
 pnpm dev
 ```
 
@@ -98,7 +98,7 @@ A full signing round-trip still requires the bridge from a running `hardhat depl
 
 - [Linea deployment scripts overview](../docs/deployment/README.md) — env vars, tags, verification, upgradeable / `.openzeppelin` reuse.
 - [Chained deployments](../docs/deployment/chained-deployments.md) — one UI session for the whole tag batch.
-- [Removing the deploy UI](../docs/deployment/deploy-ui-removal.md) — maintainers only.
+- [Removing the signer UI](../docs/deployment/signer-ui-removal.md) — maintainers only.
 
 ## Limitations
 

@@ -13,19 +13,19 @@ This section describes the scripts that can be run to deploy multiple contracts 
 Chained `--tags` deployments support the browser-wallet flow with **one session for the entire run**:
 
 ```shell
-DEPLOY_WITH_UI=true npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+HARDHAT_SIGNER_UI=true npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 ```
 
-When `DEPLOY_WITH_UI=true` is set:
+When `HARDHAT_SIGNER_UI=true` is set:
 
 - **Single session per `hardhat deploy` invocation** — Hardhat overrides the `deploy:runDeploy` subtask so the local HTTP bridge and Next.js UI stay up until **all** scripts for the requested tags have finished (no restart between deploy files).
 - **Multiple transactions in one deploy file** still share that same session (sequential wallet approvals).
 - The UI can show **batch context** (tags, current script) and keep a **submitted-transaction history** in the browser (session storage) after the bridge closes.
-- By default the **Next.js process is not killed** when Hardhat exits, so the tab can remain readable; use `DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true` to stop Next.js with the bridge.
+- By default the **Next.js process is not killed** when Hardhat exits, so the tab can remain readable; use `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` to stop Next.js with the bridge.
 
-If `DEPLOY_WITH_UI` is not set (or not `true`), the existing **`DEPLOYER_PRIVATE_KEY`** / named-account flow is unchanged.
+If `HARDHAT_SIGNER_UI` is not set (or not `true`), the existing **`DEPLOYER_PRIVATE_KEY`** / named-account flow is unchanged.
 
-See the **Browser wallet signing (`DEPLOY_WITH_UI`)** section in [README.md](README.md) and [deploy-ui/README.md](../../deploy-ui/README.md) for env vars and local stack notes.
+See the **Browser wallet signing (`HARDHAT_SIGNER_UI`)** section in [README.md](README.md) and [signer-ui/README.md](../../signer-ui/README.md) for env vars and local stack notes.
 
 <br />
 

@@ -2,12 +2,12 @@ import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getRequiredEnvVar, tryVerifyContract } from "../common/helpers";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "03_deploy_ImplementationForProxy.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
     const contractName = getRequiredEnvVar("CONTRACT_NAME");
 
     const proxyAddress = getRequiredEnvVar("PROXY_ADDRESS");

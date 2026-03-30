@@ -3,12 +3,12 @@ import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { ethers, upgrades } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { RollupRevenueVault__factory } from "contracts/typechain-types";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "18_deploy_RollupRevenueVaultWithReinitialization.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
     const contractName = "RollupRevenueVault";
 
     const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");

@@ -1,5 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
@@ -17,7 +17,7 @@ import {
   ADDRESS_ZERO,
 } from "../common/constants";
 
-const func: DeployFunction = withDeploymentUiSession("03_deploy_LineaRollup.ts", async function () {
+const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", async function () {
   const contractName = "LineaRollup";
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY (OpenZeppelin transparent). Hardhat Upgrades may reuse an

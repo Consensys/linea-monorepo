@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory, deployUpgradableFromFactoryWithConstructorArgs } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import {
   generateRoleAssignments,
   getEnvVarOrDefault,
@@ -21,11 +21,11 @@ import { YieldManager } from "contracts/typechain-types";
 import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "../test/hardhat/common/constants";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "21_deploy_YieldManager.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const { ethers } = hre;
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     const contractName = "YieldManager";
 

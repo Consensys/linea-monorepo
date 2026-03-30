@@ -22,7 +22,7 @@
 
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import {
   deployContractFromArtifacts,
   deployProxyAdminAndProxy,
@@ -57,11 +57,11 @@ import {
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 // Must verify contracts from git tag "contract-audit-2026-01-14" or commit 25e323d055dec40ef167a190c71c30aa9bf92c23
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "21_deploy_YieldManagerArtifacts.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const { ethers } = hre;
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     // YieldManager DEPLOYED AS UPGRADEABLE PROXY
     const lineaRollupAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");

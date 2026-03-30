@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { LineaRollup__factory } from "contracts/typechain-types";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import {
   PAUSE_STATE_DATA_SUBMISSION_ROLE,
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
@@ -11,10 +11,10 @@ import {
   SECURITY_COUNCIL_ROLE,
 } from "contracts/common/constants";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "03_deploy_LineaRollupWithReinitialization.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
     let upgradePauseTypeRoles = [];
     let upgradeUnpauseTypeRoles = [];
     let upgradeRoleAddresses = [];

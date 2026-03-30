@@ -363,7 +363,7 @@ importers:
         specifier: 'catalog:'
         version: 18.0.0
 
-  contracts/deploy-ui:
+  contracts/signer-ui:
     dependencies:
       '@tanstack/react-query':
         specifier: 5.91.2

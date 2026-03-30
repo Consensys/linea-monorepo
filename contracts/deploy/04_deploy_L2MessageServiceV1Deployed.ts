@@ -3,11 +3,11 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import path from "path";
 import { deployUpgradableWithAbiAndByteCode } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { tryVerifyContract, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 import { abi, bytecode } from "./V1/L2MessageServiceV1Deployed.json";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "04_deploy_L2MessageServiceV1Deployed.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const mainnetDeployedL2MessageServiceCacheFolder = path.resolve("./deploy/V1/L2MessageServiceV1Cache/");
@@ -28,7 +28,7 @@ const func: DeployFunction = withDeploymentUiSession(
     const L2MessageService_rateLimitPeriod = getRequiredEnvVar("L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD");
     const L2MessageService_rateLimitAmount = getRequiredEnvVar("L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT");
 
-    const deployer = await getDeploymentSigner(hre);
+    const deployer = await getUiSigner(hre);
 
     const contract = await deployUpgradableWithAbiAndByteCode(
       deployer,

@@ -3,12 +3,12 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { BridgedToken } from "../typechain-types";
 import { tryVerifyContract } from "../common/helpers";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "05_deploy_BridgedToken.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
     const contractName = "BridgedToken";
 
     const chainId = (await ethers.provider.getNetwork()).chainId;

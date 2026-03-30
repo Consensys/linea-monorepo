@@ -1,14 +1,14 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "20_deploy_V3DexSwapAdapter.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const contractName = "V3DexSwapAdapter";
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     const router = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_ROUTER");
     const wethToken = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_WETH_TOKEN");

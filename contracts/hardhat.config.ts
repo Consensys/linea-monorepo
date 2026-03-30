@@ -30,24 +30,50 @@ dotenv.config();
 
 const requireFromConfig = createRequire(__filename);
 
-/** Lazy `require` avoids HH9 (deployment-ui pulls in `hardhat`) and avoids native `import()` of `.ts`, which uses Node ESM resolution (directory `common/` vs `common.ts`, CJS `hardhat`, type-only `ethers` exports). */
+/** Lazy `require` avoids HH9 (signer-ui-bridge pulls in `hardhat`) and avoids native `import()` of `.ts`, which uses Node ESM resolution (directory `common/` vs `common.ts`, CJS `hardhat`, type-only `ethers` exports). */
 subtask(TASK_DEPLOY_RUN_DEPLOY).setAction(async (args, hre, runSuper) => {
-  const { deployUiRunDeploySubtaskAction } = requireFromConfig(
-    "./scripts/hardhat/deployment-ui.ts",
-  ) as typeof import("./scripts/hardhat/deployment-ui");
-  return deployUiRunDeploySubtaskAction(args, hre, runSuper);
+  const { signerUiHardhatDeployRunSubtaskAction } = requireFromConfig(
+    "./scripts/hardhat/signer-ui-bridge.ts",
+  ) as typeof import("./scripts/hardhat/signer-ui-bridge");
+  return signerUiHardhatDeployRunSubtaskAction(args, hre, runSuper);
 });
 
 const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000");
-const EMPTY_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-/** LocalAccountsProvider rejects all-zero keys; UI signing uses an empty list and JsonRpc only. */
+/**
+ * `HARDHAT_SIGNER_UI=true` → no local keys (browser wallet via signer-ui bridge).
+ * Otherwise require a non-zero `DEPLOYER_PRIVATE_KEY`. All-zero placeholders are rejected by
+ * LocalAccountsProvider / @ethereumjs/util (`Expected valid bigint: 0 < bigint < curve.n`).
+ */
 function deployerAccounts(): string[] {
-  if (process.env.DEPLOY_WITH_UI === "true") {
+  if (process.env.HARDHAT_SIGNER_UI === "true") {
     return [];
   }
 
-  return [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH];
+  const raw = process.env.DEPLOYER_PRIVATE_KEY?.trim();
+  if (!raw) {
+    throw new Error(
+      "DEPLOYER_PRIVATE_KEY is not set. Export a real private key, or set HARDHAT_SIGNER_UI=true to sign via the browser.",
+    );
+  }
+
+  const normalized = raw.startsWith("0x") ? raw : `0x${raw}`;
+  let scalar: bigint;
+  try {
+    scalar = BigInt(normalized);
+  } catch {
+    throw new Error(
+      "DEPLOYER_PRIVATE_KEY is not valid hex. Set a real key, or set HARDHAT_SIGNER_UI=true to sign via the browser.",
+    );
+  }
+
+  if (scalar === 0n) {
+    throw new Error(
+      "DEPLOYER_PRIVATE_KEY cannot be zero. Set HARDHAT_SIGNER_UI=true for browser signing, or use a real key.",
+    );
+  }
+
+  return [normalized];
 }
 
 const blockchainNode = getBlockchainNode();

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weekly Rollup Competitive Report</title>
+  <style>
+    :root {
+      --bg: #f7f6f3;
+      --paper: #fffdf9;
+      --ink: #1f2937;
+      --muted: #5b6472;
+      --line: #e5dfd4;
+      --accent: #7c3aed;
+      --accent-soft: #f3e8ff;
+      --card: #fcfbf8;
+      --good: #166534;
+      --warn: #92400e;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #f5f3ef 0%, #f9f8f5 100%);
+      color: var(--ink);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 28px 28px 20px;
+      box-shadow: 0 8px 30px rgba(31, 41, 55, 0.05);
+      margin-bottom: 24px;
+    }
+    h1, h2, h3 {
+      margin: 0 0 14px;
+      line-height: 1.2;
+      color: #111827;
+    }
+    h1 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: 2.2rem;
+      letter-spacing: -0.02em;
+    }
+    h2 {
+      font-size: 1.35rem;
+      margin-top: 30px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+    h3 {
+      font-size: 1.02rem;
+      margin-top: 22px;
+    }
+    p {
+      margin: 0 0 14px;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 0.97rem;
+    }
+    .note {
+      background: var(--accent-soft);
+      border: 1px solid #ddd6fe;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #4c1d95;
+      margin-top: 16px;
+    }
+    .section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px 24px 18px;
+      box-shadow: 0 6px 24px rgba(31, 41, 55, 0.04);
+      margin-bottom: 20px;
+    }
+    ul {
+      margin: 0 0 14px 1.15rem;
+      padding: 0;
+    }
+    li {
+      margin: 0 0 10px;
+    }
+    code {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
+      font-size: 0.92em;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-word;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 18px;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.96rem;
+    }
+    th {
+      background: #f8f5ff;
+      color: #3b0764;
+      font-weight: 700;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .scorecard th {
+      background: #ede9fe;
+      color: #4c1d95;
+    }
+    .score-5, .score-4, .score-3, .score-1 {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .score-5, .score-4 {
+      color: var(--good);
+    }
+    .score-3 {
+      color: var(--warn);
+    }
+    .score-1 {
+      color: var(--muted);
+    }
+    .competitor-block {
+      padding: 14px 0 2px;
+      border-top: 1px dashed var(--line);
+    }
+    .competitor-block:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+    @media (max-width: 720px) {
+      .wrap {
+        padding: 18px 14px 40px;
+      }
+      .hero, .section {
+        padding: 18px 16px 14px;
+        border-radius: 16px;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead {
+        display: none;
+      }
+      tr {
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        border: none;
+        padding: 8px 0;
+      }
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Weekly Rollup Competitive Report</h1>
+      <p class="meta"><strong>Reporting window:</strong> 2026-03-19 to 2026-03-26 UTC</p>
+      <div class="note">
+        <strong>Method note:</strong> This report includes only developments whose effective date falls within the 7-day reporting window and only from the allowlisted official source registry. A second pass explicitly checked official blogs, docs/notices, and forums in addition to GitHub; no additional qualifying non-GitHub items were confirmed in-window, so the final report remains GitHub-dominant. Older items may be referenced briefly for context but are not scored as current-week developments.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Executive Summary</h2>
+      <p>This was a baseline week because no prior normalized dataset was available for comparison. After a second pass across official blogs, docs/notices, and governance forums, the strongest confirmed in-window signals still came from official GitHub activity.</p>
+      <p>Optimism had the most strategically important week in the reviewed source set. It merged both a new <code>ZKDisputeGame</code> into OP Stack dispute infrastructure and activation-time deployment plus liquidity bootstrapping for interop ETH bridge contracts, indicating continued progress on both proof infrastructure and cross-chain execution.</p>
+      <p>Outside OP Stack, Arbitrum introduced owner-configurable tip collection in ArbOS v60+, Starknet changed internal sequencer-network shard distribution and hashing in Apollo Propeller, and Taiko shipped a mainnet client release preparing operators for the upcoming Shasta fork. zkSync and Base showed smaller but still relevant prover and deployment-path hardening. The broader non-GitHub sweep mostly surfaced out-of-window or weak-signal items rather than additional current-week developments.</p>
+    </section>
+
+    <section class="section">
+      <h2>Top Ecosystem Themes</h2>
+      <ul>
+        <li><strong>Proof systems are getting more operationally integrated.</strong> Optimism's <code>ZKDisputeGame</code> merge is the clearest example this week, while zkSync's prover release focused on autoscaler resilience and Base continued tightening TEE-prover deployment paths.</li>
+        <li><strong>Interop work is moving from design toward activation logic.</strong> Optimism's interop ETH bridge change now deploys and funds bridge-related contracts as part of network activation rather than leaving them as follow-on steps.</li>
+        <li><strong>Operator-facing configuration is becoming a competitive surface.</strong> Arbitrum exposed fee-routing behavior as an ArbOS control, and Taiko shipped a release with explicit new Shasta and Pacaya flags ahead of a dated fork.</li>
+        <li><strong>Sequencer and network-internal data paths continue to evolve.</strong> Starknet's Apollo Propeller update changed shard packaging, encoding, and Merkle validation in a way that explicitly carries compatibility risk.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Competitor Scorecard</h2>
+      <table class="scorecard">
+        <thead>
+          <tr>
+            <th>Competitor</th>
+            <th>Current-week signal</th>
+            <th>Importance</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Competitor">Arbitrum</td>
+            <td data-label="Current-week signal">ArbOS v60+ owner-configurable tip collection</td>
+            <td data-label="Importance" class="score-4">4/5</td>
+            <td data-label="Why it matters">Introduces a new chain-level fee policy control via precompiles.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Optimism / OP Stack</td>
+            <td data-label="Current-week signal"><code>ZKDisputeGame</code> merged into dispute stack; interop ETH bridge activation logic added</td>
+            <td data-label="Importance" class="score-5">5/5</td>
+            <td data-label="Why it matters">Strongest combined signal on proofs plus native interop execution.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">zkSync</td>
+            <td data-label="Current-week signal">Prover v25.2.0 released</td>
+            <td data-label="Importance" class="score-3">3/5</td>
+            <td data-label="Why it matters">Operational hardening of prover infrastructure rather than a visible architecture shift.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Scroll</td>
+            <td data-label="Current-week signal">No material allowlisted in-window item identified after reviewing official blogs, docs, forums, and GitHub sources</td>
+            <td data-label="Importance" class="score-1">1/5</td>
+            <td data-label="Why it matters">No strong current-week signal surfaced in official reviewed sources.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Base</td>
+            <td data-label="Current-week signal">TEEProverRegistry initialization made atomic for proposer registration</td>
+            <td data-label="Importance" class="score-3">3/5</td>
+            <td data-label="Why it matters">Small but relevant signal around trusted/TEE proving deployment workflow.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Starknet</td>
+            <td data-label="Current-week signal">Apollo Propeller moved toward multi-shard-per-peer encoding</td>
+            <td data-label="Importance" class="score-4">4/5</td>
+            <td data-label="Why it matters">Internal sequencing and data distribution path changed with compatibility implications.</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Taiko</td>
+            <td data-label="Current-week signal">Mainnet client v2.2.0 published for upcoming Shasta fork</td>
+            <td data-label="Importance" class="score-4">4/5</td>
+            <td data-label="Why it matters">Fork-readiness release with dated operator action requirements.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Competitor Analysis</h2>
+
+      <div class="competitor-block">
+        <h3>Arbitrum</h3>
+        <p>Arbitrum's clearest in-window signal was a merged Nitro PR that adds owner-configurable tip collection for ArbOS v60+ via new <code>ArbOwner</code> / <code>ArbOwnerPublic</code> precompiles: <a href="https://github.com/OffchainLabs/nitro/pull/4515">https://github.com/OffchainLabs/nitro/pull/4515</a></p>
+        <p>The change does not alter default behavior automatically, but it creates a new runtime control over how transaction tips are handled. That matters because fee-routing policy is becoming more explicit and operator-configurable rather than remaining purely implicit in protocol behavior.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>Optimism / OP Stack</h3>
+        <p>Optimism merged a spec-compliant <code>ZKDisputeGame</code> into its dispute infrastructure as game type 10, with permissionless lifecycle handling, DelayedWETH bond custody, and proof-binding to <code>msg.sender</code>: <a href="https://github.com/ethereum-optimism/optimism/pull/19606">https://github.com/ethereum-optimism/optimism/pull/19606</a></p>
+        <p>Separately, Optimism added activation-time deployment and funding for <code>SuperchainETHBridge</code>, <code>ETHLiquidity</code>, and <code>L2ToL2CrossDomainMessenger</code>, including bootstrap liquidity for ETH bridging and matching Go/Rust implementation changes: <a href="https://github.com/ethereum-optimism/optimism/pull/19648">https://github.com/ethereum-optimism/optimism/pull/19648</a></p>
+        <p>Taken together, these are the most consequential signals this week. They show OP Stack progressing simultaneously on proof/dispute machinery and on operationalizing superchain interop.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>zkSync</h3>
+        <p>zkSync's strongest reviewed current-week signal was prover release <code>v25.2.0</code>: <a href="https://github.com/matter-labs/zksync-era/releases/tag/prover-v25.2.0">https://github.com/matter-labs/zksync-era/releases/tag/prover-v25.2.0</a></p>
+        <p>The release added a GCP signer, HTTP compression for API and EN sync paths, and a fix for prover-autoscaler resource-exhaustion detection plus aggressive-mode thresholding. This looks like operator and infrastructure hardening, not a major protocol-direction change, but it is still useful evidence of active prover-stack iteration.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>Scroll</h3>
+        <p>No material allowlisted in-window item surfaced from the reviewed official Scroll blogs, docs, forums, or priority repositories. That should be treated as a coverage result, not as evidence of inactivity across all possible channels.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>Base</h3>
+        <p>Base merged a contracts change that allows <code>TEEProverRegistry.initialize()</code> to take an <code>initialProposer</code>, making proposer registration atomic during deployment and removing a separate registration step from deployment flow: <a href="https://github.com/base/contracts/pull/220">https://github.com/base/contracts/pull/220</a></p>
+        <p>This is not a headline-grabbing launch, but it is a concrete signal that Base continues to streamline TEE- and proof-adjacent deployment ergonomics.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>Starknet</h3>
+        <p>Starknet merged a high-risk Apollo Propeller PR that changes peer data packaging from a single shard to a <code>ShardsOfPeer</code> collection and changes Merkle leaf hashing to use proto-encoded bytes: <a href="https://github.com/starkware-libs/sequencer/pull/12914">https://github.com/starkware-libs/sequencer/pull/12914</a></p>
+        <p>The PR explicitly flags backward-compatibility risk if peers still rely on the old encoding. Even though this is an internal-sequencer signal rather than an external product announcement, it is strategically relevant because it points to ongoing sequencing and data-distribution evolution.</p>
+      </div>
+
+      <div class="competitor-block">
+        <h3>Taiko</h3>
+        <p>Taiko published <code>taiko-alethia-client v2.2.0</code> as a mainnet release for the upcoming Shasta fork, with activation scheduled for 2026-04-02 13:15:00 UTC: <a href="https://github.com/taikoxyz/taiko-mono/releases/tag/taiko-alethia-client-v2.2.0">https://github.com/taikoxyz/taiko-mono/releases/tag/taiko-alethia-client-v2.2.0</a></p>
+        <p>The release adds new Shasta and Pacaya flags, improves Shasta event-sync resilience, and makes finalized-checkpoint handling more tolerant. This is a meaningful operator-readiness milestone because it ties technical changes to a dated mainnet fork window.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>What Matters Most For Linea</h2>
+      <ul>
+        <li>Optimism's <code>ZKDisputeGame</code> work is the most important proof-system signal in the current week because it suggests increasing operational maturity around ZK-assisted dispute resolution inside a widely reused stack.</li>
+        <li>Optimism's interop activation logic is the clearest competitive signal on native cross-chain UX. It is worth tracking whether activation-time deployment plus liquidity bootstrapping becomes a market expectation for interoperable rollups.</li>
+        <li>Arbitrum's fee-policy configurability and Taiko's fork-preparation release both highlight a broader pattern: operator-facing controls and release readiness are becoming product-level differentiators, not just implementation details.</li>
+        <li>Starknet's Apollo Propeller change is a reminder that internal sequencing and distribution improvements may create defensible advantages before they show up in public messaging.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Open Questions</h2>
+      <ul>
+        <li>Does Optimism publish a near-term activation or production plan for <code>ZKDisputeGame</code>, or is this still primarily infrastructure groundwork?</li>
+        <li>How quickly will OP Stack interop bridge activation logic move from merged code to live operator guidance and ecosystem adoption?</li>
+        <li>Will Arbitrum expose additional fee-policy controls alongside tip collection, or is this a one-off economics knob?</li>
+        <li>Is Starknet's Apollo Propeller work a precursor to broader multi-shard-per-peer behavior, or primarily an intermediate refactor?</li>
+        <li>After Shasta activates, does Taiko publish measurable changes in proposer/prover performance, finality behavior, or operator requirements?</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Appendix: Source Inventory</h2>
+      <p>Additional source-audit note: a second pass over allowlisted blogs, docs/notices, and forums did not yield additional confirmed in-window items that met the report's signal threshold. Several candidates turned out to be out of window or not substantive enough to include as weekly findings.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Competitor</th>
+            <th>Source</th>
+            <th>Effective date</th>
+            <th>Artifact</th>
+            <th>Importance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Competitor">Arbitrum</td>
+            <td data-label="Source"><a href="https://github.com/OffchainLabs/nitro/pull/4515">https://github.com/OffchainLabs/nitro/pull/4515</a></td>
+            <td data-label="Effective date">2026-03-25</td>
+            <td data-label="Artifact">Protocol / fee policy</td>
+            <td data-label="Importance">4</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Optimism / OP Stack</td>
+            <td data-label="Source"><a href="https://github.com/ethereum-optimism/optimism/pull/19606">https://github.com/ethereum-optimism/optimism/pull/19606</a></td>
+            <td data-label="Effective date">2026-03-25</td>
+            <td data-label="Artifact">ZK dispute game</td>
+            <td data-label="Importance">5</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Optimism / OP Stack</td>
+            <td data-label="Source"><a href="https://github.com/ethereum-optimism/optimism/pull/19648">https://github.com/ethereum-optimism/optimism/pull/19648</a></td>
+            <td data-label="Effective date">2026-03-23</td>
+            <td data-label="Artifact">Interop bridge activation</td>
+            <td data-label="Importance">5</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">zkSync</td>
+            <td data-label="Source"><a href="https://github.com/matter-labs/zksync-era/releases/tag/prover-v25.2.0">https://github.com/matter-labs/zksync-era/releases/tag/prover-v25.2.0</a></td>
+            <td data-label="Effective date">2026-03-25</td>
+            <td data-label="Artifact">Prover release</td>
+            <td data-label="Importance">3</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Base</td>
+            <td data-label="Source"><a href="https://github.com/base/contracts/pull/220">https://github.com/base/contracts/pull/220</a></td>
+            <td data-label="Effective date">2026-03-24</td>
+            <td data-label="Artifact">TEE prover registry deployment flow</td>
+            <td data-label="Importance">3</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Starknet</td>
+            <td data-label="Source"><a href="https://github.com/starkware-libs/sequencer/pull/12914">https://github.com/starkware-libs/sequencer/pull/12914</a></td>
+            <td data-label="Effective date">2026-03-26</td>
+            <td data-label="Artifact">Sequencer networking / shard encoding</td>
+            <td data-label="Importance">4</td>
+          </tr>
+          <tr>
+            <td data-label="Competitor">Taiko</td>
+            <td data-label="Source"><a href="https://github.com/taikoxyz/taiko-mono/releases/tag/taiko-alethia-client-v2.2.0">https://github.com/taikoxyz/taiko-mono/releases/tag/taiko-alethia-client-v2.2.0</a></td>
+            <td data-label="Effective date">2026-03-25</td>
+            <td data-label="Artifact">Mainnet client release for Shasta</td>
+            <td data-label="Importance">4</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

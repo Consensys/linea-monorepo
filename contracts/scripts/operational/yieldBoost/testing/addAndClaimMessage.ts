@@ -1,5 +1,6 @@
 import { task } from "hardhat/config";
 import { delay } from "../../../../common/helpers/general";
+import { runWithSignerUiSession } from "../../../../scripts/hardhat/signer-ui-bridge";
 import { prepareAndAddMessageMerkleRoot } from "./addAndClaimMessageHelper";
 
 /*
@@ -34,26 +35,28 @@ task(
   .addOptionalParam("value")
   .addOptionalParam("data")
   .setAction(async (taskArgs, hre) => {
-    const { claimParams, lineaRollup } = await prepareAndAddMessageMerkleRoot(taskArgs, hre, false);
+    return runWithSignerUiSession(hre, "task:addAndClaimMessage", async () => {
+      const { claimParams, lineaRollup } = await prepareAndAddMessageMerkleRoot(taskArgs, hre, false);
 
-    {
-      console.log("Waiting for 10 seconds...");
-      await delay(10000);
-      console.log("Claiming message...");
-      const tx = await lineaRollup.claimMessageWithProof({
-        proof: claimParams.proof,
-        messageNumber: claimParams.messageNumber,
-        leafIndex: claimParams.leafIndex,
-        from: claimParams.from,
-        to: claimParams.to,
-        fee: claimParams.fee,
-        value: claimParams.value,
-        feeRecipient: claimParams.feeRecipient,
-        merkleRoot: claimParams.merkleRoot,
-        data: claimParams.data,
-      });
-      console.log("  Transaction hash:", tx.hash);
-      const receipt = await tx.wait();
-      console.log("  Transaction confirmed in block:", receipt?.blockNumber);
-    }
+      {
+        console.log("Waiting for 10 seconds...");
+        await delay(10000);
+        console.log("Claiming message...");
+        const tx = await lineaRollup.claimMessageWithProof({
+          proof: claimParams.proof,
+          messageNumber: claimParams.messageNumber,
+          leafIndex: claimParams.leafIndex,
+          from: claimParams.from,
+          to: claimParams.to,
+          fee: claimParams.fee,
+          value: claimParams.value,
+          feeRecipient: claimParams.feeRecipient,
+          merkleRoot: claimParams.merkleRoot,
+          data: claimParams.data,
+        });
+        console.log("  Transaction hash:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("  Transaction confirmed in block:", receipt?.blockNumber);
+      }
+    });
   });

@@ -2,15 +2,15 @@ import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { get1559Fees } from "../scripts/utils";
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "02_deploy_Timelock.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const contractName = "TimeLock";
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     // This should be the safe
     const timeLockProposers = getRequiredEnvVar("TIMELOCK_PROPOSERS");

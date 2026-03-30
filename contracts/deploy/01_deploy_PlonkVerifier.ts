@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory, deployFromFactoryWithOpts } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import {
   getRequiredEnvVar,
   LogContractDeployment,
@@ -12,10 +12,10 @@ import {
 import { toBeHex } from "ethers";
 import { Mimc } from "contracts/typechain-types";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "01_deploy_PlonkVerifier.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
     const contractName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
     const verifierIndex = getRequiredEnvVar("VERIFIER_PROOF_TYPE");
     const chainId = getRequiredEnvVar("VERIFIER_CHAIN_ID");

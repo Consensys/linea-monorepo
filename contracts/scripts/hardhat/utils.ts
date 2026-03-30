@@ -3,7 +3,7 @@ import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
 import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
-import { resolveDeploymentRunner, setDeploymentUiNextTransactionContext } from "./deployment-ui";
+import { isSignerUiEnabled, resolveUiRunner, setUiTransactionContext } from "./signer-ui-bridge";
 
 type RunnerOrProvider = AbstractSigner | Provider | JsonRpcProvider | HardhatEthersHelpers["provider"] | null;
 
@@ -49,11 +49,11 @@ function pushUiDeployContext(
     openZeppelinProxyKind?: "transparent" | "uups" | "beacon";
   },
 ): void {
-  if (process.env.DEPLOY_WITH_UI !== "true") {
+  if (!isSignerUiEnabled()) {
     return;
   }
 
-  setDeploymentUiNextTransactionContext({
+  setUiTransactionContext({
     contractName,
     constructorArgs: details.constructorArgs,
     initializerArgs: details.initializerArgs,
@@ -83,7 +83,7 @@ async function deployFromFactory(
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
-  const runner = await resolveDeploymentRunner(runnerOrProvider);
+  const runner = await resolveUiRunner(runnerOrProvider);
   if (!skipLog) {
     const signerAddress = "getAddress" in runner ? await runner.getAddress() : undefined;
     console.log(`Going to deploy ${contractName} with account ${signerAddress}...`);
@@ -124,7 +124,7 @@ async function deployFromFactoryWithOpts(
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
-  const runner = await resolveDeploymentRunner(runnerOrProvider);
+  const runner = await resolveUiRunner(runnerOrProvider);
   if (!skipLog) {
     const signerAddress = "getAddress" in runner ? await runner.getAddress() : undefined;
     console.log(`Going to deploy ${contractName} with account ${signerAddress}...`);
@@ -164,7 +164,7 @@ async function deployUpgradableFromFactory(
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
-  const runner = await resolveDeploymentRunner();
+  const runner = await resolveUiRunner();
   if (!skipLog) {
     console.log(`Going to deploy upgradable ${contractName}`);
   }
@@ -243,7 +243,7 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
-  const runner = await resolveDeploymentRunner();
+  const runner = await resolveUiRunner();
   if (!skipLog) {
     console.log(`Going to deploy upgradable ${contractName}`);
   }

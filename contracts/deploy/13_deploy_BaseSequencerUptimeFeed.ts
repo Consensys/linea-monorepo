@@ -1,14 +1,14 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { tryVerifyContractWithConstructorArgs, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "13_deploy_BaseSequencerUptimeFeed.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const contractName = "LineaSequencerUptimeFeed";
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     const initialStatus = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_INITIAL_STATUS");
     const adminAddress = getRequiredEnvVar("LINEA_SEQUENCER_UPTIME_FEED_ADMIN");

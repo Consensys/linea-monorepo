@@ -15,7 +15,6 @@ import {
   isAddress,
   toQuantity,
 } from "ethers";
-import { ethers as hardhatEthers } from "hardhat";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { SupportedChainIds } from "../../common/supportedNetworks";
@@ -61,8 +60,8 @@ type SerializedTransactionRequest = {
   chainId?: HexString;
 };
 
-/** Optional human-readable context shown in the deploy UI (constructor / initializer args, etc.). */
-export type DeploymentUiTransactionDetails = {
+/** Optional human-readable context shown in the signer UI (constructor / initializer args, etc.). */
+export type UiTransactionDetails = {
   contractName?: string;
   constructorArgs?: unknown;
   initializerArgs?: unknown;
@@ -79,7 +78,7 @@ type TransactionPrompt = {
   description: string;
   createdAt: string;
   request: SerializedTransactionRequest;
-  deploymentDetails?: DeploymentUiTransactionDetails | null;
+  transactionDetails?: UiTransactionDetails | null;
 };
 
 type TransactionOutcome = {
@@ -97,15 +96,15 @@ type SessionWalletState = {
 
 type SessionState = {
   sessionId: string;
-  /** Currently executing deploy script file name (updates across a multi-script batch). */
-  deployFile: string;
+  /** Currently executing script or task identifier (updates across a multi-script batch). */
+  scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
   wallet: SessionWalletState | null;
   pendingRequest: TransactionPrompt | null;
   startedAt: string;
-  /** 1-based index of deploy scripts that entered `withDeploymentUiSession` in this session. */
-  deployScriptOrdinal: number;
+  /** 1-based index of scripts that entered `withSignerUiSession` in this session. */
+  scriptOrdinal: number;
   /** True while `deploy:runDeploy` is running (multi-tag / multi-file batch). */
   batchRunActive: boolean;
   /** Comma-separated tags from `--tags`, if any. */
@@ -118,17 +117,17 @@ type PendingTransaction = {
   reject: (reason?: Error) => void;
 };
 
-type DeploymentUiContext = {
-  deployFile: string;
+type SignerUiContext = {
+  scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
   provider: Provider;
   batchTagsSummary: string | null;
 };
 
-const DEPLOY_UI_DIR = resolve(__dirname, "../../deploy-ui");
-const DEPLOY_UI_PACKAGE_NAME = "@consensys/linea-contract-deploy-ui";
-const MONOREPO_ROOT = resolve(DEPLOY_UI_DIR, "../..");
+const SIGNER_UI_DIR = resolve(__dirname, "../../signer-ui");
+const SIGNER_UI_PACKAGE_NAME = "@consensys/linea-contract-signer-ui";
+const MONOREPO_ROOT = resolve(SIGNER_UI_DIR, "../..");
 const LOCALHOST = "127.0.0.1";
 const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
 const UI_READY_TIMEOUT_MS = 60 * 1000;
@@ -138,24 +137,24 @@ const UI_PROCESS_KILL_TIMEOUT_MS = 5000;
 const SERVER_CLOSE_TIMEOUT_MS = 3000;
 /**
  * Authenticates requests to the loopback bridge (any local process could otherwise hit the API).
- * Must match the header the deploy UI sends. Not branded: this is a generic Hardhat↔browser session secret.
+ * Must match the header the signer UI sends. Not branded: this is a generic Hardhat↔browser session secret.
  */
-const DEPLOY_UI_SESSION_TOKEN_HEADER = "x-deploy-ui-session-token";
+const HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER = "x-hardhat-signer-ui-session-token";
 /** Reject huge JSON bodies on the local bridge (DoS / accidental OOM). */
 const MAX_JSON_BODY_BYTES = 256 * 1024;
 const TX_LOOKUP_TIMEOUT_MS = 12_000;
 const TX_LOOKUP_INTERVAL_MS = 200;
 
-let activeSession: DeploymentUiSession | undefined;
+let activeSession: SignerUiSession | undefined;
 
 /**
  * True while hardhat-deploy `deploy:runDeploy` is executing (entire tag batch).
- * Session close is deferred until the batch ends; individual `withDeploymentUiSession` wrappers skip close.
+ * Session close is deferred until the batch ends; individual `withSignerUiSession` wrappers skip close.
  */
-let deployUiRunBatchActive = false;
-let deployUiBatchTagsLabel: string | null = null;
+let signerUiHardhatDeployBatchActive = false;
+let signerUiHardhatDeployBatchTags: string | null = null;
 
-async function closeActiveDeployUiSession(): Promise<void> {
+async function closeActiveSignerUiSession(): Promise<void> {
   if (!activeSession) {
     return;
   }
@@ -213,8 +212,8 @@ function killTcpListenersOnPort(port: number): void {
  * Next.js 16+ keeps a singleton dev server via `.next/dev/lock` (JSON with pid/port).
  * A stale lock or orphan PID makes `next dev` exit immediately — with stdio ignored the CLI only "hangs" until HTTP wait times out.
  */
-function clearNextDevSingletonLock(deployUiDir: string): void {
-  const lockPath = join(deployUiDir, ".next", "dev", "lock");
+function clearNextDevSingletonLock(signerUiDir: string): void {
+  const lockPath = join(signerUiDir, ".next", "dev", "lock");
   if (!existsSync(lockPath)) {
     return;
   }
@@ -245,8 +244,8 @@ function clearNextDevSingletonLock(deployUiDir: string): void {
   }
 }
 
-function removeNextDevLockFile(deployUiDir: string): void {
-  const lockPath = join(deployUiDir, ".next", "dev", "lock");
+function removeNextDevLockFile(signerUiDir: string): void {
+  const lockPath = join(signerUiDir, ".next", "dev", "lock");
   try {
     if (existsSync(lockPath)) {
       unlinkSync(lockPath);
@@ -272,13 +271,13 @@ async function waitForChildEarlyExit(proc: ChildProcess, timeoutMs: number): Pro
   });
 }
 
-function isUiDeploymentEnabled(): boolean {
-  return process.env.DEPLOY_WITH_UI === "true";
+export function isSignerUiEnabled(): boolean {
+  return process.env.HARDHAT_SIGNER_UI === "true";
 }
 
 /** When false (default), the Next.js dev server is left running after the HTTP bridge closes so the tab stays usable. */
 function shutdownNextDevWithBridge(): boolean {
-  return process.env.DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV === "true";
+  return process.env.HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV === "true";
 }
 
 function getExplorerUrls(chainId: number): string[] {
@@ -379,7 +378,7 @@ async function getFreePort(): Promise<number> {
         }
 
         if (!port) {
-          reject(new Error("Failed to allocate a local port for DEPLOY_WITH_UI"));
+          reject(new Error("Failed to allocate a local port for HARDHAT_SIGNER_UI"));
           return;
         }
 
@@ -521,7 +520,7 @@ function writeJson(response: ServerResponse, statusCode: number, payload: unknow
  * credentialess cross-origin requests to the bridge from the user's browser (mitigated by Private
  * Network Access in some browsers, but we still avoid wildcard / reflection).
  */
-function applyDeployUiCors(request: IncomingMessage, response: ServerResponse, uiPort: number): void {
+function applySignerUiCors(request: IncomingMessage, response: ServerResponse, uiPort: number): void {
   const allowedOrigin = `http://${LOCALHOST}:${uiPort}`;
   const origin = request.headers.origin;
   if (origin === allowedOrigin) {
@@ -529,11 +528,11 @@ function applyDeployUiCors(request: IncomingMessage, response: ServerResponse, u
     response.setHeader("Vary", "Origin");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", `Content-Type, ${DEPLOY_UI_SESSION_TOKEN_HEADER}`);
+  response.setHeader("Access-Control-Allow-Headers", `Content-Type, ${HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER}`);
 }
 
-function isValidDeployUiSessionToken(expected: string, request: IncomingMessage): boolean {
-  const received = request.headers[DEPLOY_UI_SESSION_TOKEN_HEADER];
+function isValidSignerUiSessionToken(expected: string, request: IncomingMessage): boolean {
+  const received = request.headers[HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER];
   if (typeof received !== "string" || received.length === 0) {
     return false;
   }
@@ -652,11 +651,11 @@ async function waitForHttpOk(url: string, timeoutMs: number) {
     await new Promise((resolveSleep) => setTimeout(resolveSleep, UI_POLL_INTERVAL_MS));
   }
 
-  throw new Error(`Timed out while waiting for the deploy UI to start at ${url}`);
+  throw new Error(`Timed out while waiting for the signer UI to start at ${url}`);
 }
 
 async function openBrowser(url: string) {
-  if (process.env.DEPLOY_WITH_UI_OPEN_BROWSER === "false") {
+  if (process.env.HARDHAT_SIGNER_UI_OPEN_BROWSER === "false") {
     return;
   }
 
@@ -668,15 +667,15 @@ async function openBrowser(url: string) {
   child.unref();
 }
 
-class DeploymentUiSession {
+class SignerUiSession {
   private readonly sessionId = randomUUID();
-  /** Opaque secret; required as `x-deploy-ui-session-token` on bridge HTTP calls. */
+  /** Opaque secret; required as `x-hardhat-signer-ui-session-token` on bridge HTTP calls. */
   private readonly sessionSecret = randomBytes(32).toString("base64url");
   private readonly startedAt = new Date().toISOString();
-  private readonly context: DeploymentUiContext;
+  private readonly context: SignerUiContext;
   private readonly batchTagsSummary: string | null;
-  private activeDeployFile: string;
-  private deployScriptOrdinal = 0;
+  private activeScriptContext: string;
+  private scriptOrdinal = 0;
   private server?: Server;
   private serverPort?: number;
   private uiPort?: number;
@@ -684,28 +683,28 @@ class DeploymentUiSession {
   private started = false;
   private closed = false;
   private pendingRequest?: PendingTransaction;
-  private nextTransactionDetails?: DeploymentUiTransactionDetails;
+  private nextTransactionDetails?: UiTransactionDetails;
   private walletState: SessionWalletState | null = null;
   private walletResolvers: Array<(wallet: SessionWalletState) => void> = [];
   private walletRejectors: Array<(error: Error) => void> = [];
-  private signer?: DeploymentUiSigner;
+  private signer?: SignerUiSigner;
 
-  public constructor(context: DeploymentUiContext) {
+  public constructor(context: SignerUiContext) {
     this.context = context;
     this.batchTagsSummary = context.batchTagsSummary;
-    this.activeDeployFile = context.deployFile;
+    this.activeScriptContext = context.scriptContext;
   }
 
-  /** Called when each wrapped deploy script starts (same session across a batch). */
-  public notifyDeployScriptStart(deployFile: string): void {
-    this.deployScriptOrdinal += 1;
-    this.activeDeployFile = deployFile;
-    if (deployUiRunBatchActive) {
+  /** Called when each wrapped script starts (same session across a Hardhat deploy batch). */
+  public notifyScriptContext(scriptContext: string): void {
+    this.scriptOrdinal += 1;
+    this.activeScriptContext = scriptContext;
+    if (signerUiHardhatDeployBatchActive) {
       const tagPart =
         this.batchTagsSummary && this.batchTagsSummary.length > 0 ? `tags ${this.batchTagsSummary} · ` : "";
-      console.log(`DEPLOY_WITH_UI: script ${this.deployScriptOrdinal} in this deploy run (${tagPart}${deployFile})`);
+      console.log(`HARDHAT_SIGNER_UI: script ${this.scriptOrdinal} in this deploy run (${tagPart}${scriptContext})`);
     } else {
-      console.log(`DEPLOY_WITH_UI: deploy script ${deployFile}`);
+      console.log(`HARDHAT_SIGNER_UI: ${scriptContext}`);
     }
   }
 
@@ -724,7 +723,7 @@ class DeploymentUiSession {
         if (!response.headersSent) {
           try {
             if (this.uiPort !== undefined) {
-              applyDeployUiCors(request, response, this.uiPort);
+              applySignerUiCors(request, response, this.uiPort);
             }
             writeJson(response, status, { error: message });
           } catch {
@@ -740,16 +739,16 @@ class DeploymentUiSession {
       this.server?.on("error", rejectServer);
     });
 
-    clearNextDevSingletonLock(DEPLOY_UI_DIR);
+    clearNextDevSingletonLock(SIGNER_UI_DIR);
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 400));
 
-    // Run from monorepo root + filter: deploy-ui often has no local node_modules under pnpm.
+    // Run from monorepo root + filter: signer-ui often has no local node_modules under pnpm.
     // Never use "pipe" without draining: Next/Turbopack logs fill buffers and the child blocks before listening.
     this.uiProcess = spawn(
       "pnpm",
       [
         "--filter",
-        DEPLOY_UI_PACKAGE_NAME,
+        SIGNER_UI_PACKAGE_NAME,
         "exec",
         "next",
         "dev",
@@ -761,32 +760,32 @@ class DeploymentUiSession {
       {
         cwd: MONOREPO_ROOT,
         env: { ...process.env },
-        stdio: process.env.DEPLOY_WITH_UI_DEBUG === "true" ? "inherit" : "ignore",
+        stdio: process.env.HARDHAT_SIGNER_UI_DEBUG === "true" ? "inherit" : "ignore",
       },
     );
 
     this.uiProcess.on("exit", (code) => {
       if (!this.closed && code !== 0) {
-        this.failPendingState(new Error(`Deploy UI process exited unexpectedly with code ${code ?? "unknown"}`));
+        this.failPendingState(new Error(`Signer UI process exited unexpectedly with code ${code ?? "unknown"}`));
       }
     });
 
     const earlyExitCode = await waitForChildEarlyExit(this.uiProcess, 3500);
     if (earlyExitCode !== null) {
       throw new Error(
-        `Deploy UI (next dev) exited early with code ${earlyExitCode}. ` +
-          `Next.js 16 allows only one dev server per app — close any other \`next dev\` for contracts/deploy-ui, or remove a stale .next/dev/lock. ` +
-          `Re-run with DEPLOY_WITH_UI_DEBUG=true to see Next logs.`,
+        `Signer UI (next dev) exited early with code ${earlyExitCode}. ` +
+          `Next.js 16 allows only one dev server per app — close any other \`next dev\` for contracts/signer-ui, or remove a stale .next/dev/lock. ` +
+          `Re-run with HARDHAT_SIGNER_UI_DEBUG=true to see Next logs.`,
       );
     }
 
     const uiUrl = this.getUiUrl();
     console.log(
-      `DEPLOY_WITH_UI: starting Next dev on http://${LOCALHOST}:${this.uiPort} (bridge API on ${this.getApiBaseUrl()})…`,
+      `HARDHAT_SIGNER_UI: starting Next dev on http://${LOCALHOST}:${this.uiPort} (bridge API on ${this.getApiBaseUrl()})…`,
     );
     await waitForHttpOk(uiUrl, UI_READY_TIMEOUT_MS);
     console.log(
-      `DEPLOY_WITH_UI is enabled for ${this.activeDeployFile}. Waiting for browser wallet approval at ${uiUrl}`,
+      `HARDHAT_SIGNER_UI is enabled for ${this.activeScriptContext}. Waiting for browser wallet approval at ${uiUrl}`,
     );
     await openBrowser(uiUrl);
     this.started = true;
@@ -798,7 +797,7 @@ class DeploymentUiSession {
     }
 
     this.closed = true;
-    this.failPendingState(new Error(`DEPLOY_WITH_UI session closed during ${this.activeDeployFile}`));
+    this.failPendingState(new Error(`HARDHAT_SIGNER_UI session closed during ${this.activeScriptContext}`));
 
     const apiPort = this.serverPort;
     const nextDevPort = this.uiPort;
@@ -826,16 +825,18 @@ class DeploymentUiSession {
       if (nextDevPort !== undefined) {
         killTcpListenersOnPort(nextDevPort);
       }
-      removeNextDevLockFile(DEPLOY_UI_DIR);
-      console.log("DEPLOY_WITH_UI: Next.js deploy UI dev server stopped (DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true).");
+      removeNextDevLockFile(SIGNER_UI_DIR);
+      console.log(
+        "HARDHAT_SIGNER_UI: Next.js signer UI dev server stopped (HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true).",
+      );
     } else {
       if (nextDevPort !== undefined) {
         console.log(
-          `DEPLOY_WITH_UI: HTTP bridge closed. Deploy UI still at http://${LOCALHOST}:${nextDevPort} — tab stays open; set DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true to stop Next.js with Hardhat.`,
+          `HARDHAT_SIGNER_UI: HTTP bridge closed. Signer UI still at http://${LOCALHOST}:${nextDevPort} — tab stays open; set HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true to stop Next.js with Hardhat.`,
         );
       } else {
         console.log(
-          "DEPLOY_WITH_UI: HTTP bridge closed (Next.js UI port unknown). Set DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true to force child teardown when used.",
+          "HARDHAT_SIGNER_UI: HTTP bridge closed (Next.js UI port unknown). Set HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true to force child teardown when used.",
         );
       }
     }
@@ -881,21 +882,21 @@ class DeploymentUiSession {
   public getState(): SessionState {
     return {
       sessionId: this.sessionId,
-      deployFile: this.activeDeployFile,
+      scriptContext: this.activeScriptContext,
       networkName: this.context.networkName,
       chain: this.context.chain,
       wallet: this.walletState,
       pendingRequest: this.pendingRequest?.prompt ?? null,
       startedAt: this.startedAt,
-      deployScriptOrdinal: this.deployScriptOrdinal,
-      batchRunActive: deployUiRunBatchActive,
+      scriptOrdinal: this.scriptOrdinal,
+      batchRunActive: signerUiHardhatDeployBatchActive,
       batchTagsSummary: this.batchTagsSummary,
     };
   }
 
-  public getSigner(provider?: Provider): DeploymentUiSigner {
+  public getSigner(provider?: Provider): SignerUiSigner {
     if (!this.signer || (provider && this.signer.provider !== provider)) {
-      this.signer = new DeploymentUiSigner(provider ?? this.context.provider, this);
+      this.signer = new SignerUiSigner(provider ?? this.context.provider, this);
     }
 
     return this.signer;
@@ -912,7 +913,7 @@ class DeploymentUiSession {
       const timeout = setTimeout(() => {
         this.walletResolvers = this.walletResolvers.filter((resolver) => resolver !== onWallet);
         this.walletRejectors = this.walletRejectors.filter((rejector) => rejector !== onReject);
-        rejectWallet(new Error(`Timed out while waiting for a wallet connection for ${this.activeDeployFile}`));
+        rejectWallet(new Error(`Timed out while waiting for a wallet connection for ${this.activeScriptContext}`));
       }, SESSION_TIMEOUT_MS);
 
       const onWallet = (wallet: SessionWalletState) => {
@@ -938,7 +939,9 @@ class DeploymentUiSession {
     await this.start();
 
     if (this.pendingRequest) {
-      throw new Error(`DEPLOY_WITH_UI only supports one in-flight transaction at a time (${this.activeDeployFile})`);
+      throw new Error(
+        `HARDHAT_SIGNER_UI only supports one in-flight transaction at a time (${this.activeScriptContext})`,
+      );
     }
 
     const extra = this.takeNextTransactionDetails();
@@ -948,7 +951,7 @@ class DeploymentUiSession {
       description,
       createdAt: new Date().toISOString(),
       request: await serializeTransactionRequest(transactionRequest),
-      deploymentDetails: extra,
+      transactionDetails: extra,
     };
 
     return await new Promise<TransactionOutcome>((resolvePrompt, rejectPrompt) => {
@@ -980,11 +983,11 @@ class DeploymentUiSession {
 
   private async handleRequest(request: IncomingMessage, response: ServerResponse) {
     if (this.uiPort === undefined) {
-      writeJson(response, 503, { error: "Deploy UI session is not ready." });
+      writeJson(response, 503, { error: "Signer UI session is not ready." });
       return;
     }
 
-    applyDeployUiCors(request, response, this.uiPort);
+    applySignerUiCors(request, response, this.uiPort);
 
     if (request.method === "OPTIONS") {
       response.statusCode = 204;
@@ -993,8 +996,8 @@ class DeploymentUiSession {
       return;
     }
 
-    if (!isValidDeployUiSessionToken(this.sessionSecret, request)) {
-      writeJson(response, 401, { error: "Missing or invalid deploy UI session token." });
+    if (!isValidSignerUiSessionToken(this.sessionSecret, request)) {
+      writeJson(response, 401, { error: "Missing or invalid signer UI session token." });
       return;
     }
 
@@ -1021,7 +1024,7 @@ class DeploymentUiSession {
         return;
       }
 
-      /* Do not require the wallet to already be on the deployment chain: MetaMask often connects on
+      /* Do not require the wallet to already be on the target chain: MetaMask often connects on
        * the wrong network first, and rejecting here left waitForWallet() pending forever. Chain is
        * enforced before send in the UI (ensureTargetChain) and again in POST /api/respond. */
 
@@ -1074,7 +1077,7 @@ class DeploymentUiSession {
         return;
       }
       if (raw.chainId !== this.context.chain.chainId) {
-        writeJson(response, 400, { error: "chainId does not match this deployment session." });
+        writeJson(response, 400, { error: "chainId does not match this Hardhat signer session." });
         return;
       }
 
@@ -1118,7 +1121,7 @@ class DeploymentUiSession {
 
       if (!onChainTransactionMatchesPrompt(onChain, this.pendingRequest.prompt.request, this.walletState.address)) {
         writeJson(response, 400, {
-          error: "On-chain transaction does not match the pending deployment request (to, data, value, or sender).",
+          error: "On-chain transaction does not match the pending signer UI request (to, data, value, or sender).",
         });
         return;
       }
@@ -1185,11 +1188,11 @@ class DeploymentUiSession {
     return `http://${LOCALHOST}:${this.serverPort}`;
   }
 
-  public setNextTransactionDetails(details: DeploymentUiTransactionDetails): void {
+  public setNextTransactionDetails(details: UiTransactionDetails): void {
     this.nextTransactionDetails = details;
   }
 
-  private takeNextTransactionDetails(): DeploymentUiTransactionDetails | undefined {
+  private takeNextTransactionDetails(): UiTransactionDetails | undefined {
     const details = this.nextTransactionDetails;
     this.nextTransactionDetails = undefined;
     if (!details) {
@@ -1200,20 +1203,20 @@ class DeploymentUiSession {
   }
 }
 
-class DeploymentUiSigner extends AbstractSigner {
-  private readonly session: DeploymentUiSession;
+class SignerUiSigner extends AbstractSigner {
+  private readonly session: SignerUiSession;
 
-  public constructor(provider: Provider, session: DeploymentUiSession) {
+  public constructor(provider: Provider, session: SignerUiSession) {
     super(provider);
     this.session = session;
   }
 
   public override connect(provider: Provider | null): AbstractSigner {
     if (!provider) {
-      throw new Error("DEPLOY_WITH_UI requires a provider-backed signer");
+      throw new Error("HARDHAT_SIGNER_UI requires a provider-backed signer");
     }
 
-    return new DeploymentUiSigner(provider, this.session);
+    return new SignerUiSigner(provider, this.session);
   }
 
   public override async getAddress(): Promise<string> {
@@ -1223,12 +1226,12 @@ class DeploymentUiSigner extends AbstractSigner {
 
   public override async signTransaction(transaction: TransactionRequest): Promise<string> {
     void transaction;
-    throw new Error("DEPLOY_WITH_UI signs and sends through the browser wallet only.");
+    throw new Error("HARDHAT_SIGNER_UI signs and sends through the browser wallet only.");
   }
 
   public override async signMessage(message: string | Uint8Array): Promise<string> {
     void message;
-    throw new Error("DEPLOY_WITH_UI does not support signMessage for contract deployments.");
+    throw new Error("HARDHAT_SIGNER_UI does not support signMessage.");
   }
 
   public override async signTypedData(
@@ -1239,14 +1242,14 @@ class DeploymentUiSigner extends AbstractSigner {
     void domain;
     void types;
     void value;
-    throw new Error("DEPLOY_WITH_UI does not support signTypedData for contract deployments.");
+    throw new Error("HARDHAT_SIGNER_UI does not support signTypedData.");
   }
 
   public override async sendTransaction(transactionRequest: TransactionRequest): Promise<TransactionResponse> {
-    const label = transactionRequest.to ? "Contract transaction" : "Contract deployment";
+    const label = transactionRequest.to ? "Contract transaction" : "Contract creation";
     const description = transactionRequest.to
       ? `Send transaction to ${String(transactionRequest.to)}`
-      : "Send contract deployment transaction";
+      : "Send contract creation transaction";
     const outcome = await this.session.requestTransaction(transactionRequest, label, description);
     return await this.session.waitForTransaction(outcome.hash);
   }
@@ -1254,37 +1257,37 @@ class DeploymentUiSigner extends AbstractSigner {
 
 async function getOrCreateSession(
   hre: HardhatRuntimeEnvironment,
-  deployFile: string,
-): Promise<DeploymentUiSession | undefined> {
-  if (!isUiDeploymentEnabled()) {
+  scriptContext: string,
+): Promise<SignerUiSession | undefined> {
+  if (!isSignerUiEnabled()) {
     return undefined;
   }
 
   if (!activeSession) {
-    activeSession = new DeploymentUiSession({
-      deployFile,
+    activeSession = new SignerUiSession({
+      scriptContext,
       networkName: hre.network.name,
       chain: await getChainMetadata(hre),
       provider: hre.ethers.provider,
-      batchTagsSummary: deployUiBatchTagsLabel,
+      batchTagsSummary: signerUiHardhatDeployBatchTags,
     });
   }
 
   await activeSession.start();
-  activeSession.notifyDeployScriptStart(deployFile);
+  activeSession.notifyScriptContext(scriptContext);
   return activeSession;
 }
 
-function requireActiveSession(): DeploymentUiSession {
+function requireActiveSession(): SignerUiSession {
   if (!activeSession) {
-    throw new Error("DEPLOY_WITH_UI is enabled but no active deployment UI session exists.");
+    throw new Error("HARDHAT_SIGNER_UI is enabled but no active signer UI session exists.");
   }
 
   return activeSession;
 }
 
-export async function getDeploymentSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
-  if (isUiDeploymentEnabled()) {
+export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
+  if (isSignerUiEnabled()) {
     return requireActiveSession().getSigner(hre.ethers.provider);
   }
 
@@ -1292,14 +1295,12 @@ export async function getDeploymentSigner(hre: HardhatRuntimeEnvironment): Promi
   return await hre.ethers.getSigner(deployer);
 }
 
-export async function resolveDeploymentRunner(
-  runnerOrProvider?: AbstractSigner | Provider | null,
-): Promise<AbstractSigner> {
+export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provider | null): Promise<AbstractSigner> {
   if (isSigner(runnerOrProvider)) {
     return runnerOrProvider;
   }
 
-  if (isUiDeploymentEnabled()) {
+  if (isSignerUiEnabled()) {
     const provider = isProviderLike(runnerOrProvider) ? runnerOrProvider : undefined;
     return requireActiveSession().getSigner(provider);
   }
@@ -1308,30 +1309,33 @@ export async function resolveDeploymentRunner(
     return await runnerOrProvider.getSigner();
   }
 
-  return await hardhatEthers.provider.getSigner();
+  // Lazy require: operational tasks import this module while Hardhat loads config; a top-level
+  // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
+  const { ethers: hhEthers } = require("hardhat") as typeof import("hardhat");
+  return await hhEthers.provider.getSigner();
 }
 
 /**
  * Attach constructor/initializer context for the next browser-signed transaction only.
- * No-op when DEPLOY_WITH_UI is not enabled or no session is active. Deploy helpers call this automatically.
+ * No-op when HARDHAT_SIGNER_UI is not enabled or no session is active. Deploy helpers call this automatically.
  */
-export function setDeploymentUiNextTransactionContext(details: DeploymentUiTransactionDetails): void {
-  if (!isUiDeploymentEnabled() || !activeSession) {
+export function setUiTransactionContext(details: UiTransactionDetails): void {
+  if (!isSignerUiEnabled() || !activeSession) {
     return;
   }
 
   activeSession.setNextTransactionDetails(details);
 }
 
-export function withDeploymentUiSession(deployFile: string, deployFunction: DeployFunction): DeployFunction {
+export function withSignerUiSession(scriptContext: string, deployFunction: DeployFunction): DeployFunction {
   const wrapped: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    await getOrCreateSession(hre, deployFile);
+    await getOrCreateSession(hre, scriptContext);
 
     try {
       await deployFunction(hre);
     } finally {
-      if (!deployUiRunBatchActive) {
-        await closeActiveDeployUiSession();
+      if (!signerUiHardhatDeployBatchActive) {
+        await closeActiveSignerUiSession();
       }
     }
   };
@@ -1340,36 +1344,60 @@ export function withDeploymentUiSession(deployFile: string, deployFunction: Depl
 }
 
 /**
- * Wraps hardhat-deploy `deploy:runDeploy` so DEPLOY_WITH_UI keeps one browser session for the whole
+ * Runs `fn` with an active signer UI session when `HARDHAT_SIGNER_UI=true` (e.g. Hardhat tasks / operational scripts).
+ * Closes the session when finished unless a `hardhat deploy` batch is in progress.
+ */
+export async function runWithSignerUiSession<T>(
+  hre: HardhatRuntimeEnvironment,
+  scriptContext: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  if (!isSignerUiEnabled()) {
+    return await fn();
+  }
+
+  await getOrCreateSession(hre, scriptContext);
+
+  try {
+    return await fn();
+  } finally {
+    if (!signerUiHardhatDeployBatchActive) {
+      await closeActiveSignerUiSession();
+    }
+  }
+}
+
+/**
+ * Wraps hardhat-deploy `deploy:runDeploy` so HARDHAT_SIGNER_UI keeps one browser session for the whole
  * tag batch. Registered from `hardhat.config.ts`.
  */
-export async function deployUiRunDeploySubtaskAction(
+export async function signerUiHardhatDeployRunSubtaskAction(
   args: { tags?: string },
   hre: HardhatRuntimeEnvironment,
   runSuper: (taskArgs: unknown, env: HardhatRuntimeEnvironment) => Promise<unknown>,
 ): Promise<unknown> {
   void hre;
-  if (!isUiDeploymentEnabled()) {
+  if (!isSignerUiEnabled()) {
     return runSuper(args, hre);
   }
 
   const tagLabel = typeof args.tags === "string" ? args.tags.trim() : "";
 
-  deployUiRunBatchActive = true;
-  deployUiBatchTagsLabel = tagLabel.length > 0 ? tagLabel : null;
+  signerUiHardhatDeployBatchActive = true;
+  signerUiHardhatDeployBatchTags = tagLabel.length > 0 ? tagLabel : null;
 
   console.log(
-    `DEPLOY_WITH_UI: one browser session for this entire deploy run${
+    `HARDHAT_SIGNER_UI: one browser session for this entire deploy run${
       tagLabel ? ` (--tags ${tagLabel})` : ""
-    }. Scripts run sequentially; the HTTP bridge stops when the run completes (Next.js tab stays up unless DEPLOY_WITH_UI_SHUTDOWN_NEXT_DEV=true).`,
+    }. Scripts run sequentially; the HTTP bridge stops when the run completes (Next.js tab stays up unless HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true).`,
   );
 
   try {
     return await runSuper(args, hre);
   } finally {
-    deployUiRunBatchActive = false;
-    deployUiBatchTagsLabel = null;
-    await closeActiveDeployUiSession();
-    console.log("DEPLOY_WITH_UI: Hardhat deploy run complete.");
+    signerUiHardhatDeployBatchActive = false;
+    signerUiHardhatDeployBatchTags = null;
+    await closeActiveSignerUiSession();
+    console.log("HARDHAT_SIGNER_UI: Hardhat deploy run complete.");
   }
 }

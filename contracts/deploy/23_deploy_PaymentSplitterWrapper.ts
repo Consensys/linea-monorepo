@@ -3,13 +3,13 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 import { deployFromFactory } from "../scripts/hardhat/utils";
-import { getDeploymentSigner, withDeploymentUiSession } from "../scripts/hardhat/deployment-ui";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withDeploymentUiSession(
+const func: DeployFunction = withSignerUiSession(
   "23_deploy_PaymentSplitterWrapper.ts",
   async function (hre: HardhatRuntimeEnvironment) {
     const contractName = "PaymentSplitterWrapper";
-    const signer = await getDeploymentSigner(hre);
+    const signer = await getUiSigner(hre);
 
     const payeesRaw = getRequiredEnvVar("PAYMENT_SPLITTER_PAYEES");
     const sharesRaw = getRequiredEnvVar("PAYMENT_SPLITTER_SHARES");

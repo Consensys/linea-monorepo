@@ -1,6 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Contract } from "ethers";
 import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
+import { getUiSigner } from "../../../../scripts/hardhat/signer-ui-bridge";
 import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 
 export interface ClaimParams {
@@ -37,9 +38,8 @@ export async function prepareAndAddMessageMerkleRoot(
   hre: HardhatRuntimeEnvironment,
   requireYieldProvider: boolean = false,
 ): Promise<PrepareMessageResult> {
-  const { ethers, getNamedAccounts } = hre;
-  const { deployer } = await getNamedAccounts();
-  const signer = await ethers.getSigner(deployer);
+  const { ethers } = hre;
+  const signer = await getUiSigner(hre);
 
   // --- Resolve inputs from CLI or ENV (with sensible fallbacks to deployments) ---
   const lineaRollupAddress = getTaskCliOrEnvValue(taskArgs, "lineaRollupAddress", "LINEA_ROLLUP_ADDRESS");
