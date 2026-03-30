@@ -11,6 +11,10 @@ on:
           - sdk-core
           - sdk-viem
           - both
+      release_commit_sha:
+        description: "Merge commit SHA from the release PR (must be on main)"
+        required: true
+        type: string
       dry_run:
         description: "Dry run (skip actual publish)"
         required: false
@@ -34,13 +38,33 @@ jobs:
           echo "::error::sdk-publish must be triggered from the main branch, got ${{ github.ref }}"
           exit 1
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release commit is on main
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
+        run: |
+          if ! git cat-file -e "${RELEASE_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::Commit $RELEASE_SHA does not exist in this repository"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" HEAD; then
+            echo "::error::Commit $RELEASE_SHA is not an ancestor of main. Only release commits merged to main can be published."
+            exit 1
+          fi
+
   publish-sdk-core:
     needs: guard
     if: inputs.package == 'sdk-core' || inputs.package == 'both'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
-      - name: Checkout
+      - name: Checkout release commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_commit_sha }}
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
@@ -77,10 +101,12 @@ jobs:
 
       - name: Tag sdk-core release
         if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
           VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
           TAG="sdk-core-v${VERSION}"
-          git tag "$TAG"
+          git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG" 2>/dev/null || echo "::notice::Tag $TAG already exists"
 
   publish-sdk-viem:
@@ -92,13 +118,24 @@ jobs:
       (needs.publish-sdk-core.result == 'success' || needs.publish-sdk-core.result == 'skipped')
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
-      - name: Checkout
+      - name: Checkout release commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_commit_sha }}
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
           pnpm-install-options: "--frozen-lockfile --prefer-offline"
+
+      - name: Verify sdk-core dependency is published on npm
+        run: |
+          CORE_VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          echo "Resolved @consensys/linea-sdk-core dependency version: $CORE_VERSION"
+          if ! npm view "@consensys/linea-sdk-core@${CORE_VERSION}" version 2>/dev/null; then
+            echo "::error::@consensys/linea-sdk-core@${CORE_VERSION} is not published on npm. Publish sdk-core first or select 'both'."
+            exit 1
+          fi
 
       - name: Build sdk-core (dependency)
         run: pnpm -F @consensys/linea-sdk-core run build
@@ -133,10 +170,12 @@ jobs:
 
       - name: Tag sdk-viem release
         if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
           VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
           TAG="sdk-viem-v${VERSION}"
-          git tag "$TAG"
+          git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG" 2>/dev/null || echo "::notice::Tag $TAG already exists"
 
   notify:

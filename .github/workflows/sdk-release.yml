@@ -153,5 +153,7 @@ jobs:
 
             ### After merging
 
-            Go to **Actions → sdk-publish → Run workflow** and select `${{ inputs.package }}` to publish to npm.
+            1. Note the **merge commit SHA** from this PR (visible on the merged PR page or via `git log main -1`)
+            2. Go to **Actions → sdk-publish → Run workflow**
+            3. Select `${{ inputs.package }}`, paste the merge commit SHA, and run
           labels: release
