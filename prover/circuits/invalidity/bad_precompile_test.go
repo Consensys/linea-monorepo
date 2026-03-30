@@ -77,8 +77,8 @@ func TestBadPrecompileCircuit(t *testing.T) {
 		comp  *wizard.CompiledIOP
 		proof wizard.Proof
 	)
-	congloVK := [2]field.Element{field.RandomElement(), field.RandomElement()}
-	vkMerkleRoot := field.RandomElement()
+	congloVK := [2]field.Octuplet{field.RandomOctuplet(), field.RandomOctuplet()}
+	vkMerkleRoot := field.RandomOctuplet()
 	limitlessInputs := &invalidity.LimitlessInputs{
 		CongloVK:     congloVK,
 		VKMerkleRoot: vkMerkleRoot,
@@ -128,7 +128,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			}
 
 			execCtx := invalidity.ExecutionCtx{
-				LimitlessMode: false, // for now there is a bug in the limitless mode, so we disable it for now.
+				LimitlessMode: true,
 				CongloVK:      congloVK,
 				VKMerkleRoot:  vkMerkleRoot,
 			}
@@ -162,12 +162,6 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				},
 			}
 			assignment.Assign(assi)
-
-			// Patch initRandomness with BLS12-377 MiMC hash (the mock wizard
-			// stores KoalaBear values, but the gnark circuit computes MiMC
-			// over BLS12-377 natively).
-			bpc := assignment.SubCircuit.(*invalidity.BadPrecompileCircuit)
-			invalidity.PatchLimitlessWitness(&bpc.ExecutionCtx.WizardVerifier)
 
 			// Create witness
 			witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())

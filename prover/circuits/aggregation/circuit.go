@@ -46,17 +46,10 @@ type Circuit struct {
 	// The bitmask uses LSb to MSb encoding where each bit position corresponds to a
 	// circuit ID from GlobalCircuitIDMapping:
 	//   - Bit 0 (LSb): execution-dummy (ID 0)
-	//   - Bit 1: blob-decompression-dummy (ID 1)
-	//   - Bit 2: emulation-dummy (ID 2)
-	//   - Bit 3+: production circuits (execution, blob-decompression-v0, etc.)
-	//
-	// Examples:
-	//   Mainnet (IsAllowedCircuitID = 2040 = 0b11111111000):
-	//     - Bits 0-2 are 0 → dummy circuits (IDs 0-2) are DISALLOWED
-	//     - Bits 3-10 are 1 → production circuits (IDs 3-10) are ALLOWED
-	//
-	//   Testnet (IsAllowedCircuitID = 2047 = 0b11111111111):
-	//     - All bits 0-10 are 1 → all circuits including dummies are ALLOWED
+	//   - Bit 1: data-availability-dummy (ID 1)
+	//   - Bits 2-5: production payload circuits (execution, execution-large, etc.)
+	//   - Bits 6-8: invalidity dummy circuits
+	//   - Bits 9-13: invalidity production circuits
 	verifyingKeys []emVkey `gnark:"-"`
 
 	publicInputVerifyingKey        emVkey              `gnark:"-"`
@@ -102,12 +95,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	// The maskBits from ToBitsCanonical may have more bits than needed, so we truncate.
 	// If maskBits has fewer bits (shouldn't happen), we pad with zeros.
 	//
-	// Example: If mask = 2040 = 0b11111111000, then:
+	// Example: If mask = 60 = 0b111100, then:
 	//   isCircuitAllowed[0] = 0 (execution-dummy NOT allowed)
-	//   isCircuitAllowed[1] = 0 (blob-decompression-dummy NOT allowed)
-	//   isCircuitAllowed[2] = 0 (emulation-dummy NOT allowed)
-	//   isCircuitAllowed[3] = 1 (execution ALLOWED)
-	//   isCircuitAllowed[4] = 1 (execution-large ALLOWED)
+	//   isCircuitAllowed[1] = 0 (data-availability-dummy NOT allowed)
+	//   isCircuitAllowed[2] = 1 (execution ALLOWED)
+	//   isCircuitAllowed[3] = 1 (execution-large ALLOWED)
 	//   ... and so on for all circuit IDs
 	isCircuitAllowed := make([]frontend.Variable, len(c.verifyingKeys))
 	for i := range isCircuitAllowed {

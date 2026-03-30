@@ -306,7 +306,6 @@ func printlnAndExit(msg string, args ...any) {
 }
 
 // Validates the parameters and exit the program if this is unsuccessful.
-// Validates the parameters and exit the program if this is unsuccessful.
 func validateParameters(cmd *cobra.Command, _ []string) {
 
 	if len(specFiles) == 0 {

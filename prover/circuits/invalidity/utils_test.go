@@ -457,7 +457,9 @@ func TestHashAccount(t *testing.T) {
 	// Create witness with assigned values
 	witness := &testAccountHashCircuit{}
 	witness.Account.Assign(a)
-	witness.ExpectedHash.Assign(field.Octuplet(expectedHash))
+	for i, v := range field.Octuplet(expectedHash) {
+		witness.ExpectedHash[i] = v.Uint64()
+	}
 
 	// Compile the circuit using KoalaBear field (for Poseidon2)
 	ccs, err := frontend.CompileU32(

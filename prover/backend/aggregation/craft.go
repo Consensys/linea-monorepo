@@ -48,7 +48,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
 			ParentStateRootHashContract:             req.ParentAggregationStateRootHashContract,
-			ParentStateRootHashContract:             req.ParentAggregationStateRootHashContract,
 			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
 			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
 		}
@@ -244,8 +243,14 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	filteredAddrs := collectFilteredAddresses(cf.InvalidityPI)
 
 	resp = &Response{
-		DataHashes:                              cf.DataHashes,
-		DataParentHash:                          cf.DataParentHash,
+		DataHashes:     cf.DataHashes,
+		DataParentHash: cf.DataParentHash,
+		FinalStateRootHash: func() string {
+			if len(cf.ExecutionPI) > 0 {
+				return utils.HexEncodeToString(cf.ExecutionPI[len(cf.ExecutionPI)-1].FinalStateRootHash[:])
+			}
+			return ""
+		}(),
 		ParentStateRootHash:                     cf.ParentStateRootHashContract.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
@@ -264,8 +269,6 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		FinalFtxNumber:                          cf.FinalFtxNumber,
 		ParentAggregationFtxNumber:              cf.LastFinalizedFtxNumber,
 		ParentAggregationFtxRollingHash:         cf.LastFinalizedFtxRollingHash,
-		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
-		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		// chain configuration
 		ChainID:              uint64(cfg.Layer2.ChainID),
 		BaseFee:              uint64(cfg.Layer2.BaseFee),
@@ -459,8 +462,9 @@ func parseProofClaim(
 
 func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
 	var (
-		po     invalidity.Response
-		prevPo invalidity.Response
+		po              invalidity.Response
+		prevPo          invalidity.Response
+		parentFtxNumber = uint64(req.ParentAggregationLastFtxNumber)
 	)
 	logrus.Infof(" Collecting invalidity info and validating interconnection among invalidity proofs")
 
@@ -497,7 +501,7 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		if po.SimulatedExecutionBlockNumber != prevPo.SimulatedExecutionBlockNumber {
 			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block numbers: %d vs %d", prevPo.SimulatedExecutionBlockNumber, po.SimulatedExecutionBlockNumber)
 		}
-		if po.ForcedTransactionNumber != prevPo.ForcedTransactionNumber+1 {
+		if po.ForcedTransactionNumber != parentFtxNumber+1 {
 			return fmt.Errorf("forced transaction numbers should be consecutive: jumping from %d to %d instead of incrementing by 1", prevPo.ForcedTransactionNumber, po.ForcedTransactionNumber)
 		}
 
@@ -515,6 +519,7 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		}
 
 		prevPo = po
+		parentFtxNumber = po.ForcedTransactionNumber
 
 		cf.InvalidityPI = append(cf.InvalidityPI, *pi)
 

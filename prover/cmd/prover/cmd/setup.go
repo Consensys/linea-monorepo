@@ -60,21 +60,7 @@ var AllCircuits = []circuits.CircuitID{
 
 // PayloadCircuits defines the ordered list of payload circuits that can be aggregated.
 // This order corresponds to circuit IDs 0-5 in GlobalCircuitIDMapping.
-// Infrastructure circuits (emulation, aggregation, pi-interconnection, emulation-dummy)
-// are NOT included here.
-var PayloadCircuits = []string{
-	"execution-dummy",         // ID 0
-	"data-availability-dummy", // ID 1
-	"execution",               // ID 2
-	"execution-large",         // ID 3
-	"execution-limitless",     // ID 4
-	"data-availability-v2",    // ID 5
-}
-
-// PayloadCircuits defines the ordered list of payload circuits that can be aggregated.
-// This order corresponds to circuit IDs 0-5 in GlobalCircuitIDMapping.
-// Infrastructure circuits (emulation, aggregation, pi-interconnection, emulation-dummy)
-// are NOT included here.
+// Infrastructure circuits (emulation, aggregation, pi-interconnection, emulation-dummy) are NOT included here.
 var PayloadCircuits = []string{
 	"execution-dummy",         // ID 0
 	"data-availability-dummy", // ID 1

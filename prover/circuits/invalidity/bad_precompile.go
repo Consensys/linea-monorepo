@@ -52,11 +52,11 @@ type ExecutionCtx struct {
 	LimitlessMode bool `gnark:"-"`
 	// CongloVK is used when the [LimitlessMode] is on and is helps checking
 	// the validity of the inner-proofs verification-key public input.
-	CongloVK [2]field.Element
+	CongloVK [2]field.Octuplet
 	// VKMerkleRoot is used when the [LimitlessMode] is on and is helps checking
 	// the validity of the inner-proofs verification-key merkle root public
 	// input.
-	VKMerkleRoot field.Element
+	VKMerkleRoot field.Octuplet
 	// The wizard verifier circuit
 	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 }

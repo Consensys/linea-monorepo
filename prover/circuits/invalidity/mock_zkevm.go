@@ -2,14 +2,12 @@ package invalidity
 
 import (
 	"fmt"
-	"math/big"
 	"math/rand/v2"
 
-	fr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -24,8 +22,8 @@ import (
 // LimitlessInputs holds the values needed to mock the conglomeration public
 // inputs that CheckLimitlessConglomerationCompletion reads.
 type LimitlessInputs struct {
-	CongloVK     [2]field.Element
-	VKMerkleRoot field.Element
+	CongloVK     [2]field.Octuplet
+	VKMerkleRoot field.Octuplet
 }
 
 // CreateLimbs32Bytes splits a 32-byte hash into 16 big-endian 2-byte limbs.
@@ -132,18 +130,22 @@ func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs, limitless *LimitlessInp
 			registerSinglePI(comp, distributed.SegmentCountGLPublicInputBase+"_0")
 			registerSinglePI(comp, distributed.SegmentCountLPPPublicInputBase+"_0")
 
-			for i := 0; i < mimc.MSetHashSize; i++ {
+			for i := 0; i < multisethashing.MSetHashSize; i++ {
 				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.GeneralMultiSetPublicInputBase, i))
 				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.SharedRandomnessMultiSetPublicInputBase, i))
 			}
 
-			registerSinglePI(comp, distributed.InitialRandomnessPublicInput)
+			for i := 0; i < 8; i++ {
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.InitialRandomnessPublicInput, i))
+			}
 			registerSinglePI(comp, distributed.LogDerivativeSumPublicInput)
 			registerSinglePI(comp, distributed.GrandProductPublicInput)
 			registerSinglePI(comp, distributed.HornerPublicInput)
-			registerSinglePI(comp, distributed.VerifyingKeyPublicInput)
-			registerSinglePI(comp, distributed.VerifyingKey2PublicInput)
-			registerSinglePI(comp, distributed.VerifyingKeyMerkleRootPublicInput)
+			for i := 0; i < 8; i++ {
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.VerifyingKeyPublicInput, i))
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.VerifyingKey2PublicInput, i))
+				registerSinglePI(comp, fmt.Sprintf("%s_%d", distributed.VerifyingKeyMerkleRootPublicInput, i))
+			}
 		}
 	}
 
@@ -187,23 +189,26 @@ func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs, limitless *LimitlessInp
 			assignSinglePI(run, distributed.SegmentCountGLPublicInputBase+"_0", segCount)
 			assignSinglePI(run, distributed.SegmentCountLPPPublicInputBase+"_0", segCount)
 
-			for i := 0; i < mimc.MSetHashSize; i++ {
+			for i := 0; i < multisethashing.MSetHashSize; i++ {
 				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.GeneralMultiSetPublicInputBase, i), field.Zero())
 				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.SharedRandomnessMultiSetPublicInputBase, i), field.Zero())
 			}
 
-			// initRandomness must equal mimc.GnarkHashVec(sharedRandMSet) computed
-			// over BLS12-377 in the gnark circuit. We compute the native equivalent.
-			zeros := make([]fr.Element, mimc.MSetHashSize)
-			initRandBLS := mimc.HashVec(zeros)
-			assignSinglePIFr(run, distributed.InitialRandomnessPublicInput, initRandBLS)
+			// initRandomness = Poseidon2(sharedRandMSet) over KoalaBear.
+			zeros := make([]field.Element, multisethashing.MSetHashSize)
+			initRand := poseidon2.HashVec(zeros...)
+			for i := 0; i < 8; i++ {
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.InitialRandomnessPublicInput, i), initRand[i])
+			}
 
 			assignSinglePI(run, distributed.LogDerivativeSumPublicInput, field.Zero())
 			assignSinglePI(run, distributed.GrandProductPublicInput, field.One())
 			assignSinglePI(run, distributed.HornerPublicInput, field.Zero())
-			assignSinglePI(run, distributed.VerifyingKeyPublicInput, limitless.CongloVK[0])
-			assignSinglePI(run, distributed.VerifyingKey2PublicInput, limitless.CongloVK[1])
-			assignSinglePI(run, distributed.VerifyingKeyMerkleRootPublicInput, limitless.VKMerkleRoot)
+			for i := 0; i < 8; i++ {
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.VerifyingKeyPublicInput, i), limitless.CongloVK[0][i])
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.VerifyingKey2PublicInput, i), limitless.CongloVK[1][i])
+				assignSinglePI(run, fmt.Sprintf("%s_%d", distributed.VerifyingKeyMerkleRootPublicInput, i), limitless.VKMerkleRoot[i])
+			}
 		}
 	}
 
@@ -223,27 +228,3 @@ func assignSinglePI(run *wizard.ProverRuntime, name string, val field.Element) {
 	run.AssignColumn(ifaces.ColID(name+"_PI_COLUMN"), smartvectors.NewConstant(val, 1))
 }
 
-// assignSinglePIFr assigns a BLS12-377 fr.Element to a PI column. This is needed
-// when the value is computed over BLS12-377 (e.g., MiMC hash) and must match
-// the gnark circuit computation exactly.
-func assignSinglePIFr(run *wizard.ProverRuntime, name string, val fr.Element) {
-	var k field.Element
-	k.SetBytes(val.Marshal())
-	run.AssignColumn(ifaces.ColID(name+"_PI_COLUMN"), smartvectors.NewConstant(k, 1))
-}
-
-// PatchLimitlessWitness patches the VerifierCircuit column values for
-// conglomeration PIs that need BLS12-377 values. The wizard proof stores
-// KoalaBear values (31-bit), but the gnark circuit (BLS12-377) computes
-// MiMC hashes natively. This function overwrites the initRandomness column
-// with the correct BLS12-377 MiMC hash so the constraint is satisfied.
-func PatchLimitlessWitness(wvc *wizard.VerifierCircuit) {
-	zeros := make([]fr.Element, mimc.MSetHashSize)
-	initRandBLS := mimc.HashVec(zeros)
-	b := new(big.Int)
-	initRandBLS.BigInt(b)
-
-	colID := ifaces.ColID(distributed.InitialRandomnessPublicInput + "_PI_COLUMN")
-	idx := wvc.ColumnsIDs.MustGet(colID)
-	wvc.Columns[idx][0] = koalagnark.NewElement(b)
-}

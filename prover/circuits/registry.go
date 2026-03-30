@@ -54,9 +54,9 @@ const (
 // given environment.
 //
 //   - Bit i (LSb to MSb) indicates whether circuit ID i is allowed
-//   - Only circuits 0-14 are used in the bitmask (inner payload circuits)
-//   - Circuits 15-17 (emulation, aggregation, PI-interconnection) are infrastructure
-//     circuits and should NOT be included in the bitmask
+//   - Only circuits 0-13 are used in the bitmask (inner payload circuits)
+//   - Circuits 14-17 (emulation, aggregation, PI-interconnection, emulation-dummy) are
+//     infrastructure circuits and should NOT be included in the bitmask
 //
 // HOW TO COMPUTE is_allowed_circuit_id:
 //
@@ -88,33 +88,33 @@ const (
 //
 // Use ComputeIsAllowedCircuitID() to calculate the bitmask from circuit names.
 var GlobalCircuitIDMapping = map[string]uint{
-	// Dummy circuits (bits 0-2) - for testing environments
+	// Dummy circuits (bits 0-1) - for testing environments
 	"execution-dummy":         0,
 	"data-availability-dummy": 1,
-	"emulation-dummy":         2,
 
-	// Production payload circuits (bits 3-6) - aggregated inner proofs
-	"execution":            3,
-	"execution-large":      4,
-	"execution-limitless":  5,
-	"data-availability-v2": 6,
+	// Production payload circuits (bits 2-5) - aggregated inner proofs
+	"execution":            2,
+	"execution-large":      3,
+	"execution-limitless":  4,
+	"data-availability-v2": 5,
 
-	// Invalidity dummy circuits (bits 7-9) - for testing environments
-	"invalidity-nonce-balance-dummy":    7,
-	"invalidity-precompile-logs-dummy":  8,
-	"invalidity-filtered-address-dummy": 9,
+	// Invalidity dummy circuits (bits 6-8) - for testing environments
+	"invalidity-nonce-balance-dummy":    6,
+	"invalidity-precompile-logs-dummy":  7,
+	"invalidity-filtered-address-dummy": 8,
 
-	// Invalidity production circuits (bits 10-14) - aggregated invalidity proofs
-	"invalidity-nonce-balance":             10,
-	"invalidity-precompile-logs":           11,
-	"invalidity-filtered-address":          12,
-	"invalidity-precompile-logs-limitless": 13,
-	"invalidity-precompile-logs-large":     14,
+	// Invalidity production circuits (bits 9-13) - aggregated invalidity proofs
+	"invalidity-nonce-balance":             9,
+	"invalidity-precompile-logs":           10,
+	"invalidity-filtered-address":          11,
+	"invalidity-precompile-logs-limitless": 12,
+	"invalidity-precompile-logs-large":     13,
 
-	// Infrastructure circuits (bits 15-17) - NOT included in is_allowed_circuit_id bitmask
-	"emulation":                    15,
-	"aggregation":                  16,
-	"public-input-interconnection": 17,
+	// Infrastructure circuits (bits 14-17) - NOT included in is_allowed_circuit_id bitmask
+	"emulation":                    14,
+	"aggregation":                  15,
+	"public-input-interconnection": 16,
+	"emulation-dummy":              17,
 }
 
 // ComputeIsAllowedCircuitID computes the is_allowed_circuit_id bitmask from a list of
@@ -127,7 +127,7 @@ var GlobalCircuitIDMapping = map[string]uint{
 //
 //	allowed := []string{"execution", "execution-large", "data-availability-v2"}
 //	bitmask := circuits.ComputeIsAllowedCircuitID(allowed)
-//	// bitmask = 88 (binary: 0b01011000, bits 3,4,6 set)
+//	// bitmask = 44 (binary: 0b101100, bits 2,3,5 set)
 //
 // Returns an error if any circuit name is not found in GlobalCircuitIDMapping.
 func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
@@ -139,8 +139,8 @@ func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
 			return 0, fmt.Errorf("unknown circuit name: %s", name)
 		}
 
-		// Infrastructure circuits (8-10) should not be in the bitmask
-		if id >= 8 {
+		// Infrastructure circuits (14-17) should not be in the bitmask
+		if id >= 14 {
 			return 0, fmt.Errorf("circuit '%s' (ID %d) is an infrastructure circuit and should not be included in is_allowed_circuit_id", name, id)
 		}
 
@@ -155,8 +155,8 @@ func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
 //
 // Example:
 //
-//	bitmask := uint64(120) // 0b01111000 - mainnet configuration
-//	allowed := circuits.IsCircuitAllowed(bitmask, 3) // execution
+//	bitmask := uint64(60) // 0b00111100 - mainnet configuration
+//	allowed := circuits.IsCircuitAllowed(bitmask, 2) // execution
 //	// allowed = true
 func IsCircuitAllowed(bitmask uint64, circuitID uint) bool {
 	return (bitmask & (1 << circuitID)) != 0
@@ -168,15 +168,15 @@ func IsCircuitAllowed(bitmask uint64, circuitID uint) bool {
 //
 // Example:
 //
-//	bitmask := uint64(120) // mainnet
+//	bitmask := uint64(60) // mainnet
 //	names := circuits.GetAllowedCircuitNames(bitmask)
 //	// names = ["execution", "execution-large", "execution-limitless", "data-availability-v2"]
 func GetAllowedCircuitNames(bitmask uint64) []string {
 	var allowed []string
 
 	for name, id := range GlobalCircuitIDMapping {
-		// Only check payload circuits (0-7)
-		if id < 8 && IsCircuitAllowed(bitmask, id) {
+		// Only check payload circuits (0-13)
+		if id < 14 && IsCircuitAllowed(bitmask, id) {
 			allowed = append(allowed, name)
 		}
 	}
