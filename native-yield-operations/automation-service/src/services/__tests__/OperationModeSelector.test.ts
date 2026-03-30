@@ -1,9 +1,7 @@
-import { wait } from "@consensys/linea-shared-utils";
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { OperationModeSelector } from "../OperationModeSelector.js";
 
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
@@ -17,6 +15,16 @@ jest.mock("@consensys/linea-shared-utils", () => {
     ...actual,
     wait: jest.fn(),
   };
+});
+
+let wait: typeof import("@consensys/linea-shared-utils").wait;
+let OperationModeSelector: typeof import("../OperationModeSelector.js").OperationModeSelector;
+let waitMock: jest.MockedFunction<typeof wait>;
+
+beforeAll(async () => {
+  ({ wait } = await import("@consensys/linea-shared-utils"));
+  ({ OperationModeSelector } = await import("../OperationModeSelector.js"));
+  waitMock = wait as jest.MockedFunction<typeof wait>;
 });
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
@@ -33,16 +41,15 @@ describe("OperationModeSelector", () => {
   const TEST_RETRY_TIME_MS = 123;
   const CUSTOM_RETRY_TIME_MS = 321;
 
-  let selector: OperationModeSelector;
   let logger: jest.Mocked<ILogger>;
   let metricsUpdater: jest.Mocked<INativeYieldAutomationMetricsUpdater>;
   let yieldManager: jest.Mocked<IYieldManager<TransactionReceipt>>;
   let yieldReportingProcessor: jest.Mocked<IOperationModeProcessor>;
   let ossificationPendingProcessor: jest.Mocked<IOperationModeProcessor>;
   let ossificationCompleteProcessor: jest.Mocked<IOperationModeProcessor>;
-  let waitMock: jest.MockedFunction<typeof wait>;
+  let selector: InstanceType<typeof OperationModeSelector>;
 
-  const createSelector = (retryTime: number = TEST_RETRY_TIME_MS): OperationModeSelector =>
+  const createSelector = (retryTime: number = TEST_RETRY_TIME_MS): InstanceType<typeof OperationModeSelector> =>
     new OperationModeSelector(
       logger,
       metricsUpdater,

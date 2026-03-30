@@ -1,13 +1,12 @@
-import { ILogger, attempt } from "@consensys/linea-shared-utils";
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import { ResultAsync, ok, err } from "neverthrow";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
-import { submitVaultReportIfNotFresh } from "../vaultReportSubmission.js";
 
 import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
 import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAccountingReportClient.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import type { ILogger } from "@consensys/linea-shared-utils";
 import type { Address, TransactionReceipt } from "viem";
 
 jest.mock("@consensys/linea-shared-utils", () => {
@@ -16,6 +15,14 @@ jest.mock("@consensys/linea-shared-utils", () => {
     ...actual,
     attempt: jest.fn(),
   };
+});
+
+let attempt: typeof import("@consensys/linea-shared-utils").attempt;
+let submitVaultReportIfNotFresh: typeof import("../vaultReportSubmission.js").submitVaultReportIfNotFresh;
+
+beforeAll(async () => {
+  ({ attempt } = await import("@consensys/linea-shared-utils"));
+  ({ submitVaultReportIfNotFresh } = await import("../vaultReportSubmission.js"));
 });
 
 const attemptMock = attempt as jest.MockedFunction<typeof attempt>;

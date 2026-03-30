@@ -1,12 +1,10 @@
-import { ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { YieldReportingProcessor } from "../YieldReportingProcessor.js";
 
 import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
 import type { UpdateVaultDataParams } from "../../../core/clients/contracts/ILazyOracle.js";
@@ -18,6 +16,7 @@ import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAcc
 import type { YieldReport } from "../../../core/entities/YieldReport.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IOperationModeMetricsRecorder } from "../../../core/metrics/IOperationModeMetricsRecorder.js";
+import type { ILogger } from "@consensys/linea-shared-utils";
 import type { Address, TransactionReceipt, Hex } from "viem";
 
 jest.mock("@consensys/linea-shared-utils", () => {
@@ -28,6 +27,16 @@ jest.mock("@consensys/linea-shared-utils", () => {
     msToSeconds: jest.fn(),
     weiToGweiNumber: jest.fn(),
   };
+});
+
+let attempt: typeof import("@consensys/linea-shared-utils").attempt;
+let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
+let weiToGweiNumber: typeof import("@consensys/linea-shared-utils").weiToGweiNumber;
+let YieldReportingProcessor: typeof import("../YieldReportingProcessor.js").YieldReportingProcessor;
+
+beforeAll(async () => {
+  ({ attempt, msToSeconds, weiToGweiNumber } = await import("@consensys/linea-shared-utils"));
+  ({ YieldReportingProcessor } = await import("../YieldReportingProcessor.js"));
 });
 
 // Semantic constants

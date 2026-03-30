@@ -1,15 +1,14 @@
-import { ILogger, attempt, msToSeconds, wait } from "@consensys/linea-shared-utils";
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
-import { OssificationCompleteProcessor } from "../OssificationCompleteProcessor.js";
 
 import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
 import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import type { IOperationModeMetricsRecorder } from "../../../core/metrics/IOperationModeMetricsRecorder.js";
+import type { ILogger } from "@consensys/linea-shared-utils";
 import type { TransactionReceipt, Address } from "viem";
 
 jest.mock("@consensys/linea-shared-utils", () => {
@@ -20,6 +19,16 @@ jest.mock("@consensys/linea-shared-utils", () => {
     attempt: jest.fn(),
     msToSeconds: jest.fn(),
   };
+});
+
+let attempt: typeof import("@consensys/linea-shared-utils").attempt;
+let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
+let wait: typeof import("@consensys/linea-shared-utils").wait;
+let OssificationCompleteProcessor: typeof import("../OssificationCompleteProcessor.js").OssificationCompleteProcessor;
+
+beforeAll(async () => {
+  ({ attempt, msToSeconds, wait } = await import("@consensys/linea-shared-utils"));
+  ({ OssificationCompleteProcessor } = await import("../OssificationCompleteProcessor.js"));
 });
 
 const YIELD_PROVIDER_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;

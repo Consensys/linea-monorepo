@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeEach, beforeAll, jest } from "@jest/globals";
 
 import { createLoggerMock } from "../../__tests__/helpers/index.js";
 

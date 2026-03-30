@@ -1,11 +1,9 @@
-import { attempt, msToSeconds } from "@consensys/linea-shared-utils";
 import { jest } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { OssificationPendingProcessor } from "../OssificationPendingProcessor.js";
 
 import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
 import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
@@ -24,6 +22,15 @@ jest.mock("@consensys/linea-shared-utils", () => {
     attempt: jest.fn(),
     msToSeconds: jest.fn(),
   };
+});
+
+let attempt: typeof import("@consensys/linea-shared-utils").attempt;
+let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
+let OssificationPendingProcessor: typeof import("../OssificationPendingProcessor.js").OssificationPendingProcessor;
+
+beforeAll(async () => {
+  ({ attempt, msToSeconds } = await import("@consensys/linea-shared-utils"));
+  ({ OssificationPendingProcessor } = await import("../OssificationPendingProcessor.js"));
 });
 
 // Semantic constants

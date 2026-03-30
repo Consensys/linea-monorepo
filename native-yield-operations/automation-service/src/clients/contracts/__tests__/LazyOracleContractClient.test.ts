@@ -1,6 +1,4 @@
 import { jest, describe, it, expect, beforeEach, afterEach, beforeAll } from "@jest/globals";
-import { InvalidInputRpcError } from "viem";
-import { encodeFunctionData, getContract } from "viem";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
 import { LazyOracleErrorsABI } from "../../../core/abis/errors/LazyOracleErrors.js";
@@ -21,13 +19,18 @@ jest.mock("viem", () => {
   };
 });
 
-const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
-const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
-
+let InvalidInputRpcError: typeof import("viem").InvalidInputRpcError;
+let getContract: typeof import("viem").getContract;
+let encodeFunctionData: typeof import("viem").encodeFunctionData;
+let mockedGetContract: jest.MockedFunction<typeof getContract>;
+let mockedEncodeFunctionData: jest.MockedFunction<typeof encodeFunctionData>;
 let LazyOracleContractClient: typeof import("../LazyOracleContractClient.js").LazyOracleContractClient;
 
 beforeAll(async () => {
+  ({ InvalidInputRpcError, encodeFunctionData, getContract } = await import("viem"));
   ({ LazyOracleContractClient } = await import("../LazyOracleContractClient.js"));
+  mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
+  mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
 });
 
 describe("LazyOracleContractClient", () => {
