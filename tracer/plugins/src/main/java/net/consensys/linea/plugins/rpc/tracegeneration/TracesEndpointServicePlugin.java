@@ -99,16 +99,10 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
 
     registerRpcMethod(method.getNamespace(), method.getName(), method::execute);
 
-    final BlockSimulationService blockSimulationService =
-        besuContext
-            .getService(BlockSimulationService.class)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "BlockSimulationService is required but not available. Ensure Besu includes PR #9708."));
-
     final BlockchainService blockchainService =
         BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
+    final BlockSimulationService blockSimulationService =
+        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
 
     final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
         new GenerateVirtualBlockConflatedTracesV1(

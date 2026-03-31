@@ -18,7 +18,6 @@ package net.consensys.linea.plugins.rpc.tracegeneration;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.security.InvalidParameterException;
 import org.junit.jupiter.api.Test;
 
 class VirtualBlockTraceRequestParamsTest {
@@ -37,7 +36,7 @@ class VirtualBlockTraceRequestParamsTest {
         new VirtualBlockTraceRequestParams(0L, new String[] {"0xf86c..."});
 
     assertThatThrownBy(params::validate)
-        .isInstanceOf(InvalidParameterException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("INVALID_BLOCK_NUMBER")
         .hasMessageContaining("must be at least 1");
   }
@@ -48,7 +47,7 @@ class VirtualBlockTraceRequestParamsTest {
         new VirtualBlockTraceRequestParams(-5L, new String[] {"0xf86c..."});
 
     assertThatThrownBy(params::validate)
-        .isInstanceOf(InvalidParameterException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("INVALID_BLOCK_NUMBER");
   }
 
@@ -57,7 +56,7 @@ class VirtualBlockTraceRequestParamsTest {
     VirtualBlockTraceRequestParams params = new VirtualBlockTraceRequestParams(100L, null);
 
     assertThatThrownBy(params::validate)
-        .isInstanceOf(InvalidParameterException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("INVALID_TRANSACTIONS")
         .hasMessageContaining("must contain at least one transaction");
   }
@@ -68,7 +67,7 @@ class VirtualBlockTraceRequestParamsTest {
         new VirtualBlockTraceRequestParams(100L, new String[] {});
 
     assertThatThrownBy(params::validate)
-        .isInstanceOf(InvalidParameterException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("INVALID_TRANSACTIONS")
         .hasMessageContaining("must contain at least one transaction");
   }
