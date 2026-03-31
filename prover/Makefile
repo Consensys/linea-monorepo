@@ -3,8 +3,9 @@ SHELL := /usr/bin/env bash
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := b88da9e199b6b7c8a413902f6035dd2774c43def
-GO_CORSET_VERSION := v1.1.28
+# beta-v5.2-20260323165125-797dad0
+CONSTRAINTS_COMMIT_HASH := 797dad09ae3b5f8b498eb74ccb4cf2fb13a89aba
+GO_CORSET_VERSION := v1.2.7
 
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
 # Find where Go installs binaries
@@ -37,6 +38,7 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 	go-corset \
 	testdata \
 	extract-constraints-git-archive \
+	setup \
 
 
 ##
@@ -46,25 +48,20 @@ go-corset:
 	go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION)
 
 extract-constraints-git-archive:
+	rm -rf ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints
 	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset extract-constraints-git-archive
-	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
+	pushd . && cd ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints && $(GO_CORSET) make GIT_COMMIT=$(CONSTRAINTS_COMMIT_HASH) zkevm_osaka.bin && popd && mv ${CONSTRAINTS_TEMP_FOLDER}/tracer-constraints/zkevm_osaka.bin zkevm/arithmetization/zkevm.bin
 
 ##
-## Generate the setup for all provers job for sepolia (to be run with S3 access)
+## Generate the setup (shared across all environments; layer2 config differentiate environments)
 ##
-setup-sepolia: bin/prover
-	bin/prover setup --config ./config/config-sepolia-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
-
-##
-## Generate the setup for all provers job for mainnet (to be run with S3 access)
-##
-setup-mainnet: bin/prover
-	bin/prover setup --config ./config/config-mainnet-limitless.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+setup: bin/prover
+	bin/prover setup --config ./config/config-mainnet-limitless.toml --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)

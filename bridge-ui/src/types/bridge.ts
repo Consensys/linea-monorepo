@@ -1,7 +1,7 @@
 import { MessageProof } from "@consensys/linea-sdk-viem";
 import { Address } from "viem";
 
-import { Chain, Token, TransactionStatus, CCTPMode } from "@/types";
+import { Chain, Token, TransactionStatus } from "@/types";
 
 export type NativeBridgeMessage = {
   from: Address;
@@ -23,31 +23,37 @@ export type CctpV2BridgeMessage = {
   nonce: `0x${string}`;
 };
 
-export enum BridgeTransactionType {
-  ETH = "ETH",
-  ERC20 = "ERC20",
-  USDC = "USDC",
-}
+export type HyperlaneBridgeMessage = {
+  messageId: `0x${string}`;
+  amountSent: bigint;
+  transferIndex: bigint;
+  sender: `0x${string}`;
+  recipient: `0x${string}`;
+};
+
+export type BridgeMessage = NativeBridgeMessage | CctpV2BridgeMessage | HyperlaneBridgeMessage;
+
+export type AdapterModeId = string;
 
 export enum ClaimType {
-  // Only for L1 -> L2, sponsored by the Postman
+  /** Destination-chain claim is sponsored (no extra fee). Used by the native bridge for L1→L2 when gas is below the Postman threshold. */
   AUTO_SPONSORED = "AUTO_SPONSORED",
-  // Only for L1 -> L2, practically this will only be available when the L2 token contract does not exist (costing ~460K gas to claimMessage on L2).
+  /** Destination-chain claim fee is paid upfront by the sender. Used by the native bridge for expensive L1→L2 claims and by Hyperlane for all directions. */
   AUTO_PAID = "AUTO_PAID",
-  // L2 -> L1 must be MANUAL
+  /** User must manually claim on the destination chain. Required for native bridge L2→L1 withdrawals. */
   MANUAL = "MANUAL",
 }
 
 // BridgeTransaction object that is populated when user opens "TransactionHistory" component, and is passed to child components.
 export interface BridgeTransaction {
-  type: BridgeTransactionType;
+  adapterId: string;
   status: TransactionStatus;
   timestamp: bigint;
   fromChain: Chain;
   toChain: Chain;
   token: Token;
-  message: NativeBridgeMessage | CctpV2BridgeMessage;
+  message: BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
-  cctpMode?: CCTPMode;
+  mode?: AdapterModeId;
 }

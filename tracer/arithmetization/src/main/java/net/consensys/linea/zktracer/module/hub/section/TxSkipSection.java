@@ -202,10 +202,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
       }
     }
 
-    if (recipientAddress.equals(delegateAddress)) {
+    if (recipientAddress.getBytes().equals(delegateAddress.getBytes())) {
       delegate = recipientNew.deepCopy();
       delegateNew = delegate;
-    } else if (senderAddress.equals(delegateAddress)) {
+    } else if (senderAddress.getBytes().equals(delegateAddress.getBytes())) {
       delegate = senderNew.deepCopy();
       delegateNew = delegate;
     }
@@ -221,7 +221,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 sender,
                 senderNew,
-                senderAddress,
+                senderAddress.getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
                 TransactionProcessingType.USER);
 
@@ -232,9 +232,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 recipient,
                 recipientNew,
-                recipientAddress,
+                recipientAddress.getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     // "delegate" account fragment
     final AccountFragment delegateAccountFragment =
@@ -243,9 +244,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 delegate,
                 delegateNew,
-                delegateAddress,
+                delegateAddress.getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     // "coinbase" account fragment
     final AccountFragment coinbaseAccountFragment =
@@ -254,7 +256,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 coinbase,
                 coinbaseNew,
-                coinbaseAddress,
+                coinbaseAddress.getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 4),
                 TransactionProcessingType.USER);
 

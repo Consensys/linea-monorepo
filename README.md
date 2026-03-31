@@ -1,10 +1,7 @@
 # Linea zkEVM
 
-<a href="https://twitter.com/LineaBuild">
-  <img src="https://img.shields.io/twitter/follow/LineaBuild?style=for-the-badge" alt="Twitter Follow" height="20">
-</a>
-<a href="https://discord.com/invite/consensys">
-  <img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" height="20">
+<a href="https://x.com/LineaBuild">
+  <img src="https://img.shields.io/twitter/follow/LineaBuild?style=for-the-badge" alt="X (formerly Twitter) Follow" height="20">
 </a>
 <a href="https://github.com/Consensys/linea-monorepo/blob/main/LICENSE-APACHE">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="Apache 2.0 License" height="20">
@@ -24,7 +21,7 @@ It serves developers by making the Linea tech stack open source under the [Apach
 
 [Linea](https://linea.build) is a developer-ready layer 2 network scaling Ethereum. It's secured with a zero-knowledge rollup, built on lattice-based cryptography, and powered by [Consensys](https://consensys.io).
 
-Linea is compatible with the execution clients [Besu](https://github.com/hyperledger/besu/) or [Geth](https://github.com/ethereum/go-ethereum). To run a full node, an execution client is paired with the consensus client [Maru](https://github.com/Consensys/maru).
+Linea is compatible with the execution clients [Besu](https://github.com/besu-eth/besu/) or [Geth](https://github.com/ethereum/go-ethereum). To run a full node, an execution client is paired with the consensus client [Maru](https://github.com/Consensys/maru).
 
 ## Get started
 
@@ -74,7 +71,7 @@ Please keep in mind that we do not accept non-code contributions like fixing com
 2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-monorepo/fork), and tag us for review.
 > Include the issue number in the pull request description and (optionally) in the branch name.
 
-Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-monorepo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+Consider starting with a ["good first issue"](https://github.com/Consensys/linea-monorepo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 Before contributing, ensure you're familiar with:
 
@@ -88,5 +85,4 @@ Before contributing, ensure you're familiar with:
 - [Linea docs](https://docs.linea.build) managed from a [public repo](https://github.com/Consensys/doc.linea)
 - [Linea blog](https://linea.mirror.xyz)
 - [Support](https://support.linea.build)
-- [Discord](https://discord.gg/linea)
-- [Twitter](https://twitter.com/LineaBuild)
+- [X](https://x.com/LineaBuild)

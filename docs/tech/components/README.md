@@ -134,8 +134,8 @@ root package.json
 
 ### TypeScript
 
-- Node.js >= 22.22.0 required
-- pnpm >= 10.28.0 for package management
+- Node.js >= 22.22.2 required
+- pnpm >= 10.32.1 for package management
 - Build: `pnpm run build`
 - Test: `pnpm run test`
 - Lint: `pnpm run lint`
@@ -143,7 +143,8 @@ root package.json
 ### Solidity
 
 - Hardhat for development
-- Solidity 0.8.x
+- Protocol contracts: Solidity **0.8.33** (see [`contracts/AGENTS.md`](../../../contracts/AGENTS.md))
+- Besu plugin acceptance tests use Web3j wrappers generated from a separate Solidity version for fixtures (see [`besu-plugins/AGENTS.md`](../../../besu-plugins/AGENTS.md))
 - OpenZeppelin upgradeable contracts
 - Compile: `pnpm -F contracts run compile`
 

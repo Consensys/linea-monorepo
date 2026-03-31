@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.limits.precompileLimits;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
-import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.module.ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,7 +35,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -51,8 +49,7 @@ public class ModexpLimitsTests extends TracerTestBase {
   void modexpCall(int bbs, int ebs, int mbs, TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
 
@@ -83,7 +80,7 @@ public class ModexpLimitsTests extends TracerTestBase {
                     .push(2000) // cds
                     .push(0) // offset
                     .push(0) // value
-                    .push(Address.MODEXP) // address
+                    .push(Address.MODEXP.getBytes()) // address
                     .push(gasArgument) // gas
                     .op(OpCode.CALL)
                     .compile())
@@ -115,8 +112,7 @@ public class ModexpLimitsTests extends TracerTestBase {
 
     // check MODEXP limits:
     final int legalModexpComponentByteSize = 1024;
-    final int numberOfEffectiveModexpCallsForInvalidInputs =
-        forkPredatesOsaka(fork) ? Integer.MAX_VALUE : 0;
+    final int numberOfEffectiveModexpCallsForInvalidInputs = 0;
     final int actualCount = lineCountMap.get(PRECOMPILE_MODEXP_EFFECTIVE_CALLS.toString());
     final boolean validByteSizes =
         (bbs <= legalModexpComponentByteSize
@@ -126,13 +122,12 @@ public class ModexpLimitsTests extends TracerTestBase {
     {
       final long maxMbsBbs = Math.max(mbs, bbs);
       final long maxOver8 = Math.ceilDiv(maxMbsBbs, 8);
-      final long multiplier = forkPredatesOsaka(fork) ? 8 : 16;
+      final long multiplier = 16;
       final long leadLogCost = Math.max(1, multiplier * (ebs - 32));
       roughOsakaModexpCost = 2 * maxOver8 * maxOver8 * leadLogCost;
     }
     final boolean sufficientGasForOsaka = gasArgument >= roughOsakaModexpCost;
-    final boolean successExpected =
-        (forkPredatesOsaka(fork)) ? validByteSizes : validByteSizes && sufficientGasForOsaka;
+    final boolean successExpected = validByteSizes && sufficientGasForOsaka;
     final int expectedCount = successExpected ? 1 : numberOfEffectiveModexpCallsForInvalidInputs;
     assertEquals(
         expectedCount,

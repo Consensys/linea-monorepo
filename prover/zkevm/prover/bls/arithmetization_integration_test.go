@@ -1,7 +1,10 @@
+//go:build ignore
+
 package bls
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"testing"
@@ -132,4 +135,8 @@ func assignColumns(_ *testing.T, run *wizard.ProverRuntime, cols map[string]trac
 		}
 		run.AssignColumn(ifaces.ColID(colNameFn(colName)), smartvectors.RightZeroPadded(plain, int(maxLen)))
 	}
+}
+
+func colNameFn(colName string) ifaces.ColID {
+	return ifaces.ColID(fmt.Sprintf("%s.%s", moduleName, colName))
 }

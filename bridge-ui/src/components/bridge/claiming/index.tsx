@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useConnection } from "wagmi";
+import Link from "next/link";
+import { useConfig, useConnection } from "wagmi";
 
+import { type DepositWarning, getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
+import useFees from "@/hooks/fees/useFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
-import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
-import { isCctp } from "@/utils/tokens";
+import { useUiStore } from "@/stores/uiStore";
+import { ChainLayer, ClaimType } from "@/types";
 
 import BridgeMode from "./bridge-mode";
 import styles from "./claiming.module.scss";
-import Fees from "./fees";
+import EstimatedTime from "./estimated-time";
+import WithFees from "./fees/with-fees";
+import ManualClaim from "./manual-claim";
 import ReceivedAmount from "./received-amount";
 
 const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advanced-settings"), {
@@ -22,6 +28,7 @@ const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advance
 
 export default function Claiming() {
   const { isConnected } = useConnection();
+  const wagmiConfig = useConfig();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
 
@@ -29,10 +36,22 @@ export default function Claiming() {
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
 
   const amount = useFormStore((state) => state.amount);
-  const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
-  const cctpMode = useFormStore((state) => state.cctpMode);
-  const originChainBalanceTooLow = amount && balance < amount;
+  const selectedMode = useFormStore((state) => state.selectedMode);
+
+  const { hasInsufficientFunds, isLoading: isFeesLoading, effectiveClaimType } = useFees();
+
+  const adapter = getAdapter(token, fromChain, toChain);
+  const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
+
+  const { data: depositWarnings, isLoading: isWarningsLoading } = useQuery<DepositWarning[] | undefined>({
+    queryKey: ["depositWarnings", adapter?.id, fromChain.id, toChain.id, token.symbol, amount?.toString()],
+    queryFn: () => adapter!.getDepositWarnings!({ token, fromChain, toChain, amount: amount ?? 0n, wagmiConfig }),
+    enabled: !!adapter?.getDepositWarnings && !!amount && amount > 0n,
+    staleTime: 30_000,
+  });
+
+  const warningLoading = isWarningsLoading && !!adapter?.getDepositWarnings && !!amount && amount > 0n;
 
   useEffect(() => {
     setLoading(true);
@@ -44,23 +63,21 @@ export default function Claiming() {
   }, [amount]);
 
   useEffect(() => {
-    const noFeePill = document.getElementById("no-fees-pill");
-    if (!noFeePill) return;
+    const effectiveMode = selectedMode ?? adapter?.defaultMode;
+    const hasProtocolFee = !!adapter?.modes && effectiveMode !== adapter?.defaultMode;
+    setHideNoFeesPill(hasProtocolFee);
 
-    noFeePill.style.display =
-      token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST ? "none" : "block";
-  }, [cctpMode, token.bridgeProvider]);
+    return () => setHideNoFeesPill(false);
+  }, [selectedMode, adapter, setHideNoFeesPill]);
 
-  // Do not allow user to go to AdvancedSettings modal, when they have no choice of ClaimType anyway
   const showSettingIcon = useMemo(() => {
     if (fromChain.layer === ChainLayer.L2) return false;
-    // No auto-claiming for USDC via CCTPV2
-    if (isCctp(token)) return false;
+    if (!adapter?.hasAdvancedSettings) return false;
     return !loading;
-  }, [fromChain, token, loading]);
+  }, [fromChain, adapter, loading]);
 
   if (!amount || amount <= 0n) return null;
-  if (isConnected && originChainBalanceTooLow) return null;
+  if (isConnected && hasInsufficientFunds) return null;
 
   return (
     <div className={styles["wrapper"]}>
@@ -76,7 +93,7 @@ export default function Claiming() {
         </div>
       </div>
 
-      {loading ? (
+      {loading || isFeesLoading || warningLoading ? (
         <Skeleton />
       ) : (
         <div className={styles.content}>
@@ -89,9 +106,26 @@ export default function Claiming() {
             />
             <ReceivedAmount />
           </div>
-          <Fees />
+          <div className={styles.estimate}>
+            <WithFees iconPath={fromChain.iconPath} />
+            <EstimatedTime />
+            {effectiveClaimType === ClaimType.MANUAL && <ManualClaim />}
+          </div>
         </div>
       )}
+      {depositWarnings?.map((warning, i) => (
+        <p key={i} className={styles.warning}>
+          {warning.text}
+          {warning.link && (
+            <>
+              {" "}
+              <Link href={warning.link.url} target="_blank" rel="noopener noreferrer">
+                {warning.link.label}
+              </Link>
+            </>
+          )}
+        </p>
+      ))}
       {showAdvancedSettingsModal && (
         <AdvancedSettings
           isModalOpen={showAdvancedSettingsModal}

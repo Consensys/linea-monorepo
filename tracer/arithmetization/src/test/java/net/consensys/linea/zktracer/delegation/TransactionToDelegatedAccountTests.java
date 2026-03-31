@@ -16,8 +16,9 @@
 
 package net.consensys.linea.zktracer.delegation;
 
-import static net.consensys.linea.zktracer.Utils.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
+import static net.consensys.linea.zktracer.utilities.Utils.addDelegationPrefixToAccount;
+import static net.consensys.linea.zktracer.utilities.Utils.addDelegationPrefixToAddress;
 
 import java.util.List;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -26,6 +27,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -107,7 +109,7 @@ public class TransactionToDelegatedAccountTests extends TracerTestBase {
   // Sender account setting
   final KeyPair keyPair = new SECP256K1().generateKeyPair();
   final Address senderAddress =
-      Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(Bytes32.wrap(Hash.hash(keyPair.getPublicKey().getEncodedBytes()).getBytes()));
   final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.of(1_550_000_000_000L))

@@ -18,18 +18,34 @@ const chainConfigSchema = z.object({
   cctpMessageTransmitterV2Address: z.string().refine((val) => isAddress(val), {
     message: "Invalid Ethereum address",
   }),
+  hyperlanePortalLiteAddress: z
+    .string()
+    .optional()
+    .refine((val) => val === undefined || isAddress(val), {
+      message: "Invalid Ethereum address",
+    }),
+  hyperlaneMailboxAddress: z
+    .string()
+    .optional()
+    .refine((val) => val === undefined || isAddress(val), {
+      message: "Invalid Ethereum address",
+    }),
+  yieldProviderAddress: z
+    .string()
+    .refine((val) => isAddress(val), { message: "Invalid Ethereum address" })
+    .optional(),
 });
 
 export const configSchema = z
   .object({
     chains: z.record(z.string().regex(/^\d+$/), chainConfigSchema),
-    e2eTestMode: z.boolean().default(false),
     walletConnectId: z.string().nonempty(),
     storage: z.object({
       minVersion: z.number().positive().int(),
     }),
     // Feature toggle for CCTPV2 for USDC transfers
     isCctpEnabled: z.boolean(),
+    isHyperlaneEnabled: z.boolean(),
     infuraApiKey: z.string().nonempty(),
     alchemyApiKey: z.string().nonempty(),
     quickNodeApiKey: z.string().nonempty(),
