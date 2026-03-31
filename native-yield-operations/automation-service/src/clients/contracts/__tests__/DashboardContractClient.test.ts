@@ -1,7 +1,9 @@
-import { jest, describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { getContract, parseEventLogs } from "viem";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
 import { DashboardABI } from "../../../core/abis/Dashboard.js";
+import { DashboardContractClient } from "../DashboardContractClient.js";
 
 import type { PublicClient, TransactionReceipt, Address } from "viem";
 
@@ -10,18 +12,8 @@ jest.mock("viem", () => ({
   parseEventLogs: jest.fn(),
 }));
 
-let DashboardContractClient: typeof import("../DashboardContractClient.js").DashboardContractClient;
-let getContract: typeof import("viem").getContract;
-let parseEventLogs: typeof import("viem").parseEventLogs;
-let mockedGetContract: jest.MockedFunction<typeof getContract>;
-let mockedParseEventLogs: jest.MockedFunction<typeof parseEventLogs>;
-
-beforeAll(async () => {
-  ({ getContract, parseEventLogs } = await import("viem"));
-  ({ DashboardContractClient } = await import("../DashboardContractClient.js"));
-  mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
-  mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
-});
+const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
+const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
 
 describe("DashboardContractClient", () => {
   // Test data constants

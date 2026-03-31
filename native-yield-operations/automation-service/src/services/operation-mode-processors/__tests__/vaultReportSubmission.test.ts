@@ -1,7 +1,9 @@
-import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
+import { attempt } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { ResultAsync, ok, err } from "neverthrow";
 
 import { createLoggerMock } from "../../../__tests__/helpers/index.js";
+import { submitVaultReportIfNotFresh } from "../vaultReportSubmission.js";
 
 import type { IVaultHub } from "../../../core/clients/contracts/IVaultHub.js";
 import type { ILidoAccountingReportClient } from "../../../core/clients/ILidoAccountingReportClient.js";
@@ -17,15 +19,7 @@ jest.mock("@consensys/linea-shared-utils", () => {
   };
 });
 
-let attempt: typeof import("@consensys/linea-shared-utils").attempt;
-let submitVaultReportIfNotFresh: typeof import("../vaultReportSubmission.js").submitVaultReportIfNotFresh;
-let attemptMock: jest.MockedFunction<typeof attempt>;
-
-beforeAll(async () => {
-  ({ attempt } = await import("@consensys/linea-shared-utils"));
-  ({ submitVaultReportIfNotFresh } = await import("../vaultReportSubmission.js"));
-  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
-});
+const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
 
 // Semantic constants
 const VAULT_ADDRESS = "0x2222222222222222222222222222222222222222" as Address;

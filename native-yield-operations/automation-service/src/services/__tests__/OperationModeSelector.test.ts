@@ -1,7 +1,9 @@
-import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
+import { wait } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { OperationModeSelector } from "../OperationModeSelector.js";
 
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
@@ -17,15 +19,7 @@ jest.mock("@consensys/linea-shared-utils", () => {
   };
 });
 
-let wait: typeof import("@consensys/linea-shared-utils").wait;
-let OperationModeSelector: typeof import("../OperationModeSelector.js").OperationModeSelector;
-let waitMock: jest.MockedFunction<typeof wait>;
-
-beforeAll(async () => {
-  ({ wait } = await import("@consensys/linea-shared-utils"));
-  ({ OperationModeSelector } = await import("../OperationModeSelector.js"));
-  waitMock = wait as jest.MockedFunction<typeof wait>;
-});
+const waitMock = wait as jest.MockedFunction<typeof wait>;
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",

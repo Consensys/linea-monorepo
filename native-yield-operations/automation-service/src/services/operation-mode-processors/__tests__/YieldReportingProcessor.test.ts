@@ -1,10 +1,12 @@
-import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
+import { attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { YieldReportingProcessor } from "../YieldReportingProcessor.js";
 
 import type { ILazyOracle } from "../../../core/clients/contracts/ILazyOracle.js";
 import type { UpdateVaultDataParams } from "../../../core/clients/contracts/ILazyOracle.js";
@@ -29,21 +31,9 @@ jest.mock("@consensys/linea-shared-utils", () => {
   };
 });
 
-let attempt: typeof import("@consensys/linea-shared-utils").attempt;
-let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
-let weiToGweiNumber: typeof import("@consensys/linea-shared-utils").weiToGweiNumber;
-let YieldReportingProcessor: typeof import("../YieldReportingProcessor.js").YieldReportingProcessor;
-let attemptMock: jest.MockedFunction<typeof attempt>;
-let msToSecondsMock: jest.MockedFunction<typeof msToSeconds>;
-let weiToGweiNumberMock: jest.MockedFunction<typeof weiToGweiNumber>;
-
-beforeAll(async () => {
-  ({ attempt, msToSeconds, weiToGweiNumber } = await import("@consensys/linea-shared-utils"));
-  ({ YieldReportingProcessor } = await import("../YieldReportingProcessor.js"));
-  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
-  msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
-  weiToGweiNumberMock = weiToGweiNumber as jest.MockedFunction<typeof weiToGweiNumber>;
-});
+const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
+const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
+const weiToGweiNumberMock = weiToGweiNumber as jest.MockedFunction<typeof weiToGweiNumber>;
 
 // Semantic constants
 const YIELD_PROVIDER = "0x1111111111111111111111111111111111111111" as Address;

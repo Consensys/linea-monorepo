@@ -1,6 +1,8 @@
 import { mock, MockProxy } from "jest-mock-extended";
+import { encodeFunctionData, getContract } from "viem";
 
 import { LineaRollupYieldExtensionABI } from "../../../core/abis/LineaRollupYieldExtension.js";
+import { LineaRollupYieldExtensionContractClient } from "../LineaRollupYieldExtensionContractClient.js";
 
 import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address, Hex } from "viem";
@@ -14,18 +16,8 @@ jest.mock("viem", () => {
   };
 });
 
-let getContract: typeof import("viem").getContract;
-let encodeFunctionData: typeof import("viem").encodeFunctionData;
-let mockedGetContract: jest.MockedFunction<typeof getContract>;
-let mockedEncodeFunctionData: jest.MockedFunction<typeof encodeFunctionData>;
-let LineaRollupYieldExtensionContractClient: typeof import("../LineaRollupYieldExtensionContractClient.js").LineaRollupYieldExtensionContractClient;
-
-beforeAll(async () => {
-  ({ getContract, encodeFunctionData } = await import("viem"));
-  ({ LineaRollupYieldExtensionContractClient } = await import("../LineaRollupYieldExtensionContractClient.js"));
-  mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
-  mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
-});
+const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
+const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
 describe("LineaRollupYieldExtensionContractClient", () => {
   // Semantic constants
   const CONTRACT_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;

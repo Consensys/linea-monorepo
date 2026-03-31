@@ -1,8 +1,10 @@
-import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
+import { attempt, msToSeconds, wait } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { ResultAsync } from "neverthrow";
 
 import { createLoggerMock, createMetricsUpdaterMock } from "../../../__tests__/helpers/index.js";
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
+import { OssificationCompleteProcessor } from "../OssificationCompleteProcessor.js";
 
 import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
 import type { IBeaconChainStakingClient } from "../../../core/clients/IBeaconChainStakingClient.js";
@@ -21,21 +23,9 @@ jest.mock("@consensys/linea-shared-utils", () => {
   };
 });
 
-let attempt: typeof import("@consensys/linea-shared-utils").attempt;
-let msToSeconds: typeof import("@consensys/linea-shared-utils").msToSeconds;
-let wait: typeof import("@consensys/linea-shared-utils").wait;
-let OssificationCompleteProcessor: typeof import("../OssificationCompleteProcessor.js").OssificationCompleteProcessor;
-let waitMock: jest.MockedFunction<typeof wait>;
-let attemptMock: jest.MockedFunction<typeof attempt>;
-let msToSecondsMock: jest.MockedFunction<typeof msToSeconds>;
-
-beforeAll(async () => {
-  ({ attempt, msToSeconds, wait } = await import("@consensys/linea-shared-utils"));
-  ({ OssificationCompleteProcessor } = await import("../OssificationCompleteProcessor.js"));
-  waitMock = wait as jest.MockedFunction<typeof wait>;
-  attemptMock = attempt as jest.MockedFunction<typeof attempt>;
-  msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
-});
+const waitMock = wait as jest.MockedFunction<typeof wait>;
+const attemptMock = attempt as jest.MockedFunction<typeof attempt>;
+const msToSecondsMock = msToSeconds as jest.MockedFunction<typeof msToSeconds>;
 
 const YIELD_PROVIDER_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
 const MAX_INACTION_MS = 5_000;
