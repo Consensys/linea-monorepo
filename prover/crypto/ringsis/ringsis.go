@@ -3,9 +3,7 @@ package ringsis
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/sis"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
@@ -153,7 +151,7 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 // of a batch of SIS hashes.
 //
 // The vector of limbs has to be provided in Montgommery form.
-func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
+func (s Key) HashModXnMinus1(limbs []field.Ext) []field.Ext {
 
 	// inputReader is a subslice of `limbs` and it is meant to be used as a
 	// reader. We periodically pop the first element by reassigning the input
@@ -178,9 +176,9 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 	*/
 
 	domain := s.SisGnarkCrypto.Domain
-	k := make([]fext.Element, s.modulusDegree())
+	k := make([]field.Ext, s.modulusDegree())
 	a := make([]field.Element, s.modulusDegree())
-	r := make([]fext.Element, s.OutputSize())
+	r := make([]field.Ext, s.OutputSize())
 
 	for i := 0; i < nbPolyUsed; i++ {
 		copy(a, s.SisGnarkCrypto.A[i])
@@ -201,7 +199,7 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 		domain.FFTExt(k, fft.DIF)
 		domain.FFT(a, fft.DIF)
 
-		var tmp fext.Element
+		var tmp field.Ext
 		for i := range r {
 			tmp.MulByElement(&k[i], &a[i])
 			r[i].Add(&r[i], &tmp)
@@ -218,7 +216,7 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 	// also account for the Montgommery issue : in gnark's implementation
 	// the key is implictly multiplied by RInv
 	for i := range r {
-		r[i] = fext.MulRInv(r[i])
+		r[i] = field.MulRInvExt(r[i])
 	}
 
 	return r
@@ -248,23 +246,23 @@ func (s *Key) FlattenedKey() []field.Element {
 // Each smart-vector is seen as the row of a matrix. All rows must have the same
 // size or panic. The function returns the hash of the columns. The column hashes
 // are concatenated into a single array.
-func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element) []field.Element {
+func (s *Key) TransversalHash(rows [][]field.Element, res []field.Element) []field.Element {
 	// nbRows is the number of rows in the matrix
-	nbRows := len(v)
+	nbRows := len(rows)
 	if nbRows == 0 || nbRows > s.MaxNumFieldToHash {
 		utils.Panic("nbRows=%v out of bounds [1,%v]", nbRows, s.MaxNumFieldToHash)
 	}
 
 	// nbCols is the number of columns in the matrix
-	nbCols := v[0].Len()
+	nbCols := len(rows[0])
 	if nbCols == 0 {
 		utils.Panic("Provided a 0-colums matrix")
 	}
 
-	for i := range v {
-		if v[i].Len() != nbCols {
+	for i := range rows {
+		if len(rows[i]) != nbCols {
 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-				nbCols, i, v[i].Len())
+				nbCols, i, len(rows[i]))
 		}
 	}
 
@@ -305,23 +303,9 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 			}
 
 			for i := 0; i < nbRows; i++ {
-				switch vi := v[i].(type) {
-				case *smartvectors.Constant:
-					cst := vi.Value
-					for j := 0; j < currentWindowSize; j++ {
-						transposed[j][i] = cst
-					}
-				case *smartvectors.Regular:
-					// Optimization: slice the source once to avoid repeated bounds checks/indirections
-					// (*vi) is the slice.
-					src := (*vi)[col : col+currentWindowSize]
-					for j := 0; j < currentWindowSize; j++ {
-						transposed[j][i] = src[j]
-					}
-				default:
-					for j := 0; j < currentWindowSize; j++ {
-						transposed[j][i] = v[i].Get(col + j)
-					}
+				src := rows[i][col : col+currentWindowSize]
+				for j := 0; j < currentWindowSize; j++ {
+					transposed[j][i] = src[j]
 				}
 			}
 			for j := 0; j < currentWindowSize; j++ {

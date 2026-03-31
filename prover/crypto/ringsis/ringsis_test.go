@@ -7,12 +7,8 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,20 +67,20 @@ var testCasesKey = []struct {
 
 func TestHashModXnMinusOne(t *testing.T) {
 
-	runTest := func(t *testing.T, key *Key, limbs []fext.Element) {
+	runTest := func(t *testing.T, key *Key, limbs []field.Ext) {
 
 		var (
 			dualHash       = key.HashModXnMinus1(limbs)
-			recomputedHash = []fext.Element{}
+			recomputedHash = []field.Ext{}
 			flattenedKey   = key.FlattenedKey() // accounts for the Montgommery skip
 		)
 
 		for i := range key.SisGnarkCrypto.A {
 			ai := flattenedKey[i*key.OutputSize() : (i+1)*key.OutputSize()]
-			si := make([]fext.Element, key.OutputSize())
+			si := make([]field.Ext, key.OutputSize())
 			copy(si, limbs[i*key.OutputSize():])
-			tmp := polyext.MulByElement(si, ai)
-			recomputedHash = polyext.Add(recomputedHash, tmp)
+			tmp := testPolyMulExtBase(si, ai)
+			recomputedHash = testPolyAddExt(recomputedHash, tmp)
 		}
 
 		for i := key.OutputSize(); i < len(recomputedHash); i++ {
@@ -101,7 +97,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].LogTwoDegree, testCasesKey[i].LogTwoBound, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, key, vectorext.Repeat(fext.One(), key.maxNumLimbsHashable()))
+			runTest(t, key, field.VecRepeatExt(field.OneExt(), key.maxNumLimbsHashable()))
 		})
 
 	}
@@ -125,8 +121,9 @@ func TestLimbSplit(t *testing.T) {
 		limbs := key.LimbSplit(v)
 		for i := range v {
 			subLimbs := limbs[i*key.NumLimbs() : (i+1)*key.NumLimbs()]
-			recomposed := poly.Eval(subLimbs, bound)
-			assert.Equal(subT, v[i].String(), recomposed.String())
+			recomposed := polynomials.EvalCanonical(field.VecFromBase(subLimbs), field.ElemFromBase(bound))
+			got := recomposed.AsBase()
+			assert.Equal(subT, v[i].String(), got.String())
 		}
 	}
 
@@ -157,10 +154,10 @@ func TestHashFromLimbs(t *testing.T) {
 		{field.One(), field.One()},
 		{field.NewElement(0), field.NewElement(1), field.NewElement(2), field.NewElement(3)},
 		{field.NewElement(0xffffffffffffffff), field.NewFromString("-1"), field.NewElement(8)},
-		vector.Rand(4),
-		vector.Rand(16),
-		vector.Rand(5),
-		vector.Rand(17),
+		field.VecRandomBase(4),
+		field.VecRandomBase(16),
+		field.VecRandomBase(5),
+		field.VecRandomBase(17),
 	}
 
 	for pId, tcParams := range testCasesKey {
@@ -180,17 +177,50 @@ func TestHashLimbsFromSlice(t *testing.T) {
 
 			var (
 				key          = GenerateKey(tcParams.LogTwoDegree, tcParams.LogTwoBound, tcParams.Size)
-				inputs       = vector.Rand(tcParams.Size)
+				inputs       = field.VecRandomBase(tcParams.Size)
 				keyVec       = key.FlattenedKey()
 				limbs        = key.LimbSplit(inputs)
 				expectedHash = key.hashFromLimbs(limbs)
 				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.SisGnarkCrypto.Domain, key.OutputSize())
 			)
 
-			require.Equal(t, vector.Prettify(expectedHash), vector.Prettify(hashToTest))
+			require.Equal(t, field.VecPrettifyBase(expectedHash), field.VecPrettifyBase(hashToTest))
 
 		})
 	}
+}
+
+// testPolyMulExtBase computes the polynomial product of p (ext coefficients) and
+// q (base coefficients) in the coefficient domain. The result has length
+// len(p)+len(q)-1.
+func testPolyMulExtBase(p []field.Ext, q []field.Element) []field.Ext {
+	if len(p) == 0 || len(q) == 0 {
+		return nil
+	}
+	res := make([]field.Ext, len(p)+len(q)-1)
+	for i, pi := range p {
+		for j, qj := range q {
+			var term field.Ext
+			term.MulByElement(&pi, &qj)
+			res[i+j].Add(&res[i+j], &term)
+		}
+	}
+	return res
+}
+
+// testPolyAddExt adds two ext-coefficient polynomials of possibly different
+// lengths, returning a result of length max(len(a), len(b)).
+func testPolyAddExt(a, b []field.Ext) []field.Ext {
+	maxLen := len(a)
+	if len(b) > maxLen {
+		maxLen = len(b)
+	}
+	res := make([]field.Ext, maxLen)
+	copy(res, a)
+	for i, bi := range b {
+		res[i].Add(&res[i], &bi)
+	}
+	return res
 }
 
 // For testing purposes
@@ -218,8 +248,7 @@ func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain 
 		copy(limbsChunk, limbs[i*degree:])
 
 		// so we may need to zero-pad the last one if incomplete. This
-		// loop will be skipped if limns[i*degree] is larger than
-		// the degree
+		// loop will be skipped if limbs[i*degree] is larger than the degree
 		for i := len(limbs[i*degree:]); i < degree; i++ {
 			limbsChunk[i].SetZero()
 		}
