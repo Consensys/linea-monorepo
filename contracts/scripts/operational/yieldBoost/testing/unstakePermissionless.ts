@@ -55,6 +55,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
     return runWithSignerUiSession(hre, "task:unstakePermissionless", async () => {
       const { ethers } = hre;
       const signer = await getUiSigner(hre);
+      const signerAddress = await signer.getAddress();
 
       // --- Resolve inputs from CLI or ENV ---
       const yieldManagerAddress = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER_ADDRESS");
@@ -155,7 +156,7 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
       // Encode withdrawal params - only pubkeys and refundRecipient (no amounts array)
       const withdrawalParams = AbiCoder.defaultAbiCoder().encode(
         ["bytes", "address"],
-        [hexlify(validator.pubkey), signer.address],
+        [hexlify(validator.pubkey), signerAddress],
       );
 
       // Build BeaconProofWitness structure

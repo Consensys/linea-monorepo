@@ -219,6 +219,13 @@ type PrivateKeyWarningDetails = {
 export function warnIfUsingPrivateKeySigning(details: PrivateKeyWarningDetails = {}): void {
   assertExclusiveSignerMode();
 
+  if (details.uiSupported === false && isSignerUiEnabled()) {
+    throw new Error(
+      `HARDHAT_SIGNER_UI=true is not supported for ${details.scriptContext ?? "this script"}. ` +
+        "Disable HARDHAT_SIGNER_UI and use DEPLOYER_PRIVATE_KEY for this operation.",
+    );
+  }
+
   if (privateKeyUsageWarningShown || isSignerUiEnabled() || !hasConfiguredDeployerPrivateKey()) {
     return;
   }
@@ -329,6 +336,23 @@ function killTcpListenersOnPort(port: number): void {
   }
 }
 
+function isPidListeningOnPort(pid: number, port: number): boolean {
+  if (process.platform === "win32") {
+    return false;
+  }
+
+  try {
+    const out = execFileSync("lsof", ["-Pan", "-p", String(pid), "-iTCP", "-sTCP:LISTEN", "-Fn"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 512 * 1024,
+    });
+    return out.split("\n").some((line) => line.startsWith("n") && new RegExp(`:${port}(?:$|->)`).test(line.slice(1)));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Next.js 16+ keeps a singleton dev server via `.next/dev/lock` (JSON with pid/port).
  * A stale lock or orphan PID makes `next dev` exit immediately — with stdio ignored the CLI only "hangs" until HTTP wait times out.
@@ -341,17 +365,24 @@ function clearNextDevSingletonLock(signerUiDir: string): void {
 
   try {
     const parsed = JSON.parse(readFileSync(lockPath, "utf8")) as { pid?: number; port?: number };
+    const hasKnownPort = typeof parsed.port === "number" && Number.isFinite(parsed.port) && parsed.port > 0;
 
-    if (typeof parsed.pid === "number" && parsed.pid > 0) {
+    // Do not signal a lockfile PID unless we can confirm it's still listening on the lockfile port.
+    // PIDs can be reused and blindly signaling could affect unrelated local processes.
+    if (
+      typeof parsed.pid === "number" &&
+      parsed.pid > 0 &&
+      hasKnownPort &&
+      isPidListeningOnPort(parsed.pid, parsed.port)
+    ) {
       try {
-        process.kill(parsed.pid, 0);
         process.kill(parsed.pid, "SIGTERM");
       } catch {
-        /* process does not exist — stale lock */
+        /* process does not exist or cannot be signaled */
       }
     }
 
-    if (typeof parsed.port === "number") {
+    if (hasKnownPort) {
       killTcpListenersOnPort(parsed.port);
     }
   } catch {
@@ -799,6 +830,11 @@ async function openBrowser(url: string) {
   const child = spawn(command, [url], {
     stdio: "ignore",
     detached: true,
+  });
+  child.on("error", (error: Error) => {
+    console.warn(
+      `HARDHAT_SIGNER_UI: failed to open browser automatically (${error.message}). Open this URL manually: ${url}`,
+    );
   });
   child.unref();
 }

@@ -40,10 +40,11 @@ export async function prepareAndAddMessageMerkleRoot(
 ): Promise<PrepareMessageResult> {
   const { ethers } = hre;
   const signer = await getUiSigner(hre);
+  const signerAddress = await signer.getAddress();
 
   // --- Resolve inputs from CLI or ENV (with sensible fallbacks to deployments) ---
   const lineaRollupAddress = getTaskCliOrEnvValue(taskArgs, "lineaRollupAddress", "LINEA_ROLLUP_ADDRESS");
-  const fromAddress = getTaskCliOrEnvValue(taskArgs, "from", "FROM_ADDRESS") || signer.address;
+  const fromAddress = getTaskCliOrEnvValue(taskArgs, "from", "FROM_ADDRESS") || signerAddress;
   const toAddress = getTaskCliOrEnvValue(taskArgs, "to", "TO_ADDRESS");
   const valueRaw = getTaskCliOrEnvValue(taskArgs, "value", "VALUE");
   const data = getTaskCliOrEnvValue(taskArgs, "data", "DATA") || "0x";
