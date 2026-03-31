@@ -1,8 +1,8 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/ringsis"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 

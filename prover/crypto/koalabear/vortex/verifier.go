@@ -1,21 +1,20 @@
-package vortex_koalabear
+package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/ringsis"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_bls12377(sis(columns[i][j]))
 func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
-	merkleProofs [][]smt_koalabear.Proof, commitments []Commitment, WithSis []bool) error {
+	merkleProofs [][]smt.Proof, commitments []Commitment, WithSis []bool) error {
 
 	sisHash := make([]field.Element, sis.OutputSize())
 	// var leaf fr.Element
-	h := poseidon2_koalabear.NewMDHasher()
+	h := poseidon2.NewMDHasher()
 	for i := 0; i < len(commitments); i++ {
 
 		for j := 0; j < len(columns[i]); j++ {
@@ -34,7 +33,7 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 			}
 
 			// check merkle proof
-			err := smt_koalabear.Verify(&merkleProofs[i][j], leaf, commitments[i])
+			err := smt.Verify(&merkleProofs[i][j], leaf, commitments[i])
 			if err != nil {
 				return err
 			}
@@ -44,7 +43,7 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 	return nil
 }
 
-func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput, commitments []Commitment, merkleProofs [][]smt_koalabear.Proof, WithSis []bool) error {
+func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments []Commitment, merkleProofs [][]smt.Proof, WithSis []bool) error {
 
 	// If WithSis is not assigned, we assign them with default true values
 	if WithSis == nil {
@@ -65,19 +64,19 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 	return err
 }
 
-func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
+func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error {
 
-	err := vortex.CheckIsCodeWord(params.RsParams, proof.LinearCombination)
+	err := CheckIsCodeWord(params.RsParams, proof.LinearCombination)
 	if err != nil {
 		return err
 	}
 
-	err = vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err = CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
-	err = vortex.CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	if err != nil {
 		return err
 	}

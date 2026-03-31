@@ -1,8 +1,7 @@
-package vortex_koalabear
+package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -10,15 +9,15 @@ import (
 func Prove(
 	entryList []int,
 	encodedMatrices []EncodedMatrix,
-	trees []*smt_koalabear.Tree, alpha field.Ext) (*vortex.OpeningProof, [][]smt_koalabear.Proof) {
+	trees []*smt.Tree, alpha field.Ext) (*OpeningProof, [][]smt.Proof) {
 
-	proof := &vortex.OpeningProof{}
+	proof := &OpeningProof{}
 
 	_encodedMatrices := make([][]field.Element, 0, len(encodedMatrices))
 	for _, m := range encodedMatrices {
 		_encodedMatrices = append(_encodedMatrices, m...)
 	}
-	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+	LinearCombination(proof, _encodedMatrices, alpha)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 
@@ -28,11 +27,11 @@ func Prove(
 // SelectColumnsAndMerkleProofs completes the proof adding the columns pointed by entryList
 // (implictly the random positions pointed to by the verifier).
 func SelectColumnsAndMerkleProofs(
-	proof *vortex.OpeningProof,
+	proof *OpeningProof,
 	entryList []int,
 	committedMatrices []EncodedMatrix,
-	trees []*smt_koalabear.Tree,
-) [][]smt_koalabear.Proof {
+	trees []*smt.Tree,
+) [][]smt.Proof {
 
 	if len(entryList) == 0 {
 		utils.Panic("empty entry list")
@@ -52,14 +51,14 @@ func SelectColumnsAndMerkleProofs(
 	}
 
 	numTrees := len(trees)
-	proofs := make([][]smt_koalabear.Proof, numTrees)
+	proofs := make([][]smt.Proof, numTrees)
 
 	// Generate the proofs for each tree and each entry
 	for treeID, tree := range trees {
 		if tree == nil {
 			utils.Panic("tree is nil")
 		}
-		proofs[treeID] = make([]smt_koalabear.Proof, len(entryList))
+		proofs[treeID] = make([]smt.Proof, len(entryList))
 		for k, entry := range entryList {
 			var err error
 			proofs[treeID][k], err = tree.Prove(entry)

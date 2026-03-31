@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -46,7 +46,7 @@ func NewEmptyTree(depths ...int) *Tree {
 	emptyNodes := make([]field.Octuplet, depth-1)
 	prevNode := EmptyLeaf()
 
-	hasher := poseidon2_koalabear.NewMDHasher()
+	hasher := poseidon2.NewMDHasher()
 
 	for i := range emptyNodes {
 		newNode := hashLR(hasher, prevNode, prevNode)
@@ -98,7 +98,7 @@ func NewTree(leaves []field.Octuplet) *Tree {
 	// Initialize EmptyNodes
 	{
 		prevNode := EmptyLeaf()
-		hasher := poseidon2_koalabear.NewMDHasher()
+		hasher := poseidon2.NewMDHasher()
 		for i := range tree.EmptyNodes {
 			newNode := hashLR(hasher, prevNode, prevNode)
 			tree.EmptyNodes[i] = newNode
@@ -141,7 +141,7 @@ func NewTree(leaves []field.Octuplet) *Tree {
 
 	// Execute parallel tasks. Each task computes a complete subtree of height `subtreeHeight`.
 	parallel.Execute(numTasks, func(startTask, endTask int) {
-		hasher := poseidon2_koalabear.NewMDHasher()
+		hasher := poseidon2.NewMDHasher()
 
 		for t := startTask; t < endTask; t++ {
 			leafStart := t * chunkSize
@@ -193,13 +193,13 @@ func NewTree(leaves []field.Octuplet) *Tree {
 
 		if n >= parallelThreshold && runtime.GOMAXPROCS(0) > 1 {
 			parallel.Execute(n, func(start, end int) {
-				hasher := poseidon2_koalabear.NewMDHasher()
+				hasher := poseidon2.NewMDHasher()
 				for k := start; k < end; k++ {
 					currLevel[k] = hashLR(hasher, prevLevel[2*k], prevLevel[2*k+1])
 				}
 			})
 		} else {
-			hasher := poseidon2_koalabear.NewMDHasher()
+			hasher := poseidon2.NewMDHasher()
 			for k := 0; k < n; k++ {
 				currLevel[k] = hashLR(hasher, prevLevel[2*k], prevLevel[2*k+1])
 			}
@@ -208,13 +208,13 @@ func NewTree(leaves []field.Octuplet) *Tree {
 
 	// Root calculation
 	if depth == 1 {
-		tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), leaves[0], leaves[1])
+		tree.Root = hashLR(poseidon2.NewMDHasher(), leaves[0], leaves[1])
 	} else {
 		lastLevel := tree.OccupiedNodes[depth-2]
 		if len(lastLevel) != 2 {
 			utils.Panic("broken invariant : len(lastLevel) != 2, =%v", len(lastLevel))
 		}
-		tree.Root = hashLR(poseidon2_koalabear.NewMDHasher(), lastLevel[0], lastLevel[1])
+		tree.Root = hashLR(poseidon2.NewMDHasher(), lastLevel[0], lastLevel[1])
 	}
 
 	return tree
@@ -408,7 +408,7 @@ func EmptyLeaf() field.Octuplet {
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func hashLR(hasher *poseidon2_koalabear.MDHasher, nodeL, nodeR field.Octuplet) field.Octuplet {
+func hashLR(hasher *poseidon2.MDHasher, nodeL, nodeR field.Octuplet) field.Octuplet {
 	hasher.Reset()
 	var d field.Octuplet
 	hasher.WriteElements(nodeL[:]...)

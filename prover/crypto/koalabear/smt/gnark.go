@@ -2,18 +2,18 @@ package smt_koalabear
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
 )
 
 // GnarkProof mirrors [Proof] in a gnark circuit.
 type GnarkProof struct {
 	Path     frontend.Variable
-	Siblings []poseidon2_koalabear.GnarkOctuplet
+	Siblings []poseidon2.GnarkOctuplet
 }
 
 // selectOcuplet if b=1, returns l else return r
-func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2_koalabear.GnarkOctuplet) poseidon2_koalabear.GnarkOctuplet {
-	var res poseidon2_koalabear.GnarkOctuplet
+func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2.GnarkOctuplet) poseidon2.GnarkOctuplet {
+	var res poseidon2.GnarkOctuplet
 	for i := 0; i < 8; i++ {
 		res[i] = api.Select(b, l[i], r[i])
 	}
@@ -24,11 +24,11 @@ func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2_koalabe
 func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
-	leaf poseidon2_koalabear.GnarkOctuplet) (poseidon2_koalabear.GnarkOctuplet, error) {
+	leaf poseidon2.GnarkOctuplet) (poseidon2.GnarkOctuplet, error) {
 
-	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
+	h, err := poseidon2.NewGnarkMDHasher(api)
 	if err != nil {
-		return poseidon2_koalabear.GnarkOctuplet{}, err
+		return poseidon2.GnarkOctuplet{}, err
 	}
 
 	current := leaf
@@ -49,8 +49,8 @@ func GnarkRecoverRoot(
 func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
-	leaf poseidon2_koalabear.GnarkOctuplet,
-	root poseidon2_koalabear.GnarkOctuplet) error {
+	leaf poseidon2.GnarkOctuplet,
+	root poseidon2.GnarkOctuplet) error {
 
 	r, err := GnarkRecoverRoot(api, proof, leaf)
 	if err != nil {

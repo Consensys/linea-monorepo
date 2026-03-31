@@ -1,9 +1,9 @@
-package fiatshamir_koalabear
+package fiatshamir
 
 import (
 	"unsafe"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -12,19 +12,24 @@ import (
 
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-type FS struct {
-	h *poseidon2_koalabear.MDHasher
+// FiatShamir accumulates the transcript of a protocol (e.g. the set of messages
+// sent between the prover and the verifier). The accumulated transcripts can
+// then be used to sample random coins that are obtained by hashing the
+// provided transcript. The hashing is incremental and can be updated at any
+// moment.
+type FiatShamir struct {
+	h *poseidon2.MDHasher
 }
 
-func NewFS() *FS {
-	return &FS{h: poseidon2_koalabear.NewMDHasher()}
+func NewFiatShamir() *FiatShamir {
+	return &FiatShamir{h: poseidon2.NewMDHasher()}
 }
 
-func (fs *FS) Update(vec ...field.Element) {
+func (fs *FiatShamir) Update(vec ...field.Element) {
 	fs.h.WriteElements(vec...)
 }
 
-func (fs *FS) UpdateExt(vec ...field.Ext) {
+func (fs *FiatShamir) UpdateExt(vec ...field.Ext) {
 	if len(vec) == 0 {
 		return
 	}
@@ -32,7 +37,7 @@ func (fs *FS) UpdateExt(vec ...field.Ext) {
 	fs.h.WriteElements(vElems...)
 }
 
-func (fs *FS) UpdateGeneric(vec ...field.FieldElem) {
+func (fs *FiatShamir) UpdateGeneric(vec ...field.FieldElem) {
 	if len(vec) == 0 {
 		return
 	}
@@ -46,7 +51,7 @@ func (fs *FS) UpdateGeneric(vec ...field.FieldElem) {
 		}
 	}
 }
-func (fs *FS) UpdateVec(vecs ...[]field.Element) {
+func (fs *FiatShamir) UpdateVec(vecs ...[]field.Element) {
 	for i := range vecs {
 		fs.Update(vecs[i]...)
 	}
@@ -54,7 +59,7 @@ func (fs *FS) UpdateVec(vecs ...[]field.Element) {
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
-func (fs *FS) UpdateVecExt(vecs ...[]field.Ext) {
+func (fs *FiatShamir) UpdateVecExt(vecs ...[]field.Ext) {
 	for i := range vecs {
 		fs.UpdateExt(vecs[i]...)
 	}
@@ -62,7 +67,7 @@ func (fs *FS) UpdateVecExt(vecs ...[]field.Ext) {
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func (fs *FS) UpdateSV(sv field.FieldVec) {
+func (fs *FiatShamir) UpdateSV(sv field.FieldVec) {
 	if sv.Len() == 0 {
 		return
 	}
@@ -76,12 +81,12 @@ func (fs *FS) UpdateSV(sv field.FieldVec) {
 	}
 }
 
-func (fs *FS) RandomField() field.Octuplet {
+func (fs *FiatShamir) RandomField() field.Octuplet {
 	defer fs.safeguardUpdate()
 	return fs.h.SumElement()
 }
 
-func (fs *FS) RandomFext() field.Ext {
+func (fs *FiatShamir) RandomFext() field.Ext {
 	s := fs.RandomField() // already calls safeguardUpdate()
 	var res field.Ext
 	res.B0.A0 = s[0]
@@ -92,7 +97,7 @@ func (fs *FS) RandomFext() field.Ext {
 	return res
 }
 
-func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext {
+func (fs *FiatShamir) RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext {
 
 	// The first step encodes the 'name' into a single field element. The
 	// field element is obtained by hashing and taking the modulo of the
@@ -114,7 +119,7 @@ func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext {
 	return res
 }
 
-func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
+func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
 	n := utils.NextPowerOfTwo(upperBound)
 	mask := n - 1
 	i := 0
@@ -134,14 +139,14 @@ func (fs *FS) RandomManyIntegers(num, upperBound int) []int {
 	return res
 }
 
-func (fs *FS) SetState(s field.Octuplet) {
+func (fs *FiatShamir) SetState(s field.Octuplet) {
 	fs.h.SetStateOctuplet(s)
 }
 
-func (fs *FS) State() field.Octuplet {
+func (fs *FiatShamir) State() field.Octuplet {
 	return fs.h.GetStateOctuplet()
 }
 
-func (fs *FS) safeguardUpdate() {
+func (fs *FiatShamir) safeguardUpdate() {
 	fs.Update(field.Zero())
 }

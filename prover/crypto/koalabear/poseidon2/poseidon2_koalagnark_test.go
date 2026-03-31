@@ -1,4 +1,4 @@
-package poseidon2_koalabear
+package poseidon2
 
 import (
 	"testing"

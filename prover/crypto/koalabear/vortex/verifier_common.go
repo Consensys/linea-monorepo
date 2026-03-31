@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover/utils"

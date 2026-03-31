@@ -1,10 +1,10 @@
-package vortex_koalabear
+package vortex
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/stretchr/testify/require"
 )
@@ -115,7 +115,7 @@ func referenceNoSisTransversalHash(v [][]field.Element) []field.Octuplet {
 		nbCols = len(v[0])
 		res    = make([]field.Octuplet, nbCols)
 		curCol = make([]field.Element, nbRows)
-		h      = poseidon2_koalabear.NewMDHasher()
+		h      = poseidon2.NewMDHasher()
 	)
 
 	for col := 0; col < nbCols; col++ {

@@ -1,7 +1,7 @@
 package smt_koalabear
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -16,7 +16,7 @@ func (t *Tree) Update(pos int, newVal field.Octuplet) {
 		utils.Panic("out of bound %v", pos)
 	}
 
-	hasher := poseidon2_koalabear.NewMDHasher()
+	hasher := poseidon2.NewMDHasher()
 	for level := 0; level < t.Depth; level++ {
 		// store the newly computed node
 		t.updateNode(level, idx, current)

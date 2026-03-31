@@ -1,23 +1,22 @@
-package vortex_koalabear
+package vortex
 
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 )
 
 func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
 	*Params,
-	*vortex.OpeningProof,
-	vortex.VerifierInput,
+	*OpeningProof,
+	VerifierInput,
 	[]Commitment,
-	[][]smt_koalabear.Proof,
+	[][]smt.Proof,
 ) {
 
-	var vi vortex.VerifierInput
+	var vi VerifierInput
 	vi.X = field.RandomElementExt()
 	vi.Alpha = field.RandomElementExt()
 	vi.EntryList = []int{1, 5, 19, 645}
@@ -37,7 +36,7 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 
 	// Commits to it
 	commitments := make([]Commitment, nCommitments)
-	trees := make([]*smt_koalabear.Tree, nCommitments)
+	trees := make([]*smt.Tree, nCommitments)
 	logTwoDegree := 9
 	logTwoBound := 16
 	vortexInstance := NewParams(
@@ -59,7 +58,7 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 	// Generate the proof
 	proof, merkleProofs := Prove(vi.EntryList, encodedMatrices, trees, vi.Alpha)
 
-	return &vortexInstance, proof, vi, commitments, merkleProofs
+	return vortexInstance, proof, vi, commitments, merkleProofs
 }
 
 func TestVerifier(t *testing.T) {

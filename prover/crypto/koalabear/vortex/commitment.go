@@ -1,17 +1,16 @@
-package vortex_koalabear
+package vortex
 
 import (
 	vgnark "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// When SIS: hash_columns = poseidon2_koalabear(SIS(col))
-// When no SIS: hash_columns = poseidon2_koalabear(encode_bls12377(col))
+// When SIS: hash_columns = poseidon2(SIS(col))
+// When no SIS: hash_columns = poseidon2(encode_bls12377(col))
 
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
@@ -20,27 +19,10 @@ type EncodedMatrix = [][]field.Element
 // Commitment represents the root of a Merkle tree
 type Commitment = field.Octuplet
 
-// Params Embeds vortex.Params to define local methods
-type Params struct {
-	vortex.Params
-}
-
-func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params {
-
-	_params := vortex.NewParams(
-		rate,
-		nbColumns,
-		maxNbRows,
-		logTwoDegree,
-		logTwoBound)
-
-	return Params{*_params}
-}
-
 // CommitMerkleWithSIS
 //
 // let h: koala* -> field.Octuplet
-// 				a,b,.. -> poseidon2_koalabear(SIS(a,b,...)
+// 				a,b,.. -> poseidon2(SIS(a,b,...)
 
 // commits to ps by hashing the columns like this:
 // [v11 v12 .... v1n ]
@@ -52,7 +34,7 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
@@ -62,7 +44,7 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatr
 	var (
 		encodedMatrix   = p.EncodeRows(polysMatrix)
 		leaf, colHashes = p.sisTransversalHash(encodedMatrix)
-		tree            = smt_koalabear.NewTree(leaf)
+		tree            = smt.NewTree(leaf)
 		commitment      = tree.Root
 	)
 
@@ -72,7 +54,7 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatr
 func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []field.Element) {
 
 	// sisHashes = [ [a, b ...], ... ] where [a, b, ...] is the sis hash of a column, a, b etc are on koalabear
-	// let h = poseidon2_koalabear
+	// let h = poseidon2
 	// compute [ h([a, b ...]), .. ]
 	sisHashes := make([]field.Element, p.RsParams.NbEncodedColumns()*p.Key.OutputSize())
 	sisHashes = p.Key.TransversalHash(v, sisHashes)
@@ -86,7 +68,7 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 	if chunkSize%8 != 0 {
 		// TODO @gbotrel make the fast path generic with different SIS params
 		parallel.Execute(numCols, func(start, stop int) {
-			hasher := poseidon2_koalabear.NewMDHasher()
+			hasher := poseidon2.NewMDHasher()
 			for chunkID := start; chunkID < stop; chunkID++ {
 				startChunk := chunkID * chunkSize
 				hasher.Reset()
@@ -107,7 +89,7 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 	})
 
 	// process the remaining r columns
-	hasher := poseidon2_koalabear.NewMDHasher()
+	hasher := poseidon2.NewMDHasher()
 	for i := n * 16; i < n*16+r; i++ {
 		startChunk := i * chunkSize
 		hasher.Reset()
@@ -121,7 +103,7 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 // CommitMerkleWithoutSIS
 //
 // let h: koala* -> field.Octuplet
-// 				a,b,.. -> poseidon2_koalabear(a,b,...)
+// 				a,b,.. -> poseidon2(a,b,...)
 
 // commits to ps by hashing the columns like this:
 // [v11 v12 .... v1n ]
@@ -133,7 +115,7 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
@@ -149,7 +131,7 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedM
 		colHashes = append(colHashes, colHashesOcts[i][:]...)
 	}
 
-	tree := smt_koalabear.NewTree(
+	tree := smt.NewTree(
 		colHashesOcts,
 	)
 
@@ -174,7 +156,7 @@ func (p *Params) noSisTransversalHash(v [][]field.Element) []field.Octuplet {
 	res := make([]field.Octuplet, nbCols)
 	parallel.Execute(nbCols, func(start, end int) {
 		curCol := make([]field.Element, nbRows)
-		h := poseidon2_koalabear.NewMDHasher()
+		h := poseidon2.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
 				curCol[j] = v[j][i]
