@@ -2,8 +2,8 @@ package linea.staterecovery
 
 import io.vertx.core.Vertx
 import linea.blob.BlobCompressor
+import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
-import linea.blob.GoBackedBlobCompressor
 import linea.kotlin.encodeHex
 import linea.rlp.RLP
 import net.consensys.linea.blob.BlobDecompressorVersion
@@ -37,7 +37,7 @@ class BlobDecompressorAndDeserializerV1Test {
   @BeforeEach
   fun setUp() {
     vertx = Vertx.vertx()
-    compressor = GoBackedBlobCompressor.getInstance(
+    compressor = BlobCompressorFactory.getInstance(
       compressorVersion = BlobCompressorVersion.V1_2,
       dataLimit = 124 * 1024,
     )

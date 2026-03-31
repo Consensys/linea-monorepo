@@ -1,8 +1,8 @@
 package linea.test
 
 import io.vertx.core.Vertx
+import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
-import linea.blob.GoBackedBlobCompressor
 import linea.domain.Block
 import linea.domain.CommonDomainFunctions
 import linea.domain.toBesu
@@ -38,7 +38,7 @@ class BlockEncodingValidator(
   name = "BlockEncodingValidator",
   timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
-  val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
+  val compressor = BlobCompressorFactory.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
   val decompressor = GoNativeBlobDecompressorFactory.getInstance(decompressorVersion)
   val rlpEncoder = BesuRlpMainnetEncoderAsyncVertxImpl(vertx)
   val rlpMainnetDecoder = BesuRlpDecoderAsyncVertxImpl.mainnetDecoder(vertx)

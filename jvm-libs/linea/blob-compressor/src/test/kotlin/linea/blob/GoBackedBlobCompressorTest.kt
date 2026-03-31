@@ -1,10 +1,18 @@
 package linea.blob
 
 import com.sun.jna.ptr.PointerByReference
+import linea.blob.BlobCompressorSelectorTest.Companion.compressBlocks
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.random.Random
 
 class GoBackedBlobCompressorTest {
@@ -13,7 +21,7 @@ class GoBackedBlobCompressorTest {
     private val TEST_DATA = CompressorTestData.blocksRlpEncoded
   }
 
-  private fun newCompressor() = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V4, DATA_LIMIT)
+  private fun newCompressor() = BlobCompressorFactory.getInstance(BlobCompressorVersion.V4, DATA_LIMIT)
 
   @Test
   fun `test appendBlock with data within limit`() {
@@ -128,6 +136,63 @@ class GoBackedBlobCompressorTest {
     // must be able to create a fresh instance after closing
     newCompressor().use { c2 ->
       assertThat(c2.getCompressedData()).isEmpty()
+    }
+  }
+
+  @OptIn(ExperimentalAtomicApi::class)
+  @Test
+  fun `compresses multiple blocks concurrently with multiple v4 instances without exception`() {
+    val sampleBlocks = CompressorTestData.blocksRlpEncoded
+    assertThat(sampleBlocks).isNotEmpty
+
+    newCompressor().use { compressor1 ->
+      newCompressor().use { compressor2 ->
+        assertTrue(compressor1 != compressor2)
+
+        val compressed1 = compressBlocks(compressor1, sampleBlocks)
+        val compressed2 = compressBlocks(compressor2, sampleBlocks)
+
+        assertThat(compressed1).isEqualTo(compressBlocks(compressor1, sampleBlocks))
+        assertThat(compressed2).isEqualTo(compressBlocks(compressor2, sampleBlocks))
+
+        val compressed1Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
+        val compressed2Parallel: AtomicReference<ByteArray> = AtomicReference(ByteArray(0))
+
+        val errors = CopyOnWriteArrayList<Throwable>()
+        val startBarrier = CyclicBarrier(3)
+        val doneLatch = CountDownLatch(2)
+
+        val thread1 = Thread {
+          try {
+            startBarrier.await()
+            compressed1Parallel.store(compressBlocks(compressor1, sampleBlocks))
+          } catch (t: Throwable) {
+            errors.add(t)
+          } finally {
+            doneLatch.countDown()
+          }
+        }
+
+        val thread2 = Thread {
+          try {
+            startBarrier.await()
+            compressed2Parallel.store(compressBlocks(compressor2, sampleBlocks))
+          } catch (t: Throwable) {
+            errors.add(t)
+          } finally {
+            doneLatch.countDown()
+          }
+        }
+
+        thread1.start()
+        thread2.start()
+        startBarrier.await()
+        assertTrue(doneLatch.await(10, TimeUnit.SECONDS), "compression threads did not complete in time")
+
+        assertThat(compressed1Parallel.load()).isEqualTo(compressed1)
+        assertThat(compressed2Parallel.load()).isEqualTo(compressed2)
+        assertThat(errors).isEmpty()
+      }
     }
   }
 }

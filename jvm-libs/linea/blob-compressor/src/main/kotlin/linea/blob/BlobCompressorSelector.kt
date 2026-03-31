@@ -24,7 +24,7 @@ class BlobCompressorSelectorByTimestamp(
   }
 
   private val blobCompressors = blobCompressorVersionSwitchTimestampMap.mapValues { (blobCompressorVersion, _) ->
-    GoBackedBlobCompressor.getInstance(blobCompressorVersion, dataLimit)
+    BlobCompressorFactory.getInstance(blobCompressorVersion, dataLimit)
   }
 
   override fun getBlobCompressor(selector: Instant): BlobCompressor {
