@@ -3,10 +3,9 @@ package vortex_koalabear
 import (
 	vgnark "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -16,7 +15,7 @@ import (
 
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
-type EncodedMatrix = []smartvectors.SmartVector
+type EncodedMatrix = [][]field.Element
 
 // Commitment represents the root of a Merkle tree
 type Commitment = field.Octuplet
@@ -53,29 +52,24 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
 			Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
 	}
 
-	encodedMatrix := p.EncodeRows(polysMatrix)
-
-	var commitment Commitment
-
-	leaf, colHashes := p.sisTransversalHash(encodedMatrix)
-
-	tree := smt_koalabear.NewTree(
-		leaf,
+	var (
+		encodedMatrix   = p.EncodeRows(polysMatrix)
+		leaf, colHashes = p.sisTransversalHash(encodedMatrix)
+		tree            = smt_koalabear.NewTree(leaf)
+		commitment      = tree.Root
 	)
-
-	commitment = tree.Root
 
 	return encodedMatrix, commitment, tree, colHashes
 }
 
-func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octuplet, []field.Element) {
+func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []field.Element) {
 
 	// sisHashes = [ [a, b ...], ... ] where [a, b, ...] is the sis hash of a column, a, b etc are on koalabear
 	// let h = poseidon2_koalabear
@@ -139,7 +133,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octup
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
@@ -165,14 +159,14 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 
 // Uses the no-sis hash function to hash the columns. It uses the leafHasher
 // function to hash the columns.
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
+func (p *Params) noSisTransversalHash(v [][]field.Element) []field.Octuplet {
 
 	// Assert that all smart-vectors have the same numCols
-	nbCols := v[0].Len()
+	nbCols := len(v[0])
 	for i := range v {
-		if v[i].Len() != nbCols {
+		if len(v[i]) != nbCols {
 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-				nbCols, i, v[i].Len())
+				nbCols, i, len(v[i]))
 		}
 	}
 
@@ -183,7 +177,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 		h := poseidon2_koalabear.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
-				curCol[j] = v[j].Get(i)
+				curCol[j] = v[j][i]
 			}
 			h.WriteElements(curCol...)
 			res[i] = h.SumElement()
@@ -197,12 +191,12 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 // EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
 // encoding each of the [smartvectors.SmartVector] it contains separately.
-func (params *Params) EncodeRows(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix) {
+func (params *Params) EncodeRows(ps [][]field.Element) (encodedMatrix EncodedMatrix) {
 
 	// Sanity-check, all the vectors must have the right length
 	for i := range ps {
-		if ps[i].Len() != params.NbColumns {
-			utils.Panic("Bad length : expected %v columns but col %v has size %v", params.NbColumns, i, ps[i].Len())
+		if len(ps[i]) != params.NbColumns {
+			utils.Panic("Bad length : expected %v columns but col %v has size %v", params.NbColumns, i, len(ps[i]))
 		}
 	}
 

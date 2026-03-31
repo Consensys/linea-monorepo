@@ -3,10 +3,10 @@ package vortex_koalabear
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 )
 
 func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
@@ -18,18 +18,18 @@ func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, p
 ) {
 
 	var vi vortex.VerifierInput
-	vi.X = fext.RandomElement()
-	vi.Alpha = fext.RandomElement()
+	vi.X = field.RandomElementExt()
+	vi.Alpha = field.RandomElementExt()
 	vi.EntryList = []int{1, 5, 19, 645}
-	vi.Ys = make([][]fext.Element, nCommitments)
+	vi.Ys = make([][]field.Ext, nCommitments)
 
-	polyLists := make([][]smartvectors.SmartVector, nCommitments)
+	polyLists := make([][][]field.Element, nCommitments)
 	for i := range polyLists {
-		polys := make([]smartvectors.SmartVector, nbPolys)
-		ys := make([]fext.Element, nbPolys)
+		polys := make([][]field.Element, nbPolys)
+		ys := make([]field.Ext, nbPolys)
 		for j := range polys {
-			polys[j] = smartvectors.Rand(polySize)
-			ys[j] = smartvectors.EvaluateBasePolyLagrange(polys[j], vi.X)
+			polys[j] = field.VecRandomBase(polySize)
+			ys[j] = polynomials.EvalLagrange(field.VecFromBase(polys[j]), field.ElemFromExt(vi.X)).AsExt()
 		}
 		polyLists[i] = polys
 		vi.Ys[i] = ys

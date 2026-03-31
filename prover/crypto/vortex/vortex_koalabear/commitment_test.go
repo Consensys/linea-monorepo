@@ -5,8 +5,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,15 +108,19 @@ func BenchmarkVortexHashPathsByRows(b *testing.B) {
 	}
 }
 
-func referenceNoSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
-	nbRows := len(v)
-	nbCols := v[0].Len()
-	res := make([]field.Octuplet, nbCols)
-	curCol := make([]field.Element, nbRows)
-	h := poseidon2_koalabear.NewMDHasher()
+func referenceNoSisTransversalHash(v [][]field.Element) []field.Octuplet {
+
+	var (
+		nbRows = len(v)
+		nbCols = len(v[0])
+		res    = make([]field.Octuplet, nbCols)
+		curCol = make([]field.Element, nbRows)
+		h      = poseidon2_koalabear.NewMDHasher()
+	)
+
 	for col := 0; col < nbCols; col++ {
 		for row := 0; row < nbRows; row++ {
-			curCol[row] = v[row].Get(col)
+			curCol[row] = v[row][col]
 		}
 		h.WriteElements(curCol...)
 		res[col] = h.SumElement()
@@ -126,25 +129,18 @@ func referenceNoSisTransversalHash(v []smartvectors.SmartVector) []field.Octuple
 	return res
 }
 
-func makeNoSisRows(numRows, numCols int) []smartvectors.SmartVector {
-	rows := make([]smartvectors.SmartVector, numRows)
+func makeNoSisRows(numRows, numCols int) [][]field.Element {
+	rows := make([][]field.Element, numRows)
 	for row := 0; row < numRows; row++ {
 		switch {
 		case row%17 == 0:
-			rows[row] = smartvectors.NewConstant(field.NewElement(uint64(row+1)), numCols)
-		case row%11 == 0:
-			windowLen := numCols / 4
-			window := make([]field.Element, windowLen)
-			for i := range window {
-				window[i] = field.NewElement(uint64((row+1)*(i+3) + 7))
-			}
-			rows[row] = smartvectors.RightPadded(window, field.NewElement(uint64(row+5)), numCols)
+			rows[row] = field.VecRepeatBase(field.NewElement(uint64(row+1)), numCols)
 		default:
 			vec := make([]field.Element, numCols)
 			for i := range vec {
 				vec[i] = field.NewElement(uint64((row+1)*(i+1) + 13))
 			}
-			rows[row] = smartvectors.NewRegular(vec)
+			rows[row] = vec
 		}
 	}
 	return rows

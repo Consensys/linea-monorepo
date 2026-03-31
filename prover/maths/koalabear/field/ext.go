@@ -103,6 +103,15 @@ func AddByBase(z *Ext, first *Ext, second *Element) *Ext {
 	return z
 }
 
+// MulByBase implements element-wise multiplication by a base field scalar.
+func MulByBase(z *Ext, first *Ext, second *Element) *Ext {
+	z.B0.A0.Mul(&first.B0.A0, second)
+	z.B0.A1.Mul(&first.B0.A1, second)
+	z.B1.A0.Mul(&first.B1.A0, second)
+	z.B1.A1.Mul(&first.B1.A1, second)
+	return z
+}
+
 // DivByBase implements a division by a base field element.
 func DivByBase(z *Ext, first *Ext, second *Element) *Ext {
 	z.B0.A0.Div(&first.B0.A0, second)

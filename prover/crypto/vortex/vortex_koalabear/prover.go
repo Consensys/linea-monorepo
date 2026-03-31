@@ -1,22 +1,20 @@
 package vortex_koalabear
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func Prove(
 	entryList []int,
 	encodedMatrices []EncodedMatrix,
-	trees []*smt_koalabear.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_koalabear.Proof) {
+	trees []*smt_koalabear.Tree, alpha field.Ext) (*vortex.OpeningProof, [][]smt_koalabear.Proof) {
 
 	proof := &vortex.OpeningProof{}
 
-	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
+	_encodedMatrices := make([][]field.Element, 0, len(encodedMatrices))
 	for _, m := range encodedMatrices {
 		_encodedMatrices = append(_encodedMatrices, m...)
 	}
@@ -47,7 +45,7 @@ func SelectColumnsAndMerkleProofs(
 		for j := range entryList {
 			col := make([]field.Element, len(committedMatrices[i]))
 			for k := range committedMatrices[i] {
-				col[k] = committedMatrices[i][k].Get(entryList[j])
+				col[k] = committedMatrices[i][k][entryList[j]]
 			}
 			proof.Columns[i][j] = col
 		}

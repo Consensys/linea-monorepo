@@ -6,10 +6,8 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -23,42 +21,40 @@ type VerifierInput struct {
 	// RsParams *reedsolomon.RsParams
 
 	// alpha random coin used for the linear combination
-	Alpha fext.Element
+	Alpha field.Ext
 
 	// X is the univariate evaluation point
-	X fext.Element
+	X field.Ext
 
 	// Ys are the alleged evaluation at point X
-	Ys [][]fext.Element
+	Ys [][]field.Ext
 
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 }
 
-func CheckStatement(linComb smartvectors.SmartVector, ys [][]fext.Element, x, alpha fext.Element) error {
-
-	smartvectors_mixed.IsBase(linComb)
+func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
 
 	// Check the consistency of Ys and proof.Linear combination
 	yJoined := utils.Join(ys...)
-	alphaY := smartvectors.EvaluateFextPolyLagrange(linComb, x)
+	alphaY := polynomials.EvalLagrange(field.VecFromExt(linComb), field.ElemFromExt(x))
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
 
-	if alphaY != alphaYPrime {
+	if !alphaY.Equal(&alphaYPrime) {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 
 	return nil
 }
 
-func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v smartvectors.SmartVector) error {
+func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v []field.Ext) error {
 	return rsParams.IsCodewordExt(v)
 }
 
 func CheckLinComb(
-	linComb smartvectors.SmartVector,
+	linComb []field.Ext,
 	entryList []int,
-	alpha fext.Element,
+	alpha field.Ext,
 	columns [][][]field.Element,
 ) (err error) {
 
@@ -75,9 +71,9 @@ func CheckLinComb(
 
 		// Check the linear combination is consistent with the opened column
 		y := vortex.EvalBasePolyHorner(fullCol, alpha)
+		other := linComb[selectedColID]
 
-		if y != linComb.GetExt(selectedColID) {
-			other := linComb.GetExt(selectedColID)
+		if y != other {
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}

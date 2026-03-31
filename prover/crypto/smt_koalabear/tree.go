@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )

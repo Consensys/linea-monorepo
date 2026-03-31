@@ -3,9 +3,9 @@ package vortex_koalabear
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
@@ -21,7 +21,6 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 		for j := 0; j < len(columns[i]); j++ {
 			var leaf field.Octuplet
 			if WithSis[i] {
-
 				// compute leaf = poseidon2_bls12377(columns[i][j]))
 				sis.SisGnarkCrypto.Hash(columns[i][j], sisHash)
 				h.Reset()

@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
 )
 
 func init() {
@@ -54,7 +54,7 @@ func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error
 
 	d := fft.NewDomain(uint64(n))
 
-	_res := make([]fext.Element, n)
+	_res := make([]field.Ext, n)
 	for i := 0; i < n; i++ {
 		_res[i].B0.A0.SetBigInt(inputs[4*i])
 		_res[i].B0.A1.SetBigInt(inputs[4*i+1])

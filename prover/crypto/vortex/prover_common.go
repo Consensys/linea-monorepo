@@ -1,10 +1,7 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -17,7 +14,7 @@ type OpeningProof struct {
 	Columns [][][]field.Element
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
-	LinearCombination smartvectors.SmartVector
+	LinearCombination []field.Ext
 }
 
 // Let x := randomCoin
@@ -25,48 +22,36 @@ type OpeningProof struct {
 // n is the size of each vector v[i]
 //
 // TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
-func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
+func LinearCombination(proof *OpeningProof, v [][]field.Element, randomCoin field.Ext) []field.Ext {
 
 	if len(v) == 0 {
 		utils.Panic("attempted to open an empty witness")
 	}
 
-	n := v[0].Len()
-	linComb := make([]fext.Element, n)
-	parallel.Execute(len(linComb), func(start, stop int) {
+	nColumns := len(v[0])
+	linComb := make([]field.Ext, nColumns)
+	parallel.Execute(nColumns, func(start, stop int) {
 
-		x := fext.One()
-		scratch := make(vectorext.Vector, stop-start)
-		localLinComb := make(vectorext.Vector, stop-start)
+		var (
+			x            = field.OneExt()
+			scratch      = make([]field.Ext, stop-start)
+			localLinComb = make([]field.Ext, stop-start)
+			tmp          field.Ext
+		)
+
 		for i := range v {
-			_sv := v[i]
 			// we distinguish the case of a regular vector and constant to avoid
 			// unnecessary allocations and copies
-			switch _svt := _sv.(type) {
-			case *smartvectors.Constant:
-				cst := _svt.GetExt(0)
-				cst.Mul(&cst, &x)
-				for j := range localLinComb {
-					localLinComb[j].Add(&localLinComb[j], &cst)
-				}
-				x.Mul(&x, &randomCoin)
-				continue
-			case *smartvectors.Regular:
-				sv := field.Vector((*_svt)[start:stop])
-				for i := range scratch {
-					fext.SetFromBase(&scratch[i], &sv[i])
-				}
-			default:
-				sv := _svt.SubVector(start, stop)
-				sv.WriteInSliceExt(scratch)
+			for j := range scratch {
+				tmp.MulByElement(&x, &v[i][start+j])
+				localLinComb[j].Add(&localLinComb[j], &tmp)
 			}
-			scratch.ScalarMul(scratch, &x)
-			localLinComb.Add(localLinComb, scratch)
-			x.Mul(&x, &randomCoin)
 
+			x.Mul(&x, &randomCoin)
 		}
+
 		copy(linComb[start:stop], localLinComb)
 	})
 
-	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
+	return linComb
 }
