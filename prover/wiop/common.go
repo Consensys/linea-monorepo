@@ -98,6 +98,47 @@ type ConcreteVector struct {
 	promise VectorPromise
 }
 
+// ElementAt returns the field element at logical row pos within the concrete
+// vector, accounting for the owning module's padding direction.
+//
+// The three cases are:
+//   - [PaddingDirectionNone]: Plain[0] is the full-sized vector; pos indexes it directly.
+//   - [PaddingDirectionLeft]: the full column is [Padding × gap] + Plain[0];
+//     rows 0..gap-1 are the padding value, the rest index Plain[0].
+//   - [PaddingDirectionRight]: the full column is Plain[0] + [Padding × gap];
+//     rows 0..plainLen-1 index Plain[0], the rest are the padding value.
+//
+// Panics if m is unsized (only PaddingDirectionLeft requires the size).
+func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.FieldElem {
+	vec := cv.Plain[0]
+	plainLen := vec.Len()
+
+	idx, inPadding := pos, false
+	switch m.Padding {
+	case PaddingDirectionNone:
+		// plain is full-sized; direct index.
+	case PaddingDirectionLeft:
+		gap := m.Size() - plainLen // panics if unsized, which is correct
+		if pos < gap {
+			inPadding = true
+		} else {
+			idx = pos - gap
+		}
+	case PaddingDirectionRight:
+		if pos >= plainLen {
+			inPadding = true
+		}
+	}
+
+	if inPadding {
+		return field.ElemFromBase(cv.Padding)
+	}
+	if vec.IsBase() {
+		return field.ElemFromBase(vec.AsBase()[idx])
+	}
+	return field.ElemFromExt(vec.AsExt()[idx])
+}
+
 // ConcreteField is the evaluated value of a [FieldPromise]. Value holds the
 // single field element produced by the evaluation.
 //

@@ -1,6 +1,10 @@
 package wiop
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+)
 
 // RationalReductionKind identifies the aggregation mode of a [RationalReduction].
 type RationalReductionKind int
@@ -84,18 +88,109 @@ func (rr *RationalReduction) IsAlreadyAssigned(_ Runtime) bool {
 
 // SelfAssign implements [AssignableQuery]. Computes the rational reduction
 // from the runtime column assignments and writes the result into Result.
-//
-// TODO: Implement once Runtime is defined.
-func (rr *RationalReduction) SelfAssign(_ Runtime) {
-	panic("wiop: RationalReduction.SelfAssign not yet implemented")
+func (rr *RationalReduction) SelfAssign(rt Runtime) {
+	rt.AssignCell(rr.Result, rr.reduce(rt))
 }
 
 // Check implements [Query]. Verifies that the Result cell holds the correct
 // aggregated value computed from the fraction expressions.
 //
-// TODO: Implement once Runtime is defined.
-func (rr *RationalReduction) Check(_ Runtime) error {
-	panic(fmt.Sprintf("wiop: RationalReduction(%s).Check not yet implemented", rr.Kind))
+// For [RationalSum] the expected value is ∑_k ∑_row Num_k[row] / Den_k[row];
+// for [RationalProduct] it is ∏_k ∏_row Num_k[row] / Den_k[row].
+// Returns an error if the claimed Result cell does not match.
+func (rr *RationalReduction) Check(rt Runtime) error {
+	acc := rr.reduce(rt)
+	got := rt.GetCellValue(rr.Result)
+	diff := acc.Sub(got)
+	if !diff.Ext.IsZero() {
+		return fmt.Errorf(
+			"wiop: RationalReduction(%s).Check(%s): result mismatch",
+			rr.Kind, rr.context.Path(),
+		)
+	}
+	return nil
+}
+
+// reduce computes the aggregated value over all fractions from the runtime
+// assignments. It is the shared core of [SelfAssign] and [Check].
+//
+// Panics on an unknown [RationalReductionKind] or a zero denominator.
+func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
+	var acc field.FieldElem
+	switch rr.Kind {
+	case RationalSum:
+		acc = field.ElemZero()
+	case RationalProduct:
+		acc = field.ElemOne()
+	default:
+		panic(fmt.Sprintf("wiop: RationalReduction.reduce: unknown kind %v", rr.Kind))
+	}
+
+	for _, f := range rr.Fractions {
+		// Determine the row count from whichever expression is vector-valued.
+		var n int
+		if f.Numerator.IsMultiValued() {
+			n = f.Numerator.Size()
+		} else {
+			n = f.Denominator.Size()
+		}
+
+		var (
+			numIsVec  = f.Numerator.IsMultiValued()
+			denIsVec  = f.Denominator.IsMultiValued()
+			numVec    ConcreteVector
+			denVec    ConcreteVector
+			numScalar ConcreteField
+			denScalar ConcreteField
+		)
+
+		if numIsVec {
+			numVec = f.Numerator.EvaluateVector(rt)
+		} else {
+			numScalar = f.Numerator.EvaluateSingle(rt)
+		}
+		if denIsVec {
+			denVec = f.Denominator.EvaluateVector(rt)
+		} else {
+			denScalar = f.Denominator.EvaluateSingle(rt)
+		}
+
+		for row := 0; row < n; row++ {
+			var num, den field.FieldElem
+
+			if numIsVec {
+				fv := numVec.Plain[0]
+				if fv.IsBase() {
+					num = field.ElemFromBase(fv.AsBase()[row])
+				} else {
+					num = field.ElemFromExt(fv.AsExt()[row])
+				}
+			} else {
+				num = numScalar.Value
+			}
+
+			if denIsVec {
+				fv := denVec.Plain[0]
+				if fv.IsBase() {
+					den = field.ElemFromBase(fv.AsBase()[row])
+				} else {
+					den = field.ElemFromExt(fv.AsExt()[row])
+				}
+			} else {
+				den = denScalar.Value
+			}
+
+			ratio := num.Div(den)
+			switch rr.Kind {
+			case RationalSum:
+				acc = acc.Add(ratio)
+			case RationalProduct:
+				acc = acc.Mul(ratio)
+			}
+		}
+	}
+
+	return acc
 }
 
 // NewRationalReduction constructs and registers a [RationalReduction] query on

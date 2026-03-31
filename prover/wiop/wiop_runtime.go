@@ -28,9 +28,9 @@ type Runtime struct {
 	// columns maps each column's [ObjectID] to its concrete vector assignment.
 	columns map[ObjectID]*ConcreteVector
 	// cells maps each cell's [ObjectID] to its concrete scalar value.
-	cells map[ObjectID]field.Element
-	// coins maps each coin's [ObjectID] to its sampled extension-field value.
-	coins map[ObjectID]field.Ext
+	cells map[ObjectID]field.FieldElem
+	// coins maps each coin's [ObjectID] to its sampled coin value.
+	coins map[ObjectID]field.FieldElem
 	// state is a free-form key-value store for stateful actions.
 	state map[string]any
 }
@@ -43,8 +43,8 @@ func NewRuntime(sys *System) Runtime {
 		System:  sys,
 		fs:      fiatshamir.NewFiatShamir(),
 		columns: make(map[ObjectID]*ConcreteVector),
-		cells:   make(map[ObjectID]field.Element),
-		coins:   make(map[ObjectID]field.Ext),
+		cells:   make(map[ObjectID]field.FieldElem),
+		coins:   make(map[ObjectID]field.FieldElem),
 		state:   make(map[string]any),
 	}
 	if len(sys.Rounds) == 0 {
@@ -105,14 +105,14 @@ func (run *Runtime) AdvanceRound() {
 				cell.Context.Path(),
 			))
 		}
-		run.fs.Update(v)
+		run.fs.UpdateGeneric(v)
 	}
 
 	run.currentRound = next
 
 	// Derive a coin for every CoinField declared in the new round.
 	for _, coin := range run.currentRound.Coins {
-		run.coins[coin.Context.ID] = run.fs.RandomFext()
+		run.coins[coin.Context.ID] = field.ElemFromExt(run.fs.RandomFext())
 	}
 }
 
@@ -154,9 +154,15 @@ func (run Runtime) HasColumnAssignment(col *Column) bool {
 	return ok
 }
 
+// HasCellValue reports whether cell has been assigned in this runtime.
+func (run Runtime) HasCellValue(cell *Cell) bool {
+	_, ok := run.cells[cell.Context.ID]
+	return ok
+}
+
 // AssignCell stores a concrete scalar value for cell. Panics if cell does not
 // belong to the current round or has already been assigned.
-func (run Runtime) AssignCell(cell *Cell, v field.Element) {
+func (run Runtime) AssignCell(cell *Cell, v field.FieldElem) {
 	if cell.round != run.currentRound {
 		panic(fmt.Sprintf(
 			"wiop: AssignCell: cell %q belongs to round %d but current round is %v",
@@ -175,7 +181,7 @@ func (run Runtime) AssignCell(cell *Cell, v field.Element) {
 
 // GetCellValue returns the concrete scalar value of cell. Panics if cell has
 // not been assigned yet.
-func (run Runtime) GetCellValue(cell *Cell) field.Element {
+func (run Runtime) GetCellValue(cell *Cell) field.FieldElem {
 	v, ok := run.cells[cell.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
@@ -186,10 +192,9 @@ func (run Runtime) GetCellValue(cell *Cell) field.Element {
 	return v
 }
 
-// GetCoinValue returns the extension-field value sampled for coin by
-// [Runtime.AdvanceRound]. Panics if the round containing coin has not been
-// entered yet.
-func (run Runtime) GetCoinValue(coin *CoinField) field.Ext {
+// GetCoinValue returns the value sampled for coin by [Runtime.AdvanceRound].
+// Panics if the round containing coin has not been entered yet.
+func (run Runtime) GetCoinValue(coin *CoinField) field.FieldElem {
 	v, ok := run.coins[coin.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(

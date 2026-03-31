@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
 )
 
 // LagrangeEval is a [Query] that evaluates a batch of polynomials at a single
@@ -55,31 +57,82 @@ func (le *LagrangeEval) Round() *Round {
 
 // IsAlreadyAssigned implements [AssignableQuery]. Reports whether all
 // EvaluationClaims cells already hold a runtime assignment.
-//
-// TODO: Implement once Runtime is defined.
-func (le *LagrangeEval) IsAlreadyAssigned(_ Runtime) bool {
-	panic("wiop: LagrangeEval.IsAlreadyAssigned not yet implemented")
+func (le *LagrangeEval) IsAlreadyAssigned(rt Runtime) bool {
+	for _, claim := range le.EvaluationClaims {
+		if !rt.HasCellValue(claim) {
+			return false
+		}
+	}
+	return true
 }
 
 // SelfAssign implements [AssignableQuery]. Evaluates each polynomial at the
 // EvaluationPoint and writes the results into the corresponding
 // EvaluationClaims cells.
-//
-// TODO: Implement once Runtime is defined.
-func (le *LagrangeEval) SelfAssign(_ Runtime) {
-	panic("wiop: LagrangeEval.SelfAssign not yet implemented")
+func (le *LagrangeEval) SelfAssign(rt Runtime) {
+	evals := le.evalPolynomials(rt)
+	for i, claim := range le.EvaluationClaims {
+		rt.AssignCell(claim, evals[i])
+	}
 }
 
-// Check implements [Query]. Verifies that each polynomial, when evaluated at
-// the EvaluationPoint, matches the value in the corresponding EvaluationClaim
-// cell.
+// Check implements [Query]. For each polynomial in Polynomials, evaluates it
+// at EvaluationPoint using the barycentric Lagrange formula and asserts that
+// the result equals the corresponding EvaluationClaims cell.
 //
-// Precondition: all polynomials and the EvaluationPoint must be publicly
-// visible (VisibilityPublic); panics otherwise.
-//
-// TODO: Implement once Runtime is defined.
-func (le *LagrangeEval) Check(_ Runtime) error {
-	panic("wiop: LagrangeEval.Check not yet implemented")
+// Precondition: every polynomial column must be assigned in rt. The method
+// returns a descriptive error for the first misassigned column or failing
+// claim rather than panicking, so callers can surface the problem cleanly.
+func (le *LagrangeEval) Check(rt Runtime) error {
+
+	// Verify that all polynomial columns have been assigned in the runtime.
+	for i, pv := range le.Polynomials {
+		if !rt.HasColumnAssignment(pv.Column) {
+			return fmt.Errorf(
+				"wiop: LagrangeEval(%s): polynomial[%d] column %q is not assigned",
+				le.context.Path(), i, pv.Column.Context.Path(),
+			)
+		}
+	}
+
+	for i, got := range le.evalPolynomials(rt) {
+		claim := rt.GetCellValue(le.EvaluationClaims[i])
+		diff := got.Sub(claim)
+		if !diff.Ext.IsZero() {
+			return fmt.Errorf(
+				"wiop: LagrangeEval(%s): polynomial[%d] evaluation mismatch at claim cell %q",
+				le.context.Path(), i, le.EvaluationClaims[i].Context.Path(),
+			)
+		}
+	}
+
+	return nil
+}
+
+// evalPolynomials evaluates each polynomial in le.Polynomials at the
+// EvaluationPoint, applying the cyclic-shift adjustment for each [ColumnView].
+// It is the shared kernel used by both [Check] and [SelfAssign].
+func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.FieldElem {
+	evalPoint := le.EvaluationPoint.EvaluateSingle(rt)
+	results := make([]field.FieldElem, len(le.Polynomials))
+	for i, pv := range le.Polynomials {
+		// Adjust the evaluation point for the column view's cyclic shift.
+		// C'[j] = C[(j+k) mod n]  implies  C'(z) = C(ω^k · z),
+		// so we evaluate the original column data at ω^k · z instead.
+		z := evalPoint.Value
+		data := rt.GetColumnAssignment(pv.Column).Plain[0]
+		if k := pv.ShiftingOffset; k != 0 {
+			var (
+				n      = pv.Column.Module.Size()
+				omega  = field.RootOfUnityBy(n)
+				omegaK field.Element
+			)
+			omegaK.ExpInt64(omega, int64(k))
+			z = z.Mul(field.ElemFromBase(omegaK))
+		}
+		results[i] = polynomials.EvalLagrange(data, z)
+	}
+	return results
 }
 
 // CheckGnark implements [GnarkCheckableQuery]. Asserts inside a gnark circuit

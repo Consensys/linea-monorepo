@@ -53,10 +53,26 @@ func (lo *LocalOpening) SelfAssign(_ Runtime) {
 
 // Check implements [Query]. Verifies that Result equals the column assignment
 // at Pol.Position.
-//
-// TODO: Implement once Runtime is defined.
-func (lo *LocalOpening) Check(_ Runtime) error {
-	panic(fmt.Sprintf("wiop: LocalOpening(%s).Check not yet implemented", lo.Pol.Column.Context.Path()))
+func (lo *LocalOpening) Check(rt Runtime) error {
+	col := lo.Pol.Column
+	if !rt.HasColumnAssignment(col) {
+		return fmt.Errorf(
+			"wiop: LocalOpening(%s): column %q is not assigned",
+			lo.context.Path(), col.Context.Path(),
+		)
+	}
+
+	got := rt.GetColumnAssignment(col).ElementAt(col.Module, lo.Pol.Position)
+	claim := rt.GetCellValue(lo.Result)
+
+	diff := got.Sub(claim)
+	if !diff.Ext.IsZero() {
+		return fmt.Errorf(
+			"wiop: LocalOpening(%s): opening mismatch at column %q position %d",
+			lo.context.Path(), col.Context.Path(), lo.Pol.Position,
+		)
+	}
+	return nil
 }
 
 // CheckGnark implements [GnarkCheckableQuery]. Asserts inside a gnark circuit

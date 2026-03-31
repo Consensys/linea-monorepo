@@ -303,3 +303,121 @@ func (a *ArithmeticOperation) Visibility() Visibility {
 	}
 	return best
 }
+
+// Constant is a fixed-value expression. Its behaviour is determined by whether
+// module is nil:
+//
+//   - module == nil → scalar constant ([FieldPromise] semantics):
+//     IsMultiValued() == false; EvaluateSingle returns Value;
+//     IsSized, Size, and EvaluateVector panic.
+//
+//   - module != nil → vector constant ([VectorPromise] semantics):
+//     IsMultiValued() == true; EvaluateVector returns Value repeated
+//     Module.Size() times; EvaluateSingle panics.
+//
+// A Constant is never extension-field and is always [VisibilityPublic].
+//
+// Constructors:
+//
+//	NewConstantField(v field.Element) *Constant          (module = nil)
+//	NewConstantVector(m *Module, v field.Element) *Constant
+type Constant struct {
+	// Value is the fixed field element this constant represents.
+	Value field.Element
+	// module is nil for scalar constants; non-nil binds the constant to a
+	// module domain, making the constant vector-valued.
+	module *Module
+}
+
+// NewConstantField constructs a scalar [Constant] with [FieldPromise] semantics.
+func NewConstantField(v field.Element) *Constant {
+	return &Constant{Value: v}
+}
+
+// NewConstantVector constructs a vector [Constant] with [VectorPromise]
+// semantics bound to the given module.
+//
+// Panics if m is nil.
+func NewConstantVector(m *Module, v field.Element) *Constant {
+	if m == nil {
+		panic("wiop: NewConstantVector requires a non-nil Module")
+	}
+	return &Constant{Value: v, module: m}
+}
+
+// IsExtension implements [Expression]. Always returns false: constants are
+// always base-field values.
+func (c *Constant) IsExtension() bool { return false }
+
+// IsMultiValued implements [Expression]. Returns true iff the constant is
+// bound to a module (vector semantics).
+func (c *Constant) IsMultiValued() bool { return c.module != nil }
+
+// Visibility implements [Expression]. Always returns [VisibilityPublic].
+func (c *Constant) Visibility() Visibility { return VisibilityPublic }
+
+// Degree implements [Expression]. Returns 0 for scalar constants. For vector
+// constants returns Module.Size()-1; panics if the module is unsized.
+func (c *Constant) Degree() int {
+	if c.module == nil {
+		return 0
+	}
+	if !c.module.IsSized() {
+		panic("wiop: Constant.Degree() called on a vector constant with an unsized module")
+	}
+	return c.module.Size() - 1
+}
+
+// Module implements [Expression]. Returns the bound module, or nil for scalar
+// constants.
+func (c *Constant) Module() *Module { return c.module }
+
+// IsSized implements [Expression]. Delegates to the bound module. Panics if
+// scalar; check [Constant.IsMultiValued] first.
+func (c *Constant) IsSized() bool {
+	if c.module == nil {
+		panic("wiop: IsSized() cannot be called on a scalar Constant; check IsMultiValued() first")
+	}
+	return c.module.IsSized()
+}
+
+// Size implements [Expression]. Delegates to the bound module. Panics if
+// scalar; check [Constant.IsMultiValued] first.
+func (c *Constant) Size() int {
+	if c.module == nil {
+		panic("wiop: Size() cannot be called on a scalar Constant; check IsMultiValued() first")
+	}
+	return c.module.Size()
+}
+
+// EvaluateVector implements [Expression]. Returns a [ConcreteVector] whose
+// Plain slice contains a single [field.FieldVec] with Value repeated
+// Module.Size() times, and whose Padding is Value. Panics if scalar; check
+// [Constant.IsMultiValued] first.
+func (c *Constant) EvaluateVector(_ Runtime) ConcreteVector {
+	if c.module == nil {
+		panic("wiop: EvaluateVector() cannot be called on a scalar Constant; check IsMultiValued() first")
+	}
+	n := c.module.Size()
+	elems := make([]field.Element, n)
+	for i := range elems {
+		elems[i] = c.Value
+	}
+	return ConcreteVector{
+		Plain:   []field.FieldVec{field.VecFromBase(elems)},
+		Padding: c.Value,
+		promise: c,
+	}
+}
+
+// EvaluateSingle implements [Expression]. Returns a [ConcreteField] wrapping
+// Value. Panics if vector; check [Constant.IsMultiValued] first.
+func (c *Constant) EvaluateSingle(_ Runtime) ConcreteField {
+	if c.module != nil {
+		panic("wiop: EvaluateSingle() cannot be called on a vector Constant; check IsMultiValued() first")
+	}
+	return ConcreteField{
+		Value:   field.ElemFromBase(c.Value),
+		promise: c,
+	}
+}

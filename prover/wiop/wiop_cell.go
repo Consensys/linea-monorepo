@@ -64,10 +64,8 @@ func (c *Cell) EvaluateVector(_ Runtime) ConcreteVector {
 }
 
 // EvaluateSingle implements [Expression].
-//
-// TODO: Implement once Runtime is defined.
-func (c *Cell) EvaluateSingle(_ Runtime) ConcreteField {
-	panic("wiop: Cell.EvaluateSingle not yet implemented")
+func (c *Cell) EvaluateSingle(rt Runtime) ConcreteField {
+	return ConcreteField{Value: rt.GetCellValue(c), promise: c}
 }
 
 // Visibility implements [Expression]. Always returns [VisibilityPublic]: cells

@@ -62,10 +62,8 @@ func (cf *CoinField) EvaluateVector(_ Runtime) ConcreteVector {
 }
 
 // EvaluateSingle implements [Expression].
-//
-// TODO: Implement once Runtime is defined.
-func (cf *CoinField) EvaluateSingle(_ Runtime) ConcreteField {
-	panic("wiop: CoinField.EvaluateSingle not yet implemented")
+func (cf *CoinField) EvaluateSingle(rt Runtime) ConcreteField {
+	return ConcreteField{Value: rt.GetCoinValue(cf), promise: cf}
 }
 
 // Visibility implements [Expression]. Always returns [VisibilityPublic]: coins
