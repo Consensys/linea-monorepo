@@ -15,7 +15,6 @@
 
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
-import java.security.InvalidParameterException;
 
 /**
  * Holds parameters for generating virtual block conflated traces. Used for invalidity proof
@@ -25,13 +24,13 @@ public record VirtualBlockTraceRequestParams(long blockNumber, String[] txsRlpEn
 
   public void validate() {
     if (blockNumber < 1) {
-      throw new InvalidParameterException(
+      throw new IllegalArgumentException(
           "INVALID_BLOCK_NUMBER: blockNumber: %d must be at least 1 (need parent block to exist)"
               .formatted(blockNumber));
     }
 
     if (txsRlpEncoded == null || txsRlpEncoded.length == 0) {
-      throw new InvalidParameterException(
+      throw new IllegalArgumentException(
           "INVALID_TRANSACTIONS: txsRlpEncoded must contain at least one transaction");
     }
   }

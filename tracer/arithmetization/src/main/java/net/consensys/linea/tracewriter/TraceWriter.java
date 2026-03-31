@@ -165,7 +165,8 @@ public class TraceWriter {
   }
 
   /**
-   * Write virtual block trace to file with naming convention: blockNumber-.conflated.version.lt
+   * Write virtual block trace to file with naming convention:
+   * {blockNumber}-noncanonical.conflated.{tracesEngineVersion}.lt[.gz]
    *
    * @param tracer the ZkTracer containing the trace data
    * @param blockNumber the virtual block number
@@ -183,7 +184,11 @@ public class TraceWriter {
         writeToTmpFile(tracer, fileName + ".", tempTraceFileExtension, blockNumber, blockNumber);
 
     final Path finalizedTraceFilePath =
-        Files.move(tmpTraceFilePath, traceFilePath, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(
+            tmpTraceFilePath,
+            traceFilePath,
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
 
     return finalizedTraceFilePath.toAbsolutePath();
   }
