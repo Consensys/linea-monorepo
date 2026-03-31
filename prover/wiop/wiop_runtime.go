@@ -3,6 +3,7 @@ package wiop
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
@@ -11,21 +12,25 @@ import (
 // Runtime serves both prover-side (assign) and verifier-side (read) usage
 // through the same [Action] interface.
 //
-// Pass Runtime by value: all mutable storage lives in map fields (reference
-// types), so map mutations made inside an [Action] propagate to the caller.
-// The sole exception is [Runtime.AdvanceRound], which must be called on a
-// pointer to update [Runtime.currentRound].
+// Pass Runtime by value: all mutable storage lives in map and pointer fields
+// (reference types), so mutations made inside an [Action] propagate to the
+// caller. The sole exception is [Runtime.AdvanceRound], which must be called
+// on a pointer to update [Runtime.currentRound].
 type Runtime struct {
 	// System is the protocol specification this Runtime executes against.
 	System *System
 	// currentRound is the round currently being processed.
 	currentRound *Round
+	// fs is the Fiat-Shamir state. It is updated with column and cell
+	// assignments at the end of each round and used to derive coin values for
+	// the next round.
+	fs *fiatshamir.FiatShamir
 	// columns maps each column's [ObjectID] to its concrete vector assignment.
 	columns map[ObjectID]*ConcreteVector
 	// cells maps each cell's [ObjectID] to its concrete scalar value.
 	cells map[ObjectID]field.Element
-	// coins maps each coin's [ObjectID] to its sampled value.
-	coins map[ObjectID]field.Element
+	// coins maps each coin's [ObjectID] to its sampled extension-field value.
+	coins map[ObjectID]field.Ext
 	// state is a free-form key-value store for stateful actions.
 	state map[string]any
 }
@@ -36,14 +41,16 @@ type Runtime struct {
 func NewRuntime(sys *System) Runtime {
 	run := Runtime{
 		System:  sys,
+		fs:      fiatshamir.NewFiatShamir(),
 		columns: make(map[ObjectID]*ConcreteVector),
 		cells:   make(map[ObjectID]field.Element),
-		coins:   make(map[ObjectID]field.Element),
+		coins:   make(map[ObjectID]field.Ext),
 		state:   make(map[string]any),
 	}
-	if len(sys.Rounds) > 0 {
-		run.currentRound = sys.Rounds[0]
+	if len(sys.Rounds) == 0 {
+		panic("wiop: NewRuntime: system has no interactive rounds")
 	}
+	run.currentRound = sys.Rounds[0]
 	pr := sys.PrecomputedRound
 	for i, col := range pr.Columns {
 		run.columns[col.Context.ID] = pr.PrecomputedValues[i]
@@ -55,10 +62,17 @@ func NewRuntime(sys *System) Runtime {
 // system has no interactive rounds.
 func (run Runtime) CurrentRound() *Round { return run.currentRound }
 
-// AdvanceRound moves the runtime to the next interactive round. Panics if
-// there is no next round.
+// AdvanceRound closes the current round and opens the next one:
+//  1. Every oracle or public column assigned in the current round is fed into
+//     the Fiat-Shamir state.
+//  2. Every public cell value assigned in the current round is fed into the
+//     Fiat-Shamir state.
+//  3. The runtime advances to the next round.
+//  4. A fresh extension-field coin is derived via [fiatshamir.FiatShamir.RandomFext]
+//     for each [CoinField] declared in the new round.
 //
-// TODO: perform Fiat-Shamir coin sampling once the hash layer is implemented.
+// Panics if there is no next round, or if any oracle/public column in the
+// current round has not been assigned.
 func (run *Runtime) AdvanceRound() {
 	if run.currentRound == nil {
 		panic("wiop: AdvanceRound: system has no interactive rounds")
@@ -70,7 +84,36 @@ func (run *Runtime) AdvanceRound() {
 			run.currentRound.ID,
 		))
 	}
+
+	// Feed oracle and public column assignments into the Fiat-Shamir state.
+	for _, col := range run.currentRound.Columns {
+		if col.Visibility < VisibilityOracle {
+			continue
+		}
+		cv := run.GetColumnAssignment(col) // panics if unassigned
+		for _, chunk := range cv.Plain {
+			run.fs.UpdateSV(chunk)
+		}
+	}
+
+	// Feed public cell values into the Fiat-Shamir state.
+	for _, cell := range run.currentRound.Cells {
+		v, ok := run.cells[cell.Context.ID]
+		if !ok {
+			panic(fmt.Sprintf(
+				"wiop: AdvanceRound: cell %q not assigned before advancing round",
+				cell.Context.Path(),
+			))
+		}
+		run.fs.Update(v)
+	}
+
 	run.currentRound = next
+
+	// Derive a coin for every CoinField declared in the new round.
+	for _, coin := range run.currentRound.Coins {
+		run.coins[coin.Context.ID] = run.fs.RandomFext()
+	}
 }
 
 // AssignColumn stores a concrete vector assignment for col. Panics if col does
@@ -143,27 +186,14 @@ func (run Runtime) GetCellValue(cell *Cell) field.Element {
 	return v
 }
 
-// InsertCoin records a sampled value for coin. Intended for use by the round
-// advancement logic; not for direct use inside [Action]s. Panics if the coin
-// value has already been set.
-func (run Runtime) InsertCoin(coin *CoinField, v field.Element) {
-	id := coin.Context.ID
-	if _, exists := run.coins[id]; exists {
-		panic(fmt.Sprintf(
-			"wiop: InsertCoin: coin %q already set",
-			coin.Context.Path(),
-		))
-	}
-	run.coins[id] = v
-}
-
-// GetCoinValue returns the sampled value of coin. Panics if the coin has not
-// been inserted yet.
-func (run Runtime) GetCoinValue(coin *CoinField) field.Element {
+// GetCoinValue returns the extension-field value sampled for coin by
+// [Runtime.AdvanceRound]. Panics if the round containing coin has not been
+// entered yet.
+func (run Runtime) GetCoinValue(coin *CoinField) field.Ext {
 	v, ok := run.coins[coin.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
-			"wiop: GetCoinValue: coin %q has not been sampled",
+			"wiop: GetCoinValue: coin %q has not been sampled yet; call AdvanceRound first",
 			coin.Context.Path(),
 		))
 	}
