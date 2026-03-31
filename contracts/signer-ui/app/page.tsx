@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
+import { flushSync } from "react-dom";
 import { http, type Chain } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -1048,7 +1049,9 @@ export default function Page() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <ContractsDeployUiPage />
+        <Suspense fallback={null}>
+          <ContractsDeployUiPage />
+        </Suspense>
       </QueryClientProvider>
     </WagmiProvider>
   );

@@ -19,7 +19,13 @@ import {
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { SupportedChainIds } from "../../common/supportedNetworks";
-import { assertExclusiveSignerMode, hasConfiguredDeployerPrivateKey, isSignerUiEnabled } from "./signer-mode";
+import {
+  assertExclusiveSignerMode,
+  hasConfiguredDeployerPrivateKey,
+  isSignerUiEnabled as isSignerUiEnabledFromMode,
+} from "./signer-mode";
+
+export const isSignerUiEnabled = isSignerUiEnabledFromMode;
 
 /**
  * Mirrors hardhat-deploy's `DeployFunction` without importing `hardhat-deploy/types`, which is not a
@@ -421,10 +427,6 @@ async function waitForChildEarlyExit(proc: ChildProcess, timeoutMs: number): Pro
 
     proc.once("exit", onExit);
   });
-}
-
-export function isSignerUiEnabled(): boolean {
-  return process.env.HARDHAT_SIGNER_UI === "true";
 }
 
 /** When false (default), the Next.js dev server is left running after the HTTP bridge closes so the tab stays usable. */
@@ -1584,6 +1586,25 @@ async function getOrCreateSession(
   return activeSession;
 }
 
+async function resolveNamedDeployerAddress(
+  getNamedAccounts: (() => Promise<{ deployer?: string }>) | undefined,
+): Promise<string | undefined> {
+  if (typeof getNamedAccounts !== "function") {
+    return undefined;
+  }
+
+  try {
+    const { deployer } = await getNamedAccounts();
+    if (typeof deployer === "string" && deployer.length > 0) {
+      return deployer;
+    }
+  } catch {
+    /* fall back to provider default signer below */
+  }
+
+  return undefined;
+}
+
 function requireActiveSession(): SignerUiSession {
   if (!activeSession) {
     throw new Error("HARDHAT_SIGNER_UI is enabled but no active signer UI session exists.");
@@ -1610,8 +1631,12 @@ export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<Abstr
     networkName: hre.network.name,
   });
 
-  const { deployer } = await hre.getNamedAccounts();
-  return await hre.ethers.getSigner(deployer);
+  const deployer = await resolveNamedDeployerAddress(hre.getNamedAccounts);
+  if (deployer) {
+    return await hre.ethers.getSigner(deployer);
+  }
+
+  return signers[0]!;
 }
 
 export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provider | null): Promise<AbstractSigner> {
@@ -1628,13 +1653,27 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
 
   if (isProviderLike(runnerOrProvider) && typeof runnerOrProvider.getSigner === "function") {
     warnIfUsingPrivateKeySigning();
+    const hh = loadHardhatRuntime() as typeof import("hardhat") & {
+      getNamedAccounts?: () => Promise<{ deployer?: string }>;
+    };
+    const deployer = await resolveNamedDeployerAddress(hh.getNamedAccounts);
+    if (deployer) {
+      return await runnerOrProvider.getSigner(deployer);
+    }
     return await runnerOrProvider.getSigner();
   }
 
   // Lazy load: operational tasks import this module while Hardhat loads config; a top-level
   // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
   warnIfUsingPrivateKeySigning();
-  const { ethers: hhEthers } = loadHardhatRuntime();
+  const hh = loadHardhatRuntime() as typeof import("hardhat") & {
+    getNamedAccounts?: () => Promise<{ deployer?: string }>;
+  };
+  const { ethers: hhEthers } = hh;
+  const deployer = await resolveNamedDeployerAddress(hh.getNamedAccounts);
+  if (deployer) {
+    return await hhEthers.getSigner(deployer);
+  }
   return await hhEthers.provider.getSigner();
 }
 
