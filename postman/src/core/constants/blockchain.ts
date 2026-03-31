@@ -1,4 +1,4 @@
-import type { Address, Hash } from "../types/hex";
+import type { Address, Hash } from "../types/primitives";
 
 export const ZERO_HASH: Hash = "0x0000000000000000000000000000000000000000000000000000000000000000";
 export const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000";

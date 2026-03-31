@@ -1,7 +1,7 @@
 import { Message } from "../../../core/entities/Message";
 import { MessageEntity } from "../entities/Message.entity";
 
-import type { Address, Hash, Hex } from "../../../core/types/hex";
+import type { Address, Hash, Hex } from "../../../core/types/primitives";
 
 export const mapMessageToMessageEntity = (message: Message): MessageEntity => {
   return {

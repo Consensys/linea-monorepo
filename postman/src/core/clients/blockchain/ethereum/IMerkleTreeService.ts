@@ -1,4 +1,4 @@
-import type { Hash, Hex } from "../../../types/hex";
+import type { Hash, Hex } from "../../../types/primitives";
 
 export type BlockRange = {
   startingBlock: number;

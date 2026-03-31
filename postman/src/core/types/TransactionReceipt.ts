@@ -1,6 +1,6 @@
 import { Log } from "./Log";
 
-import type { Hash } from "./hex";
+import type { Hash } from "./primitives";
 
 export type TransactionReceipt = {
   hash: Hash;

@@ -11,7 +11,7 @@ import {
 } from "./schema";
 import { DBOptions, DBCleanerConfig } from "../../../../infrastructure/persistence/config/types";
 
-import type { Address } from "../../../../core/types/hex";
+import type { Address } from "../../../../core/types/primitives";
 import type {
   SignerConfig,
   Web3SignerTlsConfig,

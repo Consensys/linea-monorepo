@@ -6,7 +6,7 @@ export interface IMessageSentEventProcessor {
     fromBlockLogIndex: number,
   ): Promise<{ nextFromBlock: number; nextFromBlockLogIndex: number }>;
 }
-import type { Address } from "../../types/hex";
+import type { Address } from "../../types/primitives";
 
 export type MessageSentEventProcessorConfig = {
   direction: Direction;

@@ -1,6 +1,6 @@
 export type { Block } from "./Block";
 export type { ErrorDescription } from "./ErrorDescription";
-export type { Address, Hash, Hex } from "./hex";
+export type { Address, Hash, Hex } from "./primitives";
 export type { Log } from "./Log";
 export type { MessageSent } from "./MessageSent";
 export type { Overrides } from "./Overrides";

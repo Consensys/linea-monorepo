@@ -175,6 +175,23 @@ describe("TransactionLifecycleManager", () => {
 
       expect(result).toBeNull();
     });
+
+    it("should still poll the new tx and return the receipt when the DB update fails after fee bump", async () => {
+      const message = makePendingMessage();
+      const submission = generateSubmission({ hash: BUMP_TX_HASH });
+      const receipt = generateReceipt({ hash: BUMP_TX_HASH });
+
+      messageServiceContract.getMessageStatus.mockResolvedValue(OnChainMessageStatus.UNKNOWN);
+      transactionRetrier.retryWithHigherFee.mockResolvedValue(submission);
+      messageRepository.updateMessage.mockRejectedValue(new Error("DB connection lost"));
+      receiptPoller.poll.mockResolvedValue(receipt);
+
+      const result = await manager.retryWithBump(message);
+
+      // Must poll the bumped tx hash — not return null — so the persister can recover state
+      expect(receiptPoller.poll).toHaveBeenCalledWith(BUMP_TX_HASH, 120_000, 0);
+      expect(result).toEqual(receipt);
+    });
   });
 
   // ---------------------------------------------------------------------------

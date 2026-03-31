@@ -1,6 +1,6 @@
 import { Direction } from "../../enums";
 
-import type { Address } from "../../types/hex";
+import type { Address } from "../../types/primitives";
 
 export interface IMessageAnchoringProcessor {
   process(): Promise<void>;

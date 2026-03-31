@@ -1,7 +1,7 @@
 import { Direction } from "../enums";
 import { MessageStatus } from "../enums";
 
-import type { Address, Hash, Hex } from "../types/hex";
+import type { Address, Hash, Hex } from "../types/primitives";
 
 export type MessageProps = {
   id?: number;

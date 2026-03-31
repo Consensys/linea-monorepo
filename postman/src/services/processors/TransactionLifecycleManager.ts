@@ -61,7 +61,19 @@ export class TransactionLifecycleManager implements ITransactionLifecycleManager
         claimLastRetriedAt: new Date(),
         claimTxNonce: tx.nonce,
       });
-      await this.messageRepository.updateMessage(message);
+      try {
+        await this.messageRepository.updateMessage(message);
+      } catch (dbError) {
+        // The replacement tx is already on-chain — we must still poll for its receipt
+        // so the persister can recover the final state. Losing track of the new hash
+        // here would cause the next cycle to look up the superseded old hash, spin
+        // indefinitely, and never reach cancelAndResetMessage.
+        this.logger.error("DB update failed after fee bump; polling new tx to avoid losing it.", {
+          messageHash: message.messageHash,
+          newTxHash: tx.hash,
+          error: dbError,
+        });
+      }
 
       return await this.receiptPoller.poll(
         tx.hash,

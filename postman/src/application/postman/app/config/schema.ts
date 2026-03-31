@@ -1,7 +1,7 @@
 import { isHex, size } from "viem/utils";
 import { z } from "zod";
 
-import type { Address } from "../../../../core/types/hex";
+import type { Address } from "../../../../core/types/primitives";
 
 const hexString = z
   .string()

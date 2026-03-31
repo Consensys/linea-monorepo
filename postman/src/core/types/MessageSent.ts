@@ -1,4 +1,4 @@
-import type { Address, Hash, Hex } from "./hex";
+import type { Address, Hash, Hex } from "./primitives";
 
 export type MessageSent = {
   messageHash: Hash;

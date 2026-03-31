@@ -1,4 +1,4 @@
-import type { Hash } from "./hex";
+import type { Hash } from "./primitives";
 
 export type TransactionSubmission = {
   hash: Hash;

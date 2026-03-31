@@ -1,4 +1,4 @@
-import type { Address, Hex } from "./hex";
+import type { Address, Hex } from "./primitives";
 
 export type TransactionRequest = {
   from?: Address;

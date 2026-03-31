@@ -1,6 +1,6 @@
 import { Message } from "../entities/Message";
 
-import type { Address } from "../types/hex";
+import type { Address } from "../types/primitives";
 
 export type TransactionEvaluation = {
   hasZeroFee: boolean;
