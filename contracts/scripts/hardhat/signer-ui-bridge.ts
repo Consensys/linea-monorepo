@@ -18,6 +18,7 @@ import {
 } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
+import { getOptionalEnvVar } from "../../common/helpers/environment";
 import { SupportedChainIds } from "../../common/supportedNetworks";
 import {
   assertExclusiveSignerMode,
@@ -130,6 +131,8 @@ type SessionState = {
   scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
+  /** Optional signer address guard from EXPECTED_SIGNER_ADDRESS. */
+  expectedSignerAddress: string | null;
   wallet: SessionWalletState | null;
   pendingRequest: TransactionPrompt | null;
   transactionProgress: TransactionProgress | null;
@@ -170,6 +173,7 @@ type SignerUiContext = {
   scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
+  expectedSignerAddress: string | null;
   provider: Provider;
   batchTagsSummary: string | null;
 };
@@ -1103,6 +1107,7 @@ class SignerUiSession {
       scriptContext: this.activeScriptContext,
       networkName: this.context.networkName,
       chain: this.context.chain,
+      expectedSignerAddress: this.context.expectedSignerAddress,
       wallet: this.walletState,
       pendingRequest: this.pendingRequest?.prompt ?? null,
       transactionProgress: this.transactionProgress,
@@ -1364,6 +1369,12 @@ class SignerUiSession {
         writeJson(response, 400, { error: "Invalid from address." });
         return;
       }
+      if (this.context.expectedSignerAddress && normalizedFrom !== this.context.expectedSignerAddress) {
+        const message = `Expected signer is ${this.context.expectedSignerAddress}. Disconnect and connect the correct wallet, then try again.`;
+        this.setTransactionProgress(raw.requestId, "awaiting_wallet_approval", message);
+        writeJson(response, 409, { error: message });
+        return;
+      }
 
       if (normalizedFrom !== this.walletState.address) {
         writeJson(response, 400, { error: "from does not match the wallet registered for this session." });
@@ -1467,6 +1478,20 @@ class SignerUiSession {
         if (rejectOutcome) {
           queueMicrotask(() => rejectOutcome!(new Error(message)));
         }
+      });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/terminate") {
+      const message = "Session terminated by user from signer UI.";
+      this.setTerminalSessionOutcome("error", message);
+      writeJson(response, 200, { ok: true }, () => {
+        queueMicrotask(() => {
+          this.failPendingState(new Error(message));
+          void closeActiveSignerUiSession().catch(() => {
+            /* session may already be closing */
+          });
+        });
       });
       return;
     }
@@ -1581,6 +1606,7 @@ async function getOrCreateSession(
       scriptContext,
       networkName: hre.network.name,
       chain: await getChainMetadata(hre),
+      expectedSignerAddress: getExpectedSignerAddressIfConfigured() ?? null,
       provider: hre.ethers.provider,
       batchTagsSummary: signerUiHardhatDeployBatchTags,
     });
@@ -1618,30 +1644,63 @@ function requireActiveSession(): SignerUiSession {
   return activeSession;
 }
 
+function getExpectedSignerAddressIfConfigured(): string | undefined {
+  const expectedSignerAddress = getOptionalEnvVar("EXPECTED_SIGNER_ADDRESS");
+  if (!expectedSignerAddress) {
+    return undefined;
+  }
+
+  try {
+    return getAddress(expectedSignerAddress);
+  } catch {
+    throw new Error(
+      `Invalid EXPECTED_SIGNER_ADDRESS "${expectedSignerAddress}". Provide a valid checksummed or lowercase hex address.`,
+    );
+  }
+}
+
+async function assertExpectedSignerAddressIfConfigured(signer: AbstractSigner): Promise<void> {
+  const expected = getExpectedSignerAddressIfConfigured();
+  if (!expected) {
+    return;
+  }
+
+  const signerAddress = await signer.getAddress();
+  const actual = getAddress(signerAddress);
+  if (actual !== expected) {
+    throw new Error(
+      `Signer mismatch. EXPECTED_SIGNER_ADDRESS=${expected}, resolved signer address=${actual}. Update EXPECTED_SIGNER_ADDRESS or connect/configure the intended signer.`,
+    );
+  }
+}
+
 export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
   assertExclusiveSignerMode();
 
-  if (isSignerUiEnabled()) {
-    return requireActiveSession().getSigner(hre.ethers.provider);
+  const uiMode = isSignerUiEnabled();
+  let signer: AbstractSigner;
+  if (uiMode) {
+    signer = requireActiveSession().getSigner(hre.ethers.provider);
+  } else {
+    const signers = await hre.ethers.getSigners();
+    if (signers.length === 0) {
+      throw new Error(
+        "No JSON-RPC account is configured for this network. Set DEPLOYER_PRIVATE_KEY (or your network accounts in hardhat.config), or set HARDHAT_SIGNER_UI=true to sign in the browser.",
+      );
+    }
+
+    warnIfUsingPrivateKeySigning({
+      networkName: hre.network.name,
+    });
+
+    const deployer = await resolveNamedDeployerAddress(hre.getNamedAccounts);
+    signer = deployer ? await hre.ethers.getSigner(deployer) : signers[0]!;
   }
 
-  const signers = await hre.ethers.getSigners();
-  if (signers.length === 0) {
-    throw new Error(
-      "No JSON-RPC account is configured for this network. Set DEPLOYER_PRIVATE_KEY (or your network accounts in hardhat.config), or set HARDHAT_SIGNER_UI=true to sign in the browser.",
-    );
+  if (!uiMode) {
+    await assertExpectedSignerAddressIfConfigured(signer);
   }
-
-  warnIfUsingPrivateKeySigning({
-    networkName: hre.network.name,
-  });
-
-  const deployer = await resolveNamedDeployerAddress(hre.getNamedAccounts);
-  if (deployer) {
-    return await hre.ethers.getSigner(deployer);
-  }
-
-  return signers[0]!;
+  return signer;
 }
 
 export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provider | null): Promise<AbstractSigner> {
@@ -1649,6 +1708,13 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
 
   if (isSigner(runnerOrProvider)) {
     return runnerOrProvider;
+  }
+
+  if (!runnerOrProvider) {
+    // Lazy load: operational tasks import this module while Hardhat loads config; a top-level
+    // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
+    const hh = loadHardhatRuntime() as unknown as HardhatRuntimeEnvironment;
+    return await getUiSigner(hh);
   }
 
   if (isSignerUiEnabled()) {
@@ -1668,18 +1734,8 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
     return await runnerOrProvider.getSigner();
   }
 
-  // Lazy load: operational tasks import this module while Hardhat loads config; a top-level
-  // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
-  warnIfUsingPrivateKeySigning();
-  const hh = loadHardhatRuntime() as typeof import("hardhat") & {
-    getNamedAccounts?: () => Promise<{ deployer?: string }>;
-  };
-  const { ethers: hhEthers } = hh;
-  const deployer = await resolveNamedDeployerAddress(hh.getNamedAccounts);
-  if (deployer) {
-    return await hhEthers.getSigner(deployer);
-  }
-  return await hhEthers.provider.getSigner();
+  const hh = loadHardhatRuntime() as unknown as HardhatRuntimeEnvironment;
+  return await getUiSigner(hh);
 }
 
 /**

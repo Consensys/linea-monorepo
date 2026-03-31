@@ -65,6 +65,7 @@ type SessionState = {
   scriptContext: string;
   networkName: string;
   chain: ChainMetadata;
+  expectedSignerAddress?: string | null;
   wallet: {
     address: string;
     chainId: number;
@@ -331,7 +332,18 @@ async function postJson(url: string, payload: unknown, sessionSecret: string) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request to ${url} failed with ${response.status}`);
+    let parsedError: string | undefined;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown };
+        if (typeof parsed.error === "string" && parsed.error.length > 0) {
+          parsedError = parsed.error;
+        }
+      } catch {
+        /* non-JSON body */
+      }
+    }
+    throw new Error(parsedError ?? text ?? `Request to ${url} failed with ${response.status}`);
   }
 }
 
@@ -349,6 +361,7 @@ function ContractsDeployUiPage() {
   const [statusMessage, setStatusMessage] = useState<string>("Waiting for Hardhat signer session...");
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
   /** Wagmi reconnect differs SSR vs first client paint — gate wallet UI until mount. */
   const [walletUiReady, setWalletUiReady] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -524,7 +537,15 @@ function ContractsDeployUiPage() {
 
         hadSuccessfulBridgeFetch.current = true;
         setSession(data);
-        setStatusMessage(`Connected to ${data.scriptContext} on ${data.networkName}`);
+        const hasExpectedSignerMismatch =
+          !!data.expectedSignerAddress &&
+          !!data.wallet?.address &&
+          data.expectedSignerAddress.toLowerCase() !== data.wallet.address.toLowerCase();
+        setStatusMessage(
+          hasExpectedSignerMismatch
+            ? `Expected signer is ${data.expectedSignerAddress}. Disconnect and connect the correct wallet.`
+            : `Connected to ${data.scriptContext} on ${data.networkName}`,
+        );
         setActionError(null);
       } catch {
         if (!cancelled && !pollingTerminatedRef.current) {
@@ -646,6 +667,23 @@ function ContractsDeployUiPage() {
     });
   };
 
+  const terminateSession = async () => {
+    if (!apiBaseUrl || !sessionSecret || sessionEnded || isTerminating) {
+      return;
+    }
+    setIsTerminating(true);
+    setActionError(null);
+    try {
+      await postJson(`${apiBaseUrl}/api/terminate`, {}, sessionSecret);
+      setStatusMessage("Session terminated. Waiting for Hardhat to stop.");
+      setSessionEnded(true);
+    } catch (error) {
+      setActionError((error as Error).message ?? "Failed to terminate session.");
+    } finally {
+      setIsTerminating(false);
+    }
+  };
+
   const approvePendingRequest = async () => {
     if (!apiBaseUrl || !sessionSecret || !session?.pendingRequest || !window.ethereum || !address) {
       return;
@@ -711,6 +749,10 @@ function ContractsDeployUiPage() {
     } catch (error) {
       const message = (error as Error).message;
       setActionError(message);
+      const isExpectedSignerMismatch = message.toLowerCase().includes("expected signer");
+      if (isExpectedSignerMismatch) {
+        return;
+      }
 
       if (session.pendingRequest) {
         await postJson(
@@ -738,7 +780,13 @@ function ContractsDeployUiPage() {
     progress.stage !== "failed" &&
     pending?.id === progress.requestId;
   const hasWorkflowStatus = workflow !== undefined && workflow !== null;
-  const signPendingDisabled = isSubmitting || !walletUiReady || !isConnected || !pending;
+  const expectedSignerAddress = session?.expectedSignerAddress ?? null;
+  const hasExpectedSignerMismatch =
+    !!expectedSignerAddress &&
+    !!session?.wallet?.address &&
+    expectedSignerAddress.toLowerCase() !== session.wallet.address.toLowerCase();
+  const signPendingDisabled =
+    isSubmitting || !walletUiReady || !isConnected || !pending || !session?.wallet || hasExpectedSignerMismatch;
 
   return (
     <div className="deploy-shell">
@@ -809,6 +857,13 @@ function ContractsDeployUiPage() {
                 ? `Connected as ${address}`
                 : "Connect the wallet that should sign for this Hardhat script."}
           </p>
+          {expectedSignerAddress ? (
+            <p className={hasExpectedSignerMismatch ? "deploy-connect-error" : "deploy-expected-signer"}>
+              {hasExpectedSignerMismatch
+                ? `Expected signer is ${expectedSignerAddress}. Disconnect and connect the correct wallet.`
+                : `Expected signer: ${expectedSignerAddress}`}
+            </p>
+          ) : null}
           <div className="deploy-actions">
             {!walletUiReady ? null : !isConnected && injectedConnector ? (
               <button
@@ -825,6 +880,16 @@ function ContractsDeployUiPage() {
                 Disconnect
               </button>
             ) : null}
+            {sessionEnded ? null : (
+              <button
+                type="button"
+                className="deploy-btn deploy-btn--secondary"
+                disabled={isTerminating}
+                onClick={() => void terminateSession()}
+              >
+                {isTerminating ? "Terminating…" : "Terminate session"}
+              </button>
+            )}
           </div>
           {connectError ? <p className="deploy-connect-error">{connectError.message}</p> : null}
         </section>

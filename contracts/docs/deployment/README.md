@@ -104,6 +104,7 @@ Selected **operational Hardhat tasks** (under `scripts/operational/`) also suppo
 | `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` | For non-deploy signer UI sessions, stop Next.js when the HTTP bridge closes. |
 | `HARDHAT_SIGNER_UI_SHUTDOWN_DRAIN_MS` | Optional. Milliseconds for the UI to read terminal session state before the bridge closes after deploy (default `1500`). |
 | `HARDHAT_SIGNER_UI_SHUTDOWN_GRACE_MS` | Optional. Milliseconds after the bridge closes before stopping Next (default `2000`). |
+| `EXPECTED_SIGNER_ADDRESS=0x...` | Optional safety guard. If set, deploy/sign flows fail fast unless the resolved signer address exactly matches this address. |
 
 ### Further reading
 

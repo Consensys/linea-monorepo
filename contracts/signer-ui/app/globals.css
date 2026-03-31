@@ -609,6 +609,13 @@ body.signer-ui-body {
   font-size: 0.9rem;
 }
 
+.deploy-expected-signer {
+  color: var(--linea-text-subtle);
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
 .deploy-pending-label {
   color: var(--linea-text);
   font-weight: 600;

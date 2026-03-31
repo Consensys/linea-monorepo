@@ -90,6 +90,7 @@ npx hardhat deploy --network l2 --tags <YourL2Tag>
 | `HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV=true` | For **non-deploy** signer UI sessions, stop the Next.js child when the HTTP bridge closes. |
 | `HARDHAT_SIGNER_UI_SHUTDOWN_DRAIN_MS` | Optional. Milliseconds to allow the UI to poll terminal `sessionOutcome` before the bridge closes after deploy (default `1500`). |
 | `HARDHAT_SIGNER_UI_SHUTDOWN_GRACE_MS` | Optional. Milliseconds after the bridge closes before SIGTERM on Next when stopping it (default `2000`). |
+| `EXPECTED_SIGNER_ADDRESS=0x...` | Optional safety guard. If set, deploy/sign flows fail fast unless the resolved signer address exactly matches this address. |
 
 ## Manual UI dev (optional)
 
