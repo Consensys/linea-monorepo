@@ -67,6 +67,9 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// TxNumber, ExpectedBlockNumber, FtxRollingHash are outer-circuit witness fields.
 	c.FuncInputs.FunctinalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
 
+	// Range-check the functional public inputs to their expected bit widths.
+	c.FuncInputs.RangeCheck(api)
+
 	//  constraint on the hashing of functional public inputs
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
 

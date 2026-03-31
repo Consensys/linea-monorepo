@@ -3,6 +3,7 @@ package invalidity
 import (
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
 	linTypesk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
@@ -106,6 +107,27 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 	)
 
 	return hsh.Sum()
+}
+
+// RangeCheck constrains the functional public inputs to their expected bit widths.
+//   - TxHash, FromAddress, StateRootHash — constrained by the sub-circuit IOP
+//   - FtxRollingHash — natively constrained as a BLS12-377 field element
+func (pi *FunctionalPublicInputsGnark) RangeCheck(api frontend.API) {
+	rc := rangecheck.New(api)
+
+	// Outer witness fields
+	rc.Check(pi.TxNumber, 64)
+	rc.Check(pi.DeadLineBlockNumber, 64)
+
+	// Sub-circuit-derived fields: only boolean-constrained in filtered_address;
+	// must be asserted here so the constraint applies to all sub-circuit variants.
+	api.AssertIsBoolean(pi.FunctinalPIQGnark.ToIsFiltered)
+	api.AssertIsBoolean(pi.FunctinalPIQGnark.FromIsFiltered)
+
+	// Block-level values: unconstrained witnesses in nonce_balance and
+	// filtered_address sub-circuits (only IOP-derived in bad_precompile).
+	rc.Check(pi.FunctinalPIQGnark.SimulatedBlockTimestamp, 64)
+	rc.Check(pi.FunctinalPIQGnark.SimulatedBlockNumber, 64)
 }
 
 // UpdateFtxRollingHash updates the ftxRollingHash
