@@ -15,7 +15,6 @@
 
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
-
 /**
  * Holds parameters for generating virtual block conflated traces. Used for invalidity proof
  * generation for BadPrecompile and TooManyLogs scenarios.
