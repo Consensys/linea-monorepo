@@ -6,6 +6,18 @@ import { delay } from "./general";
 const VERIFY_TIMEOUT_MS = 90_000;
 const VERIFY_PROPAGATION_DELAY_MS = 30_000;
 const VERIFY_CHILD_SCRIPT = resolve(__dirname, "../../scripts/hardhat/run-verify-task.ts");
+const VERIFY_BIGINT_SENTINEL = "__linea_verify_bigint__";
+
+function stringifyVerifyArgs(args: Record<string, unknown>): string {
+  return JSON.stringify(args, (_key, value: unknown) => {
+    if (typeof value === "bigint") {
+      return {
+        [VERIFY_BIGINT_SENTINEL]: value.toString(),
+      };
+    }
+    return value;
+  });
+}
 
 async function getCurrentHardhatNetworkName(): Promise<string> {
   const hreModule = await import("hardhat");
@@ -34,7 +46,7 @@ async function runVerifyTaskWithTimeout(
         env: {
           ...process.env,
           HARDHAT_VERIFY_TASK: task,
-          HARDHAT_VERIFY_ARGS: JSON.stringify(args),
+          HARDHAT_VERIFY_ARGS: stringifyVerifyArgs(args),
         },
         stdio: "inherit",
       },
@@ -92,6 +104,10 @@ async function verifyBestEffort(task: string, args: Record<string, unknown>, con
         `Verification timed out after ${VERIFY_TIMEOUT_MS / 1000}s. Continuing deploy; you can verify ${contractAddress} separately later.`,
       );
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`Verification failed for ${contractAddress}: ${message}`);
+    console.log(`Continuing deploy; you can verify ${contractAddress} separately later.`);
   } finally {
     clearUiWorkflowStatus();
   }
