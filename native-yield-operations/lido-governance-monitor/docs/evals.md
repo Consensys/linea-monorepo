@@ -33,7 +33,7 @@ The script calls `ClaudeAIClient` directly - no DB, no state machine. Exits 0 re
 
 ```bash
 # From native-yield-operations/lido-governance-monitor/
-ANTHROPIC_API_KEY=sk-ant-xxx npx tsx scripts/run-eval.ts
+ANTHROPIC_API_KEY=sk-ant-xxx pnpm exec tsx scripts/run-eval.ts
 ```
 
 With overrides:
@@ -42,7 +42,7 @@ With overrides:
 ANTHROPIC_API_KEY=sk-ant-xxx \
 RISK_THRESHOLD=50 \
 CLAUDE_MODEL=claude-sonnet-4-20250514 \
-npx tsx scripts/run-eval.ts
+pnpm exec tsx scripts/run-eval.ts
 ```
 
 ### Interpret Output
