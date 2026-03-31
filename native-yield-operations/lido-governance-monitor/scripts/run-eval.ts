@@ -1,3 +1,20 @@
+/**
+ * Prompt eval script for the Lido Governance Monitor risk assessment.
+ *
+ * Runs ClaudeAIClient.analyzeProposal() against a fixed corpus of proposals
+ * and compares results to human-labeled ground truth, printing a CLI table.
+ *
+ * Usage:
+ * ANTHROPIC_API_KEY=sk-ant-xxx \
+ * pnpm --filter @consensys/lido-governance-monitor exec tsx scripts/run-eval.ts
+ *
+ * Optional env vars:
+ * RISK_THRESHOLD=60                          # effectiveRisk threshold for alerting (default: 60)
+ * CLAUDE_MODEL=claude-sonnet-4-20250514      # Model to use (default: claude-sonnet-4-20250514)
+ * ANTHROPIC_MAX_OUTPUT_TOKENS=4096           # Max output tokens (default: 4096)
+ * ANTHROPIC_MAX_PROPOSAL_CHARS=700000        # Max proposal chars sent to AI (default: 700000)
+ */
+
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
