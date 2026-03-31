@@ -86,7 +86,12 @@ export class ReceiptStatusResolver implements IReceiptStatusResolver {
     receipt: TransactionReceipt,
     timingMetrics: Record<string, number>,
   ): Promise<void> {
-    const isRateLimitExceeded = await this.messageServiceContract.isRateLimitExceededError(receipt.hash);
+    // Pass blockNumber so the simulation replays at the original block; otherwise a
+    // rate-limit that was active then but has since reset would not be detected.
+    const isRateLimitExceeded = await this.messageServiceContract.isRateLimitExceededError(
+      receipt.hash,
+      BigInt(receipt.blockNumber),
+    );
 
     if (isRateLimitExceeded) {
       message.edit({ status: MessageStatus.SENT });

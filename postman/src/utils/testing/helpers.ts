@@ -2,10 +2,17 @@
 
 import { ILogger } from "@consensys/linea-shared-utils";
 
-import { TEST_ADDRESS_1, TEST_CONTRACT_ADDRESS_1, TEST_CONTRACT_ADDRESS_2, TEST_MESSAGE_HASH } from "./constants";
+import {
+  TEST_ADDRESS_1,
+  TEST_CONTRACT_ADDRESS_1,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_MESSAGE_HASH,
+  TEST_TRANSACTION_HASH,
+} from "./constants";
 import { Message, MessageProps } from "../../core/entities/Message";
 import { Direction } from "../../core/enums";
 import { MessageStatus } from "../../core/enums";
+import { TransactionReceipt, TransactionSubmission } from "../../core/types";
 import { MessageEntity } from "../../infrastructure/persistence/entities/Message.entity";
 
 export class TestLogger implements ILogger {
@@ -27,6 +34,25 @@ export class TestLogger implements ILogger {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public debug(error: any): void {}
 }
+
+export const generateReceipt = (overrides: Partial<TransactionReceipt> = {}): TransactionReceipt => ({
+  hash: TEST_TRANSACTION_HASH,
+  blockNumber: 200,
+  status: "success",
+  gasUsed: 50_000n,
+  gasPrice: 100_000_000_000n,
+  logs: [],
+  ...overrides,
+});
+
+export const generateSubmission = (overrides: Partial<TransactionSubmission> = {}): TransactionSubmission => ({
+  hash: TEST_TRANSACTION_HASH,
+  nonce: 42,
+  gasLimit: 60_000n,
+  maxFeePerGas: 200_000_000_000n,
+  maxPriorityFeePerGas: 2_000_000_000n,
+  ...overrides,
+});
 
 export const generateMessage = (overrides?: Partial<MessageProps>): Message => {
   return new Message({

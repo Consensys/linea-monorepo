@@ -195,5 +195,56 @@ describe("ViemTransactionRetrier", () => {
         chain: null,
       });
     });
+
+    it("uses 110% of stuckFees when stuckBumped exceeds aggressive fees", async () => {
+      // aggressive: estimateFeesPerGas * 2 = 1000n, 100n
+      publicClient.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 500n,
+        maxPriorityFeePerGas: 50n,
+      } as Awaited<ReturnType<PublicClient["estimateFeesPerGas"]>>);
+      walletClient.sendTransaction.mockResolvedValue("0xcancelhash");
+
+      // stuckBumped: 2000 * 110 / 100 = 2200, 200 * 110 / 100 = 220 — both beat aggressive
+      await retrier.cancelTransaction(10, { maxFeePerGas: 2000n, maxPriorityFeePerGas: 200n });
+
+      expect(walletClient.sendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ maxFeePerGas: 2200n, maxPriorityFeePerGas: 220n }),
+      );
+    });
+
+    it("uses aggressive fees when they exceed 110% of stuckFees", async () => {
+      // aggressive: estimateFeesPerGas * 2 = 2000n, 200n
+      publicClient.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 1000n,
+        maxPriorityFeePerGas: 100n,
+      } as Awaited<ReturnType<PublicClient["estimateFeesPerGas"]>>);
+      walletClient.sendTransaction.mockResolvedValue("0xcancelhash");
+
+      // stuckBumped: 500 * 110 / 100 = 550, 50 * 110 / 100 = 55 — both beaten by aggressive
+      await retrier.cancelTransaction(10, { maxFeePerGas: 500n, maxPriorityFeePerGas: 50n });
+
+      expect(walletClient.sendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ maxFeePerGas: 2000n, maxPriorityFeePerGas: 200n }),
+      );
+    });
+
+    it("caps stuckBumped fees at maxFeePerGasCap", async () => {
+      const smallCap = 1000n;
+      retrier = new ViemTransactionRetrier(publicClient, walletClient, account, smallCap, logger);
+
+      // aggressive: 100 * 2 = 200n — well below cap and stuckBumped
+      publicClient.estimateFeesPerGas.mockResolvedValue({
+        maxFeePerGas: 100n,
+        maxPriorityFeePerGas: 100n,
+      } as Awaited<ReturnType<PublicClient["estimateFeesPerGas"]>>);
+      walletClient.sendTransaction.mockResolvedValue("0xcancelhash");
+
+      // stuckBumped: 2000 * 110 / 100 = 2200 — exceeds cap of 1000
+      await retrier.cancelTransaction(10, { maxFeePerGas: 2000n, maxPriorityFeePerGas: 2000n });
+
+      expect(walletClient.sendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ maxFeePerGas: 1000n, maxPriorityFeePerGas: 1000n }),
+      );
+    });
   });
 });

@@ -110,44 +110,28 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
-    const previousStatus = message.status;
     const isRetry = message.status === MessageStatus.FEE_UNDERPRICED;
 
-    // Step 1: Reserve nonce in DB (pure persistence)
-    message.edit({
-      claimTxNonce: nonce,
-      status: MessageStatus.PENDING,
-    });
-    await this.messageRepository.updateMessage(message);
-
-    // Step 2: Submit transaction to chain (outside DB transaction)
+    // Submit transaction to chain before writing PENDING to DB, so we never expose
+    // a PENDING row without a claimTxHash (avoids race with MessageClaimingPersister).
     const claimTxCreationDate = new Date();
-    let tx;
-    try {
-      tx = await this.messageServiceContract.claim(
-        {
-          ...message,
-          feeRecipient: this.config.feeRecipientAddress,
-          messageBlockNumber: message.sentBlockNumber,
-        },
-        {
-          claimViaAddress: this.config.claimViaAddress,
-          overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
-        },
-      );
-    } catch (e) {
-      this.logger.warn("Claim transaction failed, resetting message status.", {
-        messageHash: message.messageHash,
-        previousStatus,
-      });
-      message.edit({ status: previousStatus });
-      await this.messageRepository.updateMessage(message);
-      throw e;
-    }
+    const tx = await this.messageServiceContract.claim(
+      {
+        ...message,
+        feeRecipient: this.config.feeRecipientAddress,
+        messageBlockNumber: message.sentBlockNumber,
+      },
+      {
+        claimViaAddress: this.config.claimViaAddress,
+        overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      },
+    );
 
-    // Step 3: Record tx details and bump retry counter (only on retries)
+    // Single DB write: set PENDING with all tx details atomically
     message.edit({
       claimTxCreationDate,
+      claimTxNonce: nonce,
+      status: MessageStatus.PENDING,
       claimTxGasLimit: Number(tx.gasLimit),
       claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
       claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,

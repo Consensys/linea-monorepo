@@ -17,7 +17,7 @@ import {
   testPendingMessage,
   testPendingMessage2,
 } from "../../../utils/testing/constants";
-import { TestLogger } from "../../../utils/testing/helpers";
+import { generateReceipt, TestLogger } from "../../../utils/testing/helpers";
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
 import { ReceiptStatusResolver } from "../ReceiptStatusResolver";
 import { TransactionLifecycleManager } from "../TransactionLifecycleManager";
@@ -300,11 +300,13 @@ describe("TestMessageClaimingPersister", () => {
       jest.spyOn(provider, "getTransactionReceipt").mockResolvedValue(null);
       jest.spyOn(messageServiceContract, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(transactionRetrier, "cancelTransaction").mockResolvedValue("0xcancelhash" as `0x${string}`);
+      jest.spyOn(receiptPoller, "poll").mockResolvedValue(generateReceipt());
       const messageRepositoryUpdateSpy = jest.spyOn(databaseService, "updateMessage");
 
       await messageClaimingPersister.process();
 
-      expect(transactionRetrier.cancelTransaction).toHaveBeenCalledWith(42);
+      // testPendingMessage has no claimTxMaxFeePerGas/claimTxMaxPriorityFeePerGas, so stuckFees is undefined
+      expect(transactionRetrier.cancelTransaction).toHaveBeenCalledWith(42, undefined);
       expect(messageRepositoryUpdateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           status: MessageStatus.SENT,

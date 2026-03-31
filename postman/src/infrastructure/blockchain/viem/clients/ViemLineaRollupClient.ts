@@ -147,13 +147,13 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
     );
   }
 
-  public async isRateLimitExceededError(transactionHash: Hash): Promise<boolean> {
-    const parsedError = await this.parseTransactionError(transactionHash);
+  public async isRateLimitExceededError(transactionHash: Hash, blockNumber?: bigint): Promise<boolean> {
+    const parsedError = await this.parseTransactionError(transactionHash, blockNumber);
     if (typeof parsedError === "string") return false;
     return parsedError.name === "RateLimitExceeded";
   }
 
-  public async parseTransactionError(transactionHash: Hash): Promise<ErrorDescription | string> {
+  public async parseTransactionError(transactionHash: Hash, blockNumber?: bigint): Promise<ErrorDescription | string> {
     let errorEncodedData: Hash = "0x";
     try {
       const tx = await this.publicClient.getTransaction({ hash: transactionHash });
@@ -169,6 +169,9 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
           value: tx.value,
           maxFeePerGas: tx.maxFeePerGas ?? undefined,
           maxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
+          // Replay at the original block so state-dependent checks (e.g. rate limits)
+          // reflect the conditions that caused the revert, not the current block.
+          blockNumber,
         });
         errorEncodedData = data ?? "0x";
       } catch (callError) {

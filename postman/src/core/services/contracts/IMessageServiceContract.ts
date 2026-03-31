@@ -18,11 +18,11 @@ export interface IMessageClaimer {
 
 export interface IRateLimitChecker {
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;
-  isRateLimitExceededError(transactionHash: Hash): Promise<boolean>;
+  isRateLimitExceededError(transactionHash: Hash, blockNumber?: bigint): Promise<boolean>;
 }
 
 export interface IContractTransactionErrorParser {
-  parseTransactionError(transactionHash: Hash): Promise<ErrorDescription | string>;
+  parseTransactionError(transactionHash: Hash, blockNumber?: bigint): Promise<ErrorDescription | string>;
 }
 
 export interface IMessageServiceContract

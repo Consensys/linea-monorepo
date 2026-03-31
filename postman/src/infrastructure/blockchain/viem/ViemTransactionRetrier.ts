@@ -57,10 +57,33 @@ export class ViemTransactionRetrier implements ITransactionRetrier {
     };
   }
 
-  public async cancelTransaction(nonce: number): Promise<Hash> {
+  public async cancelTransaction(
+    nonce: number,
+    stuckFees?: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint },
+  ): Promise<Hash> {
     this.logger.warn("Cancelling transaction.", { nonce, signerAddress: this.account.address });
 
-    const { maxFeePerGas, maxPriorityFeePerGas } = await this.getAggressiveFees();
+    const aggressive = await this.getAggressiveFees();
+
+    // The cancel tx must have fees >= 110% of the stuck tx to replace it on EIP-1559 nodes.
+    // Take the max of market-based fees and a 10% bump on the stuck tx fees.
+    const MIN_REPLACEMENT_BUMP = 110n;
+    const stuckBumped = stuckFees
+      ? {
+          maxFeePerGas: (stuckFees.maxFeePerGas * MIN_REPLACEMENT_BUMP) / 100n,
+          maxPriorityFeePerGas: (stuckFees.maxPriorityFeePerGas * MIN_REPLACEMENT_BUMP) / 100n,
+        }
+      : aggressive;
+
+    let maxFeePerGas =
+      aggressive.maxFeePerGas > stuckBumped.maxFeePerGas ? aggressive.maxFeePerGas : stuckBumped.maxFeePerGas;
+    let maxPriorityFeePerGas =
+      aggressive.maxPriorityFeePerGas > stuckBumped.maxPriorityFeePerGas
+        ? aggressive.maxPriorityFeePerGas
+        : stuckBumped.maxPriorityFeePerGas;
+
+    if (maxFeePerGas > this.maxFeePerGasCap) maxFeePerGas = this.maxFeePerGasCap;
+    if (maxPriorityFeePerGas > this.maxFeePerGasCap) maxPriorityFeePerGas = this.maxFeePerGasCap;
 
     return this.walletClient.sendTransaction({
       account: this.account,

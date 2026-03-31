@@ -6,6 +6,7 @@ import {
   GasFees,
   IEthereumGasProvider,
 } from "../../../../core/clients/blockchain/IGasProvider";
+import { FEE_HISTORY_BLOCK_COUNT } from "../../../../core/constants";
 import { BaseError } from "../../../../core/errors/BaseError";
 
 export class ViemEthereumGasProvider implements IEthereumGasProvider {
@@ -57,7 +58,7 @@ export class ViemEthereumGasProvider implements IEthereumGasProvider {
 
   private async fetchFeeHistory() {
     return this.client.getFeeHistory({
-      blockCount: 4,
+      blockCount: FEE_HISTORY_BLOCK_COUNT,
       blockTag: "latest",
       rewardPercentiles: [this.config.gasEstimationPercentile],
     });

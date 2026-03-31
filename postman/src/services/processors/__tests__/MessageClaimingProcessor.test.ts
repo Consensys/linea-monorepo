@@ -292,14 +292,13 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(3);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedFinalMessage);
       expect(nonceManager.commitNonce).toHaveBeenCalledWith(101);
     });
 
-    it("Should reset message to previous status when chain claim() call fails", async () => {
+    it("Should rollback nonce without touching DB when chain claim() call fails", async () => {
       const localAnchoredMessage = new Message(testAnchoredMessage);
-      const loggerWarnSpy = jest.spyOn(logger, "warn");
       jest.spyOn(nonceManager, "acquireNonce").mockResolvedValue(101);
       jest
         .spyOn(gasProvider, "getGasFees")
@@ -309,13 +308,11 @@ describe("TestMessageClaimingProcessor", () => {
       jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
       jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
       jest.spyOn(lineaRollupContractMock, "claim").mockRejectedValue(new Error("chain call failed"));
+      const messageRepositorySaveSpy = jest.spyOn(messageRepository, "updateMessage");
 
       await messageClaimingProcessor.process();
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith("Claim transaction failed, resetting message status.", {
-        messageHash: localAnchoredMessage.messageHash,
-        previousStatus: expect.any(String),
-      });
+      // Nonce must be rolled back when claim throws, regardless of DB state.
       expect(nonceManager.rollbackNonce).toHaveBeenCalledWith(101);
     });
 
@@ -409,6 +406,14 @@ describe("TestMessageClaimingProcessor", () => {
       jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
       jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
       jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
+      // claim() succeeds; the subsequent DB write is what fails
+      jest.spyOn(lineaRollupContractMock, "claim").mockResolvedValue({
+        hash: TEST_TRANSACTION_HASH,
+        nonce: 101,
+        gasLimit: 100_000n,
+        maxFeePerGas: 1000000000n,
+        maxPriorityFeePerGas: 1000000000n,
+      });
       const expectedLoggingMessage = new Message({
         ...testAnchoredMessage,
         claimGasEstimationThreshold: 10000000000,
@@ -542,7 +547,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
     });
 
@@ -581,7 +586,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(3);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedFinalMessage);
       expect(nonceManager.commitNonce).toHaveBeenCalledWith(101);
     });
@@ -606,7 +611,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(3);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           claimGasEstimationThreshold: 10,
@@ -661,7 +666,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessorWithSpecifiedClaimAddress.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(2);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
       expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
     });
   });

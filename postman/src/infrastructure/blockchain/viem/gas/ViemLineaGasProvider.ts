@@ -7,7 +7,7 @@ import {
   LineaGasFees,
   LineaGasProviderConfig,
 } from "../../../../core/clients/blockchain/IGasProvider";
-import { DEFAULT_GAS_ESTIMATION_PERCENTILE } from "../../../../core/constants";
+import { DEFAULT_GAS_ESTIMATION_PERCENTILE, FEE_HISTORY_BLOCK_COUNT } from "../../../../core/constants";
 import { BaseError } from "../../../../core/errors";
 import { TransactionRequest } from "../../../../core/types";
 
@@ -50,7 +50,7 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
         value: transactionRequest.value,
       }),
       this.client.getFeeHistory({
-        blockCount: 4,
+        blockCount: FEE_HISTORY_BLOCK_COUNT,
         blockTag: "latest",
         rewardPercentiles: [this.config.gasEstimationPercentile ?? DEFAULT_GAS_ESTIMATION_PERCENTILE],
       }),

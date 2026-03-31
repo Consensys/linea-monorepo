@@ -99,15 +99,27 @@ export class TransactionLifecycleManager implements ITransactionLifecycleManager
       });
 
       if (message.claimTxNonce !== undefined) {
-        await this.transactionRetrier.cancelTransaction(message.claimTxNonce);
+        const stuckFees =
+          message.claimTxMaxFeePerGas && message.claimTxMaxPriorityFeePerGas
+            ? { maxFeePerGas: message.claimTxMaxFeePerGas, maxPriorityFeePerGas: message.claimTxMaxPriorityFeePerGas }
+            : undefined;
+        const cancelTxHash = await this.transactionRetrier.cancelTransaction(message.claimTxNonce, stuckFees);
+        // Wait for the cancel tx to be mined before resetting, otherwise the anchoring
+        // processor can re-queue the message while the cancel is still in flight.
+        await this.receiptPoller.poll(
+          cancelTxHash,
+          this.config.receiptPollingTimeout,
+          this.config.receiptPollingInterval,
+        );
       }
 
+      // edit() skips undefined values, so clear these directly before calling edit()
+      message.claimTxHash = undefined;
+      message.claimTxNonce = undefined;
       message.edit({
         status: MessageStatus.SENT,
         claimNumberOfRetry: 0,
         claimCycleCount: message.claimCycleCount + 1,
-        claimTxHash: undefined,
-        claimTxNonce: undefined,
         claimLastRetriedAt: new Date(),
       });
       await this.messageRepository.updateMessage(message);
