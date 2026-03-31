@@ -102,7 +102,7 @@ async function verifyBestEffort(task: string, args: Record<string, unknown>, con
   await delay(VERIFY_PROPAGATION_DELAY_MS);
   console.log("Etherscan verification ongoing...");
 
-  let result: "succeeded" | "failed" | "timed_out" | "errored" = "succeeded";
+  let result: "succeeded" | "failed" | "timed_out" | "errored";
 
   try {
     result = await runVerifyTaskWithTimeout(task, args);
