@@ -97,7 +97,7 @@ async function deployFromFactory(
 
   const factory = await ethers.getContractFactory(contractName, runner);
   pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(args) });
-  const contract = await factory.connect(runner).deploy(...args);
+  const contract = await factory.deploy(...args);
   if (!skipLog) {
     const deployTx = contract.deploymentTransaction();
 

@@ -16,7 +16,7 @@ const func: DeployFunction = withSignerUiSession(
     const factory = await ethers.getContractFactory(contractName, signer);
 
     console.log("Deploying Contract...");
-    const newContract = await upgrades.deployImplementation(factory.connect(signer), {
+    const newContract = await upgrades.deployImplementation(factory, {
       kind: "transparent",
     });
 

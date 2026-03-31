@@ -412,7 +412,9 @@ function ContractsDeployUiPage() {
       return;
     }
 
-    setSessionSecret(sessionStorage.getItem(storageKey) ?? sessionStorage.getItem(legacyStorageKey));
+    setSessionSecret((previousSessionSecret) => {
+      return previousSessionSecret ?? sessionStorage.getItem(storageKey) ?? sessionStorage.getItem(legacyStorageKey);
+    });
     setSessionAuthReady(true);
   }, [apiBaseUrl, sessionSecretFromUrl]);
 

@@ -17,7 +17,7 @@ const func: DeployFunction = withSignerUiSession(
     // Deploy beacon for bridged token
     const BridgedToken = await ethers.getContractFactory(contractName, signer);
 
-    const bridgedToken = (await upgrades.deployBeacon(BridgedToken.connect(signer))) as unknown as BridgedToken;
+    const bridgedToken = (await upgrades.deployBeacon(BridgedToken)) as unknown as BridgedToken;
 
     await bridgedToken.waitForDeployment();
 

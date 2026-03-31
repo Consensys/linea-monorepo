@@ -67,7 +67,7 @@ const func: DeployFunction = withSignerUiSession(
     const { maxPriorityFeePerGas, maxFeePerGas } = await get1559Fees(ethers.provider);
 
     const tokenBridge = await upgrades.deployProxy(
-      TokenBridgeFactory.connect(signer),
+      TokenBridgeFactory,
       [
         {
           defaultAdmin: securityCouncilAddress,

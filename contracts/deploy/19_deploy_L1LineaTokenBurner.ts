@@ -14,7 +14,7 @@ const func: DeployFunction = withSignerUiSession(
     const lineaToken = getRequiredEnvVar("LINEA_TOKEN_BURNER_LINEA_TOKEN");
 
     const factory = await ethers.getContractFactory(contractName, signer);
-    const contract = await factory.connect(signer).deploy(messageService, lineaToken);
+    const contract = await factory.deploy(messageService, lineaToken);
 
     await LogContractDeployment(contractName, contract);
     const contractAddress = await contract.getAddress();

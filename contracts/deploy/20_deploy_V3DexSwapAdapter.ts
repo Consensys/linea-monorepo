@@ -16,7 +16,7 @@ const func: DeployFunction = withSignerUiSession(
     const poolTickSpacing = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_POOL_TICK_SPACING");
 
     const factory = await ethers.getContractFactory(contractName, signer);
-    const contract = await factory.connect(signer).deploy(router, wethToken, lineaToken, poolTickSpacing);
+    const contract = await factory.deploy(router, wethToken, lineaToken, poolTickSpacing);
 
     await LogContractDeployment(contractName, contract);
     const contractAddress = await contract.getAddress();

@@ -21,7 +21,7 @@ const func: DeployFunction = withSignerUiSession(
       constructorArgs: [tokenName, tokenSymbol, supplyWei.toString()],
       notes: `TEST_ERC20_INITIAL_SUPPLY env: ${initialSupply} (interpreted as ether, passed as wei to the contract)`,
     });
-    const contract = await TestERC20Factory.connect(signer).deploy(tokenName, tokenSymbol, supplyWei);
+    const contract = await TestERC20Factory.deploy(tokenName, tokenSymbol, supplyWei);
 
     await LogContractDeployment(contractName, contract);
     const contractAddress = await contract.getAddress();
