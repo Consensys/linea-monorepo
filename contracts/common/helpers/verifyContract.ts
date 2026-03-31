@@ -34,10 +34,10 @@ async function getCurrentHardhatNetworkName(): Promise<string> {
 async function runVerifyTaskWithTimeout(
   task: string,
   args: Record<string, unknown>,
-): Promise<"completed" | "timed_out"> {
+): Promise<"succeeded" | "failed" | "timed_out"> {
   const networkName = await getCurrentHardhatNetworkName();
 
-  return await new Promise<"completed" | "timed_out">((resolveRun) => {
+  return await new Promise<"succeeded" | "failed" | "timed_out">((resolveRun) => {
     const child = spawn(
       "pnpm",
       ["exec", "hardhat", "run", "--no-compile", "--network", networkName, VERIFY_CHILD_SCRIPT],
@@ -53,7 +53,7 @@ async function runVerifyTaskWithTimeout(
     );
 
     let settled = false;
-    const finish = (result: "completed" | "timed_out") => {
+    const finish = (result: "succeeded" | "failed" | "timed_out") => {
       if (settled) {
         return;
       }
@@ -78,12 +78,17 @@ async function runVerifyTaskWithTimeout(
       finish("timed_out");
     }, VERIFY_TIMEOUT_MS);
 
-    child.once("exit", () => {
-      finish("completed");
+    child.once("exit", (code, signal) => {
+      if (code === 0) {
+        finish("succeeded");
+        return;
+      }
+      console.log(`Verification process exited with code ${code ?? "null"}${signal ? ` (signal: ${signal})` : ""}.`);
+      finish("failed");
     });
     child.once("error", (error) => {
       console.log(`Error happened during verification: ${error}`);
-      finish("completed");
+      finish("failed");
     });
   });
 }
@@ -97,14 +102,20 @@ async function verifyBestEffort(task: string, args: Record<string, unknown>, con
   await delay(VERIFY_PROPAGATION_DELAY_MS);
   console.log("Etherscan verification ongoing...");
 
+  let result: "succeeded" | "failed" | "timed_out" | "errored" = "succeeded";
+
   try {
-    const result = await runVerifyTaskWithTimeout(task, args);
+    result = await runVerifyTaskWithTimeout(task, args);
     if (result === "timed_out") {
       console.log(
         `Verification timed out after ${VERIFY_TIMEOUT_MS / 1000}s. Continuing deploy; you can verify ${contractAddress} separately later.`,
       );
+    } else if (result === "failed") {
+      console.log(`Verification failed for ${contractAddress}.`);
+      console.log(`Continuing deploy; you can verify ${contractAddress} separately later.`);
     }
   } catch (error) {
+    result = "errored";
     const message = error instanceof Error ? error.message : String(error);
     console.log(`Verification failed for ${contractAddress}: ${message}`);
     console.log(`Continuing deploy; you can verify ${contractAddress} separately later.`);
@@ -112,7 +123,11 @@ async function verifyBestEffort(task: string, args: Record<string, unknown>, con
     clearUiWorkflowStatus();
   }
 
-  console.log("Etherscan verification done.");
+  if (result === "succeeded") {
+    console.log("Etherscan verification done.");
+  } else {
+    console.log("Etherscan verification not confirmed.");
+  }
 }
 
 export async function tryVerifyContract(contractAddress: string, contractForVerification?: string) {
