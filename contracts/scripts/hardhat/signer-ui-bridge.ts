@@ -729,7 +729,7 @@ async function normalizeAddress(value: AddressLike | null | undefined): Promise<
   }
 
   const address = typeof value === "string" ? value : await Promise.resolve(value.toString());
-  return isAddress(address) ? address : address;
+  return isAddress(address) ? getAddress(address) : address;
 }
 
 function transactionTypeNumber(transactionRequest: TransactionRequest): number | undefined {
@@ -764,15 +764,54 @@ function normalizeGasFeeFieldsForWallet(params: {
   const hasEip1559Suggestion = maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined;
 
   if (type === 0 || type === 1) {
-    return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined };
+    return {
+      ...(gasPrice !== undefined ? { gasPrice } : {}),
+    };
   }
   if (type === 2) {
-    return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas };
+    return {
+      ...(maxFeePerGas !== undefined ? { maxFeePerGas } : {}),
+      ...(maxPriorityFeePerGas !== undefined ? { maxPriorityFeePerGas } : {}),
+    };
   }
   if (hasEip1559Suggestion) {
-    return { gasPrice: undefined, maxFeePerGas, maxPriorityFeePerGas };
+    return {
+      ...(maxFeePerGas !== undefined ? { maxFeePerGas } : {}),
+      ...(maxPriorityFeePerGas !== undefined ? { maxPriorityFeePerGas } : {}),
+    };
   }
-  return { gasPrice, maxFeePerGas: undefined, maxPriorityFeePerGas: undefined };
+  return {
+    ...(gasPrice !== undefined ? { gasPrice } : {}),
+  };
+}
+
+/**
+ * Under `exactOptionalPropertyTypes`, optional keys must be omitted—not set to `undefined`.
+ * Input may include explicit `undefined` per field (e.g. from `toHexQuantityString`); only defined strings are copied.
+ */
+function buildSerializedTransactionRequest(
+  values: Partial<Record<keyof SerializedTransactionRequest, string | undefined>>,
+): SerializedTransactionRequest {
+  const out: SerializedTransactionRequest = {};
+  const keys = [
+    "to",
+    "data",
+    "value",
+    "gas",
+    "gasPrice",
+    "maxFeePerGas",
+    "maxPriorityFeePerGas",
+    "nonce",
+    "type",
+    "chainId",
+  ] as const satisfies readonly (keyof SerializedTransactionRequest)[];
+  for (const key of keys) {
+    const v = values[key];
+    if (v !== undefined) {
+      (out as Record<string, string>)[key] = v;
+    }
+  }
+  return out;
 }
 
 async function serializeTransactionRequest(
@@ -790,7 +829,7 @@ async function serializeTransactionRequest(
     type: transactionTypeNumber(transactionRequest),
   });
 
-  return {
+  return buildSerializedTransactionRequest({
     to: await normalizeAddress(transactionRequest.to),
     data: transactionRequest.data ? (transactionRequest.data.toString() as HexString) : undefined,
     value: toHexQuantityString(transactionRequest.value as bigint | number | string | undefined),
@@ -799,7 +838,7 @@ async function serializeTransactionRequest(
     nonce: toHexQuantityString(transactionRequest.nonce as number | undefined),
     type: toHexQuantityString(transactionRequest.type as number | undefined),
     chainId: toHexQuantityString(transactionRequest.chainId as bigint | number | string | undefined),
-  };
+  });
 }
 
 async function waitForHttpOk(url: string, timeoutMs: number) {
@@ -1635,7 +1674,7 @@ export function withSignerUiSession(scriptContext: string, deployFunction: Deplo
     await getOrCreateSession(hre, scriptContext);
 
     try {
-      await deployFunction(hre);
+      return await deployFunction(hre);
     } finally {
       if (!signerUiHardhatDeployBatchActive) {
         await closeActiveSignerUiSession();
