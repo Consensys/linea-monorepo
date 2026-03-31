@@ -375,7 +375,8 @@ function clearNextDevSingletonLock(signerUiDir: string): void {
 
   try {
     const parsed = JSON.parse(readFileSync(lockPath, "utf8")) as { pid?: number; port?: number };
-    const hasKnownPort = typeof parsed.port === "number" && Number.isFinite(parsed.port) && parsed.port > 0;
+    const lockPort = parsed.port;
+    const hasKnownPort = typeof lockPort === "number" && Number.isFinite(lockPort) && lockPort > 0;
 
     // Do not signal a lockfile PID unless we can confirm it's still listening on the lockfile port.
     // PIDs can be reused and blindly signaling could affect unrelated local processes.
@@ -383,7 +384,7 @@ function clearNextDevSingletonLock(signerUiDir: string): void {
       typeof parsed.pid === "number" &&
       parsed.pid > 0 &&
       hasKnownPort &&
-      isPidListeningOnPort(parsed.pid, parsed.port)
+      isPidListeningOnPort(parsed.pid, lockPort)
     ) {
       try {
         process.kill(parsed.pid, "SIGTERM");
@@ -392,9 +393,8 @@ function clearNextDevSingletonLock(signerUiDir: string): void {
       }
     }
 
-    if (hasKnownPort) {
-      killTcpListenersOnPort(parsed.port);
-    }
+    // Intentionally avoid blind kill-by-port here: stale lock metadata can point to a port
+    // now used by an unrelated local service. Only the verified lockfile PID may be signaled above.
   } catch {
     /* invalid lock */
   }
