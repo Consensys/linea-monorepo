@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach, beforeAll, jest } from "@jest/globals";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";
 
 import { createLoggerMock } from "../../__tests__/helpers/index.js";
+import { LidoAccountingReportClient } from "../LidoAccountingReportClient.js";
 
 import type { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import type { IRetryService } from "@consensys/linea-shared-utils";
@@ -10,15 +12,7 @@ jest.mock("@lidofinance/lsv-cli/dist/utils/report/report-proof.js", () => ({
   getReportProofByVault: jest.fn(),
 }));
 
-let getReportProofByVault: typeof import("@lidofinance/lsv-cli/dist/utils/report/report-proof.js").getReportProofByVault;
-let mockedGetReportProofByVault: jest.MockedFunction<typeof getReportProofByVault>;
-let LidoAccountingReportClient: typeof import("../LidoAccountingReportClient.js").LidoAccountingReportClient;
-
-beforeAll(async () => {
-  ({ getReportProofByVault } = await import("@lidofinance/lsv-cli/dist/utils/report/report-proof.js"));
-  ({ LidoAccountingReportClient } = await import("../LidoAccountingReportClient.js"));
-  mockedGetReportProofByVault = getReportProofByVault as jest.MockedFunction<typeof getReportProofByVault>;
-});
+const mockedGetReportProofByVault = getReportProofByVault as jest.MockedFunction<typeof getReportProofByVault>;
 
 type LazyOracleMock = jest.Mocked<ILazyOracle<TransactionReceipt>>;
 
