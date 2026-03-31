@@ -308,7 +308,6 @@ describe("TestMessageClaimingProcessor", () => {
       jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
       jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
       jest.spyOn(lineaRollupContractMock, "claim").mockRejectedValue(new Error("chain call failed"));
-      const messageRepositorySaveSpy = jest.spyOn(messageRepository, "updateMessage");
 
       await messageClaimingProcessor.process();
 
