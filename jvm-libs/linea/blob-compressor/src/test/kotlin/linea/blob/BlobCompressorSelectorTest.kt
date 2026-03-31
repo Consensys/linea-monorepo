@@ -161,11 +161,13 @@ class BlobCompressorSelectorTest {
     assertThat(errors).isEmpty()
   }
 
-  fun compressBlocks(compressor: BlobCompressor, blocks: List<ByteArray>): ByteArray {
-    blocks.forEach { block ->
-      compressor.startNewBatch()
-      compressor.appendBlock(block)
+  companion object {
+    fun compressBlocks(compressor: BlobCompressor, blocks: List<ByteArray>): ByteArray {
+      blocks.forEach { block ->
+        compressor.startNewBatch()
+        compressor.appendBlock(block)
+      }
+      return compressor.getCompressedDataAndReset()
     }
-    return compressor.getCompressedDataAndReset()
   }
 }
