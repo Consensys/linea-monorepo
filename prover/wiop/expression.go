@@ -268,13 +268,34 @@ func (a *ArithmeticOperation) EvaluateVector(rt Runtime) ConcreteVector {
 
 // EvaluateSingle implements [Expression].
 // Panics if IsMultiValued() is true.
-//
-// TODO: Implement once Runtime is defined.
-func (a *ArithmeticOperation) EvaluateSingle(_ Runtime) ConcreteField {
+func (a *ArithmeticOperation) EvaluateSingle(rt Runtime) ConcreteField {
 	if a.IsMultiValued() {
 		panic("wiop: EvaluateSingle() called on a vector ArithmeticOperation; check IsMultiValued() first")
 	}
-	panic("wiop: ArithmeticOperation.EvaluateSingle not yet implemented")
+	eval := func(i int) field.FieldElem { return a.Operands[i].EvaluateSingle(rt).Value }
+	var v field.FieldElem
+	switch a.Operator {
+	case ArithmeticOperatorAdd:
+		v = eval(0).Add(eval(1))
+	case ArithmeticOperatorSub:
+		v = eval(0).Sub(eval(1))
+	case ArithmeticOperatorMul:
+		v = eval(0).Mul(eval(1))
+	case ArithmeticOperatorDiv:
+		v = eval(0).Div(eval(1))
+	case ArithmeticOperatorDouble:
+		e := eval(0)
+		v = e.Add(e)
+	case ArithmeticOperatorSquare:
+		v = eval(0).Square()
+	case ArithmeticOperatorNegate:
+		v = eval(0).Neg()
+	case ArithmeticOperatorInverse:
+		v = eval(0).Inverse()
+	default:
+		panic(fmt.Sprintf("wiop: ArithmeticOperation.EvaluateSingle: unknown operator %v", a.Operator))
+	}
+	return ConcreteField{Value: v, promise: a}
 }
 
 // Module implements [Expression]. Returns the module of the first

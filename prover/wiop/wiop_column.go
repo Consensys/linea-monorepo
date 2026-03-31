@@ -1,6 +1,10 @@
 package wiop
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+)
 
 // Module is a group of columns sharing the same domain size and padding
 // semantics. All columns within a module are eligible to participate in the
@@ -260,11 +264,36 @@ func (cv *ColumnView) Degree() int {
 	return cv.Column.Module.Size() - 1
 }
 
-// EvaluateVector implements [Expression].
-//
-// TODO: Implement once Runtime is defined.
-func (cv *ColumnView) EvaluateVector(_ Runtime) ConcreteVector {
-	panic("wiop: ColumnView.EvaluateVector not yet implemented")
+// EvaluateVector implements [Expression]. Returns a full-sized concrete vector
+// (length == module size) where logical row i holds the column value at
+// physical row (i + ShiftingOffset) mod n, accounting for the module's padding.
+func (cv *ColumnView) EvaluateVector(rt Runtime) ConcreteVector {
+	concrete := rt.GetColumnAssignment(cv.Column)
+	m := cv.Column.Module
+	n := m.Size()
+
+	var result field.FieldVec
+	if cv.Column.IsExtension {
+		dst := make([]field.Ext, n)
+		for i := range n {
+			phys := ((i + cv.ShiftingOffset) % n + n) % n
+			dst[i] = concrete.ElementAt(m, phys).Ext
+		}
+		result = field.VecFromExt(dst)
+	} else {
+		dst := make([]field.Element, n)
+		for i := range n {
+			phys := ((i + cv.ShiftingOffset) % n + n) % n
+			dst[i] = concrete.ElementAt(m, phys).AsBase()
+		}
+		result = field.VecFromBase(dst)
+	}
+
+	return ConcreteVector{
+		Plain:   []field.FieldVec{result},
+		Padding: concrete.Padding,
+		promise: cv,
+	}
 }
 
 // EvaluateSingle implements [Expression]. Panics unconditionally: a column
@@ -345,8 +374,7 @@ func (cp *ColumnPosition) EvaluateVector(_ Runtime) ConcreteVector {
 
 // EvaluateSingle implements [Expression]. Returns the value of the parent
 // column at Position in the given runtime.
-//
-// TODO: Implement once Runtime is defined.
-func (cp *ColumnPosition) EvaluateSingle(_ Runtime) ConcreteField {
-	panic("wiop: ColumnPosition.EvaluateSingle not yet implemented")
+func (cp *ColumnPosition) EvaluateSingle(rt Runtime) ConcreteField {
+	elem := rt.GetColumnAssignment(cp.Column).ElementAt(cp.Column.Module, cp.Position)
+	return ConcreteField{Value: elem, promise: cp}
 }

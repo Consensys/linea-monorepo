@@ -1,6 +1,10 @@
 package wiop
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+)
 
 // TableRelationKind identifies the relational predicate asserted by a
 // [TableRelation] query.
@@ -156,11 +160,109 @@ func (tr *TableRelation) Round() *Round {
 	return best
 }
 
-// Check implements [Query].
+// Check implements [Query]. Dispatches to [checkPermutation] or
+// [checkInclusion] depending on [TableRelation.Kind].
+func (tr *TableRelation) Check(rt Runtime) error {
+	switch tr.Kind {
+	case TableRelationPermutation:
+		return tr.checkPermutation(rt)
+	case TableRelationInclusion:
+		return tr.checkInclusion(rt)
+	default:
+		return fmt.Errorf("wiop: TableRelation(%s).Check: unknown kind %v", tr.context.Path(), tr.Kind)
+	}
+}
+
+// checkPermutation verifies that A and B are equal as multisets of rows.
 //
-// TODO: Implement once Runtime is defined.
-func (tr *TableRelation) Check(_ Runtime) error {
-	panic(fmt.Sprintf("wiop: TableRelation(%s).Check not yet implemented", tr.Kind))
+// A random extension-field scalar alpha is sampled, and each row is hashed to
+// a single field element via Horner's rule. A is used to populate a counter
+// map; B decrements it. Any non-zero counter at the end signals a mismatch.
+func (tr *TableRelation) checkPermutation(rt Runtime) error {
+	alpha := field.RandomElemExt()
+	counts := make(map[field.Ext]int)
+	for _, tab := range tr.A {
+		n := tab.Module().Size()
+		for row := range n {
+			counts[tableRowHash(alpha, rt, tab.Columns, row, n)]++
+		}
+	}
+	for _, tab := range tr.B {
+		n := tab.Module().Size()
+		for row := range n {
+			counts[tableRowHash(alpha, rt, tab.Columns, row, n)]--
+		}
+	}
+	for _, c := range counts {
+		if c != 0 {
+			return fmt.Errorf(
+				"wiop: TableRelation(%s).Check: Permutation multiset mismatch",
+				tr.context.Path(),
+			)
+		}
+	}
+	return nil
+}
+
+// checkInclusion verifies that every selected row of A appears in the union of
+// selected rows across all B fragments.
+//
+// A random extension-field scalar alpha is sampled and used to hash rows via
+// Horner's rule. B's selected rows populate a set; each selected A row is then
+// probed against it.
+func (tr *TableRelation) checkInclusion(rt Runtime) error {
+	alpha := field.RandomElemExt()
+	bSet := make(map[field.Ext]struct{})
+	for _, tab := range tr.B {
+		n := tab.Module().Size()
+		for row := range n {
+			if tab.Selector != nil {
+				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+					continue
+				}
+			}
+			bSet[tableRowHash(alpha, rt, tab.Columns, row, n)] = struct{}{}
+		}
+	}
+	for _, tab := range tr.A {
+		n := tab.Module().Size()
+		for row := range n {
+			if tab.Selector != nil {
+				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+					continue
+				}
+			}
+			if _, ok := bSet[tableRowHash(alpha, rt, tab.Columns, row, n)]; !ok {
+				return fmt.Errorf(
+					"wiop: TableRelation(%s).Check: Inclusion failed: a row from A is absent from B",
+					tr.context.Path(),
+				)
+			}
+		}
+	}
+	return nil
+}
+
+// tableRowHash computes a Horner linear combination of all column values at
+// logical row idx, using alpha as the mixing scalar. Returns the raw [field.Ext]
+// value for use as a map key.
+func tableRowHash(alpha field.FieldElem, rt Runtime, cols []*ColumnView, idx, n int) field.Ext {
+	var acc field.FieldElem
+	for _, cv := range cols {
+		acc = acc.Mul(alpha).Add(tableElemAt(rt, cv, idx, n))
+	}
+	return acc.Ext
+}
+
+// tableElemAt returns the field element at logical row idx in cv's concrete
+// assignment, applying the cyclic shift. n is the module size.
+func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.FieldElem {
+	phys := ((idx + cv.ShiftingOffset) % n + n) % n
+	fv := rt.GetColumnAssignment(cv.Column).Plain[0]
+	if fv.IsBase() {
+		return field.ElemFromBase(fv.AsBase()[phys])
+	}
+	return field.ElemFromExt(fv.AsExt()[phys])
 }
 
 // NewPermutation constructs and registers a Permutation [TableRelation] on sys.

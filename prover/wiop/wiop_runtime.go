@@ -192,6 +192,12 @@ func (run Runtime) GetCellValue(cell *Cell) field.FieldElem {
 	return v
 }
 
+// HasCellAssignment reports whether cell has been assigned in this runtime.
+func (run Runtime) HasCellAssignment(cell *Cell) bool {
+	_, ok := run.cells[cell.Context.ID]
+	return ok
+}
+
 // GetCoinValue returns the value sampled for coin by [Runtime.AdvanceRound].
 // Panics if the round containing coin has not been entered yet.
 func (run Runtime) GetCoinValue(coin *CoinField) field.FieldElem {

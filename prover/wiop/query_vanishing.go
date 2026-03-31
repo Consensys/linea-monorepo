@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
 // Vanishing is a [Query] asserting that an expression evaluates to zero. It
@@ -45,11 +46,51 @@ func (v *Vanishing) Round() *Round {
 	return maxRoundInExpr(v.Expression)
 }
 
-// Check implements [Query].
-//
-// TODO: Implement once Runtime is defined.
-func (v *Vanishing) Check(_ Runtime) error {
-	panic("wiop: Vanishing.Check not yet implemented")
+// Check implements [Query]. For a scalar expression, verifies it evaluates to
+// zero. For a vector expression, verifies every non-cancelled row is zero.
+// CancelledPositions are normalised: negative indices count from the end of the
+// domain (−1 = last row).
+func (v *Vanishing) Check(rt Runtime) error {
+	if !v.Expression.IsMultiValued() {
+		val := v.Expression.EvaluateSingle(rt)
+		if !val.Value.Ext.IsZero() {
+			return fmt.Errorf("wiop: Vanishing(%s).Check: scalar expression is non-zero", v.context.Path())
+		}
+		return nil
+	}
+
+	vec := v.Expression.EvaluateVector(rt)
+	fv := vec.Plain[0]
+	n := fv.Len()
+
+	// Build a set of cancelled row indices normalised to [0, n).
+	cancelled := make(map[int]struct{}, len(v.CancelledPositions))
+	for _, p := range v.CancelledPositions {
+		if p < 0 {
+			cancelled[n+p] = struct{}{}
+		} else {
+			cancelled[p] = struct{}{}
+		}
+	}
+
+	for row := range n {
+		if _, skip := cancelled[row]; skip {
+			continue
+		}
+		var elem field.FieldElem
+		if fv.IsBase() {
+			elem = field.ElemFromBase(fv.AsBase()[row])
+		} else {
+			elem = field.ElemFromExt(fv.AsExt()[row])
+		}
+		if !elem.Ext.IsZero() {
+			return fmt.Errorf(
+				"wiop: Vanishing(%s).Check: expression is non-zero at row %d",
+				v.context.Path(), row,
+			)
+		}
+	}
+	return nil
 }
 
 // CheckGnark implements [GnarkCheckableQuery].

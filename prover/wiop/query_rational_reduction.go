@@ -80,10 +80,8 @@ func (rr *RationalReduction) Round() *Round {
 
 // IsAlreadyAssigned implements [AssignableQuery]. Reports whether the Result
 // cell already holds a runtime assignment.
-//
-// TODO: Implement once Runtime is defined.
-func (rr *RationalReduction) IsAlreadyAssigned(_ Runtime) bool {
-	panic("wiop: RationalReduction.IsAlreadyAssigned not yet implemented")
+func (rr *RationalReduction) IsAlreadyAssigned(rt Runtime) bool {
+	return rt.HasCellAssignment(rr.Result)
 }
 
 // SelfAssign implements [AssignableQuery]. Computes the rational reduction

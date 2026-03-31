@@ -37,18 +37,16 @@ func (lo *LocalOpening) Round() *Round {
 
 // IsAlreadyAssigned implements [AssignableQuery]. Reports whether the Result
 // cell already holds a runtime assignment.
-//
-// TODO: Implement once Runtime is defined.
-func (lo *LocalOpening) IsAlreadyAssigned(_ Runtime) bool {
-	panic("wiop: LocalOpening.IsAlreadyAssigned not yet implemented")
+func (lo *LocalOpening) IsAlreadyAssigned(rt Runtime) bool {
+	return rt.HasCellAssignment(lo.Result)
 }
 
 // SelfAssign implements [AssignableQuery]. Reads Column[Position] from the
 // runtime and writes the value into Result.
-//
-// TODO: Implement once Runtime is defined.
-func (lo *LocalOpening) SelfAssign(_ Runtime) {
-	panic("wiop: LocalOpening.SelfAssign not yet implemented")
+func (lo *LocalOpening) SelfAssign(rt Runtime) {
+	col := lo.Pol.Column
+	elem := rt.GetColumnAssignment(col).ElementAt(col.Module, lo.Pol.Position)
+	rt.AssignCell(lo.Result, elem)
 }
 
 // Check implements [Query]. Verifies that Result equals the column assignment
