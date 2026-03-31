@@ -125,7 +125,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
     // TODO: Make the failure shnarf dynamic and computed
     await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
       expectedShnarf,
-      "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad",
+      "0xd14582c1b7041f523ac1428657196f30d5260227668151e660840fb629cacba4",
     ]);
   });
 
