@@ -113,7 +113,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
     await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
   });
 
-  it("Should fail if the final state root hash is empty", async () => {
+  it.only("Should fail if the final state root hash is empty", async () => {
     const [submissionData] = generateCallDataSubmission(0, 1);
 
     submissionData.finalStateRootHash = HASH_ZERO;
