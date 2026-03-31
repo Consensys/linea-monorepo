@@ -403,7 +403,6 @@ function ContractsDeployUiPage() {
     const legacyStorageKey = `lineaDeployUiBridgeToken:${apiBaseUrl}`;
 
     if (sessionSecretFromUrl) {
-      sessionStorage.setItem(storageKey, sessionSecretFromUrl);
       setSessionSecret(sessionSecretFromUrl);
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("sessionToken");
