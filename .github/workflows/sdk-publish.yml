@@ -34,8 +34,10 @@ jobs:
     steps:
       - name: Ensure running on main
         if: github.ref != 'refs/heads/main'
+        env:
+          REF: ${{ github.ref }}
         run: |
-          echo "::error::sdk-publish must be triggered from the main branch, got ${{ github.ref }}"
+          echo "::error::sdk-publish must be triggered from the main branch, got $REF"
           exit 1
 
       - name: Checkout
