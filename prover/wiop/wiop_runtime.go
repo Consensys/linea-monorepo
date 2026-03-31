@@ -20,12 +20,12 @@ type Runtime struct {
 	System *System
 	// currentRound is the round currently being processed.
 	currentRound *Round
-	// columns maps each Column to its concrete vector assignment.
-	columns map[*Column]*ConcreteVector
-	// cells maps each Cell to its concrete scalar value.
-	cells map[*Cell]field.Element
-	// coins maps each CoinField to its sampled value.
-	coins map[*CoinField]field.Element
+	// columns maps each column's [ObjectID] to its concrete vector assignment.
+	columns map[ObjectID]*ConcreteVector
+	// cells maps each cell's [ObjectID] to its concrete scalar value.
+	cells map[ObjectID]field.Element
+	// coins maps each coin's [ObjectID] to its sampled value.
+	coins map[ObjectID]field.Element
 	// state is a free-form key-value store for stateful actions.
 	state map[string]any
 }
@@ -36,9 +36,9 @@ type Runtime struct {
 func NewRuntime(sys *System) Runtime {
 	run := Runtime{
 		System:  sys,
-		columns: make(map[*Column]*ConcreteVector),
-		cells:   make(map[*Cell]field.Element),
-		coins:   make(map[*CoinField]field.Element),
+		columns: make(map[ObjectID]*ConcreteVector),
+		cells:   make(map[ObjectID]field.Element),
+		coins:   make(map[ObjectID]field.Element),
 		state:   make(map[string]any),
 	}
 	if len(sys.Rounds) > 0 {
@@ -46,7 +46,7 @@ func NewRuntime(sys *System) Runtime {
 	}
 	pr := sys.PrecomputedRound
 	for i, col := range pr.Columns {
-		run.columns[col] = pr.PrecomputedValues[i]
+		run.columns[col.Context.ID] = pr.PrecomputedValues[i]
 	}
 	return run
 }
@@ -82,19 +82,20 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 			col.Context.Path(), col.round.ID, run.currentRound,
 		))
 	}
-	if _, exists := run.columns[col]; exists {
+	id := col.Context.ID
+	if _, exists := run.columns[id]; exists {
 		panic(fmt.Sprintf(
 			"wiop: AssignColumn: column %q already assigned",
 			col.Context.Path(),
 		))
 	}
-	run.columns[col] = v
+	run.columns[id] = v
 }
 
 // GetColumnAssignment returns the concrete assignment of col. Panics if col
 // has not been assigned yet.
 func (run Runtime) GetColumnAssignment(col *Column) *ConcreteVector {
-	v, ok := run.columns[col]
+	v, ok := run.columns[col.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
 			"wiop: GetColumnAssignment: column %q is not assigned",
@@ -106,7 +107,7 @@ func (run Runtime) GetColumnAssignment(col *Column) *ConcreteVector {
 
 // HasColumnAssignment reports whether col has been assigned in this runtime.
 func (run Runtime) HasColumnAssignment(col *Column) bool {
-	_, ok := run.columns[col]
+	_, ok := run.columns[col.Context.ID]
 	return ok
 }
 
@@ -119,19 +120,20 @@ func (run Runtime) AssignCell(cell *Cell, v field.Element) {
 			cell.Context.Path(), cell.round.ID, run.currentRound,
 		))
 	}
-	if _, exists := run.cells[cell]; exists {
+	id := cell.Context.ID
+	if _, exists := run.cells[id]; exists {
 		panic(fmt.Sprintf(
 			"wiop: AssignCell: cell %q already assigned",
 			cell.Context.Path(),
 		))
 	}
-	run.cells[cell] = v
+	run.cells[id] = v
 }
 
 // GetCellValue returns the concrete scalar value of cell. Panics if cell has
 // not been assigned yet.
 func (run Runtime) GetCellValue(cell *Cell) field.Element {
-	v, ok := run.cells[cell]
+	v, ok := run.cells[cell.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
 			"wiop: GetCellValue: cell %q is not assigned",
@@ -145,19 +147,20 @@ func (run Runtime) GetCellValue(cell *Cell) field.Element {
 // advancement logic; not for direct use inside [Action]s. Panics if the coin
 // value has already been set.
 func (run Runtime) InsertCoin(coin *CoinField, v field.Element) {
-	if _, exists := run.coins[coin]; exists {
+	id := coin.Context.ID
+	if _, exists := run.coins[id]; exists {
 		panic(fmt.Sprintf(
 			"wiop: InsertCoin: coin %q already set",
 			coin.Context.Path(),
 		))
 	}
-	run.coins[coin] = v
+	run.coins[id] = v
 }
 
 // GetCoinValue returns the sampled value of coin. Panics if the coin has not
 // been inserted yet.
 func (run Runtime) GetCoinValue(coin *CoinField) field.Element {
-	v, ok := run.coins[coin]
+	v, ok := run.coins[coin.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
 			"wiop: GetCoinValue: coin %q has not been sampled",

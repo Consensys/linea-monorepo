@@ -1,8 +1,7 @@
-package fiatshamir
+package fiatshamir_koalabear
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
 )
@@ -14,7 +13,7 @@ type FiatShamir interface {
 	Update(vec ...field.Element)
 	UpdateExt(vec ...field.Ext)
 	UpdateGeneric(vec ...field.FieldElem)
-	UpdateSV(sv smartvectors.SmartVector)
+	UpdateVec(sv field.FieldVec)
 	RandomField() field.Octuplet
 	RandomFext() field.Ext
 	RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext

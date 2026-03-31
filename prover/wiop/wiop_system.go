@@ -67,6 +67,7 @@ func (sys *System) NewModule(ctx *ContextFrame, pd PaddingDirection) *Module {
 		Context:     ctx,
 		Padding:     pd,
 		Annotations: make(Annotations),
+		index:       len(sys.Modules),
 		system:      sys,
 	}
 	sys.Modules = append(sys.Modules, m)

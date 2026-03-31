@@ -4,7 +4,6 @@ import (
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -23,14 +22,6 @@ func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 	hasher, _ := poseidon2_koalabear.NewGnarkMDHasher(api)
 	return &GnarkFSWV{
 		hasher: &hasher,
-		api:    api,
-	}
-}
-
-func NewGnarkFSFromFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) *GnarkFSWV {
-	hasher := factory.NewHasher()
-	return &GnarkFSWV{
-		hasher: hasher,
 		api:    api,
 	}
 }

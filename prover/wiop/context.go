@@ -31,6 +31,12 @@ type ContextFrame struct {
 	PC uintptr
 	// Label is the human-readable name segment of this frame.
 	Label string
+	// ID is the structured identifier assigned to this frame when it is
+	// registered with a [System] (via [Module.NewColumn], [Round.NewCell], or
+	// [Round.NewCoinField]). The zero value (ObjectID(0)) means the frame has
+	// not yet been registered. Use the [ObjectID] methods to extract the kind,
+	// slot, and position encoded in the identifier.
+	ID ObjectID
 }
 
 // NewRootFramef creates a root ContextFrame with no parent. The label is

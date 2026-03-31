@@ -1,6 +1,7 @@
 package reedsolomon
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
@@ -11,71 +12,87 @@ import (
 // Evaluating a polynomial or its LDE yields the same result
 func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
-	// rate = 2
-	{
-		polySize := 1 << 10
-		rate := 2
+	for _, rate := range []int{2, 4, 8} {
+		t.Run("rate="+strconv.Itoa(rate), func(t *testing.T) {
 
-		x := field.RandomElementExt()
+			var (
+				polySize  = 1 << 10
+				x         = field.RandomElemExt()
+				params    = NewRsParams(polySize, rate)
+				vec       = field.VecRandomBase(1 << 10)
+				rsEncoded = params.RsEncodeBase(vec)
+				err       = params.IsCodeword(rsEncoded)
+			)
 
-		params := NewRsParams(polySize, rate)
-		vec := field.VecRandomBase(1 << 10)
-		rsEncoded := params.RsEncodeBase(vec)
+			require.NoError(t, err)
 
-		err := params.IsCodeword(rsEncoded)
-		require.NoError(t, err)
+			y0 := polynomials.EvalLagrange(field.VecFromBase(vec), x)
+			y1 := polynomials.EvalLagrange(field.VecFromBase(rsEncoded), x)
 
-		y0 := polynomials.EvalLagrange(vec, x)
-		y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
-
-		require.True(t, y0.B0.A0.Equal(&y1.B0.A0))
-		require.True(t, y0.B0.A1.Equal(&y1.B0.A1))
-		require.True(t, y0.B1.A0.Equal(&y1.B1.A0))
-		require.True(t, y0.B1.A1.Equal(&y1.B1.A1))
-	}
-
-	// rate = 4
-	{
-		polySize := 1 << 10
-		rate := 4
-
-		x := field.RandomElementExt()
-
-		params := NewRsParams(polySize, rate)
-		vec := smartvectors.Rand(1 << 10)
-		rsEncoded := params.RsEncodeBase(vec)
-
-		err := params.IsCodeword(rsEncoded)
-		require.NoError(t, err)
-
-		y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
-		y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
-
-		require.True(t, y0.B0.A0.Equal(&y1.B0.A0))
-		require.True(t, y0.B0.A1.Equal(&y1.B0.A1))
-		require.True(t, y0.B1.A0.Equal(&y1.B1.A0))
-		require.True(t, y0.B1.A1.Equal(&y1.B1.A1))
+			require.True(t, y0.Equal(&y1.Ext))
+		})
 	}
 }
 
 // Evaluating and testing for constants
 func TestReedSolomonConstant(t *testing.T) {
 
-	polySize := 1 << 10
-	_blowUpFactor := 2
+	var (
+		polySize      = 1 << 10
+		_blowUpFactor = 2
+		x             = field.RandomElemExt()
+		params        = NewRsParams(_blowUpFactor, polySize)
+		vec           = field.VecRepeatBase(field.NewElement(42), polySize)
+		rsEncoded     = params.RsEncodeBase(vec)
+		err           = params.IsCodeword(rsEncoded)
+	)
 
-	x := field.RandomElementExt()
-
-	params := NewRsParams(_blowUpFactor, polySize)
-	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
-	rsEncoded := params.RsEncodeBase(vec)
-
-	err := params.IsCodeword(rsEncoded)
 	require.NoError(t, err)
 
-	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
-	y1 := smartvectors.EvaluateBasePolyLagrange(rsEncoded, x)
+	y0 := polynomials.EvalLagrange(field.VecFromBase(vec), x)
+	y1 := polynomials.EvalLagrange(field.VecFromBase(rsEncoded), x)
 
 	require.Equal(t, y0.String(), y1.String())
+}
 
+// Evaluating a polynomial or its LDE yields the same result
+func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
+
+	var (
+		polySize      = 1 << 10
+		_blowUpFactor = 2
+		x             = field.RandomElemBase()
+		params        = NewRsParams(polySize, _blowUpFactor)
+		vec           = field.VecRandomExt(1 << 10)
+		rsEncoded     = params.rsEncodeExt(vec)
+		err           = params.IsCodewordExt(rsEncoded)
+	)
+
+	require.NoError(t, err)
+
+	y0 := polynomials.EvalLagrange(field.VecFromExt(vec), x)
+	y1 := polynomials.EvalLagrange(field.VecFromExt(rsEncoded), x)
+
+	require.Equal(t, y0.String(), y1.String())
+}
+
+// Evaluating and testing for constants
+func TestReedSolomonExtConstant(t *testing.T) {
+
+	var (
+		polySize      = 1 << 10
+		_blowUpFactor = 2
+		x             = field.RandomElemExt()
+		params        = NewRsParams(polySize, _blowUpFactor)
+		vec           = field.VecRepeatExt(field.RandomElementExt(), polySize)
+		rsEncoded     = params.rsEncodeExt(vec)
+		err           = params.IsCodewordExt(rsEncoded)
+	)
+
+	require.NoError(t, err)
+
+	y0 := polynomials.EvalLagrange(field.VecFromExt(vec), x)
+	y1 := polynomials.EvalLagrange(field.VecFromExt(rsEncoded), x)
+
+	require.Equal(t, y0.String(), y1.String())
 }

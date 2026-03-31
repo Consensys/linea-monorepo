@@ -1,5 +1,7 @@
 package field
 
+import "math/rand/v2"
+
 // FieldElem is a union type that holds either a base field element ([Element])
 // or a degree-4 extension field element ([Ext]). The embedded [Ext] is the
 // canonical storage in both cases; [FieldElem.IsBase] tracks whether the value
@@ -132,3 +134,15 @@ func (e FieldElem) Inverse() FieldElem {
 func (e FieldElem) Div(b FieldElem) FieldElem {
 	return e.Mul(b.Inverse())
 }
+
+// RandomElemBase returns a cryptographically random base-field [FieldElem].
+func RandomElemBase() FieldElem { return ElemFromBase(RandomElement()) }
+
+// RandomElemExt returns a cryptographically random extension-field [FieldElem].
+func RandomElemExt() FieldElem { return ElemFromExt(RandomElementExt()) }
+
+// PseudoRandElemBase returns a pseudo-random base-field [FieldElem] drawn from rng.
+func PseudoRandElemBase(rng *rand.Rand) FieldElem { return ElemFromBase(PseudoRand(rng)) }
+
+// PseudoRandElemExt returns a pseudo-random extension-field [FieldElem] drawn from rng.
+func PseudoRandElemExt(rng *rand.Rand) FieldElem { return ElemFromExt(PseudoRandExt(rng)) }

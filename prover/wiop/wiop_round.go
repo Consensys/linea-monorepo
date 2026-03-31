@@ -62,6 +62,10 @@ func (r *Round) NewCoinField(ctx *ContextFrame) *CoinField {
 	if ctx == nil {
 		panic("wiop: Round.NewCoinField requires a non-nil ContextFrame")
 	}
+	if ctx.ID != 0 {
+		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
+	}
+	ctx.ID = newCoinID(r.ID, len(r.Coins))
 	coin := &CoinField{
 		Context:     ctx,
 		Annotations: make(Annotations),
@@ -79,6 +83,10 @@ func (r *Round) NewCell(ctx *ContextFrame, isExtension bool) *Cell {
 	if ctx == nil {
 		panic("wiop: Round.NewCell requires a non-nil ContextFrame")
 	}
+	if ctx.ID != 0 {
+		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
+	}
+	ctx.ID = newCellID(r.ID, len(r.Cells))
 	c := &Cell{
 		Context:           ctx,
 		Annotations:       make(Annotations),

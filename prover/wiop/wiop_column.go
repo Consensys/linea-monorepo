@@ -29,6 +29,9 @@ type Module struct {
 	// size is zero when the module has not yet been sized. Use [Module.Size]
 	// and [Module.SetSize] rather than accessing this field directly.
 	size int
+	// index is the position of this module in [System.Modules]. Set once at
+	// registration time by [System.NewModule] and used to construct column IDs.
+	index int
 	// system is the owning System. Set once at registration time by
 	// [System.NewModule], never nil for a well-formed Module.
 	system *System
@@ -67,6 +70,10 @@ func (m *Module) newColumn(ctx *ContextFrame, vis Visibility, isExt bool, r *Rou
 	if ctx == nil {
 		panic("wiop: NewColumn requires a non-nil ContextFrame")
 	}
+	if ctx.ID != 0 {
+		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
+	}
+	ctx.ID = newColumnID(m.index, len(m.Columns))
 	col := &Column{
 		Context:     ctx,
 		Visibility:  vis,
@@ -123,6 +130,10 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 			m.Context.Path(),
 		))
 	}
+	if ctx.ID != 0 {
+		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
+	}
+	ctx.ID = newColumnID(m.index, len(m.Columns))
 	pr := m.system.PrecomputedRound
 	col := &Column{
 		Context:     ctx,
