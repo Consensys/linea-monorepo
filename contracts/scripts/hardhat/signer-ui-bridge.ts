@@ -447,6 +447,7 @@ function getExplorerUrls(chainId: number): string[] {
     case SupportedChainIds.LINEA_SEPOLIA:
       return ["https://sepolia.lineascan.build"];
     case SupportedChainIds.LINEA_DEVNET:
+    case 31648428:
       return [];
     default:
       return [];
@@ -895,7 +896,7 @@ class SignerUiSession {
   private uiProcess?: ChildProcess;
   private started = false;
   private closed = false;
-  private pendingRequest?: PendingTransaction;
+  private pendingRequest: PendingTransaction | undefined;
   private transactionProgress: TransactionProgress | null = null;
   private workflowStatus: WorkflowStatus | null = null;
   private nextTransactionDetails?: UiTransactionDetails;
@@ -1444,16 +1445,20 @@ class SignerUiSession {
     }
 
     if (request.method === "POST" && url.pathname === "/api/error") {
-      const payload = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as { requestId: string; message: string };
-      if (typeof payload.requestId !== "string") {
+      const raw = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as Record<string, unknown>;
+      if (!raw || typeof raw !== "object") {
+        writeJson(response, 400, { error: "Invalid JSON body." });
+        return;
+      }
+      if (typeof raw.requestId !== "string") {
         writeJson(response, 400, { error: "Missing requestId." });
         return;
       }
-      const message = typeof payload.message === "string" ? payload.message.slice(0, 4000) : "Wallet or network error";
+      const message = typeof raw.message === "string" ? raw.message.slice(0, 4000) : "Wallet or network error";
 
       let rejectOutcome: ((reason: Error) => void) | undefined;
-      if (this.pendingRequest && this.pendingRequest.prompt.id === payload.requestId) {
-        this.setTransactionProgress(payload.requestId, "failed", message);
+      if (this.pendingRequest && this.pendingRequest.prompt.id === raw.requestId) {
+        this.setTransactionProgress(raw.requestId, "failed", message);
         rejectOutcome = this.pendingRequest.reject;
         this.pendingRequest = undefined;
       }
