@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"unsafe"
 
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -200,18 +199,6 @@ func WriteOctupletTo(w io.Writer, octuplet Octuplet) error {
 	return nil
 }
 
-func EquivalentBLS12377Fr(f Element) fr377.Element {
-
-	var (
-		x big.Int
-		y fr377.Element
-	)
-
-	f.BigInt(&x)
-	y.SetBigInt(&x)
-	return y
-}
-
 // ParBatchInvert is as a parallel implementation of [BatchInvert]. The caller
 // can supply the target number of cores to use to perform the paralellization.
 // If `numCPU=0` is provided, the function defaults to using all the available
@@ -235,4 +222,28 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 func ToInt(e *Element) int {
 	n := e.Uint64()
 	return int(n)
+}
+
+// RootOfUnityBy returns the canonical n-th root of unity. n must be a power of
+// two. The returned element is such that e^N = 1. By canonical, we mean that
+// the function will return consistent values for different "n":
+//
+// for all n: RootOfUnityBy(2*n)^2 == RootOfUnityBy(n)
+func RootOfUnityBy(n int) Element {
+
+	if n <= 0 || !utils.IsPowerOfTwo(n) {
+		utils.Panic("n must be positive and be a power of 2, got %v", n)
+	}
+
+	logN := utils.Log2Ceil(n)
+	if logN > int(MaxOrderRoot) {
+		utils.Panic("supplied a root of unity larger than %v, this must be a mistake. The provided value was %v", MaxOrderRoot, n)
+	}
+
+	res := RootOfUnity
+	for i := logN; i < int(MaxOrderRoot); i++ {
+		res.Square(&res)
+	}
+
+	return res
 }

@@ -82,7 +82,7 @@ func TestEvalLagrange(t *testing.T) {
 		copy(lagrange, canonical)
 		fftExtInplace(lagrange, d)
 
-		got := EvalLagrange(field.VecFromExt(lagrange), z, d.Generator, d.Cardinality)
+		got := EvalLagrange(field.VecFromExt(lagrange), z)
 
 		if !extEq(got.AsExt(), want) {
 			t.Fatalf("ext_poly: got %v, want %v", got.AsExt(), want)
@@ -109,7 +109,7 @@ func TestEvalLagrange(t *testing.T) {
 		copy(lagrange, canonical)
 		fftBaseInplace(lagrange, d)
 
-		got := EvalLagrange(field.VecFromBase(lagrange), z, d.Generator, d.Cardinality)
+		got := EvalLagrange(field.VecFromBase(lagrange), z)
 
 		if !extEq(got.AsExt(), want) {
 			t.Fatalf("base_poly: got %v, want %v", got.AsExt(), want)
@@ -138,12 +138,12 @@ func TestEvalLagrangeBatch(t *testing.T) {
 		field.ElemFromExt(randExt(rng)),
 	}
 
-	batch := EvalLagrangeBatch(poly, zs, d.Generator, d.Cardinality)
+	batch := EvalLagrangeBatch(poly, zs)
 	if len(batch) != len(zs) {
 		t.Fatalf("batch length: got %d, want %d", len(batch), len(zs))
 	}
 	for i, z := range zs {
-		want := EvalLagrange(poly, z, d.Generator, d.Cardinality)
+		want := EvalLagrange(poly, z)
 		if !extEq(batch[i].AsExt(), want.AsExt()) {
 			t.Fatalf("z[%d]: batch=%v single=%v", i, batch[i].AsExt(), want.AsExt())
 		}
@@ -167,7 +167,7 @@ func TestComputeLagrangeAtZ(t *testing.T) {
 		reference[i] = field.ElemFromExt(hornerExt(indicator, z.AsExt()))
 	}
 
-	got := ComputeLagrangeAtZ(z, d.Generator, d.Cardinality)
+	got := ComputeLagrangeAtZ(z, d.Cardinality)
 	if len(got) != size {
 		t.Fatalf("len: got %d, want %d", len(got), size)
 	}

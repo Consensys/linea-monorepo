@@ -3,10 +3,7 @@ package field
 import (
 	"bytes"
 	"errors"
-	"math/big"
 	"testing"
-
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
 // failWriter is an io.Writer that always returns an error. Used to exercise
@@ -210,33 +207,6 @@ func TestWriteOctupletTo(t *testing.T) {
 			t.Error("WriteOctupletTo: expected error from failing writer, got nil")
 		}
 	})
-}
-
-// TestEquivalentBLS12377Fr verifies that the embedding of KoalaBear elements
-// into the BLS12-377 scalar field is consistent with big.Int conversion.
-func TestEquivalentBLS12377Fr(t *testing.T) {
-	var zeroFr fr377.Element
-	if got := EquivalentBLS12377Fr(Zero()); !got.Equal(&zeroFr) {
-		t.Error("EquivalentBLS12377Fr(Zero) != 0")
-	}
-
-	var oneFr fr377.Element
-	oneFr.SetOne()
-	if got := EquivalentBLS12377Fr(One()); !got.Equal(&oneFr) {
-		t.Error("EquivalentBLS12377Fr(One) != 1")
-	}
-
-	rng := newRng()
-	for range testN {
-		x := PseudoRand(rng)
-		var bigX big.Int
-		x.BigInt(&bigX)
-		var want fr377.Element
-		want.SetBigInt(&bigX)
-		if result := EquivalentBLS12377Fr(x); !result.Equal(&want) {
-			t.Errorf("EquivalentBLS12377Fr: mismatch for %v", x)
-		}
-	}
 }
 
 // TestParBatchInvert verifies that ParBatchInvert returns the same result as

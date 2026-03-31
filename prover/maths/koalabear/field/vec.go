@@ -1,6 +1,10 @@
 package field
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand/v2"
+	"strings"
+)
 
 // FieldVec holds a vector of field elements in either the base field 𝔽_p or
 // the degree-4 extension 𝔽_{p^4}. Exactly one of base or ext is non-nil;
@@ -383,4 +387,188 @@ func VecBatchInvInto(res, a FieldVec) {
 	} else {
 		VecBatchInvExt(res.ext, a.ext)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Prettify
+// ---------------------------------------------------------------------------
+
+// VecPrettifyBase returns a human-readable string representation of a base-field
+// vector, e.g. "[1, 2, 3]".
+func VecPrettifyBase(a []Element) string {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range a {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(a[i].String())
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// VecPrettifyExt returns a human-readable string representation of an
+// extension-field vector.
+func VecPrettifyExt(a []Ext) string {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range a {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(a[i].String())
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// ---------------------------------------------------------------------------
+// Construction
+// ---------------------------------------------------------------------------
+
+// VecFromInts allocates a []Element from a list of integer literals.
+// Each integer is converted via SetInt64. Useful in tests.
+func VecFromInts(xs ...int) []Element {
+	res := make([]Element, len(xs))
+	for i, x := range xs {
+		res[i].SetInt64(int64(x))
+	}
+	return res
+}
+
+// VecRepeatBase allocates a []Element of length n where every entry equals x.
+func VecRepeatBase(x Element, n int) []Element {
+	res := make([]Element, n)
+	for i := range res {
+		res[i] = x
+	}
+	return res
+}
+
+// VecRepeatExt allocates a []Ext of length n where every entry equals x.
+func VecRepeatExt(x Ext, n int) []Ext {
+	res := make([]Ext, n)
+	for i := range res {
+		res[i] = x
+	}
+	return res
+}
+
+// VecRandomBase allocates a []Element of length size filled with
+// cryptographically random base-field elements.
+func VecRandomBase(size int) []Element {
+	res := make([]Element, size)
+	for i := range res {
+		res[i] = RandomElement()
+	}
+	return res
+}
+
+// VecRandomExt allocates a []Ext of length size filled with
+// cryptographically random extension-field elements.
+func VecRandomExt(size int) []Ext {
+	res := make([]Ext, size)
+	for i := range res {
+		res[i] = RandomElementExt()
+	}
+	return res
+}
+
+// VecPseudoRandBase allocates a []Element of length size filled with
+// pseudo-random base-field elements drawn from rng.
+func VecPseudoRandBase(rng *rand.Rand, size int) []Element {
+	res := make([]Element, size)
+	for i := range res {
+		res[i] = PseudoRand(rng)
+	}
+	return res
+}
+
+// VecPseudoRandExt allocates a []Ext of length size filled with
+// pseudo-random extension-field elements drawn from rng.
+func VecPseudoRandExt(rng *rand.Rand, size int) []Ext {
+	res := make([]Ext, size)
+	for i := range res {
+		res[i] = PseudoRandExt(rng)
+	}
+	return res
+}
+
+// VecPowerBase allocates and returns [x^0, x^1, ..., x^{n-1}].
+// Panics if x is zero or n is negative.
+func VecPowerBase(x Element, n int) []Element {
+	var zero Element
+	if x == zero {
+		panic("field: VecPowerBase called with x=0")
+	}
+	if n == 0 {
+		return []Element{}
+	}
+	res := make([]Element, n)
+	res[0].SetOne()
+	for i := 1; i < n; i++ {
+		res[i].Mul(&res[i-1], &x)
+	}
+	return res
+}
+
+// ---------------------------------------------------------------------------
+// In-place mutation
+// ---------------------------------------------------------------------------
+
+// VecFillBase sets every element of v to val in-place.
+func VecFillBase(v []Element, val Element) {
+	for i := range v {
+		v[i] = val
+	}
+}
+
+// VecFillExt sets every element of v to val in-place.
+func VecFillExt(v []Ext, val Ext) {
+	for i := range v {
+		v[i] = val
+	}
+}
+
+// VecReverseBase reverses v in-place.
+func VecReverseBase(v []Element) {
+	for i, j := 0, len(v)-1; i < j; i, j = i+1, j-1 {
+		v[i], v[j] = v[j], v[i]
+	}
+}
+
+// VecReverseExt reverses v in-place.
+func VecReverseExt(v []Ext) {
+	for i, j := 0, len(v)-1; i < j; i, j = i+1, j-1 {
+		v[i], v[j] = v[j], v[i]
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Comparison
+// ---------------------------------------------------------------------------
+
+// VecEqualBase reports whether a and b contain the same values.
+// Panics if a and b have different lengths.
+func VecEqualBase(a, b []Element) bool {
+	mustEqualLen2(len(a), len(b))
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// VecEqualExt reports whether a and b contain the same values.
+// Panics if a and b have different lengths.
+func VecEqualExt(a, b []Ext) bool {
+	mustEqualLen2(len(a), len(b))
+	for i := range a {
+		if !a[i].Equal(&b[i]) {
+			return false
+		}
+	}
+	return true
 }
