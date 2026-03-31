@@ -126,7 +126,8 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
   void returnsCachedFileWhenAvailable() throws IOException {
     String tracesEngineVersion =
         Objects.requireNonNullElse(TraceRequestParams.getTracerRuntime(), "unknown");
-    String cachedFileName = String.format("%d-%d.virtual.conflated.%s.lt", BLOCK_NUMBER, BLOCK_NUMBER, tracesEngineVersion);
+    String cachedFileName =
+        String.format("%d-noncanonical.conflated.%s.lt", BLOCK_NUMBER, tracesEngineVersion);
     Path cachedFilePath = tempDir.resolve(cachedFileName);
     Files.writeString(cachedFilePath, "cached trace content");
 

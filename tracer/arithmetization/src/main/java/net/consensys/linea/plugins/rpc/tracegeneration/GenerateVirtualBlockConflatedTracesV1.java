@@ -39,6 +39,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StateOverrideMap;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -47,7 +48,6 @@ import org.hyperledger.besu.plugin.data.BlockOverrides;
 import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
 import org.hyperledger.besu.plugin.services.BlockSimulationService;
 import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -200,7 +200,10 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     path = traceWriter.writeVirtualBlockTraceToFile(tracer, blockNumber, tracesEngineVersion);
 
     log.info(
-        "virtual block trace serialized: blockNumber={} path={} duration={}", blockNumber, path, sw);
+        "virtual block trace serialized: blockNumber={} path={} duration={}",
+        blockNumber,
+        path,
+        sw);
 
     return new TraceFile(tracesEngineVersion, path.toString());
   }
@@ -245,8 +248,7 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     INSTANCE;
 
     @Override
-    public Account get(
-        final Address address) {
+    public Account get(final Address address) {
       return null;
     }
   }

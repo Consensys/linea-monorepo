@@ -190,6 +190,6 @@ public class TraceWriter {
 
   private String generateVirtualBlockFileName(
       final long blockNumber, final String tracesEngineVersion) {
-    return "%d-%d.virtual.conflated.%s".formatted(blockNumber, blockNumber, tracesEngineVersion);
+    return "%d-noncanonical.conflated.%s".formatted(blockNumber, tracesEngineVersion);
   }
 }
