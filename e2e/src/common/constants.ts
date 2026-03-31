@@ -18,6 +18,8 @@ export const MINIMUM_FEE_IN_WEI = etherToWei("0.0001");
 export const DEPLOYER_ACCOUNT_INDEX = 0;
 export const LIVENESS_ACCOUNT_INDEX = 1;
 
+export const L2_GENESIS_TIMESTAMP = 1683325137n; // 0x645580D1
+
 export const PAUSE_ALL_ROLE = generateKeccak256(["string"], ["PAUSE_ALL_ROLE"], true);
 export const UNPAUSE_ALL_ROLE = generateKeccak256(["string"], ["UNPAUSE_ALL_ROLE"], true);
 export const PAUSE_L1_L2_ROLE = generateKeccak256(["string"], ["PAUSE_L1_L2_ROLE"], true);
