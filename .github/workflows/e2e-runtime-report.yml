@@ -3,6 +3,10 @@
 name: e2e-runtime-report
 
 on:
+  # Temporary trigger for validating this workflow before switching back to schedule-only.
+  pull_request:
+    branches:
+      - main
   schedule:
     - cron: "0 0 1 * *"
 
