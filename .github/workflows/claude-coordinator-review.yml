@@ -5,12 +5,8 @@ on:
     - cron: '0 0 * * 1' # Every Monday at 12:00am UTC on main
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to review. Defaults to main.'
-        required: false
-        default: 'main'
       save_review_file:
-        description: 'Upload /tmp/coordinator-review.md as a workflow artifact.'
+        description: 'save coordinator-review.md as a workflow artifact.'
         required: false
         type: boolean
         default: false
@@ -27,7 +23,6 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || 'main' }}
           fetch-depth: 1
 
       - name: Run Claude Coordinator Review
@@ -106,7 +101,7 @@ jobs:
       - name: Create GitHub Issue with findings
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          INPUT_BRANCH: ${{ github.event.inputs.branch || 'main' }}
+          INPUT_BRANCH: ${{ github.ref_name }}
           REVIEW_BODY: ${{ steps.review.outputs.response }}
         run: |
           DATE=$(date -u +%Y-%m-%d)
