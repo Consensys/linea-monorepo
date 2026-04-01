@@ -15,6 +15,9 @@ import (
 // Registers a signal handler that dumps the StackTraces upon receiving a
 // SIGUSR1. On SIGUSR2, it starts a profiling session for 10 seconds and then
 // writes the result in a unique timestamped file.
+//
+// This function may possibly be deadcode but is there mainly to help
+// instrumenting a job when we don't know why the process is slow or halted.
 func RegisterStackTraceDumpHandler() {
 
 	sigChan := make(chan os.Signal, 1<<8)

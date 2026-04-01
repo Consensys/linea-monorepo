@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // KoalaOctuplet is a wrapper around koalabear octuplets which can be used
@@ -111,7 +111,7 @@ func (e KoalaOctuplet) Hex() string {
 
 // SetHex sets the koalabear element to an hexString
 func (e *KoalaOctuplet) SetHex(hexString string) error {
-	b, err := utils.HexDecodeString(hexString)
+	b, err := hex.DecodeString(strings.TrimPrefix(hexString, "0x"))
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func HexToKoalabearOctuplet(hexString string) (KoalaOctuplet, error) {
 // a koalabear octuplet. The string must be a valid hex string (even number of
 // element or the function panic).
 func HexToKoalabearOctupletLoose(hexString string) KoalaOctuplet {
-	b, err := utils.HexDecodeString(hexString)
+	b, err := hex.DecodeString(strings.TrimPrefix(hexString, "0x"))
 	if err != nil {
 		panic(err)
 	}

@@ -2,6 +2,7 @@ package profiling
 
 import (
 	"encoding/csv"
+	"math"
 	"os"
 	"path"
 	"runtime"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/sirupsen/logrus"
 )
@@ -149,7 +149,7 @@ func (m *performanceMonitor) sample(sampleRate time.Duration) {
 				logrus.Fatal("error collecting CPU usage:", err)
 			}
 
-			cpuUsage := utils.SumFloat64(percent)
+			cpuUsage := sumFloat64(percent)
 			if cpuUsage > maxUsage {
 				logrus.Fatalf("error cpu usage:%.2f cannot exceed max. theoretical limit: %.2f", cpuUsage, maxUsage)
 			}
@@ -158,9 +158,9 @@ func (m *performanceMonitor) sample(sampleRate time.Duration) {
 
 			// Get memory stats
 			runtime.ReadMemStats(&memStats)
-			memAllocatedGiB := utils.BytesToGiB(memStats.Alloc)
-			memInUseGiB := utils.BytesToGiB(memStats.HeapInuse)
-			memGCNotDeallocatedGiB := utils.BytesToGiB(memStats.HeapIdle - memStats.HeapReleased)
+			memAllocatedGiB := bytesToGiB(memStats.Alloc)
+			memInUseGiB := bytesToGiB(memStats.HeapInuse)
+			memGCNotDeallocatedGiB := bytesToGiB(memStats.HeapIdle - memStats.HeapReleased)
 
 			m.log.MemoryAllocatedPerSecondGiB = append(m.log.MemoryAllocatedPerSecondGiB, memAllocatedGiB)
 			m.log.MemoryInUsePerSecondGiB = append(m.log.MemoryInUsePerSecondGiB, memInUseGiB)
@@ -175,22 +175,22 @@ func (m *performanceMonitor) sample(sampleRate time.Duration) {
 // calculateStats computes min, avg, and max for CPU and memory usage
 func (m *performanceMonitor) calculateStats() {
 	if len(m.log.CpuUsageEachSeconds) > 0 {
-		min, avg, max := utils.CalculateMinAvgMax(m.log.CpuUsageEachSeconds)
+		min, avg, max := calculateMinAvgMax(m.log.CpuUsageEachSeconds)
 		m.log.CpuUsageStats = [3]float64{min, avg, max}
 	}
 
 	if len(m.log.MemoryInUsePerSecondGiB) > 0 {
-		min, avg, max := utils.CalculateMinAvgMax(m.log.MemoryInUsePerSecondGiB)
+		min, avg, max := calculateMinAvgMax(m.log.MemoryInUsePerSecondGiB)
 		m.log.MemoryInUseStatsGiB = [3]float64{min, avg, max}
 	}
 
 	if len(m.log.MemoryAllocatedPerSecondGiB) > 0 {
-		min, avg, max := utils.CalculateMinAvgMax(m.log.MemoryAllocatedPerSecondGiB)
+		min, avg, max := calculateMinAvgMax(m.log.MemoryAllocatedPerSecondGiB)
 		m.log.MemoryAllocatedStatsGiB = [3]float64{min, avg, max}
 	}
 
 	if len(m.log.MemoryGCNotDeallocatedPerSecondGiB) > 0 {
-		min, avg, max := utils.CalculateMinAvgMax(m.log.MemoryGCNotDeallocatedPerSecondGiB)
+		min, avg, max := calculateMinAvgMax(m.log.MemoryGCNotDeallocatedPerSecondGiB)
 		m.log.MemoryGCNotDeallocatedStatsGiB = [3]float64{min, avg, max}
 	}
 }
@@ -256,4 +256,36 @@ func (pl PerfLogs) WritePerformanceLogsToCSV(path string) error {
 
 	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
 	return nil
+}
+
+func sumFloat64(vals []float64) (sum float64) {
+	for _, v := range vals {
+		sum += v
+	}
+	return sum
+}
+
+func bytesToGiB(b uint64) float64 {
+	const gib = 1024 * 1024 * 1024
+	return float64(b) / gib
+}
+
+func calculateMinAvgMax(values []float64) (min, avg, max float64) {
+	if len(values) == 0 {
+		return 0, 0, 0
+	}
+	min = math.Inf(1)
+	max = math.Inf(-1)
+	sum := 0.0
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+		sum += v
+	}
+	avg = sum / float64(len(values))
+	return min, avg, max
 }

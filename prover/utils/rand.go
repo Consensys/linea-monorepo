@@ -23,13 +23,3 @@ func NewRandSource(seed int64) *rand.ChaCha8 {
 	return rand.NewChaCha8(seed32Bytes)
 }
 
-// ReadPseudoRand populate slices with bytes generated from rand. It returns the
-// number of bytes read and an error to match with [io.Read]. This function is
-// intended as a drop-in replacement for [math/rand.Read]. `n` is always the
-// len(slice) and err is always `nil`.
-func ReadPseudoRand(rng *rand.Rand, slice []byte) (n int, err error) {
-	for i := range slice {
-		slice[i] = byte(rng.Uint32() & 0xff)
-	}
-	return len(slice), nil
-}

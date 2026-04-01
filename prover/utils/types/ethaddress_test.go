@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,6 +102,6 @@ func TestWriteAddress(t *testing.T) {
 		var buffer bytes.Buffer
 		tc.address.WriteTo(&buffer)
 		res := buffer.Bytes()
-		assert.Equal(t, tc.expected, utils.HexEncodeToString(res))
+		assert.Equal(t, tc.expected, "0x"+hex.EncodeToString(res))
 	}
 }

@@ -2,9 +2,9 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +14,7 @@ func TestFullBytes32(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	val.WriteTo(buf)
-	written2 := utils.HexEncodeToString(buf.Bytes())
+	written2 := "0x" + hex.EncodeToString(buf.Bytes())
 	assert.Equal(t, written, written2)
 
 }

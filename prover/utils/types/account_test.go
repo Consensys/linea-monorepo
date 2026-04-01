@@ -2,12 +2,11 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"strconv"
 	"testing"
-
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,7 +121,7 @@ func TestReadWriteAccountUnpacked(t *testing.T) {
 		buf := &bytes.Buffer{}
 		_, err := c.Account.WriteTo(buf)
 
-		bufHex := utils.HexEncodeToString(buf.Bytes())
+		bufHex := "0x" + hex.EncodeToString(buf.Bytes())
 		assert.Equal(t, c.HexString, bufHex)
 
 		require.NoError(t, err)
