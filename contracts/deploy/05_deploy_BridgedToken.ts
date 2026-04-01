@@ -23,12 +23,15 @@ const func: DeployFunction = withSignerUiSession(
     const BridgedToken = await ethers.getContractFactory(contractName, signer);
 
     let bridgedToken: BridgedToken;
-    setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+    await setUiWorkflowStatus(
+      "waiting_for_transaction_receipt",
+      `Waiting for transaction receipt for ${contractName}.`,
+    );
     try {
       bridgedToken = (await upgrades.deployBeacon(BridgedToken)) as unknown as BridgedToken;
       await bridgedToken.waitForDeployment();
     } finally {
-      clearUiWorkflowStatus();
+      await clearUiWorkflowStatus();
     }
 
     const bridgedTokenAddress = await bridgedToken.getAddress();

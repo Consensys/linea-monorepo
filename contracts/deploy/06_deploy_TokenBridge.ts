@@ -72,7 +72,10 @@ const func: DeployFunction = withSignerUiSession(
     const { maxPriorityFeePerGas, maxFeePerGas } = await get1559Fees(ethers.provider);
 
     let tokenBridge: Awaited<ReturnType<typeof upgrades.deployProxy>>;
-    setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+    await setUiWorkflowStatus(
+      "waiting_for_transaction_receipt",
+      `Waiting for transaction receipt for ${contractName}.`,
+    );
     try {
       tokenBridge = await upgrades.deployProxy(
         TokenBridgeFactory,
@@ -94,7 +97,7 @@ const func: DeployFunction = withSignerUiSession(
       );
       await tokenBridge.waitForDeployment();
     } finally {
-      clearUiWorkflowStatus();
+      await clearUiWorkflowStatus();
     }
 
     await LogContractDeployment(contractName, tokenBridge);

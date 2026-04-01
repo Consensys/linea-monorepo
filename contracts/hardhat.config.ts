@@ -24,15 +24,12 @@ import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 import "solidity-docgen";
 import { createRequire } from "node:module";
-import { assertExclusiveSignerMode } from "./scripts/hardhat/signer-mode";
 import { resolveDeployerAccounts } from "./scripts/hardhat/deployer-accounts";
 import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
 
 const requireFromConfig = createRequire(__filename);
-
-assertExclusiveSignerMode();
 
 /** Lazy `require` avoids HH9 (signer-ui-bridge pulls in `hardhat`) and avoids native `import()` of `.ts`, which uses Node ESM resolution (directory `common/` vs `common.ts`, CJS `hardhat`, type-only `ethers` exports). */
 subtask(TASK_DEPLOY_RUN_DEPLOY).setAction(async (args, hre, runSuper) => {
