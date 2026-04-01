@@ -1,3 +1,18 @@
+/*
+  *******************************************************************************************
+  Fetches completed E2E workflow runs from the last N days and generates an HTML report
+  showing per-spec pass/fail/timeout status and runtime trends over time. Also writes a
+  JSON summary used by the CI workflow to post a digest to Slack.
+
+  Run by: .github/workflows/e2e-runtime-report.yml
+
+  -------------------------------------------------------------------------------------------
+  Example (local):
+  -------------------------------------------------------------------------------------------
+  GITHUB_TOKEN=<token> \
+  pnpm -F e2e run generate-runtime-report -- --days 30
+  *******************************************************************************************
+*/
 import { Octokit } from "@octokit/rest";
 import { writeFileSync } from "node:fs";
 
