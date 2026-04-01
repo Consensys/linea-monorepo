@@ -234,13 +234,17 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     .timeline-container { overflow-x: auto; }
   `;
 
+  const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
   // Timeline table header
   const timelineHeaders = runResults
     .map((r) => {
-      const date = r.run.startedAt.split("T")[0].slice(5); // MM-DD
+      const [, mm, dd] = r.run.startedAt.split("T")[0].split("-");
+      const date = `${MONTH_ABBR[parseInt(mm, 10) - 1]} ${parseInt(dd, 10)}`;
       const sha = r.run.commitSha.slice(0, 7);
       const icon = r.run.jobConclusion === "failure" ? " X" : "";
-      return `<th title="${r.run.startedAt}\n${r.run.commitSha}">${date}<br>${sha}${icon}</th>`;
+      const jobUrl = `https://github.com/${OWNER}/${REPO}/actions/runs/${r.run.runId}/job/${r.run.jobId}`;
+      return `<th title="${r.run.startedAt}\n${r.run.commitSha}"><a href="${jobUrl}" target="_blank" style="color:inherit;text-decoration:none;">${date}<br><span style="color:#0366d6;text-decoration:underline;">${sha}${icon}</span></a></th>`;
     })
     .join("\n            ");
 
@@ -285,25 +289,38 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     })
     .join("\n          ");
 
-  // Detail sections
+  // Detail sections - rows grouped by test name, then sorted by date within each group
   const detailSections = sortedSpecs
     .map((specFile) => {
       const shortName = specFile.replace("src/", "").replace(".spec.ts", "");
-      const rows = runResults
-        .flatMap((r) => {
-          const spec = r.specResults.find((s) => s.specFile === specFile);
-          if (!spec || spec.tests.length === 0) return [];
-          const date = r.run.startedAt.split("T")[0];
-          return spec.tests.map(
-            (t) =>
-              `<tr class="${t.status === "skipped" ? "skipped" : ""}">
+
+      // Collect all (date, test) pairs
+      const entries = runResults.flatMap((r) => {
+        const spec = r.specResults.find((s) => s.specFile === specFile);
+        if (!spec || spec.tests.length === 0) return [];
+        const date = r.run.startedAt.split("T")[0];
+        return spec.tests.map((t) => ({ date, test: t }));
+      });
+
+      // Group by test name, preserving insertion order of first occurrence
+      const groups = new Map<string, { date: string; durationMs: number; status: string }[]>();
+      for (const { date, test } of entries) {
+        if (!groups.has(test.name)) groups.set(test.name, []);
+        groups.get(test.name)!.push({ date, durationMs: test.durationMs, status: test.status });
+      }
+
+      const rows = [...groups.entries()]
+        .flatMap(([name, runs]) =>
+          runs.map(
+            ({ date, durationMs, status }) =>
+              `<tr class="${status === "skipped" ? "skipped" : ""}">
                 <td>${date}</td>
-                <td style="text-align:left">${t.name}</td>
-                <td>${t.status === "skipped" ? "-" : t.durationMs}</td>
-                <td>${t.status}</td>
+                <td style="text-align:left">${name}</td>
+                <td>${status === "skipped" ? "-" : durationMs}</td>
+                <td>${status}</td>
               </tr>`,
-          );
-        })
+          ),
+        )
         .join("\n            ");
 
       return `<details>
