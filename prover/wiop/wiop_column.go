@@ -193,15 +193,14 @@ func (c *Column) Degree() int {
 }
 
 // ColumnView is a column derived from a parent [Column] by applying a
-// cyclic shift of Offset positions. For a positive offset, the i-th element
-// of the shifted column equals the (i+Offset)-th element of the parent,
-// wrapping around cyclically.
+// cyclic shift of ShiftingOffset positions. For a positive offset, the i-th
+// element of the shifted column equals the (i+ShiftingOffset)-th element of
+// the parent, wrapping around cyclically. A zero ShiftingOffset is the
+// unshifted identity view, as returned by [Column.View].
 //
 // ColumnView has no identity (no ContextFrame) because it is a purely
 // derived, structural value: the same parent and offset always describe the
 // same object.
-//
-// A zero offset is not allowed; use the parent column directly instead.
 type ColumnView struct {
 	// Column is the column being shifted.
 	Column *Column

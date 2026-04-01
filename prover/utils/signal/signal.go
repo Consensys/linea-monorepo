@@ -34,19 +34,12 @@ func RegisterStackTraceDumpHandler() {
 				logrus.Infof("stack trace: %s", string(buf[:n]))
 
 			case syscall.SIGUSR2:
-
 				profilePath := fmt.Sprintf("profiling/onsigusr2-%d", time.Now().Unix())
 				logrus.Infof("received signal %v -> profiling for 10 sec and dumping the result", sig)
-
-				p := profile.Start(
-					profile.ProfilePath(profilePath),
-					profile.CPUProfile,
-				)
-
+				p := profile.Start(profile.ProfilePath(profilePath), profile.CPUProfile)
 				// Purposefully block the signal handler as we don't want several
 				// profiles to be created simultaneously to avoid interferences.
 				<-time.After(10 * time.Second)
-
 				p.Stop()
 				logrus.Infof("done profile, you may now open %v", profilePath)
 			}

@@ -36,8 +36,10 @@ type Runtime struct {
 }
 
 // NewRuntime creates a fresh Runtime for sys. currentRound is initialised to
-// the first interactive round if one exists, or nil otherwise. Precomputed
-// column assignments from [System.PrecomputedRound] are pre-loaded.
+// the first interactive round. Precomputed column assignments from
+// [System.PrecomputedRound] are pre-loaded.
+//
+// Panics if sys has no interactive rounds (len(sys.Rounds) == 0).
 func NewRuntime(sys *System) Runtime {
 	run := Runtime{
 		System:  sys,
@@ -65,8 +67,8 @@ func (run Runtime) CurrentRound() *Round { return run.currentRound }
 // AdvanceRound closes the current round and opens the next one:
 //  1. Every oracle or public column assigned in the current round is fed into
 //     the Fiat-Shamir state.
-//  2. Every public cell value assigned in the current round is fed into the
-//     Fiat-Shamir state.
+//  2. Every cell value assigned in the current round is fed into the
+//     Fiat-Shamir state. All cells are always public (see [Cell.Visibility]).
 //  3. The runtime advances to the next round.
 //  4. A fresh extension-field coin is derived via [fiatshamir.FiatShamir.RandomFext]
 //     for each [CoinField] declared in the new round.
@@ -96,7 +98,7 @@ func (run *Runtime) AdvanceRound() {
 		}
 	}
 
-	// Feed public cell values into the Fiat-Shamir state.
+	// Feed all cell values into the Fiat-Shamir state.
 	for _, cell := range run.currentRound.Cells {
 		v, ok := run.cells[cell.Context.ID]
 		if !ok {

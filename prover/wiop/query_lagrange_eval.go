@@ -2,6 +2,7 @@ package wiop
 
 import (
 	"fmt"
+	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
@@ -96,12 +97,19 @@ func (le *LagrangeEval) Check(rt Runtime) error {
 	}
 
 	for i, got := range le.evalPolynomials(rt) {
-		claim := rt.GetCellValue(le.EvaluationClaims[i])
+		claimCell := le.EvaluationClaims[i]
+		if !rt.HasCellValue(claimCell) {
+			return fmt.Errorf(
+				"wiop: LagrangeEval(%s): claim cell[%d] %q is not assigned",
+				le.context.Path(), i, claimCell.Context.Path(),
+			)
+		}
+		claim := rt.GetCellValue(claimCell)
 		diff := got.Sub(claim)
 		if !diff.Ext.IsZero() {
 			return fmt.Errorf(
 				"wiop: LagrangeEval(%s): polynomial[%d] evaluation mismatch at claim cell %q",
-				le.context.Path(), i, le.EvaluationClaims[i].Context.Path(),
+				le.context.Path(), i, claimCell.Context.Path(),
 			)
 		}
 	}
@@ -120,7 +128,6 @@ func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.FieldElem {
 		// C'[j] = C[(j+k) mod n]  implies  C'(z) = C(ω^k · z),
 		// so we evaluate the original column data at ω^k · z instead.
 		z := evalPoint.Value
-		data := rt.GetColumnAssignment(pv.Column).Plain[0]
 		if k := pv.ShiftingOffset; k != 0 {
 			var (
 				n      = pv.Column.Module.Size()
@@ -130,7 +137,7 @@ func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.FieldElem {
 			omegaK.ExpInt64(omega, int64(k))
 			z = z.Mul(field.ElemFromBase(omegaK))
 		}
-		results[i] = polynomials.EvalLagrange(data, z)
+		results[i] = evalLagrangePadded(rt.GetColumnAssignment(pv.Column), pv.Column.Module, z)
 	}
 	return results
 }
@@ -233,4 +240,239 @@ func (sys *System) newLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x Fie
 	}
 	sys.LagrangeEvals = append(sys.LagrangeEvals, le)
 	return le
+}
+
+// evalLagrangePadded evaluates the polynomial encoded in cv (Lagrange basis
+// over the n-point subgroup, with the module's padding semantics) at z.
+//
+// For PaddingDirectionNone it delegates to polynomials.EvalLagrange on the
+// already-full-sized Plain[0]. For directional padding it accumulates the
+// barycentric sum directly from Plain[0], treating padding and data rows
+// separately with a single shared batch of denominator inverses. This avoids
+// materialising the full n-length padded data vector.
+func evalLagrangePadded(cv *ConcreteVector, m *Module, z field.FieldElem) field.FieldElem {
+	data := cv.Plain[0]
+	if m.Padding == PaddingDirectionNone {
+		return polynomials.EvalLagrange(data, z)
+	}
+
+	n := m.Size()
+	plainLen := data.Len()
+	gen := field.RootOfUnityBy(n)
+
+	// dataStart is the index of the first data row in the padded domain.
+	// Rows [0, dataStart) are padding for Left; rows [plainLen, n) for Right.
+	var dataStart int
+	if m.Padding == PaddingDirectionLeft {
+		dataStart = n - plainLen
+	}
+
+	switch {
+	case data.IsBase() && z.IsBase():
+		return field.ElemFromBase(
+			evalLagrangePaddedBaseBase(n, data.AsBase(), cv.Padding, z.AsBase(), gen, dataStart, plainLen),
+		)
+	case data.IsBase():
+		return field.ElemFromExt(
+			evalLagrangePaddedBaseExt(n, data.AsBase(), cv.Padding, z.AsExt(), gen, dataStart, plainLen),
+		)
+	case z.IsBase():
+		return field.ElemFromExt(
+			evalLagrangePaddedExtBase(n, data.AsExt(), cv.Padding, z.AsBase(), gen, dataStart, plainLen),
+		)
+	default:
+		return field.ElemFromExt(
+			evalLagrangePaddedExtExt(n, data.AsExt(), cv.Padding, z.AsExt(), gen, dataStart, plainLen),
+		)
+	}
+}
+
+// evalLagrangePaddedBaseBase: data in 𝔽_p (partial), padding in 𝔽_p, z in 𝔽_p → result in 𝔽_p.
+func evalLagrangePaddedBaseBase(n int, data []field.Element, pad field.Element,
+	z, gen field.Element, dataStart, plainLen int) field.Element {
+
+	tb := bits.TrailingZeros(uint(n))
+	var invN field.Element
+	invN.SetUint64(uint64(n))
+	invN.Inverse(&invN)
+	zPowN := z
+	for i := 0; i < tb; i++ {
+		zPowN.Square(&zPowN)
+	}
+	var one, zPowNMinusOne field.Element
+	one.SetOne()
+	zPowNMinusOne.Sub(&zPowN, &one)
+
+	weightedP := make([]field.Element, n)
+	denom := make([]field.Element, n)
+	var accOmega field.Element
+	accOmega.SetOne()
+	for i := 0; i < n; i++ {
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		if j := i - dataStart; j >= 0 && j < plainLen {
+			weightedP[i].Mul(&wi, &data[j])
+		} else {
+			weightedP[i].Mul(&wi, &pad)
+		}
+		denom[i].Sub(&z, &accOmega)
+		accOmega.Mul(&accOmega, &gen)
+	}
+	invDenom := make([]field.Element, n)
+	field.VecBatchInvBase(invDenom, denom)
+
+	var sum field.Element
+	for i := 0; i < n; i++ {
+		var term field.Element
+		term.Mul(&weightedP[i], &invDenom[i])
+		sum.Add(&sum, &term)
+	}
+	var result field.Element
+	result.Mul(&zPowNMinusOne, &sum)
+	return result
+}
+
+// evalLagrangePaddedBaseExt: data in 𝔽_p, padding in 𝔽_p, z in 𝔽_{p^4} → result in 𝔽_{p^4}.
+func evalLagrangePaddedBaseExt(n int, data []field.Element, pad field.Element,
+	z field.Ext, gen field.Element, dataStart, plainLen int) field.Ext {
+
+	tb := bits.TrailingZeros(uint(n))
+	var invN field.Element
+	invN.SetUint64(uint64(n))
+	invN.Inverse(&invN)
+	var zPowN field.Ext
+	zPowN.Set(&z)
+	for i := 0; i < tb; i++ {
+		zPowN.Square(&zPowN)
+	}
+	var one, zPowNMinusOne field.Ext
+	one.SetOne()
+	zPowNMinusOne.Sub(&zPowN, &one)
+
+	// weightedP stays in 𝔽_p: data, padding, and ω^i/n are all base-field.
+	weightedP := make([]field.Element, n)
+	denom := make([]field.Ext, n)
+	var accOmega field.Element
+	accOmega.SetOne()
+	for i := 0; i < n; i++ {
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		if j := i - dataStart; j >= 0 && j < plainLen {
+			weightedP[i].Mul(&wi, &data[j])
+		} else {
+			weightedP[i].Mul(&wi, &pad)
+		}
+		denom[i].Set(&z)
+		denom[i].B0.A0.Sub(&denom[i].B0.A0, &accOmega) // z - ω^i
+		accOmega.Mul(&accOmega, &gen)
+	}
+	invDenom := make([]field.Ext, n)
+	field.VecBatchInvExt(invDenom, denom)
+
+	var sum field.Ext
+	for i := 0; i < n; i++ {
+		var term field.Ext
+		term.MulByElement(&invDenom[i], &weightedP[i])
+		sum.Add(&sum, &term)
+	}
+	var result field.Ext
+	result.Mul(&zPowNMinusOne, &sum)
+	return result
+}
+
+// evalLagrangePaddedExtBase: data in 𝔽_{p^4}, padding in 𝔽_p, z in 𝔽_p → result in 𝔽_{p^4}.
+func evalLagrangePaddedExtBase(n int, data []field.Ext, pad field.Element,
+	z, gen field.Element, dataStart, plainLen int) field.Ext {
+
+	tb := bits.TrailingZeros(uint(n))
+	var invN field.Element
+	invN.SetUint64(uint64(n))
+	invN.Inverse(&invN)
+	zPowN := z
+	for i := 0; i < tb; i++ {
+		zPowN.Square(&zPowN)
+	}
+	var one, zPowNMinusOne field.Element
+	one.SetOne()
+	zPowNMinusOne.Sub(&zPowN, &one)
+
+	weightedP := make([]field.Ext, n)
+	denom := make([]field.Element, n)
+	var accOmega field.Element
+	accOmega.SetOne()
+	for i := 0; i < n; i++ {
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		if j := i - dataStart; j >= 0 && j < plainLen {
+			weightedP[i].MulByElement(&data[j], &wi)
+		} else {
+			// Padding value is base-field; lift to 𝔽_{p^4}.
+			var padWeighted field.Element
+			padWeighted.Mul(&wi, &pad)
+			weightedP[i] = field.Lift(padWeighted)
+		}
+		denom[i].Sub(&z, &accOmega)
+		accOmega.Mul(&accOmega, &gen)
+	}
+	invDenom := make([]field.Element, n)
+	field.VecBatchInvBase(invDenom, denom)
+
+	var sum field.Ext
+	for i := 0; i < n; i++ {
+		var term field.Ext
+		term.MulByElement(&weightedP[i], &invDenom[i])
+		sum.Add(&sum, &term)
+	}
+	var result field.Ext
+	result.MulByElement(&sum, &zPowNMinusOne)
+	return result
+}
+
+// evalLagrangePaddedExtExt: data in 𝔽_{p^4}, padding in 𝔽_p, z in 𝔽_{p^4} → result in 𝔽_{p^4}.
+func evalLagrangePaddedExtExt(n int, data []field.Ext, pad field.Element,
+	z field.Ext, gen field.Element, dataStart, plainLen int) field.Ext {
+
+	tb := bits.TrailingZeros(uint(n))
+	var invN field.Element
+	invN.SetUint64(uint64(n))
+	invN.Inverse(&invN)
+	var zPowN field.Ext
+	zPowN.Set(&z)
+	for i := 0; i < tb; i++ {
+		zPowN.Square(&zPowN)
+	}
+	var one, zPowNMinusOne field.Ext
+	one.SetOne()
+	zPowNMinusOne.Sub(&zPowN, &one)
+
+	weightedP := make([]field.Ext, n)
+	denom := make([]field.Ext, n)
+	var accOmega field.Element
+	accOmega.SetOne()
+	for i := 0; i < n; i++ {
+		var wi field.Element
+		wi.Mul(&accOmega, &invN)
+		if j := i - dataStart; j >= 0 && j < plainLen {
+			weightedP[i].MulByElement(&data[j], &wi)
+		} else {
+			var padWeighted field.Element
+			padWeighted.Mul(&wi, &pad)
+			weightedP[i] = field.Lift(padWeighted)
+		}
+		denom[i].Set(&z)
+		denom[i].B0.A0.Sub(&denom[i].B0.A0, &accOmega) // z - ω^i
+		accOmega.Mul(&accOmega, &gen)
+	}
+	invDenom := make([]field.Ext, n)
+	field.VecBatchInvExt(invDenom, denom)
+
+	var sum field.Ext
+	for i := 0; i < n; i++ {
+		var term field.Ext
+		term.Mul(&weightedP[i], &invDenom[i])
+		sum.Add(&sum, &term)
+	}
+	var result field.Ext
+	result.Mul(&zPowNMinusOne, &sum)
+	return result
 }

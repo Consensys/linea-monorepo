@@ -158,9 +158,11 @@ func (op ArithmeticOperator) String() string {
 type ArithmeticOperation struct {
 	Operator ArithmeticOperator
 	Operands []Expression
-	// isMultiValuedCached caches the result of the IsMultiValued traversal.
-	// A nil pointer means the value has not been computed yet.
-	isMultiValuedCached *bool
+	// isMultiValuedOnce ensures the IsMultiValued traversal runs exactly once,
+	// making concurrent calls safe without a mutex.
+	isMultiValuedOnce sync.Once
+	// isMultiValuedResult holds the cached result after the first traversal.
+	isMultiValuedResult bool
 	// once ensures the expression is compiled exactly once, even under
 	// concurrent calls to EvaluateVector.
 	once sync.Once
@@ -197,20 +199,18 @@ func (a *ArithmeticOperation) IsExtension() bool {
 }
 
 // IsMultiValued implements [Expression]. Returns true if any operand is
-// vector-valued. The result is computed once and cached.
+// vector-valued. The result is computed once and cached via a [sync.Once],
+// making concurrent calls safe.
 func (a *ArithmeticOperation) IsMultiValued() bool {
-	if a.isMultiValuedCached != nil {
-		return *a.isMultiValuedCached
-	}
-	result := false
-	for _, o := range a.Operands {
-		if o.IsMultiValued() {
-			result = true
-			break
+	a.isMultiValuedOnce.Do(func() {
+		for _, o := range a.Operands {
+			if o.IsMultiValued() {
+				a.isMultiValuedResult = true
+				return
+			}
 		}
-	}
-	a.isMultiValuedCached = &result
-	return result
+	})
+	return a.isMultiValuedResult
 }
 
 // Degree implements [Expression]. Combines the degrees of the operands using

@@ -175,23 +175,24 @@ func (tr *TableRelation) Check(rt Runtime) error {
 
 // checkPermutation verifies that A and B are equal as multisets of rows.
 //
-// A random extension-field scalar alpha is sampled, and each row is hashed to
-// a single field element via Horner's rule. A is used to populate a counter
-// map; B decrements it. Any non-zero counter at the end signals a mismatch.
+// This is a probabilistic check: a random extension-field scalar alpha is
+// sampled, and each row is hashed to a single field element via Horner's rule.
+// A collision (two distinct rows mapping to the same hash) causes a false
+// negative with probability at most (total rows) / |field|, which is
+// negligible for realistic table sizes. A is used to populate a counter map;
+// B decrements it. Any non-zero counter at the end signals a mismatch.
+//
+// When all column views in a table have zero shift and the module has
+// directional padding, identical padding rows are batch-added/-subtracted as
+// a single count entry rather than being iterated row-by-row.
 func (tr *TableRelation) checkPermutation(rt Runtime) error {
 	alpha := field.RandomElemExt()
 	counts := make(map[field.Ext]int)
 	for _, tab := range tr.A {
-		n := tab.Module().Size()
-		for row := range n {
-			counts[tableRowHash(alpha, rt, tab.Columns, row, n)]++
-		}
+		permTableCountInto(counts, 1, alpha, rt, tab)
 	}
 	for _, tab := range tr.B {
-		n := tab.Module().Size()
-		for row := range n {
-			counts[tableRowHash(alpha, rt, tab.Columns, row, n)]--
-		}
+		permTableCountInto(counts, -1, alpha, rt, tab)
 	}
 	for _, c := range counts {
 		if c != 0 {
@@ -204,17 +205,75 @@ func (tr *TableRelation) checkPermutation(rt Runtime) error {
 	return nil
 }
 
+// permTableCountInto adds sign*(1 per row) into counts for every row in tab.
+// When all column views have zero shift and the module has directional padding,
+// the gap identical padding rows are registered as a single entry with count
+// sign*gap instead of iterating them individually.
+func permTableCountInto(counts map[field.Ext]int, sign int, alpha field.FieldElem, rt Runtime, tab Table) {
+	n := tab.Module().Size()
+	m := tab.Module()
+
+	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
+		for row := range n {
+			counts[tableRowHash(alpha, rt, tab.Columns, row, n)] += sign
+		}
+		return
+	}
+
+	plainLen := rt.GetColumnAssignment(tab.Columns[0].Column).Plain[0].Len()
+	gap := n - plainLen
+	var dataStart int
+	if m.Padding == PaddingDirectionLeft {
+		dataStart = gap
+	}
+
+	if gap > 0 {
+		// All padding rows produce the same per-column values, so their row
+		// hashes are equal. Use the anchor row as a representative.
+		anchor := padAnchorRow(m.Padding, plainLen)
+		counts[tableRowHash(alpha, rt, tab.Columns, anchor, n)] += sign * gap
+	}
+	for row := dataStart; row < dataStart+plainLen; row++ {
+		counts[tableRowHash(alpha, rt, tab.Columns, row, n)] += sign
+	}
+}
+
 // checkInclusion verifies that every selected row of A appears in the union of
 // selected rows across all B fragments.
 //
-// A random extension-field scalar alpha is sampled and used to hash rows via
-// Horner's rule. B's selected rows populate a set; each selected A row is then
-// probed against it.
+// This is a probabilistic check: a random extension-field scalar alpha is
+// sampled and used to hash rows via Horner's rule. A hash collision causes a
+// false negative with probability at most (total rows) / |field|, which is
+// negligible for realistic table sizes. B's selected rows populate a set; each
+// selected A row is then probed against it.
+//
+// When all column views and the selector in a table have zero shift and the
+// module has directional padding, all padding rows produce the same row hash
+// and the same selector value. Rather than iterating the gap identical padding
+// rows, the first padding row (the anchor) is probed once: if selected and
+// absent from B, the check fails immediately; if present, every other selected
+// padding row is also satisfied.
 func (tr *TableRelation) checkInclusion(rt Runtime) error {
 	alpha := field.RandomElemExt()
 	bSet := make(map[field.Ext]struct{})
 	for _, tab := range tr.B {
-		n := tab.Module().Size()
+		inclusionBuildSet(bSet, alpha, rt, tab)
+	}
+	for _, tab := range tr.A {
+		if err := inclusionCheckSet(bSet, alpha, rt, tab, tr.context.Path()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// inclusionBuildSet adds the hashes of all selected rows of tab to bSet.
+// Padding rows are handled with a single anchor probe when applicable.
+func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Runtime, tab Table) {
+	n := tab.Module().Size()
+	m := tab.Module()
+
+	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
 		for row := range n {
 			if tab.Selector != nil {
 				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
@@ -223,9 +282,46 @@ func (tr *TableRelation) checkInclusion(rt Runtime) error {
 			}
 			bSet[tableRowHash(alpha, rt, tab.Columns, row, n)] = struct{}{}
 		}
+		return
 	}
-	for _, tab := range tr.A {
-		n := tab.Module().Size()
+
+	plainLen := rt.GetColumnAssignment(tab.Columns[0].Column).Plain[0].Len()
+	gap := n - plainLen
+	var dataStart int
+	if m.Padding == PaddingDirectionLeft {
+		dataStart = gap
+	}
+
+	if gap > 0 {
+		// All padding rows share the same selector value and row hash.
+		// Probe the anchor once and add the hash at most once.
+		anchor := padAnchorRow(m.Padding, plainLen)
+		paddingSelected := tab.Selector == nil
+		if tab.Selector != nil {
+			sel := tableElemAt(rt, tab.Selector, anchor, n)
+			paddingSelected = !sel.Ext.IsZero()
+		}
+		if paddingSelected {
+			bSet[tableRowHash(alpha, rt, tab.Columns, anchor, n)] = struct{}{}
+		}
+	}
+	for row := dataStart; row < dataStart+plainLen; row++ {
+		if tab.Selector != nil {
+			if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+				continue
+			}
+		}
+		bSet[tableRowHash(alpha, rt, tab.Columns, row, n)] = struct{}{}
+	}
+}
+
+// inclusionCheckSet verifies that all selected rows of tab are present in bSet.
+// Padding rows are checked with a single anchor probe when applicable.
+func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Runtime, tab Table, path string) error {
+	n := tab.Module().Size()
+	m := tab.Module()
+
+	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
 		for row := range n {
 			if tab.Selector != nil {
 				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
@@ -235,9 +331,49 @@ func (tr *TableRelation) checkInclusion(rt Runtime) error {
 			if _, ok := bSet[tableRowHash(alpha, rt, tab.Columns, row, n)]; !ok {
 				return fmt.Errorf(
 					"wiop: TableRelation(%s).Check: Inclusion failed: a row from A is absent from B",
-					tr.context.Path(),
+					path,
 				)
 			}
+		}
+		return nil
+	}
+
+	plainLen := rt.GetColumnAssignment(tab.Columns[0].Column).Plain[0].Len()
+	gap := n - plainLen
+	var dataStart int
+	if m.Padding == PaddingDirectionLeft {
+		dataStart = gap
+	}
+
+	if gap > 0 {
+		// If the anchor padding row is selected and absent from B, all other
+		// selected padding rows would also fail — check once and return early.
+		anchor := padAnchorRow(m.Padding, plainLen)
+		paddingSelected := tab.Selector == nil
+		if tab.Selector != nil {
+			sel := tableElemAt(rt, tab.Selector, anchor, n)
+			paddingSelected = !sel.Ext.IsZero()
+		}
+		if paddingSelected {
+			if _, ok := bSet[tableRowHash(alpha, rt, tab.Columns, anchor, n)]; !ok {
+				return fmt.Errorf(
+					"wiop: TableRelation(%s).Check: Inclusion failed: a row from A is absent from B",
+					path,
+				)
+			}
+		}
+	}
+	for row := dataStart; row < dataStart+plainLen; row++ {
+		if tab.Selector != nil {
+			if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+				continue
+			}
+		}
+		if _, ok := bSet[tableRowHash(alpha, rt, tab.Columns, row, n)]; !ok {
+			return fmt.Errorf(
+				"wiop: TableRelation(%s).Check: Inclusion failed: a row from A is absent from B",
+				path,
+			)
 		}
 	}
 	return nil
@@ -255,14 +391,34 @@ func tableRowHash(alpha field.FieldElem, rt Runtime, cols []*ColumnView, idx, n 
 }
 
 // tableElemAt returns the field element at logical row idx in cv's concrete
-// assignment, applying the cyclic shift. n is the module size.
+// assignment, applying the cyclic shift and the module's padding semantics.
+// n is the module size.
 func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.FieldElem {
 	phys := ((idx + cv.ShiftingOffset) % n + n) % n
-	fv := rt.GetColumnAssignment(cv.Column).Plain[0]
-	if fv.IsBase() {
-		return field.ElemFromBase(fv.AsBase()[phys])
+	return rt.GetColumnAssignment(cv.Column).ElementAt(cv.Column.Module, phys)
+}
+
+// tableHasZeroShift reports whether all column views and the selector (if
+// present) in tab have ShiftingOffset == 0. This is the precondition for the
+// padding-row batching optimisations in permutation and inclusion checks.
+func tableHasZeroShift(tab Table) bool {
+	for _, cv := range tab.Columns {
+		if cv.ShiftingOffset != 0 {
+			return false
+		}
 	}
-	return field.ElemFromExt(fv.AsExt()[phys])
+	return tab.Selector == nil || tab.Selector.ShiftingOffset == 0
+}
+
+// padAnchorRow returns the index of the first padding row, used as a
+// representative of all identical padding rows when all shifts are zero.
+//   - PaddingDirectionLeft:  padding occupies [0, dataStart); anchor is 0.
+//   - PaddingDirectionRight: padding occupies [plainLen, n); anchor is plainLen.
+func padAnchorRow(pd PaddingDirection, plainLen int) int {
+	if pd == PaddingDirectionLeft {
+		return 0
+	}
+	return plainLen
 }
 
 // NewPermutation constructs and registers a Permutation [TableRelation] on sys.
@@ -300,6 +456,7 @@ func (sys *System) NewPermutation(ctx *ContextFrame, A, B []Table) *TableRelatio
 // of selected rows across all including fragments.
 //
 // Invariants enforced at construction:
+//   - included is non-empty.
 //   - including is non-empty.
 //   - All including fragments have the same column width as included.
 //
@@ -308,8 +465,9 @@ func (sys *System) NewInclusion(ctx *ContextFrame, included []Table, including [
 	if ctx == nil {
 		panic("wiop: System.NewInclusion requires a non-nil ContextFrame")
 	}
-	validateNonEmpty("NewInclusion", "including-not-empty", including)
-	validateUniformWidth("NewInclusion/included-same-length", included[0].Width(), including)
+	validateNonEmpty("NewInclusion", "included", included)
+	validateNonEmpty("NewInclusion", "including", including)
+	validateUniformWidth("NewInclusion/included-same-width", included[0].Width(), including)
 	validateUniformWidth("NewInclusion/including-same-width", included[0].Width(), included)
 	return sys.newTableRelation(ctx, TableRelationInclusion, included, including)
 }

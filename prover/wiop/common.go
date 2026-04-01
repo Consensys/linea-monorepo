@@ -79,7 +79,6 @@ func (pd PaddingDirection) String() string {
 	}
 }
 
-
 // ConcreteVector is the evaluated assignment of a [VectorPromise]. Plain holds
 // the field elements in their natural order; Padding is the constant value
 // prepended or appended when the assignment is shorter than the module size
@@ -108,8 +107,13 @@ type ConcreteVector struct {
 //   - [PaddingDirectionRight]: the full column is Plain[0] + [Padding × gap];
 //     rows 0..plainLen-1 index Plain[0], the rest are the padding value.
 //
-// Panics if m is unsized (only PaddingDirectionLeft requires the size).
+// Panics if pos is out of bounds for the module size, or if m is unsized.
 func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.FieldElem {
+	n := m.Size() // panics if unsized
+	if pos < 0 || pos >= n {
+		panic(fmt.Sprintf("wiop: ConcreteVector.ElementAt: pos %d out of bounds [0, %d)", pos, n))
+	}
+
 	vec := cv.Plain[0]
 	plainLen := vec.Len()
 
@@ -118,7 +122,7 @@ func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.FieldElem {
 	case PaddingDirectionNone:
 		// plain is full-sized; direct index.
 	case PaddingDirectionLeft:
-		gap := m.Size() - plainLen // panics if unsized, which is correct
+		gap := n - plainLen
 		if pos < gap {
 			inPadding = true
 		} else {

@@ -116,6 +116,8 @@ func maxRoundInExpr(expr Expression) *Round {
 	switch e := expr.(type) {
 	case *ColumnView:
 		return e.Column.round
+	case *ColumnPosition:
+		return e.Column.round
 	case *Cell:
 		return e.round
 	case *CoinField:

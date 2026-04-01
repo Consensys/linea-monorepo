@@ -213,6 +213,7 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, kind RationalReductio
 	}
 
 	var maxFracRound *Round
+	isExt := false
 	for i, f := range fractions {
 		if f.Numerator == nil {
 			panic(fmt.Sprintf("wiop: System.NewRationalReduction: fraction %d has a nil Numerator", i))
@@ -240,6 +241,9 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, kind RationalReductio
 			if r := maxRoundInExpr(expr); r != nil && (maxFracRound == nil || r.ID > maxFracRound.ID) {
 				maxFracRound = r
 			}
+			if expr.IsExtension() {
+				isExt = true
+			}
 		}
 	}
 
@@ -257,7 +261,7 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, kind RationalReductio
 		))
 	}
 
-	result := resultRound.NewCell(ctx.Childf("result"), false)
+	result := resultRound.NewCell(ctx.Childf("result"), isExt)
 
 	rr := &RationalReduction{
 		baseQuery: baseQuery{

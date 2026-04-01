@@ -1,6 +1,8 @@
 package wiop
 
 import (
+	"fmt"
+
 	field "github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
@@ -244,12 +246,21 @@ func (p *compiledProgram) evaluateVector(rt Runtime) field.FieldVec {
 	n := 0
 	for i, leaf := range p.leaves {
 		cv := leaf.EvaluateVector(rt)
-		if len(cv.Plain) == 0 {
-			panic("wiop: compiler: leaf EvaluateVector returned empty ConcreteVector.Plain")
+		if len(cv.Plain) != 1 {
+			panic(fmt.Sprintf(
+				"wiop: compiler: leaf EvaluateVector returned ConcreteVector.Plain of length %d; expected exactly 1",
+				len(cv.Plain),
+			))
 		}
 		leafVecs[i] = cv.Plain[0]
+		leafLen := leafVecs[i].Len()
 		if i == 0 {
-			n = leafVecs[0].Len()
+			n = leafLen
+		} else if leafLen != n {
+			panic(fmt.Sprintf(
+				"wiop: compiler: leaf %d has length %d but leaf 0 has length %d; all leaves must have the same size",
+				i, leafLen, n,
+			))
 		}
 	}
 
