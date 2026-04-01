@@ -126,8 +126,9 @@ class BundleSelectionTimeoutTest : AbstractSendBundleTest() {
     val mulmodExecutor = deployMulmodExecutor()
 
     // singleBundleSelectionTimeout uses 31 txs × 2_000 iterations to reliably trigger the plugin
-    // timeout (375 ms for a 1-second Clique block). Here we only have 9 txs, so scale the
-    // iterations proportionally (31 / 9 × 2_000 ≈ 7_000) and gas limit accordingly.
+    // timeout (1_875 ms for a 5-second Clique block: 5_000 ms × 75% PoA budget × 50% plugin budget).
+    // Here we only have 9 txs, so scale the iterations proportionally
+    // (31 / 9 × 2_000 ≈ 7_000) and gas limit accordingly.
     val calls = generateMulmodCalls(
       accounts.primaryBenefactor,
       mulmodExecutor,
