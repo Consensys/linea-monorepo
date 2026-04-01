@@ -86,6 +86,10 @@ export function signerUiLastSessionIdStorageKey(apiBaseUrl: string): string {
   return `signerUiLastSessionId:${apiBaseUrl}`;
 }
 
+export function signerUiSessionSecretStorageKey(apiBaseUrl: string): string {
+  return `signerUiSessionSecret:${apiBaseUrl}`;
+}
+
 export function transactionExplorerUrl(blockExplorerUrls: string[], txHash: string): string | null {
   const base = blockExplorerUrls.find((u) => typeof u === "string" && u.length > 0);
   if (!base) {
@@ -127,4 +131,35 @@ export function transactionKindBadgeLabels(details: TransactionDetails | undefin
     labels.push("Proxy admin contract");
   }
   return labels;
+}
+
+export function firstWalletAddress(accounts: readonly string[] | null | undefined): string | null {
+  if (!accounts || accounts.length === 0) {
+    return null;
+  }
+  const [first] = accounts;
+  return typeof first === "string" && first.length > 0 ? first : null;
+}
+
+export function signerAddressMismatch(
+  expectedSignerAddress: string | null | undefined,
+  connectedWalletAddress: string | null | undefined,
+): boolean {
+  if (!expectedSignerAddress || !connectedWalletAddress) {
+    return false;
+  }
+  return expectedSignerAddress.toLowerCase() !== connectedWalletAddress.toLowerCase();
+}
+
+export function canEnableSignButton(params: {
+  isSubmitting: boolean;
+  walletUiReady: boolean;
+  pendingRequestId: string | null | undefined;
+  connectedWalletAddress: string | null | undefined;
+  expectedSignerAddress: string | null | undefined;
+}): boolean {
+  if (params.isSubmitting || !params.walletUiReady || !params.pendingRequestId || !params.connectedWalletAddress) {
+    return false;
+  }
+  return !signerAddressMismatch(params.expectedSignerAddress, params.connectedWalletAddress);
 }

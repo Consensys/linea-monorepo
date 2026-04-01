@@ -17,7 +17,7 @@ export function resolveDeployerAccounts(inputs: ResolveDeployerAccountsInputs = 
 
   const signerModeConflictDetails = {
     hardhatSignerUiEnabled: signerUiEnabled,
-    ...(deployerPrivateKey !== undefined ? { deployerPrivateKey } : {}),
+    deployerPrivateKeyConfigured: hasConfiguredDeployerPrivateKey(deployerPrivateKey),
   };
 
   assertExclusiveSignerMode(signerModeConflictDetails);

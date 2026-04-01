@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { clearUiWorkflowStatus, setUiWorkflowStatus } from "../../scripts/hardhat/signer-ui-bridge";
 import { stringifyVerifyTaskArgs } from "../../scripts/hardhat/verify-task-args";
 import { delay } from "./general";
+import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
 
 const VERIFY_TIMEOUT_MS = 90_000;
 const VERIFY_PROPAGATION_DELAY_MS = 30_000;
@@ -83,7 +83,7 @@ async function runVerifyTaskWithTimeout(
 }
 
 async function verifyBestEffort(task: string, args: Record<string, unknown>, contractAddress: string): Promise<void> {
-  setUiWorkflowStatus(
+  await setSignerUiWorkflowStatus(
     "waiting_for_contract_verification",
     `Waiting for contract verification for ${contractAddress}. Explorer propagation may take around 30 seconds.`,
   );
@@ -109,7 +109,7 @@ async function verifyBestEffort(task: string, args: Record<string, unknown>, con
     console.log(`Verification failed for ${contractAddress}: ${message}`);
     console.log(`Continuing deploy; you can verify ${contractAddress} separately later.`);
   } finally {
-    clearUiWorkflowStatus();
+    await clearSignerUiWorkflowStatus();
   }
 
   if (result === "succeeded") {

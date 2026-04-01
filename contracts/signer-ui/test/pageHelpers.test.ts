@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canEnableSignButton,
+  firstWalletAddress,
   nextWorkflowDisplayState,
   progressStageLabel,
   progressTone,
   scrollToHistoryFragment,
+  signerAddressMismatch,
+  signerUiSessionSecretStorageKey,
   signerTxFragmentId,
   signerUiHistoryStorageKey,
   signerUiLastSessionIdStorageKey,
@@ -40,6 +44,10 @@ test("storage key helpers are deterministic", () => {
     signerUiLastSessionIdStorageKey("http://127.0.0.1:15555"),
     "signerUiLastSessionId:http://127.0.0.1:15555",
   );
+  assert.equal(
+    signerUiSessionSecretStorageKey("http://127.0.0.1:15555"),
+    "signerUiSessionSecret:http://127.0.0.1:15555",
+  );
 });
 
 test("transaction explorer url trims trailing slash and handles missing explorer", () => {
@@ -51,6 +59,52 @@ test("transaction explorer url trims trailing slash and handles missing explorer
 test("fragment id helper sanitizes non-fragment-safe chars", () => {
   assert.equal(signerTxFragmentId("abc-123"), "signer-tx-abc-123");
   assert.equal(signerTxFragmentId("abc/123?x=1"), "signer-tx-abc-123-x-1");
+});
+
+test("wallet address helpers are resilient to missing or mismatched state", () => {
+  assert.equal(firstWalletAddress(undefined), null);
+  assert.equal(firstWalletAddress([]), null);
+  assert.equal(firstWalletAddress(["0xabc", "0xdef"]), "0xabc");
+
+  assert.equal(signerAddressMismatch(undefined, "0xabc"), false);
+  assert.equal(signerAddressMismatch("0xabc", undefined), false);
+  assert.equal(signerAddressMismatch("0xAbC", "0xaBc"), false);
+  assert.equal(signerAddressMismatch("0xabc", "0xdef"), true);
+});
+
+test("sign button enablement follows connected provider address, not only wagmi session state", () => {
+  assert.equal(
+    canEnableSignButton({
+      isSubmitting: false,
+      walletUiReady: true,
+      pendingRequestId: "request-1",
+      connectedWalletAddress: "0xabc",
+      expectedSignerAddress: null,
+    }),
+    true,
+  );
+
+  assert.equal(
+    canEnableSignButton({
+      isSubmitting: false,
+      walletUiReady: true,
+      pendingRequestId: "request-1",
+      connectedWalletAddress: "0xabc",
+      expectedSignerAddress: "0xdef",
+    }),
+    false,
+  );
+
+  assert.equal(
+    canEnableSignButton({
+      isSubmitting: false,
+      walletUiReady: true,
+      pendingRequestId: "request-1",
+      connectedWalletAddress: null,
+      expectedSignerAddress: null,
+    }),
+    false,
+  );
 });
 
 test("transaction kind badges infer OpenZeppelin proxy and proxy admin", () => {

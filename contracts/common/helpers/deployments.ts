@@ -1,5 +1,5 @@
 import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract } from "ethers";
-import { clearUiWorkflowStatus, setUiWorkflowStatus } from "../../scripts/hardhat/signer-ui-bridge";
+import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
 import {
   contractName as ProxyAdminContractName,
   abi as ProxyAdminAbi,
@@ -46,7 +46,10 @@ export async function LogContractDeployment(contractName: string, contract: Base
 
   const receiptPending = deploymentTx.blockNumber === null || deploymentTx.blockNumber === undefined;
   if (receiptPending) {
-    setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+    await setSignerUiWorkflowStatus(
+      "waiting_for_transaction_receipt",
+      `Waiting for transaction receipt for ${contractName}.`,
+    );
   }
 
   let txReceipt;
@@ -54,7 +57,7 @@ export async function LogContractDeployment(contractName: string, contract: Base
     txReceipt = await deploymentTx.wait();
   } finally {
     if (receiptPending) {
-      clearUiWorkflowStatus();
+      await clearSignerUiWorkflowStatus();
     }
   }
 

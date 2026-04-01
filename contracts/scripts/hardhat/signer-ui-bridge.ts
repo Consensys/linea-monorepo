@@ -460,6 +460,22 @@ async function waitForChildEarlyExit(proc: ChildProcess, timeoutMs: number): Pro
   });
 }
 
+function createProcessOutputBuffer(maxChars: number): {
+  append: (chunk: string | Buffer) => void;
+  read: () => string;
+} {
+  let text = "";
+  return {
+    append: (chunk) => {
+      text += chunk.toString();
+      if (text.length > maxChars) {
+        text = text.slice(text.length - maxChars);
+      }
+    },
+    read: () => text.trim(),
+  };
+}
+
 /** When false (default), the Next.js dev server is left running after the HTTP bridge closes so the tab stays usable. */
 function shutdownNextDevWithBridge(): boolean {
   return process.env.HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV === "true";
@@ -1227,15 +1243,26 @@ class SignerUiSession {
     // Launch the local signer-ui app by directory. It remains a private workspace app for deps/tooling,
     // but runtime does not depend on a workspace package name.
     // Never use "pipe" without draining: Next/Turbopack logs fill buffers and the child blocks before listening.
+    const captureStartupLogs = process.env.HARDHAT_SIGNER_UI_DEBUG !== "true";
+    const startupOutput = createProcessOutputBuffer(8000);
     this.uiProcess = spawn(
       "pnpm",
       ["--dir", SIGNER_UI_DIR, "exec", "next", "dev", "--hostname", LOCALHOST, "--port", String(this.uiPort)],
       {
         cwd: SIGNER_UI_DIR,
         env: { ...process.env },
-        stdio: process.env.HARDHAT_SIGNER_UI_DEBUG === "true" ? "inherit" : "ignore",
+        stdio: captureStartupLogs ? "pipe" : "inherit",
       },
     );
+
+    if (captureStartupLogs) {
+      this.uiProcess.stdout?.on("data", (chunk: string | Buffer) => {
+        startupOutput.append(chunk);
+      });
+      this.uiProcess.stderr?.on("data", (chunk: string | Buffer) => {
+        startupOutput.append(chunk);
+      });
+    }
 
     this.uiProcess.on("exit", (code) => {
       if (!this.closed && code !== 0) {
@@ -1245,10 +1272,13 @@ class SignerUiSession {
 
     const earlyExitCode = await waitForChildEarlyExit(this.uiProcess, 3500);
     if (earlyExitCode !== null) {
+      const startupOutputText = startupOutput.read();
+      const startupDetails =
+        startupOutputText.length > 0 ? ` Early output:\n${startupOutputText}` : " No startup output was captured.";
       throw new Error(
         `Signer UI (next dev) exited early with code ${earlyExitCode}. ` +
-          `Next.js 16 allows only one dev server per app — close any other \`next dev\` for contracts/signer-ui, or remove a stale .next/dev/lock. ` +
-          `Re-run with HARDHAT_SIGNER_UI_DEBUG=true to see Next logs.`,
+          `This can be caused by a stale .next/dev/lock, another running \`next dev\` for contracts/signer-ui, or missing signer-ui dependencies after a clean/install change.` +
+          startupDetails,
       );
     }
 

@@ -2,23 +2,23 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { flushSync } from "react-dom";
-import { http, type Chain } from "viem";
-import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
-import { injected } from "wagmi/connectors";
 
 import { HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER, postJson } from "./bridgeApiClient";
 import { LineaWordmark } from "./components/LineaWordmark";
 import {
+  canEnableSignButton,
+  firstWalletAddress,
   nextWorkflowDisplayState,
   progressStageLabel,
   progressTone,
   scrollToHistoryFragment,
+  signerAddressMismatch,
   signerTxFragmentId,
   signerUiHistoryStorageKey,
   signerUiLastSessionIdStorageKey,
+  signerUiSessionSecretStorageKey,
   transactionExplorerUrl,
   transactionKindBadgeLabels,
   type TransactionDetails,
@@ -26,7 +26,6 @@ import {
   type WorkflowStatus,
   workflowStageLabel,
 } from "./pageHelpers";
-import { SIGNER_UI_CHAIN_CATALOG } from "../shared/chainCatalog";
 
 declare global {
   interface Window {
@@ -175,53 +174,20 @@ function TransactionKindBadges({ details }: { details: TransactionPrompt["transa
   );
 }
 
-const knownChainsList: Chain[] = SIGNER_UI_CHAIN_CATALOG.map((entry) => ({
-  id: entry.chainId,
-  name: entry.chainName,
-  nativeCurrency: entry.nativeCurrency,
-  rpcUrls: { default: { http: entry.rpcUrls } },
-  blockExplorers: {
-    default: {
-      name: entry.blockExplorerUrls[0] ? "Explorer" : "Local Explorer",
-      url: entry.blockExplorerUrls[0] ?? "",
-    },
-  },
-}));
-
-function asNonEmptyReadonlyArray<T>(items: readonly T[]): readonly [T, ...T[]] {
-  if (items.length === 0) {
-    throw new Error("SIGNER_UI_CHAIN_CATALOG must define at least one chain.");
-  }
-  return items as readonly [T, ...T[]];
-}
-
-const knownChains = asNonEmptyReadonlyArray(knownChainsList);
 const WORKFLOW_STATUS_MIN_VISIBILITY_MS = 2000;
-
-const queryClient = new QueryClient();
-
-const wagmiConfig = createConfig({
-  chains: knownChains,
-  connectors: [injected()],
-  transports: Object.fromEntries(knownChains.map((chain) => [chain.id, http()])) as Record<
-    number,
-    ReturnType<typeof http>
-  >,
-});
 
 function ContractsDeployUiPage() {
   const searchParams = useSearchParams();
   const apiBaseUrl = searchParams.get("apiBaseUrl");
-  const sessionSecretFromUrl = searchParams.get("sessionToken") ?? searchParams.get("bridgeToken");
+  const sessionSecretFromUrl = searchParams.get("sessionToken");
+  const signerUiDebug = searchParams.get("debugSignerUi") === "1";
   const [sessionSecret, setSessionSecret] = useState<string | null>(null);
   const [sessionAuthReady, setSessionAuthReady] = useState(false);
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending: isConnecting, error: connectError } = useConnect();
-  const { disconnect } = useDisconnect();
   const [session, setSession] = useState<SessionState | null>(null);
   const [deployHistory, setDeployHistory] = useState<CompletedDeploymentTx[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>("Waiting for Hardhat signer session...");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [workflowDisplayState, setWorkflowDisplayState] = useState<{
@@ -233,6 +199,7 @@ function ContractsDeployUiPage() {
   });
   /** Wagmi reconnect differs SSR vs first client paint — gate wallet UI until mount. */
   const [walletUiReady, setWalletUiReady] = useState(false);
+  const [providerWalletAddress, setProviderWalletAddress] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
   const hadSuccessfulBridgeFetch = useRef(false);
   /** After terminal `sessionOutcome`, ignore late poll results (e.g. connection errors). */
@@ -240,11 +207,68 @@ function ContractsDeployUiPage() {
   /** Prevents double submission before React re-renders (wallet popup / network switch). */
   const approveTransactionFlowRef = useRef(false);
 
-  const injectedConnector = connectors[0];
-
   useEffect(() => {
     setWalletUiReady(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) {
+      setProviderWalletAddress(null);
+      return;
+    }
+
+    let cancelled = false;
+    const syncProviderWalletAddress = async () => {
+      try {
+        const accounts = await window.ethereum?.request<string[]>({ method: "eth_accounts" });
+        if (!cancelled) {
+          setProviderWalletAddress(firstWalletAddress(accounts));
+        }
+      } catch {
+        if (!cancelled) {
+          setProviderWalletAddress(null);
+        }
+      }
+    };
+
+    void syncProviderWalletAddress();
+
+    const accountsChanged = (accounts: unknown) => {
+      setProviderWalletAddress(firstWalletAddress(Array.isArray(accounts) ? (accounts as string[]) : undefined));
+    };
+
+    window.ethereum.on?.("accountsChanged", accountsChanged);
+
+    return () => {
+      cancelled = true;
+      window.ethereum?.removeListener?.("accountsChanged", accountsChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!signerUiDebug) {
+      return;
+    }
+    console.info("[signer-ui] wallet state", {
+      providerWalletAddress,
+      sessionWalletAddress: session?.wallet?.address ?? null,
+      resolvedWalletAddress: providerWalletAddress,
+      expectedSignerAddress: session?.expectedSignerAddress ?? null,
+      pendingRequestId: session?.pendingRequest?.id ?? null,
+      sessionEnded,
+      walletUiReady,
+      actionError,
+    });
+  }, [
+    actionError,
+    providerWalletAddress,
+    session?.expectedSignerAddress,
+    session?.pendingRequest?.id,
+    session?.wallet?.address,
+    sessionEnded,
+    signerUiDebug,
+    walletUiReady,
+  ]);
 
   useEffect(() => {
     if (!apiBaseUrl || !session?.sessionId) {
@@ -281,21 +305,24 @@ function ContractsDeployUiPage() {
       return;
     }
 
-    const storageKey = `signerUiSessionSecret:${apiBaseUrl}`;
-    const legacyStorageKey = `lineaDeployUiBridgeToken:${apiBaseUrl}`;
+    const storageKey = signerUiSessionSecretStorageKey(apiBaseUrl);
 
     if (sessionSecretFromUrl) {
       setSessionSecret(sessionSecretFromUrl);
+      try {
+        sessionStorage.setItem(storageKey, sessionSecretFromUrl);
+      } catch {
+        /* storage full or disabled */
+      }
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("sessionToken");
-      nextUrl.searchParams.delete("bridgeToken");
       window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
       setSessionAuthReady(true);
       return;
     }
 
     setSessionSecret((previousSessionSecret) => {
-      return previousSessionSecret ?? sessionStorage.getItem(storageKey) ?? sessionStorage.getItem(legacyStorageKey);
+      return previousSessionSecret ?? sessionStorage.getItem(storageKey);
     });
     setSessionAuthReady(true);
   }, [apiBaseUrl, sessionSecretFromUrl]);
@@ -459,7 +486,8 @@ function ContractsDeployUiPage() {
   }, [deployHistory.length]);
 
   useEffect(() => {
-    if (!apiBaseUrl || !sessionSecret || !isConnected || !address || !window.ethereum || sessionEnded) {
+    const activeWalletAddress = providerWalletAddress;
+    if (!apiBaseUrl || !sessionSecret || !activeWalletAddress || !window.ethereum || sessionEnded) {
       return;
     }
 
@@ -473,7 +501,7 @@ function ContractsDeployUiPage() {
         await postJson(
           `${apiBaseUrl}/api/wallet`,
           {
-            address,
+            address: activeWalletAddress,
             chainId: parseInt(currentChainIdHex, 16),
           },
           sessionSecret,
@@ -500,7 +528,7 @@ function ContractsDeployUiPage() {
       window.ethereum?.removeListener?.("accountsChanged", accountsChanged);
       window.ethereum?.removeListener?.("chainChanged", chainChanged);
     };
-  }, [address, apiBaseUrl, sessionSecret, isConnected, sessionEnded]);
+  }, [apiBaseUrl, providerWalletAddress, sessionSecret, sessionEnded]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !workflowDisplayState.workflow) {
@@ -591,9 +619,67 @@ function ContractsDeployUiPage() {
     }
   };
 
-  const approvePendingRequest = async () => {
-    if (!apiBaseUrl || !sessionSecret || !session?.pendingRequest || !window.ethereum || !address) {
+  const requestWalletAccount = async (): Promise<string | null> => {
+    if (!window.ethereum) {
+      throw new Error("No injected wallet was found in this browser.");
+    }
+
+    try {
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Some wallets do not support wallet_requestPermissions; fall back to eth_requestAccounts.
+    }
+
+    const requestedAccounts = await window.ethereum.request<string[]>({ method: "eth_requestAccounts" });
+    return firstWalletAddress(requestedAccounts);
+  };
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      setActionError("No injected wallet was found in this browser.");
       return;
+    }
+
+    setActionError(null);
+    setIsConnectingWallet(true);
+    try {
+      const nextAddress = await requestWalletAccount();
+      if (signerUiDebug) {
+        console.info("[signer-ui] eth_requestAccounts result", {
+          nextAddress,
+        });
+      }
+      if (!nextAddress) {
+        throw new Error("Wallet did not expose an account after connection.");
+      }
+      setProviderWalletAddress(nextAddress);
+    } catch (error) {
+      setActionError((error as Error).message ?? "Failed to connect wallet.");
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
+
+  const disconnectWallet = () => {
+    setProviderWalletAddress(null);
+    setActionError(null);
+  };
+
+  const approvePendingRequest = async () => {
+    let submissionAddress = providerWalletAddress ?? session?.wallet?.address ?? null;
+    if (!apiBaseUrl || !sessionSecret || !session?.pendingRequest || !window.ethereum) {
+      return;
+    }
+
+    if (!submissionAddress) {
+      submissionAddress = await requestWalletAccount();
+      if (!submissionAddress) {
+        return;
+      }
+      setProviderWalletAddress(submissionAddress);
     }
 
     if (approveTransactionFlowRef.current || isSubmitting) {
@@ -604,14 +690,42 @@ function ContractsDeployUiPage() {
     setActionError(null);
 
     try {
+      const activeSubmissionAddress = submissionAddress;
+      if (signerUiDebug) {
+        console.info("[signer-ui] approvePendingRequest", {
+          activeSubmissionAddress,
+          expectedSignerAddress: session.expectedSignerAddress ?? null,
+          pendingRequestId: session.pendingRequest.id,
+          chainId: session.chain.chainId,
+        });
+      }
+      if (signerAddressMismatch(session.expectedSignerAddress ?? null, activeSubmissionAddress)) {
+        throw new Error(
+          `Expected signer is ${session.expectedSignerAddress}. Disconnect and connect the correct wallet, then try again.`,
+        );
+      }
+
       await ensureTargetChain(session.chain);
+      const currentChainIdHex = await window.ethereum.request<string>({ method: "eth_chainId" });
+      const currentChainId = Number.parseInt(currentChainIdHex, 16);
+      if (!Number.isInteger(currentChainId)) {
+        throw new Error("Wallet did not return a valid chain ID.");
+      }
+      await postJson(
+        `${apiBaseUrl}/api/wallet`,
+        {
+          address: activeSubmissionAddress,
+          chainId: currentChainId,
+        },
+        sessionSecret,
+      );
 
       const hash = await window.ethereum.request<string>({
         method: "eth_sendTransaction",
         params: [
           {
             ...session.pendingRequest.request,
-            from: address,
+            from: activeSubmissionAddress,
           },
         ],
       });
@@ -621,8 +735,8 @@ function ContractsDeployUiPage() {
         {
           requestId: session.pendingRequest.id,
           hash,
-          from: address,
-          chainId: session.chain.chainId,
+          from: activeSubmissionAddress,
+          chainId: currentChainId,
         },
         sessionSecret,
       );
@@ -634,7 +748,7 @@ function ContractsDeployUiPage() {
         label: session.pendingRequest.label,
         description: session.pendingRequest.description,
         txHash: hash,
-        from: address,
+        from: activeSubmissionAddress,
         chainId: session.chain.chainId,
         chainName: session.chain.chainName,
         blockExplorerUrls: session.chain.blockExplorerUrls,
@@ -688,12 +802,16 @@ function ContractsDeployUiPage() {
     pending?.id === progress.requestId;
   const hasWorkflowStatus = workflow !== null;
   const expectedSignerAddress = session?.expectedSignerAddress ?? null;
-  const hasExpectedSignerMismatch =
-    !!expectedSignerAddress &&
-    !!session?.wallet?.address &&
-    expectedSignerAddress.toLowerCase() !== session.wallet.address.toLowerCase();
-  const signPendingDisabled =
-    isSubmitting || !walletUiReady || !isConnected || !pending || !session?.wallet || hasExpectedSignerMismatch;
+  const resolvedWalletAddress = providerWalletAddress;
+  const walletConnected = !!resolvedWalletAddress;
+  const hasExpectedSignerMismatch = signerAddressMismatch(expectedSignerAddress, resolvedWalletAddress);
+  const signPendingDisabled = !canEnableSignButton({
+    isSubmitting,
+    walletUiReady,
+    pendingRequestId: pending?.id,
+    connectedWalletAddress: resolvedWalletAddress,
+    expectedSignerAddress,
+  });
 
   return (
     <div className="deploy-shell">
@@ -760,33 +878,47 @@ function ContractsDeployUiPage() {
           <p>
             {!walletUiReady
               ? "Preparing wallet connection…"
-              : isConnected && address
-                ? `Connected as ${address}`
+              : walletConnected
+                ? `Connected as ${resolvedWalletAddress}`
                 : "Connect the wallet that should sign for this Hardhat script."}
           </p>
           {expectedSignerAddress ? (
             <p className={hasExpectedSignerMismatch ? "deploy-connect-error" : "deploy-expected-signer"}>
               {hasExpectedSignerMismatch
-                ? `Expected signer is ${expectedSignerAddress}. Disconnect and connect the correct wallet.`
+                ? `Connected wallet ${resolvedWalletAddress} does not match expected signer ${expectedSignerAddress}. Choose the correct wallet before signing.`
                 : `Expected signer: ${expectedSignerAddress}`}
             </p>
           ) : null}
           <div className="deploy-actions">
-            {!walletUiReady ? null : !isConnected && injectedConnector ? (
+            {!walletUiReady ? null : !walletConnected ? (
               <button
                 type="button"
                 className="deploy-btn deploy-btn--primary"
-                disabled={isConnecting}
-                onClick={() => connect({ connector: injectedConnector })}
+                disabled={isConnectingWallet}
+                onClick={() => void connectWallet()}
               >
-                {isConnecting ? "Connecting..." : "Connect wallet"}
+                {isConnectingWallet ? "Connecting..." : "Connect wallet"}
               </button>
             ) : null}
-            {!walletUiReady ? null : isConnected ? (
-              <button type="button" className="deploy-btn deploy-btn--secondary" onClick={() => disconnect()}>
+            {!walletUiReady ? null : walletConnected ? (
+              <button type="button" className="deploy-btn deploy-btn--secondary" onClick={() => disconnectWallet()}>
                 Disconnect
               </button>
             ) : null}
+            {!walletUiReady ? null : (
+              <button
+                type="button"
+                className="deploy-btn deploy-btn--secondary"
+                disabled={isConnectingWallet}
+                onClick={() => void connectWallet()}
+              >
+                {isConnectingWallet
+                  ? "Opening wallet..."
+                  : walletConnected
+                    ? "Choose different wallet"
+                    : "Choose wallet"}
+              </button>
+            )}
             {sessionEnded ? null : (
               <button
                 type="button"
@@ -798,7 +930,6 @@ function ContractsDeployUiPage() {
               </button>
             )}
           </div>
-          {connectError ? <p className="deploy-connect-error">{connectError.message}</p> : null}
         </section>
 
         <section className="deploy-card">
@@ -1020,12 +1151,8 @@ function ContractsDeployUiPage() {
 
 export default function Page() {
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <Suspense fallback={null}>
-          <ContractsDeployUiPage />
-        </Suspense>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <Suspense fallback={null}>
+      <ContractsDeployUiPage />
+    </Suspense>
   );
 }

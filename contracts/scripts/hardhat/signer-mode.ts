@@ -1,6 +1,6 @@
 export type SignerModeConflictDetails = {
   hardhatSignerUiEnabled?: boolean;
-  deployerPrivateKey?: string;
+  deployerPrivateKeyConfigured?: boolean;
 };
 
 function hasTrimmedValue(value?: string): boolean {
@@ -27,7 +27,7 @@ export function getSignerModeConflictMessage(): string {
 
 export function assertExclusiveSignerMode(details: SignerModeConflictDetails = {}): void {
   const signerUiEnabled = details.hardhatSignerUiEnabled ?? isSignerUiEnabled();
-  const privateKeyConfigured = hasConfiguredDeployerPrivateKey(details.deployerPrivateKey);
+  const privateKeyConfigured = details.deployerPrivateKeyConfigured ?? hasConfiguredDeployerPrivateKey();
 
   if (signerUiEnabled && privateKeyConfigured) {
     throw new Error(getSignerModeConflictMessage());

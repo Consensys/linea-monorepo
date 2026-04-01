@@ -24,7 +24,7 @@ describe("signer mode and hardhat task-args helpers", () => {
     expect(() =>
       assertExclusiveSignerMode({
         hardhatSignerUiEnabled: true,
-        deployerPrivateKey: "0x1",
+        deployerPrivateKeyConfigured: true,
       }),
     ).to.throw(getSignerModeConflictMessage());
   });
