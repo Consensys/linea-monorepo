@@ -69,9 +69,9 @@ export function parseJestLog(
     }
   }
 
-  if (jobConclusion === "failure") {
-    const parsedFiles = new Set(specResults.map((result) => result.specFile));
+  const parsedFiles = new Set(specResults.map((result) => result.specFile));
 
+  if (jobConclusion === "failure" && parsedFiles.size > 0) {
     for (const specFile of timeoutEligibleSpecFiles) {
       if (!parsedFiles.has(specFile)) {
         specResults.push({

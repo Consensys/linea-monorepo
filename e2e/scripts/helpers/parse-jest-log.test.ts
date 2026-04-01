@@ -136,6 +136,26 @@ Snapshots:   0 total
 Time:        8.88 s
 Ran all test suites.`;
 
+const INFRA_FAILURE_RAW_LOG = `Run nick-fields/retry@ec71cc2ab81d554ebbe88c79ab5975992d79ba08
+Attempt 1
+Error: Timeout of 600000ms hit
+List docker containers/images`;
+
+const EXPLICIT_TIMEOUT_FAILURE_RAW_LOG = `FAIL src/shomei-get-proof.spec.ts (150.801 s)
+  Shomei Linea get proof test suite
+    ✕ Call linea_getProof to Shomei frontend node and get a valid proof (150004 ms)
+
+  ● Shomei Linea get proof test suite › Call linea_getProof to Shomei frontend node and get a valid proof
+
+    thrown: "Exceeded timeout of 150000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        164.144 s
+Ran all test suites.`;
+
 describe("parseJestLog", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -228,6 +248,47 @@ describe("parseJestLog", () => {
         },
       ],
     });
+  });
+
+  it("does not synthesize TIMEOUT results when a failure happens before any top-level spec starts", () => {
+    // Arrange
+    const timeoutEligibleSpecFiles = ["src/l2.spec.ts", "src/messaging.spec.ts"];
+
+    // Act
+    const result = parseJestLog(INFRA_FAILURE_RAW_LOG, "failure", timeoutEligibleSpecFiles);
+
+    // Assert
+    expect(result).toEqual([]);
+  });
+
+  it("keeps explicit Jest timeout failures as FAIL results", () => {
+    // Arrange
+    const timeoutEligibleSpecFiles = ["src/shomei-get-proof.spec.ts", "src/messaging.spec.ts"];
+
+    // Act
+    const result = parseJestLog(EXPLICIT_TIMEOUT_FAILURE_RAW_LOG, "failure", timeoutEligibleSpecFiles);
+
+    // Assert
+    expect(result).toEqual([
+      {
+        specFile: "src/shomei-get-proof.spec.ts",
+        status: "FAIL",
+        durationSeconds: 150.801,
+        tests: [
+          {
+            name: "Call linea_getProof to Shomei frontend node and get a valid proof",
+            durationMs: 150004,
+            status: "failed",
+          },
+        ],
+      },
+      {
+        specFile: "src/messaging.spec.ts",
+        status: "TIMEOUT",
+        durationSeconds: NaN,
+        tests: [],
+      },
+    ]);
   });
 
   it("adds TIMEOUT only for the provided timeout-eligible spec files on failure", () => {
