@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { writeFileSync } from "node:fs";
 
 type JobConclusion = "success" | "failure";
 type SpecStatus = "PASS" | "FAIL" | "TIMEOUT";
@@ -186,9 +187,7 @@ async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eR
     });
 
     const e2eJob = jobsData.jobs.find(
-      (job) =>
-        job.name === E2E_JOB_NAME &&
-        (job.conclusion === "success" || job.conclusion === "failure"),
+      (job) => job.name === E2E_JOB_NAME && (job.conclusion === "success" || job.conclusion === "failure"),
     );
 
     if (!e2eJob) continue;
@@ -201,7 +200,7 @@ async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eR
         job_id: e2eJob.id,
       });
       rawLog = data as unknown as string;
-    } catch (err) {
+    } catch {
       console.warn(`Warning: could not download logs for job ${e2eJob.id} (run ${workflowRun.id}), skipping.`);
       continue;
     }
@@ -223,13 +222,231 @@ async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eR
       rawLog,
     });
 
-    console.log(
-      `  Run ${workflowRun.id} (${e2eJob.conclusion}): fetched ${rawLog.length} bytes of logs`,
-    );
+    console.log(`  Run ${workflowRun.id} (${e2eJob.conclusion}): fetched ${rawLog.length} bytes of logs`);
   }
 
   console.log(`Fetched logs for ${results.length} qualifying E2E runs.`);
   return results;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function stddev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+type ColorLevel = "green" | "yellow" | "red" | "gray";
+
+function getCellColor(duration: number, med: number, sd: number, status: SpecStatus): ColorLevel {
+  if (status === "FAIL" || status === "TIMEOUT") return "red";
+  if (isNaN(duration)) return "gray";
+  if (sd === 0) return "green";
+  if (duration > med + 2 * sd) return "red";
+  if (duration > med + 1 * sd) return "yellow";
+  return "green";
+}
+
+const COLOR_MAP: Record<ColorLevel, string> = {
+  green: "#d4edda",
+  yellow: "#fff3cd",
+  red: "#f8d7da",
+  gray: "#e2e3e5",
+};
+
+function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: ReportSummary } {
+  const allSpecFiles = [...new Set(runResults.flatMap((r) => r.specResults.map((s) => s.specFile)))].sort();
+
+  // Compute per-spec stats from successful runs
+  const specStats = new Map<string, { med: number; sd: number; min: number; max: number; count: number }>();
+  for (const specFile of allSpecFiles) {
+    const durations = runResults
+      .flatMap((r) => r.specResults)
+      .filter((s) => s.specFile === specFile && s.status === "PASS" && !isNaN(s.durationSeconds))
+      .map((s) => s.durationSeconds);
+
+    specStats.set(specFile, {
+      med: median(durations),
+      sd: stddev(durations),
+      min: durations.length > 0 ? Math.min(...durations) : NaN,
+      max: durations.length > 0 ? Math.max(...durations) : NaN,
+      count: durations.length,
+    });
+  }
+
+  // Sort spec files by median duration descending
+  const sortedSpecs = [...allSpecFiles].sort((a, b) => (specStats.get(b)?.med ?? 0) - (specStats.get(a)?.med ?? 0));
+
+  const totalRuns = runResults.length;
+  const passedRuns = runResults.filter((r) => r.run.jobConclusion === "success").length;
+  const failedRuns = totalRuns - passedRuns;
+
+  const startDate = runResults[0].run.startedAt.split("T")[0];
+  const endDate = runResults[runResults.length - 1].run.startedAt.split("T")[0];
+  const dateRange = `${startDate} to ${endDate}`;
+
+  const slowestEntry = sortedSpecs[0];
+  const slowestMedian = specStats.get(slowestEntry)?.med ?? 0;
+
+  const summary: ReportSummary = {
+    totalRuns,
+    passedRuns,
+    failedRuns,
+    dateRange,
+    slowestSpec: slowestEntry,
+    slowestSpecMedianSeconds: Math.round(slowestMedian * 10) / 10,
+  };
+
+  // Build HTML
+  const css = `
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; color: #333; }
+    h1, h2, h3 { color: #1a1a1a; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: center; font-size: 13px; }
+    th { background-color: #f5f5f5; font-weight: 600; position: sticky; top: 0; }
+    td.spec-name { text-align: left; font-family: monospace; font-size: 12px; white-space: nowrap; }
+    .header-stats { display: flex; gap: 24px; margin-bottom: 16px; }
+    .stat { font-size: 14px; }
+    .stat strong { font-size: 20px; }
+    details { margin-bottom: 12px; }
+    summary { cursor: pointer; font-weight: 600; font-family: monospace; padding: 4px 0; }
+    .detail-table td { font-size: 12px; }
+    .skipped { color: #888; font-style: italic; }
+    .timeline-container { overflow-x: auto; }
+  `;
+
+  // Timeline table header
+  const timelineHeaders = runResults
+    .map((r) => {
+      const date = r.run.startedAt.split("T")[0].slice(5); // MM-DD
+      const sha = r.run.commitSha.slice(0, 7);
+      const icon = r.run.jobConclusion === "failure" ? " X" : "";
+      return `<th title="${r.run.startedAt}\n${r.run.commitSha}">${date}<br>${sha}${icon}</th>`;
+    })
+    .join("\n            ");
+
+  // Timeline table rows
+  const timelineRows = sortedSpecs
+    .map((specFile) => {
+      const stats = specStats.get(specFile)!;
+      const cells = runResults
+        .map((r) => {
+          const spec = r.specResults.find((s) => s.specFile === specFile);
+          if (!spec) return `<td style="background:${COLOR_MAP.gray}">-</td>`;
+
+          const color = getCellColor(spec.durationSeconds, stats.med, stats.sd, spec.status);
+          if (spec.status === "TIMEOUT") return `<td style="background:${COLOR_MAP.red}">TIMEOUT</td>`;
+          if (spec.status === "FAIL")
+            return `<td style="background:${COLOR_MAP.red}">FAIL ${spec.durationSeconds.toFixed(1)}s</td>`;
+          return `<td style="background:${COLOR_MAP[color]}">${spec.durationSeconds.toFixed(1)}s</td>`;
+        })
+        .join("");
+
+      const shortName = specFile.replace("src/", "").replace(".spec.ts", "");
+      return `<tr><td class="spec-name">${shortName}</td>${cells}</tr>`;
+    })
+    .join("\n          ");
+
+  // Summary table rows (color-code median cell: red if any run had FAIL/TIMEOUT)
+  const summaryRows = sortedSpecs
+    .map((specFile) => {
+      const stats = specStats.get(specFile)!;
+      const shortName = specFile.replace("src/", "").replace(".spec.ts", "");
+      const hasFailures = runResults.some((r) =>
+        r.specResults.some((s) => s.specFile === specFile && (s.status === "FAIL" || s.status === "TIMEOUT")),
+      );
+      const medColor: ColorLevel = isNaN(stats.med) ? "gray" : hasFailures ? "red" : "green";
+      return `<tr>
+            <td class="spec-name">${shortName}</td>
+            <td style="background:${COLOR_MAP[medColor]}">${isNaN(stats.med) ? "-" : stats.med.toFixed(1)}</td>
+            <td>${isNaN(stats.min) ? "-" : stats.min.toFixed(1)}</td>
+            <td>${isNaN(stats.max) ? "-" : stats.max.toFixed(1)}</td>
+            <td>${stats.count}</td>
+          </tr>`;
+    })
+    .join("\n          ");
+
+  // Detail sections
+  const detailSections = sortedSpecs
+    .map((specFile) => {
+      const shortName = specFile.replace("src/", "").replace(".spec.ts", "");
+      const rows = runResults
+        .flatMap((r) => {
+          const spec = r.specResults.find((s) => s.specFile === specFile);
+          if (!spec || spec.tests.length === 0) return [];
+          const date = r.run.startedAt.split("T")[0];
+          return spec.tests.map(
+            (t) =>
+              `<tr class="${t.status === "skipped" ? "skipped" : ""}">
+                <td>${date}</td>
+                <td style="text-align:left">${t.name}</td>
+                <td>${t.status === "skipped" ? "-" : t.durationMs}</td>
+                <td>${t.status}</td>
+              </tr>`,
+          );
+        })
+        .join("\n            ");
+
+      return `<details>
+        <summary>${shortName}</summary>
+        <table class="detail-table">
+          <thead><tr><th>Date</th><th>Test Name</th><th>Duration (ms)</th><th>Status</th></tr></thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </details>`;
+    })
+    .join("\n      ");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>E2E CI Runtime Report</title>
+  <style>${css}</style>
+</head>
+<body>
+  <h1>E2E CI Runtime Report</h1>
+  <div class="header-stats">
+    <div class="stat"><strong>${totalRuns}</strong> runs</div>
+    <div class="stat"><strong>${passedRuns}</strong> passed</div>
+    <div class="stat"><strong>${failedRuns}</strong> failed</div>
+    <div class="stat">Period: ${dateRange}</div>
+    <div class="stat">Generated: ${new Date().toISOString()}</div>
+  </div>
+
+  <h2>Summary</h2>
+  <table>
+    <thead><tr><th>Spec File</th><th>Median (s)</th><th>Min (s)</th><th>Max (s)</th><th>Runs</th></tr></thead>
+    <tbody>
+      ${summaryRows}
+    </tbody>
+  </table>
+
+  <h2>Timeline</h2>
+  <div class="timeline-container">
+    <table>
+      <thead><tr><th>Spec File</th>${timelineHeaders}</tr></thead>
+      <tbody>
+        ${timelineRows}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Test Case Details</h2>
+  ${detailSections}
+</body>
+</html>`;
+
+  return { html, summary };
 }
 
 async function main(): Promise<void> {
@@ -269,6 +486,13 @@ async function main(): Promise<void> {
   }
 
   // Phase 3: Render
+  const { html, summary } = renderHtmlReport(runResults);
+
+  writeFileSync("e2e-runtime-report.html", html);
+  writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(summary));
+
+  console.log(`Report written to e2e-runtime-report.html`);
+  console.log(`Summary: ${JSON.stringify(summary)}`);
 
   console.log("Done.");
 }
