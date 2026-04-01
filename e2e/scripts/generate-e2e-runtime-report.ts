@@ -472,6 +472,17 @@ async function main(): Promise<void> {
   const runsWithLogs = await fetchE2eRuns(octokit, days);
   if (runsWithLogs.length === 0) {
     console.log("No qualifying E2E runs found. Exiting.");
+    // Write a sentinel so downstream workflow steps (cat summary, Slack post) don't fail
+    // with "No such file or directory" when there's nothing to report.
+    const emptySummary: ReportSummary = {
+      totalRuns: 0,
+      passedRuns: 0,
+      failedRuns: 0,
+      dateRange: "N/A",
+      slowestSpec: "N/A",
+      slowestSpecMedianSeconds: 0,
+    };
+    writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary));
     process.exit(0);
   }
 
