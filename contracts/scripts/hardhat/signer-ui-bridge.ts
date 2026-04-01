@@ -13,7 +13,10 @@ import {
   TransactionRequest,
   TransactionResponse,
   getAddress,
+  getBytes,
+  hexlify,
   isAddress,
+  keccak256,
   toQuantity,
 } from "ethers";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -194,8 +197,24 @@ const SERVER_CLOSE_TIMEOUT_MS = 3000;
 const HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER = "x-hardhat-signer-ui-session-token";
 /** Reject huge JSON bodies on the local bridge (DoS / accidental OOM). */
 const MAX_JSON_BODY_BYTES = 256 * 1024;
-const TX_LOOKUP_TIMEOUT_MS = 12_000;
+const TX_LOOKUP_TIMEOUT_MS_DEFAULT = 12_000;
 const TX_LOOKUP_INTERVAL_MS = 200;
+
+/**
+ * Some RPC / wallet paths (e.g. private submission) return txs slowly; override with
+ * HARDHAT_SIGNER_UI_TX_LOOKUP_TIMEOUT_MS (milliseconds, 1000–300000).
+ */
+function getSignerUiTxLookupTimeoutMs(): number {
+  const raw = getOptionalEnvVar("HARDHAT_SIGNER_UI_TX_LOOKUP_TIMEOUT_MS");
+  if (raw === undefined || raw === "") {
+    return TX_LOOKUP_TIMEOUT_MS_DEFAULT;
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    return TX_LOOKUP_TIMEOUT_MS_DEFAULT;
+  }
+  return Math.min(Math.max(n, 1000), 300_000);
+}
 /** Time to allow the browser to poll terminal `sessionOutcome` before the bridge closes (deploy batch only). */
 const DEFAULT_SHUTDOWN_DRAIN_MS = 1500;
 /** After the bridge port closes, wait before SIGTERM on Next so the UI can observe connection loss first. */
@@ -581,6 +600,55 @@ function normalizeCalldataHex(data: string | null | undefined): string {
   return d.startsWith("0x") ? d : `0x${d}`;
 }
 
+function isAsciiHexDigitByte(b: number): boolean {
+  return (b >= 0x30 && b <= 0x39) || (b >= 0x41 && b <= 0x46) || (b >= 0x61 && b <= 0x66);
+}
+
+/**
+ * Some wallets / RPCs return `input` where each byte is an ASCII hex character of the real calldata
+ * (double-encoded: UTF-8 bytes spell "60806040…" instead of raw 0x60,0x80,0x60,0x40…).
+ * Length is typically 2× the real bytecode. Sepolia often returns normal hex; mainnet + MetaMask
+ * private flows have been observed to return this shape.
+ */
+function tryDecodeHexAsciiEncodedCalldata(normalizedLowerHex: string): string | null {
+  if (normalizedLowerHex === "0x" || normalizedLowerHex.length < 6) {
+    return null;
+  }
+  if ((normalizedLowerHex.length - 2) % 2 !== 0) {
+    return null;
+  }
+  let bytes: Uint8Array;
+  try {
+    bytes = getBytes(normalizedLowerHex);
+  } catch {
+    return null;
+  }
+  if (bytes.length < 4 || bytes.length % 2 !== 0) {
+    return null;
+  }
+  for (let i = 0; i < bytes.length; i++) {
+    if (!isAsciiHexDigitByte(bytes[i]!)) {
+      return null;
+    }
+  }
+  const ascii = Buffer.from(bytes).toString("latin1").toLowerCase();
+  try {
+    const inner = getBytes(`0x${ascii}`);
+    if (inner.length === 0) {
+      return null;
+    }
+    return normalizeCalldataHex(hexlify(inner));
+  } catch {
+    return null;
+  }
+}
+
+/** Normalize RPC `tx.data` for comparison to Hardhat’s requested calldata. */
+function normalizeTxDataForSignerUiValidation(data: string | null | undefined): string {
+  const base = normalizeCalldataHex(data);
+  return tryDecodeHexAsciiEncodedCalldata(base) ?? base;
+}
+
 function hexQuantityToBigInt(hex: HexString | undefined): bigint {
   if (hex === undefined || hex === "0x") {
     return 0n;
@@ -657,10 +725,10 @@ function getOnChainTransactionPromptMismatch(
     }
   }
 
-  const normalizedActualData = normalizeCalldataHex(tx.data);
   const normalizedExpectedData = normalizeCalldataHex(promptRequest.data);
+  const normalizedActualData = normalizeTxDataForSignerUiValidation(tx.data);
   if (normalizedActualData !== normalizedExpectedData) {
-    return `Calldata mismatch: expected ${normalizedExpectedData}, got ${normalizedActualData}.`;
+    return `Calldata mismatch: expected ${normalizedExpectedData}, got ${normalizeCalldataHex(tx.data)}.`;
   }
 
   const expectedValue = hexQuantityToBigInt(promptRequest.value);
@@ -670,6 +738,102 @@ function getOnChainTransactionPromptMismatch(
   }
 
   return null;
+}
+
+function hexPayloadByteLength(normalizedHex: string): number {
+  if (normalizedHex === "0x" || normalizedHex.length <= 2) {
+    return 0;
+  }
+  return (normalizedHex.length - 2) / 2;
+}
+
+function safeKeccak256HexPayload(normalizedHex: string): string {
+  try {
+    if (normalizedHex === "0x" || normalizedHex.length <= 2) {
+      return keccak256("0x");
+    }
+    return keccak256(normalizedHex);
+  } catch {
+    return "(keccak256 failed)";
+  }
+}
+
+/** First byte index (0-based) where hex payloads differ, or null if identical. */
+function firstDifferingDataByteIndex(expected: string, got: string): number | null {
+  let i = 2;
+  while (i < expected.length && i < got.length && expected[i] === got[i]) {
+    i++;
+  }
+  if (i >= expected.length && i >= got.length) {
+    return null;
+  }
+  return Math.floor((i - 2) / 2);
+}
+
+/**
+ * Logs compact fingerprints when `/api/respond` validation fails (RPC tx vs Hardhat prompt).
+ * Full mismatch strings can be megabytes for contract creation; keep stderr usable.
+ */
+function logSignerUiSubmittedTxMismatchDiagnostics(params: {
+  txHash: string;
+  mismatch: string;
+  tx: TransactionResponse;
+  promptRequest: SerializedTransactionRequest;
+}): void {
+  const { txHash, mismatch, tx, promptRequest } = params;
+  const expData = normalizeCalldataHex(promptRequest.data);
+  const gotDataRaw = normalizeCalldataHex(tx.data);
+  const gotDataNormalized = normalizeTxDataForSignerUiValidation(tx.data);
+  const rpcCalldataWasHexAsciiEncoded = tryDecodeHexAsciiEncodedCalldata(gotDataRaw) !== null;
+  const headChars = 2 + 128; // 0x + 64 bytes hex
+  const tailChars = 128;
+
+  const summaryLine =
+    mismatch.startsWith("Calldata mismatch:") && mismatch.length > 220
+      ? "Calldata mismatch (expected Hardhat `data` !== RPC `tx.data`; details below)."
+      : mismatch.length > 400
+        ? `${mismatch.slice(0, 400)}…`
+        : mismatch;
+
+  console.warn("HARDHAT_SIGNER_UI: submitted transaction did not match the pending request.");
+  console.warn(`HARDHAT_SIGNER_UI: ${summaryLine}`);
+  console.warn(
+    "HARDHAT_SIGNER_UI: mismatch diagnostics:",
+    JSON.stringify(
+      {
+        txHash,
+        txChainId: tx.chainId !== null && tx.chainId !== undefined ? Number(tx.chainId) : null,
+        promptChainId:
+          promptRequest.chainId !== undefined && promptRequest.chainId !== null ? promptRequest.chainId : null,
+        txType: tx.type,
+        txNonce: tx.nonce,
+        txFrom: tx.from ?? null,
+        toExpected:
+          promptRequest.to === undefined || promptRequest.to === null || promptRequest.to === ""
+            ? null
+            : promptRequest.to,
+        toFromRpc: tx.to ?? null,
+        valueExpected: promptRequest.value ?? null,
+        valueFromRpc: tx.value !== null && tx.value !== undefined ? tx.value.toString() : null,
+        rpcCalldataWasHexAsciiEncoded,
+        dataByteLengthExpected: hexPayloadByteLength(expData),
+        dataByteLengthFromRpcRaw: hexPayloadByteLength(gotDataRaw),
+        dataByteLengthFromRpcNormalized: hexPayloadByteLength(gotDataNormalized),
+        dataKeccakExpected: safeKeccak256HexPayload(expData),
+        dataKeccakFromRpcNormalized: safeKeccak256HexPayload(gotDataNormalized),
+        firstDifferingDataByteIndex: firstDifferingDataByteIndex(expData, gotDataNormalized),
+        expectedDataHead: expData.slice(0, Math.min(headChars, expData.length)),
+        rpcDataHeadNormalized: gotDataNormalized.slice(0, Math.min(headChars, gotDataNormalized.length)),
+        expectedDataTail: expData.length > headChars ? expData.slice(-Math.min(tailChars, expData.length - 2)) : null,
+        rpcDataTailNormalized:
+          gotDataNormalized.length > headChars
+            ? gotDataNormalized.slice(-Math.min(tailChars, gotDataNormalized.length - 2))
+            : null,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 /**
@@ -1395,7 +1559,7 @@ class SignerUiSession {
       const onChain = await getTransactionWithRetry(
         this.context.provider,
         raw.hash,
-        TX_LOOKUP_TIMEOUT_MS,
+        getSignerUiTxLookupTimeoutMs(),
         TX_LOOKUP_INTERVAL_MS,
       );
 
@@ -1424,6 +1588,12 @@ class SignerUiSession {
         this.walletState.address,
       );
       if (mismatch) {
+        logSignerUiSubmittedTxMismatchDiagnostics({
+          txHash: raw.hash,
+          mismatch,
+          tx: onChain,
+          promptRequest: this.pendingRequest.prompt.request,
+        });
         this.setTransactionProgress(
           raw.requestId,
           "failed",
