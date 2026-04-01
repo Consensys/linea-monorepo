@@ -1,5 +1,5 @@
 import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract } from "ethers";
-import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
+import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus.js";
 import {
   contractName as ProxyAdminContractName,
   abi as ProxyAdminAbi,

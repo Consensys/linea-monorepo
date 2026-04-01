@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { stringifyVerifyTaskArgs } from "../../scripts/hardhat/verify-task-args";
-import { delay } from "./general";
-import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
+import { stringifyVerifyTaskArgs } from "../../scripts/hardhat/verify-task-args.js";
+import { delay } from "./general.js";
+import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus.js";
 
 const VERIFY_TIMEOUT_MS = 90_000;
 const VERIFY_PROPAGATION_DELAY_MS = 30_000;
