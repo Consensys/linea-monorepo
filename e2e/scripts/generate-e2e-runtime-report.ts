@@ -315,7 +315,8 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const dateRange = `${startDate} to ${endDate}`;
 
   const slowestEntry = sortedSpecs[0];
-  const slowestMedian = specStats.get(slowestEntry)?.med ?? 0;
+  const rawSlowestMedian = specStats.get(slowestEntry)?.med ?? NaN;
+  const slowestMedian = isNaN(rawSlowestMedian) ? 0 : rawSlowestMedian;
 
   const summary: ReportSummary = {
     totalRuns,
