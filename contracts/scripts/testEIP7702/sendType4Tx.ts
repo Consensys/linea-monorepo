@@ -1,7 +1,8 @@
-import { Authorization, ethers } from "ethers";
-import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
-import * as dotenv from "dotenv";
 import { generateFunctionSelector } from "contracts/common/helpers";
+import * as dotenv from "dotenv";
+import { Authorization, ethers } from "ethers";
+
+import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
 
 // Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. TestEIP7702Delegation
 // Use this contract for TARGET_ADDRESS env
