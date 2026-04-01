@@ -10,10 +10,6 @@ on:
         required: false
         type: number
         default: 30
-  # Temporary trigger for validating this workflow before switching back to schedule-only.
-  pull_request:
-    branches:
-      - main
   schedule:
     - cron: "0 0 1 * *"
 
@@ -36,7 +32,7 @@ jobs:
       - name: Generate E2E runtime report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm -F e2e run generate-runtime-report -- --days ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.days || 5 }}
+        run: pnpm -F e2e run generate-runtime-report -- --days ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.days || 30 }}
 
       - name: Read summary
         id: summary
