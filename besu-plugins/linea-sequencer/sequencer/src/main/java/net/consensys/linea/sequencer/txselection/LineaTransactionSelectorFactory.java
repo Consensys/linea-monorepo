@@ -9,11 +9,9 @@
 
 package net.consensys.linea.sequencer.txselection;
 
-import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.INVALID_TX_EVALUATION_TOO_LONG;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN_SELECTION_TIMEOUT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN_SELECTION_TIMEOUT_INVALID_TX;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
-import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.TX_EVALUATION_TOO_LONG;
 
 import java.time.Instant;
 import java.util.List;
