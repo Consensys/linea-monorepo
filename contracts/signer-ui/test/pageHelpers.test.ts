@@ -65,7 +65,7 @@ test("transaction kind badges infer OpenZeppelin proxy and proxy admin", () => {
   assert.deepEqual(transactionKindBadgeLabels(undefined), []);
 });
 
-test("the workflow display state keeps status visible for minimum duration after source clears", () => {
+test("state status visible after source clears", () => {
   const receiptStatus: WorkflowStatus = {
     stage: "waiting_for_transaction_receipt",
     message: "Waiting for transaction receipt for TestContract.",
