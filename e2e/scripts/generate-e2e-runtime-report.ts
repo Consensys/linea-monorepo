@@ -407,7 +407,7 @@ async function main(): Promise<void> {
       slowestSpec: "N/A",
       slowestSpecMedianSeconds: 0,
     };
-    writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary));
+    writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary) + "\n");
     process.exit(0);
   }
 
@@ -432,7 +432,7 @@ async function main(): Promise<void> {
   const { html, summary } = renderHtmlReport(runResults);
 
   writeFileSync("e2e-runtime-report.html", html);
-  writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(summary));
+  writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(summary) + "\n");
 
   console.log(`Report written to e2e-runtime-report.html`);
   console.log(`Summary: ${JSON.stringify(summary)}`);
