@@ -1,8 +1,9 @@
 import { ethers } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(
   "20_deploy_V3DexSwapAdapter.ts",

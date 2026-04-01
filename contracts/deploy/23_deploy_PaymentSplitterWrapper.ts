@@ -1,9 +1,10 @@
 import { isAddress } from "ethers";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
-import { deployFromFactory } from "../scripts/hardhat/utils";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployFromFactory } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "23_deploy_PaymentSplitterWrapper.ts",

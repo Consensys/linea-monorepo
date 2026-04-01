@@ -1,7 +1,7 @@
 import { ethers, upgrades } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { BridgedToken } from "../typechain-types";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import { tryVerifyContract } from "../common/helpers";
 import {
   clearUiWorkflowStatus,
@@ -9,6 +9,7 @@ import {
   setUiWorkflowStatus,
   withSignerUiSession,
 } from "../scripts/hardhat/signer-ui-bridge";
+import { BridgedToken } from "../typechain-types";
 
 const func: DeployFunction = withSignerUiSession(
   "05_deploy_BridgedToken.ts",

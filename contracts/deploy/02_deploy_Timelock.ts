@@ -1,10 +1,11 @@
 import { ethers } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory } from "../scripts/hardhat/utils";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
-import { get1559Fees } from "../scripts/utils";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployFromFactory } from "../scripts/hardhat/utils";
+import { get1559Fees } from "../scripts/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "02_deploy_Timelock.ts",

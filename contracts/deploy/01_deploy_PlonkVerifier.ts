@@ -1,16 +1,17 @@
+import { Mimc } from "contracts/typechain-types";
+import { toBeHex } from "ethers";
 import { ethers } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory, deployFromFactoryWithOpts } from "../scripts/hardhat/utils";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import {
   getRequiredEnvVar,
   LogContractDeployment,
   tryVerifyContract,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
-import { toBeHex } from "ethers";
-import { Mimc } from "contracts/typechain-types";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployFromFactory, deployFromFactoryWithOpts } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "01_deploy_PlonkVerifier.ts",

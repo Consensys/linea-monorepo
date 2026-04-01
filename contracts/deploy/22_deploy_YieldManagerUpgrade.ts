@@ -1,8 +1,9 @@
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { deployFromFactory } from "../scripts/hardhat/utils";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployFromFactory } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "22_deploy_YieldManagerUpgrade.ts",

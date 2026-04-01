@@ -1,6 +1,7 @@
 import { ethers, network, upgrades } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+
 import {
   TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
   TOKEN_BRIDGE_ROLES,
@@ -13,13 +14,13 @@ import {
   getRequiredEnvVar,
   LogContractDeployment,
 } from "../common/helpers";
-import { get1559Fees } from "../scripts/utils";
 import {
   clearUiWorkflowStatus,
   getUiSigner,
   setUiWorkflowStatus,
   withSignerUiSession,
 } from "../scripts/hardhat/signer-ui-bridge";
+import { get1559Fees } from "../scripts/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "06_deploy_TokenBridge.ts",

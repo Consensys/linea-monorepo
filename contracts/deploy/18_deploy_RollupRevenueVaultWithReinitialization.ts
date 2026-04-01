@@ -1,8 +1,9 @@
-import { DeployFunction } from "hardhat-deploy/types";
-import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
+import { RollupRevenueVault__factory } from "contracts/typechain-types";
 import { ethers, upgrades } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { RollupRevenueVault__factory } from "contracts/typechain-types";
+import { DeployFunction } from "hardhat-deploy/types";
+
+import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(

@@ -1,8 +1,9 @@
 import { DeployFunction } from "hardhat-deploy/types";
+
+import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "../common/constants";
+import { tryVerifyContract, LogContractDeployment, getRequiredEnvVar } from "../common/helpers";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
-import { tryVerifyContract, LogContractDeployment, getRequiredEnvVar } from "../common/helpers";
-import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "../common/constants";
 
 const func: DeployFunction = withSignerUiSession("18_deploy_RollupRevenueVault.ts", async function () {
   const contractName = "RollupRevenueVault";

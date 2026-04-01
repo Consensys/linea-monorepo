@@ -1,8 +1,9 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Contract } from "ethers";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+
+import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
 import { getUiSigner } from "../../../../scripts/hardhat/signer-ui-bridge";
-import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 
 export interface ClaimParams {
   proof: string[];

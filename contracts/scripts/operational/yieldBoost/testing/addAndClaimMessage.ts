@@ -1,7 +1,8 @@
 import { task } from "hardhat/config";
+
+import { prepareAndAddMessageMerkleRoot } from "./addAndClaimMessageHelper";
 import { delay } from "../../../../common/helpers/general";
 import { runWithSignerUiSession } from "../../../../scripts/hardhat/signer-ui-bridge";
-import { prepareAndAddMessageMerkleRoot } from "./addAndClaimMessageHelper";
 
 /*
   *******************************************************************************************

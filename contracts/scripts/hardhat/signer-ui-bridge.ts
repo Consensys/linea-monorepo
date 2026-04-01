@@ -1,9 +1,3 @@
-import { ChildProcess, execFileSync, spawn } from "node:child_process";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
-import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
 import {
   AbstractSigner,
   AddressLike,
@@ -19,14 +13,22 @@ import {
   keccak256,
   toQuantity,
 } from "ethers";
-import type { HardhatRuntimeEnvironment } from "hardhat/types";
-import { getBlockchainNode, getL2BlockchainNode } from "../../common";
-import { getOptionalEnvVar } from "../../common/helpers/environment";
+import { ChildProcess, execFileSync, spawn } from "node:child_process";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+
 import {
   assertExclusiveSignerMode,
   hasConfiguredDeployerPrivateKey,
   isSignerUiEnabled as isSignerUiEnabledFromMode,
 } from "./signer-mode";
+import { getBlockchainNode, getL2BlockchainNode } from "../../common";
+import { getOptionalEnvVar } from "../../common/helpers/environment";
+
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export const isSignerUiEnabled = isSignerUiEnabledFromMode;
 

@@ -1,13 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
-import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
-import {
-  generateRoleAssignments,
-  getEnvVarOrDefault,
-  getRequiredEnvVar,
-  tryVerifyContract,
-  LogContractDeployment,
-} from "../common/helpers";
+
 import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
@@ -16,6 +8,15 @@ import {
   OPERATOR_ROLE,
   ADDRESS_ZERO,
 } from "../common/constants";
+import {
+  generateRoleAssignments,
+  getEnvVarOrDefault,
+  getRequiredEnvVar,
+  tryVerifyContract,
+  LogContractDeployment,
+} from "../common/helpers";
+import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", async function () {
   const contractName = "LineaRollup";

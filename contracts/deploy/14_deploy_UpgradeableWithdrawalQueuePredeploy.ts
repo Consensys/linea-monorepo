@@ -1,8 +1,9 @@
 import { DeployFunction } from "hardhat-deploy/types";
+
+import { EMPTY_INITIALIZE_SIGNATURE } from "../common/constants";
+import { tryVerifyContract, LogContractDeployment } from "../common/helpers";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
-import { tryVerifyContract, LogContractDeployment } from "../common/helpers";
-import { EMPTY_INITIALIZE_SIGNATURE } from "../common/constants";
 
 const func: DeployFunction = withSignerUiSession("14_deploy_UpgradeableWithdrawalQueuePredeploy.ts", async function () {
   const contractName = "UpgradeableWithdrawalQueuePredeploy";

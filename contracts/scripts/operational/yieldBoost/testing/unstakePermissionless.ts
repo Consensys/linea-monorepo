@@ -1,6 +1,3 @@
-import { task } from "hardhat/config";
-import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
-import { getUiSigner, runWithSignerUiSession } from "../../../../scripts/hardhat/signer-ui-bridge";
 import {
   fetchBeaconHeader,
   fetchBeaconState,
@@ -8,9 +5,13 @@ import {
 } from "@lidofinance/lsv-cli/dist/utils/fetchCL";
 import { createBeaconHeaderProof, createStateProof } from "@lidofinance/lsv-cli/dist/utils/proof/proofs.js";
 import { hexlify, AbiCoder } from "ethers";
+import * as fs from "fs";
+import { task } from "hardhat/config";
 import * as path from "path";
 import { pathToFileURL } from "url";
-import * as fs from "fs";
+
+import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
+import { getUiSigner, runWithSignerUiSession } from "../../../../scripts/hardhat/signer-ui-bridge";
 
 const gIndexPendingPartialWithdrawals = 99n;
 

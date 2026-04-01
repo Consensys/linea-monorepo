@@ -1,11 +1,12 @@
 import fs from "fs";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
 import path from "path";
-import { deployUpgradableWithAbiAndByteCode } from "../scripts/hardhat/utils";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+
 import { tryVerifyContract, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 import { abi, bytecode } from "./V1/L2MessageServiceV1Deployed.json";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployUpgradableWithAbiAndByteCode } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "04_deploy_L2MessageServiceV1Deployed.ts",
