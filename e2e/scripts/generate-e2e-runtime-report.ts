@@ -230,7 +230,7 @@ async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eR
 }
 
 function median(values: number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) return NaN;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
@@ -282,7 +282,14 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   }
 
   // Sort spec files by median duration descending
-  const sortedSpecs = [...allSpecFiles].sort((a, b) => (specStats.get(b)?.med ?? 0) - (specStats.get(a)?.med ?? 0));
+  const sortedSpecs = [...allSpecFiles].sort((a, b) => {
+    const medA = specStats.get(a)!.med;
+    const medB = specStats.get(b)!.med;
+    if (isNaN(medA) && isNaN(medB)) return 0;
+    if (isNaN(medA)) return 1;
+    if (isNaN(medB)) return -1;
+    return medB - medA;
+  });
 
   const totalRuns = runResults.length;
   const passedRuns = runResults.filter((r) => r.run.jobConclusion === "success").length;
