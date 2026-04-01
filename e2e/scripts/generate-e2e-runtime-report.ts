@@ -258,6 +258,24 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     })
     .join("\n            ");
 
+  // Total run duration row
+  const totalDurations = runResults.map((r) => r.run.durationSeconds);
+  const totalDurationMedian = median(totalDurations.filter((d) => !isNaN(d)));
+  const totalDurationSd = stddev(totalDurations.filter((d) => !isNaN(d)));
+  const totalRunCells = runResults
+    .map((r) => {
+      if (isNaN(r.run.durationSeconds)) return `<td style="background:${COLOR_MAP.gray}">-</td>`;
+      const color = getCellColor(
+        r.run.durationSeconds,
+        totalDurationMedian,
+        totalDurationSd,
+        r.run.jobConclusion === "failure" ? "FAIL" : "PASS",
+      );
+      return `<td style="background:${COLOR_MAP[color]};font-weight:600;">${(r.run.durationSeconds / 60).toFixed(1)}m</td>`;
+    })
+    .join("");
+  const totalRunRow = `<tr style="border-top:2px solid #aaa;"><td class="spec-name" style="font-weight:600;">total run</td>${totalRunCells}</tr>`;
+
   // Timeline table rows
   const timelineRows = sortedSpecs
     .map((specFile) => {
@@ -279,6 +297,18 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
       return `<tr><td class="spec-name">${shortName}</td>${cells}</tr>`;
     })
     .join("\n          ");
+
+  // Total run summary row
+  const totalRunDurations = runResults.map((r) => r.run.durationSeconds).filter((d) => !isNaN(d));
+  const totalRunMin = totalRunDurations.length > 0 ? Math.min(...totalRunDurations) : NaN;
+  const totalRunMax = totalRunDurations.length > 0 ? Math.max(...totalRunDurations) : NaN;
+  const totalRunSummaryRow = `<tr style="border-bottom:2px solid #aaa;">
+          <td class="spec-name" style="font-weight:600;">total run</td>
+          <td style="background:${COLOR_MAP.green};font-weight:600;">${isNaN(medianRunDuration) ? "-" : (medianRunDuration / 60).toFixed(1) + "m"}</td>
+          <td>${isNaN(totalRunMin) ? "-" : (totalRunMin / 60).toFixed(1) + "m"}</td>
+          <td>${isNaN(totalRunMax) ? "-" : (totalRunMax / 60).toFixed(1) + "m"}</td>
+          <td>${totalRunDurations.length}</td>
+        </tr>`;
 
   // Summary table rows (color-code median cell: red if any run had FAIL/TIMEOUT)
   const summaryRows = sortedSpecs
@@ -366,6 +396,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   <table>
     <thead><tr><th>Spec File</th><th>Median (s)</th><th>Min (s)</th><th>Max (s)</th><th>Runs</th></tr></thead>
     <tbody>
+      ${totalRunSummaryRow}
       ${summaryRows}
     </tbody>
   </table>
@@ -375,6 +406,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     <table>
       <thead><tr><th>Spec File</th>${timelineHeaders}</tr></thead>
       <tbody>
+        ${totalRunRow}
         ${timelineRows}
       </tbody>
     </table>
