@@ -1,8 +1,15 @@
 # Generates the monthly E2E runtime report from recent CI runs and posts a Slack summary.
-# Triggered automatically at 00:00 UTC on the first day of each month.
+# Triggered automatically at 00:00 UTC on the first day of each month, or manually via workflow_dispatch.
 name: e2e-runtime-report
 
 on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of days to look back"
+        required: false
+        type: number
+        default: 30
   # Temporary trigger for validating this workflow before switching back to schedule-only.
   pull_request:
     branches:
@@ -29,7 +36,7 @@ jobs:
       - name: Generate E2E runtime report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm -F e2e run generate-runtime-report -- --days 5
+        run: pnpm -F e2e run generate-runtime-report -- --days ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.days || 5 }}
 
       - name: Read summary
         id: summary
