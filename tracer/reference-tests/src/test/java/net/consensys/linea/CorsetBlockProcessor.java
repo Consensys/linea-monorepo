@@ -85,6 +85,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
     final List<TransactionReceipt> receipts = new ArrayList<>();
     long currentGasUsed = 0;
+    long currentStateGasUsed = 0;
 
     final ProtocolSpec protocolSpec = protocolSchedule.getByBlockHeader(blockHeader);
     final var preExecutionProcessor = protocolSpec.getPreExecutionProcessor();
@@ -100,7 +101,12 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
     preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
-      if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
+      if (!hasAvailableBlockBudget(
+          blockHeader,
+          transaction,
+          currentGasUsed,
+          currentStateGasUsed,
+          protocolSpec.getBlockGasAccountingStrategy())) {
         return new BlockProcessingResult(Optional.empty(), "provided gas insufficient");
       }
 
@@ -151,6 +157,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       worldStateUpdater.commit();
 
       currentGasUsed += transaction.getGasLimit() - result.getGasRemaining();
+      currentStateGasUsed += result.getStateGasUsed();
       final TransactionReceipt transactionReceipt =
           transactionReceiptFactory.create(
               transaction.getType(), result, worldState, currentGasUsed);

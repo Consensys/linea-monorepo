@@ -18,6 +18,7 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelectorFactory
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext
 import java.util.concurrent.ConcurrentHashMap
@@ -63,8 +64,10 @@ class RecordingTransactionSelectorPlugin : BesuPlugin {
   override fun start() {
     transactionSelectionService.registerPluginTransactionSelectorFactory(
       object : PluginTransactionSelectorFactory {
-        override fun create(stateManager: SelectorsStateManager): PluginTransactionSelector =
-          RecordingTransactionSelector()
+        override fun create(
+          pendingBlockHeader: ProcessableBlockHeader,
+          stateManager: SelectorsStateManager,
+        ): PluginTransactionSelector = RecordingTransactionSelector()
       },
     )
   }
