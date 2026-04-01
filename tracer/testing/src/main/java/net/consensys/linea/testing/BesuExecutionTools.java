@@ -41,6 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceFile;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceRequestParams;
+import net.consensys.linea.plugins.rpc.tracegeneration.VirtualBlockTraceRequestParams;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.json.JsonConverter;
@@ -82,6 +83,7 @@ public class BesuExecutionTools {
   private final String testName;
   private final GenesisConfigBuilder genesisConfigBuilder;
   private final Boolean oneTxPerBlock;
+  private boolean validateVirtualBlockTraces = false;
 
   public BesuExecutionTools(
       String testName,
@@ -223,12 +225,14 @@ public class BesuExecutionTools {
       while (txHasNext) {
         // Send transaction to the transaction pool with eth_sendRawTransaction
         // If oneTxPerBlock is true, we send one transaction per block
+        final List<String> batchTxRlps = new ArrayList<>();
         if (oneTxPerBlock) {
           final Transaction tx = txs.next();
           if (tx != null) {
-            String txHash =
-                besuNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+            final String txRlp = tx.encoded().toHexString();
+            String txHash = besuNode.execute(ethTransactions.sendRawTransaction(txRlp));
             txHashes.add(txHash);
+            batchTxRlps.add(txRlp);
           }
           txHasNext = txs.hasNext();
         } else {
@@ -236,9 +240,10 @@ public class BesuExecutionTools {
           while (txHasNext) {
             final Transaction tx = txs.next();
             if (tx != null) {
-              String txHash =
-                  besuNode.execute(ethTransactions.sendRawTransaction(tx.encoded().toHexString()));
+              final String txRlp = tx.encoded().toHexString();
+              String txHash = besuNode.execute(ethTransactions.sendRawTransaction(txRlp));
               txHashes.add(txHash);
+              batchTxRlps.add(txRlp);
             }
             txHasNext = txs.hasNext();
           }
@@ -271,6 +276,13 @@ public class BesuExecutionTools {
         }
         TraceFile traceFile = traceAndCheckTracer(firstBlockNumber, finalBlockNumber, currentFork);
         Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
+
+        if (validateVirtualBlockTraces
+            && firstBlockNumber == finalBlockNumber
+            && !batchTxRlps.isEmpty()) {
+          validateVirtualBlockTrace(
+              firstBlockNumber, batchTxRlps.toArray(new String[0]), traceFile);
+        }
 
         // Clean up for next transaction
         resetTxReceipts(txReceiptProcessed);
@@ -307,6 +319,10 @@ public class BesuExecutionTools {
         log.error("Error closing besu node: %s".formatted(e.getMessage()), e);
       }
     }
+  }
+
+  public void setValidateVirtualBlockTraces(final boolean validateVirtualBlockTraces) {
+    this.validateVirtualBlockTraces = validateVirtualBlockTraces;
   }
 
   /// // /////////////////////////
@@ -521,6 +537,61 @@ public class BesuExecutionTools {
 
   private static CorsetValidator getCorsetValidatorPerFork(Fork fork) {
     return new CorsetValidator(ChainConfig.MAINNET_TESTCONFIG(fork));
+  }
+
+  private TraceFile lineaGenerateVirtualBlockConflatedTracesToFileV1(
+      final long blockNumber, final String[] txsRlpEncoded) throws IOException {
+    return jsonRpcRequest(
+        besuNode.jsonRpcBaseUrl().get(),
+        "linea_generateVirtualBlockConflatedTracesToFileV1",
+        new VirtualBlockTraceRequestParams(blockNumber, txsRlpEncoded),
+        TraceFile.class);
+  }
+
+  /**
+   * Calls {@code linea_generateVirtualBlockConflatedTracesToFileV1} for the given block and asserts
+   * that its output is byte-for-byte identical to the canonical conflated trace produced earlier by
+   * {@code traceAndCheckTracer}.
+   *
+   * <p>Byte equality implies that the virtual simulation (via {@link BlockSimulationService}) runs
+   * the same execution path as the canonical tracer (via {@link
+   * org.hyperledger.besu.plugin.services.TraceService}), and in particular that passing {@code
+   * EmptyWorldView} to {@code ZkTracer.traceEndConflation} does not diverge from the real
+   * post-execution world view.
+   */
+  private void validateVirtualBlockTrace(
+      final long blockNumber, final String[] txRlps, final TraceFile canonicalTraceFile)
+      throws IOException {
+    log.info("generating virtual block trace for comparison: blockNumber={}", blockNumber);
+    final TraceFile virtualTraceFile =
+        lineaGenerateVirtualBlockConflatedTracesToFileV1(blockNumber, txRlps);
+    final Path virtualPath = Path.of(virtualTraceFile.conflatedTracesFileName());
+    waitFor(
+        60,
+        () ->
+            assertThat(virtualPath.toFile().exists())
+                .withFailMessage("Virtual trace file %s does not exist", virtualPath)
+                .isTrue());
+
+    final Path canonicalPath = Path.of(canonicalTraceFile.conflatedTracesFileName());
+    log.info(
+        "comparing virtual trace with canonical trace: blockNumber={} canonical={} virtual={}",
+        blockNumber,
+        canonicalPath,
+        virtualPath);
+
+    final byte[] canonicalBytes = Files.readAllBytes(canonicalPath);
+    final byte[] virtualBytes = Files.readAllBytes(virtualPath);
+    assertThat(virtualBytes)
+        .withFailMessage(
+            "Virtual block trace differs from canonical trace for block %d%n  canonical: %s%n  virtual:  %s",
+            blockNumber, canonicalPath, virtualPath)
+        .isEqualTo(canonicalBytes);
+
+    log.info(
+        "virtual block trace matches canonical trace: blockNumber={} bytes={}",
+        blockNumber,
+        canonicalBytes.length);
   }
 
   private TraceFile traceAndCheckTracer(long startBlockNumber, long endBlockNumber, Fork nextFork)
