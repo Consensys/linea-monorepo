@@ -7,29 +7,29 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
 )
 
-// KoalagnarkOctuplet is an octuplet of koalagnark.Element
-type KoalagnarkOctuplet [8]koalagnark.Element
+// KoalagnarkOctuplet is an octuplet of circuit.Element
+type KoalagnarkOctuplet [8]circuit.Element
 
 // KoalagnarkMDHasher is a Merkle-Damgard hasher using Poseidon2 as compression function.
-// This implementation uses koalagnark.Element and koalagnark.API, allowing it to work
+// This implementation uses circuit.Element and circuit.API, allowing it to work
 // in both native KoalaBear circuits and emulated circuits (e.g., BLS12-377).
 type KoalagnarkMDHasher struct {
 	api      frontend.API
-	koalaAPI *koalagnark.API
+	koalaAPI *circuit.API
 
 	// Sponge construction state
 	state KoalagnarkOctuplet
 
 	// data to hash
-	buffer []koalagnark.Element
+	buffer []circuit.Element
 }
 
 // NewKoalagnarkMDHasher creates a new Merkle-Damgard hasher using koalagnark types.
 func NewKoalagnarkMDHasher(api frontend.API) *KoalagnarkMDHasher {
-	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI := circuit.NewAPI(api)
 	var res KoalagnarkMDHasher
 	for i := 0; i < 8; i++ {
 		res.state[i] = koalaAPI.Zero()
@@ -46,7 +46,7 @@ func (h *KoalagnarkMDHasher) Reset() {
 	}
 }
 
-func (h *KoalagnarkMDHasher) Write(data ...koalagnark.Element) {
+func (h *KoalagnarkMDHasher) Write(data ...circuit.Element) {
 	h.buffer = append(h.buffer, data...)
 }
 
@@ -78,7 +78,7 @@ func (h *KoalagnarkMDHasher) State() KoalagnarkOctuplet {
 
 func (h *KoalagnarkMDHasher) Sum() KoalagnarkOctuplet {
 	for len(h.buffer) != 0 {
-		var buf [BlockSize]koalagnark.Element
+		var buf [BlockSize]circuit.Element
 		for i := 0; i < BlockSize; i++ {
 			buf[i] = h.koalaAPI.Zero()
 		}
@@ -99,7 +99,7 @@ func (h *KoalagnarkMDHasher) Sum() KoalagnarkOctuplet {
 func (h *KoalagnarkMDHasher) compressPoseidon2(a, b KoalagnarkOctuplet) KoalagnarkOctuplet {
 	res := KoalagnarkOctuplet{}
 
-	var x [16]koalagnark.Element
+	var x [16]circuit.Element
 	copy(x[:], a[:])
 	copy(x[8:], b[:])
 
@@ -138,7 +138,7 @@ func NewKoalagnarkPermutation() koalagnarkPermutation {
 }
 
 // sBox applies the sBox on buffer[index]
-func (p *koalagnarkPermutation) sBox(api *koalagnark.API, index int, input []koalagnark.Element) {
+func (p *koalagnarkPermutation) sBox(api *circuit.API, index int, input []circuit.Element) {
 	// sbox degree is 3: x^3
 	tmp := input[index]
 	input[index] = api.Mul(input[index], input[index])
@@ -152,10 +152,10 @@ func (p *koalagnarkPermutation) sBox(api *koalagnark.API, index int, input []koa
 // (1 1 2 3)
 // (3 1 1 2)
 // on chunks of 4 elements on each part of the buffer
-func (p *koalagnarkPermutation) matMulM4InPlace(api *koalagnark.API, s []koalagnark.Element) {
+func (p *koalagnarkPermutation) matMulM4InPlace(api *circuit.API, s []circuit.Element) {
 	c := len(s) / 4
 	for i := 0; i < c; i++ {
-		var t01, t23, t0123, t01123, t01233 koalagnark.Element
+		var t01, t23, t0123, t01123, t01233 circuit.Element
 		t01 = api.Add(s[4*i], s[4*i+1])
 		t23 = api.Add(s[4*i+2], s[4*i+3])
 		t0123 = api.Add(t01, t23)
@@ -172,13 +172,13 @@ func (p *koalagnarkPermutation) matMulM4InPlace(api *koalagnark.API, s []koalagn
 }
 
 // matMulExternalInPlace multiplies by circ(2M4,M4,..,M4)
-func (p *koalagnarkPermutation) matMulExternalInPlace(api *koalagnark.API, input []koalagnark.Element) {
+func (p *koalagnarkPermutation) matMulExternalInPlace(api *circuit.API, input []circuit.Element) {
 	if p.params.Width%4 != 0 {
 		panic("only Width = 0 mod 4 are supported")
 	}
 	p.matMulM4InPlace(api, input)
 
-	tmp := make([]koalagnark.Element, 4)
+	tmp := make([]circuit.Element, 4)
 	for i := 0; i < 4; i++ {
 		tmp[i] = api.Zero()
 	}
@@ -198,14 +198,14 @@ func (p *koalagnarkPermutation) matMulExternalInPlace(api *koalagnark.API, input
 
 // matMulInternalInPlace applies the internal matrix multiplication
 // diag16: [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
-func (p *koalagnarkPermutation) matMulInternalInPlace(api *koalagnark.API, input []koalagnark.Element) {
+func (p *koalagnarkPermutation) matMulInternalInPlace(api *circuit.API, input []circuit.Element) {
 	// width = 16
 	sum := input[0]
 	for i := 1; i < p.params.Width; i++ {
 		sum = api.Add(sum, input[i])
 	}
 
-	var temp koalagnark.Element
+	var temp circuit.Element
 
 	// input[0]: sum + (-2)*input[0] = sum - 2*input[0]
 	temp = api.Add(input[0], input[0])
@@ -276,7 +276,7 @@ func (p *koalagnarkPermutation) matMulInternalInPlace(api *koalagnark.API, input
 }
 
 // addRoundKeyInPlace adds the round-th key to the buffer
-func (p *koalagnarkPermutation) addRoundKeyInPlace(api *koalagnark.API, round int, input []koalagnark.Element) {
+func (p *koalagnarkPermutation) addRoundKeyInPlace(api *circuit.API, round int, input []circuit.Element) {
 	for i := 0; i < len(p.params.RoundKeys[round]); i++ {
 		rk := api.ConstBig(p.params.RoundKeys[round][i].BigInt(new(big.Int)))
 		input[i] = api.Add(input[i], rk)
@@ -284,7 +284,7 @@ func (p *koalagnarkPermutation) addRoundKeyInPlace(api *koalagnark.API, round in
 }
 
 // Permutation applies the Poseidon2 permutation on input
-func (p *koalagnarkPermutation) Permutation(api *koalagnark.API, input []koalagnark.Element) error {
+func (p *koalagnarkPermutation) Permutation(api *circuit.API, input []circuit.Element) error {
 	if len(input) != p.params.Width {
 		return ErrInvalidSizebuffer
 	}

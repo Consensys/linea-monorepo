@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
 )
 
 func init() {
@@ -26,8 +26,8 @@ var (
 	ErrNotAPowerOfTwo         = errors.New("size(inputs) should be a power of two")
 )
 
-func fftInvHint(t koalagnark.VType) solver.Hint {
-	if t == koalagnark.Native {
+func fftInvHint(t circuit.VType) solver.Hint {
+	if t == circuit.Native {
 		return fftExtInvHintNative
 	} else {
 		return fftExtInvHintEmulated

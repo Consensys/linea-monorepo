@@ -1,4 +1,4 @@
-package koalagnark
+package circuit
 
 import (
 	"math/big"

@@ -11,7 +11,7 @@ import (
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -157,7 +157,7 @@ func (d *MDHasher) Sum(msg []byte) []byte {
 
 // GnarkBlockCompression applies the poseidon permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]koalagnark.Element) (newState [BlockSize]koalagnark.Element) {
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]circuit.Element) (newState [BlockSize]circuit.Element) {
 	panic("unimplemented")
 }
 

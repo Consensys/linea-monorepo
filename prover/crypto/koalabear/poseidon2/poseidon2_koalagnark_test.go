@@ -7,14 +7,15 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
+	kbcircuit "github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/koalagnark"
 	"github.com/stretchr/testify/assert"
 )
 
 // KoalagnarkMDHasherCircuit is a test circuit for the koalagnark-based Poseidon2 hasher
 type KoalagnarkMDHasherCircuit struct {
-	Inputs []koalagnark.Element
+	Inputs []kbcircuit.Element
 	Output KoalagnarkOctuplet
 }
 
@@ -28,7 +29,7 @@ func (c *KoalagnarkMDHasherCircuit) Define(api frontend.API) error {
 	res := h.Sum()
 
 	// check the result using koalagnark API
-	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI := circuit.NewAPI(api)
 	for i := 0; i < 8; i++ {
 		koalaAPI.AssertIsEqual(c.Output[i], res[i])
 	}
@@ -50,13 +51,13 @@ func getKoalagnarkMDHasherWitness(nbElmts int) (*KoalagnarkMDHasherCircuit, *Koa
 
 	// create witness and circuit
 	var circuit, witness KoalagnarkMDHasherCircuit
-	circuit.Inputs = make([]koalagnark.Element, nbElmts)
-	witness.Inputs = make([]koalagnark.Element, nbElmts)
+	circuit.Inputs = make([]kbcircuit.Element, nbElmts)
+	witness.Inputs = make([]kbcircuit.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = koalagnark.NewElementFromKoala(vals[i])
+		witness.Inputs[i] = kbcircuit.NewElementFromKoala(vals[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElementFromKoala(res[i])
+		witness.Output[i] = kbcircuit.NewElementFromKoala(res[i])
 	}
 
 	return &circuit, &witness
@@ -130,7 +131,7 @@ func (c *KoalagnarkCompressCircuit) Define(api frontend.API) error {
 	h := NewKoalagnarkMDHasher(api)
 	res := h.compressPoseidon2(c.A, c.B)
 
-	koalaAPI := koalagnark.NewAPI(api)
+	koalaAPI := circuit.NewAPI(api)
 	for i := 0; i < 8; i++ {
 		koalaAPI.AssertIsEqual(c.Output[i], res[i])
 	}
@@ -149,9 +150,9 @@ func getCompressWitness() (*KoalagnarkCompressCircuit, *KoalagnarkCompressCircui
 
 	var circuit, witness KoalagnarkCompressCircuit
 	for i := 0; i < 8; i++ {
-		witness.A[i] = koalagnark.NewElementFromKoala(a[i])
-		witness.B[i] = koalagnark.NewElementFromKoala(b[i])
-		witness.Output[i] = koalagnark.NewElementFromKoala(res[i])
+		witness.A[i] = kbcircuit.NewElementFromKoala(a[i])
+		witness.B[i] = kbcircuit.NewElementFromKoala(b[i])
+		witness.Output[i] = kbcircuit.NewElementFromKoala(res[i])
 	}
 
 	return &circuit, &witness

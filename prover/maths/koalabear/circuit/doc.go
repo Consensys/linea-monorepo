@@ -1,4 +1,4 @@
-// Package koalagnark provides circuit (gnark) representations of KoalaBear field elements.
+// Package circuit provides circuit (gnark) representations of KoalaBear field elements.
 //
 // This package contains two main types:
 //   - [Var]: A circuit variable over the KoalaBear base field
@@ -15,8 +15,8 @@
 // # Usage
 //
 //	type MyCircuit struct {
-//	    X, Y koalagnark.Var
-//	    A, B koalagnark.Ext
+//	    X, Y circuit.Var
+//	    A, B circuit.Ext
 //	}
 //
 //	func (c *MyCircuit) Define(api frontend.API) error {
@@ -35,7 +35,7 @@
 // For witness assignment, use the static constructors:
 //
 //	witness := MyCircuit{
-//	    X: koalagnark.NewVarFromKoala(x),
-//	    A: koalagnark.NewExt(a),
+//	    X: circuit.NewVarFromKoala(x),
+//	    A: circuit.NewExt(a),
 //	}
-package koalagnark
+package circuit
