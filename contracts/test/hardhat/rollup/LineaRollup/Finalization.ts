@@ -1,15 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import { ethers } from "hardhat";
 
-import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
-import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
-import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
-import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
-import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
-import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
-
-import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import {
   expectSuccessfulFinalize,
   expectFailedCustomErrorFinalize,
@@ -19,7 +13,12 @@ import {
   sendBlobTransaction,
   deployRevertingVerifier,
 } from "./../helpers";
-
+import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
+import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
+import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
+import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
+import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
+import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
 ensureKzgSetup();
 import {
   GENERAL_PAUSE_TYPE,
@@ -50,7 +49,6 @@ import {
   expectRevertWhenPaused,
 } from "../../common/helpers";
 import { AggregatedProofData } from "../../common/types";
-import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;

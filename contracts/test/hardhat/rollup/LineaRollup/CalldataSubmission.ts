@@ -1,13 +1,12 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-
-import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
-
 import { STATE_DATA_SUBMISSION_PAUSE_TYPE } from "contracts/common/constants";
 import { TestLineaRollup } from "contracts/typechain-types";
+
 import { getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
+import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
+import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import { GENERAL_PAUSE_TYPE, HASH_ZERO, OPERATOR_ROLE, EMPTY_CALLDATA, MAX_GAS_LIMIT } from "../../common/constants";
 import {
   generateRandomBytes,
@@ -113,7 +112,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
     await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
   });
 
-  it.only("Should fail if the final state root hash is empty", async () => {
+  it("Should fail if the final state root hash is empty", async () => {
     const [submissionData] = generateCallDataSubmission(0, 1);
 
     submissionData.finalStateRootHash = HASH_ZERO;

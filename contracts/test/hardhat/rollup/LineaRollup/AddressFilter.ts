@@ -1,17 +1,17 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
+import { AddressFilter } from "contracts/typechain-types";
 
-import { getAccountsFixture, deployAddressFilterFixture, deployAddressFilter } from "../helpers";
+import { ADDRESS_ZERO } from "../../common/constants";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../../common/helpers";
-import { ADDRESS_ZERO } from "../../common/constants";
-import { AddressFilter } from "contracts/typechain-types";
-import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
-import { expect } from "chai";
+import { getAccountsFixture, deployAddressFilterFixture, deployAddressFilter } from "../helpers";
 
 describe("AddressFilter: Forced Transactions", () => {
   let addressFilter: AddressFilter;

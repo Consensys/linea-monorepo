@@ -1,11 +1,12 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+import {
+  DEFAULT_ADMIN_ROLE,
+  FORCED_TRANSACTION_FEE_SETTER_ROLE,
+  PRECOMPILES_ADDRESSES,
+} from "contracts/common/constants";
 import { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
-import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
-import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
-import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
-import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
-import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
 import { ethers } from "hardhat";
 
 import {
@@ -16,15 +17,11 @@ import {
   setForcedTransactionFee,
   decodeForcedTransactionAdded,
 } from "./../helpers";
-import {
-  buildAccessErrorMessage,
-  buildEip1559Transaction,
-  calculateLastFinalizedState,
-  expectEvent,
-  expectRevertWithCustomError,
-  expectRevertWithReason,
-  generateRandomBytes,
-} from "../../common/helpers";
+import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
+import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
+import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
+import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
+import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import {
   ADDRESS_ZERO,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
@@ -39,12 +36,15 @@ import {
   FORCED_TRANSACTION_FEE,
   BLOCK_NUMBER_DEADLINE_BUFFER,
 } from "../../common/constants";
-import { expect } from "chai";
 import {
-  DEFAULT_ADMIN_ROLE,
-  FORCED_TRANSACTION_FEE_SETTER_ROLE,
-  PRECOMPILES_ADDRESSES,
-} from "contracts/common/constants";
+  buildAccessErrorMessage,
+  buildEip1559Transaction,
+  calculateLastFinalizedState,
+  expectEvent,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+  generateRandomBytes,
+} from "../../common/helpers";
 import { LastFinalizedState } from "../../common/types";
 
 describe("Linea Rollup contract: Forced Transactions", () => {

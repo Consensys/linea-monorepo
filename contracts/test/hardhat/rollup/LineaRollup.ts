@@ -1,14 +1,11 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import { ensureKzgSetup } from "./helpers";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
-
-import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
-import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
-
 import { LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES, LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { AddressFilter, CallForwardingProxy, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
+import { ethers, upgrades } from "hardhat";
+
+import { ensureKzgSetup } from "./helpers";
 import {
   deployCallForwardingProxy,
   deployForcedTransactionGatewayFixture,
@@ -18,6 +15,8 @@ import {
   getRoleAddressesFixture,
   sendBlobTransactionViaCallForwarder,
 } from "./helpers";
+import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
+import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import {
   ADDRESS_ZERO,
   FALLBACK_OPERATOR_ADDRESS,

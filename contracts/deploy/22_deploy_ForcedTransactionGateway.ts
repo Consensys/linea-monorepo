@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
 const func: DeployFunction = async function () {

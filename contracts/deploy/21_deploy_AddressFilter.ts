@@ -1,7 +1,8 @@
+import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
-import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 
 const func: DeployFunction = async function () {
   const contractName = "AddressFilter";

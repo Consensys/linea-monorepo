@@ -1,5 +1,5 @@
-import { ethers, AbiCoder } from "ethers";
 import { TokenBridgeInitializationData } from "contracts/scripts/tokenBridge/test/deployTokenBridges";
+import { ethers, AbiCoder } from "ethers";
 
 export const encodeData = (types: string[], values: unknown[], packed?: boolean) => {
   if (packed) {

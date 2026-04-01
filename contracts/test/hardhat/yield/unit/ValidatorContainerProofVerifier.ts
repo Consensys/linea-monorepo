@@ -1,8 +1,29 @@
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+import { ethers } from "hardhat";
+
+import { randomBytes32 } from "../../../../common/helpers/encoding";
+import {
+  GI_FIRST_VALIDATOR,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  HASH_ZERO,
+  ONE_GWEI,
+  SHARD_COMMITTEE_PERIOD,
+  SLOTS_PER_EPOCH,
+} from "../../common/constants";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+  getAccountsFixture,
+  expectZeroAddressRevert,
+  expectZeroHashRevert,
+} from "../../common/helpers";
+import { expectEvent } from "../../common/helpers/expectations";
 import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
@@ -12,26 +33,6 @@ import {
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
-import { ethers } from "hardhat";
-import {
-  GI_FIRST_VALIDATOR,
-  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
-  HASH_ZERO,
-  ONE_GWEI,
-  SHARD_COMMITTEE_PERIOD,
-  SLOTS_PER_EPOCH,
-} from "../../common/constants";
-import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
-import {
-  buildAccessErrorMessage,
-  expectRevertWithCustomError,
-  expectRevertWithReason,
-  getAccountsFixture,
-  expectZeroAddressRevert,
-  expectZeroHashRevert,
-} from "../../common/helpers";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
-import { expectEvent } from "../../common/helpers/expectations";
 
 describe("ValidatorContainerProofVerifier", () => {
   let verifier: TestValidatorContainerProofVerifier;

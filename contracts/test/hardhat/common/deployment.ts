@@ -1,9 +1,9 @@
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/src/utils";
+import { getInitializerData } from "contracts/common/helpers";
+import { ProxyAdmin } from "contracts/typechain-types";
 import { BaseContract, ContractTransactionResponse, InterfaceAbi } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import { FactoryOptions } from "hardhat/types";
-import { ProxyAdmin } from "contracts/typechain-types";
-import { getInitializerData } from "contracts/common/helpers";
 
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
   const factory = await ethers.getContractFactory(contractName);

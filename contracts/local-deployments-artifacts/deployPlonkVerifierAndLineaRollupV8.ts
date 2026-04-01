@@ -1,34 +1,32 @@
+import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
-import * as dotenv from "dotenv";
+
 import { abi as LineaRollupV8Abi, bytecode as LineaRollupV8Bytecode } from "./dynamic-artifacts/LineaRollupV8.json";
-import {
-  abi as ForcedTransactionGatewayAbi,
-  bytecode as ForcedTransactionGatewayBytecode,
-} from "./static-artifacts/ForcedTransactionGateway.json";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
-import {
-  contractName as MimcAddressContractName,
-  abi as MimcAddressAbi,
-  bytecode as MimcAddressFilterBytecode,
-} from "./static-artifacts/Mimc.json";
 import {
   contractName as AddressFilterContractName,
   abi as AddressFilterAbi,
   bytecode as AddressFilterBytecode,
 } from "./static-artifacts/AddressFilter.json";
 import {
+  abi as ForcedTransactionGatewayAbi,
+  bytecode as ForcedTransactionGatewayBytecode,
+} from "./static-artifacts/ForcedTransactionGateway.json";
+import {
+  contractName as MimcAddressContractName,
+  abi as MimcAddressAbi,
+  bytecode as MimcAddressFilterBytecode,
+} from "./static-artifacts/Mimc.json";
+import {
+  contractName as ProxyAdminContractName,
+  abi as ProxyAdminAbi,
+  bytecode as ProxyAdminBytecode,
+} from "./static-artifacts/ProxyAdmin.json";
+import {
   abi as TransparentUpgradeableProxyAbi,
   bytecode as TransparentUpgradeableProxyBytecode,
 } from "./static-artifacts/TransparentUpgradeableProxy.json";
-import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
-import { generateRoleAssignments } from "../common/helpers/roles";
 import {
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
@@ -39,6 +37,9 @@ import {
   PRECOMPILES_ADDRESSES,
   FORCED_TRANSACTION_SENDER_ROLE,
 } from "../common/constants";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
+import { generateRoleAssignments } from "../common/helpers/roles";
 import { get1559Fees } from "../scripts/utils";
 
 dotenv.config();

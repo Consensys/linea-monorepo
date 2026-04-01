@@ -1,11 +1,12 @@
-import { expect } from "chai";
-import { TestEip1559RlpEncoder } from "../../../typechain-types";
-import { deployFromFactory } from "../common/deployment";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
+import { expect } from "chai";
+
+import { TestEip1559RlpEncoder } from "../../../typechain-types";
 import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
-import transactionWithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
+import transactionWithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
+import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
+import { deployFromFactory } from "../common/deployment";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
 import { buildEip1559Transaction } from "../common/helpers/typedTransactionBuilding";
 

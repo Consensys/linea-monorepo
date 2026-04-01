@@ -1,7 +1,9 @@
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
 import { ethers } from "hardhat";
+
 import { getWalletForIndex } from "./";
+import { FailedFinalizeParams, SucceedFinalizeParams, SucceedFinalizeParamsCallForwardingProxy } from "./type";
 import { TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
 import {
   calculateLastFinalizedState,
@@ -12,7 +14,6 @@ import {
   generateKeccak256,
   proofDataToFinalizationParams,
 } from "../../common/helpers";
-import { FailedFinalizeParams, SucceedFinalizeParams, SucceedFinalizeParamsCallForwardingProxy } from "./type";
 
 export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
   const { context, proofConfig, overrides = {} } = params;
