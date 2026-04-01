@@ -1,3 +1,5 @@
+// Parses raw Jest output from the E2E CI job into per-spec results.
+// Used by `e2e/scripts/generate-e2e-runtime-report.ts` when building the runtime report.
 export type JobConclusion = "success" | "failure";
 export type SpecStatus = "PASS" | "FAIL" | "TIMEOUT";
 export type TestStatus = "passed" | "failed" | "skipped";
