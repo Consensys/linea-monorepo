@@ -16,6 +16,7 @@
 import { Octokit } from "@octokit/rest";
 import { writeFileSync } from "node:fs";
 
+import { discoverTimeoutEligibleSpecFiles } from "./helpers/discover-timeout-eligible-spec-files";
 import { parseJestLog, type JobConclusion, type SpecResult, type SpecStatus } from "./helpers/parse-jest-log";
 
 interface E2eRun {
@@ -369,6 +370,7 @@ async function main(): Promise<void> {
   }
 
   const octokit = new Octokit({ auth: token });
+  const timeoutEligibleSpecFiles = discoverTimeoutEligibleSpecFiles();
 
   console.log(`Generating E2E runtime report for the last ${days} days...`);
 
@@ -393,7 +395,7 @@ async function main(): Promise<void> {
   // Phase 2: Parse
   const runResults: E2eRunResult[] = runsWithLogs.map(({ run, rawLog }) => ({
     run,
-    specResults: parseJestLog(rawLog, run.jobConclusion),
+    specResults: parseJestLog(rawLog, run.jobConclusion, timeoutEligibleSpecFiles),
   }));
 
   // Sort by date ascending

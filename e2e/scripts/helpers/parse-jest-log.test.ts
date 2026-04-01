@@ -126,6 +126,16 @@ Snapshots:   0 total
 Time:        13.852 s
 Ran all test suites matching liveness.spec.ts.`;
 
+const FAILED_RAW_LOG = `FAIL src/l2.spec.ts (8.867 s)
+  Layer 2 test suite
+    ✓ Should revert if transaction data size is above the limit (4166 ms)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        8.88 s
+Ran all test suites.`;
+
 describe("parseJestLog", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -218,5 +228,35 @@ describe("parseJestLog", () => {
         },
       ],
     });
+  });
+
+  it("adds TIMEOUT only for the provided timeout-eligible spec files on failure", () => {
+    // Arrange
+    const timeoutEligibleSpecFiles = ["src/l2.spec.ts", "src/messaging.spec.ts"];
+
+    // Act
+    const result = parseJestLog(FAILED_RAW_LOG, "failure", timeoutEligibleSpecFiles);
+
+    // Assert
+    expect(result).toEqual([
+      {
+        specFile: "src/l2.spec.ts",
+        status: "FAIL",
+        durationSeconds: 8.867,
+        tests: [
+          {
+            name: "Should revert if transaction data size is above the limit",
+            durationMs: 4166,
+            status: "passed",
+          },
+        ],
+      },
+      {
+        specFile: "src/messaging.spec.ts",
+        status: "TIMEOUT",
+        durationSeconds: NaN,
+        tests: [],
+      },
+    ]);
   });
 });

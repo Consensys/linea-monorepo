@@ -20,20 +20,12 @@ const TEST_CASE_RE = /^\s+(✓|✕|×)\s+(.+?)\s+\((\d+)\s*ms\)/;
 const SKIPPED_TEST_RE = /^\s+○\s+skipped\s+(.+)/;
 const GHA_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s/;
 const JEST_SUMMARY_RE = /^Test Suites:\s+(?:(\d+) failed,\s+)?(?:(\d+) passed,\s+)?(\d+) total/;
-const KNOWN_SPEC_FILES = [
-  "src/bridge-tokens.spec.ts",
-  "src/eip7702.spec.ts",
-  "src/l2.spec.ts",
-  "src/messaging.spec.ts",
-  "src/opcodes.spec.ts",
-  "src/restart.spec.ts",
-  "src/send-bundle.spec.ts",
-  "src/shomei-get-proof.spec.ts",
-  "src/submission-finalization.spec.ts",
-  "src/transaction-exclusion.spec.ts",
-] as const;
 
-export function parseJestLog(rawLog: string, jobConclusion: JobConclusion): SpecResult[] {
+export function parseJestLog(
+  rawLog: string,
+  jobConclusion: JobConclusion,
+  timeoutEligibleSpecFiles: readonly string[] = [],
+): SpecResult[] {
   const lines = rawLog.split("\n");
   const specResults: SpecResult[] = [];
   let currentSpec: SpecResult | null = null;
@@ -78,7 +70,7 @@ export function parseJestLog(rawLog: string, jobConclusion: JobConclusion): Spec
   if (jobConclusion === "failure") {
     const parsedFiles = new Set(specResults.map((result) => result.specFile));
 
-    for (const specFile of KNOWN_SPEC_FILES) {
+    for (const specFile of timeoutEligibleSpecFiles) {
       if (!parsedFiles.has(specFile)) {
         specResults.push({
           specFile,
