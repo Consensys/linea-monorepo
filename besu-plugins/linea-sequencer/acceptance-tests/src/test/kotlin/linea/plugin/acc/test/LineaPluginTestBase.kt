@@ -36,6 +36,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt32
 import org.assertj.core.api.Assertions.assertThat
+import org.hyperledger.besu.consensus.clique.CliqueExtraData
 import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration
@@ -50,7 +51,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.NodeConfigurationFactory
-import org.hyperledger.besu.consensus.clique.CliqueExtraData
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions
 import org.hyperledger.besu.util.number.PositiveNumber

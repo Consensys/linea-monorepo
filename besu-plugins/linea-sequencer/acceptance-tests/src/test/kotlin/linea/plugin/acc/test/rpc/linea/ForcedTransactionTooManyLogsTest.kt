@@ -43,7 +43,6 @@ class ForcedTransactionTooManyLogsTest : AbstractForcedTransactionTest() {
       .build()
   }
 
-
   @Test
   fun forcedTransactionExceedingL2L1LogLimitIsRejectedWithTooManyLogs() {
     // Deploy the LogEmitter contract - should land at pre-computed LOG_EMITTER_ADDRESS

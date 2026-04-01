@@ -10,7 +10,6 @@ package linea.plugin.acc.test
 
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import org.apache.tuweni.bytes.Bytes
-
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments

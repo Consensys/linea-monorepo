@@ -161,7 +161,8 @@ class LineaTransactionSelectorFactoryTest {
             transactionProfitabilityCalculator,
             transactionCompressor,
             null);
-    factory.create(BlockHeaderBuilder.createDefault().buildBlockHeader(), new SelectorsStateManager());
+    factory.create(
+        BlockHeaderBuilder.createDefault().buildBlockHeader(), new SelectorsStateManager());
   }
 
   @Test
@@ -286,7 +287,6 @@ class LineaTransactionSelectorFactoryTest {
           Arguments.of(TransactionSelectionResult.BLOCK_SELECTION_TIMEOUT_INVALID_TX),
           Arguments.of(TransactionSelectionResult.TX_EVALUATION_TOO_LONG),
           Arguments.of(TransactionSelectionResult.INVALID_TX_EVALUATION_TOO_LONG),
-
           Arguments.of(TransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_GAS),
           Arguments.of(TransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_BLOB_GAS));
     }

@@ -16,7 +16,6 @@ import linea.plugin.acc.test.rpc.SendForcedRawTransactionRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.datatypes.Wei
-
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Hash.sha3
 import java.math.BigInteger

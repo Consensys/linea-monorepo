@@ -44,7 +44,6 @@ class SendBundleTest : AbstractSendBundleTest() {
       .build()
   }
 
-
   @Test
   fun singleTxBundleIsAcceptedAndMined() {
     val sender = accounts.secondaryBenefactor

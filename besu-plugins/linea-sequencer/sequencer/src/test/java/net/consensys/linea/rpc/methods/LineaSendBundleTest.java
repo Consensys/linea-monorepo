@@ -52,22 +52,19 @@ class LineaSendBundleTest {
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(21000)
-          .createTransaction(
-              SignatureAlgorithmFactory.getInstance().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   private Transaction mockTX2 =
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(21000)
-          .createTransaction(
-              SignatureAlgorithmFactory.getInstance().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   private Transaction mockTX3 =
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(MAX_GAS_LIMIT_PER_TX + 1)
-          .createTransaction(
-              SignatureAlgorithmFactory.getInstance().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   @BeforeEach
   void setup() {
