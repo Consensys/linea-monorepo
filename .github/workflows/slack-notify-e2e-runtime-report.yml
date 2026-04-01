@@ -93,11 +93,11 @@ jobs:
                   - type: rich_text_section
                     elements:
                       - type: text
-                        text: "Slowest spec: "
+                        text: "E2E run duration: "
                         style:
                           bold: true
                       - type: text
-                        text: "${{ fromJSON(steps.summary.outputs.json).slowestSpec }} (median ${{ fromJSON(steps.summary.outputs.json).slowestSpecMedianSeconds }}s)"
+                        text: "median ${{ fromJSON(steps.summary.outputs.json).medianRunDurationSeconds }}s, max ${{ fromJSON(steps.summary.outputs.json).maxRunDurationSeconds }}s"
 
               - type: rich_text
                 elements:

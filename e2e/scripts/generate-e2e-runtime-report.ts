@@ -26,6 +26,7 @@ interface E2eRun {
   jobConclusion: JobConclusion;
   startedAt: string;
   commitSha: string;
+  durationSeconds: number;
 }
 
 interface E2eRunResult {
@@ -38,8 +39,8 @@ interface ReportSummary {
   passedRuns: number;
   failedRuns: number;
   dateRange: string;
-  slowestSpec: string;
-  slowestSpecMedianSeconds: number;
+  medianRunDurationSeconds: number;
+  maxRunDurationSeconds: number;
 }
 
 const DEFAULT_DAYS = 30;
@@ -116,14 +117,21 @@ async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eR
       continue;
     }
 
+    const startedAt = e2eJob.started_at ?? workflowRun.created_at;
+    const durationSeconds =
+      e2eJob.completed_at && e2eJob.started_at
+        ? (new Date(e2eJob.completed_at).getTime() - new Date(e2eJob.started_at).getTime()) / 1000
+        : NaN;
+
     results.push({
       run: {
         runId: workflowRun.id,
         runAttempt: workflowRun.run_attempt ?? 1,
         jobId: e2eJob.id,
         jobConclusion: e2eJob.conclusion as JobConclusion,
-        startedAt: e2eJob.started_at ?? workflowRun.created_at,
+        startedAt,
         commitSha: workflowRun.head_sha,
+        durationSeconds,
       },
       rawLog,
     });
@@ -205,17 +213,17 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const endDate = runResults[runResults.length - 1].run.startedAt.split("T")[0];
   const dateRange = `${startDate} to ${endDate}`;
 
-  const slowestEntry = sortedSpecs[0];
-  const rawSlowestMedian = specStats.get(slowestEntry)?.med ?? NaN;
-  const slowestMedian = isNaN(rawSlowestMedian) ? 0 : rawSlowestMedian;
+  const runDurations = runResults.map((r) => r.run.durationSeconds).filter((d) => !isNaN(d));
+  const medianRunDuration = median(runDurations);
+  const maxRunDuration = runDurations.length > 0 ? Math.max(...runDurations) : NaN;
 
   const summary: ReportSummary = {
     totalRuns,
     passedRuns,
     failedRuns,
     dateRange,
-    slowestSpec: slowestEntry,
-    slowestSpecMedianSeconds: Math.round(slowestMedian * 10) / 10,
+    medianRunDurationSeconds: Math.round(isNaN(medianRunDuration) ? 0 : medianRunDuration),
+    maxRunDurationSeconds: Math.round(isNaN(maxRunDuration) ? 0 : maxRunDuration),
   };
 
   // Build HTML
@@ -404,8 +412,8 @@ async function main(): Promise<void> {
       passedRuns: 0,
       failedRuns: 0,
       dateRange: "N/A",
-      slowestSpec: "N/A",
-      slowestSpecMedianSeconds: 0,
+      medianRunDurationSeconds: 0,
+      maxRunDurationSeconds: 0,
     };
     writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary) + "\n");
     process.exit(0);
