@@ -50,7 +50,7 @@ func TestObjectID_Encoding(t *testing.T) {
 		wantSlot int
 		wantPos  int
 	}{
-		{"column id=0,0", wiop.ObjectID(wiop.KindColumn)<<56, wiop.KindColumn, 0, 0},
+		{"column id=0,0", wiop.ObjectID(wiop.KindColumn) << 56, wiop.KindColumn, 0, 0},
 		{"cell id=3,7", wiop.ObjectID(wiop.KindCell)<<56 | wiop.ObjectID(3)<<40 | wiop.ObjectID(7), wiop.KindCell, 3, 7},
 		{"coin id=1,2", wiop.ObjectID(wiop.KindCoinField)<<56 | wiop.ObjectID(1)<<40 | wiop.ObjectID(2), wiop.KindCoinField, 1, 2},
 	}
@@ -220,4 +220,15 @@ func TestSystem_Lookup_WrongKindPanic(t *testing.T) {
 
 	assert.Panics(t, func() { sys.LookupCell(col.Context.ID) })
 	assert.Panics(t, func() { sys.LookupCoinField(col.Context.ID) })
+}
+
+func TestSystem_LookupColumn_WrongKindPanic(t *testing.T) {
+	sys, r0, _, _ := newTestSystem(t)
+	cell := r0.NewCell(sys.Context.Childf("cellLookup"), false)
+	assert.Panics(t, func() { sys.LookupColumn(cell.Context.ID) })
+}
+
+func TestModule_NewExtensionColumn_NilRoundPanic(t *testing.T) {
+	sys, _, _, mod := newTestSystem(t)
+	assert.Panics(t, func() { mod.NewExtensionColumn(sys.Context.Childf("ext"), wiop.VisibilityOracle, nil) })
 }

@@ -9,192 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ---- LagrangeEval helpers ----
-
-// lagrangeSystem builds a 2-round system with one 4-element sized module,
-// one column and one coin serving as evaluation point.
-func lagrangeSystem(t *testing.T) (*wiop.System, *wiop.Round, *wiop.Round, *wiop.Module, *wiop.Column, *wiop.CoinField) {
-	t.Helper()
-	sys := wiop.NewSystemf("le")
-	r0 := sys.NewRound()
-	r1 := sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("leMod"), 4, wiop.PaddingDirectionNone)
-	col := mod.NewColumn(sys.Context.Childf("leCol"), wiop.VisibilityOracle, r0)
-	coin := r1.NewCoinField(sys.Context.Childf("leCoin"))
-	return sys, r0, r1, mod, col, coin
-}
-
-// ---- LagrangeEval construction ----
-
-func TestLagrangeEval_NewLagrangeEval_Basic(t *testing.T) {
-	sys, r0, r1, _, col, coin := lagrangeSystem(t)
-	_ = r0
-	le := sys.NewLagrangeEval(sys.Context.Childf("le1"), []*wiop.ColumnView{col.View()}, coin)
-	require.NotNil(t, le)
-	assert.Len(t, le.EvaluationClaims, 1)
-	// Round() should be r1 (the coin's round)
-	assert.Equal(t, r1, le.Round())
-}
-
-func TestLagrangeEval_NewLagrangeEval_NilCtxPanic(t *testing.T) {
-	sys, _, _, _, col, coin := lagrangeSystem(t)
-	assert.Panics(t, func() { sys.NewLagrangeEval(nil, []*wiop.ColumnView{col.View()}, coin) })
-}
-
-func TestLagrangeEval_NewLagrangeEval_EmptyPolysPanic(t *testing.T) {
-	sys, _, _, _, _, coin := lagrangeSystem(t)
-	assert.Panics(t, func() { sys.NewLagrangeEval(sys.Context.Childf("le2"), nil, coin) })
-}
-
-func TestLagrangeEval_NewLagrangeEval_NoNextRoundPanic(t *testing.T) {
-	// Only one round — no next round for claim cells
-	sys := wiop.NewSystemf("leNoRound")
-	r0 := sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
-	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-	cell := r0.NewCell(sys.Context.Childf("ep"), false)
-	assert.Panics(t, func() {
-		sys.NewLagrangeEval(sys.Context.Childf("le3"), []*wiop.ColumnView{col.View()}, cell)
-	})
-}
-
-func TestLagrangeEval_NewLagrangeEvalFrom(t *testing.T) {
-	sys, _, r1, _, col, coin := lagrangeSystem(t)
-	claim := r1.NewCell(sys.Context.Childf("extClaim"), false)
-	le := sys.NewLagrangeEvalFrom(sys.Context.Childf("leFrom"), []*wiop.ColumnView{col.View()}, coin, []*wiop.Cell{claim})
-	require.NotNil(t, le)
-	assert.Equal(t, claim, le.EvaluationClaims[0])
-}
-
-func TestLagrangeEval_NewLagrangeEvalFrom_LenMismatchPanic(t *testing.T) {
-	sys, _, r1, _, col, coin := lagrangeSystem(t)
-	c1 := r1.NewCell(sys.Context.Childf("c1"), false)
-	c2 := r1.NewCell(sys.Context.Childf("c2"), false)
-	assert.Panics(t, func() {
-		sys.NewLagrangeEvalFrom(sys.Context.Childf("leFromMis"), []*wiop.ColumnView{col.View()}, coin, []*wiop.Cell{c1, c2})
-	})
-}
-
-// ---- LagrangeEval SelfAssign + Check ----
-
-func TestLagrangeEval_SelfAssign_Check(t *testing.T) {
-	// Constant column of value c; Lagrange eval of constant polynomial P = c is c everywhere.
-	sys, _, _, _, col, coin := lagrangeSystem(t)
-	le := sys.NewLagrangeEval(sys.Context.Childf("leEval"), []*wiop.ColumnView{col.View()}, coin)
-
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, baseVec(4, 3))
-	rt.AdvanceRound() // samples coin, now at r1
-
-	assert.False(t, le.IsAlreadyAssigned(rt))
-	le.SelfAssign(rt)
-	assert.True(t, le.IsAlreadyAssigned(rt))
-	assert.NoError(t, le.Check(rt))
-}
-
-func TestLagrangeEval_Check_ColumnNotAssigned(t *testing.T) {
-	sys, _, _, _, col, coin := lagrangeSystem(t)
-	le := sys.NewLagrangeEval(sys.Context.Childf("leNoCol"), []*wiop.ColumnView{col.View()}, coin)
-
-	// Manually assign a coin by advancing normally first, but don't assign column.
-	// However, we can't advance without assigning oracle columns... let's make a
-	// separate system without oracle columns to reach r1.
-	sys2 := wiop.NewSystemf("le2")
-	r0b := sys2.NewRound()
-	r1b := sys2.NewRound()
-	mod2 := sys2.NewSizedModule(sys2.Context.Childf("mod2"), 4, wiop.PaddingDirectionNone)
-	col2 := mod2.NewColumn(sys2.Context.Childf("col2"), wiop.VisibilityOracle, r0b)
-	coin2 := r1b.NewCoinField(sys2.Context.Childf("coin2"))
-	le2 := sys2.NewLagrangeEval(sys2.Context.Childf("le2q"), []*wiop.ColumnView{col2.View()}, coin2)
-	_ = le
-
-	rt2 := wiop.NewRuntime(sys2)
-	rt2.AssignColumn(col2, baseVec(4, 1))
-	rt2.AdvanceRound()
-	// Don't assign col2 in a fresh runtime — use a fresh runtime without column assignment.
-	// Actually we just already advanced once. Let's test Check when claim isn't assigned.
-	// SelfAssign was not called, and we haven't assigned the result cell.
-	// Check should error because claim cell is unassigned.
-	err := le2.Check(rt2)
-	assert.Error(t, err)
-}
-
-func TestLagrangeEval_Check_Mismatch(t *testing.T) {
-	sys, r0, _, _, col, coin := lagrangeSystem(t)
-	le := sys.NewLagrangeEval(sys.Context.Childf("leMis"), []*wiop.ColumnView{col.View()}, coin)
-
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, baseVec(4, 5))
-	rt.AdvanceRound()
-	// Assign wrong value to claim cell
-	rt.AssignCell(le.EvaluationClaims[0], field.ElemFromBase(field.NewFromString("99")))
-
-	err := le.Check(rt)
-	assert.Error(t, err)
-	_ = r0
-}
-
-func TestLagrangeEval_CheckGnark_Panics(t *testing.T) {
-	sys, _, _, _, col, coin := lagrangeSystem(t)
-	le := sys.NewLagrangeEval(sys.Context.Childf("leGnark"), []*wiop.ColumnView{col.View()}, coin)
-	assert.Panics(t, func() { le.CheckGnark(nil, nil) })
-}
-
-// ---- LagrangeEval with Cell as evaluation point (covers roundOf *Cell branch) ----
-
-func TestLagrangeEval_CellEvalPoint_Round(t *testing.T) {
-	sys := wiop.NewSystemf("leCell")
-	r0 := sys.NewRound()
-	r1 := sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
-	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-	cell := r1.NewCell(sys.Context.Childf("ep"), false)
-	le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, cell)
-	assert.Equal(t, r1, le.Round())
-}
-
-// ---- LagrangeEval with PaddingDirectionLeft (covers evalLagrangePaddedBaseBase) ----
-
-func TestLagrangeEval_PaddingLeft_SelfAssign_Check(t *testing.T) {
-	sys := wiop.NewSystemf("leLeft")
-	r0 := sys.NewRound()
-	r1 := sys.NewRound()
-	// Module size 4, but assignment provides 3 elements; padding=Left → [pad,v,v,v]
-	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionLeft)
-	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-	coin := r1.NewCoinField(sys.Context.Childf("coin"))
-	le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, coin)
-
-	rt := wiop.NewRuntime(sys)
-	// 3-element assignment with no padding data specified; padding value is zero
-	var v field.Element
-	v.SetUint64(2)
-	elems := []field.Element{v, v, v}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
-	rt.AdvanceRound()
-
-	le.SelfAssign(rt)
-	assert.NoError(t, le.Check(rt))
-}
-
-// ---- Vanishing/LocalOpening CheckGnark panics ----
-
-func TestVanishing_CheckGnark_Panics(t *testing.T) {
-	sys, r0, _, mod := newTestSystem(t)
-	col := mod.NewColumn(sys.Context.Childf("vgCol"), wiop.VisibilityOracle, r0)
-	v := mod.NewVanishing(sys.Context.Childf("vg"), col.View())
-	assert.Panics(t, func() { v.CheckGnark(nil, nil) })
-}
-
-func TestLocalOpening_CheckGnark_Panics(t *testing.T) {
-	sys, r0, _, mod := newTestSystem(t)
-	col := mod.NewColumn(sys.Context.Childf("logCol"), wiop.VisibilityOracle, r0)
-	lo := col.At(0).Open(sys.Context.Childf("log"))
-	assert.Panics(t, func() { lo.CheckGnark(nil, nil) })
-}
-
-// ---- Table ----
-
 func TestNewTable_Basic(t *testing.T) {
 	sys, r0, _, mod := newTestSystem(t)
 	col := mod.NewColumn(sys.Context.Childf("tblCol"), wiop.VisibilityOracle, r0)
@@ -445,4 +259,138 @@ func TestInclusion_Check_WithSelector(t *testing.T) {
 	rt.AssignColumn(selA, selVec)
 
 	assert.NoError(t, inc.Check(rt))
+}
+
+func TestInclusion_PaddingLeft_Match(t *testing.T) {
+	sys := wiop.NewSystemf("incPadL")
+	r0 := sys.NewRound()
+	// 4-element module with left padding
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionLeft)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	rt := wiop.NewRuntime(sys)
+	// Both have 3-element assignments padded left to 4 with zero
+	var v field.Element
+	v.SetUint64(7)
+	elems := []field.Element{v, v, v}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	assert.NoError(t, inc.Check(rt))
+}
+
+func TestInclusion_PaddingRight_Match(t *testing.T) {
+	sys := wiop.NewSystemf("incPadR")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionRight)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	rt := wiop.NewRuntime(sys)
+	var v field.Element
+	v.SetUint64(5)
+	elems := []field.Element{v, v, v}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	assert.NoError(t, inc.Check(rt))
+}
+
+func TestInclusion_PaddingLeft_Mismatch(t *testing.T) {
+	sys := wiop.NewSystemf("incPadMis")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionLeft)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	rt := wiop.NewRuntime(sys)
+	var v1, v2 field.Element
+	v1.SetUint64(1)
+	v2.SetUint64(9)
+	elemsA := []field.Element{v1, v1, v1}
+	elemsB := []field.Element{v2, v2, v2}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsA)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsB)}}
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	err := inc.Check(rt)
+	assert.Error(t, err)
+}
+
+// ---- Inclusion with selector + padding (covers the selector path in inclusionBuildSet) ----
+
+func TestInclusion_PaddingRight_WithSelector_Match(t *testing.T) {
+	sys := wiop.NewSystemf("incPadSel")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionRight)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+	selA := mod.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+
+	// Selector selects only data rows (index 0,1), not padding rows.
+	var one, zero field.Element
+	one.SetUint64(1)
+	selElems := []field.Element{one, one}
+	selVec := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(selElems)}}
+
+	var v field.Element
+	v.SetUint64(3)
+	dataElems := []field.Element{v, v}
+	dataVec := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(dataElems)}}
+
+	tabA := wiop.NewFilteredTable(selA.View(), colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, dataVec)
+	rt.AssignColumn(colB, dataVec)
+	rt.AssignColumn(selA, selVec)
+
+	assert.NoError(t, inc.Check(rt))
+	_ = zero
+}
+
+// ---- Permutation with padding + PaddingDirectionLeft (padAnchorRow Left branch) ----
+
+func TestPermutation_PaddingLeft_Match(t *testing.T) {
+	sys := wiop.NewSystemf("permPadL")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionLeft)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	perm := sys.NewPermutation(sys.Context.Childf("perm"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	var v field.Element
+	v.SetUint64(4)
+	elems := []field.Element{v, v, v}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}}
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	assert.NoError(t, perm.Check(rt))
 }

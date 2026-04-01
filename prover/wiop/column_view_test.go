@@ -271,3 +271,10 @@ func TestModule_NewPrecomputedColumn_NilCtxPanic(t *testing.T) {
 	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
 	assert.Panics(t, func() { mod.NewPrecomputedColumn(nil, wiop.VisibilityPublic, baseVec(4, 1)) })
 }
+
+func TestColumnView_Degree_UnsizedPanic(t *testing.T) {
+	sys, r0, _, _ := newTestSystem(t)
+	unsized := sys.NewModule(sys.Context.Childf("unsized"), wiop.PaddingDirectionNone)
+	col := unsized.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+	assert.Panics(t, func() { col.View().Degree() })
+}
