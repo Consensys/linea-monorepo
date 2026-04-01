@@ -3,12 +3,12 @@ package vortex
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 var (
@@ -36,7 +36,7 @@ type VerifierInput struct {
 func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
 
 	// Check the consistency of Ys and proof.Linear combination
-	yJoined := utils.Join(ys...)
+	yJoined := slices.Concat(ys...)
 	alphaY := polynomials.EvalLagrange(field.VecFromExt(linComb), field.ElemFromExt(x))
 	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
 
