@@ -79,9 +79,7 @@ jobs:
 
             ## Output Format
 
-            Write your complete review to the file `/tmp/coordinator-review.md`.
-
-            Format the file as a GitHub issue body. Prefix EACH individual finding with
+            Format your response as a GitHub issue body. Prefix EACH individual finding with
             `- [ ]` (an unchecked checkbox) so team members can tick them off as addressed.
 
             Example format:
@@ -98,19 +96,24 @@ jobs:
             ## Concurrency Issues
             - [ ] `coordinator/src/.../Baz.kt:88` — `.get()` called on a `CompletableFuture` on the event-loop thread, which will block it. Use `.thenApply` instead.
 
+            Output ONLY the review content, nothing else.
+
       - name: Create GitHub Issue with findings
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_BRANCH: ${{ github.event.inputs.branch || 'main' }}
+          REVIEW_BODY: ${{ steps.review.outputs.response }}
         run: |
           DATE=$(date -u +%Y-%m-%d)
           BRANCH="${INPUT_BRANCH}"
           COMMIT=$(git rev-parse --short=7 HEAD)
           TITLE="Coordinator review ${DATE} ${BRANCH} ${COMMIT}"
 
-          if [ ! -f /tmp/coordinator-review.md ]; then
-            echo "No review file found — Claude may not have produced output." > /tmp/coordinator-review.md
+          if [ -z "${REVIEW_BODY}" ]; then
+            REVIEW_BODY="No review output — Claude may not have produced output."
           fi
+
+          printf '%s' "${REVIEW_BODY}" > /tmp/coordinator-review.md
 
           gh issue create \
             --title "${TITLE}" \
