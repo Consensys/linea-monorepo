@@ -61,7 +61,9 @@ function parseArgs(): { days: number } {
 
 async function fetchE2eRuns(octokit: Octokit, days: number): Promise<{ run: E2eRun; rawLog: string }[]> {
   const since = new Date();
-  since.setDate(since.getDate() - days);
+  // Subtract an extra day because GitHub's created:>DATE filter treats the date as a day
+  // boundary (exclusive), so >2026-03-27 means "Mar 28 or later" and drops all of Mar 27.
+  since.setDate(since.getDate() - days - 1);
   const sinceStr = since.toISOString().split("T")[0];
 
   console.log(`Fetching workflow runs since ${sinceStr}...`);
