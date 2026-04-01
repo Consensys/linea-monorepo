@@ -6,31 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
-// RationalReductionKind identifies the aggregation mode of a [RationalReduction].
-type RationalReductionKind int
-
-const (
-	// RationalSum computes Result = ∑_k ∑_row Num_k[row] / Den_k[row].
-	// This unifies LogDerivativeSum and InnerProduct (InnerProduct is the
-	// special case where each denominator is the constant 1).
-	RationalSum RationalReductionKind = iota
-	// RationalProduct computes Result = ∏_k ∏_row Num_k[row] / Den_k[row].
-	// This unifies GrandProduct.
-	RationalProduct
-)
-
-// String implements [fmt.Stringer].
-func (k RationalReductionKind) String() string {
-	switch k {
-	case RationalSum:
-		return "Sum"
-	case RationalProduct:
-		return "Product"
-	default:
-		return fmt.Sprintf("RationalReductionKind(%d)", int(k))
-	}
-}
-
 // Fraction is a value type pairing a Numerator and a Denominator expression.
 // Both fields are always non-nil: use [Module.NewConstant] with value 1 to
 // express a unit numerator or denominator.
@@ -46,11 +21,12 @@ type Fraction struct {
 }
 
 // RationalReduction is a [Query] that reduces a list of [Fraction] objects
-// to a single field-element result stored in a [Cell]. The reduction is
-// row-wise then fraction-wise according to [RationalReduction.Kind]:
+// to a single field-element result stored in a [Cell]:
 //
-//   - [RationalSum]:     Result = ∑_k ∑_row Num_k[row] / Den_k[row]
-//   - [RationalProduct]: Result = ∏_k ∏_row Num_k[row] / Den_k[row]
+//	Result = ∑_k ∑_row Num_k[row] / Den_k[row]
+//
+// This unifies LogDerivativeSum and InnerProduct (InnerProduct is the special
+// case where each denominator is the constant 1).
 //
 // Different fractions may span different modules; no cross-fraction module
 // constraint is imposed. The Result cell is allocated automatically in the
@@ -62,8 +38,6 @@ type Fraction struct {
 // Use [System.NewRationalReduction] to construct and register an instance.
 type RationalReduction struct {
 	baseQuery
-	// Kind is the aggregation mode (Sum or Product).
-	Kind RationalReductionKind
 	// Fractions is the ordered list of rational expression pairs. Contains
 	// at least one entry.
 	Fractions []Fraction
@@ -91,10 +65,7 @@ func (rr *RationalReduction) SelfAssign(rt Runtime) {
 }
 
 // Check implements [Query]. Verifies that the Result cell holds the correct
-// aggregated value computed from the fraction expressions.
-//
-// For [RationalSum] the expected value is ∑_k ∑_row Num_k[row] / Den_k[row];
-// for [RationalProduct] it is ∏_k ∏_row Num_k[row] / Den_k[row].
+// aggregated value ∑_k ∑_row Num_k[row] / Den_k[row].
 // Returns an error if the claimed Result cell does not match.
 func (rr *RationalReduction) Check(rt Runtime) error {
 	acc := rr.reduce(rt)
@@ -102,27 +73,19 @@ func (rr *RationalReduction) Check(rt Runtime) error {
 	diff := acc.Sub(got)
 	if !diff.Ext.IsZero() {
 		return fmt.Errorf(
-			"wiop: RationalReduction(%s).Check(%s): result mismatch",
-			rr.Kind, rr.context.Path(),
+			"wiop: RationalReduction.Check(%s): result mismatch",
+			rr.context.Path(),
 		)
 	}
 	return nil
 }
 
-// reduce computes the aggregated value over all fractions from the runtime
+// reduce computes ∑_k ∑_row Num_k[row] / Den_k[row] from the runtime
 // assignments. It is the shared core of [SelfAssign] and [Check].
 //
-// Panics on an unknown [RationalReductionKind] or a zero denominator.
+// Panics on a zero denominator.
 func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
-	var acc field.FieldElem
-	switch rr.Kind {
-	case RationalSum:
-		acc = field.ElemZero()
-	case RationalProduct:
-		acc = field.ElemOne()
-	default:
-		panic(fmt.Sprintf("wiop: RationalReduction.reduce: unknown kind %v", rr.Kind))
-	}
+	acc := field.ElemZero()
 
 	for _, f := range rr.Fractions {
 		// Determine the row count from whichever expression is vector-valued.
@@ -178,13 +141,7 @@ func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
 				den = denScalar.Value
 			}
 
-			ratio := num.Div(den)
-			switch rr.Kind {
-			case RationalSum:
-				acc = acc.Add(ratio)
-			case RationalProduct:
-				acc = acc.Mul(ratio)
-			}
+			acc = acc.Add(num.Div(den))
 		}
 	}
 
@@ -204,7 +161,7 @@ func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
 //
 // Panics if ctx is nil, any invariant is violated, or no round follows the
 // latest fraction column round (call [System.NewRound] first in that case).
-func (sys *System) NewRationalReduction(ctx *ContextFrame, kind RationalReductionKind, fractions []Fraction) *RationalReduction {
+func (sys *System) NewRationalReduction(ctx *ContextFrame, fractions []Fraction) *RationalReduction {
 	if ctx == nil {
 		panic("wiop: System.NewRationalReduction requires a non-nil ContextFrame")
 	}
@@ -268,7 +225,6 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, kind RationalReductio
 			context:     ctx,
 			Annotations: make(Annotations),
 		},
-		Kind:      kind,
 		Fractions: fractions,
 		Result:    result,
 	}

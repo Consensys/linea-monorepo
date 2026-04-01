@@ -20,7 +20,7 @@ func TestRationalReduction_Sum(t *testing.T) {
 
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rrQ"), wiop.RationalSum, []wiop.Fraction{frac})
+	rr := sys.NewRationalReduction(sys.Context.Childf("rrQ"), []wiop.Fraction{frac})
 	require.NotNil(t, rr)
 
 	rt := wiop.NewRuntime(sys)
@@ -35,25 +35,6 @@ func TestRationalReduction_Sum(t *testing.T) {
 	assert.Equal(t, r1, rr.Round())
 }
 
-func TestRationalReduction_Product(t *testing.T) {
-	// 4-row column of all-2; denominator = constant 1; product = 2^4 = 16
-	sys := wiop.NewSystemf("rrProdSys")
-	r0 := sys.NewRound()
-	sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("rrProdMod"), 4, wiop.PaddingDirectionNone)
-	col := mod.NewColumn(sys.Context.Childf("rrProdCol"), wiop.VisibilityOracle, r0)
-
-	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
-	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rrProdQ"), wiop.RationalProduct, []wiop.Fraction{frac})
-
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, baseVec(4, 2))
-	rt.AdvanceRound()
-	rr.SelfAssign(rt)
-	assert.NoError(t, rr.Check(rt))
-}
-
 func TestRationalReduction_Check_Mismatch(t *testing.T) {
 	sys := wiop.NewSystemf("rrMisSys")
 	r0 := sys.NewRound()
@@ -63,7 +44,7 @@ func TestRationalReduction_Check_Mismatch(t *testing.T) {
 
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rrMisQ"), wiop.RationalSum, []wiop.Fraction{frac})
+	rr := sys.NewRationalReduction(sys.Context.Childf("rrMisQ"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 1))
@@ -75,12 +56,6 @@ func TestRationalReduction_Check_Mismatch(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRationalReductionKind_String(t *testing.T) {
-	assert.Equal(t, "Sum", wiop.RationalSum.String())
-	assert.Equal(t, "Product", wiop.RationalProduct.String())
-	assert.Contains(t, wiop.RationalReductionKind(99).String(), "RationalReductionKind")
-}
-
 func TestNewRationalReduction_NilCtxPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
@@ -90,14 +65,14 @@ func TestNewRationalReduction_NilCtxPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r)
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	assert.Panics(t, func() { sys.NewRationalReduction(nil, wiop.RationalSum, []wiop.Fraction{frac}) })
+	assert.Panics(t, func() { sys.NewRationalReduction(nil, []wiop.Fraction{frac}) })
 }
 
 func TestNewRationalReduction_EmptyFractionsPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), wiop.RationalSum, nil)
+		sys.NewRationalReduction(sys.Context.Childf("q"), nil)
 	})
 }
 
@@ -109,7 +84,7 @@ func TestNewRationalReduction_NilNumeratorPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
 	frac := wiop.Fraction{Numerator: nil, Denominator: col.View()}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), wiop.RationalSum, []wiop.Fraction{frac})
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
@@ -120,7 +95,7 @@ func TestNewRationalReduction_BothScalarPanic(t *testing.T) {
 	k := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: k, Denominator: k}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), wiop.RationalSum, []wiop.Fraction{frac})
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
@@ -133,7 +108,7 @@ func TestNewRationalReduction_NoNextRoundPanic(t *testing.T) {
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), wiop.RationalSum, []wiop.Fraction{frac})
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
@@ -147,7 +122,7 @@ func TestRationalReduction_ScalarNumVecDen(t *testing.T) {
 
 	one := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: one, Denominator: col.View()}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), wiop.RationalSum, []wiop.Fraction{frac})
+	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 2))
@@ -166,7 +141,7 @@ func TestRationalReduction_VecNumScalarDen(t *testing.T) {
 
 	one := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), wiop.RationalSum, []wiop.Fraction{frac})
+	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 3))
@@ -185,6 +160,6 @@ func TestNewRationalReduction_DifferentModulePanic(t *testing.T) {
 	c2 := mod2.NewColumn(sys.Context.Childf("c2"), wiop.VisibilityOracle, r0)
 	frac := wiop.Fraction{Numerator: c1.View(), Denominator: c2.View()}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), wiop.RationalSum, []wiop.Fraction{frac})
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
