@@ -1,20 +1,4 @@
-const VERIFY_BIGINT_SENTINEL = "__linea_verify_bigint__";
-
-function parseVerifyArgs(rawArgs: string): Record<string, unknown> {
-  return JSON.parse(rawArgs, (_key, value: unknown) => {
-    const maybeSerializedBigInt =
-      value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-
-    if (
-      maybeSerializedBigInt !== null &&
-      Object.keys(maybeSerializedBigInt).length === 1 &&
-      typeof maybeSerializedBigInt[VERIFY_BIGINT_SENTINEL] === "string"
-    ) {
-      return BigInt(maybeSerializedBigInt[VERIFY_BIGINT_SENTINEL] as string);
-    }
-    return value;
-  }) as Record<string, unknown>;
-}
+import { parseVerifyTaskArgs } from "./verify-task-args";
 
 async function main() {
   const task = process.env.HARDHAT_VERIFY_TASK;
@@ -27,7 +11,7 @@ async function main() {
     throw new Error("Missing HARDHAT_VERIFY_ARGS.");
   }
 
-  const args = parseVerifyArgs(rawArgs);
+  const args = parseVerifyTaskArgs(rawArgs);
   const hreModule = await import("hardhat");
   const run =
     hreModule.run ??

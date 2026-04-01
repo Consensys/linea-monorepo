@@ -1,23 +1,12 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { clearUiWorkflowStatus, setUiWorkflowStatus } from "../../scripts/hardhat/signer-ui-bridge";
+import { stringifyVerifyTaskArgs } from "../../scripts/hardhat/verify-task-args";
 import { delay } from "./general";
 
 const VERIFY_TIMEOUT_MS = 90_000;
 const VERIFY_PROPAGATION_DELAY_MS = 30_000;
 const VERIFY_CHILD_SCRIPT = resolve(__dirname, "../../scripts/hardhat/run-verify-task.ts");
-const VERIFY_BIGINT_SENTINEL = "__linea_verify_bigint__";
-
-function stringifyVerifyArgs(args: Record<string, unknown>): string {
-  return JSON.stringify(args, (_key, value: unknown) => {
-    if (typeof value === "bigint") {
-      return {
-        [VERIFY_BIGINT_SENTINEL]: value.toString(),
-      };
-    }
-    return value;
-  });
-}
 
 async function getCurrentHardhatNetworkName(): Promise<string> {
   const hreModule = await import("hardhat");
@@ -46,7 +35,7 @@ async function runVerifyTaskWithTimeout(
         env: {
           ...process.env,
           HARDHAT_VERIFY_TASK: task,
-          HARDHAT_VERIFY_ARGS: stringifyVerifyArgs(args),
+          HARDHAT_VERIFY_ARGS: stringifyVerifyTaskArgs(args),
         },
         stdio: "inherit",
       },

@@ -22,7 +22,6 @@ import {
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { getOptionalEnvVar } from "../../common/helpers/environment";
-import { SupportedChainIds } from "../../common/supportedNetworks";
 import {
   assertExclusiveSignerMode,
   hasConfiguredDeployerPrivateKey,
@@ -58,6 +57,8 @@ type ChainMetadata = {
   blockExplorerUrls: string[];
   nativeCurrency: NativeCurrency;
 };
+
+type SignerUiChainCatalogEntry = ChainMetadata;
 
 type SerializedTransactionRequest = {
   to?: string;
@@ -183,6 +184,12 @@ type SignerUiContext = {
 
 const SIGNER_UI_DIR = resolve(__dirname, "../../signer-ui");
 const requireFromSignerUiBridge = createRequire(__filename);
+const SIGNER_UI_CHAIN_CATALOG = requireFromSignerUiBridge(
+  "../../signer-ui/shared/chainCatalog.json",
+) as readonly SignerUiChainCatalogEntry[];
+const signerUiChainCatalogByChainId = new Map<number, SignerUiChainCatalogEntry>(
+  SIGNER_UI_CHAIN_CATALOG.map((entry) => [entry.chainId, entry]),
+);
 const LOCALHOST = "127.0.0.1";
 const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
 const UI_READY_TIMEOUT_MS = 60 * 1000;
@@ -220,6 +227,7 @@ const DEFAULT_SHUTDOWN_DRAIN_MS = 1500;
 /** After the bridge port closes, wait before SIGTERM on Next so the UI can observe connection loss first. */
 const DEFAULT_SHUTDOWN_GRACE_MS = 2000;
 const MAX_SESSION_OUTCOME_MESSAGE_CHARS = 500;
+const DEFAULT_WORKFLOW_STATUS_STAGE_MIN_MS = 2000;
 
 let activeSession: SignerUiSession | undefined;
 let privateKeyUsageWarningShown = false;
@@ -457,45 +465,16 @@ function shutdownNextDevWithBridge(): boolean {
   return process.env.HARDHAT_SIGNER_UI_SHUTDOWN_NEXT_DEV === "true";
 }
 
+function getSignerUiChainCatalogEntry(chainId: number): SignerUiChainCatalogEntry | undefined {
+  return signerUiChainCatalogByChainId.get(chainId);
+}
+
 function getExplorerUrls(chainId: number): string[] {
-  switch (chainId) {
-    case SupportedChainIds.MAINNET:
-      return ["https://etherscan.io"];
-    case SupportedChainIds.SEPOLIA:
-      return ["https://sepolia.etherscan.io"];
-    case SupportedChainIds.HOODI:
-      return ["https://hoodi.etherscan.io"];
-    case SupportedChainIds.LINEA:
-      return ["https://lineascan.build"];
-    case SupportedChainIds.LINEA_SEPOLIA:
-      return ["https://sepolia.lineascan.build"];
-    case SupportedChainIds.LINEA_DEVNET:
-    case 31648428:
-      return [];
-    default:
-      return [];
-  }
+  return getSignerUiChainCatalogEntry(chainId)?.blockExplorerUrls ?? [];
 }
 
 function getChainName(networkName: string, chainId: number): string {
-  switch (chainId) {
-    case SupportedChainIds.MAINNET:
-      return "Ethereum Mainnet";
-    case SupportedChainIds.SEPOLIA:
-      return "Sepolia";
-    case SupportedChainIds.HOODI:
-      return "Hoodi";
-    case SupportedChainIds.LINEA:
-      return "Linea Mainnet";
-    case SupportedChainIds.LINEA_SEPOLIA:
-      return "Linea Sepolia";
-    case SupportedChainIds.LINEA_DEVNET:
-      return "Linea Devnet";
-    case 31648428:
-      return "Linea Local L1 (Docker)";
-    default:
-      return networkName;
-  }
+  return getSignerUiChainCatalogEntry(chainId)?.chainName ?? networkName;
 }
 
 function getRpcUrl(hre: HardhatRuntimeEnvironment): string {
@@ -592,6 +571,91 @@ function isValidTxHash(value: unknown): value is string {
   return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
 }
 
+type ParsedSuccess<T> = { ok: true; value: T };
+type ParsedFailure = { ok: false; error: string };
+type ParsedResult<T> = ParsedSuccess<T> | ParsedFailure;
+
+type WalletPayload = { address: string; chainId: number };
+type RespondPayload = { requestId: string; hash: string; from: string; chainId: number };
+type ErrorPayload = { requestId: string; message: string };
+
+function parseWalletPayload(raw: unknown): ParsedResult<WalletPayload> {
+  const payload = raw as { address?: unknown; chainId?: unknown };
+  if (typeof payload?.address !== "string" || !isAddress(payload.address)) {
+    return { ok: false, error: "Invalid wallet address." };
+  }
+  if (typeof payload?.chainId !== "number" || !Number.isInteger(payload.chainId)) {
+    return { ok: false, error: "Invalid chainId." };
+  }
+  return { ok: true, value: { address: payload.address, chainId: payload.chainId } };
+}
+
+function parseRespondPayload(raw: unknown): ParsedResult<RespondPayload> {
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: "Invalid JSON body." };
+  }
+  const payload = raw as Record<string, unknown>;
+
+  if (typeof payload.requestId !== "string" || payload.requestId.length === 0) {
+    return { ok: false, error: "Missing or invalid requestId." };
+  }
+  if (!isValidTxHash(payload.hash)) {
+    return { ok: false, error: "Missing or invalid transaction hash." };
+  }
+  if (typeof payload.from !== "string" || !isAddress(payload.from)) {
+    return { ok: false, error: "Missing or invalid from address." };
+  }
+  if (typeof payload.chainId !== "number" || !Number.isInteger(payload.chainId)) {
+    return { ok: false, error: "Missing or invalid chainId." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      requestId: payload.requestId,
+      hash: payload.hash,
+      from: payload.from,
+      chainId: payload.chainId,
+    },
+  };
+}
+
+function parseErrorPayload(raw: unknown): ParsedResult<ErrorPayload> {
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: "Invalid JSON body." };
+  }
+
+  const payload = raw as Record<string, unknown>;
+  if (typeof payload.requestId !== "string") {
+    return { ok: false, error: "Missing requestId." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      requestId: payload.requestId,
+      message: typeof payload.message === "string" ? payload.message.slice(0, 4000) : "Wallet or network error",
+    },
+  };
+}
+
+function workflowStatusTransitionDelayMs(params: {
+  currentStage: WorkflowStatusStage | null;
+  nextStage: WorkflowStatusStage | null;
+  currentStageChangedAtMs: number;
+  nowMs: number;
+  minimumStageMs: number;
+}): number {
+  const { currentStage, nextStage, currentStageChangedAtMs, nowMs, minimumStageMs } = params;
+  if (currentStage === null || currentStage === nextStage || minimumStageMs <= 0) {
+    return 0;
+  }
+
+  const elapsed = Math.max(nowMs - currentStageChangedAtMs, 0);
+  const remaining = minimumStageMs - elapsed;
+  return remaining > 0 ? remaining : 0;
+}
+
 function normalizeCalldataHex(data: string | null | undefined): string {
   if (data === undefined || data === null || data === "" || data === "0x") {
     return "0x";
@@ -647,6 +711,27 @@ function tryDecodeHexAsciiEncodedCalldata(normalizedLowerHex: string): string | 
 function normalizeTxDataForSignerUiValidation(data: string | null | undefined): string {
   const base = normalizeCalldataHex(data);
   return tryDecodeHexAsciiEncodedCalldata(base) ?? base;
+}
+
+/**
+ * Calldata is considered matching if:
+ * 1) raw normalized tx data equals expected, or
+ * 2) tx data decodes from ASCII-hex wrapper and then equals expected.
+ *
+ * This ordering avoids false mismatches for valid raw calldata that happens to look like ASCII bytes
+ * (e.g. `0x31323334`), while still supporting RPCs that return ASCII-wrapped payloads.
+ */
+export function calldataMatchesPromptForSignerUiValidation(
+  expectedData: string | null | undefined,
+  actualData: string | null | undefined,
+): boolean {
+  const expected = normalizeCalldataHex(expectedData);
+  const actualRaw = normalizeCalldataHex(actualData);
+  if (actualRaw === expected) {
+    return true;
+  }
+  const decoded = tryDecodeHexAsciiEncodedCalldata(actualRaw);
+  return decoded !== null && decoded === expected;
 }
 
 function hexQuantityToBigInt(hex: HexString | undefined): bigint {
@@ -726,8 +811,7 @@ function getOnChainTransactionPromptMismatch(
   }
 
   const normalizedExpectedData = normalizeCalldataHex(promptRequest.data);
-  const normalizedActualData = normalizeTxDataForSignerUiValidation(tx.data);
-  if (normalizedActualData !== normalizedExpectedData) {
+  if (!calldataMatchesPromptForSignerUiValidation(promptRequest.data, tx.data)) {
     return `Calldata mismatch: expected ${normalizedExpectedData}, got ${normalizeCalldataHex(tx.data)}.`;
   }
 
@@ -1067,6 +1151,9 @@ class SignerUiSession {
   private pendingRequest: PendingTransaction | undefined;
   private transactionProgress: TransactionProgress | null = null;
   private workflowStatus: WorkflowStatus | null = null;
+  private workflowStatusChangedAtMs = 0;
+  private pendingWorkflowStatus: { stage: WorkflowStatusStage; message: string } | null | undefined;
+  private workflowStatusTransitionTimer: NodeJS.Timeout | undefined;
   private nextTransactionDetails?: UiTransactionDetails;
   private walletState: SessionWalletState | null = null;
   private walletResolvers: Array<(wallet: SessionWalletState) => void> = [];
@@ -1184,6 +1271,11 @@ class SignerUiSession {
 
     this.closed = true;
     this.failPendingState(new Error(`HARDHAT_SIGNER_UI session closed during ${this.activeScriptContext}`));
+    if (this.workflowStatusTransitionTimer) {
+      clearTimeout(this.workflowStatusTransitionTimer);
+      this.workflowStatusTransitionTimer = undefined;
+    }
+    this.pendingWorkflowStatus = undefined;
 
     const apiPort = this.serverPort;
     const nextDevPort = this.uiPort;
@@ -1313,15 +1405,61 @@ class SignerUiSession {
   }
 
   public setWorkflowStatus(stage: WorkflowStatusStage, message: string): void {
-    this.workflowStatus = {
-      stage,
-      message,
-      updatedAt: new Date().toISOString(),
-    };
+    this.transitionWorkflowStatus({ stage, message });
   }
 
   public clearWorkflowStatus(): void {
-    this.workflowStatus = null;
+    this.transitionWorkflowStatus(null);
+  }
+
+  private applyWorkflowStatus(status: { stage: WorkflowStatusStage; message: string } | null): void {
+    if (this.workflowStatusTransitionTimer) {
+      clearTimeout(this.workflowStatusTransitionTimer);
+      this.workflowStatusTransitionTimer = undefined;
+    }
+    this.pendingWorkflowStatus = undefined;
+
+    if (status === null) {
+      this.workflowStatus = null;
+      this.workflowStatusChangedAtMs = 0;
+      return;
+    }
+
+    this.workflowStatus = {
+      stage: status.stage,
+      message: status.message,
+      updatedAt: new Date().toISOString(),
+    };
+    this.workflowStatusChangedAtMs = Date.now();
+  }
+
+  private transitionWorkflowStatus(next: { stage: WorkflowStatusStage; message: string } | null): void {
+    const delayMs = workflowStatusTransitionDelayMs({
+      currentStage: this.workflowStatus?.stage ?? null,
+      nextStage: next?.stage ?? null,
+      currentStageChangedAtMs: this.workflowStatusChangedAtMs,
+      nowMs: Date.now(),
+      minimumStageMs: parseNonNegativeIntEnv(
+        "HARDHAT_SIGNER_UI_WORKFLOW_STATUS_STAGE_MIN_MS",
+        DEFAULT_WORKFLOW_STATUS_STAGE_MIN_MS,
+      ),
+    });
+
+    if (delayMs <= 0) {
+      this.applyWorkflowStatus(next);
+      return;
+    }
+
+    this.pendingWorkflowStatus = next;
+    if (this.workflowStatusTransitionTimer) {
+      clearTimeout(this.workflowStatusTransitionTimer);
+    }
+    this.workflowStatusTransitionTimer = setTimeout(() => {
+      this.workflowStatusTransitionTimer = undefined;
+      const queued = this.pendingWorkflowStatus;
+      this.pendingWorkflowStatus = undefined;
+      this.applyWorkflowStatus(queued ?? null);
+    }, delayMs);
   }
 
   public async waitForWallet(): Promise<SessionWalletState> {
@@ -1454,219 +1592,214 @@ class SignerUiSession {
     }
 
     if (request.method === "POST" && url.pathname === "/api/wallet") {
-      const payload = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as { address: string; chainId: number };
-      if (typeof payload.address !== "string" || !isAddress(payload.address)) {
-        writeJson(response, 400, { error: "Invalid wallet address." });
-        return;
-      }
-      if (typeof payload.chainId !== "number" || !Number.isInteger(payload.chainId)) {
-        writeJson(response, 400, { error: "Invalid chainId." });
-        return;
-      }
-
-      /* Do not require the wallet to already be on the target chain: MetaMask often connects on
-       * the wrong network first, and rejecting here left waitForWallet() pending forever. Chain is
-       * enforced before send in the UI (ensureTargetChain) and again in POST /api/respond. */
-
-      let normalizedAddress: string;
-      try {
-        normalizedAddress = getAddress(payload.address);
-      } catch {
-        writeJson(response, 400, { error: "Invalid wallet address." });
-        return;
-      }
-
-      this.walletState = {
-        address: normalizedAddress,
-        chainId: payload.chainId,
-        connectedAt: new Date().toISOString(),
-      };
-
-      const resolvers = this.walletResolvers.splice(0);
-      this.walletRejectors = [];
-      const walletSnapshot = this.walletState;
-      writeJson(response, 200, { ok: true }, () => {
-        for (const resolver of resolvers) {
-          queueMicrotask(() => resolver(walletSnapshot));
-        }
-      });
+      await this.handleWalletRoute(request, response);
       return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/respond") {
-      const raw = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as Record<string, unknown>;
-      if (!raw || typeof raw !== "object") {
-        writeJson(response, 400, { error: "Invalid JSON body." });
-        return;
-      }
-
-      if (typeof raw.requestId !== "string" || raw.requestId.length === 0) {
-        writeJson(response, 400, { error: "Missing or invalid requestId." });
-        return;
-      }
-      if (!isValidTxHash(raw.hash)) {
-        writeJson(response, 400, { error: "Missing or invalid transaction hash." });
-        return;
-      }
-      if (typeof raw.from !== "string" || !isAddress(raw.from)) {
-        writeJson(response, 400, { error: "Missing or invalid from address." });
-        return;
-      }
-      if (typeof raw.chainId !== "number" || !Number.isInteger(raw.chainId)) {
-        writeJson(response, 400, { error: "Missing or invalid chainId." });
-        return;
-      }
-      if (raw.chainId !== this.context.chain.chainId) {
-        writeJson(response, 400, { error: "chainId does not match this Hardhat signer session." });
-        return;
-      }
-
-      if (!this.walletState) {
-        writeJson(response, 400, { error: "Register the wallet with the session before submitting a transaction." });
-        return;
-      }
-
-      let normalizedFrom: string;
-      try {
-        normalizedFrom = getAddress(raw.from);
-      } catch {
-        writeJson(response, 400, { error: "Invalid from address." });
-        return;
-      }
-      if (this.context.expectedSignerAddress && normalizedFrom !== this.context.expectedSignerAddress) {
-        const message = `Expected signer is ${this.context.expectedSignerAddress}. Disconnect and connect the correct wallet, then try again.`;
-        this.setTransactionProgress(raw.requestId, "awaiting_wallet_approval", message);
-        writeJson(response, 409, { error: message });
-        return;
-      }
-
-      if (normalizedFrom !== this.walletState.address) {
-        writeJson(response, 400, { error: "from does not match the wallet registered for this session." });
-        return;
-      }
-
-      if (!this.pendingRequest || this.pendingRequest.prompt.id !== raw.requestId) {
-        writeJson(response, 400, { error: "No matching pending transaction request was found." });
-        return;
-      }
-
-      this.setTransactionProgress(
-        raw.requestId,
-        "submitted_waiting_for_rpc",
-        "Transaction submitted in the wallet. Waiting for the RPC to return the transaction.",
-      );
-
-      const onChain = await getTransactionWithRetry(
-        this.context.provider,
-        raw.hash,
-        getSignerUiTxLookupTimeoutMs(),
-        TX_LOOKUP_INTERVAL_MS,
-      );
-
-      if (!onChain) {
-        this.setTransactionProgress(
-          raw.requestId,
-          "failed",
-          "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
-        );
-        writeJson(response, 400, {
-          error:
-            "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
-        });
-        return;
-      }
-
-      this.setTransactionProgress(
-        raw.requestId,
-        "validating_submitted_transaction",
-        "Validating that the submitted transaction matches the pending Hardhat request.",
-      );
-
-      const mismatch = getOnChainTransactionPromptMismatch(
-        onChain,
-        this.pendingRequest.prompt.request,
-        this.walletState.address,
-      );
-      if (mismatch) {
-        logSignerUiSubmittedTxMismatchDiagnostics({
-          txHash: raw.hash,
-          mismatch,
-          tx: onChain,
-          promptRequest: this.pendingRequest.prompt.request,
-        });
-        this.setTransactionProgress(
-          raw.requestId,
-          "failed",
-          `Submitted transaction did not match the pending Hardhat request. ${mismatch}`,
-        );
-        writeJson(response, 400, {
-          error: `On-chain transaction does not match the pending signer UI request. ${mismatch}`,
-        });
-        return;
-      }
-
-      const outcome: TransactionOutcome = {
-        requestId: raw.requestId,
-        hash: raw.hash,
-        from: normalizedFrom,
-        chainId: raw.chainId,
-      };
-
-      const { resolve: resolveOutcome } = this.pendingRequest;
-      this.pendingRequest = undefined;
-      this.setTransactionProgress(
-        raw.requestId,
-        "waiting_for_hardhat_confirmation",
-        `Validation passed. Waiting for Hardhat/provider confirmation for transaction ${raw.hash}.`,
-      );
-      writeJson(response, 200, { ok: true }, () => {
-        queueMicrotask(() => resolveOutcome(outcome));
-      });
+      await this.handleRespondRoute(request, response);
       return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/error") {
-      const raw = (await readJsonBody(request, MAX_JSON_BODY_BYTES)) as Record<string, unknown>;
-      if (!raw || typeof raw !== "object") {
-        writeJson(response, 400, { error: "Invalid JSON body." });
-        return;
-      }
-      if (typeof raw.requestId !== "string") {
-        writeJson(response, 400, { error: "Missing requestId." });
-        return;
-      }
-      const message = typeof raw.message === "string" ? raw.message.slice(0, 4000) : "Wallet or network error";
-
-      let rejectOutcome: ((reason: Error) => void) | undefined;
-      if (this.pendingRequest && this.pendingRequest.prompt.id === raw.requestId) {
-        this.setTransactionProgress(raw.requestId, "failed", message);
-        rejectOutcome = this.pendingRequest.reject;
-        this.pendingRequest = undefined;
-      }
-
-      writeJson(response, 200, { ok: true }, () => {
-        if (rejectOutcome) {
-          queueMicrotask(() => rejectOutcome!(new Error(message)));
-        }
-      });
+      await this.handleErrorRoute(request, response);
       return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/terminate") {
-      const message = "Session terminated by user from signer UI.";
-      this.setTerminalSessionOutcome("error", message);
-      writeJson(response, 200, { ok: true }, () => {
-        queueMicrotask(() => {
-          this.failPendingState(new Error(message));
-          void closeActiveSignerUiSession().catch(() => {
-            /* session may already be closing */
-          });
-        });
-      });
+      this.handleTerminateRoute(response);
       return;
     }
 
     writeJson(response, 404, { error: "Not found" });
+  }
+
+  private async handleWalletRoute(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const parsedPayload = parseWalletPayload(await readJsonBody(request, MAX_JSON_BODY_BYTES));
+    if (!parsedPayload.ok) {
+      writeJson(response, 400, { error: parsedPayload.error });
+      return;
+    }
+
+    const payload = parsedPayload.value;
+
+    /* Do not require the wallet to already be on the target chain: MetaMask often connects on
+     * the wrong network first, and rejecting here left waitForWallet() pending forever. Chain is
+     * enforced before send in the UI (ensureTargetChain) and again in POST /api/respond. */
+
+    let normalizedAddress: string;
+    try {
+      normalizedAddress = getAddress(payload.address);
+    } catch {
+      writeJson(response, 400, { error: "Invalid wallet address." });
+      return;
+    }
+
+    this.walletState = {
+      address: normalizedAddress,
+      chainId: payload.chainId,
+      connectedAt: new Date().toISOString(),
+    };
+
+    const resolvers = this.walletResolvers.splice(0);
+    this.walletRejectors = [];
+    const walletSnapshot = this.walletState;
+    writeJson(response, 200, { ok: true }, () => {
+      for (const resolver of resolvers) {
+        queueMicrotask(() => resolver(walletSnapshot));
+      }
+    });
+  }
+
+  private async handleRespondRoute(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const parsedPayload = parseRespondPayload(await readJsonBody(request, MAX_JSON_BODY_BYTES));
+    if (!parsedPayload.ok) {
+      writeJson(response, 400, { error: parsedPayload.error });
+      return;
+    }
+
+    const payload = parsedPayload.value;
+    if (payload.chainId !== this.context.chain.chainId) {
+      writeJson(response, 400, { error: "chainId does not match this Hardhat signer session." });
+      return;
+    }
+
+    if (!this.walletState) {
+      writeJson(response, 400, { error: "Register the wallet with the session before submitting a transaction." });
+      return;
+    }
+
+    let normalizedFrom: string;
+    try {
+      normalizedFrom = getAddress(payload.from);
+    } catch {
+      writeJson(response, 400, { error: "Invalid from address." });
+      return;
+    }
+    if (this.context.expectedSignerAddress && normalizedFrom !== this.context.expectedSignerAddress) {
+      const message = `Expected signer is ${this.context.expectedSignerAddress}. Disconnect and connect the correct wallet, then try again.`;
+      this.setTransactionProgress(payload.requestId, "awaiting_wallet_approval", message);
+      writeJson(response, 409, { error: message });
+      return;
+    }
+
+    if (normalizedFrom !== this.walletState.address) {
+      writeJson(response, 400, { error: "from does not match the wallet registered for this session." });
+      return;
+    }
+
+    if (!this.pendingRequest || this.pendingRequest.prompt.id !== payload.requestId) {
+      writeJson(response, 400, { error: "No matching pending transaction request was found." });
+      return;
+    }
+
+    this.setTransactionProgress(
+      payload.requestId,
+      "submitted_waiting_for_rpc",
+      "Transaction submitted in the wallet. Waiting for the RPC to return the transaction.",
+    );
+
+    const onChain = await getTransactionWithRetry(
+      this.context.provider,
+      payload.hash,
+      getSignerUiTxLookupTimeoutMs(),
+      TX_LOOKUP_INTERVAL_MS,
+    );
+
+    if (!onChain) {
+      this.setTransactionProgress(
+        payload.requestId,
+        "failed",
+        "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
+      );
+      writeJson(response, 400, {
+        error:
+          "Transaction not found on the RPC yet. Wait for the wallet to broadcast, then try again from the UI if needed.",
+      });
+      return;
+    }
+
+    this.setTransactionProgress(
+      payload.requestId,
+      "validating_submitted_transaction",
+      "Validating that the submitted transaction matches the pending Hardhat request.",
+    );
+
+    const mismatch = getOnChainTransactionPromptMismatch(
+      onChain,
+      this.pendingRequest.prompt.request,
+      this.walletState.address,
+    );
+    if (mismatch) {
+      logSignerUiSubmittedTxMismatchDiagnostics({
+        txHash: payload.hash,
+        mismatch,
+        tx: onChain,
+        promptRequest: this.pendingRequest.prompt.request,
+      });
+      this.setTransactionProgress(
+        payload.requestId,
+        "failed",
+        `Submitted transaction did not match the pending Hardhat request. ${mismatch}`,
+      );
+      writeJson(response, 400, {
+        error: `On-chain transaction does not match the pending signer UI request. ${mismatch}`,
+      });
+      return;
+    }
+
+    const outcome: TransactionOutcome = {
+      requestId: payload.requestId,
+      hash: payload.hash,
+      from: normalizedFrom,
+      chainId: payload.chainId,
+    };
+
+    const { resolve: resolveOutcome } = this.pendingRequest;
+    this.pendingRequest = undefined;
+    this.setTransactionProgress(
+      payload.requestId,
+      "waiting_for_hardhat_confirmation",
+      `Validation passed. Waiting for Hardhat/provider confirmation for transaction ${payload.hash}.`,
+    );
+    writeJson(response, 200, { ok: true }, () => {
+      queueMicrotask(() => resolveOutcome(outcome));
+    });
+  }
+
+  private async handleErrorRoute(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const parsedPayload = parseErrorPayload(await readJsonBody(request, MAX_JSON_BODY_BYTES));
+    if (!parsedPayload.ok) {
+      writeJson(response, 400, { error: parsedPayload.error });
+      return;
+    }
+
+    const payload = parsedPayload.value;
+    let rejectOutcome: ((reason: Error) => void) | undefined;
+    if (this.pendingRequest && this.pendingRequest.prompt.id === payload.requestId) {
+      this.setTransactionProgress(payload.requestId, "failed", payload.message);
+      rejectOutcome = this.pendingRequest.reject;
+      this.pendingRequest = undefined;
+    }
+
+    writeJson(response, 200, { ok: true }, () => {
+      if (rejectOutcome) {
+        queueMicrotask(() => rejectOutcome!(new Error(payload.message)));
+      }
+    });
+  }
+
+  private handleTerminateRoute(response: ServerResponse): void {
+    const message = "Session terminated by user from signer UI.";
+    this.setTerminalSessionOutcome("error", message);
+    writeJson(response, 200, { ok: true }, () => {
+      queueMicrotask(() => {
+        this.failPendingState(new Error(message));
+        void closeActiveSignerUiSession().catch(() => {
+          /* session may already be closing */
+        });
+      });
+    });
   }
 
   private failPendingState(error: Error) {
@@ -2033,3 +2166,13 @@ export async function signerUiHardhatDeployRunSubtaskAction(
     }
   }
 }
+
+export const __testOnlySignerUiBridge = {
+  buildSerializedTransactionRequest,
+  calldataMatchesPromptForSignerUiValidation,
+  normalizeGasFeeFieldsForWallet,
+  parseErrorPayload,
+  parseRespondPayload,
+  parseWalletPayload,
+  workflowStatusTransitionDelayMs,
+};

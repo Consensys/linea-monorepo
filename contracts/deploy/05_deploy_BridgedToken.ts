@@ -3,7 +3,12 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { BridgedToken } from "../typechain-types";
 import { tryVerifyContract } from "../common/helpers";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import {
+  clearUiWorkflowStatus,
+  getUiSigner,
+  setUiWorkflowStatus,
+  withSignerUiSession,
+} from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(
   "05_deploy_BridgedToken.ts",
@@ -17,9 +22,14 @@ const func: DeployFunction = withSignerUiSession(
     // Deploy beacon for bridged token
     const BridgedToken = await ethers.getContractFactory(contractName, signer);
 
-    const bridgedToken = (await upgrades.deployBeacon(BridgedToken)) as unknown as BridgedToken;
-
-    await bridgedToken.waitForDeployment();
+    let bridgedToken: BridgedToken;
+    setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+    try {
+      bridgedToken = (await upgrades.deployBeacon(BridgedToken)) as unknown as BridgedToken;
+      await bridgedToken.waitForDeployment();
+    } finally {
+      clearUiWorkflowStatus();
+    }
 
     const bridgedTokenAddress = await bridgedToken.getAddress();
     process.env.BRIDGED_TOKEN_ADDRESS = bridgedTokenAddress;

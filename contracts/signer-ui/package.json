@@ -11,6 +11,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "test": "node --test --experimental-strip-types ./test/*.test.ts",
     "start": "next start"
   },
   "dependencies": {

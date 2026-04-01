@@ -14,7 +14,12 @@ import {
   LogContractDeployment,
 } from "../common/helpers";
 import { get1559Fees } from "../scripts/utils";
-import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import {
+  clearUiWorkflowStatus,
+  getUiSigner,
+  setUiWorkflowStatus,
+  withSignerUiSession,
+} from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(
   "06_deploy_TokenBridge.ts",
@@ -66,24 +71,31 @@ const func: DeployFunction = withSignerUiSession(
 
     const { maxPriorityFeePerGas, maxFeePerGas } = await get1559Fees(ethers.provider);
 
-    const tokenBridge = await upgrades.deployProxy(
-      TokenBridgeFactory,
-      [
-        {
-          defaultAdmin: securityCouncilAddress,
-          messageService: deployingChainMessageService,
-          tokenBeacon: bridgedTokenAddress,
-          sourceChainId: chainId,
-          targetChainId: remoteChainId,
-          remoteSender,
-          reservedTokens: reservedAddresses,
-          roleAddresses,
-          pauseTypeRoles,
-          unpauseTypeRoles,
-        },
-      ],
-      { txOverrides: { maxPriorityFeePerGas: maxPriorityFeePerGas!, maxFeePerGas: maxFeePerGas! } },
-    );
+    let tokenBridge: Awaited<ReturnType<typeof upgrades.deployProxy>>;
+    setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+    try {
+      tokenBridge = await upgrades.deployProxy(
+        TokenBridgeFactory,
+        [
+          {
+            defaultAdmin: securityCouncilAddress,
+            messageService: deployingChainMessageService,
+            tokenBeacon: bridgedTokenAddress,
+            sourceChainId: chainId,
+            targetChainId: remoteChainId,
+            remoteSender,
+            reservedTokens: reservedAddresses,
+            roleAddresses,
+            pauseTypeRoles,
+            unpauseTypeRoles,
+          },
+        ],
+        { txOverrides: { maxPriorityFeePerGas: maxPriorityFeePerGas!, maxFeePerGas: maxFeePerGas! } },
+      );
+      await tokenBridge.waitForDeployment();
+    } finally {
+      clearUiWorkflowStatus();
+    }
 
     await LogContractDeployment(contractName, tokenBridge);
 

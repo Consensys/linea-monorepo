@@ -81,6 +81,83 @@ function tryStringifyProxyOpts(opts?: DeployProxyOptions): string | undefined {
   }
 }
 
+type DeploymentTxLike = {
+  nonce?: number;
+  hash?: string;
+  gasPrice?: bigint | null;
+  maxFeePerGas?: bigint | null;
+  maxPriorityFeePerGas?: bigint | null;
+  gasLimit?: bigint | null;
+  blockNumber?: number | null;
+};
+
+type DeploymentResultLike = {
+  deploymentTransaction(): DeploymentTxLike | null;
+};
+
+type WaitableDeploymentLike<T extends DeploymentResultLike> = {
+  waitForDeployment(): Promise<T>;
+};
+
+function logStandardDeploymentTx(contractName: string, deployTx: DeploymentTxLike | null): void {
+  console.log(`${contractName} deployment transaction has been sent, waiting...`, {
+    nonce: deployTx?.nonce,
+    hash: deployTx?.hash,
+    gasPrice: deployTx?.gasPrice?.toString(),
+    maxFeePerGas: deployTx?.maxFeePerGas?.toString(),
+    maxPriorityFeePerGas: deployTx?.maxPriorityFeePerGas?.toString(),
+    gasLimit: deployTx?.gasLimit?.toString(),
+  });
+}
+
+function logUpgradableDeploymentTx(contractName: string, deployTx: DeploymentTxLike | null): void {
+  console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
+    hash: deployTx?.hash,
+    gasPrice: deployTx?.gasPrice?.toString(),
+    gasLimit: deployTx?.gasLimit?.toString(),
+  });
+}
+
+async function waitForDeploymentWithUiWorkflow<T extends DeploymentResultLike>(
+  contractName: string,
+  contract: WaitableDeploymentLike<T>,
+): Promise<T> {
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  try {
+    return await contract.waitForDeployment();
+  } finally {
+    clearUiWorkflowStatus();
+  }
+}
+
+async function withUiReceiptWorkflow<T>(contractName: string, action: () => Promise<T>): Promise<T> {
+  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
+  try {
+    return await action();
+  } finally {
+    clearUiWorkflowStatus();
+  }
+}
+
+function logStandardDeploymentComplete(contractName: string, startTime: number, deployed: DeploymentResultLike): void {
+  const timeDiff = performance.now() - startTime;
+  console.log(
+    `${contractName} deployed: time=${timeDiff / 1000}s blockNumber=${deployed.deploymentTransaction()?.blockNumber}` +
+      ` tx-hash=${deployed.deploymentTransaction()?.hash}`,
+  );
+}
+
+function logUpgradableDeploymentComplete(
+  contractName: string,
+  startTime: number,
+  deployed: DeploymentResultLike,
+): void {
+  const timeDiff = performance.now() - startTime;
+  console.log(
+    `${contractName} artifact has been deployed in ${timeDiff / 1000}s tx-hash=${deployed.deploymentTransaction()?.hash}`,
+  );
+}
+
 async function deployFromFactory(
   contractName: string,
   runnerOrProvider: RunnerOrProvider = null,
@@ -99,30 +176,11 @@ async function deployFromFactory(
   pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(args) });
   const contract = await factory.deploy(...args);
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-
-    console.log(`${contractName} deployment transaction has been sent, waiting...`, {
-      nonce: deployTx?.nonce,
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      maxFeePerGas: deployTx?.maxFeePerGas?.toString(),
-      maxPriorityFeePerGas: deployTx?.maxPriorityFeePerGas?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
+    logStandardDeploymentTx(contractName, contract.deploymentTransaction());
   }
-  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
-  let afterDeploy;
-  try {
-    afterDeploy = await contract.waitForDeployment();
-  } finally {
-    clearUiWorkflowStatus();
-  }
-  const timeDiff = performance.now() - startTime;
+  const afterDeploy = await waitForDeploymentWithUiWorkflow(contractName, contract);
   if (!skipLog) {
-    console.log(
-      `${contractName} deployed: time=${timeDiff / 1000}s blockNumber=${afterDeploy.deploymentTransaction()?.blockNumber}` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
+    logStandardDeploymentComplete(contractName, startTime, afterDeploy);
   }
   return contract;
 }
@@ -146,30 +204,11 @@ async function deployFromFactoryWithOpts(
   pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(args) });
   const contract = await factory.connect(runner).deploy(...args);
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-
-    console.log(`${contractName} deployment transaction has been sent, waiting...`, {
-      nonce: deployTx?.nonce,
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      maxFeePerGas: deployTx?.maxFeePerGas?.toString(),
-      maxPriorityFeePerGas: deployTx?.maxPriorityFeePerGas?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
+    logStandardDeploymentTx(contractName, contract.deploymentTransaction());
   }
-  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
-  let afterDeploy;
-  try {
-    afterDeploy = await contract.waitForDeployment();
-  } finally {
-    clearUiWorkflowStatus();
-  }
-  const timeDiff = performance.now() - startTime;
+  const afterDeploy = await waitForDeploymentWithUiWorkflow(contractName, contract);
   if (!skipLog) {
-    console.log(
-      `${contractName} deployed: time=${timeDiff / 1000}s blockNumber=${afterDeploy.deploymentTransaction()?.blockNumber}` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
+    logStandardDeploymentComplete(contractName, startTime, afterDeploy);
   }
   return contract;
 }
@@ -195,28 +234,16 @@ async function deployUpgradableFromFactory(
     proxyOptions: tryStringifyProxyOpts(opts),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
-  const contract = await upgrades.deployProxy(factory.connect(runner), args, opts);
+  const contract = await withUiReceiptWorkflow(contractName, async () => {
+    const deployed = await upgrades.deployProxy(factory.connect(runner), args, opts);
+    await deployed.waitForDeployment();
+    return deployed;
+  });
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-    console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
+    logUpgradableDeploymentTx(contractName, contract.deploymentTransaction());
   }
-  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
-  let afterDeploy;
-  try {
-    afterDeploy = await contract.waitForDeployment();
-  } finally {
-    clearUiWorkflowStatus();
-  }
-  const timeDiff = performance.now() - startTime;
   if (!skipLog) {
-    console.log(
-      `${contractName} artifact has been deployed in ${timeDiff / 1000}s` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
+    logUpgradableDeploymentComplete(contractName, startTime, contract);
   }
   return contract;
 }
@@ -241,25 +268,17 @@ async function deployUpgradableWithAbiAndByteCode(
     proxyOptions: tryStringifyProxyOpts(opts),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
-  const contract = await upgrades.deployProxy(factory, args, opts);
+  const contract = await withUiReceiptWorkflow(contractName, async () => {
+    const deployed = await upgrades.deployProxy(factory, args, opts);
+    await deployed.waitForDeployment();
+    return deployed;
+  });
 
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-    console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
-  }
-  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
-  let afterDeploy;
-  try {
-    afterDeploy = await contract.waitForDeployment();
-  } finally {
-    clearUiWorkflowStatus();
+    logUpgradableDeploymentTx(contractName, contract.deploymentTransaction());
   }
   if (!skipLog) {
-    console.log(`${contractName} artifact has been deployed in tx-hash=${afterDeploy.deploymentTransaction()?.hash}`);
+    console.log(`${contractName} artifact has been deployed in tx-hash=${contract.deploymentTransaction()?.hash}`);
   }
   return contract;
 }
@@ -286,31 +305,19 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
     proxyOptions: tryStringifyProxyOpts(opts),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
-  const contract = await upgrades.deployProxy(factory.connect(runner), initializerArgs, {
-    ...opts,
-    constructorArgs,
+  const contract = await withUiReceiptWorkflow(contractName, async () => {
+    const deployed = await upgrades.deployProxy(factory.connect(runner), initializerArgs, {
+      ...opts,
+      constructorArgs,
+    });
+    await deployed.waitForDeployment();
+    return deployed;
   });
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-    console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
+    logUpgradableDeploymentTx(contractName, contract.deploymentTransaction());
   }
-  setUiWorkflowStatus("waiting_for_transaction_receipt", `Waiting for transaction receipt for ${contractName}.`);
-  let afterDeploy;
-  try {
-    afterDeploy = await contract.waitForDeployment();
-  } finally {
-    clearUiWorkflowStatus();
-  }
-  const timeDiff = performance.now() - startTime;
   if (!skipLog) {
-    console.log(
-      `${contractName} artifact has been deployed in ${timeDiff / 1000}s` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
+    logUpgradableDeploymentComplete(contractName, startTime, contract);
   }
   return contract;
 }

@@ -24,11 +24,8 @@ import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 import "solidity-docgen";
 import { createRequire } from "node:module";
-import {
-  assertExclusiveSignerMode,
-  hasConfiguredDeployerPrivateKey,
-  isSignerUiEnabled,
-} from "./scripts/hardhat/signer-mode";
+import { assertExclusiveSignerMode } from "./scripts/hardhat/signer-mode";
+import { resolveDeployerAccounts } from "./scripts/hardhat/deployer-accounts";
 import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
@@ -55,34 +52,7 @@ const BLOCKCHAIN_TIMEOUT = parseInt(process.env.BLOCKCHAIN_TIMEOUT_MS ?? "300000
  * LocalAccountsProvider / @ethereumjs/util).
  */
 function deployerAccounts(): string[] {
-  assertExclusiveSignerMode();
-
-  if (isSignerUiEnabled()) {
-    return [];
-  }
-
-  if (!hasConfiguredDeployerPrivateKey()) {
-    return [];
-  }
-
-  const raw = process.env.DEPLOYER_PRIVATE_KEY!.trim();
-  const normalized = raw.startsWith("0x") ? raw : `0x${raw}`;
-  let scalar: bigint;
-  try {
-    scalar = BigInt(normalized);
-  } catch {
-    throw new Error(
-      "DEPLOYER_PRIVATE_KEY is not valid hex. Set a real key, or set HARDHAT_SIGNER_UI=true to sign via the browser.",
-    );
-  }
-
-  if (scalar === 0n) {
-    throw new Error(
-      "DEPLOYER_PRIVATE_KEY cannot be zero. Set HARDHAT_SIGNER_UI=true for browser signing, or use a real key.",
-    );
-  }
-
-  return [normalized];
+  return resolveDeployerAccounts();
 }
 
 const blockchainNode = getBlockchainNode();

@@ -9,7 +9,24 @@ import { http, type Chain } from "viem";
 import { WagmiProvider, createConfig, useAccount, useConnect, useDisconnect } from "wagmi";
 import { injected } from "wagmi/connectors";
 
+import { HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER, postJson } from "./bridgeApiClient";
 import { LineaWordmark } from "./components/LineaWordmark";
+import {
+  nextWorkflowDisplayState,
+  progressStageLabel,
+  progressTone,
+  scrollToHistoryFragment,
+  signerTxFragmentId,
+  signerUiHistoryStorageKey,
+  signerUiLastSessionIdStorageKey,
+  transactionExplorerUrl,
+  transactionKindBadgeLabels,
+  type TransactionDetails,
+  type TransactionProgressStage,
+  type WorkflowStatus,
+  workflowStageLabel,
+} from "./pageHelpers";
+import { SIGNER_UI_CHAIN_CATALOG } from "../shared/chainCatalog";
 
 declare global {
   interface Window {
@@ -50,14 +67,7 @@ type TransactionPrompt = {
     type?: string;
     chainId?: string;
   };
-  transactionDetails?: {
-    contractName?: string;
-    constructorArgs?: unknown;
-    initializerArgs?: unknown;
-    proxyOptions?: string;
-    notes?: string;
-    openZeppelinProxyKind?: "transparent" | "uups" | "beacon";
-  } | null;
+  transactionDetails?: TransactionDetails;
 };
 
 type SessionState = {
@@ -74,20 +84,11 @@ type SessionState = {
   pendingRequest: TransactionPrompt | null;
   transactionProgress?: {
     requestId: string;
-    stage:
-      | "awaiting_wallet_approval"
-      | "submitted_waiting_for_rpc"
-      | "validating_submitted_transaction"
-      | "waiting_for_hardhat_confirmation"
-      | "failed";
+    stage: TransactionProgressStage;
     message: string;
     updatedAt: string;
   } | null;
-  workflowStatus?: {
-    stage: "waiting_for_transaction_receipt" | "waiting_for_contract_verification";
-    message: string;
-    updatedAt: string;
-  } | null;
+  workflowStatus?: WorkflowStatus | null;
   startedAt: string;
   scriptOrdinal?: number;
   batchRunActive?: boolean;
@@ -112,25 +113,6 @@ type CompletedDeploymentTx = {
   transactionDetails: TransactionPrompt["transactionDetails"];
 };
 
-function progressStageLabel(stage: NonNullable<SessionState["transactionProgress"]>["stage"]): string {
-  switch (stage) {
-    case "awaiting_wallet_approval":
-      return "Awaiting wallet approval";
-    case "submitted_waiting_for_rpc":
-      return "Waiting for RPC broadcast";
-    case "validating_submitted_transaction":
-      return "Validating submitted transaction";
-    case "waiting_for_hardhat_confirmation":
-      return "Waiting for Hardhat confirmation";
-    case "failed":
-      return "Transaction failed";
-  }
-}
-
-function progressTone(stage: NonNullable<SessionState["transactionProgress"]>["stage"]): "active" | "error" {
-  return stage === "failed" ? "error" : "active";
-}
-
 function PendingTransactionProgress({ progress }: { progress: NonNullable<SessionState["transactionProgress"]> }) {
   const tone = progressTone(progress.stage);
   return (
@@ -146,15 +128,6 @@ function PendingTransactionProgress({ progress }: { progress: NonNullable<Sessio
   );
 }
 
-function workflowStageLabel(stage: NonNullable<SessionState["workflowStatus"]>["stage"]): string {
-  switch (stage) {
-    case "waiting_for_transaction_receipt":
-      return "Waiting for transaction receipt";
-    case "waiting_for_contract_verification":
-      return "Waiting for contract verification";
-  }
-}
-
 function WorkflowStatusPanel({ workflow }: { workflow: NonNullable<SessionState["workflowStatus"]> }) {
   return (
     <div className="deploy-progress deploy-progress--active" aria-live="polite">
@@ -167,14 +140,6 @@ function WorkflowStatusPanel({ workflow }: { workflow: NonNullable<SessionState[
       </div>
     </div>
   );
-}
-
-function signerUiHistoryStorageKey(apiBaseUrl: string, sessionId: string): string {
-  return `signerUiTxHistory:${apiBaseUrl}:${sessionId}`;
-}
-
-function signerUiLastSessionIdStorageKey(apiBaseUrl: string): string {
-  return `signerUiLastSessionId:${apiBaseUrl}`;
 }
 
 function loadDeployHistoryFromStorage(key: string): CompletedDeploymentTx[] {
@@ -194,47 +159,6 @@ function persistDeployHistory(key: string, items: CompletedDeploymentTx[]): void
   sessionStorage.setItem(key, JSON.stringify(items));
 }
 
-function transactionExplorerUrl(blockExplorerUrls: string[], txHash: string): string | null {
-  const base = blockExplorerUrls.find((u) => typeof u === "string" && u.length > 0);
-  if (!base) {
-    return null;
-  }
-  const trimmed = base.replace(/\/$/, "");
-  return `${trimmed}/tx/${txHash}`;
-}
-
-/** Stable fragment for in-page links / `:target` (request ids are UUIDs). */
-function signerTxFragmentId(requestId: string): string {
-  return `signer-tx-${requestId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-}
-
-function scrollToHistoryFragment(frag: string): void {
-  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${frag}`);
-  const run = () => document.getElementById(frag)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  run();
-  requestAnimationFrame(run);
-  window.setTimeout(run, 100);
-}
-
-function transactionKindBadgeLabels(details: TransactionPrompt["transactionDetails"]): string[] {
-  if (!details) {
-    return [];
-  }
-  const labels: string[] = [];
-  if (details.openZeppelinProxyKind === "uups") {
-    labels.push("UUPS proxy (OpenZeppelin)");
-  } else if (details.openZeppelinProxyKind === "transparent") {
-    labels.push("Transparent proxy (OpenZeppelin)");
-  } else if (details.openZeppelinProxyKind === "beacon") {
-    labels.push("Beacon proxy (OpenZeppelin)");
-  }
-  const name = (details.contractName ?? "").replace(/\s+/g, "");
-  if (/proxyadmin/i.test(name)) {
-    labels.push("Proxy admin contract");
-  }
-  return labels;
-}
-
 function TransactionKindBadges({ details }: { details: TransactionPrompt["transactionDetails"] }) {
   const labels = transactionKindBadgeLabels(details);
   if (labels.length === 0) {
@@ -251,57 +175,28 @@ function TransactionKindBadges({ details }: { details: TransactionPrompt["transa
   );
 }
 
-const knownChains: readonly [Chain, ...Chain[]] = [
-  {
-    id: 1,
-    name: "Ethereum Mainnet",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["https://mainnet.infura.io/v3"] } },
-    blockExplorers: { default: { name: "Etherscan", url: "https://etherscan.io" } },
+const knownChainsList: Chain[] = SIGNER_UI_CHAIN_CATALOG.map((entry) => ({
+  id: entry.chainId,
+  name: entry.chainName,
+  nativeCurrency: entry.nativeCurrency,
+  rpcUrls: { default: { http: entry.rpcUrls } },
+  blockExplorers: {
+    default: {
+      name: entry.blockExplorerUrls[0] ? "Explorer" : "Local Explorer",
+      url: entry.blockExplorerUrls[0] ?? "",
+    },
   },
-  {
-    id: 11155111,
-    name: "Sepolia",
-    nativeCurrency: { name: "Sepolia Ether", symbol: "SEP", decimals: 18 },
-    rpcUrls: { default: { http: ["https://sepolia.infura.io/v3"] } },
-    blockExplorers: { default: { name: "Etherscan", url: "https://sepolia.etherscan.io" } },
-  },
-  {
-    id: 560048,
-    name: "Hoodi",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["https://hoodi.infura.io/v3"] } },
-    blockExplorers: { default: { name: "Etherscan", url: "https://hoodi.etherscan.io" } },
-  },
-  {
-    id: 31648428,
-    name: "Linea Local L1 (Docker)",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["http://127.0.0.1:8445"] } },
-    blockExplorers: { default: { name: "Explorer", url: "" } },
-  },
-  {
-    id: 59139,
-    name: "Linea Devnet (hosted)",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["https://rpc.devnet.linea.build"] } },
-    blockExplorers: { default: { name: "Explorer", url: "" } },
-  },
-  {
-    id: 59141,
-    name: "Linea Sepolia",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["https://linea-sepolia.infura.io/v3"] } },
-    blockExplorers: { default: { name: "LineaScan", url: "https://sepolia.lineascan.build" } },
-  },
-  {
-    id: 59144,
-    name: "Linea Mainnet",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: { default: { http: ["https://linea-mainnet.infura.io/v3"] } },
-    blockExplorers: { default: { name: "LineaScan", url: "https://lineascan.build" } },
-  },
-];
+}));
+
+function asNonEmptyReadonlyArray<T>(items: readonly T[]): readonly [T, ...T[]] {
+  if (items.length === 0) {
+    throw new Error("SIGNER_UI_CHAIN_CATALOG must define at least one chain.");
+  }
+  return items as readonly [T, ...T[]];
+}
+
+const knownChains = asNonEmptyReadonlyArray(knownChainsList);
+const WORKFLOW_STATUS_MIN_VISIBILITY_MS = 2000;
 
 const queryClient = new QueryClient();
 
@@ -313,39 +208,6 @@ const wagmiConfig = createConfig({
     ReturnType<typeof http>
   >,
 });
-
-/**
- * Must match `HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER` in `contracts/scripts/hardhat/signer-ui-bridge.ts`
- * (HTTP headers are case-insensitive; Node normalizes to lowercase).
- */
-const HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER = "x-hardhat-signer-ui-session-token";
-
-async function postJson(url: string, payload: unknown, sessionSecret: string) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      [HARDHAT_SIGNER_UI_SESSION_TOKEN_HEADER]: sessionSecret,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    let parsedError: string | undefined;
-    if (text) {
-      try {
-        const parsed = JSON.parse(text) as { error?: unknown };
-        if (typeof parsed.error === "string" && parsed.error.length > 0) {
-          parsedError = parsed.error;
-        }
-      } catch {
-        /* non-JSON body */
-      }
-    }
-    throw new Error(parsedError ?? text ?? `Request to ${url} failed with ${response.status}`);
-  }
-}
 
 function ContractsDeployUiPage() {
   const searchParams = useSearchParams();
@@ -362,6 +224,13 @@ function ContractsDeployUiPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [workflowDisplayState, setWorkflowDisplayState] = useState<{
+    workflow: WorkflowStatus | null;
+    expiresAtMs: number;
+  }>({
+    workflow: null,
+    expiresAtMs: 0,
+  });
   /** Wagmi reconnect differs SSR vs first client paint — gate wallet UI until mount. */
   const [walletUiReady, setWalletUiReady] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -517,6 +386,15 @@ function ContractsDeployUiPage() {
         if (cancelled || pollingTerminatedRef.current) {
           return;
         }
+        setWorkflowDisplayState((prev) =>
+          nextWorkflowDisplayState({
+            incomingWorkflow: data.workflowStatus ?? null,
+            currentWorkflow: prev.workflow,
+            currentExpiresAtMs: prev.expiresAtMs,
+            nowMs: Date.now(),
+            minimumVisibilityMs: WORKFLOW_STATUS_MIN_VISIBILITY_MS,
+          }),
+        );
 
         if (data.sessionOutcome === "complete" || data.sessionOutcome === "error") {
           pollingTerminatedRef.current = true;
@@ -623,6 +501,35 @@ function ContractsDeployUiPage() {
       window.ethereum?.removeListener?.("chainChanged", chainChanged);
     };
   }, [address, apiBaseUrl, sessionSecret, isConnected, sessionEnded]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !workflowDisplayState.workflow) {
+      return;
+    }
+
+    const clearIfExpired = () => {
+      setWorkflowDisplayState((prev) =>
+        nextWorkflowDisplayState({
+          incomingWorkflow: null,
+          currentWorkflow: prev.workflow,
+          currentExpiresAtMs: prev.expiresAtMs,
+          nowMs: Date.now(),
+          minimumVisibilityMs: WORKFLOW_STATUS_MIN_VISIBILITY_MS,
+        }),
+      );
+    };
+
+    const remainingMs = workflowDisplayState.expiresAtMs - Date.now();
+    if (remainingMs <= 0) {
+      clearIfExpired();
+      return;
+    }
+
+    const timeout = window.setTimeout(clearIfExpired, remainingMs);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [workflowDisplayState.workflow, workflowDisplayState.expiresAtMs]);
 
   const ensureTargetChain = async (chain: ChainMetadata) => {
     if (!window.ethereum) {
@@ -772,14 +679,14 @@ function ContractsDeployUiPage() {
 
   const pending = session?.pendingRequest;
   const progress = session?.transactionProgress;
-  const workflow = session?.workflowStatus;
+  const workflow = workflowDisplayState.workflow;
   const isPostSubmitProgress =
     progress !== undefined &&
     progress !== null &&
     progress.stage !== "awaiting_wallet_approval" &&
     progress.stage !== "failed" &&
     pending?.id === progress.requestId;
-  const hasWorkflowStatus = workflow !== undefined && workflow !== null;
+  const hasWorkflowStatus = workflow !== null;
   const expectedSignerAddress = session?.expectedSignerAddress ?? null;
   const hasExpectedSignerMismatch =
     !!expectedSignerAddress &&
