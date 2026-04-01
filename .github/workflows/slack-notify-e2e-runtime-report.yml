@@ -1,6 +1,6 @@
 # Generates the monthly E2E runtime report from recent CI runs and posts a Slack summary.
 # Triggered automatically at 00:00 UTC on the first day of each month, or manually via workflow_dispatch.
-name: e2e-runtime-report
+name: slack-notify-e2e-runtime-report
 
 on:
   workflow_dispatch:
@@ -55,7 +55,7 @@ jobs:
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
         with:
           method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
           payload: |
             channel: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
             text: "E2E Runtime Report - ${{ fromJSON(steps.summary.outputs.json).totalRuns }} runs (${{ fromJSON(steps.summary.outputs.json).passedRuns }} passed, ${{ fromJSON(steps.summary.outputs.json).failedRuns }} failed)"

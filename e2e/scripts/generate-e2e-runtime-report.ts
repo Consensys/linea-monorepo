@@ -4,7 +4,7 @@
   showing per-spec pass/fail/timeout status and runtime trends over time. Also writes a
   JSON summary used by the CI workflow to post a digest to Slack.
 
-  Run by: .github/workflows/e2e-runtime-report.yml
+  Run by: .github/workflows/slack-notify-e2e-runtime-report.yml
 
   -------------------------------------------------------------------------------------------
   Example (local):
