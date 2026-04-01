@@ -4,6 +4,10 @@
   showing per-spec pass/fail/timeout status and runtime trends over time. Also writes a
   JSON summary used by the CI workflow to post a digest to Slack.
 
+  Qualifiers:
+  - Only scrapes E2E workflow runs from push to `main`.
+  - Only gets results from the latest retry for each individual job.
+
   Run by: .github/workflows/slack-notify-e2e-runtime-report.yml
 
   -------------------------------------------------------------------------------------------
@@ -274,7 +278,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
       return `<td style="background:${COLOR_MAP[color]};font-weight:600;">${(r.run.durationSeconds / 60).toFixed(1)}m</td>`;
     })
     .join("");
-  const totalRunRow = `<tr style="border-top:2px solid #aaa;"><td class="spec-name" style="font-weight:600;">total run</td>${totalRunCells}</tr>`;
+  const totalRunRow = `<tr style="border-bottom:2px solid #aaa;"><td class="spec-name" style="font-weight:600;">total run</td>${totalRunCells}</tr>`;
 
   // Timeline table rows
   const timelineRows = sortedSpecs
