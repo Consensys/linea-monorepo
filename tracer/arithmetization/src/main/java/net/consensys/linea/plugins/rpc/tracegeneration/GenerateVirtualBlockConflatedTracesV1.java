@@ -200,10 +200,8 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     // All fields that affect the sysi-transaction traces (EIP-4788, EIP-2935) must be taken from
     // blockOverrides so that when the canonical block exists the virtual trace is byte-for-byte
     // identical to the canonical conflated trace.
-    final org.hyperledger.besu.plugin.data.BlockHeader parentHeader =
-        parentBlock.getBlockHeader();
-    final Address coinbase =
-        blockOverrides.getFeeRecipient().orElseGet(parentHeader::getCoinbase);
+    final org.hyperledger.besu.plugin.data.BlockHeader parentHeader = parentBlock.getBlockHeader();
+    final Address coinbase = blockOverrides.getFeeRecipient().orElseGet(parentHeader::getCoinbase);
     final org.hyperledger.besu.plugin.data.ProcessableBlockHeader processableBlockHeader =
         BlockHeaderBuilder.fromHeader(parentHeader)
             .parentHash(parentHeader.getBlockHash())
@@ -211,16 +209,13 @@ public class GenerateVirtualBlockConflatedTracesV1 {
             .coinbase(coinbase)
             .gasLimit(blockOverrides.getGasLimit().orElseGet(parentHeader::getGasLimit))
             .timestamp(
-                blockOverrides
-                    .getTimestamp()
-                    .orElseGet(() -> parentHeader.getTimestamp() + 1))
+                blockOverrides.getTimestamp().orElseGet(() -> parentHeader.getTimestamp() + 1))
             .baseFee(blockOverrides.getBaseFeePerGas().orElse(null))
             .prevRandao(
                 blockOverrides
                     .getMixHashOrPrevRandao()
                     .orElseGet(() -> parentHeader.getPrevRandao().orElse(Bytes32.ZERO)))
-            .parentBeaconBlockRoot(
-                blockOverrides.getParentBeaconBlockRoot().orElse(Bytes32.ZERO))
+            .parentBeaconBlockRoot(blockOverrides.getParentBeaconBlockRoot().orElse(Bytes32.ZERO))
             .buildProcessableBlockHeader();
 
     // Create ZkTracer
