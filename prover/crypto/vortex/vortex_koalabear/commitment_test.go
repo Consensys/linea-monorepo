@@ -203,6 +203,95 @@ func TestStreamingCommitMatchesNonStreaming(t *testing.T) {
 	}
 }
 
+func TestStreamingL2CommitMatchesNonStreaming(t *testing.T) {
+	testCases := []struct {
+		name      string
+		numRows   int
+		numCols   int
+		batchSize int
+	}{
+		{"rows_32_batch_8", 32, 1 << 10, 8},
+		{"rows_128_batch_64", 128, 1 << 10, 64},
+		{"rows_387_batch_50", 387, 1 << 10, 50},
+		{"rows_512_batch_256", 512, 1 << 10, 256},
+		{"rows_128_batch_1", 128, 1 << 10, 1},
+		{"rows_128_batch_larger_than_total", 128, 1 << 10, 999},
+		{"rows_160_default_batch", 160, 1 << 10, 0},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := makeNoSisRows(tc.numRows, tc.numCols)
+			params := NewParams(2, tc.numCols, tc.numRows, 9, 16)
+
+			// Reference: non-streaming
+			_, commitRef, _, hashesRef := params.CommitMerkleWithSIS(rows)
+
+			// Level 2 streaming (no W' materialization)
+			origMatrix, commitL2, _, hashesL2 := params.CommitMerkleWithSISStreamingL2(rows, tc.batchSize)
+
+			// Check identical commitment (Merkle root)
+			require.Equal(t, commitRef, commitL2, "Merkle root mismatch")
+
+			// Check identical SIS hashes
+			require.Equal(t, hashesRef, hashesL2, "SIS hashes mismatch")
+
+			// Check OriginalMatrix wraps the correct data
+			require.Equal(t, len(rows), len(origMatrix.Rows), "original matrix row count mismatch")
+			require.NotNil(t, origMatrix.Params, "params should not be nil")
+		})
+	}
+}
+
+func TestOriginalMatrixExtractColumns(t *testing.T) {
+	testCases := []struct {
+		name    string
+		numRows int
+		numCols int
+	}{
+		{"rows_32", 32, 1 << 10},
+		{"rows_128", 128, 1 << 10},
+		{"rows_387", 387, 1 << 10},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := makeNoSisRows(tc.numRows, tc.numCols)
+			params := NewParams(2, tc.numCols, tc.numRows, 9, 16)
+
+			// Get reference encoded matrix
+			encoded := params.EncodeRows(rows)
+
+			// Create OriginalMatrix
+			origMatrix := &OriginalMatrix{Rows: rows, Params: &params}
+
+			// Select some column positions
+			entryList := []int{0, 5, 42, 100, params.RsParams.NbEncodedColumns() - 1}
+
+			// Extract columns via OriginalMatrix
+			gotCols := origMatrix.ExtractColumns(entryList)
+
+			// Reference: extract from encoded matrix
+			for j, entry := range entryList {
+				for k := 0; k < tc.numRows; k++ {
+					require.Equal(t, encoded[k].Get(entry), gotCols[j][k],
+						"mismatch at entry %d, row %d", entry, k)
+				}
+			}
+
+			// Also test ToEncodedMatrix roundtrip
+			reEncoded := origMatrix.ToEncodedMatrix()
+			require.Equal(t, len(encoded), len(reEncoded))
+			for i := range encoded {
+				for j := 0; j < encoded[i].Len(); j++ {
+					require.Equal(t, encoded[i].Get(j), reEncoded[i].Get(j),
+						"ToEncodedMatrix mismatch at row %d, col %d", i, j)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkCommitMerkleWithSIS(b *testing.B) {
 	const numCols = 1 << 13
 
@@ -263,6 +352,34 @@ func BenchmarkCommitMerkleWithSISStreaming(b *testing.B) {
 				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
 					_, _, _, _ = params.CommitMerkleWithSISStreaming(rows, batchSize)
+				}
+			})
+		}
+	}
+}
+
+func BenchmarkCommitMerkleWithSISStreamingL2(b *testing.B) {
+	const numCols = 1 << 13
+
+	rowCounts := []int{256, 512, 768, 1024, 1504, 2208}
+
+	for _, numRows := range rowCounts {
+		rows := makeNoSisRows(numRows, numCols)
+		params := NewParams(2, numCols, numRows, 9, 16)
+
+		batchDivisors := []int{1, 2, 4, 8}
+		for _, div := range batchDivisors {
+			batchSize := numRows / div
+			if batchSize < 1 {
+				batchSize = 1
+			}
+			b.Run(fmt.Sprintf("rows_%d/batch_%d", numRows, batchSize), func(b *testing.B) {
+				b.ReportAllocs()
+				b.ReportMetric(float64(numRows), "rows")
+				b.ReportMetric(float64(batchSize), "batch_size")
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					_, _, _, _ = params.CommitMerkleWithSISStreamingL2(rows, batchSize)
 				}
 			})
 		}

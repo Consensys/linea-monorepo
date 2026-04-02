@@ -123,15 +123,22 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
+			run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			if ctx.StreamingCommitment {
+			if ctx.StreamingNoMaterialize {
+				// Level 2: never materialize W'. Store OriginalMatrix instead.
+				var origMatrix *vortex_koalabear.OriginalMatrix
+				origMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSISStreamingL2(pols, ctx.StreamingBatchSize)
+				run.State.InsertNew(ctx.VortexProverStateName(round), origMatrix)
+			} else if ctx.StreamingCommitment {
 				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSISStreaming(pols, ctx.StreamingBatchSize)
+				run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 			} else {
 				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+				run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 			}
 		}
 
-		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
 		// Only to be read by the self-recursion compiler.
@@ -163,6 +170,10 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	var (
 		committedSVSIS   = []smartvectors.SmartVector{}
 		committedSVNoSIS = []smartvectors.SmartVector{}
+		// Level 2: original (non-encoded) rows from SIS rounds, to be re-encoded on the fly.
+		originalRowsSIS     = []smartvectors.SmartVector{}
+		hasOriginalRows     bool
+		originalRowsRsParam *vortex_koalabear.Params
 	)
 	// Add the precomputed columns
 	if ctx.IsNonEmptyPrecomputed() {
@@ -185,28 +196,43 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 			continue
 		}
 
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+		state := pr.State.MustGet(ctx.VortexProverStateName(round))
 
-		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+		switch m := state.(type) {
+		case *vortex_koalabear.OriginalMatrix:
+			// Level 2: collect original rows for streaming LC
+			originalRowsSIS = append(originalRowsSIS, m.Rows...)
+			hasOriginalRows = true
+			originalRowsRsParam = m.Params
+		default:
+			// EncodedMatrix (works for both vortex_bls12377.EncodedMatrix
+			// and vortex_koalabear.EncodedMatrix — same underlying type)
+			committedMatrix := m.(vortex_bls12377.EncodedMatrix)
+			if ctx.RoundStatus[round] == IsNoSis {
+				committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				committedSVSIS = append(committedSVSIS, committedMatrix...)
+			}
 		}
 	}
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
-	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 
+	if hasOriginalRows {
+		// Level 2 streaming: encoded rows (NoSIS + precomputed SIS) first,
+		// then original SIS rows re-encoded on the fly.
+		encodedRows := append(committedSVNoSIS, committedSVSIS...)
+		vortex.LinearCombinationStreaming(proof, encodedRows, originalRowsSIS, originalRowsRsParam.RsParams, randomCoinLC)
+	} else {
+		committedSV := append(committedSVNoSIS, committedSVSIS...)
+		vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	}
+
+	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
@@ -215,8 +241,11 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 
 	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
+		committedSVSIS      = []smartvectors.SmartVector{}
+		committedSVNoSIS    = []smartvectors.SmartVector{}
+		originalRowsSIS     = []smartvectors.SmartVector{}
+		hasOriginalRows     bool
+		originalRowsRsParam *vortex_koalabear.Params
 	)
 
 	// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
@@ -234,26 +263,36 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
+		state := run.State.MustGet(ctx.VortexProverStateName(round))
 
-		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+		switch m := state.(type) {
+		case *vortex_koalabear.OriginalMatrix:
+			originalRowsSIS = append(originalRowsSIS, m.Rows...)
+			hasOriginalRows = true
+			originalRowsRsParam = m.Params
+		default:
+			committedMatrix := m.(vortex_koalabear.EncodedMatrix)
+			if ctx.RoundStatus[round] == IsNoSis {
+				committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				committedSVSIS = append(committedSVSIS, committedMatrix...)
+			}
 		}
 	}
-
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
 	randomCoinLC := run.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+
+	if hasOriginalRows {
+		encodedRows := append(committedSVNoSIS, committedSVSIS...)
+		vortex.LinearCombinationStreaming(proof, encodedRows, originalRowsSIS, originalRowsRsParam.RsParams, randomCoinLC)
+	} else {
+		committedSV := append(committedSVNoSIS, committedSVSIS...)
+		vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	}
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
@@ -303,10 +342,21 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-		// Fetch it from the state
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
+		// Fetch it from the state. For Level 2, SIS rounds store
+		// *OriginalMatrix; convert to EncodedMatrix on the fly.
+		state := run.State.MustGet(ctx.VortexProverStateName(round))
 		// and delete it because it won't be needed anymore and its very heavy
 		run.State.Del(ctx.VortexProverStateName(round))
+
+		var committedMatrix vortex_koalabear.EncodedMatrix
+		switch m := state.(type) {
+		case *vortex_koalabear.OriginalMatrix:
+			// Level 2: re-encode from original rows. The temporary encoded
+			// matrix is freed after this function returns.
+			committedMatrix = m.ToEncodedMatrix()
+		default:
+			committedMatrix = m.(vortex_koalabear.EncodedMatrix)
+		}
 
 		// Also fetches the trees from the prover state
 		if ctx.IsBLS {
