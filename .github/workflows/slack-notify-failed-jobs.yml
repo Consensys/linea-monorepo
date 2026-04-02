@@ -20,6 +20,21 @@ on:
         required: false
         default: ""
         type: string
+      enable_ai_analysis:
+        description: "Run AI-powered failure analysis using Claude"
+        required: false
+        type: boolean
+        default: false
+      ai_analysis_model:
+        description: "Claude model for AI analysis"
+        required: false
+        type: string
+        default: "claude-sonnet-4-20250514"
+      docker_logs_artifact_name:
+        description: "Name of the artifact containing Docker container logs"
+        required: false
+        type: string
+        default: "end-2-end-debug-logs"
     secrets:
       channel_id:
         description: "Slack channel ID (from secrets)"
@@ -27,6 +42,9 @@ on:
       slack_bot_token:
         description: "Slack bot token for posting messages"
         required: true
+      anthropic_api_key:
+        description: "Anthropic API key for Claude analysis"
+        required: false
 
 jobs:
   notify:
