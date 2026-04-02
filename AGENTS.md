@@ -297,28 +297,28 @@ These require human approval and follow the release process:
 
 ### Packages
 
-| Name | Type | Stack                                 | Purpose |
-|------|------|---------------------------------------|---------|
-| `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry     | Core protocol contracts (rollup, messaging, bridge, tokens) |
-| `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx           | Orchestrates proof submission, blob submission, finalization |
-| `prover` | Backend service | Go 1.26.0                             | ZK proof generation (gnark, gnark-crypto) |
-| `postman` | Backend service | TypeScript, Express, TypeORM          | Bridge message execution service |
+| Name | Type | Stack | Purpose |
+|------|------|-------|---------|
+| `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry | Core protocol contracts (rollup, messaging, bridge, tokens) |
+| `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
+| `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
+| `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
 | `bridge-ui` | Frontend | Next.js 16.1.5, React 19, Wagmi, Viem | Bridge user interface |
-| `sdk/sdk-core` | Library | TypeScript, tsup                      | Core SDK utilities and types |
-| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6               | SDK for ethers.js integration |
-| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem                | SDK for Viem integration |
-| `e2e` | Tests | TypeScript, Jest                      | Protocol-level end-to-end tests |
-| `operations` | CLI tool | TypeScript, oclif                     | Operations management CLI |
-| `ts-libs/eslint-config` | Config | ESLint 9 flat config                  | Shared ESLint configuration |
-| `ts-libs/linea-native-libs` | Library | TypeScript, Koffi (FFI)               | Native library bindings |
-| `ts-libs/linea-shared-utils` | Library | TypeScript, Express, Viem             | Shared utilities (server, metrics, logging) |
-| `native-yield-operations/automation-service` | Backend service | TypeScript, Apollo                    | Automated native yield operations |
-| `native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma                    | Lido governance proposal monitoring |
-| `besu-plugins` | Plugins | Kotlin, Gradle                        | Besu blockchain client plugins (sequencer, state recovery) |
-| `jvm-libs` | Libraries | Kotlin, Gradle                        | Shared JVM libraries (JSON-RPC, HTTP, persistence, metrics) |
-| `transaction-exclusion-api` | Backend service | Kotlin, Gradle, Vertx                 | Transaction exclusion tracking API |
-| `tracer` | Backend service | Java/Go Corset, Gradle                | EVM trace generation and arithmetization |
-| `corset` | Compiler | Rust 2021 (1.70.0+), Cargo            | Constraint system compiler (cdylib + CLI) |
+| `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
+| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
+| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
+| `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
+| `operations` | CLI tool | TypeScript, oclif | Operations management CLI |
+| `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
+| `ts-libs/linea-native-libs` | Library | TypeScript, Koffi (FFI) | Native library bindings |
+| `ts-libs/linea-shared-utils` | Library | TypeScript, Express, Viem | Shared utilities (server, metrics, logging) |
+| `native-yield-operations/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
+| `native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
+| `besu-plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
+| `jvm-libs` | Libraries | Kotlin, Gradle | Shared JVM libraries (JSON-RPC, HTTP, persistence, metrics) |
+| `transaction-exclusion-api` | Backend service | Kotlin, Gradle, Vertx | Transaction exclusion tracking API |
+| `tracer` | Backend service | Java/Go Corset, Gradle | EVM trace generation and arithmetization |
+| `corset` | Compiler | Rust 2021 (1.70.0+), Cargo | Constraint system compiler (cdylib + CLI) |
 
 ### Key Directories
 

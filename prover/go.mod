@@ -1,6 +1,6 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.26.0
+go 1.25.7
 
 require (
 	github.com/bits-and-blooms/bitset v1.24.4

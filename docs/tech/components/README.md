@@ -127,7 +127,7 @@ root package.json
 
 ### Go
 
-- Go 1.26.0 required
+- Go 1.24.6 required
 - Build: `go build ./...`
 - Test: `go test ./...`
 - Uses gnark library for ZK circuits
