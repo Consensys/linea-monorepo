@@ -214,6 +214,8 @@ jobs:
           fi
 
   notify:
+    needs: [ai-analysis]
+    if: ${{ always() }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
 
     steps:
@@ -376,6 +378,44 @@ jobs:
             echo "block=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Build AI analysis block
+        id: ai_block
+        if: ${{ steps.extract_jobs.outputs.has_results == 'true' && needs.ai-analysis.outputs.has_analysis == 'true' }}
+        shell: bash
+        env:
+          AI_SUMMARY: ${{ needs.ai-analysis.outputs.summary }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+
+          divider='{"type":"divider"}'
+
+          analysis_block=$(jq -n -c --arg summary "$AI_SUMMARY" '{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [
+                { type: "text", text: "AI Analysis: ", style: { bold: true } },
+                { type: "text", text: $summary }
+              ]
+            }]
+          }')
+
+          link_block=$(jq -n -c --arg url "$RUN_URL" '{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [
+                { type: "text", text: "Full Analysis: ", style: { bold: true } },
+                { type: "link", url: $url, text: "View artifact" }
+              ]
+            }]
+          }')
+
+          echo "divider_block=- ${divider}" >> "$GITHUB_OUTPUT"
+          echo "analysis_block=- ${analysis_block}" >> "$GITHUB_OUTPUT"
+          echo "link_block=- ${link_block}" >> "$GITHUB_OUTPUT"
+
       - name: Send Slack Notification
         if: ${{ steps.extract_jobs.outputs.has_results == 'true' }}
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
@@ -429,3 +469,6 @@ jobs:
               ${{ steps.job_sections.outputs.failed_section }}
               ${{ steps.job_sections.outputs.cancelled_section }}
               ${{ steps.extra_block.outputs.block }}
+              ${{ steps.ai_block.outputs.divider_block }}
+              ${{ steps.ai_block.outputs.analysis_block }}
+              ${{ steps.ai_block.outputs.link_block }}
