@@ -160,7 +160,7 @@ class LineaTransactionSelectorFactoryTest {
             transactionProfitabilityCalculator,
             transactionCompressor,
             null);
-    factory.create(new SelectorsStateManager());
+    factory.create(mock(ProcessableBlockHeader.class), new SelectorsStateManager());
   }
 
   @Test

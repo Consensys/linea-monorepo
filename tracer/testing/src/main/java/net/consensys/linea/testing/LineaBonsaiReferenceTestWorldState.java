@@ -159,7 +159,7 @@ public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorld
     public synchronized void saveTrieLog(
         final PathBasedWorldStateUpdateAccumulator<?> localUpdater,
         final Hash forWorldStateRootHash,
-        final org.hyperledger.besu.ethereum.core.BlockHeader forBlockHeader,
+        final org.hyperledger.besu.plugin.data.BlockHeader forBlockHeader,
         final PathBasedWorldState forWorldState) {
       TrieLog trieLog = trieLogFactory.create(localUpdater, forBlockHeader);
       trieLogCache.put(forBlockHeader.getBlockHash(), trieLogFactory.serialize(trieLog));
