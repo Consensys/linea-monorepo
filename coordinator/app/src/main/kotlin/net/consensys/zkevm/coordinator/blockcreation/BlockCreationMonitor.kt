@@ -25,7 +25,7 @@ class BlockCreationMonitor(
   private val ethApi: EthApiBlockClient,
   private val startingBlockNumberExclusive: Long,
   private val blockCreationListener: BlockCreationListener,
-  private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
+  private val lastProvenBlockNumberProviderSync: LastProvenBlockNumberProviderSync,
   private val config: Config,
   private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java),
 ) : VertxPeriodicPollingService(
@@ -48,7 +48,6 @@ class BlockCreationMonitor(
   private val expectedParentBlockHash: AtomicReference<ByteArray> = AtomicReference(null)
   private val reorgDetected: AtomicBoolean = AtomicBoolean(false)
   private var statingBlockAvailabilityFuture: SafeFuture<*>? = null
-  private var shouldStopBlockCreationMonitor = false
 
   private val nexBlockNumberToFetch: Long
     get() = _nexBlockNumberToFetch.get()
@@ -102,78 +101,74 @@ class BlockCreationMonitor(
 
   override fun action(): SafeFuture<*> {
     log.trace("tick start: nexBlockNumberToFetch={}", nexBlockNumberToFetch)
-    return lastProvenBlockNumberProviderAsync.getLastProvenBlockNumber()
-      .thenCompose { lastProvenBlockNumber ->
-        if (shouldStopBlockCreationMonitor) {
+    return lastProvenBlockNumberProviderSync.getLastKnownProvenBlockNumber()
+      .let { lastProvenBlockNumber ->
+        if (!nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
+          log.warn(
+            "Gap between highest consecutive proven block and L2 block is too big: lastProvenBlock={} " +
+              "nextBlockToFetch={} gapOverflow={} gapLimit={}",
+            lastProvenBlockNumber,
+            _nexBlockNumberToFetch.get(),
+            _nexBlockNumberToFetch.get() - lastProvenBlockNumber,
+            config.blocksFetchLimit,
+          )
+          SafeFuture.COMPLETE
+        } else if (config.lastL2BlockNumberToProcessInclusive != null &&
+          nexBlockNumberToFetch.toULong() > config.lastL2BlockNumberToProcessInclusive
+        ) {
+          log.warn(
+            "stopping conflation at lastL2BlockNumberInclusiveToProcess - 1. " +
+              "All blocks upto and including lastL2BlockNumberInclusiveToProcess={} have been processed. " +
+              "nextBlockNumberToFetch={}",
+            config.lastL2BlockNumberToProcessInclusive,
+            nexBlockNumberToFetch,
+          )
+          this.stop()
           SafeFuture.COMPLETE
         } else {
-          if (!nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
-            log.warn(
-              "Gap between highest consecutive proven block and L2 block is too big: lastProvenBlock={} " +
-                "nextBlockToFetch={} gapOverflow={} gapLimit={}",
-              lastProvenBlockNumber,
-              _nexBlockNumberToFetch.get(),
-              _nexBlockNumberToFetch.get() - lastProvenBlockNumber,
-              config.blocksFetchLimit,
-            )
-            SafeFuture.COMPLETE
-          } else if (config.lastL2BlockNumberToProcessInclusive != null &&
-            nexBlockNumberToFetch.toULong() > config.lastL2BlockNumberToProcessInclusive
-          ) {
-            log.warn(
-              "stopping conflation at lastL2BlockNumberInclusiveToProcess - 1. " +
-                "All blocks upto and including lastL2BlockNumberInclusiveToProcess={} have been processed. " +
-                "nextBlockNumberToFetch={}",
-              config.lastL2BlockNumberToProcessInclusive,
-              nexBlockNumberToFetch,
-            )
-            shouldStopBlockCreationMonitor = true
-            SafeFuture.COMPLETE
-          } else {
-            getNetNextSafeBlock()
-              .thenApply { block ->
-                if (block != null) {
-                  if (block.parentHash.contentEquals(expectedParentBlockHash.get())) {
-                    if (isAfterTargetStopTimeStamp(block)) {
-                      log.warn(
-                        "stopping conflation: reached lastL2BlockTimestampToProcessInclusive={} " +
-                          "last processed blockNumber={} blockTimestamp={} {}",
-                        config.lastL2BlockTimestampToProcessInclusive,
-                        block.number,
-                        block.timestamp,
-                        Instant.fromEpochSeconds(block.timestamp.toLong()),
-                      )
-                      shouldStopBlockCreationMonitor = true
-                    }
-                    notifyListener(block)
-                      .whenSuccess {
-                        log.debug(
-                          "updating nexBlockNumberToFetch from {} --> {}",
-                          _nexBlockNumberToFetch.get(),
-                          _nexBlockNumberToFetch.incrementAndGet(),
-                        )
-                        expectedParentBlockHash.set(block.hash)
-                      }
-                  } else {
-                    reorgDetected.set(true)
-                    log.error(
-                      "Shooting down conflation poller, chain reorg detected: " +
-                        "block { blockNumber={} hash={} parentHash={} } should have parentHash={}",
+          getNetNextSafeBlock()
+            .thenApply { block ->
+              if (block != null) {
+                if (block.parentHash.contentEquals(expectedParentBlockHash.get())) {
+                  if (isAfterTargetStopTimeStamp(block)) {
+                    log.warn(
+                      "stopping conflation: reached lastL2BlockTimestampToProcessInclusive={} " +
+                        "last processed blockNumber={} blockTimestamp={} {}",
+                      config.lastL2BlockTimestampToProcessInclusive,
                       block.number,
-                      block.hash.encodeHex(),
-                      block.parentHash.encodeHex(),
-                      expectedParentBlockHash.get().encodeHex(),
+                      block.timestamp,
+                      Instant.fromEpochSeconds(block.timestamp.toLong()),
                     )
-                    shouldStopBlockCreationMonitor = true
+                    this.stop()
                   }
+                  notifyListener(block)
+                    .whenSuccess {
+                      log.debug(
+                        "updating nexBlockNumberToFetch from {} --> {}",
+                        _nexBlockNumberToFetch.get(),
+                        _nexBlockNumberToFetch.incrementAndGet(),
+                      )
+                      expectedParentBlockHash.set(block.hash)
+                    }
+                } else {
+                  reorgDetected.set(true)
+                  log.error(
+                    "Shooting down conflation poller, chain reorg detected: " +
+                      "block { blockNumber={} hash={} parentHash={} } should have parentHash={}",
+                    block.number,
+                    block.hash.encodeHex(),
+                    block.parentHash.encodeHex(),
+                    expectedParentBlockHash.get().encodeHex(),
+                  )
+                  this.stop()
                 }
               }
-              .whenException { error ->
-                log.warn("Block creation monitor failed: errorMessage={}", error.message, error)
-              }.whenComplete { _, _ ->
-                log.trace("tick end")
-              }
-          }
+            }
+            .whenException { error ->
+              log.warn("Block creation monitor failed: errorMessage={}", error.message, error)
+            }.whenComplete { _, _ ->
+              log.trace("tick end")
+            }
         }
       }
   }

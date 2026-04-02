@@ -84,7 +84,7 @@ class BlockCreationMonitorTest {
       ethApi = ethApiClient,
       startingBlockNumberExclusive = startingBlockNumberExclusive,
       blockCreationListener = blockCreationListener,
-      lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
+      lastProvenBlockNumberProviderSync = lastProvenBlockNumberProvider,
       config = config,
     )
   }
