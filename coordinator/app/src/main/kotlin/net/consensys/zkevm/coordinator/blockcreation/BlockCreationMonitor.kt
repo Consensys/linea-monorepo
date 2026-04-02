@@ -127,7 +127,7 @@ class BlockCreationMonitor(
           SafeFuture.COMPLETE
         } else {
           getNetNextSafeBlock()
-            .thenApply { block ->
+            .thenCompose { block ->
               if (block != null) {
                 if (block.parentHash.contentEquals(expectedParentBlockHash.get())) {
                   if (isAfterTargetStopTimeStamp(block)) {
@@ -162,6 +162,8 @@ class BlockCreationMonitor(
                   )
                   this.stop()
                 }
+              } else {
+                SafeFuture.completedFuture(Unit)
               }
             }
             .whenException { error ->
