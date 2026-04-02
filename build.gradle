@@ -66,11 +66,6 @@ allprojects {
     }
   }
 
-  // Gradle 9 requires junit-platform-launcher on the test runtime classpath
-  dependencies {
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-  }
-
   tasks.withType(KotlinCompile).configureEach {
     compileAll.dependsOn it
     compilerOptions {
@@ -90,16 +85,18 @@ allprojects {
       '-Xlint:finally',
       '-Xlint:static',
       '-Xlint:deprecation',
-      '-Xlint:unchecked'
+      '-Xlint:unchecked',
+      '-Xlint:rawtypes',
+      '-Werror'
     ])
     if (!allowCompilationWarnings) {
-      options.compilerArgs.addAll(['-Werror'])
+      options.compilerArgs.remove('-Werror')
     }
 
-    if (!project.path.contains("testing-tools")) {
+    if (project.path.contains("testing-tools")) {
       // testing tools have 100+ errors because of this
       // skipping them for now
-      options.compilerArgs.addAll(['-Xlint:rawtypes'])
+      options.compilerArgs.remove('-Xlint:rawtypes')
     }
   }
 
