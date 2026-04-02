@@ -66,6 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           gh run view ${{ inputs.run_id }} --log-failed > /tmp/failed-job-logs-raw.txt 2>&1 || true
+          # Trim to last 500 KB: failures appear at the end of logs, and this keeps Claude's input within context limits
           tail -c 500000 /tmp/failed-job-logs-raw.txt > /tmp/failed-job-logs.txt
 
       - name: Download Docker logs artifact
