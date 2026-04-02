@@ -123,6 +123,6 @@ describe("Liveness test suite", () => {
       expect(uptimeEvent?.args.current).toEqual(0n); // the given status to update, should be 0 for uptime
       expect(uptimeEvent?.args.updatedAt).toBeGreaterThan(lastBlockTimestamp ?? 0); // data should contain a timestamp later than the last block before restart as uptime
     },
-    150000,
+    1, // TEMPORARY: 1ms timeout to force a timeout failure for testing
   );
 });

@@ -321,7 +321,7 @@ jobs:
         publish-images-after-run-tests-success-on-main,
         cleanup-deployments,
       ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') }} # TEMPORARY: branch guard removed for testing
     permissions:
       contents: read
       actions: read
