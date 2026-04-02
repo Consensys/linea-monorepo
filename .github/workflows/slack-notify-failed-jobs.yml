@@ -210,8 +210,8 @@ jobs:
           fi
 
   notify:
-    needs: [ai-analysis]
     # always() so Slack still runs if ai-analysis fails; needs to wait on ai-analysis job.
+    needs: [ai-analysis]
     if: ${{ always() }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
 
