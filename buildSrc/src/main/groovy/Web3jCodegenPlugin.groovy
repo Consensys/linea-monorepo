@@ -1,6 +1,7 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.type.ArtifactTypeDefinition
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.web3j.codegen.SolidityFunctionWrapperGenerator
@@ -72,21 +73,51 @@ class Web3jCodegenPlugin implements Plugin<Project> {
       generatedClassesDir = extension.generatedClassesDir
     }
 
-    project.tasks.named("compileJava").configure {
-      dependsOn project.tasks.named(taskName)
-    }
-
-    project.tasks.named("jar").configure {
-      from(extension.generatedClassesDir)
-    }
-
     project.afterEvaluate {
+      // Compile generated sources in a dedicated source set so that -Werror can be
+      // suppressed for generated code without affecting hand-written sources in main.
       project.sourceSets {
-        main {
+        generatedWeb3j {
           java {
             srcDir extension.generatedClassesDir
           }
+          // inherit main's compile classpath (compileOnly, api, implementation)
+          compileClasspath += project.sourceSets.main.compileClasspath
         }
+      }
+
+      def generatedCompileTask = project.tasks.named("compileGeneratedWeb3jJava")
+      def generatedClassesDirs = project.sourceSets.generatedWeb3j.output.classesDirs
+
+      generatedCompileTask.configure {
+        dependsOn project.tasks.named(taskName)
+        // Generated sources are not held to -Werror; suppress it explicitly so that
+        // the root build.gradle doFirst heuristic is no longer needed for this task.
+        doFirst {
+          options.compilerArgs.remove('-Werror')
+        }
+      }
+
+      // Register the generated classes directory in the 'classes' secondary variant of
+      // apiElements and runtimeElements so that consuming project() dependencies resolve
+      // them directly (compile-avoidance path) without sharing compileJava's output dir.
+      ["apiElements", "runtimeElements"].each { configName ->
+        project.configurations.named(configName).configure { config ->
+          config.outgoing.variants.named("classes") { variant ->
+            generatedClassesDirs.each { dir ->
+              variant.artifact(dir) {
+                type = ArtifactTypeDefinition.JVM_CLASS_DIRECTORY
+                builtBy generatedCompileTask
+              }
+            }
+          }
+        }
+      }
+
+      // Include generated compiled classes in the jar artifact.
+      // dependsOn is inferred: classesDirs carries builtBy(compileGeneratedWeb3jJava).
+      project.tasks.named("jar").configure {
+        from generatedClassesDirs
       }
     }
   }
