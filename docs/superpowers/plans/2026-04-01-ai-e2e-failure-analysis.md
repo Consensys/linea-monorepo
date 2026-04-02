@@ -232,11 +232,12 @@ Insert after line 31 (`jobs:`), before the existing `notify:` job. The full job:
         run: |
           set -euo pipefail
           if [[ -f /tmp/e2e-failure-summary.txt ]]; then
-            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | tr '\n' ' ' | tr -s ' ')
+            # Use jq -Rs for JSON-safe escaping (handles quotes, $, backticks, newlines)
+            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | jq -Rs .)
             echo "summary=${summary}" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
           else
-            echo "summary=" >> "$GITHUB_OUTPUT"
+            echo 'summary=""' >> "$GITHUB_OUTPUT"
             echo "has_analysis=false" >> "$GITHUB_OUTPUT"
           fi
 ```
@@ -367,30 +368,7 @@ git commit -m "feat: enrich Slack notification with AI analysis summary"
 - Modify: `.github/workflows/main.yml:9-13` (permissions)
 - Modify: `.github/workflows/main.yml:310-331` (notify job)
 
-- [ ] **Step 1: Add `id-token: write` to permissions**
-
-Change the permissions block from:
-
-```yaml
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-  packages: write
-```
-
-to:
-
-```yaml
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-  packages: write
-  id-token: write
-```
-
-- [ ] **Step 2: Add AI analysis inputs and secret to notify job**
+- [ ] **Step 1: Add AI analysis inputs, secret, and job-level permissions to notify job**
 
 Change the notify job call from:
 
@@ -407,6 +385,10 @@ Change the notify job call from:
 to:
 
 ```yaml
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: "Main workflow Failed"
@@ -419,12 +401,12 @@ to:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-- [ ] **Step 3: Validate YAML syntax**
+- [ ] **Step 2: Validate YAML syntax**
 
 Run: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/main.yml'))"`
 Expected: No output (valid YAML)
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/main.yml
