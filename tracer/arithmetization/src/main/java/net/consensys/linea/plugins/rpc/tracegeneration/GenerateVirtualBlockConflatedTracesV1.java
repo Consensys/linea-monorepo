@@ -41,11 +41,11 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StateOverrideMap;
-import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
+import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -200,7 +200,8 @@ public class GenerateVirtualBlockConflatedTracesV1 {
 
     // Build a ProcessableBlockHeader for traceStartBlock from the parent header.
     // parentHash is set to the parent block's own hash (not the parent-of-parent).
-    // parentBeaconBlockRoot defaults to Bytes32.ZERO: no canonical beacon entry for a virtual block.
+    // parentBeaconBlockRoot defaults to Bytes32.ZERO: no canonical beacon entry for a virtual
+    // block.
     final org.hyperledger.besu.plugin.data.ProcessableBlockHeader processableBlockHeader =
         BlockHeaderBuilder.fromHeader(parentBlock.getBlockHeader())
             .parentHash(parentBlock.getBlockHeader().getBlockHash())

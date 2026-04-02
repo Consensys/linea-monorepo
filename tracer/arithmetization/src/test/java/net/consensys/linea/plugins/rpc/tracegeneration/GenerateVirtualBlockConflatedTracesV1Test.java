@@ -47,8 +47,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Tests for GenerateVirtualBlockConflatedTracesV1. These tests verify that the RPC
- * endpoint can properly handle requests and output trace files to the filesystem.
+ * Tests for GenerateVirtualBlockConflatedTracesV1. These tests verify that the RPC endpoint can
+ * properly handle requests and output trace files to the filesystem.
  */
 class GenerateVirtualBlockConflatedTracesV1Test {
 
