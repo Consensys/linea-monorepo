@@ -50,7 +50,6 @@ import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
 import org.hyperledger.besu.ethereum.core.Block;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.MutableWorldState;
-import org.hyperledger.besu.ethereum.mainnet.BlockAccessListValidator;
 import org.hyperledger.besu.ethereum.mainnet.BlockImportResult;
 import org.hyperledger.besu.ethereum.mainnet.HeaderValidationMode;
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockImporter;
@@ -588,8 +587,7 @@ public class BlockchainReferenceTestTools {
         MainnetBlockValidatorBuilder.frontier(
             protocolSpec.getBlockHeaderValidator(),
             protocolSpec.getBlockBodyValidator(),
-            corsetBlockProcessor,
-            BlockAccessListValidator.ALWAYS_REJECT_BAL);
+            corsetBlockProcessor);
 
     return new MainnetBlockImporter(blockValidator);
   }

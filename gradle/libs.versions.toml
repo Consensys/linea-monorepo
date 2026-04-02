@@ -41,7 +41,7 @@ undercouchDownload = "5.6.0"
 # Besu commit hash from https://github.com/besu-eth/besu
 # when updates it, should run "gradlew buildAndUpdateBesuVersionInLibsVersions" to
 # checkout and build Besu from source, and will auto-update the "besu" version below
-besuCommit = "4db41c44311288de8c38a2c24bdc32157a536fe8"
+besuCommit = "f2397bb232cb75b955eb94e1ec0a3ba0c8ae156b"
 
 besu = "26.2.0-RC1-e19f9a9"
 blobCompressor = "3.0.2"
