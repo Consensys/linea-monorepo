@@ -1,5 +1,6 @@
 package linea.contract.l1
 
+import linea.domain.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class FinalizedBlockNumberAndFtxNumber(
@@ -8,5 +9,5 @@ data class FinalizedBlockNumberAndFtxNumber(
 )
 
 interface FinalizedBlockNumberAndFtxNumberProvider {
-  fun getFinalizedBlockNumberAndFtxNumber(): SafeFuture<FinalizedBlockNumberAndFtxNumber>
+  fun getFinalizedBlockNumberAndFtxNumber(blockParameter: BlockParameter): SafeFuture<FinalizedBlockNumberAndFtxNumber>
 }

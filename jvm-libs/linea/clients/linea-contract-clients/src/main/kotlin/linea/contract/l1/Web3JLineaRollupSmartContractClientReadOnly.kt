@@ -181,13 +181,15 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       }
   }
 
-  override fun getFinalizedBlockNumberAndFtxNumber(): SafeFuture<FinalizedBlockNumberAndFtxNumber> {
+  override fun getFinalizedBlockNumberAndFtxNumber(
+    blockParameter: BlockParameter,
+  ): SafeFuture<FinalizedBlockNumberAndFtxNumber> {
     return getVersion()
       .thenCompose { version ->
         when (version) {
           LineaRollupContractVersion.V6,
           LineaRollupContractVersion.V7,
-          -> finalizedL2BlockNumber(blockParameter = BlockParameter.Tag.FINALIZED)
+          -> finalizedL2BlockNumber(blockParameter)
             .thenApply { finalizedBlockNumber ->
               FinalizedBlockNumberAndFtxNumber(
                 finalizedBlockNumber,
@@ -196,7 +198,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
             }
 
           LineaRollupContractVersion.V8,
-          -> getLatestFinalizedState(blockParameter = BlockParameter.Tag.FINALIZED)
+          -> getLatestFinalizedState(blockParameter)
             .thenApply { finalizedState ->
               FinalizedBlockNumberAndFtxNumber(
                 finalizedState.blockNumber,

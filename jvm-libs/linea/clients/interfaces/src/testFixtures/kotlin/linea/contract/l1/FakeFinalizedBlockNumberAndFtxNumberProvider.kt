@@ -1,5 +1,6 @@
 package linea.contract.l1
 
+import linea.domain.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class FakeFinalizedBlockNumberAndFtxNumberProvider(
@@ -10,7 +11,9 @@ class FakeFinalizedBlockNumberAndFtxNumberProvider(
     this.errorBlockNumbers = errorBlockNumbers
   }
 
-  override fun getFinalizedBlockNumberAndFtxNumber(): SafeFuture<FinalizedBlockNumberAndFtxNumber> {
+  override fun getFinalizedBlockNumberAndFtxNumber(
+    blockParameter: BlockParameter,
+  ): SafeFuture<FinalizedBlockNumberAndFtxNumber> {
     blockNumber = blockNumber + 1UL
     if (errorBlockNumbers.contains(blockNumber)) {
       throw Exception("Failure for the testing!")

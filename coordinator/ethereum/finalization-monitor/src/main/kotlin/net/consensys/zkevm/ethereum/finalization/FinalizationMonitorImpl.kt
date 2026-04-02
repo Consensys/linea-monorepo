@@ -43,7 +43,7 @@ class FinalizationMonitorImpl(
   }
 
   override fun start(): SafeFuture<Unit> {
-    return getFinalizationUpdate().thenApply {
+    return getFinalizationUpdate(config.l1QueryBlockTag).thenApply {
       lastFinalizationUpdate.set(it)
       super.start()
     }
@@ -51,7 +51,7 @@ class FinalizationMonitorImpl(
 
   override fun action(): SafeFuture<Unit> {
     log.trace("Checking finalization updates")
-    return getFinalizationUpdate().thenCompose { currentState ->
+    return getFinalizationUpdate(config.l1QueryBlockTag).thenCompose { currentState ->
       if (lastFinalizationUpdate.get() != currentState) {
         log.info(
           "finalization update: previousFinalizedBlock={} newFinalizedBlock={}",
@@ -64,21 +64,6 @@ class FinalizationMonitorImpl(
         SafeFuture.completedFuture(Unit)
       }
     }
-  }
-
-  private fun getFinalizationUpdate(): SafeFuture<FinalizationMonitor.FinalizationUpdate> {
-    return finalizedBlockNumberAndFtxNumberProvider.getFinalizedBlockNumberAndFtxNumber()
-      .thenCompose { (finalizedBlockNumber, finalizedFtxNumber) ->
-        l2EthApiClient
-          .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(finalizedBlockNumber))
-          .thenApply { finalizedBlock ->
-            FinalizationMonitor.FinalizationUpdate(
-              blockNumber = finalizedBlockNumber,
-              blockHash = Bytes32.wrap(finalizedBlock.hash),
-              forcedTransactionNumber = finalizedFtxNumber,
-            )
-          }
-      }
   }
 
   private fun onUpdate(finalizationUpdate: FinalizationMonitor.FinalizationUpdate): SafeFuture<Unit> {
@@ -95,11 +80,34 @@ class FinalizationMonitorImpl(
           finalizationHandler.handleUpdate(finalizationUpdate)
             .thenApply { }
         } catch (th: Throwable) {
-          log.error("Finalization handler={} failed. errorMessage={}", handlerName, th.message, th)
+          log.error(
+            "Finalization handler={} failed. errorMessage={}",
+            handlerName,
+            th.message,
+            th,
+          )
           SafeFuture.completedFuture(Unit)
         }
       }
     }.thenApply {}
+  }
+
+  private fun getFinalizationUpdate(
+    blockParameter: BlockParameter,
+  ): SafeFuture<FinalizationMonitor.FinalizationUpdate> {
+    return finalizedBlockNumberAndFtxNumberProvider
+      .getFinalizedBlockNumberAndFtxNumber(blockParameter)
+      .thenCompose { (finalizedBlockNumber, finalizedFtxNumber) ->
+        l2EthApiClient
+          .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(finalizedBlockNumber))
+          .thenApply { finalizedBlock ->
+            FinalizationMonitor.FinalizationUpdate(
+              blockNumber = finalizedBlockNumber,
+              blockHash = Bytes32.wrap(finalizedBlock.hash),
+              forcedTransactionNumber = finalizedFtxNumber,
+            )
+          }
+      }
   }
 
   override fun getLastFinalizationUpdate(): FinalizationMonitor.FinalizationUpdate {
