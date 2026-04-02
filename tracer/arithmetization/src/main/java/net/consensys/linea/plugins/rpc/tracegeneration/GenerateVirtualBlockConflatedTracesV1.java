@@ -141,9 +141,6 @@ public class GenerateVirtualBlockConflatedTracesV1 {
       return new TraceFile(tracesEngineVersion, path.toString());
     }
 
-    final BlockSimulationService blockSimulationService =
-        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
-
     // Validate parent block exists
     final BlockContext parentBlock =
         blockchainService
@@ -189,17 +186,15 @@ public class GenerateVirtualBlockConflatedTracesV1 {
         generatePublicInputs(blockchainService, blockNumber, blockNumber);
 
     // Build block overrides for the virtual block.
-    // If the canonical block already exists in the chain (e.g. for regression testing),
-    // mirror its exact header so the resulting trace is byte-for-byte identical to the
-    // canonical conflated trace for the same transactions.
-    // Otherwise (genuine invalidity-proof scenario) derive sensible defaults from the parent.
+    // When the canonical block already exists in the chain, mirror its exact header so that the
+    // block context (timestamp, coinbase, gasLimit, baseFee, prevRandao, beaconRoot) is identical.
+    // This matters for the EIP-4788 / EIP-2935 system-transaction traces in Hub.traceStartBlock.
     final BlockOverrides blockOverrides =
         buildBlockOverrides(blockNumber, parentBlock, blockchainService);
 
     // Build a ProcessableBlockHeader for traceStartBlock.
     // All fields that affect the sysi-transaction traces (EIP-4788, EIP-2935) must be taken from
-    // blockOverrides so that when the canonical block exists the virtual trace is byte-for-byte
-    // identical to the canonical conflated trace.
+    // blockOverrides so that the virtual trace matches the canonical one for those sections.
     final org.hyperledger.besu.plugin.data.BlockHeader parentHeader = parentBlock.getBlockHeader();
     final Address coinbase = blockOverrides.getFeeRecipient().orElseGet(parentHeader::getCoinbase);
     final org.hyperledger.besu.plugin.data.ProcessableBlockHeader processableBlockHeader =
@@ -223,6 +218,9 @@ public class GenerateVirtualBlockConflatedTracesV1 {
         new ZkTracer(fork, l1L2BridgeSharedConfiguration, chainId, publicInputs);
     tracer.setLtFileMajorVersion(traceFileVersion);
 
+    final BlockSimulationService blockSimulationService =
+        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
+
     // Start conflation for single block
     tracer.traceStartConflation(1);
 
@@ -233,6 +231,11 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     PluginBlockSimulationResult simulationResult;
     try {
       // Simulate the virtual block with our tracer.
+      // Note: BlockSimulationService converts Transaction → CallParameter internally, which
+      // strips the ECDSA signature (R, S, V) and substitutes a fake one.  This means the
+      // rlptxn module will trace the fake signature rather than the real one.  Whether this
+      // is acceptable for ZK proof validity is determined by the circuit — corset validation
+      // of this trace will confirm it.
       simulationResult =
           blockSimulationService.simulate(
               parentBlockNumber, transactions, blockOverrides, new StateOverrideMap(), tracer);
@@ -271,14 +274,13 @@ public class GenerateVirtualBlockConflatedTracesV1 {
   /**
    * Builds the {@link BlockOverrides} for the simulated block.
    *
-   * <p>If the canonical block for {@code blockNumber} already exists in the chain (as is the case
-   * in regression tests that compare virtual traces against canonical ones), its full header is
-   * mirrored so that the simulation runs with an identical block context. This ensures the
-   * resulting trace is byte-for-byte equal to the canonical conflated trace produced by {@link
-   * GenerateConflatedTracesV2} for the same transactions.
+   * <p>If the canonical block for {@code blockNumber} already exists in the chain, its full header
+   * is mirrored so that the simulation runs with the same block context (timestamp, coinbase,
+   * gasLimit, baseFee, prevRandao, parentBeaconBlockRoot). This ensures the EIP-4788 / EIP-2935
+   * system-transaction traces in {@code Hub.traceStartBlock} match the canonical ones.
    *
-   * <p>When the block is genuinely non-canonical (the normal invalidity-proof scenario), sensible
-   * defaults derived from the parent block header are used instead.
+   * <p>When the block is genuinely non-canonical, sensible defaults derived from the parent block
+   * header are used instead.
    */
   private BlockOverrides buildBlockOverrides(
       final long blockNumber,
@@ -293,11 +295,10 @@ public class GenerateVirtualBlockConflatedTracesV1 {
         blockchainService.getBlockByNumber(blockNumber);
 
     if (maybeCanonical.isPresent()) {
-      // Mirror the canonical block header so the trace is identical to the canonical one.
+      // Mirror the canonical block header so the block context is identical.
       final org.hyperledger.besu.plugin.data.BlockHeader h = maybeCanonical.get().getBlockHeader();
       builder.timestamp(h.getTimestamp()).feeRecipient(h.getCoinbase()).gasLimit(h.getGasLimit());
       h.getBaseFee().ifPresent(bf -> builder.baseFeePerGas(Wei.of(bf.getAsBigInteger())));
-      // getPrevRandao() returns the prevRandao/mixHash for post-merge blocks as Bytes32
       h.getPrevRandao().ifPresent(builder::mixHashOrPrevRandao);
       h.getParentBeaconBlockRoot()
           .ifPresent(r -> builder.parentBeaconBlockRoot((org.apache.tuweni.bytes.Bytes32) r));

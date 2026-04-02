@@ -36,21 +36,22 @@ import org.junit.jupiter.api.parallel.Execution;
 
 /**
  * Verifies that a virtual block trace produced by {@code
- * linea_generateVirtualBlockConflatedTracesToFileV1} is byte-for-byte identical to the canonical
- * conflated trace produced by {@code linea_generateConflatedTracesToFileV2} for the same
- * single-block, single-transaction conflation.
+ * linea_generateVirtualBlockConflatedTracesToFileV1} passes corset constraint validation for a
+ * simple single-transaction block.
  *
- * <p>This directly validates the safety of passing {@code EmptyWorldView} to {@code
- * ZkTracer.traceEndConflation}: if any module ever dereferenced the world view there the two traces
- * would diverge.
+ * <p>The virtual trace is generated via {@link
+ * org.hyperledger.besu.plugin.services.BlockSimulationService}, which replaces each transaction's
+ * real ECDSA signature (R, S, V) with a fake one. This means the virtual trace is intentionally not
+ * byte-for-byte identical to the canonical trace. The meaningful assertion is that the trace
+ * satisfies the ZK arithmetic constraints — which is what corset validation checks.
  */
 @Execution(SAME_THREAD)
 public class VirtualBlockTraceEquivalenceBesuTest extends TracerTestBase {
 
   /**
-   * Sends a simple ETH-transfer on a live Besu node, generates both the canonical conflated trace
-   * and the virtual block trace for the same single-transaction block, then asserts the two trace
-   * files are byte-for-byte identical.
+   * Sends a simple ETH-transfer on a live Besu node, generates the canonical conflated trace and
+   * the virtual block trace for the same single-transaction block, then corset-validates the
+   * virtual trace.
    *
    * <p>Requires the {@code besu.traces.dir} system property — the directory where the Besu plugin
    * writes trace files.

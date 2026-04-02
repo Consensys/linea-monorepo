@@ -281,7 +281,7 @@ public class BesuExecutionTools {
             && firstBlockNumber == finalBlockNumber
             && !batchTxRlps.isEmpty()) {
           validateVirtualBlockTrace(
-              firstBlockNumber, batchTxRlps.toArray(new String[0]), traceFile);
+              firstBlockNumber, batchTxRlps.toArray(new String[0]), currentFork);
         }
 
         // Clean up for next transaction
@@ -549,20 +549,19 @@ public class BesuExecutionTools {
   }
 
   /**
-   * Calls {@code linea_generateVirtualBlockConflatedTracesToFileV1} for the given block and asserts
-   * that its output is byte-for-byte identical to the canonical conflated trace produced earlier by
-   * {@code traceAndCheckTracer}.
+   * Calls {@code linea_generateVirtualBlockConflatedTracesToFileV1} for the given block and runs
+   * corset constraint validation on the resulting trace file.
    *
-   * <p>Byte equality implies that the virtual simulation (via {@link BlockSimulationService}) runs
-   * the same execution path as the canonical tracer (via {@link
-   * org.hyperledger.besu.plugin.services.TraceService}), and in particular that passing {@code
-   * EmptyWorldView} to {@code ZkTracer.traceEndConflation} does not diverge from the real
-   * post-execution world view.
+   * <p>This validates that the virtual block trace is ZK-valid (satisfies the arithmetic
+   * constraints), which is the meaningful property for invalidity proof generation. Byte-level
+   * equality with the canonical trace is intentionally not asserted: the simulation path ({@link
+   * org.hyperledger.besu.plugin.services.BlockSimulationService}) substitutes a fake ECDSA
+   * signature for each transaction, so the {@code rlptxn} module output will differ from the
+   * canonical trace even when all other execution state is identical.
    */
   private void validateVirtualBlockTrace(
-      final long blockNumber, final String[] txRlps, final TraceFile canonicalTraceFile)
-      throws IOException {
-    log.info("generating virtual block trace for comparison: blockNumber={}", blockNumber);
+      final long blockNumber, final String[] txRlps, final Fork fork) throws IOException {
+    log.info("generating virtual block trace for corset validation: blockNumber={}", blockNumber);
     final TraceFile virtualTraceFile =
         lineaGenerateVirtualBlockConflatedTracesToFileV1(blockNumber, txRlps);
     final Path virtualPath = Path.of(virtualTraceFile.conflatedTracesFileName());
@@ -573,25 +572,13 @@ public class BesuExecutionTools {
                 .withFailMessage("Virtual trace file %s does not exist", virtualPath)
                 .isTrue());
 
-    final Path canonicalPath = Path.of(canonicalTraceFile.conflatedTracesFileName());
     log.info(
-        "comparing virtual trace with canonical trace: blockNumber={} canonical={} virtual={}",
+        "running corset validation on virtual block trace: blockNumber={} path={}",
         blockNumber,
-        canonicalPath,
         virtualPath);
-
-    final byte[] canonicalBytes = Files.readAllBytes(canonicalPath);
-    final byte[] virtualBytes = Files.readAllBytes(virtualPath);
-    assertThat(virtualBytes)
-        .withFailMessage(
-            "Virtual block trace differs from canonical trace for block %d%n  canonical: %s%n  virtual:  %s",
-            blockNumber, canonicalPath, virtualPath)
-        .isEqualTo(canonicalBytes);
-
-    log.info(
-        "virtual block trace matches canonical trace: blockNumber={} bytes={}",
-        blockNumber,
-        canonicalBytes.length);
+    ExecutionEnvironment.checkTracer(
+        virtualPath, getCorsetValidatorPerFork(fork), false, Optional.of(log));
+    log.info("virtual block trace passed corset validation: blockNumber={}", blockNumber);
   }
 
   private TraceFile traceAndCheckTracer(long startBlockNumber, long endBlockNumber, Fork nextFork)
