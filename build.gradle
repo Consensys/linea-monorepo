@@ -89,7 +89,7 @@ allprojects {
       '-Xlint:rawtypes',
       '-Werror'
     ])
-    if (!allowCompilationWarnings) {
+    if (allowCompilationWarnings) {
       options.compilerArgs.remove('-Werror')
     }
 
