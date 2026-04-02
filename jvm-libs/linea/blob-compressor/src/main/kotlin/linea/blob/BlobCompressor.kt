@@ -47,13 +47,13 @@ object BlobCompressorFactory {
     val dictPath = GoNativeBlobCompressorFactory.dictionaryPath.toString()
     val blobCompressor =
       when (compressorVersion) {
-        BlobCompressorVersion.V1_2, BlobCompressorVersion.V2, BlobCompressorVersion.V3 -> {
+        BlobCompressorVersion.V2 -> {
           val lib = GoNativeBlobCompressorFactory.getLegacyInstance(compressorVersion)
           if (!lib.Init(dataLimit, dictPath)) throw InstantiationException(lib.Error())
           GoBackedBlobCompressor(lib, compressorVersion)
         }
 
-        BlobCompressorVersion.V4 -> {
+        else -> {
           val lib = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
           val errOut = PointerByReference()
           val handle = lib.Init(dataLimit, dictPath, errOut)

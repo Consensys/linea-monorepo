@@ -10,7 +10,7 @@ class GoBackedBlobCompressor internal constructor(
   private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
 
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
-    return goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
+    return goNativeBlobCompressor.CanWrite(blockRLPEncoded, blockRLPEncoded.size)
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {
@@ -58,10 +58,10 @@ class GoBackedBlobCompressorV4 internal constructor(
   override val version: BlobCompressorVersion,
   private val handle: Int,
 ) : BlobCompressor {
-  private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
+  private val log = LogManager.getLogger(GoBackedBlobCompressorV4::class.java)
 
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
-    return goNativeBlobCompressor.Write(handle, blockRLPEncoded, blockRLPEncoded.size)
+    return goNativeBlobCompressor.CanWrite(handle, blockRLPEncoded, blockRLPEncoded.size)
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {

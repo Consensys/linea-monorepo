@@ -124,15 +124,14 @@ interface GoNativeBlobCompressorLegacyJnaLib : GoNativeBlobCompressor, Library
 interface GoNativeBlobCompressorV4JnaLib : GoNativeBlobCompressorV4, Library
 
 enum class BlobCompressorVersion(val version: String) {
-  V1_2("v1.2.0"),
   V2("v2.1.0"),
-  V3("v3.0.1"),
+  V3("v4.0.0"),
   V4("v4.0.0"),
 }
 
 /**
  * Loads and caches the native compressor shared library for each [BlobCompressorVersion].
- * Legacy versions (pre-handle API) are cached in [loadedLegacyVersions]; current versions are cached in [loadedVersions].
+ * Versions are cached in [loadedVersions].
  * The cached object is the raw JNA library binding — it is not an initialised compressor instance.
  */
 class GoNativeBlobCompressorFactory {
@@ -148,7 +147,7 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getLegacyInstance(version: BlobCompressorVersion): GoNativeBlobCompressor {
-      require(version in listOf(BlobCompressorVersion.V1_2, BlobCompressorVersion.V2, BlobCompressorVersion.V3)) {
+      require(version == BlobCompressorVersion.V2) {
         "$version uses the handle-based API; use getInstance() instead"
       }
       val lib = synchronized(loadedVersions) {
@@ -161,7 +160,7 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getInstance(version: BlobCompressorVersion): GoNativeBlobCompressorV4 {
-      require(version == BlobCompressorVersion.V4) {
+      require(version != BlobCompressorVersion.V2) {
         "$version uses the legacy API; use getLegacyInstance() instead"
       }
       val lib = synchronized(loadedVersions) {
