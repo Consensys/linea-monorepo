@@ -827,6 +827,81 @@ class ForcedTransactionsAppTest {
     )
   }
 
+  @Test
+  fun `should remove ftx records with ftx number lower than or equal to finalized ftx number`() {
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 100UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 9UL,
+    )
+
+    val blockTimestamp = Clock.System.now()
+    val ftx8Record = ForcedTransactionRecord(
+      ftxNumber = 8UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+      simulatedExecutionBlockNumber = 2_008UL,
+      simulatedExecutionBlockTimestamp = blockTimestamp,
+      ftxBlockNumberDeadline = 200UL,
+      ftxRollingHash = ByteArray(0),
+      ftxRlp = ByteArray(0),
+      proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+    )
+
+    val ftx9Record = ForcedTransactionRecord(
+      ftxNumber = 9UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+      simulatedExecutionBlockNumber = 2_009UL,
+      simulatedExecutionBlockTimestamp = blockTimestamp.plus(10.seconds),
+      ftxBlockNumberDeadline = 200UL,
+      ftxRollingHash = ByteArray(0),
+      ftxRlp = ByteArray(0),
+      proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+    )
+
+    val ftx10Record = ForcedTransactionRecord(
+      ftxNumber = 10UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+      simulatedExecutionBlockNumber = 2_010UL,
+      simulatedExecutionBlockTimestamp = blockTimestamp.plus(20.seconds),
+      ftxBlockNumberDeadline = 200UL,
+      ftxRollingHash = ByteArray(0),
+      ftxRlp = ByteArray(0),
+      proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+    )
+
+    fxtDao.save(ftx8Record).get()
+    fxtDao.save(ftx9Record).get()
+    fxtDao.save(ftx10Record).get()
+
+    val ftxAddedEvents = listOf(
+      createFtxAddedEvent(
+        l1BlockNumber = 1_000UL,
+        ftxNumber = 10UL,
+        l2DeadLine = 100UL,
+      ),
+    )
+    l1Client.setLogs(ftxAddedEvents)
+
+    val app = createApp(
+      l1PollingInterval = 100.milliseconds,
+      ftxSequencerSendingInterval = 100.milliseconds,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
+    )
+    this.l1Client.setFinalizedBlockTag(5_000UL)
+    this.l1Client.setLatestBlockTag(10_000UL)
+    this.l2Client.setLatestBlockTag(2_100UL)
+
+    app.start().get()
+
+    await()
+      .atMost(10.seconds.toJavaDuration())
+      .untilAsserted {
+        val records = fxtDao.list().get()
+        assertThat(records.map { it.ftxNumber }).containsExactly(10UL)
+      }
+  }
+
   private fun EthApiBlockClient.blockTimestamp(blockParameter: BlockParameter): Instant =
     this.ethGetBlockByNumberTxHashes(blockParameter)
       .get().timestamp.let { Instant.fromEpochSeconds(it.toLong()) }

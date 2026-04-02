@@ -18,6 +18,7 @@ import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.AggregationCalculatorByForcedTransaction
 import linea.ftx.conflation.ConflationCalculatorByForcedTransaction
 import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
+import linea.ftx.conflation.ForcedTransactionsDbCleanUpService
 import linea.ftx.conflation.ForcedTransactionsInvalidityProofService
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.ftx.conflation.InvalidityProofAssembler
@@ -162,6 +163,11 @@ internal class ForcedTransactionsAppImpl(
     vertx = vertx,
     pollingInterval = config.invalidityProofProcessingInterval,
   )
+  private val ftxDbCleanupService = ForcedTransactionsDbCleanUpService(
+    ftxDao = ftxDao,
+    finalizedStateProvider = finalizedStateProvider,
+    vertx = vertx,
+  )
 
   override fun start(): CompletableFuture<Unit> {
     log.info("starting ForcedTransactionsApp")
@@ -241,6 +247,7 @@ internal class ForcedTransactionsAppImpl(
           ftxSender.start(),
           ftxFetcher.start(),
           ftxInvalidityProofService.start(),
+          ftxDbCleanupService.start(),
         )
       }.thenApply {
         log.debug("ForcedTransactionsApp started successfully")
@@ -254,6 +261,8 @@ internal class ForcedTransactionsAppImpl(
     return SafeFuture.allOf(
       stopFtxSender,
       stopFtxFetcher,
+      ftxInvalidityProofService.stop(),
+      ftxDbCleanupService.stop(),
     ).thenApply { }
   }
 }
