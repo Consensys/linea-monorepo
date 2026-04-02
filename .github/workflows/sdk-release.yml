@@ -29,8 +29,10 @@ jobs:
     steps:
       - name: Ensure running on main
         if: github.ref != 'refs/heads/main'
+        env:
+          REF: ${{ github.ref }}
         run: |
-          echo "::error::sdk-release must be triggered from the main branch, got ${{ github.ref }}"
+          echo "::error::sdk-release must be triggered from the main branch, got $REF"
           exit 1
 
   create-release-pr:
@@ -145,26 +147,79 @@ jobs:
             echo "$DELIMITER"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create release PR
-        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
         with:
-          base: main
-          branch: release/${{ inputs.package }}-v${{ steps.version.outputs.next }}
-          commit-message: "release(${{ inputs.package }}): v${{ steps.version.outputs.next }}"
-          title: "release(${{ inputs.package }}): v${{ steps.version.outputs.next }}"
-          body: |
-            ## Release `@consensys/linea-${{ inputs.package }}` v${{ steps.version.outputs.next }}
+          pnpm-install-options: "--frozen-lockfile --prefer-offline"
 
-            **Bump type:** ${{ inputs.bump }}
-            **Previous version:** ${{ steps.version.outputs.current }}
+      - name: Lint
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: pnpm -F "@consensys/linea-${PACKAGE}" run lint
 
-            ### Changes
+      - name: Build
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: pnpm -F "@consensys/linea-${PACKAGE}..." run build
 
-            ${{ steps.changelog.outputs.commits }}
+      - name: Test
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: pnpm -F "@consensys/linea-${PACKAGE}" run test
 
-            ### After merging
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            1. Note the **merge commit SHA** from this PR (visible on the merged PR page or via `git log main -1`)
-            2. Go to **Actions → sdk-publish → Run workflow**
-            3. Select `${{ inputs.package }}`, paste the merge commit SHA, and run
-          labels: release
+      - name: Commit and push release branch
+        env:
+          PACKAGE: ${{ inputs.package }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+        run: |
+          BRANCH="release-${PACKAGE}-v${NEXT_VERSION}"
+          git checkout -B "$BRANCH"
+          git add -A
+          git commit -m "release(${PACKAGE}): v${NEXT_VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ inputs.package }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+          CURRENT_VERSION: ${{ steps.version.outputs.current }}
+          BUMP: ${{ inputs.bump }}
+          COMMITS: ${{ steps.changelog.outputs.commits }}
+        run: |
+          BRANCH="release-${PACKAGE}-v${NEXT_VERSION}"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$EXISTING" ]]; then
+            echo "::notice::PR #$EXISTING already exists for $BRANCH, skipping creation"
+            exit 0
+          fi
+
+          BODY_FILE=$(mktemp)
+          {
+            echo "## Release @consensys/linea-${PACKAGE} v${NEXT_VERSION}"
+            echo ""
+            echo "**Bump type:** ${BUMP}"
+            echo "**Previous version:** ${CURRENT_VERSION}"
+            echo ""
+            echo "### Changes"
+            echo ""
+            echo "${COMMITS}"
+            echo ""
+            echo "### After merging"
+            echo ""
+            echo "1. Note the **commit SHA** from this merged PR (visible on the merged PR page or via git log main -1)"
+            echo "2. Go to **Actions → sdk-publish → Run workflow**"
+            echo "3. Select ${PACKAGE}, paste the commit SHA, and run"
+          } > "$BODY_FILE"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "release(${PACKAGE}): v${NEXT_VERSION}" \
+            --body-file "$BODY_FILE"
