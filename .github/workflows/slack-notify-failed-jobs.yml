@@ -177,11 +177,12 @@ jobs:
             <Container-level issues from Docker logs, or "No issues detected">
 
             ### /tmp/e2e-failure-summary.txt
-            A single line, max 300 characters, summarizing the failures for a Slack
-            notification. Example:
-            "2 tests failed: submission-finalization timed out (likely coordinator OOM -
-            check memory limits), bridge-tokens assertion mismatch on L1->L2 claim
-            (regression in fee calculation)"
+            A single line, max 300 characters, for a Slack notification. For each failure
+            include: what failed, the likely root cause, and the confidence level.
+            Example:
+            "2 tests failed: submission-finalization timed out - coordinator OOM suspected
+            (check memory limits, High); bridge-tokens L1->L2 claim assertion mismatch -
+            fee calculation regression (Medium)"
 
       - name: Upload analysis artifact
         if: ${{ always() }}
