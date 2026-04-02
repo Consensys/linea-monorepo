@@ -82,9 +82,13 @@ jar {
   archiveBaseName = 'coordinator'
   manifest {
     attributes(
-        'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
         'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
         'Multi-Release': 'true'
+        )
+  }
+  doFirst {
+    manifest.attributes(
+        'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' ')
         )
   }
 }
