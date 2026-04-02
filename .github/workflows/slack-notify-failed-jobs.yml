@@ -200,8 +200,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f /tmp/e2e-failure-summary.txt ]]; then
-            # Use jq -Rrs to escape special chars without wrapping in JSON double-quotes
-            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | jq -Rrs .)
+            # Strip newlines so the single-line $GITHUB_OUTPUT format is not truncated
+            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | tr -d '\n')
             echo "summary=${summary}" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
           else
@@ -211,7 +211,7 @@ jobs:
 
   notify:
     needs: [ai-analysis]
-    # always() so Slack still runs if ai-analysis fails or is cancelled; needs still waits for it and job outputs.
+    # always() so Slack still runs if ai-analysis fails; needs to wait on ai-analysis job.
     if: ${{ always() }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
 
