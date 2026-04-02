@@ -219,6 +219,13 @@ type Ctx struct {
 	// Optional parameter
 	NumOpenedCol int
 
+	// StreamingCommitment enables the streaming SIS commitment path which
+	// processes rows in batches for better cache efficiency during hashing.
+	StreamingCommitment bool
+	// StreamingBatchSize controls batch size for streaming commitment.
+	// If <= 0, defaults to max(1, NbRows/8).
+	StreamingBatchSize int
+
 	// By rounds commitments
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
 	// SIS round commitments
