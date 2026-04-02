@@ -38,7 +38,6 @@ import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 
 /**
@@ -160,7 +159,7 @@ public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorld
     public synchronized void saveTrieLog(
         final PathBasedWorldStateUpdateAccumulator<?> localUpdater,
         final Hash forWorldStateRootHash,
-        final BlockHeader forBlockHeader,
+        final org.hyperledger.besu.plugin.data.BlockHeader forBlockHeader,
         final PathBasedWorldState forWorldState) {
       TrieLog trieLog = trieLogFactory.create(localUpdater, forBlockHeader);
       trieLogCache.put(forBlockHeader.getBlockHash(), trieLogFactory.serialize(trieLog));
