@@ -41,11 +41,13 @@ class ForcedTransactionsDbCleanUpService(
     return finalizedStateProvider
       .getLatestFinalizedState(blockParameter = BlockParameter.Tag.FINALIZED)
       .thenCompose { currentFinalizationUpdate ->
-        if (lastFinalizedFtxNumber.get() != currentFinalizationUpdate.forcedTransactionNumber) {
-          lastFinalizedFtxNumber.set(currentFinalizationUpdate.forcedTransactionNumber)
-          ftxDao.deleteFtxUpToInclusive(currentFinalizationUpdate.forcedTransactionNumber)
+        val finalizedFtxNumber = currentFinalizationUpdate.forcedTransactionNumber
+        if (lastFinalizedFtxNumber.get() != finalizedFtxNumber) {
+          ftxDao.deleteFtxUpToInclusive(finalizedFtxNumber)
+            .thenApply { lastFinalizedFtxNumber.set(finalizedFtxNumber) }
+        } else {
+          SafeFuture.completedFuture(Unit)
         }
-        SafeFuture.completedFuture(Unit)
       }
   }
 }
