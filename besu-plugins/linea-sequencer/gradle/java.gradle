@@ -27,21 +27,6 @@ dependencies {
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-tasks.withType(JavaCompile) {
-  options.compilerArgs += [
-    '-Xlint:unchecked',
-    '-Xlint:cast',
-    '-Xlint:rawtypes',
-    '-Xlint:overloads',
-    '-Xlint:divzero',
-    '-Xlint:finally',
-    '-Xlint:static',
-    '-Werror',
-  ]
-
-  options.encoding = 'UTF-8'
-}
-
 def lineaSequencerProject = project(lineaSequencerProjectPath)
 
 // Takes the version, and if it equals "SNAPSHOT" or the suffix is "-SNAPSHOT" replaces SNAPSHOT

@@ -90,6 +90,7 @@ allprojects {
       '-Xlint:finally',
       '-Xlint:static',
       '-Xlint:deprecation',
+      '-Xlint:unchecked'
     ])
     if (!allowCompilationWarnings) {
       options.compilerArgs.addAll(['-Werror'])
@@ -99,6 +100,18 @@ allprojects {
       // testing tools have 100+ errors because of this
       // skipping them for now
       options.compilerArgs.addAll(['-Xlint:rawtypes'])
+    }
+
+    // Relax -Werror for tasks that include generated sources under build/ or generated/
+    // this need to be done at runtime, not configuration time
+    doFirst {
+      def hasGeneratedSources = source.any { file ->
+        def absPath = file.absolutePath
+        absPath.contains('/build/') || absPath.contains('/generated/')
+      }
+      if (hasGeneratedSources) {
+        options.compilerArgs.remove('-Werror')
+      }
     }
   }
 
