@@ -25,11 +25,6 @@ on:
         required: false
         type: boolean
         default: false
-      ai_analysis_model:
-        description: "Claude model for AI analysis"
-        required: false
-        type: string
-        default: "claude-sonnet-4-20250514"
       docker_logs_artifact_name:
         description: "Name of the artifact containing Docker container logs"
         required: false
@@ -84,7 +79,6 @@ jobs:
         uses: anthropics/claude-code-action@5d0cc745cd0cce4c0e9e0b3511de26c3bc285eb5 #v1.0.71
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
-          claude_args: --model ${{ inputs.ai_analysis_model }}
           direct_prompt: |
             You are analyzing a CI failure in the Linea monorepo's E2E test suite.
 
