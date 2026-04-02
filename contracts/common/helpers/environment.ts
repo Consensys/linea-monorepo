@@ -33,7 +33,7 @@ export function getEnvVarOrDefault(envVar: string, defaultValue: unknown) {
 
 export function getOptionalEnvVar(name: string): string | undefined {
   const envValue = process.env[name];
-  if (!envValue) {
+  if (envValue === undefined) {
     return undefined;
   }
   return envValue;

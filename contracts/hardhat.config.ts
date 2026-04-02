@@ -122,8 +122,11 @@ const config: HardhatUserConfig = {
       url: blockchainNode,
       accounts: deployerAccounts(),
       timeout: BLOCKCHAIN_TIMEOUT,
-      // No fixed chainId: docker L1 is 31648428 (docker/config/l1-node/el/genesis.json);
-      // hosted devnet (e.g. rpc.devnet.linea.build) uses 59139. Hardhat HH101 if config ≠ RPC.
+      // docker L1 is 31648428 (docker/config/l1-node/el/genesis.json);
+      // hosted devnet (e.g. rpc.devnet.linea.build) uses 59139.
+      // Set ZKEVM_DEV_CHAIN_ID to enforce chain-ID validation and prevent wrong-chain deployments.
+      // Omitting it disables validation (Hardhat HH101) and preserves flexibility across environments.
+      ...(process.env.ZKEVM_DEV_CHAIN_ID ? { chainId: parseInt(process.env.ZKEVM_DEV_CHAIN_ID, 10) } : {}),
     },
     l2: {
       url: l2BlockchainNode ?? "",

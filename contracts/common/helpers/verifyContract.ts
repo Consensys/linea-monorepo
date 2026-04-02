@@ -43,43 +43,59 @@ async function runVerifyTaskWithTimeout(
     );
 
     let settled = false;
+    let timedOut = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+
     const finish = (result: "succeeded" | "failed" | "timed_out") => {
       if (settled) {
         return;
       }
       settled = true;
-      clearTimeout(timeout);
+      clearTimeout(timeoutHandle);
+      clearTimeout(killTimer);
+      child.off("exit", onExit);
+      child.off("error", onError);
       resolveRun(result);
     };
 
-    const timeout = setTimeout(() => {
-      try {
-        child.kill("SIGTERM");
-      } catch {
-        /* child may already be gone */
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      if (timedOut) {
+        finish("timed_out");
+        return;
       }
-      setTimeout(() => {
-        try {
-          child.kill("SIGKILL");
-        } catch {
-          /* child may already be gone */
-        }
-      }, 1000).unref();
-      finish("timed_out");
-    }, VERIFY_TIMEOUT_MS);
-
-    child.once("exit", (code, signal) => {
       if (code === 0) {
         finish("succeeded");
         return;
       }
       console.log(`Verification process exited with code ${code ?? "null"}${signal ? ` (signal: ${signal})` : ""}.`);
       finish("failed");
-    });
-    child.once("error", (error) => {
+    };
+
+    const onError = (error: Error) => {
       console.log(`Error happened during verification: ${error}`);
       finish("failed");
-    });
+    };
+
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        /* child may already be gone */
+      }
+      // No .unref(): SIGKILL must fire even if the parent event loop would otherwise exit.
+      // finish("timed_out") is deferred to the exit handler so the child is reaped first.
+      killTimer = setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          /* child may already be gone */
+        }
+      }, 1000);
+    }, VERIFY_TIMEOUT_MS);
+
+    child.on("exit", onExit);
+    child.on("error", onError);
   });
 }
 
