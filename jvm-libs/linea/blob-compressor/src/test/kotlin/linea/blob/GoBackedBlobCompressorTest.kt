@@ -5,8 +5,9 @@ import linea.blob.BlobCompressorSelectorTest.Companion.compressBlocks
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
@@ -19,13 +20,18 @@ class GoBackedBlobCompressorTest {
   companion object {
     private const val DATA_LIMIT = 24 * 1024
     private val TEST_DATA = CompressorTestData.blocksRlpEncoded
+
+    @JvmStatic
+    fun compressorVersions(): List<BlobCompressorVersion> =
+      BlobCompressorVersion.entries.filter { it != BlobCompressorVersion.V2 }
   }
 
-  private fun newCompressor() = BlobCompressorFactory.getInstance(BlobCompressorVersion.V4, DATA_LIMIT)
+  private fun newCompressor(version: BlobCompressorVersion) = BlobCompressorFactory.getInstance(version, DATA_LIMIT)
 
-  @Test
-  fun `test appendBlock with data within limit`() {
-    newCompressor().use { compressor ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test appendBlock with data within limit`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
       val result = compressor.appendBlock(TEST_DATA.first())
       assertThat(result.blockAppended).isTrue
       assertThat(result.compressedSizeBefore).isZero()
@@ -33,18 +39,50 @@ class GoBackedBlobCompressorTest {
     }
   }
 
-  @Test
-  fun `test invalid rlp block`() {
-    newCompressor().use { compressor ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test canAppend does not actually append`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
+      val block = TEST_DATA.first()
+      val anotherBlock = TEST_DATA[1]
+
+      assertThat(compressor.getCompressedData()).isEmpty()
+      compressor.canAppendBlock(block)
+      assertThat(compressor.getCompressedData()).isEmpty()
+      repeat(3) {
+        compressor.canAppendBlock(anotherBlock)
+      }
+      assertThat(compressor.getCompressedData()).isEmpty()
+
+      val appendResult = compressor.appendBlock(block)
+      assertThat(appendResult.blockAppended).isTrue()
+      val compressedAfterAppend = compressor.getCompressedData()
+      assertThat(compressedAfterAppend).isNotEmpty()
+
+      compressor.canAppendBlock(anotherBlock)
+      assertThat(compressor.getCompressedData()).isEqualTo(compressedAfterAppend)
+      repeat(5) {
+        compressor.canAppendBlock(anotherBlock)
+        compressor.canAppendBlock(block)
+      }
+      assertThat(compressor.getCompressedData()).isEqualTo(compressedAfterAppend)
+    }
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test invalid rlp block`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
       assertThrows<BlobCompressionException>("rlp: expected input list for types.extblock") {
         compressor.appendBlock(Random.nextBytes(100))
       }
     }
   }
 
-  @Test
-  fun `test reset`() {
-    newCompressor().use { compressor ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test reset`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
       val blocks = TEST_DATA.iterator()
       assertThat(compressor.getCompressedData()).isEmpty()
       var res = compressor.appendBlock(blocks.next())
@@ -61,10 +99,11 @@ class GoBackedBlobCompressorTest {
     }
   }
 
-  @Test
-  fun `multiple instances have independent state`() {
-    newCompressor().use { c1 ->
-      newCompressor().use { c2 ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `multiple instances have independent state`(version: BlobCompressorVersion) {
+    newCompressor(version).use { c1 ->
+      newCompressor(version).use { c2 ->
         // append one block to c1 only
         val res = c1.appendBlock(TEST_DATA.first())
         assertThat(res.blockAppended).isTrue()
@@ -82,9 +121,10 @@ class GoBackedBlobCompressorTest {
     }
   }
 
-  @Test
-  fun `test compression data limit exceeded`() {
-    newCompressor().use { compressor ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test compression data limit exceeded`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
       var blocks = TEST_DATA.iterator()
       var result = compressor.appendBlock(blocks.next())
       assertThat(result.blockAppended).isTrue()
@@ -103,9 +143,10 @@ class GoBackedBlobCompressorTest {
     }
   }
 
-  @Test
-  fun `test batches`() {
-    newCompressor().use { compressor ->
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `test batches`(version: BlobCompressorVersion) {
+    newCompressor(version).use { compressor ->
       val blocks = TEST_DATA.iterator()
       var res = compressor.appendBlock(blocks.next())
       assertThat(res.blockAppended).isTrue()
@@ -118,35 +159,40 @@ class GoBackedBlobCompressorTest {
     }
   }
 
-  @Test
-  fun `init with bad dictionary path returns native error message`() {
-    val lib = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V4)
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `init with bad dictionary path returns native error message`(version: BlobCompressorVersion) {
+    val lib = GoNativeBlobCompressorFactory.getInstance(version)
     val errOut = PointerByReference()
     val handle = lib.Init(DATA_LIMIT, "/nonexistent/dictionary.bin", errOut)
     assertThat(handle).isEqualTo(-1)
     assertThat(errOut.value?.getString(0)).isNotBlank()
   }
 
-  @Test
-  fun `close releases instance and a new one can be created`() {
-    val c1 = newCompressor()
-    c1.appendBlock(TEST_DATA.first())
-    c1.close()
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `close releases instance and a new one can be created`(version: BlobCompressorVersion) {
+    val c1 = newCompressor(version).use { c1 ->
+      c1.appendBlock(TEST_DATA.first())
+    }
 
     // must be able to create a fresh instance after closing
-    newCompressor().use { c2 ->
+    newCompressor(version).use { c2 ->
       assertThat(c2.getCompressedData()).isEmpty()
     }
   }
 
   @OptIn(ExperimentalAtomicApi::class)
-  @Test
-  fun `compresses multiple blocks concurrently with multiple v4 instances without exception`() {
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("compressorVersions")
+  fun `compresses multiple blocks concurrently with multiple non legacy instances without exception`(
+    version: BlobCompressorVersion,
+  ) {
     val sampleBlocks = CompressorTestData.blocksRlpEncoded
     assertThat(sampleBlocks).isNotEmpty
 
-    newCompressor().use { compressor1 ->
-      newCompressor().use { compressor2 ->
+    newCompressor(version).use { compressor1 ->
+      newCompressor(version).use { compressor2 ->
         assertTrue(compressor1 != compressor2)
 
         val compressed1 = compressBlocks(compressor1, sampleBlocks)
