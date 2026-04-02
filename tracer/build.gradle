@@ -16,6 +16,23 @@ plugins {
   alias(libs.plugins.testLogger)
 }
 
+dependencies {
+  compileOnly project(':linea-besu')
+}
+
+subprojects {
+  plugins.withId('net.consensys.besu-plugin-library') {
+    dependencies {
+      compileOnly project(':linea-besu')
+    }
+  }
+  plugins.withId('net.consensys.besu-plugin-distribution') {
+    dependencies {
+      compileOnly project(':linea-besu')
+    }
+  }
+}
+
 allprojects {
   plugins.withId('net.consensys.besu-plugin-library') {
     besuPlugin {
