@@ -19,8 +19,8 @@ func TestLinearCombinationStreamingMatchesBaseline(t *testing.T) {
 	rsParams := reedsolomon.NewRsParams(numCols, rate)
 
 	testCases := []struct {
-		name           string
-		numEncodedRows int // rows already encoded (NoSIS)
+		name            string
+		numEncodedRows  int // rows already encoded (NoSIS)
 		numOriginalRows int // rows to re-encode on the fly (SIS L2)
 	}{
 		{"all_encoded", 20, 0},
