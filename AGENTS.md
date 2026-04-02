@@ -48,18 +48,17 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 
 ### Prerequisites
 
-| Tool | Version     | Notes                                                |
-|------|-------------|------------------------------------------------------|
-| Node.js | >= 22.22.2  | See `.nvmrc`                                         |
-| pnpm | >= 10.32.1  | Enforced via `preinstall`                            |
-| JDK | 21          | Coordinator, Besu plugins, transaction-exclusion-api |
-| Gradle | 9.4.1+      | use local ./gradlew                                  |
-| Go | 1.24.6      | Prover                                               |
-| Docker | 24+         | Local stack, CI                                      |
-| Docker Compose | 2.19+       | Multi-service orchestration                          |
-| Make | 3.81+       | Environment management                               |
-| Foundry | stable      | Solidity testing and docgen                          |
-
+| Tool | Version | Notes |
+|------|--------|-------|
+| Node.js | >= 22.22.2 | See `.nvmrc` |
+| pnpm | >= 10.32.1 | Enforced via `preinstall` |
+| JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
+| Gradle | 9.4+ | use ./gradlew <task> |
+| Go | 1.24.6 | Prover |
+| Docker | 24+ | Local stack, CI |
+| Docker Compose | 2.19+ | Multi-service orchestration |
+| Make | 3.81+ | Environment management |
+| Foundry | stable | Solidity testing and docgen |
 ### Install
 
 ```bash
