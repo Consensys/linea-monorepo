@@ -198,8 +198,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f /tmp/e2e-failure-summary.txt ]]; then
-            # Use jq -Rs for JSON-safe escaping (handles quotes, $, backticks, newlines)
-            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | jq -Rs .)
+            # Use jq -Rrs to escape special chars without wrapping in JSON double-quotes
+            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | jq -Rrs .)
             echo "summary=${summary}" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
           else
