@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -143,6 +144,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 	plog.jobOrder("GL", glOrder)
 
+	// Inter-batch GC: after every numConcurrentSubProverJobs completions,
+	var glCompleted atomic.Int64
+	var glGCMu sync.Mutex
+
 	for _, i := range glOrder {
 		i := i // local copy for closure
 		glErrGroup.Go(func() error {
@@ -199,10 +204,22 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			// Safe send: if ctx cancelled, abort send
 			select {
 			case proofStream <- proofGL:
-				return nil
 			case <-ctx.Done():
 				return ctx.Err()
 			}
+
+			// Inter-batch GC: every numConcurrentSubProverJobs completions,
+			n := glCompleted.Add(1)
+			if int(n)%numConcurrentSubProverJobs == 0 && int(n) < numGL {
+				if glGCMu.TryLock() {
+					logrus.Infof("GL inter-batch GC after %d/%d jobs", n, numGL)
+					runtime.GC()
+					debug.FreeOSMemory()
+					glGCMu.Unlock()
+				}
+			}
+
+			return nil
 		})
 	}
 
