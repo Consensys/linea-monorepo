@@ -20,6 +20,16 @@ on:
         required: false
         default: ""
         type: string
+      enable_ai_analysis:
+        description: "Run AI-powered failure analysis using Claude"
+        required: false
+        type: boolean
+        default: false
+      docker_logs_artifact_name:
+        description: "Name of the artifact containing Docker container logs"
+        required: false
+        type: string
+        default: "end-2-end-debug-logs"
     secrets:
       channel_id:
         description: "Slack channel ID (from secrets)"
@@ -27,9 +37,182 @@ on:
       slack_bot_token:
         description: "Slack bot token for posting messages"
         required: true
+      anthropic_api_key:
+        description: "Anthropic API key for Claude analysis"
+        required: false
 
 jobs:
+  ai-analysis:
+    if: ${{ inputs.enable_ai_analysis }}
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    outputs:
+      summary: ${{ steps.extract_summary.outputs.summary }}
+      has_analysis: ${{ steps.extract_summary.outputs.has_analysis }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch failed job logs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh run view ${{ inputs.run_id }} --log-failed > /tmp/failed-job-logs-raw.txt 2>&1 || true
+          # Trim to last 500 KB: failures appear at the end of logs, and this keeps Claude's input within context limits
+          tail -c 500000 /tmp/failed-job-logs-raw.txt > /tmp/failed-job-logs.txt
+
+      - name: Download Docker logs artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ${{ inputs.docker_logs_artifact_name }}
+          path: /tmp/docker-logs
+
+      - name: Run Claude AI analysis
+        uses: anthropics/claude-code-action@5d0cc745cd0cce4c0e9e0b3511de26c3bc285eb5 #v1.0.71
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          prompt: |
+            You are analyzing a CI failure in the Linea monorepo's E2E test suite.
+
+            ## Context
+            - Repository: Linea zkEVM monorepo (L2 zero-knowledge rollup)
+            - E2E tests: Jest + Viem, run against a local Docker stack (coordinator,
+              prover, sequencer, shomei, postman, L1/L2 nodes)
+            - Tests cover: bridge tokens, messaging, submission/finalization, transaction
+              exclusion, EIP-7702, opcodes, liveness, restarts
+
+            ## Input Files
+            - `/tmp/failed-job-logs.txt` - Jest stdout/stderr from the failed CI run
+            - `/tmp/docker-logs/` - Docker container logs (may not exist)
+
+            ## Instructions
+
+            1. Read `/tmp/failed-job-logs.txt` to identify which tests failed and how.
+            2. If `/tmp/docker-logs/` exists, read relevant container logs to find
+               infrastructure-level root causes (coordinator crashes, prover failures,
+               node sync issues, OOM, etc.).
+            3. For each failing test, read the test source file under `e2e/src/` to
+               understand what the test was asserting.
+            4. Also read relevant helpers/utilities referenced in stack traces.
+
+            Parse logs for these failure patterns:
+
+            | Pattern Type | Indicators |
+            |---|---|
+            | Test failures | `FAIL`, `AssertionError`, `Expected`, stack traces |
+            | Timeouts | `Exceeded timeout`, jest timeout errors |
+            | Transaction reverts | `reverted`, `execution reverted`, revert reason strings |
+            | Build/setup errors | `error:`, `Error:`, `Cannot find module`, `ECONNREFUSED` |
+            | Infrastructure | OOM, container exit codes, connection refused in Docker logs |
+
+            Extract from errors:
+            - File paths and line numbers (e.g., `e2e/src/file.spec.ts:42:10`)
+            - Error messages and assertion details
+            - Stack traces (full chain from symptom to origin)
+
+            For each file path extracted, read the actual source file for context.
+
+            ## Analysis Rules
+
+            - Analyze ALL failed tests before producing output.
+            - For test failures, prefer diagnosing the code/infrastructure under test
+              over blaming the test itself, unless the test is clearly wrong.
+            - If a failure cannot be diagnosed, say "Manual investigation needed" with
+              whatever partial context you have. Do not guess.
+            - Include the actual error snippet (max 10 lines) in each failure entry.
+
+            ## Failure Types and Fix Strategies
+
+            | Type | Strategy |
+            |---|---|
+            | Assertion mismatch | Identify expected vs actual; check if test expectation is stale or if code regressed |
+            | Timeout | Check if underlying service (coordinator, prover, sequencer) is healthy in Docker logs; look for deadlocks or slow operations |
+            | Transaction revert | Decode revert reason; check contract state prerequisites and test setup |
+            | Setup/teardown failure | Check global-setup.ts, Docker stack health, port conflicts |
+            | Infrastructure crash | Identify which container failed and why from Docker logs |
+
+            ## Confidence Levels
+            - **High**: Clear error message pointing to specific root cause
+            - **Medium**: Error is clear but root cause requires inference
+            - **Low**: Error is ambiguous or root cause is uncertain
+
+            ## Output
+
+            Write TWO files:
+
+            ### /tmp/e2e-failure-analysis.md
+            Full structured analysis:
+
+            # E2E Failure Analysis
+            **Run:** ${{ inputs.run_id }}
+            **Date:** <current UTC timestamp>
+
+            ## Summary
+            <2-3 sentence executive summary>
+
+            ## Failures
+
+            ### 1. <Test Name>
+            - **File:** `e2e/src/<file>:<line>`
+            - **Type:** <Assertion mismatch | Timeout | Transaction revert | Setup failure | Infrastructure>
+            - **Error:**
+              <error snippet, max 10 lines>
+            - **Root Cause:** <analysis>
+            - **Suggested Fix:** <concrete action> (Confidence: High/Medium/Low)
+            - **Category:** Flake | Regression | Infrastructure
+
+            ### 2. <Test Name>
+            ...
+
+            ## Infrastructure Notes
+            <Container-level issues from Docker logs, or "No issues detected">
+
+            ### /tmp/e2e-failure-summary.txt
+            A single line, max 300 characters, for a Slack notification. For each failure
+            include: what failed, the likely root cause, and the confidence level.
+            Example:
+            "2 tests failed: submission-finalization timed out - coordinator OOM suspected
+            (check memory limits, High); bridge-tokens L1->L2 claim assertion mismatch -
+            fee calculation regression (Medium)"
+
+      - name: Upload analysis artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: ai-failure-analysis
+          path: /tmp/e2e-failure-analysis.md
+          if-no-files-found: ignore
+
+      - name: Extract summary for Slack
+        id: extract_summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f /tmp/e2e-failure-summary.txt ]]; then
+            # Strip newlines so the single-line $GITHUB_OUTPUT format is not truncated
+            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | tr -d '\n')
+            echo "summary=${summary}" >> "$GITHUB_OUTPUT"
+            echo "has_analysis=true" >> "$GITHUB_OUTPUT"
+          else
+            echo 'summary=""' >> "$GITHUB_OUTPUT"
+            echo "has_analysis=false" >> "$GITHUB_OUTPUT"
+          fi
+
   notify:
+    # always() so Slack still runs if ai-analysis fails; needs to wait on ai-analysis job.
+    needs: [ai-analysis]
+    if: false # TEMPORARY: disabled for testing
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
 
     steps:
@@ -192,6 +375,44 @@ jobs:
             echo "block=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Build AI analysis block
+        id: ai_block
+        if: ${{ steps.extract_jobs.outputs.has_results == 'true' && needs.ai-analysis.outputs.has_analysis == 'true' }}
+        shell: bash
+        env:
+          AI_SUMMARY: ${{ needs.ai-analysis.outputs.summary }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+
+          divider='{"type":"divider"}'
+
+          analysis_block=$(jq -n -c --arg summary "$AI_SUMMARY" '{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [
+                { type: "text", text: "AI Analysis: ", style: { bold: true } },
+                { type: "text", text: $summary }
+              ]
+            }]
+          }')
+
+          link_block=$(jq -n -c --arg url "$RUN_URL" '{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [
+                { type: "text", text: "Full Analysis: ", style: { bold: true } },
+                { type: "link", url: $url, text: "View artifact" }
+              ]
+            }]
+          }')
+
+          echo "divider_block=- ${divider}" >> "$GITHUB_OUTPUT"
+          echo "analysis_block=- ${analysis_block}" >> "$GITHUB_OUTPUT"
+          echo "link_block=- ${link_block}" >> "$GITHUB_OUTPUT"
+
       - name: Send Slack Notification
         if: ${{ steps.extract_jobs.outputs.has_results == 'true' }}
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
@@ -245,3 +466,6 @@ jobs:
               ${{ steps.job_sections.outputs.failed_section }}
               ${{ steps.job_sections.outputs.cancelled_section }}
               ${{ steps.extra_block.outputs.block }}
+              ${{ steps.ai_block.outputs.divider_block }}
+              ${{ steps.ai_block.outputs.analysis_block }}
+              ${{ steps.ai_block.outputs.link_block }}
