@@ -44,7 +44,7 @@ on:
 jobs:
   ai-analysis:
     if: ${{ inputs.enable_ai_analysis }}
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     timeout-minutes: 10
     permissions:
       contents: read
