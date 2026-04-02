@@ -305,15 +305,8 @@ function ContractsDeployUiPage() {
       return;
     }
 
-    const storageKey = signerUiSessionSecretStorageKey(apiBaseUrl);
-
     if (sessionSecretFromUrl) {
       setSessionSecret(sessionSecretFromUrl);
-      try {
-        sessionStorage.setItem(storageKey, sessionSecretFromUrl);
-      } catch {
-        /* storage full or disabled */
-      }
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("sessionToken");
       window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
@@ -321,6 +314,7 @@ function ContractsDeployUiPage() {
       return;
     }
 
+    const storageKey = signerUiSessionSecretStorageKey(apiBaseUrl);
     setSessionSecret((previousSessionSecret) => {
       return previousSessionSecret ?? sessionStorage.getItem(storageKey);
     });
