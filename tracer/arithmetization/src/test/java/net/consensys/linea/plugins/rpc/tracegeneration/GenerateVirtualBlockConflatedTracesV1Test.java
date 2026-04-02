@@ -38,9 +38,6 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
 import org.hyperledger.besu.plugin.services.BlockSimulationService;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
@@ -50,10 +47,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Integration tests for GenerateVirtualBlockConflatedTracesV1. These tests verify that the RPC
+ * Tests for GenerateVirtualBlockConflatedTracesV1. These tests verify that the RPC
  * endpoint can properly handle requests and output trace files to the filesystem.
  */
-class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
+class GenerateVirtualBlockConflatedTracesV1Test {
 
   private static final long BLOCK_NUMBER = 100L;
   private static final long PARENT_BLOCK_NUMBER = 99L;
@@ -61,31 +58,21 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
 
   @TempDir Path tempDir;
 
-  private ServiceManager serviceManager;
-  private BlockSimulationService blockSimulationService;
   private BlockchainService blockchainService;
   private PluginRpcRequest rpcRequest;
-  private BlockContext parentBlockContext;
-  private BlockHeader parentBlockHeader;
-  private PluginBlockSimulationResult simulationResult;
-  private BlockHeader simulatedBlockHeader;
 
   private GenerateVirtualBlockConflatedTracesV1 rpcMethod;
 
   @BeforeEach
   void setUp() {
-    serviceManager = mock(ServiceManager.class);
-    blockSimulationService = mock(BlockSimulationService.class);
+    ServiceManager serviceManager = mock(ServiceManager.class);
+    BlockSimulationService blockSimulationService = mock(BlockSimulationService.class);
     blockchainService = mock(BlockchainService.class);
     when(serviceManager.getService(BlockSimulationService.class))
         .thenReturn(Optional.of(blockSimulationService));
     when(serviceManager.getService(BlockchainService.class))
         .thenReturn(Optional.of(blockchainService));
     rpcRequest = mock(PluginRpcRequest.class);
-    parentBlockContext = mock(BlockContext.class);
-    parentBlockHeader = mock(BlockHeader.class);
-    simulationResult = mock(PluginBlockSimulationResult.class);
-    simulatedBlockHeader = mock(BlockHeader.class);
 
     TracesEndpointConfiguration endpointConfiguration =
         TracesEndpointConfiguration.builder()
