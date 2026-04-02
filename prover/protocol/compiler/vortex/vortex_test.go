@@ -528,7 +528,7 @@ func TestCompilerWithStreamingL2(t *testing.T) {
 		numRounds       = 4
 		nPolsMultiRound = []int{14, 8, 9, 16}
 		rowsMultiRound  = make([][]ifaces.Column, numRounds)
-		rng             = rand.New(rand.NewPCG(0, 0))
+		rng             = rand.New(rand.NewPCG(0, 0)) // #nosec G404 -- test only
 	)
 	testCases := []struct {
 		Explainer string
