@@ -57,9 +57,13 @@ jar {
   archiveBaseName = 'transaction-exclusion-api'
   manifest {
     attributes(
-        'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
         'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
         'Multi-Release': 'true'
+        )
+  }
+  doFirst {
+    manifest.attributes(
+        'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' ')
         )
   }
 }

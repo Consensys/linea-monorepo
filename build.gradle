@@ -234,8 +234,6 @@ task jacocoRootReport(type: JacocoReport) {
   onlyIf = { true }
 }
 
-apply plugin: 'linea.besu-plugin'
-
 dockerCompose {
   localStack {
     startedServices = [
