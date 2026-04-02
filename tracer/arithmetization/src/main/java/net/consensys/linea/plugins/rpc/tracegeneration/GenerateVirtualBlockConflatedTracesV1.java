@@ -24,9 +24,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
@@ -44,6 +46,7 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockOverrides;
 import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
@@ -68,15 +71,14 @@ public class GenerateVirtualBlockConflatedTracesV1 {
   private final RequestLimiter requestLimiter;
   private final TraceWriter traceWriter;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
-  private final BlockSimulationService blockSimulationService;
   private final BlockchainService blockchainService;
+  private final ServiceManager besuContext;
 
   public GenerateVirtualBlockConflatedTracesV1(
       final RequestLimiter requestLimiter,
       final TracesEndpointConfiguration endpointConfiguration,
       final LineaL1L2BridgeSharedConfiguration lineaL1L2BridgeSharedConfiguration,
-      final BlockSimulationService blockSimulationService,
-      final BlockchainService blockchainService) {
+      final ServiceManager besuContext) {
     this.requestLimiter = requestLimiter;
     this.traceWriter =
         new TraceWriter(
@@ -85,8 +87,9 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
     this.traceFileVersion = endpointConfiguration.traceFileVersion();
     this.traceFileCaching = endpointConfiguration.caching();
-    this.blockSimulationService = blockSimulationService;
-    this.blockchainService = blockchainService;
+    this.blockchainService =
+        BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
+    this.besuContext = besuContext;
   }
 
   public String getNamespace() {
@@ -125,12 +128,18 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     final String tracesEngineVersion =
         Objects.requireNonNullElse(TraceRequestParams.getTracerRuntime(), "unknown");
 
+    // Hash of the caller-supplied transactions — makes the cache key unique per transaction set
+    final String txsHash = computeTxsHash(params.txsRlpEncoded());
+
     // Check for cached trace file
-    Path path = traceWriter.virtualBlockTraceFilePath(blockNumber, tracesEngineVersion);
+    Path path = traceWriter.virtualBlockTraceFilePath(blockNumber, tracesEngineVersion, txsHash);
     if (cachedTraceFileAvailable(path)) {
       log.info("virtual block trace cache hit: blockNumber={} path={}", blockNumber, path);
       return new TraceFile(tracesEngineVersion, path.toString());
     }
+
+    final BlockSimulationService blockSimulationService =
+        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
 
     // Validate parent block exists
     final BlockContext parentBlock =
@@ -174,7 +183,8 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     // mirror its exact header so the resulting trace is byte-for-byte identical to the
     // canonical conflated trace for the same transactions.
     // Otherwise (genuine invalidity-proof scenario) derive sensible defaults from the parent.
-    final BlockOverrides blockOverrides = buildBlockOverrides(blockNumber, parentBlock);
+    final BlockOverrides blockOverrides =
+        buildBlockOverrides(blockNumber, parentBlock, blockchainService);
 
     // Start conflation for single block
     tracer.traceStartConflation(1);
@@ -199,7 +209,8 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     sw.reset().start();
 
     // Write trace file with virtual block naming convention
-    path = traceWriter.writeVirtualBlockTraceToFile(tracer, blockNumber, tracesEngineVersion);
+    path =
+        traceWriter.writeVirtualBlockTraceToFile(tracer, blockNumber, tracesEngineVersion, txsHash);
 
     log.info(
         "virtual block trace serialized: blockNumber={} path={} duration={}",
@@ -223,11 +234,13 @@ public class GenerateVirtualBlockConflatedTracesV1 {
    * defaults derived from the parent block header are used instead.
    */
   private BlockOverrides buildBlockOverrides(
-      final long blockNumber, final BlockContext parentBlock) {
+      final long blockNumber,
+      final BlockContext parentBlock,
+      final BlockchainService blockchainService) {
     final BlockOverrides.Builder builder =
         BlockOverrides.builder()
             .blockNumber(blockNumber)
-            .blockHashLookup(this::getBlockHashByNumber);
+            .blockHashLookup(n -> getBlockHashByNumber(n, blockchainService));
 
     final java.util.Optional<BlockContext> maybeCanonical =
         blockchainService.getBlockByNumber(blockNumber);
@@ -260,6 +273,10 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     return true;
   }
 
+  private static String computeTxsHash(final String[] txsRlpEncoded) {
+    return Integer.toHexString(Arrays.hashCode(txsRlpEncoded));
+  }
+
   private List<Transaction> decodeTransactions(String[] txsRlpEncoded) {
     final List<Transaction> transactions = new ArrayList<>(txsRlpEncoded.length);
     for (int i = 0; i < txsRlpEncoded.length; i++) {
@@ -274,7 +291,7 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     return transactions;
   }
 
-  private Hash getBlockHashByNumber(long blockNumber) {
+  private Hash getBlockHashByNumber(long blockNumber, BlockchainService blockchainService) {
     return blockchainService
         .getBlockByNumber(blockNumber)
         .map(block -> block.getBlockHeader().getBlockHash())

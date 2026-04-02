@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
@@ -36,6 +37,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
@@ -59,6 +61,7 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
 
   @TempDir Path tempDir;
 
+  private ServiceManager serviceManager;
   private BlockSimulationService blockSimulationService;
   private BlockchainService blockchainService;
   private PluginRpcRequest rpcRequest;
@@ -71,8 +74,13 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
 
   @BeforeEach
   void setUp() {
+    serviceManager = mock(ServiceManager.class);
     blockSimulationService = mock(BlockSimulationService.class);
     blockchainService = mock(BlockchainService.class);
+    when(serviceManager.getService(BlockSimulationService.class))
+        .thenReturn(Optional.of(blockSimulationService));
+    when(serviceManager.getService(BlockchainService.class))
+        .thenReturn(Optional.of(blockchainService));
     rpcRequest = mock(PluginRpcRequest.class);
     parentBlockContext = mock(BlockContext.class);
     parentBlockHeader = mock(BlockHeader.class);
@@ -94,11 +102,7 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
 
     rpcMethod =
         new GenerateVirtualBlockConflatedTracesV1(
-            requestLimiter,
-            endpointConfiguration,
-            bridgeConfiguration,
-            blockSimulationService,
-            blockchainService);
+            requestLimiter, endpointConfiguration, bridgeConfiguration, serviceManager);
   }
 
   @Test
@@ -126,12 +130,14 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
   void returnsCachedFileWhenAvailable() throws IOException {
     String tracesEngineVersion =
         Objects.requireNonNullElse(TraceRequestParams.getTracerRuntime(), "unknown");
+    String signedTxRlp = createSignedTransactionRlp();
+    String txsHash = Integer.toHexString(Arrays.hashCode(new String[] {signedTxRlp}));
     String cachedFileName =
-        String.format("%d-noncanonical.conflated.%s.lt", BLOCK_NUMBER, tracesEngineVersion);
+        String.format(
+            "%d-%s-noncanonical.conflated.%s.lt", BLOCK_NUMBER, txsHash, tracesEngineVersion);
     Path cachedFilePath = tempDir.resolve(cachedFileName);
     Files.writeString(cachedFilePath, "cached trace content");
 
-    String signedTxRlp = createSignedTransactionRlp();
     VirtualBlockTraceRequestParams params =
         new VirtualBlockTraceRequestParams(BLOCK_NUMBER, new String[] {signedTxRlp});
     when(rpcRequest.getParams()).thenReturn(new Object[] {params});
@@ -140,6 +146,36 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
 
     assertThat(result).isNotNull();
     assertThat(result.conflatedTracesFileName()).isEqualTo(cachedFilePath.toString());
+  }
+
+  @Test
+  void differentTransactionsDontShareCacheEntries() throws IOException {
+    String tracesEngineVersion =
+        Objects.requireNonNullElse(TraceRequestParams.getTracerRuntime(), "unknown");
+
+    String txRlp1 = createSignedTransactionRlp();
+    String txRlp2 = createSignedTransactionRlpWithNonce(1);
+
+    String txsHash1 = Integer.toHexString(Arrays.hashCode(new String[] {txRlp1}));
+    String txsHash2 = Integer.toHexString(Arrays.hashCode(new String[] {txRlp2}));
+
+    // Pre-populate the cache only for txRlp1
+    String cachedFileName =
+        String.format(
+            "%d-%s-noncanonical.conflated.%s.lt", BLOCK_NUMBER, txsHash1, tracesEngineVersion);
+    Files.writeString(tempDir.resolve(cachedFileName), "cached trace content");
+
+    // Request with txRlp2 must NOT return the cache entry for txRlp1
+    VirtualBlockTraceRequestParams params =
+        new VirtualBlockTraceRequestParams(BLOCK_NUMBER, new String[] {txRlp2});
+    when(rpcRequest.getParams()).thenReturn(new Object[] {params});
+    when(blockchainService.getBlockByNumber(BLOCK_NUMBER - 1)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> rpcMethod.execute(rpcRequest))
+        .isInstanceOf(PluginRpcEndpointException.class)
+        .hasMessageContaining("Block not found");
+
+    assertThat(txsHash1).isNotEqualTo(txsHash2);
   }
 
   @Test
@@ -167,6 +203,10 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
    * that can be decoded by the RPC endpoint.
    */
   private String createSignedTransactionRlp() {
+    return createSignedTransactionRlpWithNonce(0);
+  }
+
+  private String createSignedTransactionRlpWithNonce(final long nonce) {
     SignatureAlgorithm signatureAlgorithm = SignatureAlgorithmFactory.getInstance();
     BigInteger privateKeyValue =
         new BigInteger("8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63", 16);
@@ -176,7 +216,7 @@ class GenerateVirtualBlockConflatedTracesV1IntegrationTest {
     Transaction tx =
         Transaction.builder()
             .type(org.hyperledger.besu.datatypes.TransactionType.FRONTIER)
-            .nonce(0)
+            .nonce(nonce)
             .gasPrice(Wei.of(1000000000L))
             .gasLimit(21000)
             .to(Address.fromHexString("0x0000000000000000000000000000000000000001"))

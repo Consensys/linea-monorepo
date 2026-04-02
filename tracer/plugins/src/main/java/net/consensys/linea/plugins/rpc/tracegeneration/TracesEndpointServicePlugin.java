@@ -33,8 +33,6 @@ import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BlockSimulationService;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -99,31 +97,17 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
 
     registerRpcMethod(method.getNamespace(), method.getName(), method::execute);
 
-    besuContext
-        .getService(BlockSimulationService.class)
-        .ifPresentOrElse(
-            blockSimulationService -> {
-              final BlockchainService blockchainService =
-                  BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
-              final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
-                  new GenerateVirtualBlockConflatedTracesV1(
-                      reqLimiter,
-                      endpointConfiguration,
-                      l1L2BridgeSharedConfiguration(),
-                      blockSimulationService,
-                      blockchainService);
-              registerRpcMethod(
-                  virtualBlockMethod.getNamespace(),
-                  virtualBlockMethod.getName(),
-                  virtualBlockMethod::execute);
-              log.info(
-                  "endpoint registered: namespace={} method={}",
-                  virtualBlockMethod.getNamespace(),
-                  virtualBlockMethod.getName());
-            },
-            () ->
-                log.warn(
-                    "BlockSimulationService not available — linea_generateVirtualBlockConflatedTracesToFileV1 will not be registered"));
+    final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
+        new GenerateVirtualBlockConflatedTracesV1(
+            reqLimiter, endpointConfiguration, l1L2BridgeSharedConfiguration(), besuContext);
+    registerRpcMethod(
+        virtualBlockMethod.getNamespace(),
+        virtualBlockMethod.getName(),
+        virtualBlockMethod::execute);
+    log.info(
+        "endpoint registered: namespace={} method={}",
+        virtualBlockMethod.getNamespace(),
+        virtualBlockMethod.getName());
   }
 
   private Optional<Path> initTracesOutputPath(final String tracesOutputPathOption) {
