@@ -3,7 +3,7 @@ package net.consensys.zkevm.coordinator.app
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
 import linea.LongRunningService
-import linea.contract.l1.LineaRollupSmartContractClientReadOnlyWithFinalizedState
+import linea.contract.l1.FinalizedBlockNumberAndFtxNumberProvider
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
@@ -166,7 +166,7 @@ class L1DependentApp(
     )
   }
 
-  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnlyWithFinalizedState = run {
+  val lineaRollupClientForFinalizationMonitor = run {
     val web3j = createWeb3jHttpClient(
       rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
@@ -189,7 +189,7 @@ class L1DependentApp(
         pollingInterval = configs.l1FinalizationMonitor.l1PollingInterval,
         l1QueryBlockTag = configs.l1FinalizationMonitor.l1QueryBlockTag,
       ),
-      contract = lineaRollupClientForFinalizationMonitor,
+      finalizedBlockNumberAndFtxNumberProvider = lineaRollupClientForFinalizationMonitor,
       l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.finalization-monitor"),
@@ -210,7 +210,7 @@ class L1DependentApp(
     setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig = configs.type2StateProofProvider,
       httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-      lineaRollupClient = lineaRollupClientForFinalizationMonitor,
+      finalizedBlockNumberAndFtxNumberProvider = lineaRollupClientForFinalizationMonitor,
       l2EthApiClient = l2EthApiClient,
       vertx = vertx,
     )
@@ -715,7 +715,7 @@ class L1DependentApp(
     fun setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig: Type2StateProofManagerConfig,
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
-      lineaRollupClient: LineaRollupSmartContractClientReadOnlyWithFinalizedState,
+      finalizedBlockNumberAndFtxNumberProvider: FinalizedBlockNumberAndFtxNumberProvider,
       l2EthApiClient: EthApiClient,
       vertx: Vertx,
     ): LongRunningService {
@@ -744,7 +744,7 @@ class L1DependentApp(
             pollingInterval = type2StateProofProviderConfig.l1PollingInterval,
             l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag,
           ),
-          contract = lineaRollupClient,
+          finalizedBlockNumberAndFtxNumberProvider = finalizedBlockNumberAndFtxNumberProvider,
           l2EthApiClient = l2EthApiClient,
           vertx = vertx,
         )

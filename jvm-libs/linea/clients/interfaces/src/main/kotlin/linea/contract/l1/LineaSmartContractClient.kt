@@ -49,10 +49,6 @@ interface LineaRollupSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
   ContractVersionProvider<LineaRollupContractVersion>
 
-interface LineaRollupSmartContractClientReadOnlyWithFinalizedState :
-  LineaRollupSmartContractClientReadOnly,
-  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider
-
 data class LineaRollupFinalizedState(
   val blockNumber: ULong,
   val blockTimestamp: Instant,
