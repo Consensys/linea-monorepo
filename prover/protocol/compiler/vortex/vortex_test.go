@@ -518,3 +518,107 @@ func TestCompiler(t *testing.T) {
 		})
 	}
 }
+
+// TestCompilerWithStreamingL2 exercises the Level 2 streaming path
+// (never materialize W') through the full compile → prove → verify pipeline.
+func TestCompilerWithStreamingL2(t *testing.T) {
+	var (
+		polSize         = 1 << 4
+		nPols           = 16
+		numRounds       = 4
+		nPolsMultiRound = []int{14, 8, 9, 16}
+		rowsMultiRound  = make([][]ifaces.Column, numRounds)
+		rng             = rand.New(rand.NewPCG(0, 0))
+	)
+	testCases := []struct {
+		Explainer string
+		Define    func(b *wizard.Builder)
+		Prove     func(pr *wizard.ProverRuntime)
+	}{
+		{
+			Explainer: "L2: single round using SIS",
+			Define: func(b *wizard.Builder) {
+				rows := make([]ifaces.Column, nPols)
+				for i := range rows {
+					rows[i] = b.RegisterCommit(ifaces.ColIDf("P_%v", i), polSize)
+				}
+				b.UnivariateEval("EVAL", rows...)
+			},
+			Prove: func(pr *wizard.ProverRuntime) {
+				ys := make([]fext.Element, nPols)
+				x := fext.NewFromInt(57, 1, 2, 4)
+				for i := 0; i < nPols; i++ {
+					p := smartvectors.PseudoRand(rng, polSize)
+					ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
+					pr.AssignColumn(ifaces.ColIDf("P_%v", i), p)
+				}
+				pr.AssignUnivariateExt("EVAL", x, ys...)
+			},
+		},
+		{
+			Explainer: "L2: multiple rounds with both SIS and non-SIS",
+			Define: func(b *wizard.Builder) {
+				for round := 0; round < numRounds; round++ {
+					var offsetIndex int
+					if round != 0 {
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
+						for i := 0; i < round; i++ {
+							offsetIndex += nPolsMultiRound[i]
+						}
+					}
+					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+					for i := range nPolsMultiRound[round] {
+						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
+					}
+				}
+				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
+			},
+			Prove: func(pr *wizard.ProverRuntime) {
+				numPolys := 0
+				for i := range nPolsMultiRound {
+					numPolys += nPolsMultiRound[i]
+				}
+				ys := make([]fext.Element, numPolys)
+				x := fext.NewFromInt(57, 1, 4, 2)
+				for round := range rowsMultiRound {
+					var offsetIndex int
+					if round != 0 {
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
+						for i := 0; i < round; i++ {
+							offsetIndex += nPolsMultiRound[i]
+						}
+					}
+					for i, row := range rowsMultiRound[round] {
+						p := smartvectors.PseudoRand(rng, polSize)
+						ys[offsetIndex+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
+						pr.AssignColumn(row.GetColID(), p)
+					}
+				}
+				pr.AssignUnivariateExt("EVAL", x, ys...)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Explainer, func(t *testing.T) {
+			logrus.Infof("Testing %s", tc.Explainer)
+			compiled := wizard.Compile(
+				tc.Define,
+				vortex.Compile(
+					4,
+					false,
+					vortex.WithOptionalSISHashingThreshold(9),
+					vortex.ForceNumOpenedColumns(10),
+					vortex.WithSISParams(&ringsis.Params{
+						LogTwoBound:  16,
+						LogTwoDegree: 4,
+					}),
+					vortex.WithStreamingCommitmentL2(0), // Level 2: never materialize W'
+				),
+			)
+			proof := wizard.Prove(compiled, tc.Prove)
+			valid := wizard.Verify(compiled, proof)
+			require.NoErrorf(t, valid, "the proof did not pass with L2 streaming")
+		})
+	}
+}

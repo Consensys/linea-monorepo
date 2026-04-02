@@ -225,6 +225,10 @@ type Ctx struct {
 	// StreamingBatchSize controls batch size for streaming commitment.
 	// If <= 0, defaults to max(1, NbRows/8).
 	StreamingBatchSize int
+	// StreamingNoMaterialize enables Level 2 streaming: the encoded matrix W'
+	// is never stored. The original matrix W is kept in prover state and rows
+	// are re-encoded on demand during linear combination and column opening.
+	StreamingNoMaterialize bool
 
 	// By rounds commitments
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]

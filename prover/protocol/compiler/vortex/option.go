@@ -57,14 +57,29 @@ func AddMerkleRootToPublicInputs(name string, round []int) VortexOp {
 	}
 }
 
-// WithStreamingCommitment enables the streaming SIS commitment path which
-// processes rows in batches for better cache efficiency during Ring-SIS hashing.
+// WithStreamingCommitment enables the streaming SIS commitment path (Level 1)
+// which processes rows in batches for better cache efficiency during Ring-SIS
+// hashing. The full encoded matrix W' is still materialized and stored for the
+// linear combination and opening phases.
 // batchSize controls how many rows are processed at a time. If batchSize <= 0,
 // a default of max(1, NbRows/8) is used.
 func WithStreamingCommitment(batchSize int) VortexOp {
 	return func(ctx *Ctx) {
 		ctx.StreamingCommitment = true
 		ctx.StreamingBatchSize = batchSize
+	}
+}
+
+// WithStreamingCommitmentL2 enables Level 2 streaming: the full encoded matrix
+// W' is never materialized. During commitment, rows are RS-encoded in batches
+// and discarded after SIS hashing. During linear combination and column opening,
+// rows are re-encoded on demand from the original matrix W. This eliminates
+// ~50% of peak memory (at rate=2) at the cost of one additional RS encoding pass.
+func WithStreamingCommitmentL2(batchSize int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.StreamingCommitment = true
+		ctx.StreamingBatchSize = batchSize
+		ctx.StreamingNoMaterialize = true
 	}
 }
 

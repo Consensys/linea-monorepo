@@ -262,6 +262,103 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	return res
 }
 
+// OriginalMatrix holds the original (non-RS-encoded) witness rows along with
+// the Vortex params needed to re-encode them on demand. Used by Level 2
+// streaming to eliminate the full encoded matrix from prover state.
+type OriginalMatrix struct {
+	Rows   []smartvectors.SmartVector
+	Params *Params
+}
+
+// ToEncodedMatrix re-encodes all rows, producing the full encoded matrix.
+// Used when the full matrix is needed temporarily (e.g., during opening).
+func (om *OriginalMatrix) ToEncodedMatrix() EncodedMatrix {
+	return om.Params.EncodeRows(om.Rows)
+}
+
+// ExtractColumns re-encodes rows one at a time and extracts only the
+// selected column positions, avoiding full W' materialization.
+// Returns columns[j][k] = encode(Rows[k]).Get(entryList[j]).
+func (om *OriginalMatrix) ExtractColumns(entryList []int) [][]field.Element {
+	nbRows := len(om.Rows)
+	columns := make([][]field.Element, len(entryList))
+	for j := range entryList {
+		columns[j] = make([]field.Element, nbRows)
+	}
+	for k := 0; k < nbRows; k++ {
+		encoded := om.Params.RsParams.RsEncodeBase(om.Rows[k])
+		for j := range entryList {
+			columns[j][k] = encoded.Get(entryList[j])
+		}
+	}
+	return columns
+}
+
+// CommitMerkleWithSISStreamingL2 computes the same commitment as CommitMerkleWithSIS
+// but never materializes the full encoded matrix W'. Rows are processed in batches:
+// each batch is RS-encoded, fed to the incremental SIS hasher, then discarded.
+// Returns an OriginalMatrix (wrapping the original polys) instead of EncodedMatrix,
+// so that linear combination and column opening can re-encode on demand.
+func (p *Params) CommitMerkleWithSISStreamingL2(
+	polysMatrix []smartvectors.SmartVector,
+	batchSize int,
+) (*OriginalMatrix, Commitment, *smt_koalabear.Tree, []field.Element) {
+
+	if len(polysMatrix) > p.MaxNbRows {
+		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
+	}
+
+	nbRows := len(polysMatrix)
+	if batchSize <= 0 {
+		batchSize = nbRows / 8
+		if batchSize < 1 {
+			batchSize = 1
+		}
+	}
+
+	// Sanity-check row lengths.
+	for i := range polysMatrix {
+		if polysMatrix[i].Len() != p.NbColumns {
+			utils.Panic("Bad length : expected %v columns but col %v has size %v", p.NbColumns, i, polysMatrix[i].Len())
+		}
+	}
+
+	nbEncodedCols := p.RsParams.NbEncodedColumns()
+	hasher := p.Key.NewIncrementalHasher(nbEncodedCols)
+
+	for start := 0; start < nbRows; start += batchSize {
+		end := start + batchSize
+		if end > nbRows {
+			end = nbRows
+		}
+
+		// RS-encode this batch of rows into a temporary buffer.
+		batch := polysMatrix[start:end]
+		encodedBatch := make(EncodedMatrix, len(batch))
+		parallel.Execute(len(batch), func(s, e int) {
+			for i := s; i < e; i++ {
+				encodedBatch[i] = p.RsParams.RsEncodeBase(batch[i])
+			}
+		})
+
+		// Feed encoded rows to the incremental hasher.
+		hasher.AbsorbBatch(encodedBatch)
+		// encodedBatch is now eligible for GC — not retained.
+	}
+
+	sisHashes := hasher.Finalize()
+	leaves := p.sisHashesToMerkleLeaves(sisHashes)
+
+	tree := smt_koalabear.NewTree(leaves)
+
+	origMatrix := &OriginalMatrix{
+		Rows:   polysMatrix,
+		Params: p,
+	}
+
+	return origMatrix, tree.Root, tree, sisHashes
+}
+
 // EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
 // encoding each of the [smartvectors.SmartVector] it contains separately.

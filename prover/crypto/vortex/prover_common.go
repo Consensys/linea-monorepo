@@ -1,6 +1,7 @@
 package vortex
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -67,6 +68,109 @@ func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, random
 		}
 		copy(linComb[start:stop], localLinComb)
 	})
+
+	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
+}
+
+// LinearCombinationStreaming computes ∑ᵢxⁱ * v[i] where v is formed by
+// concatenating encodedRows (already RS-encoded) followed by originalRows
+// (re-encoded on the fly using rsParams). This avoids materializing the full
+// encoded matrix for the original rows.
+//
+// The ordering matters: encodedRows come first in the power series, then
+// originalRows. This matches the NoSIS-before-SIS stacking convention.
+func LinearCombinationStreaming(
+	proof *OpeningProof,
+	encodedRows []smartvectors.SmartVector,
+	originalRows []smartvectors.SmartVector,
+	rsParams *reedsolomon.RsParams,
+	randomCoin fext.Element,
+) {
+	totalRows := len(encodedRows) + len(originalRows)
+	if totalRows == 0 {
+		utils.Panic("attempted to open an empty witness")
+	}
+
+	// Determine output length.
+	var n int
+	if len(encodedRows) > 0 {
+		n = encodedRows[0].Len()
+	} else {
+		n = rsParams.NbEncodedColumns()
+	}
+
+	linComb := make([]fext.Element, n)
+
+	// Process already-encoded rows using the efficient column-parallel approach.
+	if len(encodedRows) > 0 {
+		parallel.Execute(n, func(start, stop int) {
+			x := fext.One()
+			scratch := make(vectorext.Vector, stop-start)
+			localLinComb := make(vectorext.Vector, stop-start)
+			for i := range encodedRows {
+				sv := encodedRows[i]
+				switch svt := sv.(type) {
+				case *smartvectors.Constant:
+					cst := svt.GetExt(0)
+					cst.Mul(&cst, &x)
+					for j := range localLinComb {
+						localLinComb[j].Add(&localLinComb[j], &cst)
+					}
+					x.Mul(&x, &randomCoin)
+					continue
+				case *smartvectors.Regular:
+					svSlice := field.Vector((*svt)[start:stop])
+					for j := range scratch {
+						fext.SetFromBase(&scratch[j], &svSlice[j])
+					}
+				default:
+					sub := svt.SubVector(start, stop)
+					sub.WriteInSliceExt(scratch)
+				}
+				scratch.ScalarMul(scratch, &x)
+				localLinComb.Add(localLinComb, scratch)
+				x.Mul(&x, &randomCoin)
+			}
+			copy(linComb[start:stop], localLinComb)
+		})
+	}
+
+	// Process original rows by re-encoding each one on the fly.
+	// We use a row-streaming approach: for each row, re-encode it, then
+	// accumulate x^i * encoded[col] into linComb across all columns.
+	x := fext.One()
+	// Advance x past the encoded rows.
+	for range encodedRows {
+		x.Mul(&x, &randomCoin)
+	}
+
+	for _, row := range originalRows {
+		encoded := rsParams.RsEncodeBase(row)
+
+		// Handle constant vectors efficiently.
+		if cst, ok := encoded.(*smartvectors.Constant); ok {
+			val := cst.GetExt(0)
+			val.Mul(&val, &x)
+			for col := range linComb {
+				linComb[col].Add(&linComb[col], &val)
+			}
+			x.Mul(&x, &randomCoin)
+			continue
+		}
+
+		// For regular/other vectors, parallelize over columns.
+		xCopy := x // capture for closure
+		parallel.Execute(n, func(start, stop int) {
+			for col := start; col < stop; col++ {
+				val := encoded.Get(col)
+				var valExt fext.Element
+				fext.SetFromBase(&valExt, &val)
+				valExt.Mul(&valExt, &xCopy)
+				linComb[col].Add(&linComb[col], &valExt)
+			}
+		})
+		x.Mul(&x, &randomCoin)
+	}
 
 	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
 }
