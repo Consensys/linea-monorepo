@@ -43,7 +43,7 @@ undercouchDownload = "5.6.0"
 # checkout and build Besu from source, and will auto-update the "besu" version below
 besuCommit = "f2397bb232cb75b955eb94e1ec0a3ba0c8ae156b"
 
-besu = "26.2.0-RC1-e19f9a9"
+besu = "26.3.0-RC0-f2397bb"
 blobCompressor = "3.0.2"
 commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"
