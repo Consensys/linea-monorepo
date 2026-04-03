@@ -11,15 +11,18 @@ class FakeFinalizedStateDataProvider(
     this.errorBlockNumbers = errorBlockNumbers
   }
 
-  override fun getFinalizedL2BlockNumber(blockParameter: BlockParameter): SafeFuture<ULong> {
+  override fun getFinalizedStateData(
+    blockParameter: BlockParameter,
+  ): SafeFuture<FinalizedStateDataProvider.FinalizedStateData> {
     blockNumber = blockNumber + 1UL
     if (errorBlockNumbers.contains(blockNumber)) {
       throw Exception("Failure for the testing!")
     }
-    return SafeFuture.completedFuture(blockNumber)
-  }
-
-  override fun findFinalizedFtxNumber(blockParameter: BlockParameter): SafeFuture<ULong?> {
-    return SafeFuture.completedFuture(null)
+    return SafeFuture.completedFuture(
+      FinalizedStateDataProvider.FinalizedStateData(
+        blockNumber = blockNumber,
+        forcedTransactionNumber = null,
+      ),
+    )
   }
 }

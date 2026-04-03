@@ -95,20 +95,18 @@ class FinalizationMonitorImpl(
   private fun getFinalizationUpdate(
     blockParameter: BlockParameter,
   ): SafeFuture<FinalizationMonitor.FinalizationUpdate> {
-    return finalizedStateDataProvider.getFinalizedL2BlockNumber(blockParameter)
-      .thenCombine(
-        finalizedStateDataProvider.findFinalizedFtxNumber(blockParameter),
-      ) { finalizedBlockNumber, finalizedFtxNumber ->
+    return finalizedStateDataProvider.getFinalizedStateData(blockParameter)
+      .thenCompose { finalizedStateData ->
         l2EthApiClient
-          .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(finalizedBlockNumber))
+          .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(finalizedStateData.blockNumber))
           .thenApply { finalizedBlock ->
             FinalizationMonitor.FinalizationUpdate(
-              blockNumber = finalizedBlockNumber,
+              blockNumber = finalizedStateData.blockNumber,
               blockHash = Bytes32.wrap(finalizedBlock.hash),
-              forcedTransactionNumber = finalizedFtxNumber,
+              forcedTransactionNumber = finalizedStateData.forcedTransactionNumber,
             )
           }
-      }.thenCompose { it }
+      }
   }
 
   override fun getLastFinalizationUpdate(): FinalizationMonitor.FinalizationUpdate {
