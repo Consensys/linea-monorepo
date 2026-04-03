@@ -112,7 +112,7 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	)
 
 	if c.LimitlessMode {
-		c.checkLimitlessConglomerationCompletion(api)
+		c.CheckLimitlessConglomerationCompletion(api)
 	}
 
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))

@@ -7,7 +7,6 @@ import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 import { estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { DummyContractAbi } from "./generated";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
@@ -42,14 +41,16 @@ describe("Layer 2 test suite", () => {
       account,
       to: dummyContract.address,
       data: encodeFunctionData({
-        abi: DummyContractAbi,
+        abi: dummyContract.abi,
         functionName: "setPayload",
         args: [payload],
       }),
     });
 
-    const { hash, receipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
-      dummyContract.write.setPayload([payload], { nonce, ...estimatedGasFees, ...fees }),
+    const { hash, receipt } = await sendTransactionWithRetry(
+      l2PublicClient,
+      (fees) => dummyContract.write.setPayload([payload], { nonce, ...estimatedGasFees, ...fees }),
+      { abi: dummyContract.abi },
     );
 
     logger.debug(`Transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
