@@ -66,7 +66,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		romLex = mh.InputModules.RomLexInput
 	)
 
-	if !run.Columns.Exists(rom.CounterIsEqualToNBytesMinusOne.GetColID()) {
+	if !run.HasColumn(rom.CounterIsEqualToNBytesMinusOne.GetColID()) {
 		rom.completeAssign(run)
 	}
 
