@@ -146,7 +146,6 @@ jobs:
               echo "${env_var}=develop" >> "$GITHUB_ENV"
             fi
           done
-          echo PROVER_TAG=2fc4392 >> "$GITHUB_ENV"
       - name: Load linea-besu-package Docker image
         if: ${{ inputs.linea_besu_package_tag != '' }}
         run: |
