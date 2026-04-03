@@ -30,7 +30,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java),
 ) : LineaRollupSmartContractClientReadOnly,
   LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
-  FinalizedBlockNumberAndFtxNumberProvider {
+  FinalizedStateDataProvider {
 
   protected fun contractClientV8AtBlock(blockParameter: BlockParameter): LineaRollupV8 {
     return contractClientAtBlock(blockParameter, LineaRollupV8::class.java)
@@ -181,29 +181,21 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       }
   }
 
-  override fun getFinalizedBlockNumberAndFtxNumber(
-    blockParameter: BlockParameter,
-  ): SafeFuture<FinalizedBlockNumberAndFtxNumber> {
+  override fun getFinalizedL2BlockNumber(blockParameter: BlockParameter): SafeFuture<ULong> {
+    return getFinalizedL2BlockNumber(blockParameter)
+  }
+
+  override fun findFinalizedFtxNumber(blockParameter: BlockParameter): SafeFuture<ULong?> {
     return getVersion()
       .thenCompose { version ->
         when (version) {
           LineaRollupContractVersion.V6,
           LineaRollupContractVersion.V7,
-          -> finalizedL2BlockNumber(blockParameter)
-            .thenApply { finalizedBlockNumber ->
-              FinalizedBlockNumberAndFtxNumber(
-                finalizedBlockNumber,
-                null,
-              )
-            }
-
+          -> null
           LineaRollupContractVersion.V8,
           -> getLatestFinalizedState(blockParameter)
             .thenApply { finalizedState ->
-              FinalizedBlockNumberAndFtxNumber(
-                finalizedState.blockNumber,
-                finalizedState.forcedTransactionNumber,
-              )
+              finalizedState.forcedTransactionNumber
             }
         }
       }

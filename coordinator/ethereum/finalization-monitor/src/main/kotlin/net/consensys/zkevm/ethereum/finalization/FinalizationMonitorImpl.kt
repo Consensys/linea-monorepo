@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
-import linea.contract.l1.FinalizedBlockNumberAndFtxNumberProvider
+import linea.contract.l1.FinalizedStateDataProvider
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiBlockClient
 import linea.timer.TimerSchedule
@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class FinalizationMonitorImpl(
   private val config: Config,
-  private val finalizedBlockNumberAndFtxNumberProvider: FinalizedBlockNumberAndFtxNumberProvider,
+  private val finalizedStateDataProvider: FinalizedStateDataProvider,
   private val l2EthApiClient: EthApiBlockClient,
   private val vertx: Vertx,
   private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java),
@@ -95,9 +95,10 @@ class FinalizationMonitorImpl(
   private fun getFinalizationUpdate(
     blockParameter: BlockParameter,
   ): SafeFuture<FinalizationMonitor.FinalizationUpdate> {
-    return finalizedBlockNumberAndFtxNumberProvider
-      .getFinalizedBlockNumberAndFtxNumber(blockParameter)
-      .thenCompose { (finalizedBlockNumber, finalizedFtxNumber) ->
+    return finalizedStateDataProvider.getFinalizedL2BlockNumber(blockParameter)
+      .thenCombine(
+        finalizedStateDataProvider.findFinalizedFtxNumber(blockParameter),
+      ) { finalizedBlockNumber, finalizedFtxNumber ->
         l2EthApiClient
           .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(finalizedBlockNumber))
           .thenApply { finalizedBlock ->
@@ -107,7 +108,7 @@ class FinalizationMonitorImpl(
               forcedTransactionNumber = finalizedFtxNumber,
             )
           }
-      }
+      }.thenCompose { it }
   }
 
   override fun getLastFinalizationUpdate(): FinalizationMonitor.FinalizationUpdate {

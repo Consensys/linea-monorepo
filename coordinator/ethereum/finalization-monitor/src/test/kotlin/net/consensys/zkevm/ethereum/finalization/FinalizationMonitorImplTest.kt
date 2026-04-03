@@ -3,7 +3,7 @@ package net.consensys.zkevm.ethereum.finalization
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.contract.l1.FakeFinalizedBlockNumberAndFtxNumberProvider
+import linea.contract.l1.FakeFinalizedStateDataProvider
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.ethapi.EthApiBlockClient
@@ -36,18 +36,18 @@ class FinalizationMonitorImplTest {
   private val config = FinalizationMonitorImpl.Config(pollingInterval)
   private lateinit var mockL2Client: EthApiBlockClient
   private lateinit var finalizationMonitorImpl: FinalizationMonitorImpl
-  private lateinit var fakeFinalizedBlockNumberAndFtxNumberProvider: FakeFinalizedBlockNumberAndFtxNumberProvider
+  private lateinit var fakeFinalizedStateDataProvider: FakeFinalizedStateDataProvider
   private val mockBlockNumberReturn = mock<EthBlockNumber>()
   private val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
 
   @BeforeEach
   fun setup(vertx: Vertx) {
     mockL2Client = mock<EthApiBlockClient>(defaultAnswer = RETURNS_DEEP_STUBS)
-    fakeFinalizedBlockNumberAndFtxNumberProvider = FakeFinalizedBlockNumberAndFtxNumberProvider()
+    fakeFinalizedStateDataProvider = FakeFinalizedStateDataProvider()
     finalizationMonitorImpl =
       FinalizationMonitorImpl(
         config = config,
-        finalizedBlockNumberAndFtxNumberProvider = fakeFinalizedBlockNumberAndFtxNumberProvider,
+        finalizedStateDataProvider = fakeFinalizedStateDataProvider,
         l2EthApiClient = mockL2Client,
         vertx = vertx,
       )
@@ -155,7 +155,7 @@ class FinalizationMonitorImplTest {
   fun monitorDoesntCrashInCaseOfWeb3Exceptions(testContext: VertxTestContext) {
     val updatesReceived = CopyOnWriteArrayList<FinalizationMonitor.FinalizationUpdate>()
 
-    fakeFinalizedBlockNumberAndFtxNumberProvider.setErrorBlockNumbers(setOf(3UL, 4UL))
+    fakeFinalizedStateDataProvider.setErrorBlockNumbers(setOf(3UL, 4UL))
 
     finalizationMonitorImpl.addFinalizationHandler("handler1") {
       SafeFuture.completedFuture(updatesReceived.add(it))
@@ -180,7 +180,7 @@ class FinalizationMonitorImplTest {
     finalizationMonitorImpl =
       FinalizationMonitorImpl(
         config = config.copy(pollingInterval = pollingInterval * 2),
-        finalizedBlockNumberAndFtxNumberProvider = fakeFinalizedBlockNumberAndFtxNumberProvider,
+        finalizedStateDataProvider = fakeFinalizedStateDataProvider,
         l2EthApiClient = mockL2Client,
         vertx = vertx,
       )
