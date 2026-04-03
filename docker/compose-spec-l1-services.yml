@@ -12,6 +12,12 @@ services:
       interval: 1s
       timeout: 1s
       retries: 120
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
       JAVA_OPTS: -Xmx1536m
@@ -52,8 +58,15 @@ services:
       interval: 1s
       timeout: 1s
       retries: 120
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     environment:
       LOG4J_CONFIGURATION_FILE: /config/log4j.xml
+      JAVA_OPTS: -Xmx1g
     command: [ "--config-file=/config/config-file.yaml" ]
     volumes:
       - ./config/l1-node/cl/teku.key:/config/keys/teku.key:ro

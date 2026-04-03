@@ -20,9 +20,15 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 200M
     environment:
       LINEA_USE_MARU_OVERRIDE_CONFIG: ${LINEA_USE_MARU_OVERRIDE_CONFIG:-false}
-      MARU_COMMAND: exec java -Dlog4j2.configurationFile=configs/log4j.xml -jar maru.jar --genesis-file /initialization/genesis-maru.json --config configs/config.toml
+      MARU_COMMAND: exec java -Xmx400m -Dlog4j2.configurationFile=configs/log4j.xml -jar maru.jar --genesis-file /initialization/genesis-maru.json --config configs/config.toml
     command:
       - /bin/sh
       - -c
@@ -69,8 +75,15 @@ services:
       timeout: 1s
       retries: 120
     restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx1g
     entrypoint: besu-untuned
     command:
       - --config-file=/var/lib/besu/sequencer.config.toml
@@ -145,6 +158,12 @@ services:
       timeout: 1s
       retries: 120
     restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
       JAVA_OPTS: -Xmx1g # for tracer feature/role
@@ -290,6 +309,12 @@ services:
     image: consensys/linea-postman:${POSTMAN_TAG:-92a1974}
     profiles: [ "l2", "debug" ]
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+        reservations:
+          memory: 50M
     ports:
       - "9090:3000"
     depends_on:
@@ -330,6 +355,10 @@ services:
       timeout: 1s
       retries: 120
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     environment:
       config__override__type2-state-proof-provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
       config__override__l1-submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
@@ -337,7 +366,7 @@ services:
       config__override__l1-submission__data-availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
       config__override__message-anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
       dev_LINEA_COORDINATOR_DISABLED: ${dev_LINEA_COORDINATOR_DISABLED:-}
-    command: [ 'sh', '-c', 'if [ "$dev_LINEA_COORDINATOR_DISABLED" = "true" ]; then echo "Coordinator disabled"; else java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml -jar libs/coordinator.jar --traces-limits-v5 config/traces-limits-v5.toml --smart-contract-errors config/smart-contract-errors.toml --gas-price-cap-time-of-day-multipliers config/gas-price-cap-time-of-day-multipliers.toml config/coordinator-config.toml; fi' ]
+    command: [ 'sh', '-c', 'if [ "$dev_LINEA_COORDINATOR_DISABLED" = "true" ]; then echo "Coordinator disabled"; else java -Xmx256m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml -jar libs/coordinator.jar --traces-limits-v5 config/traces-limits-v5.toml --smart-contract-errors config/smart-contract-errors.toml --gas-price-cap-time-of-day-multipliers config/gas-price-cap-time-of-day-multipliers.toml config/coordinator-config.toml; fi' ]
     #command: [ 'echo', 'forced exit' ]
     volumes:
       - ./config/l2-genesis-initialization/coordinator-config-v2-hardforks.toml:/opt/consensys/linea/coordinator/config/coordinator-config.toml:ro
@@ -359,6 +388,14 @@ services:
     container_name: web3signer
     image: consensys/web3signer:26.3.0
     profiles: [ "l2", "debug", "external-to-monorepo" ]
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 150M
+    environment:
+      JAVA_OPTS: -Xmx300m
     ports:
       - "9000:9000"
     command:
@@ -401,10 +438,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 500M
           cpus: '1.0'
         reservations:
-          memory: 512M
+          memory: 256M
           cpus: '0.5'
     volumes:
       - ./postgres/init:/docker-entrypoint-initdb.d/
@@ -423,6 +460,12 @@ services:
         condition: service_started
     privileged: true
     user: root
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     ports:
       - "8998:8888"
     healthcheck:
@@ -459,6 +502,12 @@ services:
     privileged: true
     user: root
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     ports:
       - "8889:8888"
     healthcheck:
