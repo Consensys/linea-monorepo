@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "fs";
 import {
   type Address,
   type Client,
@@ -14,6 +15,7 @@ import { getLineaRollupContract } from "../../config/contracts/contracts";
 import { createTestLogger } from "../../config/logger";
 import { TestContext } from "../../config/setup/index";
 import { LineaRollupV8Abi } from "../../generated";
+import { GENESIS_TIMESTAMP_FILE_PATH } from "../constants";
 import { getRawTransactionHex, waitForEvents } from "../utils";
 
 const logger = createTestLogger();
@@ -50,6 +52,20 @@ export type ForcedTransactionStruct = {
   r: bigint;
   s: bigint;
 };
+
+export function getDefaultLastFinalizedTimestamp() {
+  const filePath = GENESIS_TIMESTAMP_FILE_PATH;
+  if (!existsSync(filePath)) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+  const timestamp = readFileSync(filePath, "utf-8");
+
+  if (!Number(timestamp)) {
+    throw new Error(`Invalid timestamp value in file: ${filePath}`);
+  }
+
+  return BigInt(timestamp);
+}
 
 export function computeFinalizedStateHash(state: LastFinalizedState): Hex {
   return keccak256(

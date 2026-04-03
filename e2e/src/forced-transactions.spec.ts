@@ -2,8 +2,11 @@ import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 import { type Address, GetTransactionReceiptErrorType } from "viem";
 
-import { L2_GENESIS_TIMESTAMP } from "./common/constants";
-import { buildSignedForcedTransaction, resolveLastFinalizedState } from "./common/test-helpers/forced-transactions";
+import {
+  buildSignedForcedTransaction,
+  getDefaultLastFinalizedTimestamp,
+  resolveLastFinalizedState,
+} from "./common/test-helpers/forced-transactions";
 import { getEvents, waitForEvents } from "./common/utils";
 import { createTestContext } from "./config/setup";
 import { LineaRollupV8Abi } from "./generated";
@@ -34,7 +37,11 @@ describe("Forced transaction test suite", () => {
       logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
 
       // Resolve finalized state and fee
-      const lastFinalizedState = await resolveLastFinalizedState(lineaRollup, l1PublicClient, L2_GENESIS_TIMESTAMP);
+      const lastFinalizedState = await resolveLastFinalizedState(
+        lineaRollup,
+        l1PublicClient,
+        getDefaultLastFinalizedTimestamp(),
+      );
 
       logger.debug(
         `Resolved finalized state — timestamp=${lastFinalizedState.timestamp} messageNumber=${lastFinalizedState.messageNumber} messageRollingHash=${lastFinalizedState.messageRollingHash} forcedTransactionNumber=${lastFinalizedState.forcedTransactionNumber} forcedTransactionRollingHash=${lastFinalizedState.forcedTransactionRollingHash}`,
@@ -144,7 +151,11 @@ describe("Forced transaction test suite", () => {
       logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
 
       // Resolve finalized state and fee
-      const lastFinalizedState = await resolveLastFinalizedState(lineaRollup, l1PublicClient, L2_GENESIS_TIMESTAMP);
+      const lastFinalizedState = await resolveLastFinalizedState(
+        lineaRollup,
+        l1PublicClient,
+        getDefaultLastFinalizedTimestamp(),
+      );
 
       logger.debug(
         `Resolved finalized state — timestamp=${lastFinalizedState.timestamp} messageNumber=${lastFinalizedState.messageNumber} messageRollingHash=${lastFinalizedState.messageRollingHash} forcedTransactionNumber=${lastFinalizedState.forcedTransactionNumber} forcedTransactionRollingHash=${lastFinalizedState.forcedTransactionRollingHash}`,
