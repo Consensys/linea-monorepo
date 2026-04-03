@@ -72,7 +72,7 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.
 		exit.OnLimitOverflow(argMaxRatioLimit, int(argMaxRatioHeight), err77)
 	}
 
-	// Parallelize across modules (each module's columns are assigned in parallel within).
+	// Parallelize across modules
 	eg := &errgroup.Group{}
 	for modId := range expTraces.Width() {
 		modId := modId
@@ -97,8 +97,6 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.
 						data    = col.Data()
 					)
 
-					// Both koalabear.Element (go-corset) and field.Element (gnark-crypto)
-					// are [1]uint32 in identical Montgomery form (same modulus, same R).
 					// Use unsafe cast to avoid per-element Bytes()/SetBytes() round-trip.
 					plain := make([]field.Element, data.Len())
 					for i := range plain {

@@ -125,7 +125,7 @@ func (a *Arithmetization) AssignWithPreRead(run *wizard.ProverRuntime, preRead P
 		metadata = preRead.Metadata
 		errT     = preRead.Err
 	)
-	logrus.Infof("[bootstrapper-timing] trace available (pre-read): %v", time.Since(assignStart))
+	logrus.Infof("[bootstrapper] trace available (pre-read): %v", time.Since(assignStart))
 
 	// Extract commit metadata from both files
 	zkevmBinCommit, zkevmBinCommitOk := a.Metadata.String("commit")
@@ -175,7 +175,7 @@ func (a *Arithmetization) AssignWithPreRead(run *wizard.ProverRuntime, preRead P
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
 	}
-	logrus.Infof("[bootstrapper-timing] propagation: %v", time.Since(propStart))
+	logrus.Infof("[bootstrapper] propagation: %v", time.Since(propStart))
 	// Perform trace expansion
 	expStart := time.Now()
 	expandedTrace, errs := ir.NewTraceBuilder[koalabear.Element]().
@@ -186,12 +186,12 @@ func (a *Arithmetization) AssignWithPreRead(run *wizard.ProverRuntime, preRead P
 	if len(errs) > 0 {
 		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
 	}
-	logrus.Infof("[bootstrapper-timing] expansion: %v", time.Since(expStart))
+	logrus.Infof("[bootstrapper] expansion: %v", time.Since(expStart))
 	// Passed
 	copyStart := time.Now()
 	AssignFromLtTraces(run, a.AirSchema, expandedTrace, a.Settings.Limits)
-	logrus.Infof("[bootstrapper-timing] column assignment: %v", time.Since(copyStart))
-	logrus.Infof("[bootstrapper-timing] total Arithmetization.Assign: %v", time.Since(assignStart))
+	logrus.Infof("[bootstrapper] column assignment: %v", time.Since(copyStart))
+	logrus.Infof("[bootstrapper] total Arithmetization.Assign: %v", time.Since(assignStart))
 }
 
 // limbColumnsOf returns the wizard columns corresponding to the limbs for the

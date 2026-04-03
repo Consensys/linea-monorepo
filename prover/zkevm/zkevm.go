@@ -255,7 +255,7 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		// because the following modules use the content of these columns to
 		// assign themselves.
 		if preReadCh != nil {
-			logrus.Info("[bootstrapper-timing] waiting for pre-read trace")
+			logrus.Info("[bootstrapper] waiting for pre-read trace")
 			preRead := <-preReadCh
 			z.Arithmetization.AssignWithPreRead(run, preRead)
 		} else {
@@ -322,7 +322,7 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		}()
 
 		wg.Wait()
-		logrus.Infof("[bootstrapper-timing] module assigns total: %v", time.Since(modStart))
+		logrus.Infof("[bootstrapper] module assigns total: %v", time.Since(modStart))
 	}
 }
 

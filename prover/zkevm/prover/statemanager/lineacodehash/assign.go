@@ -80,9 +80,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 		builder  = newAssignmentBuilder(length)
 	)
 
-	// Build CFI -> romLex row index map (replaces O(n^2) linear scan).
-	// First occurrence wins to match original linear-scan semantics
-	// (real data rows precede zero-padding).
+	// Build CFI -> romLex row index map
 	cfiRomLex := common.GetMultiColumnAssignment(run, romLex.CFIRomLex[:])
 	cfiMap := make(map[[common.NbLimbU32]field.Element]int, 256)
 	for j := range cfiRomLex[0] {

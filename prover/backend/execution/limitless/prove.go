@@ -377,7 +377,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	congFinalproof := res.proof
 
-	// Wait for setup (started during bootstrapper; should be long done by now)
+	// Wait for setup (started during bootstrapper; should be done by now)
 	<-chSetupDone
 	plog.phaseEnd("setup_load", setupStart)
 	if errSetup != nil {
@@ -415,7 +415,6 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 	assets := &zkevm.LimitlessZkEVM{}
 
 	// Pre-start trace file decompression and parsing in background.
-	// This overlaps with the ~8s of asset loading below.
 	preReadCh := make(chan arithmetization.PreReadResult, 1)
 	go func() {
 		logrus.Info("Pre-reading trace file in background")
