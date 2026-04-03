@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -418,6 +419,16 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
+
+	// Pre-start trace file decompression and parsing in background.
+	// This overlaps with the ~8s of asset loading below.
+	preReadCh := make(chan arithmetization.PreReadResult, 1)
+	go func() {
+		logrus.Info("Pre-reading trace file in background")
+		preReadCh <- arithmetization.PreReadTrace(zkevmWitness.ExecTracesFPath)
+		logrus.Info("Pre-read trace file complete")
+	}()
+
 	if err := assets.LoadBootstrapper(cfg); err != nil || assets.DistWizard.Bootstrapper == nil {
 		utils.Panic("could not load bootstrapper: %v", err)
 	}
@@ -475,7 +486,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 				logrus.Infof("Running bootstrapper")
 				runtimeBoot = wizard.RunProver(
 					assets.DistWizard.Bootstrapper,
-					assets.Zkevm.GetMainProverStep(zkevmWitness),
+					assets.Zkevm.GetMainProverStepWithPreRead(zkevmWitness, preReadCh),
 					false,
 				)
 				return
@@ -492,7 +503,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
-				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				scaledUpZkEVM.GetMainProverStepWithPreRead(zkevmWitness, preReadCh),
 				false,
 			)
 		}()

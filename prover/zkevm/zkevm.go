@@ -1,6 +1,8 @@
 package zkevm
 
 import (
+	"time"
+
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -17,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/sirupsen/logrus"
 )
 
 // ZkEvm defines the wizard responsible for proving execution of the zk
@@ -240,31 +243,103 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		panic("caller forgot to pass Witness.ExecDataSchwarzZipfelX")
 	}
 
+	return z.GetMainProverStepWithPreRead(input, nil)
+}
+
+// GetMainProverStepWithPreRead returns a prover step that uses a pre-read trace
+// result if provided, otherwise reads the trace inline.
+func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan arithmetization.PreReadResult) wizard.MainProverStep {
+
 	return func(run *wizard.ProverRuntime) {
 
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		z.Arithmetization.Assign(run, input.ExecTracesFPath)
+		if preReadCh != nil {
+			logrus.Info("[bootstrapper-timing] waiting for pre-read trace")
+			preRead := <-preReadCh
+			z.Arithmetization.AssignWithPreRead(run, preRead)
+		} else {
+			z.Arithmetization.Assign(run, input.ExecTracesFPath)
+		}
 
-		// Assign the state-manager module
+		// Assign the remaining modules sequentially. Many of these read columns
+		// from run that were assigned by earlier modules (via GetColAssignment),
+		// so they cannot be safely parallelized without dependency analysis.
+		modStart := time.Now()
+		logModTime := func(name string, start time.Time) {
+			logrus.Infof("[bootstrapper-timing] %s: %v", name, time.Since(start))
+		}
+
+		t := time.Now()
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
+		logModTime("Ecdsa", t)
+
+		t = time.Now()
 		z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
+		logModTime("StateManager", t)
+
+		t = time.Now()
 		z.Keccak.Run(run)
+		logModTime("Keccak", t)
+
+		t = time.Now()
 		z.Ecadd.Assign(run)
+		logModTime("Ecadd", t)
+
+		t = time.Now()
 		z.Ecmul.Assign(run)
+		logModTime("Ecmul", t)
+
+		t = time.Now()
 		z.Ecpair.Assign(run)
+		logModTime("Ecpair", t)
+
+		t = time.Now()
 		z.Sha2.Run(run)
+		logModTime("Sha2", t)
+
+		t = time.Now()
 		z.BlsG1Add.Assign(run)
+		logModTime("BlsG1Add", t)
+
+		t = time.Now()
 		z.BlsG2Add.Assign(run)
+		logModTime("BlsG2Add", t)
+
+		t = time.Now()
 		z.BlsG1Msm.Assign(run)
+		logModTime("BlsG1Msm", t)
+
+		t = time.Now()
 		z.BlsG2Msm.Assign(run)
+		logModTime("BlsG2Msm", t)
+
+		t = time.Now()
 		z.BlsG1Map.Assign(run)
+		logModTime("BlsG1Map", t)
+
+		t = time.Now()
 		z.BlsG2Map.Assign(run)
+		logModTime("BlsG2Map", t)
+
+		t = time.Now()
 		z.BlsPairingCheck.Assign(run)
+		logModTime("BlsPairingCheck", t)
+
+		t = time.Now()
 		z.PointEval.Assign(run)
+		logModTime("PointEval", t)
+
+		t = time.Now()
 		z.P256Verify.Assign(run)
+		logModTime("P256Verify", t)
+
+		t = time.Now()
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
+		logModTime("PublicInput", t)
+
+		logrus.Infof("[bootstrapper-timing] module assigns total: %v", time.Since(modStart))
 	}
 }
 
