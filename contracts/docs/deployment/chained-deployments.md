@@ -8,6 +8,28 @@ This section describes the scripts that can be run to deploy multiple contracts 
 
 <br />
 
+## UI-backed chained deployments
+
+Chained `--tags` deployments support the browser-wallet flow with **one session for the entire run**:
+
+```shell
+HARDHAT_SIGNER_UI=true npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+```
+
+When `HARDHAT_SIGNER_UI=true` is set:
+
+- **Single session per `hardhat deploy` invocation** — Hardhat overrides the `deploy:runDeploy` subtask so the local HTTP bridge and Next.js UI stay up until **all** scripts for the requested tags have finished (no restart between deploy files).
+- **Multiple transactions in one deploy file** still share that same session (sequential wallet approvals).
+- The UI can show **batch context** (tags, current script) and keep a **submitted-transaction history** in the browser (session storage) after the bridge closes.
+- By default the **Next.js process is stopped** when the deploy run ends (success or failure), alongside the HTTP bridge; the tab stays open with history in session storage. Set `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` to keep Next running. The bridge reports a terminal outcome so the UI stops polling cleanly.
+- `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` cannot be set together. Hardhat now errors immediately if both are present.
+
+If `HARDHAT_SIGNER_UI` is not set (or not `true`), the existing **`DEPLOYER_PRIVATE_KEY`** / named-account flow is unchanged.
+
+See the **Browser wallet signing (`HARDHAT_SIGNER_UI`)** section in [README.md](README.md) and [signer-ui/README.md](../../signer-ui/README.md) for env vars and local stack notes.
+
+<br />
+
 ## L1MessageService Chained Deployments
 
 This will run the script that deploys PlonkVerifier, LineaRollup, Timelock contracts.
@@ -38,6 +60,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | VERIFIER_COINBASE | true | address | Coinbase address passed to the verifier constructor |
 | L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address passed to the verifier constructor |
 | YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
+| LINEA_ROLLUP_ADDRESS_FILTER | true | address | AddressFilter contract address |
 
 <br />
 
@@ -48,7 +71,7 @@ npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> LINEA_ROLLUP_ADDRESS_FILTER=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 ```
 
 (make sure to replace `<value>` `<bytes>` `<key>` `<address>` with actual values)

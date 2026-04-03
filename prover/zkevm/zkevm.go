@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
@@ -36,7 +37,7 @@ type ZkEvm struct {
 	StateManager *statemanager.StateManager `json:"stateManager"`
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
 	// used to access them to define the outer-circuit.
-	PublicInput *publicInput.PublicInput `json:"publicInput"`
+	PublicInput *publicInput.PublicInputs `json:"publicInputs"`
 	// Ecdsa is the module responsible for verifying the Ecdsa tx signatures and
 	// ecrecover
 	Ecdsa *ecdsa.EcdsaZkEvm `json:"ecdsa"`
@@ -205,7 +206,17 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls, arith)
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls, arith)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify, arith)
-		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary, arith)
+		execPI          = publicInput.NewPublicInputZkEVM(
+			comp,
+			&s.PublicInput,
+			&stateManager.StateSummary,
+			arith,
+		)
+		invalidityPI = invalidity.NewInvalidityPI(
+			comp,
+			ecdsa,
+			execPI.Aux.FetchedL2L1.FilterFetched,
+		)
 	)
 
 	return &ZkEvm{
@@ -227,7 +238,10 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		BlsPairingCheck: blsPairingCheck,
 		PointEval:       pointEval,
 		P256Verify:      p256verify,
-		PublicInput:     &publicInput,
+		PublicInput: &publicInput.PublicInputs{
+			ExecutionPI:  execPI,
+			InvalidityPI: invalidityPI,
+		},
 	}
 }
 
