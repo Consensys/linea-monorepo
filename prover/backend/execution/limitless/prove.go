@@ -85,6 +85,19 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
 
+	// Start setup loading early
+	setupStart := plog.phaseStart("setup_load")
+	var (
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
+
 	var (
 		numGL, numLPP, glModuleNames = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
 	)
@@ -352,21 +365,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// All producers finished successfully: close the proofStream so aggregator can finish
 	close(proofStream)
 
-	// Start setup loading in background to overlap with conglomeration tail.
-	// Setup takes ~40s (loads proving key, SRS, circuit) and is independent of conglomeration.
-	setupStart := plog.phaseStart("setup_load")
-	var (
-		setup       circuits.Setup
-		errSetup    error
-		chSetupDone = make(chan struct{})
-	)
-	go func() {
-		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
-		close(chSetupDone)
-	}()
-
-	// Wait for final conglomeration proof (setup loads concurrently)
+	// Wait for final conglomeration proof
 	congStart := plog.phaseStart("conglomeration_wait")
 	res := <-resultCh
 	plog.phaseEnd("conglomeration_wait", congStart)
@@ -378,7 +377,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	congFinalproof := res.proof
 
-	// Wait for setup to finish (likely already done; conglo tail >> setup load time)
+	// Wait for setup (started during bootstrapper; should be long done by now)
 	<-chSetupDone
 	plog.phaseEnd("setup_load", setupStart)
 	if errSetup != nil {

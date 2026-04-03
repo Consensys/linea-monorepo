@@ -264,75 +264,64 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			z.Arithmetization.Assign(run, input.ExecTracesFPath)
 		}
 
-		// Assign modules in parallel. Dependencies: Ecdsa→Keccak, StateManager→PublicInput.
+		// Parallel module assigns. Constraints:
+		//   - Keccak reads ECDSA_ANTICHAMBER columns → must wait for Ecdsa
+		//   - Ecadd/Ecmul/P256 share ecdata FlattenColumn → serialize after Ecdsa
+		//   - Sha2 reads shakiradata ExprHandle → serialize after Keccak
+		//   - BLS modules share blsdata ExprHandle/FlattenColumn → serialize
+		//   - PublicInput reads StateSummary pointer → serialize after SM
+		//
+		// Goroutine A: Ecdsa → close(ecdsaDone) → Ecadd → Ecmul → Ecpair → P256
+		// Goroutine B: <-ecdsaDone → Keccak → Sha2
+		// Goroutine C: BLS_all (sequential)
+		// Goroutine D: StateManager → PublicInput
 		modStart := time.Now()
-		logModTime := func(name string, start time.Time) {
-			logrus.Infof("[bootstrapper-timing] %s: %v", name, time.Since(start))
-		}
-		runMod := func(wg *sync.WaitGroup, name string, fn func()) {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				t := time.Now()
-				fn()
-				logModTime(name, t)
-			}()
-		}
 
 		var wg sync.WaitGroup
 		ecdsaDone := make(chan struct{})
-		smDone := make(chan struct{})
 
-		// Ecdsa → Keccak chain
+		// Goroutine A: Ecdsa then ecdata FlattenColumn chain
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			t := time.Now()
 			z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-			logModTime("Ecdsa", t)
 			close(ecdsaDone)
+			z.Ecadd.Assign(run)
+			z.Ecmul.Assign(run)
+			z.Ecpair.Assign(run)
+			z.P256Verify.Assign(run)
 		}()
+
+		// Goroutine B: Keccak/Sha2 (waits for Ecdsa provider columns)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-ecdsaDone
-			t := time.Now()
 			z.Keccak.Run(run)
-			logModTime("Keccak", t)
+			z.Sha2.Run(run)
 		}()
 
-		// StateManager → PublicInput chain
+		// Goroutine C: BLS chain (shared blsdata columns)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			t := time.Now()
+			z.BlsG1Add.Assign(run)
+			z.BlsG2Add.Assign(run)
+			z.BlsG1Msm.Assign(run)
+			z.BlsG2Msm.Assign(run)
+			z.BlsG1Map.Assign(run)
+			z.BlsG2Map.Assign(run)
+			z.BlsPairingCheck.Assign(run)
+			z.PointEval.Assign(run)
+		}()
+
+		// Goroutine D: StateManager → PublicInput (dominates wall time ~15min)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
-			logModTime("StateManager", t)
-			close(smDone)
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-smDone
-			t := time.Now()
 			z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
-			logModTime("PublicInput", t)
 		}()
-
-		// Independent modules
-		runMod(&wg, "Ecadd", func() { z.Ecadd.Assign(run) })
-		runMod(&wg, "Ecmul", func() { z.Ecmul.Assign(run) })
-		runMod(&wg, "Ecpair", func() { z.Ecpair.Assign(run) })
-		runMod(&wg, "Sha2", func() { z.Sha2.Run(run) })
-		runMod(&wg, "BlsG1Add", func() { z.BlsG1Add.Assign(run) })
-		runMod(&wg, "BlsG2Add", func() { z.BlsG2Add.Assign(run) })
-		runMod(&wg, "BlsG1Msm", func() { z.BlsG1Msm.Assign(run) })
-		runMod(&wg, "BlsG2Msm", func() { z.BlsG2Msm.Assign(run) })
-		runMod(&wg, "BlsG1Map", func() { z.BlsG1Map.Assign(run) })
-		runMod(&wg, "BlsG2Map", func() { z.BlsG2Map.Assign(run) })
-		runMod(&wg, "BlsPairingCheck", func() { z.BlsPairingCheck.Assign(run) })
-		runMod(&wg, "PointEval", func() { z.PointEval.Assign(run) })
-		runMod(&wg, "P256Verify", func() { z.P256Verify.Assign(run) })
 
 		wg.Wait()
 		logrus.Infof("[bootstrapper-timing] module assigns total: %v", time.Since(modStart))
