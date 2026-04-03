@@ -19,6 +19,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Compile-time check: unsafe cast between koalabear.Element and field.Element
+// assumes identical layout ([1]uint32).
+var _ [1]uint32 = koalabear.Element{}
+var _ [1]uint32 = field.Element{}
+
 // ReadExpandedTraces parses the provided trace file, expands it and returns the
 // corset object holding the expanded traces.
 func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema[koalabear.Element], expTraces trace.Trace[koalabear.Element], moduleLimits *config.TracesLimits) {

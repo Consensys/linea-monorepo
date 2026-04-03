@@ -238,18 +238,16 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 // Returns a prover function for the zkEVM module. The resulting function is
 // aimed to be passed to the wizard.Prove function.
 func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep) {
-
-	// That would happen if the caller forgets to provide a value for it
-	if input.ExecDataSchwarzZipfelX.IsZero() {
-		panic("caller forgot to pass Witness.ExecDataSchwarzZipfelX")
-	}
-
 	return z.GetMainProverStepWithPreRead(input, nil)
 }
 
 // GetMainProverStepWithPreRead returns a prover step that uses a pre-read trace
 // result if provided, otherwise reads the trace inline.
 func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan arithmetization.PreReadResult) wizard.MainProverStep {
+
+	if input.ExecDataSchwarzZipfelX.IsZero() {
+		panic("caller forgot to pass Witness.ExecDataSchwarzZipfelX")
+	}
 
 	return func(run *wizard.ProverRuntime) {
 
