@@ -15,13 +15,15 @@ import {
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
+import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", async function () {
   const contractName = "LineaRollup";
 
-  // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = getRequiredEnvVar("VERIFIER_ADDRESS");
+  // LineaRollup DEPLOYED AS UPGRADEABLE PROXY (OpenZeppelin transparent). Hardhat Upgrades may reuse an
+  // implementation and/or ProxyAdmin from `.openzeppelin/` for this network, so you might sign fewer than three txs.
+  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
@@ -71,7 +73,7 @@ const func: DeployFunction = async function () {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContract(contractAddress);
-};
+});
 
 export default func;
 func.tags = ["LineaRollup"];
