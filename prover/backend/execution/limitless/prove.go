@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -85,7 +86,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	var (
-		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
+		numGL, numLPP, glModuleNames = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
 	)
 	plog.phaseEnd("bootstrapper", bootStart)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
@@ -137,15 +138,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	glPhaseStart := plog.phaseStart("GL")
 	glErrGroup.SetLimit(numConcurrentSubProverJobs)
 
-	// Create ordered witness indices: descending order for longest-first scheduling
-	// This ensures larger jobs run first, improving pipeline utilization and reducing tail idle
-	glOrder := make([]int, numGL)
-	for i := 0; i < numGL; i++ {
-		glOrder[i] = numGL - 1 - i // Reverse order: [13,12,11,...,0]
-	}
+	// Round-robin across module types to limit same-module concurrency.
+	glOrder := buildRoundRobinOrder(glModuleNames)
 	plog.jobOrder("GL", glOrder)
 
-	// Inter-batch GC: after every numConcurrentSubProverJobs completions,
 	var glCompleted atomic.Int64
 	var glGCMu sync.Mutex
 
@@ -209,11 +205,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				return ctx.Err()
 			}
 
-			// Inter-batch GC: every numConcurrentSubProverJobs completions,
 			n := glCompleted.Add(1)
-			if int(n)%numConcurrentSubProverJobs == 0 && int(n) < numGL {
+			if int(n) < numGL {
 				if glGCMu.TryLock() {
-					logrus.Infof("GL inter-batch GC after %d/%d jobs", n, numGL)
+					logrus.Infof("GL inter-job GC after %d/%d jobs", n, numGL)
 					runtime.GC()
 					debug.FreeOSMemory()
 					glGCMu.Unlock()
@@ -415,7 +410,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int, []string) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -528,6 +523,11 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		merkleTreeRoot,
 	)
 
+	glModuleNames := make([]string, len(witnessGLs))
+	for i, w := range witnessGLs {
+		glModuleNames[i] = string(w.ModuleName)
+	}
+
 	logrus.Info("Saving the witnesses")
 
 	eg := &errgroup.Group{}
@@ -575,7 +575,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		utils.Panic("could not save witnesses: %v", err)
 	}
 
-	return len(witnessGLs), len(witnessLPPs)
+	return len(witnessGLs), len(witnessLPPs), glModuleNames
 }
 
 // RunGL runs the GL prover for the provided witness index.
@@ -813,4 +813,43 @@ func RunConglomerationHierarchical(ctx context.Context,
 	}
 
 	return nil, fmt.Errorf("conglomeration finished without producing a final proof")
+}
+
+// buildRoundRobinOrder interleaves GL jobs across module types so that
+// segments of the same module are spread apart in the schedule.
+func buildRoundRobinOrder(moduleNames []string) []int {
+	type group struct {
+		name    string
+		indices []int
+	}
+	seen := map[string]int{}
+	var groups []group
+	for i, name := range moduleNames {
+		if idx, ok := seen[name]; ok {
+			groups[idx].indices = append(groups[idx].indices, i)
+		} else {
+			seen[name] = len(groups)
+			groups = append(groups, group{name: name, indices: []int{i}})
+		}
+	}
+
+	sort.Slice(groups, func(a, b int) bool {
+		return len(groups[a].indices) > len(groups[b].indices)
+	})
+
+	order := make([]int, 0, len(moduleNames))
+	for {
+		added := false
+		for g := range groups {
+			if len(groups[g].indices) > 0 {
+				order = append(order, groups[g].indices[0])
+				groups[g].indices = groups[g].indices[1:]
+				added = true
+			}
+		}
+		if !added {
+			break
+		}
+	}
+	return order
 }
