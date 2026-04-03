@@ -64,13 +64,14 @@
  *   npx ts-node scripts/operational/forcedTransactions/sendForcedTransaction.ts
  */
 
+import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
-import * as dotenv from "dotenv";
-import { abi as ForcedTransactionGatewayAbi } from "../../../local-deployments-artifacts/static-artifacts/ForcedTransactionGateway.json";
-import { abi as LineaRollupV8Abi } from "../../../local-deployments-artifacts/dynamic-artifacts/LineaRollupV8.json";
+
 import { getRequiredEnvVar } from "../../../common/helpers/environment";
+import { abi as LineaRollupV8Abi } from "../../../local-deployments-artifacts/dynamic-artifacts/LineaRollupV8.json";
+import { abi as ForcedTransactionGatewayAbi } from "../../../local-deployments-artifacts/static-artifacts/ForcedTransactionGateway.json";
 
 dotenv.config();
 

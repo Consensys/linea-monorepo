@@ -1,11 +1,13 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { SupportedChainIds } from "contracts/common/supportedNetworks";
+import { Contract } from "ethers";
 import { ethers, upgrades } from "hardhat";
+
+import { getPermitData } from "./helpers/permitHelper";
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
-import { getPermitData } from "./helpers/permitHelper";
-import { Contract } from "ethers";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -19,6 +21,7 @@ import {
   pauseTypeRoles,
   unpauseTypeRoles,
 } from "../../common/constants";
+import { TOKEN_BRIDGE_RESERVED_STATUS } from "../../common/constants";
 import {
   expectAccessControlRevert,
   expectEvent,
@@ -31,9 +34,6 @@ import {
   expectNotPaused,
   serializeTokenBridgeInitData,
 } from "../../common/helpers";
-import { SupportedChainIds } from "contracts/common/supportedNetworks";
-
-import { TOKEN_BRIDGE_RESERVED_STATUS } from "../../common/constants";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";

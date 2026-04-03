@@ -1,7 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
 import { ethers } from "hardhat";
+
 import { TestPauseManager } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
@@ -48,7 +50,6 @@ import {
   expectCooldownRevert,
   expectPauseNotExpiredRevert,
 } from "../common/helpers";
-import { FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [

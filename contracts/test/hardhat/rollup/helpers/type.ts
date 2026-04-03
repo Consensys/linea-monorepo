@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { TestLineaRollup } from "contracts/typechain-types";
-import { FinalizationData, ShnarfDataGenerator, AggregatedProofData, ExpectedCustomError } from "../../common/types";
 import { Contract } from "ethers";
+
+import { FinalizationData, ShnarfDataGenerator, AggregatedProofData, ExpectedCustomError } from "../../common/types";
 
 // Re-export shared types for backward compatibility
 export type { AggregatedProofData, ExpectedCustomError } from "../../common/types";

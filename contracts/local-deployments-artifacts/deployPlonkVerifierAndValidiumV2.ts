@@ -1,25 +1,23 @@
+import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
-import * as dotenv from "dotenv";
+
 import { abi as ValidiumV2Abi, bytecode as ValidiumV2Bytecode } from "./dynamic-artifacts/ValidiumV2.json";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
 import {
   contractName as AddressFilterContractName,
   abi as AddressFilterAbi,
   bytecode as AddressFilterBytecode,
 } from "./static-artifacts/AddressFilter.json";
 import {
+  contractName as ProxyAdminContractName,
+  abi as ProxyAdminAbi,
+  bytecode as ProxyAdminBytecode,
+} from "./static-artifacts/ProxyAdmin.json";
+import {
   abi as TransparentUpgradeableProxyAbi,
   bytecode as TransparentUpgradeableProxyBytecode,
 } from "./static-artifacts/TransparentUpgradeableProxy.json";
-import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
-import { generateRoleAssignments } from "../common/helpers/roles";
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
@@ -29,6 +27,9 @@ import {
   ADDRESS_ZERO,
   PRECOMPILES_ADDRESSES,
 } from "../common/constants";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
+import { generateRoleAssignments } from "../common/helpers/roles";
 import { get1559Fees } from "../scripts/utils";
 
 dotenv.config();

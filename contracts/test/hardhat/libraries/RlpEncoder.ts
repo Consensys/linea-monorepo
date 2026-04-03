@@ -1,7 +1,8 @@
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+
 import { TestRlpEncoder } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("RlpEncoder Library", () => {
   let contract: TestRlpEncoder;

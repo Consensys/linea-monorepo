@@ -1,22 +1,11 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
 import { BaseContract } from "ethers";
 import { ethers } from "hardhat";
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-
-import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
-import {
-  deployForcedTransactionGatewayFixture,
-  ensureKzgSetup,
-  getAccountsFixture,
-  getWalletForIndex,
-  buildBlobTransaction,
-  sendBlobTransaction,
-  submitBlobsAndGetReceipt,
-} from "../helpers";
-
 import { GENERAL_PAUSE_TYPE, HASH_ZERO, OPERATOR_ROLE, STATE_DATA_SUBMISSION_PAUSE_TYPE } from "../../common/constants";
 import {
   generateRandomBytes,
@@ -28,6 +17,15 @@ import {
   expectEventDirectFromReceiptData,
   expectRevertWhenPaused,
 } from "../../common/helpers";
+import {
+  deployForcedTransactionGatewayFixture,
+  ensureKzgSetup,
+  getAccountsFixture,
+  getWalletForIndex,
+  buildBlobTransaction,
+  sendBlobTransaction,
+  submitBlobsAndGetReceipt,
+} from "../helpers";
 
 ensureKzgSetup();
 

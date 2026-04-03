@@ -35,6 +35,7 @@ import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
 import org.hyperledger.besu.ethereum.mainnet.*;
+import org.hyperledger.besu.ethereum.mainnet.block.access.list.BlockAccessList;
 import org.hyperledger.besu.ethereum.mainnet.systemcall.BlockProcessingContext;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldState;
@@ -75,7 +76,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final Blockchain blockchain,
       final MutableWorldState worldState,
       final Block block,
-      final PreprocessingFunction preprocessingBlockFunction) {
+      final Optional<BlockAccessList> blockAccessList) {
 
     var blockHeader = block.getHeader();
     var blockBody = block.getBody();
@@ -85,6 +86,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
     final List<TransactionReceipt> receipts = new ArrayList<>();
     long currentGasUsed = 0;
+    long currentStateGasUsed = 0;
 
     final ProtocolSpec protocolSpec = protocolSchedule.getByBlockHeader(blockHeader);
     final var preExecutionProcessor = protocolSpec.getPreExecutionProcessor();
@@ -100,7 +102,12 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
     preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
-      if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
+      if (!hasAvailableBlockBudget(
+          blockHeader,
+          transaction,
+          currentGasUsed,
+          currentStateGasUsed,
+          protocolSpec.getBlockGasAccountingStrategy())) {
         return new BlockProcessingResult(Optional.empty(), "provided gas insufficient");
       }
 
@@ -151,6 +158,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       worldStateUpdater.commit();
 
       currentGasUsed += transaction.getGasLimit() - result.getGasRemaining();
+      currentStateGasUsed += result.getStateGasUsed();
       final TransactionReceipt transactionReceipt =
           transactionReceiptFactory.create(
               transaction.getType(), result, worldState, currentGasUsed);

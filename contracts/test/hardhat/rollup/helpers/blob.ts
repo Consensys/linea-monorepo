@@ -1,10 +1,10 @@
 import * as kzg from "c-kzg";
+import { TestLineaRollup } from "contracts/typechain-types";
 import { BaseContract, Contract, HDNodeWallet, Transaction, TransactionReceipt } from "ethers";
 import * as fs from "fs";
 import { ethers } from "hardhat";
 import path from "path";
 
-import { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
 import {
   expectEventDirectFromReceiptData,
@@ -20,9 +20,9 @@ export type BlobTransactionContext = {
   lineaRollupAddress: string;
   encodedCall: string;
   compressedBlobs: string[];
-  operatorHDSigner?: HDNodeWallet;
-  gasLimit?: number;
-  targetAddress?: string; // Override for callforwarder scenarios
+  operatorHDSigner?: HDNodeWallet | undefined;
+  gasLimit?: number | undefined;
+  targetAddress?: string | undefined; // Override for callforwarder scenarios
 };
 
 /**

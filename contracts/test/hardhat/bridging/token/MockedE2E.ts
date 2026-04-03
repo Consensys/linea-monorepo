@@ -6,23 +6,22 @@ import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBri
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../../../typechain-types";
 import {
+  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
+  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
+  SET_MESSAGE_SERVICE_ROLE,
+} from "../../common/constants";
+import {
+  TOKEN_BRIDGE_RESERVED_STATUS,
+  TOKEN_BRIDGE_NATIVE_STATUS,
+  TOKEN_BRIDGE_DEPLOYED_STATUS,
+} from "../../common/constants";
+import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   expectRevertWhenPaused,
 } from "../../common/helpers";
-import {
-  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
-  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
-  SET_MESSAGE_SERVICE_ROLE,
-} from "../../common/constants";
-
-import {
-  TOKEN_BRIDGE_RESERVED_STATUS,
-  TOKEN_BRIDGE_NATIVE_STATUS,
-  TOKEN_BRIDGE_DEPLOYED_STATUS,
-} from "../../common/constants";
 
 const initialUserBalance = BigInt(10 ** 9);
 // Use shared constants from common/constants/general.ts

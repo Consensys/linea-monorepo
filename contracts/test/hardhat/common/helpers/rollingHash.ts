@@ -1,8 +1,9 @@
 import { expect } from "chai";
 import { BaseContract } from "ethers";
 import { ethers } from "hardhat";
-import { calculateRollingHash, generateKeccak256 } from "./hashing";
+
 import { expectEvent, expectRevertWithCustomError } from "./expectations";
+import { calculateRollingHash, generateKeccak256 } from "./hashing";
 
 /**
  * Initial rolling hash value (zero hash)

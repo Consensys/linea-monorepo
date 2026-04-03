@@ -1,8 +1,24 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
+import {
+  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
+  VALIDIUM_PAUSE_TYPES_ROLES,
+  VALIDIUM_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants/pauseTypes";
+import {
+  AddressFilter,
+  CallForwardingProxy,
+  ForcedTransactionGateway,
+  Mimc,
+  TestLineaRollup,
+  TestValidium,
+} from "contracts/typechain-types";
+import { toBeHex } from "ethers";
 import { ethers } from "hardhat";
 
+import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./before";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-
 import {
   ADDRESS_ZERO,
   BLOCK_NUMBER_DEADLINE_BUFFER,
@@ -19,23 +35,6 @@ import {
   VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../../common/constants";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
-import {
-  AddressFilter,
-  CallForwardingProxy,
-  ForcedTransactionGateway,
-  Mimc,
-  TestLineaRollup,
-  TestValidium,
-} from "contracts/typechain-types";
-import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./before";
-import {
-  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-  VALIDIUM_PAUSE_TYPES_ROLES,
-  VALIDIUM_UNPAUSE_TYPES_ROLES,
-} from "contracts/common/constants/pauseTypes";
-import { toBeHex } from "ethers";
-import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 import { LineaRollupInitializationData, PauseTypeRole } from "../../common/types";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
