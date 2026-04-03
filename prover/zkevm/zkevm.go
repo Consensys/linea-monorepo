@@ -1,6 +1,7 @@
 package zkevm
 
 import (
+	"sync"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -263,82 +264,77 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			z.Arithmetization.Assign(run, input.ExecTracesFPath)
 		}
 
-		// Assign the remaining modules sequentially. Many of these read columns
-		// from run that were assigned by earlier modules (via GetColAssignment),
-		// so they cannot be safely parallelized without dependency analysis.
+		// Assign modules in parallel. Dependencies: Ecdsa→Keccak, StateManager→PublicInput.
 		modStart := time.Now()
 		logModTime := func(name string, start time.Time) {
 			logrus.Infof("[bootstrapper-timing] %s: %v", name, time.Since(start))
 		}
+		runMod := func(wg *sync.WaitGroup, name string, fn func()) {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				t := time.Now()
+				fn()
+				logModTime(name, t)
+			}()
+		}
 
-		t := time.Now()
-		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-		logModTime("Ecdsa", t)
+		var wg sync.WaitGroup
+		ecdsaDone := make(chan struct{})
+		smDone := make(chan struct{})
 
-		t = time.Now()
-		z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
-		logModTime("StateManager", t)
+		// Ecdsa → Keccak chain
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			t := time.Now()
+			z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
+			logModTime("Ecdsa", t)
+			close(ecdsaDone)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-ecdsaDone
+			t := time.Now()
+			z.Keccak.Run(run)
+			logModTime("Keccak", t)
+		}()
 
-		t = time.Now()
-		z.Keccak.Run(run)
-		logModTime("Keccak", t)
+		// StateManager → PublicInput chain
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			t := time.Now()
+			z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
+			logModTime("StateManager", t)
+			close(smDone)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-smDone
+			t := time.Now()
+			z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
+			logModTime("PublicInput", t)
+		}()
 
-		t = time.Now()
-		z.Ecadd.Assign(run)
-		logModTime("Ecadd", t)
+		// Independent modules
+		runMod(&wg, "Ecadd", func() { z.Ecadd.Assign(run) })
+		runMod(&wg, "Ecmul", func() { z.Ecmul.Assign(run) })
+		runMod(&wg, "Ecpair", func() { z.Ecpair.Assign(run) })
+		runMod(&wg, "Sha2", func() { z.Sha2.Run(run) })
+		runMod(&wg, "BlsG1Add", func() { z.BlsG1Add.Assign(run) })
+		runMod(&wg, "BlsG2Add", func() { z.BlsG2Add.Assign(run) })
+		runMod(&wg, "BlsG1Msm", func() { z.BlsG1Msm.Assign(run) })
+		runMod(&wg, "BlsG2Msm", func() { z.BlsG2Msm.Assign(run) })
+		runMod(&wg, "BlsG1Map", func() { z.BlsG1Map.Assign(run) })
+		runMod(&wg, "BlsG2Map", func() { z.BlsG2Map.Assign(run) })
+		runMod(&wg, "BlsPairingCheck", func() { z.BlsPairingCheck.Assign(run) })
+		runMod(&wg, "PointEval", func() { z.PointEval.Assign(run) })
+		runMod(&wg, "P256Verify", func() { z.P256Verify.Assign(run) })
 
-		t = time.Now()
-		z.Ecmul.Assign(run)
-		logModTime("Ecmul", t)
-
-		t = time.Now()
-		z.Ecpair.Assign(run)
-		logModTime("Ecpair", t)
-
-		t = time.Now()
-		z.Sha2.Run(run)
-		logModTime("Sha2", t)
-
-		t = time.Now()
-		z.BlsG1Add.Assign(run)
-		logModTime("BlsG1Add", t)
-
-		t = time.Now()
-		z.BlsG2Add.Assign(run)
-		logModTime("BlsG2Add", t)
-
-		t = time.Now()
-		z.BlsG1Msm.Assign(run)
-		logModTime("BlsG1Msm", t)
-
-		t = time.Now()
-		z.BlsG2Msm.Assign(run)
-		logModTime("BlsG2Msm", t)
-
-		t = time.Now()
-		z.BlsG1Map.Assign(run)
-		logModTime("BlsG1Map", t)
-
-		t = time.Now()
-		z.BlsG2Map.Assign(run)
-		logModTime("BlsG2Map", t)
-
-		t = time.Now()
-		z.BlsPairingCheck.Assign(run)
-		logModTime("BlsPairingCheck", t)
-
-		t = time.Now()
-		z.PointEval.Assign(run)
-		logModTime("PointEval", t)
-
-		t = time.Now()
-		z.P256Verify.Assign(run)
-		logModTime("P256Verify", t)
-
-		t = time.Now()
-		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
-		logModTime("PublicInput", t)
-
+		wg.Wait()
 		logrus.Infof("[bootstrapper-timing] module assigns total: %v", time.Since(modStart))
 	}
 }
