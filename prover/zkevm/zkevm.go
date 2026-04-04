@@ -291,6 +291,9 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 				if _, ok := r.(exit.LimitOverflowReport); ok {
 					limitOverflowOnce.Do(func() { limitOverflow = r })
 					closeEcdsa()
+				} else if limitOverflow != nil {
+					// Another goroutine already captured an overflow
+					// absorb this secondary panic
 				} else {
 					panic(r)
 				}

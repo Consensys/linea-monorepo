@@ -446,7 +446,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		distDone <- err
 	}()
 
-	// Wait for the pre-read result so we can replay it on retries.
+	// Wait for the pre-read result. Re-read traceFile from from disk
 	preReadResult := <-preReadCh
 
 	// The function initially attempt to run the bootstrapper directly and will
@@ -461,9 +461,13 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 
 		logrus.Infof("Trying to bootstrap with a scaling of %v\n", scalingFactor)
 
-		// Create a fresh buffered channel with the cached result for each attempt.
 		replayCh := make(chan arithmetization.PreReadResult, 1)
-		replayCh <- preReadResult
+		if scalingFactor == 1 {
+			replayCh <- preReadResult
+		} else {
+			// Re-read trace from disk: Propagate mutates TraceFile internals.
+			replayCh <- arithmetization.PreReadTrace(zkevmWitness.ExecTracesFPath)
+		}
 
 		func() {
 
