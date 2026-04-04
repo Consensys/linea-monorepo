@@ -38,11 +38,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Build besu from source 
-        shell: bash
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
-        env:
-          JAVA_OPTS: -Xmx2g
       - name: Staterecovery - Build and Unit tests
         run: |
           ./gradlew besu-plugins:state-recovery:besu-plugin:buildNeeded
