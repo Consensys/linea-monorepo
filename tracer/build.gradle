@@ -36,7 +36,9 @@ subprojects {
 allprojects {
   plugins.withId('net.consensys.besu-plugin-library') {
     besuPlugin {
-      besuVersion = "${libs.versions.besu.get()}"
+      besuVersion = rootProject.ext.has('resolvedBesuVer')
+          ? rootProject.ext.resolvedBesuVer
+          : libs.versions.besu.get()
       besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
     }
   }
