@@ -465,8 +465,10 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		if scalingFactor == 1 {
 			replayCh <- preReadResult
 		} else {
-			// Re-read trace from disk: Propagate mutates TraceFile internals.
-			replayCh <- arithmetization.PreReadTrace(zkevmWitness.ExecTracesFPath)
+			// Clone the trace: Propagate mutates TraceFile internals in place.
+			clone := preReadResult
+			clone.RawTrace = preReadResult.RawTrace.Clone()
+			replayCh <- clone
 		}
 
 		func() {
