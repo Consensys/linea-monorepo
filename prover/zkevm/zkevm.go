@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
@@ -278,12 +279,31 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		var wg sync.WaitGroup
 		ecdsaDone := make(chan struct{})
 
+		// Capture LimitOverflowReport panics from child goroutines
+		var (
+			limitOverflow     interface{}
+			limitOverflowOnce sync.Once
+			ecdsaCloseOnce    sync.Once
+		)
+		closeEcdsa := func() { ecdsaCloseOnce.Do(func() { close(ecdsaDone) }) }
+		recoverOverflow := func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(exit.LimitOverflowReport); ok {
+					limitOverflowOnce.Do(func() { limitOverflow = r })
+					closeEcdsa()
+				} else {
+					panic(r)
+				}
+			}
+		}
+
 		// Goroutine A: Ecdsa then ecdata FlattenColumn chain
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer recoverOverflow()
 			z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-			close(ecdsaDone)
+			closeEcdsa()
 			z.Ecadd.Assign(run)
 			z.Ecmul.Assign(run)
 			z.Ecpair.Assign(run)
@@ -294,6 +314,7 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer recoverOverflow()
 			<-ecdsaDone
 			z.Keccak.Run(run)
 			z.Sha2.Run(run)
@@ -303,6 +324,7 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer recoverOverflow()
 			z.BlsG1Add.Assign(run)
 			z.BlsG2Add.Assign(run)
 			z.BlsG1Msm.Assign(run)
@@ -317,11 +339,15 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer recoverOverflow()
 			z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
 			z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList, input.ExecDataSchwarzZipfelX)
 		}()
 
 		wg.Wait()
+		if limitOverflow != nil {
+			panic(limitOverflow)
+		}
 		logrus.Infof("[bootstrapper] module assigns total: %v", time.Since(modStart))
 	}
 }
