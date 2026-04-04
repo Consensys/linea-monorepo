@@ -5,9 +5,40 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover/wiop/wioptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ---- Soundness ----
+
+func TestPermutation_Soundness_Completeness(t *testing.T) {
+	sc := wioptest.NewPermutationScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunHonest(&rt)
+	require.NoError(t, sc.Query.Check(rt), "honest witness must pass Check")
+}
+
+func TestPermutation_Soundness_InvalidWitness(t *testing.T) {
+	sc := wioptest.NewPermutationScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunInvalid(&rt)
+	assert.Error(t, sc.Query.Check(rt), "invalid witness must be rejected by Check")
+}
+
+func TestInclusion_Soundness_Completeness(t *testing.T) {
+	sc := wioptest.NewInclusionScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunHonest(&rt)
+	require.NoError(t, sc.Query.Check(rt), "honest witness must pass Check")
+}
+
+func TestInclusion_Soundness_InvalidWitness(t *testing.T) {
+	sc := wioptest.NewInclusionScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunInvalid(&rt)
+	assert.Error(t, sc.Query.Check(rt), "invalid witness must be rejected by Check")
+}
 
 func TestNewTable_Basic(t *testing.T) {
 	sys, r0, _, mod := newTestSystem(t)
@@ -142,6 +173,15 @@ func TestPermutation_NewPermutation_SelectorPanic(t *testing.T) {
 	})
 }
 
+func TestPermutation_NewPermutation_EmptyBPanic(t *testing.T) {
+	sys, r0, _, mod := newTestSystem(t)
+	col := mod.NewColumn(sys.Context.Childf("pEB"), wiop.VisibilityOracle, r0)
+	tab := wiop.NewTable(col.View())
+	assert.Panics(t, func() {
+		sys.NewPermutation(sys.Context.Childf("q"), []wiop.Table{tab}, nil)
+	})
+}
+
 func TestPermutation_NewPermutation_WidthMismatchPanic(t *testing.T) {
 	sys, r0, _, mod := newTestSystem(t)
 	c1 := mod.NewColumn(sys.Context.Childf("pW1"), wiop.VisibilityOracle, r0)
@@ -196,6 +236,27 @@ func TestInclusion_NewInclusion_NilCtxPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("incNilC"), wiop.VisibilityOracle, r0)
 	tab := wiop.NewTable(col.View())
 	assert.Panics(t, func() { sys.NewInclusion(nil, []wiop.Table{tab}, []wiop.Table{tab}) })
+}
+
+func TestInclusion_NewInclusion_EmptyIncludingPanic(t *testing.T) {
+	sys, r0, _, mod := newTestSystem(t)
+	col := mod.NewColumn(sys.Context.Childf("incEIng"), wiop.VisibilityOracle, r0)
+	tab := wiop.NewTable(col.View())
+	assert.Panics(t, func() {
+		sys.NewInclusion(sys.Context.Childf("q"), []wiop.Table{tab}, nil)
+	})
+}
+
+func TestInclusion_NewInclusion_WidthMismatchPanic(t *testing.T) {
+	sys, r0, _, mod := newTestSystem(t)
+	c1 := mod.NewColumn(sys.Context.Childf("incWMc1"), wiop.VisibilityOracle, r0)
+	c2 := mod.NewColumn(sys.Context.Childf("incWMc2"), wiop.VisibilityOracle, r0)
+	c3 := mod.NewColumn(sys.Context.Childf("incWMc3"), wiop.VisibilityOracle, r0)
+	included := wiop.NewTable(c1.View())
+	including := wiop.NewTable(c2.View(), c3.View()) // width 2 vs 1
+	assert.Panics(t, func() {
+		sys.NewInclusion(sys.Context.Childf("q"), []wiop.Table{included}, []wiop.Table{including})
+	})
 }
 
 func TestInclusion_NewInclusion_EmptyIncludedPanic(t *testing.T) {
@@ -393,4 +454,124 @@ func TestPermutation_PaddingLeft_Match(t *testing.T) {
 	rt.AssignColumn(colB, vB)
 
 	assert.NoError(t, perm.Check(rt))
+}
+
+// TestPermutation_Check_PaddingLeft_Mismatch exercises the padding-aware
+// batching code in permTableCountInto when the data rows differ: the counts
+// map ends up with non-zero entries and Check must return an error.
+func TestPermutation_Check_PaddingLeft_Mismatch(t *testing.T) {
+	sys := wiop.NewSystemf("permPadLMis")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionLeft)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	perm := sys.NewPermutation(sys.Context.Childf("perm"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	var v1, v2 field.Element
+	v1.SetUint64(3)
+	v2.SetUint64(7)
+	elemsA := []field.Element{v1, v1, v1}
+	elemsB := []field.Element{v2, v2, v2}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsA)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsB)}}
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	err := perm.Check(rt)
+	assert.Error(t, err)
+}
+
+// TestPermutation_Check_PaddingRight_Mismatch is the right-padding analogue.
+func TestPermutation_Check_PaddingRight_Mismatch(t *testing.T) {
+	sys := wiop.NewSystemf("permPadRMis")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionRight)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	perm := sys.NewPermutation(sys.Context.Childf("perm"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	var v1, v2 field.Element
+	v1.SetUint64(2)
+	v2.SetUint64(5)
+	elemsA := []field.Element{v1, v1, v1}
+	elemsB := []field.Element{v2, v2, v2}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsA)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsB)}}
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	err := perm.Check(rt)
+	assert.Error(t, err)
+}
+
+// TestInclusion_PaddingRight_Mismatch exercises inclusionCheckSet under right
+// padding: A has a data row value not present in B's selected rows.
+func TestInclusion_PaddingRight_Mismatch(t *testing.T) {
+	sys := wiop.NewSystemf("incPadRMis")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionRight)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewTable(colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	var v1, v2 field.Element
+	v1.SetUint64(1)
+	v2.SetUint64(9)
+	elemsA := []field.Element{v1, v1, v1}
+	elemsB := []field.Element{v2, v2, v2}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsA)}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elemsB)}}
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+
+	err := inc.Check(rt)
+	assert.Error(t, err)
+}
+
+// TestInclusion_PaddingRight_WithSelector_Mismatch exercises the selector path
+// in inclusionCheckSet under right padding: the selected A row value is absent
+// from B.
+func TestInclusion_PaddingRight_WithSelector_Mismatch(t *testing.T) {
+	sys := wiop.NewSystemf("incPadSelMis")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionRight)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+	selA := mod.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+
+	tabA := wiop.NewFilteredTable(selA.View(), colA.View())
+	tabB := wiop.NewTable(colB.View())
+	inc := sys.NewInclusion(sys.Context.Childf("inc"), []wiop.Table{tabA}, []wiop.Table{tabB})
+
+	// A data = [1,1], B data = [9,9] → selected A rows are absent from B.
+	var one field.Element
+	one.SetUint64(1)
+	var nine field.Element
+	nine.SetUint64(9)
+
+	selVec := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase([]field.Element{one, one})}}
+	vA := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase([]field.Element{one, one})}}
+	vB := &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase([]field.Element{nine, nine})}}
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, vA)
+	rt.AssignColumn(colB, vB)
+	rt.AssignColumn(selA, selVec)
+
+	err := inc.Check(rt)
+	assert.Error(t, err)
 }

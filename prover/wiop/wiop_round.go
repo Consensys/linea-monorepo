@@ -27,9 +27,30 @@ type Round struct {
 	// Cells holds the scalar values committed by the prover during this round,
 	// in declaration order.
 	Cells []*Cell
+	// Actions holds the prover-side computations registered for this round, in
+	// declaration order. Each action is run by the prover when the runtime
+	// enters this round, after coins have been derived.
+	Actions []Action
+	// VerifierActions holds the verifier-side checks registered for this
+	// round, in declaration order. Each check is run by the verifier when the
+	// runtime enters this round, after coins have been derived.
+	VerifierActions []VerifierAction
 	// system is the owning System. Set once at registration time, never nil
 	// for a well-formed Round.
 	system *System
+}
+
+// RegisterAction appends a to the round's action list. Actions are run by the
+// prover in declaration order when the runtime enters this round.
+func (r *Round) RegisterAction(a Action) {
+	r.Actions = append(r.Actions, a)
+}
+
+// RegisterVerifierAction appends a to the round's verifier-action list.
+// Verifier actions are run in declaration order when the runtime enters this
+// round.
+func (r *Round) RegisterVerifierAction(a VerifierAction) {
+	r.VerifierActions = append(r.VerifierActions, a)
 }
 
 // System returns the owning System. It is always non-nil for a well-formed

@@ -5,9 +5,26 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover/wiop/wioptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ---- Soundness ----
+
+func TestRationalReduction_Soundness_Completeness(t *testing.T) {
+	sc := wioptest.NewRationalReductionScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunHonest(&rt)
+	require.NoError(t, sc.Query.Check(rt), "honest witness must pass Check")
+}
+
+func TestRationalReduction_Soundness_InvalidWitness(t *testing.T) {
+	sc := wioptest.NewRationalReductionScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunInvalid(&rt)
+	assert.Error(t, sc.Query.Check(rt), "invalid witness must be rejected by Check")
+}
 
 func TestRationalReduction_Sum(t *testing.T) {
 	// 4-row column of all-2; denominator = constant 1; sum = 4*2 = 8
@@ -149,6 +166,36 @@ func TestRationalReduction_VecNumScalarDen(t *testing.T) {
 	rr.SelfAssign(rt)
 	assert.NoError(t, rr.Check(rt))
 }
+
+func TestNewRationalReduction_NilDenominatorPanic(t *testing.T) {
+	sys := wiop.NewSystemf("s")
+	r0 := sys.NewRound()
+	sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("m"), 4, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
+	frac := wiop.Fraction{Numerator: col.View(), Denominator: nil}
+	assert.Panics(t, func() {
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+	})
+}
+
+// TestNewRationalReduction_NoRoundBearingExprPanic covers the guard that fires
+// when every expression in every fraction is a constant vector (has a module,
+// so neither expression is scalar) but none carries a round-bearing
+// column/cell/coin. maxFracRound stays nil and the constructor panics.
+func TestNewRationalReduction_NoRoundBearingExprPanic(t *testing.T) {
+	sys := wiop.NewSystemf("rrNoRound")
+	sys.NewRound()
+	sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("m"), 4, wiop.PaddingDirectionNone)
+	num := wiop.NewConstantVector(mod, field.NewFromString("2"))
+	den := wiop.NewConstantVector(mod, field.NewFromString("1"))
+	frac := wiop.Fraction{Numerator: num, Denominator: den}
+	assert.Panics(t, func() {
+		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+	})
+}
+
 
 func TestNewRationalReduction_DifferentModulePanic(t *testing.T) {
 	sys := wiop.NewSystemf("rrDiffMod")

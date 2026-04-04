@@ -5,9 +5,26 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover/wiop/wioptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ---- Soundness ----
+
+func TestLagrangeEval_Soundness_Completeness(t *testing.T) {
+	sc := wioptest.NewLagrangeEvalScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunHonest(&rt)
+	require.NoError(t, sc.Query.Check(rt), "honest witness must pass Check")
+}
+
+func TestLagrangeEval_Soundness_InvalidWitness(t *testing.T) {
+	sc := wioptest.NewLagrangeEvalScenario()
+	rt := wiop.NewRuntime(sc.Sys)
+	sc.RunInvalid(&rt)
+	assert.Error(t, sc.Query.Check(rt), "invalid witness must be rejected by Check")
+}
 
 // ---- LagrangeEval helpers ----
 
@@ -343,6 +360,19 @@ func TestEvalPolynomials_Shift(t *testing.T) {
 
 	le.SelfAssign(rt)
 	assert.NoError(t, le.Check(rt))
+}
+
+// TestLagrangeEval_Check_ColumnUnassigned tests the first guard in Check: when
+// a polynomial column has no runtime assignment, Check must return an error
+// before attempting to evaluate anything.
+func TestLagrangeEval_Check_ColumnUnassigned(t *testing.T) {
+	sys, _, _, _, col, coin := lagrangeSystem(t)
+	le := sys.NewLagrangeEval(sys.Context.Childf("leUA"), []*wiop.ColumnView{col.View()}, coin)
+
+	// Do not assign the column. Check must fail on the first guard.
+	rt := wiop.NewRuntime(sys)
+	err := le.Check(rt)
+	assert.Error(t, err, "Check must fail when the polynomial column is unassigned")
 }
 
 // ---- Vanishing/LocalOpening CheckGnark panics ----
