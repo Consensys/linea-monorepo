@@ -279,7 +279,6 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 		var wg sync.WaitGroup
 		ecdsaDone := make(chan struct{})
 
-		// Capture LimitOverflowReport panics from child goroutines
 		var (
 			limitOverflow     interface{}
 			limitOverflowOnce sync.Once
@@ -300,7 +299,6 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			}
 		}
 
-		// Goroutine A: Ecdsa then ecdata FlattenColumn chain
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -313,7 +311,6 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			z.P256Verify.Assign(run)
 		}()
 
-		// Goroutine B: Keccak/Sha2 (waits for Ecdsa provider columns)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -323,7 +320,6 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			z.Sha2.Run(run)
 		}()
 
-		// Goroutine C: BLS chain (shared blsdata columns)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -338,7 +334,6 @@ func (z *ZkEvm) GetMainProverStepWithPreRead(input *Witness, preReadCh <-chan ar
 			z.PointEval.Assign(run)
 		}()
 
-		// Goroutine D: StateManager → PublicInput (dominates wall time ~15min)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
