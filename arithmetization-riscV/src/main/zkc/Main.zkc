@@ -1,0 +1,13 @@
+pub input risc_program(address:u20)->(len:u32)
+pub input pi(address:u20)->(bytes:u8)
+memory ram(address:u32)->(bytes:u8)
+
+// TODO @Ghost
+fn main() {
+
+// TODO: copy pi and risc_progframm in ram
+
+
+}
+
+
