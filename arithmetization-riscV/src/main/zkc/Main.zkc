@@ -5,8 +5,14 @@ memory ram(address:u32)->(bytes:u8)
 // TODO @Ghost
 fn main() {
 
-// TODO: copy pi and risc_progframm in ram
+// TODO: memory pre loading (r5 + pi)
 
+var pc:u32 // TODO: initialize me
+var opcode:u32
+
+// TODO: while loop on the r5 opcodes through the interpreter, until fial opcode
+opcode = read(ram, pc, 4)
+pc = interpreter(opcode)
 
 }
 

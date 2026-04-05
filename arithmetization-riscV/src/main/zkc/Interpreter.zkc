@@ -1,0 +1,3 @@
+fn interpreter(opcode:u32) -> (new_pc:u32) {
+   // TODO: update the PC and trigger the modules
+   }
