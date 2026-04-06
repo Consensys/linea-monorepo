@@ -4,8 +4,6 @@ from ethereum.forks.osaka.transactions import (
     encode_transaction,
     recover_sender, 
     validate_transaction,
-    LegacyTransaction,
-    AccessListTransaction,
     FeeMarketTransaction,
     BlobTransaction,
     SetCodeTransaction,
@@ -15,34 +13,16 @@ from ethereum.forks.osaka.fork import (
     VERSIONED_HASH_VERSION_KZG,
 )
 from ethereum.forks.osaka.vm.eoa_delegation import is_valid_delegation
-from ethereum.forks.osaka.vm.gas import calculate_blob_gas_price, calculate_total_blob_gas
+from ethereum.forks.osaka.vm.gas import calculate_total_blob_gas
 from ethereum.state import Address, Account, EMPTY_CODE_HASH
 from dataclasses import dataclass
-from ethereum_types.numeric import U64, U256, Uint
+from ethereum_types.numeric import U64, Uint
 from ethereum.crypto.hash import Hash32, keccak256
-from ethereum_types.bytes import Bytes, Bytes8, Bytes32, Bytes
+from ethereum_types.bytes import Bytes, Bytes
 from ethereum_rlp import rlp
 from enum import Enum
-from typing import Self, List, Tuple
-from ethereum.exceptions import (
-    EthereumException,
-    GasUsedExceedsLimitError,
-    InsufficientBalanceError,
-    InvalidBlock,
-    InvalidSenderError,
-    NonceMismatchError,
-)
-from ethereum.forks.osaka.exceptions import (
-    BlobCountExceededError,
-    BlobGasLimitExceededError,
-    EmptyAuthorizationListError,
-    InsufficientMaxFeePerBlobGasError,
-    InsufficientMaxFeePerGasError,
-    InvalidBlobVersionedHashError,
-    NoBlobDataError,
-    PriorityFeeGreaterThanMaxFeeError,
-    TransactionTypeContractCreationError,
-)
+from typing import List, Tuple
+
 
 @dataclass
 class ChainConfig:

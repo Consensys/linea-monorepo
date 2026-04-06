@@ -1,30 +1,14 @@
-from ethereum.forks.osaka.blocks import Block as EthereumBlock, Header, Log
-from ethereum.forks.osaka.transactions import (
-    LegacyTransaction,
-    AccessListTransaction,
-    FeeMarketTransaction,
-    BlobTransaction,
-    SetCodeTransaction,
-    Transaction,
-    encode_transaction,
-    signing_hash_pre155,
-    signing_hash_155,
-    signing_hash_2930,
-    signing_hash_1559,
-    signing_hash_4844,
-    signing_hash_7702,
-    recover_sender,
-)
+from ethereum.forks.osaka.blocks import Block as EthereumBlock
 from ethereum.forks.osaka.fork import BlockChain
 from ethereum.crypto.hash import keccak256, Hash32
 from ethereum_rlp import rlp
 from ethereum_types.numeric import U64
 from ethereum_types.bytes import Bytes32
 from ethereum.state import Address
-from ethereum.forks.osaka.fork import BlockChain, validate_header
-from .blob import ShnarfWitness, RollupDataWitness, parse_as_bls12_381_fr_vec, eval_lagrange_bls12_381, parse_public_da_block_data
+from ethereum.forks.osaka.fork import BlockChain
+from .blob import ShnarfWitness, RollupDataWitness
 from .block import RollupBlock, block_hash, validate_forced_transactions, ChainConfig
-from typing import List, Tuple
+from typing import List
 from dataclasses import dataclass
 from .state_transition import state_transition_modified
 

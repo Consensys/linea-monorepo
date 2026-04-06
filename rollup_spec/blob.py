@@ -1,8 +1,8 @@
 from ethereum.forks.osaka.blocks import Block as EthereumBlock, Header
 from dataclasses import dataclass
-from ethereum_types.numeric import U64, U256, Uint
+from ethereum_types.numeric import U64
 from ethereum.crypto.hash import Hash32, keccak256
-from ethereum_types.bytes import Bytes, Bytes8, Bytes32, Bytes48
+from ethereum_types.bytes import Bytes32, Bytes48
 from ethereum.state import Address
 from typing import List, Tuple
 

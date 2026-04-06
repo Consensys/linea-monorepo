@@ -7,84 +7,14 @@ from ethereum.forks.osaka.fork import (
 
 )
 
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
-
 from ethereum_rlp import rlp
-from ethereum_types.bytes import Bytes
-from ethereum_types.numeric import U64, U256, Uint
-
-from ethereum.crypto.hash import Hash32, keccak256
-from ethereum.exceptions import (
-    EthereumException,
-    GasUsedExceedsLimitError,
-    InsufficientBalanceError,
-    InvalidBlock,
-    InvalidSenderError,
-    NonceMismatchError,
-)
-from ethereum.state import EMPTY_CODE_HASH, Account, Address
-
+from ethereum.exceptions import InvalidBlock
 from ethereum.forks.osaka import vm
-from ethereum.forks.osaka.blocks import Block, Header, Log, Receipt, Withdrawal, encode_receipt
+from ethereum.forks.osaka.blocks import Block
 from ethereum.forks.osaka.bloom import logs_bloom
-from ethereum.forks.osaka.exceptions import (
-    BlobCountExceededError,
-    BlobGasLimitExceededError,
-    EmptyAuthorizationListError,
-    InsufficientMaxFeePerBlobGasError,
-    InsufficientMaxFeePerGasError,
-    InvalidBlobVersionedHashError,
-    NoBlobDataError,
-    PriorityFeeGreaterThanMaxFeeError,
-    TransactionTypeContractCreationError,
-)
-from ethereum.forks.osaka.fork_types import Authorization, VersionedHash
-from ethereum.forks.osaka.requests import (
-    CONSOLIDATION_REQUEST_TYPE,
-    DEPOSIT_REQUEST_TYPE,
-    WITHDRAWAL_REQUEST_TYPE,
-    compute_requests_hash,
-    parse_deposit_requests,
-)
-from ethereum.forks.osaka.state import (
-    State,
-    TransientStorage,
-    destroy_account,
-    get_account,
-    get_code,
-    increment_nonce,
-    modify_state,
-    set_account_balance,
-    state_root,
-)
-from ethereum.forks.osaka.transactions import (
-    BlobTransaction,
-    FeeMarketTransaction,
-    LegacyTransaction,
-    SetCodeTransaction,
-    Transaction,
-    decode_transaction,
-    encode_transaction,
-    get_transaction_hash,
-    has_access_list,
-    recover_sender,
-    validate_transaction,
-)
-from ethereum.forks.osaka.trie import root, trie_set
-from ethereum.forks.osaka.utils.hexadecimal import hex_to_address
-from ethereum.forks.osaka.utils.message import prepare_message
-from ethereum.forks.osaka.vm import Message
-from ethereum.forks.osaka.vm.eoa_delegation import is_valid_delegation
-from ethereum.forks.osaka.vm.gas import (
-    BLOB_SCHEDULE_MAX,
-    GAS_PER_BLOB,
-    calculate_blob_gas_price,
-    calculate_data_fee,
-    calculate_excess_blob_gas,
-    calculate_total_blob_gas,
-)
-from ethereum.forks.osaka.vm.interpreter import MessageCallOutput, process_message_call
+from ethereum.forks.osaka.requests import compute_requests_hash
+from ethereum.forks.osaka.state import state_root
+from ethereum.forks.osaka.trie import root
 
 def state_transition_modified(chain: BlockChain, block: Block) -> vm.BlockOutput:
     """
