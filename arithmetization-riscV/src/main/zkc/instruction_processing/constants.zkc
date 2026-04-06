@@ -26,8 +26,10 @@ const J_TYPE:Type =  5
 
 fn get_instruction_type(opcode:Opcode) -> (instruction_type: Type) {
   //TODO: implement me
+  if opcode == LOAD || opcode == OP_IMM || opcode == OP_IMM_32 || opcode == JALR ||opcode == SYSTEM || opcode == MISC_MEM {
+    instruction_type = I_TYPE
+  }
   instruction_type = R_TYPE
-  return
 }
 
 type Opcode = u7
