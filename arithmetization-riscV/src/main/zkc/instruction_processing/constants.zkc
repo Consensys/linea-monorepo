@@ -1,17 +1,10 @@
-type SignBit = u1
-type Address = u32
+include "type.zkc"
 
 // temporary solution: could be extracted from the linker script,
 // or from the elf header, or passed as a public input along with
 // the program. TODO
 
 const ENTRY_POINT:Address = 0
-
-type Instruction = u32
-type Register = u5
-type Word = u64
-
-type Type = u3
 
 const R_TYPE:Type =  0
 const I_TYPE:Type =  1
@@ -26,11 +19,11 @@ const J_TYPE:Type =  5
 
 fn get_instruction_type(opcode:Opcode) -> (instruction_type: Type) {
   //TODO: implement me
+  if opcode == LOAD || opcode == OP_IMM || opcode == OP_IMM_32 || opcode == JALR ||opcode == SYSTEM || opcode == MISC_MEM {
+    instruction_type = I_TYPE
+  }
   instruction_type = R_TYPE
-  return
 }
-
-type Opcode = u7
 
 // R_type
 const OP:Opcode        = 0b0110011 //ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
@@ -57,11 +50,46 @@ const AUIPC:Opcode     = 0b0010111 //AUIPC
 //  J_type
 const JAL:Opcode       = 0b1101111 //JAL
 
+// ===============
+// decoding funct3
+// ===============
 
+// R-type funct3 values
+// TODO: correct values
+const FUNCT3_ADD:Funct3    = 0b000
+const FUNCT3_SUB:Funct3    = 0b000
+const FUNCT3_SLL:Funct3    = 0b000
+const FUNCT3_SLT:Funct3    = 0b000
+const FUNCT3_SLTU:Funct3   = 0b000
+const FUNCT3_XOR:Funct3    = 0b000
+const FUNCT3_SRL:Funct3    = 0b000
+const FUNCT3_SRA:Funct3    = 0b000
+const FUNCT3_OR:Funct3     = 0b000
+const FUNCT3_AND:Funct3    = 0b000
+const FUNCT3_MUL:Funct3    = 0b000
+const FUNCT3_MULH:Funct3   = 0b000
+const FUNCT3_MULHSU:Funct3 = 0b000
+const FUNCT3_MULHU:Funct3  = 0b000
+const FUNCT3_DIV:Funct3    = 0b000
+const FUNCT3_DIVU:Funct3   = 0b000
+const FUNCT3_REM:Funct3    = 0b000
+const FUNCT3_REMU:Funct3   = 0b000
 
-type Funct7 = u7
-type Funct3 = u3
-type UImm5  = u5
-type UImm6  = u6
-type Imm12  = u12
-type Imm20  = u20
+// I-type funct3 values
+const FUNCT3_LB:Funct3    = 0b000 // Load Byte
+const FUNCT3_LH:Funct3    = 0b001 // Load Halfword
+const FUNCT3_LW:Funct3    = 0b010 // Load Word
+const FUNCT3_LD:Funct3    = 0b011 // Load Doubleword
+const FUNCT3_LBU:Funct3   = 0b100 // Load Byte Unsigned
+const FUNCT3_LHU:Funct3   = 0b101 // Load Halfword Unsigned
+const FUNCT3_LWU:Funct3   = 0b110 // Load Word Unsigned
+
+const FUNCT3_ADDI:Funct3  = 0b000 // Add Immediate
+const FUNCT3_SLTI:Funct3  = 0b010 // Set Less Than Immediate
+const FUNCT3_SLTIU:Funct3 = 0b011 // Set Less Than Immediate Unsigned
+const FUNCT3_XORI:Funct3  = 0b100 // XOR Immediate
+const FUNCT3_ORI:Funct3   = 0b110 // OR Immediate
+const FUNCT3_ANDI:Funct3  = 0b111 // AND Immediate
+const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
+const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
+const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate

@@ -1,4 +1,7 @@
+include "instruction_processing/b_type.zkc"
 include "instruction_processing/r_type.zkc"
+include "instruction_processing/i_type.zkc"
+include "instruction_processing/b_type.zkc"
 include "instruction_processing/j_type.zkc"
 
 fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
@@ -24,7 +27,9 @@ fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
       process_R_type_instruction(instruction_parameters)
       new_pc = pc + 4 as Address
     } // else if ...
-    if instruction_type == I_TYPE  { }
+    if instruction_type == I_TYPE  {
+      process_I_type_instruction(instruction_parameters)
+    }
     if instruction_type == S_TYPE  { }
     if instruction_type == B_TYPE  {
       process_B_type_instruction(instruction_parameters)

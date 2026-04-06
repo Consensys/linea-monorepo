@@ -13,17 +13,17 @@ fn process_B_type_instruction(instruction_parameters:u25) {
   // var imm20  : Imm20
   // var opcode : Opcode
 
-  var funct3      : Funct3
-  var imm_sign    : SignBit
-  var imm_11      : u1
-  var imm_10_to_5 : u6
-  var imm_4_to_1  : u4
-  var rs1         : Register
-  var rs2         : Register
-  var funct7      : Funct7
-  var rd          : Register
+  var funct3   : Funct3
+  var imm_sign : SignBit
+  var imm_11   : u1
+  var imm_10_5 : u6
+  var imm_4_1  : u4
+  var rs1      : Register
+  var rs2      : Register
+  var funct7   : Funct7
+  var rd       : Register
 
-  imm_sign :: imm_10_to_5 :: rs2 :: rs1 :: imm_4_1 :: imm_11 = instruction_parameters
+  imm_sign :: imm_10_5 :: rs2 :: rs1 :: funct3 :: imm_4_1 :: imm_11 = instruction_parameters
 
 }
 
