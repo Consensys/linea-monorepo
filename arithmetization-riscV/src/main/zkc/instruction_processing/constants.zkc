@@ -54,24 +54,6 @@ const JAL:Opcode       = 0b1101111 //JAL
 // decoding funct3
 // ===============
 
-const FUNCT3_LB:Funct3    = 0b000 // Load Byte
-const FUNCT3_LH:Funct3    = 0b001 // Load Halfword
-const FUNCT3_LW:Funct3    = 0b010 // Load Word
-const FUNCT3_LD:Funct3    = 0b011 // Load Doubleword
-const FUNCT3_LBU:Funct3   = 0b100 // Load Byte Unsigned
-const FUNCT3_LHU:Funct3   = 0b101 // Load Halfword Unsigned
-const FUNCT3_LWU:Funct3   = 0b110 // Load Word Unsigned
-
-const FUNCT3_ADDI:Funct3  = 0b000 // Add Immediate
-const FUNCT3_SLTI:Funct3  = 0b010 // Set Less Than Immediate
-const FUNCT3_SLTIU:Funct3 = 0b011 // Set Less Than Immediate Unsigned
-const FUNCT3_XORI:Funct3  = 0b100 // XOR Immediate
-const FUNCT3_ORI:Funct3   = 0b110 // OR Immediate
-const FUNCT3_ANDI:Funct3  = 0b111 // AND Immediate
-const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
-const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
-const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate
-
 // R-type funct3 values
 // TODO: correct values
 const FUNCT3_ADD:Funct3    = 0b000
@@ -92,3 +74,22 @@ const FUNCT3_DIV:Funct3    = 0b000
 const FUNCT3_DIVU:Funct3   = 0b000
 const FUNCT3_REM:Funct3    = 0b000
 const FUNCT3_REMU:Funct3   = 0b000
+
+// I-type funct3 values
+const FUNCT3_LB:Funct3    = 0b000 // Load Byte
+const FUNCT3_LH:Funct3    = 0b001 // Load Halfword
+const FUNCT3_LW:Funct3    = 0b010 // Load Word
+const FUNCT3_LD:Funct3    = 0b011 // Load Doubleword
+const FUNCT3_LBU:Funct3   = 0b100 // Load Byte Unsigned
+const FUNCT3_LHU:Funct3   = 0b101 // Load Halfword Unsigned
+const FUNCT3_LWU:Funct3   = 0b110 // Load Word Unsigned
+
+const FUNCT3_ADDI:Funct3  = 0b000 // Add Immediate
+const FUNCT3_SLTI:Funct3  = 0b010 // Set Less Than Immediate
+const FUNCT3_SLTIU:Funct3 = 0b011 // Set Less Than Immediate Unsigned
+const FUNCT3_XORI:Funct3  = 0b100 // XOR Immediate
+const FUNCT3_ORI:Funct3   = 0b110 // OR Immediate
+const FUNCT3_ANDI:Funct3  = 0b111 // AND Immediate
+const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
+const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
+const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate
