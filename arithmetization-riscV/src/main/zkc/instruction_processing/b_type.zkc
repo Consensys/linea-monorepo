@@ -14,7 +14,7 @@ fn process_B_type_instruction(instruction_parameters:u25) {
   // var opcode : Opcode
 
   var funct3      : Funct3
-  var sign        : Sign
+  var imm_sign    : SignBit
   var imm_11      : u1
   var imm_10_to_5 : u6
   var imm_4_to_1  : u4
@@ -23,7 +23,7 @@ fn process_B_type_instruction(instruction_parameters:u25) {
   var funct7      : Funct7
   var rd          : Register
 
-  sign :: imm_10_to_5 :: rs2 :: rs1 :: imm_4_1 :: imm_11 = instruction_parameters
+  imm_sign :: imm_10_to_5 :: rs2 :: rs1 :: imm_4_1 :: imm_11 = instruction_parameters
 
 }
 

@@ -26,7 +26,9 @@ fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
     } // else if ...
     if instruction_type == I_TYPE  { }
     if instruction_type == S_TYPE  { }
-    if instruction_type == B_TYPE  { }
+    if instruction_type == B_TYPE  {
+      process_B_type_instruction(instruction_parameters)
+    }
     if instruction_type == U_TYPE  { }
     if instruction_type == J_TYPE  {
       new_pc = process_J_type_instruction(instruction_parameters)
