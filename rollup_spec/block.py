@@ -221,7 +221,7 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
         # intending to check for inclusion of the forced transaction in the block.
         if ftx.acceptance != ForcedTransactionAcceptance.ACCEPTED: 
             raise Exception("forced transaction has an unknown acceptance value")
-        if ftx not in block.ethereum_block.transactions:
+        if ftx.transaction not in block.ethereum_block.transactions:
             raise Exception("forced transaction was allegedly valid but not included")
 
     return rejected_addresses, curr_rolling_hash, curr_rolling_hash_message_number
