@@ -33,6 +33,7 @@ fn process_S_type_instruction<ram,registers>(instruction_parameters:u25) {
 
   if funct3 == FUNCT3_SH {
     // Store halfword (u16)
+    write_16(registers[rs1] + imm, (registers[rs2] ^ (0xFFFF as u64)) as u16)
   }
 
   if funct3 == FUNCT3_SW {
@@ -42,5 +43,6 @@ fn process_S_type_instruction<ram,registers>(instruction_parameters:u25) {
 
   if funct3 == FUNCT3_SD {
     // Store doubleword (u64)
+    write_64(registers[rs1] + imm, registers[rs2])
   }
 }
