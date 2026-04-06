@@ -5,6 +5,8 @@ include "type.zkc"
 // the program. TODO
 
 const ENTRY_POINT:Address = 0
+const PROGRAM_OFFSET:Address = 0
+const IN_BYTES_OFFSET:Address = 0
 
 const R_TYPE:Type =  0
 const I_TYPE:Type =  1

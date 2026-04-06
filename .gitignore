@@ -177,3 +177,4 @@ prover/*.sh
 contracts/.claude/settings.local.json
 *.analysis-report.html
 .worktrees/
+tags
