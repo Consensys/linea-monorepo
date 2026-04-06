@@ -1,6 +1,7 @@
 include "instruction_processing/constants.zkc"
 include "ram/read.zkc"
 include "interpreter.zkc"
+include "utils/sign_extend.zkc"
 
 pub input riscV_program(address:Address)->(len:u32)
 pub input in_bytes(address:Address)->(bytes:u8)
