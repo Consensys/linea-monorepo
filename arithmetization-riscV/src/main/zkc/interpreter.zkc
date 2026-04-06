@@ -5,7 +5,7 @@ include "instruction_processing/s_type.zkc"
 include "instruction_processing/b_type.zkc"
 include "instruction_processing/j_type.zkc"
 
-fn interpreter<registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
+fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
 
     var instruction_parameters : u25
     var instruction_type       : Type
