@@ -3,7 +3,7 @@ include "ram/read.zkc"
 include "interpreter.zkc"
 include "utils/sign_extend.zkc"
 
-pub input riscV_program(address:Address)->(len:u32)
+pub input riscV_program(address:Address)->(Instruction:u32)
 pub input in_bytes(address:Address)->(bytes:u8)
 memory ram(address:Address)->(bytes:u8)
 memory registers(id:Register)->(value:Word)
@@ -11,12 +11,18 @@ memory registers(id:Register)->(value:Word)
 // TODO @Ghost
 fn main<ram, registers>() {
 
-// TODO: memory pre loading (risc_5 program + input_bytes)
-
 var pc          : Address = ENTRY_POINT
+var rv-program-offset : Address   = PROGRAM_OFFSET
+var in_bytes-offset   : Address   = IN_BYTES_OFFSET
 var opcode      : Opcode
 var instruction : Instruction
 var stop_signal : u1 = 0
+
+// copy public inputs and r5-program into the RAM
+(for i=0; i<program_length; i++) {
+    write_32(riscV_program[i], rv-program-offset + 4*i as Address)
+}
+write_8(in_bytes, in_bytes-offset)
 
 while stop_signal == 0 {
       instruction = read_32(pc) as Instruction
