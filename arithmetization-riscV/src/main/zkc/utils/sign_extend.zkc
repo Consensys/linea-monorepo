@@ -79,19 +79,19 @@ fn sgn_extension_u16_u64(value:u16) -> (ext_value:u64) {
 }
 
 // 64-bit arithmetic right shift (value interpreted as two's-complement signed).
-fn shr_u64(value: Word, shamt: u6) -> (out: Word) {
-  var logical: Word = value >> shamt
-  var sign: Word = value >> 63
+fn shr_u64(value: DoubleWord, shamt: u6) -> (out: DoubleWord) {
+  var logical: DoubleWord = value >> shamt
+  var sign: DoubleWord = value >> 63
   if sign == 0 {
     out = logical
   } else {
-    var mask: Word = ~(0xFFFFFFFFFFFFFFFF >> shamt)
+    var mask: DoubleWord = ~(0xFFFFFFFFFFFFFFFF >> shamt)
     out = logical | mask
   }
 }
 
 // 32-bit arithmetic right shift on low 32 bits of value (RV *W instructions).
-fn shr_u32(value: Word, shamt: u5) -> (out32: u32) {
+fn shr_u32(value: DoubleWord, shamt: u5) -> (out32: u32) {
   var w: u32 = value as u32
   var logical: u32 = w >> shamt
   var sign: u32 = w >> 31
