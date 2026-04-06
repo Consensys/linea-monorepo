@@ -36,15 +36,12 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   @ParameterizedTest()
   @ValueSource(booleans = [false, true])
   fun `should compress and shnarf with eip4844 enabled-disabled`(eip4844Enabled: Boolean) {
-    val compressorV2 = BlobCompressorFactory.getInstance(BlobCompressorVersion.V2, DATA_LIMIT)
     val compressorV3 = BlobCompressorFactory.getInstance(BlobCompressorVersion.V3, DATA_LIMIT)
     val compressorV4 = BlobCompressorFactory.getInstance(BlobCompressorVersion.V4, DATA_LIMIT)
 
-    val shnarfCalculatorV1 = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
     val shnarfCalculatorV3 = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
 
     val compressorAndShnarfCalculator = listOf(
-      Pair(compressorV2, shnarfCalculatorV1),
       Pair(compressorV3, shnarfCalculatorV3),
       Pair(compressorV4, shnarfCalculatorV3),
     )

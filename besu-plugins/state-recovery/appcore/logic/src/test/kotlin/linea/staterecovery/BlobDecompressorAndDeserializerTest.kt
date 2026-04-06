@@ -24,7 +24,7 @@ import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Instant
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class BlobDecompressorAndDeserializerV1Test {
+class BlobDecompressorAndDeserializerTest {
   private lateinit var compressor: BlobCompressor
   private val blockStaticFields = BlockHeaderStaticFields(
     coinbase = Address.ZERO.toArray(),

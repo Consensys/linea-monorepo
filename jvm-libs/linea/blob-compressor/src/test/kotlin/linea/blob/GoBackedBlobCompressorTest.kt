@@ -172,7 +172,7 @@ class GoBackedBlobCompressorTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("compressorVersions")
   fun `close releases instance and a new one can be created`(version: BlobCompressorVersion) {
-    val c1 = newCompressor(version).use { c1 ->
+    newCompressor(version).use { c1 ->
       c1.appendBlock(TEST_DATA.first())
     }
 
