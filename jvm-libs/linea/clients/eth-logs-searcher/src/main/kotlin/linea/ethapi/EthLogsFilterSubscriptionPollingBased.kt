@@ -204,6 +204,12 @@ class EthLogsFilterPoller(
           lastSearchedBlock = result.endBlockNumber
           log.trace("no new logs found in block range {}..{}", result.startBlockNumber, result.endBlockNumber)
         }
+
+        // We searched all blocks up to the resolved chain head — we are caught up
+        // even though new blocks will appear by the next tick.
+        if (lastSearchedBlock != null && lastSearchedBlock!! >= end) {
+          transitionTo(EthLogsFilterState.CaughtUp(lastSearchedBlockNumber = lastSearchedBlock!!))
+        }
       }
     }
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, getAddress, isAddress } from "viem";
+import { encodeFunctionData, getAddress, isAddress, PrivateKeyAccount } from "viem";
 
 import {
   addToDenyList,
@@ -39,7 +39,7 @@ describe("EIP-7702 test suite", () => {
     functionName: "initialize",
   });
 
-  async function deployDelegationContract(deployer: { address: `0x${string}` }): Promise<`0x${string}`> {
+  async function deployDelegationContract(deployer: PrivateKeyAccount): Promise<`0x${string}`> {
     const deployerWalletClient = context.l2WalletClient({ account: deployer });
     const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
 

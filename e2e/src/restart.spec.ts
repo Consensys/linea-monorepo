@@ -5,7 +5,6 @@ import { MINIMUM_FEE_IN_WEI } from "./common/constants";
 import { sendL1ToL2Message } from "./common/test-helpers/messaging";
 import { awaitUntil, execDockerCommand, getEvents, waitForEvents, getMessageSentEventFromLogs } from "./common/utils";
 import { createTestContext } from "./config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 import type { Logger } from "winston";
 
@@ -85,7 +84,7 @@ describe("Coordinator restart test suite", () => {
       // Phase 1: Confirm coordinator was working before restart
       const [dataSubmittedEventsSnapshot, dataFinalizedEventsSnapshot] = await Promise.all([
         waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: lineaRollup.abi,
           address: lineaRollup.address,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
@@ -94,7 +93,7 @@ describe("Coordinator restart test suite", () => {
           strict: true,
         }),
         waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: lineaRollup.abi,
           address: lineaRollup.address,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
@@ -128,7 +127,7 @@ describe("Coordinator restart test suite", () => {
 
       const [submittedDelta, finalizedDelta] = await Promise.all([
         getEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: lineaRollup.abi,
           address: lineaRollup.address,
           eventName: "DataSubmittedV3",
           fromBlock: lastSubmittedSnapshot.blockNumber + 1n,
@@ -136,7 +135,7 @@ describe("Coordinator restart test suite", () => {
           strict: true,
         }),
         getEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: lineaRollup.abi,
           address: lineaRollup.address,
           eventName: "DataFinalizedV3",
           fromBlock: lastFinalizedSnapshot.blockNumber + 1n,
@@ -155,7 +154,7 @@ describe("Coordinator restart test suite", () => {
       // Phase 4: Wait for new events produced after coordinator resumes
       logger.debug("Waiting for DataSubmittedV3 event after coordinator restart...");
       const [dataSubmittedV3EventAfterRestart] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "DataSubmittedV3",
         fromBlock: baselineBlockNumber,
@@ -173,7 +172,7 @@ describe("Coordinator restart test suite", () => {
 
       logger.debug("Waiting for DataFinalizedV3 event after coordinator restart...");
       const [dataFinalizedEventAfterRestart] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "DataFinalizedV3",
         fromBlock: baselineBlockNumber,
@@ -233,7 +232,7 @@ describe("Coordinator restart test suite", () => {
       const l2BlockBeforeAnchoring = await l2PublicClient.getBlockNumber();
 
       await waitForEvents(l2PublicClient, {
-        abi: L2MessageServiceV1Abi,
+        abi: l2MessageService.abi,
         address: l2MessageService.address,
         eventName: "RollingHashUpdated",
         fromBlock: l2BlockBeforeAnchoring,
@@ -266,7 +265,7 @@ describe("Coordinator restart test suite", () => {
       const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
 
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(l2PublicClient, {
-        abi: L2MessageServiceV1Abi,
+        abi: l2MessageService.abi,
         address: l2MessageService.address,
         eventName: "RollingHashUpdated",
         fromBlock: l2BlockAfterRestart,
