@@ -3,18 +3,18 @@ include "type.zkc"
 // signed_LT should return true (i.e. 1) iff a < b where a and b are interpreted as signed i64's
 fn signed_LT(a :DoubleWord, b :DoubleWord) -> (comparison :Boolean) {
 
-  var a_sign         : Boolean
-  var b_sign         : Boolean
-  var a_suffix       : u63
-  var b_suffix       : u63
-  var raw_comparison : Boolean
+  var a_sign         :Boolean
+  var b_sign         :Boolean
+  var a_suffix       :u63
+  var b_suffix       :u63
+  var raw_comparison :Boolean
 
 
   // TODO: use UNDERSCORE notation when available
   a_sign :: a_suffix = a
   b_sign :: b_suffix = b
 
-  // TERNARY operator would be nice
+  // TODO: TERNARY operator would be nice
   if a_sign != b_sign {
   // different signs case
   if a_sign == 1 {

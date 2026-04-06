@@ -38,8 +38,7 @@ fn process_B_type_instruction<registers>(instruction_parameters:u25, pc:Address)
     imm = (imm_11 :: imm_10_5 :: imm_4_1 :: (0 as u1)) as DoubleWord
            }
 
-
-  // QUESTION @david: providing a default value to overwrite later on seems like it would
+  // TODO: question @david: providing a default value to overwrite later on seems like it would
   // trigger a second row just to overwrite the original value. Is that correct, and if so
   // should it be avoided _a priori_ ?
 
