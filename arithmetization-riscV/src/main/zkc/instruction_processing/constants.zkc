@@ -8,6 +8,7 @@ const ENTRY_POINT:Address = 0
 
 type Instruction = u32
 type Register = u5
+type Word = u64
 
 type Type = u3
 

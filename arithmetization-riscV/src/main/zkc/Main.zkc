@@ -5,6 +5,7 @@ include "interpreter.zkc"
 pub input riscV_program(address:Address)->(len:u32)
 pub input in_bytes(address:Address)->(bytes:u8)
 memory ram(address:Address)->(bytes:u8)
+memory registers(id:Register)->(value:Word)
 
 // TODO @Ghost
 fn main<ram>() {
