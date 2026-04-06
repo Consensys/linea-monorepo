@@ -236,7 +236,7 @@ def build_l2_messages_tree(msgs: List[Hash32]) -> List[Hash32]:
 
     The hashing is done using the keccak hash function.
     """
-    raise NotImplemented("just a placeholder implementation")
+    raise NotImplementedError("just a placeholder implementation")
 
 
 
