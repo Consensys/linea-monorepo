@@ -9,7 +9,6 @@ const ENTRY_POINT:Address = 0
 
 type Instruction = u32
 type Register = u5
-type Word = u64
 
 type Type = u3
 
@@ -25,7 +24,6 @@ const J_TYPE:Type =  5
 // ===============
 
 fn get_instruction_type(opcode:Opcode) -> (instruction_type: Type) {
-  //TODO: implement me
   instruction_type = R_TYPE
   return
 }
