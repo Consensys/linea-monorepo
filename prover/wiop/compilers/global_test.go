@@ -14,7 +14,6 @@ import (
 // honest witness satisfies all verifier actions that Compile registers.
 func TestCompile_Completeness(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
-		build := build
 		sc := build()
 		t.Run(sc.Name, func(t *testing.T) {
 			compilers.Compile(sc.Sys)
@@ -32,7 +31,6 @@ func TestCompile_Completeness(t *testing.T) {
 // cheating prover cannot produce a quotient that satisfies the identity check.
 func TestCompile_Soundness(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
-		build := build
 		sc := build()
 		t.Run(sc.Name, func(t *testing.T) {
 			compilers.Compile(sc.Sys)
