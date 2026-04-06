@@ -1,0 +1,7 @@
+fn read_32<ram>(address:Address) -> (value : u32) {
+   value = ram[address] as u32
+   value = (value << 8) + ram[address + 1] as u32
+   value = (value << 8) + ram[address + 2] as u32
+   value = (value << 8) + ram[address + 3] as u32
+   return
+}

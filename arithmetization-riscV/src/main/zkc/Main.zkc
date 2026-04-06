@@ -1,20 +1,26 @@
-pub input risc_program(address:u20)->(len:u32)
-pub input pi(address:u20)->(bytes:u8)
-memory ram(address:u32)->(bytes:u8)
+include "instruction_processing/constants.zkc"
+include "ram/read.zkc"
+include "interpreter.zkc"
+
+pub input riscV_program(address:Address)->(len:u32)
+pub input in_bytes(address:Address)->(bytes:u8)
+memory ram(address:Address)->(bytes:u8)
 
 // TODO @Ghost
-fn main() {
+fn main<ram>() {
 
-// TODO: memory pre loading (r5 + pi)
+// TODO: memory pre loading (risc_5 program + input_bytes)
 
-var pc:u32 // TODO: initialize me
-var opcode:u32
-var timestamp:u64
+var pc          : Address = ENTRY_POINT
+var opcode      : Opcode
+var instruction : Instruction
+var stop_signal : u1 = 0
 
 // TODO: while loop on the r5 opcodes through the interpreter, until final opcode
-opcode = read(ram, pc, 4)
-pc = interpreter(opcode)
+instruction = read_32(pc) as Instruction
 
+while stop_signal == 0 {
+      pc = interpreter(instruction, pc)
+  }
 }
-
 

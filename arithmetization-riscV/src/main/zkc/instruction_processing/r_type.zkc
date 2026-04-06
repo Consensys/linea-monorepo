@@ -1,0 +1,28 @@
+include "constants.zkc"
+
+fn process_R_type_instruction(instruction_parameters:u25) {
+
+  // var funct3 : Funct3
+  // var funct7 : Funct7
+  // var rs1    : Register
+  // var rs2    : Register
+  // var rsd    : Register
+  // var uimm5  : UImm5
+  // var uimm6  : UImm6
+  // var imm12  : Imm12
+  // var imm20  : Imm20
+  // var opcode : Opcode
+
+  var funct3 : Funct3
+  var rs1    : Register
+  var rs2    : Register
+  var funct7 : Funct7
+  var rd     : Register
+
+  funct7 :: rs1 :: rs2 :: funct3 :: rd = instruction_parameters
+
+  // if funct7 == ADD {
+  // }
+
+}
+

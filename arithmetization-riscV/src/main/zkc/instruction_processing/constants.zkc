@@ -1,0 +1,64 @@
+type Address = u32
+
+// temporary solution: could be extracted from the linker script,
+// or from the elf header, or passed as a public input along with
+// the program. TODO
+
+const ENTRY_POINT:Address = 0
+
+type Instruction = u32
+type Register = u5
+
+type Type = u3
+
+const R_TYPE:Type =  0
+const I_TYPE:Type =  1
+const S_TYPE:Type =  2
+const B_TYPE:Type =  3
+const U_TYPE:Type =  4
+const J_TYPE:Type =  5
+
+// ===============
+// decoding types
+// ===============
+
+fn get_instruction_type(opcode:Opcode) -> (instruction_type: Type) {
+  instruction_type = R_TYPE
+  return
+}
+
+type Opcode = u7
+
+// R_type
+const OP:Opcode        = 0b0110011 //ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
+const OP_32:Opcode     = 0b0111011 //ADDW, SUBW, SLLW, SRLW, SRAW (RV64 only)
+
+// I_type
+const LOAD:Opcode      = 0b0000011 //LB, LH, LW, LBU, LHU, LWU, LD
+const OP_IMM:Opcode    = 0b0010011 //ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
+const OP_IMM_32:Opcode = 0b0011011 //ADDIW, SLLIW, SRLIW, SRAIW (RV64 only)
+const JALR:Opcode      = 0b1100111 //JALR
+const SYSTEM:Opcode    = 0b1110011 //ECALL, EBREAK, CSR*
+const MISC_MEM:Opcode  = 0b0001111 //FENCE, FENCE.I
+
+//  S_type
+const STORE:Opcode     = 0b0100011 //SB, SH, SW, SD
+
+//  B_type (branches)
+const BRANCH:Opcode    = 0b1100011 //BEQ, BNE, BLT, BGE, BLTU, BGEU
+
+//  U_type
+const LUI:Opcode       = 0b0110111 //LUI
+const AUIPC:Opcode     = 0b0010111 //AUIPC
+
+//  J_type
+const JAL:Opcode       = 0b1101111 //JAL
+
+
+
+type Funct7 = u7
+type Funct3 = u3
+type UImm5  = u5
+type UImm6  = u6
+type Imm12  = u12
+type Imm20  = u20
