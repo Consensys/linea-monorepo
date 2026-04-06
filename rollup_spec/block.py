@@ -231,10 +231,10 @@ def is_valid_forced_transaction(
     a boolean indicating whether or not the transaction was valid. It does not
     raise errors.
     """
+    sender_account = sender_account_witness.account
     if isinstance(
         tx, (FeeMarketTransaction, BlobTransaction, SetCodeTransaction)
     ):
-        sender_account = sender_account_witness.account
         # @alex:
         # What if the forced transaction does not respect that? Shouldn't that
         # be part of an ad-hoc check? It could as well be done at L1 as we have
