@@ -14,6 +14,6 @@ fn process_J_type_instruction<registers>(instruction_parameters:u25, pc:Address)
   imm20 :: rd = instruction_parameters
 
   registers[rd] = pc + 4 as Word 
-  pc_new = (pc + sgn_extension_u32_u64((imm20 << 1) as u32)) as Address
+  pc_new = (pc + sgn_extension_u32_u64((imm20 << 1) as u32)) as Address //TODO: the sgn extension is not correct, fix me
 }
 

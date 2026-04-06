@@ -1,0 +1,17 @@
+fn write_32<ram>(address:Address, value:u32) -> () {
+var v1:byte
+var v2:byte
+var v3:byte
+var v4:byte
+
+v&1 :: v2 :: v3 :: v4 = value
+
+   ram[address] = v1
+   ram[address + 1] = v2
+   ram[address + 2] = v3
+   ram[address + 3] = v4
+}
+
+fn write_8<ram>(address:Address, value:u8) -> () {
+   ram[address] = value
+}

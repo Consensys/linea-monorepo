@@ -1,10 +1,13 @@
 include "instruction_processing/constants.zkc"
 include "ram/read.zkc"
+include "ram/write.zkc"
 include "interpreter.zkc"
 include "utils/sign_extend.zkc"
 
 pub input riscV_program(address:Address)->(Instruction:u32)
+pub input riscV_program_length(rv:u1)->(length:Address)
 pub input in_bytes(address:Address)->(bytes:u8)
+pub input in_bytes_length(pi:u1)->(length:Address)
 memory ram(address:Address)->(bytes:u8)
 memory registers(id:Register)->(value:Word)
 
@@ -19,10 +22,12 @@ var instruction : Instruction
 var stop_signal : u1 = 0
 
 // copy public inputs and r5-program into the RAM
-(for i=0; i<program_length; i++) {
-    write_32(riscV_program[i], rv-program-offset + 4*i as Address)
+(for i=0; i<riscV_program_length[0]; i++) {
+    write_32((rv-program-offset + 4*i) as Address, riscV_program[i])
 }
-write_8(in_bytes, in_bytes-offset)
+(for i=0; i<in_bytes_length[0]; i++) {
+    write_8((in_bytes-offset + i) as Address, in_bytes[i])
+}
 
 while stop_signal == 0 {
       instruction = read_32(pc) as Instruction
