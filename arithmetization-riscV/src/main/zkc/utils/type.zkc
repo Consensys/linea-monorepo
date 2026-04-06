@@ -13,7 +13,8 @@ type UImm6  = u6
 type Imm12  = u12
 type Imm20  = u20
 
-type SignBit    = u1
+type SignBit = u1
+type Boolean = u1
 
 type Byte       = u8
 type HalfWord   = u16

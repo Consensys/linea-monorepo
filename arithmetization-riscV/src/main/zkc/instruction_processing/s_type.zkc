@@ -22,7 +22,7 @@ fn process_S_type_instruction<ram,registers>(instruction_parameters:u25) {
   // TODO: uniform this across different files
   var imm : u64
   if sign == 1 {
-    imm = SGN_EXT_U12_TO_U64 :: sign :: uimm6 :: uimm5
+    imm = DWORD_SIGN_EXT_PREFIX_52_ONES :: sign :: uimm6 :: uimm5
   } else {
     imm = (sign :: uimm6 :: uimm5) as u64
   }
