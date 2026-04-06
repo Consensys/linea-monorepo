@@ -122,7 +122,7 @@ The compression proof covers a single EIP-4844 blob and proves that its content 
 
 **Statement (RISC-V Guest)**
 
-1. **Schwarz-Zipfel evaluation.** Derive evaluation point `X` from `blobHash`. Check the KZG proof using `blobHash`, `X` and the `KzgProof`. In parallel, directy check `P(X) = KzgY` using the blobContent data.
+1. **Schwarz-Zipfel evaluation.** Derive evaluation point `X` from `blobHash` and the `blobContent`. Check the KZG proof using `blobHash`, `X` and the `KzgProof`. In parallel, directy check `P(X) = KzgY` using the blobContent data.
 
 2. **Decompress and parse** `blobContent` and assert the result is consistent with `blockData₁ … blockDatam`. E.G. we should find consistent values modulo the stripped down fields (see the data-availability) section.
 
