@@ -17,7 +17,7 @@ fn process_R_type_instruction(instruction_parameters:u25) {
   var funct7 : Funct7
   var rd     : Register
 
-  funct7 :: rs1 :: rs2 :: funct3 :: rd = instruction_parameters
+  funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
   // if funct7 == ADD {
   // }
