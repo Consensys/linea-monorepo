@@ -11,10 +11,8 @@ from typing import List
 from dataclasses import dataclass
 from .state_transition import state_transition_modified
 
-# @alex: I have no idea if constructing a Bytes32 that way works. But the value
-# is the right one.
-BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0 = Bytes32("0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c")
-BRIDGE_L1L2_ROLLING_HASH_UPDATED_TOPIC_0 = Bytes32("0x99b65a4301b38c09fb6a5f27052d73e8372bbe8f6779d678bfe8a41b66cce7ac")
+BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0 = Bytes32(bytes.fromhex("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"))
+BRIDGE_L1L2_ROLLING_HASH_UPDATED_TOPIC_0 = Bytes32(bytes.fromhex("99b65a4301b38c09fb6a5f27052d73e8372bbe8f6779d678bfe8a41b66cce7ac"))
 
 @dataclass
 class RollupPrivateInput:
