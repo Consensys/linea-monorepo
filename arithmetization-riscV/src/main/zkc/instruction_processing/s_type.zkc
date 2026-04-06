@@ -21,19 +21,25 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   sign :: uimm6 :: rs2 :: rs1 :: funct3 :: uimm5 = instruction_parameters
 
+  
+
   if funct3 == FUNCT3_SB {
+    // Store byte (u8)
     
   }
 
   if funct3 == FUNCT3_SH {
-    
+    // Store half word (u16)
+
   }
 
   if funct3 == FUNCT3_SW {
-    
+    // Store word (u32)
+
   }
 
   if funct3 == FUNCT3_SD {
-    
+    // Store double word (u64)
+
   }
 }
