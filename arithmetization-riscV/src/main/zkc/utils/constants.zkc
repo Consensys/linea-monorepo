@@ -118,5 +118,5 @@ const FUNCT3_SW:Funct3    = 0b010 // Store Word
 const FUNCT3_SD:Funct3    = 0b011 // Store Doubleword
 
 // Sign extension constants
-const SGN_EXT_U12_TO_U32: u20 = 0b11111111111111111111
+const SGN_EXT_U12_TO_U64: u52 = 0b1111111111111111111111111111111111111111111111111111
 
