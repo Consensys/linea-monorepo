@@ -224,3 +224,16 @@ No new opcodes. This extension is a profile feature indicating that the hart sup
 | Zifencei  | 1 |
 | Zicclsm   | 0 (behavioural) |
 | **Total** | **67** |
+
+---
+
+## Task
+
+| Type | Status             |
+|------|--------------------|
+| R    | DONE               |
+| I    | @Amelie            |
+| S    | @Lorenzo           |
+| B    | @Olivier           |
+| U    |                    |
+| J    | @Francois          |
