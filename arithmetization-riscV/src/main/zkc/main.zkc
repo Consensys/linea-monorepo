@@ -1,4 +1,4 @@
-include "instruction_processing/utils/constants.zkc"
+include "utils/constants.zkc"
 include "ram/read.zkc"
 include "ram/write.zkc"
 include "interpreter.zkc"
