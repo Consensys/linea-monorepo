@@ -154,6 +154,12 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
         # verifies newFtxRollingHash == ftxRollingHash[lastProcessedFtxNumber].
         if block.ethereum_block.header.number > ftx.deadline:
             raise Exception("deadline exceeded")
+        
+        #
+        # The rolling hash is updated with the current forced transaction 
+        # regardless of whether it was actually included or not.
+        curr_rolling_hash, curr_rolling_hash_message_number = add_to_forced_tx_rolling_hash(
+            curr_rolling_hash, curr_rolling_hash_message_number, ftx)
 
         from_address = recover_sender(chain_config.chain_id, ftx.transaction)
         if ftx.acceptance == ForcedTransactionAcceptance.REJECTED_BECAUSE_FROM:
@@ -208,9 +214,6 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
         # intending to check for inclusion of the forced transaction in the block.
         if ftx not in block.ethereum_block.transactions:
             raise Exception("forced transaction was allegedly valid but not included")
-        
-        curr_rolling_hash, curr_rolling_hash_message_number = add_to_forced_tx_rolling_hash(
-            curr_rolling_hash, curr_rolling_hash_message_number, ftx)
 
     return rejected_addresses, curr_rolling_hash, curr_rolling_hash_message_number
 
