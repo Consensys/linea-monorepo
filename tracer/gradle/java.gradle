@@ -50,13 +50,11 @@ ext.calculateVersion = { ->
   String version = lineaTracerProject.version
   if (version.equals("SNAPSHOT") || version.endsWith("-SNAPSHOT")) {
     def lastSnapshot = version.lastIndexOf("SNAPSHOT")
-    version = version.substring(0, lastSnapshot) + "dev-${getCheckedOutGitCommitHash()}"
+    def gitHash = providers.exec {
+      commandLine 'git', 'rev-parse', 'HEAD'
+    }.standardOutput.asText.get().trim().take(7)
+    version = version.substring(0, lastSnapshot) + "dev-${gitHash}"
   }
 
   return version
-}
-
-static def getCheckedOutGitCommitHash() {
-  def hashLength = 7
-  "git rev-parse HEAD".execute().text.take(hashLength)
 }
