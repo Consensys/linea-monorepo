@@ -1,5 +1,3 @@
-include "constants.zkc"
-
 fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   // var funct3 : Funct3

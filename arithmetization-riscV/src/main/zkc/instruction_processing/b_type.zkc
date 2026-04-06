@@ -1,4 +1,3 @@
-include "constants.zkc"
 
 fn process_B_type_instruction(instruction_parameters:u25) {
 
