@@ -32,7 +32,7 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_SH {
-    // Store half word (u16)
+    // Store halfword (u16)
 
   }
 
@@ -42,7 +42,7 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_SD {
-    // Store double word (u64)
+    // Store doubleword (u64)
 
   }
 }
