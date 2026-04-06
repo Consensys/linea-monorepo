@@ -9,7 +9,7 @@ pub input riscV_program_length(rv:u1)->(length:Address)
 pub input in_bytes(address:Address)->(bytes:u8)
 pub input in_bytes_length(pi:u1)->(length:Address)
 memory ram(address:Address)->(bytes:u8)
-memory registers(id:Register)->(value:Word)
+memory registers(id:Register)->(value:DoubleWord)
 
 // TODO @Ghost
 fn main<ram, registers>() {
