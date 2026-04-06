@@ -1,5 +1,3 @@
-include "constants.zkc"
-
 fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   // var funct3 : Funct3
@@ -21,19 +19,30 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   sign :: uimm6 :: rs2 :: rs1 :: funct3 :: uimm5 = instruction_parameters
 
+  var imm : u64
+  if sign == 1 {
+    imm = sign_extension_u32_u64((SGN_EXT_U12_TO_U32 :: sign :: uimm6 :: uimm5))
+  } else {
+    imm = sign_extension_u32_u64((sign :: uimm6 :: uimm5) as u32)
+  }
+
   if funct3 == FUNCT3_SB {
+    // Store byte (u8)
     
   }
 
   if funct3 == FUNCT3_SH {
-    
+    // Store half word (u16)
+
   }
 
   if funct3 == FUNCT3_SW {
-    
+    // Store word (u32)
+
   }
 
   if funct3 == FUNCT3_SD {
-    
+    // Store double word (u64)
+
   }
 }
