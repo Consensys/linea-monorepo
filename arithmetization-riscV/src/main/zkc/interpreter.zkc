@@ -1,7 +1,8 @@
 include "instruction_processing/b_type.zkc"
 include "instruction_processing/r_type.zkc"
-include "instruction_processing/j_type.zkc"
 include "instruction_processing/i_type.zkc"
+include "instruction_processing/b_type.zkc"
+include "instruction_processing/j_type.zkc"
 
 fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
 
