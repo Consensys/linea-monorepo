@@ -18,10 +18,8 @@ var opcode      : Opcode
 var instruction : Instruction
 var stop_signal : u1 = 0
 
-// TODO: while loop on the r5 opcodes through the interpreter, until final opcode
-instruction = read_32(pc) as Instruction
-
 while stop_signal == 0 {
+      instruction = read_32(pc) as Instruction
       pc = interpreter(instruction, pc)
   }
 }
