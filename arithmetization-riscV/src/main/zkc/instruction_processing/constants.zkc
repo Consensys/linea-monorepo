@@ -23,6 +23,7 @@ const J_TYPE:Type =  5
 // ===============
 
 fn get_instruction_type(opcode:Opcode) -> (instruction_type: Type) {
+  //TODO: implement me
   instruction_type = R_TYPE
   return
 }

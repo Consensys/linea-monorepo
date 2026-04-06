@@ -17,16 +17,17 @@ fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
 
     instruction_parameters :: opcode = instruction
     instruction_type = get_instruction_type(opcode)
-    new_pc = pc + 4 as Address
+    new_pc = pc //TODO: remove me
 
     if instruction_type == R_TYPE {
       process_R_type_instruction(instruction_parameters)
-
+      new_pc = pc + 4 as Address
     } // else if ...
     if instruction_type == I_TYPE  { }
     if instruction_type == S_TYPE  { }
     if instruction_type == B_TYPE  { }
     if instruction_type == U_TYPE  { }
-    if instruction_type == J_TYPE  { }
-
+    if instruction_type == J_TYPE  {
+      new_pc = process_J_type_instruction(instruction_parameters)
+    }
    }
