@@ -148,7 +148,7 @@ Columns:
 | BLTU     | B    | 1100011   | 110    | —      | if rs1 < rs2 (unsigned): PC += sext(imm13) | RV32I |
 | BGEU     | B    | 1100011   | 111    | —      | if rs1 >= rs2 (unsigned): PC += sext(imm13)| RV32I |
 
-#### Upper-immediate and jump
+#### Upper-immediate and jump ---- letypequividelespoubelles
 
 | Mnemonic | Type | Opcode    | funct3 | funct7 | Operation                              | Extension |
 |----------|------|-----------|--------|--------|----------------------------------------|-----------|
