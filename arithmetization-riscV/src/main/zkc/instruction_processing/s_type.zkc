@@ -21,9 +21,9 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   var imm : u64
   if sign == 1 {
-    imm = SGN_EXT_U12_TO_U64 :: sign :: uimm6 :: uimm5
+    imm = sign_extension_u32_u64((SGN_EXT_U12_TO_U32 :: sign :: uimm6 :: uimm5))
   } else {
-    imm = (sign :: uimm6 :: uimm5) as u64
+    imm = sign_extension_u32_u64((sign :: uimm6 :: uimm5) as u32)
   }
 
   if funct3 == FUNCT3_SB {
