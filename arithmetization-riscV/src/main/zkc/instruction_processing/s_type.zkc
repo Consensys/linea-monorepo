@@ -1,4 +1,4 @@
-fn process_S_type_instruction<ram>(instruction_parameters:u25) {
+fn process_S_type_instruction<ram,registers>(instruction_parameters:u25) {
 
   // var funct3 : Funct3
   // var funct7 : Funct7
@@ -28,21 +28,19 @@ fn process_S_type_instruction<ram>(instruction_parameters:u25) {
 
   if funct3 == FUNCT3_SB {
     // Store byte (u8)
-    
+    write_8(registers[rs1] + imm, (registers[rs2] ^ (0xFF as u64)) as u8)
   }
 
   if funct3 == FUNCT3_SH {
     // Store halfword (u16)
-
   }
 
   if funct3 == FUNCT3_SW {
     // Store word (u32)
-
+    write_32(registers[rs1] + imm, (registers[rs2] ^ (0xFFFFFFFF as u64)) as u32)
   }
 
   if funct3 == FUNCT3_SD {
     // Store doubleword (u64)
-
   }
 }
