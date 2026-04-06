@@ -39,6 +39,6 @@ fn interpreter(instruction:u32, pc:u32) -> (new_pc:Address) {
     }
     if instruction_type == U_TYPE  { }
     if instruction_type == J_TYPE  {
-      new_pc = process_J_type_instruction(instruction_parameters, pc)
+      new_pc = process_J_type_instruction<registers>(instruction_parameters, pc)
     }
    }
