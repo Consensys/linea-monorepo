@@ -69,7 +69,7 @@ def check_rollup_validity(rollup_input: RollupPrivateInput) -> RollupPublicInput
     """
 
     curr_block: EthereumBlock
-    curr_block, curr_block_hash, is_valid_blockchain = validate_block_history(rollup_input.prev_finalized_blockchain)
+    curr_block, _, is_valid_blockchain = validate_block_history(rollup_input.prev_finalized_blockchain)
     if not is_valid_blockchain:
         raise Exception("invalid block history: the block hashes are not in sequences")
 
@@ -143,7 +143,7 @@ def check_rollup_validity(rollup_input: RollupPrivateInput) -> RollupPublicInput
                 if log.topics[0] == BRIDGE_L1L2_ROLLING_HASH_UPDATED_TOPIC_0:
                     new_rolling_hash = log.topics[1]
                     new_message_number = log.topics[2]
-                    if new_message_number <= curr_bridge_l1l2_rolling_hash_message_number + 1:
+                    if new_message_number < curr_bridge_l1l2_rolling_hash_message_number + 1:
                         raise Exception("incompatible previous rolling hash number")
                     curr_bridge_l1l2_rolling_hash = new_rolling_hash
                     curr_bridge_l1l2_rolling_hash_message_number = new_message_number
