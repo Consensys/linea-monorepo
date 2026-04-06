@@ -1,123 +1,111 @@
-fn process_I_type_instruction<ram,registers>( opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
+// RV64I: imm[11:6] for SRAI (OP-IMM): 0b010000 (decimal 16); low 6 bits are shamt.
+const OP_IMM_IMM11_6_SRAI: u12 = 16
 
+// OP-IMM-32: imm[11:5] for SRAIW: 0b0100000 (decimal 32); low 5 bits are shamt.
+const OP_IMM32_IMM11_5_SRAIW: u12 = 32
+
+fn process_I_type_instruction<ram,registers>(instruction_parameters:u25, pc: Address) -> (new_pc: Address) {
   var funct3 : Funct3
   var imm12  : Imm12
   var rs1    : Register
-  var funct7 : Funct7
-  var uimm5  : UImm5
   var rd     : Register
 
   imm12 :: rs1 :: funct3 :: rd = instruction_parameters
 
-  if opcode == LOAD {
-    new_pc = pc + 4 as Address
-    var offset:Address = (registers[rs1] + sgn_extension_u12_u64(imm12)) as Address
-  
-    if funct3 == FUNCT3_LB {
-      registers[rd] = sgn_extension_u8_u64(ram[offset])
+  new_pc = pc + 4
+
+  var imm64: Word
+  imm64 = sgn_extension_u12_u64(imm12)
+
+  var ea: Address
+  ea = (registers[rs1] + imm64) as Address
+
+  // ----- LOAD (opcode LOAD) -----
+  if funct3 == FUNCT3_LB {
+    registers[rd] = sgn_extension_u8_u64(ram[ea])
+  }
+  if funct3 == FUNCT3_LH {
+    registers[rd] = sgn_extension_u16_u64(read_16(ea))
+  }
+  if funct3 == FUNCT3_LW {
+    registers[rd] = sgn_extension_u32_u64(read_32(ea))
+  }
+  if funct3 == FUNCT3_LBU {
+    registers[rd] = ram[ea] as Word
+  }
+  if funct3 == FUNCT3_LHU {
+    registers[rd] = read_16(ea) as Word
+  }
+  if funct3 == FUNCT3_LWU {
+    registers[rd] = read_32(ea) as Word
+  }
+  if funct3 == FUNCT3_LD {
+    registers[rd] = read_64(ea)
+  }
+
+
+  // ----- OP-IMM (opcode OP_IMM) -----
+  if funct3 == FUNCT3_ADDI {
+    registers[rd] = registers[rs1] + imm64
+  }
+  if funct3 == FUNCT3_SLTI {
+    var a: Word = registers[rs1] ^ SIGN_BIT_U64
+    var b: Word = imm64 ^ SIGN_BIT_U64
+    registers[rd] = 0
+    if a < b { registers[rd] = 1 }
+  }
+  if funct3 == FUNCT3_SLTIU {
+    registers[rd] = 0
+    if registers[rs1] < (imm12 as Word) { registers[rd] = 1 }
+  }
+  if funct3 == FUNCT3_XORI {
+    registers[rd] = registers[rs1] ^ imm64
+  }
+  if funct3 == FUNCT3_ORI {
+    registers[rd] = registers[rs1] | imm64
+  }
+  if funct3 == FUNCT3_ANDI {
+    registers[rd] = registers[rs1] & imm64
+  }
+  if funct3 == FUNCT3_SLLI {
+    if (imm12 >> 6) == 0 {
+      var sh: u6 = (imm12 & 0x3F) as u6
+      registers[rd] = registers[rs1] << sh
     }
-    if funct3 == FUNCT3_LH {
-      registers[rd] = sgn_extension_u16_u64(read_16(offset))
+  }
+  // funct3 101: SRLI (imm[11:6]=0) or SRAI (imm[11:6]=0b010000)
+  if funct3 == FUNCT3_SRLI {
+    var sh: u6 = (imm12 & 0x3F) as u6
+    var hi6: u12 = imm12 >> 6
+    if hi6 == 0 {
+      registers[rd] = registers[rs1] >> sh
     }
-    if funct3 == FUNCT3_LW {
-      registers[rd] = sgn_extension_u32_u64(read_32(offset))
-    }
-    if funct3 == FUNCT3_LD {
-      registers[rd] = read_64(offset)
-    }
-    if funct3 == FUNCT3_LBU {
-      registers[rd] = ram[offset] as DoubleWord
-    }
-    if funct3 == FUNCT3_LHU {
-      registers[rd] = read_16(offset) as DoubleWord
-    }
-    if funct3 == FUNCT3_LWU {
-      registers[rd] = read_32(offset) as DoubleWord
+    if hi6 == OP_IMM_IMM11_6_SRAI {
+      registers[rd] = shr_u64(registers[rs1], sh)
     }
   }
 
-  if opcode == OP_IMM {
-    new_pc = pc + 4 as Address
-
-    // used only for SLLI, SRLI, SRAI
-    var funct6:Funct6
-    var uimm6:UImm6
-    funct6 :: uimm6 = imm12
-
-    if funct3 == FUNCT3_ADDI {
-      registers[rd] = registers[rs1] + sgn_extension_u12_u64(imm12)
+  // ----- OP-IMM-32 (opcode OP_IMM_32) — RV64 *W -----
+  if funct3 == FUNCT3_ADDIW {
+    registers[rd] = sgn_extension_u32_u64((registers[rs1] as u32) + (sgn_extension_u12_u64(imm12) as u32))
+  }
+  if funct3 == FUNCT3_SLLIW {
+    if (imm12 >> 5) == 0 {
+      var sh: u5 = (imm12 & 0x1F) as u5
+      var w: u32 = registers[rs1] as u32
+      registers[rd] = sgn_extension_u32_u64(w << sh)
     }
-    if funct3 == FUNCT3_SLTI {
-      registers[rd] = signed_LT(registers[rs1], sgn_extension_u12_u64(imm12)) == 1 ? 1 : 0
+  }
+  if funct3 == FUNCT3_SRLIW {
+    var sh: u5 = (imm12 & 0x1F) as u5
+    var hi7: u12 = imm12 >> 5
+    var w: u32 = registers[rs1] as u32
+    if hi7 == 0 {
+      registers[rd] = sgn_extension_u32_u64(w >> sh)
     }
-    if funct3 == FUNCT3_SLTIU {
-      registers[rd] = registers[rs1] < sgn_extension_u12_u64(imm12) ? 1 : 0
-    }
-    if funct3 == FUNCT3_XORI {
-      registers[rd] = registers[rs1] ^ sgn_extension_u12_u64(imm12)
-    }
-    if funct3 == FUNCT3_ORI {
-      registers[rd] = registers[rs1] | sgn_extension_u12_u64(imm12)
-    }
-
-    if funct3 == FUNCT3_SLLI {
-      registers[rd] = registers[rs1] & sgn_extension_u12_u64(imm12)
-    } 
-
-    if funct3 == FUNCT3_SLLI 
-     {
-      if funct6 == FUNCT6_SRLI {
-        rd = rs1 >> uimm6
-      }
-      if funct6 == FUNCT6_SRAI {
-        var sgn_bit_rs1:u1
-        var rs1_low_63:u63
-        sgn_bit_rs1 :: rs1_low_63 = registers[rs1]
-        registers[rd] = sgn_bit_rs1 == 1 ? U64_FIRST_BIT_MASK | (rs1_low_63 >> uimm6) as DoubleWord : (rs1_low_63 >> uimm6) as DoubleWord
-      }
+    if hi7 == OP_IMM32_IMM11_5_SRAIW {
+      registers[rd] = sgn_extension_u32_u64(shr_u32(registers[rs1], sh))
     }
   }
 
-  if opcode == OP_IMM_32 {
-    new_pc = pc + 4 as Address
-    var rs1_low:Word
-    var tmp:u32
-    tmp :: rs1_low = registers[rs1]
-
-    if funct3 == FUNCT3_ADDIW {
-      registers[rd] = sgn_extension_u32_u64((rs1_low + sgn_extension_u12_u32(imm12) as Word))
-    } else 
-
-    {
-      funct7 :: uimm5 = imm12
-
-      if funct3 == FUNCT3_SLLIW {
-        registers[rd] = sgn_extension_u32_u64((rs1_low << uimm5) as Word)
-      } else { 
-        if funct7 == FUNCT7_SRLIW { // funct3 == FUNCT3_SRLIW &&  is not needed as the same funct3 value is used for both SRLIW and SRAIW
-          registers[rd] = sgn_extension_u32_u64((rs1_low >> uimm5) as Word)
-        } 
-        if funct7 == FUNCT7_SRAIW { // funct3 == FUNCT3_SRAIW &&  is not needed as the same funct3 value is used for both SRLIW and SRAIW
-          var sgn_bit :u1
-          var rs1_low_31:u31
-          sgn_bit :: rs1_low_31 = rs1_low
-          registers[rd] = sgn_extension_u32_u64((rs1_low_31 >> uimm5) as Word | ((sgn_bit as Word) * (U32_FIRST_BIT_MASK as Word)) as Word)
-        }
-      }
-    }
-  }  
-
-  if opcode == JALR  {
-    // only instruction is JAR, no need to switch over funct3
-    new_pc = (registers[rs1] + (sgn_extension_u12_u64(imm12) << 1)) as Address
-    registers[rd] = (pc + 4) as DoubleWord
-  }
-
-  if opcode == SYSTEM {
-    // only instructions are ECALL and EBREAK
-    // TODO: 
-    new_pc = 0 as Address
-  }
-
-  fail // should never reach this line
 }

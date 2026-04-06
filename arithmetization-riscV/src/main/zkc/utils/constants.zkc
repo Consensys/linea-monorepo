@@ -136,6 +136,12 @@ const FUNCT3_SRAIW:Funct3  = 0b101, FUNCT7_SRAIW:Funct7  = 0b0100000 // Shift Ri
 const FUNCT3_JALR:Funct3  = 0b000 // JALR
 
 // ======================
+const FUNCT3_ADDIW:Funct3 = 0b000 // Add Immediate Word
+const FUNCT3_SLLIW:Funct3 = 0b001 // Shift Left Logical Immediate Word
+const FUNCT3_SRLIW:Funct3 = 0b101 // Shift Right Logical Immediate Word
+const FUNCT3_SRAIW:Funct3 = 0b101 // Shift Right Arithmetic Immediate Word
+
+// ======================
 // S-type funct3 values
 // ======================
 

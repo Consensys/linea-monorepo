@@ -14,6 +14,12 @@ const SGNEXTMASK_U12_U32:u32 = 0xFFFFF000
 // Upper 56 bits set; OR with zero-extended u8 when sign (bit 7) is 1.
 const SGNEXTMASK_U8:u64 = 0xFFFFFFFF_FFFFFF00
 
+// Upper 48 bits set; OR with zero-extended u16 when sign (bit 15) is 1.
+const SGNEXTMASK_U16:u64 = 0xFFFFFFFF_FFFF0000
+
+// Flip MSB for unsigned comparison that matches signed order on two's-complement values.
+const SIGN_BIT_U64:u64 = 0x8000000000000000
+
 fn sgn_extension_u32_u64(value:u32) -> (ext_value:u64) {
    // cast from u32 to u64
    ext_value = value as u64
@@ -62,4 +68,37 @@ fn sgn_extension_u12_u32(value:u12) -> (ext_value:u32) {
   var sign_bit:u12
   sign_bit = value >> 11
   if sign_bit == 1 { ext_value = SGNEXTMASK_U12_U32 | ext_value }
+}
+
+fn sgn_extension_u16_u64(value:u16) -> (ext_value:u64) {
+  ext_value = value as u64
+
+  var sign_bit:u16
+  sign_bit = value >> 15
+  if sign_bit == 1 { ext_value = SGNEXTMASK_U16 | ext_value }
+}
+
+// 64-bit arithmetic right shift (value interpreted as two's-complement signed).
+fn shr_u64(value: Word, shamt: u6) -> (out: Word) {
+  var logical: Word = value >> shamt
+  var sign: Word = value >> 63
+  if sign == 0 {
+    out = logical
+  } else {
+    var mask: Word = ~(0xFFFFFFFFFFFFFFFF >> shamt)
+    out = logical | mask
+  }
+}
+
+// 32-bit arithmetic right shift on low 32 bits of value (RV *W instructions).
+fn shr_u32(value: Word, shamt: u5) -> (out32: u32) {
+  var w: u32 = value as u32
+  var logical: u32 = w >> shamt
+  var sign: u32 = w >> 31
+  if sign == 0 {
+    out32 = logical
+  } else {
+    var mask: u32 = ~(0xFFFFFFFF >> shamt)
+    out32 = logical | mask
+  }
 }
