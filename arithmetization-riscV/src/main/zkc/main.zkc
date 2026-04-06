@@ -9,7 +9,7 @@ memory ram(address:Address)->(bytes:u8)
 memory registers(id:Register)->(value:Word)
 
 // TODO @Ghost
-fn main<ram>() {
+fn main<ram, registers>() {
 
 // TODO: memory pre loading (risc_5 program + input_bytes)
 
