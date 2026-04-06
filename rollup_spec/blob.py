@@ -1,4 +1,4 @@
-from ethereum.forks.osaka.blocks import Block as EthereumBlock, Header
+from ethereum.forks.osaka.blocks import Block as EthereumBlock
 from dataclasses import dataclass
 from ethereum_types.numeric import U64
 from ethereum.crypto.hash import Hash32, keccak256
@@ -213,14 +213,14 @@ def decompress_lz4(data: bytes) -> bytes:
     """
     decompress_lz4 decompressed with LZ4 decompresses and returns the bytes
     """
-    pass
+    raise NotImplementedError("decompress_lz4")
 
 def parse_public_da_block_data(data: bytes) -> List[TruncatedEthereumBlock]:
     """
     parse_public_da_block_data parses the blockdata coming from a DA blob. The
     encoding of the block data relies on the RLP encoding of the block.
     """
-    pass
+    raise NotImplementedError("parse_public_da_block_data")
 
 def parse_as_bls12_381_fr_vec(data: bytes) -> List[Bytes32]:
     """
@@ -233,11 +233,11 @@ def parse_as_bls12_381_fr_vec(data: bytes) -> List[Bytes32]:
     the function does not really do anything aside slicing the input data and
     checking the field elements are well formed (don't overflow the modulus)
     """
-    pass
+    raise NotImplementedError("parse_as_bls12_381_fr_vec")
 
 def eval_lagrange_bls12_381(poly: List[Bytes32], x: bytes) -> bytes:
     """
     eval_lagrange_bls12_381 evaluates a polynomial in Lagrange form in the
     BLS12-381 field
     """
-    pass
+    raise NotImplementedError("eval_lagrange_bls12_381")

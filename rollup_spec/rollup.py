@@ -54,7 +54,7 @@ class RollupPublicInput:
     bridge_l1l2_rolling_hash_message_number: int 
     #
     # L2 -> L1 message delivery
-    bridge_l2l1_transaction_tree: list[bytes] 
+    bridge_l2l1_transaction_tree: list[Bytes32] 
     #
     # Forced-transactions info
     prev_forced_tx_rolling_hash: bytes 
@@ -206,7 +206,7 @@ def validate_block_history(blockchain: BlockChain) -> tuple[EthereumBlock, Hash3
     return blocks[-1], parent_block_hash, True
 
 
-def build_l2_messages_tree(msgs: List[Hash32]) -> Hash32:
+def build_l2_messages_tree(msgs: List[Hash32]) -> List[Hash32]:
     """
     build_l2_messages_tree works as follows:
     - Pads the list of msgs with Bytes32 until it reaches a multiple of 32
