@@ -9,8 +9,9 @@ fn main() {
 
 var pc:u32 // TODO: initialize me
 var opcode:u32
+var timestamp:u64
 
-// TODO: while loop on the r5 opcodes through the interpreter, until fial opcode
+// TODO: while loop on the r5 opcodes through the interpreter, until final opcode
 opcode = read(ram, pc, 4)
 pc = interpreter(opcode)
 
