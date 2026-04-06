@@ -1,21 +1,19 @@
-fn process_J_type_instruction(instruction_parameters:u25) -> (pc_new:Address) {
+fn process_J_type_instruction<registers>(instruction_parameters:u25, pc:Address) -> (pc_new:Address) {
 
   // var funct3 : Funct3
   // var funct7 : Funct7
   // var rs1    : Register
   // var rs2    : Register
-  // var rsd    : Register
+    var rd    : Register
   // var uimm5  : UImm5
   // var uimm6  : UImm6
   // var imm12  : Imm12
-  // var imm20  : Imm20
+   var imm20  : Imm20
   // var opcode : Opcode
 
-  // funct7 :: rs1 :: rs2 :: funct3 :: rd = instruction_parameters
+  imm20 :: rd = instruction_parameters
 
-  // if funct7 == ADD {
-  // }
-pc_new = 0 //TODO: implement me
-
+  registers[rd] = pc + 4 as Word 
+  pc_new = (pc + sgn_extension_u32_u64((imm20 << 1) as u32)) as Address
 }
 
