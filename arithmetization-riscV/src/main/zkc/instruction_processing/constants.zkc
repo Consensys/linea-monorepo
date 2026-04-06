@@ -65,3 +65,24 @@ type UImm5  = u5
 type UImm6  = u6
 type Imm12  = u12
 type Imm20  = u20
+
+// R-type funct3 values
+// TODO: correct values
+const FUNCT3_ADD:Funct3    = 0b000
+const FUNCT3_SUB:Funct3    = 0b000
+const FUNCT3_SLL:Funct3    = 0b000
+const FUNCT3_SLT:Funct3    = 0b000
+const FUNCT3_SLTU:Funct3   = 0b000
+const FUNCT3_XOR:Funct3    = 0b000
+const FUNCT3_SRL:Funct3    = 0b000
+const FUNCT3_SRA:Funct3    = 0b000
+const FUNCT3_OR:Funct3     = 0b000
+const FUNCT3_AND:Funct3    = 0b000
+const FUNCT3_MUL:Funct3    = 0b000
+const FUNCT3_MULH:Funct3   = 0b000
+const FUNCT3_MULHSU:Funct3 = 0b000
+const FUNCT3_MULHU:Funct3  = 0b000
+const FUNCT3_DIV:Funct3    = 0b000
+const FUNCT3_DIVU:Funct3   = 0b000
+const FUNCT3_REM:Funct3    = 0b000
+const FUNCT3_REMU:Funct3   = 0b000
