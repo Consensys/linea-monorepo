@@ -1,4 +1,4 @@
-include "utils/constants.zkc"
+include "instruction_processing/utils/constants.zkc"
 include "ram/read.zkc"
 include "interpreter.zkc"
 include "utils/sign_extend.zkc"
@@ -9,7 +9,7 @@ memory ram(address:Address)->(bytes:u8)
 memory registers(id:Register)->(value:Word)
 
 // TODO @Ghost
-fn main<ram,registers>() {
+fn main<ram, registers>() {
 
 // TODO: memory pre loading (risc_5 program + input_bytes)
 
