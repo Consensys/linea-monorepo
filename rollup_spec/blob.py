@@ -39,7 +39,7 @@ class TruncatedEthereumBlock:
     def is_consistent_with(self, other: EthereumBlock, chain_id: U64) -> bool:
         """
         is_consistent_with checks if a truncated block is consistent with its
-        full version.Ò
+        full version.
         """
         num_transactions = len(self.transactions)
         if num_transactions != len(other.transactions):

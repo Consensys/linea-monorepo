@@ -18,7 +18,7 @@ from ethereum.state import Address, Account, EMPTY_CODE_HASH
 from dataclasses import dataclass
 from ethereum_types.numeric import U64, Uint
 from ethereum.crypto.hash import Hash32, keccak256
-from ethereum_types.bytes import Bytes, Bytes
+from ethereum_types.bytes import Bytes
 from ethereum_rlp import rlp
 from enum import Enum
 from typing import List, Optional, Tuple
@@ -77,7 +77,7 @@ class AccountWitness:
         if the code is provided, it will also check that its hash matches the
         codehash in the account.
         """
-        pass
+        raise NotImplementedError("check_inclusion is not implemented")
 
 @dataclass
 class ForcedTransactionWitness:
@@ -293,7 +293,6 @@ def is_valid_forced_transaction(
     
     return True
 
-
 def add_to_forced_tx_rolling_hash(forced_tx_rolling_hash: Hash32, 
                                   forced_tx_rolling_hash_message_number: U64,
                                   ftx: ForcedTransactionWitness) -> Tuple[Hash32, U64]:
@@ -315,6 +314,3 @@ def add_to_forced_tx_rolling_hash(forced_tx_rolling_hash: Hash32,
             ftx.deadline,
         ))
     ), forced_tx_rolling_hash_message_number + 1
-
-
-

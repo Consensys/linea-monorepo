@@ -1,5 +1,4 @@
 from ethereum.forks.osaka.blocks import Block as EthereumBlock
-from ethereum.forks.osaka.fork import BlockChain
 from ethereum.crypto.hash import keccak256, Hash32
 from ethereum_rlp import rlp
 from ethereum_types.numeric import U64
@@ -149,10 +148,33 @@ def check_rollup_validity(rollup_input: RollupPrivateInput) -> RollupPublicInput
                 if log.address != rollup_input.chain_config.l2_message_service_address:
                     continue
                 if log.topics[0] == BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0:
-                    bridge_l2l1_message_hashes.append(log.topics[1])
+                    #
+                    # The event signature is
+                    #
+                    #   event MessageSent(
+                    #       address indexed _from,
+                    #       address indexed _to,
+                    #       uint256 _fee,
+                    #       uint256 _value,
+                    #       uint256 _nonce,
+                    #       bytes _calldata,
+                    #       bytes32 indexed _messageHash
+                    #   );
+                    #
+                    # and we want to extract the message hash.
+                    bridge_l2l1_message_hashes.append(log.topics[3])
                 if log.topics[0] == BRIDGE_L1L2_ROLLING_HASH_UPDATED_TOPIC_0:
-                    new_rolling_hash = log.topics[1]
-                    new_message_number = log.topics[2]
+                    #
+                    # The event signature is
+                    #
+                    #   RollingHashUpdated(
+                    #       uint256 indexed messageNumber, 
+                    #       bytes32 indexed rollingHash,
+                    #   );
+                    #
+                    # and we want to extract the rolling hash and the message number.
+                    new_message_number = log.topics[1]
+                    new_rolling_hash = log.topics[2]
                     if new_message_number < curr_bridge_l1l2_rolling_hash_message_number + 1:
                         raise Exception("incompatible previous rolling hash number")
                     curr_bridge_l1l2_rolling_hash = new_rolling_hash
@@ -216,8 +238,7 @@ def build_l2_messages_tree(msgs: List[Hash32]) -> List[Hash32]:
 
     The hashing is done using the keccak hash function.
     """
-    pass
-
+    raise NotImplemented("just a placeholder implementation")
 
 
 
