@@ -44,6 +44,8 @@ class TruncatedEthereumBlock:
         num_transactions = len(self.transactions)
         if num_transactions != len(other.transactions):
             return False
+        if num_transactions != len(self.froms):
+            return False
         if self.timestamp != other.header.timestamp:
             return False 
         if self.prev_randao != other.header.prev_randao:
@@ -53,7 +55,7 @@ class TruncatedEthereumBlock:
         for i in range(num_transactions):
             tx_rlp = self.transactions[i]
             tx = other.transactions[i]
-            if encode_as_signing_rlp(tx) != tx_rlp:
+            if encode_as_signing_rlp(tx, chain_id) != tx_rlp:
                 return False
             recovered_from = recover_sender(chain_id, tx)
             if recovered_from != self.froms[i]:
@@ -111,13 +113,28 @@ class RollupDataWitness:
         return parse_public_da_block_data(blob_data_uncompressed)
 
 
-def encode_as_signing_rlp(tx: Transaction) -> bytes:
+def encode_as_signing_rlp(tx: Transaction, chain_id: U64) -> bytes:
     """
     encode_as_signing_rlp returns the unsigned RLP encoding of a transaction, as used in
     Linea's DA format. Each transaction type signs a different preimage; this
     function returns that.
     """
     if isinstance(tx, LegacyTransaction):
+        # Pre-EIP-155 transactions use v ∈ {27, 28}; their signing preimage is
+        # the 6-field tuple (nonce, gas_price, gas, to, value, data).
+        # EIP-155 transactions encode chain_id into v as chain_id * 2 + {35, 36}
+        # and sign the 9-field tuple (..., chain_id, 0, 0).
+        if tx.v in (27, 28):
+            return rlp.encode(
+                (
+                    tx.nonce,
+                    tx.gas_price,
+                    tx.gas,
+                    tx.to,
+                    tx.value,
+                    tx.data,
+                )
+            )
         return rlp.encode(
             (
                 tx.nonce,
@@ -126,6 +143,9 @@ def encode_as_signing_rlp(tx: Transaction) -> bytes:
                 tx.to,
                 tx.value,
                 tx.data,
+                chain_id,
+                0,
+                0,
             )
         )
     if isinstance(tx, AccessListTransaction):

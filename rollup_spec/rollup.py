@@ -88,6 +88,16 @@ def check_rollup_validity(rollup_input: RollupPrivateInput) -> RollupPublicInput
     # be validated.
     initial_block_number = curr_block.header.number + 1
 
+    total_blocks = sum(
+        da.block_number_range[1] + 1 - da.block_number_range[0]
+        for da in rollup_input.das
+    )
+    if len(rollup_input.blocks) != total_blocks:
+        raise Exception(
+            f"rollup_input.blocks has {len(rollup_input.blocks)} entries but "
+            f"the DA blobs span {total_blocks} blocks"
+        )
+
     for blob in rollup_input.das:
 
         blob_auth, blob_hash = blob.is_authenticated_blob_bytes()
@@ -187,6 +197,7 @@ def validate_block_history(blockchain: BlockChain) -> tuple[EthereumBlock, Hash3
     a boolean 
     """
     blocks = blockchain.blocks
+    assert len(blocks) > 0, "blockchain must contain at least the genesis block"
     parent_block_hash = blocks[0].header.parent_hash
     for block in blocks:
         if block.header.parent_hash != parent_block_hash:

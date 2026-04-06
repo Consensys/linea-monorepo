@@ -21,7 +21,7 @@ from ethereum.crypto.hash import Hash32, keccak256
 from ethereum_types.bytes import Bytes, Bytes
 from ethereum_rlp import rlp
 from enum import Enum
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -96,7 +96,7 @@ class ForcedTransactionWitness:
     """
     transaction: Transaction
     acceptance: ForcedTransactionAcceptance
-    state_witness: AccountWitness
+    state_witness: Optional[AccountWitness]
     deadline: U64
     """
     deadline is an L2 block number. The forced transaction must be included in
@@ -174,6 +174,12 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
         if ftx.acceptance == ForcedTransactionAcceptance.REJECTED_BECAUSE_TO:
             # Same as above, but the sanctioned party is the recipient. The to
             # address is bubbled up instead of the sender.
+            #
+            # Contract-creation transactions have no recipient (to == None).
+            # REJECTED_BECAUSE_TO is meaningless for them and indicates a
+            # malformed witness.
+            if ftx.transaction.to is None:
+                raise Exception("REJECTED_BECAUSE_TO on a contract-creation transaction")
             to_address: Address = ftx.transaction.to
             rejected_addresses.append(to_address)
             continue
@@ -201,6 +207,7 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
 
             if is_valid_forced_transaction(ftx.transaction, ftx.state_witness, chain_config):
                 raise Exception("the forced transaction was indicated to be invalid, but was found to be valid")
+            continue
 
         # Otherwise, the transaction should be included in the block.
         # Per the spec, forced transactions must appear at the *beginning* of the
@@ -212,6 +219,8 @@ def validate_forced_transactions(curr_rolling_hash: Hash32,
         # don't think it works as is. I leave it still as it is easy to read and
         # good enough for a spec draft. As the reader, might have guessed we are
         # intending to check for inclusion of the forced transaction in the block.
+        if ftx.acceptance != ForcedTransactionAcceptance.ACCEPTED: 
+            raise Exception("forced transaction has an unknown acceptance value")
         if ftx not in block.ethereum_block.transactions:
             raise Exception("forced transaction was allegedly valid but not included")
 
@@ -271,9 +280,7 @@ def is_valid_forced_transaction(
         if not any(tx.authorizations):
             return False
 
-    if sender_account.nonce > Uint(tx.nonce):
-        return False
-    elif sender_account.nonce < Uint(tx.nonce):
+    if sender_account.nonce != Uint(tx.nonce):
         return False
 
     if Uint(sender_account.balance) < max_gas_fee + Uint(tx.value):
