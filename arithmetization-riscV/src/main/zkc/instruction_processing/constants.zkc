@@ -1,3 +1,4 @@
+type SignBit = u1
 type Address = u32
 
 // temporary solution: could be extracted from the linker script,
