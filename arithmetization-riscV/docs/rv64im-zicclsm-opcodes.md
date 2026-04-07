@@ -235,5 +235,5 @@ No new opcodes. This extension is a profile feature indicating that the hart sup
 | I    | @Amelie            |
 | S    | @Lorenzo           |
 | B    | @Olivier           |
-| U    |                    |
-| J    | @Francois          |
+| U    | Done @letype       |
+| J    | Done @letype       |
