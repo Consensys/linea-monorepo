@@ -53,6 +53,7 @@ class ObservabilityServer(private val config: Config) : AbstractVerticle() {
       .listen(config.port)
       .onSuccess { httpServer ->
         actualPort = httpServer.actualPort()
+        started = true
         log.info("Monitoring Server started and listening on port {}", actualPort)
         startPromise.complete()
       }
