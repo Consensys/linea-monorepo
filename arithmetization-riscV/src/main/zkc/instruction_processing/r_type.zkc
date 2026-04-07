@@ -92,3 +92,4 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   }
 }
+}
