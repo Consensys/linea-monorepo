@@ -80,7 +80,7 @@ Columns:
 | OR       | R    | 0110011 | 110    | 0000000 | rd = rs1 \| rs2                   | RV32I     |    ✓   |
 | AND      | R    | 0110011 | 111    | 0000000 | rd = rs1 & rs2                    | RV32I     |    ✓   |
 
-#### OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
+#### OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I) --- @Olivier
 
 | Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                     | Extension |
 |----------|------|---------|--------|---------|-----------------------------------------------|-----------|
@@ -90,7 +90,7 @@ Columns:
 | SRLW     | R    | 0111011 | 101    | 0000000 | rd = sext(rs1[31:0] >> rs2[4:0]) (logical)    | RV64I     |
 | SRAW     | R    | 0111011 | 101    | 0100000 | rd = sext(rs1[31:0] >> rs2[4:0]) (arithmetic) | RV64I     |
 
-#### OP-IMM (0010011) — I-type immediate arithmetic
+#### OP-IMM (0010011) — I-type immediate arithmetic --- implementer: @letypequividelespoubelles
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension |
 |----------|------|---------|--------|------------------------|-------------------------------------------|-----------|
@@ -116,7 +116,7 @@ Columns:
 | SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |    ✓   |
 | SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |    ✓   | 
 
-#### LOAD (0000011) — I-type loads --- implementer @letypequividelespoubelles
+#### LOAD (0000011) — I-type loads
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                           | Extension | Status |
 |----------|------|---------|--------|--------|-------------------------------------|-----------|:------:|
@@ -140,13 +140,13 @@ Columns:
 #### BRANCH (1100011) — B-type conditional branches @Olivier
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                                   | Extension | Status |
-|----------|------|---------|--------|--------|---------------------------------------------|-----------|--------|
-| BEQ      | B    | 1100011 | 000    | —      | if rs1 == rs2: PC += sext(imm13)            | RV32I     | ✓      |
-| BNE      | B    | 1100011 | 001    | —      | if rs1 != rs2: PC += sext(imm13)            | RV32I     | ✓      |
-| BLT      | B    | 1100011 | 100    | —      | if rs1 < rs2 (signed): PC += sext(imm13)    | RV32I     | ✓      |
-| BGE      | B    | 1100011 | 101    | —      | if rs1 >= rs2 (signed): PC += sext(imm13)   | RV32I     | ✓      |
-| BLTU     | B    | 1100011 | 110    | —      | if rs1 < rs2 (unsigned): PC += sext(imm13)  | RV32I     | ✓      |
-| BGEU     | B    | 1100011 | 111    | —      | if rs1 >= rs2 (unsigned): PC += sext(imm13) | RV32I     | ✓      |
+|----------|------|---------|--------|--------|---------------------------------------------|-----------|:------:|
+| BEQ      | B    | 1100011 | 000    | —      | if rs1 == rs2: PC += sext(imm13)            | RV32I     |    ✓   |
+| BNE      | B    | 1100011 | 001    | —      | if rs1 != rs2: PC += sext(imm13)            | RV32I     |    ✓   |
+| BLT      | B    | 1100011 | 100    | —      | if rs1 < rs2 (signed): PC += sext(imm13)    | RV32I     |    ✓   |
+| BGE      | B    | 1100011 | 101    | —      | if rs1 >= rs2 (signed): PC += sext(imm13)   | RV32I     |    ✓   |
+| BLTU     | B    | 1100011 | 110    | —      | if rs1 < rs2 (unsigned): PC += sext(imm13)  | RV32I     |    ✓   |
+| BGEU     | B    | 1100011 | 111    | —      | if rs1 >= rs2 (unsigned): PC += sext(imm13) | RV32I     |    ✓   |
 
 #### Upper-immediate and jump ---- implementer @letypequividelespoubelles
 
@@ -184,7 +184,7 @@ All M-extension instructions are R-type with **funct7 = 0000001** and share the 
 | REM      | R    | 0110011 | 110    | 0000001 | rd = rs1 % rs2 (signed remainder)                     | M         |    ∅   |
 | REMU     | R    | 0110011 | 111    | 0000001 | rd = rs1 % rs2 (unsigned remainder)                   | M         |    ∅   |
 
-#### OP-32 (0111011) + funct7=0000001
+#### OP-32 (0111011) + funct7=0000001 --- @Olivier
 
 | Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension |
 |----------|------|---------|--------|---------|-------------------------------------------------------|-----------|
