@@ -1,4 +1,4 @@
-fn absolute_value_double_word(a : DoubleWord) -> (abs : DoubleWord) {
+fn absolute_value_double_word(a : DoubleWord) -> (abs : UnsignedDoubleWord) {
   var a_sign : u1
   a_sign = sign_bit_double_word(a)
 
