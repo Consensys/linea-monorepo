@@ -6,21 +6,28 @@ include "../utils/negative.zkc"
 
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
-  var funct7         : Funct7
-  var rs2            : Register
-  var rs1            : Register
-  var funct3         : Funct3
-  var rd             : Register
-  var v1             : DoubleWord
-  var v2             : DoubleWord
-  var v1_sign        : SignBit
-  var v2_sign        : SignBit
-  var v1_abs         : UnsignedDoubleWord
-  var v2_abs         : UnsignedDoubleWord
-  var shift_discard  : u58
-  var shift_amount   : u6
+  var funct7           : Funct7
+  var rs2              : Register
+  var rs1              : Register
+  var funct3           : Funct3
+  var rd               : Register
+  var v1               : DoubleWord
+  var v2               : DoubleWord
+  var v1_sign          : SignBit
+  var v2_sign          : SignBit
+  var v1_abs           : UnsignedDoubleWord
+  var v2_abs           : UnsignedDoubleWord
+  var shift_discard    : u58
+  var shift_amount     : u6
   var res_working_copy : DoubleWord
-  var overflow       : SignBit
+  var overflow         : SignBit
+  var v1_upper         : Word
+  var v1_lower         : Word
+  var v2_upper         : Word
+  var v2_lower         : Word
+  var product_upper    : Word
+  var product_lower    : Word
+  var sign_bit         : SignBit
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -128,7 +135,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
           registers[rd] = negative(registers[rd])
         }
       }
-    } 
+    }
   }
 
   if funct3 == FUNCT3_DIVU {
@@ -142,4 +149,21 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   if funct3 == FUNCT3_REMU {
 
   }
+
+  if ( funct3 == FUNCT3_MULW  ) && ( funct7 == FUNCT7_MULW  ) {
+    v1_upper :: v1_lower = v1
+    v2_upper :: v2_lower = v2
+    product_upper :: product_lower = (v1_lower as DoubleWord) * (v2_lower as DoubleWord)
+    sign_bit = sign_bit_word(product_lower)
+
+  }
+  if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {}
+  if ( funct3 == FUNCT3_DIVUW ) && ( funct7 == FUNCT7_DIVUW ) {}
+  if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {}
+  if ( funct3 == FUNCT3_REMUW ) && ( funct7 == FUNCT7_REMUW ) {}
 }
+
+
+
+
+
