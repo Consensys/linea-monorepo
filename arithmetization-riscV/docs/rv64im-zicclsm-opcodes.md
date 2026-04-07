@@ -118,15 +118,15 @@ Columns:
 
 #### LOAD (0000011) — I-type loads --- implementer @letypequividelespoubelles
 
-| Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                           | Extension |
-|----------|------|---------|--------|--------|-------------------------------------|-----------|
-| LB       | I    | 0000011 | 000    | —      | rd = sext(M[rs1+sext(imm12)][7:0])  | RV32I     |
-| LH       | I    | 0000011 | 001    | —      | rd = sext(M[rs1+sext(imm12)][15:0]) | RV32I     |
-| LW       | I    | 0000011 | 010    | —      | rd = sext(M[rs1+sext(imm12)][31:0]) | RV32I     |
-| LD       | I    | 0000011 | 011    | —      | rd = M[rs1+sext(imm12)][63:0]       | RV64I     |
-| LBU      | I    | 0000011 | 100    | —      | rd = zext(M[rs1+sext(imm12)][7:0])  | RV32I     |
-| LHU      | I    | 0000011 | 101    | —      | rd = zext(M[rs1+sext(imm12)][15:0]) | RV32I     |
-| LWU      | I    | 0000011 | 110    | —      | rd = zext(M[rs1+sext(imm12)][31:0]) | RV64I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                           | Extension | Status |
+|----------|------|---------|--------|--------|-------------------------------------|-----------|:------:|
+| LB       | I    | 0000011 | 000    | —      | rd = sext(M[rs1+sext(imm12)][7:0])  | RV32I     |    ✓   |
+| LH       | I    | 0000011 | 001    | —      | rd = sext(M[rs1+sext(imm12)][15:0]) | RV32I     |    ✓   |
+| LW       | I    | 0000011 | 010    | —      | rd = sext(M[rs1+sext(imm12)][31:0]) | RV32I     |    ✓   |
+| LD       | I    | 0000011 | 011    | —      | rd = M[rs1+sext(imm12)][63:0]       | RV64I     |    ✓   |
+| LBU      | I    | 0000011 | 100    | —      | rd = zext(M[rs1+sext(imm12)][7:0])  | RV32I     |    ✓   |
+| LHU      | I    | 0000011 | 101    | —      | rd = zext(M[rs1+sext(imm12)][15:0]) | RV32I     |    ✓   |
+| LWU      | I    | 0000011 | 110    | —      | rd = zext(M[rs1+sext(imm12)][31:0]) | RV64I     |    ✓   |
 
 #### STORE (0100011) — S-type stores --- implementer @Lorenzo
 
