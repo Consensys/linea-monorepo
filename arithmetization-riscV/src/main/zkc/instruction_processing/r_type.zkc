@@ -77,23 +77,23 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = v1 | v2
   }
 
-  var sgnext_rs1:u128 = sgn_extension_u64_u128(registers[rs1])
-  var sgnext_rs2:u128 = sgn_extension_u64_u128(registers[rs2])
+  var v1_as_u128:u128 = registers[rs1] as u128
+  var v2_as_u128:u128 = registers[rs2] as u128
 
   if funct3 == FUNCT3_MUL {
-    registers[rd] = ((registers[rs1] * registers[rs2]) & MAX_UINT_64) as u64
+    registers[rd] = ((v1_as_u128 * v1_as_u128) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_MULH {
-    registers[rd] = (((sgnext_rs1 * sgnext_rs2) >> (128 + 64)) & (MAX_UINT_64 as u128)) as u64
+  
   }
 
   if funct3 == FUNCT3_MULHSU {
-    registers[rd] = (((sgnext_rs1 * (rs2 as u128)) >> (128 + 64)) & (MAX_UINT_64 as u128)) as u64
+    
   }
 
   if funct3 == FUNCT3_MULHU {
-
+  
   }
 
   if funct3 == FUNCT3_DIV {
