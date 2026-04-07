@@ -83,6 +83,9 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     }
     if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
+    }
+    if (funct3 == FUNCT3_AND)   && (funct7 == FUNCT7_AND)   {
+    registers[rd] = v1 & v2
   }
 
   var v1_as_u128:u128 = registers[rs1] as u128
