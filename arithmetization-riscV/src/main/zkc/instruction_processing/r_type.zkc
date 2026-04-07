@@ -1,26 +1,62 @@
-fn process_R_type_instruction(instruction_parameters:u25) {
+include "../utils/absolute_value.zkc"
+include "../utils/signed_comparisons.zkc"
+include "../utils/sign_bit.zkc"
 
-  // var funct3 : Funct3
-  // var funct7 : Funct7
-  // var rs1    : Register
-  // var rs2    : Register
-  // var rsd    : Register
-  // var uimm5  : UImm5
-  // var uimm6  : UImm6
-  // var imm12  : Imm12
-  // var imm20  : Imm20
-  // var opcode : Opcode
+fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
-  var funct3 : Funct3
-  var rs1    : Register
-  var rs2    : Register
-  var funct7 : Funct7
-  var rd     : Register
+  var funct7  : Funct7
+  var rs2     : Register
+  var rs1     : Register
+  var funct3  : Funct3
+  var rd      : Register
+  var v1      : DoubleWord
+  var v2      : DoubleWord
+  var v1_sign : SignBit
+  var v2_sign : SignBit
+  var v1_abs  : DoubleWord
+  var v2_abs  : DoubleWord
+  var shift_discard : u58
+  var shift_amount : u6
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
-  // if funct7 == ADD {
-  // }
+  v1 = registers[rs1]
+  v2 = registers[rs2]
 
+  v1_sign = sign_bit_double_word(v1)
+  v2_sign = sign_bit_double_word(v2)
+
+  v1_abs = absolute_value_double_word(v1)
+  v2_abs = absolute_value_double_word(v2)
+
+  if (funct3 == FUNCT3_ADD)  && (funct7 == FUNCT7_ADD)  {
+  }
+  if (funct3 == FUNCT3_SUB)  && (funct7 == FUNCT7_SUB)  { }
+  if (funct3 == FUNCT3_SLL)  && (funct7 == FUNCT7_SLL)  {
+    shift_discard :: shift_amount = v2
+    registers[rd] = v2 << shift_amount
+  }
+  if (funct3 == FUNCT3_SLT)  && (funct7 == FUNCT7_SLT)  {
+    registers[rd] = signed_LT(v1, v2) as DoubleWord
+  }
+  if (funct3 == FUNCT3_SLTU) && (funct7 == FUNCT7_SLTU) {
+
+    if (v1_abs < v2_abs) {
+    registers[rd] = 1
+    } else {
+    registers[rd] = 0
+    }
+  }
+  if (funct3 == FUNCT3_XOR)  && (funct7 == FUNCT7_XOR)  {
+    registers[rd] = v1 ^ v2
+  }
+  if (funct3 == FUNCT3_SRL)  && (funct7 == FUNCT7_SRL)  {
+    shift_discard :: shift_amount = v2
+    registers[rd] = v2 >> shift_amount
+}
+  if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  { }
+  if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
+    registers[rd] = v1 | v2
+  }
 }
 
