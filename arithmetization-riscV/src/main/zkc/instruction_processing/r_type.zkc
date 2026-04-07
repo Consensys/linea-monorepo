@@ -32,11 +32,18 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   v1_abs = absolute_value_double_word(v1)
   v2_abs = absolute_value_double_word(v2)
 
+  // Note. If x = 0b... and y = 0b... are two bit strings of length N
+  // and you interpret them either as uintN or intN, then the underlying
+  // bit string of their additions is the same whether added as signed or
+  // unsigned integers. This also holds for subtraction.
   if (funct3 == FUNCT3_ADD)  && (funct7 == FUNCT7_ADD)  {
     overflow :: res_working_copy = (v1 as u65) + (v2 as u65)
     registers[rd] = res_working_copy
   }
   if (funct3 == FUNCT3_SUB)  && (funct7 == FUNCT7_SUB)  {
+    // we prevent underflow by pre-pending v1 with a 1
+    overflow :: res_working_copy = ((1 as u1) :: (v1 as u64)) - (v2 as u65)
+    registers[rd] = res_working_copy
   }
   if (funct3 == FUNCT3_SLL)  && (funct7 == FUNCT7_SLL)  {
     shift_discard :: shift_amount = v2
