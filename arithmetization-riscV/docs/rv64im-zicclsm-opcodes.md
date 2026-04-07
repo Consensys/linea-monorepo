@@ -109,12 +109,12 @@ Columns:
 
 #### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I) @letypequividelespoubelles
 
-| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                     | Extension |
-|----------|------|---------|--------|------------------------|-----------------------------------------------|-----------|
-| ADDIW    | I    | 0011011 | 000    | —                      | rd = sext(rs1[31:0] + sext(imm12))            | RV64I     |
-| SLLIW    | I    | 0011011 | 001    | imm[11:5]=0000000      | rd = sext(rs1[31:0] << imm[4:0])              | RV64I     |
-| SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |
-| SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                     | Extension | Status |
+|----------|------|---------|--------|------------------------|-----------------------------------------------|-----------|:------:|
+| ADDIW    | I    | 0011011 | 000    | —                      | rd = sext(rs1[31:0] + sext(imm12))            | RV64I     |    ✓   |
+| SLLIW    | I    | 0011011 | 001    | imm[11:5]=0000000      | rd = sext(rs1[31:0] << imm[4:0])              | RV64I     |    ✓   |
+| SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |    ✓   |
+| SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |    ✓   | 
 
 #### LOAD (0000011) — I-type loads --- implementer @letypequividelespoubelles
 
