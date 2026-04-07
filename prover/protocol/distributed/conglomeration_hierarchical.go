@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
@@ -295,13 +294,18 @@ func checkVkMembershipGnark(
 // Conglomerate runs the conglomeration compiler and returns a pointer to the
 // receiver of the method.
 func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedWizard {
-	conglo := &ModuleConglo{
-		ModuleNumber: len(d.CompiledGLs),
-	}
+	if d.precompiledConglomerationDone != nil {
+		<-d.precompiledConglomerationDone
+		d.CompiledConglomeration = d.precompiledConglomeration
+	} else {
+		conglo := &ModuleConglo{
+			ModuleNumber: len(d.CompiledGLs),
+		}
 
-	comp := wizard.NewCompiledIOP()
-	conglo.Compile(comp, d.CompiledGLs[0].RecursionCompKoala)
-	d.CompiledConglomeration = CompileSegment(conglo, params)
+		comp := wizard.NewCompiledIOP()
+		conglo.Compile(comp, d.CompiledGLs[0].RecursionCompKoala)
+		d.CompiledConglomeration = CompileSegment(conglo, params)
+	}
 	assertCompatibleIOPs(d)
 
 	d.VerificationKeyMerkleTree = buildVerificationKeyMerkleTree(
