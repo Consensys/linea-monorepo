@@ -116,7 +116,7 @@ Columns:
 | SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |    ✓   |
 | SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |    ✓   | 
 
-#### LOAD (0000011) — I-type loads
+#### LOAD (0000011) — I-type loads @letypequividelespoubelles
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                           | Extension | Status |
 |----------|------|---------|--------|--------|-------------------------------------|-----------|:------:|
