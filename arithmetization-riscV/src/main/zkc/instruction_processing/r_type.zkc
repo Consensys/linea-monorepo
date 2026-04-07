@@ -4,19 +4,19 @@ include "../utils/sign_bit.zkc"
 
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
-  var funct7  : Funct7
-  var rs2     : Register
-  var rs1     : Register
-  var funct3  : Funct3
-  var rd      : Register
-  var v1      : DoubleWord
-  var v2      : DoubleWord
-  var v1_sign : SignBit
-  var v2_sign : SignBit
-  var v1_abs  : DoubleWord
-  var v2_abs  : DoubleWord
+  var funct7        : Funct7
+  var rs2           : Register
+  var rs1           : Register
+  var funct3        : Funct3
+  var rd            : Register
+  var v1            : DoubleWord
+  var v2            : DoubleWord
+  var v1_sign       : SignBit
+  var v2_sign       : SignBit
+  var v1_abs        : UnsignedDoubleWord
+  var v2_abs        : UnsignedDoubleWord
   var shift_discard : u58
-  var shift_amount : u6
+  var shift_amount  : u6
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
