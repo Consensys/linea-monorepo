@@ -107,7 +107,7 @@ class StateManagerV1JsonRpcClient(
 
     return rpcClient
       .makeRequest(
-        method = "rollup_getVirtualZkEVMStateMerkleProofV1",
+        method = "rollup_getVirtualZkEVMStateMerkleProofV0",
         params = params,
         resultMapper = ::parseZkEVMStateMerkleProofResponse,
       )

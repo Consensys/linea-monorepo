@@ -1,7 +1,8 @@
 import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
-import { type Address, GetTransactionReceiptErrorType } from "viem";
+import { type Address, encodeFunctionData, GetTransactionReceiptErrorType } from "viem";
 
+import { deployContract } from "./common/deployments";
 import {
   buildSignedForcedTransaction,
   getDefaultLastFinalizedTimestamp,
@@ -9,6 +10,12 @@ import {
 } from "./common/test-helpers/forced-transactions";
 import { getEvents, sendTransactionWithRetry, waitForEvents } from "./common/utils";
 import { createTestContext } from "./config/setup";
+import {
+  ExcludedPrecompilesAbi,
+  ExcludedPrecompilesAbiBytecode,
+  MultiMessageSenderAbi,
+  MultiMessageSenderAbiBytecode,
+} from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
@@ -316,7 +323,7 @@ describe("Forced transaction test suite", () => {
       const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
 
       // Resolve finalized state
-      const lastFinalizedState = await resolveLastFinalizedState(
+      let lastFinalizedState = await resolveLastFinalizedState(
         lineaRollup,
         l1PublicClient,
         getDefaultLastFinalizedTimestamp(),
@@ -333,7 +340,7 @@ describe("Forced transaction test suite", () => {
         nonce: 0n,
         value: 0n,
         data: callData,
-        gasLimit: 500_000n,
+        gasLimit: 300_000n,
         maxFeePerGas: 1_000_000_000n,
         maxPriorityFeePerGas: 100_000_000n,
       });
@@ -346,21 +353,37 @@ describe("Forced transaction test suite", () => {
       const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
 
       // Submit the forced transaction
-      const txHash = await gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
-        value: feeAmount,
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-      });
+      const { hash: txHash, receipt } = await sendTransactionWithRetry(
+        l1PublicClient,
+        (fees) =>
+          gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
+            value: feeAmount,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
+            ...fees,
+          }),
+        {
+          receiptTimeoutMs: 30_000,
+          abi: [...gateway.abi, ...lineaRollup.abi],
+          retryOnRevert: true,
+          beforeRetry: async () => {
+            lastFinalizedState = await resolveLastFinalizedState(
+              lineaRollup,
+              l1PublicClient,
+              getDefaultLastFinalizedTimestamp(),
+            );
+          },
+        },
+      );
 
-      logger.debug(`submitForcedTransaction sent. txHash=${txHash}`);
-
-      const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
-      logger.debug(`Transaction confirmed. status=${receipt.status} blockNumber=${receipt.blockNumber}`);
+      logger.debug(
+        `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
+      );
 
       expect(receipt.status).toEqual("success");
 
       const [forcedTxEvent] = await getEvents(l1PublicClient, {
-        abi: LineaRollupV8Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "ForcedTransactionAdded",
         fromBlock: receipt.blockNumber,
@@ -382,7 +405,7 @@ describe("Forced transaction test suite", () => {
       );
 
       const [finalizedEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV8Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "FinalizedStateUpdated",
         fromBlock: receipt.blockNumber,
@@ -462,7 +485,7 @@ describe("Forced transaction test suite", () => {
       const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
 
       // Resolve finalized state
-      const lastFinalizedState = await resolveLastFinalizedState(
+      let lastFinalizedState = await resolveLastFinalizedState(
         lineaRollup,
         l1PublicClient,
         getDefaultLastFinalizedTimestamp(),
@@ -479,7 +502,7 @@ describe("Forced transaction test suite", () => {
         nonce: 0n,
         value: totalValue,
         data: callData,
-        gasLimit: 5_000_000n,
+        gasLimit: 300_000n,
         maxFeePerGas: 1_000_000_000n,
         maxPriorityFeePerGas: 100_000_000n,
       });
@@ -492,21 +515,37 @@ describe("Forced transaction test suite", () => {
       const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
 
       // Submit the forced transaction
-      const txHash = await gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
-        value: feeAmount,
-        maxPriorityFeePerGas,
-        maxFeePerGas,
-      });
+      const { hash: txHash, receipt } = await sendTransactionWithRetry(
+        l1PublicClient,
+        (fees) =>
+          gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
+            value: feeAmount,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
+            ...fees,
+          }),
+        {
+          receiptTimeoutMs: 30_000,
+          abi: [...gateway.abi, ...lineaRollup.abi],
+          retryOnRevert: true,
+          beforeRetry: async () => {
+            lastFinalizedState = await resolveLastFinalizedState(
+              lineaRollup,
+              l1PublicClient,
+              getDefaultLastFinalizedTimestamp(),
+            );
+          },
+        },
+      );
 
-      logger.debug(`submitForcedTransaction sent. txHash=${txHash}`);
-
-      const receipt = await l1PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 30_000 });
-      logger.debug(`Transaction confirmed. status=${receipt.status} blockNumber=${receipt.blockNumber}`);
+      logger.debug(
+        `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
+      );
 
       expect(receipt.status).toEqual("success");
 
       const [forcedTxEvent] = await getEvents(l1PublicClient, {
-        abi: LineaRollupV8Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "ForcedTransactionAdded",
         fromBlock: receipt.blockNumber,
@@ -528,7 +567,7 @@ describe("Forced transaction test suite", () => {
       );
 
       const [finalizedEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV8Abi,
+        abi: lineaRollup.abi,
         address: lineaRollup.address,
         eventName: "FinalizedStateUpdated",
         fromBlock: receipt.blockNumber,
