@@ -116,7 +116,7 @@ const FUNCT3_REMUW:Funct3  = 0b111
 // ======================
 // I-type funct3 values
 // ======================
-
+// LOAD
 const FUNCT3_LB:Funct3    = 0b000 // Load Byte
 const FUNCT3_LH:Funct3    = 0b001 // Load Halfword
 const FUNCT3_LW:Funct3    = 0b010 // Load Word
@@ -125,6 +125,7 @@ const FUNCT3_LBU:Funct3   = 0b100 // Load Byte Unsigned
 const FUNCT3_LHU:Funct3   = 0b101 // Load Halfword Unsigned
 const FUNCT3_LWU:Funct3   = 0b110 // Load Word Unsigned
 
+// OP_IMM
 const FUNCT3_ADDI:Funct3  = 0b000 // Add Immediate
 const FUNCT3_SLTI:Funct3  = 0b010 // Set Less Than Immediate
 const FUNCT3_SLTIU:Funct3 = 0b011 // Set Less Than Immediate Unsigned
@@ -135,6 +136,17 @@ const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
 const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
 const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate
 
+// OP_IMM_32
+const FUNCT3_ADDIW:Funct3  = 0b000 // Add Immediate Word
+const FUNCT3_SLLIW:Funct3  = 0b001 // Shift Left Logical Immediate Word
+const FUNCT3_SRLIW:Funct3  = 0b101 // Shift Right Logical Immediate Word
+const FUNCT3_SRAIW:Funct3  = 0b101 // Shift Right Arithmetic Immediate Word
+// funct7 values for FUNCT3_SRLIW and FUNCT3_SRAIW
+const FUNCT7_SRLIW:Funct7  = 0b0000000 // Shift Right Logical Immediate Word
+const FUNCT7_SRAIW:Funct7  = 0b0100000 // Shift Right Arithmetic Immediate Word
+
+
+// JALR
 const FUNCT3_JALR:Funct3  = 0b000 // JALR
 
 // ======================
@@ -167,3 +179,5 @@ const FUNCT3_BGEU:Funct3 = 0b111
 // sign extend to a DOUBLE WORD
 const DWORD_SIGN_EXT_PREFIX_52_ONES:u52 = 0b1111111111111111111111111111111111111111111111111111
 const MAX_UINT_64:u64 = 0xffffffffffffffff
+
+const MAX_INT_U32:u64 = 0xffffffff

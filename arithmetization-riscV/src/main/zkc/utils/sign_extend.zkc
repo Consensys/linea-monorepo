@@ -14,6 +14,9 @@ const SGNEXTMASK_U12:u64 = 0xFFFFFFFF_FFFFF000
 // Upper 56 bits set; OR with zero-extended u8 when sign (bit 7) is 1.
 const SGNEXTMASK_U8:u64 = 0xFFFFFFFF_FFFFFF00
 
+// Upper 52 bits set; OR with zero-extended u16 when sign (bit 15) is 1.
+const SGNEXTMASK_U12_U32:u32 = 0xFFFFE000
+
 fn sgn_extension_u64_u128(value:u64) -> (ext_value:u128) {
    // cast from u64 to u128
    ext_value = value as u128
@@ -66,4 +69,10 @@ fn sgn_extension_u8_u64(value:u8) -> (ext_value:u64) {
   if sign_bit == 1 { ext_value = SGNEXTMASK_U8 | ext_value }
 }
 
+fn sgn_extension_u12_u32(value:u12) -> (ext_value:u32) {
+  ext_value = value as u32
 
+  var sign_bit:u12
+  sign_bit = value >> 11
+  if sign_bit == 1 { ext_value = SGNEXTMASK_U12_U32 | ext_value }
+}
