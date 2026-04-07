@@ -1,0 +1,4 @@
+fn sign_bit_double_word(a : DoubleWord) -> (a_sign : SignBit) {
+  var a_suffix :u63
+  a_sign :: a_suffix = a
+}
