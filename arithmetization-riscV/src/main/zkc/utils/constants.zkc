@@ -60,11 +60,12 @@ const JAL:Opcode       = 0b1101111 // JAL
 // decoding funct3
 // ===============
 
-// ======================
-// R-type funct3 values
-// ======================
+// ===============================
+// R-type funct3 and funct7 values
+// ===============================
 
 // OP (0110011) — R-type register-register arithmetic
+// funct3 values
 const FUNCT3_ADD:Funct3    = 0b000
 const FUNCT3_SUB:Funct3    = 0b000
 const FUNCT3_SLL:Funct3    = 0b001
@@ -75,12 +76,25 @@ const FUNCT3_SRL:Funct3    = 0b101
 const FUNCT3_SRA:Funct3    = 0b101
 const FUNCT3_OR:Funct3     = 0b110
 const FUNCT3_AND:Funct3    = 0b111
+// funct7 values
+const FUNCT7_ADD:Funct7    = 0b0000000
+const FUNCT7_SUB:Funct7    = 0b0100000
+const FUNCT7_SLL:Funct7    = 0b0000000
+const FUNCT7_SLT:Funct7    = 0b0000000
+const FUNCT7_SLTU:Funct7   = 0b0000000
+const FUNCT7_XOR:Funct7    = 0b0000000
+const FUNCT7_SRL:Funct7    = 0b0000000
+const FUNCT7_SRA:Funct7    = 0b0100000
+const FUNCT7_OR:Funct7     = 0b0000000
+const FUNCT7_AND:Funct7    = 0b0000000
+
 // OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
 const FUNCT3_ADDW:Funct3   = 0b000
 const FUNCT3_SUBW:Funct3   = 0b000
 const FUNCT3_SLLW:Funct3   = 0b001
 const FUNCT3_SRLW:Funct3   = 0b101
 const FUNCT3_SRAW:Funct3   = 0b101
+
 // M extension — Integer multiplication and division
 // OP (0110011) + funct7=0000001
 const FUNCT3_MUL:Funct3    = 0b000
@@ -91,6 +105,7 @@ const FUNCT3_DIV:Funct3    = 0b100
 const FUNCT3_DIVU:Funct3   = 0b101
 const FUNCT3_REM:Funct3    = 0b110
 const FUNCT3_REMU:Funct3   = 0b111
+
 // OP-32 (0111011) + funct7=0000001
 const FUNCT3_MULW:Funct3   = 0b000
 const FUNCT3_DIVW:Funct3   = 0b100
@@ -151,3 +166,4 @@ const FUNCT3_BGEU:Funct3 = 0b111
 // Sign extension constants
 // sign extend to a DOUBLE WORD
 const DWORD_SIGN_EXT_PREFIX_52_ONES:u52 = 0b1111111111111111111111111111111111111111111111111111
+const MAX_UINT_64:u64 = 0xffffffffffffffff
