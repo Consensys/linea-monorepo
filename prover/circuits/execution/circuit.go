@@ -143,7 +143,7 @@ func MakeProof(
 		panic(err)
 	}
 
-	logrus.Infof("generated outer-circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
+	logrus.Infof("generated outer-circuit proof `%++v` for public input 0x%x", proof, funcInputs.Sum())
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)
