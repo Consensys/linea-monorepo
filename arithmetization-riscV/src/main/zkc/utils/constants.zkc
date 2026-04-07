@@ -112,6 +112,12 @@ const FUNCT3_DIVW:Funct3   = 0b100
 const FUNCT3_DIVUW:Funct3  = 0b101
 const FUNCT3_REMW:Funct3   = 0b110
 const FUNCT3_REMUW:Funct3  = 0b111
+//
+const FUNCT7_MULW:Funct7   = 0b0111011
+const FUNCT7_DIVW:Funct7   = 0b0111011
+const FUNCT7_DIVUW:Funct7  = 0b0111011
+const FUNCT7_REMW:Funct7   = 0b0111011
+const FUNCT7_REMUW:Funct7  = 0b0111011
 
 // ======================
 // I-type funct3 values
