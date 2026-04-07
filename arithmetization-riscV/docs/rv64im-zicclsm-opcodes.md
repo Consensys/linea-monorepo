@@ -67,54 +67,54 @@ Columns:
 
 #### OP (0110011) — R-type register-register arithmetic
 
-| Mnemonic | Type | Opcode    | funct3 | funct7  | Operation              | Extension |
-|----------|------|-----------|--------|---------|------------------------|-----------|
-| ADD      | R    | 0110011   | 000    | 0000000 | rd = rs1 + rs2         | RV32I     |
-| SUB      | R    | 0110011   | 000    | 0100000 | rd = rs1 − rs2         | RV32I     |
-| SLL      | R    | 0110011   | 001    | 0000000 | rd = rs1 << rs2[5:0]   | RV32I     |
-| SLT      | R    | 0110011   | 010    | 0000000 | rd = (rs1 < rs2) ? 1:0 (signed)   | RV32I |
-| SLTU     | R    | 0110011   | 011    | 0000000 | rd = (rs1 < rs2) ? 1:0 (unsigned) | RV32I |
-| XOR      | R    | 0110011   | 100    | 0000000 | rd = rs1 ^ rs2         | RV32I     |
-| SRL      | R    | 0110011   | 101    | 0000000 | rd = rs1 >> rs2[5:0] (logical)    | RV32I |
-| SRA      | R    | 0110011   | 101    | 0100000 | rd = rs1 >> rs2[5:0] (arithmetic) | RV32I |
-| OR       | R    | 0110011   | 110    | 0000000 | rd = rs1 \| rs2        | RV32I     |
-| AND      | R    | 0110011   | 111    | 0000000 | rd = rs1 & rs2         | RV32I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                         | Extension |
+|----------|------|---------|--------|---------|-----------------------------------|-----------|
+| ADD      | R    | 0110011 | 000    | 0000000 | rd = rs1 + rs2                    | RV32I     |
+| SUB      | R    | 0110011 | 000    | 0100000 | rd = rs1 − rs2                    | RV32I     |
+| SLL      | R    | 0110011 | 001    | 0000000 | rd = rs1 << rs2[5:0]              | RV32I     |
+| SLT      | R    | 0110011 | 010    | 0000000 | rd = (rs1 < rs2) ? 1:0 (signed)   | RV32I     |
+| SLTU     | R    | 0110011 | 011    | 0000000 | rd = (rs1 < rs2) ? 1:0 (unsigned) | RV32I     |
+| XOR      | R    | 0110011 | 100    | 0000000 | rd = rs1 ^ rs2                    | RV32I     |
+| SRL      | R    | 0110011 | 101    | 0000000 | rd = rs1 >> rs2[5:0] (logical)    | RV32I     |
+| SRA      | R    | 0110011 | 101    | 0100000 | rd = rs1 >> rs2[5:0] (arithmetic) | RV32I     |
+| OR       | R    | 0110011 | 110    | 0000000 | rd = rs1 \| rs2                   | RV32I     |
+| AND      | R    | 0110011 | 111    | 0000000 | rd = rs1 & rs2                    | RV32I     |
 
 #### OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
 
-| Mnemonic | Type | Opcode    | funct3 | funct7  | Operation                          | Extension |
-|----------|------|-----------|--------|---------|------------------------------------|-----------|
-| ADDW     | R    | 0111011   | 000    | 0000000 | rd = sext(rs1[31:0] + rs2[31:0])   | RV64I     |
-| SUBW     | R    | 0111011   | 000    | 0100000 | rd = sext(rs1[31:0] − rs2[31:0])   | RV64I     |
-| SLLW     | R    | 0111011   | 001    | 0000000 | rd = sext(rs1[31:0] << rs2[4:0])   | RV64I     |
-| SRLW     | R    | 0111011   | 101    | 0000000 | rd = sext(rs1[31:0] >> rs2[4:0]) (logical)    | RV64I |
-| SRAW     | R    | 0111011   | 101    | 0100000 | rd = sext(rs1[31:0] >> rs2[4:0]) (arithmetic) | RV64I |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                     | Extension |
+|----------|------|---------|--------|---------|-----------------------------------------------|-----------|
+| ADDW     | R    | 0111011 | 000    | 0000000 | rd = sext(rs1[31:0] + rs2[31:0])              | RV64I     |
+| SUBW     | R    | 0111011 | 000    | 0100000 | rd = sext(rs1[31:0] − rs2[31:0])              | RV64I     |
+| SLLW     | R    | 0111011 | 001    | 0000000 | rd = sext(rs1[31:0] << rs2[4:0])              | RV64I     |
+| SRLW     | R    | 0111011 | 101    | 0000000 | rd = sext(rs1[31:0] >> rs2[4:0]) (logical)    | RV64I     |
+| SRAW     | R    | 0111011 | 101    | 0100000 | rd = sext(rs1[31:0] >> rs2[4:0]) (arithmetic) | RV64I     |
 
 #### OP-IMM (0010011) — I-type immediate arithmetic
 
-| Mnemonic | Type | Opcode    | funct3 | funct7 / imm qualifier | Operation                          | Extension |
-|----------|------|-----------|--------|------------------------|------------------------------------|-----------|
-| ADDI     | I    | 0010011   | 000    | —                      | rd = rs1 + sext(imm12)             | RV32I     |
-| SLTI     | I    | 0010011   | 010    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (signed)   | RV32I |
-| SLTIU    | I    | 0010011   | 011    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (unsigned) | RV32I |
-| XORI     | I    | 0010011   | 100    | —                      | rd = rs1 ^ sext(imm12)             | RV32I     |
-| ORI      | I    | 0010011   | 110    | —                      | rd = rs1 \| sext(imm12)            | RV32I     |
-| ANDI     | I    | 0010011   | 111    | —                      | rd = rs1 & sext(imm12)             | RV32I     |
-| SLLI     | I    | 0010011   | 001    | imm[11:6]=000000       | rd = rs1 << imm[5:0]               | RV64I     |
-| SRLI     | I    | 0010011   | 101    | imm[11:6]=000000       | rd = rs1 >> imm[5:0] (logical)     | RV64I     |
-| SRAI     | I    | 0010011   | 101    | imm[11:6]=010000       | rd = rs1 >> imm[5:0] (arithmetic)  | RV64I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension |
+|----------|------|---------|--------|------------------------|-------------------------------------------|-----------|
+| ADDI     | I    | 0010011 | 000    | —                      | rd = rs1 + sext(imm12)                    | RV32I     |
+| SLTI     | I    | 0010011 | 010    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (signed)   | RV32I     |
+| SLTIU    | I    | 0010011 | 011    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (unsigned) | RV32I     |
+| XORI     | I    | 0010011 | 100    | —                      | rd = rs1 ^ sext(imm12)                    | RV32I     |
+| ORI      | I    | 0010011 | 110    | —                      | rd = rs1 \| sext(imm12)                   | RV32I     |
+| ANDI     | I    | 0010011 | 111    | —                      | rd = rs1 & sext(imm12)                    | RV32I     |
+| SLLI     | I    | 0010011 | 001    | imm[11:6]=000000       | rd = rs1 << imm[5:0]                      | RV64I     |
+| SRLI     | I    | 0010011 | 101    | imm[11:6]=000000       | rd = rs1 >> imm[5:0] (logical)            | RV64I     |
+| SRAI     | I    | 0010011 | 101    | imm[11:6]=010000       | rd = rs1 >> imm[5:0] (arithmetic)         | RV64I     |
 
 > Note: In RV32I SLLI/SRLI/SRAI use only imm[4:0] as the shift amount and imm[11:5] as the qualifier.
 > In RV64I the shift amount is imm[5:0] and imm[11:6] is the qualifier.
 
 #### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I)
 
-| Mnemonic | Type | Opcode    | funct3 | funct7 / imm qualifier | Operation                              | Extension |
-|----------|------|-----------|--------|------------------------|----------------------------------------|-----------|
-| ADDIW    | I    | 0011011   | 000    | —                      | rd = sext(rs1[31:0] + sext(imm12))     | RV64I     |
-| SLLIW    | I    | 0011011   | 001    | imm[11:5]=0000000      | rd = sext(rs1[31:0] << imm[4:0])       | RV64I     |
-| SRLIW    | I    | 0011011   | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I |
-| SRAIW    | I    | 0011011   | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I |
+| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                     | Extension |
+|----------|------|---------|--------|------------------------|-----------------------------------------------|-----------|
+| ADDIW    | I    | 0011011 | 000    | —                      | rd = sext(rs1[31:0] + sext(imm12))            | RV64I     |
+| SLLIW    | I    | 0011011 | 001    | imm[11:5]=0000000      | rd = sext(rs1[31:0] << imm[4:0])              | RV64I     |
+| SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |
+| SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |
 
 #### LOAD (0000011) — I-type loads
 
@@ -139,30 +139,30 @@ Columns:
 
 #### BRANCH (1100011) — B-type conditional branches
 
-| Mnemonic | Type | Opcode    | funct3 | funct7 | Operation                              | Extension |
-|----------|------|-----------|--------|--------|----------------------------------------|-----------|
-| BEQ      | B    | 1100011   | 000    | —      | if rs1 == rs2: PC += sext(imm13)       | RV32I     |
-| BNE      | B    | 1100011   | 001    | —      | if rs1 != rs2: PC += sext(imm13)       | RV32I     |
-| BLT      | B    | 1100011   | 100    | —      | if rs1 < rs2 (signed): PC += sext(imm13)   | RV32I |
-| BGE      | B    | 1100011   | 101    | —      | if rs1 >= rs2 (signed): PC += sext(imm13)  | RV32I |
-| BLTU     | B    | 1100011   | 110    | —      | if rs1 < rs2 (unsigned): PC += sext(imm13) | RV32I |
-| BGEU     | B    | 1100011   | 111    | —      | if rs1 >= rs2 (unsigned): PC += sext(imm13)| RV32I |
+| Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                                   | Extension |
+|----------|------|---------|--------|--------|---------------------------------------------|-----------|
+| BEQ      | B    | 1100011 | 000    | —      | if rs1 == rs2: PC += sext(imm13)            | RV32I     |
+| BNE      | B    | 1100011 | 001    | —      | if rs1 != rs2: PC += sext(imm13)            | RV32I     |
+| BLT      | B    | 1100011 | 100    | —      | if rs1 < rs2 (signed): PC += sext(imm13)    | RV32I     |
+| BGE      | B    | 1100011 | 101    | —      | if rs1 >= rs2 (signed): PC += sext(imm13)   | RV32I     |
+| BLTU     | B    | 1100011 | 110    | —      | if rs1 < rs2 (unsigned): PC += sext(imm13)  | RV32I     |
+| BGEU     | B    | 1100011 | 111    | —      | if rs1 >= rs2 (unsigned): PC += sext(imm13) | RV32I     |
 
 #### Upper-immediate and jump ---- letypequividelespoubelles
 
-| Mnemonic | Type | Opcode    | funct3 | funct7 | Operation                              | Extension |
-|----------|------|-----------|--------|--------|----------------------------------------|-----------|
-| LUI      | U    | 0110111   | —      | —      | rd = imm20 << 12 (zero lower 12 bits)  | RV32I     |
-| AUIPC    | U    | 0010111   | —      | —      | rd = PC + (imm20 << 12)                | RV32I     |
-| JAL      | J    | 1101111   | —      | —      | rd = PC+4; PC += sext(imm21)           | RV32I     |
-| JALR     | I    | 1100111   | 000    | —      | rd = PC+4; PC = (rs1+sext(imm12)) & ~1 | RV32I    |
+| Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                              | Extension |
+|----------|------|---------|--------|--------|----------------------------------------|-----------|
+| LUI      | U    | 0110111 | —      | —      | rd = imm20 << 12 (zero lower 12 bits)  | RV32I     |
+| AUIPC    | U    | 0010111 | —      | —      | rd = PC + (imm20 << 12)                | RV32I     |
+| JAL      | J    | 1101111 | —      | —      | rd = PC+4; PC += sext(imm21)           | RV32I     |
+| JALR     | I    | 1100111 | 000    | —      | rd = PC+4; PC = (rs1+sext(imm12)) & ~1 | RV32I     |
 
 #### MISC-MEM (0001111)
 
-| Mnemonic | Type | Opcode    | funct3 | funct7 | Operation                                         | Extension |
-|----------|------|-----------|--------|--------|---------------------------------------------------|-----------|
-| FENCE    | I    | 0001111   | 000    | —      | Ordered memory/IO fence (predecessor/successor bits in imm) | RV32I / Zifencei |
-| FENCE.I  | I    | 0001111   | 001    | —      | Instruction-fetch fence (sync I$ with D$)         | Zifencei  |
+| Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                                                   | Extension        |
+|----------|------|---------|--------|--------|-------------------------------------------------------------|------------------|
+| FENCE    | I    | 0001111 | 000    | —      | Ordered memory/IO fence (predecessor/successor bits in imm) | RV32I / Zifencei |
+| FENCE.I  | I    | 0001111 | 001    | —      | Instruction-fetch fence (sync I$ with D$)                   | Zifencei         |
 
 #### SYSTEM (1110011)
 
@@ -185,26 +185,26 @@ All M-extension instructions are R-type with **funct7 = 0000001** and share the 
 
 #### OP (0110011) + funct7=0000001
 
-| Mnemonic | Type | Opcode    | funct3 | funct7  | Operation                                          | Extension |
-|----------|------|-----------|--------|---------|----------------------------------------------------|-----------|
-| MUL      | R    | 0110011   | 000    | 0000001 | rd = (rs1 × rs2)[63:0] (lower 64 bits)             | M         |
-| MULH     | R    | 0110011   | 001    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × signed, upper)  | M         |
-| MULHSU   | R    | 0110011   | 010    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × unsigned, upper)| M         |
-| MULHU    | R    | 0110011   | 011    | 0000001 | rd = (rs1 × rs2)[127:64] (unsigned × unsigned, upper)| M       |
-| DIV      | R    | 0110011   | 100    | 0000001 | rd = rs1 / rs2 (signed, truncate toward zero)      | M         |
-| DIVU     | R    | 0110011   | 101    | 0000001 | rd = rs1 / rs2 (unsigned)                          | M         |
-| REM      | R    | 0110011   | 110    | 0000001 | rd = rs1 % rs2 (signed remainder)                  | M         |
-| REMU     | R    | 0110011   | 111    | 0000001 | rd = rs1 % rs2 (unsigned remainder)                | M         |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension |
+|----------|------|---------|--------|---------|-------------------------------------------------------|-----------|
+| MUL      | R    | 0110011 | 000    | 0000001 | rd = (rs1 × rs2)[63:0] (lower 64 bits)                | M         |
+| MULH     | R    | 0110011 | 001    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × signed, upper)     | M         |
+| MULHSU   | R    | 0110011 | 010    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × unsigned, upper)   | M         |
+| MULHU    | R    | 0110011 | 011    | 0000001 | rd = (rs1 × rs2)[127:64] (unsigned × unsigned, upper) | M         |
+| DIV      | R    | 0110011 | 100    | 0000001 | rd = rs1 / rs2 (signed, truncate toward zero)         | M         |
+| DIVU     | R    | 0110011 | 101    | 0000001 | rd = rs1 / rs2 (unsigned)                             | M         |
+| REM      | R    | 0110011 | 110    | 0000001 | rd = rs1 % rs2 (signed remainder)                     | M         |
+| REMU     | R    | 0110011 | 111    | 0000001 | rd = rs1 % rs2 (unsigned remainder)                   | M         |
 
 #### OP-32 (0111011) + funct7=0000001
 
-| Mnemonic | Type | Opcode    | funct3 | funct7  | Operation                                               | Extension |
-|----------|------|-----------|--------|---------|---------------------------------------------------------|-----------|
-| MULW     | R    | 0111011   | 000    | 0000001 | rd = sext((rs1[31:0] × rs2[31:0])[31:0])                | M (RV64)  |
-| DIVW     | R    | 0111011   | 100    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (signed)               | M (RV64)  |
-| DIVUW    | R    | 0111011   | 101    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (unsigned)             | M (RV64)  |
-| REMW     | R    | 0111011   | 110    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (signed remainder)     | M (RV64)  |
-| REMUW    | R    | 0111011   | 111    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (unsigned remainder)   | M (RV64)  |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension |
+|----------|------|---------|--------|---------|-------------------------------------------------------|-----------|
+| MULW     | R    | 0111011 | 000    | 0000001 | rd = sext((rs1[31:0] × rs2[31:0])[31:0])              | M (RV64)  |
+| DIVW     | R    | 0111011 | 100    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (signed)             | M (RV64)  |
+| DIVUW    | R    | 0111011 | 101    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (unsigned)           | M (RV64)  |
+| REMW     | R    | 0111011 | 110    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (signed remainder)   | M (RV64)  |
+| REMUW    | R    | 0111011 | 111    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (unsigned remainder) | M (RV64)  |
 
 ---
 
@@ -216,14 +216,14 @@ No new opcodes. This extension is a profile feature indicating that the hart sup
 
 ## Summary counts
 
-| Extension | Instruction count |
-|-----------|-------------------|
+| Extension | Instruction count                                                            |
+|-----------|------------------------------------------------------------------------------|
 | RV64I     | 47 (includes all RV32I instructions + *W word variants + wider loads/stores) |
-| M         | 13 (8 × 64-bit + 5 × 32-bit *W variants) |
-| Zicsr     | 6 |
-| Zifencei  | 1 |
-| Zicclsm   | 0 (behavioural) |
-| **Total** | **67** |
+| M         | 13 (8 × 64-bit + 5 × 32-bit *W variants)                                     |
+| Zicsr     | 6                                                                            |
+| Zifencei  | 1                                                                            |
+| Zicclsm   | 0 (behavioural)                                                              |
+| **Total** | **67**                                                                       |
 
 ---
 
