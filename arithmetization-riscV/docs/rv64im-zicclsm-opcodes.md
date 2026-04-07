@@ -175,14 +175,14 @@ All M-extension instructions are R-type with **funct7 = 0000001** and share the 
 
 | Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension | Status |
 |----------|------|---------|--------|---------|-------------------------------------------------------|-----------|:------:|
-| MUL      | R    | 0110011 | 000    | 0000001 | rd = (rs1 × rs2)[63:0] (lower 64 bits)                | M         |    ∅   |
-| MULH     | R    | 0110011 | 001    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × signed, upper)     | M         |    ∅   |
-| MULHSU   | R    | 0110011 | 010    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × unsigned, upper)   | M         |    ∅   |
-| MULHU    | R    | 0110011 | 011    | 0000001 | rd = (rs1 × rs2)[127:64] (unsigned × unsigned, upper) | M         |    ∅   |
-| DIV      | R    | 0110011 | 100    | 0000001 | rd = rs1 / rs2 (signed, truncate toward zero)         | M         |    ∅   |
-| DIVU     | R    | 0110011 | 101    | 0000001 | rd = rs1 / rs2 (unsigned)                             | M         |    ∅   |
-| REM      | R    | 0110011 | 110    | 0000001 | rd = rs1 % rs2 (signed remainder)                     | M         |    ∅   |
-| REMU     | R    | 0110011 | 111    | 0000001 | rd = rs1 % rs2 (unsigned remainder)                   | M         |    ∅   |
+| MUL      | R    | 0110011 | 000    | 0000001 | rd = (rs1 × rs2)[63:0] (lower 64 bits)                | M         |    ✓   |
+| MULH     | R    | 0110011 | 001    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × signed, upper)     | M         |    ✓   |
+| MULHSU   | R    | 0110011 | 010    | 0000001 | rd = (rs1 × rs2)[127:64] (signed × unsigned, upper)   | M         |    ✓   |
+| MULHU    | R    | 0110011 | 011    | 0000001 | rd = (rs1 × rs2)[127:64] (unsigned × unsigned, upper) | M         |    ✓   |
+| DIV      | R    | 0110011 | 100    | 0000001 | rd = rs1 / rs2 (signed, truncate toward zero)         | M         |    ✓   |
+| DIVU     | R    | 0110011 | 101    | 0000001 | rd = rs1 / rs2 (unsigned)                             | M         |    ✓   |
+| REM      | R    | 0110011 | 110    | 0000001 | rd = rs1 % rs2 (signed remainder)                     | M         |    ✓   |
+| REMU     | R    | 0110011 | 111    | 0000001 | rd = rs1 % rs2 (unsigned remainder)                   | M         |    ✓   |
 
 #### OP-32 (0111011) + funct7=0000001 --- @Olivier
 

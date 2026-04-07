@@ -95,6 +95,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = v1 & v2
   }
 
+  // Support variables to do not make multiplication overflow
   var v1_as_u128:u128 = registers[rs1] as u128
   var v2_as_u128:u128 = registers[rs2] as u128
 
