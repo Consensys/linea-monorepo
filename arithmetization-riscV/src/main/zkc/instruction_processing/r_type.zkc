@@ -1,4 +1,5 @@
 include "../utils/absolute_value.zkc"
+include "../utils/bit_flip.zkc"
 include "../utils/signed_comparisons.zkc"
 include "../utils/sign_bit.zkc"
 
@@ -17,7 +18,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var v2_abs         : UnsignedDoubleWord
   var shift_discard  : u58
   var shift_amount   : u6
-  var v1_bit_flipped : DoubleWord
+  var res_working_copy : DoubleWord
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -58,11 +59,17 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  {
     shift_discard :: shift_amount = v2
     if (v1_sign == 1) {
-      v1_bit_flipped = MAX_UINT_64 ^ v1
+      res_working_copy = bit_flip_double_word(v1)
     } else {
-      v1_bit_flipped = v1
+      res_working_copy = v1
     }
-  if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
+    res_working_copy = res_working_copy >> shift_amount
+    if (v1_sign == 1) {
+      res_working_copy = bit_flip_double_word(res_working_copy)
+    }
+    registers[rd] = res_working_copy
+    }
+    if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
   }
 
@@ -70,15 +77,15 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var sgnext_rs2:u128 = sgn_extension_u64_u128(registers[rs2])
 
   if funct3 == FUNCT3_MUL {
-    registers[rd] = ((registers[rs1] * registers[rs2]) & 0xFFFFFFFFFFFFFFFF) as u64
+    registers[rd] = ((registers[rs1] * registers[rs2]) & MAX_UINT_64) as u64
   }
 
   if funct3 == FUNCT3_MULH {
-    registers[rd] = (((sgnext_rs1 * sgnext_rs2) >> (128 + 64)) & 0xFFFFFFFFFFFFFFFF) as u64
+    registers[rd] = (((sgnext_rs1 * sgnext_rs2) >> (128 + 64)) & (MAX_UINT_64 as u128)) as u64
   }
 
   if funct3 == FUNCT3_MULHSU {
-    registers[rd] = (((sgnext_rs1 * (rs2 as u128)) >> (128 + 64)) & 0xFFFFFFFFFFFFFFFF) as u64
+    registers[rd] = (((sgnext_rs1 * (rs2 as u128)) >> (128 + 64)) & (MAX_UINT_64 as u128)) as u64
   }
 
   if funct3 == FUNCT3_MULHU {
@@ -100,5 +107,4 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   if funct3 == FUNCT3_REMU {
 
   }
-}
 }
