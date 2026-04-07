@@ -107,7 +107,7 @@ Columns:
 > Note: In RV32I SLLI/SRLI/SRAI use only imm[4:0] as the shift amount and imm[11:5] as the qualifier.
 > In RV64I the shift amount is imm[5:0] and imm[11:6] is the qualifier.
 
-#### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I)
+#### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I) @letypequividelespoubelles
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                     | Extension |
 |----------|------|---------|--------|------------------------|-----------------------------------------------|-----------|
