@@ -135,19 +135,38 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
           registers[rd] = negative(registers[rd])
         }
       }
-    }
+    } 
   }
 
   if funct3 == FUNCT3_DIVU {
-
+    if v2 == 0 {
+      registers[rd] = MAX_UINT_64
+    } else {
+      registers[rd] = v1 / v2
+    } 
   }
 
   if funct3 == FUNCT3_REM {
-
+    if v2 == 0 {
+      registers[rd] = 1
+    } else {
+      if (v1 == OVERFLOW_DIVIDEND) && (v2 == MAX_UINT_64) {
+        registers[rd] = 0
+      } else {
+        registers[rd] = v1_abs % v2_abs
+        if (v1_sign ^ v2_sign) == 1 {
+          registers[rd] = negative(registers[rd])
+        }
+      }
+    } 
   }
 
   if funct3 == FUNCT3_REMU {
-
+    if v2 == 0 {
+      registers[rd] = v1
+    } else {
+      registers[rd] = v1 % v2
+    } 
   }
 
   if ( funct3 == FUNCT3_MULW  ) && ( funct7 == FUNCT7_MULW  ) {
