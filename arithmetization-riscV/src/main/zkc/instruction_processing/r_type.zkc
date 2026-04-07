@@ -117,7 +117,18 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_DIV {
-
+    if v2 == 0 {
+      registers[rd] = MAX_UINT_64
+    } else {
+      if (v1 == OVERFLOW_DIVIDEND) && (v2 == MAX_UINT_64) {
+        registers[rd] = OVERFLOW_DIVIDEND
+      } else {
+        registers[rd] = v1_abs / v2_abs
+        if (v1_sign ^ v2_sign) == 1 {
+          registers[rd] = negative(registers[rd])
+        }
+      }
+    } 
   }
 
   if funct3 == FUNCT3_DIVU {

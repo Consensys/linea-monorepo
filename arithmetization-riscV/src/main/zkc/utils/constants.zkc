@@ -182,3 +182,4 @@ const MAX_UINT_64:u64 = 0xffffffffffffffff
 const MAX_UINT_64_AS_U128:u128 = 0xffffffffffffffff
 const MAX_INT_U32:u64 = 0xffffffff
 
+const OVERFLOW_DIVIDEND:u64 = 0x8000000000000000
