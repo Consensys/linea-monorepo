@@ -90,7 +90,7 @@ Columns:
 | SRLW     | R    | 0111011 | 101    | 0000000 | rd = sext(rs1[31:0] >> rs2[4:0]) (logical)    | RV64I     |
 | SRAW     | R    | 0111011 | 101    | 0100000 | rd = sext(rs1[31:0] >> rs2[4:0]) (arithmetic) | RV64I     |
 
-#### OP-IMM (0010011) — I-type immediate arithmetic --- implementer: @letypequividelespoubelles
+#### OP-IMM (0010011) — I-type immediate arithmetic
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension |
 |----------|------|---------|--------|------------------------|-------------------------------------------|-----------|
