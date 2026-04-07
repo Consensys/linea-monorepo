@@ -67,18 +67,18 @@ Columns:
 
 #### OP (0110011) — R-type register-register arithmetic --- @Olivier
 
-| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                         | Extension |
-|----------|------|---------|--------|---------|-----------------------------------|-----------|
-| ADD      | R    | 0110011 | 000    | 0000000 | rd = rs1 + rs2                    | RV32I     |
-| SUB      | R    | 0110011 | 000    | 0100000 | rd = rs1 − rs2                    | RV32I     |
-| SLL      | R    | 0110011 | 001    | 0000000 | rd = rs1 << rs2[5:0]              | RV32I     |
-| SLT      | R    | 0110011 | 010    | 0000000 | rd = (rs1 < rs2) ? 1:0 (signed)   | RV32I     |
-| SLTU     | R    | 0110011 | 011    | 0000000 | rd = (rs1 < rs2) ? 1:0 (unsigned) | RV32I     |
-| XOR      | R    | 0110011 | 100    | 0000000 | rd = rs1 ^ rs2                    | RV32I     |
-| SRL      | R    | 0110011 | 101    | 0000000 | rd = rs1 >> rs2[5:0] (logical)    | RV32I     |
-| SRA      | R    | 0110011 | 101    | 0100000 | rd = rs1 >> rs2[5:0] (arithmetic) | RV32I     |
-| OR       | R    | 0110011 | 110    | 0000000 | rd = rs1 \| rs2                   | RV32I     |
-| AND      | R    | 0110011 | 111    | 0000000 | rd = rs1 & rs2                    | RV32I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                         | Extension | Status |
+|----------|------|---------|--------|---------|-----------------------------------|-----------|:------:|
+| ADD      | R    | 0110011 | 000    | 0000000 | rd = rs1 + rs2                    | RV32I     |    ✓   |
+| SUB      | R    | 0110011 | 000    | 0100000 | rd = rs1 − rs2                    | RV32I     |    ✓   |
+| SLL      | R    | 0110011 | 001    | 0000000 | rd = rs1 << rs2[5:0]              | RV32I     |    ✓   |
+| SLT      | R    | 0110011 | 010    | 0000000 | rd = (rs1 < rs2) ? 1:0 (signed)   | RV32I     |    ✓   |
+| SLTU     | R    | 0110011 | 011    | 0000000 | rd = (rs1 < rs2) ? 1:0 (unsigned) | RV32I     |    ✓   |
+| XOR      | R    | 0110011 | 100    | 0000000 | rd = rs1 ^ rs2                    | RV32I     |    ✓   |
+| SRL      | R    | 0110011 | 101    | 0000000 | rd = rs1 >> rs2[5:0] (logical)    | RV32I     |    ✓   |
+| SRA      | R    | 0110011 | 101    | 0100000 | rd = rs1 >> rs2[5:0] (arithmetic) | RV32I     |    ✓   |
+| OR       | R    | 0110011 | 110    | 0000000 | rd = rs1 \| rs2                   | RV32I     |    ✓   |
+| AND      | R    | 0110011 | 111    | 0000000 | rd = rs1 & rs2                    | RV32I     |    ✓   |
 
 #### OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
 

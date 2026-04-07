@@ -1,6 +1,6 @@
 fn negative(a : DoubleWord) -> (a_neg : DoubleWord) {
   var a_sign : SignBit
-  a_sign = sign_bit(a)
+  a_sign = sign_bit_double_word(a)
   if a == 0 {
     a_neg = 0
     } else {

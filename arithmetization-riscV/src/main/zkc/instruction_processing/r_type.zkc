@@ -2,6 +2,7 @@ include "../utils/absolute_value.zkc"
 include "../utils/bit_flip.zkc"
 include "../utils/signed_comparisons.zkc"
 include "../utils/sign_bit.zkc"
+include "../utils/negative.zkc"
 
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
@@ -34,8 +35,8 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   // Note. If x = 0b... and y = 0b... are two bit strings of length N
   // and you interpret them either as uintN or intN, then the underlying
-  // bit string of their additions is the same whether added as signed or
-  // unsigned integers. This also holds for subtraction.
+  // bit string of their additions is the same in both interpretations.
+  // This also holds for subtraction.
   if (funct3 == FUNCT3_ADD)  && (funct7 == FUNCT7_ADD)  {
     overflow :: res_working_copy = (v1 as u65) + (v2 as u65)
     registers[rd] = res_working_copy
@@ -82,25 +83,37 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     }
     if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
+    }
+    if (funct3 == FUNCT3_AND)   && (funct7 == FUNCT7_AND)   {
+    registers[rd] = v1 & v2
   }
 
   var v1_as_u128:u128 = registers[rs1] as u128
   var v2_as_u128:u128 = registers[rs2] as u128
+
+  var v1_abs_as_u128:u128 = v1_abs as u128
+  var v2_abs_as_u128:u128 = v2_abs as u128
 
   if funct3 == FUNCT3_MUL {
     registers[rd] = ((v1_as_u128 * v1_as_u128) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_MULH {
-  
+    registers[rd] = (((v1_abs_as_u128 * v2_abs_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
+    if (v1_sign ^ v2_sign) == 1 {
+      registers[rd] = negative(registers[rd])
+    }
   }
 
   if funct3 == FUNCT3_MULHSU {
-    
+    registers[rd] = (((v1_abs_as_u128 * v2_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
+    if v1_sign == 1 {
+      registers[rd] = negative(registers[rd])
+    }
   }
 
   if funct3 == FUNCT3_MULHU {
-  
+    registers[rd] = (((v1_as_u128 * v2_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_DIV {
