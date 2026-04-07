@@ -1,0 +1,15 @@
+fn negative(a : DoubleWord) (a_neg UnsignedDoubleWord) {
+  var a_sign : SignBit
+  a_sign = sign_bit(a)
+  if a == 0 {
+    a_neg = 0
+    } else {
+    if a_sign == 0 {
+    // this syntax is correct: consider a = 1
+    a_neg = MAX_UINT_64 - (a - 1)
+  } else {
+    // this syntax is correct: consider a = -1
+    a_neg = (MAX_UINT_64 - a) + 1
+  }
+  }
+}
