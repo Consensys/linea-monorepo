@@ -137,7 +137,7 @@ Columns:
 | SW       | S    | 0100011 | 010    | —      | M[rs1+sext(imm12)][31:0] = rs2[31:0] | RV32I     |    ✓   |
 | SD       | S    | 0100011 | 011    | —      | M[rs1+sext(imm12)][63:0] = rs2[63:0] | RV64I     |    ✓   |
 
-#### BRANCH (1100011) — B-type conditional branches
+#### BRANCH (1100011) — B-type conditional branches @Olivier
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 | Operation                                   | Extension | Status |
 |----------|------|---------|--------|--------|---------------------------------------------|-----------|--------|
