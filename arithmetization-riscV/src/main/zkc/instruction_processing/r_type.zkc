@@ -19,6 +19,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var shift_discard  : u58
   var shift_amount   : u6
   var res_working_copy : DoubleWord
+  var overflow       : SignBit
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -32,8 +33,11 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   v2_abs = absolute_value_double_word(v2)
 
   if (funct3 == FUNCT3_ADD)  && (funct7 == FUNCT7_ADD)  {
+    overflow :: res_working_copy = (v1 as u65) + (v2 as u65)
+    registers[rd] = res_working_copy
   }
-  if (funct3 == FUNCT3_SUB)  && (funct7 == FUNCT7_SUB)  { }
+  if (funct3 == FUNCT3_SUB)  && (funct7 == FUNCT7_SUB)  {
+  }
   if (funct3 == FUNCT3_SLL)  && (funct7 == FUNCT7_SLL)  {
     shift_discard :: shift_amount = v2
     registers[rd] = v2 << shift_amount
@@ -43,7 +47,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
   if (funct3 == FUNCT3_SLTU) && (funct7 == FUNCT7_SLTU) {
 
-    if (v1_abs < v2_abs) {
+    if (v1 < v2) {
     registers[rd] = 1
     } else {
     registers[rd] = 0
