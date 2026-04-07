@@ -135,11 +135,15 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
           registers[rd] = negative(registers[rd])
         }
       }
-    }
+    } 
   }
 
   if funct3 == FUNCT3_DIVU {
-
+    if v2 == 0 {
+      registers[rd] = MAX_UINT_64
+    } else {
+      registers[rd] = v1 / v2
+    } 
   }
 
   if funct3 == FUNCT3_REM {
