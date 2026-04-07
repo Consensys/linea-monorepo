@@ -1,12 +1,15 @@
-import { ChangeEvent, useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import { isAddress } from "viem";
+import { ChangeEvent, useState } from "react";
+
 import clsx from "clsx";
-import Modal from "@/components/modal";
-import styles from "./destination-address.module.scss";
-import Button from "@/components/ui/button";
+import { isAddress } from "viem";
+import { useConnection } from "wagmi";
+
 import XCircleIcon from "@/assets/icons/x-circle.svg";
-import { useFormStore } from "@/stores";
+import Modal from "@/components/modal";
+import Button from "@/components/ui/button";
+import { useFormStore } from "@/stores/formStoreProvider";
+
+import styles from "./destination-address.module.scss";
 
 type Props = {
   isModalOpen: boolean;
@@ -16,20 +19,13 @@ type Props = {
 const type = "error";
 
 export default function DestinationAddress({ isModalOpen, onCloseModal }: Props) {
-  const { address } = useAccount();
+  const { address } = useConnection();
 
   const recipient = useFormStore((state) => state.recipient);
   const setRecipient = useFormStore((state) => state.setRecipient);
   const [inputValue, setInputValue] = useState(recipient);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (inputValue && !isAddress(inputValue)) {
-      setError("Invalid address");
-    } else {
-      setError(null);
-    }
-  }, [inputValue]);
+  const error = inputValue && !isAddress(inputValue) ? "Invalid address" : null;
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(() => e.target.value as `0x${string}`);

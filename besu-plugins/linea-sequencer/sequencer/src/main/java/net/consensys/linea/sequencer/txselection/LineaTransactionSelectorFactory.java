@@ -14,13 +14,16 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import linea.blob.BlobCompressorSelectorByTimestamp;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -29,10 +32,13 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
+import net.consensys.linea.utils.TransactionCompressor;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -57,12 +63,17 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final ForcedTransactionPoolService forcedTransactionPoolService;
   private final Optional<LivenessService> livenessService;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents;
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents;
+  private final AtomicReference<Set<Address>> deniedAddresses;
   private final AtomicBoolean isSelectionInterrupted = new AtomicBoolean(false);
+  private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
+  private final TransactionCompressor transactionCompressor;
+  private final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp;
 
   public LineaTransactionSelectorFactory(
       final BlockchainService blockchainService,
@@ -74,9 +85,14 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService,
+      final ForcedTransactionPoolService forcedTransactionPoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
-      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents) {
+      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final AtomicReference<Set<Address>> deniedAddresses,
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
+      final TransactionCompressor transactionCompressor,
+      final BlobCompressorSelectorByTimestamp blobCompressorSelectorByTimestamp) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -85,14 +101,28 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.forcedTransactionPoolService = forcedTransactionPoolService;
     this.livenessService = livenessService;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.deniedEvents = deniedEvents;
     this.deniedBundleEvents = deniedBundleEvents;
+    this.deniedAddresses = deniedAddresses;
+    this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
+    this.transactionCompressor = transactionCompressor;
+    this.blobCompressorSelectorByTimestamp = blobCompressorSelectorByTimestamp;
+
+    if (txSelectorConfiguration.maxBlockCallDataSize() != null) {
+      log.warn(
+          "DEPRECATION: --plugin-linea-max-block-calldata-size is deprecated and will be removed "
+              + "in a future release. Use --plugin-linea-blob-size-limit instead for "
+              + "compression-aware block building.");
+    }
   }
 
   @Override
-  public PluginTransactionSelector create(final SelectorsStateManager selectorsStateManager) {
+  public PluginTransactionSelector create(
+      final ProcessableBlockHeader pendingBlockHeader,
+      final SelectorsStateManager selectorsStateManager) {
     final var selector =
         new LineaTransactionSelector(
             selectorsStateManager,
@@ -105,16 +135,27 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             maybeProfitabilityMetrics,
             invalidTransactionByLineCountCache,
             deniedEvents,
-            deniedBundleEvents);
+            deniedBundleEvents,
+            deniedAddresses,
+            transactionProfitabilityCalculator,
+            transactionCompressor,
+            blobCompressorSelectorByTimestamp);
     currSelector.set(selector);
     return selector;
   }
 
+  @Override
   public void selectPendingTransactions(
-      final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
+      final BlockTransactionSelectionService bts,
+      final ProcessableBlockHeader pendingBlockHeader,
+      final List<? extends PendingTransaction> candidatePendingTransactions) {
     try {
-      // check and send liveness bundle if any
-      checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
+      final boolean livenessTransactionSelected =
+          checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
+
+      if (!livenessTransactionSelected) {
+        forcedTransactionPoolService.processForBlock(pendingBlockHeader.getNumber(), bts);
+      }
 
       final var bundlesByBlockNumber =
           bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
@@ -188,46 +229,56 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     }
   }
 
-  private void checkAndSendLivenessBundle(
+  /**
+   * Checks if a liveness bundle should be sent and evaluates it.
+   *
+   * @param bts the block transaction selection service
+   * @param pendingBlockNumber the pending block number
+   * @return true if a liveness transaction was selected, false otherwise
+   */
+  private boolean checkAndSendLivenessBundle(
       BlockTransactionSelectionService bts, long pendingBlockNumber) {
+    if (livenessService.isEmpty()) {
+      return false;
+    }
+    final var livenessService = this.livenessService.get();
     final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
 
     Optional<TransactionBundle> livenessBundle =
-        livenessService.isPresent()
-            ? livenessService
-                .get()
-                .checkBlockTimestampAndBuildBundle(
-                    Instant.now().getEpochSecond(), headBlockTimestamp, pendingBlockNumber)
-            : Optional.empty();
+        livenessService.checkBlockTimestampAndBuildBundle(
+            Instant.now().getEpochSecond(), headBlockTimestamp, pendingBlockNumber);
 
-    if (livenessBundle.isPresent()) {
-      log.trace("Starting evaluation of liveness bundle {}", livenessBundle.get());
-      var badBundleRes =
-          livenessBundle.get().pendingTransactions().stream()
-              .map(bts::evaluatePendingTransaction)
-              .filter(evalRes -> !evalRes.selected())
-              .findFirst();
+    if (livenessBundle.isEmpty()) {
+      return false;
+    }
 
-      if (badBundleRes.isPresent()) {
-        final var notSelectedReason = badBundleRes.get();
+    log.trace("Starting evaluation of liveness bundle {}", livenessBundle.get());
+    var badBundleRes =
+        livenessBundle.get().pendingTransactions().stream()
+            .map(bts::evaluatePendingTransaction)
+            .filter(evalRes -> !evalRes.selected())
+            .findFirst();
 
-        if (isSelectionInterrupted(notSelectedReason)) {
-          isSelectionInterrupted.set(true);
-          log.debug(
-              "Bundle selection interrupted while processing liveness bundle {}, reason {}",
-              livenessBundle.get(),
-              notSelectedReason);
-        } else {
-          log.debug(
-              "Failed liveness bundle {}, reason {}", livenessBundle.get(), notSelectedReason);
-        }
-        livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
-        rollback(bts);
+    if (badBundleRes.isPresent()) {
+      final var notSelectedReason = badBundleRes.get();
+
+      if (isSelectionInterrupted(notSelectedReason)) {
+        isSelectionInterrupted.set(true);
+        log.debug(
+            "Bundle selection interrupted while processing liveness bundle {}, reason {}",
+            livenessBundle.get(),
+            notSelectedReason);
       } else {
-        log.debug("Selected liveness bundle {}", livenessBundle.get());
-        livenessService.get().updateUptimeMetrics(true, headBlockTimestamp);
-        commit(bts);
+        log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), notSelectedReason);
       }
+      livenessService.updateUptimeMetrics(false, headBlockTimestamp);
+      rollback(bts);
+      return false;
+    } else {
+      log.debug("Selected liveness bundle {}", livenessBundle.get());
+      livenessService.updateUptimeMetrics(true, headBlockTimestamp);
+      commit(bts);
+      return true;
     }
   }
 

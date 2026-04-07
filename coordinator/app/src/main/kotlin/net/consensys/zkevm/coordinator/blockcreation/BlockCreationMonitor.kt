@@ -1,7 +1,6 @@
 package net.consensys.zkevm.coordinator.blockcreation
 
 import io.vertx.core.Vertx
-import kotlinx.datetime.Instant
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.EthApiBlockClient
@@ -19,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 class BlockCreationMonitor(
   private val vertx: Vertx,
@@ -72,27 +72,28 @@ class BlockCreationMonitor(
   fun awaitStartingBlockToBePresent(): SafeFuture<*> {
     if (statingBlockAvailabilityFuture == null) {
       log.info("Awaiting for block {} to be present", startingBlockNumberExclusive)
-      statingBlockAvailabilityFuture = AsyncRetryer.retry(
-        vertx,
-        backoffDelay = config.pollingInterval,
-        timeout = config.startingBlockWaitTimeout,
-        stopRetriesPredicate = { block: Block? ->
-          if (block == null) {
-            log.warn(
-              "block={} not found yet. Retrying in {}",
-              startingBlockNumberExclusive,
-              config.pollingInterval,
-            )
-            false
-          } else {
-            log.info("Block {} found. Resuming block monitor", startingBlockNumberExclusive)
-            expectedParentBlockHash.set(block.hash)
-            true
-          }
-        },
-      ) {
-        ethApi.ethGetBlockByNumberFullTxs(startingBlockNumberExclusive.toBlockParameter())
-      }
+      statingBlockAvailabilityFuture =
+        AsyncRetryer.retry(
+          vertx,
+          backoffDelay = config.pollingInterval,
+          timeout = config.startingBlockWaitTimeout,
+          stopRetriesPredicate = { block: Block? ->
+            if (block == null) {
+              log.warn(
+                "block={} not found yet. Retrying in {}",
+                startingBlockNumberExclusive,
+                config.pollingInterval,
+              )
+              false
+            } else {
+              log.info("Block {} found. Resuming block monitor", startingBlockNumberExclusive)
+              expectedParentBlockHash.set(block.hash)
+              true
+            }
+          },
+        ) {
+          ethApi.ethGetBlockByNumberFullTxs(startingBlockNumberExclusive.toBlockParameter())
+        }
     }
 
     return statingBlockAvailabilityFuture!!
@@ -111,7 +112,6 @@ class BlockCreationMonitor(
             _nexBlockNumberToFetch.get() - lastProvenBlockNumber,
             config.blocksFetchLimit,
           )
-          this.stop()
           SafeFuture.COMPLETE
         } else if (config.lastL2BlockNumberToProcessInclusive != null &&
           nexBlockNumberToFetch.toULong() > config.lastL2BlockNumberToProcessInclusive
@@ -138,7 +138,6 @@ class BlockCreationMonitor(
                       block.number,
                       block.timestamp,
                       Instant.fromEpochSeconds(block.timestamp.toLong()),
-
                     )
                     this.stop()
                   }

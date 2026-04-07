@@ -5,8 +5,6 @@ import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.domain.BlockIntervals
 import linea.domain.toBlockIntervalsString
 import linea.kotlin.decodeHex
@@ -21,6 +19,8 @@ import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class PostgresAggregationsDao(
   connection: SqlClient,
@@ -235,9 +235,7 @@ class PostgresAggregationsDao(
     }
   }
 
-  override fun findConsecutiveProvenBlobs(
-    fromBlockNumber: Long,
-  ): SafeFuture<List<BlobAndBatchCounters>> {
+  override fun findConsecutiveProvenBlobs(fromBlockNumber: Long): SafeFuture<List<BlobAndBatchCounters>> {
     return selectBatchesAndBlobsForAggregation
       .execute(Tuple.of(fromBlockNumber))
       .toSafeFuture()
@@ -333,9 +331,7 @@ class PostgresAggregationsDao(
       }
   }
 
-  override fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long?,
-  ): SafeFuture<Long?> {
+  override fun findHighestConsecutiveEndBlockNumber(fromBlockNumber: Long?): SafeFuture<Long?> {
     return if (fromBlockNumber != null) {
       SafeFuture.completedFuture(fromBlockNumber)
     } else {

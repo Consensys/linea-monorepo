@@ -12,12 +12,14 @@ on:
     paths:
       - "operations/**"
       - ".github/workflows/all-tools.yml"
+      - ".nvmrc"
   pull_request:
     branches:
       - main
     paths:
       - "operations/**"
       - ".github/workflows/all-tools.yml"
+      - ".nvmrc"
 
 jobs:
   changes:
@@ -39,6 +41,7 @@ jobs:
               - 'operations/**'
               - '.github/workflows/all-tools.yml'
               - '.github/workflows/reuse-*.yml'
+              - '.nvmrc'
 
   store_image_name_and_tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
@@ -94,8 +97,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: true
+
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
@@ -117,6 +119,11 @@ jobs:
         run: |
           echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
           echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> GITHUB_ENV
+      
+      - name: "Get Node.js version"
+        id: get-node-version
+        uses: ./.github/actions/get-node-version
+      
       - name: Build and push all tools image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 #v6.18.0
         with:
@@ -128,6 +135,8 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
 
   notify:
     needs:
@@ -138,9 +147,11 @@ jobs:
         all-tools-tag-only,
         build-and-publish,
       ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && (needs.changes.result == 'failure' || needs.store_image_name_and_tags.result == 'failure' || needs.check_image_tags_exist.result == 'failure' || needs.all-tools-tag-only.result == 'failure' || needs.build-and-publish.result == 'failure') }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: "All tools workflow failed"
       run_id: ${{ github.run_id }}
-    secrets: inherit
+    secrets:
+      channel_id: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
+      slack_bot_token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}

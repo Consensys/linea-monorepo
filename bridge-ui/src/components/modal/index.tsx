@@ -1,9 +1,12 @@
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "motion/react";
-import CloseIcon from "@/assets/icons/close.svg";
-import styles from "./modal.module.scss";
-import { JSX, useEffect, useState } from "react";
+import { JSX, useSyncExternalStore } from "react";
+
 import clsx from "clsx";
+import { motion, AnimatePresence } from "motion/react";
+import { createPortal } from "react-dom";
+
+import CloseIcon from "@/assets/icons/close.svg";
+
+import styles from "./modal.module.scss";
 
 type Props = {
   isOpen: boolean;
@@ -15,14 +18,12 @@ type Props = {
   modalHeader?: JSX.Element;
 };
 
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 const Modal = ({ isOpen, onClose, children, title, isDrawer = false, size = "md", modalHeader }: Props) => {
-  const [mounted, setMounted] = useState<boolean>(false);
-
-  useEffect(() => {
-    setMounted(true);
-
-    return () => setMounted(false);
-  }, []);
+  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const overlayAnimation = {
     hidden: { opacity: 0 },

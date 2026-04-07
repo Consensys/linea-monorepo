@@ -6,18 +6,21 @@ import linea.coordinator.config.v2.toml.RequestRetriesToml
 import linea.coordinator.config.v2.toml.parseConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class DataBaseConfigParsingTest {
   companion object {
-    val toml = """
+    val toml =
+      """
       [database]
       hostname = "localhost"
       port = "5432"
       username = "someuser"
       password = "somepassword"
       schema = "linea_coordinator"
+      schema_version = 5
       read_pool_size = 10
       read_pipelining_limit = 11
       transactional_pool_size = 12
@@ -25,49 +28,59 @@ class DataBaseConfigParsingTest {
       max-retries = 3
       backoff-delay = "PT1S"
       timeout = "PT40S"
+      ignore-first-exceptions-until-time-elapsed = "PT1H"
       failures-warning-threshold = 2
-    """.trimIndent()
+      """.trimIndent()
 
-    val config = DatabaseToml(
-      hostname = "localhost",
-      username = "someuser",
-      password = Masked("somepassword"),
-      schema = "linea_coordinator",
-      readPoolSize = 10,
-      readPipeliningLimit = 11,
-      transactionalPoolSize = 12,
-      port = 5432u,
-      persistenceRetries = RequestRetriesToml(
-        maxRetries = 3u,
-        backoffDelay = 1.seconds,
-        timeout = 40.seconds,
-        failuresWarningThreshold = 2u,
-      ),
-    )
+    val config =
+      DatabaseToml(
+        hostname = "localhost",
+        username = "someuser",
+        password = Masked("somepassword"),
+        schema = "linea_coordinator",
+        schemaVersion = 5,
+        readPoolSize = 10,
+        readPipeliningLimit = 11,
+        transactionalPoolSize = 12,
+        port = 5432u,
+        persistenceRetries =
+        RequestRetriesToml(
+          maxRetries = 3u,
+          backoffDelay = 1.seconds,
+          timeout = 40.seconds,
+          failuresWarningThreshold = 2u,
+          ignoreFirstExceptionsUntilTimeElapsed = 1.hours,
+        ),
+      )
 
-    val tomlMinimal = """
+    val tomlMinimal =
+      """
       [database]
       hostname = "localhost"
       username = "someuser"
       password = "somepassword"
-    """.trimIndent()
+      """.trimIndent()
 
-    val configMinimal = DatabaseToml(
-      hostname = "localhost",
-      username = "someuser",
-      password = Masked("somepassword"),
-      schema = "linea_coordinator",
-      readPoolSize = 10,
-      readPipeliningLimit = 10,
-      transactionalPoolSize = 10,
-      port = 5432u,
-      persistenceRetries = RequestRetriesToml(
-        maxRetries = null,
-        backoffDelay = 1.seconds,
-        timeout = 10.minutes,
-        failuresWarningThreshold = 3u,
-      ),
-    )
+    val configMinimal =
+      DatabaseToml(
+        hostname = "localhost",
+        username = "someuser",
+        password = Masked("somepassword"),
+        schema = "linea_coordinator",
+        schemaVersion = 4,
+        readPoolSize = 10,
+        readPipeliningLimit = 10,
+        transactionalPoolSize = 10,
+        port = 5432u,
+        persistenceRetries =
+        RequestRetriesToml(
+          maxRetries = null,
+          backoffDelay = 1.seconds,
+          timeout = 10.minutes,
+          ignoreFirstExceptionsUntilTimeElapsed = null,
+          failuresWarningThreshold = 3u,
+        ),
+      )
   }
 
   data class WrapperConfig(

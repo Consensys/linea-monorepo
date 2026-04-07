@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
+
 import { get1559Fees } from "../../utils";
 
 config();
@@ -47,7 +48,7 @@ type TrackingData = {
 function isValidUrl(urlString: string): boolean {
   try {
     return Boolean(new URL(urlString));
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -287,8 +288,8 @@ async function main() {
         type: 2,
         data: encodedExecuteTransactionWithRole,
         chainId,
-        maxFeePerGas: fees.maxFeePerGas,
-        maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        maxFeePerGas: fees.maxFeePerGas!,
+        maxPriorityFeePerGas: fees.maxPriorityFeePerGas!,
         nonce,
       };
 
@@ -306,7 +307,9 @@ async function main() {
         recipients: batch.recipients,
         tokenAmount: batch.amount,
         status: BatchStatuses.Pending,
-        transactionHash: transactionInfo.transactionResponse.hash,
+        ...(transactionInfo.transactionResponse.hash
+          ? { transactionHash: transactionInfo.transactionResponse.hash }
+          : {}),
       });
 
       updateTrackingFile(trackingData);
@@ -362,7 +365,7 @@ async function main() {
       recipients: batch.recipients,
       tokenAmount: batch.amount,
       status: BatchStatuses.Success,
-      transactionHash: transactionReceipt?.hash,
+      ...(transactionReceipt?.hash ? { transactionHash: transactionReceipt?.hash } : {}),
     });
 
     updateTrackingFile(trackingData);

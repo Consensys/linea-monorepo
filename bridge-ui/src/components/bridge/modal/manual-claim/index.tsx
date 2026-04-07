@@ -1,8 +1,8 @@
 import Modal from "@/components/modal";
+import Button from "@/components/ui/button";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 
 import styles from "./manual-claim.module.scss";
-import Button from "@/components/ui/button";
-import { useNativeBridgeNavigationStore } from "@/stores";
 
 type Props = {
   isModalOpen: boolean;

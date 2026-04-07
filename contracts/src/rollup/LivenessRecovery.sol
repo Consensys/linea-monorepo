@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { ILivenessRecovery } from "./interfaces/ILivenessRecovery.sol";
@@ -19,7 +19,7 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
    * @notice Initializes _LivenessRecovery - used for new networks only.
    * @param _livenessRecoveryOperator The initial computed genesis shnarf.
    */
-  function __LivenessRecovery_init(address _livenessRecoveryOperator) internal virtual {
+  function __LivenessRecovery_init(address _livenessRecoveryOperator) internal virtual onlyInitializing {
     require(_livenessRecoveryOperator != address(0), ZeroAddressNotAllowed());
     livenessRecoveryOperator = _livenessRecoveryOperator;
     emit LivenessRecoveryOperatorAddressSet(msg.sender, _livenessRecoveryOperator);
@@ -49,8 +49,10 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
 
     address livenessRecoveryOperatorAddress = livenessRecoveryOperator;
 
-    _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
-    emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    if (!hasRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress)) {
+      _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
+      emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    }
   }
 
   /**

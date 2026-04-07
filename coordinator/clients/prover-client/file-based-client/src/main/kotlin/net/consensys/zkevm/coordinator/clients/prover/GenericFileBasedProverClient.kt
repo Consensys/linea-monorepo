@@ -4,8 +4,8 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.map
 import io.vertx.core.Vertx
-import linea.domain.BlockInterval
 import net.consensys.linea.errors.ErrorResponse
+import net.consensys.zkevm.coordinator.clients.ProverProofRequestCreator
 import net.consensys.zkevm.coordinator.clients.ProverProofResponseChecker
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.fileio.FileMonitor
@@ -20,27 +20,24 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
 import kotlin.io.path.notExists
 
-open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseDto>(
+open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseDto, TProofIndex>(
   private val config: FileBasedProverConfig,
   private val vertx: Vertx,
   private val fileWriter: FileWriter,
   private val fileReader: FileReader<ResponseDto>,
-  private val requestFileNameProvider: ProverFileNameProvider,
-  private val responseFileNameProvider: ProverFileNameProvider,
-  private val fileMonitor: FileMonitor = FileMonitor(
+  private val requestFileNameProvider: ProverFileNameProvider<TProofIndex>,
+  private val responseFileNameProvider: ProverFileNameProvider<TProofIndex>,
+  open val fileMonitor: FileMonitor = FileMonitor(
     vertx,
     FileMonitor.Config(config.pollingInterval, config.pollingTimeout),
   ),
-  private val proofIndexProvider: (Request) -> ProofIndex = ::blockIntervalProofIndex,
+  private val proofIndexProvider: (Request) -> TProofIndex,
   private val requestMapper: (Request) -> SafeFuture<RequestDto>,
   private val responseMapper: (ResponseDto) -> Response,
   private val proofTypeLabel: String,
   private val log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java),
-) : ProverProofResponseChecker<Response>, Supplier<Number>
-  where Request : BlockInterval,
-        Response : Any,
-        RequestDto : Any,
-        ResponseDto : Any {
+) : ProverProofResponseChecker<Response, TProofIndex>, Supplier<Number>, ProverProofRequestCreator<Request, TProofIndex>
+  where TProofIndex : ProofIndex, Request : Any, RequestDto : Any {
 
   init {
     createDirectoryIfNotExists(config.requestsDirectory, log)
@@ -50,8 +47,9 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   private val responsesWaiting = AtomicLong(0)
   override fun get(): Long = responsesWaiting.get()
 
-  fun isResponseAlreadyDone(proofIndex: ProofIndex): SafeFuture<Path?> {
+  fun isResponseAlreadyDone(proofIndex: TProofIndex): SafeFuture<Path?> {
     val responseFilePath = config.responsesDirectory.resolve(responseFileNameProvider.getFileName(proofIndex))
+    log.trace("Checking if response file exists. file={}", responseFilePath)
     return fileMonitor
       .fileExists(responseFilePath)
       .thenApply { responseFileExists ->
@@ -59,29 +57,72 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
           log.debug(
             "request already proven: {}={} reusedResponse={}",
             proofTypeLabel,
-            proofIndex.intervalString(),
+            proofIndex,
             responseFilePath,
           )
           responseFilePath
         } else {
+          log.trace("Response file not found. file={}", responseFilePath)
           null
         }
       }
   }
 
-  override fun findProofResponse(proofRequestId: ProofIndex): SafeFuture<Response?> {
-    return isResponseAlreadyDone(proofRequestId)
+  override fun findProofResponse(proofIndex: TProofIndex): SafeFuture<Response?> {
+    return isResponseAlreadyDone(proofIndex)
       .thenCompose { responseFilePath ->
         responseFilePath
-          ?.let { parseResponse(it, proofRequestId) }
+          ?.let { parseResponse(it, proofIndex) }
           ?: SafeFuture.completedFuture(null)
+      }
+  }
+
+  override fun createProofRequest(proofRequest: Request): SafeFuture<TProofIndex> {
+    val proofIndex = proofIndexProvider(proofRequest)
+    log.debug(
+      "Creating proof: {}={}, proofIndexProvider={}",
+      proofTypeLabel,
+      proofIndex,
+      proofIndexProvider.toString(),
+    )
+    val requestFileName = requestFileNameProvider.getFileName(proofIndex)
+    val requestFilePath = config.requestsDirectory.resolve(requestFileName)
+
+    return findRequestFileIfAlreadyInFileSystem(requestFileName)
+      .thenCompose { requestFileFound: String? ->
+        if (requestFileFound != null) {
+          log.debug(
+            "request already in file system: {}={} reusedRequest={}",
+            proofTypeLabel,
+            proofIndex,
+            requestFileFound,
+          )
+          SafeFuture.completedFuture(proofIndex)
+        } else {
+          requestMapper(proofRequest)
+            .thenCompose { proofRequestDto ->
+              log.trace("Creating proof request file. file={}", requestFilePath)
+              fileWriter.write(
+                proofRequestDto,
+                requestFilePath,
+                config.inprogressRequestWritingSuffix,
+              ).thenApply {
+                log.trace("Created proof request file. file={}", requestFilePath)
+                proofIndex
+              }
+            }
+        }
       }
   }
 
   fun requestProof(proofRequest: Request): SafeFuture<Response> {
     val proofIndex = proofIndexProvider(proofRequest)
-    val requestFileName = requestFileNameProvider.getFileName(proofIndex)
-    val requestFilePath = config.requestsDirectory.resolve(requestFileName)
+    log.debug(
+      "Requesting proof: {}={}, proofIndexProvider={}",
+      proofTypeLabel,
+      proofIndex,
+      proofIndexProvider.toString(),
+    )
     val responseFilePath = config.responsesDirectory.resolve(responseFileNameProvider.getFileName(proofIndex))
 
     return findProofResponse(proofIndex)
@@ -89,31 +130,17 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
         if (response != null) {
           SafeFuture.completedFuture(response)
         } else {
-          findRequestFileIfAlreadyInFileSystem(requestFileName)
-            .thenCompose { requestFileFound: String? ->
-              responsesWaiting.incrementAndGet()
-              if (requestFileFound != null) {
-                log.debug(
-                  "request already in file system: {}={} reusedRequest={}",
-                  proofTypeLabel,
-                  proofIndex.intervalString(),
-                  requestFileFound,
-                )
-                SafeFuture.completedFuture(Unit)
-              } else {
-                requestMapper(proofRequest)
-                  .thenCompose { proofRequestDto ->
-                    fileWriter.write(
-                      proofRequestDto,
-                      requestFilePath,
-                      config.inprogressRequestWritingSuffix,
-                    ).thenApply {
-                      Unit
-                    }
-                  }
-              }
+          responsesWaiting.incrementAndGet()
+          createProofRequest(proofRequest)
+            .thenCompose { proofIndex2 ->
+              log.trace(
+                "proofIndex1={}, proofIndex2={}, sameProofIndex={}",
+                proofIndex,
+                proofIndex2,
+                proofIndex == proofIndex2,
+              )
+              waitForResponse(responseFilePath)
             }
-            .thenCompose { waitForResponse(responseFilePath) }
             .thenCompose {
               responsesWaiting.decrementAndGet()
               parseResponse(responseFilePath, proofIndex)
@@ -124,25 +151,20 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
         log.error(
           "Failed to get proof: {}={} errorMessage={}",
           proofTypeLabel,
-          proofIndex.intervalString(),
+          proofIndex,
           it.message,
           it,
         )
       }
   }
 
-  private fun waitForResponse(
-    responseFilePath: Path,
-  ): SafeFuture<Path> {
+  private fun waitForResponse(responseFilePath: Path): SafeFuture<Path> {
     return fileMonitor.monitor(responseFilePath).thenCompose {
       if (it is Err) {
         when (it.error) {
           FileMonitor.ErrorType.TIMED_OUT -> {
             SafeFuture.failedFuture<Path>(RuntimeException("Timeout waiting for response file=$responseFilePath"))
           }
-          // else -> {
-          //  SafeFuture.failedFuture(RuntimeException("Unexpected error=$it"))
-          // }
         }
       } else {
         SafeFuture.completedFuture(responseFilePath)
@@ -150,19 +172,14 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
     }
   }
 
-  private fun findRequestFileIfAlreadyInFileSystem(
-    requestFileName: String,
-  ): SafeFuture<String?> {
+  private fun findRequestFileIfAlreadyInFileSystem(requestFileName: String): SafeFuture<String?> {
     return fileMonitor.findFile(
       directory = config.requestsDirectory,
       pattern = inProgressFilePattern(requestFileName, config.inprogressProvingSuffixPattern),
     )
   }
 
-  protected open fun parseResponse(
-    responseFilePath: Path,
-    proofIndex: ProofIndex,
-  ): SafeFuture<Response> {
+  protected open fun parseResponse(responseFilePath: Path, proofIndex: TProofIndex): SafeFuture<Response> {
     return fileReader.read(responseFilePath)
       .thenCompose { result ->
         result
@@ -183,13 +200,6 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   }
 
   companion object {
-    fun <R : BlockInterval> blockIntervalProofIndex(request: R): ProofIndex {
-      return ProofIndex(
-        startBlockNumber = request.startBlockNumber,
-        endBlockNumber = request.endBlockNumber,
-      )
-    }
-
     fun createDirectoryIfNotExists(
       directory: Path,
       log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java),

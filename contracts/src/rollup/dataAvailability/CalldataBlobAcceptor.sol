@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { IAcceptCalldataBlobs } from "./interfaces/IAcceptCalldataBlobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
@@ -23,7 +23,7 @@ abstract contract CalldataBlobAcceptor is LocalShnarfProvider, ShnarfDataAccepto
     CompressedCalldataSubmission calldata _submission,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+  ) public virtual whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     _submitDataAsCalldata(_submission, _parentShnarf, _expectedShnarf);
   }
 

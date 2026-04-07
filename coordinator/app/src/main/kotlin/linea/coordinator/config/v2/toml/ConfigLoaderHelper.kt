@@ -48,16 +48,14 @@ inline fun <reified T : Any> parseConfig(toml: String, strict: Boolean = true): 
 }
 
 @OptIn(ExperimentalHoplite::class)
-inline fun <reified T : Any> loadConfigsOrError(
-  configFiles: List<Path>,
-  strict: Boolean,
-): Result<T, String> {
-  val confLoader = ConfigLoaderBuilder
-    .empty()
-    .addDefaults()
-    .withExplicitSealedTypes()
-    .addCoordinatorTomlDecoders(strict)
-    .build()
+inline fun <reified T : Any> loadConfigsOrError(configFiles: List<Path>, strict: Boolean): Result<T, String> {
+  val confLoader =
+    ConfigLoaderBuilder
+      .empty()
+      .addDefaults()
+      .withExplicitSealedTypes()
+      .addCoordinatorTomlDecoders(strict)
+      .build()
 
   return confLoader
     .loadConfig<T>(configFiles.reversed().map { it.toAbsolutePath().toString() })
@@ -69,11 +67,7 @@ inline fun <reified T : Any> loadConfigsOrError(
     }
 }
 
-fun logErrorIfPresent(
-  configLoadingResult: Result<Any?, String>,
-  logger: Logger,
-  logLevel: Level = Level.ERROR,
-) {
+fun logErrorIfPresent(configLoadingResult: Result<Any?, String>, logger: Logger, logLevel: Level = Level.ERROR) {
   if (configLoadingResult is Err) {
     logger.log(logLevel, configLoadingResult.error)
   }
@@ -93,8 +87,8 @@ inline fun <reified T : Any> loadConfigsAndLogErrors(
 
 fun loadConfigsOrError(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV2: Path?,
   tracesLimitsFileV4: Path?,
+  tracesLimitsFileV5: Path?,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
@@ -102,73 +96,78 @@ fun loadConfigsOrError(
 ): Result<CoordinatorConfigToml, String> {
   val coordinatorBaseConfigs =
     loadConfigsAndLogErrors<CoordinatorConfigFileToml>(coordinatorConfigFiles, logger, strict)
-  val tracesLimitsV2Configs = tracesLimitsFileV2?.let {
-    loadConfigsAndLogErrors<TracesLimitsConfigFileV2Toml>(listOf(it), logger, strict)
-  }
-  val tracesLimitsV4Configs = tracesLimitsFileV4?.let {
-    loadConfigsAndLogErrors<TracesLimitsConfigFileV4Toml>(listOf(it), logger, strict)
-  }
+  val tracesLimitsV4Configs =
+    tracesLimitsFileV4?.let {
+      loadConfigsAndLogErrors<TracesLimitsConfigFileV4Toml>(listOf(it), logger, strict)
+    }
+  val tracesLimitsV5Configs =
+    tracesLimitsFileV5?.let {
+      loadConfigsAndLogErrors<TracesLimitsConfigFileV5Toml>(listOf(it), logger, strict)
+    }
   val gasPriceCapTimeOfDayMultipliersConfig =
     loadConfigsAndLogErrors<GasPriceCapTimeOfDayMultipliersConfigFileToml>(
       listOf(gasPriceCapTimeOfDayMultipliersFile),
       logger,
       strict,
     )
-  val smartContractErrorsConfig = loadConfigsAndLogErrors<SmartContractErrorCodesConfigFileToml>(
-    listOf(smartContractErrorsFile),
-    logger,
-    strict,
-  )
-  val configError = listOf(
-    coordinatorBaseConfigs,
-    tracesLimitsV2Configs,
-    tracesLimitsV4Configs,
-    gasPriceCapTimeOfDayMultipliersConfig,
-    smartContractErrorsConfig,
-  )
-    .find { it is Err }
+  val smartContractErrorsConfig =
+    loadConfigsAndLogErrors<SmartContractErrorCodesConfigFileToml>(
+      listOf(smartContractErrorsFile),
+      logger,
+      strict,
+    )
+  val configError =
+    listOf(
+      coordinatorBaseConfigs,
+      tracesLimitsV4Configs,
+      tracesLimitsV5Configs,
+      gasPriceCapTimeOfDayMultipliersConfig,
+      smartContractErrorsConfig,
+    )
+      .find { it is Err }
 
   if (configError != null) {
     @Suppress("UNCHECKED_CAST")
     return configError as Result<CoordinatorConfigToml, String>
   }
 
-  val finalConfig = CoordinatorConfigToml(
-    configs = coordinatorBaseConfigs.get()!!,
-    tracesLimitsV2 = tracesLimitsV2Configs?.get(),
-    tracesLimitsV4 = tracesLimitsV4Configs?.get(),
-    l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),
-    smartContractErrors = smartContractErrorsConfig.get(),
-  )
+  val finalConfig =
+    CoordinatorConfigToml(
+      configs = coordinatorBaseConfigs.get()!!,
+      tracesLimitsV4 = tracesLimitsV4Configs?.get(),
+      tracesLimitsV5 = tracesLimitsV5Configs?.get(),
+      l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),
+      smartContractErrors = smartContractErrorsConfig.get(),
+    )
   return Ok(finalConfig)
 }
 
 fun loadConfigs(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV2: Path?,
   tracesLimitsFileV4: Path?,
+  tracesLimitsFileV5: Path?,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
   enforceStrict: Boolean = false,
 ): CoordinatorConfig {
   return loadConfigsOrError(
-    coordinatorConfigFiles,
-    tracesLimitsFileV2,
-    tracesLimitsFileV4,
-    gasPriceCapTimeOfDayMultipliersFile,
-    smartContractErrorsFile,
-    logger,
+    coordinatorConfigFiles = coordinatorConfigFiles,
+    tracesLimitsFileV4 = tracesLimitsFileV4,
+    tracesLimitsFileV5 = tracesLimitsFileV5,
+    gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile,
+    smartContractErrorsFile = smartContractErrorsFile,
+    logger = logger,
     strict = true,
   )
     .recoverIf({ !enforceStrict }, {
       loadConfigsOrError(
-        coordinatorConfigFiles,
-        tracesLimitsFileV2,
-        tracesLimitsFileV4,
-        gasPriceCapTimeOfDayMultipliersFile,
-        smartContractErrorsFile,
-        logger,
+        coordinatorConfigFiles = coordinatorConfigFiles,
+        tracesLimitsFileV4 = tracesLimitsFileV4,
+        tracesLimitsFileV5 = tracesLimitsFileV5,
+        gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile,
+        smartContractErrorsFile = smartContractErrorsFile,
+        logger = logger,
         strict = false,
       ).getOrElse {
         throw RuntimeException("Invalid configurations: $it")

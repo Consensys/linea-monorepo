@@ -8,6 +8,7 @@ import kotlin.time.Duration.Companion.seconds
 data class RequestRetriesToml(
   val maxRetries: UInt? = null,
   val timeout: Duration? = null,
+  val ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
   val backoffDelay: Duration = 1.seconds,
   val failuresWarningThreshold: UInt? = null,
 ) {
@@ -18,6 +19,11 @@ data class RequestRetriesToml(
     timeout?.also {
       require(timeout >= 1.milliseconds) { "timeout must be >= 1ms. value=$timeout" }
     }
+    ignoreFirstExceptionsUntilTimeElapsed?.also {
+      require(ignoreFirstExceptionsUntilTimeElapsed >= 1.milliseconds) {
+        "ignoreFirstExceptionsUntilTimeElapsed must be >= 1ms. value=$ignoreFirstExceptionsUntilTimeElapsed"
+      }
+    }
     require(backoffDelay >= 1.milliseconds) {
       "backoffDelay must be >= 1ms. value=$backoffDelay"
     }
@@ -26,24 +32,27 @@ data class RequestRetriesToml(
     }
   }
 
-  internal val asJsonRpcRetryConfig = RequestRetryConfig(
-    maxRetries = maxRetries?.toUInt(),
-    timeout = timeout,
-    backoffDelay = backoffDelay,
-    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u,
-  )
+  internal val asJsonRpcRetryConfig =
+    RequestRetryConfig(
+      maxRetries = maxRetries,
+      timeout = timeout,
+      backoffDelay = backoffDelay,
+      failuresWarningThreshold = failuresWarningThreshold ?: 0u,
+    )
 
-  internal val asDomain: linea.domain.RetryConfig = linea.domain.RetryConfig(
-    maxRetries = maxRetries?.toUInt(),
-    timeout = timeout,
-    backoffDelay = backoffDelay,
-    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u,
-  )
+  internal val asDomain: linea.domain.RetryConfig =
+    linea.domain.RetryConfig(
+      maxRetries = maxRetries,
+      timeout = timeout,
+      ignoreFirstExceptionsUntilTimeElapsed = ignoreFirstExceptionsUntilTimeElapsed,
+      backoffDelay = backoffDelay,
+      failuresWarningThreshold = failuresWarningThreshold ?: 0u,
+    )
 
   companion object {
     fun endlessRetry(
-      backoffDelay: Duration,
-      failuresWarningThreshold: UInt,
+      backoffDelay: Duration = 1.seconds,
+      failuresWarningThreshold: UInt = 3u,
     ) = RequestRetriesToml(
       maxRetries = null,
       timeout = null,

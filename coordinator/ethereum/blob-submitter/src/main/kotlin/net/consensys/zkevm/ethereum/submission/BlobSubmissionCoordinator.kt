@@ -1,7 +1,6 @@
 package net.consensys.zkevm.ethereum.submission
 
 import io.vertx.core.Vertx
-import kotlinx.datetime.Clock
 import linea.domain.filterOutWithEndBlockNumberBefore
 import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
@@ -22,6 +21,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.function.Consumer
+import kotlin.time.Clock
 import kotlin.time.Duration
 
 class BlobSubmissionCoordinator(
@@ -158,17 +158,12 @@ class BlobSubmissionCoordinator(
     }
   }
 
-  private fun blobBelongsToAnyAggregation(
-    blobRecord: BlobRecord,
-    proofsToFinalize: List<ProofToFinalize>,
-  ): Boolean {
+  private fun blobBelongsToAnyAggregation(blobRecord: BlobRecord, proofsToFinalize: List<ProofToFinalize>): Boolean {
     return proofsToFinalize
       .any { blobRecord.startBlockNumber in it.startBlockNumber..it.endBlockNumber }
   }
 
-  private fun submitBlobsAfterEthCall(
-    blobsChunks: List<List<BlobRecord>>,
-  ): SafeFuture<Unit> {
+  private fun submitBlobsAfterEthCall(blobsChunks: List<List<BlobRecord>>): SafeFuture<Unit> {
     return blobSubmitter
       .submitBlobCall(blobsChunks.first())
       .thenApply { true }

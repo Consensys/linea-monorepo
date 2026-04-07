@@ -1,7 +1,7 @@
 /*
     *******************************************************************************************
     1. Set the RPC_URL 
-    2. Set the PRIVATE_KEY
+    2. Set the DEPLOYER_PRIVATE_KEY
     3. Set LINEA_SCENARIO_DELEGATING_PROXY_ADDRESS
     4. Set NUMBER_OF_LOOPS
     5. set LINEA_SCENARIO
@@ -12,19 +12,20 @@
     NUMBER_OF_LOOPS=<number> \
     LINEA_SCENARIO=<number> \
     GAS_LIMIT=<number> \
-    PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     RPC_URL=<url> \
     npx ts-node local-deployments-artifacts/executeLineaScenarioDelegatingProxyScenario.ts
     *******************************************************************************************
 */
 
-import { getRequiredEnvVar } from "../common/helpers/environment";
 import { ethers } from "ethers";
+
 import { abi as testerAbi } from "./static-artifacts/LineaScenarioDelegatingProxy.json";
+import { getRequiredEnvVar } from "../common/helpers/environment";
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
 
   const testContractAddress = getRequiredEnvVar("LINEA_SCENARIO_DELEGATING_PROXY_ADDRESS");
   const lineaScenario = 1; //getRequiredEnvVar("LINEA_SCENARIO");
@@ -37,7 +38,7 @@ async function main() {
   try {
     const receipt = await executeTx.wait();
     console.log(`Executed transaction with gasUsed=${receipt?.gasUsed} status=${receipt?.status}`);
-  } catch (error) {
+  } catch {
     const receipt = await provider.getTransactionReceipt(executeTx.hash);
     console.error("Transaction failed - tx receipt=", JSON.stringify(receipt));
   }

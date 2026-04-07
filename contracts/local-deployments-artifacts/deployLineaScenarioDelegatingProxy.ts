@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+
 import {
   contractName as lineaScenarioDelegatingProxyName,
   abi as lineaScenarioDelegatingProxyAbi,
@@ -8,7 +9,7 @@ import { deployContractFromArtifacts } from "../common/helpers/deployments";
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
 
   console.log(`Deploying LineaScenarioDelegatingProxy`);
   const lineaScenarioDelegatingProxyAddress = await deploylineaScenarioDelegatingProxy(wallet);

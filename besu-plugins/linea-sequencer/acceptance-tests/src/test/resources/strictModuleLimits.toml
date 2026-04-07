@@ -12,6 +12,7 @@
 ADD                 = 7000
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 262144
+BLAKE2F             = 3000 # not important now, BLAKE is excluded thanks to PRECOMPILE_BLAKE_ROUNDS
 EC_DATA             = 4096
 EUC                 = 16384 # can probably be lower
 EXP                 = 32760
@@ -32,6 +33,7 @@ LOG_DATA            = 262144
 LOG_INFO            = 262144
 RLP_ADDR            = 262144
 RLP_TXN             = 262144
+RLP_AUTH            = 262144
 RLP_TXN_RCPT        = 262144
 TXN_DATA            = 262144
 SHAKIRA_DATA        = 262144

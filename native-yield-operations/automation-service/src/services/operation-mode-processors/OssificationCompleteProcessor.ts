@@ -1,12 +1,12 @@
-import { Address, TransactionReceipt } from "viem";
 import { ILogger, attempt, msToSeconds, wait } from "@consensys/linea-shared-utils";
+import { Address, TransactionReceipt } from "viem";
+
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
-import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
-import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
-import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
+import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 
 /**
  * Processor for OSSIFICATION_COMPLETE_MODE operations.
@@ -48,10 +48,6 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
     this.logger.info(`Waiting ${this.maxInactionMs}ms before executing actions`);
     await wait(this.maxInactionMs);
 
-    this.metricsUpdater.incrementOperationModeTrigger(
-      OperationMode.OSSIFICATION_COMPLETE_MODE,
-      OperationTrigger.TIMEOUT,
-    );
     const startedAt = performance.now();
     await this._process();
     const durationMs = performance.now() - startedAt;

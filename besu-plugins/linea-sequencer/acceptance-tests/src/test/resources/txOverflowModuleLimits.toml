@@ -13,6 +13,7 @@
 ADD                 = 70
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 262144
+BLAKE2F             = 3000 # not important now, BLAKE is excluded thanks to PRECOMPILE_BLAKE_ROUNDS
 BLOCK_DATA          = 32
 BLOCK_HASH          = 2048
 EC_DATA             = 4096
@@ -35,6 +36,7 @@ LOG_DATA            = 20
 LOG_INFO            = 20
 RLP_ADDR            = 20
 RLP_TXN             = 1300
+RLP_AUTH            = 1300
 RLP_TXN_RCPT        = 100
 TXN_DATA            = 30
 SHAKIRA_DATA        = 262144

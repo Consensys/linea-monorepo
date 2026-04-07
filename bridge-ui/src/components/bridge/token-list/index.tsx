@@ -1,10 +1,13 @@
 import { useState } from "react";
-import Image from "next/image";
+
 import dynamic from "next/dynamic";
-import Button from "@/components/ui/button";
+import Image from "next/image";
+
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
+import Button from "@/components/ui/button";
+import { useFormStore } from "@/stores/formStoreProvider";
+
 import styles from "./token-list.module.scss";
-import { useFormStore } from "@/stores";
 
 const TokenModal = dynamic(() => import("@/components/bridge/modal/token-modal"), {
   ssr: false,

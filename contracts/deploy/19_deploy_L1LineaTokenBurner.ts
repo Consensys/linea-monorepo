@@ -1,41 +1,33 @@
 import { ethers } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-  getRequiredEnvVar,
-  getDeployedContractAddress,
-  LogContractDeployment,
-  tryVerifyContractWithConstructorArgs,
-} from "../common/helpers";
+import { DeployFunction } from "hardhat-deploy/types";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments } = hre;
+import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-  const contractName = "L1LineaTokenBurner";
-  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
+const func: DeployFunction = withSignerUiSession(
+  "19_deploy_L1LineaTokenBurner.ts",
+  async function (hre: HardhatRuntimeEnvironment) {
+    const contractName = "L1LineaTokenBurner";
+    const signer = await getUiSigner(hre);
 
-  const messageService = getRequiredEnvVar("LINEA_TOKEN_BURNER_MESSAGE_SERVICE");
-  const lineaToken = getRequiredEnvVar("LINEA_TOKEN_BURNER_LINEA_TOKEN");
+    const messageService = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
+    const lineaToken = getRequiredEnvVar("LINEA_TOKEN_BURNER_LINEA_TOKEN");
 
-  if (!existingContractAddress) {
-    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
-  } else {
-    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
-  }
+    const factory = await ethers.getContractFactory(contractName, signer);
+    const contract = await factory.deploy(messageService, lineaToken);
 
-  const factory = await ethers.getContractFactory(contractName);
-  const contract = await factory.deploy(messageService, lineaToken);
+    await LogContractDeployment(contractName, contract);
+    const contractAddress = await contract.getAddress();
 
-  await LogContractDeployment(contractName, contract);
-  const contractAddress = await contract.getAddress();
-
-  const args = [messageService, lineaToken];
-  await tryVerifyContractWithConstructorArgs(
-    contractAddress,
-    "src/operational/L1LineaTokenBurner.sol:L1LineaTokenBurner",
-    args,
-  );
-};
+    const args = [messageService, lineaToken];
+    await tryVerifyContractWithConstructorArgs(
+      contractAddress,
+      "src/operational/L1LineaTokenBurner.sol:L1LineaTokenBurner",
+      args,
+    );
+  },
+);
 
 export default func;
 func.tags = ["L1LineaTokenBurner"];

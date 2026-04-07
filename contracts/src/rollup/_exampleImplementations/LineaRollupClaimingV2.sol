@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { Eip4844BlobAcceptor } from "../dataAvailability/Eip4844BlobAcceptor.sol";
 import { CalldataBlobAcceptor } from "../dataAvailability/CalldataBlobAcceptor.sol";
@@ -41,12 +41,6 @@ contract LineaRollupClaimingV2 is LineaRollupBase, Eip4844BlobAcceptor, Calldata
    * @notice Reinitializes LineaRollup and sets the _shnarfProvider to itself.
    */
   function reinitializeV8() external reinitializer(8) {
-    address proxyAdmin;
-    assembly {
-      proxyAdmin := sload(PROXY_ADMIN_SLOT)
-    }
-    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
-
     shnarfProvider = IProvideShnarf(address(this));
   }
 }

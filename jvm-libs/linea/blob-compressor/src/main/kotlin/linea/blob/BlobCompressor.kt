@@ -7,6 +7,8 @@ class BlobCompressionException(message: String) : RuntimeException(message)
 
 interface BlobCompressor {
 
+  val version: BlobCompressorVersion
+
   /**
    * @Throws(BlobCompressionException::class) when blockRLPEncoded is invalid
    */
@@ -40,14 +42,12 @@ interface BlobCompressor {
 
 class GoBackedBlobCompressor private constructor(
   internal val goNativeBlobCompressor: GoNativeBlobCompressor,
+  override val version: BlobCompressorVersion,
 ) : BlobCompressor {
 
   companion object {
     @JvmStatic
-    fun getInstance(
-      compressorVersion: BlobCompressorVersion,
-      dataLimit: Int,
-    ): GoBackedBlobCompressor {
+    fun getInstance(compressorVersion: BlobCompressorVersion, dataLimit: Int): GoBackedBlobCompressor {
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
       val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
@@ -58,7 +58,7 @@ class GoBackedBlobCompressor private constructor(
       if (!initialized) {
         throw InstantiationException(goNativeBlobCompressor.Error())
       }
-      return GoBackedBlobCompressor(goNativeBlobCompressor)
+      return GoBackedBlobCompressor(goNativeBlobCompressor, compressorVersion)
     }
   }
 
@@ -66,10 +66,6 @@ class GoBackedBlobCompressor private constructor(
 
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
     return goNativeBlobCompressor.CanWrite(blockRLPEncoded, blockRLPEncoded.size)
-  }
-
-  fun inflightBlobSize(): Int {
-    return goNativeBlobCompressor.Len()
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {

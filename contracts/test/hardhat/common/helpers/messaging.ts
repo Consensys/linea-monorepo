@@ -1,5 +1,6 @@
-import { ethers } from "ethers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { ethers } from "ethers";
+
 import { encodeData } from "./encoding";
 import { MESSAGE_FEE, MESSAGE_VALUE_1ETH, DEFAULT_MESSAGE_NONCE } from "../constants";
 
@@ -19,18 +20,4 @@ export async function encodeSendMessageLog(
     topic,
     data,
   };
-}
-
-export async function encodeSendMessage(
-  sender: string,
-  receiver: string,
-  fee: bigint,
-  amount: bigint,
-  salt: bigint,
-  calldata: string,
-) {
-  return encodeData(
-    ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-    [sender, receiver, fee, amount, salt, calldata],
-  );
 }

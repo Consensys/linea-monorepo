@@ -1,19 +1,20 @@
 import { ethers } from "ethers";
-import {
-  contractName as shanghaiEvmYulName,
-  abi as shanghaiEvmYulAbi,
-  bytecode as shanghaiEvmYulBytecode,
-} from "./static-artifacts/ShanghaiEvmCodes.json";
+
 import {
   contractName as opcodeTesterName,
   abi as opcodeTesterAbi,
   bytecode as opcodeTesterBytecode,
 } from "./static-artifacts/OpcodeTester.json";
+import {
+  contractName as shanghaiEvmYulName,
+  abi as shanghaiEvmYulAbi,
+  bytecode as shanghaiEvmYulBytecode,
+} from "./static-artifacts/ShanghaiEvmCodes.json";
 import { deployContractFromArtifacts } from "../common/helpers/deployments";
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
 
   console.log(`Deploying Shanghai EVM Yul based contract with verbatim bytecode`);
   const shanghaiEvmYulAddress = await deployShanghaiEvmYul(wallet);

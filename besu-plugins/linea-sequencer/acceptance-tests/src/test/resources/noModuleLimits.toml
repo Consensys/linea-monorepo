@@ -12,6 +12,7 @@
 ADD                 = 262144
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 262144
+BLAKE2F             = 3000 # not important now, BLAKE is excluded thanks to PRECOMPILE_BLAKE_ROUNDS
 BLOCK_DATA          = 28
 BLOCK_HASH          = 2048
 EC_DATA             = 4096
@@ -30,6 +31,7 @@ MXP                 = 524288
 OOB                 = 262144
 RLP_ADDR            = 262144
 RLP_TXN             = 262144
+RLP_AUTH            = 262144
 RLP_TXN_RCPT        = 262144
 ROM                 = 1048576
 ROM_LEX             = 1048576

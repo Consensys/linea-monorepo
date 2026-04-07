@@ -1,10 +1,10 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
-import kotlinx.datetime.Instant
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.ProofToFinalize
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Instant
 
 interface AggregationsDao {
   /**
@@ -39,9 +39,7 @@ interface AggregationsDao {
     maximumNumberOfProofs: Int,
   ): SafeFuture<List<ProofToFinalize>>
 
-  fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long? = null,
-  ): SafeFuture<Long?>
+  fun findHighestConsecutiveEndBlockNumber(fromBlockNumber: Long? = null): SafeFuture<Long?>
 
   fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?>
 

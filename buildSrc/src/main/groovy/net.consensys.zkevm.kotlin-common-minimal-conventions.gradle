@@ -10,6 +10,15 @@ java {
   }
 }
 
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    sourceSets.configureEach {
+      languageSettings.optIn("kotlin.time.ExperimentalTime")
+    }
+  }
+}
+
 repositories {
   mavenCentral()
   maven {
@@ -44,6 +53,7 @@ dependencies {
   //<testing>
   testImplementation platform("org.junit:junit-bom:${libs.versions.junit.get()}")
   testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${libs.versions.junit.get()}"
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
   testImplementation "org.junit.jupiter:junit-jupiter:${libs.versions.junit.get()}"
   testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
   testImplementation "org.mockito:mockito-core:${libs.versions.mockito.get()}"

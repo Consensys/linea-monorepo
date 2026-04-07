@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { IPauseManager } from "../../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../../security/access/interfaces/IPermissionsManager.sol";
@@ -116,13 +116,6 @@ interface ITokenBridge {
    * @param nativeToken The indexed native token address.
    */
   event NewTokenDeployed(address indexed bridgedToken, address indexed nativeToken);
-
-  /**
-   * @notice Emitted when the remote token bridge is set.
-   * @param remoteTokenBridge The indexed remote token bridge address.
-   * @param setBy The indexed address that set the remote token bridge.
-   */
-  event RemoteTokenBridgeSet(address indexed remoteTokenBridge, address indexed setBy);
 
   /**
    * @notice Emitted when the token is set as deployed.

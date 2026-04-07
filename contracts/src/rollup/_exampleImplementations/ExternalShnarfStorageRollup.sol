@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { LineaRollupBase } from "../LineaRollupBase.sol";
 
@@ -42,7 +42,7 @@ contract ExternalShnarfStorageRollup is LineaRollupBase {
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual override returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual override returns (string memory contractVersion) {
     contractVersion = "1.0";
   }
 }

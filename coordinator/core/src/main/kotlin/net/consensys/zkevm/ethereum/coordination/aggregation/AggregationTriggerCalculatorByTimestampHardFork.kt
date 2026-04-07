@@ -1,10 +1,10 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import kotlinx.datetime.Instant
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import kotlin.time.Instant
 
 /**
  * Aggregation trigger calculator that triggers on timestamp-based hard forks.
@@ -16,7 +16,6 @@ class AggregationTriggerCalculatorByTimestampHardFork(
   initialTimestamp: Instant,
   private val log: Logger = LogManager.getLogger(AggregationTriggerCalculatorByTimestampHardFork::class.java),
 ) : SyncAggregationTriggerCalculator {
-
   private var lastProcessedTimestamp: Instant = initialTimestamp
   private var inFlightAggregation: BlobsToAggregate? = null
 
@@ -34,9 +33,10 @@ class AggregationTriggerCalculatorByTimestampHardFork(
     val blobEndTimestamp = blobCounters.endBlockTimestamp
 
     // Check if this blob crosses any hard fork timestamp boundary
-    val applicableTimestamp = hardForkTimestamps.find { timestamp ->
-      lastProcessedTimestamp < timestamp && blobEndTimestamp >= timestamp
-    }
+    val applicableTimestamp =
+      hardForkTimestamps.find { timestamp ->
+        lastProcessedTimestamp < timestamp && blobEndTimestamp >= timestamp
+      }
 
     if (applicableTimestamp != null && inFlightAggregation != null) {
       log.info(
@@ -58,10 +58,11 @@ class AggregationTriggerCalculatorByTimestampHardFork(
 
   @Synchronized
   override fun newBlob(blobCounters: BlobCounters) {
-    inFlightAggregation = BlobsToAggregate(
-      inFlightAggregation?.startBlockNumber ?: blobCounters.startBlockNumber,
-      blobCounters.endBlockNumber,
-    )
+    inFlightAggregation =
+      BlobsToAggregate(
+        inFlightAggregation?.startBlockNumber ?: blobCounters.startBlockNumber,
+        blobCounters.endBlockNumber,
+      )
     lastProcessedTimestamp = blobCounters.endBlockTimestamp
   }
 

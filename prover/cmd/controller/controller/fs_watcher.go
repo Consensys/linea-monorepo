@@ -31,7 +31,7 @@ type FsWatcher struct {
 func NewFsWatcher(conf *config.Config) *FsWatcher {
 	fs := &FsWatcher{
 		LocalID:    conf.Controller.LocalID,
-		InProgress: config.InProgressSufix,
+		InProgress: config.InProgressSuffix,
 		Logger:     conf.Logger().WithField("component", "filesystem-watcher"),
 	}
 
@@ -39,7 +39,7 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, ExecutionDefinition(conf))
 	}
 
-	if conf.Controller.EnableBlobDecompression {
+	if conf.Controller.EnableDataAvailability {
 		fs.JobToWatch = append(fs.JobToWatch, CompressionDefinition(conf))
 	}
 

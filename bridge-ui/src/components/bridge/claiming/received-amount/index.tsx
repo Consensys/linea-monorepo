@@ -1,53 +1,39 @@
-import { formatUnits } from "viem";
-import styles from "./received-amount.module.scss";
-import { useTokenPrices } from "@/hooks";
-import { useChainStore, useConfigStore, useFormStore } from "@/stores";
-import { formatBalance, isCctp } from "@/utils";
-import { ChainLayer, Token } from "@/types";
 import { useMemo } from "react";
-import { useCctpFee } from "@/hooks/transaction-args/cctp/useCctpUtilHooks";
-import { ETH_SYMBOL } from "@/constants";
 
-function formatReceivedAmount(
-  amount: bigint,
-  token: Token,
-  bridgingFees: bigint,
-  minimumFees: bigint,
-  fromChainLayer: ChainLayer,
-  cctpFee: bigint | null,
-) {
-  if (isCctp(token)) {
-    return cctpFee ? amount - cctpFee : amount;
-  } else {
-    if (token.symbol !== ETH_SYMBOL) {
-      return amount;
-    }
+import { formatUnits } from "viem";
 
-    const feesToApply = fromChainLayer === ChainLayer.L1 ? bridgingFees : minimumFees;
+import { getAdapter } from "@/adapters";
+import { useTokenPrices } from "@/hooks";
+import useFees from "@/hooks/fees/useFees";
+import { useChainStore } from "@/stores/chainStore";
+import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { formatBalance } from "@/utils/format";
 
-    return amount - feesToApply;
-  }
-}
+import styles from "./received-amount.module.scss";
 
 export default function ReceivedAmount() {
   const fromChain = useChainStore.useFromChain();
+  const toChain = useChainStore.useToChain();
   const currency = useConfigStore.useCurrency();
   const amount = useFormStore((state) => state.amount);
   const token = useFormStore((state) => state.token);
-  const bridgingFees = useFormStore((state) => state.bridgingFees);
-  const minimumFees = useFormStore((state) => state.minimumFees);
-  const cctpFee = useCctpFee(amount, token.decimals);
+  const { bridgeFees } = useFees();
 
+  const adapter = getAdapter(token, fromChain, toChain);
   const { data: tokenPrices } = useTokenPrices([token[fromChain.layer]], fromChain.id);
 
-  const receivedAmount = useMemo(
-    () =>
-      formatUnits(
-        formatReceivedAmount(amount || 0n, token, bridgingFees, minimumFees, fromChain.layer, cctpFee),
-        token.decimals,
-      ),
-    [amount, token, bridgingFees, minimumFees, fromChain.layer, cctpFee],
-  );
+  const receivedAmount = useMemo(() => {
+    const raw =
+      adapter?.computeReceivedAmount({
+        amount: amount || 0n,
+        token,
+        fromChainLayer: fromChain.layer,
+        fees: bridgeFees,
+      }) ??
+      (amount || 0n);
+    return formatUnits(raw, token.decimals);
+  }, [adapter, amount, token, fromChain.layer, bridgeFees]);
 
   return (
     <div className={styles.value}>

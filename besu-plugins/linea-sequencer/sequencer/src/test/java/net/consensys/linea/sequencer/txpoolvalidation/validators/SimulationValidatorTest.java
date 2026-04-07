@@ -56,6 +56,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.WorldStateService;
@@ -102,6 +103,7 @@ public class SimulationValidatorTest {
 
   @Mock BlockchainService blockchainService;
   @Mock WorldStateService worldStateService;
+  @Mock WorldView worldView;
   @Mock TransactionSimulationService transactionSimulationService;
   private JsonRpcManager jsonRpcManager;
   private LineaTracerConfiguration tracerConfiguration;
@@ -131,10 +133,12 @@ public class SimulationValidatorTest {
     final var pendingBlockHeader = mock(BlockHeader.class);
     when(pendingBlockHeader.getBaseFee()).thenReturn(Optional.of(BASE_FEE));
     when(pendingBlockHeader.getCoinbase()).thenReturn(Address.ZERO);
+    when(pendingBlockHeader.getParentBeaconBlockRoot()).thenReturn(Optional.of(Bytes32.ZERO));
     when(transactionSimulationService.simulatePendingBlockHeader()).thenReturn(pendingBlockHeader);
     when(blockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
     when(blockchainService.getNextBlockHardforkId(any(), anyLong()))
-        .thenReturn(HardforkId.MainnetHardforkId.LONDON);
+        .thenReturn(HardforkId.MainnetHardforkId.OSAKA);
+    when(worldStateService.getWorldView()).thenReturn(worldView);
 
     final var rejectedTxReportingConf =
         LineaRejectedTxReportingConfiguration.builder()
@@ -196,7 +200,7 @@ public class SimulationValidatorTest {
 
   @Test
   public void moduleLineCountOverflowTransactionIsInvalidAndReported() {
-    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    tracerConfiguration.moduleLimitsMap().put("HUB", 5);
     final var simulationValidator = createSimulationValidator(true, false);
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
@@ -209,7 +213,8 @@ public class SimulationValidatorTest {
             .signature(FAKE_SIGNATURE)
             .build();
     final var expectedReasonMessage =
-        "Transaction 0xbf668c5dc926c008d5b34f347e1842b94911b46f4a36b668812f821e20303322 line count for module EXT=7 is above the limit 5";
+        "Transaction 0xbf668c5dc926c008d5b34f347e1842b94911b46f4a36b668812f821e20303322 line count for module HUB=18 "
+            + "is above the limit 5";
     assertThat(simulationValidator.validateTransaction(transaction, true, false))
         .contains(expectedReasonMessage);
 

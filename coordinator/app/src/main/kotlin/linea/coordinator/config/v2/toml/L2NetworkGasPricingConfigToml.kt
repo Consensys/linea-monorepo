@@ -8,17 +8,20 @@ import kotlin.time.Duration.Companion.seconds
 data class L2NetworkGasPricingConfigToml(
   val disabled: Boolean = false,
   val l1Endpoint: URL? = null,
+  val l1RequestRetries: RequestRetriesToml? = null,
   val l2Endpoint: URL? = null,
+  val l2RequestRetries: RequestRetriesToml? = null,
   val priceUpdateInterval: Duration = 12.seconds,
   val feeHistoryBlockCount: UInt = 1000u,
   val feeHistoryRewardPercentile: UInt = 15u,
   val gasPriceFixedCost: ULong,
   val extraDataUpdateEndpoint: URL,
-  val extraDataUpdateRequestRetries: RequestRetriesToml = RequestRetriesToml(
-    timeout = 8.seconds,
-    backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u,
-  ),
+  val extraDataUpdateRequestRetries: RequestRetriesToml =
+    RequestRetriesToml(
+      timeout = 8.seconds,
+      backoffDelay = 1.seconds,
+      failuresWarningThreshold = 3u,
+    ),
   val dynamicGasPricing: DynamicGasPricingToml,
   val flatRateGasPricing: FlatRateGasPricingToml,
 ) {
@@ -84,8 +87,7 @@ data class L2NetworkGasPricingConfigToml(
   }
 
   fun reified(
-    l1DefaultEndpoint: URL?,
-    l2DefaultEndpoint: URL?,
+    defaults: DefaultsToml,
   ): L2NetworkGasPricingConfig {
     return L2NetworkGasPricingConfig(
       disabled = disabled,
@@ -97,8 +99,10 @@ data class L2NetworkGasPricingConfigToml(
       flatRateGasPricing = this.flatRateGasPricing.reified(),
       extraDataUpdateEndpoint = this.extraDataUpdateEndpoint,
       extraDataUpdateRequestRetries = this.extraDataUpdateRequestRetries.asDomain,
-      l1Endpoint = this.l1Endpoint ?: l1DefaultEndpoint ?: throw AssertionError("l1Endpoint must be set"),
-      l2Endpoint = this.l2Endpoint ?: l2DefaultEndpoint ?: throw AssertionError("l2Endpoint must be set"),
+      l1Endpoint = this.l1Endpoint ?: defaults.l1Endpoint ?: throw AssertionError("l1Endpoint must be set"),
+      l2Endpoint = this.l2Endpoint ?: defaults.l2Endpoint ?: throw AssertionError("l2Endpoint must be set"),
+      l1RequestRetries = this.l1RequestRetries?.asDomain ?: defaults.l1RequestRetries.asDomain,
+      l2RequestRetries = this.l2RequestRetries?.asDomain ?: defaults.l2RequestRetries.asDomain,
     )
   }
 }

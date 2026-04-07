@@ -6,13 +6,14 @@ import {
   TransactionResponse,
   ErrorDescription,
 } from "ethers";
-import { OnChainMessageStatus } from "../../core/enums/message";
-import { Cache } from "../../utils/Cache";
+
 import { ILineaRollupClient } from "../../core/clients/ethereum";
-import { IL2MessageServiceClient, IL2MessageServiceLogClient } from "../../core/clients/linea";
-import { MessageSent, Network } from "../../core/types";
 import { FinalizationMessagingInfo, Proof } from "../../core/clients/ethereum/IMerkleTreeService";
+import { IL2MessageServiceClient, IL2MessageServiceLogClient } from "../../core/clients/linea";
+import { OnChainMessageStatus } from "../../core/enums/message";
 import { makeBaseError } from "../../core/errors/utils";
+import { MessageSent, Network } from "../../core/types";
+import { Cache } from "../../utils/Cache";
 
 export class L1ClaimingService {
   private cache: Cache;
@@ -196,7 +197,7 @@ export class L1ClaimingService {
     messageHash: string,
     overrides: Overrides = {},
   ): Promise<OnChainMessageStatus> {
-    return this.l1ContractClient.getMessageStatusUsingMerkleTree(messageHash, overrides);
+    return this.l1ContractClient.getMessageStatusUsingMerkleTree({ messageHash, overrides });
   }
 
   /**

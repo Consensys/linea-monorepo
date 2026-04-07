@@ -26,10 +26,6 @@ USER besu
 WORKDIR /opt/besu
 
 COPY --chown=besu:besu besu /opt/besu/
-RUN sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu
-RUN sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu.bat
-RUN sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned
-RUN sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned.bat
 
 # Expose services ports
 # 8545 HTTP JSON-RPC
@@ -62,7 +58,7 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.description="Enterprise Ethereum client" \
       org.label-schema.url="https://besu.hyperledger.org/" \
       org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/hyperledger/besu.git" \
+      org.label-schema.vcs-url="https://github.com/besu-eth/besu.git" \
       org.label-schema.vendor="Hyperledger" \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"

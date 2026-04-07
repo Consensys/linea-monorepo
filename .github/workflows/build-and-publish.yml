@@ -24,6 +24,9 @@ on:
       native_yield_automation_service_changed:
         required: true
         type: string
+      lido_governance_monitor_changed:
+        required: true
+        type: string
       postman_changed:
         required: true
         type: string
@@ -42,6 +45,9 @@ on:
       native_yield_automation_service_image_tagged:
         required: true
         type: string
+      lido_governance_monitor_image_tagged:
+        required: true
+        type: string
       prover_image_tagged:
         required: true
         type: string
@@ -53,9 +59,7 @@ on:
         type: string
     outputs:
       linea_besu_package_tag:
-        value: ${{ jobs.linea_besu_package.outputs.linea_besu_package_tag }}
-      expected_traces_api_version:
-        value: ${{ jobs.linea_besu_package.outputs.expected_traces_api_version }}
+        value: ${{ jobs.linea_besu_package_build_and_upload.outputs.linea_besu_package_tag }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -65,7 +69,7 @@ on:
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-build-and-publish.yml
-    if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
+    if: ${{ always() && (inputs.coordinator_changed == 'true' || (inputs.push_image && inputs.coordinator_image_tagged != 'true')) }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -76,8 +80,6 @@ jobs:
   native_yield_automation_service:
     uses: ./.github/workflows/native-yield-automation-service-build-and-publish.yml
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
-    # Uncomment below later when E2E test cases include native yield functionality.
-    # if: ${{ always() && (inputs.native_yield_automation_service_changed == 'true' || inputs.native_yield_automation_service_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -85,9 +87,19 @@ jobs:
       push_image: ${{ inputs.push_image }}
     secrets: inherit
 
+  lido_governance_monitor:
+    uses: ./.github/workflows/lido-governance-monitor-build-and-publish.yml
+    if: ${{ always() && (inputs.lido_governance_monitor_changed == 'true' || (inputs.push_image && inputs.lido_governance_monitor_image_tagged != 'true')) }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      image_name: consensys/linea-lido-governance-monitor
+      push_image: ${{ inputs.push_image }}
+    secrets: inherit
+
   prover:
     uses: ./.github/workflows/prover-build-and-publish.yml
-    if: ${{ always() && (inputs.prover_changed == 'true' || inputs.prover_image_tagged != 'true') }}
+    if: ${{ always() && (inputs.prover_changed == 'true' || (inputs.push_image && inputs.prover_image_tagged != 'true')) }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -97,7 +109,7 @@ jobs:
 
   postman:
     uses: ./.github/workflows/postman-build-and-publish.yml
-    if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
+    if: ${{ always() && (inputs.postman_changed == 'true' || (inputs.push_image && inputs.postman_image_tagged != 'true')) }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -107,7 +119,7 @@ jobs:
 
   transaction_exclusion_api:
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
-    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}
+    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || (inputs.push_image && inputs.transaction_exclusion_api_image_tagged != 'true')) }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -115,10 +127,19 @@ jobs:
       push_image: ${{ inputs.push_image }}
     secrets: inherit
 
-  linea_besu_package:
+  linea_besu_package_build_and_upload:
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
-    if: ${{ always() && (inputs.build_linea_besu_package == 'true') }}
+    if: ${{ always() && inputs.build_linea_besu_package == 'true' && !inputs.push_image }}
     with:
-      release_tag_prefix: ''
+      release_tag_prefix: 'dev'
       with_besu_fleet_plugin: false
     secrets: inherit
+  
+  # If all jobs are skipped, the workflow will still succeed.
+  always_succeed:
+    runs-on: ubuntu-24.04
+    needs: [coordinator, postman, prover, transaction_exclusion_api, native_yield_automation_service, linea_besu_package_build_and_upload]
+    if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'success') && !contains(needs.*.result, 'cancelled') }}
+    steps:
+      - name: Ensure Workflow Success
+        run: echo "All jobs were skipped, but workflow succeeds."

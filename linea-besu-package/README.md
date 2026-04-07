@@ -22,6 +22,10 @@ To enable JWT on engine-api, please uncomment the followings and mount the JWT f
 --engine-jwt-secret=/var/lib/besu/jwt
 ```
 
+**Network selection and genesis files**
+- Profiles (e.g., basic/advanced mainnet or sepolia) already embed the Linea network and do not require a genesis file.
+- The `FinalizedTagUpdater` plugin was removed; any older configs referencing it are invalid.
+
 ### Step 3. Start the Besu node
 ```sh
 docker compose -f ./linea-besu-package/docker/docker-compose-basic-mainnet.yaml up
@@ -54,15 +58,17 @@ bin/besu --help
 bin/besu --profile=advanced-mainnet
 ```
 
-## Build from source locally
+## Build from source locally (with locally-built tracer and sequencer releases)
 
-1. Make changes to `linea-besu-package/versions.env` as needed
+1. Make sure `gradle/libs.versions.toml` contains the desired besu commit and make changes as needed
 
-2. Cd into `linea-besu-package`
+2. Make sure a proper version of Go has been installed (see this [action](../.github/actions/setup-tracer-environment/action.yml) as reference)
 
-3. Run `make clean && make build` (check the Makefile for build options)
+3. Cd into `linea-besu-package`
 
-4. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
+4. Run `make build` (this will build the tracer and sequencer locally (and besu if needed) with the target besu version from step 1 and update the `besu` field in `gradle/libs.versions.toml` if needed)
+
+5. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
 
 ### Note:
 
@@ -78,26 +84,26 @@ To run the e2e test locally with the locally-built `linea-besu-package` image (e
     - docker version 27.x.x
 
 - The following only needed for first run or e2e failures that require npm package update, on your_repo_root_folder:
-    ```
-    pnpm i -F contracts -F e2e --frozen-lockfile --prefer-offline
-    ```
+```
+pnpm i -F contracts -F "e2e..." --frozen-lockfile --prefer-offline
+pnpm run -F "e2e^..." build
+```
 To run the test locally:
 ```
 TAG=xxx make run-e2e-test
 ```
 
-## How-To Release
+## How-To Release (with tracer and sequencer plugin changes)
 
-1. Make a branch with changes to `linea-besu-package/versions.env` as needed
+1. Make a branch with changes to tracer/sequencer codes and update `gradle/libs.versions.toml` with desired besu commit tag (if needed)
 
-2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the workflow `linea-besu-package-release` and select the target branch for making a release with besu and plugin versions based on `linea-besu-package/versions.env`
+2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the workflow `linea-besu-package-release` and select the target branch for making a release
 
-3. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `versions.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
+3. Provide the `releasePrefix` input for the workflow, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
 
 4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
-Additionally, the `latest` tag will be updated to match this release
-
+Additionally, the `latest` tag will be updated to match this manual release. Please note that running the manual release workflow with `main` branch, the `develop` tag (along with the `latest` tag) will also be updated to match the release.
 
 ## Profiles
 

@@ -1,6 +1,5 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
-import kotlinx.datetime.Instant
 import linea.domain.createBlock
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.fakeTracesCountersV2
@@ -8,6 +7,7 @@ import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
+import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility
@@ -21,6 +21,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.time.Duration
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ConflationServiceImplTest {
   private val conflationBlockLimit = 2u
@@ -29,15 +30,21 @@ class ConflationServiceImplTest {
 
   @BeforeEach
   fun beforeEach() {
-    conflationCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = 0u,
-      syncCalculators = listOf(
-        ConflationCalculatorByBlockLimit(conflationBlockLimit),
-      ),
-      deferredTriggerConflationCalculators = emptyList(),
-      emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+    conflationCalculator =
+      GlobalBlockConflationCalculator(
+        lastBlockNumber = 0u,
+        syncCalculators =
+        listOf(
+          ConflationCalculatorByBlockLimit(conflationBlockLimit),
+        ),
+        deferredTriggerConflationCalculators = emptyList(),
+        emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+      )
+    conflationService = ConflationServiceImpl(
+      calculator = conflationCalculator,
+      safeBlockNumberProvider = AlwaysSafeBlockNumberProvider(),
+      metricsFacade = mock(defaultAnswer = RETURNS_DEEP_STUBS),
     )
-    conflationService = ConflationServiceImpl(conflationCalculator, mock(defaultAnswer = RETURNS_DEEP_STUBS))
   }
 
   @Test
@@ -46,24 +53,27 @@ class ConflationServiceImplTest {
     val payload2 = createBlock(number = 2UL, gasLimit = 20_000_000UL)
     val payload3 = createBlock(number = 3UL, gasLimit = 20_000_000UL)
     val payload1Time = Instant.parse("2021-01-01T00:00:00Z")
-    val payloadCounters1 = BlockCounters(
-      blockNumber = 1UL,
-      payload1Time.plus(0.seconds),
-      tracesCounters = fakeTracesCountersV2(40u),
-      blockRLPEncoded = ByteArray(0),
-    )
-    val payloadCounters2 = BlockCounters(
-      blockNumber = 2UL,
-      payload1Time.plus(2.seconds),
-      tracesCounters = fakeTracesCountersV2(40u),
-      blockRLPEncoded = ByteArray(0),
-    )
-    val payloadCounters3 = BlockCounters(
-      blockNumber = 3UL,
-      payload1Time.plus(4.seconds),
-      tracesCounters = fakeTracesCountersV2(100u),
-      blockRLPEncoded = ByteArray(0),
-    )
+    val payloadCounters1 =
+      BlockCounters(
+        blockNumber = 1UL,
+        payload1Time.plus(0.seconds),
+        tracesCounters = fakeTracesCountersV2(40u),
+        blockRLPEncoded = ByteArray(0),
+      )
+    val payloadCounters2 =
+      BlockCounters(
+        blockNumber = 2UL,
+        payload1Time.plus(2.seconds),
+        tracesCounters = fakeTracesCountersV2(40u),
+        blockRLPEncoded = ByteArray(0),
+      )
+    val payloadCounters3 =
+      BlockCounters(
+        blockNumber = 3UL,
+        payload1Time.plus(4.seconds),
+        tracesCounters = fakeTracesCountersV2(100u),
+        blockRLPEncoded = ByteArray(0),
+      )
 
     val conflationEvents = mutableListOf<BlocksConflation>()
     conflationService.onConflatedBatch { conflationEvent: BlocksConflation ->
@@ -117,7 +127,7 @@ class ConflationServiceImplTest {
           conflationService.newBlock(
             it,
             BlockCounters(
-              blockNumber = it.number.toULong(),
+              blockNumber = it.number,
               blockTimestamp = blockTime,
               tracesCounters = fixedTracesCounters,
               blockRLPEncoded = ByteArray(0),
@@ -150,14 +160,18 @@ class ConflationServiceImplTest {
     val expectedException = RuntimeException("Calculator failed!")
     val failingConflationCalculator: TracesConflationCalculator = mock()
     whenever(failingConflationCalculator.newBlock(any())).thenThrow(expectedException)
-    conflationService = ConflationServiceImpl(failingConflationCalculator, mock(defaultAnswer = RETURNS_DEEP_STUBS))
+    conflationService = ConflationServiceImpl(
+      calculator = failingConflationCalculator,
+      safeBlockNumberProvider = AlwaysSafeBlockNumberProvider(),
+      metricsFacade = mock(defaultAnswer = RETURNS_DEEP_STUBS),
+    )
     val block = createBlock(number = 1UL, gasLimit = 20_000_000UL)
 
     assertThatThrownBy {
       conflationService.newBlock(
         block,
         BlockCounters(
-          blockNumber = block.number.toULong(),
+          blockNumber = block.number,
           blockTimestamp = blockTime,
           tracesCounters = fixedTracesCounters,
           blockRLPEncoded = ByteArray(0),

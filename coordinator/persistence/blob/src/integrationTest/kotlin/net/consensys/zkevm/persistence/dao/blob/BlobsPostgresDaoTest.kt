@@ -4,7 +4,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import kotlinx.datetime.Clock
 import linea.kotlin.trimToMillisecondPrecision
 import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ExecutionException
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -57,9 +57,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
   }
 
-  private fun performInsertTest(
-    blobRecord: BlobRecord,
-  ): RowSet<Row>? {
+  private fun performInsertTest(blobRecord: BlobRecord): RowSet<Row>? {
     blobsPostgresDao.saveNewBlob(blobRecord).get()
     val dbContent = blobsContentQuery().execute().get()
     val newlyInsertedRow =

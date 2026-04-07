@@ -29,6 +29,7 @@ import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.waitAtMost
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -39,6 +40,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
+@Disabled("tmp disabled until we generate new sample data")
 class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
@@ -63,10 +65,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private lateinit var aggregations: List<Aggregation>
   private lateinit var blobs: List<BlobRecord>
 
-  private fun setupTest(
-    vertx: Vertx,
-    smartContractVersion: LineaRollupContractVersion,
-  ) {
+  private fun setupTest(vertx: Vertx, smartContractVersion: LineaRollupContractVersion) {
     // V6 is always used, this is left for when V7 is implemented.
     if (listOf(LineaRollupContractVersion.V6).contains(smartContractVersion).not()) {
       throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
@@ -207,10 +206,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   @Timeout(3, timeUnit = TimeUnit.MINUTES)
-  fun `submission works with contract V6`(
-    vertx: Vertx,
-    testContext: VertxTestContext,
-  ) {
+  fun `submission works with contract V6`(vertx: Vertx, testContext: VertxTestContext) {
     testSubmission(vertx, testContext, LineaRollupContractVersion.V6)
   }
 }

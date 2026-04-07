@@ -1,14 +1,19 @@
-import { useAccount, useReadContract } from "wagmi";
 import { erc20Abi } from "viem";
-import { useFormStore, useChainStore } from "@/stores";
-import { isEth } from "@/utils";
-import { isCctp } from "@/utils/tokens";
+import { useConnection, useReadContract } from "wagmi";
+
+import { getAdapter } from "@/adapters";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { isEth } from "@/utils/tokens";
 
 const useAllowance = () => {
-  const { address } = useAccount();
+  const { address } = useConnection();
   const token = useFormStore((state) => state.token);
   const fromChain = useChainStore.useFromChain();
-  const spender = !isCctp(token) ? fromChain.tokenBridgeAddress : fromChain.cctpTokenMessengerV2Address;
+  const toChain = useChainStore.useToChain();
+
+  const adapter = getAdapter(token, fromChain, toChain);
+  const spender = adapter?.getApprovalTarget(token, fromChain) ?? fromChain.tokenBridgeAddress;
 
   const {
     data: allowance,

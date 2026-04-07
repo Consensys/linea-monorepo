@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageServiceBase } from "./L1MessageServiceBase.sol";
@@ -21,9 +21,6 @@ abstract contract L1MessageService is
   IL1MessageService,
   IGenericErrors
 {
-  using SparseMerkleTreeVerifier for *;
-  using MessageHashing for *;
-
   /// @dev This is currently not in use, but is reserved for future upgrades.
   uint256 public systemMigrationBlock;
 
@@ -94,7 +91,7 @@ abstract contract L1MessageService is
    */
   function claimMessageWithProof(
     ClaimMessageWithProofParams calldata _params
-  ) external virtual nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
+  ) public virtual nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
     _claimMessageWithProof(_params);
   }
 
@@ -157,12 +154,51 @@ abstract contract L1MessageService is
     emit MessageClaimed(messageLeafHash);
   }
 
+  function _validateAndConsumeMessageProof(
+    ClaimMessageWithProofParams calldata _params
+  ) internal virtual returns (bytes32 messageLeafHash) {
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
+
+    uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
+
+    if (merkleDepth == 0) {
+      revert L2MerkleRootDoesNotExist();
+    }
+
+    if (merkleDepth != _params.proof.length) {
+      revert ProofLengthDifferentThanMerkleDepth(merkleDepth, _params.proof.length);
+    }
+
+    _setL2L1MessageToClaimed(_params.messageNumber);
+
+    _addUsedAmount(_params.fee + _params.value);
+
+    messageLeafHash = MessageHashing._hashMessage(
+      _params.from,
+      _params.to,
+      _params.fee,
+      _params.value,
+      _params.messageNumber,
+      _params.data
+    );
+    if (
+      !SparseMerkleTreeVerifier._verifyMerkleProof(
+        messageLeafHash,
+        _params.proof,
+        _params.leafIndex,
+        _params.merkleRoot
+      )
+    ) {
+      revert InvalidMerkleProof();
+    }
+  }
+
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev The message sender address is set temporarily in the transient storage when claiming.
    * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
-  function sender() external view virtual returns (address originalSender) {
+  function sender() public view virtual returns (address originalSender) {
     originalSender = TRANSIENT_MESSAGE_SENDER;
   }
 }

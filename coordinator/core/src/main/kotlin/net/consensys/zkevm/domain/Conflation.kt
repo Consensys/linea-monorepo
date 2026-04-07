@@ -1,11 +1,11 @@
 package net.consensys.zkevm.domain
 
-import kotlinx.datetime.Instant
 import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.CommonDomainFunctions
 import linea.kotlin.isSortedBy
 import net.consensys.linea.traces.TracesCounters
+import kotlin.time.Instant
 
 data class BlocksConflation(
   val blocks: List<Block>,
@@ -16,9 +16,9 @@ data class BlocksConflation(
   }
 
   override val startBlockNumber: ULong
-    get() = blocks.first().number.toULong()
+    get() = blocks.first().number
   override val endBlockNumber: ULong
-    get() = blocks.last().number.toULong()
+    get() = blocks.last().number
 }
 
 data class Batch(
@@ -36,8 +36,7 @@ data class Batch(
     Proven, // Batch is ready to be sent to L1 to be finalized
   }
 
-  fun intervalString(): String =
-    CommonDomainFunctions.blockIntervalString(startBlockNumber, endBlockNumber)
+  fun intervalString(): String = CommonDomainFunctions.blockIntervalString(startBlockNumber, endBlockNumber)
 
   fun toStringSummary(): String {
     return "Batch(startBlockNumber=$startBlockNumber, endBlockNumber=$endBlockNumber)"
@@ -46,13 +45,16 @@ data class Batch(
 
 enum class ConflationTrigger(val triggerPriority: Int) {
   // Business logic needs priority to pick the trigger in case multiple calculators trigger conflation.
-  // TARGET_BLOCK_NUMBER needs to be the highest priority as it is used as conflation, blob and aggregation boundary.
+  // the lower index of triggerPriority, the higher priority it has.
+  // TARGET_BLOCK_NUMBER and FORCED_TRANSACTION need to be the highest priority
+  // as it is used as conflation, blob and aggregation boundary.
   TARGET_BLOCK_NUMBER(1),
-  HARD_FORK(2),
-  DATA_LIMIT(3),
-  TRACES_LIMIT(4),
-  TIME_LIMIT(5),
-  BLOCKS_LIMIT(6),
+  FORCED_TRANSACTION(2),
+  HARD_FORK(3),
+  DATA_LIMIT(4),
+  TRACES_LIMIT(5),
+  TIME_LIMIT(6),
+  BLOCKS_LIMIT(7),
 }
 
 data class ConflationCalculationResult(
@@ -80,7 +82,7 @@ data class BlockCounters(
     return "BlockCounters(blockNumber=$blockNumber, " +
       "blockTimestamp=$blockTimestamp, " +
       "tracesCounters=$tracesCounters, " +
-      "blockRLPEncoded=${blockRLPEncoded.size}bytes,)"
+      "blockRLPEncoded=${blockRLPEncoded.size}bytes)"
   }
 
   override fun equals(other: Any?): Boolean {

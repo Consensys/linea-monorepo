@@ -1,7 +1,6 @@
 import { Command, Flags } from "@oclif/core";
 import { Agent } from "https";
-import { address, hexString } from "../utils/common/custom-flags.js";
-import { validateUrl } from "../utils/common/validation.js";
+import { Result } from "neverthrow";
 import {
   Client,
   createPublicClient,
@@ -14,12 +13,14 @@ import {
   TransactionSerializable,
 } from "viem";
 import { linea } from "viem/chains";
-import { Result } from "neverthrow";
-import { calculateRewards } from "../utils/eth-transfer/rewards.js";
-import { validateETHThreshold } from "../utils/eth-transfer/validation.js";
+
+import { address, hexString } from "../utils/common/custom-flags.js";
 import { buildHttpsAgent } from "../utils/common/https-agent.js";
 import { getWeb3SignerSignature } from "../utils/common/signature.js";
 import { estimateTransactionGas, sendRawTransaction } from "../utils/common/transactions.js";
+import { validateUrl } from "../utils/common/validation.js";
+import { calculateRewards } from "../utils/eth-transfer/rewards.js";
+import { validateETHThreshold } from "../utils/eth-transfer/validation.js";
 
 export default class EthTransfer extends Command {
   static examples = [
@@ -170,6 +171,8 @@ export default class EthTransfer extends Command {
       return;
     }
 
+    this.log(`Sender: address=${senderAddress} balance=${formatEther(senderBalance)} ETH nonce=${nonce.toString()}`);
+
     const rewards = calculateRewards(senderBalance);
 
     if (rewards === 0n) {
@@ -207,6 +210,7 @@ export default class EthTransfer extends Command {
       gas: gasLimit,
       maxFeePerGas: baseFeePerGas + priorityFeePerGas,
       maxPriorityFeePerGas: priorityFeePerGas,
+      nonce,
     };
 
     const signature = await this.signTransaction(

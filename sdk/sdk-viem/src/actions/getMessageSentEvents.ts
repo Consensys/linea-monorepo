@@ -7,6 +7,7 @@ import {
   Chain,
   Client,
   ContractEventName,
+  GetContractEventsErrorType,
   GetContractEventsParameters,
   Hash,
   Hex,
@@ -15,10 +16,10 @@ import {
 import { getContractEvents } from "viem/actions";
 
 type EventLogBase = {
-  blockNumber: number;
-  logIndex: number;
-  contractAddress: string;
-  transactionHash: string;
+  blockNumber: bigint | null;
+  logIndex: number | null;
+  contractAddress: Address;
+  transactionHash: Hash | null;
 };
 
 type MessageSent = {
@@ -43,6 +44,8 @@ export type GetMessageSentEventsParameters<
   GetContractEventsParameters<abi, eventName, strict, fromBlock, toBlock>,
   "args" | "fromBlock" | "toBlock" | "address"
 >;
+
+export type GetMessageSentEventsErrorType = GetContractEventsErrorType;
 
 export async function getMessageSentEvents<
   chain extends Chain | undefined,

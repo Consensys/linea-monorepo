@@ -1,4 +1,5 @@
 import { task } from "hardhat/config";
+
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
 
 /*
@@ -8,7 +9,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     *******************************************************************************************
 
     *******************************************************************************************
-    SEPOLIA_PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat getCurrentFinalizedBlockNumber \
     --contract-type <string> \

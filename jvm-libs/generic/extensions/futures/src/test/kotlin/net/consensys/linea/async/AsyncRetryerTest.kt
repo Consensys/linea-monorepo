@@ -60,9 +60,7 @@ class AsyncRetryerTest {
   }
 
   @Test
-  fun `Retryer should retry endlessly until predicate is met when both timeout and maxRetries are null`(
-    vertx: Vertx,
-  ) {
+  fun `Retryer should retry endlessly until predicate is met when both timeout and maxRetries are null`(vertx: Vertx) {
     val callCount = AtomicInteger(0)
     val expectedResult = "6"
     val result =
@@ -79,9 +77,7 @@ class AsyncRetryerTest {
   }
 
   @Test
-  fun `Retryer should retry endlessly until stopRetriesOnErrorPredicate returns true`(
-    vertx: Vertx,
-  ) {
+  fun `Retryer should retry endlessly until stopRetriesOnErrorPredicate returns true`(vertx: Vertx) {
     val callCount = AtomicInteger(0)
 
     val future = AsyncRetryer.retry(
@@ -381,6 +377,37 @@ class AsyncRetryerTest {
       .withThrowableOfType(ExecutionException::class.java)
       .withCauseInstanceOf(IndexOutOfBoundsException::class.java)
       .withMessageContaining("Error 4")
+  }
+
+  @Test
+  fun `retry should retry until maxRetries are reached and consumer not being called before delay`(vertx: Vertx) {
+    val callCount = AtomicInteger(0)
+    val startTime = kotlin.time.Clock.System.now()
+    val exceptionConsumerCallDelays: MutableList<Duration> = mutableListOf()
+    val future =
+      AsyncRetryer.retry<Int>(
+        vertx = vertx,
+        backoffDelay = 20.milliseconds,
+        maxRetries = 10,
+        exceptionConsumer = { exceptionConsumerCallDelays.add(kotlin.time.Clock.System.now().minus(startTime)) },
+        ignoreFirstExceptionsUntilTimeElapsed = 100.milliseconds,
+      ) {
+        throw IndexOutOfBoundsException("Error ${callCount.incrementAndGet()}")
+      }
+
+    runCatching { future.get() }
+
+    assertThat(callCount.get()).isEqualTo(11)
+    assertThat(future)
+      .isCompletedExceptionally
+      .isNotCancelled
+      .failsWithin(2.seconds.toJavaDuration())
+      .withThrowableOfType(ExecutionException::class.java)
+      .withCauseInstanceOf(IndexOutOfBoundsException::class.java)
+      .withMessageContaining("Error 11")
+
+    assertThat(exceptionConsumerCallDelays.filter { it > 100.milliseconds }).isNotEmpty()
+    assertThat(exceptionConsumerCallDelays.filter { it < 100.milliseconds }).isEmpty()
   }
 
   @Test

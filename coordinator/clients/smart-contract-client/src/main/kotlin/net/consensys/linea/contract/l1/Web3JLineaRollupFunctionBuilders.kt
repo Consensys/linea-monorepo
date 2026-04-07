@@ -3,48 +3,46 @@ package net.consensys.linea.contract.l1
 import build.linea.contract.LineaRollupV6
 import linea.contract.l1.LineaRollupContractVersion
 import linea.kotlin.toBigInteger
+import net.consensys.linea.contract.l1.FunctionBuildersV8.buildFinalizeBlocksFunctionV8
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
 import org.web3j.abi.TypeReference
 import org.web3j.abi.datatypes.DynamicArray
 import org.web3j.abi.datatypes.DynamicBytes
 import org.web3j.abi.datatypes.Function
-import org.web3j.abi.datatypes.Type
 import org.web3j.abi.datatypes.generated.Bytes32
 import org.web3j.abi.datatypes.generated.Uint256
 import java.math.BigInteger
-import java.util.Arrays
 
 internal object Web3JLineaRollupFunctionBuilders {
-  fun buildSubmitBlobsFunction(
-    version: LineaRollupContractVersion,
-    blobs: List<BlobRecord>,
-  ): Function {
+  fun buildSubmitBlobsFunction(version: LineaRollupContractVersion, blobs: List<BlobRecord>): Function {
     return when (version) {
-      LineaRollupContractVersion.V6 -> buildSubmitBlobsFunctionV6(blobs)
+      LineaRollupContractVersion.V6,
+      LineaRollupContractVersion.V7,
+      LineaRollupContractVersion.V8,
+      -> buildSubmitBlobsFunctionV6(blobs)
     }
   }
 
-  fun buildSubmitBlobsFunctionV6(
-    blobs: List<BlobRecord>,
-  ): Function {
-    val blobsSubmissionData = blobs.map { blob ->
-      val blobCompressionProof = blob.blobCompressionProof!!
-      // BlobSubmission(BigInteger dataEvaluationClaim, byte[] kzgCommitment, byte[] kzgProof,
-      //                byte[] finalStateRootHash, byte[] snarkHash)
-      LineaRollupV6.BlobSubmission(
-        /*dataEvaluationClaim*/
-        BigInteger(blobCompressionProof.expectedY),
-        /*kzgCommitment*/
-        blobCompressionProof.commitment,
-        /*kzgProof*/
-        blobCompressionProof.kzgProofContract,
-        /*finalStateRootHash*/
-        blobCompressionProof.finalStateRootHash,
-        /*snarkHash*/
-        blobCompressionProof.snarkHash,
-      )
-    }
+  fun buildSubmitBlobsFunctionV6(blobs: List<BlobRecord>): Function {
+    val blobsSubmissionData =
+      blobs.map { blob ->
+        val blobCompressionProof = blob.blobCompressionProof!!
+        // BlobSubmission(BigInteger dataEvaluationClaim, byte[] kzgCommitment, byte[] kzgProof,
+        //                byte[] finalStateRootHash, byte[] snarkHash)
+        LineaRollupV6.BlobSubmission(
+          // dataEvaluationClaim
+          BigInteger(blobCompressionProof.expectedY),
+          // kzgCommitment
+          blobCompressionProof.commitment,
+          // kzgProof
+          blobCompressionProof.kzgProofContract,
+          // finalStateRootHash
+          blobCompressionProof.finalStateRootHash,
+          // snarkHash
+          blobCompressionProof.snarkHash,
+        )
+      }
 
     /**
      function submitBlobs(
@@ -55,7 +53,7 @@ internal object Web3JLineaRollupFunctionBuilders {
      */
     return Function(
       LineaRollupV6.FUNC_SUBMITBLOBS,
-      Arrays.asList<Type<*>>(
+      listOf(
         DynamicArray(LineaRollupV6.BlobSubmission::class.java, blobsSubmissionData),
         Bytes32(blobs.first().blobCompressionProof!!.prevShnarf),
         Bytes32(blobs.last().blobCompressionProof!!.expectedShnarf),
@@ -71,15 +69,24 @@ internal object Web3JLineaRollupFunctionBuilders {
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
   ): Function {
-    when (version) {
-      LineaRollupContractVersion.V6 -> {
-        return buildFinalizeBlockFunctionV6(
+    return when (version) {
+      LineaRollupContractVersion.V6,
+      LineaRollupContractVersion.V7,
+      -> {
+        buildFinalizeBlockFunctionV6(
           aggregationProof,
           aggregationLastBlob,
           parentL1RollingHash,
           parentL1RollingHashMessageNumber,
         )
       }
+
+      LineaRollupContractVersion.V8 -> buildFinalizeBlocksFunctionV8(
+        aggregationProof,
+        aggregationLastBlob,
+        parentL1RollingHash,
+        parentL1RollingHashMessageNumber,
+      )
     }
   }
 
@@ -89,18 +96,19 @@ internal object Web3JLineaRollupFunctionBuilders {
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
   ): Function {
-    val aggregationEndBlobInfo = LineaRollupV6.ShnarfData(
-      /*parentShnarf*/
-      aggregationLastBlob.blobCompressionProof!!.prevShnarf,
-      /*snarkHash*/
-      aggregationLastBlob.blobCompressionProof!!.snarkHash,
-      /*finalStateRootHash*/
-      aggregationLastBlob.blobCompressionProof!!.finalStateRootHash,
-      /*dataEvaluationPoint*/
-      aggregationLastBlob.blobCompressionProof!!.expectedX,
-      /*dataEvaluationClaim*/
-      aggregationLastBlob.blobCompressionProof!!.expectedY,
-    )
+    val aggregationEndBlobInfo =
+      LineaRollupV6.ShnarfData(
+        // parentShnarf
+        aggregationLastBlob.blobCompressionProof!!.prevShnarf,
+        // snarkHash
+        aggregationLastBlob.blobCompressionProof!!.snarkHash,
+        // finalStateRootHash
+        aggregationLastBlob.blobCompressionProof!!.finalStateRootHash,
+        // dataEvaluationPoint
+        aggregationLastBlob.blobCompressionProof!!.expectedX,
+        // dataEvaluationClaim
+        aggregationLastBlob.blobCompressionProof!!.expectedY,
+      )
 
 //  FinalizationDataV3(
 //    byte[] parentStateRootHash,
@@ -117,32 +125,33 @@ internal object Web3JLineaRollupFunctionBuilders {
 //    byte[] l2MessagingBlocksOffsets
 //    )
 
-    val finalizationData = LineaRollupV6.FinalizationDataV3(
-      /*parentStateRootHash*/
-      aggregationProof.parentStateRootHash,
-      /*endBlockNumber*/
-      aggregationProof.endBlockNumber.toBigInteger(),
-      /*shnarfData*/
-      aggregationEndBlobInfo,
-      /*lastFinalizedTimestamp*/
-      aggregationProof.parentAggregationLastBlockTimestamp.epochSeconds.toBigInteger(),
-      /*finalTimestamp*/
-      aggregationProof.finalTimestamp.epochSeconds.toBigInteger(),
-      /*lastFinalizedL1RollingHash*/
-      parentL1RollingHash,
-      /*l1RollingHash*/
-      aggregationProof.l1RollingHash,
-      /*lastFinalizedL1RollingHashMessageNumber*/
-      parentL1RollingHashMessageNumber.toBigInteger(),
-      /*l1RollingHashMessageNumber*/
-      aggregationProof.l1RollingHashMessageNumber.toBigInteger(),
-      /*l2MerkleTreesDepth*/
-      aggregationProof.l2MerkleTreesDepth.toBigInteger(),
-      /*l2MerkleRoots*/
-      aggregationProof.l2MerkleRoots,
-      /*l2MessagingBlocksOffsets*/
-      aggregationProof.l2MessagingBlocksOffsets,
-    )
+    val finalizationData =
+      LineaRollupV6.FinalizationDataV3(
+        // parentStateRootHash
+        aggregationProof.parentStateRootHash,
+        // endBlockNumber
+        aggregationProof.endBlockNumber.toBigInteger(),
+        // shnarfData
+        aggregationEndBlobInfo,
+        // lastFinalizedTimestamp
+        aggregationProof.parentAggregationLastBlockTimestamp.epochSeconds.toBigInteger(),
+        // finalTimestamp
+        aggregationProof.finalTimestamp.epochSeconds.toBigInteger(),
+        // lastFinalizedL1RollingHash
+        parentL1RollingHash,
+        // l1RollingHash
+        aggregationProof.l1RollingHash,
+        // lastFinalizedL1RollingHashMessageNumber
+        parentL1RollingHashMessageNumber.toBigInteger(),
+        // l1RollingHashMessageNumber
+        aggregationProof.l1RollingHashMessageNumber.toBigInteger(),
+        // l2MerkleTreesDepth
+        aggregationProof.l2MerkleTreesDepth.toBigInteger(),
+        // l2MerkleRoots
+        aggregationProof.l2MerkleRoots,
+        // l2MessagingBlocksOffsets
+        aggregationProof.l2MessagingBlocksOffsets,
+      )
 
     /**
      *  function finalizeBlocks(
@@ -151,15 +160,16 @@ internal object Web3JLineaRollupFunctionBuilders {
      *     FinalizationDataV3 calldata _finalizationData
      *   )
      */
-    val function = Function(
-      LineaRollupV6.FUNC_FINALIZEBLOCKS,
-      Arrays.asList<Type<*>>(
-        DynamicBytes(aggregationProof.aggregatedProof),
-        Uint256(aggregationProof.aggregatedVerifierIndex.toLong()),
-        finalizationData,
-      ),
-      emptyList<TypeReference<*>>(),
-    )
+    val function =
+      Function(
+        LineaRollupV6.FUNC_FINALIZEBLOCKS,
+        listOf(
+          DynamicBytes(aggregationProof.aggregatedProof),
+          Uint256(aggregationProof.aggregatedVerifierIndex.toLong()),
+          finalizationData,
+        ),
+        emptyList<TypeReference<*>>(),
+      )
     return function
   }
 }

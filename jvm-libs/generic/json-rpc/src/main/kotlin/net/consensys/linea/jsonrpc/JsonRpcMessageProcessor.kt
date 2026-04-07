@@ -61,17 +61,10 @@ class JsonRpcMessageProcessor(
     override val name: String = "jsonrpc"
   },
 ) : JsonRpcMessageHandler {
-  init {
-    DatabindCodec.mapper().registerKotlinModule()
-  }
-
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =
     handleAndMeasureRequestProcessing(user, messageJsonStr)
 
-  private fun handleAndMeasureRequestProcessing(
-    user: User?,
-    requestJsonStr: String,
-  ): Future<String> {
+  private fun handleAndMeasureRequestProcessing(user: User?, requestJsonStr: String): Future<String> {
     return Future.fromCompletionStage(
       metricsFacade.createDynamicTagTimer<Triple<String?, String, Boolean>>(
         category = metricsCategory,
@@ -103,7 +96,7 @@ class JsonRpcMessageProcessor(
       }
     log.trace(json)
     val isBulkRequest: Boolean = json is JsonArray
-    val jsonArray = if (isBulkRequest) json as JsonArray else JsonArray().add(json)
+    val jsonArray = if (isBulkRequest) json else JsonArray().add(json)
     val requestParsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>> =
       jsonArray.map(::measureRequestParsing)
 
@@ -187,9 +180,7 @@ class JsonRpcMessageProcessor(
       }
   }
 
-  private fun measureRequestParsing(
-    json: Any,
-  ): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
+  private fun measureRequestParsing(json: Any): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
     return metricsFacade.createDynamicTagTimer<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>(
       category = metricsCategory,
       name = "serialization.request",
@@ -283,9 +274,10 @@ class JsonRpcMessageProcessor(
   }
 
   companion object {
-    // init {
-    //   DatabindCodec.mapper().enable(SerializationFeature.INDENT_OUTPUT)
-    // }
+    init {
+      DatabindCodec.mapper().registerKotlinModule()
+    }
+
     fun parseRequest(json: Any): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
       try {
         json as JsonObject

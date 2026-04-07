@@ -1,32 +1,38 @@
+import { memo } from "react";
+
 import clsx from "clsx";
 import { formatUnits } from "viem";
-import styles from "./item.module.scss";
+
+import { getAdapterById } from "@/adapters";
 import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
-import { getChainLogoPath, formatHex, formatTimestamp, getEstimatedTimeText } from "@/utils";
-import { BridgeTransaction, CCTPMode, TransactionStatus } from "@/types";
+import { BridgeTransaction, TransactionStatus } from "@/types";
+import { getChainLogoPath } from "@/utils/chains";
+import { formatEstimatedTime, formatHex, formatTimestamp } from "@/utils/format";
+
+import styles from "./item.module.scss";
 
 type Props = BridgeTransaction & {
   onClick: (code: string) => void;
 };
 
-export default function Transaction({
+const Transaction = memo(function Transaction({
   bridgingTx,
+  adapterId,
   status,
   fromChain,
   toChain,
   timestamp,
   message,
   token,
-  cctpMode,
+  mode,
   onClick,
 }: Props) {
   const formatedTxHash = formatHex(bridgingTx);
-  const estimatedTimeText = getEstimatedTimeText(fromChain, token, cctpMode ?? CCTPMode.STANDARD, {
-    withSpaceAroundHyphen: true,
-    isAbbreviatedTimeUnit: true,
-  });
+  const adapter = getAdapterById(adapterId);
+  const time = adapter?.getEstimatedTime?.(fromChain.layer, mode);
+  const estimatedTimeText = time ? formatEstimatedTime(time, { abbreviated: true, spacedHyphen: true }) : "";
 
   const renderStatus = () => {
     switch (status) {
@@ -91,4 +97,6 @@ export default function Transaction({
       </div>
     </li>
   );
-}
+});
+
+export default Transaction;

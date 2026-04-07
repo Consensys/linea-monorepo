@@ -1,10 +1,10 @@
 package net.consensys.zkevm.persistence.dao.blob
 
-import kotlinx.datetime.Instant
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Instant
 
 class BlobsRepositoryImpl(
   private val blobsDao: BlobsDao,
@@ -38,9 +38,7 @@ class BlobsRepositoryImpl(
     return blobsDao.findBlobByEndBlockNumber(endBlockNumber.toULong())
   }
 
-  override fun deleteBlobsUpToEndBlockNumber(
-    endBlockNumberInclusive: ULong,
-  ): SafeFuture<Int> {
+  override fun deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive: ULong): SafeFuture<Int> {
     return blobsDao.deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive)
   }
 

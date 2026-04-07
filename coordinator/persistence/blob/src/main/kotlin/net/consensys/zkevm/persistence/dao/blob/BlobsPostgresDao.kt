@@ -4,8 +4,6 @@ import io.vertx.core.Future
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import net.consensys.linea.async.toSafeFuture
@@ -20,6 +18,8 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class BlobsPostgresDao(
   config: Config,
@@ -169,9 +169,7 @@ class BlobsPostgresDao(
       .toSafeFuture()
   }
 
-  private fun getConsecutiveBlobsFromBlockNumber(
-    startingBlockNumberInclusive: ULong,
-  ): SafeFuture<List<BlobRecord>> {
+  private fun getConsecutiveBlobsFromBlockNumber(startingBlockNumberInclusive: ULong): SafeFuture<List<BlobRecord>> {
     return selectQuery
       .execute(
         Tuple.of(
@@ -205,9 +203,7 @@ class BlobsPostgresDao(
       .thenApply { blobRecords -> blobRecords.firstOrNull() }
   }
 
-  override fun findBlobByEndBlockNumber(
-    endBlockNumber: ULong,
-  ): SafeFuture<BlobRecord?> {
+  override fun findBlobByEndBlockNumber(endBlockNumber: ULong): SafeFuture<BlobRecord?> {
     return selectBlobByEndBlockNumberQuery
       .execute(Tuple.of(endBlockNumber.toLong()))
       .toSafeFuture()
@@ -215,9 +211,7 @@ class BlobsPostgresDao(
       .thenApply { blobRecords -> blobRecords.firstOrNull() }
   }
 
-  override fun deleteBlobsUpToEndBlockNumber(
-    endBlockNumberInclusive: ULong,
-  ): SafeFuture<Int> {
+  override fun deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive: ULong): SafeFuture<Int> {
     return deleteUptoQuery
       .execute(Tuple.of(endBlockNumberInclusive.toLong()))
       .map { rowSet -> rowSet.rowCount() }

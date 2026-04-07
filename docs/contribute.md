@@ -13,6 +13,10 @@ Before contributing, please ensure you're familiar with:
 - Our [development guidelines](development-guidelines.md) on how to write code, tests, and documentation.
 - Our [code of conduct](code-of-conduct.md).
 
+### Trivial and non-code contributions
+
+We do not accept pull requests for trivial non-code changes (for example fixing comments, typos, or other small edits). Although we appreciate the help, managing many of these contributions is unfeasible and adds load on continuous delivery (running all tests, and so on). Please open an issue pointing to the problem instead; we batch those fixes into a single change. See the [repository README](../README.md) under **How to contribute** for the full policy.
+
 ### Create an issue
 
 * Check beforehand that the issue you want to raise isn't present (even with other keywords) to avoid creating duplicates.
@@ -38,19 +42,19 @@ We follow a [trunk-based](https://trunkbaseddevelopment.com/) development proces
 
 1. **Create a new branch**: For each new feature or bug fix, create a new branch. Branches should be named descriptively, following the pattern `type/issue#-short-description`, e.g., `feature/123-add-login-button` or `bugfix/456-fix-login-error`.
 
-1. **Write your code**: Develop your feature or fix the bug in your branch. Make sure your code is clean, well-commented, and adheres to our coding standards.
+2. **Write your code**: Develop your feature or fix the bug in your branch. Make sure your code is clean, well-commented, and adheres to our coding standards.
 <!--- TODO: Section on coding standards -->
 
-1. **Test your changes**: Write appropriate tests for your changes and ensure all tests pass before submitting a pull request. You are responsible for implementing robust but short-lived automated tests to avoid feature breaking because of a lack of automated test, and to avoid CI growing to an infinite time.
+3. **Test your changes**: Write appropriate tests for your changes and ensure all tests pass before submitting a pull request. You are responsible for implementing robust but short-lived automated tests to avoid feature breaking because of a lack of automated test, and to avoid CI growing to an infinite time.
 <!--- TODO: Section on unit & integration testing -->
 
-1. **Commit your changes**: Commit your changes regularly and write clear, concise commit messages that explain your changes. Follow the pattern `type(issue#): short description of change`, e.g., `fix(456): corrected login error`.
+4. **Commit your changes**: Commit your changes regularly and write clear, concise commit messages that explain your changes. Follow the pattern `type(issue#): short description of change`, e.g., `fix(456): corrected login error`.
 
-1. **Push your changes**: Push your changes to your forked repository on GitHub.
+5. **Push your changes**: Push your changes to your forked repository on GitHub.
 
-1. **Submit a pull request**: Create a new pull request from your branch to the main repository's trunk/main branch. Include a detailed description of your changes and link the related issue number, in the template created.
+6. **Submit a pull request**: Create a new pull request from your branch to the main repository's trunk/main branch. Include a detailed description of your changes and link the related issue number, in the template created.
 
-1. **CI**: Ensure all elements in the CI are passing in a reliable fashion, don't retry to fix a flaky test. Ensure quality gates (tests, coverage, static analysis, and security analysis) are passing.
+7. **CI**: Ensure all elements in the CI are passing in a reliable fashion, don't retry to fix a flaky test. Ensure quality gates (tests, coverage, static analysis, and security analysis) are passing.
 
 ## Code reviews
 
@@ -60,9 +64,10 @@ Once you submit a pull request, it will be reviewed by the maintainers. They may
 
 We use GitOps, ArgoCD, Helm, and Kubernetes for our release process. When changes are merged into the main branch, they can be deployed to a testnet environment using ArgoCD and Helm. After successful testing in the testnet environment, the changes can be promoted to the mainnet environment.
 
-Contributors are responsible for pushing their changes to testnet and mainnet, and monitoring the impact of their changes.
+Deployments to testnet and mainnet are done by Consensys engineers.
 
 The Release Manager is responsible for the technical soundness of each release. This includes:
+* Ensuring that any code deployed to any environment (including Devnet) has corresponding E2E test coverage. If blockers prevent E2E coverage, they must be flagged and tracked before deployment proceeds.
 * Reviewing each PR. Will it break something? Were necessary integration and regression tests done? What are dependencies? Are we following the correct order/timeline for testnet/mainnet?
 * Ensuring communication has been shared with the relevant channels (Ops, SRE, support, community & documentation). Both with internal and external stakeholders (partners, community). This doesn't have to be done directly by the release manager, however the release manager is responsible for ensuring it's done.
 * Ensuring people are available to react in case the release has an issue (engineer, SRE).
@@ -94,9 +99,9 @@ Configuration changes that are part of ops are not considered releases. This inc
 ### Release to testnet
 We release on a weekly basis. The standard internal contributor's day-by-day process is as follows:
 1. **Create a testnet PR**: Create a new pull request to deploy the changes, once your PR has been merged. Only release changes that were merged in `Consensys/linea-monorepo/main`. Include a detailed description of your changes and link the related issue number.
-1. **Prepare deployment with Release Manager**: Contributor reaches out to the Release Manager with the PR to prepare its inclusion in the next batch of releases. Use the next Testnet release, and add a tentative deployment to Mainnet at least 1 week after. 
-1. **Open a maintenance window for releases having an impact on user experience**: Internal contributors, reach out to NOC to share the expected maintenance window so it can be added to the [status page](https://linea.statuspage.io/). Maintenance windows can be requested by adding a ticket to the NOC board.
-1. **Merge PR**: Contributor releases changes and follows instructions on the Testnet PR template. DevOps and SRE teams should be involved in the deployment activities. Major releases should include a detailed release plan that also includes a study of risks, mitigations, and revert plans.
+2. **Prepare deployment with Release Manager**: Contributor reaches out to the Release Manager with the PR to prepare its inclusion in the next batch of releases. Use the next Testnet release, and add a tentative deployment to Mainnet at least 1 week after.
+3. **Open a maintenance window for releases having an impact on user experience**: Internal contributors, reach out to NOC to share the expected maintenance window so it can be added to the [status page](https://linea.statuspage.io/). Maintenance windows can be requested by adding a ticket to the NOC board.
+4. **Merge PR**: Contributor releases changes and follows instructions on the Testnet PR template. DevOps and SRE teams should be involved in the deployment activities. Major releases should include a detailed release plan that also includes a study of risks, mitigations, and revert plans.
 
 ### Release to mainnet
 

@@ -7,15 +7,16 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class AggregationTriggerCalculatorByTargetBlockNumbers(
-  targetEndBlockNumbers: List<ULong>,
-  private val log: Logger = LogManager.getLogger(SyncAggregationTriggerCalculator::class.java),
+  private val targetEndBlockNumbers: Set<ULong>,
+  private val triggerType: AggregationTriggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
+  private val log: Logger = LogManager.getLogger(AggregationTriggerCalculatorByTargetBlockNumbers::class.java),
 ) : SyncAggregationTriggerCalculator {
-  private val endBlockNumbers = targetEndBlockNumbers.sorted()
   private var firstBlobWasConsumed: Boolean = false
-
   private var inFlightAggregation: BlobsToAggregate? = null
 
   internal fun <T : BlockInterval> checkAggregationTrigger(blob: T): AggregationTrigger? {
+    val endBlockNumbers = targetEndBlockNumbers.sorted()
+
     if (endBlockNumbers.isEmpty()) {
       return null
     }
@@ -26,7 +27,7 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
         log.warn(
           "first blob={} is already beyond last target aggregation endBlockNumber={} " +
             "please check configuration",
-          blob,
+          blob.intervalString(),
           endBlockNumbers.last(),
         )
       }
@@ -34,8 +35,9 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
       return null
     }
 
-    val overlapedTargetAggregation = endBlockNumbers
-      .firstOrNull { it >= blob.startBlockNumber && it < blob.endBlockNumber }
+    val overlapedTargetAggregation =
+      endBlockNumbers
+        .firstOrNull { it >= blob.startBlockNumber && it < blob.endBlockNumber }
 
     return when {
       overlapedTargetAggregation != null -> {
@@ -49,8 +51,9 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
 
       endBlockNumbers.contains(blob.endBlockNumber) -> {
         AggregationTrigger(
-          aggregationTriggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
-          aggregation = BlobsToAggregate(
+          aggregationTriggerType = triggerType,
+          aggregation =
+          BlobsToAggregate(
             startBlockNumber = inFlightAggregation?.startBlockNumber ?: blob.startBlockNumber,
             endBlockNumber = blob.endBlockNumber,
           ),
@@ -69,11 +72,12 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
 
   @Synchronized
   override fun newBlob(blobCounters: BlobCounters) {
-    inFlightAggregation = if (inFlightAggregation == null) {
-      BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber)
-    } else {
-      BlobsToAggregate(inFlightAggregation!!.startBlockNumber, blobCounters.endBlockNumber)
-    }
+    inFlightAggregation =
+      if (inFlightAggregation == null) {
+        BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber)
+      } else {
+        BlobsToAggregate(inFlightAggregation!!.startBlockNumber, blobCounters.endBlockNumber)
+      }
   }
 
   @Synchronized

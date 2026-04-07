@@ -5,10 +5,12 @@ import net.consensys.zkevm.domain.BlobsToAggregate
 
 fun interface AggregationHandler {
   fun onAggregation(blobsToAggregate: BlobsToAggregate)
+
   companion object {
     internal val NOOP_HANDLER: AggregationHandler = AggregationHandler { }
   }
 }
+
 enum class AggregationTriggerType {
   TIME_LIMIT,
   PROOF_LIMIT,
@@ -25,6 +27,13 @@ enum class AggregationTriggerType {
    * When a hard fork is detected, any pending aggregation should be finalized.
    */
   HARD_FORK,
+
+  /**
+   * Aggregation trigger for forced transaction invalidity proof generation.
+   * When a forced transaction is detected, create an aggregation boundary at the FTX execution block
+   * to isolate the FTX for invalidity proof generation.
+   */
+  FORCED_TRANSACTION,
 }
 
 data class AggregationTrigger(
@@ -34,6 +43,7 @@ data class AggregationTrigger(
 
 fun interface AggregationTriggerHandler {
   fun onAggregationTrigger(aggregationTrigger: AggregationTrigger)
+
   companion object {
     internal val NOOP_HANDLER: AggregationTriggerHandler = AggregationTriggerHandler { }
   }
@@ -50,11 +60,13 @@ fun interface AggregationTriggerHandler {
  */
 interface AggregationCalculator {
   fun newBlob(blobCounters: BlobCounters)
+
   fun onAggregation(aggregationHandler: AggregationHandler)
 }
 
 interface AggregationTriggerCalculator {
   fun newBlob(blobCounters: BlobCounters)
+
   fun reset()
 }
 

@@ -1,13 +1,15 @@
+import clsx from "clsx";
+import { useConnection } from "wagmi";
+
 import CopyToClipboard from "@/components/copy-to-clipboard";
 import UserAvatar from "@/components/user-avatar";
-import clsx from "clsx";
-import { useAccount } from "wagmi";
 import { useEnsInfo } from "@/hooks/user/useEnsInfo";
-import styles from "./user-wallet-info.module.scss";
 import { shortenAddress } from "@/utils/format";
 
+import styles from "./user-wallet-info.module.scss";
+
 export default function UserWalletInfo() {
-  const { address } = useAccount();
+  const { address } = useConnection();
   const { ensName, ensAvatar } = useEnsInfo();
   return (
     <div className={styles.userInfo}>

@@ -17,7 +17,6 @@ data class L1SubmissionConfigToml(
   val aggregation: AggregationSubmissionToml,
   val dataAvailability: DataAvailability = DataAvailability.ROLLUP,
 ) {
-
   enum class DataAvailability() {
     ROLLUP,
     VALIDIUM,
@@ -47,9 +46,7 @@ data class L1SubmissionConfigToml(
       val historicBaseFeePerBlobGasLowerBound: ULong,
       val historicAvgRewardConstant: ULong,
     ) {
-      fun reified(
-        timeOfTheDayMultipliers: TimeOfDayMultipliers,
-      ): GasPriceCapCalculationConfig {
+      fun reified(timeOfTheDayMultipliers: TimeOfDayMultipliers): GasPriceCapCalculationConfig {
         return GasPriceCapCalculationConfig(
           adjustmentConstant = this.adjustmentConstant,
           blobAdjustmentConstant = this.blobAdjustmentConstant,
@@ -67,6 +64,7 @@ data class L1SubmissionConfigToml(
 
     data class FeeHistoryFetcherConfig(
       val l1Endpoint: URL? = null,
+      val l1RequestRetries: RequestRetriesToml? = null,
       val fetchInterval: Duration = 3.seconds,
       val maxBlockCount: UInt = 1000u,
       val rewardPercentiles: List<UInt> = listOf(10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u),
@@ -75,10 +73,13 @@ data class L1SubmissionConfigToml(
     ) {
       fun reified(
         defaultL1Endpoint: URL?,
+        defaultL1RequestRetries: RequestRetriesToml,
       ): L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig {
         return L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig(
-          l1Endpoint = this.l1Endpoint ?: defaultL1Endpoint
+          l1Endpoint =
+          this.l1Endpoint ?: defaultL1Endpoint
             ?: throw AssertionError("l1Endpoint config missing"),
+          l1RequestRetries = this.l1RequestRetries?.asDomain ?: defaultL1RequestRetries.asDomain,
           fetchInterval = this.fetchInterval,
           maxBlockCount = this.maxBlockCount,
           rewardPercentiles = this.rewardPercentiles,
@@ -112,7 +113,8 @@ data class L1SubmissionConfigToml(
         maxFeePerGasCap = this.maxFeePerGasCap,
         maxPriorityFeePerGasCap = this.maxPriorityFeePerGasCap,
         maxFeePerBlobGasCap = this.maxFeePerBlobGasCap,
-        fallback = L1SubmissionConfig.GasConfig.FallbackGasConfig(
+        fallback =
+        L1SubmissionConfig.GasConfig.FallbackGasConfig(
           priorityFeePerGasLowerBound = this.fallback.priorityFeePerGasLowerBound,
           priorityFeePerGasUpperBound = this.fallback.priorityFeePerGasUpperBound,
         ),
@@ -123,6 +125,7 @@ data class L1SubmissionConfigToml(
   data class BlobSubmissionConfigToml(
     val disabled: Boolean = false,
     val l1Endpoint: URL? = null,
+    val l1RequestRetries: RequestRetriesToml? = null,
     val submissionDelay: Duration = 0.seconds,
     val submissionTickInterval: Duration = 12.seconds,
     val maxSubmissionTransactionsPerTick: UInt = 2u,
@@ -137,6 +140,7 @@ data class L1SubmissionConfigToml(
   data class AggregationSubmissionToml(
     val disabled: Boolean = false,
     val l1Endpoint: URL? = null,
+    val l1RequestRetries: RequestRetriesToml? = null,
     val submissionDelay: Duration = 0.seconds,
     val submissionTickInterval: Duration = 24.seconds,
     val maxSubmissionsPerTick: UInt = 1u,
@@ -146,23 +150,32 @@ data class L1SubmissionConfigToml(
 
   fun reified(
     l1DefaultEndpoint: URL?,
+    l1DefaultRequestRetries: RequestRetriesToml,
     timeOfDayMultipliers: TimeOfDayMultipliers,
   ): L1SubmissionConfig {
     return L1SubmissionConfig(
-      dynamicGasPriceCap = L1SubmissionConfig.DynamicGasPriceCapConfig(
+      dynamicGasPriceCap =
+      L1SubmissionConfig.DynamicGasPriceCapConfig(
         disabled = this.dynamicGasPriceCap.disabled,
         gasPriceCapCalculation = this.dynamicGasPriceCap.gasPriceCapCalculation.reified(timeOfDayMultipliers),
-        feeHistoryFetcher = this.dynamicGasPriceCap.feeHistoryFetcher.reified(l1DefaultEndpoint),
+        feeHistoryFetcher = this.dynamicGasPriceCap.feeHistoryFetcher.reified(
+          defaultL1Endpoint = l1DefaultEndpoint,
+          defaultL1RequestRetries = l1DefaultRequestRetries,
+        ),
         timeOfDayMultipliers = timeOfDayMultipliers,
       ),
-      fallbackGasPrice = L1SubmissionConfig.FallbackGasPriceConfig(
+      fallbackGasPrice =
+      L1SubmissionConfig.FallbackGasPriceConfig(
         feeHistoryBlockCount = this.fallbackGasPrice.feeHistoryBlockCount,
         feeHistoryRewardPercentile = this.fallbackGasPrice.feeHistoryRewardPercentile,
       ),
-      blob = L1SubmissionConfig.BlobSubmissionConfig(
+      blob =
+      L1SubmissionConfig.BlobSubmissionConfig(
         disabled = this.blob.disabled,
-        l1Endpoint = this.blob.l1Endpoint ?: l1DefaultEndpoint
+        l1Endpoint =
+        this.blob.l1Endpoint ?: l1DefaultEndpoint
           ?: throw AssertionError("l1Endpoint config missing"),
+        l1RequestRetries = this.blob.l1RequestRetries?.asDomain ?: l1DefaultRequestRetries.asDomain,
         submissionDelay = this.blob.submissionDelay,
         submissionTickInterval = this.blob.submissionTickInterval,
         maxSubmissionTransactionsPerTick = this.blob.maxSubmissionTransactionsPerTick,
@@ -171,10 +184,13 @@ data class L1SubmissionConfigToml(
         gas = this.blob.gas.reified(),
         signer = this.blob.signer.reified(),
       ),
-      aggregation = L1SubmissionConfig.AggregationSubmissionConfig(
+      aggregation =
+      L1SubmissionConfig.AggregationSubmissionConfig(
         disabled = this.aggregation.disabled,
-        l1Endpoint = this.aggregation.l1Endpoint ?: l1DefaultEndpoint
+        l1Endpoint =
+        this.aggregation.l1Endpoint ?: l1DefaultEndpoint
           ?: throw AssertionError("l1Endpoint config missing"),
+        l1RequestRetries = this.aggregation.l1RequestRetries?.asDomain ?: l1DefaultRequestRetries.asDomain,
         submissionDelay = this.aggregation.submissionDelay,
         submissionTickInterval = this.aggregation.submissionTickInterval,
         maxSubmissionsPerTick = this.aggregation.maxSubmissionsPerTick,

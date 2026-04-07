@@ -1,5 +1,7 @@
 # Linea architecture beta v4
 
+> For per-feature documentation covering contracts, backend services, test coverage, and configuration, see the [Feature Documentation](features/README.md).
+
 <!--
 ToC can be automatically updated with:
 A) VC Code "Markdown All In One" plugin - https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one#table-of-contents
@@ -105,6 +107,8 @@ the same way the sequencer would do it.
 
 
 ## Sequencer
+> **Note**: The consensus protocol has since moved from Clique to QBFT via the [Maru](https://github.com/Consensys/maru) consensus client. See the [official architecture docs](https://docs.linea.build/protocol/architecture) for the current design.
+
 There is a unique instance of Sequencer. It’s a special instance of a full node using Besu as the Execution Layer.
 The consensus protocol used is QBFT with a single node, being functionally equivalent
 to Clique.
@@ -554,7 +558,7 @@ The prover encapsulates two processes:
 
 The long running process monitor triggers and monitors the short running process. It allows capturing unexpected issues occurring during the proving.
 
-The short running process is further made up of two internal logic components: the traces expander (aka Corset) and the prover itself. Corset is responsible for expanding the execution traces into a format the prover can use before building the proof. The prover relies on the [gnark](https://github.com/ConsenSys/gnark) library for zk-SNARKs implementation.
+The short running process is further made up of two internal logic components: the traces expander (aka Corset) and the prover itself. Corset is responsible for expanding the execution traces into a format the prover can use before building the proof. The prover relies on the [gnark](https://github.com/Consensys/gnark) library for zk-SNARKs implementation.
 
 Corset is hosted inside the same process as the short-running component of the prover. Traces are expanded by Corset in memory and ingested by the prover directly, without the need for intermediate files to be sent over the network. This was motivated by the following reasons:
 

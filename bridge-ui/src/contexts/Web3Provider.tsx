@@ -1,17 +1,18 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { toHex } from "viem";
-import { useWeb3Auth, Web3AuthContextConfig, Web3AuthProvider } from "@web3auth/modal/react";
+
+import { CONNECTOR_EVENTS, WALLET_CONNECTORS, WEB3AUTH_NETWORK } from "@web3auth/modal";
 import { coinbaseConnector } from "@web3auth/modal/connectors/coinbase-connector";
+import { useWeb3Auth, Web3AuthContextConfig, Web3AuthProvider } from "@web3auth/modal/react";
 import { WagmiProvider } from "@web3auth/modal/react/wagmi";
-import { WEB3AUTH_NETWORK, CONNECTOR_EVENTS } from "@web3auth/modal";
-import useGTM from "@/hooks/useGtm";
-import { useCachedIdentityToken } from "@/hooks/useCachedIdentityToken";
-import { useWalletDetection } from "./WalletDetectionProvider";
-import { isProd } from "../../next.config.mjs";
+
 import { config as appConfig } from "@/config";
-import { localL1Network, localL2Network } from "@/constants";
+import { useCachedIdentityToken } from "@/hooks/useCachedIdentityToken";
+import useGTM from "@/hooks/useGtm";
+
+import { useWalletDetection } from "./WalletDetectionProvider";
+import { isProd } from "../../next.config";
 
 interface DynamicProviderProps {
   children: ReactNode;
@@ -19,50 +20,53 @@ interface DynamicProviderProps {
 
 const clientId = appConfig.web3AuthClientId;
 
+const googleAuthConnectionId = process.env.NEXT_PUBLIC_CONNECTOR_GOOGLE_ID || "";
+const passwordlessAuthConnectionId = process.env.NEXT_PUBLIC_CONNECTOR_PASSWORDLESS_ID || "";
+const groupedAuthConnectionId = process.env.NEXT_PUBLIC_CONNECTOR_GROUPED_ID || "";
+
+const isSocialLoginEnabled = process.env.NEXT_PUBLIC_SOCIAL_LOGIN_ENABLED === "true";
+
+const connectorLabel = "Web3Auth";
+
+const socialLoginDisabledConfig = {
+  label: connectorLabel,
+  showOnModal: false,
+};
+
+const socialLoginEnabledConfig = {
+  label: connectorLabel,
+  loginMethods: {
+    google: {
+      name: "Google",
+      description: "Continue with Google",
+      mainOption: true,
+      authConnectionId: googleAuthConnectionId,
+      groupedAuthConnectionId: groupedAuthConnectionId,
+    },
+    email_passwordless: {
+      name: "Email Passwordless login",
+      authConnectionId: passwordlessAuthConnectionId,
+      groupedAuthConnectionId: groupedAuthConnectionId,
+    },
+  },
+};
+
 const web3AuthContextConfig: Web3AuthContextConfig = {
   web3AuthOptions: {
+    initialAuthenticationMode: "connect-and-sign",
     clientId,
     web3AuthNetwork: isProd ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET,
-    defaultChainId: appConfig.e2eTestMode ? "0x1E2EAAC" : "0xe708", // L2 local chain or Linea Mainnet
+    defaultChainId: "0xe708",
     uiConfig: {
       appUrl: "https://linea.build/hub/bridge",
       displayErrorsOnModal: true,
     },
-    ...(appConfig.e2eTestMode === true
-      ? {
-          chains: [
-            {
-              chainNamespace: "eip155",
-              logo: "https://images.web3auth.io/chains/1.svg",
-              displayName: localL1Network.name,
-              tickerName: localL1Network.nativeCurrency.name,
-              ticker: localL1Network.nativeCurrency.symbol,
-              chainId: toHex(localL1Network.id),
-              rpcTarget: localL1Network.rpcUrls.default.http[0],
-              blockExplorerUrl: localL1Network.blockExplorers?.default.url,
-            },
-            {
-              chainNamespace: "eip155",
-              logo: "https://images.web3auth.io/chains/59144.svg",
-              displayName: localL2Network.name,
-              tickerName: localL2Network.nativeCurrency.name,
-              ticker: localL2Network.nativeCurrency.symbol,
-              chainId: toHex(localL2Network.id),
-              rpcTarget: localL2Network.rpcUrls.default.http[0],
-              blockExplorerUrl: localL2Network.blockExplorers?.default.url,
-            },
-          ],
-        }
-      : {}),
-    // coinbase connector supports linea chain only for eoa wallets
-    // if we try to use it with smartWallets, switch chain throws an error.
+    // Coinbase connector supports Linea chain only for EOA wallets
+    // Coinbase's smart wallets make the switch chain throw an error
     connectors: [coinbaseConnector({ options: "eoaOnly" })],
     modalConfig: {
       connectors: {
-        auth: {
-          showOnModal: false,
-          label: "Web3Auth",
-        },
+        [WALLET_CONNECTORS.AUTH]: isSocialLoginEnabled ? socialLoginEnabledConfig : socialLoginDisabledConfig,
       },
     },
   },
@@ -94,7 +98,7 @@ function Web3AuthEventBridge() {
       });
     };
 
-    const onConnected = (args: { connector: string }) => {
+    const onAuthorized = (args: { connector: string }) => {
       trackEvent({
         event: "wallet_connected",
         wallet_connected: args?.connector,
@@ -121,13 +125,13 @@ function Web3AuthEventBridge() {
     };
 
     web3Auth.on(CONNECTOR_EVENTS.CONNECTING, onConnecting);
-    web3Auth.on(CONNECTOR_EVENTS.CONNECTED, onConnected);
+    web3Auth.on(CONNECTOR_EVENTS.AUTHORIZED, onAuthorized);
     web3Auth.on(CONNECTOR_EVENTS.DISCONNECTED, onDisconnected);
     web3Auth.on(CONNECTOR_EVENTS.ERRORED, onErrored);
 
     return () => {
       web3Auth.off(CONNECTOR_EVENTS.CONNECTING, onConnecting);
-      web3Auth.off(CONNECTOR_EVENTS.CONNECTED, onConnected);
+      web3Auth.off(CONNECTOR_EVENTS.AUTHORIZED, onAuthorized);
       web3Auth.off(CONNECTOR_EVENTS.DISCONNECTED, onDisconnected);
       web3Auth.off(CONNECTOR_EVENTS.ERRORED, onErrored);
     };

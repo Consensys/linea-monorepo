@@ -8,9 +8,10 @@ public class CompressorJavaAccessTest {
 
   @Test
   public void shouldBeJavaCallerFriendly() {
-    var compressor = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V2, 102400);
+    var compressor = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V3, 102400);
     var compressedSize = compressor.compressedSize(new byte[1000]);
 
     assertThat(compressedSize).isBetween(0, 1000);
+    assertThat(compressor.getVersion()).isEqualTo(BlobCompressorVersion.V3);
   }
 }

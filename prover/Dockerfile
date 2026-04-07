@@ -6,7 +6,7 @@
 # G O + R U S T   B U I L D E R
 #
 ###############################
-FROM golang:1.24.6-alpine AS go-builder
+FROM golang:1.25.7-alpine AS go-builder
 
 RUN apk add --no-cache rust cargo bash make
 
@@ -15,7 +15,6 @@ COPY --from=prover go.mod .
 COPY --from=prover go.sum .
 RUN go mod download
 
-COPY --from=constraints . ./constraints
 COPY --from=prover . ./prover
 
 WORKDIR /usr/src/prover/

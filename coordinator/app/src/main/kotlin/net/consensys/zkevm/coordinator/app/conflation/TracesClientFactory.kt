@@ -7,6 +7,7 @@ import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.traces.TracesCounters
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 
 data class TracesClients(
   val tracesCountersClient: TracesGeneratorJsonRpcClientV2,
@@ -21,18 +22,20 @@ object TracesClientFactory {
     ignoreTracesGeneratorErrors: Boolean,
     expectedTracesApiVersion: String,
     fallBackTracesCounters: TracesCounters,
-    logger: org.apache.logging.log4j.Logger,
+    logger: Logger,
   ): TracesGeneratorJsonRpcClientV2 {
     return TracesGeneratorJsonRpcClientV2(
       vertx = vertx,
-      rpcClient = rpcClientFactory.createWithLoadBalancing(
+      rpcClient =
+      rpcClientFactory.createWithLoadBalancing(
         endpoints = apiConfig.endpoints.toSet(),
         maxInflightRequestsPerClient = apiConfig.requestLimitPerEndpoint,
         requestTimeout = apiConfig.requestTimeout?.inWholeMilliseconds,
         log = logger,
         requestPriorityComparator = TracesGeneratorJsonRpcClientV2.requestPriorityComparator,
       ),
-      config = TracesGeneratorJsonRpcClientV2.Config(
+      config =
+      TracesGeneratorJsonRpcClientV2.Config(
         expectedTracesApiVersion = expectedTracesApiVersion,
         ignoreTracesGeneratorErrors = ignoreTracesGeneratorErrors,
         fallBackTracesCounters = fallBackTracesCounters,
@@ -47,41 +50,44 @@ object TracesClientFactory {
     rpcClientFactory: VertxHttpJsonRpcClientFactory,
     configs: TracesConfig,
     fallBackTracesCounters: TracesCounters,
+    log: Logger? = null,
   ): TracesClients {
     return when {
       configs.common != null -> {
-        val logger = LogManager.getLogger("clients.traces")
-        val commonClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.common,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          fallBackTracesCounters,
-          logger,
-        )
+        val commonClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.common,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            log ?: LogManager.getLogger("clients.traces"),
+          )
         TracesClients(tracesCountersClient = commonClient, tracesConflationClient = commonClient)
       }
 
       else -> {
-        val countersClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.counters!!,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          fallBackTracesCounters,
-          LogManager.getLogger("clients.traces.counters"),
-        )
-        val conflationClient = createTracesClient(
-          vertx,
-          rpcClientFactory,
-          configs.conflation!!,
-          configs.ignoreTracesGeneratorErrors,
-          configs.expectedTracesApiVersion,
-          fallBackTracesCounters,
-          LogManager.getLogger("clients.traces.conflation"),
-        )
+        val countersClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.counters!!,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            log ?: LogManager.getLogger("clients.traces.counters"),
+          )
+        val conflationClient =
+          createTracesClient(
+            vertx,
+            rpcClientFactory,
+            configs.conflation!!,
+            configs.ignoreTracesGeneratorErrors,
+            configs.expectedTracesApiVersion,
+            fallBackTracesCounters,
+            log ?: LogManager.getLogger("clients.traces.conflation"),
+          )
         TracesClients(tracesCountersClient = countersClient, tracesConflationClient = conflationClient)
       }
     }

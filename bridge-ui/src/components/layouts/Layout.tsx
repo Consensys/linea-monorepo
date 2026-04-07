@@ -1,15 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useInitialiseChain } from "@/hooks";
-import { LinkBlock } from "@/types";
+
 import Header from "@/components/header";
 import InternalNav from "@/components/internal-nav";
+import PageBack from "@/components/page-back";
 import SideBar from "@/components/side-bar";
 import SideBarMobile from "@/components/side-bar-mobile";
-import PageBack from "@/components/page-back";
+import { useInitialiseChain } from "@/hooks";
+import { LinkBlock } from "@/types";
+import { isHomePage } from "@/utils/misc";
+
 import styles from "./layout.module.scss";
-import { isHomePage } from "@/utils";
 
 export function Layout({ children, navData }: { children: React.ReactNode; navData: LinkBlock[] }) {
   useInitialiseChain();

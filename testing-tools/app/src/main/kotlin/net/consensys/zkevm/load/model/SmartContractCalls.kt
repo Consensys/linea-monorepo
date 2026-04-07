@@ -114,11 +114,7 @@ class SmartContractCalls(private val ethConnection: EthConnection) {
   }
 
   @Throws(IOException::class)
-  fun getCreateContractTransaction(
-    sourceWallet: Wallet,
-    contractCode: String?,
-    chainId: Int,
-  ): TransactionDetail {
+  fun getCreateContractTransaction(sourceWallet: Wallet, contractCode: String?, chainId: Int): TransactionDetail {
     val nonce = sourceWallet.theoreticalNonceValue
     sourceWallet.incrementTheoreticalNonce()
     val transactionForEstimation = Transaction(
@@ -205,6 +201,6 @@ class SmartContractCalls(private val ethConnection: EthConnection) {
       )
       sourceWallet.incrementTheoreticalNonce()
     }
-    return java.util.Map.of<Wallet?, List<TransactionDetail>>(sourceWallet, txs)
+    return mapOf<Wallet, List<TransactionDetail>>(sourceWallet to txs)
   }
 }

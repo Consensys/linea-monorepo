@@ -1,6 +1,7 @@
+import { createJSONStorage, persist } from "zustand/middleware";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { createJSONStorage, persist } from "zustand/middleware";
+
 import { config } from "@/config";
 import { BridgeTransaction, TransactionStatus } from "@/types";
 import { getCompleteTxStoreKeyForTx } from "@/utils/history";
@@ -68,10 +69,10 @@ export const useHistoryStore = createWithEqualityFn<HistoryStore>()(
           if (value instanceof Map) value = { __type: "Map", value: Array.from(value.entries()) };
           return value;
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        reviver: (_, value: any) => {
-          if (value?.__type === "bigint") value = BigInt(value.value);
-          if (value?.__type === "Map") value = new Map(value.value);
+        reviver: (_, value: unknown) => {
+          const typed = value as { __type?: string; value?: string | [unknown, unknown][] };
+          if (typed?.__type === "bigint" && typeof typed.value === "string") return BigInt(typed.value);
+          if (typed?.__type === "Map" && Array.isArray(typed.value)) return new Map(typed.value);
           return value;
         },
       }),

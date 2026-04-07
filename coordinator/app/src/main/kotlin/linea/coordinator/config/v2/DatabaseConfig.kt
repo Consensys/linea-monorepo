@@ -11,12 +11,24 @@ data class DatabaseConfig(
   val username: String,
   val password: Masked,
   val schema: String,
+  val schemaVersion: Int = 4,
   val readPoolSize: Int = 10,
   val readPipeliningLimit: Int = 10,
   val transactionalPoolSize: Int = 10,
-  val persistenceRetries: RetryConfig = RetryConfig(
-    backoffDelay = 1.seconds,
-    timeout = 10.minutes,
-    failuresWarningThreshold = 3u,
-  ),
-)
+  val persistenceRetries: RetryConfig =
+    RetryConfig(
+      backoffDelay = 1.seconds,
+      timeout = 10.minutes,
+      failuresWarningThreshold = 3u,
+    ),
+) {
+  companion object {
+    val supportedSchemas = 4..5
+  }
+
+  init {
+    require(schemaVersion in supportedSchemas) {
+      "schemaVersion=$schemaVersion must be between ${supportedSchemas.first} and ${supportedSchemas.last}"
+    }
+  }
+}

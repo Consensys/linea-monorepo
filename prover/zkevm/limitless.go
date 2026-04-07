@@ -8,17 +8,40 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/config"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	TinyStuffsModuleName  = "TINY-STUFFS"
+	ArithOpsModuleName    = "ARITH-OPS"
+	HubAModuleName        = "HUB-A"
+	HubBModuleName        = "HUB-B"
+	KeccakModuleName      = "KECCAK"
+	StaticModuleName      = "STATIC"
+	Modexp256ModuleName   = "MODEXP-256"
+	ModexpLargeModuleName = "MODEXP_LARGE"
+	Sha2ModuleName        = "SHA2"
+	EcdsaModuleName       = "ECDSA"
+	P256ModuleName        = "P256"
+	BlsG1ModuleName       = "BLS-G1"
+	BlsG2ModuleName       = "BLS-G2"
+	BlsPairingModuleName  = "BLS-PAIRING"
+	BlsKzgModuleName      = "BLS-KZG"
+	BnEcOpsModuleName     = "BN-EC-OPS"
+	BnPairingModuleName   = "BN-PAIRING"
+	BnG2CheckModuleName   = "BN-G2-CHECK"
 )
 
 var (
@@ -36,28 +59,47 @@ var (
 	conglomerationFile            = "dw-compiled-conglomeration.bin"
 	executionLimitlessPath        = "execution-limitless"
 	verificationKeyMerkleTreeFile = "verification-key-merkle-tree.bin"
+
+	// Chunked variants (directory names without .bin extension)
+	compileLppChunkedTemplate = "dw-compiled-lpp-%v"
+	compileGlChunkedTemplate  = "dw-compiled-gl-%v"
+	conglomerationChunkedFile = "dw-compiled-conglomeration"
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 19,
-	FixedNbRowExternalHasher:     1 << 15,
-	FixedNbPublicInput:           1 << 10,
-	InitialCompilerSize:          1 << 18,
-	InitialCompilerSizeConglo:    1 << 13,
-	ColumnProfileMPTS:            []int{17, 335, 37, 3, 5, 15, 0, 1},
-	ColumnProfileMPTSPrecomputed: 22,
+	// Increased from 1<<24 to 1<<25 because HUB-A-GL produces ~22.8M
+	// constraints in its recursion circuit, which exceeds 2^24 = 16.7M.
+	// DomainSizePlonk = nextPowerOf2(22877653 + 12346) = 2^25, so 2^25 rows
+	// are the minimum that can accommodate HUB-A. This value is global because
+	// all segments must share the same Plonk verifier structure for the
+	// conglomeration circuit.
+	FixedNbRowPlonkCircuit:   1 << 25,
+	FixedNbRowExternalHasher: 1 << 19, // Increased from 1<<22 to handle hash claims
+	FixedNbPublicInput:       1 << 10,
+	InitialCompilerSize:      1 << 18,
+	InitialCompilerSizeOverride: map[string]int{
+		HubAModuleName + "-GL":  1 << 17,
+		HubBModuleName + "-GL":  1 << 17,
+		HubAModuleName + "-LPP": 1 << 17,
+		HubBModuleName + "-LPP": 1 << 17,
+	},
+	InitialCompilerSizeConglo:    1 << 18,
+	ColumnProfileMPTS:            []int{264, 1400, 256, 24, 12, 28, 8, 8},
+	ColumnProfileMPTSPrecomputed: 45,
+	FullDebugMode:                false,
 }
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
 func GetTestZkEVM() *ZkEvm {
 	return FullZKEVMWithSuite(
 		config.GetTestTracesLimits(),
-		CompilationSuite{},
 		&config.Config{
 			Execution: config.Execution{
 				IgnoreCompatibilityCheck: true,
 			},
 		},
+		CompilationSuite{},
+		nil,
 	)
 }
 
@@ -68,339 +110,366 @@ type LimitlessZkEVM struct {
 	DistWizard *distributed.DistributedWizard
 }
 
-// DiscoveryAdvices is a list of advice for the discovery of the modules. These
+// DiscoveryAdvices returns a list of advice for the discovery of the modules. These
 // values have been obtained thanks to a statistical analysis of the traces
 // assignments involving correlation of the modules and hierarchical clustering.
 // The advices are optimized to minimize the number of segments generated when
 // producing an EVM proof.
-var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
+func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
-	// ARITH-OPS
-	//
-	{BaseSize: 8192, Cluster: "ARITH-OPS", Column: "ACCUMULATOR_COUNTER"},
-	{BaseSize: 16384, Cluster: "ARITH-OPS", Column: "exp.INST"},
-	//
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256.n,bit_sar256.res'0,bit_sar256.res'1,bit_sar256.word'0,bit_sar256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u1.n,bit_sar256_u1.res'0,bit_sar256_u1.res'1,bit_sar256_u1.word'0,bit_sar256_u1.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u2.n,bit_sar256_u2.res'0,bit_sar256_u2.res'1,bit_sar256_u2.word'0,bit_sar256_u2.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u3.n,bit_sar256_u3.res'0,bit_sar256_u3.res'1,bit_sar256_u3.word'0,bit_sar256_u3.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u4.n,bit_sar256_u4.res'0,bit_sar256_u4.res'1,bit_sar256_u4.word'0,bit_sar256_u4.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u5.n,bit_sar256_u5.res'0,bit_sar256_u5.res'1,bit_sar256_u5.word'0,bit_sar256_u5.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u6.n,bit_sar256_u6.res'0,bit_sar256_u6.res'1,bit_sar256_u6.word'0,bit_sar256_u6.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u7.n,bit_sar256_u7.res'0,bit_sar256_u7.res'1,bit_sar256_u7.word'0,bit_sar256_u7.word'1_0_LOGDERIVATIVE_M"},
-	//
-	// ARITH-OPS: bit 256 main tables
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256.n,bit_shl256.res'0,bit_shl256.res'1,bit_shl256.word'0,bit_shl256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256.n,bit_shr256.res'0,bit_shr256.res'1,bit_shr256.word'0,bit_shr256.word'1_0_LOGDERIVATIVE_M"},
-	//
-	// ARITH-OPS: bit 256 u1..u7 stages (shl/shr/sar)
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u1.n,bit_shl256_u1.res'0,bit_shl256_u1.res'1,bit_shl256_u1.word'0,bit_shl256_u1.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u2.n,bit_shl256_u2.res'0,bit_shl256_u2.res'1,bit_shl256_u2.word'0,bit_shl256_u2.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u3.n,bit_shl256_u3.res'0,bit_shl256_u3.res'1,bit_shl256_u3.word'0,bit_shl256_u3.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u4.n,bit_shl256_u4.res'0,bit_shl256_u4.res'1,bit_shl256_u4.word'0,bit_shl256_u4.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u5.n,bit_shl256_u5.res'0,bit_shl256_u5.res'1,bit_shl256_u5.word'0,bit_shl256_u5.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u6.n,bit_shl256_u6.res'0,bit_shl256_u6.res'1,bit_shl256_u6.word'0,bit_shl256_u6.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u7.n,bit_shl256_u7.res'0,bit_shl256_u7.res'1,bit_shl256_u7.word'0,bit_shl256_u7.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u1.n,bit_shr256_u1.res'0,bit_shr256_u1.res'1,bit_shr256_u1.word'0,bit_shr256_u1.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u2.n,bit_shr256_u2.res'0,bit_shr256_u2.res'1,bit_shr256_u2.word'0,bit_shr256_u2.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u3.n,bit_shr256_u3.res'0,bit_shr256_u3.res'1,bit_shr256_u3.word'0,bit_shr256_u3.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u4.n,bit_shr256_u4.res'0,bit_shr256_u4.res'1,bit_shr256_u4.word'0,bit_shr256_u4.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u5.n,bit_shr256_u5.res'0,bit_shr256_u5.res'1,bit_shr256_u5.word'0,bit_shr256_u5.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u6.n,bit_shr256_u6.res'0,bit_shr256_u6.res'1,bit_shr256_u6.word'0,bit_shr256_u6.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u7.n,bit_shr256_u7.res'0,bit_shr256_u7.res'1,bit_shr256_u7.word'0,bit_shr256_u7.word'1_0_LOGDERIVATIVE_M"},
-	//
-	// ARITH-OPS: fill bytes
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_fill_bytes_between.end,fill_bytes_between.res'0,fill_bytes_between.res'1,fill_bytes_between.start,fill_bytes_between.value,fill_bytes_between.word'0,fill_bytes_between.word'1_0_LOGDERIVATIVE_M"},
-	//
-	// ARITH-OPS: uint columns
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u20.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u23.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u24.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u26.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u27.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u28.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u29.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u30.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u31.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u32.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u36.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u47.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u48.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u55.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u56.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u58.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u59.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u60.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u61.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u62.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u63.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u64.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u95.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u96.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u111.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u112.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u119.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u120.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u123.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u124.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u125.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u126.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u127.V"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "u128.V"},
-	//
-	// ARITH-OPS: log-256
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log256.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log256_u16.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log256_u32.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log256_u64.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log256_u128.hi"},
-	//
-	// ARITH-OPS: log-2
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u2.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u4.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u8.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u16.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u32.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u64.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "log2_u128.hi"},
-	//
-	// ARITH-OPS: set-byte
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "set_byte16.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "set_byte32.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "set_byte64.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "set_byte128.hi"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "set_byte256.hi"},
-	//
-	// ARITH-OPS: actual ops
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_mul.ARG_1_HI,mul.ARG_1_LO,mul.ARG_2_HI,mul.ARG_2_LO,mul.INSTRUCTION,mul.RES_HI,mul.RES_LO_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "ARITH-OPS", Column: "TABLE_add.ARG_1'0,add.ARG_1'1,add.ARG_2'0,add.ARG_2'1,add.INST,add.RES'0,add.RES'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "ARITH-OPS", Column: "TABLE_mod.ARG_1_HI,mod.ARG_1_LO,mod.ARG_2_HI,mod.ARG_2_LO,mod.INST,mod.RES_HI,mod.RES_LO_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "ARITH-OPS", Column: "TABLE_min256_64.L_gas_diff,min256_64.gas'0,min256_64.gas'1,min256_64.res_0_LOGDERIVATIVE_M"},
-	{BaseSize: 131072, Cluster: "ARITH-OPS", Column: "shf.ARG_1'0"},
-	//
-	// ARITH-OPS: MIMC
-	{BaseSize: 1048576, Cluster: "ARITH-OPS", Column: "MIMC_COMPILER"},
-	//
-	// ARITH-OPS: OSAKA
-	{BaseSize: 131072, Cluster: "ARITH-OPS", Column: "TABLE_bin.ARGUMENT_1'0,bin.ARGUMENT_1'1,bin.ARGUMENT_2'0,bin.ARGUMENT_2'1,bin.INST,bin.RES'0,bin.RES'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_sar256_u1.lsw"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_shr256_u1.lsw"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u2.ARG_1,bit_xoan_u2.ARG_2,bit_xoan_u2.INST,bit_xoan_u2.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_xoan_u2.c0"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u4.$ret,bit_xoan_u4.ARG_1,bit_xoan_u4.ARG_2,bit_xoan_u4.INST,bit_xoan_u4.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u8.$ret,bit_xoan_u8.ARG_1,bit_xoan_u8.ARG_2,bit_xoan_u8.INST,bit_xoan_u8.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u16.$ret,bit_xoan_u16.ARG_1,bit_xoan_u16.ARG_2,bit_xoan_u16.INST,bit_xoan_u16.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u32.$ret,bit_xoan_u32.ARG_1,bit_xoan_u32.ARG_2,bit_xoan_u32.INST,bit_xoan_u32.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u64.$ret,bit_xoan_u64.ARG_1,bit_xoan_u64.ARG_2,bit_xoan_u64.INST,bit_xoan_u64.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u128.$ret,bit_xoan_u128.ARG_1,bit_xoan_u128.ARG_2,bit_xoan_u128.INST,bit_xoan_u128.RES_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u256.$ret,bit_xoan_u256.ARG_1'0,bit_xoan_u256.ARG_1'1,bit_xoan_u256.ARG_2'0,bit_xoan_u256.ARG_2'1,bit_xoan_u256.INST,bit_xoan_u256.RES'0,bit_xoan_u256.RES'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte16.n,byte16.res,byte16.word_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte32.n,byte32.res,byte32.word_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte64.n,byte64.res,byte64.word_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte128.n,byte128.res,byte128.word_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte256.n,byte256.res,byte256.word'0,byte256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_signextend.res'0,signextend.res'1,signextend.size,signextend.word'0,signextend.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_max3_u128.arg1,max3_u128.arg2,max3_u128.arg3,max3_u128.res_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_maxlog.inst,maxlog.res,maxlog.x,maxlog.y,maxlog.z_0_LOGDERIVATIVE_M"},
-	{BaseSize: 262144, Cluster: "ARITH-OPS", Column: "TABLE_wcp.ARG_1'0,wcp.ARG_1'1,wcp.ARG_2'0,wcp.ARG_2'1,wcp.INST,wcp.RES_0_LOGDERIVATIVE_M"},
+	return []*distributed.ModuleDiscoveryAdvice{
 
-	// HUB-KECCAK
-	//
-	{BaseSize: 16384, Cluster: "HUB-KECCAK", Column: "GENERIC_ACCUMULATOR_Hash_Hi"},
-	{BaseSize: 32768, Cluster: "HUB-KECCAK", Column: "rlptxn.txnVALUE"},
-	{BaseSize: 32768, Cluster: "HUB-KECCAK", Column: "KECCAK_OVER_BLOCKS_TAGS_9"},
-	{BaseSize: 32768, Cluster: "HUB-KECCAK", Column: "KECCAKF_OUTPUT_MODULE_HashOutPut_SlicesBaseB_3_9"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_gas.GAS_ACTUAL,gas.GAS_COST,gas.OOGX,gas.XAHOY_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_gas_out_of_pocket.gas_actual,gas_out_of_pocket.gas_upfront,gas_out_of_pocket.oogx,gas_out_of_pocket.oop_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_shakiradata.(shift shakiradata:LIMB -1),shakiradata.ID,shakiradata.INDEX,shakiradata.LIMB,shakiradata.PHASE_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "stp.INST"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "CLEANING_KECCAK_CleanLimb"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_call_gas_extra.exists,call_gas_extra.gas_extra,call_gas_extra.inst,call_gas_extra.stipend,call_gas_extra.value'0,call_gas_extra.value'1,call_gas_extra.warm_0_LOGDERIVATIVE_M"},
-	{BaseSize: 131072, Cluster: "HUB-KECCAK", Column: "TABLE_mxp.CN,mxp.MACRO,mxp.MXP_STAMP,mxp.computationARG_1_HI_xor_macroOFFSET_1_HI,mxp.computationARG_1_LO_xor_macroOFFSET_1_LO,mxp.computationARG_2_HI_xor_macroOFFSET_2_HI,mxp.computationARG_2_LO_xor_macroOFFSET_2_LO,mxp.computationEUC_FLAG_xor_decoderIS_BYTE_PRICING_xor_macroDEPLOYING_xor_scenarioMSIZE,mxp.computationEXO_INST_xor_decoderG_BYTE_xor_macroINST,mxp.computationRES_A_xor_macroGAS_MXP_xor_scenarioC_MEM,mxp.computationWCP_FLAG_xor_decoderIS_DOUBLE_MAX_OFFSET_xor_macroMXPX_xor_scenarioMXPX,mxp.decoderIS_FIXED_SIZE_1_xor_macroS1NZNOMXPX_xor_scenarioSTATE_UPDATE_BYTE_PRICING,mxp.decoderIS_FIXED_SIZE_32_xor_macroS2NZNOMXPX_xor_scenarioSTATE_UPDATE_WORD_PRICING,mxp.macroRES,mxp.macroSIZE_1_HI,mxp.macroSIZE_1_LO,mxp.macroSIZE_2_HI,mxp.macroSIZE_2_LO_0_LOGDERIVATIVE_M"},
-	{BaseSize: 131072, Cluster: "HUB-KECCAK", Column: "oob.WCP_FLAG"},
-	{BaseSize: 131072, Cluster: "HUB-KECCAK", Column: "GENERIC_ACCUMULATOR_IsActive"},
-	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "MIMC_CODE_HASH_CODE_SIZE"},
-	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "LANE_KECCAK_Lane"},
-	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "hub.transactionSYST_TXN_DATA_1"},
-	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "mmio.VAL_C_NEW"},
-	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "mmu.prprcWCP_RES"},
-	{BaseSize: 524288, Cluster: "HUB-KECCAK", Column: "rom.IS_PUSH"},
-	{BaseSize: 524288, Cluster: "HUB-KECCAK", Column: "KECCAK_TAGS_SPAGHETTI"},
-	{BaseSize: 1048576, Cluster: "HUB-KECCAK", Column: "hub×4.stkcp_VALUE_LO_1234"},
-	{BaseSize: 1048576, Cluster: "HUB-KECCAK", Column: "mmio×3.VAL_ABC_SORTED"},
-	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_euc.DIVIDEND,euc.DIVISOR,euc.QUOTIENT,euc.REMAINDER_0_LOGDERIVATIVE_M"},
+		// ARITH-OPS
+		//
+		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
+		// BaseSize set to fit P75 module heights in 1 segment (reduces segment count).
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u32\.`},
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u36\.`},
+		{BaseSize: 2097152, Cluster: ArithOpsModuleName, Regexp: `^u64\.`},
+		{BaseSize: 1048576, Cluster: ArithOpsModuleName, Regexp: `^u128\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^u113\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^set_byte[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_xoan_u[0-9]+\.`},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^mul\.`},
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^add\.`},
+		{BaseSize: 262144, Cluster: ArithOpsModuleName, Regexp: `^mod\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^min256_64\.`},
+		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
+		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^maxlog\.`},
+		// BaseSize increased to match limit_large=524288 to guarantee 1 segment worst case.
+		{BaseSize: 524288, Cluster: ArithOpsModuleName, Regexp: `^wcp\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^counts_nz_[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^divide\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^negate\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^pow\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signed_divide\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^xor_on_xor\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^zero_check\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^abs\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^rpad_[0-9]+_[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
+		// BaseSize increased to match limit_large=131072 to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u512_u256\.`},
 
-	// MODEXP 256
-	//
-	{BaseSize: 65536, Cluster: "MODEXP_256", Column: "blake2fmodexpdata.STAMP"},
-	{BaseSize: 8192, Cluster: "MODEXP_256", Column: "MODEXP_IS_ACTIVE"},
-	{BaseSize: 512, Cluster: "MODEXP_256", Column: "MODEXP_256_BITS"},
+		// Hub
+		//
+		{BaseSize: 262144, Cluster: HubAModuleName, Regexp: `^hub\.`},
+		{BaseSize: 1048576, Cluster: HubAModuleName, Regexp: `^hub×4\.`},
+		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^mxp\.`},
+		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^oob\.`},
+		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmio\.`},
+		{BaseSize: 1048576, Cluster: HubBModuleName, Regexp: `^mmio×3\.`},
+		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmu\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^stp\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas_out_of_pocket\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^call_gas_extra\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc_pricing\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^jump_target_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_gas_cost\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_cds_valid\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^out_of_bounds_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_bytecodes\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^rpad_[0-9]+\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^abort_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^get_ms\.`},
 
-	// MODEXP 8192
-	//
-	{BaseSize: 256, Cluster: "MODEXP_LARGE", Column: "MODEXP_LARGE"},
+		// Keccak
+		//
+		{BaseSize: 524288, Cluster: KeccakModuleName, Regexp: `^rom\.`},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^rlptxn\.`},
+		{BaseSize: 65536, Cluster: KeccakModuleName, Regexp: `^shakiradata\.`},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
+		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
+		// BaseSize increased from 262144 to 8388608 to fit ~8.4M rows in 1 segment.
+		{BaseSize: 8388608, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
+		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
+		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.ImportPad.IsPadded},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.FilterSpaghetti},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^keccak\.`},
 
-	// SHA2
-	//
-	{BaseSize: 512, Cluster: "SHA2", Column: "SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT"},
-	{BaseSize: 16384, Cluster: "SHA2", Column: "CLEANING_SHA2_CleanLimb"},
-	{BaseSize: 16384, Cluster: "SHA2", Column: "SHA2_TAGS_SPAGHETTI"},
-	{BaseSize: 16384, Cluster: "SHA2", Column: "BLOCK_SHA2_AccNumLane"},
-	{BaseSize: 16384, Cluster: "SHA2", Column: "SHA2_OVER_BLOCK_HASH_HI"},
+		// MODEXP 256
+		//
+		{BaseSize: 65536, Cluster: Modexp256ModuleName, Regexp: `^blake2fmodexpdata\.`},
+		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.Small.IsActive},
+		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
+		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_prc_blake`},
+		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^blake2f`},
 
-	// TINY-STUFFS
-	//
-	{BaseSize: 512, Cluster: "TINY-STUFFS", Column: "romlex.ADDRESS_HI"},
-	{BaseSize: 512, Cluster: "TINY-STUFFS", Column: "STATE_SUMMARY_CODEHASHCONSISTENCY_CODEHASH_CONSISTENCY_ROM_KECCAK_HI"},
-	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "loginfo.TXN_EMITS_LOGS"},
-	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "trm.tmp"},
-	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "blockhash.IOMF"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "logdata.ABS_LOG_NUM"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "rlpaddr.ADDR_HI"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "blockdata.COINBASE_HI"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_TIMESTAMP_FETCHER_DATA"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_L2L1LOGS_EXTRACTED_HI"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_ROLLING_MSG_EXTRACTED_HI"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_ROLLING_HASH_EXTRACTED_HI"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_ROLLING_SEL_EXISTS_MSG"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "BLOCK_TX_METADATA_BLOCK_ID"},
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_TXN_DATA_FETCHER_ABS_TX_NUM"},
-	{BaseSize: 16384, Cluster: "TINY-STUFFS", Column: "STATE_SUMMARY_WORLD_STATE_ROOT"},
-	{BaseSize: 32768, Cluster: "TINY-STUFFS", Column: "TABLE_rlptxrcpt.ABS_LOG_NUM,rlptxrcpt.ABS_LOG_NUM_MAX,rlptxrcpt.ABS_TX_NUM,rlptxrcpt.ABS_TX_NUM_MAX,rlptxrcpt.INPUT_1,rlptxrcpt.INPUT_2,rlptxrcpt.PHASE_ID_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "TINY-STUFFS", Column: "TABLE_rlputils.MACRO,rlputils.comptACC_xor_macroDATA_1,rlputils.comptARG_1_HI_xor_macroDATA_2,rlputils.comptARG_1_LO_xor_macroDATA_6,rlputils.comptARG_2_LO_xor_macroDATA_7,rlputils.comptINST_xor_macroDATA_8,rlputils.comptRES_xor_macroDATA_3,rlputils.comptSHF_ARG_xor_macroINST,rlputils.comptSHF_FLAG_xor_macroDATA_4,rlputils.macroDATA_5_0_LOGDERIVATIVE_M"},
-	{BaseSize: 65536, Cluster: "TINY-STUFFS", Column: "txndata.rlpTX_TYPE"},
-	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_RLP_TXN_FETCHER_NBYTES"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "EXECUTION_DATA_COLLECTOR_ABS_TX_ID"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "CLEANING_EXECUTION_DATA_MIMC_CleanLimb"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "EXECUTION_DATA_MIMC_TAGS_SPAGHETTI"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "MIMC_HASHER_STATE"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "BLOCK_EXECUTION_DATA_MIMC_AccNumLane"},
+		// MODEXP 8192
+		//
+		{BaseSize: 256, Cluster: ModexpLargeModuleName, Column: zkevm.Modexp.Large.IsActive},
 
-	// ECDSA
-	//
-	{BaseSize: 65536, Cluster: "ECDSA", Column: "TABLE_ext.ARG_1_HI,ext.ARG_1_LO,ext.ARG_2_HI,ext.ARG_2_LO,ext.ARG_3_HI,ext.ARG_3_LO,ext.INST,ext.RES_HI,ext.RES_LO_0_LOGDERIVATIVE_M"},
-	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_ADDRESSES_ADDRESS_HI"},
-	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_GNARK_DATA"},
+		// SHA2
+		//
+		{BaseSize: 512, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_cSha2.GnarkCircuitConnector.IsActive},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.Inputs.Spaghetti.CleanLimbSp},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.Inputs.Spaghetti.PA.TagSpaghetti},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Block.AccNumLane},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_cSha2.Hash[0]},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_importPad.Index},
+		{BaseSize: 16384, Cluster: Sha2ModuleName, Column: zkevm.Sha2.Pa_packing.Repacked.IsLaneActive},
 
-	// P256
-	//
-	{BaseSize: 4096, Cluster: "P256", Column: "P256_VERIFY_ALIGNMENT"},
+		// TINY-STUFFS
+		//
+		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
+		// BaseSize increased to match limit_large=2048 to guarantee 1 segment worst case.
+		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
+		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
+		// BaseSize set to 131072 to handle loginfo's Corset perspective expansion.
+		// loginfo columns live in hub's shared register space via XOR overlays,
+		// so the QBM column height equals the shared register size (~130K in
+		// block 29944798), NOT loginfo's own trace limit (4096/8192).
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^loginfo\.`},
+		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^trm\.`},
+		// BaseSize increased from 2048 to 4096 to fit ~2.1K rows in 1 segment.
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Regexp: `^blockhash\.`},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
+		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
+		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingMsg.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.RollingHashFetcher.ExistsMsg},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
+		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
+		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlputils\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
+		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^txndata\.`},
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.RlpTxnFetcher.NBytes},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.CounterColumnPadded},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.OneColumn},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.SplitOuter[0]},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecPoseidonHasher.Hash[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDFetcher.NBytesChainID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.L2L1LogCompacter.CompactifiedSelector},
+		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
-	// ELLIPTIC CURVES
-	//
-	{BaseSize: 512, Cluster: "ELLIPTIC_CURVES", Column: "TABLE_blsdata.ID,blsdata.INDEX,blsdata.LIMB,blsdata.PHASE,blsdata.SUCCESS_BIT,blsdata.TOTAL_SIZE_0_LOGDERIVATIVE_M"},
-	{BaseSize: 4096, Cluster: "ELLIPTIC_CURVES", Column: "TABLE_ecdata.ID,ecdata.INDEX,ecdata.LIMB,ecdata.PHASE,ecdata.SUCCESS_BIT,ecdata.TOTAL_SIZE_0_LOGDERIVATIVE_M"},
-	{BaseSize: 2048, Cluster: "ELLIPTIC_CURVES", Column: "ECADD_INTEGRATION_ALIGNMENT"},
-	{BaseSize: 256, Cluster: "ELLIPTIC_CURVES", Column: "ECMUL_INTEGRATION_ALIGNMENT"},
+		// ECDSA
+		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
+		//
+		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.Limbs},
+		// TODO: remove this advice after fixing  [common.CsFlattenProjection]; a dummy module for the orphan column AuxProjectionMask
+		// BaseSize must match the precomputed column size (NbLimbsCols * originalSize = 65536) to avoid multi-segment splits.
+		{BaseSize: 65536, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.FlattenLimbs.AuxProjectionMask},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
-	// ECPAIRING
-	//
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_IS_ACTIVE"},
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_ML"},
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_FINALEXP"},
+		// P256
+		//
+		{BaseSize: 4096, Cluster: P256ModuleName, Column: zkevm.P256Verify.P256VerifyGnarkData.CircuitInput},
 
-	// G2_CHECK
-	//
-	{BaseSize: 1024, Cluster: "G2_CHECK", Column: "ECPAIR_ALIGNMENT_G2"},
+		// ELLIPTIC CURVES
+		//
+		// The blsdata FLATTEN_LIMBS column (blsdata.LIMB'0_FLATTEN_LIMBS) has
+		// ~1M rows (NextPowerOfTwo(blsdata_size * 8)). It shares a QBM with
+		// MANUALLY_SHIFTED_FLATTEN_LIMBS columns (via ManuallyShift global
+		// constraints). With BaseSize=512 (from the generic ^blsdata\. catch-all),
+		// this produced 2046 segments. This specific regex must appear BEFORE
+		// the generic ^blsdata\. to override it with a large BaseSize.
+		// BaseSize increased from 131072 to 1048576 to fit ~1M rows in 1 segment.
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
+		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
+		// BaseSize must be 1048576 to match the precomputed PROJECTION_MASK column size (1048576 rows).
+		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
+		// Ecadd/Ecmul FlattenLimbs: both share the same Limbs column
+		// (ecdata.LIMB'0_FLATTEN_LIMBS) because initColumns deduplicates by
+		// column ID. This advice covers both. The FlattenLimbs column and its
+		// ManuallyShifted derivatives are in a separate QBM from AlignedGnarkData.
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.FlattenLimbs.Limbs},
+		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
+		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
+		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},
+		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1g2\.`},
+		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2\.`},
+		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g2_discount\.`},
 
-	// BLS_G1
-	//
-	{BaseSize: 4096, Cluster: "BLS_G1", Column: "UNALIGNED_G1_BLS_MSM_CURRENT_ACCUMULATOR_0"},
-	{BaseSize: 4096, Cluster: "BLS_G1", Column: "UNALIGNED_G1_BLS_MSM_GNARK_DATA_MSM"},
-	{BaseSize: 256, Cluster: "BLS_G1", Column: "BLS_MSM_G1_MSM"},
-	{BaseSize: 256, Cluster: "BLS_G1", Column: "BLS_MAP_G1_ALIGNMENT"},
-	{BaseSize: 512, Cluster: "BLS_G1", Column: "BLS_ADD_G1_ALIGNMENT"},
-	{BaseSize: 128, Cluster: "BLS_G1", Column: "BLS_ADD_C1_CURVE_MEMBERSHIP_ALIGNMENT"},
-	{BaseSize: 64, Cluster: "BLS_G1", Column: "BLS_MSM_G1_GROUP_MEMBERSHIP"},
-	{BaseSize: 64, Cluster: "BLS_G1", Column: "BLS_PAIR_G1_MEMBERSHIP"},
+		// ECPAIRING
+		//
+		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.IsActive},
+		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedMillerLoopCircuit.IsActive},
+		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.AlignedFinalExpCircuit.IsActive},
+		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsMillerLoop.AuxProjectionMask},
+		{BaseSize: 1024, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.Limbs},
+		// BaseSize must match the precomputed PROJECTION_MASK column size (65536 rows) to avoid 64-segment splits.
+		{BaseSize: 65536, Cluster: BnPairingModuleName, Column: zkevm.Ecpair.FlattenLimbsG2Membership.AuxProjectionMask},
 
-	// BLS_G2
-	//
-	{BaseSize: 4096, Cluster: "BLS_G2", Column: "UNALIGNED_G2_BLS_MSM_CURRENT_ACCUMULATOR_0"},
-	{BaseSize: 256, Cluster: "BLS_G2", Column: "BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT"},
-	{BaseSize: 4096, Cluster: "BLS_G2", Column: "UNALIGNED_G2_BLS_MSM_GNARK_DATA_MSM"},
-	{BaseSize: 256, Cluster: "BLS_G2", Column: "BLS_MSM_G2_GROUP_MEMBERSHIP"},
-	{BaseSize: 128, Cluster: "BLS_G2", Column: "BLS_MAP_G2_ALIGNMENT"},
-	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_PAIR_ML"},
-	{BaseSize: 512, Cluster: "BLS_G2", Column: "BLS_PAIR_FE"},
-	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_ADD_G2_ALIGNMENT"},
-	{BaseSize: 512, Cluster: "BLS_G2", Column: "BLS_MSM_G2_MSM"},
+		// G2_CHECK
+		//
+		{BaseSize: 1024, Cluster: BnG2CheckModuleName, Column: zkevm.Ecpair.AlignedG2MembershipData.IsActive},
 
-	// BLS POINT EVAL
-	{BaseSize: 32, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL"},
-	{BaseSize: 32, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL_FAILURE"},
+		// BLS_G1
+		//
+		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.UnalignedMsmData.CurrentAccumulator[0]},
+		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.GnarkDataMsm},
+		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkMsmData.CircuitInput},
+		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Map.AlignedGnarkData.CircuitInput},
+		{BaseSize: 4096, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Add.AlignedAddGnarkData.CircuitInput},
+		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Add.AlignedCurveMembershipGnarkData.CircuitInput},
+		{BaseSize: 1024, Cluster: BlsG1ModuleName, Column: zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.CircuitInput},
 
-	// BLS PAIR
-	{BaseSize: 4096, Cluster: "BLS_PAIR", Column: "UNALIGNED_BLS_PAIR_IS_ACTIVE"},
-	{BaseSize: 1024, Cluster: "BLS_PAIR", Column: "UNALIGNED_BLS_PAIR_GNARK_DATA_ML"},
-	{BaseSize: 1024, Cluster: "BLS_PAIR", Column: "UNALIGNED_BLS_PAIR_GNARK_DATA_FE"},
+		// BLS_G2
+		// BaseSize increased from 1024 to 2048 for GnarkDataMsm to fit 1200 rows in 1 segment.
+		//
+		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.UnalignedMsmData.CurrentAccumulator[0]},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.CircuitInput},
+		{BaseSize: 4096, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkMsmData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Map.AlignedGnarkData.CircuitInput},
+		{BaseSize: 8192, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Add.AlignedAddGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsG2ModuleName, Column: zkevm.BlsG2Msm.GnarkDataMsm},
 
-	// STATIC
-	//
-	{BaseSize: 16, Cluster: "STATIC", Column: "LOOKUP_TABLE_RANGE_1_16"},
-	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_power.EXPONENT,power.IOMF,power.POWER_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32, Cluster: "STATIC", Column: "LookUp_Num"},
-	{BaseSize: 32, Cluster: "STATIC", Column: "LOOKUP_TABLE_RANGE_1_30"},
-	{BaseSize: 256, Cluster: "STATIC", Column: "LOOKUP_TABLE_RANGE_1_136"},
-	{BaseSize: 256, Cluster: "STATIC", Column: "LOOKUP_TABLE_RANGE_1_144"},
-	{BaseSize: 512, Cluster: "STATIC", Column: "instdecoder.TWO_LINE_INSTRUCTION"},
-	{BaseSize: 512, Cluster: "STATIC", Column: "blsreftable.DISCOUNT"},
-	{BaseSize: 16384, Cluster: "STATIC", Column: "LOOKUP_BaseBDirty"},
-	{BaseSize: 16384, Cluster: "STATIC", Column: "KECCAKF_BASE1_CLEAN_"},
-	{BaseSize: 32768, Cluster: "STATIC", Column: "KECCAKF_BASE1_DIRTY_"},
-	{BaseSize: 65536, Cluster: "STATIC", Column: "LOOKUP_BaseA"},
-	//
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECDSA_ANTICHAMBER_GNARK_DATA", Cluster: "STATIC"},
-	{BaseSize: 32, Column: "REPEATED_PATTERN_KECCAK_RC_PATTERN", Cluster: "STATIC"},
-	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_MODEXP_256_BITS", Cluster: "STATIC"},
-	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_MODEXP_LARGE", Cluster: "STATIC"},
-	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECADD_INTEGRATION_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECMUL_INTEGRATION_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 16, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_G2", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_ML", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_FINALEXP", Cluster: "STATIC"},
-	{BaseSize: 32, Column: "REPEATED_PATTERN_SHA2_BLOCK_OF_INSTANCE_SELECTION", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT", Cluster: "STATIC"},
-	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_G1_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_C1_CURVE_MEMBERSHIP_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G1_MSM", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G1_GROUP_MEMBERSHIP", Cluster: "STATIC"},
-	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MAP_G1_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 1024, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_G2_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G2_MSM", Cluster: "STATIC"},
-	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G2_GROUP_MEMBERSHIP", Cluster: "STATIC"},
-	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MAP_G2_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_PAIR_ML", Cluster: "STATIC"},
-	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_PAIR_FE", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_PAIR_G1_MEMBERSHIP", Cluster: "STATIC"},
-	{BaseSize: 32, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_POINTEVAL", Cluster: "STATIC"},
-	{BaseSize: 32, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_POINTEVAL_FAILURE", Cluster: "STATIC"},
-	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_P256_VERIFY_ALIGNMENT", Cluster: "STATIC"},
+		// BLS POINT EVAL
+		//
+		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedGnarkData.CircuitInput},
+		{BaseSize: 128, Cluster: BlsKzgModuleName, Column: zkevm.PointEval.AlignedFailureGnarkData.CircuitInput},
 
-	// TINY-STUFFS
-	//
-	{BaseSize: 4096, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_CHAIN_ID_FETCHER_N_BYTES_CHAIN_ID"},
+		// BLS PAIR
+		// BaseSize increased from 1024 to 2048 to fit ~1600 rows in 1 segment.
+		//
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.CsG1Membership},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedMillerLoopData.CircuitInput},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.AlignedFinalExpData.CircuitInput},
+		{BaseSize: 4096, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.IsActive},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkDataMillerLoop},
+		{BaseSize: 2048, Cluster: BlsPairingModuleName, Column: zkevm.BlsPairingCheck.UnalignedPairData.GnarkIsActiveFinalExp},
 
-	// End of new discovery advices for Osaka
+		// STATIC
+		//
+		{BaseSize: 16, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_16$`},
+		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_30$`},
+		{BaseSize: 128, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_72$`},
+		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_136`},
+		{BaseSize: 256, Cluster: StaticModuleName, Regexp: `^LOOKUP_TABLE_RANGE_1_144`},
+		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^power\.`},
+		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^instdecoder\.`},
+		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^blsreftable\.`},
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Packing.Decomposed.Inputs.Lookup.ColNumber),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.Theta.LookupTable[0]),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBase2),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBaseChi),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.BackToThetaOrOutput.LookupTable.ColBaseTheta),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.Bc.Lookup.ColMAXNBYTE),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecdsa.Ant.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[0].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[1].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[2].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[3].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[4].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[5].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[6].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[7].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[8].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[9].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[10].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[11].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[12].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[13].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[14].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.StateManager.Accumulator.OffsetLimbRepeated[15].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.ColRound.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[0].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[1].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[2].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[3].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[4].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[5].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[6].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.KeccakOverBlocks.KeccakF.ChiIota.Rc[7].PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecadd.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecmul.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedG2MembershipData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedFinalExpCircuit.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecpair.AlignedMillerLoopCircuit.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Sha2.Pa_cSha2.GnarkCircuitConnector.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Sha2.Pa_cSha2.CanBeBlockOfInstance.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Add.AlignedAddGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Add.AlignedCurveMembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Msm.AlignedGnarkGroupMembershipData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Msm.AlignedGnarkMsmData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG1Map.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Add.AlignedAddGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Add.AlignedCurveMembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Msm.AlignedGnarkGroupMembershipData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Msm.AlignedGnarkMsmData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsG2Map.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedG2MembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedMillerLoopData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedFinalExpData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.BlsPairingCheck.AlignedG1MembershipGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.PointEval.AlignedFailureGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.PointEval.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.P256Verify.P256VerifyGnarkData.ActualCircuitInputMask.PatternPrecomp),
+	}
 }
 
 // NewLimitlessZkEVM returns a new LimitlessZkEVM object.
 func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	var (
 		traceLimits = cfg.TracesLimits
-		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
+		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Predivision:  1,
-			Advices:      DiscoveryAdvices,
+			Advices:      DiscoveryAdvices(zkevm),
 		}
-		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
 	)
 
 	// These are the slow and expensive operations.
 	dw.CompileSegments(LimitlessCompilationParams).Conglomerate(LimitlessCompilationParams)
+
+	// This is needed because the outer-circuit will expect the conglomeration
+	// wizard to provide the public-inputs metadata.
+	dw.CompiledConglomeration.RecursionCompBLS.
+		ExtraData[publicInput.PublicInputExtractorMetadata] = zkevm.
+		InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -414,13 +483,12 @@ func NewLimitlessRawZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 	var (
 		traceLimits = cfg.TracesLimits
-		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
+		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 29,
-			Predivision:  1,
-			Advices:      DiscoveryAdvices,
+			Advices:      DiscoveryAdvices(zkevm),
 		}
-		dw = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
 	)
 
 	return &LimitlessZkEVM{
@@ -438,13 +506,12 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 
 	var (
 		traceLimits = cfg.TracesLimits
-		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
+		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 29,
-			Predivision:  1,
-			Advices:      DiscoveryAdvices,
+			Advices:      DiscoveryAdvices(zkevm),
 		}
-		dw             = distributed.DistributeWizard(zkevm.WizardIOP, disc)
+		dw             = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
 		limitlessZkEVM = &LimitlessZkEVM{
 			Zkevm:      zkevm,
 			DistWizard: dw,
@@ -462,13 +529,20 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 }
 
 // GetScaledUpBootstrapper returns a bootstrapper where all the limits have
-// been increased.
+// been increased. Column names are size-independent (after the naming fix),
+// so the existing disc's column-to-module mappings remain valid — only the
+// sizes need scaling.
 func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModuleDiscoverer, scalingFactor int) (*wizard.CompiledIOP, *ZkEvm) {
 
 	traceLimits := cfg.TracesLimits
 	traceLimits.ScaleUp(scalingFactor)
-	zkevm := FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
-	return distributed.PrecompileInitialWizard(zkevm.WizardIOP, disc), zkevm
+
+	zkevm := FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
+	distributed.CompileManualShifter(zkevm.InitialCompiledIOP)
+
+	bootstrapper := distributed.PrecompileInitialWizard(zkevm.InitialCompiledIOP, disc)
+
+	return bootstrapper, zkevm
 }
 
 // RunStatRecords runs only the bootstrapper and returns a list of stat records
@@ -517,12 +591,43 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		lz.DistWizard.BlueprintLPPs,
 		// The verification key merkle tree does not exists in debug mode. So
 		// we can get the value here. It is not needed anyway.
-		field.Element{},
+		field.Octuplet{},
 	)
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
-	runtimes := []*wizard.ProverRuntime{}
+	type hornerSegInfo struct {
+		Module       string
+		SegmentIndex int
+		N0, N1       int
+		Count        int
+		DataSize     int
+		Contribution fext.Element
+	}
+
+	type perSegmentMSetInfo struct {
+		ModuleName       distributed.ModuleName
+		ModuleIndex      int
+		SegmentIndex     int
+		ProofType        string // "GL" or "LPP"
+		MSetContribution multisethashing.MSetHash
+	}
+
+	var (
+		allGrandProduct     = fext.One()
+		allLogDerivativeSum = fext.Element{}
+		allHornerSum        = fext.Element{}
+		generalMSet         = multisethashing.MSetHash{}
+
+		perPartSums = map[string]fext.GenericFieldElem{}
+
+		perHornerPartContrib = map[string]fext.Element{}
+		perHornerPartSegs    = map[string][]hornerSegInfo{}
+		moduleSegmentCounter = map[distributed.ModuleName]int{}
+
+		// Per-segment multiset contributions for detailed diagnostics
+		perSegmentMSets []perSegmentMSetInfo
+	)
 
 	for i, witness := range witnessGLs {
 
@@ -537,8 +642,20 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugGLs is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep)
-		runtimes = append(runtimes, rt)
+		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
+
+		generalMSetFromGLFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromGL := multisethashing.MSetHash(generalMSetFromGLFr)
+		generalMSet.Add(generalMSetFromGL)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "GL",
+			MSetContribution: generalMSetFromGL,
+		})
 	}
 
 	// Here, we can't we can't just use 0 or a dummy small value because there
@@ -548,23 +665,19 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	// zeroes in the log-derivative sums.
 	// #nosec G404 --we don't need a cryptographic RNG for debugging purpose
 	rng := rand.New(utils.NewRandSource(42))
-	sharedRandomness := field.PseudoRand(rng)
+	sharedRandomness := field.PseudoRandOctuplet(rng)
 
 	for i, witness := range witnessLPPs {
 
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
-		var (
-			// moduleToFind = witness.ModuleName
-			debugLPP *distributed.ModuleLPP
-		)
+		var debugLPP *distributed.ModuleLPP
 
-		for range lz.DistWizard.DebugLPPs {
-			panic("uncomment me")
-			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
-			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
-			// 	break
-			// }
+		for _, dl := range lz.DistWizard.DebugLPPs {
+			if dl.ModuleName() == witness.ModuleName {
+				debugLPP = dl
+				break
+			}
 		}
 
 		if debugLPP == nil {
@@ -581,10 +694,335 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugLPP is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep)
+		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
 
-		runtimes = append(runtimes, rt)
+		generalMSetFromLPPFr := distributed.GetPublicInputList(rt, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		generalMSetFromLPP := multisethashing.MSetHash(generalMSetFromLPPFr)
+		generalMSet.Add(generalMSetFromLPP)
+
+		// Collect per-segment multiset contribution for diagnostics
+		perSegmentMSets = append(perSegmentMSets, perSegmentMSetInfo{
+			ModuleName:       witness.ModuleName,
+			ModuleIndex:      witness.ModuleIndex,
+			SegmentIndex:     witness.SegmentModuleIndex,
+			ProofType:        "LPP",
+			MSetContribution: generalMSetFromLPP,
+		})
+
+		logDerivativeSum := rt.GetPublicInput(distributed.LogDerivativeSumPublicInput).Ext
+		grandProduct := rt.GetPublicInput(distributed.GrandProductPublicInput).Ext
+		hornerSum := rt.GetPublicInput(distributed.HornerPublicInput).Ext
+
+		logrus.Infof("LPP segment %v: log-derivative-sum=%v grand-product=%v horner-sum=%v",
+			i, logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+
+		if debugLPP.LogDerivativeSum != nil {
+			perParts, err := debugLPP.LogDerivativeSum.ComputePerPart(rt)
+			if err != nil {
+				logrus.Warnf("LPP segment %v: per-part computation error: %v", i, err)
+			} else {
+				for _, pp := range perParts {
+					acc := perPartSums[pp.Name]
+					acc.Add(&pp.Sum)
+					perPartSums[pp.Name] = acc
+				}
+			}
+		}
+
+		if debugLPP.Horner != nil {
+			hornerParams := rt.GetHornerParams(debugLPP.Horner.ID)
+			ppResults := hornerParams.GetPerPartResults(rt, *debugLPP.Horner)
+			segIdx := moduleSegmentCounter[witness.ModuleName]
+			moduleSegmentCounter[witness.ModuleName] = segIdx + 1
+
+			for _, pp := range ppResults {
+				logrus.Infof("  Horner part %q: sign=%v count=%d N0=%d N1=%d dataSize=%d contribution=%v (module=%v seg=%d)",
+					pp.Name, pp.SignNegative, pp.Count, pp.N0, pp.N1, pp.DataSize, pp.Contribution.String(),
+					witness.ModuleName, segIdx)
+
+				acc := perHornerPartContrib[pp.Name]
+				acc.Add(&acc, &pp.Contribution)
+				perHornerPartContrib[pp.Name] = acc
+
+				perHornerPartSegs[pp.Name] = append(perHornerPartSegs[pp.Name], hornerSegInfo{
+					Module:       string(witness.ModuleName),
+					SegmentIndex: segIdx,
+					N0:           pp.N0,
+					N1:           pp.N1,
+					Count:        pp.Count,
+					DataSize:     pp.DataSize,
+					Contribution: pp.Contribution,
+				})
+			}
+		}
 	}
+
+	logrus.Infof("Checking accumulation cancellation invariants")
+
+	if !allGrandProduct.IsOne() {
+		utils.Panic("grand-product does not cancel: %v", allGrandProduct.String())
+	}
+
+	if !allHornerSum.IsZero() {
+		logrus.Errorf("horner does not cancel: %v", allHornerSum.String())
+
+		projSums := map[string]fext.Element{}
+		projCounts := map[string][2]int{}
+		for name, contrib := range perHornerPartContrib {
+			projName := name
+			side := "?"
+			if strings.HasSuffix(name, "_A") {
+				projName = name[:len(name)-2]
+				side = "A"
+			} else if strings.HasSuffix(name, "_B") {
+				projName = name[:len(name)-2]
+				side = "B"
+			}
+			_ = side
+
+			acc := projSums[projName]
+			acc.Add(&acc, &contrib)
+			projSums[projName] = acc
+		}
+
+		logrus.Infof("=== Per-projection Horner breakdown ===")
+		nonZero := 0
+		for projName, sum := range projSums {
+			if sum.IsZero() {
+				continue
+			}
+			nonZero++
+			logrus.Errorf("  NON-ZERO projection %q sum=%v", projName, sum.String())
+
+			nameA := projName + "_A"
+			nameB := projName + "_B"
+			if segs, ok := perHornerPartSegs[nameA]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=A module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=A totalSegments=%d totalCount=%d", len(segs), totalCount)
+				projCounts[projName] = [2]int{totalCount, projCounts[projName][1]}
+			}
+			if segs, ok := perHornerPartSegs[nameB]; ok {
+				totalCount := 0
+				for _, seg := range segs {
+					totalCount += seg.Count
+					logrus.Infof("    side=B module=%v seg=%d N0=%d N1=%d count=%d dataSize=%d contribution=%v",
+						seg.Module, seg.SegmentIndex, seg.N0, seg.N1, seg.Count, seg.DataSize, seg.Contribution.String())
+				}
+				logrus.Infof("    side=B totalSegments=%d totalCount=%d", len(segs), totalCount)
+				c := projCounts[projName]
+				c[1] = totalCount
+				projCounts[projName] = c
+			}
+
+			c := projCounts[projName]
+			if c[0] != c[1] {
+				logrus.Errorf("    COUNT MISMATCH: A_total=%d B_total=%d", c[0], c[1])
+			}
+		}
+		logrus.Infof("Found %d non-zero projections out of %d total", nonZero, len(projSums))
+
+		utils.Panic("horner does not cancel: %v", allHornerSum.String())
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		logrus.Errorf("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+
+		perTableSums := map[string]fext.GenericFieldElem{}
+		for name, sum := range perPartSums {
+			tableName := name
+			if idx := strings.LastIndex(name, "_T_"); idx >= 0 {
+				tableName = name[:idx]
+			} else if idx := strings.LastIndex(name, "_S_"); idx >= 0 {
+				tableName = name[:idx]
+			}
+			acc := perTableSums[tableName]
+			acc.Add(&sum)
+			perTableSums[tableName] = acc
+		}
+
+		logrus.Infof("Per-table log-derivative breakdown (%d tables):", len(perTableSums))
+		nonZeroCount := 0
+		for tableName, sum := range perTableSums {
+			if !sum.IsZero() {
+				nonZeroCount++
+				logrus.Errorf("  NON-ZERO table %q = %v", tableName, sum.String())
+			}
+		}
+		logrus.Infof("Found %d non-zero tables out of %d total", nonZeroCount, len(perTableSums))
+
+		utils.Panic("log-derivative-sum does not cancel: %v", allLogDerivativeSum.String())
+	}
+
+	if !generalMSet.IsEmpty() {
+		logrus.Errorf("general multiset does not cancel")
+
+		// Per-segment breakdown to identify which segments contribute non-zero residuals
+		logrus.Infof("=== Per-segment general multiset breakdown ===")
+		for _, info := range perSegmentMSets {
+			if !info.MSetContribution.IsEmpty() {
+				// Log the first few non-zero elements for diagnostics
+				nonZeroIdx := -1
+				var nonZeroVal field.Element
+				for k := 0; k < multisethashing.MSetHashSize; k++ {
+					if !info.MSetContribution[k].IsZero() {
+						nonZeroIdx = k
+						nonZeroVal = info.MSetContribution[k]
+						break
+					}
+				}
+				logrus.Errorf("  NON-ZERO %v module=%v (index=%d) segment=%d first_nonzero_at=%d val=%v",
+					info.ProofType, info.ModuleName, info.ModuleIndex, info.SegmentIndex, nonZeroIdx, nonZeroVal.String())
+			}
+		}
+
+		utils.Panic("general multiset does not cancel")
+	}
+
+	logrus.Infof("All accumulation cancellation invariants passed (horner,log-derivative-sum,general-multiset,grand-product)")
+
+	// --- Conglomeration completion checks (mirrors checkLimitlessConglomerationCompletion) ---
+	// These checks verify that the segment counts match the expected target for
+	// each module, which is what the outer proof circuit enforces via
+	// checkLimitlessConglomerationCompletion.
+	logrus.Infof("Checking conglomeration completion invariants (segment counts)")
+
+	numModules := len(lz.DistWizard.Disc.Modules)
+	glSegmentCounts := make([]int, numModules)
+	lppSegmentCounts := make([]int, numModules)
+
+	for _, w := range witnessGLs {
+		glSegmentCounts[w.ModuleIndex]++
+	}
+	for _, w := range witnessLPPs {
+		lppSegmentCounts[w.ModuleIndex]++
+	}
+
+	// The target segment count is the same across all witnesses; take it from
+	// the first GL witness (it always exists because there is at least one
+	// module).
+	var targetSegmentCounts []int
+	if len(witnessGLs) > 0 {
+		targetSegmentCounts = witnessGLs[0].TotalSegmentCount
+	} else if len(witnessLPPs) > 0 {
+		targetSegmentCounts = witnessLPPs[0].TotalSegmentCount
+	}
+
+	segCountMismatch := false
+	for m := 0; m < numModules; m++ {
+		target := 0
+		if targetSegmentCounts != nil && m < len(targetSegmentCounts) {
+			target = targetSegmentCounts[m]
+		}
+		moduleName := lz.DistWizard.Disc.Modules[m].ModuleName
+
+		if glSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): GL count=%d, target=%d",
+				moduleName, m, glSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+		if lppSegmentCounts[m] != target {
+			logrus.Errorf("segment count mismatch for module %v (index=%d): LPP count=%d, target=%d",
+				moduleName, m, lppSegmentCounts[m], target)
+			segCountMismatch = true
+		}
+
+		logrus.Infof("module %v (index=%d): target=%d GL=%d LPP=%d",
+			moduleName, m, target, glSegmentCounts[m], lppSegmentCounts[m])
+	}
+
+	if segCountMismatch {
+		utils.Panic("conglomeration completion check failed: segment count mismatch detected (see errors above)")
+	}
+
+	logrus.Infof("All conglomeration completion invariants passed (segment-counts)")
+
+	// --- LPP column data consistency check ---
+	// In production, GL inserts hash(moduleIndex, segmentIndex, lppMerkleRoot)
+	// into the general multiset, and LPP removes hash(moduleIndex,
+	// segmentIndex, lppMerkleRoot). The lppMerkleRoot is the Vortex Merkle
+	// root of round-0 columns. In both GL and LPP modules, round-0 columns
+	// are the LPP columns. For the multiset to cancel, GL and LPP must have
+	// identical LPP column data.
+	//
+	// This check verifies that the LPP column data extracted during
+	// segmentation is identical between GL and LPP witnesses for each
+	// (module, segment) pair. A mismatch here would cause the Vortex
+	// Merkle roots to differ in production, resulting in a general multiset
+	// cancellation failure.
+	logrus.Infof("Checking LPP column data consistency between GL and LPP witnesses")
+
+	// Build a lookup of LPP witnesses by (moduleIndex, segmentIndex)
+	type moduleSegKey struct {
+		ModuleIndex  int
+		SegmentIndex int
+	}
+	lppWitnessMap := make(map[moduleSegKey]*distributed.ModuleWitnessLPP)
+	for _, w := range witnessLPPs {
+		lppWitnessMap[moduleSegKey{w.ModuleIndex, w.SegmentModuleIndex}] = w
+	}
+
+	lppColMismatch := false
+	for i, glW := range witnessGLs {
+		key := moduleSegKey{glW.ModuleIndex, glW.SegmentModuleIndex}
+		lppW, ok := lppWitnessMap[key]
+		if !ok {
+			logrus.Errorf("GL witness %d (module=%v index=%d segment=%d) has no matching LPP witness",
+				i, glW.ModuleName, glW.ModuleIndex, glW.SegmentModuleIndex)
+			lppColMismatch = true
+			continue
+		}
+
+		// Get LPP column IDs from the blueprint
+		blueprintLPP := lz.DistWizard.BlueprintLPPs[glW.ModuleIndex]
+		for _, colID := range blueprintLPP.LPPColumnSets {
+			glData, glHas := glW.Columns[colID]
+			lppData, lppHas := lppW.Columns[colID]
+
+			if !glHas && !lppHas {
+				continue
+			}
+			if glHas != lppHas {
+				logrus.Errorf("LPP column %v: GL has=%v LPP has=%v (module=%v segment=%d)",
+					colID, glHas, lppHas, glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			glVec := smartvectors.IntoRegVec(glData)
+			lppVec := smartvectors.IntoRegVec(lppData)
+
+			if len(glVec) != len(lppVec) {
+				logrus.Errorf("LPP column %v length mismatch: GL=%d LPP=%d (module=%v segment=%d)",
+					colID, len(glVec), len(lppVec), glW.ModuleName, glW.SegmentModuleIndex)
+				lppColMismatch = true
+				continue
+			}
+
+			for j := range glVec {
+				if glVec[j] != lppVec[j] {
+					logrus.Errorf("LPP column %v data mismatch at row %d: GL=%v LPP=%v (module=%v segment=%d)",
+						colID, j, glVec[j].String(), lppVec[j].String(), glW.ModuleName, glW.SegmentModuleIndex)
+					lppColMismatch = true
+					break // one mismatch per column is enough
+				}
+			}
+		}
+	}
+
+	if lppColMismatch {
+		utils.Panic("LPP column data consistency check failed: GL and LPP witnesses have different LPP column data (see errors above). This would cause Vortex Merkle root mismatch in production.")
+	}
+
+	logrus.Infof("All conglomeration completion checks passed (segment-counts, LPP-column-consistency)")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
@@ -629,6 +1067,7 @@ func runBootstrapperWithRescaling(
 				runtimeBoot = wizard.RunProver(
 					bootstrapper,
 					zkevm.GetMainProverStep(zkevmWitness),
+					true,
 				)
 				return
 			}
@@ -649,6 +1088,7 @@ func runBootstrapperWithRescaling(
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				true,
 			)
 		}()
 	}
@@ -743,8 +1183,16 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
-		if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
-			return err
+		if isChunkedAssetName(asset.Name) {
+			// Large compiled circuits use chunked lz4 for parallel I/O
+			chunkedDir := path.Join(assetDir, strings.TrimSuffix(asset.Name, ".bin"))
+			if err := serde.StoreChunked(chunkedDir, asset.Object); err != nil {
+				return err
+			}
+		} else {
+			if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -752,21 +1200,39 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 	return nil
 }
 
+// isChunkedAssetName returns true for compiled-gl, compiled-lpp, and
+// conglomeration assets that benefit from chunked parallel I/O.
+func isChunkedAssetName(name string) bool {
+	return strings.HasPrefix(name, "dw-compiled-gl-") ||
+		strings.HasPrefix(name, "dw-compiled-lpp-") ||
+		name == conglomerationFile
+}
+
 // LoadBootstrapperAsync loads the bootstrapper from disk.
 func (lz *LimitlessZkEVM) LoadBootstrapper(cfg *config.Config) error {
 	if lz.DistWizard == nil {
 		lz.DistWizard = &distributed.DistributedWizard{}
 	}
-	return serialization.LoadFromDisk(
+	closer, err := serde.LoadFromDisk(
 		cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile,
 		&lz.DistWizard.Bootstrapper,
 		true,
 	)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+	return nil
 }
 
 // LoadZkEVM loads the zkevm from disk
 func (lz *LimitlessZkEVM) LoadZkEVM(cfg *config.Config) error {
-	return serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm, true)
+	closer, err := serde.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm, true)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+	return nil
 }
 
 // LoadDisc loads the discoverer from disk
@@ -780,10 +1246,11 @@ func (lz *LimitlessZkEVM) LoadDisc(cfg *config.Config) error {
 	// conversion step is a workaround for the problem.
 	res := &distributed.StandardModuleDiscoverer{}
 
-	err := serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res, true)
+	closer, err := serde.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res, true)
 	if err != nil {
 		return err
 	}
+	defer closer.Close()
 
 	lz.DistWizard.Disc = res
 	return nil
@@ -826,9 +1293,11 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntGLs; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintGLTemplate, i))
-			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintGLs[i], true); err != nil {
+			closer, err := serde.LoadFromDisk(filePath, &lz.DistWizard.BlueprintGLs[i], true)
+			if err != nil {
 				return err
 			}
+			defer closer.Close()
 			return nil
 		})
 	}
@@ -836,9 +1305,11 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntLpps; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintLppTemplate, i))
-			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintLPPs[i], true); err != nil {
+			closer, err := serde.LoadFromDisk(filePath, &lz.DistWizard.BlueprintLPPs[i], true)
+			if err != nil {
 				return err
 			}
+			defer closer.Close()
 			return nil
 		})
 	}
@@ -859,9 +1330,11 @@ func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*dis
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -875,11 +1348,69 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
+}
+
+// LoadCompiledGLMmap loads the compiled GL into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileGlChunkedTemplate, moduleName))
+		res        = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
+}
+
+// LoadCompiledLPPMmap loads the compiled LPP into mmap-backed memory for explicit release.
+// The caller must call buf.Release() when done, after nilling all references to res.
+func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, fmt.Sprintf(compileLppChunkedTemplate, moduleNames))
+		res        = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, res)
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, res)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return res, buf, nil
 }
 
 // LoadDebugGL loads the debug GL from disk
@@ -891,9 +1422,11 @@ func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distri
 		res      = &distributed.ModuleGL{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -907,9 +1440,11 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 		res      = &distributed.ModuleLPP{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -923,11 +1458,41 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 		conglo   = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, conglo, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, conglo, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return conglo, nil
+}
+
+// LoadCompiledConglomerationMmap loads the conglomeration assets into mmap-backed memory.
+// The caller must call buf.Release() when done, after nilling all references to conglo.
+func LoadCompiledConglomerationMmap(cfg *config.Config) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
+
+	var (
+		assetDir   = cfg.PathForSetup(executionLimitlessPath)
+		chunkedDir = path.Join(assetDir, conglomerationChunkedFile)
+		conglo     = &distributed.RecursedSegmentCompilation{}
+	)
+
+	if serde.HasChunkedAsset(chunkedDir) {
+		buf, err := serde.LoadChunkedMmapBacked(chunkedDir, conglo)
+		if err != nil {
+			return nil, nil, err
+		}
+		return conglo, buf, nil
+	}
+
+	// Fallback to flat .bin file for backward compatibility
+	flatPath := path.Join(assetDir, conglomerationFile)
+	buf, err := serde.LoadFromDiskMmapBacked(flatPath, conglo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conglo, buf, nil
 }
 
 func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {
@@ -938,90 +1503,11 @@ func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.Verificatio
 		mt       = &distributed.VerificationKeyMerkleTree{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, mt, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, mt, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return mt, nil
-}
-
-// GetAffinities returns a list of affinities for the following modules. This
-// affinities regroup how the modules are grouped.
-//
-//	ecadd / ecmul / ecpairing
-//	hub / hub.scp / hub.acp
-//	everything related to keccak
-func GetAffinities(z *ZkEvm) [][]column.Natural {
-
-	return [][]column.Natural{
-		{
-			z.Ecmul.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecadd.AlignedGnarkData.IsActive.(column.Natural),
-			z.Ecpair.AlignedFinalExpCircuit.IsActive.(column.Natural),
-			z.Ecpair.AlignedG2MembershipData.IsActive.(column.Natural),
-			z.Ecpair.AlignedMillerLoopCircuit.IsActive.(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("hub.HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.scp_ADDRESS_HI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("CLEANING_KECCAK_CleanLimb").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_KECCAK_Decomposed_Len_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAK_FILTERS_SPAGHETTI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LANE_KECCAK_Lane").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAKF_IS_ACTIVE_").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAKF_BLOCK_BASE_2_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("KECCAK_OVER_BLOCKS_TAGS_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("HASH_OUTPUT_Hash_Lo").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("SHA2_IMPORT_PAD_HASH_NUM").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_SHA2_Decomposed_Len_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LENGTH_CONSISTENCY_SHA2_BYTE_LEN_0_0").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_FILTERS_SPAGHETTI").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("LANE_SHA2_Lane").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
-		},
-		{
-			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
-			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
-		},
-	}
-}
-
-var publicInputNames = []string{
-	publicInput.DataNbBytes,
-	publicInput.DataChecksum,
-	publicInput.L2MessageHash,
-	publicInput.InitialStateRootHash,
-	publicInput.FinalStateRootHash,
-	publicInput.InitialBlockNumber,
-	publicInput.FinalBlockNumber,
-	publicInput.InitialBlockTimestamp,
-	publicInput.FinalBlockTimestamp,
-	publicInput.FirstRollingHashUpdate_0,
-	publicInput.FirstRollingHashUpdate_1,
-	publicInput.LastRollingHashUpdate_0,
-	publicInput.LastRollingHashUpdate_1,
-	publicInput.FirstRollingHashUpdateNumber,
-	publicInput.LastRollingHashNumberUpdate,
-	publicInput.ChainID,
-	publicInput.NBytesChainID,
-	publicInput.L2MessageServiceAddrHi,
-	publicInput.L2MessageServiceAddrLo,
-}
-
-// LogPublicInputs logs the list of the public inputs for the module
-func LogPublicInputs(vr wizard.Runtime) {
-	for _, name := range publicInputNames {
-		x := vr.GetPublicInput(name)
-		fmt.Printf("[public input] %s: %v\n", name, x)
-	}
 }

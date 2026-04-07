@@ -10,6 +10,7 @@ import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.datatypes.AccessListEntry
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
+import org.hyperledger.besu.datatypes.LogsBloomFilter
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.BlockBody
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder
@@ -17,7 +18,6 @@ import org.hyperledger.besu.ethereum.core.CodeDelegation
 import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
-import org.hyperledger.besu.evm.log.LogsBloomFilter
 import java.math.BigInteger
 
 fun Block.toBesu(): org.hyperledger.besu.ethereum.core.Block = mapToBesu(this)
@@ -50,10 +50,10 @@ object MapperLineaDomainToBesu {
   }
 
   fun getRecIdAndChainId(tx: linea.domain.Transaction): Pair<Byte, BigInteger?> {
-    if (tx.type == TransactionType.FRONTIER) {
-      return recIdFromV(tx.v!!.toBigInteger())
+    return if (tx.type == TransactionType.FRONTIER) {
+      recIdFromV(tx.v!!.toBigInteger())
     } else {
-      return (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
+      (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
     }
   }
 
@@ -139,17 +139,17 @@ object MapperLineaDomainToBesu {
           accessList(accList)
         }
         if (besuType.supportsDelegateCode()) {
-          val delegationList = tx.codeDelegations
+          val authorizationList = tx.authorizationList
             ?.map { it.toBesu() }
             ?: emptyList()
-          codeDelegations(delegationList)
+          codeDelegations(authorizationList)
         }
       }
       .signature(signature)
       .build()
   }
 
-  fun linea.domain.CodeDelegation.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
+  fun AuthorizationTuple.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
     return CodeDelegation.builder()
       .address(Address.wrap(Bytes.wrap(this.address)))
       .nonce(this.nonce.toLong())

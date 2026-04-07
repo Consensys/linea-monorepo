@@ -1,5 +1,6 @@
 package linea.coordinator.config.v2
 
+import linea.domain.RetryConfig
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import java.net.URL
 import kotlin.time.Duration
@@ -15,6 +16,7 @@ data class L1SubmissionConfig(
     ROLLUP,
     VALIDIUM,
   }
+
   override val disabled: Boolean
     get() = blob.disabled && aggregation.disabled
 
@@ -39,6 +41,7 @@ data class L1SubmissionConfig(
 
     data class FeeHistoryFetcherConfig(
       val l1Endpoint: URL,
+      val l1RequestRetries: RetryConfig,
       val fetchInterval: Duration,
       val maxBlockCount: UInt,
       val rewardPercentiles: List<UInt>,
@@ -68,6 +71,7 @@ data class L1SubmissionConfig(
   data class BlobSubmissionConfig(
     override val disabled: Boolean,
     val l1Endpoint: URL,
+    val l1RequestRetries: RetryConfig,
     val submissionDelay: Duration,
     val submissionTickInterval: Duration,
     val maxSubmissionTransactionsPerTick: UInt,
@@ -80,6 +84,7 @@ data class L1SubmissionConfig(
   data class AggregationSubmissionConfig(
     override val disabled: Boolean,
     val l1Endpoint: URL,
+    val l1RequestRetries: RetryConfig,
     val submissionDelay: Duration,
     val submissionTickInterval: Duration,
     val maxSubmissionsPerTick: UInt,

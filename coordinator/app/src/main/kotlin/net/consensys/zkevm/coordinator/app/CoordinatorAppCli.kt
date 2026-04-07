@@ -35,20 +35,20 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
 
   class TracesLimitsFiles {
     @CommandLine.Option(
-      names = ["--traces-limits-v2"],
-      paramLabel = "<FILE>",
-      description = ["Prover traces limits V2 for linea besu"],
-      required = false,
-    )
-    var tracesLimitsV2File: File? = null
-
-    @CommandLine.Option(
       names = ["--traces-limits-v4"],
       paramLabel = "<FILE>",
       description = ["Prover traces limits V4 for linea besu"],
       required = false,
     )
     var tracesLimitsV4File: File? = null
+
+    @CommandLine.Option(
+      names = ["--traces-limits-v5"],
+      paramLabel = "<FILE>",
+      description = ["Prover traces limits V5 for linea besu"],
+      required = false,
+    )
+    var tracesLimitsV5File: File? = null
   }
 
   @CommandLine.Option(
@@ -82,7 +82,10 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         printUsage(errorWriter)
         return 1
       }
-      if (tracesLimitsFiles!!.tracesLimitsV2File == null && tracesLimitsFiles!!.tracesLimitsV4File == null) {
+      if (
+        tracesLimitsFiles!!.tracesLimitsV4File == null &&
+        tracesLimitsFiles!!.tracesLimitsV5File == null
+      ) {
         errorWriter.println("Please provide a traces-limits file!")
         printUsage(errorWriter)
         return 1
@@ -104,14 +107,15 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         }
       }
 
-      val configs = loadConfigs(
-        coordinatorConfigFiles = configFiles.map { it.toPath() },
-        tracesLimitsFileV2 = tracesLimitsFiles!!.tracesLimitsV2File?.toPath(),
-        tracesLimitsFileV4 = tracesLimitsFiles!!.tracesLimitsV4File?.toPath(),
-        smartContractErrorsFile = smartContractErrorsFile.toPath(),
-        gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile.toPath(),
-        logger = logger,
-      )
+      val configs =
+        loadConfigs(
+          coordinatorConfigFiles = configFiles.map { it.toPath() },
+          tracesLimitsFileV4 = tracesLimitsFiles!!.tracesLimitsV4File?.toPath(),
+          tracesLimitsFileV5 = tracesLimitsFiles!!.tracesLimitsV5File?.toPath(),
+          smartContractErrorsFile = smartContractErrorsFile.toPath(),
+          gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile.toPath(),
+          logger = logger,
+        )
 
       if (checkConfigsOnly) {
         logger.info("All configs are valid. Final configs: {}", configs)
@@ -162,6 +166,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
 
   companion object {
     const val COMMAND_NAME = "coordinator"
+
     fun withAction(startAction: StartAction): CoordinatorAppCli {
       val errorWriter = PrintWriter(System.err, true, Charset.defaultCharset())
       return CoordinatorAppCli(errorWriter, startAction)

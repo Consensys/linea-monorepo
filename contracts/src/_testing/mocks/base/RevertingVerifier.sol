@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { IPlonkVerifier } from "../../../verifiers/interfaces/IPlonkVerifier.sol";
 
@@ -14,6 +14,10 @@ contract RevertingVerifier is IPlonkVerifier {
 
   constructor(Scenario _scenario) {
     scenario = _scenario;
+  }
+
+  function getChainConfiguration() external pure returns (bytes32) {
+    return bytes32(0);
   }
 
   function Verify(bytes calldata, uint256[] calldata) external returns (bool) {

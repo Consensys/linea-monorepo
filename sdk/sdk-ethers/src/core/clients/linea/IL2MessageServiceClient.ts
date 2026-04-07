@@ -1,6 +1,7 @@
+import { OnChainMessageStatus } from "../../enums";
 import { Message } from "../../types";
-import { IMessageServiceContract } from "../IMessageServiceContract";
 import { LineaGasFees } from "../IGasProvider";
+import { IMessageServiceContract } from "../IMessageServiceContract";
 
 export interface IL2MessageServiceClient<
   Overrides,
@@ -10,12 +11,13 @@ export interface IL2MessageServiceClient<
   Signer,
   ErrorDescription,
 > extends IMessageServiceContract<
-    Overrides,
-    TransactionReceipt,
-    TransactionResponse,
-    ContractTransactionResponse,
-    ErrorDescription
-  > {
+  Overrides,
+  TransactionReceipt,
+  TransactionResponse,
+  ContractTransactionResponse,
+  ErrorDescription
+> {
+  getMessageStatus(params: { messageHash: string; overrides?: Overrides }): Promise<OnChainMessageStatus>;
   encodeClaimMessageTransactionData(message: Message & { feeRecipient?: string }): string;
   estimateClaimGasFees(
     message: Message & { feeRecipient?: string },

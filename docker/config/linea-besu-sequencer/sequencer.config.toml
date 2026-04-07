@@ -20,7 +20,7 @@ engine-jwt-disabled=true
 rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
 rpc-http-port=8545
-rpc-http-api=["ADMIN","DEBUG","NET","ETH","ENGINE","CLIQUE","MINER","WEB3","TRACE","LINEA"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","ENGINE","MINER","WEB3","TRACE","LINEA"]
 rpc-http-cors-origins=["*"]
 rpc-http-max-active-connections=20000
 
@@ -28,7 +28,7 @@ rpc-http-max-active-connections=20000
 rpc-ws-enabled=true
 rpc-ws-host="0.0.0.0"
 rpc-ws-port=8546
-rpc-ws-api=["ADMIN","DEBUG","NET","ETH","CLIQUE","MINER","WEB3","TRACE","LINEA"]
+rpc-ws-api=["ADMIN","DEBUG","NET","ETH","MINER","WEB3","TRACE","LINEA"]
 rpc-ws-max-active-connections=200
 
 # graphql
@@ -49,7 +49,7 @@ cache-last-block-headers-preload-enabled=true
 cache-last-block-headers=50
 
 # plugins
-plugins=["LineaEstimateGasEndpointPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","LineaSetExtraDataEndpointPlugin","LineaTransactionSelectorPlugin"]
+plugins=["LineaEstimateGasEndpointPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","LineaSetExtraDataEndpointPlugin","LineaTransactionSelectorPlugin","LineaForcedTransactionEndpointsPlugin"]
 plugin-linea-module-limit-file-path="/var/lib/besu/traces-limits.toml"
 plugin-linea-deny-list-path="/var/lib/besu/deny-list.txt"
 plugin-linea-estimate-gas-compatibility-mode-enabled=false
@@ -60,7 +60,8 @@ plugin-linea-tx-pool-profitability-check-api-enabled=true
 plugin-linea-tx-pool-profitability-check-p2p-enabled=true
 plugin-linea-tx-pool-simulation-check-api-enabled=false
 plugin-linea-tx-pool-simulation-check-p2p-enabled=false
-plugin-linea-max-block-calldata-size=109000
+plugin-linea-blob-size-limit=131072
+plugin-linea-compressed-block-header-overhead=1024
 plugin-linea-max-tx-calldata-size=60000
 plugin-linea-max-block-gas=55000000
 plugin-linea-tx-pool-min-margin="0.8"
@@ -70,6 +71,7 @@ plugin-linea-variable-gas-cost-wei=1000000000
 plugin-linea-extra-data-set-min-gas-price-enabled=false
 plugin-linea-estimate-gas-min-margin="1.2"
 plugin-linea-limitless-enabled=false
+plugin-linea-forced-tx-status-cache-size=100
 strict-tx-replay-protection-enabled=false
 
 # should uncomment only when the linea-sequencer plugin supports liveness
@@ -89,7 +91,6 @@ plugin-linea-liveness-gas-limit=1000000
 plugin-linea-liveness-gas-price=7
 
 Xplugin-rocksdb-high-spec-enabled=true
-Xsynchronizer-fast-sync-full-validation-rate=0.000001
 tx-pool-priority-senders=["0xfe3b557e8fb62b89f4916b721be55ceb828dbd73",
   "0xd42e308fc964b71e18126df469c21b0d7bcb86cc",
   "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",

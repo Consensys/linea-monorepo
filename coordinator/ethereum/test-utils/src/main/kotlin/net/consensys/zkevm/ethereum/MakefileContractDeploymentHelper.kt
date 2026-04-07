@@ -20,18 +20,12 @@ data class DeployedContract(
   val blockNumber: Long,
 )
 
-fun getDeployedAddress(
-  commandResult: CommandResult,
-  addressPattern: Pattern,
-): DeployedContract {
+fun getDeployedAddress(commandResult: CommandResult, addressPattern: Pattern): DeployedContract {
   val lines = commandResult.stdOutLines.toList().asReversed()
   return getDeployedAddress(lines, addressPattern)
 }
 
-fun getDeployedAddress(
-  cmdStdoutLines: List<String>,
-  addressPattern: Pattern,
-): DeployedContract {
+fun getDeployedAddress(cmdStdoutLines: List<String>, addressPattern: Pattern): DeployedContract {
   val matcher: Matcher? = cmdStdoutLines
     .firstOrNull { line -> addressPattern.matcher(line).find() }
     ?.let { addressPattern.matcher(it).also { it.find() } }
@@ -85,6 +79,8 @@ fun makeDeployLineaRollup(
   deploymentPrivateKey?.let { env["DEPLOYMENT_PRIVATE_KEY"] = it }
   val command = when (contractVersion) {
     LineaRollupContractVersion.V6 -> "make deploy-linea-rollup-v6"
+    LineaRollupContractVersion.V7 -> "make deploy-linea-rollup-v7"
+    LineaRollupContractVersion.V8 -> "make deploy-linea-rollup-v8"
     // else -> throw IllegalArgumentException("Unsupported contract version: $contractVersion")
   }
 
@@ -100,7 +96,7 @@ fun makeDeployL2MessageService(
   anchorOperatorAddresses: String,
 ): SafeFuture<DeployedContract> {
   val env = mutableMapOf(
-    "L2MSGSERVICE_L1L2_MESSAGE_SETTER" to anchorOperatorAddresses,
+    "L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER" to anchorOperatorAddresses,
   )
   deploymentPrivateKey?.let { env["DEPLOYMENT_PRIVATE_KEY"] = it }
 

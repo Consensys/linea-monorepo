@@ -8,8 +8,6 @@ import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.domain.BlockIntervals
 import linea.kotlin.ByteArrayExt
 import net.consensys.linea.traces.TracesCountersV2
@@ -17,8 +15,10 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
+import net.consensys.zkevm.domain.CompressionProofIndex
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
+import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
@@ -42,8 +42,10 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
@@ -74,6 +76,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
     fixedClock.now().plus(1200.seconds).toEpochMilliseconds(),
   )
   private var expectedBlobCompressionProofResponse: BlobCompressionProof? = null
+  private val proofIndexExpectedProofResponseMap: MutableMap<ProofIndex, BlobCompressionProof> = mutableMapOf()
 
   private val zkStateClientMock = mock<StateManagerClientV1>()
   private val blobCompressionProverClientMock = mock<BlobCompressionProverClientV2>()
@@ -88,6 +91,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
+    proofIndexExpectedProofResponseMap.clear()
     blobsPostgresDao =
       BlobsPostgresDao(
         config = BlobsPostgresDao.Config(
@@ -118,7 +122,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           ),
         ),
       )
-    whenever(blobCompressionProverClientMock.requestProof(any()))
+    whenever(blobCompressionProverClientMock.createProofRequest(any()))
       .thenAnswer { invocationMock ->
         val proofReq = invocationMock.arguments[0] as BlobCompressionProofRequest
         expectedBlobCompressionProofResponse = BlobCompressionProof(
@@ -143,7 +147,19 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           kzgProofContract = Random.nextBytes(48),
           kzgProofSidecar = Random.nextBytes(48),
         )
-        SafeFuture.completedFuture(expectedBlobCompressionProofResponse)
+        val proofIndex = CompressionProofIndex(
+          startBlockNumber = proofReq.startBlockNumber,
+          endBlockNumber = proofReq.conflations.last().endBlockNumber,
+          hash = proofReq.expectedShnarfResult.dataHash,
+        )
+        proofIndexExpectedProofResponseMap[proofIndex] = expectedBlobCompressionProofResponse!!
+        SafeFuture.completedFuture(proofIndex)
+      }
+
+    whenever(blobCompressionProverClientMock.findProofResponse(any()))
+      .thenAnswer { invocationMock ->
+        val proofIndex = invocationMock.arguments[0] as ProofIndex
+        SafeFuture.completedFuture(proofIndexExpectedProofResponseMap[proofIndex])
       }
 
     mockShnarfCalculator = spy(FakeBlobShnarfCalculator())
@@ -155,20 +171,19 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
     val rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
       blobShnarfCalculator = mockShnarfCalculator,
-      blobsRepository = blobsRepositorySpy,
+      parentBlobDataProvider = ParentBlobDataProviderImpl(blobsRepositorySpy),
       genesisShnarf = ByteArray(32),
     )
 
     blobCompressionProofCoordinator = BlobCompressionProofCoordinator(
       vertx = vertx,
-      blobsRepository = blobsRepositorySpy,
       blobCompressionProverClient = blobCompressionProverClientMock,
       rollingBlobShnarfCalculator = rollingBlobShnarfCalculator,
       blobZkStateProvider = blobZkStateProvider,
       config = BlobCompressionProofCoordinator.Config(
         pollingInterval = blobHandlerPollingInterval,
       ),
-      blobCompressionProofHandler = { _ -> SafeFuture.completedFuture(Unit) },
+      blobCompressionProofHandler = { blobRecord -> blobsRepositorySpy.saveNewBlob(blobRecord) },
       metricsFacade = mock(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     )
     blobCompressionProofCoordinator.start()
@@ -205,9 +220,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
-  fun `handle blob event and update blob record with blob compression proof`(
-    testContext: VertxTestContext,
-  ) {
+  fun `handle blob event and update blob record with blob compression proof`(testContext: VertxTestContext) {
     val prevBlobRecord = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,
@@ -267,7 +280,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         assertThat(blobCompressionProof?.parentDataHash).isEqualTo(prevBlobRecord.blobHash)
         assertThat(blobCompressionProof?.prevShnarf).isEqualTo(prevBlobRecord.expectedShnarf)
         verify(mockShnarfCalculator).calculateShnarf(any(), any(), any(), any(), any())
-        verify(blobCompressionProverClientMock).requestProof(any())
+        verify(blobCompressionProverClientMock).createProofRequest(any())
+        verify(blobCompressionProverClientMock).findProofResponse(any())
       }
     testContext.completeNow()
   }
@@ -359,9 +373,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
-  fun `test blob handle failures re-queue's the blob`(
-    testContext: VertxTestContext,
-  ) {
+  fun `test blob handle failures re-queue's the blob`(testContext: VertxTestContext) {
     val prevBlobRecord = createBlobRecord(
       startBlockNumber = expectedStartBlock,
       endBlockNumber = expectedEndBlock,

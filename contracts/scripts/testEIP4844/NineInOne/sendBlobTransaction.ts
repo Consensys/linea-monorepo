@@ -1,17 +1,18 @@
-import { AbiCoder, BytesLike, Transaction, Wallet, ethers } from "ethers";
 import { commitmentsToVersionedHashes } from "@ethereumjs/util";
 import * as kzg from "c-kzg";
+import { AbiCoder, BytesLike, Transaction, Wallet, ethers } from "ethers";
+import { DataHexString } from "ethers/lib.commonjs/utils/data";
+
+import aggregateProof1to305 from "./aggregatedProof-1-305.json";
 import submissionDataJson1 from "./blocks-1-46.json";
-import submissionDataJson2 from "./blocks-47-81.json";
-import submissionDataJson3 from "./blocks-82-114.json";
 import submissionDataJson4 from "./blocks-115-155.json";
 import submissionDataJson5 from "./blocks-156-175.json";
 import submissionDataJson6 from "./blocks-176-206.json";
 import submissionDataJson7 from "./blocks-207-228.json";
 import submissionDataJson8 from "./blocks-229-265.json";
 import submissionDataJson9 from "./blocks-266-305.json";
-import aggregateProof1to305 from "./aggregatedProof-1-305.json";
-import { DataHexString } from "ethers/lib.commonjs/utils/data";
+import submissionDataJson2 from "./blocks-47-81.json";
+import submissionDataJson3 from "./blocks-82-114.json";
 
 const chainId = 31648428;
 
@@ -148,7 +149,7 @@ function kzgCommitmentsToVersionedHashes(commitments: Uint8Array[]): string[] {
 
 async function main() {
   const rpcUrl = requireEnv("RPC_URL");
-  const privateKey = requireEnv("PRIVATE_KEY");
+  const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
   const destinationAddress = requireEnv("DESTINATION_ADDRESS");
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -247,7 +248,7 @@ async function sendMessage() {
   console.log("sending the message");
 
   const rpcUrl = requireEnv("RPC_URL");
-  const privateKey = requireEnv("PRIVATE_KEY");
+  const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
   const destinationAddress = requireEnv("DESTINATION_ADDRESS");
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -326,7 +327,7 @@ async function sendProof(
   console.log("proof");
 
   const rpcUrl = requireEnv("RPC_URL");
-  const privateKey = requireEnv("PRIVATE_KEY");
+  const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
   const destinationAddress = requireEnv("DESTINATION_ADDRESS");
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);

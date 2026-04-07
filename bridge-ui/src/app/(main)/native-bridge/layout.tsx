@@ -1,12 +1,15 @@
 "use client";
 
+import { useConnection } from "wagmi";
+
 import { useTokens } from "@/hooks";
-import { useAccount } from "wagmi";
-import { FormState, FormStoreProvider, useChainStore } from "@/stores";
-import { CCTPMode, ChainLayer, ClaimType } from "@/types";
+import { useChainStore } from "@/stores/chainStore";
+import type { FormState } from "@/stores/formStore";
+import { FormStoreProvider } from "@/stores/formStoreProvider";
+import { ChainLayer, ClaimType } from "@/types";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { address } = useAccount();
+  const { address } = useConnection();
   const tokens = useTokens();
   const fromChain = useChainStore.useFromChain();
 
@@ -14,12 +17,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     token: tokens[0],
     claim: fromChain?.layer === ChainLayer.L1 ? ClaimType.AUTO_SPONSORED : ClaimType.MANUAL,
     amount: null,
-    minimumFees: 0n,
     gasFees: 0n,
-    bridgingFees: 0n,
     balance: 0n,
     recipient: address || "0x",
-    cctpMode: CCTPMode.STANDARD,
+    selectedMode: null,
   };
 
   return <FormStoreProvider initialState={initialFormState}>{children}</FormStoreProvider>;

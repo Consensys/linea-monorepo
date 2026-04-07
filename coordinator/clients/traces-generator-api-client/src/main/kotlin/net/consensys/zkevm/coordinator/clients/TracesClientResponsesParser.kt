@@ -9,37 +9,42 @@ import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.traces.TracesCounters
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracesCountersV4
+import net.consensys.linea.traces.TracesCountersV5
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.traces.TracingModuleV4
+import net.consensys.linea.traces.TracingModuleV5
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 object TracesClientResponsesParser {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  internal fun mapErrorResponse(
-    jsonRpcErrorResponse: JsonRpcErrorResponse,
-  ): ErrorResponse<TracesServiceErrorType> {
-    val errorType: TracesServiceErrorType = runCatching {
-      TracesServiceErrorType.valueOf(jsonRpcErrorResponse.error.data.toString().substringBefore(':'))
-    }.getOrElse { TracesServiceErrorType.UNKNOWN_ERROR }
+  internal fun mapErrorResponse(jsonRpcErrorResponse: JsonRpcErrorResponse): ErrorResponse<TracesServiceErrorType> {
+    val errorType: TracesServiceErrorType =
+      runCatching {
+        TracesServiceErrorType.valueOf(jsonRpcErrorResponse.error.data.toString().substringBefore(':'))
+      }.getOrElse { TracesServiceErrorType.UNKNOWN_ERROR }
 
     return ErrorResponse(errorType, jsonRpcErrorResponse.error.message)
   }
 
-  internal fun parseTracesCounterResponseV2(
-    jsonRpcResponse: JsonRpcSuccessResponse,
-  ): GetTracesCountersResponse = parseTracesCounterResponse(
-    jsonRpcResponse,
-    ::parseTracesCountersV2,
-  )
+  internal fun parseTracesCounterResponseV2(jsonRpcResponse: JsonRpcSuccessResponse): GetTracesCountersResponse =
+    parseTracesCounterResponse(
+      jsonRpcResponse,
+      ::parseTracesCountersV2,
+    )
 
-  internal fun parseTracesCounterResponseV4(
-    jsonRpcResponse: JsonRpcSuccessResponse,
-  ): GetTracesCountersResponse = parseTracesCounterResponse(
-    jsonRpcResponse,
-    ::parseTracesCountersV4,
-  )
+  internal fun parseTracesCounterResponseV4(jsonRpcResponse: JsonRpcSuccessResponse): GetTracesCountersResponse =
+    parseTracesCounterResponse(
+      jsonRpcResponse,
+      ::parseTracesCountersV4,
+    )
+
+  internal fun parseTracesCounterResponseV5(jsonRpcResponse: JsonRpcSuccessResponse): GetTracesCountersResponse =
+    parseTracesCounterResponse(
+      jsonRpcResponse,
+      ::parseTracesCountersV5,
+    )
 
   internal fun parseTracesCounterResponse(
     jsonRpcResponse: JsonRpcSuccessResponse,
@@ -58,6 +63,9 @@ object TracesClientResponsesParser {
 
   internal fun parseTracesCountersV4(tracesCounters: JsonObject): TracesCountersV4 =
     parseTracesCounters(tracesCounters, TracingModuleV4::class.java, ::TracesCountersV4) as TracesCountersV4
+
+  internal fun parseTracesCountersV5(tracesCounters: JsonObject): TracesCountersV5 =
+    parseTracesCounters(tracesCounters, TracingModuleV5::class.java, ::TracesCountersV5) as TracesCountersV5
 
   private fun <T : Enum<T>> parseTracesCounters(
     tracesCounters: JsonObject,
@@ -81,28 +89,31 @@ object TracesClientResponsesParser {
       throw IllegalStateException(error)
     }
 
-    val traces = moduleEnum.enumConstants.associateWith { traceModule ->
-      val counterValue = tracesCounters.getString(traceModule.name)
-      kotlin.runCatching { counterValue.toUInt() }
-        .onFailure {
-          log.error(
-            "Failed to parse Evm module ${traceModule.name}='$counterValue' to UInt. errorMessage={}",
-            it.message,
-            it,
-          )
-        }
-        .getOrThrow()
-    }
+    val traces =
+      moduleEnum.enumConstants.associateWith { traceModule ->
+        val counterValue = tracesCounters.getString(traceModule.name)
+        kotlin.runCatching { counterValue.toUInt() }
+          .onFailure {
+            log.error(
+              "Failed to parse Evm module ${traceModule.name}='$counterValue' to UInt. errorMessage={}",
+              it.message,
+              it,
+            )
+          }
+          .getOrThrow()
+      }
     return constructor(traces)
   }
 
-  internal fun parseConflatedTracesToFileResponse(
-    jsonRpcResponse: JsonRpcSuccessResponse,
-  ): GenerateTracesResponse {
+  internal fun parseConflatedTracesToFileResponse(jsonRpcResponse: JsonRpcSuccessResponse): GenerateTracesResponse {
     val result = jsonRpcResponse.result as JsonObject
     return GenerateTracesResponse(
       result.getString("conflatedTracesFileName"),
       result.getString("tracesEngineVersion"),
     )
   }
+
+  internal fun parseVirtualBlockConflatedTracesToFileResponse(
+    jsonRpcResponse: JsonRpcSuccessResponse,
+  ): GenerateTracesResponse = parseConflatedTracesToFileResponse(jsonRpcResponse)
 }

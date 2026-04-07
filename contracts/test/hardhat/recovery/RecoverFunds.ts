@@ -2,6 +2,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+
 import { RecoverFunds, TestExternalCalls } from "../../../typechain-types";
 import {
   ADDRESS_ZERO,
@@ -20,7 +21,6 @@ describe("RecoverFunds contract", () => {
   let testContract: TestExternalCalls;
   let testContractAddress: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let executor: SignerWithAddress;
@@ -111,7 +111,7 @@ describe("RecoverFunds contract", () => {
       const functionCall = recoverFunds
         .connect(nonAuthorizedAccount)
         .executeExternalCall(nonAuthorizedAccount, EMPTY_CALLDATA, 1000n);
-      expectRevertWithReason(functionCall, buildAccessErrorMessage(nonAuthorizedAccount, FUNCTION_EXECUTOR_ROLE));
+      await expectRevertWithReason(functionCall, buildAccessErrorMessage(nonAuthorizedAccount, FUNCTION_EXECUTOR_ROLE));
     });
 
     it("Should send half of the ETH sent", async () => {

@@ -2,14 +2,16 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["node", "jest"],
+    "moduleResolution": "node",
+    "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": false,
+    "strictPropertyInitialization": false
   },
   "references": [
     {
-      "path": "../sdk/sdk-ethers"
-    }
+      "path": "../ts-libs/linea-shared-utils"
+    },
   ],
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "src/config/clients/linea-rpc"]
 }

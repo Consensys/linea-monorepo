@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
+
 import Image from "next/image";
-import styles from "./token-details.module.scss";
-import { useTokenBalance } from "@/hooks";
-import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
 import { formatUnits } from "viem";
-import { CCTPMode, Token } from "@/types";
-import { formatBalance, isEth } from "@/utils";
+
+import { useTokenBalance } from "@/hooks";
+import { useChainStore } from "@/stores/chainStore";
+import { type CurrencyOption } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { Token } from "@/types";
+import { formatBalance } from "@/utils/format";
+import { isEth } from "@/utils/tokens";
+
+import styles from "./token-details.module.scss";
 
 interface TokenDetailsProps {
   isConnected: boolean;
@@ -17,13 +24,19 @@ interface TokenDetailsProps {
   currency: CurrencyOption;
 }
 
-export default function TokenDetails({ isConnected, token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
+const TokenDetails = memo(function TokenDetails({
+  isConnected,
+  token,
+  onTokenClick,
+  tokenPrice,
+  currency,
+}: TokenDetailsProps) {
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
   const { balance } = useTokenBalance(token);
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
-  const setCctpMode = useFormStore((state) => state.setCctpMode);
+  const setSelectedMode = useFormStore((state) => state.setSelectedMode);
 
   const chainLayer = fromChain?.layer;
   const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
@@ -42,8 +55,8 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
     setSelectedToken(token);
     setToken(token);
     onTokenClick(token);
-    setCctpMode(CCTPMode.STANDARD);
-  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setCctpMode]);
+    setSelectedMode(null);
+  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setSelectedMode]);
 
   return (
     <button
@@ -84,4 +97,6 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
       )}
     </button>
   );
-}
+});
+
+export default TokenDetails;

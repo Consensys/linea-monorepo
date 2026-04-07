@@ -1,17 +1,16 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-
-import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
-import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
-
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 import { TestValidium } from "contracts/typechain-types";
+
 import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
+import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
+import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import {
   ADDRESS_ZERO,
   GENERAL_PAUSE_TYPE,
@@ -26,6 +25,7 @@ import {
   EMPTY_CALLDATA,
   INITIALIZED_ALREADY_MESSAGE,
   VALIDIUM_INITIALIZE_SIGNATURE,
+  MAX_GAS_LIMIT,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -43,7 +43,6 @@ describe("Validium contract", () => {
   let validium: TestValidium;
   let verifier: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -324,7 +323,7 @@ describe("Validium contract", () => {
       const asyncCall = validium
         .connect(operator)
         .acceptShnarfData(nonExistingParentShnarf, wrongExpectedShnarf, submissionData.finalStateRootHash, {
-          gasLimit: 30_000_000,
+          gasLimit: MAX_GAS_LIMIT,
         });
 
       await expectRevertWithCustomError(validium, asyncCall, "ParentShnarfNotSubmitted", [nonExistingParentShnarf]);
@@ -336,7 +335,7 @@ describe("Validium contract", () => {
       await expect(
         validium
           .connect(operator)
-          .acceptShnarfData(prevShnarf, expectedShnarf, submissionData.finalStateRootHash, { gasLimit: 30_000_000 }),
+          .acceptShnarfData(prevShnarf, expectedShnarf, submissionData.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT }),
       ).to.not.be.reverted;
 
       const blobShnarfExists = await validium.blobShnarfExists(expectedShnarf);
@@ -350,7 +349,7 @@ describe("Validium contract", () => {
         validium
           .connect(operator)
           .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           }),
       ).to.not.be.reverted;
 
@@ -358,7 +357,7 @@ describe("Validium contract", () => {
         validium
           .connect(operator)
           .acceptShnarfData(expectedShnarf, secondExpectedShnarf, secondSubmissionData.finalStateRootHash, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           }),
       ).to.not.be.reverted;
 
@@ -374,7 +373,7 @@ describe("Validium contract", () => {
       const submitDataCall = validium
         .connect(operator)
         .acceptShnarfData(prevShnarf, secondExpectedShnarf, submissionData.finalStateRootHash, {
-          gasLimit: 30_000_000,
+          gasLimit: MAX_GAS_LIMIT,
         });
       const eventArgs = [prevShnarf, secondExpectedShnarf, submissionData.finalStateRootHash];
 
@@ -384,7 +383,7 @@ describe("Validium contract", () => {
     it("Should fail if the final state root hash is HASH_ZERO", async () => {
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, HASH_ZERO, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, HASH_ZERO, { gasLimit: MAX_GAS_LIMIT });
 
       // TODO: Make the failure shnarf dynamic and computed
       await expectRevertWithCustomError(validium, submitDataCall, "FinalStateRootHashIsZeroHash", []);
@@ -397,13 +396,15 @@ describe("Validium contract", () => {
         validium
           .connect(operator)
           .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
-            gasLimit: 30_000_000,
+            gasLimit: MAX_GAS_LIMIT,
           }),
       ).to.not.be.reverted;
 
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(expectedShnarf, HASH_ZERO, secondSubmissionData.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(expectedShnarf, HASH_ZERO, secondSubmissionData.finalStateRootHash, {
+          gasLimit: MAX_GAS_LIMIT,
+        });
 
       await expectRevertWithCustomError(validium, submitDataCall, "ShnarfSubmissionIsZeroHash", []);
     });
@@ -411,7 +412,7 @@ describe("Validium contract", () => {
     it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
       const submitDataCall = validium
         .connect(nonAuthorizedAccount)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithReason(submitDataCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
@@ -421,7 +422,7 @@ describe("Validium contract", () => {
 
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
@@ -431,7 +432,7 @@ describe("Validium contract", () => {
 
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [STATE_DATA_SUBMISSION_PAUSE_TYPE]);
     });
@@ -439,11 +440,11 @@ describe("Validium contract", () => {
     it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
       await validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(validium, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });
@@ -451,13 +452,13 @@ describe("Validium contract", () => {
     it("Should revert with ShnarfAlreadySubmitted when submitting same data, differing block numbers", async () => {
       await validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
 
       const submitDataCall = validium
         .connect(operator)
-        .acceptShnarfData(prevShnarf, expectedShnarf, dataOneCopy.finalStateRootHash, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, dataOneCopy.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(validium, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });

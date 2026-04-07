@@ -1,14 +1,15 @@
 // Take operation results and record the relevant figures into metrics
 
-import { Address, TransactionReceipt } from "viem";
-import { Result } from "neverthrow";
-import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
-import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { ILogger, weiToGweiNumber } from "@consensys/linea-shared-utils";
-import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
-import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { Result } from "neverthrow";
+import { Address, TransactionReceipt } from "viem";
+
 import { DashboardContractClient } from "../../clients/contracts/DashboardContractClient.js";
+import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 
 /**
  * Take operation results and record the relevant figures into metrics.
@@ -29,9 +30,7 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerClient: IYieldManager<TransactionReceipt>,
     private readonly vaultHubClient: IVaultHub<TransactionReceipt>,
-  ) {
-    void this.logger;
-  }
+  ) {}
 
   /**
    * Records metrics for progress ossification operations.
@@ -46,9 +45,20 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn(
+        "recordProgressOssificationMetrics - transaction receipt result is error, skipping metrics recording",
+        {
+          error: txReceiptResult.error,
+        },
+      );
+      return;
+    }
     const receipt = txReceiptResult.value;
-    if (!receipt) return;
+    if (!receipt) {
+      this.logger.warn("recordProgressOssificationMetrics - receipt is undefined, skipping metrics recording");
+      return;
+    }
 
     const [vault, dashboard] = await Promise.all([
       this.yieldManagerClient.getLidoStakingVaultAddress(yieldProvider),
@@ -57,19 +67,13 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
 
     const dashboardClient = DashboardContractClient.getOrCreate(dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
-    if (nodeOperatorFeesDisbursed != 0n) {
-      this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
-    }
+    this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
 
     const lidoFeePayment = this.vaultHubClient.getLidoFeePaymentFromTxReceipt(receipt);
-    if (lidoFeePayment != 0n) {
-      this.metricsUpdater.addLidoFeesPaid(vault, weiToGweiNumber(lidoFeePayment));
-    }
+    this.metricsUpdater.addLidoFeesPaid(vault, weiToGweiNumber(lidoFeePayment));
 
     const liabilityPayment = this.vaultHubClient.getLiabilityPaymentFromTxReceipt(receipt);
-    if (liabilityPayment != 0n) {
-      this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
-    }
+    this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
   }
 
   /**
@@ -85,12 +89,23 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn("recordReportYieldMetrics - transaction receipt result is error, skipping metrics recording", {
+        error: txReceiptResult.error,
+      });
+      return;
+    }
     const receipt = txReceiptResult.value;
-    if (!receipt) return;
+    if (!receipt) {
+      this.logger.warn("recordReportYieldMetrics - receipt is undefined, skipping metrics recording");
+      return;
+    }
 
     const yieldReport = this.yieldManagerClient.getYieldReportFromTxReceipt(receipt);
-    if (yieldReport === undefined) return;
+    if (yieldReport === undefined) {
+      this.logger.warn("recordReportYieldMetrics - yield report not found in receipt, skipping metrics recording");
+      return;
+    }
 
     const [vault, dashboard] = await Promise.all([
       this.yieldManagerClient.getLidoStakingVaultAddress(yieldReport.yieldProvider),
@@ -98,23 +113,16 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     ]);
 
     this.metricsUpdater.incrementReportYield(vault);
-    this.metricsUpdater.addReportedYieldAmount(vault, weiToGweiNumber(yieldReport.yieldAmount));
 
     const dashboardClient = DashboardContractClient.getOrCreate(dashboard);
     const nodeOperatorFeesDisbursed = dashboardClient.getNodeOperatorFeesPaidFromTxReceipt(receipt);
-    if (nodeOperatorFeesDisbursed != 0n) {
-      this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
-    }
+    this.metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
 
     const lidoFeePayment = this.vaultHubClient.getLidoFeePaymentFromTxReceipt(receipt);
-    if (lidoFeePayment != 0n) {
-      this.metricsUpdater.addLidoFeesPaid(vault, weiToGweiNumber(lidoFeePayment));
-    }
+    this.metricsUpdater.addLidoFeesPaid(vault, weiToGweiNumber(lidoFeePayment));
 
     const liabilityPayment = this.vaultHubClient.getLiabilityPaymentFromTxReceipt(receipt);
-    if (liabilityPayment != 0n) {
-      this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
-    }
+    this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
   }
 
   /**
@@ -130,21 +138,35 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn(
+        "recordSafeWithdrawalMetrics - transaction receipt result is error, skipping metrics recording",
+        {
+          error: txReceiptResult.error,
+        },
+      );
+      return;
+    }
     const receipt = txReceiptResult.value;
-    if (!receipt) return;
+    if (!receipt) {
+      this.logger.warn("recordSafeWithdrawalMetrics - receipt is undefined, skipping metrics recording");
+      return;
+    }
 
     const event = this.yieldManagerClient.getWithdrawalEventFromTxReceipt(receipt);
-    if (!event) return;
+    if (!event) {
+      this.logger.warn(
+        "recordSafeWithdrawalMetrics - withdrawal event not found in receipt, skipping metrics recording",
+      );
+      return;
+    }
     const { reserveIncrementAmount } = event;
 
     this.metricsUpdater.recordRebalance(RebalanceDirection.UNSTAKE, weiToGweiNumber(reserveIncrementAmount));
 
     const vault = await this.yieldManagerClient.getLidoStakingVaultAddress(yieldProvider);
     const liabilityPayment = this.vaultHubClient.getLiabilityPaymentFromTxReceipt(receipt);
-    if (liabilityPayment != 0n) {
-      this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
-    }
+    this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
   }
 
   /**
@@ -159,14 +181,20 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     yieldProvider: Address,
     txReceiptResult: Result<TransactionReceipt | undefined, Error>,
   ): Promise<void> {
-    if (txReceiptResult.isErr()) return;
+    if (txReceiptResult.isErr()) {
+      this.logger.warn("recordTransferFundsMetrics - transaction receipt result is error, skipping metrics recording", {
+        error: txReceiptResult.error,
+      });
+      return;
+    }
     const receipt = txReceiptResult.value;
-    if (!receipt) return;
+    if (!receipt) {
+      this.logger.warn("recordTransferFundsMetrics - receipt is undefined, skipping metrics recording");
+      return;
+    }
 
     const vault = await this.yieldManagerClient.getLidoStakingVaultAddress(yieldProvider);
     const liabilityPayment = this.vaultHubClient.getLiabilityPaymentFromTxReceipt(receipt);
-    if (liabilityPayment != 0n) {
-      this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
-    }
+    this.metricsUpdater.addLiabilitiesPaid(vault, weiToGweiNumber(liabilityPayment));
   }
 }

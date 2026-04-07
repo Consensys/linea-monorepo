@@ -1,9 +1,9 @@
-import { create } from "zustand";
 import { createSelectorHooks, ZustandHookSelectors } from "auto-zustand-selectors-hook";
-import { config } from "@/config";
-
+import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+
 import { VisitedModalType } from "@/components/modal/first-time-visit";
+import { config } from "@/config";
 
 export type SupportedCurrencies = "usd" | "eur";
 
@@ -43,7 +43,7 @@ export const defaultInitState: ConfigState = {
     label: "USD",
     flag: "🇺🇸",
   },
-  showTestnet: config.e2eTestMode,
+  showTestnet: false,
   visitedModal: {
     "all-bridges": false,
     "native-bridge": false,

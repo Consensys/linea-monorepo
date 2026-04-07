@@ -8,10 +8,11 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.serialization.BlobCompressionProofJsonRequest
 import net.consensys.zkevm.coordinator.clients.prover.serialization.BlobCompressionProofJsonResponse
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
-import net.consensys.zkevm.domain.ProofIndex
+import net.consensys.zkevm.domain.CompressionProofIndex
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
@@ -29,12 +30,14 @@ class FileBasedBlobCompressionProverClientV2(
   val config: FileBasedProverConfig,
   val vertx: Vertx,
   jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     BlobCompressionProofRequest,
     BlobCompressionProof,
     BlobCompressionProofJsonRequest,
     BlobCompressionProofJsonResponse,
+    CompressionProofIndex,
     >(
     config = config,
     vertx = vertx,
@@ -50,13 +53,15 @@ class FileBasedBlobCompressionProverClientV2(
     requestMapper = FileBasedBlobCompressionProverClientV2::requestDtoMapper,
     responseMapper = BlobCompressionProofJsonResponse::toDomainObject,
     proofTypeLabel = "blob",
-    log = LogManager.getLogger(this::class.java),
+    log = log,
   ),
   BlobCompressionProverClientV2 {
 
   companion object {
-    fun blobFileIndex(request: BlobCompressionProofRequest): ProofIndex {
-      return ProofIndex(
+    val LOG: Logger = LogManager.getLogger(FileBasedBlobCompressionProverClientV2::class.java)
+
+    fun blobFileIndex(request: BlobCompressionProofRequest): CompressionProofIndex {
+      return CompressionProofIndex(
         startBlockNumber = request.startBlockNumber,
         endBlockNumber = request.endBlockNumber,
         hash = request.expectedShnarfResult.expectedShnarf,

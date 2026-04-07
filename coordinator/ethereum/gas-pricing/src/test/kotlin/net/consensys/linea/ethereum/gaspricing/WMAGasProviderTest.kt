@@ -9,25 +9,28 @@ import org.mockito.kotlin.mock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class WMAGasProviderTest {
-  private val feeHistory = FeeHistory(
-    oldestBlock = 100uL,
-    baseFeePerGas = listOf(100, 110, 120, 130, 140).map { it.toULong() },
-    reward = listOf(1000, 1100, 1200, 1300).map { listOf(it.toULong()) },
-    gasUsedRatio = listOf(0.25, 0.5, 0.75, 0.9),
-    baseFeePerBlobGas = listOf(100, 110, 120, 130, 140).map { it.toULong() },
-    blobGasUsedRatio = listOf(0.25, 0.5, 0.75, 0.9),
-  )
+  private val feeHistory =
+    FeeHistory(
+      oldestBlock = 100uL,
+      baseFeePerGas = listOf(100, 110, 120, 130, 140).map { it.toULong() },
+      reward = listOf(1000, 1100, 1200, 1300).map { listOf(it.toULong()) },
+      gasUsedRatio = listOf(0.25, 0.5, 0.75, 0.9),
+      baseFeePerBlobGas = listOf(100, 110, 120, 130, 140).map { it.toULong() },
+      blobGasUsedRatio = listOf(0.25, 0.5, 0.75, 0.9),
+    )
   private val chainId = 999
   private val gasLimit = 100000uL
-  private val mockFeesFetcher = mock<FeesFetcher> {
-    on { getL1EthGasPriceData() } doReturn SafeFuture.completedFuture(feeHistory)
-  }
-  private val l1PriorityFeeCalculator: FeesCalculator = WMAFeesCalculator(
-    WMAFeesCalculator.Config(
-      baseFeeCoefficient = 0.0,
-      priorityFeeWmaCoefficient = 1.0,
-    ),
-  )
+  private val mockFeesFetcher =
+    mock<FeesFetcher> {
+      on { getL1EthGasPriceData() } doReturn SafeFuture.completedFuture(feeHistory)
+    }
+  private val l1PriorityFeeCalculator: FeesCalculator =
+    WMAFeesCalculator(
+      WMAFeesCalculator.Config(
+        baseFeeCoefficient = 0.0,
+        priorityFeeWmaCoefficient = 1.0,
+      ),
+    )
 
   @Test
   fun `getMaxFeePerGas should return correct value based on baseFeePerGas and WMA of priority fee`() {
@@ -49,7 +52,7 @@ class WMAGasProviderTest {
 
     // WMA = (140*0.0) + ((1000*0.25*1 + 1100*0.5*2 + 1200*0.75*3 + 1300*0.9*4) / (0.25*1 + 0.5*2 + 0.75*3 + 0.9*4)) * 1.0 = 1229.57746
     // MaxFeePerGas = min(140*2 + 1229.57746, 100000000) = 1509.57
-    val calculatedMaxFeePerGas = wmaGasProvider.getMaxFeePerGas(null).toULong()
+    val calculatedMaxFeePerGas = wmaGasProvider.getMaxFeePerGas().toULong()
     assertThat(calculatedMaxFeePerGas).isEqualTo(1509uL) // 1509.57 rounded down
   }
 
@@ -71,7 +74,7 @@ class WMAGasProviderTest {
         ),
       )
 
-    val calculatedMaxPriorityFeePerGas = wmaGasProvider.getMaxPriorityFeePerGas(null).toULong()
+    val calculatedMaxPriorityFeePerGas = wmaGasProvider.getMaxPriorityFeePerGas().toULong()
     assertThat(calculatedMaxPriorityFeePerGas).isEqualTo(1229uL) // 1229.57 rounded down
   }
 
@@ -93,7 +96,7 @@ class WMAGasProviderTest {
         ),
       )
 
-    val calculatedMaxFeePerGas = wmaGasProvider.getMaxFeePerGas(null).toULong()
+    val calculatedMaxFeePerGas = wmaGasProvider.getMaxFeePerGas().toULong()
     assertThat(calculatedMaxFeePerGas).isEqualTo(maxFeePerGasCap)
   }
 
@@ -115,7 +118,7 @@ class WMAGasProviderTest {
         ),
       )
 
-    val calculatedMaxPriorityFeePerGas = wmaGasProvider.getMaxPriorityFeePerGas(null).toULong()
+    val calculatedMaxPriorityFeePerGas = wmaGasProvider.getMaxPriorityFeePerGas().toULong()
     assertThat(calculatedMaxPriorityFeePerGas).isEqualTo(maxPriorityFeePerGasCap)
   }
 

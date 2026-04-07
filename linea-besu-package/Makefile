@@ -2,12 +2,43 @@ include versions.env
 
 TAG ?= local
 PLATFORM ?=
+BESU_COMMIT ?= $(shell grep -E '^\s*besuCommit\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+TRACER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
+SEQUENCER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
+LOCAL_SEQUENCER_DIST_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/install/sequencer)
+LOCAL_TRACER_DIST_FOLDER ?= $(abspath ../tracer/plugins/build/install/linea-tracer)
+LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/besu-eth/build/distributions)
 
+build-besu-local-and-update-lib-version:
+	cd ..; \
+	echo "Build besu-eth/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
+	./gradlew buildAndUpdateBesuVersionInLibsVersions
+
+build-tracer-and-sequencer:
+	cd ..; \
+	echo "Build versions: TRACER_PLUGIN_VERSION=${TRACER_PLUGIN_VERSION} SEQUENCER_PLUGIN_VERSION=$(SEQUENCER_PLUGIN_VERSION)" ; \
+	echo "Clean and build distribution for tracer" ; \
+	./gradlew :tracer:clean && ./gradlew :tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
+	echo "Clean and build distribution for sequencer" ; \
+	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:installDist -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
+
+assemble: BESU_VERSION := $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+assemble: LOCAL_BESU_ZIP_PATH := $(LOCAL_BESU_DIST_FOLDER)/besu-$(BESU_VERSION).tar.gz
 assemble:
+	BESU_VERSION=$(BESU_VERSION) \
+	LOCAL_BESU_ZIP_PATH=$(LOCAL_BESU_ZIP_PATH) \
+	LOCAL_SEQUENCER_DIST_FOLDER=$(LOCAL_SEQUENCER_DIST_FOLDER) \
+	LOCAL_TRACER_DIST_FOLDER=$(LOCAL_TRACER_DIST_FOLDER) \
 	./scripts/assemble-packages.sh
 
 build:
+	$(MAKE) build-besu-local-and-update-lib-version
+	$(MAKE) build-tracer-and-sequencer
+	$(MAKE) clean
 	$(MAKE) assemble
+	$(MAKE) build-image
+
+build-image:
 	echo "IMAGE TAG=$(TAG)"
 	echo "PLATFORM=$(PLATFORM)"
 	if [ "$(PLATFORM)" = "" ]; then \
@@ -19,13 +50,7 @@ build:
 	fi
 
 run-e2e-test:
-	echo "EXPECTED_TRACES_API_VERSION=${LINEA_TRACER_PLUGIN_VERSION}"
-	if [ "$(shell uname)" = "Linux" ]; then \
-		sed -i'' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-config-v2.toml; \
-	elif [ "$(shell uname)" = "Darwin" ]; then \
-		sed -i '' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-config-v2.toml; \
-	fi
-	cd .. && BESU_PACKAGE_TAG=$(TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:e2e:local
+	cd .. && BESU_PACKAGE_TAG=$(TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:local
 
 run-e2e-test-cleanup:
 	cd .. && make clean-environment

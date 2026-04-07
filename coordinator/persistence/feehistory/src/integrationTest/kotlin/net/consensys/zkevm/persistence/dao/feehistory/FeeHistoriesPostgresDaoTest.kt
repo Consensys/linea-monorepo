@@ -4,7 +4,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import kotlinx.datetime.Clock
 import linea.domain.FeeHistory
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
@@ -14,6 +13,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import kotlin.time.Clock
 
 @ExtendWith(VertxExtension::class)
 class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
@@ -75,10 +75,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
   }
 
-  private fun performInsertTest(
-    feeHistory: FeeHistory,
-    rewardPercentiles: List<Double>,
-  ): RowSet<Row>? {
+  private fun performInsertTest(feeHistory: FeeHistory, rewardPercentiles: List<Double>): RowSet<Row>? {
     feeHistoriesPostgresDao.saveNewFeeHistory(feeHistory, rewardPercentiles).get()
     val dbContent = feeHistoriesContentQuery().execute().get()
     val newlyInsertedRows =

@@ -1,14 +1,18 @@
 "use client";
-import styles from "./setting.module.scss";
-import clsx from "clsx";
-import SettingIcon from "@/assets/icons/setting.svg";
-import ToggleSwitch from "@/components/ui/toggle-switch";
 import { HTMLAttributes, useEffect, useRef, useState } from "react";
+
+import clsx from "clsx";
+
+import SettingIcon from "@/assets/icons/setting.svg";
 import CurrencyDropdown from "@/components/bridge/currency-dropdown";
-import { useConfigStore, useChainStore, useFormStore } from "@/stores";
+import ToggleSwitch from "@/components/ui/toggle-switch";
 import { useChains } from "@/hooks";
+import { useChainStore } from "@/stores/chainStore";
+import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { ChainLayer } from "@/types";
-import { config } from "@/config";
+
+import styles from "./setting.module.scss";
 
 interface SettingProps extends HTMLAttributes<HTMLDivElement> {
   "data-testid": string;
@@ -42,10 +46,7 @@ export default function Setting(props: SettingProps) {
   };
 
   useEffect(() => {
-    if (config.e2eTestMode) {
-      setFromChain(chains.find((c) => c.localNetwork && c.layer === ChainLayer.L1));
-      setToChain(chains.find((c) => c.localNetwork && c.layer === ChainLayer.L2));
-    } else if (!showTestnet) {
+    if (!showTestnet) {
       setFromChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L1));
       setToChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L2));
     } else {

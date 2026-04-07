@@ -1,14 +1,16 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
-import linea.domain.BlockInterval
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
+import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.CompressionProofIndex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-data class BlobCompressionProofUpdate(
-  val blockInterval: BlockInterval,
-  val blobCompressionProof: BlobCompressionProof,
-)
-
 fun interface BlobCompressionProofHandler {
-  fun acceptNewBlobCompressionProof(blobCompressionProofUpdate: BlobCompressionProofUpdate): SafeFuture<*>
+  fun acceptNewBlobCompressionProof(blobRecord: BlobRecord): SafeFuture<*>
+}
+
+fun interface BlobCompressionProofRequestHandler {
+  fun acceptNewBlobCompressionProofRequest(
+    proofIndex: CompressionProofIndex,
+    unProvenBlobRecord: BlobRecord,
+  ): SafeFuture<*>
 }

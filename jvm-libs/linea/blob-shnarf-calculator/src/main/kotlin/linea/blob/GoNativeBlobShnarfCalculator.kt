@@ -59,15 +59,14 @@ internal interface GoNativeBlobShnarfCalculatorJna : GoNativeBlobShnarfCalculato
 
 enum class ShnarfCalculatorVersion(val version: String) {
   V1_2("v1.2.0"),
+  V3("v3.0.1"),
 }
 
 class GoNativeShnarfCalculatorFactory {
   companion object {
     private fun getLibFileName(version: String) = "shnarf_calculator_jna_$version"
 
-    fun getInstance(
-      version: ShnarfCalculatorVersion,
-    ): GoNativeBlobShnarfCalculator {
+    fun getInstance(version: ShnarfCalculatorVersion): GoNativeBlobShnarfCalculator {
       val extractedLibFile = Native.extractFromResourcePath(
         getLibFileName(version.version),
         GoNativeShnarfCalculatorFactory::class.java.classLoader,

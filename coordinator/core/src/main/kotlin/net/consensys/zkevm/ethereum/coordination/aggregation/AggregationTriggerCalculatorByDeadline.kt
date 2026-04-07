@@ -2,8 +2,6 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.LongRunningService
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
@@ -12,8 +10,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class AggregationTriggerCalculatorByDeadline(
   private val config: Config,
@@ -102,18 +102,21 @@ class AggregationTriggerCalculatorByDeadline(
   @Synchronized
   override fun newBlob(blobCounters: BlobCounters) {
     if (inFlightAggregation == null) {
-      inFlightAggregation = InFlightAggregation(
-        aggregationStartTimeStamp = blobCounters.startBlockTimestamp,
-        blobsToAggregate = BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber),
-      )
+      inFlightAggregation =
+        InFlightAggregation(
+          aggregationStartTimeStamp = blobCounters.startBlockTimestamp,
+          blobsToAggregate = BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber),
+        )
     } else {
-      inFlightAggregation = InFlightAggregation(
-        aggregationStartTimeStamp = inFlightAggregation!!.aggregationStartTimeStamp,
-        blobsToAggregate = BlobsToAggregate(
-          inFlightAggregation!!.blobsToAggregate.startBlockNumber,
-          blobCounters.endBlockNumber,
-        ),
-      )
+      inFlightAggregation =
+        InFlightAggregation(
+          aggregationStartTimeStamp = inFlightAggregation!!.aggregationStartTimeStamp,
+          blobsToAggregate =
+          BlobsToAggregate(
+            inFlightAggregation!!.blobsToAggregate.startBlockNumber,
+            blobCounters.endBlockNumber,
+          ),
+        )
     }
   }
 
@@ -142,17 +145,19 @@ class AggregationTriggerCalculatorByDeadlineRunner(
 
   override fun start(): CompletableFuture<Unit> {
     if (deadlineCheckerTimerId == null) {
-      deadlineCheckerAction = Handler<Long> {
-        aggregationTriggerByDeadline.checkAggregation().whenComplete { _, error ->
-          error?.let {
-            log.error("Error in checking for aggregation deadline: errorMessage={}", error.message, error)
+      deadlineCheckerAction =
+        Handler<Long> {
+          aggregationTriggerByDeadline.checkAggregation().whenComplete { _, error ->
+            error?.let {
+              log.error("Error in checking for aggregation deadline: errorMessage={}", error.message, error)
+            }
+            deadlineCheckerTimerId =
+              vertx.setTimer(
+                config.deadlineCheckInterval.inWholeMilliseconds,
+                deadlineCheckerAction,
+              )
           }
-          deadlineCheckerTimerId = vertx.setTimer(
-            config.deadlineCheckInterval.inWholeMilliseconds,
-            deadlineCheckerAction,
-          )
         }
-      }
       deadlineCheckerTimerId = vertx.setTimer(config.deadlineCheckInterval.inWholeMilliseconds, deadlineCheckerAction)
     }
     return SafeFuture.completedFuture(Unit)

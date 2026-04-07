@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 /**
  * @title Interface declaring pre-existing pausing functions, events and errors.
@@ -36,6 +36,10 @@ interface IPauseManager {
     FINALIZATION,
     INITIATE_TOKEN_BRIDGING,
     COMPLETE_TOKEN_BRIDGING,
+    NATIVE_YIELD_STAKING,
+    NATIVE_YIELD_UNSTAKING,
+    NATIVE_YIELD_PERMISSIONLESS_ACTIONS,
+    NATIVE_YIELD_REPORTING,
     STATE_DATA_SUBMISSION
   }
 
@@ -55,9 +59,9 @@ interface IPauseManager {
 
   /**
    * @notice Emitted when a pause type is unpaused due to pause expiry passing.
-   * @param pauseType The pause type that was unpaused.
+   * @param pauseType The indexed pause type that was unpaused.
    */
-  event UnPausedDueToExpiry(PauseType pauseType);
+  event UnPausedDueToExpiry(PauseType indexed pauseType);
 
   /**
    * @notice Emitted when a pause type and its associated role are set in the `_pauseTypeRoles` mapping.
@@ -90,6 +94,18 @@ interface IPauseManager {
   event UnPauseTypeRoleUpdated(PauseType indexed unPauseType, bytes32 indexed role, bytes32 indexed previousRole);
 
   /**
+   * @notice Emitted when a pause type is extended or set indefinitely by the SECURITY_COUNCIL_ROLE.
+   * @param messageSender The address performing the call.
+   * @param pauseType The indexed pause type that was paused indefinitely.
+   */
+  event PausedIndefinitely(address messageSender, PauseType indexed pauseType);
+
+  /**
+   * @notice Emitted when the non-SECURITY_COUNCIL_ROLE cooldown end is reset by the SECURITY_COUNCIL_ROLE.
+   */
+  event NonSecurityCouncilCooldownEndReset();
+
+  /**
    * @dev Thrown when a specific pause type is paused.
    */
   error IsPaused(PauseType pauseType);
@@ -120,6 +136,11 @@ interface IPauseManager {
   error RolesNotDifferent();
 
   /**
+   * @dev Thrown when a non-SECURITY_COUNCIL_ROLE attempts to unpause an indefinite (SECURITY_COUNCIL_ROLE) pause.
+   */
+  error OnlySecurityCouncilCanUnpauseIndefinitePause(PauseType pauseType);
+
+  /**
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
@@ -133,7 +154,8 @@ interface IPauseManager {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
-   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown, enabling non-SECURITY_COUNCIL_ROLE pausing.
+   * @dev Only SECURITY_COUNCIL_ROLE can unpause indefinite (SECURITY_COUNCIL_ROLE-initiated) pauses.
+   * @dev Resets the per-type expiry timestamp. Does not affect nonSecurityCouncilCooldownEnd.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(PauseType _pauseType) external;
@@ -172,4 +194,11 @@ interface IPauseManager {
    * @param _newRole The role to update to.
    */
   function updateUnpauseTypeRole(PauseType _pauseType, bytes32 _newRole) external;
+
+  /**
+   * @notice Reset the non-SECURITY_COUNCIL_ROLE cooldown end.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
+   * @dev Resets the non-SECURITY_COUNCIL_ROLE cooldown end to the current block timestamp.
+   */
+  function resetNonSecurityCouncilCooldownEnd() external;
 }

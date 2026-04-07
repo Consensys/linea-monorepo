@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 /**
  * @title Interface declaring generic errors.
@@ -18,7 +18,14 @@ interface IGenericErrors {
   error ZeroHashNotAllowed();
 
   /**
-   * @dev Thrown when the caller is not the ProxyAdmin.
+   * @dev Thrown when no ETH is sent.
    */
-  error CallerNotProxyAdmin();
+  error NoEthSent();
+
+  /**
+   * @dev Thrown when an initialize function is called on an already initialized contract with the wrong version.
+   * @param expected The expected initialized version.
+   * @param actual The actual initialized version.
+   */
+  error InitializedVersionWrong(uint256 expected, uint256 actual);
 }

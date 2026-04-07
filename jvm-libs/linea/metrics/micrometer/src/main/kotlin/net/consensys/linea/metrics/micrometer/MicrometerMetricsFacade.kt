@@ -60,12 +60,8 @@ class MicrometerMetricsFacade(
     builder.register(registry)
   }
 
-  override fun createCounter(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    tags: List<Tag>,
-  ): Counter = createCounterFactory(category, name, description, tags).create()
+  override fun createCounter(category: MetricsCategory, name: String, description: String, tags: List<Tag>): Counter =
+    createCounterFactory(category, name, description, tags).create()
 
   override fun createHistogram(
     category: MetricsCategory,
@@ -74,6 +70,8 @@ class MicrometerMetricsFacade(
     tags: List<Tag>,
     isRatio: Boolean,
     baseUnit: String?,
+    publishPercentileHistogram: Boolean,
+    percentileBuckets: List<Double>?,
   ): Histogram {
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
@@ -82,6 +80,14 @@ class MicrometerMetricsFacade(
     val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
       .description(description)
       .baseUnit(baseUnit)
+      .also {
+        if (publishPercentileHistogram) {
+          it.publishPercentileHistogram()
+        }
+        if (percentileBuckets != null) {
+          it.publishPercentiles(*percentileBuckets.toDoubleArray())
+        }
+      }
       .tags(allMetricsCommonMicrometerTags)
       .tags(tags.toMicrometerTags())
     if (isRatio) {
@@ -91,12 +97,8 @@ class MicrometerMetricsFacade(
     return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
   }
 
-  override fun createTimer(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    tags: List<Tag>,
-  ): Timer = createTimerFactory(category, name, description, tags).create()
+  override fun createTimer(category: MetricsCategory, name: String, description: String, tags: List<Tag>): Timer =
+    createTimerFactory(category, name, description, tags).create()
 
   override fun <T> createDynamicTagTimer(
     category: MetricsCategory,
@@ -109,7 +111,7 @@ class MicrometerMetricsFacade(
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
     commonTags.forEach { it.requireValidMicrometerName() }
-    return DynamicTagTimerImpl<T>(
+    return DynamicTagTimerImpl(
       meterRegistry = registry,
       name = metricHandle(category, name),
       description = description,

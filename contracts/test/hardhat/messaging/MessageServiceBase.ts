@@ -1,7 +1,10 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import { L2_MESSAGE_SERVICE_ROLES } from "contracts/common/constants";
+import { generateRoleAssignments } from "contracts/common/helpers";
 import { ethers } from "hardhat";
+
 import { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types";
 import {
   INITIALIZED_ERROR_MESSAGE,
@@ -13,13 +16,10 @@ import {
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
-import { generateRoleAssignments } from "contracts/common/helpers";
-import { L2_MESSAGE_SERVICE_ROLES } from "contracts/common/constants";
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;
   let messageService: TestL2MessageService;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let remoteSender: SignerWithAddress;
   let securityCouncil: SignerWithAddress;

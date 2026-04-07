@@ -1,5 +1,6 @@
+import { type HistoryActionsForCompleteTxCaching } from "@/stores/historyStore";
 import { BridgeTransaction, SupportedChainIds } from "@/types";
-import { HistoryActionsForCompleteTxCaching } from "@/stores";
+
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isTimestampTooOld } from "./isTimestampTooOld";
 
@@ -21,9 +22,10 @@ export function restoreFromTransactionCache(
   if (cachedCompletedTx) {
     if (isTimestampTooOld(cachedCompletedTx.timestamp)) {
       historyStoreActions.deleteCompleteTx(cacheKey);
+      return false;
     }
     transactionsMap.set(mapKey, cachedCompletedTx);
-    return true; // Found valid cached transaction, skip processing
+    return true;
   }
 
   return false; // No cache hit, continue processing

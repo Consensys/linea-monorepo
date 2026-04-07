@@ -1,78 +1,51 @@
-import { ethers, upgrades } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
-import { tryVerifyContract, getRequiredEnvVar, generateRoleAssignments } from "../common/helpers";
 import { L2MessageService__factory } from "contracts/typechain-types";
-import {
-  L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
-  L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
-  PAUSE_ALL_ROLE,
-  PAUSE_L1_L2_ROLE,
-  PAUSE_L2_L1_ROLE,
-  UNPAUSE_ALL_ROLE,
-  UNPAUSE_L1_L2_ROLE,
-  UNPAUSE_L2_L1_ROLE,
-  USED_RATE_LIMIT_RESETTER_ROLE,
-} from "contracts/common/constants";
+import { ethers, upgrades } from "hardhat";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
 
-const func: DeployFunction = async function () {
-  const securityCouncilAddress = getRequiredEnvVar("L2MSGSERVICE_SECURITY_COUNCIL");
+import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-  const newRoles = [
-    USED_RATE_LIMIT_RESETTER_ROLE,
-    PAUSE_ALL_ROLE,
-    PAUSE_L1_L2_ROLE,
-    PAUSE_L2_L1_ROLE,
-    UNPAUSE_ALL_ROLE,
-    UNPAUSE_L1_L2_ROLE,
-    UNPAUSE_L2_L1_ROLE,
-  ];
+const func: DeployFunction = withSignerUiSession(
+  "04_deploy_L2MessageServiceWithReinitialization.ts",
+  async function (hre: HardhatRuntimeEnvironment) {
+    const signer = await getUiSigner(hre);
+    const contractName = "L2MessageService";
 
-  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
-  console.log("New role addresses", newRoleAddresses);
+    const proxyAddress = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
 
-  const contractName = "L2MessageService";
+    const factory = await ethers.getContractFactory(contractName, signer);
 
-  const proxyAddress = getRequiredEnvVar("L2MESSAGESERVICE_ADDRESS");
+    console.log("Deploying Contract...");
+    const newContract = await upgrades.deployImplementation(factory, {
+      kind: "transparent",
+    });
 
-  const factory = await ethers.getContractFactory(contractName);
+    const contract = newContract.toString();
 
-  console.log("Deploying Contract...");
-  const newContract = await upgrades.deployImplementation(factory, {
-    kind: "transparent",
-  });
+    console.log(`Contract deployed at ${contract}`);
 
-  const contract = newContract.toString();
+    // The encoding should be used through the safe.
+    // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
+    // https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
+    const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
+      "0x9623609d",
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "address", "bytes"],
+        [proxyAddress, newContract, L2MessageService__factory.createInterface().encodeFunctionData("reinitializeV3")],
+      ),
+    ]);
 
-  console.log(`Contract deployed at ${contract}`);
+    console.log(
+      "Encoded Tx Upgrade with Reinitialization from Security Council:",
+      "\n",
+      upgradeCallWithReinitializationUsingSecurityCouncil,
+    );
+    console.log("\n");
 
-  // The encoding should be used through the safe.
-  // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
-  // https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
-  const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
-    "0x9623609d",
-    ethers.AbiCoder.defaultAbiCoder().encode(
-      ["address", "address", "bytes"],
-      [
-        proxyAddress,
-        newContract,
-        L2MessageService__factory.createInterface().encodeFunctionData("reinitializePauseTypesAndPermissions", [
-          newRoleAddresses,
-          L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
-          L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
-        ]),
-      ],
-    ),
-  ]);
-
-  console.log(
-    "Encoded Tx Upgrade with Reinitialization from Security Council:",
-    "\n",
-    upgradeCallWithReinitializationUsingSecurityCouncil,
-  );
-  console.log("\n");
-
-  await tryVerifyContract(contract);
-};
+    await tryVerifyContract(contract);
+  },
+);
 
 export default func;
 func.tags = ["L2MessageServiceWithReinitialization"];

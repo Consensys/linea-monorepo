@@ -18,9 +18,10 @@ import {
   ViemWalletSignerClientAdapter,
   WinstonLogger,
 } from "@consensys/linea-shared-utils";
-import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
 import { hoodi } from "viem/chains";
+
+import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 
 async function main() {
   const requiredEnvVars = ["RPC_URL", "PRIVATE_KEY", "LAZY_ORACLE_ADDRESS"];
@@ -46,9 +47,9 @@ async function main() {
   );
   const contractClientLibrary = new ViemBlockchainClientAdapter(
     new WinstonLogger("ViemBlockchainClientAdapter.integration"),
-    rpcUrl,
-    hoodi,
     signer,
+    hoodi,
+    rpcUrl,
   );
 
   const lazyOracleClient = new LazyOracleContractClient(

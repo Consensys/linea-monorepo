@@ -1,19 +1,8 @@
 import { describe, it } from "@jest/globals";
 import { ContractTransactionResponse, ethers } from "ethers";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
-import { L1ClaimingService } from "../L1ClaimingService";
-import { LineaRollupClient } from "../LineaRollupClient";
-import { L2MessageServiceClient } from "../../linea";
-import {
-  generateHexString,
-  generateL2MerkleTreeAddedLog,
-  generateL2MessageServiceClient,
-  generateL2MessagingBlockAnchoredLog,
-  generateLineaRollupClient,
-  generateMessage,
-  generateTransactionReceipt,
-  generateTransactionResponse,
-} from "../../../utils/testing/helpers";
+
+import { ZERO_ADDRESS } from "../../../core/constants";
 import {
   TEST_CONTRACT_ADDRESS_1,
   TEST_CONTRACT_ADDRESS_2,
@@ -26,10 +15,22 @@ import {
   testMessageSentEvent,
   testServiceVersionMigratedEvent,
 } from "../../../utils/testing/constants/events";
+import {
+  generateHexString,
+  generateL2MerkleTreeAddedLog,
+  generateL2MessageServiceClient,
+  generateL2MessagingBlockAnchoredLog,
+  generateLineaRollupClient,
+  generateMessage,
+  generateTransactionReceipt,
+  generateTransactionResponse,
+} from "../../../utils/testing/helpers";
+import { L2MessageServiceClient } from "../../linea";
 import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
-import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
-import { ZERO_ADDRESS } from "../../../core/constants";
 import { LineaProvider, Provider } from "../../providers";
+import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
+import { L1ClaimingService } from "../L1ClaimingService";
+import { LineaRollupClient } from "../LineaRollupClient";
 
 describe("L1ClaimingService", () => {
   let l1Provider: MockProxy<Provider>;
@@ -168,7 +169,7 @@ describe("L1ClaimingService", () => {
     it("should throw an error when the message hash is not found in the message hashes array", async () => {
       expect(() =>
         l1ClaimingService.getMessageSiblings(generateHexString(32), [TEST_MESSAGE_HASH, TEST_MESSAGE_HASH_2], 5),
-      ).toThrowError("Message hash not found in messages.");
+      ).toThrow("Message hash not found in messages.");
     });
 
     it.each([
@@ -272,7 +273,7 @@ describe("L1ClaimingService", () => {
     it("should throw an error when there is no MessageSent event on L2 for the message hash", async () => {
       jest.spyOn(l1ClientL2MessageServiceLogClient, "getMessageSentEventsByMessageHash").mockResolvedValueOnce([]);
 
-      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrowError(
+      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrow(
         `Message hash does not exist on L2. Message hash: ${TEST_MESSAGE_HASH}`,
       );
     });
@@ -283,7 +284,7 @@ describe("L1ClaimingService", () => {
         .mockResolvedValueOnce([testMessageSentEvent]);
       jest.spyOn(l1LogClient, "getL2MessagingBlockAnchoredEvents").mockResolvedValueOnce([]);
 
-      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrowError(
+      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrow(
         `L2 block number ${testMessageSentEvent.blockNumber} has not been finalized on L1.`,
       );
     });
@@ -319,9 +320,7 @@ describe("L1ClaimingService", () => {
           ],
         }),
       );
-      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrowError(
-        "Merkle tree build failed.",
-      );
+      await expect(l1ClaimingService.getMessageProof(TEST_MESSAGE_HASH)).rejects.toThrow("Merkle tree build failed.");
     });
 
     it("should return the message proof", async () => {

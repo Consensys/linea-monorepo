@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // RandDataGen generates random data for the smart-contract
@@ -22,6 +23,16 @@ type RandGenSpec struct {
 	BlobSubmissionSpec BlobSubmissionSpec `json:"blobSubmissionSpec"`
 	// Optional, if set indicates that this should generate a proof aggregation
 	AggregationSpec AggregationSpec `json:"aggregationSpec"`
+	// Optional, if set specifies the dynamic chain configuration to use
+	DynamicChainConfigurationSpec DynamicChainConfigurationSpec `json:"dynamicChainConfigurationSpec"`
+}
+
+// DynamicChainConfiguration spec, specifies the chain configuration parameters
+type DynamicChainConfigurationSpec struct {
+	ChainID              uint64 `json:"chainID"`
+	BaseFee              uint64 `json:"baseFee"`
+	CoinBase             string `json:"coinBase"`
+	L2MessageServiceAddr string `json:"l2MessageServiceAddr"`
 }
 
 // BlobSubmission spec, specifies how to generate a random blob submission
@@ -57,14 +68,6 @@ type AggregationSpec struct {
 	// overwrite the provided parameters with the previous blob submission.
 	// This is useful for generating invalid cases for the tests.
 	IgnoreBefore bool `json:"ignoreBefore"`
-
-	// Verifier id to target on the contract
-	VerifierContractID int `json:"verifierContractID"`
-	// Note @alex : This is completely different for the verifier contract id.
-	// The circuit ID is only meant to be used to simulate that we may have
-	// different version of the verifier contracts for each prover mode.
-	GenProofForCircuitID int `json:"genProofForCircuitID"`
-	VerProofForCircuitID int `json:"verProofForCircuitID"`
 
 	// Finalized shnarf
 	FinalShnarf                  string `json:"finalizedShnarf"`
@@ -144,7 +147,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
-		ParentStateRootHash:                     spec.ParentStateRootHash,
+		ParentStateRootHashContract:             types.FullBytes32FromHex(spec.ParentStateRootHash),
 		DataHashes:                              spec.DataHashes,
 		DataParentHash:                          spec.DataParentHash,
 		ParentAggregationLastBlockTimestamp:     spec.LastFinalizedTimestamp,

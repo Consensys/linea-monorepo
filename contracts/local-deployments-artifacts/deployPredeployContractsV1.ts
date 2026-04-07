@@ -1,15 +1,16 @@
-import { ethers } from "ethers";
 import * as dotenv from "dotenv";
-import {
-  contractName as ConsolidationQueueContractName,
-  abi as ConsolidationQueueAbi,
-  bytecode as ConsolidationQueueBytecode,
-} from "./dynamic-artifacts/UpgradeableConsolidationQueuePredeployV1.json";
+import { ethers } from "ethers";
+
 import {
   contractName as BeaconChainDepositContractName,
   abi as BeaconChainDepositAbi,
   bytecode as BeaconChainDepositBytecode,
 } from "./dynamic-artifacts/UpgradeableBeaconChainDepositPredeployV1.json";
+import {
+  contractName as ConsolidationQueueContractName,
+  abi as ConsolidationQueueAbi,
+  bytecode as ConsolidationQueueBytecode,
+} from "./dynamic-artifacts/UpgradeableConsolidationQueuePredeployV1.json";
 import {
   contractName as WithdrawalQueueContractName,
   abi as WithdrawalQueueAbi,
@@ -32,7 +33,7 @@ async function main() {
   console.log("Starting deployment of predeploy contracts...");
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
   let walletNonce;
 
   if (!process.env.L2_NONCE) {

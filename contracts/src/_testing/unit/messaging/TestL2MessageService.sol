@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { L2MessageService } from "../../../messaging/l2/L2MessageService.sol";
 
@@ -91,5 +91,17 @@ contract TestL2MessageService is L2MessageService {
 
   function makeItRevert() external payable {
     revert();
+  }
+
+  function setSlotValue(uint256 _slot, uint256 _value) external {
+    assembly {
+      sstore(_slot, _value)
+    }
+  }
+
+  function getSlotValue(uint256 _slot) external view returns (uint256 slotValue) {
+    assembly {
+      slotValue := sload(_slot)
+    }
   }
 }

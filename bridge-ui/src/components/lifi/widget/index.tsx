@@ -1,11 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { ChainId, WidgetConfig, WidgetSkeleton } from "@lifi/widget";
 import { useWeb3AuthConnect } from "@web3auth/modal/react";
+import dynamic from "next/dynamic";
+
 import atypTextFont from "@/assets/fonts/atypText";
-import { CHAINS_RPC_URLS, ETH_SYMBOL } from "@/constants";
 import { config as appConfig } from "@/config";
+import { CHAINS_RPC_URLS } from "@/constants/chains";
+import { ETH_SYMBOL } from "@/constants/tokens";
 
 const widgetConfig: Partial<WidgetConfig> = {
   variant: "compact",
@@ -157,9 +159,6 @@ const widgetConfig: Partial<WidgetConfig> = {
       ChainId.BER,
       ChainId.KAI,
     ],
-  },
-  bridges: {
-    allow: ["mayanMCTP", "stargateV2", "stargateV2Bus", "across", "hop", "squid", "relay", "symbiosis"],
   },
   apiKey: appConfig.lifiApiKey,
 };

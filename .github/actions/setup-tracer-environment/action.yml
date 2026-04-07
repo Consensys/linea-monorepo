@@ -1,0 +1,36 @@
+name: 'Setup Tracer Environment (build Besu if needed)'
+description: 'Install what is needed for building / testing, and build Besu if needed'
+inputs:
+  enable-ssh:
+    description: 'Enable ability to ssh into session'
+    required: false
+    default: 'false'
+  skip-download-besu-dist:
+    description: 'Skip downloading Besu distribution from public maven'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+      - name: Setup upterm session
+        if: ${{ inputs.enable-ssh == 'true' }}
+        uses: lhotari/action-upterm@b0357f23233f5ea6d58947c0c402e0631bab7334 #v1
+
+      - name: Install Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.24.6'
+          cache-dependency-path: "**/*.sum"
+
+      - name: Setup Java and Gradle
+        uses: ./.github/actions/setup-java-and-gradle
+        with:
+          java-version: '21'
+
+      - name: Build besu from source (if needed)
+        shell: bash
+        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist="$SKIP_DOWNLOAD_BESU_DIST"
+        env:
+          SKIP_DOWNLOAD_BESU_DIST: ${{ inputs.skip-download-besu-dist }}
+          JAVA_OPTS: -Xmx2g

@@ -1,8 +1,6 @@
 package linea.staterecovery
 
 import io.vertx.core.Vertx
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.domain.BinaryDecoder
 import linea.domain.CommonDomainFunctions
 import linea.kotlin.decodeHex
@@ -17,6 +15,8 @@ import org.hyperledger.besu.ethereum.core.Block
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.Callable
 import kotlin.jvm.optionals.getOrNull
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 interface BlobDecompressorAndDeserializer {
   /**
@@ -85,7 +85,7 @@ class BlobDecompressorToDomainV1(
         blobsBlocks.flatten().map { block ->
           val header = BlockHeaderFromL1RecoveredData(
             blockNumber = blockNumber++,
-            blockHash = block.header.hash.toArray(),
+            blockHash = block.header.hash.bytes.toArray(),
             coinbase = staticFields.coinbase,
             blockTimestamp = Instant.fromEpochSeconds(block.header.timestamp),
             gasLimit = this.staticFields.gasLimit,
@@ -94,18 +94,18 @@ class BlobDecompressorToDomainV1(
           val transactions = block.body.transactions.map { transaction ->
             TransactionFromL1RecoveredData(
               type = transaction.type.serializedType.toUByte(),
-              from = transaction.sender.toArray(),
+              from = transaction.sender.bytes.toArray(),
               nonce = transaction.nonce.toULong(),
               gasLimit = transaction.gasLimit.toULong(),
               maxFeePerGas = transaction.maxFeePerGas.getOrNull()?.asBigInteger,
               maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.getOrNull()?.asBigInteger,
               gasPrice = transaction.gasPrice.getOrNull()?.asBigInteger,
-              to = transaction.to.getOrNull()?.toArray(),
+              to = transaction.to.getOrNull()?.bytes?.toArray(),
               value = transaction.value.asBigInteger,
               data = transaction.payload.toArray(),
               accessList = transaction.accessList.getOrNull()?.map { accessTuple ->
                 TransactionFromL1RecoveredData.AccessTuple(
-                  address = accessTuple.address.toArray(),
+                  address = accessTuple.address.bytes.toArray(),
                   storageKeys = accessTuple.storageKeys.map { it.toArray() },
                 )
               },
