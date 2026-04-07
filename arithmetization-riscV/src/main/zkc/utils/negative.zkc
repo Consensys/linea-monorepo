@@ -1,4 +1,4 @@
-fn negative(a : DoubleWord) (a_neg DoubleWord) {
+fn negative(a : DoubleWord) -> (a_neg : DoubleWord) {
   var a_sign : SignBit
   a_sign = sign_bit(a)
   if a == 0 {
