@@ -10,21 +10,21 @@ fn process_S_type_instruction<ram,registers>(instruction_parameters:u25) {
   // var imm12  : Imm12
   // var imm20  : Imm20
 
-  var sign   : u1
+  var imm_sign   : u1
   var funct3 : Funct3
   var rs1    : Register
   var rs2    : Register
   var uimm5  : UImm5
   var uimm6  : UImm6
 
-  sign :: uimm6 :: rs2 :: rs1 :: funct3 :: uimm5 = instruction_parameters
+  imm_sign :: uimm6 :: rs2 :: rs1 :: funct3 :: uimm5 = instruction_parameters
 
   // TODO: uniform this across different files
   var imm : u64
-  if sign == 1 {
-    imm = DWORD_SIGN_EXT_PREFIX_52_ONES :: sign :: uimm6 :: uimm5
+  if imm_sign == 1 {
+    imm = DWORD_SIGN_EXT_PREFIX_52_ONES :: imm_sign :: uimm6 :: uimm5
   } else {
-    imm = (sign :: uimm6 :: uimm5) as u64
+    imm = (imm_sign :: uimm6 :: uimm5) as u64
   }
 
   if funct3 == FUNCT3_SB {

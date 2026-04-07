@@ -57,6 +57,38 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  { }
   if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
+  var sgnext_rs1:u128 = sgn_extension_u64_u128(registers[rs1])
+  var sgnext_rs2:u128 = sgn_extension_u64_u128(registers[rs2])
+
+  if funct3 == FUNCT3_MUL {
+    registers[rd] = ((registers[rs1] * registers[rs2]) & 0xFFFFFFFF_FFFFFFFF) as u64
+  }
+
+  if funct3 == FUNCT3_MULH {
+    registers[rd] = (((sgnext_rs1 * sgnext_rs2) >> (128 + 64)) & 0xFFFFFFFF_FFFFFFFF) as u64
+  }
+
+  if funct3 == FUNCT3_MULHSU {
+    registers[rd] = (((sgnext_rs1 * (rs2 as u128)) >> (128 + 64)) & 0xFFFFFFFF_FFFFFFFF) as u64
+  }
+
+  if funct3 == FUNCT3_MULHU {
+
+  }
+
+  if funct3 == FUNCT3_DIV {
+
+  }
+
+  if funct3 == FUNCT3_DIVU {
+
+  }
+
+  if funct3 == FUNCT3_REM {
+
+  }
+
+  if funct3 == FUNCT3_REMU {
+
   }
 }
-
