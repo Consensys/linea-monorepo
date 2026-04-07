@@ -1,0 +1,3 @@
+fn bit_flip_double_word(a : DoubleWord) -> (a_bit_flip : DoubleWord) {
+  a_bit_flip = MAX_UINT_64 ^ a
+}
