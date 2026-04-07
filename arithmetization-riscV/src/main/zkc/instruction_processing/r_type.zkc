@@ -151,7 +151,11 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_REMU {
-
+    if v2 == 0 {
+      registers[rd] = v1
+    } else {
+      registers[rd] = v1 % v2
+    } 
   }
 
   if ( funct3 == FUNCT3_MULW  ) && ( funct7 == FUNCT7_MULW  ) {
