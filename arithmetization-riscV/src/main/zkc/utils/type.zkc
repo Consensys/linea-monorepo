@@ -20,3 +20,5 @@ type Byte       = u8
 type HalfWord   = u16
 type Word       = u32
 type DoubleWord = u64
+type DoubleWordMO = u63
+type UnsignedDoubleWord = u64
