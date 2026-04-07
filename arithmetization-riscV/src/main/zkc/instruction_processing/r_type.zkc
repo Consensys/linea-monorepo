@@ -4,19 +4,20 @@ include "../utils/sign_bit.zkc"
 
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
-  var funct7        : Funct7
-  var rs2           : Register
-  var rs1           : Register
-  var funct3        : Funct3
-  var rd            : Register
-  var v1            : DoubleWord
-  var v2            : DoubleWord
-  var v1_sign       : SignBit
-  var v2_sign       : SignBit
-  var v1_abs        : UnsignedDoubleWord
-  var v2_abs        : UnsignedDoubleWord
-  var shift_discard : u58
-  var shift_amount  : u6
+  var funct7         : Funct7
+  var rs2            : Register
+  var rs1            : Register
+  var funct3         : Funct3
+  var rd             : Register
+  var v1             : DoubleWord
+  var v2             : DoubleWord
+  var v1_sign        : SignBit
+  var v2_sign        : SignBit
+  var v1_abs         : UnsignedDoubleWord
+  var v2_abs         : UnsignedDoubleWord
+  var shift_discard  : u58
+  var shift_amount   : u6
+  var v1_bit_flipped : DoubleWord
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -54,7 +55,13 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     shift_discard :: shift_amount = v2
     registers[rd] = v2 >> shift_amount
 }
-  if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  { }
+  if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  {
+    shift_discard :: shift_amount = v2
+    if (v1_sign == 1) {
+      v1_bit_flipped = MAX_UINT_64 ^ v1
+    } else {
+      v1_bit_flipped = v1
+    }
   if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
   var sgnext_rs1:u128 = sgn_extension_u64_u128(registers[rs1])
