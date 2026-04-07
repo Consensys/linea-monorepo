@@ -155,7 +155,7 @@ Columns:
 | LUI      | U    | 0110111 | —      | —      | rd = imm20 << 12 (zero lower 12 bits)  | RV32I     |    ✓   |
 | AUIPC    | U    | 0010111 | —      | —      | rd = PC + (imm20 << 12)                | RV32I     |    ✓   |
 | JAL      | J    | 1101111 | —      | —      | rd = PC+4; PC += sext(imm21)           | RV32I     |    ✓   |
-| JALR     | I    | 1100111 | 000    | —      | rd = PC+4; PC = (rs1+sext(imm12)) & ~1 | RV32I     |    ¬   |
+| JALR     | I    | 1100111 | 000    | —      | rd = PC+4; PC = (rs1+sext(imm12)) & ~1 | RV32I     |    ✓   |
 
 #### SYSTEM (1110011)
 
