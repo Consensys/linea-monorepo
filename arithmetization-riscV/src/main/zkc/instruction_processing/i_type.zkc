@@ -1,4 +1,4 @@
-fn process_I_type_instruction<ram,registers>(instruction_parameters:u25) {
+fn process_I_type_instruction<ram,registers>( opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
 
   var funct3 : Funct3
   var imm12  : Imm12
@@ -8,53 +8,81 @@ fn process_I_type_instruction<ram,registers>(instruction_parameters:u25) {
 
   imm12 :: rs1 :: funct3 :: rd = instruction_parameters
 
-  if funct3 == FUNCT3_LB {
-    registers[rd] = sgn_extension_u8_u64(ram[(registers[rs1] + sgn_extension_u12_u64(imm12)) as Address])
-  }
-  if funct3 == FUNCT3_LH {
-    registers[rd] = sgn_extension_u16_u64(read_16((registers[rs1] + sgn_extension_u12_u64(imm12)) as Address))
-  }
-  if funct3 == FUNCT3_LW {
-    registers[rd] = sgn_extension_u32_u64(read_32((registers[rs1] + sgn_extension_u12_u64(imm12)) as Address))
-  }
-  if funct3 == FUNCT3_LD {
-    registers[rd] = read_64((registers[rs1] + sgn_extension_u12_u64(imm12)) as Address)
-  }
-  if funct3 == FUNCT3_LBU {
-    registers[rd] = ram[(registers[rs1] + sgn_extension_u12_u64(imm12)) as Address] as DoubleWord
-  }
-  if funct3 == FUNCT3_LHU {
-    registers[rd] = read_16((registers[rs1] + sgn_extension_u12_u64(imm12)) as Address) as DoubleWord
-  }
-  if funct3 == FUNCT3_LWU {
-    registers[rd] = read_32((registers[rs1] + sgn_extension_u12_u64(imm12)) as Address) as DoubleWord
-  }
-  if funct3 == FUNCT3_ADDI {
-    registers[rd] = registers[rs1] + sgn_extension_u12_u64(imm12)
-  }
-  if funct3 == FUNCT3_SLTI {
-
-  }
-  if funct3 == FUNCT3_SLTIU {
-
-  }
-  if funct3 == FUNCT3_XORI {
-
-  }
-  if funct3 == FUNCT3_ORI {
-
-  }
-  if funct3 == FUNCT3_ANDI {
-
-  }
-  if funct3 == FUNCT3_SLLI {
-
-  }
-  if funct3 == FUNCT3_SRLI {
-
-  }
-  if funct3 == FUNCT3_SRAI {
-
+  if opcode == LOAD {
+    new_pc = pc + 4 as Address
+    var offset:Address = (registers[rs1] + sgn_extension_u12_u64(imm12)) as Address
+  
+    if funct3 == FUNCT3_LB {
+      registers[rd] = sgn_extension_u8_u64(ram[offset])
+    }
+    if funct3 == FUNCT3_LH {
+      registers[rd] = sgn_extension_u16_u64(read_16(offset))
+    }
+    if funct3 == FUNCT3_LW {
+      registers[rd] = sgn_extension_u32_u64(read_32(offset))
+    }
+    if funct3 == FUNCT3_LD {
+      registers[rd] = read_64(offset)
+    }
+    if funct3 == FUNCT3_LBU {
+      registers[rd] = ram[offset] as DoubleWord
+    }
+    if funct3 == FUNCT3_LHU {
+      registers[rd] = read_16(offset) as DoubleWord
+    }
+    if funct3 == FUNCT3_LWU {
+      registers[rd] = read_32(offset) as DoubleWord
+    }
   }
 
+  if opcode == OP_IMM {
+    new_pc = pc + 4 as Address
+
+    if funct3 == FUNCT3_ADDI {
+      registers[rd] = registers[rs1] + sgn_extension_u12_u64(imm12)
+    }
+    if funct3 == FUNCT3_SLTI {
+
+    }
+    if funct3 == FUNCT3_SLTIU {
+
+    }
+    if funct3 == FUNCT3_XORI {
+
+    }
+    if funct3 == FUNCT3_ORI {
+
+    }
+    if funct3 == FUNCT3_ANDI {
+
+    }
+    if funct3 == FUNCT3_SLLI {
+
+    }
+    if funct3 == FUNCT3_SRLI {
+
+    }
+    if funct3 == FUNCT3_SRAI {
+
+    }
+  }
+
+  if opcode == OP_IMM_32 {
+    new_pc = pc + 4 as Address
+
+    //TODO: switch over funct3 ...
+  }  
+
+  if opcode == JALR  {
+    // only instruction is JAR, no need to switch over funct3
+new_pc = 0 as Address
+  }
+
+  if opcode == SYSTEM {
+    // only instructions are ECALL and EBREAK
+    // TODO: 
+    new_pc = 0 as Address
+  }
+
+  fail
 }
