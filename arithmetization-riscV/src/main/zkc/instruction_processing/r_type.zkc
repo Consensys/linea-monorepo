@@ -106,7 +106,10 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_MULHSU {
-
+    registers[rd] = ((v1_abs_as_u128 * v2_as_u128) & MAX_UINT_64_AS_U128) as u64
+    if v1_sign == 1 {
+      registers[rd] = negative(registers[rd])
+    }
   }
 
   if funct3 == FUNCT3_MULHU {
