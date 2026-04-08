@@ -16,6 +16,8 @@ fn interpreter<ram,registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
     instruction_type = get_instruction_type(opcode)
 
     // TODO: switch
+    // TODO: handle the case where rd = 0: we will handle this in RAM itself, likely by adding an extra read-write pair
+    // to reset the value in registers[rd] to 0
     if instruction_type == R_TYPE {
       process_R_type_instruction(instruction_parameters)
       new_pc = pc + 4 as Address
