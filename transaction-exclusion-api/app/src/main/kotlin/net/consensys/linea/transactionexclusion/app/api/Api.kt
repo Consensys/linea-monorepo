@@ -79,7 +79,7 @@ class Api(
         },
         DeploymentOptions().setInstances(numberOfVerticles),
       )
-      .map { verticleId: String ->
+      .compose { verticleId: String ->
         jsonRpcServerId = verticleId
         serverPort = httpServer!!.boundPort
         vertx.deployVerticle(observabilityServer).onSuccess { monitorVerticleId ->
