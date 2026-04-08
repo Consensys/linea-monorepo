@@ -52,7 +52,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
   if (funct3 == FUNCT3_SLL)  && (funct7 == FUNCT7_SLL)  {
     shift_discard :: shift_amount = v2
-    registers[rd] = v2 << shift_amount
+    registers[rd] = v1 << shift_amount
   }
   if (funct3 == FUNCT3_SLT)  && (funct7 == FUNCT7_SLT)  {
     registers[rd] = signed_LT(v1, v2) as DoubleWord
@@ -70,7 +70,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
   if (funct3 == FUNCT3_SRL)  && (funct7 == FUNCT7_SRL)  {
     shift_discard :: shift_amount = v2
-    registers[rd] = v2 >> shift_amount
+    registers[rd] = v1 >> shift_amount
   }
   if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  {
     shift_discard :: shift_amount = v2
@@ -100,7 +100,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var v2_abs_as_u128:u128 = v2_abs as u128
 
   if funct3 == FUNCT3_MUL {
-    registers[rd] = ((v1_as_u128 * v1_as_u128) & MAX_UINT_64_AS_U128) as u64
+    registers[rd] = ((v1_as_u128 * v2_as_u128) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_MULH {
@@ -146,7 +146,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   if funct3 == FUNCT3_REM {
     if v2 == 0 {
-      registers[rd] = 1
+      registers[rd] = v1
     } else {
       if (v1 == OVERFLOW_DIVIDEND) && (v2 == NEGATIVE_ONE_AS_I64) {
         registers[rd] = 0
@@ -188,16 +188,18 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   // 0 ≤ |r| < |b|
   // r and a have the same sign
   if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {
-  if (v2_lower == 0) {
-    registers[rd] = NEGATIVE_ONE_AS_I64
-  } else {
-    word_wip = v1_lower_abs / v2_lower_abs
-    if (v1_sign == v2_sign) {
-      registers[rd] = sgn_extension_u32_u64(word_wip)
+    if (v2_lower == 0) {
+      registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
-      registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
+      word_wip = v1_lower_abs / v2_lower_abs
+      if (v1_sign == v2_sign) {
+        registers[rd] = sgn_extension_u32_u64(word_wip)
+      } else {
+        registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
+      }
     }
   }
+
   if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {
     if (v2_lower == 0) {
       registers[rd] = NEGATIVE_ONE_AS_I64
@@ -225,6 +227,5 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = sgn_extension_u32_u64(v1_lower % v2_lower)
     }
   }
-}
 }
 
