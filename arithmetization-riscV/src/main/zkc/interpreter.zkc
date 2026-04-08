@@ -11,8 +11,8 @@ fn interpreter<ram,registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
     var instruction_parameters : u25
     var instruction_type       : Type
     var opcode                 : Opcode
-
-    opcode :: instruction_parameters  = instruction
+    printf "instruction %x",instruction
+    instruction_parameters::opcode  = instruction
     instruction_type = instruction_type_from_opcode(opcode)
 
     printf "opcode:     %x\n", opcode
