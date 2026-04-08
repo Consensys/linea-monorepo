@@ -17,9 +17,11 @@ type Imm20  = u20
 type SignBit = u1
 type Boolean = u1
 
-type Byte       = u8
-type HalfWord   = u16
-type Word       = u32
-type DoubleWord = u64
+type Byte         = u8
+type HalfWord     = u16
+type Word         = u32
+type DoubleWord   = u64
 type DoubleWordMO = u63
+
+type UnsignedWord       = u32
 type UnsignedDoubleWord = u64
