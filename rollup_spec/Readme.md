@@ -196,7 +196,7 @@ A Join proof C combines two adjacent-range proofs A and B, where A covers blocks
 
 5. **Output** the combined public inputs covering the full range `[m, n]`: take `prevL1L2BridgeRollingHash`, `prevL1L2BridgeRollingHashMessageNumber`, `prevFtxRollingHash`, `prevShnarf`, `chainID`, `coinbase`, and `baseFee` from `PI_A`; take `newLastBlockNumber`, `finalStateRootHash`, `L1L2BridgeRollingHash`, `L1L2BridgeRollingHashMessageNumber`, `newFtxRollingHash`, `lastProcessedFtxNumber`, and `newShnarf` from `PI_B`; use the merged Merkle commitment from step 3 and merged filtered addresses from step 4.
 
-This join is applied recursively — in any topology the coordinator chooses — until a single root proof covers the entire finalization range, which is then wrapped in a STARK-to-SNARK step for L1 verification.
+This join is applied recursively — in any chosen topology — until a single root proof covers the entire finalization range, which is then wrapped in a STARK-to-SNARK step for L1 verification.
 
 ---
 
