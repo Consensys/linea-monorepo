@@ -139,7 +139,6 @@ class BundleSelectionTimeoutTest : AbstractSendBundleTest() {
     )
     val bundle1Calls = calls.copyOfRange(0, 1)
     val bundle2Calls = calls.copyOfRange(1, 10)
-    val rawTxs = calls.map { it.rawTx }.toTypedArray()
 
     val sendBundleRequestSmall = SendBundleRequest(
       BundleParams(bundle1Calls.map { it.rawTx }.toTypedArray(), Integer.toHexString(2)),
