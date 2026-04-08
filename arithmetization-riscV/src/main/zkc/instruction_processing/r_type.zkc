@@ -25,11 +25,12 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var v1_lower         : Word
   var v2_upper         : Word
   var v2_lower         : Word
+  var v1_lower_abs     : Word
+  var v2_lower_abs     : Word
   var product_upper    : Word
   var product_lower    : Word
+  var word_wip         : Word
   var sign_bit         : SignBit
-  var quotient_wip     : Word
-  // var quotient         : DoubleWord
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -111,14 +112,14 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   if funct3 == FUNCT3_MULH {
     registers[rd] = (((v1_abs_as_u128 * v2_abs_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
     if (v1_sign ^ v2_sign) == 1 {
-      registers[rd] = negative(registers[rd])
+      registers[rd] = negative_of_double_word(registers[rd])
     }
   }
 
   if funct3 == FUNCT3_MULHSU {
     registers[rd] = (((v1_abs_as_u128 * v2_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
     if v1_sign == 1 {
-      registers[rd] = negative(registers[rd])
+      registers[rd] = negative_of_double_word(registers[rd])
     }
   }
 
@@ -135,10 +136,10 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       } else {
         registers[rd] = v1_abs / v2_abs
         if (v1_sign ^ v2_sign) == 1 {
-          registers[rd] = negative(registers[rd])
+          registers[rd] = negative_of_double_word(registers[rd])
         }
       }
-    } 
+    }
   }
 
   if funct3 == FUNCT3_DIVU {
@@ -146,7 +147,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
       registers[rd] = v1 / v2
-    } 
+    }
   }
 
   if funct3 == FUNCT3_REM {
@@ -158,10 +159,10 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       } else {
         registers[rd] = v1_abs % v2_abs
         if (v1_sign ^ v2_sign) == 1 {
-          registers[rd] = negative(registers[rd])
+          registers[rd] = negative_of_double_word(registers[rd])
         }
       }
-    } 
+    }
   }
 
   if funct3 == FUNCT3_REMU {
@@ -169,11 +170,13 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = v1
     } else {
       registers[rd] = v1 % v2
-    } 
+    }
   }
 
   v1_upper :: v1_lower = v1
   v2_upper :: v2_lower = v2
+  v1_lower_abs = absolute_value_word(v1_lower)
+  v2_lower_abs = absolute_value_word(v2_lower)
 
   if ( funct3 == FUNCT3_MULW  ) && ( funct7 == FUNCT7_MULW  ) {
       product_upper :: product_lower = (v1_lower as DoubleWord) * (v2_lower as DoubleWord)
@@ -181,23 +184,41 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       if (sign_bit == 1) {
         registers[rd] = MAX_UINT_32 :: product_lower
       } else {
-      registers[rd] = product_lower as DoubleWord
+        registers[rd] = product_lower as DoubleWord
     }
   }
-  if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {}
+  if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {
+  // signed division satisfies
+  // a, b ∈ Z
+  // a = b∙q + r
+  // 0 ≤ |r| < |b|
+  // r and a have the same sign
+  if (v2_lower == 0) {
+    registers[rd] = NEGATIVE_ONE_AS_I64
+  } else {
+    word_wip = v1_lower_abs / v2_lower_abs
+    if (v1_sign == v2_sign) {
+      registers[rd] = sgn_extension_u32_u64(word_wip)
+    } else {
+      registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
+    }
+  }
+
   if ( funct3 == FUNCT3_DIVUW ) && ( funct7 == FUNCT7_DIVUW ) {
       if (v2_lower == 0) {
       registers[rd] = NEGATIVE_ONE_AS_I64
       } else {
-      quotient_wip = v1_lower / v2_lower
-      registers[rd] = sgn_extension_u32_u64(quotient_wip)
+      registers[rd] = sgn_extension_u32_u64(v1_lower / v2_lower)
     }
   }
   if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {}
-  if ( funct3 == FUNCT3_REMUW ) && ( funct7 == FUNCT7_REMUW ) {}
+  if ( funct3 == FUNCT3_REMUW ) && ( funct7 == FUNCT7_REMUW ) {
+      if (v2_lower == 0) {
+      registers[rd] = sgn_extension_u32_u64(v1_lower)
+      } else {
+      registers[rd] = sgn_extension_u32_u64(v1_lower % v2_lower)
+    }
+  }
 }
-
-
-
-
+}
 
