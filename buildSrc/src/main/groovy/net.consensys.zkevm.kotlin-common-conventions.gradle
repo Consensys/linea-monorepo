@@ -27,6 +27,7 @@ dependencies {
     exclude group: 'org.apache.logging.log4j'
     exclude group: 'tech.pegasys.teku.internal', module: 'metrics'
     exclude group: 'tech.pegasys.teku.internal', module: 'time'
+    exclude group: 'com.google.guava', module: 'guava'
   } because("We are using Teku's SafeFuture, an improved/extension of CompletableFuture.")
 
   //<logging>
