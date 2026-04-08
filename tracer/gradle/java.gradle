@@ -1,3 +1,7 @@
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 /*
  * Copyright Consensys Software Inc.
  *
@@ -18,17 +22,15 @@
 ext.calculateVersion = { ->
   def lineaTracerProject = project(lineaTracerProjectPath)
   String version = lineaTracerProject.version
-  logger.lifecycle("tracer versions={}", version)
   if (version.equals("SNAPSHOT") || version.endsWith("-SNAPSHOT")) {
     def lastSnapshot = version.lastIndexOf("SNAPSHOT")
     version = version.substring(0, lastSnapshot) + "dev-${getIso8601Timestamp()}"
   }
-  logger.lifecycle("tracer final versions={}", version)
 
   return version
 }
 
 static def getIso8601Timestamp() {
-  java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
-      .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
+  OffsetDateTime.now(ZoneOffset.UTC)
+      .format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'"))
 }
