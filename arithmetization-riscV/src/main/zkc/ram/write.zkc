@@ -10,14 +10,14 @@ fn write_64<ram>(address:Address, value:u64) -> () {
 
    v1 :: v2 :: v3 :: v4 :: v5 :: v6 :: v7 :: v8 = value
 
-   ram[address] = v1
-   ram[address + 1] = v2
-   ram[address + 2] = v3
-   ram[address + 3] = v4
-   ram[address + 4] = v5
-   ram[address + 5] = v6
-   ram[address + 6] = v7
-   ram[address + 7] = v8
+   ram[address + 7] = v1
+   ram[address + 6] = v2
+   ram[address + 5] = v3
+   ram[address + 4] = v4
+   ram[address + 3] = v5
+   ram[address + 2] = v6
+   ram[address + 1] = v7
+   ram[address + 0] = v8
 }
 
 fn write_32<ram>(address:Address, value:u32) -> () {
@@ -28,10 +28,10 @@ fn write_32<ram>(address:Address, value:u32) -> () {
 
    v1 :: v2 :: v3 :: v4 = value
 
-   ram[address] = v1
-   ram[address + 1] = v2
-   ram[address + 2] = v3
-   ram[address + 3] = v4
+   ram[address + 3] = v1
+   ram[address + 2] = v2
+   ram[address + 1] = v3
+   ram[address + 0] = v4
 }
 
 fn write_16<ram>(address:Address, value:u16) -> () {
@@ -40,8 +40,8 @@ fn write_16<ram>(address:Address, value:u16) -> () {
 
    v1 :: v2 = value
 
-   ram[address] = v1
-   ram[address + 1] = v2
+   ram[address + 1] = v1
+   ram[address + 0] = v2
 }
 
 fn write_8<ram>(address:Address, value:u8) -> () {

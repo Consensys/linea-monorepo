@@ -217,11 +217,11 @@ const FUNCT3_REM:Funct3    = 0b110
 const FUNCT3_REMU:Funct3   = 0b111
 
 // OP-32 (0111011) + funct7=0000001
-const FUNCT3_MULW:Funct3   = 0b000, FUNCT7_MULW:Funct7   = 0b0111011
-const FUNCT3_DIVW:Funct3   = 0b100, FUNCT7_DIVW:Funct7   = 0b0111011
-const FUNCT3_DIVUW:Funct3  = 0b101, FUNCT7_DIVUW:Funct7  = 0b0111011
-const FUNCT3_REMW:Funct3   = 0b110, FUNCT7_REMW:Funct7   = 0b0111011
-const FUNCT3_REMUW:Funct3  = 0b111, FUNCT7_REMUW:Funct7  = 0b0111011
+const FUNCT3_MULW:Funct3   = 0b000, FUNCT7_MULW:Funct7   = 0b0000001
+const FUNCT3_DIVW:Funct3   = 0b100, FUNCT7_DIVW:Funct7   = 0b0000001
+const FUNCT3_DIVUW:Funct3  = 0b101, FUNCT7_DIVUW:Funct7  = 0b0000001
+const FUNCT3_REMW:Funct3   = 0b110, FUNCT7_REMW:Funct7   = 0b0000001
+const FUNCT3_REMUW:Funct3  = 0b111, FUNCT7_REMUW:Funct7  = 0b0000001
 
 
 // ======================
