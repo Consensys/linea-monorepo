@@ -1,10 +1,10 @@
-package compilers_test
+package global_test
 
 import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/wiop"
-	"github.com/consensys/linea-monorepo/prover/wiop/compilers"
+	"github.com/consensys/linea-monorepo/prover/wiop/compilers/global"
 	"github.com/consensys/linea-monorepo/prover/wiop/wioptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ func TestCompile_Completeness(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()
 		t.Run(sc.Name, func(t *testing.T) {
-			compilers.Compile(sc.Sys)
+			global.Compile(sc.Sys)
 			rt := wiop.NewRuntime(sc.Sys)
 			sc.AssignHonest(&rt)
 			require.NoError(t, wioptest.RunAndVerify(&rt),
@@ -33,7 +33,7 @@ func TestCompile_Soundness(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()
 		t.Run(sc.Name, func(t *testing.T) {
-			compilers.Compile(sc.Sys)
+			global.Compile(sc.Sys)
 			rt := wiop.NewRuntime(sc.Sys)
 			sc.AssignInvalid(&rt)
 			assert.Error(t, wioptest.RunAndVerify(&rt),

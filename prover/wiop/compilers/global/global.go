@@ -1,4 +1,4 @@
-package compilers
+package global
 
 import (
 	"fmt"
