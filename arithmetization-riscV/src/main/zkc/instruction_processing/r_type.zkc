@@ -204,6 +204,18 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
     }
   }
+  if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {
+    if (v2_lower == 0) {
+      registers[rd] = NEGATIVE_ONE_AS_I64
+    } else {
+      word_wip = v1_lower_abs % v2_lower_abs
+      if (sign_bit_word(v1_lower_abs) == 0) {
+        registers[rd] = sgn_extension_u32_u64(word_wip)
+      } else {
+        registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
+      }
+    }
+  }
 
   if ( funct3 == FUNCT3_DIVUW ) && ( funct7 == FUNCT7_DIVUW ) {
       if (v2_lower == 0) {
@@ -212,7 +224,6 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = sgn_extension_u32_u64(v1_lower / v2_lower)
     }
   }
-  if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {}
   if ( funct3 == FUNCT3_REMUW ) && ( funct7 == FUNCT7_REMUW ) {
       if (v2_lower == 0) {
       registers[rd] = sgn_extension_u32_u64(v1_lower)
