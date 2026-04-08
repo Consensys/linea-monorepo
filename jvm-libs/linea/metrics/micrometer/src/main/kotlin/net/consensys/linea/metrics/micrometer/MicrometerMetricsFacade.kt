@@ -115,7 +115,7 @@ class MicrometerMetricsFacade(
       meterRegistry = registry,
       name = metricHandle(category, name),
       description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
+      commonTags = this.allMetricsCommonTags + commonTags,
       extractor = tagValueExtractor,
       extractorOnError = tagValueExtractorOnError,
     )
