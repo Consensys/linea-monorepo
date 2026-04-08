@@ -123,22 +123,14 @@ const FUNCT3_XORI:Funct3  = 0b100 // XOR Immediate
 const FUNCT3_ORI:Funct3   = 0b110 // OR Immediate
 const FUNCT3_ANDI:Funct3  = 0b111 // AND Immediate
 const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
-const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
-const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate
-
-const FUNCT6_SRLI:Funct6  = 0b000000 // Shift Right Logical Immediate
-const FUNCT6_SRAI:Funct6  = 0b010000 // Shift Right Arithmetic Immediate
-
+const FUNCT3_SRLI:Funct3  = 0b101, FUNCT6_SRLI:Funct6  = 0b000000 // Shift Right Logical Immediate
+const FUNCT3_SRAI:Funct3  = 0b101, FUNCT6_SRAI:Funct6  = 0b010000 // Shift Right Arithmetic Immediate
 
 // OP_IMM_32
 const FUNCT3_ADDIW:Funct3  = 0b000 // Add Immediate Word
 const FUNCT3_SLLIW:Funct3  = 0b001 // Shift Left Logical Immediate Word
-const FUNCT3_SRLIW:Funct3  = 0b101 // Shift Right Logical Immediate Word
-const FUNCT3_SRAIW:Funct3  = 0b101 // Shift Right Arithmetic Immediate Word
-// funct7 values for FUNCT3_SRLIW and FUNCT3_SRAIW
-const FUNCT7_SRLIW:Funct7  = 0b0000000 // Shift Right Logical Immediate Word
-const FUNCT7_SRAIW:Funct7  = 0b0100000 // Shift Right Arithmetic Immediate Word
-
+const FUNCT3_SRLIW:Funct3  = 0b101, FUNCT7_SRLIW:Funct7  = 0b0000000 // Shift Right Logical Immediate Word
+const FUNCT3_SRAIW:Funct3  = 0b101, FUNCT7_SRAIW:Funct7  = 0b0100000 // Shift Right Arithmetic Immediate Word
 
 // JALR
 const FUNCT3_JALR:Funct3  = 0b000 // JALR
