@@ -107,7 +107,7 @@ class LineaBesuPlugin implements Plugin<Project> {
    * The resolved version is cached in rootProject.ext.resolvedBesuVer so this only
    * runs once per Gradle invocation even if the plugin is applied to multiple projects.
    */
-  private static String checkoutAndResolveVersion(Project project) {
+  private String checkoutAndResolveVersion(Project project) {
     def rootProject = project.rootProject
     if (rootProject.ext.has('resolvedBesuVer')) {
       return rootProject.ext.resolvedBesuVer as String
@@ -116,7 +116,7 @@ class LineaBesuPlugin implements Plugin<Project> {
     def besuCommit = rootProject.libs.versions.besuCommit.get()
     def rootDir = rootProject.layout.projectDirectory.asFile.absolutePath
     def outputStream = new ByteArrayOutputStream()
-    execOperations.exec {
+    this.execOperations.exec {
       workingDir = rootProject.layout.projectDirectory.asFile
       environment 'BESU_DIR', "${rootDir}/tmp/besu-eth"
       environment 'BESU_COMMIT', besuCommit
@@ -137,7 +137,7 @@ class LineaBesuPlugin implements Plugin<Project> {
     return resolvedBesuVerOutput 
   }
 
-  private static void buildAndPublishBesu(Project project) {
+  private void buildAndPublishBesu(Project project) {
     def publishToMaven = project.hasProperty('publishToMaven') ? project.publishToMaven.toBoolean() : false
     def publishGradleTaskName = publishToMaven ? "publish" : "publishToMavenLocal"
     def skipDownloadBesuDist = project.hasProperty('skipDownloadBesuDist') ? project.skipDownloadBesuDist.toBoolean() : true
@@ -162,7 +162,7 @@ class LineaBesuPlugin implements Plugin<Project> {
       return
     }
     def rootDir = project.rootProject.layout.projectDirectory.asFile.absolutePath
-    execOperations.exec {
+    this.execOperations.exec {
       workingDir = project.rootProject.layout.projectDirectory.asFile
       environment 'BESU_DIR', "${rootDir}/tmp/besu-eth"
       environment 'RESOLVED_BESU_VERSION', resolvedBesuVer
