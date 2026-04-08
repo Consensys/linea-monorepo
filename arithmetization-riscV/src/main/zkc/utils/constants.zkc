@@ -174,11 +174,6 @@ const FUNCT3_BLTU:Funct3 = 0b110
 const FUNCT3_BGEU:Funct3 = 0b111
 
 
-
-
-
-
-
 // Sign extension constants
 // sign extend to a DOUBLE WORD
 const DWORD_SIGN_EXT_PREFIX_52_ONES:u52 = 0b1111111111111111111111111111111111111111111111111111
