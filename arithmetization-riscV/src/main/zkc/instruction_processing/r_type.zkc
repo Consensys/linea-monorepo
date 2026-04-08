@@ -1,9 +1,3 @@
-include "../utils/absolute_value.zkc"
-include "../utils/bit_flip.zkc"
-include "../utils/signed_comparisons.zkc"
-include "../utils/sign_bit.zkc"
-include "../utils/negative.zkc"
-
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   var funct7           : Funct7

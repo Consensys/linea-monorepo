@@ -1,8 +1,14 @@
-include "utils/constants.zkc"
+include "interpreter.zkc"
 include "ram/read.zkc"
 include "ram/write.zkc"
-include "interpreter.zkc"
 include "utils/sign_extend.zkc"
+include "utils/constants.zkc"
+include "utils/signed_comparisons.zkc"
+include "utils/absolute_value.zkc"
+include "utils/bit_flip.zkc"
+include "utils/signed_comparisons.zkc"
+include "utils/sign_bit.zkc"
+include "utils/negative.zkc"
 
 pub input riscV_program(address:Address)->(Instruction:u32)
 pub input riscV_program_length(rv:u1)->(length:Address)

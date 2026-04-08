@@ -3,9 +3,6 @@ const SGNEXTMASK_U32:u64 = 0xFFFFFFFF_00000000
 // Upper 52 bits set; OR with zero-extended u21 when sign (bit 20) is 1.
 const SGNEXTMASK_U21:u64 = 0xFFFFFFFF_FFFFE000
 
-// Upper 52 bits set; OR with zero-extended u16 when sign (bit 15) is 1.
-const SGNEXTMASK_U16:u64 = 0xFFFFFFFF_FFFFF000
-
 // Upper 52 bits set; OR with zero-extended u12 when sign (bit 11) is 1.
 const SGNEXTMASK_U12:u64 = 0xFFFFFFFF_FFFFF000
 
@@ -68,14 +65,6 @@ fn sgn_extension_u12_u32(value:u12) -> (ext_value:u32) {
   var sign_bit:u12
   sign_bit = value >> 11
   if sign_bit == 1 { ext_value = SGNEXTMASK_U12_U32 | ext_value }
-}
-
-fn sgn_extension_u16_u64(value:u16) -> (ext_value:u64) {
-  ext_value = value as u64
-
-  var sign_bit:u16
-  sign_bit = value >> 15
-  if sign_bit == 1 { ext_value = SGNEXTMASK_U16 | ext_value }
 }
 
 // 64-bit arithmetic right shift (value interpreted as two's-complement signed).

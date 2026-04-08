@@ -10,13 +10,13 @@ fn read_16<ram>(address:Address) -> (value : u16) {
    value = (value << 8) + ram[address + 1] as u16
 }
 
-fn read_64<ram>(address:Address) -> (value : Word) {
-   value = ram[address] as Word
-   value = (value << 8) + ram[address + 1] as Word
-   value = (value << 8) + ram[address + 2] as Word
-   value = (value << 8) + ram[address + 3] as Word
-   value = (value << 8) + ram[address + 4] as Word
-   value = (value << 8) + ram[address + 5] as Word
-   value = (value << 8) + ram[address + 6] as Word
-   value = (value << 8) + ram[address + 7] as Word
+fn read_64<ram>(address:Address) -> (value : u64) {
+   value = ram[address] as u64
+   value = (value << 8) + ram[address + 1] as u64
+   value = (value << 8) + ram[address + 2] as u64
+   value = (value << 8) + ram[address + 3] as u64
+   value = (value << 8) + ram[address + 4] as u64
+   value = (value << 8) + ram[address + 5] as u64
+   value = (value << 8) + ram[address + 6] as u64
+   value = (value << 8) + ram[address + 7] as u64
 }
