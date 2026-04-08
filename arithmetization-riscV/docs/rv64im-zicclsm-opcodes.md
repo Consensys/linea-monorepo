@@ -92,17 +92,17 @@ Columns:
 
 #### OP-IMM (0010011) — I-type immediate arithmetic @letype
 
-| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension |
-|----------|------|---------|--------|------------------------|-------------------------------------------|-----------|
-| ADDI     | I    | 0010011 | 000    | —                      | rd = rs1 + sext(imm12)                    | RV32I     |
-| SLTI     | I    | 0010011 | 010    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (signed)   | RV32I     |
-| SLTIU    | I    | 0010011 | 011    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (unsigned) | RV32I     |
-| XORI     | I    | 0010011 | 100    | —                      | rd = rs1 ^ sext(imm12)                    | RV32I     |
-| ORI      | I    | 0010011 | 110    | —                      | rd = rs1 \| sext(imm12)                   | RV32I     |
-| ANDI     | I    | 0010011 | 111    | —                      | rd = rs1 & sext(imm12)                    | RV32I     |
-| SLLI     | I    | 0010011 | 001    | imm[11:6]=000000       | rd = rs1 << imm[5:0]                      | RV64I     |
-| SRLI     | I    | 0010011 | 101    | imm[11:6]=000000       | rd = rs1 >> imm[5:0] (logical)            | RV64I     |
-| SRAI     | I    | 0010011 | 101    | imm[11:6]=010000       | rd = rs1 >> imm[5:0] (arithmetic)         | RV64I     |
+| Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension | Status |
+|----------|------|---------|--------|------------------------|-------------------------------------------|-----------|:------:|
+| ADDI     | I    | 0010011 | 000    | —                      | rd = rs1 + sext(imm12)                    | RV32I     |    ✓   |
+| SLTI     | I    | 0010011 | 010    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (signed)   | RV32I     |    ✓   |
+| SLTIU    | I    | 0010011 | 011    | —                      | rd = (rs1 < sext(imm12)) ? 1:0 (unsigned) | RV32I     |    ✓   |
+| XORI     | I    | 0010011 | 100    | —                      | rd = rs1 ^ sext(imm12)                    | RV32I     |    ✓   |
+| ORI      | I    | 0010011 | 110    | —                      | rd = rs1 \| sext(imm12)                   | RV32I     |    ✓   |
+| ANDI     | I    | 0010011 | 111    | —                      | rd = rs1 & sext(imm12)                    | RV32I     |    ✓   |
+| SLLI     | I    | 0010011 | 001    | imm[11:6]=000000       | rd = rs1 << imm[5:0]                      | RV64I     |    ✓   |
+| SRLI     | I    | 0010011 | 101    | imm[11:6]=000000       | rd = rs1 >> imm[5:0] (logical)            | RV64I     |    ✓   |
+| SRAI     | I    | 0010011 | 101    | imm[11:6]=010000       | rd = rs1 >> imm[5:0] (arithmetic)         | RV64I     |    ✓   |
 
 > Note: In RV32I SLLI/SRLI/SRAI use only imm[4:0] as the shift amount and imm[11:5] as the qualifier.
 > In RV64I the shift amount is imm[5:0] and imm[11:6] is the qualifier.

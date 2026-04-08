@@ -70,7 +70,10 @@ fn process_I_type_instruction<ram,registers>( opcode:Opcode, instruction_paramet
         rd = rs1 >> uimm6
       }
       if funct6 == FUNCT6_SRAI {
-        rd = rs1 >> uimm6
+        var sgn_bit_rs1:u1
+        var rs1_low_63:u63
+        sgn_bit_rs1 :: rs1_low_63 = registers[rs1]
+        registers[rd] = sgn_bit_rs1 == 1 ? U64_FIRST_BIT_MASK | (rs1_low_63 >> uimm6) as DoubleWord : (rs1_low_63 >> uimm6) as DoubleWord
       }
     }
   }
