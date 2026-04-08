@@ -471,8 +471,8 @@ describe("Forced transaction test suite", () => {
         `L2MessageService — address=${l2MessageServiceAddress} minimumFeeInWei=${minimumFeeInWei}`,
       );
 
-      // Encode calldata: send 17 messages to exceed the limit of 16
-      const messageCount = 17n;
+      // Encode calldata: send 11 messages to exceed the BLOCK_L2_L1_LOGS limit of 10
+      const messageCount = 11n;
       const callData = encodeFunctionData({
         abi: MultiMessageSenderAbi,
         functionName: "sendMultipleMessages",
