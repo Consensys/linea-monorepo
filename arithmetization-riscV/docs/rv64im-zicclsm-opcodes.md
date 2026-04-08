@@ -114,7 +114,7 @@ Columns:
 | ADDIW    | I    | 0011011 | 000    | —                      | rd = sext(rs1[31:0] + sext(imm12))            | RV64I     |    ✓   |
 | SLLIW    | I    | 0011011 | 001    | imm[11:5]=0000000      | rd = sext(rs1[31:0] << imm[4:0])              | RV64I     |    ✓   |
 | SRLIW    | I    | 0011011 | 101    | imm[11:5]=0000000      | rd = sext(rs1[31:0] >> imm[4:0]) (logical)    | RV64I     |    ✓   |
-| SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |    ✓   | 
+| SRAIW    | I    | 0011011 | 101    | imm[11:5]=0100000      | rd = sext(rs1[31:0] >> imm[4:0]) (arithmetic) | RV64I     |    ✓   |
 
 #### LOAD (0000011) — I-type loads @letypequividelespoubelles
 
@@ -186,13 +186,13 @@ All M-extension instructions are R-type with **funct7 = 0000001** and share the 
 
 #### OP-32 (0111011) + funct7=0000001 --- @Olivier
 
-| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension |
-|----------|------|---------|--------|---------|-------------------------------------------------------|-----------|
-| MULW     | R    | 0111011 | 000    | 0000001 | rd = sext((rs1[31:0] × rs2[31:0])[31:0])              | M (RV64)  |
-| DIVW     | R    | 0111011 | 100    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (signed)             | M (RV64)  |
-| DIVUW    | R    | 0111011 | 101    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (unsigned)           | M (RV64)  |
-| REMW     | R    | 0111011 | 110    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (signed remainder)   | M (RV64)  |
-| REMUW    | R    | 0111011 | 111    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (unsigned remainder) | M (RV64)  |
+| Mnemonic | Type | Opcode  | funct3 | funct7  | Operation                                             | Extension | Status |
+|----------|------|---------|--------|---------|-------------------------------------------------------|-----------|:------:|
+| MULW     | R    | 0111011 | 000    | 0000001 | rd = sext((rs1[31:0] × rs2[31:0])[31:0])              | M (RV64)  |    ✓   |
+| DIVW     | R    | 0111011 | 100    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (signed)             | M (RV64)  |    ✓   |
+| DIVUW    | R    | 0111011 | 101    | 0000001 | rd = sext(rs1[31:0] / rs2[31:0]) (unsigned)           | M (RV64)  |    ✓   |
+| REMW     | R    | 0111011 | 110    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (signed remainder)   | M (RV64)  |    ✓   |
+| REMUW    | R    | 0111011 | 111    | 0000001 | rd = sext(rs1[31:0] % rs2[31:0]) (unsigned remainder) | M (RV64)  |    ✓   |
 
 ---
 
