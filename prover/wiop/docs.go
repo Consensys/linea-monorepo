@@ -12,7 +12,7 @@
 //
 // Constraints and verifier predicates are expressed as [Query] values:
 // [Vanishing], [LagrangeEval], [LocalOpening], [TableRelation], and
-// [RationalReduction]. Each query references symbolic [Expression] objects that
+// [LogDerivativeSum]. Each query references symbolic [Expression] objects that
 // form an arithmetic AST evaluated at runtime.
 //
 // Protocol execution is handled by [Runtime], which holds concrete column

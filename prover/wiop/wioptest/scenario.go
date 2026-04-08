@@ -41,7 +41,7 @@ func All() []func() *Scenario {
 	return []func() *Scenario{
 		NewLocalOpeningScenario,
 		NewLagrangeEvalScenario,
-		NewRationalReductionScenario,
+		NewLogDerivativeSumScenario,
 		NewPermutationScenario,
 		NewInclusionScenario,
 	}

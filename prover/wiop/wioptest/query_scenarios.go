@@ -65,11 +65,11 @@ func NewLagrangeEvalScenario() *Scenario {
 	}
 }
 
-// NewRationalReductionScenario returns a scenario for RationalReduction.
+// NewLogDerivativeSumScenario returns a scenario for LogDerivativeSum.
 //
 //   - Column: [2, 2, 2, 2]; denominator: constant 1; sum = 4 × 2 = 8.
 //   - Invalid: column honest, Result cell set to 0 (≠ 8).
-func NewRationalReductionScenario() *Scenario {
+func NewLogDerivativeSumScenario() *Scenario {
 	sys := wiop.NewSystemf("rr-sc")
 	r0 := sys.NewRound()
 	sys.NewRound() // result cell goes here
@@ -77,13 +77,13 @@ func NewRationalReductionScenario() *Scenario {
 	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
 
 	den := wiop.NewConstantVector(mod, field.NewFromString("1"))
-	rr := sys.NewRationalReduction(
+	rr := sys.NewLogDerivativeSum(
 		sys.Context.Childf("rr"),
 		[]wiop.Fraction{{Numerator: col.View(), Denominator: den}},
 	)
 
 	return &Scenario{
-		Name:  "RationalReduction",
+		Name:  "LogDerivativeSum",
 		Sys:   sys,
 		Query: rr,
 		RunHonest: func(rt *wiop.Runtime) {

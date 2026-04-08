@@ -455,7 +455,7 @@ classDiagram
         + Modules []*Module
         + LagrangeEvals []*LagrangeEval
         + TableRelations []*TableRelation
-        + RationalReductions []*RationalReduction
+        + LogDerivativeSums []*LogDerivativeSum
         + NewRound() *Round
         + NewModule(ctx *ContextFrame, pd PaddingDirection) *Module
         + NewSizedModule(ctx *ContextFrame, size int, pd PaddingDirection) *Module
@@ -463,7 +463,7 @@ classDiagram
         + NewLagrangeEvalFrom(ctx *ContextFrame, polys []*ColumnView, x FieldPromise, claims []*Cell) *LagrangeEval
         + NewPermutation(ctx *ContextFrame, A []Table, B []Table) *TableRelation
         + NewInclusion(ctx *ContextFrame, included []Table, including []Table) *TableRelation
-        + NewRationalReduction(ctx *ContextFrame, kind RationalReductionKind, fractions []Fraction) *RationalReduction
+        + NewLogDerivativeSum(ctx *ContextFrame, kind LogDerivativeSumKind, fractions []Fraction) *LogDerivativeSum
         + LookupColumn(id ObjectID) *Column
         + LookupCell(id ObjectID) *Cell
         + LookupCoinField(id ObjectID) *CoinField
@@ -474,7 +474,7 @@ classDiagram
     System *-- "1..*" Module : Modules
     System *-- "*" LagrangeEval : LagrangeEvals
     System *-- "*" TableRelation : TableRelations
-    System *-- "*" RationalReduction : RationalReductions
+    System *-- "*" LogDerivativeSum : LogDerivativeSums
 
     %% Query is the base interface for all verifier predicates in the protocol.
     %% Round() returns the EARLIEST round after which the query is ready for
@@ -636,9 +636,9 @@ classDiagram
     TableRelation *-- "1..*" Table : B
     TableRelation <|-- baseQuery
 
-    %% RationalReductionKind identifies whether the rational expressions are
+    %% LogDerivativeSumKind identifies whether the rational expressions are
     %% combined by summation or by product.
-    class RationalReductionKind {
+    class LogDerivativeSumKind {
         <<enumeration>>
         %% RationalSum: Result = Σ_k Σ_row Num_k[row] / Den_k[row]
         RationalSum
@@ -658,13 +658,13 @@ classDiagram
     Fraction --> "1" Expression : Numerator
     Fraction --> "1" Expression : Denominator
 
-    %% RationalReduction is a Query that reduces a list of Fraction objects to a
+    %% LogDerivativeSum is a Query that reduces a list of Fraction objects to a
     %% single field-element result stored in a Cell. Implements AssignableQuery
     %% but NOT GnarkCheckableQuery: a compiler pass must reduce it first.
     %% The Result cell is allocated automatically in the round immediately
     %% following the latest column round across all fractions.
-    class RationalReduction {
-        + Kind RationalReductionKind
+    class LogDerivativeSum {
+        + Kind LogDerivativeSumKind
         + Fractions []Fraction
         + Result *Cell
         %% Round returns Result.Round().
@@ -674,11 +674,11 @@ classDiagram
         + SelfAssign(Runtime)
     }
 
-    RationalReduction *-- "1" RationalReductionKind : Kind
-    RationalReduction *-- "1..*" Fraction : Fractions
-    RationalReduction --> "1" Cell : Result
-    RationalReduction <|-- AssignableQuery
-    RationalReduction <|-- baseQuery
+    LogDerivativeSum *-- "1" LogDerivativeSumKind : Kind
+    LogDerivativeSum *-- "1..*" Fraction : Fractions
+    LogDerivativeSum --> "1" Cell : Result
+    LogDerivativeSum <|-- AssignableQuery
+    LogDerivativeSum <|-- baseQuery
 
     %% Runtime is the execution context for protocol Actions. It holds column
     %% assignments, cell values, coin values, and an arbitrary state bag. A

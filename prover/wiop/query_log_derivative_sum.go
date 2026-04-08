@@ -12,7 +12,7 @@ import (
 //
 // At least one of the two must be vector-valued (IsMultiValued() == true). If
 // both are vector-valued they must reference the same module. These invariants
-// are enforced by [System.NewRationalReduction].
+// are enforced by [System.NewLogDerivativeSum].
 type Fraction struct {
 	// Numerator is the top expression. Always non-nil.
 	Numerator Expression
@@ -20,7 +20,7 @@ type Fraction struct {
 	Denominator Expression
 }
 
-// RationalReduction is a [Query] that reduces a list of [Fraction] objects
+// LogDerivativeSum is a [Query] that reduces a list of [Fraction] objects
 // to a single field-element result stored in a [Cell]:
 //
 //	Result = ∑_k ∑_row Num_k[row] / Den_k[row]
@@ -32,11 +32,11 @@ type Fraction struct {
 // constraint is imposed. The Result cell is allocated automatically in the
 // round immediately following the latest column round across all fractions.
 //
-// RationalReduction implements [AssignableQuery] but not [GnarkCheckableQuery]:
+// LogDerivativeSum implements [AssignableQuery] but not [GnarkCheckableQuery]:
 // a compiler pass must reduce it before gnark verification.
 //
-// Use [System.NewRationalReduction] to construct and register an instance.
-type RationalReduction struct {
+// Use [System.NewLogDerivativeSum] to construct and register an instance.
+type LogDerivativeSum struct {
 	baseQuery
 	// Fractions is the ordered list of rational expression pairs. Contains
 	// at least one entry.
@@ -48,32 +48,32 @@ type RationalReduction struct {
 
 // Round implements [Query]. Returns the round of the [Result] cell, which is
 // the round immediately following the latest column round across all fractions.
-func (rr *RationalReduction) Round() *Round {
+func (rr *LogDerivativeSum) Round() *Round {
 	return rr.Result.Round()
 }
 
 // IsAlreadyAssigned implements [AssignableQuery]. Reports whether the Result
 // cell already holds a runtime assignment.
-func (rr *RationalReduction) IsAlreadyAssigned(rt Runtime) bool {
+func (rr *LogDerivativeSum) IsAlreadyAssigned(rt Runtime) bool {
 	return rt.HasCellAssignment(rr.Result)
 }
 
 // SelfAssign implements [AssignableQuery]. Computes the rational reduction
 // from the runtime column assignments and writes the result into Result.
-func (rr *RationalReduction) SelfAssign(rt Runtime) {
+func (rr *LogDerivativeSum) SelfAssign(rt Runtime) {
 	rt.AssignCell(rr.Result, rr.reduce(rt))
 }
 
 // Check implements [Query]. Verifies that the Result cell holds the correct
 // aggregated value ∑_k ∑_row Num_k[row] / Den_k[row].
 // Returns an error if the claimed Result cell does not match.
-func (rr *RationalReduction) Check(rt Runtime) error {
+func (rr *LogDerivativeSum) Check(rt Runtime) error {
 	acc := rr.reduce(rt)
 	got := rt.GetCellValue(rr.Result)
 	diff := acc.Sub(got)
 	if !diff.Ext.IsZero() {
 		return fmt.Errorf(
-			"wiop: RationalReduction.Check(%s): result mismatch",
+			"wiop: LogDerivativeSum.Check(%s): result mismatch",
 			rr.context.Path(),
 		)
 	}
@@ -84,7 +84,7 @@ func (rr *RationalReduction) Check(rt Runtime) error {
 // assignments. It is the shared core of [SelfAssign] and [Check].
 //
 // Panics on a zero denominator.
-func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
+func (rr *LogDerivativeSum) reduce(rt Runtime) field.FieldElem {
 	acc := field.ElemZero()
 
 	for _, f := range rr.Fractions {
@@ -148,7 +148,7 @@ func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
 	return acc
 }
 
-// NewRationalReduction constructs and registers a [RationalReduction] query on
+// NewLogDerivativeSum constructs and registers a [LogDerivativeSum] query on
 // sys. A fresh [Cell] is allocated automatically for the result, placed in the
 // round immediately following the latest column round across all fractions.
 //
@@ -161,35 +161,35 @@ func (rr *RationalReduction) reduce(rt Runtime) field.FieldElem {
 //
 // Panics if ctx is nil, any invariant is violated, or no round follows the
 // latest fraction column round (call [System.NewRound] first in that case).
-func (sys *System) NewRationalReduction(ctx *ContextFrame, fractions []Fraction) *RationalReduction {
+func (sys *System) NewLogDerivativeSum(ctx *ContextFrame, fractions []Fraction) *LogDerivativeSum {
 	if ctx == nil {
-		panic("wiop: System.NewRationalReduction requires a non-nil ContextFrame")
+		panic("wiop: System.NewLogDerivativeSum requires a non-nil ContextFrame")
 	}
 	if len(fractions) == 0 {
-		panic("wiop: System.NewRationalReduction requires at least one Fraction")
+		panic("wiop: System.NewLogDerivativeSum requires at least one Fraction")
 	}
 
 	var maxFracRound *Round
 	isExt := false
 	for i, f := range fractions {
 		if f.Numerator == nil {
-			panic(fmt.Sprintf("wiop: System.NewRationalReduction: fraction %d has a nil Numerator", i))
+			panic(fmt.Sprintf("wiop: System.NewLogDerivativeSum: fraction %d has a nil Numerator", i))
 		}
 		if f.Denominator == nil {
-			panic(fmt.Sprintf("wiop: System.NewRationalReduction: fraction %d has a nil Denominator", i))
+			panic(fmt.Sprintf("wiop: System.NewLogDerivativeSum: fraction %d has a nil Denominator", i))
 		}
 		numM := f.Numerator.Module()
 		denM := f.Denominator.Module()
 		if numM == nil && denM == nil {
 			panic(fmt.Sprintf(
-				"wiop: System.NewRationalReduction: fraction %d has no vector-valued expression; "+
+				"wiop: System.NewLogDerivativeSum: fraction %d has no vector-valued expression; "+
 					"at least one of Numerator or Denominator must be vector-valued (IsMultiValued() == true)",
 				i,
 			))
 		}
 		if numM != nil && denM != nil && numM != denM {
 			panic(fmt.Sprintf(
-				"wiop: System.NewRationalReduction: fraction %d Numerator module %q and Denominator module %q differ; "+
+				"wiop: System.NewLogDerivativeSum: fraction %d Numerator module %q and Denominator module %q differ; "+
 					"both must share the same module when vector-valued",
 				i, numM.Context.Path(), denM.Context.Path(),
 			))
@@ -205,14 +205,14 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, fractions []Fraction)
 	}
 
 	if maxFracRound == nil {
-		panic("wiop: System.NewRationalReduction: no column, cell, or coin found in any fraction expression; " +
+		panic("wiop: System.NewLogDerivativeSum: no column, cell, or coin found in any fraction expression; " +
 			"at least one expression must be round-bearing")
 	}
 
 	resultRound, ok := maxFracRound.Next()
 	if !ok {
 		panic(fmt.Sprintf(
-			"wiop: System.NewRationalReduction: no round follows round %d (the latest fraction column round); "+
+			"wiop: System.NewLogDerivativeSum: no round follows round %d (the latest fraction column round); "+
 				"call sys.NewRound() before registering this query",
 			maxFracRound.ID,
 		))
@@ -220,7 +220,7 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, fractions []Fraction)
 
 	result := resultRound.NewCell(ctx.Childf("result"), isExt)
 
-	rr := &RationalReduction{
+	rr := &LogDerivativeSum{
 		baseQuery: baseQuery{
 			context:     ctx,
 			Annotations: make(Annotations),
@@ -228,6 +228,6 @@ func (sys *System) NewRationalReduction(ctx *ContextFrame, fractions []Fraction)
 		Fractions: fractions,
 		Result:    result,
 	}
-	sys.RationalReductions = append(sys.RationalReductions, rr)
+	sys.LogDerivativeSums = append(sys.LogDerivativeSums, rr)
 	return rr
 }

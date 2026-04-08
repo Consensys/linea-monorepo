@@ -12,21 +12,21 @@ import (
 
 // ---- Soundness ----
 
-func TestRationalReduction_Soundness_Completeness(t *testing.T) {
-	sc := wioptest.NewRationalReductionScenario()
+func TestLogDerivativeSum_Soundness_Completeness(t *testing.T) {
+	sc := wioptest.NewLogDerivativeSumScenario()
 	rt := wiop.NewRuntime(sc.Sys)
 	sc.RunHonest(&rt)
 	require.NoError(t, sc.Query.Check(rt), "honest witness must pass Check")
 }
 
-func TestRationalReduction_Soundness_InvalidWitness(t *testing.T) {
-	sc := wioptest.NewRationalReductionScenario()
+func TestLogDerivativeSum_Soundness_InvalidWitness(t *testing.T) {
+	sc := wioptest.NewLogDerivativeSumScenario()
 	rt := wiop.NewRuntime(sc.Sys)
 	sc.RunInvalid(&rt)
 	assert.Error(t, sc.Query.Check(rt), "invalid witness must be rejected by Check")
 }
 
-func TestRationalReduction_Sum(t *testing.T) {
+func TestLogDerivativeSum_Sum(t *testing.T) {
 	// 4-row column of all-2; denominator = constant 1; sum = 4*2 = 8
 	sys := wiop.NewSystemf("rrSys")
 	r0 := sys.NewRound()
@@ -37,7 +37,7 @@ func TestRationalReduction_Sum(t *testing.T) {
 
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rrQ"), []wiop.Fraction{frac})
+	rr := sys.NewLogDerivativeSum(sys.Context.Childf("rrQ"), []wiop.Fraction{frac})
 	require.NotNil(t, rr)
 
 	rt := wiop.NewRuntime(sys)
@@ -52,7 +52,7 @@ func TestRationalReduction_Sum(t *testing.T) {
 	assert.Equal(t, r1, rr.Round())
 }
 
-func TestRationalReduction_Check_Mismatch(t *testing.T) {
+func TestLogDerivativeSum_Check_Mismatch(t *testing.T) {
 	sys := wiop.NewSystemf("rrMisSys")
 	r0 := sys.NewRound()
 	sys.NewRound()
@@ -61,7 +61,7 @@ func TestRationalReduction_Check_Mismatch(t *testing.T) {
 
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rrMisQ"), []wiop.Fraction{frac})
+	rr := sys.NewLogDerivativeSum(sys.Context.Childf("rrMisQ"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 1))
@@ -73,7 +73,7 @@ func TestRationalReduction_Check_Mismatch(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNewRationalReduction_NilCtxPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NilCtxPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
 	sys.NewRound()
@@ -82,18 +82,18 @@ func TestNewRationalReduction_NilCtxPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r)
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	assert.Panics(t, func() { sys.NewRationalReduction(nil, []wiop.Fraction{frac}) })
+	assert.Panics(t, func() { sys.NewLogDerivativeSum(nil, []wiop.Fraction{frac}) })
 }
 
-func TestNewRationalReduction_EmptyFractionsPanic(t *testing.T) {
+func TestNewLogDerivativeSum_EmptyFractionsPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), nil)
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), nil)
 	})
 }
 
-func TestNewRationalReduction_NilNumeratorPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NilNumeratorPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	r0 := sys.NewRound()
 	sys.NewRound()
@@ -101,22 +101,22 @@ func TestNewRationalReduction_NilNumeratorPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
 	frac := wiop.Fraction{Numerator: nil, Denominator: col.View()}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
-func TestNewRationalReduction_BothScalarPanic(t *testing.T) {
+func TestNewLogDerivativeSum_BothScalarPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
 	sys.NewRound()
 	k := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: k, Denominator: k}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
-func TestNewRationalReduction_NoNextRoundPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NoNextRoundPanic(t *testing.T) {
 	// Only one round — no next round for result cell
 	sys := wiop.NewSystemf("s")
 	r0 := sys.NewRound()
@@ -125,11 +125,11 @@ func TestNewRationalReduction_NoNextRoundPanic(t *testing.T) {
 	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
-func TestRationalReduction_ScalarNumVecDen(t *testing.T) {
+func TestLogDerivativeSum_ScalarNumVecDen(t *testing.T) {
 	// num = scalar 1, den = vector all-2; sum = 4*(1/2)
 	sys := wiop.NewSystemf("rrScalNum")
 	r0 := sys.NewRound()
@@ -139,7 +139,7 @@ func TestRationalReduction_ScalarNumVecDen(t *testing.T) {
 
 	one := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: one, Denominator: col.View()}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), []wiop.Fraction{frac})
+	rr := sys.NewLogDerivativeSum(sys.Context.Childf("rr"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 2))
@@ -148,7 +148,7 @@ func TestRationalReduction_ScalarNumVecDen(t *testing.T) {
 	assert.NoError(t, rr.Check(rt))
 }
 
-func TestRationalReduction_VecNumScalarDen(t *testing.T) {
+func TestLogDerivativeSum_VecNumScalarDen(t *testing.T) {
 	// num = vector all-3, den = scalar 1; sum = 4*3 = 12
 	sys := wiop.NewSystemf("rrScalDen")
 	r0 := sys.NewRound()
@@ -158,7 +158,7 @@ func TestRationalReduction_VecNumScalarDen(t *testing.T) {
 
 	one := wiop.NewConstantField(field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: one}
-	rr := sys.NewRationalReduction(sys.Context.Childf("rr"), []wiop.Fraction{frac})
+	rr := sys.NewLogDerivativeSum(sys.Context.Childf("rr"), []wiop.Fraction{frac})
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, baseVec(4, 3))
@@ -167,7 +167,7 @@ func TestRationalReduction_VecNumScalarDen(t *testing.T) {
 	assert.NoError(t, rr.Check(rt))
 }
 
-func TestNewRationalReduction_NilDenominatorPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NilDenominatorPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	r0 := sys.NewRound()
 	sys.NewRound()
@@ -175,15 +175,15 @@ func TestNewRationalReduction_NilDenominatorPanic(t *testing.T) {
 	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
 	frac := wiop.Fraction{Numerator: col.View(), Denominator: nil}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
-// TestNewRationalReduction_NoRoundBearingExprPanic covers the guard that fires
+// TestNewLogDerivativeSum_NoRoundBearingExprPanic covers the guard that fires
 // when every expression in every fraction is a constant vector (has a module,
 // so neither expression is scalar) but none carries a round-bearing
 // column/cell/coin. maxFracRound stays nil and the constructor panics.
-func TestNewRationalReduction_NoRoundBearingExprPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NoRoundBearingExprPanic(t *testing.T) {
 	sys := wiop.NewSystemf("rrNoRound")
 	sys.NewRound()
 	sys.NewRound()
@@ -192,12 +192,11 @@ func TestNewRationalReduction_NoRoundBearingExprPanic(t *testing.T) {
 	den := wiop.NewConstantVector(mod, field.NewFromString("1"))
 	frac := wiop.Fraction{Numerator: num, Denominator: den}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }
 
-
-func TestNewRationalReduction_DifferentModulePanic(t *testing.T) {
+func TestNewLogDerivativeSum_DifferentModulePanic(t *testing.T) {
 	sys := wiop.NewSystemf("rrDiffMod")
 	r0 := sys.NewRound()
 	sys.NewRound()
@@ -207,6 +206,6 @@ func TestNewRationalReduction_DifferentModulePanic(t *testing.T) {
 	c2 := mod2.NewColumn(sys.Context.Childf("c2"), wiop.VisibilityOracle, r0)
 	frac := wiop.Fraction{Numerator: c1.View(), Denominator: c2.View()}
 	assert.Panics(t, func() {
-		sys.NewRationalReduction(sys.Context.Childf("q"), []wiop.Fraction{frac})
+		sys.NewLogDerivativeSum(sys.Context.Childf("q"), []wiop.Fraction{frac})
 	})
 }

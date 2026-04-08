@@ -25,9 +25,9 @@ type System struct {
 	// system via [System.NewPermutation] and [System.NewInclusion], in
 	// declaration order.
 	TableRelations []*TableRelation
-	// RationalReductions holds all [RationalReduction] queries registered with
-	// this system via [System.NewRationalReduction], in declaration order.
-	RationalReductions []*RationalReduction
+	// LogDerivativeSums holds all [LogDerivativeSum] queries registered with
+	// this system via [System.NewLogDerivativeSum], in declaration order.
+	LogDerivativeSums []*LogDerivativeSum
 }
 
 // NewSystemf constructs an empty System. It creates a root [ContextFrame]

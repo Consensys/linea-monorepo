@@ -75,7 +75,7 @@ incremental, composable compilation without requiring a mutable query list.
 
 `GnarkCheckableQuery` is the subset of queries that can be verified inside a
 gnark arithmetic circuit. Queries that cannot be expressed in-circuit (e.g.
-`TableRelation`, `RationalReduction`) must be compiled away before the gnark
+`TableRelation`, `LogDerivativeSum`) must be compiled away before the gnark
 layer runs.
 
 ### Object identity
