@@ -94,6 +94,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          config-file: .github/codeql/codeql-config.yml
 
       - name: Setup Java
         if: matrix.language == 'java-kotlin'

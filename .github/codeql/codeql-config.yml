@@ -1,0 +1,7 @@
+name: "linea-monorepo"
+
+paths-ignore:
+  # Generated Java sources (gocorset, web3j) — not maintained by hand
+  - "**/build/generated/**"
+  # Auto-generated Swagger client for load-testing tools
+  - "testing-tools/app/src/main/java/net/consensys/zkevm/load/swagger/**"
