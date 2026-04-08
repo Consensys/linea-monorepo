@@ -187,12 +187,13 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
         registers[rd] = product_lower as DoubleWord
     }
   }
-  if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {
+
   // signed division satisfies
   // a, b ∈ Z
   // a = b∙q + r
   // 0 ≤ |r| < |b|
   // r and a have the same sign
+  if ( funct3 == FUNCT3_DIVW  ) && ( funct7 == FUNCT7_DIVW  ) {
   if (v2_lower == 0) {
     registers[rd] = NEGATIVE_ONE_AS_I64
   } else {

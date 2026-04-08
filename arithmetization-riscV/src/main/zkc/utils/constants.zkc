@@ -65,28 +65,17 @@ const JAL:Opcode       = 0b1101111 // JAL
 // ===============================
 
 // OP (0110011) — R-type register-register arithmetic
-// funct3 values
-const FUNCT3_ADD:Funct3    = 0b000
-const FUNCT3_SUB:Funct3    = 0b000
-const FUNCT3_SLL:Funct3    = 0b001
-const FUNCT3_SLT:Funct3    = 0b010
-const FUNCT3_SLTU:Funct3   = 0b011
-const FUNCT3_XOR:Funct3    = 0b100
-const FUNCT3_SRL:Funct3    = 0b101
-const FUNCT3_SRA:Funct3    = 0b101
-const FUNCT3_OR:Funct3     = 0b110
-const FUNCT3_AND:Funct3    = 0b111
-// funct7 values
-const FUNCT7_ADD:Funct7    = 0b0000000
-const FUNCT7_SUB:Funct7    = 0b0100000
-const FUNCT7_SLL:Funct7    = 0b0000000
-const FUNCT7_SLT:Funct7    = 0b0000000
-const FUNCT7_SLTU:Funct7   = 0b0000000
-const FUNCT7_XOR:Funct7    = 0b0000000
-const FUNCT7_SRL:Funct7    = 0b0000000
-const FUNCT7_SRA:Funct7    = 0b0100000
-const FUNCT7_OR:Funct7     = 0b0000000
-const FUNCT7_AND:Funct7    = 0b0000000
+// funct3 values and funct7 values
+const FUNCT3_ADD:Funct3  = 0b000, FUNCT7_ADD:Funct7  = 0b0000000
+const FUNCT3_SUB:Funct3  = 0b000, FUNCT7_SUB:Funct7  = 0b0100000
+const FUNCT3_SLL:Funct3  = 0b001, FUNCT7_SLL:Funct7  = 0b0000000
+const FUNCT3_SLT:Funct3  = 0b010, FUNCT7_SLT:Funct7  = 0b0000000
+const FUNCT3_SLTU:Funct3 = 0b011, FUNCT7_SLTU:Funct7 = 0b0000000
+const FUNCT3_XOR:Funct3  = 0b100, FUNCT7_XOR:Funct7  = 0b0000000
+const FUNCT3_SRL:Funct3  = 0b101, FUNCT7_SRL:Funct7  = 0b0000000
+const FUNCT3_SRA:Funct3  = 0b101, FUNCT7_SRA:Funct7  = 0b0100000
+const FUNCT3_OR:Funct3   = 0b110, FUNCT7_OR:Funct7   = 0b0000000
+const FUNCT3_AND:Funct3  = 0b111, FUNCT7_AND:Funct7  = 0b0000000
 
 // OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
 const FUNCT3_ADDW:Funct3   = 0b000
@@ -107,17 +96,12 @@ const FUNCT3_REM:Funct3    = 0b110
 const FUNCT3_REMU:Funct3   = 0b111
 
 // OP-32 (0111011) + funct7=0000001
-const FUNCT3_MULW:Funct3   = 0b000
-const FUNCT3_DIVW:Funct3   = 0b100
-const FUNCT3_DIVUW:Funct3  = 0b101
-const FUNCT3_REMW:Funct3   = 0b110
-const FUNCT3_REMUW:Funct3  = 0b111
-//
-const FUNCT7_MULW:Funct7   = 0b0111011
-const FUNCT7_DIVW:Funct7   = 0b0111011
-const FUNCT7_DIVUW:Funct7  = 0b0111011
-const FUNCT7_REMW:Funct7   = 0b0111011
-const FUNCT7_REMUW:Funct7  = 0b0111011
+const FUNCT3_MULW:Funct3   = 0b000, FUNCT7_MULW:Funct7   = 0b0111011
+const FUNCT3_DIVW:Funct3   = 0b100, FUNCT7_DIVW:Funct7   = 0b0111011
+const FUNCT3_DIVUW:Funct3  = 0b101, FUNCT7_DIVUW:Funct7  = 0b0111011
+const FUNCT3_REMW:Funct3   = 0b110, FUNCT7_REMW:Funct7   = 0b0111011
+const FUNCT3_REMUW:Funct3  = 0b111, FUNCT7_REMUW:Funct7  = 0b0111011
+
 
 // ======================
 // I-type funct3 values
