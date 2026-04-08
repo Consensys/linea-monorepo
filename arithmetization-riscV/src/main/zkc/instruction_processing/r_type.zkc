@@ -37,8 +37,8 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   v1 = registers[rs1]
   v2 = registers[rs2]
 
-  v1_sign = sign_bit_double_word(v1)
-  v2_sign = sign_bit_double_word(v2)
+  v1_sign = sign_bit_of_double_word(v1)
+  v2_sign = sign_bit_of_double_word(v2)
 
   v1_abs = absolute_value_double_word(v1)
   v2_abs = absolute_value_double_word(v2)
@@ -180,7 +180,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   if ( funct3 == FUNCT3_MULW  ) && ( funct7 == FUNCT7_MULW  ) {
       product_upper :: product_lower = (v1_lower as DoubleWord) * (v2_lower as DoubleWord)
-      sign_bit = sign_bit_word(product_lower)
+      sign_bit = sign_bit_of_word(product_lower)
       if (sign_bit == 1) {
         registers[rd] = MAX_UINT_32 :: product_lower
       } else {
@@ -209,7 +209,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
       word_wip = v1_lower_abs % v2_lower_abs
-      if (sign_bit_word(v1_lower_abs) == 0) {
+      if (sign_bit_of_word(v1_lower_abs) == 0) {
         registers[rd] = sgn_extension_u32_u64(word_wip)
       } else {
         registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))

@@ -1,6 +1,6 @@
 fn negative_of_double_word(a : DoubleWord) -> (a_neg : DoubleWord) {
   var a_sign : SignBit
-  a_sign = sign_bit_double_word(a)
+  a_sign = sign_bit_of_double_word(a)
   if a == 0 {
     a_neg = 0
     } else {
@@ -16,7 +16,7 @@ fn negative_of_double_word(a : DoubleWord) -> (a_neg : DoubleWord) {
 
 fn negative_of_word(a : Word) -> (a_neg : Word) {
   var a_sign : SignBit
-  a_sign = sign_bit_word(a)
+  a_sign = sign_bit_of_word(a)
   if a == 0 {
     a_neg = 0
     } else {
