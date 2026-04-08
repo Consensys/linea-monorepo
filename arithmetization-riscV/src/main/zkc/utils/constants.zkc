@@ -112,12 +112,6 @@ const FUNCT3_DIVW:Funct3   = 0b100
 const FUNCT3_DIVUW:Funct3  = 0b101
 const FUNCT3_REMW:Funct3   = 0b110
 const FUNCT3_REMUW:Funct3  = 0b111
-//
-const FUNCT7_MULW:Funct7   = 0b0111011
-const FUNCT7_DIVW:Funct7   = 0b0111011
-const FUNCT7_DIVUW:Funct7  = 0b0111011
-const FUNCT7_REMW:Funct7   = 0b0111011
-const FUNCT7_REMUW:Funct7  = 0b0111011
 
 // ======================
 // I-type funct3 values
@@ -141,6 +135,10 @@ const FUNCT3_ANDI:Funct3  = 0b111 // AND Immediate
 const FUNCT3_SLLI:Funct3  = 0b001 // Shift Left Logical Immediate
 const FUNCT3_SRLI:Funct3  = 0b101 // Shift Right Logical Immediate
 const FUNCT3_SRAI:Funct3  = 0b101 // Shift Right Arithmetic Immediate
+
+const FUNCT6_SRLI:Funct6  = 0b000000 // Shift Right Logical Immediate
+const FUNCT6_SRAI:Funct6  = 0b010000 // Shift Right Arithmetic Immediate
+
 
 // OP_IMM_32
 const FUNCT3_ADDIW:Funct3  = 0b000 // Add Immediate Word
@@ -189,4 +187,3 @@ const MAX_UINT_64_AS_U128:u128 = 0xffffffffffffffff
 const MAX_INT_U32:u64 = 0xffffffff
 const U32_FIRST_BIT_MASK:u32 = 0x80000000
 
-const OVERFLOW_DIVIDEND:u64 = 0x8000000000000000
