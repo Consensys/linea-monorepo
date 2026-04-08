@@ -57,6 +57,17 @@ func AddMerkleRootToPublicInputs(name string, round []int) VortexOp {
 	}
 }
 
+// WithStreamingCommitment enables the streaming SIS commitment path which
+// processes rows in batches for better cache efficiency during Ring-SIS hashing.
+// batchSize controls how many rows are processed at a time. If batchSize <= 0,
+// a default of max(1, NbRows/8) is used.
+func WithStreamingCommitment(batchSize int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.StreamingCommitment = true
+		ctx.StreamingBatchSize = batchSize
+	}
+}
+
 // AddPrecomputedMerkleRootToPublicInputs tells the compiler to adds
 // a precomputed merkle root to the public inputs of the comp. This is
 // useful for the distributed prover. The name argument is used to set

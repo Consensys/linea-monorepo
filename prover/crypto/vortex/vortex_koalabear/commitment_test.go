@@ -109,6 +109,166 @@ func BenchmarkVortexHashPathsByRows(b *testing.B) {
 	}
 }
 
+func TestIncrementalHasherMatchesTransversalHash(t *testing.T) {
+	testCases := []struct {
+		name      string
+		numRows   int
+		numCols   int
+		batchSize int
+	}{
+		{"batch_equals_total", 32, 1024, 32},
+		{"batch_1", 32, 1024, 1},
+		{"batch_7_uneven", 32, 1024, 7},
+		{"batch_16", 32, 1024, 16},
+		{"large_rows_batch_50", 387, 1024, 50},
+		{"large_rows_batch_256", 512, 1024, 256},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := makeNoSisRows(tc.numRows, tc.numCols)
+			params := NewParams(2, tc.numCols, tc.numRows, 9, 16)
+			encoded := params.EncodeRows(rows)
+			nbEncodedCols := params.RsParams.NbEncodedColumns()
+
+			// Reference: TransversalHash
+			refHashes := make([]field.Element, nbEncodedCols*params.Key.OutputSize())
+			refHashes = params.Key.TransversalHash(encoded, refHashes)
+
+			// Streaming: IncrementalHasher
+			hasher := params.Key.NewIncrementalHasher(nbEncodedCols)
+			for start := 0; start < len(encoded); start += tc.batchSize {
+				end := start + tc.batchSize
+				if end > len(encoded) {
+					end = len(encoded)
+				}
+				hasher.AbsorbBatch(encoded[start:end])
+			}
+			streamHashes := hasher.Finalize()
+
+			require.Equal(t, len(refHashes), len(streamHashes))
+			for i := range refHashes {
+				require.Equal(t, refHashes[i], streamHashes[i],
+					"mismatch at index %d (col %d, offset %d)",
+					i, i/params.Key.OutputSize(), i%params.Key.OutputSize())
+			}
+		})
+	}
+}
+
+func TestStreamingCommitMatchesNonStreaming(t *testing.T) {
+	testCases := []struct {
+		name      string
+		numRows   int
+		numCols   int
+		batchSize int
+	}{
+		{"rows_32_batch_8", 32, 1 << 10, 8},
+		{"rows_128_batch_64", 128, 1 << 10, 64},
+		{"rows_387_batch_50", 387, 1 << 10, 50},
+		{"rows_512_batch_256", 512, 1 << 10, 256},
+		{"rows_128_batch_1", 128, 1 << 10, 1},
+		{"rows_128_batch_larger_than_total", 128, 1 << 10, 999},
+		{"rows_160_default_batch", 160, 1 << 10, 0},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := makeNoSisRows(tc.numRows, tc.numCols)
+			params := NewParams(2, tc.numCols, tc.numRows, 9, 16)
+
+			// Reference: non-streaming
+			encRef, commitRef, _, hashesRef := params.CommitMerkleWithSIS(rows)
+
+			// Streaming
+			encStr, commitStr, _, hashesStr := params.CommitMerkleWithSISStreaming(rows, tc.batchSize)
+
+			// Check identical commitment (Merkle root)
+			require.Equal(t, commitRef, commitStr, "Merkle root mismatch")
+
+			// Check identical SIS hashes
+			require.Equal(t, hashesRef, hashesStr, "SIS hashes mismatch")
+
+			// Check identical encoded matrix
+			require.Equal(t, len(encRef), len(encStr), "encoded matrix row count mismatch")
+			for i := range encRef {
+				require.Equal(t, encRef[i].Len(), encStr[i].Len(),
+					"encoded row %d length mismatch", i)
+				for j := 0; j < encRef[i].Len(); j++ {
+					require.Equal(t, encRef[i].Get(j), encStr[i].Get(j),
+						"encoded matrix mismatch at row %d, col %d", i, j)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkCommitMerkleWithSIS(b *testing.B) {
+	const numCols = 1 << 13
+
+	rowCounts := []int{256, 512, 768, 1024, 1504, 2208}
+
+	for _, numRows := range rowCounts {
+		rows := makeNoSisRows(numRows, numCols)
+		params := NewParams(2, numCols, numRows, 9, 16)
+
+		b.Run(fmt.Sprintf("full_commit/rows_%d", numRows), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ReportMetric(float64(numRows), "rows")
+			b.ReportMetric(float64(numCols*2), "encoded_cols")
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _, _, _ = params.CommitMerkleWithSIS(rows)
+			}
+		})
+
+		b.Run(fmt.Sprintf("encode_rows_only/rows_%d", numRows), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = params.EncodeRows(rows)
+			}
+		})
+
+		b.Run(fmt.Sprintf("sis_hash_only/rows_%d", numRows), func(b *testing.B) {
+			encoded := params.EncodeRows(rows)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = params.sisTransversalHash(encoded)
+			}
+		})
+	}
+}
+
+func BenchmarkCommitMerkleWithSISStreaming(b *testing.B) {
+	const numCols = 1 << 13
+
+	rowCounts := []int{256, 512, 768, 1024, 1504, 2208}
+
+	for _, numRows := range rowCounts {
+		rows := makeNoSisRows(numRows, numCols)
+		params := NewParams(2, numCols, numRows, 9, 16)
+
+		batchDivisors := []int{1, 2, 4, 8, 16}
+		for _, div := range batchDivisors {
+			batchSize := numRows / div
+			if batchSize < 1 {
+				batchSize = 1
+			}
+			b.Run(fmt.Sprintf("rows_%d/batch_%d", numRows, batchSize), func(b *testing.B) {
+				b.ReportAllocs()
+				b.ReportMetric(float64(numRows), "rows")
+				b.ReportMetric(float64(batchSize), "batch_size")
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					_, _, _, _ = params.CommitMerkleWithSISStreaming(rows, batchSize)
+				}
+			})
+		}
+	}
+}
+
 func referenceNoSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
 	nbRows := len(v)
 	nbCols := v[0].Len()

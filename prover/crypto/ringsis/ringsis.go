@@ -244,6 +244,174 @@ func (s *Key) FlattenedKey() []field.Element {
 	return res
 }
 
+// IncrementalHasher supports streaming SIS hashing of matrix columns.
+// Rows are fed in batches via AbsorbBatch; after all batches, Finalize
+// produces the same column hashes as TransversalHash.
+//
+// The core challenge is that a batch's limbs may not align with SIS key
+// polynomial boundaries. For example, 1 row produces 2 limbs (at LogTwoBound=16),
+// but each key polynomial covers Degree=512 limbs. Multiple batches' limbs
+// may map into the same polynomial slot. We handle this by tracking the global
+// limb offset and placing each batch's limbs at the correct position within
+// the polynomial buffer.
+type IncrementalHasher struct {
+	key *Key
+	// nbCols is the number of columns (i.e., the length of each row SmartVector).
+	nbCols int
+	// accumulators holds NTT-domain partial sums, one per column.
+	// Layout: accumulators[col*outputSize : (col+1)*outputSize].
+	accumulators []field.Element
+	// globalLimbOffset tracks how many limbs have been consumed across all
+	// batches so far. This determines where the next batch's limbs are placed
+	// within the SIS key polynomial structure.
+	globalLimbOffset int
+}
+
+// NewIncrementalHasher creates a new IncrementalHasher for streaming column
+// hashing over a matrix with nbCols columns.
+func (s *Key) NewIncrementalHasher(nbCols int) *IncrementalHasher {
+	return &IncrementalHasher{
+		key:              s,
+		nbCols:           nbCols,
+		accumulators:     make([]field.Element, nbCols*s.OutputSize()),
+		globalLimbOffset: 0,
+	}
+}
+
+// AbsorbBatch processes a batch of rows and accumulates their contribution
+// into the per-column NTT-domain accumulators. Each row in batchRows must
+// have length equal to nbCols.
+func (ih *IncrementalHasher) AbsorbBatch(batchRows []smartvectors.SmartVector) {
+	nbRows := len(batchRows)
+	if nbRows == 0 {
+		return
+	}
+
+	degree := ih.key.modulusDegree()
+	outputSize := ih.key.OutputSize()
+	numLimbsPerField := ih.key.NumLimbs()
+	batchLimbCount := nbRows * numLimbsPerField
+
+	globalLimbStart := ih.globalLimbOffset
+	globalLimbEnd := globalLimbStart + batchLimbCount
+
+	// Which key polynomials are touched by this batch's limbs.
+	firstPoly := globalLimbStart / degree
+	lastPoly := (globalLimbEnd - 1) / degree
+
+	parallel.Execute(ih.nbCols, func(start, end int) {
+		// Windowed transposition for cache efficiency — same pattern as TransversalHash.
+		const windowSize = 32
+		const padding = 8
+		paddedNbRows := nbRows + padding
+
+		transposedArena := arena.NewVectorArena[field.Element](paddedNbRows * windowSize)
+		transposed := make([][]field.Element, windowSize)
+		for i := range transposed {
+			fullSlice := arena.Get[field.Element](transposedArena, paddedNbRows)
+			transposed[i] = fullSlice[:nbRows]
+		}
+
+		// Thread-local buffer for the polynomial accumulation.
+		k := make(field.Vector, degree)
+		kz := make(field.Vector, degree)
+		// Buffer for decomposed limbs.
+		limbBuf := make([]uint32, batchLimbCount)
+
+		for col := start; col < end; col += windowSize {
+			currentWindowSize := windowSize
+			if col+currentWindowSize > end {
+				currentWindowSize = end - col
+			}
+
+			// Transpose: extract column values from each row in the batch.
+			for i := 0; i < nbRows; i++ {
+				switch vi := batchRows[i].(type) {
+				case *smartvectors.Constant:
+					cst := vi.Value
+					for j := 0; j < currentWindowSize; j++ {
+						transposed[j][i] = cst
+					}
+				case *smartvectors.Regular:
+					src := (*vi)[col : col+currentWindowSize]
+					for j := 0; j < currentWindowSize; j++ {
+						transposed[j][i] = src[j]
+					}
+				default:
+					for j := 0; j < currentWindowSize; j++ {
+						transposed[j][i] = batchRows[i].Get(col + j)
+					}
+				}
+			}
+
+			// For each column in the window, decompose into limbs and
+			// accumulate into the correct polynomial slots.
+			for j := 0; j < currentWindowSize; j++ {
+				colIdx := col + j
+				accSlice := field.Vector(ih.accumulators[colIdx*outputSize : (colIdx+1)*outputSize])
+
+				// Decompose batch column values into limbs.
+				it := sis.NewLimbIterator(sis.NewVectorIterator(field.Vector(transposed[j])), ih.key.LogTwoBound()/8)
+				for li := 0; li < batchLimbCount; li++ {
+					l, ok := it.NextLimb()
+					if !ok {
+						break
+					}
+					limbBuf[li] = l
+				}
+
+				// Place limbs into the correct polynomial buffer positions.
+				limbIdx := 0
+				for poly := firstPoly; poly <= lastPoly; poly++ {
+					copy(k, kz) // zero k
+
+					polyLimbStart := poly * degree
+					// Where within this polynomial do our limbs start/end?
+					fillStart := globalLimbStart - polyLimbStart
+					if fillStart < 0 {
+						fillStart = 0
+					}
+					fillEnd := globalLimbEnd - polyLimbStart
+					if fillEnd > degree {
+						fillEnd = degree
+					}
+
+					zero := uint32(0)
+					for pos := fillStart; pos < fillEnd; pos++ {
+						k[pos][0] = limbBuf[limbIdx]
+						zero |= limbBuf[limbIdx]
+						limbIdx++
+					}
+
+					if zero == 0 {
+						continue
+					}
+
+					ih.key.SisGnarkCrypto.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
+					k.Mul(k, field.Vector(ih.key.SisGnarkCrypto.Ag[poly]))
+					accSlice.Add(accSlice, k)
+				}
+			}
+		}
+	})
+
+	ih.globalLimbOffset = globalLimbEnd
+}
+
+// Finalize applies the final IFFT to each column's NTT-domain accumulator,
+// converting to coefficient domain. Returns the column hashes in the same
+// flat layout as TransversalHash: length nbCols * OutputSize.
+func (ih *IncrementalHasher) Finalize() []field.Element {
+	outputSize := ih.key.OutputSize()
+	parallel.Execute(ih.nbCols, func(start, end int) {
+		for col := start; col < end; col++ {
+			accSlice := field.Vector(ih.accumulators[col*outputSize : (col+1)*outputSize])
+			ih.key.SisGnarkCrypto.Domain.FFTInverse(accSlice, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+		}
+	})
+	return ih.accumulators
+}
+
 // TransversalHash evaluates SIS hashes transversally over a list of smart-vectors.
 // Each smart-vector is seen as the row of a matrix. All rows must have the same
 // size or panic. The function returns the hash of the columns. The column hashes
