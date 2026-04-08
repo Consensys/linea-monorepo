@@ -90,7 +90,9 @@ Columns:
 | SRLW     | R    | 0111011 | 101    | 0000000 | rd = sext(rs1[31:0] >> rs2[4:0]) (logical)    | RV64I     |
 | SRAW     | R    | 0111011 | 101    | 0100000 | rd = sext(rs1[31:0] >> rs2[4:0]) (arithmetic) | RV64I     |
 
-#### OP-IMM (0010011) — I-type immediate arithmetic @letype
+
+#### OP-IMM (0010011) — I-type immediate arithmetic @amkcha
+
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                 | Extension | Status |
 |----------|------|---------|--------|------------------------|-------------------------------------------|-----------|:------:|
@@ -107,7 +109,8 @@ Columns:
 > Note: In RV32I SLLI/SRLI/SRAI use only imm[4:0] as the shift amount and imm[11:5] as the qualifier.
 > In RV64I the shift amount is imm[5:0] and imm[11:6] is the qualifier.
 
-#### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I) @letypequividelespoubelles
+#### OP-IMM-32 (0011011) — I-type 32-bit immediate arithmetic (RV64I) @amkcha
+
 
 | Mnemonic | Type | Opcode  | funct3 | funct7 / imm qualifier | Operation                                     | Extension | Status |
 |----------|------|---------|--------|------------------------|-----------------------------------------------|-----------|:------:|
