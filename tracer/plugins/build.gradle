@@ -38,9 +38,9 @@ jar {
 
   manifest {
     attributes(
-        'Specification-Title': archiveBaseName,
+        'Specification-Title': archiveBaseName.get(),
         'Specification-Version': version,
-        'Implementation-Title': archiveBaseName,
+        'Implementation-Title': archiveBaseName.get(),
         'Implementation-Version': version
         )
   }
