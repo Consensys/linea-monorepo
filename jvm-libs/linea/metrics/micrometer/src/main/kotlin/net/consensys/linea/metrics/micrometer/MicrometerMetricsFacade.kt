@@ -94,7 +94,7 @@ class MicrometerMetricsFacade(
       distributionSummaryBuilder.minimumExpectedValue(0.01)
       distributionSummaryBuilder.maximumExpectedValue(100.0)
     }
-    return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry), isRatio = isRatio)
+    return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
   }
 
   override fun createTimer(category: MetricsCategory, name: String, description: String, tags: List<Tag>): Timer =
