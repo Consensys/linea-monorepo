@@ -38,7 +38,7 @@ services:
             -Dconfig.override.conflation.conflation-deadline="PT30M" \
             -Dconfig.override.conflation.blob-compression.batches-limit=2 \
             -Dconfig.override.conflation.proof-aggregation.deadline="PT30M" \
-            -Dconfig.override.state-manager.version="3.0.0" \
+            ${LINEA_SHOMEI_TAG:+-Dconfig.override.state-manager.version=$LINEA_SHOMEI_TAG} \
             -jar libs/coordinator.jar \
             --traces-limits-v5 config/traces-limits-v5.toml \
             --smart-contract-errors config/smart-contract-errors.toml \
