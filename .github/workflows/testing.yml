@@ -57,16 +57,22 @@ jobs:
   prover:
     uses: ./.github/workflows/prover-testing.yml
     if: ${{ inputs.prover_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   native-yield-automation-service:
     uses: ./.github/workflows/native-yield-automation-service-testing.yml
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   lido-governance-monitor:
     uses: ./.github/workflows/lido-governance-monitor-testing.yml
     if: ${{ inputs.lido_governance_monitor_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   postman:

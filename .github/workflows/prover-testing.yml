@@ -4,7 +4,13 @@ permissions:
   contents: read
   actions: read
 
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: true
+        type: string
+
 env:
   GOPROXY: "https://proxy.golang.org"
 
@@ -63,6 +69,9 @@ jobs:
     name: Prover testing
     needs:
       - staticcheck
+    env:
+      COMMIT_TAG: ${{ inputs.commit_tag }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - name: checkout code
       uses: actions/checkout@v6
@@ -81,14 +90,31 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Test compressor
-      working-directory: prover/lib/compressor/blob
-      run: |
-        go test -tags=nocorset ./...
-    - name: Test
+    - name: Test with coverage
       working-directory: prover
       run: |
-        go test -p=1 -short -tags=nocorset,fuzzlight -timeout=120m ./...
+        go test -p=1 -short -tags=nocorset,fuzzlight -timeout=120m -coverprofile=coverage.out -covermode=atomic ./...
+    - name: Stage prover coverage for artifact (fork PR uploads)
+      run: |
+        mkdir -p ci-prover-coverage
+        cp prover/coverage.out ci-prover-coverage/coverage.out
+    - name: Upload prover coverage artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: prover-coverage-${{ env.COMMIT_TAG }}
+        if-no-files-found: error
+        path: ci-prover-coverage/
+    - name: Upload prover coverage to Codecov
+      if: ${{ env.CODECOV_TOKEN != '' }}
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+      with:
+        fail_ci_if_error: true
+        files: ./prover/coverage.out
+        flags: prover
+        os: linux
+        name: codecov-prover
+        verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
     # disabled as it takes many hours to run on the runner
         # - name: Test (32 bits & race)
     #   working-directory: prover

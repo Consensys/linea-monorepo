@@ -34,6 +34,7 @@ jobs:
           NATIVE_LIBS_RELEASE_TAG: blob-libs-v3.0.1
         run: |
           pnpm run -F "@consensys/linea-postman^..." build
+          pnpm run -F @consensys/linea-native-libs test
           pnpm run -F ./postman test;
           pnpm run -F ./sdk/sdk-viem test;
 
@@ -42,6 +43,7 @@ jobs:
       - name: Stage TS coverage for artifact (fork PR uploads)
         run: |
           mkdir -p ci-ts-coverage
+          cp ts-libs/linea-native-libs/coverage/lcov.info ci-ts-coverage/native-libs-lcov.info
           cp postman/coverage/lcov.info ci-ts-coverage/postman-lcov.info
           cp sdk/sdk-viem/coverage/lcov.info ci-ts-coverage/sdk-viem-lcov.info
 
@@ -51,6 +53,18 @@ jobs:
           name: ts-coverage-${{ env.COMMIT_TAG }}
           if-no-files-found: error
           path: ci-ts-coverage/
+
+      - name: Upload linea-native-libs coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        with:
+          fail_ci_if_error: true
+          files: ./ts-libs/linea-native-libs/coverage/lcov.info
+          flags: linea-native-libs
+          os: linux
+          name: codecov-linea-native-libs
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload postman coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
