@@ -30,8 +30,9 @@ class LineaBesuPlugin implements Plugin<Project> {
   @Override
   void apply(Project project) {
     def requestedTasks = project.gradle.startParameter.taskNames
-    def cleanOnlyTasks = ['cleanBesuAndMavenLocal'] as Set
-    def skipCheckoutAndBuildBesu = cleanOnlyTasks.containsAll(requestedTasks) && !requestedTasks.isEmpty()
+    def cleanOnlyTasks = ['cleanBesuAndMavenLocal', 'clean'] as Set
+    def skipCheckoutAndBuildBesu = (!requestedTasks.isEmpty() && cleanOnlyTasks.containsAll(requestedTasks)) ||
+        (!requestedTasks.isEmpty() && requestedTasks.every { it.endsWith(':clean') || it.matches('.*spotless.*') })
     if (!skipCheckoutAndBuildBesu) {
       def catalogBesuVersion = project.rootProject.libs.versions.besu.get()
       def resolvedBesuVerOutput = checkoutAndResolveVersion(project)
