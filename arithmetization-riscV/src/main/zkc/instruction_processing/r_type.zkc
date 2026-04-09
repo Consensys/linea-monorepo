@@ -1,30 +1,33 @@
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
-  var funct7           : Funct7
-  var rs2              : Register
-  var rs1              : Register
-  var funct3           : Funct3
-  var rd               : Register
-  var v1               : DoubleWord
-  var v2               : DoubleWord
-  var v1_sign          : SignBit
-  var v2_sign          : SignBit
-  var v1_abs           : UnsignedDoubleWord
-  var v2_abs           : UnsignedDoubleWord
-  var shift_discard    : u58
-  var shift_amount     : u6
-  var res_working_copy : DoubleWord
-  var overflow         : SignBit
-  var v1_upper         : Word
-  var v1_lower         : Word
-  var v2_upper         : Word
-  var v2_lower         : Word
-  var v1_lower_abs     : Word
-  var v2_lower_abs     : Word
-  var product_upper    : Word
-  var product_lower    : Word
-  var word_wip         : Word
-  var sign_bit         : SignBit
+  var funct7                   : Funct7
+  var rs2                      : Register
+  var rs1                      : Register
+  var funct3                   : Funct3
+  var rd                       : Register
+  var v1                       : DoubleWord
+  var v2                       : DoubleWord
+  var v1_sign                  : SignBit
+  var v2_sign                  : SignBit
+  var v1_abs                   : UnsignedDoubleWord
+  var v2_abs                   : UnsignedDoubleWord
+  var shift_discard_6          : u58 // 58 + 6 = 64, used for DoubleWords
+  var shift_amount_6           : u6
+  var shift_discard_5          : u27 // 27 + 5 = 32, used for Words
+  var shift_amount_5           : u5
+  var double_word_working_copy : DoubleWord
+  var word_working_copy        : Word
+  var overflow                 : SignBit
+  var v1_upper                 : Word
+  var v1_lower                 : Word
+  var v2_upper                 : Word
+  var v2_lower                 : Word
+  var v1_lower_abs             : Word
+  var v2_lower_abs             : Word
+  var product_upper            : Word
+  var product_lower            : Word
+  var word_wip                 : Word
+  var sign_bit                 : SignBit
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -42,17 +45,17 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   // bit string of their additions is the same in both interpretations.
   // This also holds for subtraction.
   if (funct3 == FUNCT3_ADD)  && (funct7 == FUNCT7_ADD)  {
-    overflow :: res_working_copy = (v1 as u65) + (v2 as u65)
-    registers[rd] = res_working_copy
+    overflow :: double_word_working_copy = (v1 as u65) + (v2 as u65)
+    registers[rd] = double_word_working_copy
   }
   if (funct3 == FUNCT3_SUB)  && (funct7 == FUNCT7_SUB)  {
     // we prevent underflow by pre-pending v1 with a 1
-    overflow :: res_working_copy = ((1 as u1) :: (v1 as u64)) - (v2 as u65)
-    registers[rd] = res_working_copy
+    overflow :: double_word_working_copy = ((1 as u1) :: (v1 as u64)) - (v2 as u65)
+    registers[rd] = double_word_working_copy
   }
   if (funct3 == FUNCT3_SLL)  && (funct7 == FUNCT7_SLL)  {
-    shift_discard :: shift_amount = v2
-    registers[rd] = v1 << shift_amount
+    shift_discard_6 :: shift_amount_6 = v2
+    registers[rd] = v1 << shift_amount_6
   }
   if (funct3 == FUNCT3_SLT)  && (funct7 == FUNCT7_SLT)  {
     registers[rd] = signed_LT(v1, v2) as DoubleWord
@@ -69,21 +72,21 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = v1 ^ v2
   }
   if (funct3 == FUNCT3_SRL)  && (funct7 == FUNCT7_SRL)  {
-    shift_discard :: shift_amount = v2
-    registers[rd] = v1 >> shift_amount
+    shift_discard_6 :: shift_amount_6 = v2
+    registers[rd] = v1 >> shift_amount_6
   }
   if (funct3 == FUNCT3_SRA)  && (funct7 == FUNCT7_SRA)  {
-    shift_discard :: shift_amount = v2
+    shift_discard_6 :: shift_amount_6 = v2
     if (v1_sign == 1) {
-      res_working_copy = bit_flip_double_word(v1)
+      double_word_working_copy = bit_flip_double_word(v1)
     } else {
-      res_working_copy = v1
+      double_word_working_copy = v1
     }
-    res_working_copy = res_working_copy >> shift_amount
+    double_word_working_copy = double_word_working_copy >> shift_amount_6
     if (v1_sign == 1) {
-      res_working_copy = bit_flip_double_word(res_working_copy)
+      double_word_working_copy = bit_flip_double_word(double_word_working_copy)
     }
-    registers[rd] = res_working_copy
+    registers[rd] = double_word_working_copy
     }
     if (funct3 == FUNCT3_OR)   && (funct7 == FUNCT7_OR)   {
     registers[rd] = v1 | v2
@@ -240,11 +243,30 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = sgn_extension_u32_u64(word_wip)
   }
   if ( funct3 == FUNCT3_SUBW  ) && ( funct7 == FUNCT7_SUBW ) {
-    overflow :: word_wip = (TWO_TO_THE_32_AS_U33 + (v1_lower as u33)) - (v2_lower as u33)
+    // underflow prevention
+    overflow :: word_wip = ((1 as u1) :: v1_lower) - (v2_lower as u33)
     registers[rd] = sgn_extension_u32_u64(word_wip)
   }
-  if ( funct3 == FUNCT3_SLLW  ) && ( funct7 == FUNCT7_SLLW ) {}
-  if ( funct3 == FUNCT3_SRLW  ) && ( funct7 == FUNCT7_SRLW ) {}
-  if ( funct3 == FUNCT3_SRAW  ) && ( funct7 == FUNCT7_SRAW ) {}
+  if ( funct3 == FUNCT3_SLLW  ) && ( funct7 == FUNCT7_SLLW ) {
+    shift_discard_5 :: shift_amount_5 = v2_lower
+    registers[rd] = sgn_extension_u32_u64(v1_lower << shift_amount_5)
+    }
+  if ( funct3 == FUNCT3_SRLW  ) && ( funct7 == FUNCT7_SRLW ) {
+    shift_discard_5 :: shift_amount_5 = v2_lower
+    registers[rd] = sgn_extension_u32_u64(v1_lower >> shift_amount_5)
+  }
+  if ( funct3 == FUNCT3_SRAW  ) && ( funct7 == FUNCT7_SRAW ) {
+    shift_discard_5 :: shift_amount_5 = v2_lower
+    if (sign_bit_of_word(v1_lower) == 1) {
+      word_working_copy = bit_flip_word(v1_lower)
+    } else {
+      word_working_copy = v1_lower
+    }
+    word_working_copy = word_working_copy >> shift_amount_5
+    if (v1_sign == 1) {
+      word_working_copy = bit_flip_word(word_working_copy)
+    }
+    registers[rd] = word_working_copy as DoubleWord
+  }
 }
 
