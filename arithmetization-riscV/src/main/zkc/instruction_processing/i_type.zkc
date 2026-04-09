@@ -1,6 +1,3 @@
-// OP-IMM-32: imm[11:5] for SRAIW: 0b0100000 (decimal 32); low 5 bits are shamt.
-const OP_IMM32_IMM11_5_SRAIW: u12 = 32
-
 fn process_I_type_instruction<ram,registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
   
   var funct6 : Funct6
@@ -108,7 +105,7 @@ fn process_I_type_instruction<ram,registers>(opcode:Opcode, instruction_paramete
 
   if opcode == JALR  {
     // only instruction is JALR, no need to switch over funct3
-    new_pc = (registers[rs1] + (sgn_extension_u12_u64(imm12) << 1)) as Address
+    new_pc = (registers[rs1] + (signext_imm12_64 << 1)) as Address
     registers[rd] = (pc + 4) as DoubleWord
   }
 
