@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -12,7 +13,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var perfLogPath = fmt.Sprintf("./limitless_perf_%s.jsonl", time.Now().UTC().Format("20060102_150405"))
+// perfLogFilePath returns where JSONL perf events are written.
+// LIMITLESS_PERF_LOG_PATH overrides the default (e.g. prover-badprecompile.log when run from prover/).
+// Default: logs/limitless_perf_<UTC timestamp>.jsonl (relative to process cwd; use cwd=prover/ for repo layout).
+func perfLogFilePath() string {
+	if p := os.Getenv("LIMITLESS_PERF_LOG_PATH"); p != "" {
+		return p
+	}
+	return filepath.Join("logs", fmt.Sprintf("limitless_perf_%s.jsonl", time.Now().UTC().Format("20060102_150405")))
+}
 
 // perfEvent is a single JSONL event capturing timing and resource usage.
 type perfEvent struct {
@@ -42,12 +51,19 @@ func NewPerfLogger() *perfLogger {
 	if os.Getenv("LIMITLESS_PERF_LOG") != "true" {
 		return nil
 	}
-	f, err := os.Create(perfLogPath)
+	path := perfLogFilePath()
+	if dir := filepath.Dir(path); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			logrus.Warnf("perf_log: could not mkdir %s: %v (perf logging disabled)", dir, err)
+			return nil
+		}
+	}
+	f, err := os.Create(path)
 	if err != nil {
-		logrus.Warnf("perf_log: could not create %s: %v (perf logging disabled)", perfLogPath, err)
+		logrus.Warnf("perf_log: could not create %s: %v (perf logging disabled)", path, err)
 		return nil
 	}
-	logrus.Infof("perf_log: writing events to %s", perfLogPath)
+	logrus.Infof("perf_log: writing events to %s", path)
 	return &perfLogger{file: f, enc: json.NewEncoder(f)}
 }
 

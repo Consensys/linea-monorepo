@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -49,6 +49,9 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 	// Build the zkEVM witness for the simulated execution
 	txHash := ethereum.GetTxHash(tx)
 	txSignature := ethereum.GetJsonSignature(tx)
+	execDataCommit := public_input.ComputeExecutionDataMultiCommitment(nil)
+	// Invalidity blocks don't really exist, so use zero hashes.
+	zeroHashes := make([]linTypes.FullBytes32, len(req.ZkStateMerkleProof))
 	zkevmWitness := &zkevm.Witness{
 		ExecTracesFPath:        cfg.Execution.ConflatedTracesDir + "/" + req.ConflatedExecutionTracesFile,
 		SMTraces:               req.ZkStateMerkleProof,
@@ -58,9 +61,9 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 		ChainID:                cfg.Layer2.ChainID,
 		BaseFee:                cfg.Layer2.BaseFee,
 		CoinBase:               linTypes.EthAddress(cfg.Layer2.CoinBase),
-		BlockHashList:          []linTypes.FullBytes32{},
-		ExecDataSchwarzZipfelX: fext.Element{},
-		ExecData:               []byte{},
+		BlockHashList:          zeroHashes,
+		ExecDataSchwarzZipfelX: execDataCommit.X,
+		ExecData:               execDataCommit.Data,
 	}
 
 	// -- 1-4. Run the distributed pipeline: bootstrapper → GL/LPP segment
