@@ -1,23 +1,20 @@
 name: Tracer riscv-constraints check compilation
 
 on:
-  # pull_request:
-   # branches:
-   #   - main
-    # paths:
-      #- 'arithmetization/**'
-      #- '.github/actions/setup-arithmetization-riscv/**'
-      #- '.github/workflows/arithmetization-*.yml'
-  #push:
-   # branches:
-   #   - main
-    # paths:
-      #- 'arithmetization/**'
-      #- '.github/actions/setup-arithmetization-riscv/**'
-      #- '.github/workflows/arithmetization-*.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'arithmetization/**'
+      - '.github/actions/setup-arithmetization-riscv/**'
+      - '.github/workflows/arithmetization-*.yml'
   push:
     branches:
-      - arithmetization/starts-riscV-implementation
+     - main
+    paths:
+     - 'arithmetization/**'
+     - '.github/actions/setup-arithmetization-riscv/**'
+     - '.github/workflows/arithmetization-*.yml'
   workflow_call:
   workflow_dispatch:
 
@@ -42,7 +39,7 @@ jobs:
         with:
           repository: consensys/go-corset
           # default branch (latest commit at run time) else uncomment the ref with the commit hash
-          # ref: b763f30878e5fc260f0d88863c9883c904f8fc056
+          # ref: 763f30878e5fc260f0d88863c9883c904f8fc056
           path: go-corset
 
       - name: install zkc
