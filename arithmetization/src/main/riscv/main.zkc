@@ -1,3 +1,4 @@
+include "interpreter.zkc"
 include "ram/read.zkc"
 include "ram/write.zkc"
 include "utils/sign_extend.zkc"
