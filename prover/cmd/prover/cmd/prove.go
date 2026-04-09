@@ -164,14 +164,18 @@ func readRequest(path string, into any) error {
 	return nil
 }
 
-// writeResponse encodes and writes a response to a file
+// writeResponse encodes and writes a response to path, or to stdout if path is empty.
 func writeResponse(path string, from any) error {
-	f := files.MustOverwrite(path)
-	defer f.Close()
-
-	if err := json.NewEncoder(f).Encode(from); err != nil {
-		return fmt.Errorf("could not encode output file: %w", err)
+	var enc *json.Encoder
+	if path == "" {
+		enc = json.NewEncoder(os.Stdout)
+	} else {
+		f := files.MustOverwrite(path)
+		defer f.Close()
+		enc = json.NewEncoder(f)
 	}
-
+	if err := enc.Encode(from); err != nil {
+		return fmt.Errorf("could not encode output: %w", err)
+	}
 	return nil
 }
