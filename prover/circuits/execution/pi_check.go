@@ -8,12 +8,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/config"
-	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	zkcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
-	zkcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // ExtractedPISnark holds the public input values extracted from the inner wizard
@@ -54,8 +54,8 @@ type ExtractedPISnark struct {
 // inner proof into gnark's assignment.
 type PICheckCircuit struct {
 	ExtractedPIs  ExtractedPISnark           `gnark:",secret"`
-	FuncInputs    FunctionalPublicInputSnark  `gnark:",secret"`
-	ExecDataBytes [1 << 17]frontend.Variable  `gnark:",secret"`
+	FuncInputs    FunctionalPublicInputSnark `gnark:",secret"`
+	ExecDataBytes [1 << 17]frontend.Variable `gnark:",secret"`
 }
 
 // Define runs only the [checkPublicInputs] constraints.
