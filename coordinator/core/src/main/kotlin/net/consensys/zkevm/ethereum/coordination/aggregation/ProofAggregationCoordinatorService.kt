@@ -164,12 +164,14 @@ class ProofAggregationCoordinatorService(
     aggregationSizeInBatchesHistogram.record(batchCount.toDouble())
     aggregationSizeInBlobsHistogram.record(compressionBlobs.size.toDouble())
 
+    val aggregationStartBlockTimestamp = compressionBlobs.first().blobCounters.startBlockTimestamp
     val compressionProofIndexes =
       compressionBlobs.map {
         CompressionProofIndex(
           startBlockNumber = it.blobCounters.startBlockNumber,
           endBlockNumber = it.blobCounters.endBlockNumber,
           hash = it.blobCounters.expectedShnarf,
+          startBlockTimestamp = it.blobCounters.startBlockTimestamp,
         )
       }
 
@@ -192,7 +194,11 @@ class ProofAggregationCoordinatorService(
       },
     ) {
       log.debug("creating aggregation proof request: aggregation={}", blobsToAggregate.intervalString())
-      aggregationProofCreation(blockIntervals, compressionProofIndexes)
+      aggregationProofCreation(
+        executionProofsIndexes = blockIntervals,
+        compressionProofIndexes = compressionProofIndexes,
+        aggregationStartBlockTimestamp = aggregationStartBlockTimestamp,
+      )
     }
       .thenApply { aggregationProofIndex ->
         val unProvenAggregation =
@@ -209,6 +215,7 @@ class ProofAggregationCoordinatorService(
   private fun aggregationProofCreation(
     executionProofsIndexes: BlockIntervals,
     compressionProofIndexes: List<CompressionProofIndex>,
+    aggregationStartBlockTimestamp: Instant,
   ): SafeFuture<AggregationProofIndex> {
     val blobsToAggregate = executionProofsIndexes.toBlockInterval()
     return aggregationL2StateProvider
@@ -236,6 +243,7 @@ class ProofAggregationCoordinatorService(
             parentAggregationLastL1RollingHash = rollingInfo.parentAggregationLastL1RollingHash,
             parentAggregationLastFtxNumber = rollingInfo.parentAggregationLastFtxNumber,
             parentAggregationLastFtxRollingHash = rollingInfo.parentAggregationLastFtxRollingHash,
+            startBlockTimestamp = aggregationStartBlockTimestamp,
           )
         }
           .thenCompose(proofAggregationClient::createProofRequest)
@@ -267,7 +275,7 @@ class ProofAggregationCoordinatorService(
       proofAggregationClient: ProofAggregationProverClientV2,
       noL2ActivityTimeout: Duration,
       waitForNoL2ActivityToTriggerAggregation: Boolean,
-      targetEndBlockNumbers: List<ULong>,
+      targetEndBlockNumbers: Set<ULong>,
       metricsFacade: MetricsFacade,
       aggregationSizeMultipleOf: UInt,
       hardForkTimestamps: List<Instant> = emptyList(),
@@ -288,11 +296,10 @@ class ProofAggregationCoordinatorService(
       val syncAggregationTriggerCalculators = mutableListOf<SyncAggregationTriggerCalculator>(
         forcedTransactionTriggerAggCalculator,
         AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = maxProofsPerAggregation),
+        AggregationTriggerCalculatorByTargetBlockNumbers(
+          targetEndBlockNumbers = targetEndBlockNumbers,
+        ),
       )
-      if (targetEndBlockNumbers.isNotEmpty()) {
-        syncAggregationTriggerCalculators
-          .add(AggregationTriggerCalculatorByTargetBlockNumbers(targetEndBlockNumbers = targetEndBlockNumbers))
-      }
       if (maxBlobsPerAggregation != null) {
         syncAggregationTriggerCalculators
           .add(AggregationTriggerCalculatorByBlobLimit(maxBlobsPerAggregation = maxBlobsPerAggregation))

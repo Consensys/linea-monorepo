@@ -1,11 +1,11 @@
 [plugins]
-docker = { id = "com.avast.gradle.docker-compose", version = "0.17.12" }
+docker = { id = "com.avast.gradle.docker-compose", version = "0.17.21" }
 web3j = { id = "org.web3j", version.ref = "web3jPlugin" }
 web3jSolidity = { id = "org.web3j.solidity", version = "0.5.0" }
 spotless = { id = "com.diffplug.spotless", version = "8.2.1" }
-jreleaser = {id = "org.jreleaser", version = "1.15.0"}
-dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "2.9" }
-lombok = { id = "io.freefair.lombok", version = "8.6" }
+jreleaser = {id = "org.jreleaser", version = "1.23.0"}
+dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", version = "3.1.1" }
+lombok = { id = "io.freefair.lombok", version = "9.2.0" }
 gradleVersions = { id = "com.github.ben-manes.versions", version = "0.51.0" }
 dependencyManagement = { id = "io.spring.dependency-management", version = "1.1.5" }
 besuPluginLibrary = { id = "net.consensys.besu-plugin-library", version = "0.1.6" }
@@ -15,7 +15,8 @@ testLogger = { id = "com.adarshr.test-logger", version = "4.0.0" }
 sonarQube = { id = "org.sonarqube", version = "4.3.1.3277" }
 
 [libraries]
-jreleaser = { group = "org.jreleaser", name = "jreleaser-gradle-plugin", version = "1.15.0" }
+jreleaser = { group = "org.jreleaser", name = "jreleaser-gradle-plugin", version = "1.23.0" }
+commonsIo = { group = "commons-io", name = "commons-io", version.ref = "commonsIo" }
 
 [versions]
 # Build
@@ -25,13 +26,14 @@ kotlin = "2.3.0"
 assertj = "3.27.3"
 awaitility = "4.3.0"
 jsonUnit = "3.4.1"
-junit = "5.10.1"
-mockito = "5.7.0"
+junit = "5.13.4"
+junitPlatform = "1.13.4"
+mockito = "5.23.0"
 mockitoKotlin = "5.4.0"
 restassured = "5.3.0"
 wiremock = "3.13.2"
 logcaptor = "2.11.0"
-shomei = "3.0.5"
+shomei = "3.0.7"
 besuShomeiPluginVersion = "v1.0.0"
 undercouchDownload = "5.6.0"
 
@@ -39,33 +41,38 @@ undercouchDownload = "5.6.0"
 # Besu commit hash from https://github.com/besu-eth/besu
 # when updates it, should run "gradlew buildAndUpdateBesuVersionInLibsVersions" to
 # checkout and build Besu from source, and will auto-update the "besu" version below
-besuCommit = "e19f9a90cbf9536b8a33a16601eaeaca91d54b8e"
+besuCommit = "f2397bb232cb75b955eb94e1ec0a3ba0c8ae156b"
 
-besu = "26.2.0-RC1-e19f9a9"
+besu = "26.3.0-RC0-f2397bb"
 blobCompressor = "3.0.2"
+commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"
 bouncycastle = "1.79"
 caffeine = "3.1.6"
 gson = "2.11.0"
 hoplite = "2.9.0"
 jackson = "2.19.4"
-jna = "5.14.0"
+jna = "5.18.1"
 kotlinResult = "1.1.16"
 ktlint = "1.0.1"
 lineaKotlin = "0.2.0"
 log4j = "2.25.3"
-micrometer = "1.12.13"
-netty = "4.1.92.Final"
+micrometer = "1.16.4"
+netty = "4.2.12.Final"
 picoli = "4.7.6"
 slf4j="1.7.36"
 teku = "25.12.0"
 tuweni = "2.7.1"
-vertx = "4.5.14"
+vertx = "5.0.10"
 web3j = "5.0.2"
-web3jPlugin = "4.14.0"
+web3jPlugin = "5.0.2"
 secp = "1.4.2"
+jacoco = "0.8.14"
+flywaydb = "12.0.3"
+postgresql = "42.7.10"
+guava = "33.5.0"
 
 # Other
 googleJavaFormat = "1.27.0"
-dependencyLicenseReport = "2.9"
+dependencyLicenseReport = "3.1.1"
 web3jSokt = "0.4.0"

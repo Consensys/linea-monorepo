@@ -6,7 +6,7 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | v22+ | TypeScript projects |
+| Node.js | >= 24.14.1 (see `.nvmrc`) | TypeScript projects |
 | pnpm | v10.28+ | Package management |
 | Docker | v24+ | Container runtime |
 | Docker Compose | v2.19+ | Multi-container orchestration |
@@ -459,9 +459,8 @@ pnpm clean
 
 ### Getting Help
 
-- Check [existing documentation](../docs/)
+- Check [existing documentation](../README.md) in the tech documentation index
 - Review [GitHub issues](https://github.com/Consensys/linea-monorepo/issues)
-- Join [Discord](https://discord.gg/linea)
 
 ## IDE Setup
 
