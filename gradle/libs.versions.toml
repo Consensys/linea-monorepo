@@ -44,7 +44,7 @@ undercouchDownload = "5.6.0"
 # via the linea-besu module before compiling tracer, sequencer, coordinator, etc.
 besuCommit = "5965063a93950387fb0319067d8ef6795cbaf036"
 
-besu = "26.3.0-RC0-f2397bb"
+besu = "26.3.0-RC0-5965063"
 blobCompressor = "3.0.2"
 commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"
