@@ -21,5 +21,5 @@ runs:
 
       - name: Install Go Corset
         shell: bash
-        run: go install github.com/consensys/go-corset/cmd/go-corset@b763f30878e5fc260f0d88863c9883c904f8fc056 #v1.2.8
+        run: go install github.com/consensys/go-corset/cmd/go-corset@v1.2.8
 
