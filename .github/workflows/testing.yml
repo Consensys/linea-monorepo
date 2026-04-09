@@ -57,8 +57,6 @@ jobs:
   prover:
     uses: ./.github/workflows/prover-testing.yml
     if: ${{ inputs.prover_changed == 'true' }}
-    with:
-      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   native-yield-automation-service:

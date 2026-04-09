@@ -276,31 +276,3 @@ jobs:
           name: codecov-sdk-ethers-fork
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  upload-codecov-prover:
-    needs: [ get-commit-tag ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    name: upload-codecov-prover
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    steps:
-      - name: Download prover coverage (from prover-testing.yml)
-        continue-on-error: true
-        uses: actions/download-artifact@v7
-        id: prover-coverage-download
-        with:
-          name: prover-coverage-${{ needs.get-commit-tag.outputs.commit-tag }}
-          path: |
-            ${{ github.workspace }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-      - uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
-        if: ${{ steps.prover-coverage-download.outcome == 'success' }}
-        with:
-          fail_ci_if_error: true
-          files: ${{ github.workspace }}/ci-prover-coverage/coverage.out
-          flags: prover
-          os: linux
-          name: codecov-prover-fork
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}

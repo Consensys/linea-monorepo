@@ -70,10 +70,6 @@ flags:
     paths:
       - tracer/
     carryforward: true
-  prover:
-    paths:
-      - prover/
-    carryforward: true
 
 github_checks:
   annotations: false
