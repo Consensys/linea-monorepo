@@ -102,11 +102,11 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var v1_abs_as_u128:u128 = v1_abs as u128
   var v2_abs_as_u128:u128 = v2_abs as u128
 
-  if funct3 == FUNCT3_MUL {
+  if (funct3 == FUNCT3_MUL) && (funct7 == FUNCT7_MUL) {
     registers[rd] = ((v1_as_u128 * v2_as_u128) & MAX_UINT_64_AS_U128) as u64
   }
 
-  if funct3 == FUNCT3_MULH {
+  if (funct3 == FUNCT3_MULH) && (funct7 == FUNCT7_MULH) {
     var v1_times_v2_as_u128:u128 = v1_abs_as_u128 * v2_abs_as_u128
     if (v1_sign ^ v2_sign) == 1 {
       // compute the complement's two negative of the result
@@ -115,7 +115,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = ((v1_times_v2_as_u128 >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
-  if funct3 == FUNCT3_MULHSU {
+  if (funct3 == FUNCT3_MULHSU) && (funct7 == FUNCT7_MULHSU) {
     var v1_times_v2_as_u128:u128 = v1_abs_as_u128 * v2_as_u128
     if v1_sign == 1 {
       // compute the complement's two negative of the result
@@ -124,11 +124,11 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = ((v1_times_v2_as_u128 >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
-  if funct3 == FUNCT3_MULHU {
+  if (funct3 == FUNCT3_MULHU) && (funct7 == FUNCT7_MULHU) {
     registers[rd] = (((v1_as_u128 * v2_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
-  if funct3 == FUNCT3_DIV {
+  if (funct3 == FUNCT3_DIV) && (funct7 == FUNCT7_DIV) {
     if v2 == 0 {
       registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
@@ -143,7 +143,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     }
   }
 
-  if funct3 == FUNCT3_DIVU {
+  if (funct3 == FUNCT3_DIVU) && (funct7 == FUNCT7_DIVU) {
     if v2 == 0 {
       registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
@@ -151,7 +151,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     }
   }
 
-  if funct3 == FUNCT3_REM {
+  if (funct3 == FUNCT3_REM) && (funct7 == FUNCT7_REM) {
     if v2 == 0 {
       registers[rd] = v1
     } else {
