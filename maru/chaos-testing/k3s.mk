@@ -24,10 +24,12 @@ k3s-setup-kubeconfig:
 	# export KUBECONFIG=~/.kube/k3s-server
 
 k3s-wait:
-	@echo "Waiting for k3s server to be up..."
-	@until docker exec k3s-server sh -c "telnet localhost 6443 </dev/null 2>/dev/null | grep Connected" ; do \
-		sleep 1; \
+	@echo "Waiting for k3s API server to be ready..."
+	@until kubectl --kubeconfig ~/.kube/k3s-server get nodes >/dev/null 2>&1; do \
+		sleep 2; \
 	done
+	@echo "Waiting for k3s node to be Ready..."
+	@kubectl --kubeconfig ~/.kube/k3s-server wait --for=condition=Ready node --all --timeout=120s
 	@echo "k3s server is up and running."
 
 k3s-reload:
