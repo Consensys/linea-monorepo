@@ -5,7 +5,7 @@
   "scripts": {
     "build": "pnpm run -r --if-present build",
     "clean": "pnpm run -r --if-present clean && rm -rf node_modules",
-    "preinstall": "pnpx only-allow pnpm",
+    "preinstall": "npx only-allow pnpm",
     "lint": "pnpm run -r --if-present lint",
     "lint:fix": "pnpm run -r --if-present lint:fix",
     "prepare": "husky",
