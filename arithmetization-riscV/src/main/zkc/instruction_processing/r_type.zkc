@@ -25,7 +25,6 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var product_lower    : Word
   var word_wip         : Word
   var sign_bit         : SignBit
-  var overflow         : u1
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
