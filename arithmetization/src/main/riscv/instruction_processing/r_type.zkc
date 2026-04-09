@@ -169,7 +169,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   // unsigned remainder and division
 
-  if funct3 == FUNCT3_REMU {
+  if ( funct3 == FUNCT3_REMU ) && ( funct7 == FUNCT7_REMU ) {
     if v2 == 0 {
       registers[rd] = v1
     } else {
@@ -202,7 +202,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = NEGATIVE_ONE_AS_I64
     } else {
       word_wip = v1_lower_abs / v2_lower_abs
-      if (v1_sign == v2_sign) {
+      if (sign_bit_of_word(v1_lower) == sign_bit_of_word(v2_lower)) {
         registers[rd] = sgn_extension_u32_u64(word_wip)
       } else {
         registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
@@ -212,10 +212,10 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   if ( funct3 == FUNCT3_REMW  ) && ( funct7 == FUNCT7_REMW  ) {
     if (v2_lower == 0) {
-      registers[rd] = NEGATIVE_ONE_AS_I64
+      registers[rd] = sgn_extension_u32_u64(v1_lower)
     } else {
       word_wip = v1_lower_abs % v2_lower_abs
-      if (sign_bit_of_word(v1_lower_abs) == 0) {
+      if (sign_bit_of_word(v1_lower) == 0) {
         registers[rd] = sgn_extension_u32_u64(word_wip)
       } else {
         registers[rd] = sgn_extension_u32_u64(negative_of_word(word_wip))
