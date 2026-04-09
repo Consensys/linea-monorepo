@@ -263,10 +263,10 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       word_working_copy = v1_lower
     }
     word_working_copy = word_working_copy >> shift_amount_5
-    if (v1_sign == 1) {
+    if (sign_bit_of_word(v1_lower) == 1) {
       word_working_copy = bit_flip_word(word_working_copy)
     }
-    registers[rd] = word_working_copy as DoubleWord
+    registers[rd] = sgn_extension_u32_u64(word_working_copy)
   }
 }
 
