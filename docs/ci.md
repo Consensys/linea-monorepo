@@ -116,7 +116,7 @@ Fans out to a set of per-component test workflows in parallel. Each receives a b
 
 After all component jobs finish, a `jacoco-report` job aggregates JVM coverage data (`coordinator` + `linea-sequencer` + `staterecovery` + `transaction-exclusion-api`) and uploads to Codecov under the `kotlin` flag.
 
-When the postman job runs, `postman-testing.yml` uploads Jest LCOV for `postman/` and `sdk/sdk-viem/` to Codecov under the `postman` and `sdk-viem` flags (and uploads a `ts-coverage-*` artifact for fork PRs, same pattern as smart contracts).
+When the postman job runs, `postman-testing.yml` uploads Jest LCOV for `postman/` and `sdk/sdk-viem/` to Codecov under the `postman` and `sdk-viem` flags (and uploads a `ts-coverage-*` artifact for fork PRs, same pattern as smart contracts). Staging uses a non-hidden `ci-ts-coverage/` directory because `upload-artifact@v4` excludes hidden paths by default.
 
 ---
 

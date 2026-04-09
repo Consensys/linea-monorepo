@@ -126,7 +126,7 @@ jobs:
         if: ${{ steps.ts-coverage-download.outcome == 'success' }}
         with:
           fail_ci_if_error: true
-          files: ${{ github.workspace }}/.ci-ts-coverage/postman-lcov.info
+          files: ${{ github.workspace }}/ci-ts-coverage/postman-lcov.info
           flags: postman
           os: linux
           name: codecov-postman
@@ -136,7 +136,7 @@ jobs:
         if: ${{ steps.ts-coverage-download.outcome == 'success' }}
         with:
           fail_ci_if_error: true
-          files: ${{ github.workspace }}/.ci-ts-coverage/sdk-viem-lcov.info
+          files: ${{ github.workspace }}/ci-ts-coverage/sdk-viem-lcov.info
           flags: sdk-viem
           os: linux
           name: codecov-sdk-viem

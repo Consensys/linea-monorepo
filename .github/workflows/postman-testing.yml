@@ -37,18 +37,20 @@ jobs:
           pnpm run -F ./postman test;
           pnpm run -F ./sdk/sdk-viem test;
 
+      # Use a non-hidden directory name: upload-artifact@v4 excludes hidden paths by default
+      # (include-hidden-files=false), so .ci-ts-coverage/ would upload zero files.
       - name: Stage TS coverage for artifact (fork PR uploads)
         run: |
-          mkdir -p .ci-ts-coverage
-          cp postman/coverage/lcov.info .ci-ts-coverage/postman-lcov.info
-          cp sdk/sdk-viem/coverage/lcov.info .ci-ts-coverage/sdk-viem-lcov.info
+          mkdir -p ci-ts-coverage
+          cp postman/coverage/lcov.info ci-ts-coverage/postman-lcov.info
+          cp sdk/sdk-viem/coverage/lcov.info ci-ts-coverage/sdk-viem-lcov.info
 
       - name: Upload TS coverage report
         uses: actions/upload-artifact@v4
         with:
           name: ts-coverage-${{ env.COMMIT_TAG }}
           if-no-files-found: error
-          path: .ci-ts-coverage/
+          path: ci-ts-coverage/
 
       - name: Upload postman coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
