@@ -4,23 +4,20 @@ AS = riscv64-unknown-elf-as
 INPUT ?= test
 
 # default target (make)
-# target : dependency
-bin/$(INPUT) : src/$(INPUT).s
-	@mkdir -p bin
-	$(AS) -o $@ $^
+exec: compile zkc-exec
 
-json:
+debug: compile zkc-debug
+
+compile: src/$(INPUT).s
+	@mkdir -p bin
+	$(AS) -o bin/$(INPUT) $^
 	go run ../main.go bin/$(INPUT) > bin/$(INPUT).json
 
-exec:
+zkc-exec:
 	zkc exec bin/$(INPUT).json ../../../main/riscv/main.zkc
 
-debug:
+zkc-debug:
 	zkc debug bin/$(INPUT).json ../../../main/riscv/main.zkc
-
-all: bin/$(INPUT) json exec
-
-all-debug: bin/$(INPUT) json debug
 
 clean:
 	rm bin/$(INPUT) bin/$(INPUT).json
