@@ -1,6 +1,7 @@
 # define the assembler to use
 AS = riscv64-unknown-elf-as
-INPUT ?= test # default input file (test.s)
+# define the name of the test file (by default it is "test")
+INPUT ?= test
 
 # default target (make)
 # target : dependency
