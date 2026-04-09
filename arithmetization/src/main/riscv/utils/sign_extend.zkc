@@ -3,8 +3,6 @@ const SGNEXTMASK_U32:u64 = 0xFFFFFFFF_00000000
 // Upper 52 bits set; OR with zero-extended u21 when sign (bit 20) is 1.
 const SGNEXTMASK_U21:u64 = 0xFFFFFFFF_FFE00000
 
-E00000
-
 // Upper 52 bits set; OR with zero-extended u12 when sign (bit 11) is 1.
 const SGNEXTMASK_U12:u64 = 0xFFFFFFFF_FFFFF000
 

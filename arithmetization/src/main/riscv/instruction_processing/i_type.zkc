@@ -105,7 +105,7 @@ fn process_I_type_instruction<ram,registers>(opcode:Opcode, instruction_paramete
 
   if opcode == JALR  {
     // only instruction is JALR, no need to switch over funct3
-    new_pc = (registers[rs1] + (signext_imm12_64 << 1)) as Address
+    new_pc = (registers[rs1] + (signext_imm12_64 & MASK_64_ERASE_LAST_BIT)) as Address
     registers[rd] = (pc + 4) as DoubleWord
   }
 
