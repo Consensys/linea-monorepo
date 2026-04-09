@@ -1,11 +1,26 @@
-name: Tracer constraints check compilation
+name: Tracer riscv-constraints check compilation
 
 on:
+  # pull_request:
+   # branches:
+   #   - main
+    # paths:
+      #- 'arithmetization/**'
+      #- '.github/actions/setup-arithmetization-riscv/**'
+      #- '.github/workflows/arithmetization-*.yml'
+  #push:
+   # branches:
+   #   - main
+    # paths:
+      #- 'arithmetization/**'
+      #- '.github/actions/setup-arithmetization-riscv/**'
+      #- '.github/workflows/arithmetization-*.yml'
   workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -19,5 +34,17 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-arithmetization-riscv
 
+      - name: Checkout go-corset
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: consensys/zkc
+          # default branch (latest commit at run time) else uncomment the ref with the commit hash
+          # ref: b763f30878e5fc260f0d88863c9883c904f8fc056
+          path: go-corset
+
+      - name: install zkc
+        working-directory: go-corset
+        run: go install ./cmd/zkc
+
       - name: Compile zkc program
-        run: go install ./cmd/zkc && zkc compile ./arithmetization-riscv/src/main/zkc/Main.zkc  
+        run: zkc compile ./arithmetization/src/main/riscv/main.zkc  
