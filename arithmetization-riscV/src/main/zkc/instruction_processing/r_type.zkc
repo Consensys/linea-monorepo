@@ -152,7 +152,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
         registers[rd] = 0
       } else {
         registers[rd] = v1_abs % v2_abs
-        if (v1_sign ^ v2_sign) == 1 {
+        if v1_sign == 1 {
           registers[rd] = negative_of_double_word(registers[rd])
         }
       }
