@@ -199,22 +199,22 @@ const FUNCT3_OR:Funct3   = 0b110, FUNCT7_OR:Funct7   = 0b0000000
 const FUNCT3_AND:Funct3  = 0b111, FUNCT7_AND:Funct7  = 0b0000000
 
 // OP-32 (0111011) — R-type 32-bit register-register arithmetic (RV64I)
-const FUNCT3_ADDW:Funct3   = 0b000
-const FUNCT3_SUBW:Funct3   = 0b000
-const FUNCT3_SLLW:Funct3   = 0b001
-const FUNCT3_SRLW:Funct3   = 0b101
-const FUNCT3_SRAW:Funct3   = 0b101
+const FUNCT3_ADDW:Funct3 = 0b000, FUNCT7_ADDW:Funct7 = 0b0000000
+const FUNCT3_SUBW:Funct3 = 0b000, FUNCT7_SUBW:Funct7 = 0b0100000
+const FUNCT3_SLLW:Funct3 = 0b001, FUNCT7_SLLW:Funct7 = 0b0000000
+const FUNCT3_SRLW:Funct3 = 0b101, FUNCT7_SRLW:Funct7 = 0b0000000
+const FUNCT3_SRAW:Funct3 = 0b101, FUNCT7_SRAW:Funct7 = 0b0100000
 
 // M extension — Integer multiplication and division
 // OP (0110011) + funct7=0000001
-const FUNCT3_MUL:Funct3    = 0b000
-const FUNCT3_MULH:Funct3   = 0b001
-const FUNCT3_MULHSU:Funct3 = 0b010
-const FUNCT3_MULHU:Funct3  = 0b011
-const FUNCT3_DIV:Funct3    = 0b100
-const FUNCT3_DIVU:Funct3   = 0b101
-const FUNCT3_REM:Funct3    = 0b110
-const FUNCT3_REMU:Funct3   = 0b111
+const FUNCT3_MUL:Funct3    = 0b000, FUNCT7_MUL:Funct7    = 0b0110011
+const FUNCT3_MULH:Funct3   = 0b001, FUNCT7_MULH:Funct7   = 0b0110011
+const FUNCT3_MULHSU:Funct3 = 0b010, FUNCT7_MULHSU:Funct7 = 0b0110011
+const FUNCT3_MULHU:Funct3  = 0b011, FUNCT7_MULHU:Funct7  = 0b0110011
+const FUNCT3_DIV:Funct3    = 0b100, FUNCT7_DIV:Funct7    = 0b0110011
+const FUNCT3_DIVU:Funct3   = 0b101, FUNCT7_DIVU:Funct7   = 0b0110011
+const FUNCT3_REM:Funct3    = 0b110, FUNCT7_REM:Funct7    = 0b0110011
+const FUNCT3_REMU:Funct3   = 0b111, FUNCT7_REMU:Funct7   = 0b0110011
 
 // OP-32 (0111011) + funct7=0000001
 const FUNCT3_MULW:Funct3   = 0b000, FUNCT7_MULW:Funct7   = 0b0000001
