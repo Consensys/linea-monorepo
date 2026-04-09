@@ -37,7 +37,7 @@ for j:Address=0; j<in_bytes_length[0]; j=j+1 {
 printf "program length=%d\n", riscV_program_length[0]
 
 while stop_signal == 0 && pc < length {
-      printf "PC=0x%x\n", pc      
+      printf "PC=%x\n", pc      
       instruction = read_32(pc) as Instruction
       pc = interpreter(instruction, pc)
   }
