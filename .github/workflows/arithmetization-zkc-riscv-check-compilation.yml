@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -40,7 +40,7 @@ jobs:
       - name: Checkout go-corset repo
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          repository: consensys/zkc
+          repository: consensys/go-corset
           # default branch (latest commit at run time) else uncomment the ref with the commit hash
           # ref: b763f30878e5fc260f0d88863c9883c904f8fc056
           path: go-corset
