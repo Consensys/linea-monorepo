@@ -1,4 +1,4 @@
-// EVerything in RISC5 is little endian
+// Everything in RISC5 is little endian
 fn write_64<ram>(address:Address, value:u64) -> () {
    var v0:u8
    var v1:u8
