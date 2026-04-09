@@ -25,6 +25,7 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   var product_lower    : Word
   var word_wip         : Word
   var sign_bit         : SignBit
+  var overflow         : u1
 
   funct7 :: rs2 :: rs1 :: funct3 :: rd = instruction_parameters
 
@@ -159,6 +160,9 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     }
   }
 
+
+  // unsigned remainder and division
+
   if funct3 == FUNCT3_REMU {
     if v2 == 0 {
       registers[rd] = v1
@@ -227,5 +231,17 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
       registers[rd] = sgn_extension_u32_u64(v1_lower % v2_lower)
     }
   }
+
+  if ( funct3 == FUNCT3_ADDW  ) && ( funct7 == FUNCT7_ADDW ) {
+    overflow :: word_wip = (v1_lower as u33) + (v2_lower as u33)
+    registers[rd] = sgn_extension_u32_u64(word_wip)
+  }
+  if ( funct3 == FUNCT3_SUBW  ) && ( funct7 == FUNCT7_SUBW ) {
+    overflow :: word_wip = (TWO_TO_THE_32_AS_U33 + (v1_lower as u33)) - (v2_lower as u33)
+    registers[rd] = sgn_extension_u32_u64(word_wip)
+  }
+  if ( funct3 == FUNCT3_SLLW  ) && ( funct7 == FUNCT7_SLLW ) {}
+  if ( funct3 == FUNCT3_SRLW  ) && ( funct7 == FUNCT7_SRLW ) {}
+  if ( funct3 == FUNCT3_SRAW  ) && ( funct7 == FUNCT7_SRAW ) {}
 }
 
