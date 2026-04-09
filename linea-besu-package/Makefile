@@ -9,10 +9,15 @@ LOCAL_SEQUENCER_DIST_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequenc
 LOCAL_TRACER_DIST_FOLDER ?= $(abspath ../tracer/plugins/build/install/linea-tracer)
 LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/besu-eth/build/distributions)
 
+clean-tmp-besu-and-maven-local:
+	cd ..; \
+	echo "Clean up tmp besu folder and maven local" ; \
+	./gradlew cleanBesuAndMavenLocal
+
 build-besu-local-and-update-lib-version:
 	cd ..; \
 	echo "Build besu-eth/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
-	./gradlew buildAndUpdateBesuVersionInLibsVersions
+	./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=false
 
 build-tracer-and-sequencer:
 	cd ..; \
@@ -30,6 +35,10 @@ assemble:
 	LOCAL_SEQUENCER_DIST_FOLDER=$(LOCAL_SEQUENCER_DIST_FOLDER) \
 	LOCAL_TRACER_DIST_FOLDER=$(LOCAL_TRACER_DIST_FOLDER) \
 	./scripts/assemble-packages.sh
+
+clean-build:
+	$(MAKE) clean-tmp-besu-and-maven-local
+	${MAKE} build
 
 build:
 	$(MAKE) build-besu-local-and-update-lib-version

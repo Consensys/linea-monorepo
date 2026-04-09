@@ -6,6 +6,8 @@ plugins {
 def besuVersion="${libs.versions.besu.get()}"
 
 dependencies {
+  compileOnly project(':linea-besu')
+
   api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
     transitive = false
   }
