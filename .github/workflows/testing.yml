@@ -72,6 +72,8 @@ jobs:
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ inputs.postman_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   transaction-exclusion-api:

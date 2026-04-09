@@ -34,6 +34,14 @@ flags:
       - coordinator/
       - jvm-libs/
     carryforward: true
+  postman:
+    paths:
+      - postman/
+    carryforward: true
+  sdk-viem:
+    paths:
+      - sdk/sdk-viem/
+    carryforward: true
 
 github_checks:
   annotations: false

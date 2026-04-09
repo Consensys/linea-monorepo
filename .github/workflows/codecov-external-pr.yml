@@ -104,3 +104,41 @@ jobs:
           name: codecov-contracts
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  upload-codecov-ts:
+    needs: [ get-commit-tag ]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    name: upload-codecov-ts
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Download TS test coverage reports (from postman-testing.yml)
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        id: ts-coverage-download
+        with:
+          name: ts-coverage-${{ needs.get-commit-tag.outputs.commit-tag }}
+          path: |
+            ${{ github.workspace }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        if: ${{ steps.ts-coverage-download.outcome == 'success' }}
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/.ci-ts-coverage/postman-lcov.info
+          flags: postman
+          os: linux
+          name: codecov-postman
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        if: ${{ steps.ts-coverage-download.outcome == 'success' }}
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/.ci-ts-coverage/sdk-viem-lcov.info
+          flags: sdk-viem
+          os: linux
+          name: codecov-sdk-viem
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
