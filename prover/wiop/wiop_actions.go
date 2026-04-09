@@ -1,8 +1,8 @@
 package wiop
 
-// Action represents a prover-side computation to be performed during protocol
+// ProverAction represents a prover-side computation to be performed during protocol
 // execution.
-type Action interface {
+type ProverAction interface {
 	// Run executes the action against the given [Runtime].
 	Run(Runtime)
 }

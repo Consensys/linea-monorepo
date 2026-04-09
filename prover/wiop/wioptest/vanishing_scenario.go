@@ -44,7 +44,7 @@ func RunAndVerify(rt *wiop.Runtime) error {
 	sys := rt.System
 	for rt.CurrentRound().ID < len(sys.Rounds)-1 {
 		rt.AdvanceRound()
-		for _, a := range rt.CurrentRound().Actions {
+		for _, a := range rt.CurrentRound().ProverActions {
 			a.Run(*rt)
 		}
 	}

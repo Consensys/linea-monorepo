@@ -17,7 +17,7 @@
 //
 // Protocol execution is handled by [Runtime], which holds concrete column
 // assignments and drives Fiat-Shamir via [Runtime.AdvanceRound]. The same
-// [Action] interface is implemented by both the prover and the verifier, so
+// [ProverAction] interface is implemented by both the prover and the verifier, so
 // both sides run against the identical execution loop.
 //
 // # Typical usage
@@ -26,6 +26,6 @@
 //  2. Create [Module]s, [Round]s, [Column]s, [Cell]s, and [CoinField]s.
 //  3. Register [Query] objects expressing the protocol predicates.
 //  4. Hand the [System] to a compiler pipeline that reduces all queries.
-//  5. Instantiate a [Runtime] and execute [Action]s round by round,
+//  5. Instantiate a [Runtime] and execute [ProverAction]s round by round,
 //     calling [Runtime.AdvanceRound] between rounds.
 package wiop

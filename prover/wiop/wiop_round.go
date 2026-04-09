@@ -27,10 +27,10 @@ type Round struct {
 	// Cells holds the scalar values committed by the prover during this round,
 	// in declaration order.
 	Cells []*Cell
-	// Actions holds the prover-side computations registered for this round, in
+	// ProverActions holds the prover-side computations registered for this round, in
 	// declaration order. Each action is run by the prover when the runtime
 	// enters this round, after coins have been derived.
-	Actions []Action
+	ProverActions []ProverAction
 	// VerifierActions holds the verifier-side checks registered for this
 	// round, in declaration order. Each check is run by the verifier when the
 	// runtime enters this round, after coins have been derived.
@@ -42,8 +42,8 @@ type Round struct {
 
 // RegisterAction appends a to the round's action list. Actions are run by the
 // prover in declaration order when the runtime enters this round.
-func (r *Round) RegisterAction(a Action) {
-	r.Actions = append(r.Actions, a)
+func (r *Round) RegisterAction(a ProverAction) {
+	r.ProverActions = append(r.ProverActions, a)
 }
 
 // RegisterVerifierAction appends a to the round's verifier-action list.

@@ -7,13 +7,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
 )
 
-// Runtime is the execution context for protocol [Action]s. It holds column
+// Runtime is the execution context for protocol [ProverAction]s. It holds column
 // assignments, cell values, coin values, and an arbitrary state bag. A single
 // Runtime serves both prover-side (assign) and verifier-side (read) usage
-// through the same [Action] interface.
+// through the same [ProverAction] interface.
 //
 // Pass Runtime by value: all mutable storage lives in map and pointer fields
-// (reference types), so mutations made inside an [Action] propagate to the
+// (reference types), so mutations made inside an [ProverAction] propagate to the
 // caller. The sole exception is [Runtime.AdvanceRound], which must be called
 // on a pointer to update [Runtime.currentRound].
 type Runtime struct {
