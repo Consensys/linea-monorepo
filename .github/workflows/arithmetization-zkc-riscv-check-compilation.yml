@@ -15,6 +15,9 @@ on:
       #- 'arithmetization/**'
       #- '.github/actions/setup-arithmetization-riscv/**'
       #- '.github/workflows/arithmetization-*.yml'
+  push:
+    branches:
+      - arithmetization/starts-riscV-implementation
   workflow_call:
   workflow_dispatch:
 
