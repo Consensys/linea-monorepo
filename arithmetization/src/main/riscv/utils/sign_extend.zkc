@@ -1,3 +1,5 @@
+include "constants.zkc"
+
 const SGNEXTMASK_U32:u64 = 0xFFFFFFFF_00000000
 
 // Upper 52 bits set; OR with zero-extended u21 when sign (bit 20) is 1.
@@ -14,11 +16,7 @@ const SGNEXTMASK_U8:u64 = 0xFFFFFFFF_FFFFFF00
 // Upper 48 bits set; OR with zero-extended u16 when sign (bit 15) is 1.
 const SGNEXTMASK_U16:u64 = 0xFFFFFFFF_FFFF0000
 
-// Flip MSB for unsigned comparison that matches signed order on two's-complement values.
-const SIGN_BIT_U64:u64 = 0x8000000000000000
-
 fn sgn_extension_u32_u64(value:u32) -> (ext_value:u64) {
-   // cast from u32 to u64
    ext_value = value as u64
 
    // if first bit of int is one, the first 32 bits are 1 as well
@@ -74,7 +72,7 @@ fn _ashr_u64(value: DoubleWord, shamt: u6) -> (out: DoubleWord) {
   if sign == 0 {
     out = logical
   } else {
-    var mask: DoubleWord = ~(0xFFFFFFFFFFFFFFFF >> shamt)
+    var mask: DoubleWord = ~(MAX_UINT_64 >> shamt)
     out = logical | mask
   }
 }
@@ -87,7 +85,7 @@ fn _ashr_u32(value: DoubleWord, shamt: u5) -> (out: u32) {
   if sign == 0 {
     out = logical
   } else {
-    var mask: u32 = ~(0xFFFFFFFF >> shamt)
+    var mask: u32 = ~(MAX_UINT_32 >> shamt)
     out = logical | mask
   }
 }
