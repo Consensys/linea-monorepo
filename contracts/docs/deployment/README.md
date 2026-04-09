@@ -168,10 +168,6 @@ Selected **operational Hardhat tasks** (under `scripts/operational/`) also suppo
 
 Multi-contract deployment sequences: [chained-deployments.md](chained-deployments.md)
 
-### OpenZeppelin upgrade caches (`deploy/V1/*Cache/`)
-
-`ZkEvmV2Cache/`, `L2MessageServiceV1Cache/`, and similar folders contain OpenZeppelin `validations.json` data for upgrade checks. **Do not hand-edit** them. If implementation or linked libraries (for example verifiers under `src/verifiers/`) change in a way that invalidates a cache, regenerate via the project’s Hardhat `@openzeppelin/hardhat-upgrades` flow when performing the next upgrade, or follow guidance from the contracts team.
-
 ### Optional deploy UI maintenance
 
 How to fully remove the browser-signing stack from the repo: [signer-ui-removal.md](signer-ui-removal.md)
