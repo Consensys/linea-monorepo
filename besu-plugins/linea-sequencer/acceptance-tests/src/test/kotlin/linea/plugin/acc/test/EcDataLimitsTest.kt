@@ -10,7 +10,6 @@ package linea.plugin.acc.test
 
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -31,16 +30,11 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       .build()
   }
 
-  override fun getCliqueOptions(): GenesisConfigurationFactory.CliqueOptions {
-    // adding 1 more second to the block period, in order to avoid flakiness on the CI
-    // due to EcParing sometime taking all the selection time before all pending txs
+  override fun getBlockPeriodSeconds(): Int =
+    // adding 2 more seconds to the block period, in order to avoid flakiness on the CI
+    // due to EcPairing sometimes taking all the selection time before all pending txs
     // have been evaluated
-    return GenesisConfigurationFactory.CliqueOptions(
-      BLOCK_PERIOD_SECONDS + 1,
-      GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
-      false,
-    )
-  }
+    BLOCK_PERIOD_SECONDS + 2
 
   /**
    * Tests the EcPairing limits, that are the number of times a certain circuit may be invoked in a
@@ -69,7 +63,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
     val fundTxHash = accountTransactions
       .createTransfer(accounts.secondaryBenefactor, ecPairingSender, 1, BigInteger.ZERO)
       .execute(minerNode.nodeRequests())
-      .toHexString()
+      .bytes.toHexString()
     // Verify that the transaction for transferring funds was successful
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
 
@@ -106,7 +100,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       )
       .execute(minerNode.nodeRequests())
     // Wait for the sentry to be mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
 
     // Assert that all the transactions involving the EcPairing precompile, but the last one, were
     // included in the same block
@@ -167,7 +161,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
     val fundTxHash = accountTransactions
       .createTransfer(accounts.secondaryBenefactor, ecAddSender, 1, BigInteger.ZERO)
       .execute(minerNode.nodeRequests())
-      .toHexString()
+      .bytes.toHexString()
     // Verify that the transaction for transferring funds was successful
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
 
@@ -199,7 +193,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       )
       .execute(minerNode.nodeRequests())
     // Wait for the sentry to be mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
 
     // Assert that all the transactions involving the EcPairing precompile, but the last one, were
     // included in the same block
@@ -255,7 +249,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
     val fundTxHash = accountTransactions
       .createTransfer(accounts.secondaryBenefactor, ecMulSender, 1, BigInteger.ZERO)
       .execute(minerNode.nodeRequests())
-      .toHexString()
+      .bytes.toHexString()
     // Verify that the transaction for transferring funds was successful
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
 
@@ -287,7 +281,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       )
       .execute(minerNode.nodeRequests())
     // Wait for the sentry to be mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
 
     // Assert that all the transactions involving the EcPairing precompile, but the last one, were
     // included in the same block
@@ -345,7 +339,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
     val fundTxHash = accountTransactions
       .createTransfer(accounts.secondaryBenefactor, ecRecoverSender, 1, BigInteger.ZERO)
       .execute(minerNode.nodeRequests())
-      .toHexString()
+      .bytes.toHexString()
     // Verify that the transaction for transferring funds was successful
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(fundTxHash))
     // send first tx (nonce=0) last one, so they will stay ready in the pool,
@@ -377,7 +371,7 @@ class EcDataLimitsTest : LineaPluginPoSTestBase() {
       )
       .execute(minerNode.nodeRequests())
     // Wait for the sentry to be mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
 
     // Assert that all the transactions involving the EcPairing precompile, but the last one, were
     // included in the same block

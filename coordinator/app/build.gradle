@@ -84,7 +84,9 @@ jar {
     attributes(
         'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
         'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
-        'Multi-Release': 'true'
+        'Multi-Release': 'true',
+        // Required for Java 25+: Netty uses restricted System::loadLibrary in unnamed modules
+        'Enable-Native-Access': 'ALL-UNNAMED'
         )
   }
 }
@@ -118,16 +120,14 @@ test {
   inputs.dir("$rootDir/config/coordinator/")
 }
 
-task integrationTestAllNeeded {
+tasks.register('integrationTestAllNeeded') {
   description = "Runs integration tests of all dependencies of coordinator:app"
   group = "verification"
 
-  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
-  def dependentProjects = projectDependencies.dependencyProject
-  dependentProjects.each { dependency ->
-    if (dependency.project.tasks.findByName("integrationTest")) {
-      def integrationTestTask = "${dependency.path}:integrationTest"
-      dependsOn integrationTestTask
+  configurations.implementation.getAllDependencies().withType(ProjectDependency).each { dep ->
+    def depProject = project(dep.path)
+    if (depProject.tasks.findByName("integrationTest")) {
+      dependsOn "${dep.path}:integrationTest"
     }
   }
 }

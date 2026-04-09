@@ -50,10 +50,10 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Node.js | >= 22.22.0 | See `.nvmrc` |
-| pnpm | >= 10.28.0 | Enforced via `preinstall` |
+| Node.js | >= 24.14.1 | See `.nvmrc` |
+| pnpm | >= 10.32.1 | Enforced via `preinstall` |
 | JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
-| Gradle | 8.5+ | JVM service builds |
+| Gradle | 9.4+ | use ./gradlew <task> |
 | Go | 1.24.6 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
@@ -108,7 +108,6 @@ pnpm -F bridge-ui run build
 | Postman | `pnpm -F @consensys/linea-postman run test` |
 | E2E (requires local stack) | `pnpm -F e2e run test:local` |
 | Bridge UI unit | `pnpm -F bridge-ui run test:unit` |
-| Bridge UI E2E | `pnpm -F bridge-ui run test:e2e:headless` |
 | Coordinator (Kotlin) | `./gradlew :coordinator:app:test` |
 | Prover (Go) | `cd prover && go test ./... -tags nocorset,fuzzlight -timeout 30m` |
 | Native libs | `pnpm -F @consensys/linea-native-libs run test` |
@@ -185,7 +184,6 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Contracts (Foundry) | Forge | `test/foundry/*` |
 | TypeScript packages | Jest 29.7.0 + ts-jest | `pnpm -F <pkg> run test` |
 | Bridge UI unit | Playwright | `pnpm -F bridge-ui run test:unit` |
-| Bridge UI E2E | Playwright + Synpress | `pnpm -F bridge-ui run test:e2e:headless` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |

@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import net.consensys.linea.bundles.BundleParameter;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
-import org.hyperledger.besu.crypto.SignatureAlgorithmType;
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -52,22 +52,19 @@ class LineaSendBundleTest {
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(21000)
-          .createTransaction(
-              SignatureAlgorithmType.DEFAULT_SIGNATURE_ALGORITHM_TYPE.get().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   private Transaction mockTX2 =
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(21000)
-          .createTransaction(
-              SignatureAlgorithmType.DEFAULT_SIGNATURE_ALGORITHM_TYPE.get().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   private Transaction mockTX3 =
       new TransactionTestFixture()
           .nonce(1)
           .gasLimit(MAX_GAS_LIMIT_PER_TX + 1)
-          .createTransaction(
-              SignatureAlgorithmType.DEFAULT_SIGNATURE_ALGORITHM_TYPE.get().generateKeyPair());
+          .createTransaction(SignatureAlgorithmFactory.getInstance().generateKeyPair());
 
   @BeforeEach
   void setup() {
@@ -112,7 +109,7 @@ class LineaSendBundleTest {
 
     // Validate response
     assertNotNull(response);
-    assertEquals(expectedTxBundleHash.toHexString(), response.bundleHash());
+    assertEquals(expectedTxBundleHash.getBytes().toHexString(), response.bundleHash());
   }
 
   @Test
@@ -142,7 +139,7 @@ class LineaSendBundleTest {
 
     // Validate response
     assertNotNull(response);
-    assertEquals(expectedUUIDBundleHash.toHexString(), response.bundleHash());
+    assertEquals(expectedUUIDBundleHash.getBytes().toHexString(), response.bundleHash());
 
     // Replace bundle:
     transactions = List.of(mockTX2.encoded().toHexString(), mockTX1.encoded().toHexString());
@@ -162,7 +159,7 @@ class LineaSendBundleTest {
 
     // Validate response
     assertNotNull(response);
-    assertEquals(expectedUUIDBundleHash.toHexString(), response.bundleHash());
+    assertEquals(expectedUUIDBundleHash.getBytes().toHexString(), response.bundleHash());
 
     // assert the new block number:
     assertTrue(
@@ -258,7 +255,8 @@ class LineaSendBundleTest {
     LineaSendBundle.BundleResponse response1 = lineaSendBundle.execute(request1);
 
     // first time we send the request it works
-    assertThat(response1.bundleHash()).isEqualTo(Hash.hash(mockTX1.encoded()).toHexString());
+    assertThat(response1.bundleHash())
+        .isEqualTo(Hash.hash(mockTX1.encoded()).getBytes().toHexString());
 
     BundleParameter bundleParams2 =
         new BundleParameter(

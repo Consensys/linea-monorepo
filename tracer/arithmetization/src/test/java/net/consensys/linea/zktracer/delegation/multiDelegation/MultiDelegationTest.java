@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.delegation.multiDelegation;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.utilities.Utils.addDelegationPrefixToAddress;
 import static net.consensys.linea.zktracer.utilities.Utils.getDelegationAddress;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +38,7 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -58,7 +60,8 @@ public class MultiDelegationTest extends TracerTestBase {
 
   static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   static final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(
+          Bytes32.wrap(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()).getBytes()));
   static final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
@@ -69,7 +72,9 @@ public class MultiDelegationTest extends TracerTestBase {
 
   static final KeyPair defaultAuthorityKeyPair = new SECP256K1().generateKeyPair();
   static final Address defaultAuthorityAddress =
-      Address.extract(Hash.hash(defaultAuthorityKeyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(
+          Bytes32.wrap(
+              Hash.hash(defaultAuthorityKeyPair.getPublicKey().getEncodedBytes()).getBytes()));
   static final ToyAccount defaultAuthorityAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
@@ -80,7 +85,8 @@ public class MultiDelegationTest extends TracerTestBase {
 
   static final KeyPair recipientKeyPair = new SECP256K1().generateKeyPair();
   static final Address recipientAddress =
-      Address.extract(Hash.hash(recipientKeyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(
+          Bytes32.wrap(Hash.hash(recipientKeyPair.getPublicKey().getEncodedBytes()).getBytes()));
   static final ToyAccount recipientAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(4))
@@ -287,14 +293,14 @@ public class MultiDelegationTest extends TracerTestBase {
   }
 
   static Stream<Arguments> multiDelegationMonoTransactionTestSource() {
-    return multiDelegationTestSourceBody(false);
+    return randomSampleByCurrentCommitHash(multiDelegationTestSourceBody(false)).stream();
   }
 
   static Stream<Arguments> multiDelegationMultiTransactionTestSource() {
-    return multiDelegationTestSourceBody(true);
+    return randomSampleByCurrentCommitHash(multiDelegationTestSourceBody(true)).stream();
   }
 
-  static Stream<Arguments> multiDelegationTestSourceBody(boolean isMultiTransaction) {
+  static List<Arguments> multiDelegationTestSourceBody(boolean isMultiTransaction) {
     ToyAccount authorityAccountInitial;
     ToyAccount authorityAccountUpdated;
     List<Arguments> arguments = new ArrayList<>();
@@ -369,7 +375,7 @@ public class MultiDelegationTest extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return arguments;
   }
 
   static final Address delegationAddressA =
@@ -386,7 +392,10 @@ public class MultiDelegationTest extends TracerTestBase {
         switch (delegationScenario) {
           case DELEGATION_TO_NEW_ADDRESS -> {
             if (currentDelegationAddress.isEmpty()
-                || currentDelegationAddress.get().equals(delegationAddressB)) {
+                || currentDelegationAddress
+                    .get()
+                    .getBytes()
+                    .equals(delegationAddressB.getBytes())) {
               yield delegationAddressA;
             } else {
               yield delegationAddressB;

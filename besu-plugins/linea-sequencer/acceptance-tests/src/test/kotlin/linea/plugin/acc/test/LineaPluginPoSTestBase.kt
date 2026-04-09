@@ -30,6 +30,7 @@ import org.hyperledger.besu.datatypes.TransactionType
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.EnginePayloadParameter
 import org.hyperledger.besu.ethereum.core.BlockHeader
+import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder
 import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Request
 import org.hyperledger.besu.ethereum.core.Transaction
@@ -40,7 +41,6 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.tests.acceptance.dsl.EngineAPIService
 import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
-import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory.CliqueOptions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.web3j.crypto.Blob
@@ -112,9 +112,8 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
   @BeforeEach
   override fun setup() {
     val rpcApis = setOf("LINEA", "MINER", "PLUGINS") + getAdditionalRpcApis()
-    minerNode = createCliqueNodeWithExtraCliOptionsAndRpcApis(
+    minerNode = createNodeWithExtraCliOptionsAndRpcApis(
       "miner1",
-      getCliqueOptions(),
       getTestCliOptions(),
       rpcApis,
       true,
@@ -140,23 +139,15 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
     }
   }
 
-  // Ideally GenesisConfigurationFactory.createCliqueGenesisConfig would support a custom genesis
-  // file path. We have resorted to inlining its logic here to allow a flexible genesis file path.
-  override fun provideGenesisConfig(
-    validators: Collection<RunnableNode>,
-    cliqueOptions: CliqueOptions,
-  ): String {
-    // Target state
-    val genesisTemplate = GenesisConfigurationFactory.readGenesisFile(getGenesisFileTemplatePath())
-    val hydratedGenesisTemplate = genesisTemplate
-      .replace("%blockperiodseconds%", cliqueOptions.blockPeriodSeconds().toString())
-      .replace("%epochlength%", cliqueOptions.epochLength().toString())
-      .replace("%createemptyblocks%", cliqueOptions.createEmptyBlocks().toString())
-
+  override fun provideGenesisConfig(validators: Collection<RunnableNode>): String {
+    val template = GenesisConfigurationFactory.readGenesisFile(getGenesisFileTemplatePath())
     val addresses = validators.map { it.address }
-    val extraDataString = CliqueExtraData.createGenesisExtraDataString(addresses)
-    val genesis = hydratedGenesisTemplate.replace("%extraData%", extraDataString)
-
+    val extraData = CliqueExtraData.createGenesisExtraDataString(addresses)
+    val genesis = template
+      .replace("%blockperiodseconds%", getBlockPeriodSeconds().toString())
+      .replace("%epochlength%", "30000")
+      .replace("%createemptyblocks%", "false")
+      .replace("%extraData%", extraData)
     return maybeCustomGenesisExtraData()
       .map { ed -> setGenesisCustomExtraData(genesis, ed) }
       .orElse(genesis)
@@ -551,31 +542,30 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
     )
     val maybeRequests = Optional.of(listOf(executionRequest))
 
-    return BlockHeader(
-      blockParam.parentHash,
-      Hash.EMPTY_LIST_HASH, // OMMERS_HASH_CONSTANT
-      blockParam.feeRecipient,
-      blockParam.stateRoot,
-      transactionsRoot,
-      blockParam.receiptsRoot,
-      blockParam.logsBloom,
-      Difficulty.ZERO,
-      blockParam.blockNumber,
-      blockParam.gasLimit,
-      blockParam.gasUsed,
-      blockParam.timestamp,
-      Bytes.fromHexString(blockParam.extraData),
-      blockParam.baseFeePerGas,
-      blockParam.prevRandao,
-      0, // Nonce
-      withdrawalsRoot,
-      blockParam.blobGasUsed,
-      BlobGas.fromHexString(blockParam.excessBlobGas),
-      Bytes32.fromHexString(blockParams[BlockParams.PARENT_BEACON_BLOCK_ROOT]!!),
-      maybeRequests.map { BodyValidation.requestsHash(it) }.orElse(null),
-      null, // BAL hash
-      MainnetBlockHeaderFunctions(),
-    )
+    return BlockHeaderBuilder.create()
+      .parentHash(blockParam.parentHash)
+      .ommersHash(Hash.EMPTY_LIST_HASH)
+      .coinbase(blockParam.feeRecipient)
+      .stateRoot(blockParam.stateRoot)
+      .transactionsRoot(transactionsRoot)
+      .receiptsRoot(blockParam.receiptsRoot)
+      .logsBloom(blockParam.logsBloom)
+      .difficulty(Difficulty.ZERO)
+      .number(blockParam.blockNumber)
+      .gasLimit(blockParam.gasLimit)
+      .gasUsed(blockParam.gasUsed)
+      .timestamp(blockParam.timestamp)
+      .extraData(Bytes.fromHexString(blockParam.extraData))
+      .baseFee(blockParam.baseFeePerGas)
+      .prevRandao(blockParam.prevRandao)
+      .nonce(0)
+      .withdrawalsRoot(withdrawalsRoot)
+      .blobGasUsed(blockParam.blobGasUsed)
+      .excessBlobGas(BlobGas.fromHexString(blockParam.excessBlobGas))
+      .parentBeaconBlockRoot(Bytes32.fromHexString(blockParams[BlockParams.PARENT_BEACON_BLOCK_ROOT]!!))
+      .requestsHash(maybeRequests.map { BodyValidation.requestsHash(it) }.orElse(null))
+      .blockHeaderFunctions(MainnetBlockHeaderFunctions())
+      .buildBlockHeader()
   }
 
   /**
@@ -588,7 +578,7 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
     executionPayload: ObjectNode,
     blockHeader: BlockHeader,
   ) {
-    executionPayload.put("blockHash", blockHeader.blockHash.toHexString())
+    executionPayload.put("blockHash", blockHeader.blockHash.bytes.toHexString())
   }
 
   /**

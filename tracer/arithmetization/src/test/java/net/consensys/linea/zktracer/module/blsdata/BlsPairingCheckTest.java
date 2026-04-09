@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.blsdata;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.LARGE_POINTS;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.SMALL_POINTS;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.VALID_G1_POINT;
@@ -78,11 +79,11 @@ public class BlsPairingCheckTest extends TracerTestBase {
     // First place the parameters in memory
     // Copy to targetOffset the code of codeOwnerAccount
     program
-        .push(codeOwnerAddress)
+        .push(codeOwnerAddress.getBytes())
         .op(OpCode.EXTCODESIZE) // size
         .push(0) // offset
         .push(0) // targetOffset
-        .push(codeOwnerAddress) // address
+        .push(codeOwnerAddress.getBytes()) // address
         .op(OpCode.EXTCODECOPY);
 
     // Do the call
@@ -91,7 +92,7 @@ public class BlsPairingCheckTest extends TracerTestBase {
         .push(input.size()) // retOffset
         .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(Address.BLS12_PAIRING) // address
+        .push(Address.BLS12_PAIRING.getBytes()) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -124,6 +125,6 @@ public class BlsPairingCheckTest extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

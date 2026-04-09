@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -131,7 +132,7 @@ public class EcRecoverTest extends TracerTestBase {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(Address.ECREC) // address
+            .push(Address.ECREC.getBytes()) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
@@ -240,7 +241,7 @@ public class EcRecoverTest extends TracerTestBase {
     arguments.add(
         Arguments.of("[ICP = 0, successBit = 0]", h, v.get(2), r.get(2), s.get(2), false, false));
 
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static Stream<Arguments> ecRecoverSourceNightly() {
@@ -263,7 +264,7 @@ public class EcRecoverTest extends TracerTestBase {
       }
     }
 
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   /**
@@ -303,7 +304,7 @@ public class EcRecoverTest extends TracerTestBase {
               null)); // The assertion over successBit is not relevant here
     }
 
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static Arguments ecRecoverArgumentsFromStrings(

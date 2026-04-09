@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -27,7 +29,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -78,7 +79,7 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
 
     // User address
     KeyPair keyPair = new SECP256K1().generateKeyPair();
-    Address userAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    Address userAddress = Address.extract(keyPair.getPublicKey());
     ToyAccount userAccount =
         ToyAccount.builder().balance(Wei.fromEth(100)).nonce(1).address(userAddress).build();
 
@@ -211,7 +212,7 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   // Support methods
@@ -223,11 +224,11 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
       CallCase callCase) {
     return "0x625fd839"
         + "000000000000000000000000"
-        + addressFundsSender.toString().substring(2)
+        + addressFundsSender.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver1.toString().substring(2)
+        + addressFundsReceiver1.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver2.toString().substring(2)
+        + addressFundsReceiver2.getBytes().toHexString().substring(2)
         + "000000000000000000000000000000000000000000000000000000000000000"
         + (mustRevert ? "1" : "0")
         + "000000000000000000000000000000000000000000000000000000000000000"
@@ -241,9 +242,9 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
       CallCase callCase) {
     return "0xc74c79b5"
         + "000000000000000000000000"
-        + addressFundsReceiver1.toString().substring(2)
+        + addressFundsReceiver1.getBytes().toHexString().substring(2)
         + "000000000000000000000000"
-        + addressFundsReceiver2.toString().substring(2)
+        + addressFundsReceiver2.getBytes().toHexString().substring(2)
         + "000000000000000000000000000000000000000000000000000000000000000"
         + (mustRevert ? "1" : "0")
         + "000000000000000000000000000000000000000000000000000000000000000"

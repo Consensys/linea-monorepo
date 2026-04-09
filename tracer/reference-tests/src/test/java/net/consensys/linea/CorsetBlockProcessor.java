@@ -35,6 +35,7 @@ import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
 import org.hyperledger.besu.ethereum.mainnet.*;
+import org.hyperledger.besu.ethereum.mainnet.block.access.list.BlockAccessList;
 import org.hyperledger.besu.ethereum.mainnet.systemcall.BlockProcessingContext;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldState;
@@ -75,7 +76,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final Blockchain blockchain,
       final MutableWorldState worldState,
       final Block block,
-      final PreprocessingFunction preprocessingBlockFunction) {
+      final Optional<BlockAccessList> blockAccessList) {
 
     var blockHeader = block.getHeader();
     var blockBody = block.getBody();
@@ -100,7 +101,14 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
     preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
-      if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
+      // Address when we support eip-8037 (likely never by this tracer)
+      final long cumulativeStateGasUsed = 0;
+      if (!hasAvailableBlockBudget(
+          blockHeader,
+          transaction,
+          currentGasUsed,
+          cumulativeStateGasUsed,
+          BlockGasAccountingStrategy.FRONTIER)) {
         return new BlockProcessingResult(Optional.empty(), "provided gas insufficient");
       }
 
@@ -140,8 +148,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
             MessageFormat.format(
                 "Block processing error: transaction invalid {0}. Block {1} Transaction {2}",
                 result.getValidationResult().getErrorMessage(),
-                blockHeader.getHash().toHexString(),
-                transaction.getHash().toHexString());
+                blockHeader.getHash().getBytes().toHexString(),
+                transaction.getHash().getBytes().toHexString());
         log.info(errorMessage);
         if (worldState instanceof BonsaiWorldState) {
           ((BonsaiWorldStateUpdateAccumulator) worldStateUpdater).reset();

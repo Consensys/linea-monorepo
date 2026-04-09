@@ -1,8 +1,4 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
-
-import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-
 import {
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
@@ -10,7 +6,11 @@ import {
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
 import { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "contracts/typechain-types";
+import { toBeHex } from "ethers";
+import { ethers } from "hardhat";
+
 import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./";
+import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 import {
   ADDRESS_ZERO,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
@@ -21,36 +21,10 @@ import {
   VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../../common/constants";
 import { deployUpgradableFromFactory, deployFromFactory } from "../../common/deployment";
-import { toBeHex } from "ethers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
   const verifier = await revertingVerifierFactory.deploy(scenario);
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierSepoliaFull(): Promise<string> {
-  const plonkVerifierSepoliaFull = await ethers.getContractFactory(
-    "src/verifiers/PlonkVerifierSepoliaFull.sol:PlonkVerifierSepoliaFull",
-  );
-  const verifier = await plonkVerifierSepoliaFull.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierMainnetFull(): Promise<string> {
-  const plonkVerifierMainnetFull = await ethers.getContractFactory(
-    "src/verifiers/PlonkVerifierMainnetFull.sol:PlonkVerifierMainnetFull",
-  );
-  const verifier = await plonkVerifierMainnetFull.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierDev(): Promise<string> {
-  const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev");
-  const verifier = await plonkVerifierDev.deploy();
   await verifier.waitForDeployment();
   return await verifier.getAddress();
 }
@@ -134,10 +108,10 @@ export async function deployLineaRollupFixture() {
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
   const mimc = (await deployFromFactory("Mimc")) as Mimc;
-  const plonkVerifierSepoliaFull = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation", {
+  const testPlonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation", {
     libraries: { Mimc: await mimc.getAddress() },
   });
-  const verifier = await plonkVerifierSepoliaFull.deploy([
+  const verifier = await testPlonkVerifierFactory.deploy([
     {
       value: toBeHex(59144, 32),
       name: "chainId",

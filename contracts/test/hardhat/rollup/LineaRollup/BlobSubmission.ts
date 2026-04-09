@@ -2,24 +2,15 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
+import { TestLineaRollup } from "contracts/typechain-types";
 import { BaseContract, Transaction } from "ethers";
 import { ethers } from "hardhat";
 
+import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
+import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
+import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
-import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
-import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
-
-import { TestLineaRollup } from "contracts/typechain-types";
-import {
-  deployLineaRollupFixture,
-  deployRevertingVerifier,
-  expectSuccessfulFinalize,
-  getAccountsFixture,
-  getWalletForIndex,
-  sendBlobTransaction,
-} from "../helpers";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -38,6 +29,14 @@ import {
   generateBlobParentShnarfData,
   expectEventDirectFromReceiptData,
 } from "../../common/helpers";
+import {
+  deployLineaRollupFixture,
+  deployRevertingVerifier,
+  expectSuccessfulFinalize,
+  getAccountsFixture,
+  getWalletForIndex,
+  sendBlobTransaction,
+} from "../helpers";
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
@@ -297,7 +296,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     // TODO: Make the failure shnarf dynamic and computed
     await expectRevertWithCustomError(lineaRollup, ethers.provider.broadcastTransaction(signedTx), "FinalShnarfWrong", [
       finalShnarf,
-      "0x22f8fb954df8328627fe9c48b60192f4d970a92891417aaadea39300ca244d36",
+      "0x4337f604948e810af24274096031ee2bbf4d6bc87919c72dd87ede2c091803e1",
     ]);
   });
 

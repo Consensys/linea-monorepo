@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.delegation;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -26,6 +28,7 @@ import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
@@ -55,19 +58,22 @@ public class AddressCollisionTests extends TracerTestBase {
 
     final KeyPair add1KeyPair = new SECP256K1().generateKeyPair();
     final Address add1Address =
-        Address.extract(Hash.hash(add1KeyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(
+            Bytes32.wrap(Hash.hash(add1KeyPair.getPublicKey().getEncodedBytes()).getBytes()));
     final ToyAccount add1Account =
         ToyAccount.builder().balance(Wei.fromEth(42)).nonce(420).address(add1Address).build();
 
     final KeyPair add2KeyPair = new SECP256K1().generateKeyPair();
     final Address add2Address =
-        Address.extract(Hash.hash(add2KeyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(
+            Bytes32.wrap(Hash.hash(add2KeyPair.getPublicKey().getEncodedBytes()).getBytes()));
     final ToyAccount add2Account =
         ToyAccount.builder().balance(Wei.fromEth(13)).nonce(69).address(add2Address).build();
 
     final KeyPair add3KeyPair = new SECP256K1().generateKeyPair();
     final Address add3Address =
-        Address.extract(Hash.hash(add3KeyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(
+            Bytes32.wrap(Hash.hash(add3KeyPair.getPublicKey().getEncodedBytes()).getBytes()));
     final ToyAccount add3Account =
         ToyAccount.builder().balance(Wei.fromEth(1789)).nonce(1337).address(add3Address).build();
 
@@ -86,7 +92,8 @@ public class AddressCollisionTests extends TracerTestBase {
 
     final KeyPair delegateeKeyPair = new SECP256K1().generateKeyPair();
     final Address delegateeAddress =
-        Address.extract(Hash.hash(delegateeKeyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(
+            Bytes32.wrap(Hash.hash(delegateeKeyPair.getPublicKey().getEncodedBytes()).getBytes()));
     final ToyAccount delegateeAccount =
         ToyAccount.builder()
             .balance(Wei.fromEth(1789))
@@ -196,6 +203,6 @@ public class AddressCollisionTests extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

@@ -16,7 +16,6 @@ import linea.plugin.acc.test.rpc.SendForcedRawTransactionRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.datatypes.Wei
-import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Hash.sha3
 import java.math.BigInteger
@@ -33,14 +32,6 @@ class ForcedTransactionTest : AbstractForcedTransactionTest() {
       .set("--plugin-linea-limitless-enabled=", "true")
       .set("--plugin-linea-deny-list-path=", getResourcePath("/defaultDenyList.txt"))
       .build()
-  }
-
-  override fun getCliqueOptions(): GenesisConfigurationFactory.CliqueOptions {
-    return GenesisConfigurationFactory.CliqueOptions(
-      BLOCK_PERIOD_SECONDS,
-      GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
-      false,
-    )
   }
 
   @Test
@@ -203,13 +194,13 @@ class ForcedTransactionTest : AbstractForcedTransactionTest() {
     assertThat(sendResponse.hasError()).isFalse()
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(forcedTxHash))
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(regularTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(regularTxHash.bytes.toHexString()))
 
     // Check the block numbers - forced tx should be in an earlier or same block
     val forcedReceipt = ethTransactions.getTransactionReceipt(forcedTxHash)
       .execute(minerNode.nodeRequests())
       .orElseThrow()
-    val regularReceipt = ethTransactions.getTransactionReceipt(regularTxHash.toHexString())
+    val regularReceipt = ethTransactions.getTransactionReceipt(regularTxHash.bytes.toHexString())
       .execute(minerNode.nodeRequests())
       .orElseThrow()
 
