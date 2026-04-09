@@ -3,7 +3,6 @@ package execution
 import (
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -27,12 +25,6 @@ type CircuitExecution struct {
 	// LimitlessMode is set to true if the outer proof is generated for the
 	// limitless prover mode.
 	LimitlessMode bool `gnark:"-"`
-	// PICheckOnly skips the wizard proof verification and the public-input
-	// hash commitment, running only the checkPublicInputs constraints. This
-	// allows checking PI consistency via gnark's test.IsSolved without any
-	// proving setup. Use [AllocatePICheck] / [AssignPICheck] to build the
-	// circuit and assignment, and [CheckPublicInputConsistency] to run it.
-	PICheckOnly bool `gnark:"-"`
 	// CongloVK is used when the [LimitlessMode] is on and is helps checking
 	// the validity of the inner-proofs verification-key public input.
 	// Each VK is an octuplet (8 koalabear field elements).
@@ -111,26 +103,23 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 
-	if !c.PICheckOnly {
-		c.WizardVerifier.Verify(api)
-	}
+	c.WizardVerifier.Verify(api)
 
+	extr := extractPIsFromWVC(api, &c.WizardVerifier)
 	checkPublicInputs(
 		api,
-		&c.WizardVerifier,
+		&extr,
 		c.FuncInputs,
 		c.ExecDataBytes,
 	)
 
-	if !c.PICheckOnly {
-		if c.LimitlessMode {
-			c.checkLimitlessConglomerationCompletion(api)
-		}
-
-		api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
-
-		c.FuncInputs.RangeCheck(api)
+	if c.LimitlessMode {
+		c.checkLimitlessConglomerationCompletion(api)
 	}
+
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
+
+	c.FuncInputs.RangeCheck(api)
 
 	return nil
 }
@@ -203,60 +192,4 @@ func assign(
 		panic(err)
 	}
 	return res
-}
-
-// AllocatePICheck allocates a [CircuitExecution] in PICheckOnly mode. comp is
-// the compiled IOP that was used to generate the inner proof (i.e.
-// [zkevm.ZkEvm.InitialCompiledIOP] when recursion is not set up, or
-// [zkevm.ZkEvm.RecursionCompiledIOP] when it is). It must carry the
-// [publicInput.FunctionalInputExtractor] in its ExtraData.
-func AllocatePICheck(comp *wizard.CompiledIOP, maxL2L1Logs int) CircuitExecution {
-	wverifier := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), true)
-	return CircuitExecution{
-		PICheckOnly:    true,
-		WizardVerifier: *wverifier,
-		FuncInputs: FunctionalPublicInputSnark{
-			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, maxL2L1Logs),
-				},
-			},
-		},
-	}
-}
-
-// AssignPICheck returns an assignment for a PICheckOnly [CircuitExecution].
-// The arguments must be the same as those used during proving.
-func AssignPICheck(
-	limits *config.TracesLimits,
-	comp *wizard.CompiledIOP,
-	proof wizard.Proof,
-	funcInputs public_input.Execution,
-	execData []byte,
-) CircuitExecution {
-	a := assign(limits, comp, proof, funcInputs, execData)
-	a.PICheckOnly = true
-	return a
-}
-
-// CheckPublicInputConsistency verifies that the [checkPublicInputs] gnark
-// constraints are satisfied by the given inner wizard proof and functional
-// inputs. It uses gnark's test.IsSolved — no proving setup is required.
-//
-// comp must be the compiled IOP that was used to generate proof (i.e.
-// [zkevm.ZkEvm.InitialCompiledIOP] when recursion is not set up, or
-// [zkevm.ZkEvm.RecursionCompiledIOP] when it is).
-func CheckPublicInputConsistency(
-	limits *config.TracesLimits,
-	comp *wizard.CompiledIOP,
-	proof wizard.Proof,
-	funcInputs public_input.Execution,
-	execData []byte,
-) {
-	circuit := AllocatePICheck(comp, limits.BlockL2L1Logs())
-	assignment := AssignPICheck(limits, comp, proof, funcInputs, execData)
-	if err := test.IsSolved(&circuit, &assignment, fr.Modulus()); err != nil {
-		utils.Panic("public input consistency check failed: %v", err)
-	}
-	logrus.Infof("Public input consistency check passed")
 }
