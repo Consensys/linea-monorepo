@@ -19,7 +19,10 @@ debug:
 
 all: bin/$(INPUT) json exec
 
-all-debug: bin/test json debug
+all-debug: bin/$(INPUT) json debug
 
 clean:
-	rm -rf bin/$(INPUT) bin/$(INPUT).json
+	rm bin/$(INPUT) bin/$(INPUT).json
+
+clean-all:
+	rm -rf bin
