@@ -2,6 +2,8 @@ name: CodeQL
 
 on:
   workflow_call:
+  schedule:
+    - cron: '25 3 * * 1' # Every Monday at 03:25 UTC
 
 jobs:
   changes:
@@ -61,6 +63,12 @@ jobs:
       - name: Build matrix
         id: set-matrix
         run: |
+          # Scheduled runs analyze all languages to keep the baseline fresh
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            echo 'languages=["go","java-kotlin","javascript-typescript","actions","python"]' >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           languages=()
           if [ "${{ steps.changes.outputs.go }}" == "true" ]; then languages+=("\"go\""); fi
           if [ "${{ steps.changes.outputs.java-kotlin }}" == "true" ]; then languages+=("\"java-kotlin\""); fi
