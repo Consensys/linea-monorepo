@@ -104,17 +104,21 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
   }
 
   if funct3 == FUNCT3_MULH {
-    registers[rd] = (((v1_abs_as_u128 * v2_abs_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
+    var v1_times_v2_as_u128:u128 = v1_abs_as_u128 * v2_abs_as_u128
     if (v1_sign ^ v2_sign) == 1 {
-      registers[rd] = negative_of_double_word(registers[rd])
+      // compute the complement's two negative of the result
+      v1_times_v2_as_u128 = (~v1_times_v2_as_u128) + 1
     }
+    registers[rd] = ((v1_times_v2_as_u128 >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_MULHSU {
-    registers[rd] = (((v1_abs_as_u128 * v2_as_u128) >> 64) & MAX_UINT_64_AS_U128) as u64
+    var v1_times_v2_as_u128:u128 = v1_abs_as_u128 * v2_as_u128
     if v1_sign == 1 {
-      registers[rd] = negative_of_double_word(registers[rd])
+      // compute the complement's two negative of the result
+      v1_times_v2_as_u128 = (~v1_times_v2_as_u128) + 1
     }
+    registers[rd] = ((v1_times_v2_as_u128 >> 64) & MAX_UINT_64_AS_U128) as u64
   }
 
   if funct3 == FUNCT3_MULHU {
