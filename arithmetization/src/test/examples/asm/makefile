@@ -1,26 +1,39 @@
 # define the assembler to use
 AS = riscv64-unknown-elf-as
-# define the name of the test file (by default it is "test")
-INPUT ?= test
+
+# NOTE: add to .zshrc (or .bashrc) an alias with the path to the makefile, for example:
+# alias zkctest="make -C /Users/lorenzo/Desktop/linea-monorepo/arithmetization/src/test/examples/asm
+
+# replace with the path to your local copy of the linea monorepo
+REPO_DIR = /Users/lorenzo/Desktop/linea-monorepo
+
+ifndef TEST
+$(TEST variable is mandatory. Usage: make TEST=your_test)
+endif
+ASM ?= $(REPO_DIR)/arithmetization/src/test/examples/asm/src/$(TEST).s
+BIN ?= $(REPO_DIR)/arithmetization/src/test/examples/asm/bin/$(TEST)
+JSON ?= $(REPO_DIR)/arithmetization/src/test/examples/asm/bin/$(TEST).json
+GO_MAIN ?= $(REPO_DIR)/arithmetization/src/test/examples/main.go
+ZKC_MAIN ?= $(REPO_DIR)/arithmetization/src/main/riscv/main.zkc
 
 # default target (make)
 exec: compile zkc-exec
 
 debug: compile zkc-debug
 
-compile: src/$(INPUT).s
-	@mkdir -p bin
-	$(AS) -o bin/$(INPUT) $^
-	go run ../main.go bin/$(INPUT) > bin/$(INPUT).json
+compile: $(ASM)
+	@mkdir -p $(REPO_DIR)/arithmetization/src/test/examples/asm/bin
+	$(AS) -o $(BIN) $^
+	go run $(GO_MAIN) $(BIN) > $(JSON)
 
 zkc-exec:
-	zkc exec bin/$(INPUT).json ../../../main/riscv/main.zkc
+	zkc exec $(JSON) $(ZKC_MAIN)
 
 zkc-debug:
-	zkc debug bin/$(INPUT).json ../../../main/riscv/main.zkc
+	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	rm bin/$(INPUT) bin/$(INPUT).json
+	rm $(BIN) $(JSON)
 
 clean-all:
-	rm -rf bin
+	rm -rf $(REPO_DIR)/arithmetization/src/test/examples/asm/bin/
