@@ -1,3 +1,9 @@
+buildscript {
+  dependencies {
+    classpath(libs.jreleaser)
+  }
+}
+
 plugins {
   id 'net.consensys.zkevm.kotlin-library-minimal-conventions'
 }
