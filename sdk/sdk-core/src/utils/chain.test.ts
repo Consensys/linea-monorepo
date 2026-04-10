@@ -32,7 +32,7 @@ describe("chain", () => {
   });
 
   describe("isSepolia", () => {
-    it("should return true for Sepolia chain ID (11155111)", () => {
+    it("should return true for Ethereum Sepolia chain ID (11155111)", () => {
       expect(isSepolia(11155111)).toBe(true);
     });
 
