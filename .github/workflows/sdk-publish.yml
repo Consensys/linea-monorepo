@@ -117,14 +117,27 @@ jobs:
           git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG"
 
-      - name: Create GitHub Release
+      - name: Extract release notes
         if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+        id: release_notes
         run: |
           VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
-          TAG="@consensys/linea-sdk-core@${VERSION}"
-          gh release create "$TAG" --title "$TAG" --generate-notes
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          CHANGELOG="sdk/sdk-core/CHANGELOG.md"
+          if [[ -f "$CHANGELOG" ]]; then
+            awk '/^## /{if(found)exit; found=1} found' "$CHANGELOG" > release-notes.md
+          else
+            echo "Release @consensys/linea-sdk-core@${VERSION}" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          tag_name: sdk-core-v${{ steps.release_notes.outputs.version }}
+          name: "@consensys/linea-sdk-core@${{ steps.release_notes.outputs.version }}"
+          body_path: release-notes.md
+          target_commitish: ${{ inputs.release_commit_sha }}
 
   publish-sdk-viem:
     needs: guard
@@ -194,14 +207,27 @@ jobs:
           git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG"
 
-      - name: Create GitHub Release
+      - name: Extract release notes
         if: ${{ !inputs.dry_run }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+        id: release_notes
         run: |
           VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
-          TAG="@consensys/linea-sdk-viem@${VERSION}"
-          gh release create "$TAG" --title "$TAG" --generate-notes
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          CHANGELOG="sdk/sdk-viem/CHANGELOG.md"
+          if [[ -f "$CHANGELOG" ]]; then
+            awk '/^## /{if(found)exit; found=1} found' "$CHANGELOG" > release-notes.md
+          else
+            echo "Release @consensys/linea-sdk-viem@${VERSION}" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          tag_name: sdk-viem-v${{ steps.release_notes.outputs.version }}
+          name: "@consensys/linea-sdk-viem@${{ steps.release_notes.outputs.version }}"
+          body_path: release-notes.md
+          target_commitish: ${{ inputs.release_commit_sha }}
 
   notify:
     needs: [publish-sdk-core, publish-sdk-viem]
