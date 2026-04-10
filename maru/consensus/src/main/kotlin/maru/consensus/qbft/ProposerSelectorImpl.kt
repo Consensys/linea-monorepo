@@ -41,6 +41,6 @@ object ProposerSelectorImpl : ProposerSelector {
         /* validatorsForRound = */ validatorsForRound,
         /* changeEachBlock = */ true,
       )
-    return SafeFuture.completedFuture(Validator(proposer.toArray()))
+    return SafeFuture.completedFuture(Validator(proposer.bytes.toArray()))
   }
 }

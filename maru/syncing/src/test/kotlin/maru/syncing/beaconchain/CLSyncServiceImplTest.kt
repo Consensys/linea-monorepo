@@ -127,7 +127,7 @@ class CLSyncServiceImplTest {
     signatureAlgorithm = SecpCrypto.signatureAlgorithm
     keypair = signatureAlgorithm.generateKeyPair()
     validators =
-      sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))
+      sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).bytes.toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)

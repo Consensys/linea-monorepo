@@ -44,7 +44,7 @@ class EagerQbftBlockCreator(
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
-  ): QbftBlock {
+  ): QbftBlockCreator.BlockCreationResult {
     val beaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val parentBeaconBlock =
       beaconChain

@@ -113,7 +113,7 @@ class QbftValidatorFactory(
     val stateTransition = StateTransitionImpl(validatorProvider)
     val proposerSelector = ProposerSelectorImpl
     val besuValidatorProvider = QbftValidatorProviderAdapter(validatorProvider)
-    val localValidator = Validator(localAddress.toArray())
+    val localValidator = Validator(localAddress.bytes.toArray())
     val prevRandaoProvider =
       PrevRandaoProviderImpl(
         signer = Signing.ULongSigner(nodeKey),
@@ -263,7 +263,7 @@ class QbftValidatorFactory(
       Executors.newSingleThreadExecutor(
         Thread
           .ofPlatform()
-          .name("qbft-event-loop-${localAddress.toHexString().takeLast(8)}")
+          .name("qbft-event-loop-${localAddress.bytes.toHexString().takeLast(8)}")
           .daemon(true)
           .factory(),
       )

@@ -22,6 +22,7 @@ import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes.EMPTY
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -171,7 +172,7 @@ class QbftMessageProcessorTest {
     val qbftBlock = QbftBlockAdapter(beaconBlock)
 
     val proposalPayload = ProposalPayload(roundIdentifier, qbftBlock, QbftBlockCodecAdapter)
-    val signature = nodeKey.sign(proposalPayload.hashForSignature())
+    val signature = nodeKey.sign(Bytes32.wrap(proposalPayload.hashForSignature().bytes))
     val signedPayload = SignedData.create(proposalPayload, signature)
     val proposal = Proposal(signedPayload, emptyList(), emptyList())
     val messageData = ProposalMessageData.create(proposal)

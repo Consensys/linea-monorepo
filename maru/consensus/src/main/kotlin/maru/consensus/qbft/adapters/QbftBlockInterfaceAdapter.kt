@@ -44,7 +44,7 @@ class QbftBlockInterfaceAdapter(
     val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
-        proposer = Validator(proposer.toArrayUnsafe()),
+        proposer = Validator(proposer.bytes.toArrayUnsafe()),
         round = roundNumber.toUInt(),
       )
     return processBlockWithUpdatedHeader(proposalBlock, replacedBeaconBlockHeader)

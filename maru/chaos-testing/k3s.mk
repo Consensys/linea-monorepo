@@ -25,7 +25,7 @@ k3s-setup-kubeconfig:
 
 k3s-wait:
 	@echo "Waiting for k3s API server to be ready..."
-	@until kubectl --kubeconfig ~/.kube/k3s-server get nodes >/dev/null 2>&1; do \
+	@until kubectl --kubeconfig ~/.kube/k3s-server get nodes --no-headers 2>/dev/null | grep -q .; do \
 		sleep 2; \
 	done
 	@echo "Waiting for k3s node to be Ready..."

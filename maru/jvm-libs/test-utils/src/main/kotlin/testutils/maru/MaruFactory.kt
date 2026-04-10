@@ -224,6 +224,7 @@ class MaruFactory(
     observabilityOptions: ObservabilityConfig =
       ObservabilityConfig(port = 0u, prometheusMetricsEnabled = true, jvmMetricsEnabled = true),
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    l1EthApiEndpoint: String? = null,
     apiConfig: ApiConfig = ApiConfig(port = 0u),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
     allowEmptyBlocks: Boolean = false,
@@ -231,12 +232,25 @@ class MaruFactory(
   ): MaruConfig {
     val lineaConfig =
       overridingLineaContractClient?.let {
-        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl!!).toURL())
+        requireNotNull(ethereumJsonRpcUrl) {
+          "ethereumJsonRpcUrl must not be null when overridingLineaContractClient is provided"
+        }
+        val l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL())
         LineaConfig(
           contractAddress = overridingLineaContractClient.getAddress().decodeHex(),
           l1EthApiEndpoint = l2EthApiEndpoint, // Just a stub. Isn't actually used with the override
           l1PollingInterval = 100.milliseconds,
           l2EthApiEndpoint = l2EthApiEndpoint,
+        )
+      } ?: l1EthApiEndpoint?.let {
+        requireNotNull(ethereumJsonRpcUrl) {
+          "ethereumJsonRpcUrl must not be null when l1EthApiEndpoint is provided"
+        }
+        LineaConfig(
+          contractAddress = ByteArray(20), // dummy address — fake L1 ignores it
+          l1EthApiEndpoint = ApiEndpointConfig(URI.create(it).toURL()),
+          l1PollingInterval = 100.milliseconds,
+          l2EthApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
         )
       }
 
@@ -465,6 +479,7 @@ class MaruFactory(
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    l1EthApiEndpoint: String? = null,
     p2pPort: UInt = 0u,
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultValidatorSyncingConfig,
@@ -501,6 +516,7 @@ class MaruFactory(
         followers = FollowersConfig(emptyMap()),
         qbftOptions = validatorQbftOptions,
         overridingLineaContractClient = overridingLineaContractClient,
+        l1EthApiEndpoint = l1EthApiEndpoint,
         allowEmptyBlocks = allowEmptyBlocks,
         syncingConfig = syncingConfig,
         apiConfig = ApiConfig(port = apiPort),
@@ -659,6 +675,7 @@ class MaruFactory(
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
+    l1EthApiEndpoint: String? = null,
     allowEmptyBlocks: Boolean = false,
     syncingConfig: SyncingConfig = defaultSyncingConfig,
     enablePayloadValidation: Boolean = true,
@@ -675,6 +692,7 @@ class MaruFactory(
         p2pConfig = p2pConfig,
         followers = followers,
         overridingLineaContractClient = overridingLineaContractClient,
+        l1EthApiEndpoint = l1EthApiEndpoint,
         syncingConfig = syncingConfig,
         enablePayloadValidation = enablePayloadValidation,
         apiConfig = ApiConfig(port = apiPort),

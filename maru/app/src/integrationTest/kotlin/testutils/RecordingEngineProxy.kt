@@ -23,6 +23,10 @@ data class EngineApiCall(
 class RecordingEngineProxy(
   private val targetUrl: String,
 ) {
+  companion object {
+    private val METHOD_REGEX = Regex("\"method\"\\s*:\\s*\"([^\"]+)\"")
+  }
+
   val calls: MutableList<EngineApiCall> = CopyOnWriteArrayList()
   private val httpClient = OkHttpClient()
   private val javalin =
@@ -33,7 +37,7 @@ class RecordingEngineProxy(
         val body = ctx.bodyAsBytes()
         val bodyStr = ctx.body()
 
-        val method = Regex("\"method\"\\s*:\\s*\"([^\"]+)\"").find(bodyStr)?.groupValues?.get(1) ?: "unknown"
+        val method = METHOD_REGEX.find(bodyStr)?.groupValues?.get(1) ?: "unknown"
         if (method.startsWith("engine_")) {
           calls.add(EngineApiCall(method, System.currentTimeMillis()))
         }

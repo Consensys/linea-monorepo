@@ -48,7 +48,7 @@ class SCEP256SealVerifier(
         ),
       )
     } else {
-      Ok(Validator(Util.publicKeyToAddress(publicKey.get()).toArray()))
+      Ok(Validator(Util.publicKeyToAddress(publicKey.get()).bytes.toArray()))
     }
   }
 }

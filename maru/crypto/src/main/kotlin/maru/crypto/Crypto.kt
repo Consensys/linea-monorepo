@@ -55,7 +55,7 @@ object SecpCrypto : Crypto {
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
 
-    return Util.publicKeyToAddress(keyPair.publicKey).toArray()
+    return Util.publicKeyToAddress(keyPair.publicKey).bytes.toArray()
   }
 
   override fun signatureToAddress(
@@ -63,7 +63,7 @@ object SecpCrypto : Crypto {
     hash: ByteArray,
   ): ByteArray {
     val secpSignature = signatureAlgorithm.decodeSignature(Bytes.wrap(signature.signature))
-    return Util.signatureToAddress(secpSignature, Hash.wrap(Bytes32.wrap(hash))).toArray()
+    return Util.signatureToAddress(secpSignature, Hash.wrap(Bytes32.wrap(hash))).bytes.toArray()
   }
 
   override fun privateKeyBytesWithoutPrefix(privateKey: ByteArray) = privateKey.takeLast(32).toByteArray()
