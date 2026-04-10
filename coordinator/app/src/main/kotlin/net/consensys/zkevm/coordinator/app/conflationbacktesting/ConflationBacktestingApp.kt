@@ -7,6 +7,7 @@ import linea.LongRunningService
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
+import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
 import linea.encoding.BlockRLPEncoder
@@ -19,6 +20,7 @@ import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderSync
+import net.consensys.zkevm.coordinator.blockcreation.TargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
@@ -347,6 +349,11 @@ class ConflationBacktestingApp(
       lastL2BlockNumberToProcessInclusive = conflationBacktestingAppConfig.endBlockNumber + 1uL,
     ),
     log = log,
+    targetCheckpointPauseController = object : TargetCheckpointPauseController {
+      override fun shouldPauseConflation(): Boolean = false
+      override fun importBlock(block: Block) = Unit
+      override fun signalResumeFromApi(): Boolean = false
+    },
   )
 
   override fun start(): SafeFuture<Unit> {
