@@ -1,70 +1,36 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import linea.blob.BlobCompressor
 import linea.blob.BlobCompressorVersion
-import linea.blob.GoNativeBlobCompressor
-import linea.blob.GoNativeBlobCompressorFactory
-import linea.kotlin.encodeHex
+import linea.blob.GoBackedBlobCompressor
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Timer
 import org.apache.logging.log4j.LogManager
 import kotlin.random.Random
 
-class BlobCompressionException(message: String) : RuntimeException(message)
-
-interface BlobCompressor {
-  /**
-   * @Throws(BlobCompressionException::class) when blockRLPEncoded is invalid
-   */
-  fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean
-
-  /**
-   * @Throws(BlobCompressionException::class) when blockRLPEncoded is invalid
-   */
-  fun appendBlock(blockRLPEncoded: ByteArray): AppendResult
-
-  fun startNewBatch()
-
-  fun getCompressedData(): ByteArray
-
-  fun reset()
-
-  data class AppendResult(
-    // returns false if last chunk would go over dataLimit. Does  not append last block.
-    val blockAppended: Boolean,
-    val compressedSizeBefore: Int,
-    // even when block is not appended, compressedSizeAfter should as if it was appended
-    val compressedSizeAfter: Int,
-  )
-}
-
-class GoBackedBlobCompressor private constructor(
-  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
+class GoBackedBlobCompressorAdapter private constructor(
+  internal val goBackedBlobCompressor: BlobCompressor,
   private val dataLimit: UInt,
   private val metricsFacade: MetricsFacade,
 ) : BlobCompressor {
   companion object {
     @Volatile
-    private var instance: GoBackedBlobCompressor? = null
+    private var instance: GoBackedBlobCompressorAdapter? = null
 
     fun getInstance(
       compressorVersion: BlobCompressorVersion,
       dataLimit: UInt,
       metricsFacade: MetricsFacade,
-    ): GoBackedBlobCompressor {
+    ): GoBackedBlobCompressorAdapter {
       if (instance == null) {
         synchronized(this) {
           if (instance == null) {
-            val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
-            val initialized =
-              goNativeBlobCompressor.Init(
-                dataLimit.toInt(),
-                GoNativeBlobCompressorFactory.dictionaryPath.toString(),
-              )
-            if (!initialized) {
-              throw InstantiationException(goNativeBlobCompressor.Error())
-            }
-            instance = GoBackedBlobCompressor(goNativeBlobCompressor, dataLimit, metricsFacade)
+            val goBackedBlobCompressor = GoBackedBlobCompressor.getInstance(
+              compressorVersion = compressorVersion,
+              dataLimit = dataLimit.toInt(),
+            )
+            instance = GoBackedBlobCompressorAdapter(goBackedBlobCompressor, dataLimit, metricsFacade)
           } else {
             throw IllegalStateException("Compressor singleton instance already created")
           }
@@ -103,21 +69,23 @@ class GoBackedBlobCompressor private constructor(
       isRatio = true,
     )
 
-  private val log = LogManager.getLogger(GoBackedBlobCompressor::class.java)
+  private val log = LogManager.getLogger(GoBackedBlobCompressorAdapter::class.java)
+
+  override val version: BlobCompressorVersion = goBackedBlobCompressor.version
 
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
     return canAppendBlockTimer.captureTime {
-      goNativeBlobCompressor.CanWrite(blockRLPEncoded, blockRLPEncoded.size)
+      goBackedBlobCompressor.canAppendBlock(blockRLPEncoded)
     }
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {
-    val compressionSizeBefore = goNativeBlobCompressor.Len()
-    val appended =
+    val appendResult =
       appendBlockTimer.captureTime {
-        goNativeBlobCompressor.Write(blockRLPEncoded, blockRLPEncoded.size)
+        goBackedBlobCompressor.appendBlock(blockRLPEncoded)
       }
-    val compressedSizeAfter = goNativeBlobCompressor.Len()
+    val compressionSizeBefore = appendResult.compressedSizeBefore
+    val compressedSizeAfter = appendResult.compressedSizeAfter
     val compressionRatio =
       (1.0 - (compressedSizeAfter - compressionSizeBefore).toDouble() / blockRLPEncoded.size)
         .also { compressionRatioHistogram.record(it) }
@@ -129,27 +97,26 @@ class GoBackedBlobCompressor private constructor(
       compressedSizeAfter,
       compressionRatio,
     )
-    val error = goNativeBlobCompressor.Error()
-    if (error != null) {
-      log.error("Failure while writing the following RLP encoded block: {}", blockRLPEncoded.encodeHex())
-      throw BlobCompressionException(error)
-    }
-    return BlobCompressor.AppendResult(appended, compressionSizeBefore, compressedSizeAfter)
+
+    return appendResult
   }
 
   override fun startNewBatch() {
-    goNativeBlobCompressor.StartNewBatch()
+    goBackedBlobCompressor.startNewBatch()
   }
 
   override fun getCompressedData(): ByteArray {
-    val compressedData = ByteArray(goNativeBlobCompressor.Len())
-    goNativeBlobCompressor.Bytes(compressedData)
-    utilizationRatioHistogram.record(goNativeBlobCompressor.Len().toDouble() / dataLimit.toInt())
+    val compressedData = goBackedBlobCompressor.getCompressedData()
+    utilizationRatioHistogram.record(compressedData.size.toDouble() / dataLimit.toInt())
     return compressedData
   }
 
   override fun reset() {
-    goNativeBlobCompressor.Reset()
+    goBackedBlobCompressor.reset()
+  }
+
+  override fun compressedSize(data: ByteArray): Int {
+    return goBackedBlobCompressor.compressedSize(data)
   }
 }
 
@@ -161,6 +128,8 @@ class FakeBlobCompressor(
   private val fakeCompressionRatio: Double = 1.0,
 ) : BlobCompressor {
   val log = LogManager.getLogger(FakeBlobCompressor::class.java)
+
+  override val version: BlobCompressorVersion = BlobCompressorVersion.V2
 
   init {
     require(dataLimit > 0) { "dataLimit must be greater than 0" }
@@ -204,5 +173,9 @@ class FakeBlobCompressor(
   override fun reset() {
     log.trace("resetting to empty state")
     compressedData = byteArrayOf()
+  }
+
+  override fun compressedSize(data: ByteArray): Int {
+    return (data.size * fakeCompressionRatio).toInt()
   }
 }
