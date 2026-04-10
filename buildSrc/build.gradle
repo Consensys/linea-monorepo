@@ -9,8 +9,18 @@ repositories {
 
 configurations.configureEach {
   resolutionStrategy.eachDependency { details ->
+    // buildSrc pulls web3j tooling that transitively brings bcprov 1.80; because buildSrc is loaded
+    // by a parent classloader, jreleaser can resolve BigIntegers from 1.80 and fail with
+    // NoSuchMethodError(writeUnsignedByteArray). Force all BouncyCastle modules to the catalog pin (1.83).
     if (details.requested.group == 'org.bouncycastle') {
       details.useVersion(libs.versions.bouncycastle.get())
+    }
+
+    // Keep JGit compatible with JReleaser 1.23.0 on the parent buildscript classloader:
+    // JGit 7.x drops TagCommand.setGpgSigner(...), which causes CI jreleaserRelease
+    // to fail with NoSuchMethodError when a parent classloader resolves JGit first.
+    if (details.requested.group == 'org.eclipse.jgit') {
+      details.useVersion('5.13.5.202508271544-r')
     }
   }
 }
