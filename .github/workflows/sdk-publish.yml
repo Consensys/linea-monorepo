@@ -10,7 +10,6 @@ on:
         options:
           - sdk-core
           - sdk-viem
-          - both
       release_commit_sha:
         description: "Commit SHA from the merged release PR (must be on main)"
         required: true
@@ -22,6 +21,7 @@ on:
         default: false
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -60,7 +60,7 @@ jobs:
 
   publish-sdk-core:
     needs: guard
-    if: inputs.package == 'sdk-core' || inputs.package == 'both'
+    if: inputs.package == 'sdk-core'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Checkout release commit
@@ -117,13 +117,18 @@ jobs:
           git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG"
 
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          TAG="@consensys/linea-sdk-core@${VERSION}"
+          gh release create "$TAG" --title "$TAG" --generate-notes
+
   publish-sdk-viem:
-    needs: [guard, publish-sdk-core]
-    if: |
-      always() &&
-      needs.guard.result == 'success' &&
-      (inputs.package == 'sdk-viem' || inputs.package == 'both') &&
-      (needs.publish-sdk-core.result == 'success' || needs.publish-sdk-core.result == 'skipped')
+    needs: guard
+    if: inputs.package == 'sdk-viem'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Checkout release commit
@@ -141,7 +146,7 @@ jobs:
           CORE_VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
           echo "Resolved @consensys/linea-sdk-core dependency version: $CORE_VERSION"
           if ! npm view "@consensys/linea-sdk-core@${CORE_VERSION}" version 2>/dev/null; then
-            echo "::error::@consensys/linea-sdk-core@${CORE_VERSION} is not published on npm. Publish sdk-core first or select 'both'."
+            echo "::error::@consensys/linea-sdk-core@${CORE_VERSION} is not published on npm. Run this workflow for sdk-core first."
             exit 1
           fi
       
@@ -188,6 +193,15 @@ jobs:
 
           git tag "$TAG" "$RELEASE_SHA"
           git push origin "$TAG"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
+          TAG="@consensys/linea-sdk-viem@${VERSION}"
+          gh release create "$TAG" --title "$TAG" --generate-notes
 
   notify:
     needs: [publish-sdk-core, publish-sdk-viem]
