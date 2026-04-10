@@ -166,7 +166,7 @@ function lintJSFile(filePath) {
       stdio: "inherit",
     });
 
-    execFileSync("pnpm", ["exec", "eslint", "--fix", "--no-ignore", filePath], {
+    execFileSync("npx", ["eslint", "--fix", "--no-ignore", filePath], {
       stdio: "inherit",
     });
   } catch (error) {
