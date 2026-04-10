@@ -16,6 +16,7 @@ import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
 import maru.crypto.SecpCrypto
 import org.apache.tuweni.bytes.Bytes
+import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.payload.SignedData
@@ -53,7 +54,7 @@ class MinimalQbftMessageDecoderTest {
   @Test
   fun `should decode Prepare message`() {
     val preparePayload = PreparePayload(roundIdentifier, blockHash)
-    val signature = nodeKey.sign(preparePayload.hashForSignature())
+    val signature = nodeKey.sign(Bytes32.wrap(preparePayload.hashForSignature().bytes))
     val signedPayload = SignedData.create(preparePayload, signature)
     val prepare = Prepare(signedPayload)
     val messageData = PrepareMessageData.create(prepare)
@@ -69,9 +70,9 @@ class MinimalQbftMessageDecoderTest {
 
   @Test
   fun `should decode Commit message`() {
-    val commitSeal = nodeKey.sign(blockHash)
+    val commitSeal = nodeKey.sign(Bytes32.wrap(blockHash.bytes))
     val commitPayload = CommitPayload(roundIdentifier, blockHash, commitSeal)
-    val signature = nodeKey.sign(commitPayload.hashForSignature())
+    val signature = nodeKey.sign(Bytes32.wrap(commitPayload.hashForSignature().bytes))
     val signedPayload = SignedData.create(commitPayload, signature)
     val commit = Commit(signedPayload)
     val messageData = CommitMessageData.create(commit)
@@ -90,7 +91,7 @@ class MinimalQbftMessageDecoderTest {
     val beaconBlock = DataGenerators.randomBeaconBlock(sequenceNumber.toULong())
     val qbftBlock = QbftBlockAdapter(beaconBlock)
     val proposalPayload = ProposalPayload(roundIdentifier, qbftBlock, QbftBlockCodecAdapter)
-    val signature = nodeKey.sign(proposalPayload.hashForSignature())
+    val signature = nodeKey.sign(Bytes32.wrap(proposalPayload.hashForSignature().bytes))
     val signedPayload = SignedData.create(proposalPayload, signature)
     val proposal = Proposal(signedPayload, emptyList(), emptyList())
     val messageData = ProposalMessageData.create(proposal)
@@ -107,9 +108,9 @@ class MinimalQbftMessageDecoderTest {
   @Test
   fun `should decode RoundChange message`() {
     val roundChangePayload = RoundChangePayload(roundIdentifier, Optional.empty())
-    val signature = nodeKey.sign(roundChangePayload.hashForSignature())
+    val signature = nodeKey.sign(Bytes32.wrap(roundChangePayload.hashForSignature().bytes))
     val signedPayload = SignedData.create(roundChangePayload, signature)
-    val roundChange = RoundChange(signedPayload, Optional.empty(), QbftBlockCodecAdapter, emptyList())
+    val roundChange = RoundChange(signedPayload, Optional.empty(), Optional.empty(), QbftBlockCodecAdapter, emptyList())
     val messageData = RoundChangeMessageData.create(roundChange)
     val qbftMessage = mock<QbftMessage>()
     whenever(qbftMessage.data).thenReturn(messageData)

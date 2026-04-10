@@ -40,7 +40,9 @@ class QbftBlockValidatorAdapterTest {
         false,
         Optional.of(blockValidatorError.getError().toString()),
       )
-    assertThat(qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock))).isEqualTo(expectedResult)
+    assertThat(
+      qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock), Optional.empty()),
+    ).isEqualTo(expectedResult)
   }
 
   @Test
@@ -56,6 +58,8 @@ class QbftBlockValidatorAdapterTest {
         blockValidator = blockValidator,
       )
     val expectedResult = QbftBlockValidator.ValidationResult(true, Optional.empty())
-    assertThat(qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock))).isEqualTo(expectedResult)
+    assertThat(
+      qbftBlockValidatorAdapter.validateBlock(QbftBlockAdapter(newBlock), Optional.empty()),
+    ).isEqualTo(expectedResult)
   }
 }

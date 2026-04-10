@@ -21,9 +21,9 @@ object Hashing {
     return digest.digest(input)
   }
 
-  fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
+  fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).bytes.toArray()
 }
 
 object Keccak256Hasher : Hasher {
-  override fun hash(input: ByteArray): ByteArray = Hash.hash(Bytes.wrap(input)).toArray()
+  override fun hash(input: ByteArray): ByteArray = Hash.hash(Bytes.wrap(input)).bytes.toArray()
 }

@@ -52,6 +52,7 @@ dependencies {
   implementation("tech.pegasys.teku.internal:eth2")
   implementation ("tech.pegasys.discovery:discovery")
 
+  integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
   integrationTestImplementation 'org.jetbrains.kotlinx:kotlinx-datetime'
   integrationTestImplementation(project(":jvm-libs:test-utils"))
   integrationTestImplementation(testFixtures(project(":p2p")))

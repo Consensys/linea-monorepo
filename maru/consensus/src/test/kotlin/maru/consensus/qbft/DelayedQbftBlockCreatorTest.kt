@@ -68,14 +68,14 @@ class DelayedQbftBlockCreatorTest {
         round = 0,
       )
     val createdBlock = blockCreator.createBlock(1000L, parentHeader)
-    val createBeaconBlock = createdBlock.toBeaconBlock()
+    val createBeaconBlock = createdBlock.block().toBeaconBlock()
 
     // block header fields
     val blockHeader = createBeaconBlock.beaconBlockHeader
     assertThat(blockHeader.number).isEqualTo(11UL)
     assertThat(blockHeader.round).isEqualTo(0U)
     assertThat(blockHeader.timestamp).isEqualTo(1000UL)
-    assertThat(blockHeader.proposer).isEqualTo(Validator(Address.ZERO.toArray()))
+    assertThat(blockHeader.proposer).isEqualTo(Validator(Address.ZERO.bytes.toArray()))
 
     // block header roots
     val stateRoot =

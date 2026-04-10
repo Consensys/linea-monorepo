@@ -22,7 +22,7 @@ class SCEP256SealVerifierTest {
   private val signatureAlgorithm = SecpCrypto.signatureAlgorithm
   private val verifier = SCEP256SealVerifier()
   private val keypair = signatureAlgorithm.generateKeyPair()
-  private val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
+  private val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).bytes.toArray())
 
   @Test
   fun `test extract validator`() {

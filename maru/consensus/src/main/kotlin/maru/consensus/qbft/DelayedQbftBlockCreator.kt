@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft
 
+import java.util.Optional
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
@@ -102,7 +103,7 @@ class DelayedQbftBlockCreator(
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
-  ): QbftBlock {
+  ): QbftBlockCreator.BlockCreationResult {
     val parentBeaconBlockHeader = parentHeader.toBeaconBlockHeader()
     val executionPayload =
       try {
@@ -128,10 +129,10 @@ class DelayedQbftBlockCreator(
         executionPayload = executionPayload,
         round = round,
         timestamp = headerTimeStampSeconds.toULong(),
-        proposer = proposer.toArrayUnsafe(),
+        proposer = proposer.bytes.toArrayUnsafe(),
         validators = validators,
       )
-    return QbftBlockAdapter(beaconBlock)
+    return QbftBlockCreator.BlockCreationResult(QbftBlockAdapter(beaconBlock), Optional.empty())
   }
 
   override fun createSealedBlock(

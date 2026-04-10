@@ -17,14 +17,13 @@ dependencyManagement {
   dependencies {
     applyMavenExclusions = false
 
-    // Newer 2.18.2 fails because of Teku's transitive dependency
-    dependencySet(group: 'com.fasterxml.jackson.core', version: '2.17.2') {
+    dependencySet(group: 'com.fasterxml.jackson.core', version: '2.21.1') {
       entry 'jackson-databind'
       entry 'jackson-datatype'
       entry 'jackson-datatype-jdk8'
     }
 
-    dependency 'com.fasterxml.jackson.module:jackson-module-kotlin:2.17.3'
+    dependency 'com.fasterxml.jackson.module:jackson-module-kotlin:2.21.1'
 
 //    dependency 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
@@ -115,7 +114,7 @@ dependencyManagement {
       entry 'mockito-junit-jupiter'
     }
 
-    dependency "org.junit:junit-bom:5.11.3"
+    dependency "org.junit:junit-bom:5.13.4"
 
     dependency "org.mockito.kotlin:mockito-kotlin:5.4.0"
 
@@ -166,7 +165,7 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "25.11.0"
+    def besuVersion = "26.2.0"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"

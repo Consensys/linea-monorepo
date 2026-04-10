@@ -26,6 +26,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import testutils.FakeL1JsonRpcServer
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -40,13 +41,13 @@ class MaruLineaFinalizationTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
-  private lateinit var fakeLineaContract: FakeLineaRollupSmartContractClient
+  private lateinit var fakeL1: FakeL1JsonRpcServer
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
 
   @BeforeEach
   fun setUp() {
-    fakeLineaContract = FakeLineaRollupSmartContractClient()
+    fakeL1 = FakeL1JsonRpcServer().start()
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -68,7 +69,7 @@ class MaruLineaFinalizationTest {
         ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
         dataDir = validatorStack.tmpDir,
-        overridingLineaContractClient = fakeLineaContract,
+        l1EthApiEndpoint = fakeL1.url(),
       )
     validatorStack.setMaruApp(validatorMaruApp)
     validatorStack.maruApp.start().get()
@@ -81,7 +82,7 @@ class MaruLineaFinalizationTest {
         engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
-        overridingLineaContractClient = fakeLineaContract,
+        l1EthApiEndpoint = fakeL1.url(),
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start().get()
@@ -130,11 +131,12 @@ class MaruLineaFinalizationTest {
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()
+    fakeL1.stop()
   }
 
   @Test
   fun `should finalize current block right away when syncing and behind finalized on L1`() {
-    fakeLineaContract.setFinalizedBlock(4UL)
+    fakeL1.setFinalizedL2BlockNumber(4UL)
 
     repeat(3) {
       transactionsHelper.run {

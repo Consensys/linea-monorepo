@@ -16,13 +16,17 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
+import org.hyperledger.besu.ethereum.mainnet.block.access.list.BlockAccessList
 
 class QbftBlockValidatorAdapter(
   private val blockValidator: BlockValidator,
 ) : QbftBlockValidator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
-  override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
+  override fun validateBlock(
+    qbftBlock: QbftBlock,
+    blockAccessList: Optional<BlockAccessList>,
+  ): QbftBlockValidator.ValidationResult {
     log.trace("validating ${blockValidator.javaClass.canonicalName}")
     val beaconBlock = qbftBlock.toBeaconBlock()
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {

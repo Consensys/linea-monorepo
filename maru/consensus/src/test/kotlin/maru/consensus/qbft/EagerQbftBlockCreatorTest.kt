@@ -191,7 +191,7 @@ class EagerQbftBlockCreatorTest {
     // Try to create an new non-empty block instead of a non-empty proposal
     val acceptedBlockTimestamp = (clock.millis() / 1000)
     val acceptedBlock = eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
-    val acceptedBeaconBlock = acceptedBlock.toBeaconBlock()
+    val acceptedBeaconBlock = acceptedBlock.block().toBeaconBlock()
 
     // block header fields
     val createdBlockHeader = acceptedBeaconBlock.beaconBlockHeader
@@ -293,6 +293,7 @@ class EagerQbftBlockCreatorTest {
     val rejectedBlock = mainBlockCreator.createBlock(rejectedBlockTimestamp, parentHeader)
     val rejectedBlockTransactions =
       rejectedBlock
+        .block()
         .toBeaconBlock()
         .beaconBlockBody.executionPayload.transactions
     assertThat(

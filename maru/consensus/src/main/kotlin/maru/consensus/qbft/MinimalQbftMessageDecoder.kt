@@ -96,6 +96,6 @@ class MinimalQbftMessageDecoder(
     out.writeIntScalar(messageType)
     out.writeRaw(encodedPayload)
     out.endList()
-    return hash(out.encoded()).toArray()
+    return hash(out.encoded()).bytes.toArray()
   }
 }
