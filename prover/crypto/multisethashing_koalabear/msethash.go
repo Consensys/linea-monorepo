@@ -43,6 +43,10 @@ const (
 	ChunkSize    = 23
 	BlockSize    = 8
 	MSetHashSize = ChunkSize * BlockSize
+	// OverflowBoundBits tells the maximum number of inclusion that can be
+	// done in the multiset before we overflow. Equal to `log2(max_number)` in
+	// the above snippet.
+	OverflowBoundBits = 12
 )
 
 // MSetHash represents a multisets hash (LtHash) instantiated using the MiMC

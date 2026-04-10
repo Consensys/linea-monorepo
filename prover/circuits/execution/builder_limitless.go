@@ -98,6 +98,7 @@ func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.A
 	}
 
 	for module := 0; module < numModule; module++ {
+		_ = api.ToBinary(target[module], multisethashing.OverflowBoundBits)
 		api.AssertIsEqual(target[module], countGL[module])
 		api.AssertIsEqual(target[module], countLPP[module])
 	}
