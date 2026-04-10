@@ -25,7 +25,8 @@ jobs:
   build:
     # if: github.event.pull_request.draft == false && github.base_ref != 'main'
     # if: ${{ github.ref != 'refs/heads/main' }}
-    if: ${{ github.event.pull_request.draft == false }}
+    # Run on push/workflow_call/workflow_dispatch; on PRs, skip draft PRs.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Show metadata
@@ -75,7 +76,8 @@ jobs:
   replay-tests:
     # if: github.event.pull_request.draft == false && github.base_ref != 'main'
     # if: ${{ github.ref != 'refs/heads/main' }}
-    if: ${{ github.event.pull_request.draft == false }}
+    # Run on push/workflow_call/workflow_dispatch; on PRs, skip draft PRs.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
