@@ -330,7 +330,7 @@ importers:
         specifier: 6.16.0
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       forge-std:
-        specifier: github:foundry-rs/forge-std#v1.9.4
+        specifier: github:foundry-rs/forge-std#1eea5bae12ae557d589f9f0f0edae2faa47cb262
         version: https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262
       hardhat:
         specifier: 2.28.3
