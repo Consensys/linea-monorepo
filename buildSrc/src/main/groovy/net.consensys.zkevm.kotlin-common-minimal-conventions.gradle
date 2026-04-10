@@ -8,6 +8,9 @@ java {
   toolchain {
     languageVersion = JavaLanguageVersion.of(25)
   }
+  consistentResolution {
+    useCompileClasspathVersions()
+  }
 }
 
 kotlin {
@@ -65,4 +68,6 @@ dependencies {
 tasks.named('test') {
   // Use JUnit Platform for unit tests.
   useJUnitPlatform()
+  // Required for Java 25+: Netty uses restricted System::loadLibrary in unnamed modules
+  jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
