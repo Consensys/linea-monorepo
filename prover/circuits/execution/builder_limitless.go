@@ -97,11 +97,16 @@ func (c *CircuitExecution) checkLimitlessConglomerationCompletion(api frontend.A
 		vkMerkleRoot[i] = wvc.GetPublicInput(api, fmt.Sprintf("%s_%d", distributed.VerifyingKeyMerkleRootPublicInput, i))
 	}
 
+	segmentCount := frontend.Variable(0)
 	for module := 0; module < numModule; module++ {
-		_ = api.ToBinary(target[module], multisethashing.OverflowBoundBits)
+		segmentCount = api.Add(segmentCount, target[module], target[module])
 		api.AssertIsEqual(target[module], countGL[module])
 		api.AssertIsEqual(target[module], countLPP[module])
 	}
+
+	// This rangechecks that the total number of segments does not overflow the
+	// multiset hash limit.
+	_ = api.ToBinary(segmentCount, multisethashing.OverflowBoundBits)
 
 	for k := range generalMSet {
 		api.AssertIsEqual(generalMSet[k], 0)
