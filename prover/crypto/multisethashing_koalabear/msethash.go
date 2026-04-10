@@ -31,14 +31,6 @@ const (
 	//		--------------------
 	//		>>> lattice  :: rop: ≈2^127.7, red: ≈2^127.7, δ: 1.004382, β: 348, d: 950, tag: euclidean
 	// ````
-	//		// q = 2**(31*8)
-	//		// max_number = 2**12
-	// 		// m = 2**20
-	// 		// n = 23
-	//
-	// 		params = SISParameters(n=23, q=2**(31*8), length_bound=2**12, m=2**20, norm=2, tag='MSET')
-	// 		// SIS.estimate(params)
-	// 		>>>lattice:: rop: ≈2^127.7, red: ≈2^127.7, δ: 1.004382, β: 348, d: 950, tag: euclidean
 	//
 	ChunkSize    = 23
 	BlockSize    = 8
