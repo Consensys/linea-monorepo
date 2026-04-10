@@ -101,7 +101,7 @@ jobs:
           RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
           VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
-          TAG="sdk-core-v${VERSION}"
+          TAG="@consensys/linea-sdk-core@${VERSION}"
 
           REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
           if [[ -n "$REMOTE_SHA" ]]; then
@@ -130,14 +130,24 @@ jobs:
             echo "Release @consensys/linea-sdk-core@${VERSION}" > release-notes.md
           fi
 
+      - name: Package source archive
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION=${{ steps.release_notes.outputs.version }}
+          tar -czf "linea-sdk-core-${VERSION}.tar.gz" -C sdk/sdk-core .
+          cd sdk/sdk-core && zip -rq "../../linea-sdk-core-${VERSION}.zip" .
+
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          tag_name: sdk-core-v${{ steps.release_notes.outputs.version }}
+          tag_name: "@consensys/linea-sdk-core@${{ steps.release_notes.outputs.version }}"
           name: "@consensys/linea-sdk-core@${{ steps.release_notes.outputs.version }}"
           body_path: release-notes.md
           target_commitish: ${{ inputs.release_commit_sha }}
+          files: |
+            linea-sdk-core-${{ steps.release_notes.outputs.version }}.tar.gz
+            linea-sdk-core-${{ steps.release_notes.outputs.version }}.zip
 
   publish-sdk-viem:
     needs: guard
@@ -191,7 +201,7 @@ jobs:
           RELEASE_SHA: ${{ inputs.release_commit_sha }}
         run: |
           VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
-          TAG="sdk-viem-v${VERSION}"
+          TAG="@consensys/linea-sdk-viem@${VERSION}"
 
           REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
           if [[ -n "$REMOTE_SHA" ]]; then
@@ -220,14 +230,24 @@ jobs:
             echo "Release @consensys/linea-sdk-viem@${VERSION}" > release-notes.md
           fi
 
+      - name: Package source archive
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION=${{ steps.release_notes.outputs.version }}
+          tar -czf "linea-sdk-viem-${VERSION}.tar.gz" -C sdk/sdk-viem .
+          cd sdk/sdk-viem && zip -rq "../../linea-sdk-viem-${VERSION}.zip" .
+
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          tag_name: sdk-viem-v${{ steps.release_notes.outputs.version }}
+          tag_name: "@consensys/linea-sdk-viem@${{ steps.release_notes.outputs.version }}"
           name: "@consensys/linea-sdk-viem@${{ steps.release_notes.outputs.version }}"
           body_path: release-notes.md
           target_commitish: ${{ inputs.release_commit_sha }}
+          files: |
+            linea-sdk-viem-${{ steps.release_notes.outputs.version }}.tar.gz
+            linea-sdk-viem-${{ steps.release_notes.outputs.version }}.zip
 
   notify:
     needs: [publish-sdk-core, publish-sdk-viem]
