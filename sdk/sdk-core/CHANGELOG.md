@@ -2,14 +2,21 @@
 
 ## 1.0.0 (2026-04-10)
 
-- feat: add tests in sdk core (#2777) (77a3ddc7c)
-- fix: update sdk release worfklows (#2695) (3f58cea27)
-- feat(2651): add sdk npm publication flow (#2681) (19773a2d3)
-- chore(global): bump dependencies (#2640) (94f348003)
-- fix: apply import order eslint rules (#2154) (62a48470e)
-- feat: migrate eslint to v9 (#2068) (9772e9abd)
-- [Feat] Automation Service (#1589) (fa2168759)
-- Refactor - Standardize tsconfig.json 'excludes' based on TypeScript documentation (#1451) (8f0f2c80f)
-- Feat/1030 linea sdk viem (#1207) (a8d58d078)
+Initial release of `@consensys/linea-sdk-core`, the framework-agnostic foundation for Linea bridge SDKs.
 
+### Features
 
+- **Sparse Merkle Tree** -- `SparseMerkleTree` class with configurable depth and hash function; leaf management, root computation, and Merkle proof generation returning `MessageProof`
+- **Block extra data parsing** -- `parseBlockExtraData` to decode Linea block `extraData` into version and fee parameters
+- **Message status formatting** -- `formatMessageStatus` mapping on-chain numeric statuses to `OnChainMessageStatus` enum (`UNKNOWN`, `CLAIMABLE`, `CLAIMED`)
+- **Contract address resolution** -- `getContractsAddressesByChainId` returning canonical addresses (Linea Rollup, Message Service, Token Bridge) for Ethereum Mainnet, Sepolia, Linea Mainnet, and Linea Sepolia
+- **Chain identification** -- `isMainnet`, `isSepolia`, `isLineaMainnet`, `isLineaSepolia` predicates
+
+### Types
+
+Bridge client surface:
+
+- `L1PublicClient` / `L2PublicClient` -- read-only bridge operations (message lookup, status, proof retrieval, block extra data)
+- `L1WalletClient` / `L2WalletClient` -- write bridge operations (deposit, withdraw, claim)
+- `Message`, `ExtendedMessage`, `MessageProof`, `OnChainMessageStatus`
+- Framework-agnostic transaction types (logs, receipts, EIP-compliant request variants)
