@@ -15,13 +15,6 @@ configurations.configureEach {
     if (details.requested.group == 'org.bouncycastle') {
       details.useVersion(libs.versions.bouncycastle.get())
     }
-
-    // Keep JGit compatible with JReleaser 1.23.0 on the parent buildscript classloader:
-    // JGit 7.x drops TagCommand.setGpgSigner(...), which causes CI jreleaserRelease
-    // to fail with NoSuchMethodError when a parent classloader resolves JGit first.
-    if (details.requested.group == 'org.eclipse.jgit') {
-      details.useVersion('5.13.5.202508271544-r')
-    }
   }
 }
 
