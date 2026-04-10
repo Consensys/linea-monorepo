@@ -9,6 +9,33 @@ plugins {
   alias(libs.plugins.docker)
 }
 
+// Nested JVM lib projects (e.g. :jvm-libs:linea:blob-compressor) apply gradle/publishing.gradle and need
+// JReleaser on *their* buildscript classpath. A buildscript block only in jvm-libs/build.gradle affects
+// :jvm-libs alone, which caused NoSuchMethodError on Bouncy Castle BigIntegers during jreleaserRelease in CI.
+gradle.beforeProject { p ->
+  if (!(p.path == ':jvm-libs' || p.path.startsWith(':jvm-libs:'))) {
+    return
+  }
+  p.buildscript {
+    repositories {
+      mavenCentral()
+      gradlePluginPortal()
+    }
+    configurations.classpath {
+      resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.bouncycastle') {
+          details.useVersion(libs.versions.bouncycastle.get())
+        }
+      }
+    }
+    dependencies {
+      classpath("org.bouncycastle:bcprov-jdk18on:${libs.versions.bouncycastle.get()}")
+      classpath("org.bouncycastle:bcutil-jdk18on:${libs.versions.bouncycastle.get()}")
+      classpath(libs.jreleaser)
+    }
+  }
+}
+
 tasks.register("compileAll") {
   group = "build"
   description = "Compiles all Java and Kotlin sources, including tests, across all projects."
