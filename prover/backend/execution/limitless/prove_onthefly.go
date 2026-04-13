@@ -36,7 +36,6 @@ import (
 //	Step 3: Wait for both → SegmentRuntime → GL → LPP → Conglomeration → OuterProof
 func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Response, error) {
 
-
 	exit.SetIssueHandlingMode(exit.ExitOnUnsatisfiedConstraint | exit.ExitOnMissingTraceFile)
 
 	var (
@@ -114,7 +113,7 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 
 	// Thread B: bootstrapper prover (runs concurrently with compilation)
 
-	runtimeBoot := runBootstrapperInMemory(dw.Bootstrapper, zkevmObj, witness.ZkEVM, dw.Disc, preReadCh)
+	runtimeBoot := runBootstrapperInMemory(cfg, dw.Bootstrapper, zkevmObj, witness.ZkEVM, dw.Disc, preReadCh)
 
 	// Wait for compilation to finish (may already be done if bootstrapper was slower)
 	if compErr := <-compileCh; compErr != nil {
@@ -142,7 +141,6 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 	for i, w := range witnessGLs {
 		glModuleNames[i] = string(w.ModuleName)
 	}
-
 
 	// Release bootstrapper runtime and zkEVM (witnesses are deep-copied by SegmentRuntime)
 	zkevmObj = nil
@@ -195,7 +193,6 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 	var glGCMu sync.Mutex
 
 	for _, i := range glOrder {
-		i := i
 		glErrGroup.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -225,15 +222,11 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 					jobErr = fmt.Errorf("no compiled GL circuit for witness index=%d module=%s", i, modName)
 					return
 				}
+				defer compiledGLUsage.done(i)
 
 				proofGL = compiled.ProveSegmentKoala(wit).ClearRuntime()
-				compiledGLUsage.done(i)
 				witnessGLs[i] = nil
 			}()
-
-			if proofGL != nil {
-				modName = fmt.Sprintf("type%d_mod%d_seg%d", proofGL.ProofType, proofGL.ModuleIndex, proofGL.SegmentIndex)
-			}
 
 			if jobErr != nil {
 				return jobErr
@@ -291,7 +284,6 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 	}
 
 	for _, i := range lppOrder {
-		i := i
 		lppErrGroup.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -323,15 +315,11 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 					jobErr = fmt.Errorf("no compiled LPP circuit for witness index=%d module=%s", i, modName)
 					return
 				}
+				defer compiledLPPUsage.done(i)
 
 				proofLPP = compiled.ProveSegmentKoala(wit).ClearRuntime()
-				compiledLPPUsage.done(i)
 				witnessLPPs[i] = nil
 			}()
-
-			if proofLPP != nil {
-				modName = fmt.Sprintf("type%d_mod%d_seg%d", proofLPP.ProofType, proofLPP.ModuleIndex, proofLPP.SegmentIndex)
-			}
 
 			if jobErr != nil {
 				return jobErr
@@ -392,7 +380,7 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 
 // runBootstrapperInMemory runs the bootstrapper with in-memory assets (no disk IO).
 // It uses pre-read trace if available.
-func runBootstrapperInMemory(bootstrapper *wizard.CompiledIOP, zkevmObj *zkevm.ZkEvm, zkevmWitness *zkevm.Witness, disc *distributed.StandardModuleDiscoverer, preReadCh <-chan arithmetization.PreReadResult) *wizard.ProverRuntime {
+func runBootstrapperInMemory(cfg *config.Config, bootstrapper *wizard.CompiledIOP, zkevmObj *zkevm.ZkEvm, zkevmWitness *zkevm.Witness, disc *distributed.StandardModuleDiscoverer, preReadCh <-chan arithmetization.PreReadResult) *wizard.ProverRuntime {
 	// Wait for the pre-read result
 	preReadResult := <-preReadCh
 
@@ -435,7 +423,7 @@ func runBootstrapperInMemory(bootstrapper *wizard.CompiledIOP, zkevmObj *zkevm.Z
 			}
 
 			scaledUpBootstrapper, scaledUpZkEVM := zkevm.GetScaledUpBootstrapper(
-				nil, disc, scalingFactor,
+				cfg, disc, scalingFactor,
 			)
 
 			runtimeBoot = wizard.RunProver(
@@ -486,4 +474,3 @@ func (t *compiledUsageTracker) done(witnessIndex int) {
 		t.compiled[modIdx] = nil
 	}
 }
-
