@@ -351,20 +351,30 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	)
 
 	// As per the padding technique we use, the HashHi and HashLo should not
-	// be zero when isActive.
+	// be zero when isActive. We check that neither the upper 128-bit half nor
+	// the lower 128-bit half is entirely zero by taking the product of the
+	// per-limb IsZero results for each half.
 	var ctxHash [numLimbsPerState]wizard.ProverAction
 
-	sumHash := sym.NewConstant(0)
 	for i := range numLimbsPerState {
 		res.HashIsZero[i], ctxHash[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
-		sumHash = sym.Add(sumHash, res.HashIsZero[i])
 	}
 
 	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
 
+	prodIsZeroHi := sym.NewConstant(1)
+	for i := range numLimbsPerState / 2 {
+		prodIsZeroHi = sym.Mul(prodIsZeroHi, res.HashIsZero[i])
+	}
+
+	prodIsZeroLo := sym.NewConstant(1)
+	for i := numLimbsPerState / 2; i < numLimbsPerState; i++ {
+		prodIsZeroLo = sym.Mul(prodIsZeroLo, res.HashIsZero[i])
+	}
+
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
-		sym.Mul(res.IsActive, sumHash),
+		sym.Mul(res.IsActive, sym.Add(prodIsZeroHi, prodIsZeroLo)),
 	)
 
 	return res
