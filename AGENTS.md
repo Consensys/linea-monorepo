@@ -53,7 +53,7 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 | Node.js | >= 24.14.1 | See `.nvmrc` |
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
 | JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
-| Gradle | 8.5+ | JVM service builds |
+| Gradle | 9.4+ | use ./gradlew <task> |
 | Go | 1.24.6 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
@@ -188,7 +188,7 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
 
-- Coverage: Codecov with flags for `hardhat` and `kotlin`
+- Coverage: Codecov with flags for `hardhat`, `kotlin`, `postman`, `sdk-viem`, `sdk-core`, `sdk-ethers`, `linea-shared-utils`, `linea-native-libs`, `native-yield-automation-service`, `lido-governance-monitor`, and `tracer`
 - `linea-shared-utils` enforces strict coverage thresholds (branches: 85.71%, functions: 100%, lines: 95.23%)
 - Protocol E2E tests require a running local stack (`make start-env`)
 
@@ -353,7 +353,7 @@ docs/                    Project documentation
 - **Main workflow:** `.github/workflows/main.yml` — triggers on PR and push to `main`
 - **Path filtering:** `dorny/paths-filter` detects which components changed
 - **Pipeline:** Filter changed paths -> Run component tests -> Build Docker images -> E2E tests -> Publish
-- **Coverage:** Codecov with Jacoco (JVM) and Hardhat coverage (Solidity)
+- **Coverage:** Codecov with Jacoco (JVM), Hardhat (Solidity), Jest LCOV (TS packages), and tracer Jacoco XML (`tracer` flag)
 - **Security:** CodeQL analysis, KICS Dockerfile scanning (weekly)
 - **Runners:** Custom scale-set runners (small, med, large, xl) on Ubuntu 22.04
 - **Concurrency:** Cancel in-progress runs on PRs; serial on `main`

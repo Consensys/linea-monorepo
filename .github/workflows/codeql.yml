@@ -2,6 +2,9 @@ name: CodeQL
 
 on:
   workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '25 3 * * 1' # Every Monday at 03:25 UTC
 
 jobs:
   changes:
@@ -13,7 +16,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -61,6 +64,12 @@ jobs:
       - name: Build matrix
         id: set-matrix
         run: |
+          # Scheduled and manual runs analyze all languages
+          if [ "${{ github.event_name }}" == "schedule" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo 'languages=["go","java-kotlin","javascript-typescript","actions","python"]' >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           languages=()
           if [ "${{ steps.changes.outputs.go }}" == "true" ]; then languages+=("\"go\""); fi
           if [ "${{ steps.changes.outputs.java-kotlin }}" == "true" ]; then languages+=("\"java-kotlin\""); fi
@@ -87,20 +96,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@89a39a4e59826350b863aa6b6252a07ad50cf83e #v4.32.4
+        uses: github/codeql-action/init@c10b8064de6f491fea524254123dbe5e09572f13 #v4.35.1
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          config-file: .github/codeql/codeql-config.yml
 
       - name: Setup Java
         if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 #v5.2.0
-        with:
-          distribution: temurin
-          java-version: 21
+        uses: ./.github/actions/setup-java-and-gradle
 
       - name: Setup Tracer Environment
         if: matrix.language == 'java-kotlin'
@@ -108,12 +115,12 @@ jobs:
 
       - name: Autobuild
         if: matrix.language != 'actions'
-        uses: github/codeql-action/autobuild@89a39a4e59826350b863aa6b6252a07ad50cf83e #v4.32.4
+        uses: github/codeql-action/autobuild@c10b8064de6f491fea524254123dbe5e09572f13 #v4.35.1
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@89a39a4e59826350b863aa6b6252a07ad50cf83e #v4.32.4
+        uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13 #v4.35.1
         with:
           category: "/language:${{matrix.language}}"
           output: sarif-results
