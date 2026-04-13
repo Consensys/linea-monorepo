@@ -1,7 +1,6 @@
 name: Build and Publish Linea Besu
 
 permissions:
-  contents: write  # required to push libs.versions.toml update to the PR branch
   actions: read
   packages: write
 
@@ -25,7 +24,7 @@ jobs:
         uses: ./.github/actions/setup-java-and-gradle
 
       - name: Build besu from source and publish to maven including Cloudsmith
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PpublishToMaven=true
+        run: ./gradlew linea-besu:build -PpublishToMaven=true
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
           ORG_GRADLE_PROJECT_cloudsmithUser: ${{ secrets.CLOUDSMITH_USER }}
@@ -66,18 +65,3 @@ jobs:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
           LINEA_BESU_VERSION: ${{ steps.release_versions.outputs.besu_version }}
 
-      - name: Commit and push gradle/libs.versions.toml besu version update to PR
-        run: |
-          BRANCH="${{ github.head_ref }}"
-          git fetch origin "$BRANCH"
-          git checkout "$BRANCH"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet gradle/libs.versions.toml; then
-            echo "No changes to libs.versions.toml, skipping commit"
-          else
-            git config --unset core.hooksPath || true
-            git add gradle/libs.versions.toml
-            git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git push origin "$BRANCH"
-          fi

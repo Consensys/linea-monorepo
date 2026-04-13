@@ -18,8 +18,8 @@ plugins {
   id 'linea.besu-plugin'
 }
 
-description = 'Ensures Hyperledger Besu artifacts for besuCommit in gradle/libs.versions.toml are built or fetched before dependent projects compile'
+description = 'Ensures Hyperledger Besu artifacts for besuCommit in gradle/libs.versions.toml are built or fetched before dependent modules compile'
 
 tasks.named('compileJava').configure {
-  dependsOn tasks.named('buildAndUpdateBesuVersionInLibsVersions')
+  dependsOn tasks.named('buildAndPublishBesu')
 }

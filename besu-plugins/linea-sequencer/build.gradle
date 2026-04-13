@@ -13,29 +13,10 @@ plugins {
   alias(libs.plugins.dependencyLicenseReport)
 }
 
-dependencies {
-  compileOnly project(':linea-besu')
-}
-
-subprojects {
-  plugins.withId('net.consensys.besu-plugin-library') {
-    dependencies {
-      compileOnly project(':linea-besu')
-    }
-  }
-  plugins.withId('net.consensys.besu-plugin-distribution') {
-    dependencies {
-      compileOnly project(':linea-besu')
-    }
-  }
-}
-
 allprojects {
   plugins.withId('net.consensys.besu-plugin-library') {
     besuPlugin {
-      besuVersion = rootProject.ext.has('resolvedBesuVer')
-          ? rootProject.ext.resolvedBesuVer
-          : libs.versions.besu.get()
+      besuVersion = rootProject.ext.resolvedBesuVer
       besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
     }
   }

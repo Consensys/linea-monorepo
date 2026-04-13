@@ -9,25 +9,25 @@ LOCAL_SEQUENCER_DIST_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequenc
 LOCAL_TRACER_DIST_FOLDER ?= $(abspath ../tracer/plugins/build/install/linea-tracer)
 LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/besu-eth/build/distributions)
 
-clean-tmp-besu-and-maven-local:
+clean-besu-and-maven-local:
 	cd ..; \
 	echo "Clean up tmp besu folder and maven local" ; \
-	./gradlew cleanBesuAndMavenLocal
+	./gradlew linea-besu:clean
 
-build-besu-local-and-update-lib-version:
+build-besu:
 	cd ..; \
 	echo "Build besu-eth/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
-	./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=false
+	./gradlew linea-besu:build -PskipDownloadBesuDist=false
 
 build-tracer-and-sequencer:
 	cd ..; \
 	echo "Build versions: TRACER_PLUGIN_VERSION=${TRACER_PLUGIN_VERSION} SEQUENCER_PLUGIN_VERSION=$(SEQUENCER_PLUGIN_VERSION)" ; \
 	echo "Clean and build distribution for tracer" ; \
-	./gradlew :tracer:clean && ./gradlew :tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
+	./gradlew tracer:clean && ./gradlew tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
 	echo "Clean and build distribution for sequencer" ; \
 	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:installDist -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
 
-assemble: BESU_VERSION := $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+assemble: BESU_VERSION := $(shell ls ../tmp/besu-eth/build/distributions/besu-*.tar.gz 2>/dev/null | head -1 | sed 's/.*besu-\(.*\)\.tar\.gz/\1/')
 assemble: LOCAL_BESU_ZIP_PATH := $(LOCAL_BESU_DIST_FOLDER)/besu-$(BESU_VERSION).tar.gz
 assemble:
 	BESU_VERSION=$(BESU_VERSION) \
@@ -37,11 +37,11 @@ assemble:
 	./scripts/assemble-packages.sh
 
 clean-build:
-	$(MAKE) clean-tmp-besu-and-maven-local
+	$(MAKE) clean-besu-and-maven-local
 	${MAKE} build
 
 build:
-	$(MAKE) build-besu-local-and-update-lib-version
+	$(MAKE) build-besu
 	$(MAKE) build-tracer-and-sequencer
 	$(MAKE) clean
 	$(MAKE) assemble

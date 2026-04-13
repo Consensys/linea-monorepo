@@ -16,9 +16,9 @@
 package net.consensys.linea.besu.prepare;
 
 /**
- * Placeholder so this module produces a jar; Gradle builds this project before consumers that use
- * {@code compileOnly project(':linea-besu')}, which runs {@code
- * buildAndUpdateBesuVersionInLibsVersions} first.
+ * Placeholder so this module produces a jar. Building {@code :linea-besu} triggers {@code
+ * buildAndPublishBesu}, which checks out the commit in {@code besuCommit} and publishes Besu
+ * artifacts to Maven Local before any dependent module compiles.
  */
 public final class LineaBesuPrepareMarker {
   private LineaBesuPrepareMarker() {}

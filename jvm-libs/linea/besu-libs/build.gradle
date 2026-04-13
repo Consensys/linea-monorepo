@@ -3,10 +3,8 @@ plugins {
   id 'java-library'
 }
 
-def besuVersion="${libs.versions.besu.get()}"
-
 dependencies {
-  compileOnly project(':linea-besu')
+  def besuVersion = rootProject.ext.resolvedBesuVer
 
   api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
     transitive = false
