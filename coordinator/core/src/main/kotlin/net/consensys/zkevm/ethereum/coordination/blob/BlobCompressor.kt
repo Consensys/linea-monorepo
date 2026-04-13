@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
 import linea.blob.BlobCompressor
+import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
-import linea.blob.GoBackedBlobCompressor
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Timer
@@ -13,7 +13,7 @@ class GoBackedBlobCompressorAdapter private constructor(
   internal val goBackedBlobCompressor: BlobCompressor,
   private val dataLimit: UInt,
   private val metricsFacade: MetricsFacade,
-) : BlobCompressor {
+) : BlobCompressor by goBackedBlobCompressor {
   companion object {
     @Volatile
     private var instance: GoBackedBlobCompressorAdapter? = null
@@ -26,7 +26,7 @@ class GoBackedBlobCompressorAdapter private constructor(
       if (instance == null) {
         synchronized(this) {
           if (instance == null) {
-            val goBackedBlobCompressor = GoBackedBlobCompressor.getInstance(
+            val goBackedBlobCompressor = BlobCompressorFactory.getInstance(
               compressorVersion = compressorVersion,
               dataLimit = dataLimit.toInt(),
             )
@@ -71,8 +71,6 @@ class GoBackedBlobCompressorAdapter private constructor(
 
   private val log = LogManager.getLogger(GoBackedBlobCompressorAdapter::class.java)
 
-  override val version: BlobCompressorVersion = goBackedBlobCompressor.version
-
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
     return canAppendBlockTimer.captureTime {
       goBackedBlobCompressor.canAppendBlock(blockRLPEncoded)
@@ -101,22 +99,10 @@ class GoBackedBlobCompressorAdapter private constructor(
     return appendResult
   }
 
-  override fun startNewBatch() {
-    goBackedBlobCompressor.startNewBatch()
-  }
-
   override fun getCompressedData(): ByteArray {
     val compressedData = goBackedBlobCompressor.getCompressedData()
     utilizationRatioHistogram.record(compressedData.size.toDouble() / dataLimit.toInt())
     return compressedData
-  }
-
-  override fun reset() {
-    goBackedBlobCompressor.reset()
-  }
-
-  override fun compressedSize(data: ByteArray): Int {
-    return goBackedBlobCompressor.compressedSize(data)
   }
 }
 
@@ -177,5 +163,9 @@ class FakeBlobCompressor(
 
   override fun compressedSize(data: ByteArray): Int {
     return (data.size * fakeCompressionRatio).toInt()
+  }
+
+  override fun close() {
+    // Nothing to do
   }
 }
