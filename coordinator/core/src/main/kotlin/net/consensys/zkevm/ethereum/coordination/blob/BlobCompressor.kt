@@ -115,7 +115,7 @@ class FakeBlobCompressor(
 ) : BlobCompressor {
   val log = LogManager.getLogger(FakeBlobCompressor::class.java)
 
-  override val version: BlobCompressorVersion = BlobCompressorVersion.V2
+  override val version: BlobCompressorVersion = BlobCompressorVersion.V3
 
   init {
     require(dataLimit > 0) { "dataLimit must be greater than 0" }

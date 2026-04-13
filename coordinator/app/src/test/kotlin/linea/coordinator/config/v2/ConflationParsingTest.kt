@@ -108,7 +108,7 @@ class ConflationParsingTest {
           blobSizeLimit = 102_400U,
           handlerPollingInterval = 1.seconds,
           batchesLimit = null,
-          blobCompressorVersion = BlobCompressorVersion.V2,
+          blobCompressorVersion = BlobCompressorVersion.V3,
         ),
         proofAggregation =
         ConflationToml.ProofAggregationToml(
