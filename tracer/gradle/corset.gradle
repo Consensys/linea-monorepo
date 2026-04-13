@@ -13,15 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 tasks.register('corsetExists') {
-  // dependsOn('installGoCorset')
-  // doLast {
-  //   def process = ["go-corset", "--version"].execute()
-  //   process.consumeProcessOutput()
-  //   def exitCode = process.waitFor()
-  //   if (exitCode != 0) {
-  //     throw new GradleException('go-corset not found!')
-  //   }
-  // }
+  dependsOn('installGoCorset')
+  doLast {
+    def process = ["go-corset", "--version"].execute()
+    process.consumeProcessOutput()
+    def exitCode = process.waitFor()
+    if (exitCode != 0) {
+      throw new GradleException('go-corset not found!')
+    }
+  }
 }
 
 ext {
