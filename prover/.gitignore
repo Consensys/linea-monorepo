@@ -1,2 +1,6 @@
 .claude/
 *.log
+*.json
+*.jsonl
+*.success
+*.gz
