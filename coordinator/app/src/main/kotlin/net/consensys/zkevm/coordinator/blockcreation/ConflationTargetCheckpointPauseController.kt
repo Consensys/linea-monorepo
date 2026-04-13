@@ -219,6 +219,4 @@ class ConflationTargetCheckpointPauseController(
     }
     return true
   }
-
-  internal fun isPausedForTests(): Boolean = requiredL1FinalizedL2BlockToResumeConflation.get() != null
 }
