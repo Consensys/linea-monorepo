@@ -3,9 +3,6 @@ package distributed
 import (
 	"errors"
 	"fmt"
-	"slices"
-	"strconv"
-	"strings"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
@@ -23,6 +20,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
+	"slices"
+	"strconv"
+	"strings"
 )
 
 // ProofType is an enum to identify the type of a proof.
