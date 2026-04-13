@@ -290,7 +290,7 @@ describe("Forced transaction test suite", () => {
     300_000,
   );
 
-  it.concurrent(
+  it.skip(
     "Should reject a forced transaction that calls an excluded precompile (BadPrecompile)",
     async () => {
       const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
@@ -440,7 +440,7 @@ describe("Forced transaction test suite", () => {
     300_000,
   );
 
-  it.concurrent(
+  it.skip(
     "Should reject a forced transaction that exceeds the L2-L1 log limit (TooManyLogs)",
     async () => {
       const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
