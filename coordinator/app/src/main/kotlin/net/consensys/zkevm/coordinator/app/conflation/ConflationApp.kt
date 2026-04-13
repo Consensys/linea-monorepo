@@ -13,6 +13,8 @@ import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.ftx.ForcedTransactionsApp
 import linea.persistence.ftx.ForcedTransactionsDao
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
@@ -45,7 +47,7 @@ import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProv
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
-import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressor
+import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressorAdapter
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProviderImpl
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
@@ -211,7 +213,7 @@ class ConflationApp(
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 
     // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.getInstance(
+    val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
       compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
       dataLimit = configs.conflation.blobCompression.blobSizeLimit,
       metricsFacade = metricsFacade,
@@ -499,6 +501,20 @@ class ConflationApp(
     lastProvenConsecutiveBatchBlockNumberProvider
   }
 
+  // This object acts as an independent periodic polling service which is responsible
+  // for monitoring the highest consecutive proven block number in the batch db
+  private val provenBlockNumberMonitor = object : VertxPeriodicPollingService(
+    vertx = vertx,
+    pollingIntervalMs = 1.seconds.inWholeMilliseconds,
+    log = log,
+    name = "ProvenBlockNumberMonitor",
+    timerSchedule = TimerSchedule.FIXED_DELAY,
+  ) {
+    override fun action(): SafeFuture<*> {
+      return lastProvenBlockNumberProvider.getLastProvenBlockNumber()
+    }
+  }
+
   private val blockCreationMonitor = run {
     log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
@@ -506,7 +522,7 @@ class ConflationApp(
       ethApi = l2EthClient,
       startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
       blockCreationListener = block2BatchCoordinator,
-      lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
+      lastProvenBlockNumberProviderSync = lastProvenBlockNumberProvider,
       config = BlockCreationMonitor.Config(
         pollingInterval = configs.conflation.blocksPollingInterval,
         blocksToFinalization = 0L,
@@ -536,6 +552,7 @@ class ConflationApp(
       .thenCompose { blockCreationMonitor.start() }
       .thenCompose { blobCompressionProofCoordinator.start() }
       .thenCompose { forcedTransactionsApp.start() }
+      .thenCompose { provenBlockNumberMonitor.start() }
       .thenPeek {
         log.info("Conflation started")
       }
@@ -549,6 +566,7 @@ class ConflationApp(
       deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
       blobCompressionProofCoordinator.stop(),
       forcedTransactionsApp.stop(),
+      provenBlockNumberMonitor.stop(),
     )
       .thenApply { log.info("Conflation Stopped") }
   }

@@ -6,8 +6,10 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -22,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -128,8 +131,21 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
 
+	// Start setup loading early
+	setupStart := plog.phaseStart("setup_load")
 	var (
-		numGL, numLPP = RunBootstrapper(cfg, zkevmWitness, mt.GetRoot())
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
+
+	var (
+		numGL, numLPP, glModuleNames = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
 	)
 	plog.phaseEnd("bootstrapper", bootStart)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
@@ -180,13 +196,12 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 	glPhaseStart := plog.phaseStart("GL")
 	glErrGroup.SetLimit(numConcurrentSubProverJobs)
 
-	// Create ordered witness indices: descending order for longest-first scheduling
-	// This ensures larger jobs run first, improving pipeline utilization and reducing tail idle
-	glOrder := make([]int, numGL)
-	for i := 0; i < numGL; i++ {
-		glOrder[i] = numGL - 1 - i // Reverse order: [13,12,11,...,0]
-	}
+	// Round-robin across module types to limit same-module concurrency.
+	glOrder := buildRoundRobinOrder(glModuleNames)
 	plog.jobOrder("GL", glOrder)
+
+	var glCompleted atomic.Int64
+	var glGCMu sync.Mutex
 
 	for _, i := range glOrder {
 		i := i // local copy for closure
@@ -244,10 +259,21 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 			// Safe send: if ctx cancelled, abort send
 			select {
 			case proofStream <- proofGL:
-				return nil
 			case <-ctx.Done():
 				return ctx.Err()
 			}
+
+			n := glCompleted.Add(1)
+			if int(n) < numGL {
+				if glGCMu.TryLock() {
+					logrus.Infof("GL inter-job GC after %d/%d jobs", n, numGL)
+					runtime.GC()
+					debug.FreeOSMemory()
+					glGCMu.Unlock()
+				}
+			}
+
+			return nil
 		})
 	}
 
@@ -394,20 +420,53 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 
 	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
 
-	return &PipelineResult{
-		FinalProof: res.proof,
-		Cong:       cong,
-		CongBuf:    res.congBuf,
-	}, nil
+	congFinalproof := res.proof
+
+	// Wait for setup (started during bootstrapper; should be done by now)
+	<-chSetupDone
+	plog.phaseEnd("setup_load", setupStart)
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+
+	outerStart := plog.phaseStart("outer_proof")
+	out.Proof = execCirc.MakeProof(
+		&cfg.TracesLimits,
+		setup,
+		cong.RecursionCompBLS,
+		congFinalproof.GetOuterProofInput(),
+		*witness.FuncInp,
+		witness.ZkEVM.ExecData,
+	)
+
+	plog.phaseEnd("outer_proof", outerStart)
+
+	// Release the conglomeration circuit mmap buffer now that MakeProof is done.
+	// cong.RecursionCompBLS pointed into this buffer.
+	cong = nil
+	res.congBuf.Release()
+
+	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+
+	return &out, nil
 }
 
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int, []string) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
+
+	// Pre-start trace file decompression and parsing in background.
+	preReadCh := make(chan arithmetization.PreReadResult, 1)
+	go func() {
+		logrus.Info("Pre-reading trace file in background")
+		preReadCh <- arithmetization.PreReadTrace(zkevmWitness.ExecTracesFPath)
+		logrus.Info("Pre-read trace file complete")
+	}()
+
 	if err := assets.LoadBootstrapper(cfg); err != nil || assets.DistWizard.Bootstrapper == nil {
 		utils.Panic("could not load bootstrapper: %v", err)
 	}
@@ -432,6 +491,9 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		distDone <- err
 	}()
 
+	// Wait for the pre-read result. Re-read traceFile from from disk
+	preReadResult := <-preReadCh
+
 	// The function initially attempt to run the bootstrapper directly and will
 	// catch "limit-overflow" panic msgs. When they happen, we reattempt running
 	// the bootstrapper with higher and higher limits until it works.
@@ -443,6 +505,16 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 	for runtimeBoot == nil {
 
 		logrus.Infof("Trying to bootstrap with a scaling of %v\n", scalingFactor)
+
+		replayCh := make(chan arithmetization.PreReadResult, 1)
+		if scalingFactor == 1 {
+			replayCh <- preReadResult
+		} else {
+			// Clone the trace: Propagate mutates TraceFile internals in place.
+			clone := preReadResult
+			clone.RawTrace = preReadResult.RawTrace.Clone()
+			replayCh <- clone
+		}
 
 		func() {
 
@@ -465,7 +537,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 				logrus.Infof("Running bootstrapper")
 				runtimeBoot = wizard.RunProver(
 					assets.DistWizard.Bootstrapper,
-					assets.Zkevm.GetMainProverStep(zkevmWitness),
+					assets.Zkevm.GetMainProverStepWithPreRead(zkevmWitness, replayCh),
 					false,
 				)
 				return
@@ -482,7 +554,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
-				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				scaledUpZkEVM.GetMainProverStepWithPreRead(zkevmWitness, replayCh),
 				false,
 			)
 		}()
@@ -506,6 +578,11 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		assets.DistWizard.BlueprintLPPs,
 		merkleTreeRoot,
 	)
+
+	glModuleNames := make([]string, len(witnessGLs))
+	for i, w := range witnessGLs {
+		glModuleNames[i] = string(w.ModuleName)
+	}
 
 	logrus.Info("Saving the witnesses")
 
@@ -554,7 +631,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		utils.Panic("could not save witnesses: %v", err)
 	}
 
-	return len(witnessGLs), len(witnessLPPs)
+	return len(witnessGLs), len(witnessLPPs), glModuleNames
 }
 
 // RunGL runs the GL prover for the provided witness index.
@@ -792,4 +869,43 @@ func RunConglomerationHierarchical(ctx context.Context,
 	}
 
 	return nil, fmt.Errorf("conglomeration finished without producing a final proof")
+}
+
+// buildRoundRobinOrder interleaves GL jobs across module types so that
+// segments of the same module are spread apart in the schedule.
+func buildRoundRobinOrder(moduleNames []string) []int {
+	type group struct {
+		name    string
+		indices []int
+	}
+	seen := map[string]int{}
+	var groups []group
+	for i, name := range moduleNames {
+		if idx, ok := seen[name]; ok {
+			groups[idx].indices = append(groups[idx].indices, i)
+		} else {
+			seen[name] = len(groups)
+			groups = append(groups, group{name: name, indices: []int{i}})
+		}
+	}
+
+	sort.Slice(groups, func(a, b int) bool {
+		return len(groups[a].indices) > len(groups[b].indices)
+	})
+
+	order := make([]int, 0, len(moduleNames))
+	for {
+		added := false
+		for g := range groups {
+			if len(groups[g].indices) > 0 {
+				order = append(order, groups[g].indices[0])
+				groups[g].indices = groups[g].indices[1:]
+				added = true
+			}
+		}
+		if !added {
+			break
+		}
+	}
+	return order
 }
