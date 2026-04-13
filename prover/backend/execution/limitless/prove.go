@@ -174,7 +174,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			default:
 			}
 
-
 			var (
 				jobErr  error
 				proofGL *distributed.SegmentProof
@@ -261,7 +260,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	runtime.GC()
 	debug.FreeOSMemory()
 
-
 	// -- 5. Launch LPP proof jobs, streaming each proof to pipeline
 	lppErrGroup.SetLimit(numConcurrentSubProverJobs)
 
@@ -279,7 +277,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				return ctx.Err()
 			default:
 			}
-
 
 			var (
 				jobErr   error
@@ -364,7 +361,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		*witness.FuncInp,
 		witness.ZkEVM.ExecData,
 	)
-
 
 	// Release the conglomeration circuit mmap buffer now that MakeProof is done.
 	// cong.RecursionCompBLS pointed into this buffer.
@@ -567,7 +563,6 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
 
-
 	// Load witness into mmap-backed buffer for explicit memory release
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
@@ -611,7 +606,6 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
-
 
 	// Load witness into mmap-backed buffer for explicit memory release
 	witness := &distributed.ModuleWitnessLPP{}
@@ -662,7 +656,6 @@ func RunConglomerationHierarchical(ctx context.Context,
 	cong *distributed.RecursedSegmentCompilation,
 	proofStream <-chan *distributed.SegmentProof, totalProofs int,
 ) (*distributed.SegmentProof, error) {
-
 
 	// `remaining` tracks how many items are in the system (items slice + in-flight
 	// merge results). Each merge takes 2 items and produces 1, so remaining--.
@@ -744,7 +737,6 @@ func RunConglomerationHierarchical(ctx context.Context,
 					p1.ProofType, p1.ModuleIndex, p1.SegmentIndex,
 					p2.ProofType, p2.ModuleIndex, p2.SegmentIndex)
 
-
 				wit := &distributed.ModuleWitnessConglo{
 					SegmentProofs:             []distributed.SegmentProof{*p1, *p2},
 					VerificationKeyMerkleTree: *mt,
@@ -756,7 +748,6 @@ func RunConglomerationHierarchical(ctx context.Context,
 				} else {
 					aggregated = cong.ProveSegmentKoala(wit)
 				}
-
 
 				mu.Lock()
 				items = append(items, aggregated)

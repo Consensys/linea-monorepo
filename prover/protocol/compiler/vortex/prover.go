@@ -268,7 +268,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		committedMatricesNoSIS = []vortex_bls12377.EncodedMatrix{}
 		treesSIS               = []*smt_koalabear.Tree{}
 		treesNoSIS             = []*smt_koalabear.Tree{}
-		blsTrees = []*smt_bls12377.Tree{}
+		blsTrees               = []*smt_bls12377.Tree{}
 	)
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
