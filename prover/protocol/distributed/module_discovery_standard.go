@@ -10,6 +10,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -1241,16 +1243,14 @@ func precompilePlonkConstraintCounts(comp *wizard.CompiledIOP) {
 	}
 
 	logrus.Infof("pre-compiling %d PlonkInWizard circuits in parallel for constraint counting", len(circuits))
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, runtime.GOMAXPROCS(0))
+	var wg errgroup.Group
+	wg.SetLimit(runtime.GOMAXPROCS(0))
 	for _, piw := range circuits {
-		wg.Add(1)
-		go func(p *query.PlonkInWizard) {
-			defer wg.Done()
-			sem <- struct{}{}
+		p := piw
+		wg.Go(func() error {
 			countConstraintsOfPlonkCirc(p)
-			<-sem
-		}(piw)
+			return nil
+		})
 	}
 	wg.Wait()
 }
