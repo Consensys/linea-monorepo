@@ -44,31 +44,6 @@ export async function deployRevertingVerifier(scenario: bigint): Promise<string>
   return await verifier.getAddress();
 }
 
-export async function deployPlonkVerifierSepoliaFull(): Promise<string> {
-  const plonkVerifierSepoliaFull = await ethers.getContractFactory(
-    "src/verifiers/PlonkVerifierSepoliaFull.sol:PlonkVerifierSepoliaFull",
-  );
-  const verifier = await plonkVerifierSepoliaFull.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierMainnetFull(): Promise<string> {
-  const plonkVerifierMainnetFull = await ethers.getContractFactory(
-    "src/verifiers/PlonkVerifierMainnetFull.sol:PlonkVerifierMainnetFull",
-  );
-  const verifier = await plonkVerifierMainnetFull.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierDev(): Promise<string> {
-  const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev");
-  const verifier = await plonkVerifierDev.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
 export async function deployCallForwardingProxy(target: string): Promise<CallForwardingProxy> {
   const callForwardingProxyFactory = await ethers.getContractFactory("CallForwardingProxy");
   const callForwardingProxy = await callForwardingProxyFactory.deploy(target);
@@ -214,10 +189,10 @@ export async function deployAddressFilterFixture() {
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
   const mimc = (await deployFromFactory("Mimc")) as Mimc;
-  const plonkVerifierSepoliaFull = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation", {
+  const testPlonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation", {
     libraries: { Mimc: await mimc.getAddress() },
   });
-  const verifier = await plonkVerifierSepoliaFull.deploy([
+  const verifier = await testPlonkVerifierFactory.deploy([
     {
       value: toBeHex(59144, 32),
       name: "chainId",
