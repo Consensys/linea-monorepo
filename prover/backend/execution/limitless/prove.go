@@ -131,21 +131,8 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
 
-	// Start setup loading early
-	setupStart := plog.phaseStart("setup_load")
 	var (
-		setup       circuits.Setup
-		errSetup    error
-		chSetupDone = make(chan struct{})
-	)
-	go func() {
-		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
-		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
-		close(chSetupDone)
-	}()
-
-	var (
-		numGL, numLPP, glModuleNames = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
+		numGL, numLPP, glModuleNames = RunBootstrapper(cfg, zkevmWitness, mt.GetRoot())
 	)
 	plog.phaseEnd("bootstrapper", bootStart)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
@@ -420,35 +407,11 @@ func RunDistributedPipeline(cfg *config.Config, zkevmWitness *zkevm.Witness, plo
 
 	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
 
-	congFinalproof := res.proof
-
-	// Wait for setup (started during bootstrapper; should be done by now)
-	<-chSetupDone
-	plog.phaseEnd("setup_load", setupStart)
-	if errSetup != nil {
-		utils.Panic("could not load setup: %v", errSetup)
-	}
-
-	outerStart := plog.phaseStart("outer_proof")
-	out.Proof = execCirc.MakeProof(
-		&cfg.TracesLimits,
-		setup,
-		cong.RecursionCompBLS,
-		congFinalproof.GetOuterProofInput(),
-		*witness.FuncInp,
-		witness.ZkEVM.ExecData,
-	)
-
-	plog.phaseEnd("outer_proof", outerStart)
-
-	// Release the conglomeration circuit mmap buffer now that MakeProof is done.
-	// cong.RecursionCompBLS pointed into this buffer.
-	cong = nil
-	res.congBuf.Release()
-
-	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
-
-	return &out, nil
+	return &PipelineResult{
+		FinalProof: res.proof,
+		Cong:       cong,
+		CongBuf:    res.congBuf,
+	}, nil
 }
 
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
