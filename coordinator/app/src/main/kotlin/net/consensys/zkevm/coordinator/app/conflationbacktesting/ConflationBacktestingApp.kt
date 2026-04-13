@@ -18,7 +18,7 @@ import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
-import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderAsync
+import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderSync
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
@@ -27,7 +27,7 @@ import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobShnarfMetaData
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
-import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressor
+import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressorAdapter
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
@@ -167,7 +167,7 @@ class ConflationBacktestingApp(
 
   private val conflationCalculator: TracesConflationCalculator = run {
     // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.getInstance(
+    val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
       compressorVersion = backtestingCoordinatorConfig.conflation.blobCompression.blobCompressorVersion,
       dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit,
       metricsFacade = metricsFacade,
@@ -332,9 +332,9 @@ class ConflationBacktestingApp(
     ethApi = l2EthClient,
     startingBlockNumberExclusive = conflationBacktestingAppConfig.startBlockNumber.toLong() - 1,
     blockCreationListener = blockToBatchSubmissionCoordinator,
-    lastProvenBlockNumberProviderAsync = object : LastProvenBlockNumberProviderAsync {
-      override fun getLastProvenBlockNumber(): SafeFuture<Long> {
-        return SafeFuture.completedFuture(conflationBacktestingAppConfig.startBlockNumber.toLong() - 1)
+    lastProvenBlockNumberProviderSync = object : LastProvenBlockNumberProviderSync {
+      override fun getLastKnownProvenBlockNumber(): Long {
+        return conflationBacktestingAppConfig.startBlockNumber.toLong() - 1
       }
     },
     config = BlockCreationMonitor.Config(
