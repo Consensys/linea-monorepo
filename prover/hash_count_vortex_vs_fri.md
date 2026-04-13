@@ -201,15 +201,3 @@ Using the unified d = 2²⁷ polynomial model for FRI (see Pipeline B section):
 | FRI | 1/16 |  **31,775** | **14.6× cheaper** |
 
 FRI at ρ=1/16 is **14.6× cheaper** than the current pipeline.
-
-### Breakdown of Pipeline A cost vs FRI ρ=1/16
-
-| Component | Pipeline A | FRI ρ=1/16 |
-|-----------|-----------|------------|
-| Fiat-Shamir (transcript) | **360,448** (78%) | **31** (<0.1%) |
-| Leaf hashing | 30,080 | included above |
-| Merkle paths | 73,664 | included above |
-| **Total** | **464,192** | **31,775** |
-
-The entire 14.6× advantage comes from eliminating UAlpha: FRI replaces the
-nB-element UAlpha vector with a single Merkle root per round.
