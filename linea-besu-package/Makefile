@@ -67,7 +67,7 @@ run-e2e-test-with-partial-prover:
 	cd .. && BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) PROVER_TAG=$(PROVER_TAG) make start-env-with-tracing-v2-partialprover && pnpm run -F e2e test:partial-prover:local
 
 run-e2e-test:
-	cd .. && BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:local
+	cd .. && LINEA_BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:local
 
 run-e2e-test-cleanup:
 	cd .. && make clean-environment
