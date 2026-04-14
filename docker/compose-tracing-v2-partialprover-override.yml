@@ -25,4 +25,9 @@ services:
         -Dconfig.override.l1-submission.aggregation.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
         -Dconfig.override.message-anchoring.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
         -Dconfig.override.l1-submission.data-availability=${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+        -Dconfig.override.conflation.blocks-limit=10
+        -Dconfig.override.conflation.conflation-deadline="PT30M"
+        -Dconfig.override.conflation.blob-compression.batches-limit=2
+        -Dconfig.override.conflation.proof-aggregation.deadline="PT30M"
         ${LINEA_SHOMEI_TAG:+-Dconfig.override.state-manager.version=$LINEA_SHOMEI_TAG}
+
