@@ -105,8 +105,8 @@ class InMemoryConsecutiveProvenBlobsProviderTest {
   @Test
   fun `findConsecutiveProvenBlobs returns longest consecutive chain from fromBlockNumber`() {
     val provider = InMemoryConsecutiveProvenBlobsProvider()
-    proveBlob(provider, 1uL, 2uL, 1u)
-    proveBlob(provider, 3uL, 4uL, 1u)
+    proveBlob(provider, start = 1uL, end = 2uL, batches = 1u)
+    proveBlob(provider, start = 3uL, end = 4uL, batches = 1u)
 
     assertThat(provider.findConsecutiveProvenBlobs(1L).get().map { it.blobCounters.startBlockNumber })
       .containsExactly(1uL, 3uL)
@@ -115,8 +115,8 @@ class InMemoryConsecutiveProvenBlobsProviderTest {
   @Test
   fun `findConsecutiveProvenBlobs stops at first gap in block ranges`() {
     val provider = InMemoryConsecutiveProvenBlobsProvider()
-    proveBlob(provider, 1uL, 2uL, 1u)
-    proveBlob(provider, 5uL, 6uL, 1u)
+    proveBlob(provider, start = 1uL, end = 2uL, batches = 1u)
+    proveBlob(provider, start = 5uL, end = 6uL, batches = 1u)
 
     assertThat(provider.findConsecutiveProvenBlobs(1L).get()).hasSize(1)
     assertThat(provider.findConsecutiveProvenBlobs(1L).get().single().blobCounters.endBlockNumber).isEqualTo(2uL)
@@ -125,8 +125,8 @@ class InMemoryConsecutiveProvenBlobsProviderTest {
   @Test
   fun `findConsecutiveProvenBlobs can start mid chain`() {
     val provider = InMemoryConsecutiveProvenBlobsProvider()
-    proveBlob(provider, 1uL, 2uL, 1u)
-    proveBlob(provider, 3uL, 4uL, 1u)
+    proveBlob(provider, start = 1uL, end = 2uL, batches = 1u)
+    proveBlob(provider, start = 3uL, end = 4uL, batches = 1u)
 
     assertThat(provider.findConsecutiveProvenBlobs(3L).get().map { it.blobCounters.startBlockNumber })
       .containsExactly(3uL)
@@ -135,7 +135,7 @@ class InMemoryConsecutiveProvenBlobsProviderTest {
   @Test
   fun `findConsecutiveProvenBlobs returns empty when fromBlockNumber is after all blobs`() {
     val provider = InMemoryConsecutiveProvenBlobsProvider()
-    proveBlob(provider, 1uL, 2uL, 1u)
+    proveBlob(provider, start = 1uL, end = 2uL, batches = 1u)
 
     assertThat(provider.findConsecutiveProvenBlobs(100L).get()).isEmpty()
   }

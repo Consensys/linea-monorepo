@@ -1,6 +1,7 @@
 package net.consensys.zkevm.coordinator.app.conflationbacktesting
 
 import linea.domain.BlockIntervals
+import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobRecord
@@ -39,7 +40,7 @@ class InMemoryConsecutiveProvenBlobsProvider : ConsecutiveProvenBlobsProvider {
    * compression prover.
    */
   fun captureBlobExecutionProofs(
-    blob: net.consensys.zkevm.domain.Blob,
+    blob: Blob,
   ) {
     val key = blobKey(blob.startBlockNumber, blob.endBlockNumber)
     pendingExecutionProofs[key] = BlockIntervals(
