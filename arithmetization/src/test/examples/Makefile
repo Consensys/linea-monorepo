@@ -33,7 +33,8 @@ compile: $(ASM)
 	go run $(GO_MAIN) $(BIN) > $(JSON)
 
 zkc-exec:
-	zkc exec $(JSON) $(ZKC_MAIN)
+	zkc exec $(JSON) $(ZKC_MAIN)make exec-rust TEST=add
+
 
 zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
