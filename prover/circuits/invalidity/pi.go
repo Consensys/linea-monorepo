@@ -15,7 +15,7 @@ import (
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
-	FunctinalPIQGnark   `gnark:"-"` // derived from subcircuit in Define, no wires allocated
+	FunctionalPIQGnark  `gnark:"-"` // derived from subcircuit in Define, no wires allocated
 	TxNumber            frontend.Variable
 	DeadLineBlockNumber frontend.Variable // deadline block number to execute/attempt ftx.
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
@@ -23,7 +23,7 @@ type FunctionalPublicInputsGnark struct {
 }
 
 // it stores all the fields that should match the FPI of the sub-circuit.
-type FunctinalPIQGnark struct {
+type FunctionalPIQGnark struct {
 	TxHash        [2]frontend.Variable // keccak hash needs 2 field elements (16 bytes each)
 	FromAddress   frontend.Variable
 	StateRootHash [2]frontend.Variable // KoalaBear octuplet converted to 2 BLS12-377 field elements (16 bytes each)
@@ -121,13 +121,13 @@ func (pi *FunctionalPublicInputsGnark) RangeCheck(api frontend.API) {
 
 	// Sub-circuit-derived fields: only boolean-constrained in filtered_address;
 	// must be asserted here so the constraint applies to all sub-circuit variants.
-	api.AssertIsBoolean(pi.FunctinalPIQGnark.ToIsFiltered)
-	api.AssertIsBoolean(pi.FunctinalPIQGnark.FromIsFiltered)
+	api.AssertIsBoolean(pi.FunctionalPIQGnark.ToIsFiltered)
+	api.AssertIsBoolean(pi.FunctionalPIQGnark.FromIsFiltered)
 
 	// Block-level values: unconstrained witnesses in nonce_balance and
 	// filtered_address sub-circuits (only IOP-derived in bad_precompile).
-	rc.Check(pi.FunctinalPIQGnark.SimulatedBlockTimestamp, 64)
-	rc.Check(pi.FunctinalPIQGnark.SimulatedBlockNumber, 64)
+	rc.Check(pi.FunctionalPIQGnark.SimulatedBlockTimestamp, 64)
+	rc.Check(pi.FunctionalPIQGnark.SimulatedBlockNumber, 64)
 }
 
 // UpdateFtxRollingHash updates the ftxRollingHash

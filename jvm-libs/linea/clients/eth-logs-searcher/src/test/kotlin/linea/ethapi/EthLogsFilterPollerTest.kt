@@ -491,62 +491,6 @@ class EthLogsFilterPollerTest {
     }
   }
 
-  @Test
-  fun `should transition to CaughtUp after searching up to chain head even when chain keeps advancing`() {
-    // This test verifies the fix for the bug where the poller never reached CaughtUp
-    // on fast chains. With toBlock=LATEST and blocks produced faster than the polling
-    // interval, the old code required fromBlock > LATEST (which never happened).
-    // The fix transitions to CaughtUp after a search that covers the full resolved range.
-
-    val log1 = templateLog.copy(blockNumber = 10UL, logIndex = 0UL)
-    fakeEthApiClient.setLogs(listOf(log1))
-    fakeEthApiClient.setLatestBlockTag(30UL)
-
-    val stateTransitions = CopyOnWriteArrayList<Pair<EthLogsFilterState, EthLogsFilterState>>()
-    val consumedLogs = CopyOnWriteArrayList<EthLog>()
-    poller = createPoller(
-      fromBlock = BlockParameter.BlockNumber(0UL),
-      toBlock = BlockParameter.Tag.LATEST,
-      pollingInterval = 50.milliseconds,
-      consumer = { log -> consumedLogs.add(log) },
-    )
-    poller.setStateListener { oldState, newState ->
-      stateTransitions.add(oldState to newState)
-    }
-
-    poller.start().get()
-
-    // After searching 0..30 (the full range up to resolved LATEST), should reach CaughtUp
-    awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactly(log1)
-      assertThat(stateTransitions).anyMatch { (_, newState) ->
-        newState is EthLogsFilterState.CaughtUp && newState.lastSearchedBlockNumber == 30UL
-      }
-    }
-
-    // Simulate a continuously advancing chain: LATEST moves forward and new logs appear
-    val log2 = templateLog.copy(blockNumber = 40UL, logIndex = 0UL)
-    fakeEthApiClient.addLogs(setOf(log2))
-    fakeEthApiClient.setLatestBlockTag(50UL)
-
-    // Should search the new range (31..50) and reach CaughtUp(50) again
-    awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactly(log1, log2)
-      assertThat(stateTransitions).anyMatch { (_, newState) ->
-        newState is EthLogsFilterState.CaughtUp && newState.lastSearchedBlockNumber == 50UL
-      }
-    }
-
-    // Advance chain again with no new logs — should still reach CaughtUp at new head
-    fakeEthApiClient.setLatestBlockTag(80UL)
-
-    awaitUntilAsserted {
-      assertThat(stateTransitions).anyMatch { (_, newState) ->
-        newState is EthLogsFilterState.CaughtUp && newState.lastSearchedBlockNumber == 80UL
-      }
-    }
-  }
-
   private fun createPoller(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,

@@ -78,7 +78,7 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	circuit.ExecutionCtx.WizardVerifier.Verify(api)
 
 	pie := getInvalidityPIExtractor(&circuit.ExecutionCtx.WizardVerifier)
-	execPie := getExecutionPIExtractor(&circuit.ExecutionCtx.WizardVerifier)
+	execPie := execCirc.GetPublicInputExtractor(&circuit.ExecutionCtx.WizardVerifier)
 	circuit.checkPublicInputs(api, &circuit.ExecutionCtx.WizardVerifier, pie, execPie)
 
 	if circuit.ExecutionCtx.LimitlessMode {
@@ -122,26 +122,26 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 // execution PI wizard extractors. Both modules always run together.
 func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wizard.VerifierCircuit, pie *invalidity.InvalidityPIExtractor, execPie *publicInput.FunctionalInputExtractor) {
 	// From invalidity PI extractor
-	extrTxHashLimbs := getPublicInputArr(api, wvc, pie.TxHash[:])
+	extrTxHashLimbs := execCirc.GetPublicInputArr(api, wvc, pie.TxHash[:])
 	circuit.txHash[0] = combine16BitLimbs(api, extrTxHashLimbs[:8])
 	circuit.txHash[1] = combine16BitLimbs(api, extrTxHashLimbs[8:])
 
-	extrFromAddressLimbs := getPublicInputArr(api, wvc, pie.FromAddress[:])
+	extrFromAddressLimbs := execCirc.GetPublicInputArr(api, wvc, pie.FromAddress[:])
 	circuit.fromAddress = combine16BitLimbs(api, extrFromAddressLimbs)
 
-	circuit.hasBadPrecompile = getPublicInput(api, wvc, pie.HasBadPrecompile)
-	circuit.NbL2Logs = getPublicInput(api, wvc, pie.NbL2Logs)
+	circuit.hasBadPrecompile = execCirc.GetPublicInput(api, wvc, pie.HasBadPrecompile)
+	circuit.NbL2Logs = execCirc.GetPublicInput(api, wvc, pie.NbL2Logs)
 
 	// From execution PI extractor
-	extrStateRootHashWords := getPublicInputArr(api, wvc, execPie.InitialStateRootHash[:])
+	extrStateRootHashWords := execCirc.GetPublicInputArr(api, wvc, execPie.InitialStateRootHash[:])
 	circuit.stateRootHash[0] = combine32BitLimbs(api, extrStateRootHashWords[:4])
 	circuit.stateRootHash[1] = combine32BitLimbs(api, extrStateRootHashWords[4:])
 
-	extrCoinBase := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.CoinBase[:]))
-	extrBaseFee := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.BaseFee[:]))
-	extrChainID := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.ChainID[:]))
-	extrL2MsgServiceAddr := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.L2MessageServiceAddr[:]))
-	extrBlockTimestamp := combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockTimestamp[:]))
+	extrCoinBase := combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.CoinBase[:]))
+	extrBaseFee := combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.BaseFee[:]))
+	extrChainID := combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.ChainID[:]))
+	extrL2MsgServiceAddr := combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.L2MessageServiceAddr[:]))
+	extrBlockTimestamp := combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.InitialBlockTimestamp[:]))
 
 	// Cross-check witness values against extraction when extracted is non-zero.
 	// The extraction may return zero if the relevant opcode was never called.
@@ -151,7 +151,7 @@ func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wi
 	internal.AssertEqualIf(api, extrL2MsgServiceAddr, circuit.L2MessageServiceAddr, extrL2MsgServiceAddr)
 	internal.AssertEqualIf(api, extrBlockTimestamp, circuit.InitialBlockTimestamp, extrBlockTimestamp)
 
-	circuit.initialBlockNumber = combine16BitLimbs(api, getPublicInputArr(api, wvc, execPie.InitialBlockNumber[:]))
+	circuit.initialBlockNumber = combine16BitLimbs(api, execCirc.GetPublicInputArr(api, wvc, execPie.InitialBlockNumber[:]))
 }
 
 func getInvalidityPIExtractor(wvc *wizard.VerifierCircuit) *invalidity.InvalidityPIExtractor {
@@ -164,36 +164,6 @@ func getInvalidityPIExtractor(wvc *wizard.VerifierCircuit) *invalidity.Invalidit
 		panic("invalidity PI extractor not of the right type: " + reflect.TypeOf(extraData).String())
 	}
 	return pie
-}
-
-func getExecutionPIExtractor(wvc *wizard.VerifierCircuit) *publicInput.FunctionalInputExtractor {
-	extraData, extraDataFound := wvc.Spec.ExtraData[publicInput.PublicInputExtractorMetadata]
-	if !extraDataFound {
-		panic("execution PI extractor not found")
-	}
-	pie, ok := extraData.(*publicInput.FunctionalInputExtractor)
-	if !ok {
-		panic("execution PI extractor not of the right type: " + reflect.TypeOf(extraData).String())
-	}
-	return pie
-}
-
-// getPublicInputArr returns a slice of values from the public input
-// Reused from execution circuit (pi_wizard_extraction.go:313-320)
-func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wizard.PublicInput) []frontend.Variable {
-	res := make([]frontend.Variable, len(pis))
-	for i := range pis {
-		r := wvc.GetPublicInput(api, pis[i].Name)
-		res[i] = r.Native()
-	}
-	return res
-}
-
-// getPublicInput returns a value from the public input
-// Reused from execution circuit (pi_wizard_extraction.go:323-326)
-func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
-	r := wvc.GetPublicInput(api, pi.Name)
-	return r.Native()
 }
 
 // Assign assigns the inputs to the circuit
@@ -214,8 +184,8 @@ func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.InitialBlockTimestamp = assi.FuncInputs.SimulatedBlockTimestamp
 }
 
-func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
-	return FunctinalPIQGnark{
+func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctionalPIQGnark {
+	return FunctionalPIQGnark{
 		FromAddress:             c.fromAddress,
 		TxHash:                  c.txHash,
 		StateRootHash:           c.stateRootHash,

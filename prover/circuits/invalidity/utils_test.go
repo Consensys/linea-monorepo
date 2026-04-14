@@ -504,7 +504,7 @@ func genShomei(t *testing.T, tcases []TestCases, depth int) (*smt_koalabear.Tree
 	var leaves = []field.Octuplet{}
 	for _, c := range tcases {
 		// Hash the account using Poseidon2
-		accountHash := hashAccountNative(&c.Account)
+		accountHash := hashAccount(&c.Account)
 
 		// Create leaf opening and hash it
 		leafOpening := accumulator.LeafOpening{
@@ -544,18 +544,6 @@ func genShomei(t *testing.T, tcases []TestCases, depth int) (*smt_koalabear.Tree
 	return tree, proofs, leaves
 }
 
-// hashAccountNative hashes an account using Poseidon2
-func hashAccountNative(a *Account) linTypes.KoalaOctuplet {
-	hasher := poseidon2_koalabear.NewMDHasher()
-	a.WriteTo(hasher)
-	digest := hasher.Sum(nil)
-	var d linTypes.KoalaOctuplet
-	if err := d.SetBytes(digest); err != nil {
-		panic(err)
-	}
-	return d
-}
-
 // it gets a leaf via its position and check it has the expected value.
 func TestShomei(t *testing.T) {
 
@@ -567,7 +555,7 @@ func TestShomei(t *testing.T) {
 		c := tcases[i]
 
 		// Hash the account using Poseidon2
-		accountHash := hashAccountNative(&c.Account)
+		accountHash := hashAccount(&c.Account)
 
 		// Create expected leaf hash
 		expectedLeafOpening := accumulator.LeafOpening{
