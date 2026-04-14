@@ -1,6 +1,6 @@
 # define the assembler to use
 AS = riscv64-unknown-elf-as
-AS_FLAGS = -march=rv64im -mabi=lp64
+AS_FLAGS = -march=rv64im
 
 # Directory containing this makefile (works no matter where `make` is invoked from).
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
