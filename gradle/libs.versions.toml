@@ -39,10 +39,11 @@ undercouchDownload = "5.6.0"
 
 # Runtime
 # Besu commit hash from https://github.com/besu-eth/besu
-# This is the single source of truth for the Besu version. Every "./gradlew build" (and any
-# compile task) automatically checks out this commit, builds Besu, and exposes the resolved
-# version as rootProject.ext.resolvedBesuVer for tracer, sequencer, besu-libs, etc.
-besuCommit = "057dcb3aaf19d027e39ad7d46782354125cc82c0"
+# This is the single source of truth for the Besu version. 
+# At gradle configuration time, linea-besu/build.gradle reads a 
+# cached version file if exists or else checks out this commit 
+# and builds Besu, exposing the resolved version as rootProject.ext.resolvedBesuVer
+besuCommit = "a5942029063e2cb7f14421c504575fe70f36a355"
 blobCompressor = "4.0.1"
 commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"

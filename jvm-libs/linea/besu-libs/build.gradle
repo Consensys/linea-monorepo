@@ -3,6 +3,10 @@ plugins {
   id 'java-library'
 }
 
+tasks.named('compileJava').configure {
+  dependsOn ':linea-besu:buildAndPublishBesu'
+}
+
 dependencies {
   def besuVersion = rootProject.ext.resolvedBesuVer
 

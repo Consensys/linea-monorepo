@@ -23,6 +23,11 @@ allprojects {
       besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
     }
   }
+  plugins.withType(JavaPlugin) {
+    tasks.named('compileJava').configure {
+      dependsOn ':linea-besu:buildAndPublishBesu'
+    }
+  }
 }
 
 sonar {
