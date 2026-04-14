@@ -53,7 +53,7 @@ func Create8LimbsFromInt(n uint64) [8]field.Element {
 	return limbs
 }
 
-// MockZkevmPI creates a minimal ZkEvm with limb-based public inputs for BadPrecompileCircuit.
+// MockZkEvmPI creates a minimal ZkEvm with limb-based public inputs for BadPrecompileCircuit.
 // It registers columns and public inputs matching both the InvalidityPIExtractor
 // and the execution FunctionalInputExtractor layouts, then proves them with the
 // provided input values.
@@ -61,7 +61,7 @@ func Create8LimbsFromInt(n uint64) [8]field.Element {
 // When limitless is non-nil, the mock also registers the conglomeration public
 // inputs that CheckLimitlessConglomerationCompletion reads, with values that
 // satisfy all its constraints.
-func MockZkevmPI(rng *rand.Rand, in invalidityPI.Inputs, limitless *LimitlessInputs) (*wizard.CompiledIOP, wizard.Proof) {
+func MockZkEvmPI(rng *rand.Rand, in invalidityPI.Inputs, limitless *LimitlessInputs) (*wizard.CompiledIOP, wizard.Proof) {
 	define := func(b *wizard.Builder) {
 		comp := b.CompiledIOP
 
