@@ -4,6 +4,21 @@ This directory holds the arithmetization of RISC-V, with target = `riscv64im_zic
 
 Arithmetization is written in ZkC, a simple imperative language designed primarily for writing programs whose executions can be proved. This language is written and maintained by the Linea arithmetization team, available in the [`go-corset`repository](https://github.com/Consensys/go-corset/blob/main/ZKC_LANGUAGE.md)
 
+## Prerequisites for local setup
+
+### Install target toolchain
+
+Install toolchain `riscv64im_zicclsm-unknown-none-elf`
+
+Note: The target riscv64im_zicclsm-unknown-none-elf is not a standard target. To install it, you can use a standard RISC‑V toolchain and just specify the architecture/extensions manually.
+
+### Install Zkc
+
+No official releases yet
+Clone repo [go-corset](https://github.com/Consensys/go-corset)
+
+`go install .cmd/zkc`
+
 ## CI actions and workflows
 
 ### Setup Arithmetization RISC-V Environment
@@ -15,7 +30,7 @@ It installs:
 
 ### Tracer riscv-constraints check compilation
 
-The workflow **[Tracer riscv-constraints check compilation](../.github/workflows/arithmetization-zkc-riscv-check-compilation.yml)** verifies that the ZkC program compiles in CI. 
+The workflow **[Tracer riscv-constraints check compilation](../.github/workflows/arithmetization-zkc-riscv-check-compilation.yml)** verifies that the ZkC program compiles in CI.
 It runs the arithmetization setup step above .
 It checks out [go-corset](https://github.com/Consensys/go-corset), installs the `zkc` CLI, and runs `zkc compile` on the main entrypoint under this tree.
 

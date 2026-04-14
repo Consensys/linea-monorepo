@@ -61,7 +61,6 @@ fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     registers[rd] = signed_LT(v1, v2) as DoubleWord
   }
   if (funct3 == FUNCT3_SLTU) && (funct7 == FUNCT7_SLTU) {
-
     if (v1 < v2) {
     registers[rd] = 1
     } else {

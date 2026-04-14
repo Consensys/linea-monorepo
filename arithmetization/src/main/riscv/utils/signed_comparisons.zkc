@@ -7,20 +7,13 @@ fn signed_LT(a :DoubleWord, b :DoubleWord) -> (comparison :Boolean) {
   var b_sign         :SignBit
   var raw_comparison :Boolean
 
-
-  // TODO: use UNDERSCORE notation when available
   a_sign = sign_bit_of_double_word(a)
   b_sign = sign_bit_of_double_word(b)
 
-  // TODO: TERNARY operator would be nice
   if a_sign != b_sign {
-  // different signs case
-  if a_sign == 1 {
-      comparison = 1
-    } else {
-      comparison = 0
-    }
-  // same signs case
+    // different signs case
+    comparison = a_sign == 1 ? 1 : 0
+    // same signs case
   } else {
     // this applies both in the signed case as in the unsigned case, e.g.
     // ∙  2^31 ≡ 0x80..00
@@ -28,10 +21,6 @@ fn signed_LT(a :DoubleWord, b :DoubleWord) -> (comparison :Boolean) {
     // we have both
     // ∙  2^31 < -1
     // ∙  0x80..00 < 0xff..ff
-    if a < b {
-      comparison = 1
-    } else {
-      comparison = 0
-    }
+    comparison = a < b ? 1 : 0
   }
 }
