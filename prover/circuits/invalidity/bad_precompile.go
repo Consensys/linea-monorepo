@@ -214,8 +214,8 @@ func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.InitialBlockTimestamp = assi.FuncInputs.SimulatedBlockTimestamp
 }
 
-func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
-	return FunctinalPIQGnark{
+func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctionalPIQGnark {
+	return FunctionalPIQGnark{
 		FromAddress:             c.fromAddress,
 		TxHash:                  c.txHash,
 		StateRootHash:           c.stateRootHash,

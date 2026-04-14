@@ -36,7 +36,7 @@ type CircuitInvalidity struct {
 // Allocation and assignment are handled via concrete type methods.
 type SubCircuit interface {
 	frontend.Circuit
-	FunctionalPIQGnark() FunctinalPIQGnark
+	FunctionalPIQGnark() FunctionalPIQGnark
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -69,7 +69,7 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// Use the subcircuit's functional public inputs directly.
 	// TxHash, FromAddress, StateRootHash, ToAddress come from the subcircuit via gnark:"-" fields;
 	// TxNumber, ExpectedBlockNumber, FtxRollingHash are outer-circuit witness fields.
-	c.FuncInputs.FunctinalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
+	c.FuncInputs.FunctionalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
 
 	// Range-check the functional public inputs to their expected bit widths.
 	c.FuncInputs.RangeCheck(api)
