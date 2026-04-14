@@ -292,7 +292,7 @@ describe("Forced transaction test suite", () => {
     300_000,
   );
 
-  it.skip("Should reject a forced transaction that calls an excluded precompile (BadPrecompile)", async () => {
+  it.concurrent("Should reject a forced transaction that calls an excluded precompile (BadPrecompile)", async () => {
     const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
       l1AccountManager.generateAccount(),
       l2AccountManager.generateAccount(),
@@ -438,159 +438,163 @@ describe("Forced transaction test suite", () => {
     logger.debug("BadPrecompile forced transaction confirmed: receipt not found on L2 as expected.");
   }, 300_000);
 
-  it.skip("Should reject a forced transaction that exceeds the L2-L1 log limit (TooManyLogs)", async () => {
-    const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
-      l1AccountManager.generateAccount(),
-      l2AccountManager.generateAccount(),
-      l2AccountManager.generateAccount(),
-    ]);
+  it.concurrent(
+    "Should reject a forced transaction that exceeds the L2-L1 log limit (TooManyLogs)",
+    async () => {
+      const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
+        l1AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
+        l2AccountManager.generateAccount(),
+      ]);
 
-    const l1PublicClient = context.l1PublicClient();
-    const l1WalletClient = context.l1WalletClient({ account: l1Account });
-    const l2PublicClient = context.l2PublicClient();
-    const l2DeployerWalletClient = context.l2WalletClient({ account: l2Deployer });
+      const l1PublicClient = context.l1PublicClient();
+      const l1WalletClient = context.l1WalletClient({ account: l1Account });
+      const l2PublicClient = context.l2PublicClient();
+      const l2DeployerWalletClient = context.l2WalletClient({ account: l2Deployer });
 
-    // Deploy MultiMessageSender contract on L2
-    const contractAddress = await deployContract(l2DeployerWalletClient, {
-      abi: MultiMessageSenderAbi,
-      bytecode: MultiMessageSenderAbiBytecode as `0x${string}`,
-    });
+      // Deploy MultiMessageSender contract on L2
+      const contractAddress = await deployContract(l2DeployerWalletClient, {
+        abi: MultiMessageSenderAbi,
+        bytecode: MultiMessageSenderAbiBytecode as `0x${string}`,
+      });
 
-    logger.debug(`MultiMessageSender deployed on L2. address=${contractAddress}`);
+      logger.debug(`MultiMessageSender deployed on L2. address=${contractAddress}`);
 
-    // Read L2MessageService address and minimumFeeInWei
-    const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
-    const l2MessageServiceAddress = l2MessageService.address;
-    const minimumFeeInWei: bigint = await l2MessageService.read.minimumFeeInWei();
+      // Read L2MessageService address and minimumFeeInWei
+      const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
+      const l2MessageServiceAddress = l2MessageService.address;
+      const minimumFeeInWei: bigint = await l2MessageService.read.minimumFeeInWei();
 
-    logger.debug(`L2MessageService — address=${l2MessageServiceAddress} minimumFeeInWei=${minimumFeeInWei}`);
+      logger.debug(`L2MessageService — address=${l2MessageServiceAddress} minimumFeeInWei=${minimumFeeInWei}`);
 
-    // Encode calldata: send 11 messages to exceed the BLOCK_L2_L1_LOGS limit of 10
-    const messageCount = 11n;
-    const callData = encodeFunctionData({
-      abi: MultiMessageSenderAbi,
-      functionName: "sendMultipleMessages",
-      args: [l2MessageServiceAddress, l2ForcedAccount.address, minimumFeeInWei, messageCount],
-    });
+      // Encode calldata: send 11 messages to exceed the BLOCK_L2_L1_LOGS limit of 10
+      const messageCount = 11n;
+      const callData = encodeFunctionData({
+        abi: MultiMessageSenderAbi,
+        functionName: "sendMultipleMessages",
+        args: [l2MessageServiceAddress, l2ForcedAccount.address, minimumFeeInWei, messageCount],
+      });
 
-    const totalValue = minimumFeeInWei * messageCount;
+      const totalValue = minimumFeeInWei * messageCount;
 
-    const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-    const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
+      const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
+      const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
 
-    // Resolve finalized state
-    let lastFinalizedState = await resolveLastFinalizedState(
-      lineaRollup,
-      l1PublicClient,
-      getDefaultLastFinalizedTimestamp(),
-    );
-
-    logger.debug(
-      `Resolved finalized state — timestamp=${lastFinalizedState.timestamp} forcedTransactionNumber=${lastFinalizedState.forcedTransactionNumber}`,
-    );
-
-    // Build forced transaction calling sendMultipleMessages
-    const { forcedTransaction, l2TxHash } = await buildSignedForcedTransaction(context, {
-      l2Account: l2ForcedAccount,
-      to: contractAddress as Address,
-      nonce: 0n,
-      value: totalValue,
-      data: callData,
-      gasLimit: 300_000n,
-      maxFeePerGas: 1_000_000_000n,
-      maxPriorityFeePerGas: 100_000_000n,
-    });
-
-    logger.debug(
-      `Built TooManyLogs forced transaction — signer=${l2ForcedAccount.address} to=${contractAddress} value=${totalValue} l2TxHash=${l2TxHash}`,
-    );
-
-    const [, , , , feeAmount] = await lineaRollup.read.getRequiredForcedTransactionFields();
-    const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
-
-    // Submit the forced transaction
-    const { hash: txHash, receipt } = await sendTransactionWithRetry(
-      l1PublicClient,
-      (fees) =>
-        gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
-          value: feeAmount,
-          maxPriorityFeePerGas,
-          maxFeePerGas,
-          ...fees,
-        }),
-      {
-        receiptTimeoutMs: 30_000,
-        abi: [...gateway.abi, ...lineaRollup.abi],
-        retryOnRevert: true,
-        beforeRetry: async () => {
-          lastFinalizedState = await resolveLastFinalizedState(
-            lineaRollup,
-            l1PublicClient,
-            getDefaultLastFinalizedTimestamp(),
-          );
-        },
-      },
-    );
-
-    logger.debug(
-      `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
-    );
-
-    expect(receipt.status).toEqual("success");
-
-    const [forcedTxEvent] = await getEvents(l1PublicClient, {
-      abi: lineaRollup.abi,
-      address: lineaRollup.address,
-      eventName: "ForcedTransactionAdded",
-      fromBlock: receipt.blockNumber,
-      toBlock: receipt.blockNumber,
-      strict: true,
-    });
-
-    expect(forcedTxEvent).toBeDefined();
-
-    const submittedForcedTransactionNumber = forcedTxEvent.args.forcedTransactionNumber;
-
-    logger.debug(
-      `ForcedTransactionAdded — forcedTransactionNumber=${submittedForcedTransactionNumber} from=${forcedTxEvent.args.from}`,
-    );
-
-    // Wait for L1 finalization that includes the forced transaction
-    logger.debug(
-      `Waiting for FinalizedStateUpdated with forcedTransactionNumber >= ${submittedForcedTransactionNumber}`,
-    );
-
-    const [finalizedEvent] = await waitForEvents(l1PublicClient, {
-      abi: lineaRollup.abi,
-      address: lineaRollup.address,
-      eventName: "FinalizedStateUpdated",
-      fromBlock: receipt.blockNumber,
-      toBlock: "latest",
-      pollingIntervalMs: 2_000,
-      strict: true,
-      criteria: async (events) =>
-        events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
-    });
-
-    logger.debug(
-      `Finalization includes forced transaction. blockNumber=${finalizedEvent.args.blockNumber} forcedTransactionNumber=${finalizedEvent.args.forcedTransactionNumber}`,
-    );
-
-    // Verify L2 receipt is NOT available (TooManyLogs triggers virtual trace generation, tx is not executed on L2)
-    logger.debug(`Verifying that the forced transaction receipt is not available on L2 for l2TxHash=${l2TxHash}`);
-
-    try {
-      await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
-      throw new Error(
-        "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
+      // Resolve finalized state
+      let lastFinalizedState = await resolveLastFinalizedState(
+        lineaRollup,
+        l1PublicClient,
+        getDefaultLastFinalizedTimestamp(),
       );
-    } catch (error) {
-      const e = error as GetTransactionReceiptErrorType;
-      if (e.name !== "TransactionReceiptNotFoundError") {
-        throw new Error("Test failed: Unexpected error type thrown. Expected TransactionReceiptNotFoundError.");
-      }
-    }
 
-    logger.debug("TooManyLogs forced transaction confirmed: receipt not found on L2 as expected.");
-  }, 300_000);
+      logger.debug(
+        `Resolved finalized state — timestamp=${lastFinalizedState.timestamp} forcedTransactionNumber=${lastFinalizedState.forcedTransactionNumber}`,
+      );
+
+      // Build forced transaction calling sendMultipleMessages
+      const { forcedTransaction, l2TxHash } = await buildSignedForcedTransaction(context, {
+        l2Account: l2ForcedAccount,
+        to: contractAddress as Address,
+        nonce: 0n,
+        value: totalValue,
+        data: callData,
+        gasLimit: 300_000n,
+        maxFeePerGas: 1_000_000_000n,
+        maxPriorityFeePerGas: 100_000_000n,
+      });
+
+      logger.debug(
+        `Built TooManyLogs forced transaction — signer=${l2ForcedAccount.address} to=${contractAddress} value=${totalValue} l2TxHash=${l2TxHash}`,
+      );
+
+      const [, , , , feeAmount] = await lineaRollup.read.getRequiredForcedTransactionFields();
+      const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
+
+      // Submit the forced transaction
+      const { hash: txHash, receipt } = await sendTransactionWithRetry(
+        l1PublicClient,
+        (fees) =>
+          gateway.write.submitForcedTransaction([forcedTransaction, lastFinalizedState], {
+            value: feeAmount,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
+            ...fees,
+          }),
+        {
+          receiptTimeoutMs: 30_000,
+          abi: [...gateway.abi, ...lineaRollup.abi],
+          retryOnRevert: true,
+          beforeRetry: async () => {
+            lastFinalizedState = await resolveLastFinalizedState(
+              lineaRollup,
+              l1PublicClient,
+              getDefaultLastFinalizedTimestamp(),
+            );
+          },
+        },
+      );
+
+      logger.debug(
+        `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
+      );
+
+      expect(receipt.status).toEqual("success");
+
+      const [forcedTxEvent] = await getEvents(l1PublicClient, {
+        abi: lineaRollup.abi,
+        address: lineaRollup.address,
+        eventName: "ForcedTransactionAdded",
+        fromBlock: receipt.blockNumber,
+        toBlock: receipt.blockNumber,
+        strict: true,
+      });
+
+      expect(forcedTxEvent).toBeDefined();
+
+      const submittedForcedTransactionNumber = forcedTxEvent.args.forcedTransactionNumber;
+
+      logger.debug(
+        `ForcedTransactionAdded — forcedTransactionNumber=${submittedForcedTransactionNumber} from=${forcedTxEvent.args.from}`,
+      );
+
+      // Wait for L1 finalization that includes the forced transaction
+      logger.debug(
+        `Waiting for FinalizedStateUpdated with forcedTransactionNumber >= ${submittedForcedTransactionNumber}`,
+      );
+
+      const [finalizedEvent] = await waitForEvents(l1PublicClient, {
+        abi: lineaRollup.abi,
+        address: lineaRollup.address,
+        eventName: "FinalizedStateUpdated",
+        fromBlock: receipt.blockNumber,
+        toBlock: "latest",
+        pollingIntervalMs: 2_000,
+        strict: true,
+        criteria: async (events) =>
+          events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
+      });
+
+      logger.debug(
+        `Finalization includes forced transaction. blockNumber=${finalizedEvent.args.blockNumber} forcedTransactionNumber=${finalizedEvent.args.forcedTransactionNumber}`,
+      );
+
+      // Verify L2 receipt is NOT available (TooManyLogs triggers virtual trace generation, tx is not executed on L2)
+      logger.debug(`Verifying that the forced transaction receipt is not available on L2 for l2TxHash=${l2TxHash}`);
+
+      try {
+        await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
+        throw new Error(
+          "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
+        );
+      } catch (error) {
+        const e = error as GetTransactionReceiptErrorType;
+        if (e.name !== "TransactionReceiptNotFoundError") {
+          throw new Error("Test failed: Unexpected error type thrown. Expected TransactionReceiptNotFoundError.");
+        }
+      }
+
+      logger.debug("TooManyLogs forced transaction confirmed: receipt not found on L2 as expected.");
+    },
+    300_000,
+  );
 });
