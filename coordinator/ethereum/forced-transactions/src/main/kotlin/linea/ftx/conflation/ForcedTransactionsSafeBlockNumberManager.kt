@@ -13,8 +13,14 @@ internal class ForcedTransactionsSafeBlockNumberManager(
   private val ftxInSequencerForProcessing: MutableList<ULong> = mutableListOf()
 
   private fun updateSafeBlockNumber(value: ULong?) {
+    val effectiveUpdate = value != safeBlockNumber
+    if (effectiveUpdate) {
+      log.info("updating safeBlockNumber from {} to {}", safeBlockNumber, value)
+    }
     safeBlockNumber = value
-    listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    if (effectiveUpdate) {
+      listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    }
   }
 
   @Synchronized
@@ -81,7 +87,6 @@ internal class ForcedTransactionsSafeBlockNumberManager(
     if (!startUpScanFinished) {
       return
     }
-    log.info("releasing Safe Block Number lock")
     updateSafeBlockNumber(null)
   }
 
