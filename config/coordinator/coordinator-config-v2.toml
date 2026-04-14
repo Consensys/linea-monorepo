@@ -254,7 +254,7 @@ trust-store-password = "changeit"
 
 [forced-transactions]
 disabled = false
-l1-highest-block-tag = "LATEST"
+l1-highest-block-tag = "SAFE"
 processing-tick-interval = "PT5S"
 processing-delay = "PT0S"
 sequencer-endpoint = "http://sequencer:8545/"
