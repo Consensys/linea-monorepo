@@ -330,6 +330,13 @@ services:
       timeout: 1s
       retries: 120
     restart: on-failure
+    environment:
+      CONFIG_OVERRIDE_OPTS: >-
+        -Dconfig.override.type2-state-proof-provider.disabled=${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
+        -Dconfig.override.l1-submission.blob.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+        -Dconfig.override.l1-submission.aggregation.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+        -Dconfig.override.message-anchoring.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+        -Dconfig.override.l1-submission.data-availability=${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
     command:
       - sh
       - -c
@@ -341,11 +348,7 @@ services:
             -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \
             -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json \
             -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml \
-            -Dconfig.override.type2-state-proof-provider.disabled=${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true} \
-            -Dconfig.override.l1-submission.blob.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j} \
-            -Dconfig.override.l1-submission.aggregation.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j} \
-            -Dconfig.override.l1-submission.data-availability=${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP} \
-            -Dconfig.override.message-anchoring.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j} \
+            $$CONFIG_OVERRIDE_OPTS \
             -jar libs/coordinator.jar \
             --traces-limits-v5 config/traces-limits-v5.toml \
             --smart-contract-errors config/smart-contract-errors.toml \
