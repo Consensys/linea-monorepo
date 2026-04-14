@@ -158,7 +158,7 @@ func TestProveBadPrecompile(t *testing.T) {
 		},
 	}
 
-	comp, wizProof := invalidity.MockZkevmPI(rng, inputs, nil)
+	comp, wizProof := invalidity.MockZkEvmPI(rng, inputs, nil)
 
 	txToAddr := common.HexToAddress("0xdeadbeefdeadb")
 	tx := types.NewTx(&types.DynamicFeeTx{
