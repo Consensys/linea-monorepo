@@ -15,7 +15,7 @@ import (
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
-	FunctionalPIQGnark   `gnark:"-"` // derived from subcircuit in Define, no wires allocated
+	FunctionalPIQGnark  `gnark:"-"` // derived from subcircuit in Define, no wires allocated
 	TxNumber            frontend.Variable
 	DeadLineBlockNumber frontend.Variable // deadline block number to execute/attempt ftx.
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
