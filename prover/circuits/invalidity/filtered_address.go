@@ -17,8 +17,8 @@ import (
 // - FromIsFiltered and ToIsFiltered are boolean and mutually exclusive
 // - The flagged address is non-zero
 // - The ToAddress is consistent with the RLP-encoded transaction
-// - The sender address matches the account trie's HKey
 // - The TxHash matches the keccak hash of the RLP-encoded transaction
+// - Rolling hash binds FromAddress on-chain (FromAddress is passed to the publicInputs)
 type FilteredAddressCircuit struct {
 	// RLP-encoded payload prefixed with the type byte: txType || rlp(tx.inner)
 	RLPEncodedTx []frontend.Variable
@@ -144,8 +144,8 @@ func (c *FilteredAddressCircuit) Assign(assi AssigningInputs) {
 }
 
 // FunctionalPIQGnark returns the subcircuit-derived functional public inputs
-func (c *FilteredAddressCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
-	return FunctinalPIQGnark{
+func (c *FilteredAddressCircuit) FunctionalPIQGnark() FunctionalPIQGnark {
+	return FunctionalPIQGnark{
 		TxHash:                  c.TxHash,
 		FromAddress:             c.TxFromAddress,
 		StateRootHash:           c.StateRootHash,

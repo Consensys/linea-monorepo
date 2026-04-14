@@ -82,10 +82,12 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	// Reconstruct account balance from limbs (16 x 16-bit, big-endian)
 	accountBalance := combine16BitLimbs(api, toNativeSlice(account.Balance[:]))
 
-	// Bad balance: if invalidityType == 1 ----> account balance < tx cost+1
+	// Bad balance: if invalidityType == 1 ----> account balance <= tx cost-1
 	api.AssertIsLessOrEqual(
-		api.Mul(accountBalance, circuit.InvalidityType),
-		api.Add(circuit.TxCost, 1))
+		api.Mul(
+			api.Add(accountBalance, 1),
+			circuit.InvalidityType),
+		circuit.TxCost)
 
 	// ========== ACCOUNT TRIE MEMBERSHIP ==========
 	// Verify account is in the state trie using Poseidon2 Merkle proof
@@ -206,8 +208,8 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 }
 
 // FunctionalPIQGnark returns the subcircuit-derived functional public inputs
-func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
-	return FunctinalPIQGnark{
+func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctionalPIQGnark {
+	return FunctionalPIQGnark{
 		TxHash:                  c.TxHash,
 		FromAddress:             c.TxFromAddress,
 		StateRootHash:           reconstructRootHash(c.api, c.AccountTrie.TopRoot),

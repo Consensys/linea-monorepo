@@ -48,7 +48,7 @@ func TestSetupRoundTripPrecompileLogs(t *testing.T) {
 		t.Skip("skipping setup round-trip test in short mode")
 	}
 
-	comp, _ := invalidity.MockZkevmPI(rng, invalidityPI.Inputs{
+	comp, _ := invalidity.MockZkEvmPI(rng, invalidityPI.Inputs{
 		FixedInputs: fixedInputs,
 		CaseInputs: invalidityPI.CaseInputs{
 			HasBadPrecompile: true,

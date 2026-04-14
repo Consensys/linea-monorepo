@@ -214,12 +214,14 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 				return nil, fmt.Errorf("could not load the setup: %w", err)
 			}
 
-			// Enable proof caching: derive cache path from public input hash.
-			// On re-runs with the same witness, this skips the expensive plonk.Prove.
+			// Enable proof caching: derive cache path from public input hash
+			// and VK digest. Including the VK digest ensures stale proofs are
+			// not reused after a trusted-setup change.
 			cacheDir := filepath.Join(os.TempDir(), "linea-invalidity-proof-cache")
 			if err := os.MkdirAll(cacheDir, 0755); err == nil {
 				piHash := hex.EncodeToString(funcInput.Sum(nil))
-				assigningInputs.CachedProofPath = filepath.Join(cacheDir, fmt.Sprintf("%s-%s.proof", circuitID, piHash))
+				vkDigest := setup.VerifyingKeyDigest()
+				assigningInputs.CachedProofPath = filepath.Join(cacheDir, fmt.Sprintf("%s-%s-%s.proof", circuitID, vkDigest, piHash))
 				logrus.Infof("Proof cache path: %s", assigningInputs.CachedProofPath)
 			}
 
