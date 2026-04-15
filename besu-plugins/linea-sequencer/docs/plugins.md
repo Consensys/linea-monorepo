@@ -105,14 +105,11 @@ The validators are in the package `net.consensys.linea.sequencer.txpoolvalidatio
 | `--plugin-linea-tx-pool-profitability-check-api-enabled` | true              |
 | `--plugin-linea-tx-pool-profitability-check-p2p-enabled` | false             |
 
-### Transaction validation - LineaTransactionValidatorPlugin
+### Block transaction validation - LineaBlockTransactionValidatorPlugin
 
-This plugin uses Besu's `TransactionValidatorService` to filter transactions at multiple critical lifecycle stages:
-1. Block import - when a Besu validator receives a block via P2P gossip
-2. Transaction pool - when a Besu node adds to its local transaction pool
-3. Block production - when a Besu node builds a block
+This plugin uses Besu's `TransactionValidatorService` to filter transactions at the protocol level, which covers block import, transaction pool admission, and block production. It enforces which transaction types (blob, delegate code) are accepted.
 
-The plugin implements transaction filtering for blob transactions (EIP-4844) and delegate code transactions (EIP-7702), which can be enabled or disabled via configuration. In the future, this plugin may consolidate logic from other transaction-filtering plugins to unify transaction filtering logic.
+Pool-level (RPC/P2P) transaction type validation is also handled by `LineaTransactionPoolValidatorPlugin` via `TransactionTypeValidator`, using the same configuration. Both plugins share validation logic through `TransactionTypeValidation`.
 
 #### CLI options
 
