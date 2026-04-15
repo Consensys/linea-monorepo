@@ -1,66 +1,73 @@
-import { DeployFunction } from "hardhat-deploy/types";
-import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
-import { ethers, upgrades } from "hardhat";
 import { RollupRevenueVault__factory } from "contracts/typechain-types";
+import { ethers, upgrades } from "hardhat";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
 
-const func: DeployFunction = async function () {
-  const contractName = "RollupRevenueVault";
+import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
+import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-  const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
-  const lastInvoiceDate = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE");
-  const securityCouncil = getRequiredEnvVar("L2_SECURITY_COUNCIL");
-  const invoiceSubmitter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
-  const burner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
-  const invoicePaymentReceiver = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");
-  const tokenBridge = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE");
-  const messageService = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
-  const l1LineaTokenBurner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER");
-  const lineaToken = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LINEA_TOKEN");
-  const dexSwapAdapter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER");
+const func: DeployFunction = withSignerUiSession(
+  "18_deploy_RollupRevenueVaultWithReinitialization.ts",
+  async function (hre: HardhatRuntimeEnvironment) {
+    const signer = await getUiSigner(hre);
+    const contractName = "RollupRevenueVault";
 
-  const factory = await ethers.getContractFactory(contractName);
+    const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
+    const lastInvoiceDate = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE");
+    const securityCouncil = getRequiredEnvVar("L2_SECURITY_COUNCIL");
+    const invoiceSubmitter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
+    const burner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
+    const invoicePaymentReceiver = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");
+    const tokenBridge = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE");
+    const messageService = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
+    const l1LineaTokenBurner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER");
+    const lineaToken = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LINEA_TOKEN");
+    const dexSwapAdapter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER");
 
-  console.log("Deploying Contract...");
-  const newContract = await upgrades.deployImplementation(factory, {
-    kind: "transparent",
-  });
+    const factory = await ethers.getContractFactory(contractName, signer);
 
-  const contractAddress = newContract.toString();
+    console.log("Deploying Contract...");
+    const newContract = await upgrades.deployImplementation(factory, {
+      kind: "transparent",
+    });
 
-  console.log(`Contract deployed at ${contractAddress}`);
+    const contractAddress = newContract.toString();
 
-  const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
-    "0x9623609d",
-    ethers.AbiCoder.defaultAbiCoder().encode(
-      ["address", "address", "bytes"],
-      [
-        proxyAddress,
-        newContract,
-        RollupRevenueVault__factory.createInterface().encodeFunctionData("initializeRolesAndStorageVariables", [
-          lastInvoiceDate,
-          securityCouncil,
-          invoiceSubmitter,
-          burner,
-          invoicePaymentReceiver,
-          tokenBridge,
-          messageService,
-          l1LineaTokenBurner,
-          lineaToken,
-          dexSwapAdapter,
-        ]),
-      ],
-    ),
-  ]);
+    console.log(`Contract deployed at ${contractAddress}`);
 
-  console.log(
-    "Encoded Tx Upgrade with Reinitialization from Security Council:",
-    "\n",
-    upgradeCallWithReinitializationUsingSecurityCouncil,
-  );
-  console.log("\n");
+    const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
+      "0x9623609d",
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "address", "bytes"],
+        [
+          proxyAddress,
+          newContract,
+          RollupRevenueVault__factory.createInterface().encodeFunctionData("initializeRolesAndStorageVariables", [
+            lastInvoiceDate,
+            securityCouncil,
+            invoiceSubmitter,
+            burner,
+            invoicePaymentReceiver,
+            tokenBridge,
+            messageService,
+            l1LineaTokenBurner,
+            lineaToken,
+            dexSwapAdapter,
+          ]),
+        ],
+      ),
+    ]);
 
-  await tryVerifyContract(contractAddress, "src/operational/RollupRevenueVault.sol:RollupRevenueVault");
-};
+    console.log(
+      "Encoded Tx Upgrade with Reinitialization from Security Council:",
+      "\n",
+      upgradeCallWithReinitializationUsingSecurityCouncil,
+    );
+    console.log("\n");
+
+    await tryVerifyContract(contractAddress, "src/operational/RollupRevenueVault.sol:RollupRevenueVault");
+  },
+);
 
 export default func;
 func.tags = ["RollupRevenueVaultWithReinitialization"];

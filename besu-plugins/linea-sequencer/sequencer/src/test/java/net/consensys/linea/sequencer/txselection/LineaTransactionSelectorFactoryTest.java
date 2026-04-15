@@ -134,7 +134,7 @@ class LineaTransactionSelectorFactoryTest {
     final var transactionCompressor =
         new CachingTransactionCompressor(
             new BlobCompressorSelectorByTimestamp(
-                Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()), 128 * 1024));
+                Map.of(BlobCompressorVersion.V3, Instant.Companion.getDISTANT_PAST()), 128 * 1024));
     TransactionProfitabilityCalculator transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(
             mockProfitabilityConfiguration, transactionCompressor);
@@ -160,7 +160,7 @@ class LineaTransactionSelectorFactoryTest {
             transactionProfitabilityCalculator,
             transactionCompressor,
             null);
-    factory.create(new SelectorsStateManager());
+    factory.create(mock(ProcessableBlockHeader.class), new SelectorsStateManager());
   }
 
   @Test
@@ -274,6 +274,7 @@ class LineaTransactionSelectorFactoryTest {
   }
 
   static class FailedTransactionSelectionResultProvider implements ArgumentsProvider {
+    @SuppressWarnings("deprecation")
     @Override
     public Stream<? extends Arguments> provideArguments(
         org.junit.jupiter.api.extension.ExtensionContext context) {
@@ -284,7 +285,6 @@ class LineaTransactionSelectorFactoryTest {
           Arguments.of(TransactionSelectionResult.BLOCK_SELECTION_TIMEOUT_INVALID_TX),
           Arguments.of(TransactionSelectionResult.TX_EVALUATION_TOO_LONG),
           Arguments.of(TransactionSelectionResult.INVALID_TX_EVALUATION_TOO_LONG),
-          Arguments.of(TransactionSelectionResult.BLOCK_OCCUPANCY_ABOVE_THRESHOLD),
           Arguments.of(TransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_GAS),
           Arguments.of(TransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_BLOB_GAS));
     }
