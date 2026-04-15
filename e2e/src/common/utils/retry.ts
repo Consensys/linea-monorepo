@@ -88,6 +88,15 @@ function isNonceTooLow(error: unknown): boolean {
 }
 
 function hasErrorNameInChain(error: unknown, errorNames: Set<string>): boolean {
+  if (error instanceof BaseError) {
+    return (
+      error.walk((cause) => {
+        const name = (cause as { name?: string }).name;
+        return typeof name === "string" && errorNames.has(name);
+      }) !== null
+    );
+  }
+
   let current = error as { name?: string; cause?: unknown } | undefined;
   let depth = 0;
 

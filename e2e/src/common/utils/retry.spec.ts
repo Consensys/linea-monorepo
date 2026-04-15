@@ -1,4 +1,5 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
+import { BaseError } from "viem";
 
 import { isContractRevert } from "./retry";
 
@@ -31,6 +32,22 @@ describe("retry helper", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("uses viem walk for BaseError chains", () => {
+    const revertedError = Object.assign(new BaseError("execution reverted"), {
+      name: "ContractFunctionRevertedError",
+    });
+    const simulationError = Object.assign(new BaseError("simulation failed"), {
+      name: "ContractFunctionExecutionError",
+    });
+    const walkImpl = ((predicate?: (error: unknown) => boolean) =>
+      predicate?.(revertedError) ? revertedError : simulationError) as unknown as BaseError["walk"];
+    const walk = jest.fn(walkImpl);
+    (simulationError as BaseError & { walk: BaseError["walk"] }).walk = walk as unknown as BaseError["walk"];
+
+    expect(isContractRevert(simulationError)).toBe(true);
+    expect(walk).toHaveBeenCalled();
   });
 
   it("ignores non-revert send errors", () => {
