@@ -160,9 +160,9 @@ class ReloadableSetTest {
         .hasMessageContaining("immutable");
   }
 
-    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of());
+  @Test
   void addAllThrowsUnsupportedOperationException() {
-    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a"));
+    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of());
 
     assertThatThrownBy(() -> reloadableSet.addAll(Set.of("b", "c")))
         .isInstanceOf(UnsupportedOperationException.class)
@@ -197,6 +197,52 @@ class ReloadableSetTest {
   }
 
   @Test
+  void concurrentIteratorsAlwaysSeeConsistentSnapshot() throws InterruptedException {
+    // All swapped sets have exactly 3 elements — an iterator snapshot should never see any other
+    // count
+    final ReloadableSet<Integer> reloadableSet = new ReloadableSet<>(Set.of(1, 2, 3));
+
+    final int threadCount = 10;
+    final int operationsPerThread = 1000;
+    final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    final CountDownLatch latch = new CountDownLatch(threadCount);
+    final AtomicInteger errorCount = new AtomicInteger(0);
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadId = i;
+      executor.submit(
+          () -> {
+            try {
+              for (int j = 0; j < operationsPerThread; j++) {
+                if (threadId == 0) {
+                  // Writer thread: swap to a new set of size 3
+                  reloadableSet.swap(Set.of(j * 3, j * 3 + 1, j * 3 + 2));
+                } else {
+                  // Reader threads: iterator must be a consistent snapshot of exactly 3 elements
+                  int count = 0;
+                  for (Iterator<Integer> it = reloadableSet.iterator(); it.hasNext(); it.next()) {
+                    count++;
+                  }
+                  if (count != 3) {
+                    errorCount.incrementAndGet();
+                  }
+                }
+              }
+            } catch (Exception e) {
+              errorCount.incrementAndGet();
+            } finally {
+              latch.countDown();
+            }
+          });
+    }
+
+    assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+    executor.shutdown();
+
+    assertThat(errorCount.get()).isEqualTo(0);
+  }
+
+  @Test
   void concurrentReadsAndSwapsAlwaysSeeConsistentSnapshot() throws InterruptedException {
     // All swapped sets have exactly 3 elements — a reader should never see any other size
     final ReloadableSet<Integer> reloadableSet = new ReloadableSet<>(Set.of(1, 2, 3));
@@ -223,7 +269,7 @@ class ReloadableSetTest {
                     errorCount.incrementAndGet();
                   }
                   // contains should never throw
-                  var exists = reloadableSet.contains(j);
+                  reloadableSet.contains(j);
                 }
               }
             } catch (Exception e) {

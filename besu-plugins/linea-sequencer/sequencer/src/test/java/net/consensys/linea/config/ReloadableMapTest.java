@@ -201,6 +201,61 @@ class ReloadableMapTest {
   }
 
   @Test
+  void concurrentIteratorsAlwaysSeeConsistentSnapshot() throws InterruptedException {
+    // All swapped maps have exactly 3 entries — an entrySet iterator snapshot should never see any
+    // other count
+    final ReloadableMap<Integer, String> reloadableMap =
+        new ReloadableMap<>(Map.of(1, "a", 2, "b", 3, "c"));
+
+    final int threadCount = 10;
+    final int operationsPerThread = 1000;
+    final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    final CountDownLatch latch = new CountDownLatch(threadCount);
+    final AtomicInteger errorCount = new AtomicInteger(0);
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadId = i;
+      executor.submit(
+          () -> {
+            try {
+              for (int j = 0; j < operationsPerThread; j++) {
+                if (threadId == 0) {
+                  // Writer thread: swap to a new map of size 3
+                  reloadableMap.swap(
+                      Map.of(
+                          j * 3,
+                          "v" + j * 3,
+                          j * 3 + 1,
+                          "v" + (j * 3 + 1),
+                          j * 3 + 2,
+                          "v" + (j * 3 + 2)));
+                } else {
+                  // Reader threads: entrySet iterator must be a consistent snapshot of exactly 3
+                  // entries
+                  int count = 0;
+                  for (var it = reloadableMap.entrySet().iterator(); it.hasNext(); it.next()) {
+                    count++;
+                  }
+                  if (count != 3) {
+                    errorCount.incrementAndGet();
+                  }
+                }
+              }
+            } catch (Exception e) {
+              errorCount.incrementAndGet();
+            } finally {
+              latch.countDown();
+            }
+          });
+    }
+
+    assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+    executor.shutdown();
+
+    assertThat(errorCount.get()).isEqualTo(0);
+  }
+
+  @Test
   void concurrentReadsAndSwapsAlwaysSeeConsistentSnapshot() throws InterruptedException {
     // All swapped maps have exactly 3 entries — a reader should never see any other size
     final ReloadableMap<Integer, String> reloadableMap =
@@ -235,8 +290,8 @@ class ReloadableMapTest {
                     errorCount.incrementAndGet();
                   }
                   // get should never throw
-                  var value = reloadableMap.get(j);
-                  var exists = reloadableMap.containsKey(j);
+                  reloadableMap.get(j);
+                  reloadableMap.containsKey(j);
                 }
               }
             } catch (Exception e) {
