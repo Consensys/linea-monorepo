@@ -13,14 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// The verifier gets all the query openings and multiply them together and
-// expect them to be one. It is represented by an array of ZCtx holding for
-// the same round. (we have the guarantee that they come from the same query).
-type VerifierCtx struct {
-	Ctxs    []*ZCtx
-	skipped bool
-}
-
 // CheckGrandProductIsOne is a verifier action checking that the grand product
 // is one.
 type CheckGrandProductIsOne struct {
