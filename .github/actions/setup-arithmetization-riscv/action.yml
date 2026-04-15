@@ -18,8 +18,5 @@ runs:
         with:
           go-version: '1.24.6'
           cache-dependency-path: "**/*.sum"
-
-      - name: Install Go Corset
-        shell: bash
-        run: make -C arithmetization install-go-corset
+          
 
