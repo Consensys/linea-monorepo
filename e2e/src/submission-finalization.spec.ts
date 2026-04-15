@@ -7,7 +7,7 @@ import { createTestContext } from "./config/setup";
 const context = createTestContext();
 
 describe("Submission and finalization test suite", () => {
-  describe("Contracts v6", () => {
+  describe("Contracts v8", () => {
     it.concurrent(
       "Check L1 data submission and finalization",
       async () => {
