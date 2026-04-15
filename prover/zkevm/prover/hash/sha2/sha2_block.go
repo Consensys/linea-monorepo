@@ -148,7 +148,6 @@ type sha2BlockModule struct {
 	// span of a hash.
 	Hash [numLimbsPerState]ifaces.Column
 
-	HashIsZero    [numLimbsPerState]ifaces.Column
 	ProverActions []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
@@ -350,27 +349,21 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		},
 	)
 
-	// As per the padding technique we use, the HashHi and HashLo should not
-	// be zero when isActive. We check that neither the upper 128-bit half nor
-	// the lower 128-bit half is entirely zero by taking the product of the
-	// per-limb IsZero results for each half.
-	var ctxHash [numLimbsPerState]wizard.ProverAction
-
-	for i := range numLimbsPerState {
-		res.HashIsZero[i], ctxHash[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
-	}
-
-	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
-
-	prodIsZeroHi := sym.NewConstant(1)
+	// The hash should not be entirely zero when isActive.
+	// Sum limbs per half and use IsZero to keep constraint degree low.
+	sumHashHi := sym.NewConstant(0)
 	for i := range numLimbsPerState / 2 {
-		prodIsZeroHi = sym.Mul(prodIsZeroHi, res.HashIsZero[i])
+		sumHashHi = sym.Add(sumHashHi, res.Hash[i])
 	}
 
-	prodIsZeroLo := sym.NewConstant(1)
+	sumHashLo := sym.NewConstant(0)
 	for i := numLimbsPerState / 2; i < numLimbsPerState; i++ {
-		prodIsZeroLo = sym.Mul(prodIsZeroLo, res.HashIsZero[i])
+		sumHashLo = sym.Add(sumHashLo, res.Hash[i])
 	}
+
+	sumHiIsZero, ctxSumHi := dedicated.IsZero(comp, sumHashHi).GetColumnAndProverAction()
+	sumLoIsZero, ctxSumLo := dedicated.IsZero(comp, sumHashLo).GetColumnAndProverAction()
+	res.ProverActions = append(res.ProverActions, ctxSumHi, ctxSumLo)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
