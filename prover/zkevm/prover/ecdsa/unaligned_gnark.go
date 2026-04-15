@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 
 	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -21,9 +20,6 @@ import (
 
 const (
 	nbRowsPerPublicKey = 4
-
-	// gnarkDataLeftAlignmentOffset is the number of bits that were offset in UnalignedGnarkData.GnarkData.
-	gnarkDataLeftAlignmentOffset = (generic.TotalLimbSize - generic.TotalLimbSize/common.NbLimbU128) * 8
 )
 
 type UnalignedGnarkData struct {
