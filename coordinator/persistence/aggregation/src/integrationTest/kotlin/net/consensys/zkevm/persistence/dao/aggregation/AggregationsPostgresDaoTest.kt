@@ -696,6 +696,39 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
+  fun `findLatestProvenAggregationProofUpToEndBlockNumber returns latest proven proof only`() {
+    val provenAggregation1 = createAggregation(
+      startBlockNumber = 1,
+      endBlockNumber = 4,
+    )
+    val provingAggregation =
+      Aggregation(
+        startBlockNumber = 5uL,
+        endBlockNumber = 6uL,
+        batchCount = 1uL,
+        aggregationProof = null,
+      )
+    val provenAggregation2 = createAggregation(
+      startBlockNumber = 7,
+      endBlockNumber = 8,
+    )
+
+    SafeFuture.collectAll(
+      aggregationsPostgresDaoImpl.saveNewAggregation(provenAggregation1),
+      aggregationsPostgresDaoImpl.saveNewAggregation(provingAggregation),
+      aggregationsPostgresDaoImpl.saveNewAggregation(provenAggregation2),
+    ).get()
+
+    assertThat(aggregationsPostgresDaoImpl.findLatestProvenAggregationProofUpToEndBlockNumber(7))
+      .succeedsWithin(1, TimeUnit.SECONDS)
+      .isEqualTo(provenAggregation1.aggregationProof!!)
+
+    assertThat(aggregationsPostgresDaoImpl.findLatestProvenAggregationProofUpToEndBlockNumber(8))
+      .succeedsWithin(1, TimeUnit.SECONDS)
+      .isEqualTo(provenAggregation2.aggregationProof!!)
+  }
+
+  @Test
   fun `getProofsToFinalize deserializes record without ftx fields using defaults`() {
     // Simulates a legacy DB record that was persisted before finalFtxNumber,
     // finalFtxRollingHash, and filteredAddresses were added to the proof JSON.

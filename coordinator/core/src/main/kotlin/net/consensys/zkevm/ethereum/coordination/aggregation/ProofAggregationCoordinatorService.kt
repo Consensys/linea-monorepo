@@ -231,7 +231,7 @@ class ProofAggregationCoordinatorService(
       .thenCompose { rollingInfo ->
         invalidityProofProvider.getInvalidityProofs(
           ftxStartingNumber = rollingInfo.parentAggregationLastFtxNumber.inc(),
-          aggregationStartingBlockNumber = blobsToAggregate.startBlockNumber,
+          aggregationEndBlockNumber = blobsToAggregate.endBlockNumber,
         ).thenApply { invalidityProofIndexes ->
           ProofsToAggregate(
             compressionProofIndexes = compressionProofIndexes,

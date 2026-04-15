@@ -389,6 +389,7 @@ class ConflationApp(
         aggregationL2StateProvider = AggregationL2StateProviderImpl(
           ethApiClient = l2EthClient,
           messageService = l2MessageService,
+          aggregationsRepository = aggregationsRepository,
           forcedTransactionsDao = forcedTransactionsDao,
         ),
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,

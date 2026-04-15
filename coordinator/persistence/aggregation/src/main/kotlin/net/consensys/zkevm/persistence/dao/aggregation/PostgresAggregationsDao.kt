@@ -156,6 +156,18 @@ class PostgresAggregationsDao(
       """.trimIndent(),
     )
 
+  private val findLatestProvenAggregationByEndBlockNumber =
+    connection.preparedQuery(
+      """
+        select * from $aggregationsTable
+        where end_block_number <= $1
+          and status = $2
+          and aggregation_proof is not null
+        order by end_block_number desc
+        limit 1
+      """.trimIndent(),
+    )
+
   private val findFirstAggregation =
     connection.preparedQuery(
       """
@@ -374,6 +386,20 @@ class PostgresAggregationsDao(
         } else {
           aggregationProofs.firstOrNull()
         }
+      }
+  }
+
+  override fun findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<ProofToFinalize?> {
+    return findLatestProvenAggregationByEndBlockNumber
+      .execute(
+        Tuple.of(
+          endBlockNumberInclusive,
+          aggregationStatusToDbValue(Aggregation.Status.Proven),
+        ),
+      )
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        rowSet.firstOrNull()?.let(::parseAggregationProofs)
       }
   }
 

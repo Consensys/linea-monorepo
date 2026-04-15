@@ -1,6 +1,5 @@
 package linea.ftx.conflation
 
-import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
@@ -17,28 +16,27 @@ import java.util.Queue
  * that require invalidity proofs.
  *
  * Consumes from processedFtxQueue (shared with ConflationCalculatorByForcedTransaction)
- * to detect processed FTXs with non-Included results and returns INVALIDITY_PROOF
+ * to detect processed FTXs that require invalidity proofs and returns FORCED_TRANSACTION
  * aggregation triggers at (ftx.blockNumber - 1) to isolate the FTX block for invalidity proof generation.
  *
  * Rules:
- * - Trigger aggregation at (ftx.blockNumber - 1) when inclusionResult != Included
- * - Do NOT trigger if inclusionResult == Included (successfully executed FTXs)
+ * - Trigger aggregation at (ftx.blockNumber - 1) for every processed FTX
  *
  * Note: This calculator is responsible for consuming items from the shared queue.
  * ConflationCalculatorByForcedTransaction reads from the queue without consuming.
  * Queue cleanup happens on reset() to ensure all FTXs are processed before clearing.
  *
  * This ensures that:
- * 1. Aggregations are sealed before failed FTX execution blocks
- * 2. Failed FTX blocks are isolated in their own aggregation for invalidity proof generation
- * 3. Successfully included FTXs don't create unnecessary aggregation boundaries
+ * 1. Aggregations are sealed before processed FTX execution blocks
+ * 2. FTX execution blocks are isolated in their own aggregation for invalidity proof generation
+ * 3. Aggregation requests never mix invalidity proofs from different simulated execution blocks
  */
 class AggregationCalculatorByForcedTransaction(
   private val processedFtxQueue: Queue<ForcedTransactionInclusionStatus>,
   private val log: Logger = LogManager.getLogger(AggregationCalculatorByForcedTransaction::class.java),
 ) : SyncAggregationTriggerCalculator {
 
-  // Track pending trigger blocks (blockNumber - 1) for non-included FTXs
+  // Track pending trigger blocks (blockNumber - 1) for processed FTXs.
   private val pendingTriggerBlocks = DynamicBlockNumberSet()
 
   // Delegate to AggregationTriggerCalculatorByTargetBlockNumbers for actual triggering logic
@@ -61,12 +59,10 @@ class AggregationCalculatorByForcedTransaction(
       return
     }
 
-    // Only add trigger blocks for FTXs that were NOT successfully included
-    // Trigger at (blockNumber - 1) to seal aggregation before failed FTX execution block
+    // Trigger at (blockNumber - 1) to seal aggregation before the FTX execution block.
+    // Included FTXs also require invalidity proofs, and the prover rejects aggregations
+    // that mix invalidity proofs from different simulated execution blocks.
     val newTriggerBlocks = processedFtxs
-      .filter { ftx ->
-        ftx.inclusionResult != ForcedTransactionInclusionResult.Included
-      }
       .map { ftx ->
         // ftx.blockNumber is always greater than 0 (0 is genesis block),
         // In practice, greater than 2 most of the cases because network bootstrapping
@@ -76,24 +72,16 @@ class AggregationCalculatorByForcedTransaction(
       .toSet()
 
     pendingTriggerBlocks.addBlockNumbers(newTriggerBlocks)
-    logFtxPendingAggregation(processedFtxs, newTriggerBlocks)
-  }
-
-  fun logFtxPendingAggregation(processedFtxs: List<ForcedTransactionInclusionStatus>, newTriggerBlocks: Set<ULong>) {
     if (newTriggerBlocks.isNotEmpty()) {
-      val failedFtxs = processedFtxs.filter { it.inclusionResult != ForcedTransactionInclusionResult.Included }
       log.info(
-        "added {} FTX aggregation trigger blocks for {} non-included FTXs. ftxs={} total pending triggers: {}",
+        "added {} FTX aggregation trigger blocks for {} processed FTXs. ftxs={} total pending triggers: {}",
         newTriggerBlocks.size,
-        failedFtxs.size,
-        failedFtxs.map { "ftx=${it.ftxNumber} result=${it.inclusionResult}" },
+        processedFtxs.size,
+        processedFtxs.map { "ftx=${it.ftxNumber} result=${it.inclusionResult}" },
         pendingTriggerBlocks.sorted(),
       )
     } else {
-      log.debug(
-        "processed {} FTXs, all were successfully included (no aggregation triggers needed)",
-        processedFtxs.size,
-      )
+      log.debug("processed {} FTXs (no new aggregation trigger blocks needed)", processedFtxs.size)
     }
   }
 
@@ -112,7 +100,7 @@ class AggregationCalculatorByForcedTransaction(
 
     if (trigger != null) {
       log.info(
-        "FTX aggregation trigger detected: sealing aggregation at block {} (before failed FTX execution at block {})",
+        "FTX aggregation trigger detected: sealing aggregation at block {} (before FTX execution at block {})",
         blobCounters.endBlockNumber,
         blobCounters.endBlockNumber + 1UL,
       )

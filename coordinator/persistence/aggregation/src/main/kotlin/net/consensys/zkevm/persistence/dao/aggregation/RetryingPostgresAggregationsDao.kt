@@ -49,6 +49,12 @@ class RetryingPostgresAggregationsDao(
     return persistenceRetryer.retryQuery({ delegate.findAggregationProofByEndBlockNumber(endBlockNumber) })
   }
 
+  override fun findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<ProofToFinalize?> {
+    return persistenceRetryer.retryQuery({
+      delegate.findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive)
+    })
+  }
+
   override fun deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int> {
     return persistenceRetryer.retryQuery({ delegate.deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive) })
   }
