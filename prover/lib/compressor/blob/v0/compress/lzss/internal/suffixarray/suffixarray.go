@@ -44,12 +44,6 @@ func New(data []byte, sa []int32) *Index {
 	return ix
 }
 
-// Bytes returns the data over which the index was created.
-// It must not be modified.
-func (x *Index) Bytes() []byte {
-	return x.data
-}
-
 func (x *Index) at(i int) []byte {
 	return x.data[x.sa[i]:]
 }

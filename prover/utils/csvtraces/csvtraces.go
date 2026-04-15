@@ -9,9 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/backend/files"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -45,35 +42,6 @@ func WithNbRows(nbRows int) Option {
 	}
 }
 
-// SkipPrepaddingZero skips the zeroes at the beginning of the file
-func SkipPrepaddingZero(c *cfg) error {
-	c.skipPrePaddingZero = true
-	return nil
-}
-
-// FilterOn sets the CSV printer to ignore rows where the provided filter
-// column is zero.
-func FilterOn(col ifaces.Column) Option {
-	return func(c *cfg) error {
-		c.filterOn = col
-		return nil
-	}
-}
-
-// InHex sets the CSV printer to print the values in hexadecimal
-func InHex(c *cfg) error {
-	c.inHex = true
-	return nil
-}
-
-// RenameCols rename the columns in the csv
-func RenameCols(s ...string) Option {
-	return func(c *cfg) error {
-		c.renameCols = s
-		return nil
-	}
-}
-
 type CsvTrace struct {
 	mapped map[string][]*big.Int
 	nbRows int
@@ -93,118 +61,6 @@ func MustOpenCsvFile(fName string) *CsvTrace {
 	}
 
 	return ct
-}
-
-// FmtCsv is a utility function that can be used in order to print a set of column
-// in a csv format so that debugging and testcase generation are simpler. It can
-// take either plain [ifaces.Column] objects as input or limbs.Limbed objects.
-func FmtCsv(w io.Writer, run ifaces.Runtime, objs []any, options []Option) error {
-
-	var (
-		header       = []string{}
-		assignment   = [][]*big.Int{}
-		cfg          = cfg{}
-		foundNonZero = false
-		filterCol    []field.Element
-	)
-
-	for _, op := range options {
-		op(&cfg)
-	}
-
-	if cfg.renameCols != nil && len(cfg.renameCols) != len(objs) {
-		utils.Panic("provided %v columns, but also provided %v name replacements", len(objs), len(cfg.renameCols))
-	}
-
-	for i, obj := range objs {
-
-		switch obj := obj.(type) {
-
-		case Octuplet:
-			name := obj.Name
-			if cfg.renameCols != nil {
-				name = cfg.renameCols[i]
-			}
-			header = append(header, name)
-
-			vs := [8][]field.Element{}
-			for j := range vs {
-				vs[j] = obj.V[j].GetColAssignment(run).IntoRegVecSaveAlloc()
-			}
-
-			a := make([]*big.Int, 0)
-			for i := range vs[0] {
-				f := big.NewInt(0)
-				for j := range vs {
-					var s big.Int
-					vs[j][i].BigInt(&s)
-					f.Lsh(f, 32)
-					f.Add(f, &s)
-				}
-				a = append(a, f)
-			}
-
-			assignment = append(assignment, a)
-
-		case ifaces.Column:
-			name := obj.String()
-			if cfg.renameCols != nil {
-				name = cfg.renameCols[i]
-			}
-			header = append(header, name)
-			a := obj.GetColAssignment(run).IntoRegVecSaveAlloc()
-			assignment = append(assignment, koalaVecToBigInt(a))
-
-		case limbs.Limbed:
-			header = append(header, obj.String())
-			a := obj.ToBigEndianLimbs().GetAssignmentAsBigInt(run)
-			assignment = append(assignment, a)
-
-		default:
-			utils.Panic("unsupported type %T(%++v)", obj, obj)
-		}
-	}
-
-	fmt.Fprintf(w, "%v\n", strings.Join(header, ","))
-
-	if cfg.filterOn != nil {
-		filterCol = cfg.filterOn.GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
-
-	for r := range assignment[0] {
-
-		var (
-			fmtVals   = []string{}
-			allZeroes = true
-		)
-
-		for c := range assignment {
-
-			if !isZeroBigInt(assignment[c][r]) {
-				allZeroes = false
-			}
-
-			fmtVals = append(fmtVals, fmtBigInt(cfg.inHex, assignment[c][r]))
-		}
-
-		if !allZeroes {
-			foundNonZero = true
-		}
-
-		if filterCol != nil && filterCol[r].IsZero() {
-			continue
-		}
-
-		if !cfg.skipPrePaddingZero || !allZeroes || foundNonZero {
-			fmt.Fprintf(w, "%v\n", strings.Join(fmtVals, ","))
-		}
-
-		if cfg.nbRows > 0 && r >= cfg.nbRows {
-			break
-		}
-	}
-
-	return nil
 }
 
 func NewCsvTrace(r io.Reader, opts ...Option) (*CsvTrace, error) {
@@ -247,26 +103,6 @@ func NewCsvTrace(r io.Reader, opts ...Option) (*CsvTrace, error) {
 	}
 
 	return &CsvTrace{mapped: data, nbRows: nbRows}, nil
-}
-
-func (c *CsvTrace) GetKoala(name string) []field.Element {
-	val, ok := c.mapped[name]
-	if !ok {
-		utils.Panic("column not found %s", name)
-	}
-	vKoa, err := bigIntsToKoalaStrict(val)
-	if err != nil {
-		utils.Panic("could not convert assignment for %s into koala, %v", name, err)
-	}
-	return vKoa
-}
-
-func (c *CsvTrace) GetBigInt(name string) []*big.Int {
-	val, ok := c.mapped[name]
-	if !ok {
-		utils.Panic("csv column not found %s", name)
-	}
-	return val
 }
 
 // GetCommit returns a new column mapped to the current csv trace.
@@ -354,12 +190,6 @@ func (c *CsvTrace) AssignLimbsBE(run *wizard.ProverRuntime, name ifaces.ColID, c
 	return c.Assign(run, l)
 }
 
-// AssignLimbsLE assigns a limb object and returns the receiver
-func (c *CsvTrace) AssignLimbsLE(run *wizard.ProverRuntime, name ifaces.ColID, column []ifaces.Column) *CsvTrace {
-	l := limbs.NewLimbsFromRawUnsafe[limbs.LittleEndian](name, column)
-	return c.Assign(run, l)
-}
-
 func (c *CsvTrace) CheckAssignment(run *wizard.ProverRuntime, objects ...any) *CsvTrace {
 	for _, obj := range objects {
 		c.checkAssignment(run, obj)
@@ -425,30 +255,8 @@ func (c *CsvTrace) checkAssignment(run *wizard.ProverRuntime, obj any) {
 	}
 }
 
-func (c *CsvTrace) Len() int {
-	return c.nbRows
-}
-
 func (c *CsvTrace) LenPadded() int {
 	return utils.NextPowerOfTwo(c.nbRows)
-}
-
-// WritesExplicit format value-provided columns into a csv file. Unlike [FmtCsv]
-// it does not need the columns to be registered as the assignmet of a wizard.
-// It is suitable for test-case generation.
-func WriteExplicit(w io.Writer, names []string, cols [][]*big.Int, inHex bool) {
-
-	fmt.Fprintf(w, "%v\n", strings.Join(names, ","))
-
-	for i := range cols[0] {
-
-		row := []string{}
-		for j := range cols {
-			row = append(row, fmtBigInt(inHex, cols[j][i]))
-		}
-
-		fmt.Fprintf(w, "%v\n", strings.Join(row, ","))
-	}
 }
 
 func WriteExplicitFromKoala(w io.Writer, names []string, cols [][]field.Element, inHex bool) {
@@ -497,19 +305,4 @@ func koalaVecToBigInt(vKoala []field.Element) []*big.Int {
 
 func isZeroBigInt(bi *big.Int) bool {
 	return bi.Cmp(big.NewInt(0)) == 0
-}
-
-func DebugProjection(p *query.Projection, run ifaces.Runtime) {
-	FmtCsv(
-		files.MustOverwrite(string(p.Name()+"-a.csv")),
-		run,
-		utils.SliceToAnys(p.Inp.ColumnsA[0]),
-		nil,
-	)
-	FmtCsv(
-		files.MustOverwrite(string(p.Name()+"-b.csv")),
-		run,
-		utils.SliceToAnys(p.Inp.ColumnsB[0]),
-		nil,
-	)
 }

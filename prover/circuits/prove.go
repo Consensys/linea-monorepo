@@ -23,12 +23,6 @@ type proveCheckSettings struct {
 }
 type ProveCheckOption func(*proveCheckSettings)
 
-func WithCachedProof(path string) ProveCheckOption {
-	return func(s *proveCheckSettings) {
-		s.cachedProofPath = path
-	}
-}
-
 // Generates a PlonkProof and sanity-checks it against the verifying key. Can
 // take a list of options which can of either backend.ProverOption of backend.
 // VerifierOption.

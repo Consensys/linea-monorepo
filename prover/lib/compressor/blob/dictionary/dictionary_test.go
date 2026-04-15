@@ -1,19 +1,12 @@
 package dictionary
 
 import (
-	"hash"
 	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"github.com/stretchr/testify/require"
 )
-
-func checksum(hsh hash.Hash, data []byte) []byte {
-	hsh.Reset()
-	hsh.Write(data)
-	return hsh.Sum(nil)
-}
 
 func TestLoadDict(t *testing.T) {
 	const (

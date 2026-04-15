@@ -30,19 +30,6 @@ func (s *Stream) At(i int) int {
 	return s.D[i]
 }
 
-func NewStream(in []byte, bitsPerSymbol uint8) (Stream, error) {
-	d := make([]int, len(in)*8/int(bitsPerSymbol))
-	r := bitio.NewReader(bytes.NewReader(in))
-	for i := range d {
-		if n, err := r.ReadBits(bitsPerSymbol); err != nil {
-			return Stream{}, err
-		} else {
-			d[i] = int(n)
-		}
-	}
-	return Stream{d, 1 << int(bitsPerSymbol)}, nil
-}
-
 func (s *Stream) BreakUp(nbSymbs int) Stream {
 	newPerOld := log(s.NbSymbs, nbSymbs)
 	d := make([]int, len(s.D)*newPerOld)

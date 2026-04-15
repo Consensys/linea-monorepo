@@ -3,7 +3,6 @@ package blob
 import (
 	"bytes"
 	"errors"
-	"os"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
@@ -24,10 +23,6 @@ func GetVersion(blob []byte) uint16 {
 	}
 
 	return 0
-}
-
-func LoadDict(dictPath string) ([]byte, error) {
-	return os.ReadFile(dictPath)
 }
 
 // DecompressBlob takes in a Linea blob and outputs an RLP encoded list of RLP encoded blocks.

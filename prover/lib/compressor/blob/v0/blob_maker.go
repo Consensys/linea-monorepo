@@ -5,11 +5,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 	"github.com/sirupsen/logrus"
@@ -115,10 +116,6 @@ func (bm *BlobMaker) Reset() {
 // Len returns the length of the compressed data, which includes the header.
 func (bm *BlobMaker) Len() int {
 	return bm.currentBlobLength
-}
-
-func (bm *BlobMaker) Written() int {
-	return bm.compressor.Written()
 }
 
 // Bytes returns the compressed data. Note that it returns a slice of the internal buffer,
@@ -493,57 +490,4 @@ func (bm *BlobMaker) WorstCompressedBlockSize(rlpBlock []byte) (bool, int, error
 	n = packAlignSizeToRefactor(n, 0)
 
 	return expandingBlock, n, nil
-}
-
-// WorstCompressedTxSize returns the size of the given transaction, as compressed by an "empty" blob maker.
-// That is, with more context, blob maker could compress the transaction further, but this function
-// returns the maximum size that can be achieved.
-//
-// The input is a RLP encoded transaction.
-// Returns the length of the compressed data, or -1 if an error occurred.
-//
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions may not be thread-safe.
-func (bm *BlobMaker) WorstCompressedTxSize(rlpTx []byte) (int, error) {
-
-	// decode the RLP transaction.
-	var tx types.Transaction
-	if err := rlp.Decode(bytes.NewReader(rlpTx), &tx); err != nil {
-		return -1, err
-	}
-
-	// encode the transaction in Linea format.
-	var buf bytes.Buffer
-	if err := EncodeTxForCompression(&tx, &buf); err != nil {
-		return -1, fmt.Errorf("failed to encode transaction: %w", err)
-	}
-
-	inputSlice := buf.Bytes()
-	return bm.compressor.CompressedSize256k(inputSlice)
-}
-
-// RawCompressedSize compresses the (raw) input and returns the length of the compressed data.
-// The returned length account for the "padding" used by the blob maker to
-// fit the data in field elements.
-// Input size must be less than 256kB.
-// If an error occurred, returns -1.
-//
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions are not thread-safe.
-func (bm *BlobMaker) RawCompressedSize(data []byte) (int, error) {
-	n, err := bm.compressor.CompressedSize256k(data)
-	if err != nil {
-		return -1, err
-	}
-	if n > len(data) {
-		// this simulates the fallback to "no compression"
-		// this case may happen if the input is not compressible
-		// in which case the compressed size is the input size + the header size
-		n = len(data) + lzss.HeaderSize
-	}
-
-	// account for the padding
-	n = packAlignSizeToRefactor(n, 0)
-
-	return n, nil
 }
