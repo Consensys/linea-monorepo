@@ -335,7 +335,7 @@ services:
       config__override__l1_submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
       config__override__l1_submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
       config__override__message_anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-      config__override__l1_submission__data-availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+      config__override__l1_submission__data_availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
       dev_LINEA_COORDINATOR_DISABLED: ${dev_LINEA_COORDINATOR_DISABLED:-false}
       CONFIG_OVERRIDE_OPTS: ''
     command:
