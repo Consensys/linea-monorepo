@@ -350,6 +350,59 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     })
     .join("\n          ");
 
+  const LEADERBOARD_VISIBLE_ROWS = 10;
+  const FLAKY_RED_THRESHOLD = 0.3;
+  const FLAKY_YELLOW_THRESHOLD = 0.1;
+
+  let flakySection: string;
+  if (allFlakyTests.length === 0) {
+    flakySection = `<p>No flaky tests detected in this period.</p>`;
+  } else {
+    const flakyRowHtml = (entry: FlakyTestEntry, rank: number) => {
+      const bg =
+        entry.failRate >= FLAKY_RED_THRESHOLD
+          ? `background:${COLOR_MAP.red}`
+          : entry.failRate >= FLAKY_YELLOW_THRESHOLD
+            ? `background:${COLOR_MAP.yellow}`
+            : "";
+      const shortSpec = entry.specFile.replace("src/", "").replace(".spec.ts", "");
+      return `<tr style="${bg}">
+              <td>${rank}</td>
+              <td style="text-align:left">${entry.testName}</td>
+              <td class="spec-name">${shortSpec}</td>
+              <td>${entry.failures}</td>
+              <td>${entry.appearances}</td>
+              <td>${(entry.failRate * 100).toFixed(1)}%</td>
+            </tr>`;
+    };
+
+    const visibleRows = allFlakyTests
+      .slice(0, LEADERBOARD_VISIBLE_ROWS)
+      .map((e, i) => flakyRowHtml(e, i + 1))
+      .join("\n          ");
+    const hiddenEntries = allFlakyTests.slice(LEADERBOARD_VISIBLE_ROWS);
+    const hiddenBlock =
+      hiddenEntries.length > 0
+        ? `<details>
+        <summary>Show ${hiddenEntries.length} more...</summary>
+        <table>
+          <thead><tr><th>Rank</th><th>Test Name</th><th>Spec File</th><th>Failures</th><th>Appearances</th><th>Fail %</th></tr></thead>
+          <tbody>
+            ${hiddenEntries.map((e, i) => flakyRowHtml(e, LEADERBOARD_VISIBLE_ROWS + i + 1)).join("\n            ")}
+          </tbody>
+        </table>
+      </details>`
+        : "";
+
+    flakySection = `<table>
+      <thead><tr><th>Rank</th><th>Test Name</th><th>Spec File</th><th>Failures</th><th>Appearances</th><th>Fail %</th></tr></thead>
+      <tbody>
+        ${visibleRows}
+      </tbody>
+    </table>
+    ${hiddenBlock}`;
+  }
+
   // Detail sections - rows grouped by test name, then sorted by date within each group
   const detailSections = sortedSpecs
     .map((specFile) => {
@@ -421,6 +474,9 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
       ${summaryRows}
     </tbody>
   </table>
+
+  <h2>Top Flaky Tests</h2>
+  ${flakySection}
 
   <h2>Timeline</h2>
   <div class="timeline-container">
