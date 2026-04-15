@@ -73,8 +73,9 @@ Top flaky tests:
   3. should finalize bundles (finalization) - 13.3% fail rate (2/15)
 ```
 
-**Conditional:** Only included when at least one test meets the flaky threshold. If zero qualify,
-the block is omitted entirely.
+**Always present:** The block is always included in the Slack message. When no tests meet the flaky
+threshold, it shows "None detected this period." This avoids complex conditional YAML logic and
+lets readers know the feature exists.
 
 ### Data Model Changes
 
@@ -101,7 +102,8 @@ interface ReportSummary {
 ### Workflow YAML Changes
 
 The Slack payload in `slack-notify-e2e-runtime-report.yml` reads `topFlakyTests` from the JSON
-summary and conditionally renders a "Top flaky tests" rich_text block when the array is non-empty.
+summary and renders a "Top flaky tests" rich_text block. The block is always present; when no tests
+qualify, it shows "None detected this period."
 
 ## Constants
 
@@ -118,7 +120,7 @@ summary and conditionally renders a "Top flaky tests" rich_text block when the a
 | File | Change |
 |---|---|
 | `e2e/scripts/generate-e2e-runtime-report.ts` | Add flaky test computation, extend Summary table HTML, add leaderboard section HTML, extend `ReportSummary` type |
-| `.github/workflows/slack-notify-e2e-runtime-report.yml` | Add conditional Slack block for top flaky tests |
+| `.github/workflows/slack-notify-e2e-runtime-report.yml` | Add always-present Slack block for top flaky tests (shows "None" when empty) |
 
 ## Known Limitations
 
