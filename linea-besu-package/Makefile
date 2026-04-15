@@ -64,7 +64,7 @@ build-all:
 	$(MAKE) build-prover
 
 run-e2e-test-with-partial-prover:
-	cd .. && BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) PROVER_TAG=$(PROVER_TAG) make start-env-with-tracing-v2-partialprover && pnpm run -F e2e test:partial-prover:local
+	cd .. && LINEA_BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) LINEA_PROVER_TAG=$(PROVER_TAG) make start-env-with-tracing-v2-partialprover && pnpm run -F e2e test:partial-prover:local
 
 run-e2e-test:
 	cd .. && LINEA_BESU_PACKAGE_TAG=$(BESU_PACKAGE_TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:local
