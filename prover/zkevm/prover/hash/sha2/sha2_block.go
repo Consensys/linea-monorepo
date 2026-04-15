@@ -374,7 +374,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
-		sym.Mul(res.IsActive, sym.Add(prodIsZeroHi, prodIsZeroLo)),
+		sym.Mul(res.IsActive, sumHiIsZero, sumLoIsZero),
 	)
 
 	return res
