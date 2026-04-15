@@ -160,7 +160,7 @@ class ReloadableSetTest {
         .hasMessageContaining("immutable");
   }
 
-  @Test
+    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of());
   void addAllThrowsUnsupportedOperationException() {
     final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a"));
 
