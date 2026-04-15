@@ -331,17 +331,18 @@ services:
       retries: 120
     restart: on-failure
     environment:
-      CONFIG_OVERRIDE_OPTS: >-
-        -Dconfig.override.type2-state-proof-provider.disabled=${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
-        -Dconfig.override.l1-submission.blob.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-        -Dconfig.override.l1-submission.aggregation.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-        -Dconfig.override.message-anchoring.signer.type=${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-        -Dconfig.override.l1-submission.data-availability=${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+      config__override__type2_state_proof_provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
+      config__override__l1_submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1_submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__message_anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1_submission__data-availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+      dev_LINEA_COORDINATOR_DISABLED: ${dev_LINEA_COORDINATOR_DISABLED:-false}
+      CONFIG_OVERRIDE_OPTS: ''
     command:
       - sh
       - -c
       - |
-        if [ "${dev_LINEA_COORDINATOR_DISABLED:-false}" = "true" ]; then
+        if [ "$$dev_LINEA_COORDINATOR_DISABLED" = "true" ]; then
           echo "Coordinator disabled"
         else
           exec java \

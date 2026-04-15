@@ -6,21 +6,16 @@ permissions:
   packages: read
 
 on:
-  push:
-    branches:
-      - 2537-manual-ci-workflow-e2e-with-partial-prover # TODO: this for testing, should be removed 
   workflow_dispatch:
     inputs:
       linea_besu_package_image_tag:
         description: 'Target linea-besu-package image tag (i.e. [prefix]-[YYYYMMDDHHMMSS]-[commit]), if not given, would build the linea-besu-package image from source'
         required: false
         type: string
-        default: 'local'
       prover_image_tag:
         description: 'Target prover image tag, if not given, would build the prover image from source'
         required: false
         type: string
-        default: 'local'
       shomei_image_tag:
         description: 'Target shomei image tag, if not given, would use the version declared in docker/compose-spec-l2-services.yml'
         required: false
@@ -93,7 +88,7 @@ jobs:
           command: |
             LINEA_BESU_PACKAGE_TAG=${{ inputs.linea_besu_package_image_tag || 'local' }} \
             LINEA_PROVER_TAG=${{ inputs.prover_image_tag || 'local' }} \
-            LINEA_SHOMEI_TAG=${{ inputs.shomei_image_tag || '3.1.0' }} \
+            LINEA_SHOMEI_TAG=${{ inputs.shomei_image_tag }} \
             make start-env-with-tracing-v2-partialprover CLEAN_PREVIOUS_ENV=false
           on_retry_command: |
             make clean-environment
