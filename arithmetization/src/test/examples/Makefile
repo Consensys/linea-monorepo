@@ -1,17 +1,18 @@
+# Usage (from anywhere):
+#   make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=your_test
+# Or:
+#   cd arithmetization/src/test/examples && make TEST=your_test
+# Optional shell alias:
+#   alias zkctest='make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile'
+
 # define the assembler to use
 AS = riscv64-unknown-elf-as
 AS_FLAGS = -march=rv64im
 
-# Directory containing this makefile (works no matter where `make` is invoked from).
+# Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Usage (from anywhere):
-#   make -f /path/to/linea-monorepo/arithmetization/src/test/examples/makefile TEST=your_test
-# Or:
-#   cd arithmetization/src/test/examples && make TEST=your_test
-# Optional shell alias:
-#   alias zkctest='make -C /path/to/linea-monorepo/arithmetization/src/test/examples'
-
+# Name of the test to run (without extension)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=your_test)
 endif
@@ -34,7 +35,6 @@ compile: $(ASM)
 
 zkc-exec:
 	zkc exec $(JSON) $(ZKC_MAIN)
-
 
 zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
