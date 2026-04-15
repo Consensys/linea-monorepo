@@ -20,6 +20,7 @@
 import { Octokit } from "@octokit/rest";
 import { writeFileSync } from "node:fs";
 
+import { computeFlakyTests, type FlakyTestEntry } from "./helpers/compute-flaky-tests";
 import { discoverTimeoutEligibleSpecFiles } from "./helpers/discover-timeout-eligible-spec-files";
 import { parseJestLog, type JobConclusion, type SpecResult, type SpecStatus } from "./helpers/parse-jest-log";
 
@@ -45,6 +46,7 @@ interface ReportSummary {
   dateRange: string;
   medianRunDurationSeconds: number;
   maxRunDurationSeconds: number;
+  topFlakyTests: FlakyTestEntry[];
 }
 
 const DEFAULT_DAYS = 30;
@@ -221,6 +223,8 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const medianRunDuration = median(runDurations);
   const maxRunDuration = runDurations.length > 0 ? Math.max(...runDurations) : NaN;
 
+  const allFlakyTests = computeFlakyTests(runResults);
+
   const summary: ReportSummary = {
     totalRuns,
     passedRuns,
@@ -228,6 +232,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     dateRange,
     medianRunDurationSeconds: Math.round(isNaN(medianRunDuration) ? 0 : medianRunDuration),
     maxRunDurationSeconds: Math.round(isNaN(maxRunDuration) ? 0 : maxRunDuration),
+    topFlakyTests: allFlakyTests.slice(0, 3),
   };
 
   // Build HTML
@@ -450,6 +455,7 @@ async function main(): Promise<void> {
       dateRange: "N/A",
       medianRunDurationSeconds: 0,
       maxRunDurationSeconds: 0,
+      topFlakyTests: [],
     };
     writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary) + "\n");
     process.exit(0);
