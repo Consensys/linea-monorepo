@@ -72,7 +72,7 @@ func init() {
 	rootCmd.AddCommand(proveCmd)
 
 	proveCmd.Flags().StringVar(&proverArgs.Input, "in", "", "input file")
-	proveCmd.Flags().StringVar(&proverArgs.Output, "out", "", "output file")
+	proveCmd.Flags().StringVar(&proverArgs.Output, "out", "", "output file (default: stdout)")
 	proveCmd.Flags().BoolVar(&proverArgs.Large, "large", false, "run the large execution circuit")
 
 	rootCmd.AddCommand(logStatsCmd)
