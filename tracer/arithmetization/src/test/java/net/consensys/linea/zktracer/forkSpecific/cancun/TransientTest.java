@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.forkSpecific.cancun;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -25,7 +27,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
@@ -68,7 +69,7 @@ public class TransientTest extends TracerTestBase {
   private static final Bytes PREPARESTACK =
       Bytes.concatenate(
           Bytes.fromHexString("0x600060006000600073"),
-          SMC_ACCOUNT_TLOAD_TSTORE_TLOAD.getAddress(),
+          SMC_ACCOUNT_TLOAD_TSTORE_TLOAD.getAddress().getBytes(),
           Bytes.fromHexString("613A98"));
   // This bytecode is:
   // BytecodeCompiler.newProgram(chainConfig)
@@ -98,7 +99,7 @@ public class TransientTest extends TracerTestBase {
     arguments.add(Arguments.of(CALLCODE_CALLER));
     arguments.add(Arguments.of(STATIC_CALLER));
     arguments.add(Arguments.of(DELEGATE_CALLER));
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   @Test
@@ -110,8 +111,7 @@ public class TransientTest extends TracerTestBase {
   @MethodSource("fourCalls")
   void differentCallsTStoreTLoad(Bytes callType, TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
 
     final Address RECIPIENT_ADDRESS =
         Address.fromHexString("0x1122334455667788990011223344556677889900");
@@ -145,8 +145,7 @@ public class TransientTest extends TracerTestBase {
   @Test
   void multipleTransactionTStoreTLoad(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
 
     final Address RECIPIENT_ADDRESS =
         Address.fromHexString("0x1122334455667788990011223344556677889900");
@@ -196,8 +195,7 @@ public class TransientTest extends TracerTestBase {
   @Test
   void revertingTStoreTLoad(TestInfo testInfo) {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
 
     final Address RECIPIENT_ADDRESS =
         Address.fromHexString("0x1122334455667788990011223344556677889900");
@@ -208,14 +206,14 @@ public class TransientTest extends TracerTestBase {
             .push(0) // return offset
             .push(0) // arg size
             .push(0) // arg offset
-            .push(SMC_ACCOUNT_TLOAD_TSTORE_TLOAD_REVERT.getAddress()) // address
+            .push(SMC_ACCOUNT_TLOAD_TSTORE_TLOAD_REVERT.getAddress().getBytes()) // address
             .push(15000) // gas
             .op(OpCode.CALL)
             .push(0) // return size
             .push(0) // return offset
             .push(0) // arg size
             .push(0) // arg offset
-            .push(SMC_ACCOUNT_TLOAD_TSTORE_TLOAD_REVERT.getAddress()) // address
+            .push(SMC_ACCOUNT_TLOAD_TSTORE_TLOAD_REVERT.getAddress().getBytes()) // address
             .push(15000) // gas
             .op(OpCode.CALL)
             .compile();

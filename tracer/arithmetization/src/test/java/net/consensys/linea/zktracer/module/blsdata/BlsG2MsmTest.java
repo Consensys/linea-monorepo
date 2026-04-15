@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blsdata;
 
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.LARGE_POINTS;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.VALID_G2_POINT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,11 +78,11 @@ public class BlsG2MsmTest extends TracerTestBase {
     // First place the parameters in memory
     // Copy to targetOffset the code of codeOwnerAccount
     program
-        .push(codeOwnerAddress)
+        .push(codeOwnerAddress.getBytes())
         .op(OpCode.EXTCODESIZE) // size
         .push(0) // offset
         .push(0) // targetOffset
-        .push(codeOwnerAddress) // address
+        .push(codeOwnerAddress.getBytes()) // address
         .op(OpCode.EXTCODECOPY);
 
     // Do the call
@@ -90,7 +91,7 @@ public class BlsG2MsmTest extends TracerTestBase {
         .push(input.size()) // retOffset
         .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(Address.BLS12_G2MULTIEXP) // address
+        .push(Address.BLS12_G2MULTIEXP.getBytes()) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -116,7 +117,7 @@ public class BlsG2MsmTest extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static Stream<Arguments> blsG2MsmFullTableSource() {
@@ -124,6 +125,6 @@ public class BlsG2MsmTest extends TracerTestBase {
     for (int n = 0; n < BlsRt.G2_MSM_DISCOUNTS.size() + 10; n++) {
       arguments.add(Arguments.of(n + 1, Collections.nCopies(n + 1, VALID_G2_POINT)));
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

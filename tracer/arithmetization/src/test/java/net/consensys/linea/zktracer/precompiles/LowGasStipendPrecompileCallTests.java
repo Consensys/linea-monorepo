@@ -49,9 +49,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class LowGasStipendPrecompileCallTests extends TracerTestBase {
-
-  static final int LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE = 600;
-
   // Enums for the different testing scenarios
   enum ValueCase {
     ZERO,
@@ -183,10 +180,10 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     // TODO: are there other cases to exclude?
     if (valueCase.isNonZeroCase()
         && (gasCase == COST_MINUS_ONE || gasCase == COST || gasCase == GasCase.COST_PLUS_ONE)
-        && !precompileAddress.equals(ALTBN128_ADD)
-        && !precompileAddress.equals(BLS12_G1ADD)
-        && !precompileAddress.equals(BLS12_G2ADD)
-        && !precompileAddress.equals(MODEXP)) {
+        && !precompileAddress.getBytes().equals(ALTBN128_ADD.getBytes())
+        && !precompileAddress.getBytes().equals(BLS12_G1ADD.getBytes())
+        && !precompileAddress.getBytes().equals(BLS12_G2ADD.getBytes())
+        && !precompileAddress.getBytes().equals(MODEXP.getBytes())) {
       gas -= GAS_CONST_G_CALL_STIPEND;
     }
 
@@ -197,7 +194,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         .push(callDataSize) // callDataSize
         .push(callDataOffset) // callDataOffset
         .push(value) // value
-        .push(precompileAddress) // address
+        .push(precompileAddress.getBytes()) // address
         .push(gas) // gas
         .op(CALL);
 
@@ -214,9 +211,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   }
 
   static Stream<Arguments> sampleLowGasStipendPrecompileTestSources() {
-    return randomSampleByCurrentCommitHash(
-        LOW_GAS_STIPEND_PRECOMPILE_TEST_SAMPLE_SIZE, fullGasStipendPrecompileCallP256TestSource())
-        .stream();
+    return randomSampleByCurrentCommitHash(fullGasStipendPrecompileCallP256TestSource()).stream();
   }
 
   static List<Arguments> fullGasStipendPrecompileCallP256TestSource() {

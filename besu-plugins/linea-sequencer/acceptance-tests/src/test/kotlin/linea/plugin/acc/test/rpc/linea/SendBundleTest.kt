@@ -17,7 +17,6 @@ import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
-import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.Hash.sha3
@@ -43,14 +42,6 @@ class SendBundleTest : AbstractSendBundleTest() {
       // enabled the ZkCounter
       .set("--plugin-linea-limitless-enabled=", "true")
       .build()
-  }
-
-  override fun getCliqueOptions(): GenesisConfigurationFactory.CliqueOptions {
-    return GenesisConfigurationFactory.CliqueOptions(
-      BLOCK_PERIOD_SECONDS,
-      GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
-      false,
-    )
   }
 
   @Test
@@ -264,7 +255,7 @@ class SendBundleTest : AbstractSendBundleTest() {
       .createTransfer(accounts.secondaryBenefactor, accounts.primaryBenefactor, 1)
       .execute(minerNode.nodeRequests())
 
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
     minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash))
 
     // make sure the bundle is not select for the right reason
@@ -306,7 +297,7 @@ class SendBundleTest : AbstractSendBundleTest() {
       .execute(minerNode.nodeRequests())
 
     // first sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
     minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()))
 
@@ -348,7 +339,7 @@ class SendBundleTest : AbstractSendBundleTest() {
       .execute(minerNode.nodeRequests())
 
     // second sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash.bytes.toHexString()))
     minerNode.verify(eth.expectNoTransactionReceipt(invalidTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()))
 
@@ -433,7 +424,7 @@ class SendBundleTest : AbstractSendBundleTest() {
     val txHashFundRecipient = accountTransactions
       .createTransfer(accounts.primaryBenefactor, recipient, 10, BigInteger.valueOf(1))
       .execute(minerNode.nodeRequests())
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHashFundRecipient.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHashFundRecipient.bytes.toHexString()))
 
     // create a tx that reverts
     val contractAddress = revertExample.contractAddress
@@ -481,7 +472,7 @@ class SendBundleTest : AbstractSendBundleTest() {
       .execute(minerNode.nodeRequests())
 
     // first sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash1.bytes.toHexString()))
     minerNode.verify(eth.expectNoTransactionReceipt(txThatRevertsHash))
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()))
 
@@ -502,7 +493,7 @@ class SendBundleTest : AbstractSendBundleTest() {
       .execute(minerNode.nodeRequests())
 
     // second sentry is mined and no tx of the bundle is mined
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash2.toHexString()))
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transferTxHash2.bytes.toHexString()))
     minerNode.verify(eth.expectNoTransactionReceipt(txThatRevertsHash))
     minerNode.verify(eth.expectNoTransactionReceipt(inBundleTransferTx.transactionHash()))
   }

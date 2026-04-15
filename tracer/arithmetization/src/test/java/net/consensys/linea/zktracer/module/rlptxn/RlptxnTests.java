@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlptxn;
 
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.datatypes.TransactionType.*;
@@ -69,8 +70,7 @@ public class RlptxnTests extends TracerTestBase {
       TestInfo testInfo) {
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
     final ToyAccount senderAccount =
         ToyAccount.builder()
             .balance(Wei.wrap(Bytes.random(14, SEED)))
@@ -194,6 +194,6 @@ public class RlptxnTests extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

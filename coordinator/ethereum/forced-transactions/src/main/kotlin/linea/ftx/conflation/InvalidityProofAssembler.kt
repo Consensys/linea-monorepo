@@ -59,7 +59,13 @@ class InvalidityProofAssembler(
     )
 
     return invalidityProofClient
-      .isProofAlreadyDone(InvalidityProofIndex(ftx.simulatedExecutionBlockNumber, ftx.ftxNumber))
+      .isProofAlreadyDone(
+        InvalidityProofIndex(
+          simulatedExecutionBlockNumber = ftx.simulatedExecutionBlockNumber,
+          ftxNumber = ftx.ftxNumber,
+          startBlockTimestamp = ftx.simulatedExecutionBlockTimestamp,
+        ),
+      )
       .thenCompose { alreadyDone ->
         if (alreadyDone) {
           SafeFuture.completedFuture(InvalidityProofResponse(ftx.ftxNumber))
@@ -140,7 +146,7 @@ class InvalidityProofAssembler(
       TransactionDecoder.decodeOpaqueBytes(
         Bytes.wrap(ftx.ftxRlp),
         EncodingContext.POOLED_TRANSACTION,
-      ).sender.toArray()
+      ).sender.bytes.toArray()
     if (invalidityReason == InvalidityReason.BadNonce || invalidityReason == InvalidityReason.BadBalance) {
       accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber)
         .thenApply { it }

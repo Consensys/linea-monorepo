@@ -19,7 +19,6 @@ import (
 	plonk_bls12377 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
 	plonk_bw6761 "github.com/consensys/gnark/backend/plonk/bw6-761"
-	"github.com/consensys/gnark/backend/solidity"
 	"github.com/sirupsen/logrus"
 
 	kzg377 "github.com/consensys/gnark-crypto/ecc/bls12-377/kzg"
@@ -30,6 +29,7 @@ import (
 	gnarkio "github.com/consensys/gnark/io"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 const (
@@ -74,16 +74,16 @@ func MakeSetup(
 	}
 
 	setup.Manifest = NewSetupManifest(string(circuitName), ccs.GetNbConstraints(), fieldToCurve(ccs.Field()), extraFlags)
-	if setup.Manifest.Checksums.VerifyingKey, err = objectChecksum(vk); err != nil {
+	if setup.Manifest.Checksums.VerifyingKey, err = ObjectChecksum(vk); err != nil {
 		return Setup{}, fmt.Errorf("computing checksum for verifying key: %w", err)
 	}
-	if setup.Manifest.Checksums.Circuit, err = objectChecksum(ccs); err != nil {
+	if setup.Manifest.Checksums.Circuit, err = ObjectChecksum(ccs); err != nil {
 		return Setup{}, fmt.Errorf("computing checksum for circuit: %w", err)
 	}
 	hasSolidity := setup.Circuit.Field().String() == ecc.BN254.ScalarField().String()
 	if hasSolidity {
 		h := sha256.New()
-		if err = vk.ExportSolidity(h, solidity.WithPragmaVersion(solidityPragmaVersion)); err != nil {
+		if err = vk.ExportSolidity(h, LineaVerifierExportOptions()...); err != nil {
 			return Setup{}, fmt.Errorf("computing checksum for verifier contract: %w", err)
 		}
 		setup.Manifest.Checksums.VerifierContract = "0x" + hex.EncodeToString(h.Sum(nil))
@@ -97,7 +97,7 @@ func (s *Setup) CurveID() ecc.ID {
 }
 
 func (s *Setup) VerifyingKeyDigest() string {
-	r, err := objectChecksum(s.VerifyingKey)
+	r, err := ObjectChecksum(s.VerifyingKey)
 	if err != nil {
 		utils.Panic("could not get the verifying key digest: %v", err)
 	}
@@ -106,7 +106,7 @@ func (s *Setup) VerifyingKeyDigest() string {
 
 // CircuitDigest computes the SHA256 digest of the circuit.
 func CircuitDigest(circuit constraint.ConstraintSystem) (string, error) {
-	return objectChecksum(circuit)
+	return ObjectChecksum(circuit)
 }
 
 // WriteTo writes the setup assets to specified root directory.
@@ -138,7 +138,7 @@ func (s *Setup) WriteTo(rootDir string) error {
 			return fmt.Errorf("creating verifier contract file: %w", err)
 		}
 		defer f.Close()
-		if err = s.VerifyingKey.ExportSolidity(f, solidity.WithPragmaVersion(solidityPragmaVersion)); err != nil {
+		if err = s.VerifyingKey.ExportSolidity(f, LineaVerifierExportOptions()...); err != nil {
 			return fmt.Errorf("exporting verifier contract to file: %w", err)
 		}
 	}
@@ -147,6 +147,9 @@ func (s *Setup) WriteTo(rootDir string) error {
 }
 
 func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
+
+	gnarkutil.RegisterHintsAndGkrGates()
+
 	runtime.GC()
 
 	rootDir := cfg.PathForSetup(string(circuitID))
@@ -173,7 +176,7 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 		return Setup{}, fmt.Errorf("reading verifying key from file: %w", err)
 	}
 
-	vkChecksum, err := objectChecksum(vk)
+	vkChecksum, err := ObjectChecksum(vk)
 	if err != nil {
 		return Setup{}, fmt.Errorf("computing checksum for verifying key: %w", err)
 	}
@@ -301,7 +304,10 @@ func readFromFile(path string, into any) error {
 	return err
 }
 
-func objectChecksum(object any) (string, error) {
+// ObjectChecksum computes a SHA256 checksum of a gnark object using writeToWriter
+// (which prefers WriteRawTo over WriteTo). This is the canonical checksum used
+// at prove time for VK digest comparison.
+func ObjectChecksum(object any) (string, error) {
 	h := sha256.New()
 	if err := writeToWriter(h, object); err != nil {
 		return "", fmt.Errorf("writing to hasher: %w", err)

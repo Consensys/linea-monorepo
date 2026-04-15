@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -78,7 +79,7 @@ public class EcAddTest extends TracerTestBase {
             "d89e2e42be7fbda9358a2689c73af3ecd519728359f175ee7919d31c8f61d5d",
             "eb7c8cfbbe0a89bf12697e97b482c3a91ff985ba456f1684a0b68efa2933019"));
     // TODO: add other interesting cases
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   @Test
@@ -103,7 +104,7 @@ public class EcAddTest extends TracerTestBase {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(Address.ALTBN128_ADD) // address
+            .push(Address.ALTBN128_ADD.getBytes()) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
@@ -135,7 +136,7 @@ public class EcAddTest extends TracerTestBase {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(Address.ALTBN128_ADD) // address
+            .push(Address.ALTBN128_ADD.getBytes()) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 

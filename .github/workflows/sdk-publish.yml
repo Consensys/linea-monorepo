@@ -1,0 +1,261 @@
+name: sdk-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - sdk-core
+          - sdk-viem
+      release_commit_sha:
+        description: "Commit SHA from the merged release PR (must be on main)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run (skip actual publish)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: sdk-publish
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    steps:
+      - name: Ensure running on main
+        if: github.ref != 'refs/heads/main'
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          echo "::error::sdk-publish must be triggered from the main branch, got $REF"
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify release commit is on main
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
+        run: |
+          if ! git cat-file -e "${RELEASE_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::Commit $RELEASE_SHA does not exist in this repository"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" HEAD; then
+            echo "::error::Commit $RELEASE_SHA is not an ancestor of main. Only release commits merged to main can be published."
+            exit 1
+          fi
+
+  publish-sdk-core:
+    needs: guard
+    if: inputs.package == 'sdk-core'
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_commit_sha }}
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          pnpm-install-options: "--frozen-lockfile --prefer-offline"
+  
+      - name: Build sdk-core
+        run: pnpm -F @consensys/linea-sdk-core run build
+
+      - name: Check if version already published
+        id: check
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          if npm view @consensys/linea-sdk-core@"$VERSION" version 2>/dev/null; then
+            echo "::notice::sdk-core@$VERSION already published, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure npm auth
+        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        run: echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> .npmrc
+
+      - name: Publish sdk-core
+        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        run: pnpm -F @consensys/linea-sdk-core publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag sdk-core release
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          TAG="@consensys/linea-sdk-core@${VERSION}"
+
+          REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+          if [[ -n "$REMOTE_SHA" ]]; then
+            if [[ "$REMOTE_SHA" == "$RELEASE_SHA" ]]; then
+              echo "::notice::Tag $TAG already exists at $RELEASE_SHA, skipping"
+              exit 0
+            else
+              echo "::error::Tag $TAG already exists but points at $REMOTE_SHA, expected $RELEASE_SHA. Resolve this tag collision manually."
+              exit 1
+            fi
+          fi
+
+          git tag "$TAG" "$RELEASE_SHA"
+          git push origin "$TAG"
+
+      - name: Extract release notes
+        if: ${{ !inputs.dry_run }}
+        id: release_notes
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          CHANGELOG="sdk/sdk-core/CHANGELOG.md"
+          if [[ -f "$CHANGELOG" ]]; then
+            awk '/^## /{if(found)exit; found=1} found' "$CHANGELOG" > release-notes.md
+          else
+            echo "Release @consensys/linea-sdk-core@${VERSION}" > release-notes.md
+          fi
+
+      - name: Package source archive
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION=${{ steps.release_notes.outputs.version }}
+          tar -czf "linea-sdk-core-${VERSION}.tar.gz" -C sdk/sdk-core .
+          cd sdk/sdk-core && zip -rq "../../linea-sdk-core-${VERSION}.zip" .
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          tag_name: "@consensys/linea-sdk-core@${{ steps.release_notes.outputs.version }}"
+          name: "@consensys/linea-sdk-core@${{ steps.release_notes.outputs.version }}"
+          body_path: release-notes.md
+          target_commitish: ${{ inputs.release_commit_sha }}
+          files: |
+            linea-sdk-core-${{ steps.release_notes.outputs.version }}.tar.gz
+            linea-sdk-core-${{ steps.release_notes.outputs.version }}.zip
+
+  publish-sdk-viem:
+    needs: guard
+    if: inputs.package == 'sdk-viem'
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_commit_sha }}
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          pnpm-install-options: "--frozen-lockfile --prefer-offline"
+
+      - name: Verify sdk-core dependency is published on npm
+        run: |
+          CORE_VERSION=$(node -p "require('./sdk/sdk-core/package.json').version")
+          echo "Resolved @consensys/linea-sdk-core dependency version: $CORE_VERSION"
+          if ! npm view "@consensys/linea-sdk-core@${CORE_VERSION}" version 2>/dev/null; then
+            echo "::error::@consensys/linea-sdk-core@${CORE_VERSION} is not published on npm. Run this workflow for sdk-core first."
+            exit 1
+          fi
+      
+      - name: Build sdk-viem
+        run: pnpm -F "@consensys/linea-sdk-viem..." run build
+
+      - name: Check if version already published
+        id: check
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
+          if npm view @consensys/linea-sdk-viem@"$VERSION" version 2>/dev/null; then
+            echo "::notice::sdk-viem@$VERSION already published, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure npm auth
+        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        run: echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> .npmrc
+
+      - name: Publish sdk-viem
+        if: ${{ !inputs.dry_run && steps.check.outputs.skip != 'true' }}
+        run: pnpm -F @consensys/linea-sdk-viem publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag sdk-viem release
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_SHA: ${{ inputs.release_commit_sha }}
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
+          TAG="@consensys/linea-sdk-viem@${VERSION}"
+
+          REMOTE_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+          if [[ -n "$REMOTE_SHA" ]]; then
+            if [[ "$REMOTE_SHA" == "$RELEASE_SHA" ]]; then
+              echo "::notice::Tag $TAG already exists at $RELEASE_SHA, skipping"
+              exit 0
+            else
+              echo "::error::Tag $TAG already exists but points at $REMOTE_SHA, expected $RELEASE_SHA. Resolve this tag collision manually."
+              exit 1
+            fi
+          fi
+
+          git tag "$TAG" "$RELEASE_SHA"
+          git push origin "$TAG"
+
+      - name: Extract release notes
+        if: ${{ !inputs.dry_run }}
+        id: release_notes
+        run: |
+          VERSION=$(node -p "require('./sdk/sdk-viem/package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          CHANGELOG="sdk/sdk-viem/CHANGELOG.md"
+          if [[ -f "$CHANGELOG" ]]; then
+            awk '/^## /{if(found)exit; found=1} found' "$CHANGELOG" > release-notes.md
+          else
+            echo "Release @consensys/linea-sdk-viem@${VERSION}" > release-notes.md
+          fi
+
+      - name: Package source archive
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION=${{ steps.release_notes.outputs.version }}
+          tar -czf "linea-sdk-viem-${VERSION}.tar.gz" -C sdk/sdk-viem .
+          cd sdk/sdk-viem && zip -rq "../../linea-sdk-viem-${VERSION}.zip" .
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          tag_name: "@consensys/linea-sdk-viem@${{ steps.release_notes.outputs.version }}"
+          name: "@consensys/linea-sdk-viem@${{ steps.release_notes.outputs.version }}"
+          body_path: release-notes.md
+          target_commitish: ${{ inputs.release_commit_sha }}
+          files: |
+            linea-sdk-viem-${{ steps.release_notes.outputs.version }}.tar.gz
+            linea-sdk-viem-${{ steps.release_notes.outputs.version }}.zip
+
+  notify:
+    needs: [publish-sdk-core, publish-sdk-viem]
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    uses: ./.github/workflows/slack-notify-failed-jobs.yml
+    with:
+      title: "SDK Publish workflow failed"
+      run_id: ${{ github.run_id }}
+    secrets:
+      channel_id: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
+      slack_bot_token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
