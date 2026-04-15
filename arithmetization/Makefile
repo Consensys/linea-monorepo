@@ -33,10 +33,6 @@ checkout-go-corset:
 		git -C "$(GO_CORSET)" checkout "$(GO_CORSET_REF_FOR_ZKC)"; \
 	fi
 
-# Install the go-corset CLI from a released version.
-install-go-corset:
-	go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION)
-
 # Install the zkc CLI from the go-corset repository.
 install-zkc: checkout-go-corset
 	cd "$(GO_CORSET)" && go install ./cmd/zkc
@@ -46,3 +42,20 @@ zkc-compile:
 	zkc compile $(ZKC_MAIN)
 
 riscv-check-compilation: install-zkc zkc-compile
+
+# Install the go-corset CLI from a released version (skips if already at the target version).
+install-go-corset:
+	@if command -v go-corset >/dev/null 2>&1; then \
+		installed=$$(go-corset --version | sed 's/go-corset//;s/^ *//'); \
+		if [ "$$installed" = "$(GO_CORSET_VERSION)" ]; then \
+			echo "go-corset $(GO_CORSET_VERSION) already installed"; \
+		else \
+			echo "go-corset version mismatch: installed=$$installed expected=$(GO_CORSET_VERSION)"; \
+			echo "Installing go-corset@$(GO_CORSET_VERSION)..."; \
+			go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
+		fi; \
+	else \
+		echo "go-corset not found in PATH"; \
+		echo "Installing go-corset@$(GO_CORSET_VERSION)..."; \
+		go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
+	fi

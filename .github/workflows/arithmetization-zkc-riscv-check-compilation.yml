@@ -34,8 +34,5 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-arithmetization-riscv
 
-      - name: Install zkc
-        run: make -C arithmetization install-zkc
-
-      - name: Compile RISC-V program
-        run: make -C arithmetization zkc-compile
+      - name: Install zkc and check compilation of RISC-V in ZkC
+        run: make -C arithmetization riscv-check-compilation
