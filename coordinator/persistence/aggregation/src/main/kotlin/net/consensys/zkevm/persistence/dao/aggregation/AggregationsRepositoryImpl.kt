@@ -46,6 +46,10 @@ class AggregationsRepositoryImpl(
     return aggregationsPostgresDao.findAggregationProofByEndBlockNumber(endBlockNumber)
   }
 
+  override fun findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<ProofToFinalize?> {
+    return aggregationsPostgresDao.findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive)
+  }
+
   override fun deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int> {
     return aggregationsPostgresDao.deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive)
   }

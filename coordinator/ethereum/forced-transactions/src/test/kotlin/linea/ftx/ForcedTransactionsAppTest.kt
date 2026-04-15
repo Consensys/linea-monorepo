@@ -712,7 +712,7 @@ class ForcedTransactionsAppTest {
   }
 
   @Test
-  fun `should trigger conflation and aggregation when sequencer processes ftxs`() {
+  fun `should trigger conflation and aggregation for every processed ftx block`() {
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
         l1BlockNumber = 100UL,
@@ -820,13 +820,19 @@ class ForcedTransactionsAppTest {
     }
     assertThat(conflationTriggers).isEqualTo(
       listOf(
-        99UL to ConflationTrigger.FORCED_TRANSACTION,
-        499UL to ConflationTrigger.FORCED_TRANSACTION,
+        100UL to ConflationTrigger.FORCED_TRANSACTION,
+        200UL to ConflationTrigger.FORCED_TRANSACTION,
+        300UL to ConflationTrigger.FORCED_TRANSACTION,
+        400UL to ConflationTrigger.FORCED_TRANSACTION,
+        500UL to ConflationTrigger.FORCED_TRANSACTION,
       ),
     )
     assertThat(aggregationTriggers).isEqualTo(
       listOf(
         99UL to AggregationTriggerType.FORCED_TRANSACTION,
+        199UL to AggregationTriggerType.FORCED_TRANSACTION,
+        299UL to AggregationTriggerType.FORCED_TRANSACTION,
+        399UL to AggregationTriggerType.FORCED_TRANSACTION,
         499UL to AggregationTriggerType.FORCED_TRANSACTION,
       ),
     )

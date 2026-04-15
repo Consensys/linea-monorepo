@@ -43,6 +43,8 @@ interface AggregationsDao {
 
   fun findAggregationProofByEndBlockNumber(endBlockNumber: Long): SafeFuture<ProofToFinalize?>
 
+  fun findLatestProvenAggregationProofUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<ProofToFinalize?>
+
   fun deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int>
 
   fun deleteAggregationsAfterBlockNumber(startingBlockNumberInclusive: Long): SafeFuture<Int>

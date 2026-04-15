@@ -7,7 +7,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 fun interface InvalidityProofProvider {
   fun getInvalidityProofs(
     ftxStartingNumber: ULong,
-    aggregationStartingBlockNumber: ULong,
+    aggregationEndBlockNumber: ULong,
   ): SafeFuture<List<InvalidityProofIndex>>
 }
 
@@ -16,12 +16,12 @@ class InvalidityProofProviderImpl(
 ) : InvalidityProofProvider {
   override fun getInvalidityProofs(
     ftxStartingNumber: ULong,
-    aggregationStartingBlockNumber: ULong,
+    aggregationEndBlockNumber: ULong,
   ): SafeFuture<List<InvalidityProofIndex>> {
     return forcedTransactionsDao
       .findByStartingNumber(
         ftxStartingNumberInclusive = ftxStartingNumber,
-        endSimulatedExecutionBlockNumberInclusive = aggregationStartingBlockNumber,
+        endSimulatedExecutionBlockNumberInclusive = aggregationEndBlockNumber,
       ).thenApply { forcedTransactions ->
         forcedTransactions.map { forcedTransaction ->
           InvalidityProofIndex(

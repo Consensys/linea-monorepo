@@ -4,6 +4,7 @@ import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.EthApiClient
 import linea.persistence.ftx.ForcedTransactionsDao
+import net.consensys.zkevm.persistence.AggregationsRepository
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant
 
@@ -14,6 +15,7 @@ interface AggregationL2StateProvider {
 class AggregationL2StateProviderImpl(
   private val ethApiClient: EthApiClient,
   private val messageService: L2MessageServiceSmartContractClientReadOnly,
+  private val aggregationsRepository: AggregationsRepository,
   private val forcedTransactionsDao: ForcedTransactionsDao,
 ) : AggregationL2StateProvider {
   private data class AnchoredMessage(
@@ -58,13 +60,30 @@ class AggregationL2StateProviderImpl(
       return SafeFuture.completedFuture(FtxRollingInfo.GENESIS)
     }
 
-    return forcedTransactionsDao
-      .findHighestForcedTransaction(
-        upToSimulatedExecutionBlockNumberInclusive = aggEndBlockNumber.minus(1uL),
-      ).thenApply { highestFtx ->
-        highestFtx
-          ?.let { FtxRollingInfo(it.ftxNumber, it.ftxRollingHash) }
-          ?: FtxRollingInfo.GENESIS
+    val highestFtxFuture =
+      forcedTransactionsDao
+        .findHighestForcedTransaction(
+          // The parent finalized state is taken at the end of aggEndBlockNumber itself.
+          upToSimulatedExecutionBlockNumberInclusive = aggEndBlockNumber,
+        )
+    val latestProvenAggregationFuture =
+      aggregationsRepository.findLatestProvenAggregationProofUpToEndBlockNumber(aggEndBlockNumber.toLong())
+
+    return SafeFuture.allOf(highestFtxFuture, latestProvenAggregationFuture)
+      .thenApply {
+        val highestFtx = highestFtxFuture.get()
+        val latestProvenAggregation = latestProvenAggregationFuture.get()
+        when {
+          latestProvenAggregation != null && latestProvenAggregation.finalBlockNumber.toULong() == aggEndBlockNumber ->
+            FtxRollingInfo(latestProvenAggregation.finalFtxNumber, latestProvenAggregation.finalFtxRollingHash)
+          latestProvenAggregation != null && highestFtx != null && highestFtx.ftxNumber > latestProvenAggregation.finalFtxNumber ->
+            FtxRollingInfo(highestFtx.ftxNumber, highestFtx.ftxRollingHash)
+          latestProvenAggregation != null ->
+            FtxRollingInfo(latestProvenAggregation.finalFtxNumber, latestProvenAggregation.finalFtxRollingHash)
+          highestFtx != null ->
+            FtxRollingInfo(highestFtx.ftxNumber, highestFtx.ftxRollingHash)
+          else -> FtxRollingInfo.GENESIS
+        }
       }
   }
 
