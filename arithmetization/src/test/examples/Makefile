@@ -29,7 +29,7 @@ exec: compile zkc-exec
 debug: compile zkc-debug
 
 compile: $(ASM)
-	@mkdir -p $(EXAMPLES_DIR)asm/bin
+	@mkdir -p $(MAKEFILE_DIR)asm/bin
 	$(AS) ${AS_FLAGS} -o $(BIN) $^
 	go run $(GO_MAIN) $(BIN) > $(JSON)
 
@@ -43,4 +43,4 @@ clean:
 	rm $(BIN) $(JSON)
 
 clean-all:
-	rm -rf $(EXAMPLES_DIR)asm/bin/
+	rm -rf $(MAKEFILE_DIR)asm/bin/
