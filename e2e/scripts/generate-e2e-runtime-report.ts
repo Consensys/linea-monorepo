@@ -185,12 +185,19 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const allSpecFiles = [...new Set(runResults.flatMap((r) => r.specResults.map((s) => s.specFile)))].sort();
 
   // Compute per-spec stats from successful runs
-  const specStats = new Map<string, { med: number; sd: number; min: number; max: number; count: number }>();
+  const specStats = new Map<
+    string,
+    { med: number; sd: number; min: number; max: number; count: number; failureCount: number }
+  >();
   for (const specFile of allSpecFiles) {
     const durations = runResults
       .flatMap((r) => r.specResults)
       .filter((s) => s.specFile === specFile && s.status === "PASS" && !isNaN(s.durationSeconds))
       .map((s) => s.durationSeconds);
+
+    const failureCount = runResults.filter((r) =>
+      r.specResults.some((s) => s.specFile === specFile && (s.status === "FAIL" || s.status === "TIMEOUT")),
+    ).length;
 
     specStats.set(specFile, {
       med: median(durations),
@@ -198,6 +205,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
       min: durations.length > 0 ? Math.min(...durations) : NaN,
       max: durations.length > 0 ? Math.max(...durations) : NaN,
       count: durations.length,
+      failureCount,
     });
   }
 
@@ -311,12 +319,15 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const totalRunDurations = runResults.map((r) => r.run.durationSeconds).filter((d) => !isNaN(d));
   const totalRunMin = totalRunDurations.length > 0 ? Math.min(...totalRunDurations) : NaN;
   const totalRunMax = totalRunDurations.length > 0 ? Math.max(...totalRunDurations) : NaN;
+  const totalRunFailRate = totalRuns > 0 ? ((failedRuns / totalRuns) * 100).toFixed(1) : "0.0";
   const totalRunSummaryRow = `<tr style="border-bottom:2px solid #aaa;">
           <td class="spec-name" style="font-weight:600;">total run</td>
           <td style="background:${COLOR_MAP.green};font-weight:600;">${isNaN(medianRunDuration) ? "-" : (medianRunDuration / 60).toFixed(1) + "m"}</td>
           <td>${isNaN(totalRunMin) ? "-" : (totalRunMin / 60).toFixed(1) + "m"}</td>
           <td>${isNaN(totalRunMax) ? "-" : (totalRunMax / 60).toFixed(1) + "m"}</td>
           <td>${totalRunDurations.length}</td>
+          <td>${failedRuns}</td>
+          <td>${totalRunFailRate}%</td>
         </tr>`;
 
   // Summary table rows (color-code median cell: red if any run had FAIL/TIMEOUT)
@@ -324,16 +335,17 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     .map((specFile) => {
       const stats = specStats.get(specFile)!;
       const shortName = specFile.replace("src/", "").replace(".spec.ts", "");
-      const hasFailures = runResults.some((r) =>
-        r.specResults.some((s) => s.specFile === specFile && (s.status === "FAIL" || s.status === "TIMEOUT")),
-      );
-      const medColor: ColorLevel = isNaN(stats.med) ? "gray" : hasFailures ? "red" : "green";
+      const medColor: ColorLevel = isNaN(stats.med) ? "gray" : stats.failureCount > 0 ? "red" : "green";
+      const total = stats.count + stats.failureCount;
+      const failRate = total > 0 ? ((stats.failureCount / total) * 100).toFixed(1) : "0.0";
       return `<tr>
             <td class="spec-name">${shortName}</td>
             <td style="background:${COLOR_MAP[medColor]}">${isNaN(stats.med) ? "-" : stats.med.toFixed(1)}</td>
             <td>${isNaN(stats.min) ? "-" : stats.min.toFixed(1)}</td>
             <td>${isNaN(stats.max) ? "-" : stats.max.toFixed(1)}</td>
             <td>${stats.count}</td>
+            <td>${stats.failureCount}</td>
+            <td>${failRate}%</td>
           </tr>`;
     })
     .join("\n          ");
@@ -403,7 +415,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
 
   <h2>Summary</h2>
   <table>
-    <thead><tr><th>Spec File</th><th>Median (s)</th><th>Min (s)</th><th>Max (s)</th><th>Runs</th></tr></thead>
+    <thead><tr><th>Spec File</th><th>Median (s)</th><th>Min (s)</th><th>Max (s)</th><th>Runs</th><th>Failures</th><th>Fail %</th></tr></thead>
     <tbody>
       ${totalRunSummaryRow}
       ${summaryRows}
