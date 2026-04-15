@@ -2,7 +2,6 @@ package wizard
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
 // ProverAction represents an action to be performed by the prover.
@@ -34,31 +33,3 @@ type VerifierAction interface {
 	// error the function enforces the passing of the verifier's checks.
 	RunGnark(frontend.API, GnarkRuntime)
 }
-
-// PrintingProverAction is a ProverAction printing a column content. And an
-// additional message.
-type PrintingProverAction struct {
-	Column          ifaces.Column
-	Message         string
-	NameReplacement string
-}
-
-// PrintingVerifierAction is as PrintingProverAction but for the verifier.
-type PrintingVerifierAction struct {
-	Column          ifaces.Column
-	Message         string
-	NameReplacement string
-}
-
-// RunGnark implements the VerifierAction interface for PrintingVerifierAction.
-// func (p PrintingVerifierAction) RunGnark(api frontend.API, run GnarkRuntime) {
-
-// 	name := p.Column.GetColID()
-// 	if len(p.NameReplacement) > 0 {
-// 		name = ifaces.ColID(p.NameReplacement)
-// 	}
-
-// 	c := p.Column.GetColAssignmentGnark(run)
-// 	names := fmt.Sprintf("name=%v message=%v value=\n", name, p.Message)
-// 	api.Println(append([]koalagnark.Var{names}, c...)...)
-// }
