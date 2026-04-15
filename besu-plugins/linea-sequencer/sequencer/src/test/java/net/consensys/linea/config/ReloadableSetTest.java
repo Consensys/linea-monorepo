@@ -153,6 +153,8 @@ class ReloadableSetTest {
   void removeThrowsUnsupportedOperationException() {
     final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a"));
 
+    assertThat(reloadableSet.contains("a")).isTrue();
+
     assertThatThrownBy(() -> reloadableSet.remove("a"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("immutable");
