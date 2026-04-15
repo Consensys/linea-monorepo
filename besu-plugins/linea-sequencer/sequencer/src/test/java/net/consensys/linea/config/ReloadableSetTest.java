@@ -180,7 +180,9 @@ class ReloadableSetTest {
 
   @Test
   void removeAllThrowsUnsupportedOperationException() {
-    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of());
+    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a"));
+
+    assertThat(reloadableSet.contains("a")).isTrue();
 
     assertThatThrownBy(() -> reloadableSet.removeAll(Set.of("a")))
         .isInstanceOf(UnsupportedOperationException.class)
