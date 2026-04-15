@@ -32,7 +32,6 @@ jobs:
       tracer-constraints: ${{ steps.filter.outputs.tracer-constraints }}
       has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
       has-changes-requiring-linea-besu-package-build: ${{ steps.filter.outputs.linea-sequencer-plugin == 'true' || steps.filter.outputs.tracer == 'true' || steps.filter.outputs.tracer-constraints == 'true' ||  steps.filter.outputs.linea-besu == 'true' || steps.filter.outputs.linea-besu-package == 'true' }}
-      besu-commit-changed: ${{ steps.check_besu_commit.outputs.version_changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -159,13 +158,6 @@ jobs:
           # The default is 'some', which requires just one filter pattern match and applies the 'OR' operator.
           # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
           predicate-quantifier: "every"
-
-      - name: Check besuCommit change
-        uses: ./.github/actions/check-lib-version-change
-        id: check_besu_commit
-        with:
-          target_lib: besuCommit
-          target_file_path: gradle/libs.versions.toml
 
   check-and-tag-images:
     needs: [filter-commit-changes]
