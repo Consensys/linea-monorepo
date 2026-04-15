@@ -46,6 +46,34 @@ export type GasPriceFeeOverrides = {
 
 export type SendTransactionWithGasPriceRetryOptions = SendTransactionWithRetryOptions;
 
+type FeeState<TFees> = {
+  fees: TFees;
+  baseFees: TFees;
+};
+
+type FeeBumpResult<TFees> = {
+  fees: TFees;
+  wasCapped: boolean;
+};
+
+type FeeBumpLogContext<TFees> = {
+  hash: Hash;
+  attempt: number;
+  bumpFactor: bigint;
+  previousFees: TFees;
+  nextFees: TFees;
+  baseFees: TFees;
+  wasCapped: boolean;
+};
+
+type FeeRetryStrategy<TFees> = {
+  errorPrefix: string;
+  getInitialFeeState: (client: Client, hash: Hash) => Promise<FeeState<TFees>>;
+  getNextFeeState: (fees: TFees, baseFees: TFees, bumpFactor: bigint) => FeeBumpResult<TFees>;
+  logInitialSend: (hash: Hash, fees: TFees) => void;
+  logBump: (context: FeeBumpLogContext<TFees>) => void;
+};
+
 const logger = createTestLogger();
 
 /* ---------------- helpers ---------------- */
@@ -137,8 +165,8 @@ function bumpGasPriceFromTx(tx: { gasPrice: bigint | undefined }, bumpFactor: bi
   return { gasPrice: (tx.gasPrice * bumpFactor) / 100n };
 }
 
-function capBumpedGasPrice(fees: GasPriceFeeOverrides, baseGasPrice: bigint): GasPriceFeeOverrides {
-  const maxAllowedGasPrice = baseGasPrice * MAX_FEE_MULTIPLIER;
+function capBumpedGasPrice(fees: GasPriceFeeOverrides, baseFees: GasPriceFeeOverrides): GasPriceFeeOverrides {
+  const maxAllowedGasPrice = baseFees.gasPrice * MAX_FEE_MULTIPLIER;
   return { gasPrice: fees.gasPrice > maxAllowedGasPrice ? maxAllowedGasPrice : fees.gasPrice };
 }
 
@@ -195,10 +223,96 @@ async function assertReceiptSuccess(
 
 /* ---------------- final wrapper ---------------- */
 
-export async function sendTransactionWithRetry(
+async function getEip1559FeeState(client: Client, hash: Hash): Promise<FeeState<FeeOverrides>> {
+  const tx = await getTransaction(client, { hash });
+  const fees = {
+    maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
+    maxFeePerGas: tx.maxFeePerGas,
+  };
+  return { fees, baseFees: fees };
+}
+
+function getNextEip1559FeeState(
+  fees: FeeOverrides,
+  baseFees: FeeOverrides,
+  bumpFactor: bigint,
+): FeeBumpResult<FeeOverrides> {
+  const nextFees = bumpFeesFromTx(fees, bumpFactor);
+  const cappedFees = capBumpedFees(nextFees, baseFees);
+  return {
+    fees: cappedFees,
+    wasCapped:
+      cappedFees.maxFeePerGas !== nextFees.maxFeePerGas ||
+      cappedFees.maxPriorityFeePerGas !== nextFees.maxPriorityFeePerGas,
+  };
+}
+
+function logEip1559InitialSend(hash: Hash, fees: FeeOverrides): void {
+  logger.debug(
+    `tx sent hash=${hash} maxFeePerGas=${fees.maxFeePerGas} maxPriorityFeePerGas=${fees.maxPriorityFeePerGas}`,
+  );
+}
+
+function logEip1559Bump(context: FeeBumpLogContext<FeeOverrides>): void {
+  const { hash, attempt, bumpFactor, previousFees, nextFees, baseFees, wasCapped } = context;
+  logger.debug(
+    `bumping fees hash=${hash} attempt=${attempt + 1} bumpFactor=${bumpFactor} ` +
+      `prevMaxFeePerGas=${previousFees.maxFeePerGas} nextMaxFeePerGas=${nextFees.maxFeePerGas} ` +
+      `prevMaxPriorityFeePerGas=${previousFees.maxPriorityFeePerGas} nextMaxPriorityFeePerGas=${nextFees.maxPriorityFeePerGas}`,
+  );
+
+  if (wasCapped) {
+    logger.debug(
+      `fee cap reached hash=${hash} maxFeePerGasCap=${baseFees.maxFeePerGas! * MAX_FEE_MULTIPLIER} ` +
+        `maxPriorityFeePerGasCap=${baseFees.maxPriorityFeePerGas! * MAX_FEE_MULTIPLIER}`,
+    );
+  }
+}
+
+async function getGasPriceFeeState(client: Client, hash: Hash): Promise<FeeState<GasPriceFeeOverrides>> {
+  const tx = await getTransaction(client, { hash });
+  if (tx.gasPrice === undefined) {
+    throw new Error("sendTransactionWithGasPriceRetry: transaction has no gasPrice");
+  }
+
+  const fees = { gasPrice: tx.gasPrice };
+  return { fees, baseFees: fees };
+}
+
+function getNextGasPriceFeeState(
+  fees: GasPriceFeeOverrides,
+  baseFees: GasPriceFeeOverrides,
+  bumpFactor: bigint,
+): FeeBumpResult<GasPriceFeeOverrides> {
+  const nextFees = bumpGasPriceFromTx(fees, bumpFactor);
+  const cappedFees = capBumpedGasPrice(nextFees, baseFees);
+  return {
+    fees: cappedFees,
+    wasCapped: cappedFees.gasPrice !== nextFees.gasPrice,
+  };
+}
+
+function logGasPriceInitialSend(hash: Hash, fees: GasPriceFeeOverrides): void {
+  logger.debug(`tx sent hash=${hash} gasPrice=${fees.gasPrice}`);
+}
+
+function logGasPriceBump(context: FeeBumpLogContext<GasPriceFeeOverrides>): void {
+  const { hash, attempt, bumpFactor, previousFees, nextFees, baseFees, wasCapped } = context;
+  logger.debug(
+    `bumping gasPrice hash=${hash} attempt=${attempt + 1} bumpFactor=${bumpFactor} ` +
+      `prevGasPrice=${previousFees.gasPrice} nextGasPrice=${nextFees.gasPrice}`,
+  );
+
+  if (wasCapped) {
+    logger.debug(`gasPrice cap reached hash=${hash} cap=${baseFees.gasPrice * MAX_FEE_MULTIPLIER}`);
+  }
+}
+
+async function sendTransactionWithFeeRetry<TFees>(
   client: Client,
-  sendFn: (fees?: FeeOverrides) => Promise<Hash>,
+  sendFn: (fees?: TFees) => Promise<Hash>,
   options: SendTransactionWithRetryOptions = {},
+  strategy: FeeRetryStrategy<TFees>,
 ): Promise<TransactionResult> {
   const receiptTimeoutMs = options.receiptTimeoutMs ?? DEFAULT_RECEIPT_TIMEOUT_MS;
   const feeBumpFactor = options.feeBumpFactor ?? DEFAULT_FEE_BUMP_FACTOR;
@@ -212,8 +326,8 @@ export async function sendTransactionWithRetry(
 
   const startedAt = Date.now();
   let lastHash!: Hash;
-  let fees!: FeeOverrides;
-  let baseFees!: FeeOverrides;
+  let fees!: TFees;
+  let baseFees!: TFees;
   let attempt = 0;
   let needsSend = true;
 
@@ -223,12 +337,10 @@ export async function sendTransactionWithRetry(
 
   async function freshSend(): Promise<void> {
     lastHash = await sendFn();
-    const tx = await getTransaction(client, { hash: lastHash });
-    fees = { maxPriorityFeePerGas: tx.maxPriorityFeePerGas, maxFeePerGas: tx.maxFeePerGas };
-    baseFees = fees;
-    logger.debug(
-      `tx sent hash=${lastHash} maxFeePerGas=${fees.maxFeePerGas} maxPriorityFeePerGas=${fees.maxPriorityFeePerGas}`,
-    );
+    const feeState = await strategy.getInitialFeeState(client, lastHash);
+    fees = feeState.fees;
+    baseFees = feeState.baseFees;
+    strategy.logInitialSend(lastHash, fees);
   }
 
   async function handleRevertRetry(hash: Hash, receipt: TransactionReceipt): Promise<boolean> {
@@ -244,6 +356,19 @@ export async function sendTransactionWithRetry(
     return true;
   }
 
+  async function retryAfterSimulationRevert(error: unknown): Promise<boolean> {
+    if (!(retryOnRevert && isContractRevert(error) && withinLimits())) {
+      return false;
+    }
+
+    logger.debug(`sendFn reverted at simulation, retrying: attempt=${attempt} error=${(error as Error).message}`);
+    await beforeRetry?.();
+    await sleep(retryOnRevertDelayMs);
+    needsSend = true;
+    attempt++;
+    return true;
+  }
+
   while (attempt <= maxRetries) {
     /* ---------- (re)send ---------- */
     if (needsSend) {
@@ -251,12 +376,7 @@ export async function sendTransactionWithRetry(
       try {
         await freshSend();
       } catch (err) {
-        if (retryOnRevert && isContractRevert(err) && withinLimits()) {
-          logger.debug(`sendFn reverted at simulation, retrying: attempt=${attempt} error=${(err as Error).message}`);
-          await beforeRetry?.();
-          await sleep(retryOnRevertDelayMs);
-          needsSend = true;
-          attempt++;
+        if (await retryAfterSimulationRevert(err)) {
           continue;
         }
         throw err;
@@ -274,7 +394,7 @@ export async function sendTransactionWithRetry(
         return { hash: lastHash, receipt: txReceipt };
       }
 
-      throw new Error("sendTransactionWithRetry: overall timeout exceeded");
+      throw new Error(`${strategy.errorPrefix}: overall timeout exceeded`);
     }
 
     /* ---------- primary wait ---------- */
@@ -316,31 +436,24 @@ export async function sendTransactionWithRetry(
         return { hash: lastHash, receipt: receipt };
       }
 
-      throw new Error("sendTransactionWithRetry: max retries exceeded");
+      throw new Error(`${strategy.errorPrefix}: max retries exceeded`);
     }
 
     /* ---------- bump from actual tx ---------- */
     const bumpFactor = feeBumpFactor + BigInt(attempt) * DEFAULT_FEE_BUMP_STEP;
-    const nextFees = bumpFeesFromTx(fees, bumpFactor);
-    const cappedFees = capBumpedFees(nextFees, baseFees);
-    const wasCapped =
-      cappedFees.maxFeePerGas !== nextFees.maxFeePerGas ||
-      cappedFees.maxPriorityFeePerGas !== nextFees.maxPriorityFeePerGas;
+    const previousFees = fees;
+    const nextFeeState = strategy.getNextFeeState(previousFees, baseFees, bumpFactor);
+    strategy.logBump({
+      hash: lastHash,
+      attempt,
+      bumpFactor,
+      previousFees,
+      nextFees: nextFeeState.fees,
+      baseFees,
+      wasCapped: nextFeeState.wasCapped,
+    });
 
-    logger.debug(
-      `bumping fees hash=${lastHash} attempt=${attempt + 1} bumpFactor=${bumpFactor} ` +
-        `prevMaxFeePerGas=${fees.maxFeePerGas} nextMaxFeePerGas=${cappedFees.maxFeePerGas} ` +
-        `prevMaxPriorityFeePerGas=${fees.maxPriorityFeePerGas} nextMaxPriorityFeePerGas=${cappedFees.maxPriorityFeePerGas}`,
-    );
-
-    if (wasCapped) {
-      logger.debug(
-        `fee cap reached hash=${lastHash} maxFeePerGasCap=${baseFees.maxFeePerGas! * MAX_FEE_MULTIPLIER} ` +
-          `maxPriorityFeePerGasCap=${baseFees.maxPriorityFeePerGas! * MAX_FEE_MULTIPLIER}`,
-      );
-    }
-
-    fees = cappedFees;
+    fees = nextFeeState.fees;
     attempt++;
 
     try {
@@ -360,14 +473,7 @@ export async function sendTransactionWithRetry(
         continue;
       }
 
-      if (retryOnRevert && isContractRevert(sendError) && withinLimits()) {
-        logger.debug(
-          `sendFn reverted at simulation, retrying: attempt=${attempt} error=${(sendError as Error).message}`,
-        );
-        await beforeRetry?.();
-        await sleep(retryOnRevertDelayMs);
-        needsSend = true;
-        attempt++;
+      if (await retryAfterSimulationRevert(sendError)) {
         continue;
       }
 
@@ -375,7 +481,21 @@ export async function sendTransactionWithRetry(
     }
   }
 
-  throw new Error("sendTransactionWithRetry: unreachable");
+  throw new Error(`${strategy.errorPrefix}: unreachable`);
+}
+
+export async function sendTransactionWithRetry(
+  client: Client,
+  sendFn: (fees?: FeeOverrides) => Promise<Hash>,
+  options: SendTransactionWithRetryOptions = {},
+): Promise<TransactionResult> {
+  return sendTransactionWithFeeRetry(client, sendFn, options, {
+    errorPrefix: "sendTransactionWithRetry",
+    getInitialFeeState: getEip1559FeeState,
+    getNextFeeState: getNextEip1559FeeState,
+    logInitialSend: logEip1559InitialSend,
+    logBump: logEip1559Bump,
+  });
 }
 
 export async function sendTransactionWithGasPriceRetry(
@@ -383,170 +503,11 @@ export async function sendTransactionWithGasPriceRetry(
   sendFn: (fees?: GasPriceFeeOverrides) => Promise<Hash>,
   options: SendTransactionWithGasPriceRetryOptions = {},
 ): Promise<TransactionResult> {
-  const receiptTimeoutMs = options.receiptTimeoutMs ?? DEFAULT_RECEIPT_TIMEOUT_MS;
-  const feeBumpFactor = options.feeBumpFactor ?? DEFAULT_FEE_BUMP_FACTOR;
-  const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
-  const overallTimeoutMs = options.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS;
-  const rejectOnRevert = options.rejectOnRevert ?? true;
-  const abi = options.abi;
-  const retryOnRevert = options.retryOnRevert ?? false;
-  const retryOnRevertDelayMs = options.retryOnRevertDelayMs ?? DEFAULT_RETRY_ON_REVERT_DELAY_MS;
-  const beforeRetry = options.beforeRetry;
-
-  const startedAt = Date.now();
-  let lastHash!: Hash;
-  let gasPriceFees!: GasPriceFeeOverrides;
-  let baseGasPrice!: bigint;
-  let attempt = 0;
-  let needsSend = true;
-
-  function withinLimits(): boolean {
-    return attempt < maxRetries && Date.now() - startedAt <= overallTimeoutMs;
-  }
-
-  async function freshSendGasPrice(): Promise<void> {
-    lastHash = await sendFn();
-    const tx = await getTransaction(client, { hash: lastHash });
-    if (tx.gasPrice === undefined) {
-      throw new Error("sendTransactionWithGasPriceRetry: transaction has no gasPrice");
-    }
-    gasPriceFees = { gasPrice: tx.gasPrice };
-    baseGasPrice = tx.gasPrice;
-    logger.debug(`tx sent hash=${lastHash} gasPrice=${gasPriceFees.gasPrice}`);
-  }
-
-  async function handleRevertRetryGasPrice(hash: Hash, receipt: TransactionReceipt): Promise<boolean> {
-    if (receipt.status !== "reverted" || !retryOnRevert || !withinLimits()) return false;
-
-    const reason = await getRevertReason(client, hash, receipt, abi);
-    logger.debug(`tx reverted, will retry: hash=${hash} attempt=${attempt} reason=${reason}`);
-
-    await beforeRetry?.();
-    await sleep(retryOnRevertDelayMs);
-    needsSend = true;
-    attempt++;
-    return true;
-  }
-
-  while (attempt <= maxRetries) {
-    if (needsSend) {
-      needsSend = false;
-      try {
-        await freshSendGasPrice();
-      } catch (err) {
-        if (retryOnRevert && isContractRevert(err) && withinLimits()) {
-          logger.debug(`sendFn reverted at simulation, retrying: attempt=${attempt} error=${(err as Error).message}`);
-          await beforeRetry?.();
-          await sleep(retryOnRevertDelayMs);
-          needsSend = true;
-          attempt++;
-          continue;
-        }
-        throw err;
-      }
-    }
-
-    if (Date.now() - startedAt > overallTimeoutMs) {
-      logger.debug(`overall timeout exceeded hash=${lastHash} attempt=${attempt}; probing receipt`);
-
-      const txReceipt = await safeGetReceipt(client, lastHash);
-      if (txReceipt) {
-        logger.debug(`tx confirmed during final probe hash=${lastHash} blockNumber=${txReceipt.blockNumber}`);
-        await assertReceiptSuccess(client, lastHash, txReceipt, rejectOnRevert, abi);
-        return { hash: lastHash, receipt: txReceipt };
-      }
-
-      throw new Error("sendTransactionWithGasPriceRetry: overall timeout exceeded");
-    }
-
-    try {
-      logger.debug(`waiting for receipt hash=${lastHash} attempt=${attempt} timeoutMs=${receiptTimeoutMs}`);
-
-      const receipt = await waitForTransactionReceipt(client, {
-        hash: lastHash,
-        timeout: receiptTimeoutMs,
-      });
-
-      logger.debug(`tx confirmed hash=${lastHash} blockNumber=${receipt.blockNumber} status=${receipt.status}`);
-
-      if (await handleRevertRetryGasPrice(lastHash, receipt)) continue;
-      await assertReceiptSuccess(client, lastHash, receipt, rejectOnRevert, abi);
-      return { hash: lastHash, receipt };
-    } catch (err) {
-      if (!isReceiptTimeout(err)) throw err;
-
-      logger.debug(`receipt timeout for hash=${lastHash} attempt=${attempt}`);
-    }
-
-    const raceConditionReceipt = await safeGetReceipt(client, lastHash);
-    if (raceConditionReceipt) {
-      logger.debug(`tx mined during timeout race hash=${lastHash} blockNumber=${raceConditionReceipt.blockNumber}`);
-
-      if (await handleRevertRetryGasPrice(lastHash, raceConditionReceipt)) continue;
-      await assertReceiptSuccess(client, lastHash, raceConditionReceipt, rejectOnRevert, abi);
-      return { hash: lastHash, receipt: raceConditionReceipt };
-    }
-
-    if (attempt === maxRetries) {
-      logger.debug(`max retries reached hash=${lastHash} attempt=${attempt}; probing receipt`);
-
-      const receipt = await safeGetReceipt(client, lastHash);
-      if (receipt) {
-        await assertReceiptSuccess(client, lastHash, receipt, rejectOnRevert, abi);
-        return { hash: lastHash, receipt };
-      }
-
-      throw new Error("sendTransactionWithGasPriceRetry: max retries exceeded");
-    }
-
-    const bumpFactor = feeBumpFactor + BigInt(attempt) * DEFAULT_FEE_BUMP_STEP;
-    const nextFees = bumpGasPriceFromTx(gasPriceFees, bumpFactor);
-    const cappedFees = capBumpedGasPrice(nextFees, baseGasPrice);
-    const wasCapped = cappedFees.gasPrice !== nextFees.gasPrice;
-
-    logger.debug(
-      `bumping gasPrice hash=${lastHash} attempt=${attempt + 1} bumpFactor=${bumpFactor} ` +
-        `prevGasPrice=${gasPriceFees.gasPrice} nextGasPrice=${cappedFees.gasPrice}`,
-    );
-
-    if (wasCapped) {
-      logger.debug(`gasPrice cap reached hash=${lastHash} cap=${baseGasPrice * MAX_FEE_MULTIPLIER}`);
-    }
-
-    gasPriceFees = cappedFees;
-    attempt++;
-
-    try {
-      lastHash = await sendFn(gasPriceFees);
-
-      logger.debug(`replacement tx sent hash=${lastHash} attempt=${attempt}`);
-    } catch (sendError) {
-      if (isNonceTooLow(sendError)) {
-        logger.debug(`nonce too low while retrying hash=${lastHash}; original tx likely mined`);
-
-        const receipt = await safeGetReceipt(client, lastHash);
-        if (receipt) {
-          if (await handleRevertRetryGasPrice(lastHash, receipt)) continue;
-          await assertReceiptSuccess(client, lastHash, receipt, rejectOnRevert, abi);
-          return { hash: lastHash, receipt };
-        }
-        continue;
-      }
-
-      if (retryOnRevert && isContractRevert(sendError) && withinLimits()) {
-        logger.debug(
-          `sendFn reverted at simulation, retrying: attempt=${attempt} error=${(sendError as Error).message}`,
-        );
-        await beforeRetry?.();
-        await sleep(retryOnRevertDelayMs);
-        needsSend = true;
-        attempt++;
-        continue;
-      }
-
-      throw sendError;
-    }
-  }
-
-  throw new Error("sendTransactionWithGasPriceRetry: unreachable");
+  return sendTransactionWithFeeRetry(client, sendFn, options, {
+    errorPrefix: "sendTransactionWithGasPriceRetry",
+    getInitialFeeState: getGasPriceFeeState,
+    getNextFeeState: getNextGasPriceFeeState,
+    logInitialSend: logGasPriceInitialSend,
+    logBump: logGasPriceBump,
+  });
 }
