@@ -144,7 +144,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
             _messageHash: messageHash,
           },
           strict: true,
-          timeoutMs: 200_000,
+          timeoutMs: 150_000,
         }),
         waitForEvents(l2PublicClient, {
           abi: TokenBridgeV1_1Abi,
@@ -157,13 +157,13 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
           criteria: async (events) => {
             return events.filter((event) => event.args.amount === bridgeAmount);
           },
-          timeoutMs: 200_000,
+          timeoutMs: 150_000,
         }),
       ]);
 
       logger.debug(`Message claimed on L2. event=${serialize(claimedEvent)}.`);
     },
-    250_000,
+    200_000,
   );
 
   it.concurrent(
