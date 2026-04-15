@@ -142,7 +142,7 @@ class ReloadableSetTest {
 
   @Test
   void addThrowsUnsupportedOperationException() {
-    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a"));
+    final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of());
 
     assertThatThrownBy(() -> reloadableSet.add("b"))
         .isInstanceOf(UnsupportedOperationException.class)
