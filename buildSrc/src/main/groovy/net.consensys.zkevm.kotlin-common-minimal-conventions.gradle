@@ -6,7 +6,10 @@ plugins {
 
 java {
   toolchain {
-    languageVersion = JavaLanguageVersion.of(21)
+    languageVersion = JavaLanguageVersion.of(25)
+  }
+  consistentResolution {
+    useCompileClasspathVersions()
   }
 }
 
@@ -53,7 +56,7 @@ dependencies {
   //<testing>
   testImplementation platform("org.junit:junit-bom:${libs.versions.junit.get()}")
   testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${libs.versions.junit.get()}"
-  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   testImplementation "org.junit.jupiter:junit-jupiter:${libs.versions.junit.get()}"
   testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
   testImplementation "org.mockito:mockito-core:${libs.versions.mockito.get()}"
@@ -65,4 +68,6 @@ dependencies {
 tasks.named('test') {
   // Use JUnit Platform for unit tests.
   useJUnitPlatform()
+  // Required for Java 25+: Netty uses restricted System::loadLibrary in unnamed modules
+  jvmArgs '--enable-native-access=ALL-UNNAMED'
 }

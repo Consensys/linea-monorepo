@@ -66,11 +66,11 @@ class BlockCreationMonitorTest {
 
   private class LastProvenBlockNumberProviderDouble(
     initialValue: ULong,
-  ) : LastProvenBlockNumberProviderAsync {
+  ) : LastProvenBlockNumberProviderSync {
     var lastProvenBlock: AtomicLong = AtomicLong(initialValue.toLong())
 
-    override fun getLastProvenBlockNumber(): SafeFuture<Long> {
-      return SafeFuture.completedFuture(lastProvenBlock.get())
+    override fun getLastKnownProvenBlockNumber(): Long {
+      return lastProvenBlock.get()
     }
   }
 
@@ -84,8 +84,13 @@ class BlockCreationMonitorTest {
       ethApi = ethApiClient,
       startingBlockNumberExclusive = startingBlockNumberExclusive,
       blockCreationListener = blockCreationListener,
-      lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
+      lastProvenBlockNumberProviderSync = lastProvenBlockNumberProvider,
       config = config,
+      targetCheckpointPauseController = object : TargetCheckpointPauseController {
+        override fun shouldPauseConflation(): Boolean = false
+        override fun importBlock(block: Block) = Unit
+        override fun signalResumeFromApi(): Boolean = false
+      },
     )
   }
 

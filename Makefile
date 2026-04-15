@@ -1,4 +1,4 @@
-include makefile-contracts.mk
+include contracts/makefile-contracts.mk
 
 docker-pull-images-external-to-monorepo:
 		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
@@ -70,6 +70,10 @@ fresh-start-l2-blockchain-only:
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
+## Run with tracing-v2 with partial prover
+start-env-with-tracing-v2-partialprover:
+	make start-env COMPOSE_FILE="docker/compose-tracing-v2.yml -f docker/compose-tracing-v2-partialprover-override.yml"
+
 ## Enable L2 geth node
 start-env-with-tracing-v2-extra:
 	make start-env COMPOSE_PROFILES:=l1,l2 COMPOSE_FILE:=docker/compose-tracing-v2-extra-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
@@ -103,5 +107,3 @@ stop_pid:
 		else \
 			echo "$(PID_FILE) does not exist. No process to stop."; \
 		fi
-
-
