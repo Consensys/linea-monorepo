@@ -166,7 +166,7 @@ class ReloadableMapTest {
 
   @Test
   void putThrowsUnsupportedOperationException() {
-    final ReloadableMap<String, Integer> reloadableMap = new ReloadableMap<>(Map.of("a", 1));
+    final ReloadableMap<String, Integer> reloadableMap = new ReloadableMap<>(Map.of());
 
     assertThatThrownBy(() -> reloadableMap.put("b", 2))
         .isInstanceOf(UnsupportedOperationException.class)
