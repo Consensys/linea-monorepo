@@ -126,7 +126,7 @@ func (ec *ECPair) csConstantWhenIsComputing(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	// IF IS_COMPUTING AND IS_ACTIVE AND NOT FIRST_LINE => TOTAL_PAIRINGS_{i} = TOTAL_PAIRINGS_{i-1}
+	// IF IS_COMPUTING AND IS_ACTIVE AND NOT FIRST_LINE => TOTAL_PAIRS_{i} = TOTAL_PAIRS_{i-1}
 	comp.InsertGlobal(
 		roundNr,
 		ifaces.QueryIDf("%v_TOTAL_PAIRS_CONSISTENCY", nameECPair),
