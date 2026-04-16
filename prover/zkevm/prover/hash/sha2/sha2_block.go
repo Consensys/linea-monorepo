@@ -40,8 +40,8 @@ const (
 )
 
 var (
-	// initializationVector encodes the initialization vector of SHA2 in 2 field
-	// elements storing each 128 bytes of the IV in big endian order.
+	// initializationVector is the SHA-256 IV as 16 big-endian uint16 limbs
+	// (32 bytes total), each limb stored in the low 16 bits of a field element.
 	//
 	// 0x6A09E667BB67AE853C6EF372A54FF53A510E527F9B05688C1F83D9AB5BE0CD19
 	initializationVector = [16]field.Element{
@@ -70,8 +70,8 @@ var (
 // verification circuit.
 type sha2BlocksInputs struct {
 
-	// Name allows the prover to provide context in a string which we derive to
-	// to derive the name of the constraints and queries of the module.
+	// Name allows the prover to provide a string context from which we derive
+	// the names of the constraints and queries of the module.
 	Name string
 
 	// MaxNbBlock corresponds to the maximum number of blocks that can be handled
@@ -148,6 +148,7 @@ type sha2BlockModule struct {
 	// span of a hash.
 	Hash [numLimbsPerState]ifaces.Column
 
+	HashIsZero    [numLimbsPerState]ifaces.Column
 	ProverActions []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
@@ -349,25 +350,21 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		},
 	)
 
-	// The hash should not be entirely zero when isActive.
-	// Sum limbs per half and use IsZero to keep constraint degree low.
-	sumHashHi := sym.NewConstant(0)
-	for i := range numLimbsPerState / 2 {
-		sumHashHi = sym.Add(sumHashHi, res.Hash[i])
+	// As per the padding technique we use, the HashHi and HashLo should not
+	// be zero when isActive.
+	var ctxHash [numLimbsPerState]wizard.ProverAction
+
+	prodHash := sym.NewConstant(1)
+	for i := range numLimbsPerState {
+		res.HashIsZero[i], ctxHash[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
+		prodHash = sym.Mul(prodHash, res.HashIsZero[i])
 	}
 
-	sumHashLo := sym.NewConstant(0)
-	for i := numLimbsPerState / 2; i < numLimbsPerState; i++ {
-		sumHashLo = sym.Add(sumHashLo, res.Hash[i])
-	}
-
-	sumHiIsZero, ctxSumHi := dedicated.IsZero(comp, sumHashHi).GetColumnAndProverAction()
-	sumLoIsZero, ctxSumLo := dedicated.IsZero(comp, sumHashLo).GetColumnAndProverAction()
-	res.ProverActions = append(res.ProverActions, ctxSumHi, ctxSumLo)
+	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
 
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
-		sym.Mul(res.IsActive, sumHiIsZero, sumLoIsZero),
+		ifaces.QueryIDf("%v_HASH_CANT_BE_ENTIRELY_ZERO", inp.Name),
+		sym.Mul(res.IsActive, prodHash),
 	)
 
 	return res
