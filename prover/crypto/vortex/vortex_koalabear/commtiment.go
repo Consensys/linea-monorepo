@@ -90,17 +90,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) ([]field.Octup
 	n := numCols / 16
 
 	if chunkSize%8 != 0 {
-		// TODO @gbotrel make the fast path generic with different SIS params
-		parallel.Execute(numCols, func(start, stop int) {
-			hasher := poseidon2_koalabear.NewMDHasher()
-			for chunkID := start; chunkID < stop; chunkID++ {
-				startChunk := chunkID * chunkSize
-				hasher.Reset()
-				hasher.WriteElements(sisHashes[startChunk : startChunk+chunkSize]...)
-				leaves[chunkID] = hasher.SumElement()
-			}
-		})
-		return leaves, sisHashes
+		panic("sisTransversalHash: chunkSize must be a multiple of 8 (as LogTwoDegree >= 3)")
 	}
 
 	// process the n full chunks of 16 columns using optimized SIMD implementation
@@ -177,13 +167,24 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	}
 
 	nbRows := len(v)
+	// Right-pad each column to colChunksPad*8 so the hash matches CheckLinearHash.
+	colChunks := (nbRows + 7) / 8
+	colChunksPad := utils.NextPowerOfTwo(colChunks)
+	paddedSize := colChunksPad * 8
 	res := make([]field.Octuplet, nbCols)
 	parallel.Execute(nbCols, func(start, end int) {
-		curCol := make([]field.Element, nbRows)
+		curCol := make([]field.Element, paddedSize) // zero-initialized = right-padded
 		h := poseidon2_koalabear.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
 				curCol[j] = v[j].Get(i)
+			}
+			// Clear trailing slots from the previous iteration. Skipped on the
+			// first iteration (i == start) since make already zero-initializes.
+			if i > start {
+				for j := nbRows; j < paddedSize; j++ {
+					curCol[j] = field.Zero()
+				}
 			}
 			h.WriteElements(curCol...)
 			res[i] = h.SumElement()
