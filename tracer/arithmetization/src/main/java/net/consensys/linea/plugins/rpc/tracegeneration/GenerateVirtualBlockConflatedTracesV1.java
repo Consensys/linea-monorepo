@@ -37,7 +37,6 @@ import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import net.consensys.linea.zktracer.types.PublicInputs;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StateOverrideMap;
@@ -45,7 +44,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
-import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -54,7 +52,6 @@ import org.hyperledger.besu.plugin.data.BlockOverrides;
 import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
 import org.hyperledger.besu.plugin.services.BlockSimulationService;
 import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -152,18 +149,6 @@ public class GenerateVirtualBlockConflatedTracesV1 {
                         "parent block %d not found (required for virtual block %d)"
                             .formatted(parentBlockNumber, blockNumber)));
 
-    // World state at the parent block is needed for traceStartBlock (EIP-4788, EIP-2935 sysi txs)
-    final WorldStateService worldStateService =
-        BesuServiceProvider.getBesuService(besuContext, WorldStateService.class);
-    final WorldView worldView =
-        worldStateService
-            .getWorldView(parentBlock.getBlockHeader().getBlockHash())
-            .orElseThrow(
-                () ->
-                    new PluginRpcEndpointException(
-                        RpcErrorType.INTERNAL_ERROR,
-                        "world state not available for parent block " + parentBlockNumber));
-
     log.info(
         "generating virtual block traces: blockNumber={} parentBlockNumber={}",
         blockNumber,
@@ -192,27 +177,6 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     final BlockOverrides blockOverrides =
         buildBlockOverrides(blockNumber, parentBlock, blockchainService);
 
-    // Build a ProcessableBlockHeader for traceStartBlock.
-    // All fields that affect the sysi-transaction traces (EIP-4788, EIP-2935) must be taken from
-    // blockOverrides so that the virtual trace matches the canonical one for those sections.
-    final org.hyperledger.besu.plugin.data.BlockHeader parentHeader = parentBlock.getBlockHeader();
-    final Address coinbase = blockOverrides.getFeeRecipient().orElseGet(parentHeader::getCoinbase);
-    final org.hyperledger.besu.plugin.data.ProcessableBlockHeader processableBlockHeader =
-        BlockHeaderBuilder.fromHeader(parentHeader)
-            .parentHash(parentHeader.getBlockHash())
-            .number(blockNumber)
-            .coinbase(coinbase)
-            .gasLimit(blockOverrides.getGasLimit().orElseGet(parentHeader::getGasLimit))
-            .timestamp(
-                blockOverrides.getTimestamp().orElseGet(() -> parentHeader.getTimestamp() + 1))
-            .baseFee(blockOverrides.getBaseFeePerGas().orElse(null))
-            .prevRandao(
-                blockOverrides
-                    .getMixHashOrPrevRandao()
-                    .orElseGet(() -> parentHeader.getPrevRandao().orElse(Bytes32.ZERO)))
-            .parentBeaconBlockRoot(blockOverrides.getParentBeaconBlockRoot().orElse(Bytes32.ZERO))
-            .buildProcessableBlockHeader();
-
     // Create ZkTracer
     final ZkTracer tracer =
         new ZkTracer(fork, l1L2BridgeSharedConfiguration, chainId, publicInputs);
@@ -221,12 +185,11 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     final BlockSimulationService blockSimulationService =
         BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
 
-    // Start conflation for single block
+    // Start conflation for single block.
+    // Note: traceStartBlock / traceEndBlock are NOT called manually here because
+    // BlockSimulationService.simulate() now invokes them internally on BlockAwareOperationTracer
+    // instances (added in Besu 3e74fee). Calling them twice would corrupt BlockData state.
     tracer.traceStartConflation(1);
-
-    // traceStartBlock initialises Hub block state and traces the EIP-4788 / EIP-2935 sysi
-    // transactions using the pre-block world state — exactly mirroring TraceServiceImpl.
-    tracer.traceStartBlock(worldView, processableBlockHeader, coinbase);
 
     PluginBlockSimulationResult simulationResult;
     try {
@@ -287,10 +250,6 @@ public class GenerateVirtualBlockConflatedTracesV1 {
                       trieLog.getAccountChanges().size(),
                       trieLog.getCodeChanges().size(),
                       trieLog.getStorageChanges().size()));
-
-      // traceEndBlock must be called after simulation (mirrors TraceServiceImpl) and before
-      // traceEndConflation so that Blockhash.lastBlockHash is correctly populated.
-      tracer.traceEndBlock(simulationResult.getBlockHeader(), simulationResult.getBlockBody());
 
       log.info(
           "virtual block simulation completed: blockNumber={} duration={} blockHash={}",
