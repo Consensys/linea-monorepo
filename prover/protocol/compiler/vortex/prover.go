@@ -623,6 +623,37 @@ func (ctx *Ctx) assignOpenedColumns(
 	entryList []int,
 	selectedCols [][][]field.Element,
 	mode commitmentMode) {
+
+	if mode == SelfRecursionPoseidon2Only {
+		// Build 8-lane columns: laneCol[j][k*colChunksPad+c] = roundCols[k][c*8+j] if in-range, else 0.
+		numQ := len(entryList)
+		numHashPad := utils.NextPowerOfTwo(numQ)
+		for roundIdx, roundCols := range selectedCols {
+			if numQ == 0 {
+				continue
+			}
+			colSize := len(roundCols[0])
+			colChunks := (colSize + blockSize - 1) / blockSize
+			colChunksPad := utils.NextPowerOfTwo(colChunks)
+			laneSize := colChunksPad * numHashPad
+			for j := 0; j < blockSize; j++ {
+				laneData := make([]field.Element, colChunksPad*numQ) // unpadded region
+				for k := 0; k < numQ; k++ {
+					for c := 0; c < colChunksPad; c++ {
+						p := c*blockSize + j
+						if p < colSize {
+							laneData[k*colChunksPad+c] = roundCols[k][p]
+						}
+						// else: zero (already initialized)
+					}
+				}
+				pr.AssignColumn(ctx.Items.OpenedNonSISColumns[roundIdx][j].GetColID(),
+					smartvectors.RightZeroPadded(laneData, laneSize))
+			}
+		}
+		return
+	}
+
 	// The columns are split by commitment round. So we need to
 	// restick them when we commit them.
 	for j := range entryList {
@@ -640,8 +671,6 @@ func (ctx *Ctx) assignOpenedColumns(
 			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
 		} else if mode == SelfRecursionSIS {
 			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
-		} else if mode == SelfRecursionPoseidon2Only {
-			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
 		}
 	}
 
