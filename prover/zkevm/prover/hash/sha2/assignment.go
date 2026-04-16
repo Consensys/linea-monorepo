@@ -114,7 +114,8 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 		sbh.ProverActions[i].Run(run)
 	}
 
-	assignProdHash(run, sbh)
+	assignSumHash(run, sbh)
+	sbh.EntireHashIsZero.Run(run)
 
 	if sbh.HasCircuit {
 		// this is guarded by a once, so it is safe to call multiple times
@@ -160,46 +161,27 @@ func (sbha *sha2BlockHashingAssignment) pushBlock(
 	return newState
 }
 
-// assignProdHash fills ProdHashChunk and ProdHashAggr1/2 from
-// HashIsZero so they satisfy the low-degree product constraints in
-// [newSha2BlockModule].
-func assignProdHash(run *wizard.ProverRuntime, sbh *sha2BlockModule) {
+// assignSumHash fills SumHashCol from HashIsZero so it satisfies the Σ constraint
+// in [newSha2BlockModule].
+func assignSumHash(run *wizard.ProverRuntime, sbh *sha2BlockModule) {
 	z := make([][]field.Element, numLimbsPerState)
 	for i := range numLimbsPerState {
 		z[i] = sbh.HashIsZero[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 	n := len(z[0])
-	chunkOut := make([][]field.Element, numProdHashChunks)
-	for k := range numProdHashChunks {
-		chunkOut[k] = make([]field.Element, n)
-	}
-	aggr1 := make([]field.Element, n)
-	aggr2 := make([]field.Element, n)
-
-	for r := 0; r < n; r++ {
-		for k := range numProdHashChunks {
-			start, end := prodHashChunkLimbRange(k)
-			var p field.Element
-			p.SetOne()
-			for li := start; li < end; li++ {
-				p.Mul(&p, &z[li][r])
-			}
-			chunkOut[k][r] = p
+	sumCol := make([]field.Element, n)
+	for r := range n {
+		var s field.Element
+		for i := range numLimbsPerState {
+			s.Add(&s, &z[i][r])
 		}
-		var a1, a2 field.Element
-		a1.Mul(&chunkOut[0][r], &chunkOut[1][r])
-		a1.Mul(&a1, &chunkOut[2][r])
-		a2.Mul(&chunkOut[3][r], &chunkOut[4][r])
-		a2.Mul(&a2, &chunkOut[5][r])
-		aggr1[r] = a1
-		aggr2[r] = a2
+		sumCol[r] = s
 	}
-
-	for k := range numProdHashChunks {
-		run.AssignColumn(sbh.ProdHashChunk[k].GetColID(), smartvectors.NewRegular(chunkOut[k]), wizard.DisableAssignmentSizeReduction)
-	}
-	run.AssignColumn(sbh.ProdHashAggr1.GetColID(), smartvectors.NewRegular(aggr1), wizard.DisableAssignmentSizeReduction)
-	run.AssignColumn(sbh.ProdHashAggr2.GetColID(), smartvectors.NewRegular(aggr2), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(
+		sbh.SumHashCol.GetColID(),
+		smartvectors.NewRegular(sumCol),
+		wizard.DisableAssignmentSizeReduction,
+	)
 }
 
 // catchUpHashHiLo pushes over the HashHi and HashLo columns so that their

@@ -3,6 +3,7 @@ package sha2
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
@@ -38,12 +39,6 @@ const (
 	// final hash.
 	numRowPerInstance = numLimbsPerBlock + numLimbsPerState + numLimbsPerState
 
-	// prodHashLimbChunkSize is the arity of each partial product constraint
-	// (degree 3 including the equality). Full digest-all-zero is built via
-	// intermediate columns ProdHashChunk, ProdHashAggr1/2 so the global constraint is
-	// degree 3 (IsActive × aggr1 × aggr2).
-	prodHashLimbChunkSize = 3
-	numProdHashChunks     = (numLimbsPerState + prodHashLimbChunkSize - 1) / prodHashLimbChunkSize
 )
 
 var (
@@ -156,12 +151,15 @@ type sha2BlockModule struct {
 	Hash [numLimbsPerState]ifaces.Column
 
 	HashIsZero [numLimbsPerState]ifaces.Column
-	// ProdHashChunk[k] equals the product of HashIsZero over limbs in chunk k.
-	ProdHashChunk [numProdHashChunks]ifaces.Column
-	// ProdHashAggr1/2 are intermediate products of three chunk columns each;
-	// their product is 1 iff every Hash limb is zero (all HashIsZero are 1).
-	ProdHashAggr1 ifaces.Column
-	ProdHashAggr2 ifaces.Column
+	// SumHashCol is constrained to Σ HashIsZero[i]. It counts how many
+	// hash limbs are zero on each row.
+	SumHashCol ifaces.Column
+	// LenHashCol is a precomputed column holding numLimbsPerState on every
+	// row.
+	LenHashCol ifaces.Column
+	// EntireHashIsZero is IsZero(LenHashCol − SumHashCol): 1 iff every hash
+	// limb is zero. Constrained via IsActive × EntireHashIsZero = 0.
+	EntireHashIsZero *dedicated.IsZeroCtx
 	ProverActions []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
@@ -363,61 +361,38 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		},
 	)
 
-	csLowDegreeZeroHash(comp, inp, res, declareCommit)
-
-	return res
-}
-
-// csLowDegreeZeroHash enforces that an active row cannot carry an all-zero
-// digest (the gnark circuit skips the permutation when every limb is zero).
-// It uses intermediate columns so each global constraint has multiplicative
-// degree at most 3.
-func csLowDegreeZeroHash(
-	comp *wizard.CompiledIOP,
-	inp *sha2BlocksInputs,
-	res *sha2BlockModule,
-	declareCommit func(string) ifaces.Column,
-) {
-	if numProdHashChunks != 6 {
-		panic("csLowDegreeZeroHash assumes exactly 6 chunks; update the aggr constraints if this changes")
-	}
-	for k := range numProdHashChunks {
-		res.ProdHashChunk[k] = declareCommit(fmt.Sprintf("PROD_HASH_CHUNK_%d", k))
-	}
-	res.ProdHashAggr1 = declareCommit("PROD_HASH_AGGR1")
-	res.ProdHashAggr2 = declareCommit("PROD_HASH_AGGR2")
-
-	var ctxHash [numLimbsPerState]wizard.ProverAction
+	// Active rows cannot carry an all-zero digest (gnark skips permutation when
+	// every limb is zero). SumHashCol = Σ HashIsZero[i]; LenHashCol is fixed to
+	// numLimbsPerState; EntireHashIsZero = IsZero(LenHashCol − SumHashCol); forbid
+	// IsActive × EntireHashIsZero.
+	res.SumHashCol = declareCommit("SUM_HASH_COL")
+	res.LenHashCol = comp.InsertPrecomputed(
+		ifaces.ColID(inp.Name+"_LEN_HASH_COL"),
+		smartvectors.NewConstant(field.NewElement(uint64(numLimbsPerState)), colSize),
+	)
+	var hashIsZeroCtx [numLimbsPerState]wizard.ProverAction
 	for i := range numLimbsPerState {
-		res.HashIsZero[i], ctxHash[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
+		res.HashIsZero[i], hashIsZeroCtx[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
 	}
-	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
-
-	for k := range numProdHashChunks {
-		start, end := prodHashChunkLimbRange(k)
-		limbs := make([]any, end-start)
-		for i, li := 0, start; li < end; li, i = li+1, i+1 {
-			limbs[i] = res.HashIsZero[li]
-		}
-		comp.InsertGlobal(0,
-			ifaces.QueryIDf("%v_PROD_HASH_CHUNK_%d_EQ", inp.Name, k),
-			sym.Sub(res.ProdHashChunk[k], sym.Mul(limbs...)),
-		)
+	res.ProverActions = append(res.ProverActions, hashIsZeroCtx[:]...)
+	sumHashIsZero := sym.NewVariable(res.HashIsZero[0])
+	for i := 1; i < numLimbsPerState; i++ {
+		sumHashIsZero = sym.Add(sumHashIsZero, res.HashIsZero[i])
 	}
-
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_PROD_HASH_AGGR1_EQ", inp.Name),
-		sym.Sub(res.ProdHashAggr1, sym.Mul(res.ProdHashChunk[0], res.ProdHashChunk[1], res.ProdHashChunk[2])),
+		ifaces.QueryIDf("%v_SUM_HASH_COL_EQ", inp.Name),
+		sym.Sub(res.SumHashCol, sumHashIsZero),
 	)
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_PROD_HASH_AGGR2_EQ", inp.Name),
-		sym.Sub(res.ProdHashAggr2, sym.Mul(res.ProdHashChunk[3], res.ProdHashChunk[4], res.ProdHashChunk[5])),
+	res.EntireHashIsZero = dedicated.IsZero(
+		comp,
+		sym.Sub(res.LenHashCol, res.SumHashCol),
 	)
-
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_ENTIRELY_ZERO", inp.Name),
-		sym.Mul(res.IsActive, res.ProdHashAggr1, res.ProdHashAggr2),
+		sym.Mul(res.IsActive, res.EntireHashIsZero.IsZero),
 	)
+
+	return res
 }
 
 func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *sha2BlockModule {
@@ -437,15 +412,6 @@ func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...que
 	)
 
 	return sbh
-}
-
-func prodHashChunkLimbRange(chunkIdx int) (start, end int) {
-	start = chunkIdx * prodHashLimbChunkSize
-	end = start + prodHashLimbChunkSize
-	if end > numLimbsPerState {
-		end = numLimbsPerState
-	}
-	return start, end
 }
 
 func canBeBlockOfInstancePattern() []field.Element {
