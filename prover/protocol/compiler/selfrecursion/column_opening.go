@@ -321,25 +321,59 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			preImageEval ifaces.Accessor
 		)
 		if len(ctx.NonSisMetaData.ToHashSizes) > 0 {
-			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
-				ctx.Comp,
-				accessors.NewFromCoin(ctx.Coins.Collapse),
-				ctx.Columns.WholePreimagesNonSis,
-				maybePrefix(ctx, fmt.Sprintf("PREIMAGE_NONSIS_COLLAPSE_%v", ctx.SelfRecursionCnt)),
+			// Bivariate evaluation: for each non-SIS round i and lane j,
+			//   EvalCoeffBivariate(col[j], α^8, r, colChunksPad, numHashPad)
+			//   = Σ_k r^k · Σ_c (α^8)^c · col[j][k*colChunksPad+c]
+			// Summing over lanes: Σ_j α^j · laneEval = Σ_k r^k · Σ_p α^p · poly_p(Q_k)
+			alpha_acc := accessors.NewFromCoin(ctx.Coins.Alpha)
+			alpha8Acc := accessors.NewFromExpression(
+				symbolic.Pow(alpha_acc, 8),
+				maybePrefix(ctx, fmt.Sprintf("ALPHA8_%v", ctx.SelfRecursionCnt)),
 			)
+			r_acc := accessors.NewFromCoin(ctx.Coins.Collapse)
+			numHashPad := utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
 
-			preImageNonSisEval = functionals.CoeffEval(
-				ctx.Comp,
-				ctx.constencyUalphaQPreimageRight(),
-				ctx.Coins.Alpha,
-				ctx.Columns.CollapsedPreimagesNonSis,
-			)
+			var preImageNonSisSymb *symbolic.Expression
+			cumOffset := 0
+			for i, roundCols := range ctx.Columns.WholePreimagesNonSis {
+				colSize := ctx.NonSisMetaData.ToHashSizes[i]
+				colChunksPad := ctx.NonSisMetaData.ColChunks[i]
 
-			for i := range ctx.NonSisMetaData.ToHashSizes {
-				// We add the number of polynomials per non SIS round
-				// to the offset
-				offset += ctx.NonSisMetaData.ToHashSizes[i]
+				var roundEvalSymb *symbolic.Expression
+				for j := 0; j < blockSize; j++ {
+					laneEval := functionals.EvalCoeffBivariate(
+						ctx.Comp,
+						maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_LANE_EVAL_%v_%v_%v", ctx.SelfRecursionCnt, i, j)),
+						roundCols[j],
+						alpha8Acc,
+						r_acc,
+						colChunksPad,
+						numHashPad,
+					)
+					laneTerm := symbolic.Mul(symbolic.Pow(alpha_acc, j), laneEval)
+					if roundEvalSymb == nil {
+						roundEvalSymb = laneTerm
+					} else {
+						roundEvalSymb = symbolic.Add(roundEvalSymb, laneTerm)
+					}
+				}
+				roundEvalAcc := accessors.NewFromExpression(
+					roundEvalSymb,
+					maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_ROUND_EVAL_%v_%v", ctx.SelfRecursionCnt, i)),
+				)
+				term := symbolic.Mul(symbolic.Pow(alpha_acc, cumOffset), roundEvalAcc)
+				if preImageNonSisSymb == nil {
+					preImageNonSisSymb = term
+				} else {
+					preImageNonSisSymb = symbolic.Add(preImageNonSisSymb, term)
+				}
+				cumOffset += colSize
+				offset += colSize
 			}
+			preImageNonSisEval = accessors.NewFromExpression(
+				preImageNonSisSymb,
+				maybePrefix(ctx, fmt.Sprintf("PREIMAGE_NONSIS_EVAL_%v", ctx.SelfRecursionCnt)),
+			)
 		}
 		/*
 			- The preimages are given in the form of several columns of the form:

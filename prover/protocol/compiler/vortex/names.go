@@ -37,6 +37,21 @@ func (ctx *Ctx) SelectedColNonSISName(num int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_NON_SIS_#%v", ctx.SelfRecursionCount, num)
 }
 
+// SelectedColNonSISRoundName returns the name of the proof column for the
+// col-th query position in the roundIdx-th non-SIS round (round_idx=0 is the
+// precomputed non-SIS round when present, then committed rounds in order).
+// Kept for backward compatibility with existing column IDs.
+func (ctx *Ctx) SelectedColNonSISRoundName(roundIdx, col int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_NON_SIS_ROUND_%v_#%v", ctx.SelfRecursionCount, roundIdx, col)
+}
+
+// SelectedColNonSISRoundLaneName returns the name of the j-th lane proof column
+// for the roundIdx-th non-SIS round. Each lane column packs colChunksPad entries
+// per query and covers numHashPad query groups.
+func (ctx *Ctx) SelectedColNonSISRoundLaneName(roundIdx, lane int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_NON_SIS_ROUND_%v_LANE_%v", ctx.SelfRecursionCount, roundIdx, lane)
+}
+
 // returns a formatted message name for the commitment of the given round
 func (ctx *Ctx) CommitmentName(round int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_COMMITMENT_ROUND_%v", ctx.SelfRecursionCount, round)
