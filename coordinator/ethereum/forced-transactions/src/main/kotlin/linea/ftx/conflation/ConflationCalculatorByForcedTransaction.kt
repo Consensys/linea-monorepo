@@ -37,7 +37,7 @@ class ConflationCalculatorByForcedTransaction(
 ) : ConflationCalculator {
   override val id: String = ConflationTrigger.FORCED_TRANSACTION.name
 
-  // Track pending trigger blocks (blockNumber - 1) for non-included FTXs
+  // Track pending trigger blocks (blockNumber) for non-included FTXs
   private val pendingTriggerBlocks = mutableSetOf<ULong>()
 
   @Volatile
@@ -49,7 +49,7 @@ class ConflationCalculatorByForcedTransaction(
     log.debug(
       "checking ftx conflation trigger: blockNumber={} ftxProcessed={}",
       blockCounters.blockNumber,
-      processedFtxQueue.toList().map { it.toStringShortForLogging() },
+      processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
     )
 
     readProcessedFtxs()
@@ -59,8 +59,7 @@ class ConflationCalculatorByForcedTransaction(
       log.info(
         "FTX conflation detected at block={} ftxExecuted={}",
         blockCounters.blockNumber,
-        processedFtxQueue.toList()
-          .map { it.toStringShortForLogging() },
+        processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
       )
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.FORCED_TRANSACTION,
