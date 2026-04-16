@@ -139,7 +139,6 @@ type Columns struct {
 	//
 	// The folding of preimageCollapse by rFold
 	PreimageCollapseFold ifaces.Column
-
 }
 
 // MimcHashMetaData is a structure that holds the parameters
