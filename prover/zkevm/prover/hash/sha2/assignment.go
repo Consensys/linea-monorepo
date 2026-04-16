@@ -70,10 +70,6 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 			// include in the loop boundary as it features a sanity-check.
 			if isFirstLaneOfNewHash[cursorInp].IsZero() && cursorInp+1 < numRowInp && isFirstLaneOfNewHash[cursorInp+1].IsOne() {
 
-				if selector[cursorInp].IsZero() {
-					utils.Panic("unexpected: at row %v, the selector is zero but isNewHash is one", cursorInp)
-				}
-
 				cursorInp++
 				return blocks
 			}

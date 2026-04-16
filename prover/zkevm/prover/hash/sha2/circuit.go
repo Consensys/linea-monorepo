@@ -47,15 +47,14 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 		panic(fmt.Sprintf("unexpected error when instantiating `uapi`: %v", err.Error()))
 	}
 
-	var (
-		// If the new digest is zero, then the block check is skipped as this is
-		// considered a padding instance. The wizard should externally check that
-		// NewDigest = 0x0 is forbidden.
-		inpIsZero = api.Add(
-			api.IsZero(sbpi.NewDigest[0]),
-			api.IsZero(sbpi.NewDigest[1]),
-		)
-	)
+	// allLimbsAreZero is 1 iff every NewDigest[i] is zero — same predicate as
+	// ∏_i HashIsZero[i] in sha2_block.go (HASH_CANT_BE_ENTIRELY_ZERO). When 1,
+	// we skip the permutation check (padding row); active compression rows must
+	// have allLimbsAreZero = 0, which the wizard enforces.
+	var allLimbsAreZero frontend.Variable = 1
+	for i := range sbpi.NewDigest {
+		allLimbsAreZero = api.Mul(allLimbsAreZero, api.IsZero(sbpi.NewDigest[i]))
+	}
 
 	var (
 		prevDigest = cast16xu16To8xU32s(api, sbpi.PrevDigest)
@@ -72,10 +71,10 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 	recomputedNewDigest := sha2.Permute(uapi, prevDigest, blockBytes)
 
 	for i := range recomputedNewDigest {
-		// This checks that newDigest == recomputedDigest unless inpIsZero == 2
+		// newDigest == recomputedDigest unless all limbs of NewDigest are zero.
 		api.AssertIsEqual(
 			api.Mul(
-				api.Sub(inpIsZero, 2),
+				api.Sub(allLimbsAreZero, 1),
 				api.Sub(
 					uapi.ToValue(recomputedNewDigest[i]),
 					uapi.ToValue(newDigest[i]),
