@@ -8,7 +8,7 @@
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Name of the test to run (with extension)
+# Name of the test to run (with extension), mandatory unless clean-all is the target
 ifeq ($(filter clean-all,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig))
@@ -17,7 +17,7 @@ endif
 NAME := $(basename $(TEST))
 EXT := $(suffix $(TEST))
 
-# define the assembler to use (useful in case TEST is .s)
+# Define the assembler to use (useful in case TEST is .s)
 AS = riscv64-unknown-elf-as
 AS_FLAGS = -march=rv64im
 
@@ -30,7 +30,7 @@ JSON ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NA
 GO_MAIN ?= $(MAKEFILE_DIR)main.go
 ZKC_MAIN ?= $(abspath $(MAKEFILE_DIR)../../main/riscv/main.zkc)
 
-# default target (make)
+# Default target (make)
 exec: compile zkc-exec
 
 debug: compile zkc-debug
