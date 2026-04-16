@@ -70,18 +70,15 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	}
 
 	// Register the linear hash columns for the non sis rounds
-	var (
-		mimcHashColumnSize      int
-		mimcPreimageColumnsSize []int
-	)
+	var mimcHashColumnSize int
 	if numRoundNonSis > 0 {
 		// Register the linear hash columns for non sis rounds
 		// If SIS is not applied to the precomputed, we consider
 		// it to be the first non sis round
 		ctx.MIMCMetaData.NonSisLeaves = make([]ifaces.Column, 0, numRoundNonSis)
-		ctx.MIMCMetaData.ConcatenatedHashPreimages = make([]ifaces.Column, 0, numRoundNonSis)
 		ctx.MIMCMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
-		mimcHashColumnSize, mimcPreimageColumnsSize = ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
+		ctx.MIMCMetaData.ColChunksPad = make([]int, 0, numRoundNonSis)
+		mimcHashColumnSize = ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
@@ -95,7 +92,6 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		NumNonSisRound:                numRoundNonSis,
 		NumSisRound:                   numRoundSis,
 		HashValuesSize:                mimcHashColumnSize,
-		HashPreimagesSize:             mimcPreimageColumnsSize,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -141,10 +137,15 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		}
 	}
 
-	// Register the linear hash verification for the non sis rounds
+	// Register the linear hash verification for the non sis rounds.
+	// WholePreimagesNonSis is now round-indexed: WholePreimagesNonSis[i] contains
+	// the data for the i-th non-SIS round in column-major layout:
+	//   col[k*colChunksPad + q] = q-th polynomial of round i at opened column k.
+	// The period is colChunksPad = nextPow2(Pi_i), matching the padded stride and
+	// the zero-padded hash computation in vortex's noSisTransversalHash.
 	for i := 0; i < numRoundNonSis; i++ {
-		mimcW.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
-			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
+		mimcW.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.Columns.WholePreimagesNonSis[i],
+			ctx.MIMCMetaData.ColChunksPad[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
 	}
 
 	// leafConsistency imposes fixed permutation constraints between the sis
@@ -155,36 +156,21 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 // registerMiMCMetaDataForNonSisRounds registers the metadata for the
 // for linear hash verification for the non SIS rounds
 // and return the mimcHashColumnSize
-// and the preimage column sizes per non sis round
 func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
-	numRoundNonSis int, round int) (int, []int) {
-	// Compute the concatenated hashes and preimages sizes
-	var (
-		mimcHashColumnSize      = utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
-		mimcPreimageColumnsSize = make([]int, 0, numRoundNonSis)
-	)
+	numRoundNonSis int, round int) int {
+	mimcHashColumnSize := utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
 
 	// Consider the precomputed polynomials
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		precompPreimageSize := utils.NextPowerOfTwo(
-			ctx.VortexCtx.NbColsToOpen() *
-				len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
-
 		ctx.MIMCMetaData.NonSisLeaves = append(ctx.MIMCMetaData.NonSisLeaves,
 			ctx.Comp.InsertCommit(
 				round,
 				ctx.concatenatedPrecomputedHashes(),
 				mimcHashColumnSize,
 			))
-
-		ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages,
-			ctx.Comp.InsertCommit(
-				round,
-				ctx.concatenatedPrecomputedPreimages(),
-				precompPreimageSize,
-			))
-		mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, precompPreimageSize)
-		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
+		piPrecomp := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
+		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, piPrecomp)
+		ctx.MIMCMetaData.ColChunksPad = append(ctx.MIMCMetaData.ColChunksPad, utils.NextPowerOfTwo(piPrecomp))
 	}
 
 	// Next, consider only the non SIS rounds
@@ -207,11 +193,7 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 		isPastFirstNonEmptyRound = true
 
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyMiMCApplied {
-
-			roundPreimageSize := utils.NextPowerOfTwo(
-				ctx.VortexCtx.NbColsToOpen() *
-					ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
-
+			piI := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
 			ctx.MIMCMetaData.NonSisLeaves = append(
 				ctx.MIMCMetaData.NonSisLeaves,
 				ctx.Comp.InsertCommit(
@@ -219,20 +201,13 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 					ctx.nonSisLeaves(i-firstNonEmptyRound),
 					mimcHashColumnSize,
 				))
-
-			ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages, ctx.Comp.InsertCommit(
-				round,
-				ctx.concatenatedMIMCPreimages(i-firstNonEmptyRound),
-				roundPreimageSize,
-			))
-
-			ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
-			mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, roundPreimageSize)
+			ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, piI)
+			ctx.MIMCMetaData.ColChunksPad = append(ctx.MIMCMetaData.ColChunksPad, utils.NextPowerOfTwo(piI))
 		} else {
 			continue
 		}
 	}
-	return mimcHashColumnSize, mimcPreimageColumnsSize
+	return mimcHashColumnSize
 }
 
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
@@ -312,7 +287,6 @@ type LinearHashMerkleProverAction struct {
 	NumNonSisRound                int
 	NumSisRound                   int
 	HashValuesSize                int
-	HashPreimagesSize             []int
 }
 
 // linearHashMerkleProverActionBuilder builds the assignment parameters
@@ -424,10 +398,10 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	// Assign the hash values and preimages for the non SIS rounds
+	// Assign the hash values for the non SIS rounds.
+	// The preimage data is already in WholePreimagesNonSis (assigned by the vortex prover).
 	for i := 0; i < a.NumNonSisRound; i++ {
 		run.AssignColumn(a.Ctx.MIMCMetaData.NonSisLeaves[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i], a.HashValuesSize))
-		run.AssignColumn(a.Ctx.MIMCMetaData.ConcatenatedHashPreimages[i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisHashPreimages[i], a.HashPreimagesSize[i]))
 	}
 }
 
@@ -470,9 +444,11 @@ func processPrecomputedRound(
 			mimcHash := precompColMiMCHash[srcStart : srcStart+1]
 			leaf := mimcHash[0]
 			mimcPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
-			// Also compute the leaf from the column
-			// to check sanity
-			leaf_ := mimc.HashVec(mimcPreimage)
+			// Also compute the leaf from the column to check sanity.
+			// The hash is computed with zero-padding to nextPow2(Pi) to match
+			// the vortex's noSisTransversalHash.
+			paddedPreimage := zeroPadToNextPow2(mimcPreimage)
+			leaf_ := mimc.HashVec(paddedPreimage)
 			if leaf != leaf_ {
 				utils.Panic("MiMC hash of the precomputed column %v does not match the leaf %v", leaf_, leaf)
 			}
@@ -583,9 +559,11 @@ func processRound(
 				mimcHash := colMimcHash[srcStart : srcStart+1]
 				mimcPreimage := nonSisOpenedCols[nonSisRoundCount][i]
 				leaf := mimcHash[0]
-				// Also compute the leaf from the column
-				// to check sanity
-				leaf_ := mimc.HashVec(mimcPreimage)
+				// Also compute the leaf from the column to check sanity.
+				// The hash is computed with zero-padding to nextPow2(Pi) to match
+				// the vortex's noSisTransversalHash.
+				paddedPreimage := zeroPadToNextPow2(mimcPreimage)
+				leaf_ := mimc.HashVec(paddedPreimage)
 				if leaf != leaf_ {
 					utils.Panic("MiMC hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)
 				}
@@ -617,6 +595,19 @@ func rightPadWithZero(input []field.Element) []field.Element {
 		return input
 	}
 	paddedSize := utils.NextPowerOfTwo(size)
+	padded := make([]field.Element, paddedSize)
+	copy(padded, input)
+	return padded
+}
+
+// zeroPadToNextPow2 returns a copy of input zero-padded to nextPow2(len(input)).
+// Used so that MiMC hash sanity checks match the vortex's noSisTransversalHash
+// which also zero-pads before hashing.
+func zeroPadToNextPow2(input []field.Element) []field.Element {
+	paddedSize := utils.NextPowerOfTwo(len(input))
+	if paddedSize == len(input) {
+		return input
+	}
 	padded := make([]field.Element, paddedSize)
 	copy(padded, input)
 	return padded
