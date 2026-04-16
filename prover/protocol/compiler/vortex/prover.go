@@ -629,22 +629,20 @@ func (ctx *Ctx) assignOpenedColumns(
 		numQ := len(entryList)
 		numHashPad := utils.NextPowerOfTwo(numQ)
 		for roundIdx, roundCols := range selectedCols {
-			if numQ == 0 {
-				continue
-			}
 			colSize := len(roundCols[0])
 			colChunks := (colSize + blockSize - 1) / blockSize
 			colChunksPad := utils.NextPowerOfTwo(colChunks)
 			laneSize := colChunksPad * numHashPad
 			for j := 0; j < blockSize; j++ {
-				laneData := make([]field.Element, colChunksPad*numQ) // unpadded region
+				// validChunks: number of c values where c*blockSize+j < colSize.
+				validChunks := 0
+				if j < colSize {
+					validChunks = (colSize - j + blockSize - 1) / blockSize
+				}
+				laneData := make([]field.Element, colChunksPad*numQ)
 				for k := 0; k < numQ; k++ {
-					for c := 0; c < colChunksPad; c++ {
-						p := c*blockSize + j
-						if p < colSize {
-							laneData[k*colChunksPad+c] = roundCols[k][p]
-						}
-						// else: zero (already initialized)
+					for c := 0; c < validChunks; c++ {
+						laneData[k*colChunksPad+c] = roundCols[k][c*blockSize+j]
 					}
 				}
 				pr.AssignColumn(ctx.Items.OpenedNonSISColumns[roundIdx][j].GetColID(),
