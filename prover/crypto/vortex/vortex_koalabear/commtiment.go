@@ -179,9 +179,12 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			for j := 0; j < nbRows; j++ {
 				curCol[j] = v[j].Get(i)
 			}
-			// zero out any trailing slots left over from the previous iteration
-			for j := nbRows; j < paddedSize; j++ {
-				curCol[j] = field.Zero()
+			// Clear trailing slots from the previous iteration. Skipped on the
+			// first iteration (i == start) since make already zero-initializes.
+			if i > start {
+				for j := nbRows; j < paddedSize; j++ {
+					curCol[j] = field.Zero()
+				}
 			}
 			h.WriteElements(curCol...)
 			res[i] = h.SumElement()

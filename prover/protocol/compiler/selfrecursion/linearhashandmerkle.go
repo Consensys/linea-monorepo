@@ -85,10 +85,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	}
 
 	// Register the linear hash columns for the non sis rounds
-	var (
-		nonSisLeavesColumnSize        int
-		numPrecomputedNonSisRounds    int
-	)
+	var nonSisLeavesColumnSize int
 	if numRoundNonSis > 0 {
 		// Register the linear hash columns for non sis rounds
 		// If SIS is not applied to the precomputed, we consider
@@ -98,7 +95,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		}
 		ctx.NonSisMetaData.ColChunks = make([]int, 0, numRoundNonSis)
 		ctx.NonSisMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
-		nonSisLeavesColumnSize, numPrecomputedNonSisRounds = ctx.registerNonSisMetaDataForNonSisRounds(numRoundNonSis, roundQ)
+		nonSisLeavesColumnSize = ctx.registerNonSisMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
@@ -115,7 +112,6 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		NumRoundNonSis:                numRoundNonSis,
 		NumRoundSis:                   numRoundSis,
 		NonSisLeavesColumnSize:        nonSisLeavesColumnSize,
-		NumPrecomputedNonSisRounds:    numPrecomputedNonSisRounds,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -187,20 +183,18 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 // registerNonSisMetaDataForNonSisRounds registers the metadata for the
 // linear hash verification for the non-SIS rounds.
 //
-// Returns (numLeavesColumnSize, numPrecomputedNonSisRounds) where
-// numPrecomputedNonSisRounds is 0 or 1.
+// Returns numLeavesColumnSize (the padded number of leaves per non-SIS round).
 //
-// HashInputCols[roundIdx] is set to WholePreimagesNonSis[roundIdx] directly
-// (the 8-lane vortex columns). This closes the soundness gap: both
-// CheckLinearHash and the UalphaQ bivariate evaluation reference the SAME
-// committed columns, so a malicious prover cannot present inconsistent data.
+// WholePreimagesNonSis[roundIdx] (the 8-lane vortex columns) is used directly
+// for both CheckLinearHash and the UalphaQ bivariate evaluation, closing the
+// soundness gap: a malicious prover cannot present inconsistent data across
+// the two checks.
 func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
-	numRoundNonSis int, round int) (int, int) {
+	numRoundNonSis int, round int) int {
 
 	var (
-		numLeavesUnpadded          = ctx.VortexCtx.NbColsToOpen()
-		numLeaves                  = utils.NextPowerOfTwo(numLeavesUnpadded)
-		numPrecomputedNonSisRounds = 0
+		numLeavesUnpadded = ctx.VortexCtx.NbColsToOpen()
+		numLeaves         = utils.NextPowerOfTwo(numLeavesUnpadded)
 	)
 
 	// Consider the precomputed non-SIS round. HashInputCols[0] is set directly
@@ -223,7 +217,6 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 
 		ctx.NonSisMetaData.ColChunks = append(ctx.NonSisMetaData.ColChunks, colChunksPad)
 		ctx.NonSisMetaData.ToHashSizes = append(ctx.NonSisMetaData.ToHashSizes, colSize)
-		numPrecomputedNonSisRounds = 1
 	}
 
 	firstNonEmptyRound := 0
@@ -260,7 +253,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 		}
 	}
 
-	return numLeaves, numPrecomputedNonSisRounds
+	return numLeaves
 }
 
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
@@ -348,9 +341,6 @@ type LinearHashMerkleProverAction struct {
 	NumRoundNonSis                int
 	NumRoundSis                   int
 	NonSisLeavesColumnSize        int
-	// NumPrecomputedNonSisRounds is 0 or 1 depending on whether there is a
-	// precomputed non-SIS round.
-	NumPrecomputedNonSisRounds int
 }
 
 // linearHashMerkleProverActionBuilder builds the assignment parameters
@@ -770,4 +760,3 @@ func rightPadWithZero(input []field.Element) []field.Element {
 	copy(padded, input)
 	return padded
 }
-
