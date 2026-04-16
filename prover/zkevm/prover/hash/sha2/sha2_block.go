@@ -37,6 +37,13 @@ const (
 	// in total) for the initial hash and 16 uint16 (256 bits in total) for the
 	// final hash.
 	numRowPerInstance = numLimbsPerBlock + numLimbsPerState + numLimbsPerState
+
+	// prodHashLimbChunkSize is the arity of each partial product constraint
+	// (degree 3 including the equality). Full digest-all-zero is built via
+	// intermediate columns ProdHashChunk, ProdHashAggr1/2 so the global constraint is
+	// degree 3 (IsActive × aggr1 × aggr2).
+	prodHashLimbChunkSize = 3
+	numProdHashChunks     = (numLimbsPerState + prodHashLimbChunkSize - 1) / prodHashLimbChunkSize
 )
 
 var (
@@ -148,7 +155,13 @@ type sha2BlockModule struct {
 	// span of a hash.
 	Hash [numLimbsPerState]ifaces.Column
 
-	HashIsZero    [numLimbsPerState]ifaces.Column
+	HashIsZero [numLimbsPerState]ifaces.Column
+	// ProdHashChunk[k] equals the product of HashIsZero over limbs in chunk k.
+	ProdHashChunk [numProdHashChunks]ifaces.Column
+	// ProdHashAggr1/2 are intermediate products of three chunk columns each;
+	// their product is 1 iff every Hash limb is zero (all HashIsZero are 1).
+	ProdHashAggr1 ifaces.Column
+	ProdHashAggr2 ifaces.Column
 	ProverActions []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
@@ -350,24 +363,61 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		},
 	)
 
-	// As per the padding technique we use, the HashHi and HashLo should not
-	// be zero when isActive.
-	var ctxHash [numLimbsPerState]wizard.ProverAction
+	csLowDegreeZeroHash(comp, inp, res, declareCommit)
 
-	prodHash := sym.NewConstant(1)
+	return res
+}
+
+// csLowDegreeZeroHash enforces that an active row cannot carry an all-zero
+// digest (the gnark circuit skips the permutation when every limb is zero).
+// It uses intermediate columns so each global constraint has multiplicative
+// degree at most 3.
+func csLowDegreeZeroHash(
+	comp *wizard.CompiledIOP,
+	inp *sha2BlocksInputs,
+	res *sha2BlockModule,
+	declareCommit func(string) ifaces.Column,
+) {
+	if numProdHashChunks != 6 {
+		panic("csLowDegreeZeroHash assumes exactly 6 chunks; update the aggr constraints if this changes")
+	}
+	for k := range numProdHashChunks {
+		res.ProdHashChunk[k] = declareCommit(fmt.Sprintf("PROD_HASH_CHUNK_%d", k))
+	}
+	res.ProdHashAggr1 = declareCommit("PROD_HASH_AGGR1")
+	res.ProdHashAggr2 = declareCommit("PROD_HASH_AGGR2")
+
+	var ctxHash [numLimbsPerState]wizard.ProverAction
 	for i := range numLimbsPerState {
 		res.HashIsZero[i], ctxHash[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
-		prodHash = sym.Mul(prodHash, res.HashIsZero[i])
+	}
+	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
+
+	for k := range numProdHashChunks {
+		start, end := prodHashChunkLimbRange(k)
+		limbs := make([]any, end-start)
+		for i, li := 0, start; li < end; li, i = li+1, i+1 {
+			limbs[i] = res.HashIsZero[li]
+		}
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%v_PROD_HASH_CHUNK_%d_EQ", inp.Name, k),
+			sym.Sub(res.ProdHashChunk[k], sym.Mul(limbs...)),
+		)
 	}
 
-	res.ProverActions = append(res.ProverActions, ctxHash[:]...)
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%v_PROD_HASH_AGGR1_EQ", inp.Name),
+		sym.Sub(res.ProdHashAggr1, sym.Mul(res.ProdHashChunk[0], res.ProdHashChunk[1], res.ProdHashChunk[2])),
+	)
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%v_PROD_HASH_AGGR2_EQ", inp.Name),
+		sym.Sub(res.ProdHashAggr2, sym.Mul(res.ProdHashChunk[3], res.ProdHashChunk[4], res.ProdHashChunk[5])),
+	)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_ENTIRELY_ZERO", inp.Name),
-		sym.Mul(res.IsActive, prodHash),
+		sym.Mul(res.IsActive, res.ProdHashAggr1, res.ProdHashAggr2),
 	)
-
-	return res
 }
 
 func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *sha2BlockModule {
@@ -387,6 +437,15 @@ func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...que
 	)
 
 	return sbh
+}
+
+func prodHashChunkLimbRange(chunkIdx int) (start, end int) {
+	start = chunkIdx * prodHashLimbChunkSize
+	end = start + prodHashLimbChunkSize
+	if end > numLimbsPerState {
+		end = numLimbsPerState
+	}
+	return start, end
 }
 
 func canBeBlockOfInstancePattern() []field.Element {
