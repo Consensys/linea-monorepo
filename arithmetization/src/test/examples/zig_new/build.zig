@@ -19,10 +19,13 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
+    const name = b.option([]const u8, "name", "Name of the program (source: src/<name>.zig, binary: <name>)") orelse @panic("'-Dname=<name>' is required");
+    const source = b.fmt("src/{s}.zig", .{name});
+
     const exe = b.addExecutable(.{
-        .name = "arithmetic_test",
+        .name = name,
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/arithmetic_test.zig"),
+            .root_source_file = b.path(source),
             .target = target,
             .optimize = optimize,
         }),

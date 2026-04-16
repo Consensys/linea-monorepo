@@ -1,5 +1,5 @@
 zig-out/bin/arithmetic_test: src/arithmetic_test.zig
-	zig build
+	zig build -Dname=arithmetic_test
 	go run ../main.go zig-out/bin/arithmetic_test > zig-out/bin/arithmetic_test.json
 
 exec:
