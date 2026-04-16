@@ -240,6 +240,54 @@ public class GenerateVirtualBlockConflatedTracesV1 {
           blockSimulationService.simulate(
               parentBlockNumber, transactions, blockOverrides, new StateOverrideMap(), tracer);
 
+      final var simBlockHeader = simulationResult.getBlockHeader();
+      final var simBlockBody = simulationResult.getBlockBody();
+      log.debug(
+          "simulation result: blockHash={} receiptsCount={} txSimResults={} trieLogPresent={}",
+          simBlockHeader.getBlockHash(),
+          simulationResult.getReceipts().size(),
+          simulationResult.getTransactionSimulationResults().size(),
+          simulationResult.getTrieLog().isPresent());
+      log.debug(
+          "simulation block header: number={} blockHash={} parentHash={} coinbase={} timestamp={} gasLimit={} gasUsed={} baseFee={} stateRoot={} transactionsRoot={} receiptsRoot={} prevRandao={} parentBeaconBlockRoot={}",
+          simBlockHeader.getNumber(),
+          simBlockHeader.getBlockHash(),
+          simBlockHeader.getParentHash(),
+          simBlockHeader.getCoinbase(),
+          simBlockHeader.getTimestamp(),
+          simBlockHeader.getGasLimit(),
+          simBlockHeader.getGasUsed(),
+          simBlockHeader.getBaseFee().orElse(null),
+          simBlockHeader.getStateRoot(),
+          simBlockHeader.getTransactionsRoot(),
+          simBlockHeader.getReceiptsRoot(),
+          simBlockHeader.getPrevRandao().orElse(null),
+          simBlockHeader.getParentBeaconBlockRoot().orElse(null));
+      log.debug("simulation block body: {}", simBlockBody);
+      for (int i = 0; i < simulationResult.getTransactionSimulationResults().size(); i++) {
+        final var txSimResult = simulationResult.getTransactionSimulationResults().get(i);
+        log.debug(
+            "tx simulation result: index={} txHash={} successful={} invalid={} gasEstimate={} revertReason={} invalidReason={}",
+            i,
+            txSimResult.transaction().getHash(),
+            txSimResult.isSuccessful(),
+            txSimResult.isInvalid(),
+            txSimResult.getGasEstimate(),
+            txSimResult.getRevertReason().orElse(null),
+            txSimResult.getInvalidReason().orElse(null));
+      }
+      simulationResult
+          .getTrieLog()
+          .ifPresent(
+              trieLog ->
+                  log.debug(
+                      "trieLog: blockHash={} blockNumber={} accountChanges={} codeChanges={} storageChanges={}",
+                      trieLog.getBlockHash(),
+                      trieLog.getBlockNumber().orElse(null),
+                      trieLog.getAccountChanges().size(),
+                      trieLog.getCodeChanges().size(),
+                      trieLog.getStorageChanges().size()));
+
       // traceEndBlock must be called after simulation (mirrors TraceServiceImpl) and before
       // traceEndConflation so that Blockhash.lastBlockHash is correctly populated.
       tracer.traceEndBlock(simulationResult.getBlockHeader(), simulationResult.getBlockBody());
