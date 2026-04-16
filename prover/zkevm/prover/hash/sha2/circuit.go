@@ -48,9 +48,9 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 	}
 
 	// allLimbsAreZero is the count of zero limbs (sum of IsZero). It equals
-	// len(NewDigest) iff every limb is zero — same predicate as ProdHashAggr1·
-	// ProdHashAggr2 in sha2_block.go. When equal, we skip the permutation check
-	// (padding row): (count - len) is zero so the equality is not enforced.
+	// len(NewDigest) iff every limb is zero — same predicate as EntireHashIsZero
+	// in sha2_block.go. When equal, we skip the permutation check (padding
+	// row): (count - len) is zero so the equality is not enforced.
 	var allLimbsAreZero frontend.Variable = 0
 	for i := range sbpi.NewDigest {
 		allLimbsAreZero = api.Add(allLimbsAreZero, api.IsZero(sbpi.NewDigest[i]))
