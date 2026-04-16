@@ -105,10 +105,7 @@ class ConflationCalculatorByForcedTransaction(
     processedFtxs: List<ForcedTransactionInclusionStatus>,
   ) {
     if (actuallyNewBlocks.isNotEmpty()) {
-      val newFailedFtxs = processedFtxs.filter {
-        it.inclusionResult != ForcedTransactionInclusionResult.Included &&
-          actuallyNewBlocks.contains(if (it.blockNumber > 0UL) it.blockNumber - 1UL else null)
-      }
+      val newFailedFtxs = processedFtxs.filter { actuallyNewBlocks.contains(it.blockNumber) }
       log.info(
         "appended new conflation triggers {} of non-included ftxs={}, all pending triggers {}",
         actuallyNewBlocks,
