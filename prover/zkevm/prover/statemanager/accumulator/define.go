@@ -953,6 +953,26 @@ func (am *Module) checkNextFreeNode() {
 		symbolic.Sub(symbolic.Mul(cols.IsInsert, cols.IsEmptyLeaf),
 			cols.IsInsertRow3))
 	am.Comp.InsertGlobal(am.Round, am.qname("IS_INSERT_ROW3_CONSISTENCY"), expr5)
+
+	// Binding constraint: the insertion position (Positions at row 2 of INSERT,
+	// i.e. shift 2 from IsFirst) must equal the NextFreeNode value at the start
+	// of the INSERT operation (row 0). This ensures the prover allocates the new
+	// leaf at the sequentially next available position, not at an arbitrary empty
+	// slot (e.g. a previously deleted position).
+	activeInsert := symbolic.Mul(cols.IsFirst, cols.IsInsert)
+	for i := range cols.Positions {
+		am.Comp.InsertGlobal(am.Round, am.qnamef("INSERTION_POSITION_EQUALS_NEXT_FREE_NODE_%d", i),
+			symbolic.Mul(activeInsert, symbolic.Sub(column.Shift(cols.Positions[i], 2), cols.NextFreeNode[i])))
+	}
+
+	// Binding constraint: InsertionPath must equal Positions at the insertion
+	// row (IsInsertRow3). InsertionPath is assigned to proof.Path when
+	// isInsertRow3 is true and zero otherwise. This anchors the committed
+	// InsertionPath column to the actual Merkle-verified position.
+	for i := range cols.InsertionPath {
+		am.Comp.InsertGlobal(am.Round, am.qnamef("INSERTION_PATH_EQUALS_POSITION_%d", i),
+			symbolic.Mul(cols.IsInsertRow3, symbolic.Sub(cols.InsertionPath[i], cols.Positions[i])))
+	}
 }
 
 func (am *Module) checkTopRootHash() {
