@@ -447,7 +447,7 @@ func processPrecomputedRound(
 			// Also compute the leaf from the column to check sanity.
 			// The hash is computed with zero-padding to nextPow2(Pi) to match
 			// the vortex's noSisTransversalHash.
-			paddedPreimage := zeroPadToNextPow2(mimcPreimage)
+			paddedPreimage := rightPadWithZero(mimcPreimage)
 			leaf_ := mimc.HashVec(paddedPreimage)
 			if leaf != leaf_ {
 				utils.Panic("MiMC hash of the precomputed column %v does not match the leaf %v", leaf_, leaf)
@@ -562,7 +562,7 @@ func processRound(
 				// Also compute the leaf from the column to check sanity.
 				// The hash is computed with zero-padding to nextPow2(Pi) to match
 				// the vortex's noSisTransversalHash.
-				paddedPreimage := zeroPadToNextPow2(mimcPreimage)
+				paddedPreimage := rightPadWithZero(mimcPreimage)
 				leaf_ := mimc.HashVec(paddedPreimage)
 				if leaf != leaf_ {
 					utils.Panic("MiMC hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)
@@ -600,15 +600,3 @@ func rightPadWithZero(input []field.Element) []field.Element {
 	return padded
 }
 
-// zeroPadToNextPow2 returns a copy of input zero-padded to nextPow2(len(input)).
-// Used so that MiMC hash sanity checks match the vortex's noSisTransversalHash
-// which also zero-pads before hashing.
-func zeroPadToNextPow2(input []field.Element) []field.Element {
-	paddedSize := utils.NextPowerOfTwo(len(input))
-	if paddedSize == len(input) {
-		return input
-	}
-	padded := make([]field.Element, paddedSize)
-	copy(padded, input)
-	return padded
-}
