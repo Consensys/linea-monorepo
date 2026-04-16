@@ -502,7 +502,7 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 			return fmt.Errorf("in the same aggregation, the invalidity proofs have different simulated block numbers: %d vs %d", prevPo.SimulatedExecutionBlockNumber, po.SimulatedExecutionBlockNumber)
 		}
 		if po.ForcedTransactionNumber != parentFtxNumber+1 {
-			return fmt.Errorf("forced transaction numbers should be consecutive: jumping from %d to %d instead of incrementing by 1", prevPo.ForcedTransactionNumber, po.ForcedTransactionNumber)
+			return fmt.Errorf("forced transaction numbers should be consecutive: jumping from %d to %d instead of incrementing by 1", parentFtxNumber, po.ForcedTransactionNumber)
 		}
 
 		if got, want := po.ChainID, cfg.Layer2.ChainID; got != want {

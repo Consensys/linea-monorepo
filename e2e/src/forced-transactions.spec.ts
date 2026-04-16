@@ -37,12 +37,9 @@ describe("Forced transaction test suite", () => {
       const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
       const gatewayRead = context.l1Contracts.forcedTransactionGateway(l1PublicClient);
 
-      // Read gateway configuration
       const destinationChainId = await gatewayRead.read.DESTINATION_CHAIN_ID();
-
       logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
 
-      // Resolve finalized state and fee
       let lastFinalizedState = await resolveLastFinalizedState(
         lineaRollup,
         l1PublicClient,
@@ -70,7 +67,6 @@ describe("Forced transaction test suite", () => {
       const [, , , , feeAmount] = await lineaRollup.read.getRequiredForcedTransactionFields();
       const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
 
-      // Submit the forced transaction
       const { hash: txHash, receipt } = await sendTransactionWithRetry(
         l1PublicClient,
         (fees) =>
@@ -97,7 +93,6 @@ describe("Forced transaction test suite", () => {
       logger.debug(
         `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
       );
-
       expect(receipt.status).toEqual("success");
 
       const [forcedTxEvent] = await getEvents(l1PublicClient, {
@@ -110,15 +105,12 @@ describe("Forced transaction test suite", () => {
       });
 
       expect(forcedTxEvent).toBeDefined();
-
       logger.debug(
         `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash}`,
       );
-
-      // Wait for the forced transaction to be executed on L2 by polling for its receipt
-      const l2PublicClient = context.l2PublicClient();
       const submittedForcedTransactionNumber = forcedTxEvent.args.forcedTransactionNumber;
 
+      const l2PublicClient = context.l2PublicClient();
       logger.debug(`Waiting for forced transaction receipt on L2. l2TxHash=${l2TxHash}`);
 
       const l2Receipt = await l2PublicClient.waitForTransactionReceipt({ hash: l2TxHash, timeout: 120_000 });
@@ -128,7 +120,6 @@ describe("Forced transaction test suite", () => {
         `Forced transaction executed on L2. l2TxHash=${l2TxHash} blockNumber=${l2Receipt.blockNumber} status=${l2Receipt.status}`,
       );
 
-      // Wait for L1 finalization that includes the forced transaction
       logger.debug(
         `Waiting for FinalizedStateUpdated with forcedTransactionNumber >= ${submittedForcedTransactionNumber}`,
       );
@@ -141,7 +132,7 @@ describe("Forced transaction test suite", () => {
         toBlock: "latest",
         pollingIntervalMs: 2_000,
         strict: true,
-        timeoutMs: 300_000,
+        timeoutMs: 200_000,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
       });
@@ -150,7 +141,7 @@ describe("Forced transaction test suite", () => {
         `Finalization includes forced transaction. blockNumber=${finalizedEvent.args.blockNumber} forcedTransactionNumber=${finalizedEvent.args.forcedTransactionNumber}`,
       );
     },
-    300_000,
+    200_000,
   );
 
   it.concurrent(
@@ -168,12 +159,9 @@ describe("Forced transaction test suite", () => {
       const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
       const gatewayRead = context.l1Contracts.forcedTransactionGateway(l1PublicClient);
 
-      // Read gateway configuration
       const destinationChainId = await gatewayRead.read.DESTINATION_CHAIN_ID();
-
       logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
 
-      // Resolve finalized state and fee
       let lastFinalizedState = await resolveLastFinalizedState(
         lineaRollup,
         l1PublicClient,
@@ -201,7 +189,6 @@ describe("Forced transaction test suite", () => {
       const [, , , , feeAmount] = await lineaRollup.read.getRequiredForcedTransactionFields();
       const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
 
-      // Submit the forced transaction
       const { hash: txHash, receipt } = await sendTransactionWithRetry(
         l1PublicClient,
         (fees) =>
@@ -228,7 +215,6 @@ describe("Forced transaction test suite", () => {
       logger.debug(
         `submitForcedTransaction confirmed. txHash=${txHash} status=${receipt.status} blockNumber=${receipt.blockNumber}`,
       );
-
       expect(receipt.status).toEqual("success");
 
       const [forcedTxEvent] = await getEvents(l1PublicClient, {
@@ -241,14 +227,11 @@ describe("Forced transaction test suite", () => {
       });
 
       expect(forcedTxEvent).toBeDefined();
-
       logger.debug(
         `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash}`,
       );
 
       const submittedForcedTransactionNumber = forcedTxEvent.args.forcedTransactionNumber;
-
-      // Wait for L1 finalization that includes the forced transaction
       logger.debug(
         `Waiting for FinalizedStateUpdated with forcedTransactionNumber >= ${submittedForcedTransactionNumber}`,
       );
@@ -260,7 +243,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 300_000,
+        timeoutMs: 200_000,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -275,8 +258,6 @@ describe("Forced transaction test suite", () => {
 
       try {
         await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
-        // This code path should not be reached; the getTransactionReceipt call is expected to throw.
-        // If it does not throw, the test should fail.
         throw new Error(
           "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
         );
@@ -289,7 +270,7 @@ describe("Forced transaction test suite", () => {
 
       logger.debug("Checked for forced transaction receipt on L2; confirmed that receipt was not found as expected.");
     },
-    300_000,
+    200_000,
   );
 
   it.concurrent("Should reject a forced transaction that calls an excluded precompile (BadPrecompile)", async () => {
