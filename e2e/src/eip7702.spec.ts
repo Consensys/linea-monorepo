@@ -1,15 +1,8 @@
 import { describe, it } from "@jest/globals";
 import { PrivateKeyAccount } from "viem";
 
-import {
-  addToDenyList,
-  deployTestEip7702Delegation,
-  encodeEip7702InitializeData,
-  expectBlockedTransaction,
-  reloadDenyList,
-  removeFromDenyList,
-  withDenyListAddresses,
-} from "./common/test-helpers";
+import { expectBlockedTransaction, withDenyListAddresses } from "./common/test-helpers";
+import { encodeEip7702InitializeData, deployTestEip7702Delegation } from "./common/test-helpers/eip7702-delegation";
 import { estimateLineaGas, expectSuccessfulTransaction } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
@@ -177,17 +170,11 @@ describe("EIP-7702 test suite", () => {
         contractAddress,
       });
 
-      try {
-        await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
+      await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
 
-        addToDenyList([scenario.denyListAddress]);
-        await reloadDenyList(sequencerClient);
-
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
         await expectBlockedTransaction(scenario.sendDelegatedInitializeTx());
-      } finally {
-        removeFromDenyList([scenario.denyListAddress]);
-        await reloadDenyList(sequencerClient);
-      }
+      });
     },
     120_000,
   );
