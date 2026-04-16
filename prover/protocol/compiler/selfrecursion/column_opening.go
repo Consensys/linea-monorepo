@@ -339,28 +339,29 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				colSize := ctx.NonSisMetaData.ToHashSizes[i]
 				colChunksPad := ctx.NonSisMetaData.ColChunks[i]
 
-				var roundEvalSymb *symbolic.Expression
-				for j := 0; j < blockSize; j++ {
-					laneEval := functionals.EvalCoeffBivariate(
-						ctx.Comp,
-						maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_LANE_EVAL_%v_%v_%v", ctx.SelfRecursionCnt, i, j)),
-						roundCols[j],
-						alpha8Acc,
-						r_acc,
-						colChunksPad,
-						numHashPad,
-					)
-					laneTerm := symbolic.Mul(symbolic.Pow(alpha_acc, j), laneEval)
-					if roundEvalSymb == nil {
-						roundEvalSymb = laneTerm
-					} else {
-						roundEvalSymb = symbolic.Add(roundEvalSymb, laneTerm)
-					}
-				}
-				roundEvalAcc := accessors.NewFromExpression(
-					roundEvalSymb,
-					maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_ROUND_EVAL_%v_%v", ctx.SelfRecursionCnt, i)),
+				// Step 1: collapse the 8 lanes with alpha^j weights into a single column.
+				// collapsedLanes[k*colChunksPad+c] = Σ_{j=0}^{7} alpha^j · roundCols[j][k*colChunksPad+c]
+				//                                  = Σ_j alpha^j · poly_{c*8+j}(Q_k)
+				collapsedLanes := expr_handle.RandLinCombCol(
+					ctx.Comp,
+					alpha_acc,
+					roundCols[:],
+					maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_COLLAPSED_LANES_%v_%v", ctx.SelfRecursionCnt, i)),
 				)
+
+				// Step 2: one bivariate evaluation on the collapsed column.
+				// Σ_k r^k · Σ_c (alpha^8)^c · collapsedLanes[k*colChunksPad+c]
+				// = Σ_k r^k · Σ_p alpha^p · poly_p(Q_k)  ✓
+				roundEvalAcc := functionals.EvalCoeffBivariate(
+					ctx.Comp,
+					maybePrefix(ctx, fmt.Sprintf("SELFRECURSION_NONSIS_ROUND_EVAL_%v_%v", ctx.SelfRecursionCnt, i)),
+					collapsedLanes,
+					alpha8Acc,
+					r_acc,
+					colChunksPad,
+					numHashPad,
+				)
+
 				term := symbolic.Mul(symbolic.Pow(alpha_acc, cumOffset), roundEvalAcc)
 				if preImageNonSisSymb == nil {
 					preImageNonSisSymb = term
