@@ -1,4 +1,4 @@
-import { GetPublicKeyCommand, KMSClient, SignCommand } from "@aws-sdk/client-kms";
+import { GetPublicKeyCommand, KMSClient, type KMSClientConfig, SignCommand } from "@aws-sdk/client-kms";
 import {
   Address,
   Hex,
@@ -39,16 +39,16 @@ export class AwsKmsSignerClientAdapter implements IContractSignerClient {
    * @param {ILogger} logger - The logger instance for logging signing operations.
    * @param {string} kmsKeyId - The AWS KMS key ID, key ARN, alias name, or alias ARN
    *   for the ECC_SECG_P256K1 key. Use {@link createKey} to provision a new one.
-   * @param {KMSClient} [kmsClient] - Optional pre-configured KMS client.
-   *   A default client is created if omitted (uses standard AWS credential chain).
+   * @param {KMSClientConfig} [kmsClientConfig] - Optional configuration forwarded to the
+   *   KMS client constructor. A default client is created if omitted (uses standard AWS credential chain).
    */
   constructor(
     private readonly logger: ILogger,
     private readonly kmsKeyId: string,
-    kmsClient?: KMSClient,
+    kmsClientConfig?: KMSClientConfig,
   ) {
     this.logger.info("Initialising AwsKmsSignerClientAdapter");
-    this.kmsClient = kmsClient ?? new KMSClient();
+    this.kmsClient = new KMSClient(kmsClientConfig ?? {});
   }
 
   /**
@@ -56,11 +56,15 @@ export class AwsKmsSignerClientAdapter implements IContractSignerClient {
    *
    * @param {ILogger} logger - The logger instance.
    * @param {string} kmsKeyId - The AWS KMS key ID or ARN.
-   * @param {KMSClient} [kmsClient] - Optional pre-configured KMS client.
+   * @param {KMSClientConfig} [kmsClientConfig] - Optional configuration forwarded to the KMS client constructor.
    * @returns {Promise<AwsKmsSignerClientAdapter>} An initialized adapter ready for signing.
    */
-  static async create(logger: ILogger, kmsKeyId: string, kmsClient?: KMSClient): Promise<AwsKmsSignerClientAdapter> {
-    const adapter = new AwsKmsSignerClientAdapter(logger, kmsKeyId, kmsClient);
+  static async create(
+    logger: ILogger,
+    kmsKeyId: string,
+    kmsClientConfig?: KMSClientConfig,
+  ): Promise<AwsKmsSignerClientAdapter> {
+    const adapter = new AwsKmsSignerClientAdapter(logger, kmsKeyId, kmsClientConfig);
     await adapter.init();
     return adapter;
   }

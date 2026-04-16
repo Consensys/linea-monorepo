@@ -6,8 +6,10 @@ import { createLoggerMock } from "../../__tests__/helpers/factories";
 import { ILogger } from "../../logging/ILogger";
 import { AwsKmsSignerClientAdapter } from "../AwsKmsSignerClientAdapter";
 
+const mockSend = jest.fn();
+
 jest.mock("@aws-sdk/client-kms", () => ({
-  KMSClient: jest.fn(),
+  KMSClient: jest.fn().mockImplementation(() => ({ send: mockSend })),
   CreateKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
   GetPublicKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
   SignCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
@@ -93,12 +95,11 @@ describe("AwsKmsSignerClientAdapter", () => {
   };
 
   let logger: jest.Mocked<ILogger>;
-  let mockSend: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSend.mockReset();
     logger = createLoggerMock({ name: "aws-kms-signer" });
-    mockSend = jest.fn();
 
     publicKeyToAddressMock.mockReturnValue(EXPECTED_ADDRESS);
     serializeTransactionMock.mockReturnValue(SERIALIZED_TX);
@@ -107,7 +108,7 @@ describe("AwsKmsSignerClientAdapter", () => {
     serializeSignatureMock.mockReturnValue(SIGNATURE_HEX);
   });
 
-  const createAdapter = () => new AwsKmsSignerClientAdapter(logger, KMS_KEY_ID, { send: mockSend } as any);
+  const createAdapter = () => new AwsKmsSignerClientAdapter(logger, KMS_KEY_ID, { region: "us-east-1" });
 
   const initAdapter = async () => {
     mockSend.mockResolvedValueOnce({ PublicKey: DER_PUBLIC_KEY });
@@ -140,7 +141,7 @@ describe("AwsKmsSignerClientAdapter", () => {
     it("should create and initialize adapter in one step", async () => {
       mockSend.mockResolvedValueOnce({ PublicKey: DER_PUBLIC_KEY });
 
-      const adapter = await AwsKmsSignerClientAdapter.create(logger, KMS_KEY_ID, { send: mockSend } as any);
+      const adapter = await AwsKmsSignerClientAdapter.create(logger, KMS_KEY_ID, { region: "us-east-1" });
 
       expect(adapter.getAddress()).toBe(EXPECTED_ADDRESS);
     });

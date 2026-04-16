@@ -1,27 +1,32 @@
-import { KMSClient } from "@aws-sdk/client-kms";
 import { createPublicClient, http, keccak256, parseSignature, recoverAddress, serializeTransaction } from "viem";
 
 import { AwsKmsSignerClientAdapter } from "../src/clients/AwsKmsSignerClientAdapter";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
 
-const KMS_KEY_ID = process.env.KMS_KEY_ID;
-const REGION = process.env.AWS_REGION ?? "us-east-2";
-const RPC_URL = process.env.RPC_URL;
-const DRY_RUN = process.env.DRY_RUN !== "false";
+const REQUIRED_ENV_VARS = ["KMS_KEY_ID", "RPC_URL"];
 
-if (!KMS_KEY_ID) {
-  console.error("Missing KMS_KEY_ID env var");
-  process.exit(1);
-}
-
-if (!DRY_RUN && !RPC_URL) {
-  console.error("Missing RPC_URL env var (required when DRY_RUN=false)");
-  process.exit(1);
+function readRequiredEnv() {
+  const missing = REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required env vars: ${missing.join(", ")}`);
+  }
 }
 
 async function main() {
+  try {
+    readRequiredEnv();
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exitCode = 1;
+    return;
+  }
+
+  const KMS_KEY_ID = process.env.KMS_KEY_ID!;
+  const REGION = process.env.AWS_REGION ?? "us-east-2";
+  const RPC_URL = process.env.RPC_URL;
+  const DRY_RUN = process.env.DRY_RUN === "true";
+
   const logger = new WinstonLogger("kms-signer-test");
-  const kmsClient = new KMSClient({ region: REGION });
 
   console.log(`\n=== AWS KMS Signer Integration Test ===`);
   console.log(`Region  : ${REGION}`);
@@ -30,7 +35,7 @@ async function main() {
 
   // 1. Init — fetches public key from KMS and derives Ethereum address
   console.log("1. Initializing adapter (fetching public key from KMS)...");
-  const signer = await AwsKmsSignerClientAdapter.create(logger, KMS_KEY_ID!, kmsClient);
+  const signer = await AwsKmsSignerClientAdapter.create(logger, KMS_KEY_ID, { region: REGION });
   const address = signer.getAddress();
   console.log(`   Derived address: ${address}\n`);
 
