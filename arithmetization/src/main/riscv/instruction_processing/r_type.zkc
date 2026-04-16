@@ -1,3 +1,6 @@
+include "../utils/*.zkc"
+
+// processes R-type instructions
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
 
   var funct7                   : Funct7

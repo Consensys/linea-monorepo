@@ -1,3 +1,6 @@
+include "../utils/*.zkc"
+
+// processes U-type instructions
 fn process_U_type_instruction<registers>(opcode:Opcode,instruction_parameters:u25, pc:Address) -> () {
 
   // var funct3 : Funct3
@@ -18,5 +21,5 @@ fn process_U_type_instruction<registers>(opcode:Opcode,instruction_parameters:u2
 
   if opcode == AUIPC {tmp = (tmp + pc) as DoubleWord}
 
-  registers[rd] =  tmp as DoubleWord 
+  registers[rd] =  tmp as DoubleWord
 }

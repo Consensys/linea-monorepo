@@ -1,5 +1,8 @@
+include "../utils/*.zkc"
+
+// processes I-type instructions
 fn process_I_type_instruction<ram,registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
-  
+
   var funct6 : Funct6
   var funct7 : Funct7
   var funct3 : Funct3
@@ -23,7 +26,7 @@ fn process_I_type_instruction<ram,registers>(opcode:Opcode, instruction_paramete
   var mem_address: Address
   mem_address = (registers[rs1] + signext_imm12_64) as Address
 
-  new_pc = (pc + 4) as Address //TODO: this is the default case, we will overwrite it for JALR. 
+  new_pc = (pc + 4) as Address //TODO: this is the default case, we will overwrite it for JALR.
   // We should handle this differently to avoid a potential second row just to overwrite the value of new_pc?
 
   // ----- LOAD (opcode LOAD) -----
