@@ -11,10 +11,10 @@ import linea.domain.Batch
 import linea.domain.Block
 import linea.domain.BlocksConflation
 import linea.domain.ExecutionProofIndex
+import linea.metrics.LineaMetricsCategory
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator

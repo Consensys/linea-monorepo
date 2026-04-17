@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-  api(project(":coordinator:core"))
+  api(project(":coordinator:core-interfaces"))
   api(project(":coordinator:clients:prover-client:serialization"))
   implementation(project(":jvm-libs:generic:persistence:db"))
 
@@ -15,7 +15,7 @@ dependencies {
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation "io.consensys.tuweni:tuweni-units:${libs.versions.tuweni.get()}"
   testImplementation(project(":coordinator:persistence:db-common"))
-  testImplementation(testFixtures(project(":coordinator:core")))
+  testImplementation(testFixtures(project(":coordinator:core-interfaces")))
   testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation("io.vertx:vertx-junit5")

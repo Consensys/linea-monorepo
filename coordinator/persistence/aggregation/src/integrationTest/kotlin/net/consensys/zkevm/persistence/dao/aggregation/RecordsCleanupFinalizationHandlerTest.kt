@@ -4,8 +4,8 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
+import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.ForcedTransactionRecordFactory
-import linea.persistence.ftx.ForcedTransactionsDao
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get

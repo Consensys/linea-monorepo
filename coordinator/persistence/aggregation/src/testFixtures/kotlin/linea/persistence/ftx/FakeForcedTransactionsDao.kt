@@ -1,5 +1,7 @@
 package linea.persistence.ftx
 
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentHashMap
 

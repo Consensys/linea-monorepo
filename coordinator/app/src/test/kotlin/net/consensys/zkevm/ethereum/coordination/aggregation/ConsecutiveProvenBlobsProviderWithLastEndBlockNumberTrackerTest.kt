@@ -3,7 +3,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import linea.domain.BlobAndBatchCounters
 import linea.domain.BlobCounters
 import linea.domain.BlockIntervals
-import net.consensys.zkevm.persistence.AggregationsRepository
+import linea.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any

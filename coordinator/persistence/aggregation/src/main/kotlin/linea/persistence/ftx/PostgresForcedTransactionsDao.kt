@@ -4,6 +4,8 @@ import io.vertx.core.Future
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import net.consensys.zkevm.persistence.db.SQLQueryLogger

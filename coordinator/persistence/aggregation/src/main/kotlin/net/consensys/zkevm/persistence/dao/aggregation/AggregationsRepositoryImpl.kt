@@ -3,9 +3,9 @@ package net.consensys.zkevm.persistence.dao.aggregation
 import linea.domain.Aggregation
 import linea.domain.BlobAndBatchCounters
 import linea.domain.ProofToFinalize
-import linea.persistence.aggregation.AggregationsDao
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
+import linea.persistence.AggregationsDao
+import linea.persistence.AggregationsRepository
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant
 

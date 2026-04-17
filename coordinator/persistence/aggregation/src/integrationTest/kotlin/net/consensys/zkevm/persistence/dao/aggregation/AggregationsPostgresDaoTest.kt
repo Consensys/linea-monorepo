@@ -11,12 +11,12 @@ import linea.domain.BlobCounters
 import linea.domain.BlobRecord
 import linea.domain.BlockIntervals
 import linea.domain.ProofToFinalize
+import linea.domain.createProofToFinalize
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
 import net.consensys.zkevm.domain.createBlobRecordFromBatches
-import net.consensys.zkevm.domain.createProofToFinalize
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper

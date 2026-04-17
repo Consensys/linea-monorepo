@@ -6,7 +6,7 @@ import linea.domain.BlockInterval
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
 import linea.domain.toBlockIntervalsString
-import net.consensys.linea.metrics.LineaMetricsCategory
+import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import org.apache.logging.log4j.LogManager

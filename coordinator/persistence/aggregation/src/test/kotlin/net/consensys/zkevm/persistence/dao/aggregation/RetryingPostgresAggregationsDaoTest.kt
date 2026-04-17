@@ -4,10 +4,10 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlobAndBatchCounters
 import linea.domain.BlockIntervals
+import linea.domain.blobCounters
+import linea.domain.createAggregation
+import linea.domain.createProofToFinalize
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.domain.blobCounters
-import net.consensys.zkevm.domain.createAggregation
-import net.consensys.zkevm.domain.createProofToFinalize
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

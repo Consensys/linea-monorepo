@@ -8,9 +8,9 @@ import linea.domain.BlockHeaderSummary
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
 import linea.kotlin.ByteArrayExt
+import linea.metrics.LineaMetricsCategory
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.FakeHistogram
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.traces.TracesCountersV2

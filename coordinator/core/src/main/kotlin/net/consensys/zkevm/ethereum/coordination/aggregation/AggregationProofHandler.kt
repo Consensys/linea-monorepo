@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import linea.domain.Aggregation
 import linea.domain.AggregationProofIndex
-import net.consensys.zkevm.persistence.AggregationsRepository
+import linea.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

@@ -11,11 +11,11 @@ import linea.domain.BlobCounters
 import linea.domain.BlockIntervals
 import linea.domain.ProofToFinalize
 import linea.domain.toBlockIntervalsString
+import linea.error.DuplicatedRecordException
 import linea.kotlin.decodeHex
-import linea.persistence.aggregation.AggregationsDao
+import linea.persistence.AggregationsDao
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager

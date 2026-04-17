@@ -4,6 +4,8 @@ import build.linea.clients.StateManagerAccountProofClient
 import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.clients.InvalidityProverClientV1
+import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.contract.events.FactoryForcedTransactionAddedEvent
 import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.contract.events.ForcedTransactionAddedEvent
@@ -22,14 +24,12 @@ import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
 import linea.ftx.conflation.SafeBlockNumberUpdateListener
 import linea.log4j.configureLoggers
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.FakeForcedTransactionsDao
-import linea.persistence.ftx.ForcedTransactionRecord
-import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV4
 import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
-import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager

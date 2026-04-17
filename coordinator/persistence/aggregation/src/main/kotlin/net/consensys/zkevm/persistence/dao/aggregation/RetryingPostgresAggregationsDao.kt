@@ -3,7 +3,7 @@ package net.consensys.zkevm.persistence.dao.aggregation
 import linea.domain.Aggregation
 import linea.domain.BlobAndBatchCounters
 import linea.domain.ProofToFinalize
-import linea.persistence.aggregation.AggregationsDao
+import linea.persistence.AggregationsDao
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant

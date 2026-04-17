@@ -1,6 +1,8 @@
 package net.consensys.linea.contract.l1
 
 import build.linea.contract.LineaRollupV6
+import linea.contract.l1.BlockAndNonce
+import linea.contract.l1.LineaRollupSmartContractClient
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.domain.BlobRecord
 import linea.domain.BlockParameter.Companion.toBlockParameter
@@ -12,8 +14,6 @@ import linea.web3j.SmartContractErrors
 import linea.web3j.ethapi.createEthApiClient
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.crypto.Credentials

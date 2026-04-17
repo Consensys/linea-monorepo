@@ -4,10 +4,10 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.BlobCompressionProof
 import linea.domain.BlockIntervals
+import linea.domain.createBlobRecord
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

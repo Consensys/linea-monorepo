@@ -5,6 +5,8 @@ import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import linea.DisabledService
 import linea.LongRunningService
+import linea.clients.InvalidityProverClientV1
+import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.contract.Web3JContractVersionAwaiter
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.ContractVersionProvider
@@ -22,9 +24,7 @@ import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
 import linea.ftx.conflation.ForcedTransactionsInvalidityProofService
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.ftx.conflation.InvalidityProofAssembler
-import linea.persistence.ftx.ForcedTransactionsDao
-import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
-import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
+import linea.persistence.ForcedTransactionsDao
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
 import net.consensys.zkevm.ethereum.coordination.aggregation.SyncAggregationTriggerCalculator
 import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider

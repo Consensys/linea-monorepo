@@ -2,6 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Vertx
 import linea.LongRunningService
+import linea.clients.ProofAggregationProverClientV2
 import linea.domain.Aggregation
 import linea.domain.AggregationProofIndex
 import linea.domain.BlobAndBatchCounters
@@ -10,12 +11,11 @@ import linea.domain.BlockIntervals
 import linea.domain.CompressionProofIndex
 import linea.domain.ProofsToAggregate
 import linea.domain.toBlockIntervalsString
+import linea.metrics.LineaMetricsCategory
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

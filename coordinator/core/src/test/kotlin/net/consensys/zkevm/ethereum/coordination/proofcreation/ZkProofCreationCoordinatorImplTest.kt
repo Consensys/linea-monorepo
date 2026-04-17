@@ -2,6 +2,9 @@ package net.consensys.zkevm.ethereum.coordination.proofcreation
 
 import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import com.fasterxml.jackson.databind.node.ArrayNode
+import linea.clients.BatchExecutionProofRequestV1
+import linea.clients.ExecutionProverClientV2
+import linea.clients.GenerateTracesResponse
 import linea.contract.events.createL2RollingHashUpdatedEthLogV1
 import linea.contract.events.createMessageSentEthLogV1
 import linea.domain.BlocksConflation
@@ -14,9 +17,6 @@ import linea.kotlin.ByteArrayExt
 import linea.kotlin.encodeHex
 import linea.log4j.configureLoggers
 import net.consensys.linea.traces.fakeTracesCountersV2
-import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
-import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
-import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
 import org.apache.logging.log4j.Level
 import org.assertj.core.api.Assertions.assertThat

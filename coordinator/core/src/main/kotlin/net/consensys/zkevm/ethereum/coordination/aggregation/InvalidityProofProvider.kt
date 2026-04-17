@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import linea.domain.InvalidityProofIndex
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.persistence.ForcedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface InvalidityProofProvider {

@@ -1,5 +1,8 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
+import linea.clients.BatchExecutionProofRequestV1
+import linea.clients.InvalidityProofRequest
+import linea.clients.ProverClient
 import linea.domain.AggregationProofIndex
 import linea.domain.BlobCompressionProofRequest
 import linea.domain.CompressionProofIndex
@@ -8,9 +11,6 @@ import linea.domain.InvalidityProofIndex
 import linea.domain.ProofIndex
 import linea.domain.ProofsToAggregate
 import linea.domain.StartBlockTimestampProvider
-import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
-import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
-import net.consensys.zkevm.coordinator.clients.ProverClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant
 

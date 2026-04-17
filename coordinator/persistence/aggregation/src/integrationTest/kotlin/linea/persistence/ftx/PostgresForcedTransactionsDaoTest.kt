@@ -5,6 +5,8 @@ import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import linea.forcedtx.ForcedTransactionInclusionResult
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.dbValueToInclusionResult
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.dbValueToProofStatus
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.inclusionResultToDbValue

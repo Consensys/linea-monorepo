@@ -2,8 +2,8 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import linea.domain.BlobCounters
 import linea.domain.BlobsToAggregate
+import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.Counter
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

@@ -7,11 +7,11 @@ import io.vertx.sqlclient.Tuple
 import linea.domain.BlobCompressionProof
 import linea.domain.BlobRecord
 import linea.domain.BlobStatus
+import linea.error.DuplicatedRecordException
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.coordinator.clients.prover.serialization.BlobCompressionProofJsonResponse
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import net.consensys.zkevm.persistence.db.isDuplicateKeyException
 import org.apache.logging.log4j.Level

@@ -1,7 +1,7 @@
 package net.consensys.zkevm.persistence.dao.batch.persistence
 
 import linea.domain.Batch
-import net.consensys.zkevm.persistence.BatchesRepository
+import linea.persistence.BatchesRepository
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class PostgresBatchesRepository(

@@ -3,6 +3,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.clients.ProofAggregationProverClientV2
 import linea.domain.Aggregation
 import linea.domain.AggregationProofIndex
 import linea.domain.BlobAndBatchCounters
@@ -12,11 +13,10 @@ import linea.domain.BlockIntervals
 import linea.domain.CompressionProofIndex
 import linea.domain.InvalidityProofIndex
 import linea.domain.ProofsToAggregate
+import linea.domain.createProofToFinalize
+import linea.persistence.AggregationsRepository
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
-import net.consensys.zkevm.domain.createProofToFinalize
-import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test

@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import linea.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.blobCounters
+import linea.domain.blobCounters
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach

@@ -5,8 +5,8 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import linea.domain.BlockCounters
 import linea.domain.ConflationTrigger
+import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.Counter
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.traces.TracesCounters
