@@ -20,8 +20,8 @@ import (
 type AccountTrie struct {
 	Account       GnarkAccount
 	TargetHKey    koalagnark.Octuplet // Poseidon2(address) — always Hash(fromAddress)
-	ProofMinus    MerkleProofCircuit
-	ProofPlus     MerkleProofCircuit
+	ProofMinus    smt.MerkleProofKoalagnark
+	ProofPlus     smt.MerkleProofKoalagnark
 	LeafMinus     GnarkLeafOpening
 	LeafPlus      GnarkLeafOpening
 	AccountExists frontend.Variable
@@ -180,7 +180,7 @@ func assignOctuplet(dst *koalagnark.Octuplet, src types.KoalaOctuplet) {
 	}
 }
 
-func assignMerkleProof(mp *MerkleProofCircuit, lo MerkleLeafProof, root field.Octuplet) {
+func assignMerkleProof(mp *smt.MerkleProofKoalagnark, lo MerkleLeafProof, root field.Octuplet) {
 	mp.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(lo.Proof.Siblings))
 	for j := range lo.Proof.Siblings {
 		for i := 0; i < 8; i++ {
@@ -193,19 +193,6 @@ func assignMerkleProof(mp *MerkleProofCircuit, lo MerkleLeafProof, root field.Oc
 		mp.Leaf[i] = koalagnark.NewElementFromKoala(lo.Leaf[i])
 		mp.Root[i] = koalagnark.NewElementFromKoala(root[i])
 	}
-}
-
-// MerkleProofCircuit defines the circuit for validating a Merkle proof
-// using Poseidon2 over KoalaBear.
-type MerkleProofCircuit struct {
-	Proofs smt.KoalagnarkProof
-	Leaf   poseidon2_koalabear.KoalagnarkOctuplet
-	Root   poseidon2_koalabear.KoalagnarkOctuplet
-}
-
-// Define the constraints for a merkle proof using Poseidon2
-func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
-	return smt.KoalagnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root)
 }
 
 // Hash computes the Poseidon2 hash of the GnarkAccount using the provided hasher.
