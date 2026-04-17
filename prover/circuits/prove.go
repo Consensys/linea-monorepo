@@ -2,6 +2,7 @@ package circuits
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 
@@ -128,10 +129,14 @@ func SerializeProofSolidityBn254(proof plonk.Proof) string {
 }
 
 func tryReadCachedProof(setup Setup, cachedProofPath string, verifierOpts []backend.VerifierOption, witness witness.Witness) plonk.Proof {
-	logrus.Info("attempting to read cached proof")
+	logrus.Debug("attempting to read cached proof")
 	f, err := os.Open(cachedProofPath)
 	if err != nil {
-		logrus.Error(err)
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.Debug("no cached proof file, generating a new proof")
+		} else {
+			logrus.Errorf("could not open cached proof: %v", err)
+		}
 		return nil
 	}
 	defer f.Close()

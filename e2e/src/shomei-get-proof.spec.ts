@@ -10,7 +10,7 @@ import { createTestContext } from "./config/setup";
 const context = createTestContext();
 
 describe("Shomei Linea get proof test suite", () => {
-  const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+  const lineaRollupV8 = context.l1Contracts.lineaRollup(context.l1PublicClient());
   const lineaShomeiFrontendClient = context.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
   const lineaShomeiClient = context.l2PublicClient({ type: L2RpcEndpoint.Shomei });
 
@@ -23,7 +23,7 @@ describe("Shomei Linea get proof test suite", () => {
       let targetL2BlockNumber = await awaitUntil(
         async () => {
           try {
-            return await lineaRollupV6.read.currentL2BlockNumber({ blockTag: "latest" });
+            return await lineaRollupV8.read.currentL2BlockNumber({ blockTag: "latest" });
           } catch (err) {
             if (err instanceof ContractFunctionExecutionError) {
               if (err.shortMessage.includes(`returned no data ("0x")`)) {
@@ -60,7 +60,7 @@ describe("Shomei Linea get proof test suite", () => {
             }
           }
           if (!getProofResponse) {
-            const latestFinalizedL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber({
+            const latestFinalizedL2BlockNumber = await lineaRollupV8.read.currentL2BlockNumber({
               blockTag: "latest",
             });
             if (!finalizedL2BlockNumbers.includes(latestFinalizedL2BlockNumber)) {
