@@ -3,6 +3,10 @@
 name: slack-notify-e2e-runtime-report
 
 on:
+  # TEMPORARY: remove before merging - triggers on PR to validate full flow
+  pull_request:
+    branches:
+      - feat-e2e-ci-runtime-report
   workflow_dispatch:
     inputs:
       days:
