@@ -1,6 +1,6 @@
 package linea.domain
 
-import linea.domain.Constants.LINEA_BLOCK_INTERVAL
+import linea.domain.TestConstants.LINEA_BLOCK_INTERVAL
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
 import kotlin.random.Random
@@ -36,7 +36,7 @@ fun createBlobRecord(
   val resolvedEndBlockNumber = endBlockNumber ?: blobCompressionProof!!.conflationOrder.upperBoundaries.last()
   val resolvedStartBlockTime = startBlockTime?.trimToSecondPrecision() ?: Clock.System.now().trimToSecondPrecision()
   val endBlockTime = resolvedStartBlockTime
-    .plus(Constants.LINEA_BLOCK_INTERVAL.times((resolvedEndBlockNumber - resolvedStartBlockNumber).toInt()))
+    .plus(LINEA_BLOCK_INTERVAL.times((resolvedEndBlockNumber - resolvedStartBlockNumber).toInt()))
     .trimToSecondPrecision()
   val finalStateRootHash = Random.nextBytes(32).setFirstByteToZero()
   val resolvedParentStateRootHash = (
@@ -144,7 +144,7 @@ fun createBlobRecordFromBatches(batches: List<Batch>, blobCompressionProof: Blob
   val endBlockNumber = batches.last().endBlockNumber
   val startBlockTime: Instant = Clock.System.now().trimToSecondPrecision()
   val endBlockTime = startBlockTime
-    .plus(Constants.LINEA_BLOCK_INTERVAL.times((endBlockNumber - startBlockNumber).toInt()))
+    .plus(LINEA_BLOCK_INTERVAL.times((endBlockNumber - startBlockNumber).toInt()))
     .trimToSecondPrecision()
 
   return BlobRecord(
