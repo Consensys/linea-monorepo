@@ -3,6 +3,7 @@ import { resolve } from "path";
 
 import { SequencerPluginName } from "../../config/clients/linea-rpc/sequencer-plugins";
 import { toLowercaseLines } from "../utils/string";
+import { awaitUntil } from "../utils/wait";
 
 import type { PluginsReloadPluginConfigParameters } from "../../config/clients/linea-rpc/plugins-reload-plugin-config";
 
@@ -138,10 +139,47 @@ export async function removeFromDenyList(
   await withDenyListLock(async () => removeFromDenyListUnlocked(client, normalizedAddresses, denyListPath));
 }
 
+const DENY_LIST_EFFECT_POLL_INTERVAL_MS = 500;
+const DENY_LIST_EFFECT_TIMEOUT_MS = 30_000;
+
+/**
+ * Polls `probe` until it rejects with an error whose message includes "blocked",
+ * confirming the sequencer's in-memory deny list has been updated after an async reload.
+ *
+ * Use this immediately after `addToDenyList` / `reloadDenyList` when the sequencer
+ * plugin reloads asynchronously (`CompletableFuture.supplyAsync`) and you need to
+ * guarantee the deny list is active before proceeding.
+ */
+export async function waitForDenyListEffect(
+  probe: () => Promise<unknown>,
+  options: { timeoutMs?: number; pollingIntervalMs?: number } = {},
+): Promise<void> {
+  const { timeoutMs = DENY_LIST_EFFECT_TIMEOUT_MS, pollingIntervalMs = DENY_LIST_EFFECT_POLL_INTERVAL_MS } = options;
+
+  await awaitUntil(
+    async () => {
+      try {
+        await probe();
+        return false;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.toLowerCase().includes("blocked")) {
+          return true;
+        }
+        // Re-throw unexpected errors so awaitUntil logs them as transient and retries.
+        throw error;
+      }
+    },
+    (isBlocked) => isBlocked,
+    { timeoutMs, pollingIntervalMs },
+  );
+}
+
 export async function withDenyListAddresses(
   client: DenyListControlClient,
   addresses: readonly string[],
   run: () => Promise<void>,
+  verifyEffect: () => Promise<unknown>,
   denyListPath: string = DEFAULT_DENY_LIST_PATH,
 ): Promise<void> {
   const normalizedAddresses = normalizeAddresses(addresses);
@@ -153,6 +191,7 @@ export async function withDenyListAddresses(
   await withDenyListLock(async () => {
     try {
       await addToDenyListUnlocked(client, normalizedAddresses, denyListPath);
+      await waitForDenyListEffect(verifyEffect);
       await run();
     } finally {
       await removeFromDenyListUnlocked(client, normalizedAddresses, denyListPath);
