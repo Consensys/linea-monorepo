@@ -177,21 +177,36 @@ async function main() {
     "0xB7De4A2cf9E1c6a0B5f8d3e7a9C4B1a2e6d0f5C8",
   ]);
 
-  const lineaRollupContract = await deployContractFromArtifacts(
-    lineaRollupName,
-    TransparentUpgradeableProxyAbi,
-    TransparentUpgradeableProxyBytecode,
-    wallet,
-    lineaRollupImplementationAddress,
-    proxyAdminAddress,
-    initializer,
-    {
-      nonce: walletNonce + 4,
-      gasPrice,
-    },
-  );
+  const [lineaRollupContract, mimc] = await Promise.all([
+    deployContractFromArtifacts(
+      lineaRollupName,
+      TransparentUpgradeableProxyAbi,
+      TransparentUpgradeableProxyBytecode,
+      wallet,
+      lineaRollupImplementationAddress,
+      proxyAdminAddress,
+      initializer,
+      {
+        nonce: walletNonce + 4,
+        gasPrice,
+      },
+    ),
+    deployContractFromArtifacts(
+      MimcAddressContractName,
+      MimcAddressAbi,
+      MimcAddressFilterBytecode,
+      wallet,
+      {
+        nonce: walletNonce + 5,
+        gasPrice,
+      },
+    ),
+  ]);
 
-  const lineaRollupAddress = await lineaRollupContract.getAddress();
+  const [lineaRollupAddress, mimcAddress] = await Promise.all([
+    lineaRollupContract.getAddress(),
+    mimc.getAddress(),
+  ]);
 
   const args = [
     lineaRollupAddress,
@@ -204,19 +219,6 @@ async function main() {
     l2BlockDurationSeconds,
     blockNumberDeadlineBuffer,
   ];
-
-  const mimc = await deployContractFromArtifacts(
-    MimcAddressContractName,
-    MimcAddressAbi,
-    MimcAddressFilterBytecode,
-    wallet,
-    {
-      nonce: walletNonce + 5,
-      gasPrice,
-    },
-  );
-
-  const mimcAddress = await mimc.getAddress();
 
   const forcedTransactionGateway = await deployContractFromArtifacts(
     forcedTransactionGatewayName,
