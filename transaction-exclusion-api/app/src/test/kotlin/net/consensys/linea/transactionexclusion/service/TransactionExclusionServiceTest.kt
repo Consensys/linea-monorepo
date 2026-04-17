@@ -8,7 +8,7 @@ import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

@@ -14,13 +14,13 @@ import linea.domain.ProofToFinalize
 import linea.domain.createProofToFinalize
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.domain.createAggregation
-import net.consensys.zkevm.domain.createBatch
-import net.consensys.zkevm.domain.createBlobRecordFromBatches
+import linea.domain.createAggregation
+import linea.domain.createBatch
+import linea.domain.createBlobRecordFromBatches
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat

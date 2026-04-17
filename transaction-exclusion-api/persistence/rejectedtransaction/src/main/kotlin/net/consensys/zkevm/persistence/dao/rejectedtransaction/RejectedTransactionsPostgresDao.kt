@@ -10,7 +10,7 @@ import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import net.consensys.zkevm.persistence.db.isDuplicateKeyException
 import org.apache.logging.log4j.Level

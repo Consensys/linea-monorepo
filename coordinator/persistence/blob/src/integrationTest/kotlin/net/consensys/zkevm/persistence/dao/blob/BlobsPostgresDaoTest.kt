@@ -11,9 +11,9 @@ import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.domain.createBlobRecord
+import linea.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach

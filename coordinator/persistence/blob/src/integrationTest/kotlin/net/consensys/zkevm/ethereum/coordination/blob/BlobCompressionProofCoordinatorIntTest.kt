@@ -8,19 +8,21 @@ import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.clients.BlobCompressionProverClientV2
 import linea.domain.Blob
 import linea.domain.BlobCompressionProof
 import linea.domain.BlobCompressionProofRequest
+import linea.domain.BlobShnarfCalculator
 import linea.domain.BlockIntervals
 import linea.domain.CompressionProofIndex
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
+import linea.domain.FakeBlobShnarfCalculator
 import linea.domain.ProofIndex
 import linea.kotlin.ByteArrayExt
+import linea.persistence.BlobsRepository
 import net.consensys.linea.traces.TracesCountersV2
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
-import net.consensys.zkevm.domain.createBlobRecord
-import net.consensys.zkevm.persistence.BlobsRepository
+import linea.domain.createBlobRecord
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
@@ -66,7 +68,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       }
     }
   private lateinit var blobsPostgresDao: BlobsPostgresDao
-  private lateinit var blobCompressionProofCoordinator: BlobCompressionProofCoordinator
+    private lateinit var blobCompressionProofCoordinator: BlobCompressionProofCoordinator
 
   private val expectedStartBlock = 1UL
   private val expectedEndBlock = 100UL

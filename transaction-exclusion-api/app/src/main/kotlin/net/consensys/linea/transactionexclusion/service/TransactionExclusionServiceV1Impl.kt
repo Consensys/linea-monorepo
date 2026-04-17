@@ -11,7 +11,7 @@ import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1.SaveRejectedTransactionStatus
 import net.consensys.linea.transactionexclusion.metrics.LineaMetricsCategory
 import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Clock
 import kotlin.time.Duration

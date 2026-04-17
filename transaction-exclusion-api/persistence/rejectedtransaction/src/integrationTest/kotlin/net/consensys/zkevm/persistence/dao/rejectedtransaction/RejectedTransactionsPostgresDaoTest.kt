@@ -16,7 +16,7 @@ import net.consensys.linea.transactionexclusion.TransactionInfo
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.linea.transactionexclusion.test.rejectedContractDeploymentTransaction
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.DuplicatedRecordException
+import linea.error.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
