@@ -39,20 +39,12 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 #v5.2.0
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
-      # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
+      - name: Set up Java and Gradle
+        uses: ./.github/actions/setup-java-and-gradle
 
       - name: Clean
         # ./gradlew clean is necessary because the build is cached
@@ -81,7 +73,7 @@ jobs:
       # Persist logs
       - name: JReleaser release output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jreleaser-release
           path: |

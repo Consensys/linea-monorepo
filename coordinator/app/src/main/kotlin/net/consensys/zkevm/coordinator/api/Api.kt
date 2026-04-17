@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.api
 
+import io.vertx.core.Deployable
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.Vertx
@@ -14,15 +15,18 @@ import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.vertx.ObservabilityServer
 import net.consensys.zkevm.coordinator.api.requesthandlers.ConflationCreateProverRequestHandler
 import net.consensys.zkevm.coordinator.api.requesthandlers.ConflationGetJobStatusRequestHandler
+import net.consensys.zkevm.coordinator.api.requesthandlers.ConflationTargetCheckpointResumeRequestHandler
 import net.consensys.zkevm.coordinator.app.conflationbacktesting.ConflationBacktestingService
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
+import java.util.function.Supplier
 
 class Api(
   private val configs: Config,
   private val vertx: Vertx,
   private val conflationBacktestingService: ConflationBacktestingService,
   private val metricsFacade: MetricsFacade,
+  private val conflationCheckpointResumeLatch: () -> Boolean,
 ) : LongRunningService {
   data class Config(
     val observabilityPort: UInt,
@@ -30,6 +34,7 @@ class Api(
     val jsonRpcPath: String,
     val jsonRpcServerVerticles: Int,
   )
+
   private val log = LogManager.getLogger(Api::class.java)
 
   private var observabilityServerId: String? = null
@@ -49,6 +54,8 @@ class Api(
         ConflationCreateProverRequestHandler(conflationBacktestingService = conflationBacktestingService),
       ConflationGetJobStatusRequestHandler.METHOD_NAME to
         ConflationGetJobStatusRequestHandler(conflationBacktestingService = conflationBacktestingService),
+      ConflationTargetCheckpointResumeRequestHandler.METHOD_NAME to
+        ConflationTargetCheckpointResumeRequestHandler(signalResume = conflationCheckpointResumeLatch),
     )
     val messageHandler: JsonRpcMessageHandler =
       JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlers), metricsFacade)
@@ -64,7 +71,7 @@ class Api(
     }
     return vertx
       .deployVerticle(
-        {
+        Supplier<Deployable> {
           HttpJsonRpcServer(configs.jsonRpcPort, configs.jsonRpcPath, HttpRequestHandler(messageHandler))
             .also {
               httpServer = it

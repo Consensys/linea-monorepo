@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import kotlin.time.Instant;
 import linea.blob.BlobCompressorSelectorByTimestamp;
@@ -52,7 +51,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
@@ -135,7 +133,7 @@ class LineaTransactionSelectorFactoryTest {
     final var transactionCompressor =
         new CachingTransactionCompressor(
             new BlobCompressorSelectorByTimestamp(
-                Map.of(BlobCompressorVersion.V2, Instant.Companion.getDISTANT_PAST()), 128 * 1024));
+                Map.of(BlobCompressorVersion.V3, Instant.Companion.getDISTANT_PAST()), 128 * 1024));
     TransactionProfitabilityCalculator transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(
             mockProfitabilityConfiguration, transactionCompressor);
@@ -155,14 +153,13 @@ class LineaTransactionSelectorFactoryTest {
             bundlePool,
             mockForcedTransactionPoolService,
             invalidTransactionByLineCountCache,
-            new AtomicReference<>(Collections.emptyMap()),
-            new AtomicReference<>(Collections.emptyMap()),
-            new AtomicReference<>(Collections.emptySet()),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptySet(),
             transactionProfitabilityCalculator,
             transactionCompressor,
             null);
-    factory.create(
-        BlockHeaderBuilder.createDefault().buildBlockHeader(), new SelectorsStateManager());
+    factory.create(mock(ProcessableBlockHeader.class), new SelectorsStateManager());
   }
 
   @Test
@@ -276,8 +273,8 @@ class LineaTransactionSelectorFactoryTest {
   }
 
   static class FailedTransactionSelectionResultProvider implements ArgumentsProvider {
-    @Override
     @SuppressWarnings("deprecation")
+    @Override
     public Stream<? extends Arguments> provideArguments(
         org.junit.jupiter.api.extension.ExtensionContext context) {
       return Stream.of(

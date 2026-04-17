@@ -87,6 +87,8 @@ class ConflationParsingTest {
             Instant.fromEpochSeconds(1758083127L),
           ),
           waitForNoL2ActivityToTriggerAggregation = true,
+          waitTargetBlockL1Finalization = false,
+          waitApiResumeAfterTargetBlock = false,
         ),
       )
 
@@ -108,7 +110,7 @@ class ConflationParsingTest {
           blobSizeLimit = 102_400U,
           handlerPollingInterval = 1.seconds,
           batchesLimit = null,
-          blobCompressorVersion = BlobCompressorVersion.V1_2,
+          blobCompressorVersion = BlobCompressorVersion.V3,
         ),
         proofAggregation =
         ConflationToml.ProofAggregationToml(
@@ -118,6 +120,8 @@ class ConflationParsingTest {
           coordinatorPollingInterval = 3.seconds,
           targetEndBlocks = null,
           timestampBasedHardForks = emptyList(),
+          waitTargetBlockL1Finalization = false,
+          waitApiResumeAfterTargetBlock = false,
         ),
       )
 
@@ -134,9 +138,9 @@ class ConflationParsingTest {
 
     @JvmStatic
     fun blobCompressionVersionTestCases(): Stream<Arguments> = Stream.of(
-      Arguments.of(BlobCompressorVersion.V1_2, ShnarfCalculatorVersion.V1_2),
       Arguments.of(BlobCompressorVersion.V2, ShnarfCalculatorVersion.V1_2),
       Arguments.of(BlobCompressorVersion.V3, ShnarfCalculatorVersion.V3),
+      Arguments.of(BlobCompressorVersion.V4, ShnarfCalculatorVersion.V3),
     )
   }
 

@@ -25,8 +25,9 @@ class BlockCreationMonitor(
   private val ethApi: EthApiBlockClient,
   private val startingBlockNumberExclusive: Long,
   private val blockCreationListener: BlockCreationListener,
-  private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
+  private val lastProvenBlockNumberProviderSync: LastProvenBlockNumberProviderSync,
   private val config: Config,
+  private val targetCheckpointPauseController: TargetCheckpointPauseController,
   private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java),
 ) : VertxPeriodicPollingService(
   vertx = vertx,
@@ -100,9 +101,13 @@ class BlockCreationMonitor(
   }
 
   override fun action(): SafeFuture<*> {
+    if (targetCheckpointPauseController.shouldPauseConflation()) {
+      log.trace("target checkpoint pause: skipping tick nexBlockNumberToFetch={}", nexBlockNumberToFetch)
+      return SafeFuture.completedFuture(Unit)
+    }
     log.trace("tick start: nexBlockNumberToFetch={}", nexBlockNumberToFetch)
-    return lastProvenBlockNumberProviderAsync.getLastProvenBlockNumber()
-      .thenCompose { lastProvenBlockNumber ->
+    return lastProvenBlockNumberProviderSync.getLastKnownProvenBlockNumber()
+      .let { lastProvenBlockNumber ->
         if (!nextBlockNumberWithinLimit(lastProvenBlockNumber)) {
           log.warn(
             "Gap between highest consecutive proven block and L2 block is too big: lastProvenBlock={} " +
@@ -149,12 +154,13 @@ class BlockCreationMonitor(
                         _nexBlockNumberToFetch.incrementAndGet(),
                       )
                       expectedParentBlockHash.set(block.hash)
+                      targetCheckpointPauseController.importBlock(block)
                     }
                 } else {
                   reorgDetected.set(true)
                   log.error(
-                    "Shooting down conflation poller, " +
-                      "chain reorg detected: block { blockNumber={} hash={} parentHash={} } should have parentHash={}",
+                    "Shooting down conflation poller, chain reorg detected: " +
+                      "block { blockNumber={} hash={} parentHash={} } should have parentHash={}",
                     block.number,
                     block.hash.encodeHex(),
                     block.parentHash.encodeHex(),
