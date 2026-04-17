@@ -64,6 +64,11 @@ type SubModuleParameters struct {
 	NumRowAux int
 }
 
+const (
+	smallerSegmentName   string = "smaller-segment"
+	realisticSegmentName string = "realistic-segment"
+)
+
 var (
 	benchCases = []StdBenchmarkCase{
 		// {
@@ -96,7 +101,36 @@ var (
 			// cat /sys/kernel/mm/transparent_hugepage/enabled
 			// if not:
 			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
-			Name: "realistic-segment",
+			Name: smallerSegmentName,
+			Permutations: SubModuleParameters{
+				Count:  5,
+				NumCol: 3,
+				NumRow: 1 << 17,
+			},
+			Lookup: SubModuleParameters{
+				Count:     50,
+				NumCol:    3,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
+			},
+			Projection: SubModuleParameters{
+				Count:     5,
+				NumCol:    3,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
+			},
+			Fibo: SubModuleParameters{
+				Count:  200,
+				NumRow: 1 << 17,
+			},
+		},
+		{
+			// run with GOGC=200 and
+			// ensure THP is enabled:
+			// cat /sys/kernel/mm/transparent_hugepage/enabled
+			// if not:
+			// echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+			Name: realisticSegmentName,
 			Permutations: SubModuleParameters{
 				Count:  5,
 				NumCol: 3,
@@ -119,30 +153,6 @@ var (
 				NumRow: 1 << 20,
 			},
 		},
-		// {
-		// 	Name: "smaller-segment",
-		// 	Permutations: SubModuleParameters{
-		// 		Count:  1,
-		// 		NumCol: 3,
-		// 		NumRow: 1 << 19,
-		// 	},
-		// 	Lookup: SubModuleParameters{
-		// 		Count:     5,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 19,
-		// 		NumRowAux: 1 << 19,
-		// 	},
-		// 	Projection: SubModuleParameters{
-		// 		Count:     1,
-		// 		NumCol:    3,
-		// 		NumRow:    1 << 19,
-		// 		NumRowAux: 1 << 19,
-		// 	},
-		// 	Fibo: SubModuleParameters{
-		// 		Count:  20,
-		// 		NumRow: 1 << 19,
-		// 	},
-		// },
 	}
 )
 
@@ -169,8 +179,36 @@ func BenchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkProfileSelfRecursion allows running benchmark experiments of the
+// prover with medium memory requirement. Experiments have shown that this
+// can run on a 64 GiB machine.
 func BenchmarkProfileSelfRecursion(b *testing.B) {
+	BenchmarkProfileSelfRecursionRealistic(b)
+}
+
+// BenchmarkProfileSelfRecursion allows running benchmark experiments of the
+// prover with medium memory requirement. Experiments have shown that this
+// can run on a 64 GiB machine.
+func BenchmarkProfileSelfRecursionRealistic(b *testing.B) {
 	for _, bc := range benchCases {
+		if bc.Name != realisticSegmentName {
+			continue
+		}
+		b.Run(bc.Name, func(b *testing.B) {
+			profileSelfRecursionCompilation(b, bc)
+		})
+	}
+}
+
+// BenchmarkProfileSelfRecursionSmaller allows running benchmark experiments of
+// the prover with low memory requirement. Experiments have shown that this
+// could run under 14 GiB on a laptop.
+func BenchmarkProfileSelfRecursionSmaller(b *testing.B) {
+	for _, bc := range benchCases {
+		if bc.Name != smallerSegmentName {
+			continue
+		}
 		b.Run(bc.Name, func(b *testing.B) {
 			profileSelfRecursionCompilation(b, bc)
 		})
@@ -301,7 +339,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		),
 	)
 
-	nbIteration := 2
+	nbIteration := 1
 
 	for i := 0; i < nbIteration; i++ {
 		applySelfRecursionThenArcane(comp, params)
