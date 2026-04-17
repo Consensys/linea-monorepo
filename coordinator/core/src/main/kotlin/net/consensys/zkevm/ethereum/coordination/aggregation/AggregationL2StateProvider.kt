@@ -19,7 +19,11 @@ class AggregationL2StateProviderImpl(
   private data class AnchoredMessage(
     val messageNumber: ULong,
     val rollingHash: ByteArray,
-  )
+  ) {
+    companion object {
+      val GENESIS = AnchoredMessage(0uL, ByteArray(32))
+    }
+  }
 
   private data class FtxRollingInfo(
     val ftxNumber: ULong,
@@ -37,7 +41,7 @@ class AggregationL2StateProviderImpl(
         if (blockNumber < deploymentBlockNumber) {
           // this happens always at 1st conflation, where the block number is 0
           // will happen until message service is deployed
-          SafeFuture.completedFuture(AnchoredMessage(0UL, ByteArray(32)))
+          SafeFuture.completedFuture(AnchoredMessage.GENESIS)
         } else {
           messageService
             .getLastAnchoredL1MessageNumber(block = blockNumber.toBlockParameter())
@@ -68,10 +72,9 @@ class AggregationL2StateProviderImpl(
   }
 
   override fun getAggregationL2State(blockNumber: Long): SafeFuture<AggregationL2State> {
-    val blockParameter = blockNumber.toBlockParameter()
     val anchoredMessageFuture = getLastAnchoredMessage(blockNumber.toULong())
     val aggregationFtxNumbersFuture = getAggregationFtxRollingInfo(blockNumber.toULong())
-    val blockFuture = ethApiClient.ethGetBlockByNumberTxHashes(blockParameter)
+    val blockFuture = ethApiClient.ethGetBlockByNumberTxHashes(blockNumber.toBlockParameter())
 
     return SafeFuture
       .allOf(anchoredMessageFuture, aggregationFtxNumbersFuture, blockFuture)
