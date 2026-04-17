@@ -123,8 +123,11 @@ func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP) {
 		filtersB[i] = l.OriginalMask
 	}
 
+	if !comp.QueriesNoParams.Exists(ifaces.QueryIDf("%v_MUST_BE_BINARY", l.OriginalMask.GetColID())) {
+		commonconstraints.MustBeBinary(comp, l.OriginalMask)
+	}
+
 	commonconstraints.MustBeBinary(comp, l.Mask)
-	commonconstraints.MustBeBinary(comp, l.OriginalMask)
 
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.OriginalMask.GetColID()),
