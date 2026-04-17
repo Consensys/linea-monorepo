@@ -124,7 +124,11 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			if ctx.StreamingCommitment {
+				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSISStreaming(pols, ctx.StreamingBatchSize)
+			} else {
+				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			}
 		}
 
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
