@@ -323,11 +323,17 @@ jobs:
         publish-images-after-run-tests-success-on-main,
         cleanup-deployments,
       ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') }} # TEMPORARY: branch guard removed for testing
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: "Main workflow Failed"
       run_id: ${{ github.run_id }}
+      enable_ai_analysis: true
     secrets:
       channel_id: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
       slack_bot_token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
