@@ -1,0 +1,51 @@
+{
+  "$schema": "./schema.json",
+  "network": "mainnet",
+  "chainId": 1,
+  "contracts": {
+    "LineaRollup": {
+      "address": "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
+      "notes": "Transparent upgradeable proxy"
+    },
+    "Validium": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet Validium proxy address"
+    },
+    "TokenBridge_L1": {
+      "address": "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
+      "notes": "Transparent upgradeable proxy"
+    },
+    "CallForwardingProxy": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet CallForwardingProxy address"
+    },
+    "YieldManager": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet YieldManager proxy address"
+    },
+    "AddressFilter": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet AddressFilter address"
+    },
+    "L1_SECURITY_COUNCIL": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet L1 Security Council multisig address"
+    },
+    "NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet yield automation service operator address"
+    },
+    "VAULT_HUB": {
+      "address": "0x1d201BE093d847f6446530Efb0E8Fb426d176709",
+      "notes": "Lido VaultHub proxy (Lido v3 mainnet)"
+    },
+    "VAULT_FACTORY": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with mainnet Lido VaultFactory address (not yet published by Lido)"
+    },
+    "STETH": {
+      "address": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+      "notes": "Lido stETH token proxy (mainnet)"
+    }
+  }
+}

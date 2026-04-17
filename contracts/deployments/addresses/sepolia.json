@@ -1,0 +1,51 @@
+{
+  "$schema": "./schema.json",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contracts": {
+    "LineaRollup": {
+      "address": "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5",
+      "notes": "Transparent upgradeable proxy on Sepolia L1"
+    },
+    "Validium": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia Validium proxy address"
+    },
+    "TokenBridge_L1": {
+      "address": "0x5A0a48389BB0f12E5e846C59cD2E27C44C84bE77",
+      "notes": "Transparent upgradeable proxy on Sepolia L1"
+    },
+    "CallForwardingProxy": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia CallForwardingProxy address"
+    },
+    "YieldManager": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia YieldManager proxy address"
+    },
+    "AddressFilter": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia AddressFilter address"
+    },
+    "L1_SECURITY_COUNCIL": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia L1 Security Council address"
+    },
+    "NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia yield automation service operator address"
+    },
+    "VAULT_HUB": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia Lido VaultHub address (Lido Sepolia deprecated; confirm with team)"
+    },
+    "VAULT_FACTORY": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia Lido VaultFactory address (Lido Sepolia deprecated; confirm with team)"
+    },
+    "STETH": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Sepolia stETH address (Lido Sepolia deprecated; confirm with team)"
+    }
+  }
+}

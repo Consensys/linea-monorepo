@@ -1,3 +1,4 @@
+import { network } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import {
@@ -12,6 +13,8 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
+  requireAddressOrRegistry,
+  validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
@@ -23,10 +26,14 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY (OpenZeppelin transparent). Hardhat Upgrades may reuse an
   // implementation and/or ProxyAdmin from `.openzeppelin/` for this network, so you might sign fewer than three txs.
-  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = validateAddressEnvVar("PLONKVERIFIER_ADDRESS");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
+  const lineaRollupSecurityCouncil = requireAddressOrRegistry(
+    network.name,
+    "L1_SECURITY_COUNCIL",
+    "L1_SECURITY_COUNCIL",
+  );
   const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
@@ -39,7 +46,7 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
     { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
   ]);
   const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
-  const yieldManagerAddress = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
+  const yieldManagerAddress = requireAddressOrRegistry(network.name, "YieldManager", "YIELD_MANAGER_ADDRESS");
 
   const contract = await deployUpgradableFromFactory(
     "LineaRollup",

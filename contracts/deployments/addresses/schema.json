@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://linea.build/contracts/deployments/addresses/schema.json",
+  "title": "Linea Contract Address Registry",
+  "description": "Per-network registry of stable deployed contract addresses. Manually maintained. Update via PR.",
+  "type": "object",
+  "required": ["network", "chainId", "contracts"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "network": {
+      "type": "string",
+      "description": "Hardhat network name matching hardhat.config.ts"
+    },
+    "chainId": {
+      "type": "integer",
+      "description": "EVM chain ID for this network"
+    },
+    "contracts": {
+      "type": "object",
+      "description": "Map of stable contract keys to their deployed addresses",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["address"],
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "EIP-55 checksummed address",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional human-readable notes (e.g. proxy type, multisig info)"
+          }
+        }
+      }
+    }
+  }
+}

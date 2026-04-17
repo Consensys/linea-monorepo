@@ -9,7 +9,7 @@ import { ethers, upgrades } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
-import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
+import { tryVerifyContract, requireAddressOrRegistry } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(
@@ -20,8 +20,12 @@ const func: DeployFunction = withSignerUiSession(
     let upgradeUnpauseTypeRoles = [];
     let upgradeRoleAddresses = [];
 
-    const securityCouncilAddress = getRequiredEnvVar("L1_SECURITY_COUNCIL");
-    const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
+    const securityCouncilAddress = requireAddressOrRegistry(
+      hre.network.name,
+      "L1_SECURITY_COUNCIL",
+      "L1_SECURITY_COUNCIL",
+    );
+    const proxyAddress = requireAddressOrRegistry(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
 
     upgradeRoleAddresses = [
       {

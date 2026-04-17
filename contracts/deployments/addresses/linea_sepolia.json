@@ -1,0 +1,23 @@
+{
+  "$schema": "./schema.json",
+  "network": "linea_sepolia",
+  "chainId": 59141,
+  "contracts": {
+    "L2MessageService": {
+      "address": "0x971e727e956690b9957be6d51Ec16E73AcAC83A7",
+      "notes": "Transparent upgradeable proxy on Linea Sepolia"
+    },
+    "TokenBridge_L2": {
+      "address": "0x93BcA57C8B1e87827b44ae4c40b8F3c1Ffbc0538",
+      "notes": "Transparent upgradeable proxy on Linea Sepolia"
+    },
+    "RollupRevenueVault": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Linea Sepolia RollupRevenueVault proxy address"
+    },
+    "L2_SECURITY_COUNCIL": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Linea Sepolia L2 Security Council address"
+    }
+  }
+}

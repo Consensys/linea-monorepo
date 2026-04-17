@@ -1,0 +1,43 @@
+{
+  "$schema": "./schema.json",
+  "network": "hoodi",
+  "chainId": 560048,
+  "contracts": {
+    "LineaRollup": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi LineaRollup proxy address"
+    },
+    "Validium": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi Validium proxy address"
+    },
+    "TokenBridge_L1": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi TokenBridge L1 proxy address"
+    },
+    "CallForwardingProxy": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi CallForwardingProxy address"
+    },
+    "L1_SECURITY_COUNCIL": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi L1 Security Council address"
+    },
+    "NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Hoodi yield automation service operator address"
+    },
+    "VAULT_HUB": {
+      "address": "0x4C9fFC325392090F789255b9948Ab1659b797964",
+      "notes": "Lido VaultHub proxy (Hoodi, Lido v3.0.1)"
+    },
+    "VAULT_FACTORY": {
+      "address": "0x7Ba269a03eeD86f2f54CB04CA3b4b7626636Df4E",
+      "notes": "Lido Staking Vault Factory (Hoodi, Lido v3.0.1)"
+    },
+    "STETH": {
+      "address": "0x3508A952176b3c15387C97BE809eaffB1982176a",
+      "notes": "Lido stETH token proxy (Hoodi)"
+    }
+  }
+}

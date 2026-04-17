@@ -1,0 +1,23 @@
+{
+  "$schema": "./schema.json",
+  "network": "linea_mainnet",
+  "chainId": 59144,
+  "contracts": {
+    "L2MessageService": {
+      "address": "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
+      "notes": "Transparent upgradeable proxy on Linea mainnet"
+    },
+    "TokenBridge_L2": {
+      "address": "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
+      "notes": "Transparent upgradeable proxy on Linea mainnet"
+    },
+    "RollupRevenueVault": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Linea mainnet RollupRevenueVault proxy address"
+    },
+    "L2_SECURITY_COUNCIL": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "notes": "TODO: fill with Linea mainnet L2 Security Council multisig address"
+    }
+  }
+}

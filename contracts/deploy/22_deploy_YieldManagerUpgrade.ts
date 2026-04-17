@@ -1,14 +1,18 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
-import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import {
+  requireAddressOrRegistry,
+  LogContractDeployment,
+  tryVerifyContractWithConstructorArgs,
+} from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 
 const func: DeployFunction = withSignerUiSession(
   "22_deploy_YieldManagerUpgrade.ts",
   async function (hre: HardhatRuntimeEnvironment) {
-    const lineaRollupAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
+    const lineaRollupAddress = requireAddressOrRegistry(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
 
     console.log("Deploying Contract...");
     const signer = await getUiSigner(hre);

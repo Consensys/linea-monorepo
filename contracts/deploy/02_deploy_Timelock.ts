@@ -2,7 +2,12 @@ import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
-import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import {
+  LogContractDeployment,
+  getRequiredEnvVar,
+  validateAddressEnvVar,
+  tryVerifyContractWithConstructorArgs,
+} from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
@@ -20,7 +25,7 @@ const func: DeployFunction = withSignerUiSession(
     const timelockExecutors = getRequiredEnvVar("TIMELOCK_EXECUTORS");
 
     // This should be the safe
-    const adminAddress = getRequiredEnvVar("TIMELOCK_ADMIN_ADDRESS");
+    const adminAddress = validateAddressEnvVar("TIMELOCK_ADMIN_ADDRESS");
 
     const minDelay = process.env.MIN_DELAY || 0;
 

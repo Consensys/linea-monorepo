@@ -1,3 +1,4 @@
+import { network } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import {
@@ -12,6 +13,8 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
+  requireAddressOrRegistry,
+  validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
@@ -22,10 +25,10 @@ const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async 
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = validateAddressEnvVar("PLONKVERIFIER_ADDRESS");
   const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
-  const validiumSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
+  const validiumSecurityCouncil = requireAddressOrRegistry(network.name, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
   const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
