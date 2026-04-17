@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/linea-monorepo/prover/crypto/sha2"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -114,7 +113,6 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 	for _, pa := range sbh.ProverActions {
 		pa.Run(run)
 	}
-	assignSumLimbsIsZero(run, sbh)
 	sbh.EntireLimbsIntervalIsZero.Run(run)
 
 	if sbh.HasCircuit {
@@ -159,27 +157,6 @@ func (sbha *sha2BlockHashingAssignment) pushBlock(
 	}
 
 	return newState
-}
-
-// assignSumLimbsIsZero computes SumLimbsIsZeroCol as Σ Shift(LimbsIsZero, 48+i) for i in [0,16).
-func assignSumLimbsIsZero(run *wizard.ProverRuntime, sbh *sha2BlockModule) {
-	limbsIsZero := sbh.LimbsIsZero.GetColAssignment(run).IntoRegVecSaveAlloc()
-	n := len(limbsIsZero)
-	sumCol := make([]field.Element, n)
-	newStateOffset := numLimbsPerBlock + numLimbsPerState
-	for r := range n {
-		var s field.Element
-		for i := range numLimbsPerState {
-			idx := (r + newStateOffset + i) % n
-			s.Add(&s, &limbsIsZero[idx])
-		}
-		sumCol[r] = s
-	}
-	run.AssignColumn(
-		sbh.SumLimbsIsZeroCol.GetColID(),
-		smartvectors.NewRegular(sumCol),
-		wizard.DisableAssignmentSizeReduction,
-	)
 }
 
 // catchUpHashHiLo pushes over the HashHi and HashLo columns so that their
