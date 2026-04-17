@@ -179,6 +179,17 @@ func BenchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkProfileSelfRecursion allows running benchmark experiments of the
+// prover with medium memory requirement. Experiments have shown that this
+// can run on a 64 GiB machine.
+func BenchmarkProfileSelfRecursion(b *testing.B) {
+	BenchmarkProfileSelfRecursionRealistic(b)
+}
+
+// BenchmarkProfileSelfRecursion allows running benchmark experiments of the
+// prover with medium memory requirement. Experiments have shown that this
+// can run on a 64 GiB machine.
 func BenchmarkProfileSelfRecursionRealistic(b *testing.B) {
 	for _, bc := range benchCases {
 		if bc.Name != realisticSegmentName {
@@ -190,6 +201,9 @@ func BenchmarkProfileSelfRecursionRealistic(b *testing.B) {
 	}
 }
 
+// BenchmarkProfileSelfRecursionSmaller allows running benchmark experiments of
+// the prover with low memory requirement. Experiments have shown that this
+// could run under 14 GiB on a laptop.
 func BenchmarkProfileSelfRecursionSmaller(b *testing.B) {
 	for _, bc := range benchCases {
 		if bc.Name != smallerSegmentName {
