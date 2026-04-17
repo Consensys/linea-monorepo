@@ -97,6 +97,8 @@ jobs:
                       - type: text
                         text: "median ${{ fromJSON(steps.summary.outputs.json).medianRunDurationSeconds }}s, max ${{ fromJSON(steps.summary.outputs.json).maxRunDurationSeconds }}s"
 
+              - type: divider
+
               - type: rich_text
                 elements:
                   - type: rich_text_section
@@ -107,6 +109,8 @@ jobs:
                           bold: true
                       - type: text
                         text: "${{ fromJSON(steps.summary.outputs.json).flakySlackText }}"
+
+              - type: divider
 
               - type: rich_text
                 elements:
