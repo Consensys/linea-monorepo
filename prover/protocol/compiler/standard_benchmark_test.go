@@ -100,23 +100,23 @@ var (
 			Permutations: SubModuleParameters{
 				Count:  5,
 				NumCol: 3,
-				NumRow: 1 << 20,
+				NumRow: 1 << 17,
 			},
 			Lookup: SubModuleParameters{
 				Count:     50,
 				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
 			},
 			Projection: SubModuleParameters{
 				Count:     5,
 				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
 			},
 			Fibo: SubModuleParameters{
 				Count:  200,
-				NumRow: 1 << 20,
+				NumRow: 1 << 17,
 			},
 		},
 		// {
@@ -183,14 +183,19 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	const NbOpenedColumns = 64
 	const RsInverseRate = 16
+	var (
+		initialColSizeRange = [2]int{13, 16}
+		midColSizeRange     = [2]int{10, 13}
+		finalColSizeRange   = [2]int{7, 13}
+	)
 
 	// nbIteration = 2 is the best setting with minimun proof size
 	// go test -timeout=10h -test.fullpath=true -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
-	for nbIteration := 1; nbIteration < 5; nbIteration++ {
+	for nbIteration := 2; nbIteration < 4; nbIteration++ {
 
 		fmt.Printf("\n\n\n\n-------------------------------------------\n nbIteration = %v\n\n", nbIteration)
 
-		for lastIterationTargetRowSize := 9; lastIterationTargetRowSize < 14; lastIterationTargetRowSize++ {
+		for lastIterationTargetRowSize := finalColSizeRange[0]; lastIterationTargetRowSize <= finalColSizeRange[1]; lastIterationTargetRowSize++ {
 
 			lastIterationParams := selfRecursionParameters{
 				NbOpenedColumns: NbOpenedColumns,
@@ -198,7 +203,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 				TargetRowSize:   1 << lastIterationTargetRowSize,
 			}
 
-			for midIterationsTargetRowSize := 6; midIterationsTargetRowSize < 14; midIterationsTargetRowSize++ {
+			for midIterationsTargetRowSize := midColSizeRange[0]; midIterationsTargetRowSize <= midColSizeRange[1]; midIterationsTargetRowSize++ {
 
 				midIterationsParams := selfRecursionParameters{
 					NbOpenedColumns: NbOpenedColumns,
@@ -206,7 +211,17 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 					TargetRowSize:   1 << midIterationsTargetRowSize,
 				}
 
-				for initIterationTargetColSize := 13; initIterationTargetColSize < 20; initIterationTargetColSize++ {
+				for initIterationTargetColSize := initialColSizeRange[0]; initIterationTargetColSize <= initialColSizeRange[1]; initIterationTargetColSize++ {
+
+					// This rules out inconsistent configurations
+					if midIterationsTargetRowSize >= initIterationTargetColSize {
+						continue
+					}
+
+					// This rules out inconsistent configurations
+					if lastIterationTargetRowSize >= midIterationsTargetRowSize {
+						continue
+					}
 
 					iterationParams := selfRecursionIterationParameters{
 						InitTargetColSize: 1 << initIterationTargetColSize,
@@ -220,8 +235,15 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 							sbc.Define,
 							compiler.Arcane(
 								compiler.WithTargetColSize(1<<initIterationTargetColSize),
-								compiler.WithStitcherMinSize(1<<8),
+								compiler.WithStitcherMinSize(16),
 							),
+						)
+
+						statsInitial := logdata.GetWizardStats(comp)
+						b.ReportMetric(float64(statsInitial.NumCellsCommitted), "#committed-cells-initial")
+
+						comp = wizard.ContinueCompilation(
+							comp,
 							vortex.Compile(
 								RsInverseRate,
 								false,
@@ -236,15 +258,20 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 							applyVortex(comp, midIterationsParams, false)
 						}
 
+						applySelfRecursionThenArcane(comp, lastIterationParams)
+						applyVortex(comp, lastIterationParams, false)
+
 						statsVortex := logdata.GetWizardStats(comp)
 
-						applySelfRecursionThenArcane(comp, lastIterationParams)
-
-						statsArcane := logdata.GetWizardStats(comp)
-
-						b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
 						b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
 
+						// Compute the total transcript size
+						fsCost := 0
+						for _, s := range statsVortex.Transcript {
+							fsCost += s.NumFieldSampled + utils.DivCeil(s.NumFieldWritten, 8)
+						}
+
+						b.ReportMetric(float64(fsCost), "#fiat-shamir-poseidon")
 					})
 				}
 			}
