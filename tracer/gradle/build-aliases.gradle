@@ -14,7 +14,7 @@
  */
 
 // Default tasks and build aliases
-defaultTasks 'build', 'checkLicenses', 'javadoc'
+defaultTasks 'build', 'checkLicenses'
 
 def buildAliases = [
   ':tracer:dev': [
