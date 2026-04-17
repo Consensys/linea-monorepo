@@ -1,5 +1,5 @@
 import { Integer, Sequence, verifySchema } from "asn1js";
-import { Address, Hex, recoverAddress } from "viem";
+import { Address, Hex, recoverAddress, type RecoverAddressErrorType } from "viem";
 
 const SECP256K1_N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 const SECP256K1_HALF_N = SECP256K1_N / 2n;
@@ -56,17 +56,26 @@ export function decodeDerSignature(derSignature: Uint8Array): { r: bigint; s: bi
  * @throws {Error} If neither candidate recovers the expected address.
  */
 export async function recoverYParity(hash: Hex, r: Hex, s: Hex, signerAddress: Address): Promise<number> {
+  // viem's recoverAddress/recoverPublicKey throws RecoverAddressErrorType (Error & { name }).
+  // Upstream messages from viem and @noble/curves are value-free (generic crypto diagnostics
+  // such as "invalid signature r: out of range" or "invalid recovery: point at infinity") and
+  // do not embed r/s/hash values, so propagating as `cause` is safe from a logging perspective.
+  let lastError: RecoverAddressErrorType | undefined;
   for (const yParity of [0, 1] as const) {
     try {
       const recoveredAddress = await recoverAddress({ hash, signature: { r, s, yParity } });
       if (recoveredAddress.toLowerCase() === signerAddress.toLowerCase()) {
         return yParity;
       }
-    } catch {
+    } catch (err) {
+      lastError = err as RecoverAddressErrorType;
       continue;
     }
   }
-  throw new Error("Failed to determine signature recovery parameter (yParity)");
+  throw new Error(
+    "Failed to determine signature recovery parameter (yParity)",
+    lastError ? { cause: lastError } : undefined,
+  );
 }
 
 /**

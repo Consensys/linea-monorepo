@@ -131,6 +131,21 @@ describe("recoverYParity", () => {
     expect(result).toBe(1);
   });
 
+  it("should preserve the last recoverAddress error as the thrown error's cause", async () => {
+    // When both yParity candidates throw, the caller loses all diagnostic signal.
+    // The function must re-throw with the last underlying error attached as `cause`
+    // so callers can surface the real failure.
+    const firstErr = new Error("invalid point for yParity=0");
+    const secondErr = new Error("invalid point for yParity=1");
+    recoverAddressMock.mockRejectedValueOnce(firstErr).mockRejectedValueOnce(secondErr);
+
+    const thrown = await recoverYParity(HASH, R, S, ADDRESS).catch((e: Error) => e);
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain("Failed to determine signature recovery parameter (yParity)");
+    expect((thrown as Error).cause).toBe(secondErr);
+  });
+
   it("should perform case-insensitive address comparison", async () => {
     // EIP-55 mixed-case checksums mean the same address can appear in different casings
     recoverAddressMock.mockResolvedValueOnce(ADDRESS.toLowerCase() as Address);

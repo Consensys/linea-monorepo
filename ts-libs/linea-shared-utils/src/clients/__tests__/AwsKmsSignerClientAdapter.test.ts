@@ -1,4 +1,4 @@
-import { GetPublicKeyCommand, SignCommand } from "@aws-sdk/client-kms";
+import { GetPublicKeyCommand, KMSServiceException, SignCommand } from "@aws-sdk/client-kms";
 import { Address, Hex, keccak256, recoverAddress, serializeSignature, serializeTransaction } from "viem";
 import { publicKeyToAddress } from "viem/accounts";
 
@@ -8,12 +8,16 @@ import { AwsKmsSignerClientAdapter } from "../AwsKmsSignerClientAdapter";
 
 const mockSend = jest.fn();
 
-jest.mock("@aws-sdk/client-kms", () => ({
-  KMSClient: jest.fn().mockImplementation(() => ({ send: mockSend })),
-  CreateKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
-  GetPublicKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
-  SignCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
-}));
+jest.mock("@aws-sdk/client-kms", () => {
+  const actual = jest.requireActual("@aws-sdk/client-kms");
+  return {
+    ...actual,
+    KMSClient: jest.fn().mockImplementation(() => ({ send: mockSend })),
+    CreateKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
+    GetPublicKeyCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
+    SignCommand: jest.fn().mockImplementation((input: unknown) => ({ __input: input })),
+  };
+});
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
@@ -44,6 +48,12 @@ describe("AwsKmsSignerClientAdapter", () => {
   const SERIALIZED_TX = "0x02serialized";
   const TX_HASH: Hex = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
   const SIGNATURE_HEX: Hex = "0xsignature";
+
+  const GET_PUBLIC_KEY_RESPONSE_EXTRA = {
+    KeySpec: "ECC_SECG_P256K1",
+    KeyUsage: "SIGN_VERIFY",
+    SigningAlgorithms: ["ECDSA_SHA_256"],
+  } as const;
 
   // Full 88-byte DER-encoded SubjectPublicKeyInfo with 65-byte uncompressed key (0x04 || 0xab*64)
   const DER_PUBLIC_KEY = new Uint8Array([
@@ -110,8 +120,16 @@ describe("AwsKmsSignerClientAdapter", () => {
 
   const createAdapter = () => new AwsKmsSignerClientAdapter(logger, KMS_KEY_ID, { region: "us-east-1" });
 
+  const mockGetPublicKeyOnce = (overrides: Record<string, unknown> = {}) => {
+    mockSend.mockResolvedValueOnce({
+      PublicKey: DER_PUBLIC_KEY,
+      ...GET_PUBLIC_KEY_RESPONSE_EXTRA,
+      ...overrides,
+    });
+  };
+
   const initAdapter = async () => {
-    mockSend.mockResolvedValueOnce({ PublicKey: DER_PUBLIC_KEY });
+    mockGetPublicKeyOnce();
     const adapter = createAdapter();
     await adapter.init();
     return adapter;
@@ -119,7 +137,7 @@ describe("AwsKmsSignerClientAdapter", () => {
 
   describe("initialization", () => {
     it("should fetch public key from KMS and derive Ethereum address", async () => {
-      mockSend.mockResolvedValueOnce({ PublicKey: DER_PUBLIC_KEY });
+      mockGetPublicKeyOnce();
       const adapter = createAdapter();
 
       await adapter.init();
@@ -130,16 +148,129 @@ describe("AwsKmsSignerClientAdapter", () => {
     });
 
     it("should throw when KMS returns empty public key", async () => {
-      mockSend.mockResolvedValueOnce({ PublicKey: undefined });
+      mockSend.mockResolvedValueOnce({ PublicKey: undefined, ...GET_PUBLIC_KEY_RESPONSE_EXTRA });
       const adapter = createAdapter();
 
-      await expect(adapter.init()).rejects.toThrow("AWS KMS returned empty public key");
+      await expect(adapter.init()).rejects.toThrow(/AWS KMS GetPublicKey returned empty public key/);
+    });
+
+    it("should throw when KMS key uses an unsupported KeySpec", async () => {
+      mockGetPublicKeyOnce({ KeySpec: "RSA_2048" });
+      const adapter = createAdapter();
+
+      await expect(adapter.init()).rejects.toThrow(/Unsupported KMS KeySpec expected=ECC_SECG_P256K1 actual=RSA_2048/);
+    });
+
+    it("should throw when KMS key uses an unsupported KeyUsage", async () => {
+      mockGetPublicKeyOnce({ KeyUsage: "ENCRYPT_DECRYPT" });
+      const adapter = createAdapter();
+
+      await expect(adapter.init()).rejects.toThrow(
+        /Unsupported KMS KeyUsage expected=SIGN_VERIFY actual=ENCRYPT_DECRYPT/,
+      );
+    });
+
+    it("should throw when KMS key does not advertise ECDSA_SHA_256", async () => {
+      mockGetPublicKeyOnce({ SigningAlgorithms: ["ECDSA_SHA_384"] });
+      const adapter = createAdapter();
+
+      await expect(adapter.init()).rejects.toThrow(/KMS key does not support ECDSA_SHA_256/);
+    });
+
+    it("should report 'none' when KMS omits SigningAlgorithms entirely", async () => {
+      mockGetPublicKeyOnce({ SigningAlgorithms: undefined });
+      const adapter = createAdapter();
+
+      await expect(adapter.init()).rejects.toThrow(/KMS key does not support ECDSA_SHA_256 algorithms=none/);
+    });
+
+    it("should construct a default KMS client when no config is provided", async () => {
+      mockGetPublicKeyOnce();
+      const adapter = new AwsKmsSignerClientAdapter(logger, KMS_KEY_ID);
+
+      await adapter.init();
+
+      expect(adapter.getAddress()).toBe(EXPECTED_ADDRESS);
+    });
+
+    it("should wrap KMSServiceException errors with rich request context and original cause", async () => {
+      const sdkError = new KMSServiceException({
+        name: "AccessDeniedException",
+        $fault: "client",
+        $metadata: { requestId: "req-abc-123", httpStatusCode: 400 },
+        message: "AccessDenied",
+      });
+      mockSend.mockRejectedValueOnce(sdkError);
+      const adapter = createAdapter();
+
+      const thrown = await adapter.init().catch((e: Error) => e);
+
+      expect(thrown).toBeInstanceOf(Error);
+      const message = (thrown as Error).message;
+      expect(message).toContain("AWS KMS GetPublicKey failed");
+      expect(message).toContain(`keyId=${KMS_KEY_ID}`);
+      expect(message).toContain("errorName=AccessDeniedException");
+      expect(message).toContain("fault=client");
+      expect(message).toContain("httpStatus=400");
+      expect(message).toContain("requestId=req-abc-123");
+      expect((thrown as Error).cause).toBe(sdkError);
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining("AWS KMS GetPublicKey failed"),
+        expect.objectContaining({ error: sdkError }),
+      );
+    });
+
+    it("should wrap non-KMS errors (e.g. network) with operation, keyId, and original cause", async () => {
+      const networkError = Object.assign(new Error("ECONNRESET"), { name: "NetworkingError" });
+      mockSend.mockRejectedValueOnce(networkError);
+      const adapter = createAdapter();
+
+      const thrown = await adapter.init().catch((e: Error) => e);
+
+      const message = (thrown as Error).message;
+      expect(message).toContain("AWS KMS GetPublicKey failed");
+      expect(message).toContain(`keyId=${KMS_KEY_ID}`);
+      expect(message).toContain("errorName=NetworkingError");
+      expect(message).not.toContain("fault=");
+      expect(message).not.toContain("httpStatus=");
+      expect((thrown as Error).cause).toBe(networkError);
+    });
+
+    it("should fall back to 'unknown' for missing httpStatusCode and requestId in KMSServiceException", async () => {
+      const sdkError = new KMSServiceException({
+        name: "KMSInternalException",
+        $fault: "server",
+        $metadata: {},
+        message: "internal",
+      });
+      mockSend.mockRejectedValueOnce(sdkError);
+      const adapter = createAdapter();
+
+      const thrown = await adapter.init().catch((e: Error) => e);
+
+      const message = (thrown as Error).message;
+      expect(message).toContain("httpStatus=unknown");
+      expect(message).toContain("requestId=unknown");
+      expect((thrown as Error).cause).toBe(sdkError);
+    });
+
+    it("should wrap non-Error rejections (e.g. string) with a synthetic cause", async () => {
+      mockSend.mockRejectedValueOnce("raw rejection string");
+      const adapter = createAdapter();
+
+      const thrown = await adapter.init().catch((e: Error) => e);
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toContain("AWS KMS GetPublicKey failed");
+      const cause = (thrown as Error).cause;
+      expect(cause).toBeInstanceOf(Error);
+      expect((cause as Error).message).toBe("raw rejection string");
     });
   });
 
   describe("create factory", () => {
     it("should create and initialize adapter in one step", async () => {
-      mockSend.mockResolvedValueOnce({ PublicKey: DER_PUBLIC_KEY });
+      mockGetPublicKeyOnce();
 
       const adapter = await AwsKmsSignerClientAdapter.create(logger, KMS_KEY_ID, { region: "us-east-1" });
 
@@ -209,7 +340,7 @@ describe("AwsKmsSignerClientAdapter", () => {
       const adapter = await initAdapter();
       mockSend.mockResolvedValueOnce({ Signature: undefined });
 
-      await expect(adapter.sign(SAMPLE_TRANSACTION as any)).rejects.toThrow("AWS KMS returned empty signature");
+      await expect(adapter.sign(SAMPLE_TRANSACTION as any)).rejects.toThrow(/AWS KMS Sign returned empty signature/);
     });
 
     it("should throw when yParity cannot be determined", async () => {
@@ -220,6 +351,39 @@ describe("AwsKmsSignerClientAdapter", () => {
       await expect(adapter.sign(SAMPLE_TRANSACTION as any)).rejects.toThrow(
         "Failed to determine signature recovery parameter (yParity)",
       );
+    });
+
+    it("should wrap KMSServiceException Sign errors with request context and original cause", async () => {
+      const adapter = await initAdapter();
+      const sdkError = new KMSServiceException({
+        name: "ThrottlingException",
+        $fault: "client",
+        $metadata: { requestId: "req-sign-xyz", httpStatusCode: 429 },
+        message: "Throttling",
+      });
+      mockSend.mockRejectedValueOnce(sdkError);
+
+      const thrown = await adapter.sign(SAMPLE_TRANSACTION as any).catch((e: Error) => e);
+
+      expect(thrown).toBeInstanceOf(Error);
+      const message = (thrown as Error).message;
+      expect(message).toContain("AWS KMS Sign failed");
+      expect(message).toContain("errorName=ThrottlingException");
+      expect(message).toContain("fault=client");
+      expect(message).toContain("httpStatus=429");
+      expect(message).toContain("requestId=req-sign-xyz");
+      expect((thrown as Error).cause).toBe(sdkError);
+    });
+
+    it("should not log the raw signature in debug output", async () => {
+      const adapter = await initAdapter();
+      mockSend.mockResolvedValueOnce({ Signature: DER_SIGNATURE });
+
+      await adapter.sign(SAMPLE_TRANSACTION as any);
+
+      const debugMessages = logger.debug.mock.calls.map((args) => String(args[0]));
+      expect(debugMessages.some((msg) => msg.includes(SIGNATURE_HEX))).toBe(false);
+      expect(debugMessages.some((msg) => /signatureLength=\d+/.test(msg))).toBe(true);
     });
 
     it("should throw when not initialized", async () => {

@@ -1,4 +1,10 @@
-import { GetPublicKeyCommand, KMSClient, type KMSClientConfig, SignCommand } from "@aws-sdk/client-kms";
+import {
+  GetPublicKeyCommand,
+  KMSClient,
+  type KMSClientConfig,
+  KMSServiceException,
+  SignCommand,
+} from "@aws-sdk/client-kms";
 import {
   Address,
   Hex,
@@ -95,17 +101,22 @@ export class AwsKmsSignerClientAdapter implements IContractSignerClient {
     const txHash = keccak256(serializedTx);
     const hashBytes = hexToBytes(txHash);
 
-    const signResult = await this.kmsClient.send(
-      new SignCommand({
-        KeyId: this.kmsKeyId,
-        Message: hashBytes,
-        MessageType: "DIGEST",
-        SigningAlgorithm: "ECDSA_SHA_256",
-      }),
-    );
+    let signResult;
+    try {
+      signResult = await this.kmsClient.send(
+        new SignCommand({
+          KeyId: this.kmsKeyId,
+          Message: hashBytes,
+          MessageType: "DIGEST",
+          SigningAlgorithm: "ECDSA_SHA_256",
+        }),
+      );
+    } catch (err) {
+      throw this.wrapKmsError("Sign", err);
+    }
 
     if (!signResult.Signature) {
-      throw new Error("AWS KMS returned empty signature");
+      throw new Error(`AWS KMS Sign returned empty signature keyId=${this.kmsKeyId}`);
     }
 
     const { r, s } = decodeDerSignature(signResult.Signature);
@@ -115,7 +126,7 @@ export class AwsKmsSignerClientAdapter implements IContractSignerClient {
     const yParity = await recoverYParity(txHash, rHex, sHex, address);
 
     const signatureHex = serializeSignature({ r: rHex, s: sHex, yParity });
-    this.logger.debug(`Signing successful signature=${signatureHex}`);
+    this.logger.debug(`Signing successful signatureLength=${signatureHex.length}`);
     return signatureHex;
   }
 
@@ -137,10 +148,48 @@ export class AwsKmsSignerClientAdapter implements IContractSignerClient {
   }
 
   private async fetchDerPublicKey(): Promise<Uint8Array> {
-    const result = await this.kmsClient.send(new GetPublicKeyCommand({ KeyId: this.kmsKeyId }));
-    if (!result.PublicKey) {
-      throw new Error("AWS KMS returned empty public key");
+    let result;
+    try {
+      result = await this.kmsClient.send(new GetPublicKeyCommand({ KeyId: this.kmsKeyId }));
+    } catch (err) {
+      throw this.wrapKmsError("GetPublicKey", err);
     }
+
+    if (!result.PublicKey) {
+      throw new Error(`AWS KMS GetPublicKey returned empty public key keyId=${this.kmsKeyId}`);
+    }
+    if (result.KeySpec !== "ECC_SECG_P256K1") {
+      throw new Error(
+        `Unsupported KMS KeySpec expected=ECC_SECG_P256K1 actual=${result.KeySpec} keyId=${this.kmsKeyId}`,
+      );
+    }
+    if (result.KeyUsage !== "SIGN_VERIFY") {
+      throw new Error(`Unsupported KMS KeyUsage expected=SIGN_VERIFY actual=${result.KeyUsage} keyId=${this.kmsKeyId}`);
+    }
+    if (!result.SigningAlgorithms?.includes("ECDSA_SHA_256")) {
+      throw new Error(
+        `KMS key does not support ECDSA_SHA_256 algorithms=${result.SigningAlgorithms?.join(",") ?? "none"} keyId=${this.kmsKeyId}`,
+      );
+    }
+
     return result.PublicKey;
+  }
+
+  private wrapKmsError(operation: "GetPublicKey" | "Sign", err: unknown): Error {
+    const cause = err instanceof Error ? err : new Error(String(err));
+    const parts = [`AWS KMS ${operation} failed`, `keyId=${this.kmsKeyId}`];
+    if (err instanceof KMSServiceException) {
+      parts.push(
+        `errorName=${err.name}`,
+        `fault=${err.$fault}`,
+        `httpStatus=${err.$metadata.httpStatusCode ?? "unknown"}`,
+        `requestId=${err.$metadata.requestId ?? "unknown"}`,
+      );
+    } else {
+      parts.push(`errorName=${cause.name}`);
+    }
+    const message = parts.join(" ");
+    this.logger.error(message, { error: cause });
+    return new Error(message, { cause });
   }
 }
