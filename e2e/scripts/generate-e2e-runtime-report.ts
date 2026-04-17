@@ -242,7 +242,7 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
             const spec = t.specFile.replace("src/", "").replace(".spec.ts", "");
             return `${i + 1}. ${t.testName} (${spec}) - ${(t.failRate * 100).toFixed(1)}% fail rate (${t.failures}/${t.appearances})`;
           })
-          .join("\n");
+          .join("\\n");
 
   const summary: ReportSummary = {
     totalRuns,
