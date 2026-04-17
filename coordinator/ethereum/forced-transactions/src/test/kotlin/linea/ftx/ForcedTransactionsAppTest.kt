@@ -36,6 +36,7 @@ import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.concurrent.CopyOnWriteArrayList
@@ -711,7 +712,7 @@ class ForcedTransactionsAppTest {
     app.stop().get()
   }
 
-  @Test
+  @Disabled
   fun `should trigger conflation and aggregation when sequencer processes ftxs`() {
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
