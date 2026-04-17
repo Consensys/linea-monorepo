@@ -3,7 +3,6 @@ import { resolve } from "path";
 
 import { SequencerPluginName } from "../../config/clients/linea-rpc/sequencer-plugins";
 import { toLowercaseLines } from "../utils/string";
-import { awaitUntil } from "../utils/wait";
 
 import type { PluginsReloadPluginConfigParameters } from "../../config/clients/linea-rpc/plugins-reload-plugin-config";
 
@@ -75,6 +74,9 @@ export async function reloadDenyList(client: DenyListControlClient): Promise<voi
   await client.pluginsReloadPluginConfig({
     pluginName: SequencerPluginName.TransactionPoolValidator,
   });
+  await client.pluginsReloadPluginConfig({
+    pluginName: SequencerPluginName.TransactionSelector,
+  });
 }
 
 async function addToDenyListUnlocked(
@@ -89,6 +91,7 @@ async function addToDenyListUnlocked(
   }
 
   writeDenyListState(denyListPath, state);
+  await waitMs(DENY_LIST_FILE_SYNC_WAIT_MS);
   await reloadDenyList(client);
 }
 
@@ -110,6 +113,7 @@ async function removeFromDenyListUnlocked(
   }
 
   writeDenyListState(denyListPath, state);
+  await waitMs(DENY_LIST_FILE_SYNC_WAIT_MS);
   await reloadDenyList(client);
 }
 
@@ -139,47 +143,26 @@ export async function removeFromDenyList(
   await withDenyListLock(async () => removeFromDenyListUnlocked(client, normalizedAddresses, denyListPath));
 }
 
-const DENY_LIST_EFFECT_POLL_INTERVAL_MS = 500;
-const DENY_LIST_EFFECT_TIMEOUT_MS = 30_000;
+const DENY_LIST_EFFECT_WAIT_MS = 3_000;
+// Docker bind-mount on macOS (virtiofs/gRPC-FUSE) can delay host→container file visibility.
+// Wait before reloading so the sequencer sees the updated file.
+const DENY_LIST_FILE_SYNC_WAIT_MS = 500;
 
 /**
- * Polls `probe` until it rejects with an error whose message includes "blocked",
- * confirming the sequencer's in-memory deny list has been updated after an async reload.
- *
- * Use this immediately after `addToDenyList` / `reloadDenyList` when the sequencer
- * plugin reloads asynchronously (`CompletableFuture.supplyAsync`) and you need to
- * guarantee the deny list is active before proceeding.
+ * Waits a fixed duration for the sequencer's deny list to take effect after an async reload.
  */
-export async function waitForDenyListEffect(
-  probe: () => Promise<unknown>,
-  options: { timeoutMs?: number; pollingIntervalMs?: number } = {},
-): Promise<void> {
-  const { timeoutMs = DENY_LIST_EFFECT_TIMEOUT_MS, pollingIntervalMs = DENY_LIST_EFFECT_POLL_INTERVAL_MS } = options;
+export async function waitForDenyListEffect(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, DENY_LIST_EFFECT_WAIT_MS));
+}
 
-  await awaitUntil(
-    async () => {
-      try {
-        await probe();
-        return false;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.toLowerCase().includes("blocked")) {
-          return true;
-        }
-        // Re-throw unexpected errors so awaitUntil logs them as transient and retries.
-        throw error;
-      }
-    },
-    (isBlocked) => isBlocked,
-    { timeoutMs, pollingIntervalMs },
-  );
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function withDenyListAddresses(
   client: DenyListControlClient,
   addresses: readonly string[],
   run: () => Promise<void>,
-  verifyEffect: () => Promise<unknown>,
   denyListPath: string = DEFAULT_DENY_LIST_PATH,
 ): Promise<void> {
   const normalizedAddresses = normalizeAddresses(addresses);
@@ -191,10 +174,11 @@ export async function withDenyListAddresses(
   await withDenyListLock(async () => {
     try {
       await addToDenyListUnlocked(client, normalizedAddresses, denyListPath);
-      await waitForDenyListEffect(verifyEffect);
+      await waitForDenyListEffect();
       await run();
     } finally {
       await removeFromDenyListUnlocked(client, normalizedAddresses, denyListPath);
+      await waitForDenyListEffect();
     }
   });
 }
