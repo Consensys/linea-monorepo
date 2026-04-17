@@ -1,6 +1,6 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import net.consensys.zkevm.domain.BlobAndBatchCounters
+import linea.domain.BlobAndBatchCounters
 import net.consensys.zkevm.persistence.AggregationsRepository
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicReference

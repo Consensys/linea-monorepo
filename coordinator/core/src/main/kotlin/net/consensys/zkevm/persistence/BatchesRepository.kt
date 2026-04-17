@@ -1,6 +1,6 @@
 package net.consensys.zkevm.persistence
 
-import net.consensys.zkevm.domain.Batch
+import linea.domain.Batch
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface BatchesRepository {

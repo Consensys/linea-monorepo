@@ -1,13 +1,13 @@
 package net.consensys.zkevm.ethereum.submission
 
 import io.vertx.core.Vertx
+import linea.domain.BlobRecord
 import linea.domain.BlockIntervals
 import linea.domain.toBlockIntervals
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBlobRecords
 import net.consensys.zkevm.persistence.AggregationsRepository

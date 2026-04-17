@@ -1,9 +1,5 @@
-package net.consensys.zkevm.domain
+package linea.domain
 
-import linea.domain.BlockInterval
-import linea.domain.BlockIntervals
-import linea.domain.CommonDomainFunctions
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import kotlin.time.Instant
 
 data class Blob(

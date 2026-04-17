@@ -5,10 +5,10 @@ import com.github.michaelbull.result.map
 import com.github.michaelbull.result.onSuccess
 import com.github.michaelbull.result.recover
 import com.github.michaelbull.result.runCatching
+import linea.domain.BlobRecord
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
 import linea.kotlin.encodeHex
-import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

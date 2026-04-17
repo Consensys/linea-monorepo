@@ -8,7 +8,9 @@ import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
+import linea.domain.BlobRecord
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.BlocksConflation
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.ftx.ForcedTransactionsApp
@@ -32,8 +34,6 @@ import net.consensys.zkevm.coordinator.blockcreation.ConflationTargetCheckpointP
 import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker

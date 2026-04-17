@@ -8,6 +8,7 @@ import com.github.michaelbull.result.getOrThrow
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
+import linea.domain.InvalidityProofIndex
 import linea.ethapi.EthLogsClient
 import linea.ethapi.EthLogsFilterOptions
 import linea.forcedtx.ForcedTransactionInclusionResult
@@ -19,7 +20,6 @@ import net.consensys.zkevm.coordinator.clients.InvalidityProofResponse
 import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.InvalidityReason
 import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.InvalidityProofIndex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes

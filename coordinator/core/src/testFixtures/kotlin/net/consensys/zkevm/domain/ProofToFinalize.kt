@@ -1,5 +1,7 @@
 package net.consensys.zkevm.domain
 
+import linea.domain.BlobRecord
+import linea.domain.ProofToFinalize
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
 import kotlin.random.Random

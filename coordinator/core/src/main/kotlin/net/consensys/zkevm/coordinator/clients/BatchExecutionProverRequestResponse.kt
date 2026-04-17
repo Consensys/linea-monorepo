@@ -4,7 +4,7 @@ import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.EthLog
-import net.consensys.zkevm.domain.StartBlockTimestampProvider
+import linea.domain.StartBlockTimestampProvider
 import kotlin.time.Instant
 
 data class BatchExecutionProofRequestV1(

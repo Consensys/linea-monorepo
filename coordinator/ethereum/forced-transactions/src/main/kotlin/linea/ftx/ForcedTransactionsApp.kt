@@ -11,6 +11,7 @@ import linea.contract.l1.ContractVersionProvider
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupSmartContractClientReadOnlyFinalizedStateProvider
 import linea.domain.BlockParameter
+import linea.domain.ConflationTrigger
 import linea.ethapi.EthApiClient
 import linea.ethapi.EthLogsFilterSubscriptionFactoryPollingBased
 import linea.forcedtx.ForcedTransactionInclusionStatus
@@ -24,7 +25,6 @@ import linea.ftx.conflation.InvalidityProofAssembler
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
 import net.consensys.zkevm.ethereum.coordination.aggregation.SyncAggregationTriggerCalculator
 import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider

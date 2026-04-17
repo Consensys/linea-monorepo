@@ -1,7 +1,5 @@
-package net.consensys.zkevm.domain
+package linea.domain
 
-import linea.domain.BlockInterval
-import linea.domain.BlockIntervals
 import linea.kotlin.byteArrayListEquals
 import linea.kotlin.byteArrayListHashCode
 import linea.kotlin.encodeHex

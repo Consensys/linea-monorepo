@@ -1,9 +1,9 @@
 package linea.ftx
 
+import linea.domain.InvalidityProofIndex
 import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
 import net.consensys.zkevm.coordinator.clients.InvalidityProofResponse
 import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
-import net.consensys.zkevm.domain.InvalidityProofIndex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class FakeInvalidityProverClient() : InvalidityProverClientV1 {

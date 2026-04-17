@@ -10,7 +10,9 @@ import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.Type2StateProofManagerConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
+import linea.domain.BlobSubmittedEvent
 import linea.domain.BlockNumberAndHash
+import linea.domain.FinalizationSubmittedEvent
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
 import linea.kotlin.toKWeiUInt
@@ -44,8 +46,6 @@ import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
 import net.consensys.zkevm.ethereum.coordination.LatestBlobSubmittedBlockNumberTracker

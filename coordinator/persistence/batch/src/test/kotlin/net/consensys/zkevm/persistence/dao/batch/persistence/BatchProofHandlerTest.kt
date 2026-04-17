@@ -3,7 +3,7 @@ package net.consensys.zkevm.persistence.dao.batch.persistence
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import net.consensys.zkevm.domain.Batch
+import linea.domain.Batch
 import net.consensys.zkevm.persistence.BatchesRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

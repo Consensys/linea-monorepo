@@ -2,9 +2,9 @@ package net.consensys.zkevm.persistence.dao.aggregation
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.domain.BlobAndBatchCounters
 import linea.domain.BlockIntervals
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.blobCounters
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createProofToFinalize

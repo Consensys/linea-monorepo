@@ -1,4 +1,4 @@
-package net.consensys.zkevm.domain
+package linea.domain
 
 import kotlin.time.Instant
 

@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.contract.events.DataFinalizedV3
 import linea.contract.l1.LineaRollupContractVersion
+import linea.domain.Aggregation
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.log4j.configureLoggers
@@ -21,7 +22,6 @@ import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
 import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.connectToLineaRollupContract
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.lineaRollupContractErrors

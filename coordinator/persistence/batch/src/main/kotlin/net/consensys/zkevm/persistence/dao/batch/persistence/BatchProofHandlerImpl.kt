@@ -1,6 +1,6 @@
 package net.consensys.zkevm.persistence.dao.batch.persistence
 
-import net.consensys.zkevm.domain.Batch
+import linea.domain.Batch
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
 import net.consensys.zkevm.persistence.BatchesRepository
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException

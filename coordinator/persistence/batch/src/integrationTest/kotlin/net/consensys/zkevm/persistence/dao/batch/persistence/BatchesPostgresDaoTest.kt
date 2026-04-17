@@ -4,9 +4,9 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
+import linea.domain.Batch
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.createBatch
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException

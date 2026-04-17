@@ -10,6 +10,7 @@ import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
+import linea.domain.Aggregation
 import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
@@ -30,7 +31,6 @@ import net.consensys.zkevm.coordinator.blockcreation.TargetCheckpointPauseContro
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
-import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers

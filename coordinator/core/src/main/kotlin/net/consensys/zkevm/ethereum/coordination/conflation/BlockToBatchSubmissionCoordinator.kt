@@ -4,12 +4,12 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import linea.domain.Block
+import linea.domain.BlockCounters
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.GetTracesCountersResponse
 import net.consensys.zkevm.coordinator.clients.TracesCountersClientV2
 import net.consensys.zkevm.coordinator.clients.TracesServiceErrorType
-import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener

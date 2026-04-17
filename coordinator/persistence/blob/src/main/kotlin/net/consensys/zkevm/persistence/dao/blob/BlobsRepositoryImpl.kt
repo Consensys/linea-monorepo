@@ -1,6 +1,6 @@
 package net.consensys.zkevm.persistence.dao.blob
 
-import net.consensys.zkevm.domain.BlobRecord
+import linea.domain.BlobRecord
 import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import tech.pegasys.teku.infrastructure.async.SafeFuture

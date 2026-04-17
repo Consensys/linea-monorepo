@@ -1,5 +1,6 @@
 package net.consensys.zkevm.domain
 
+import linea.domain.BlobCounters
 import net.consensys.zkevm.domain.Constants.LINEA_BLOCK_INTERVAL
 import kotlin.random.Random
 import kotlin.time.Clock

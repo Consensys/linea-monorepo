@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import io.vertx.core.Vertx
 import linea.domain.EthLog
+import linea.domain.ExecutionProofIndex
 import linea.encoding.BlockRLPEncoder
 import linea.kotlin.encodeHex
 import linea.kotlin.toHexString
@@ -11,7 +12,6 @@ import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
-import net.consensys.zkevm.domain.ExecutionProofIndex
 import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter

@@ -1,13 +1,13 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
+import linea.domain.BlobRecord
+import linea.domain.ProofToFinalize
 import linea.kotlin.trimToMinutePrecision
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository

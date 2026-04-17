@@ -4,10 +4,10 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.map
 import io.vertx.core.Vertx
+import linea.domain.ProofIndex
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.ProverProofRequestCreator
 import net.consensys.zkevm.coordinator.clients.ProverProofResponseChecker
-import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.fileio.FileMonitor
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter

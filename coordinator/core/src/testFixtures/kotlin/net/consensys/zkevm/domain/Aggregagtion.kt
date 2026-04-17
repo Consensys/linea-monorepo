@@ -1,5 +1,8 @@
 package net.consensys.zkevm.domain
 
+import linea.domain.Aggregation
+import linea.domain.ProofToFinalize
+
 fun createAggregation(
   startBlockNumber: Long? = null,
   endBlockNumber: Long? = null,

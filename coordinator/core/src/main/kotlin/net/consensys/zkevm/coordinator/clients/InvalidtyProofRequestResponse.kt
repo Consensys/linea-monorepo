@@ -2,7 +2,7 @@ package net.consensys.zkevm.coordinator.clients
 
 import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import build.linea.clients.LineaAccountProof
-import net.consensys.zkevm.domain.StartBlockTimestampProvider
+import linea.domain.StartBlockTimestampProvider
 import kotlin.time.Instant
 
 enum class InvalidityReason {

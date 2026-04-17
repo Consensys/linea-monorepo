@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.finalization
 
+import linea.domain.BlobRecord
+import linea.domain.FinalizationSubmittedEvent
+import linea.domain.ProofToFinalize
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.FinalizationSubmittedEvent
-import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.ethereum.submission.logSubmissionError
 import org.apache.logging.log4j.LogManager

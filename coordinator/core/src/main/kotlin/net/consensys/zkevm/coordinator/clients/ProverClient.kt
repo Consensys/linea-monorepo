@@ -1,12 +1,14 @@
 package net.consensys.zkevm.coordinator.clients
 
-import net.consensys.zkevm.domain.AggregationProofIndex
-import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.domain.ExecutionProofIndex
-import net.consensys.zkevm.domain.InvalidityProofIndex
-import net.consensys.zkevm.domain.ProofIndex
-import net.consensys.zkevm.domain.ProofToFinalize
-import net.consensys.zkevm.domain.ProofsToAggregate
+import linea.domain.AggregationProofIndex
+import linea.domain.BlobCompressionProof
+import linea.domain.BlobCompressionProofRequest
+import linea.domain.CompressionProofIndex
+import linea.domain.ExecutionProofIndex
+import linea.domain.InvalidityProofIndex
+import linea.domain.ProofIndex
+import linea.domain.ProofToFinalize
+import linea.domain.ProofsToAggregate
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface ProverProofResponseChecker<ProofResponse, TProofIndex : ProofIndex> {

@@ -1,6 +1,9 @@
 package net.consensys.zkevm.ethereum.submission
 
 import io.vertx.core.Vertx
+import linea.domain.BlobRecord
+import linea.domain.BlobSubmittedEvent
+import linea.domain.ProofToFinalize
 import linea.domain.filterOutWithEndBlockNumberBefore
 import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
@@ -11,9 +14,6 @@ import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaValidiumSmartContractClient
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.persistence.AggregationsRepository
 import net.consensys.zkevm.persistence.BlobsRepository

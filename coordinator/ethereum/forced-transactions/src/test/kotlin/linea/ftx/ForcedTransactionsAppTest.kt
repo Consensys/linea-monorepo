@@ -10,8 +10,11 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.FakeLineaRollupSmartContractClient
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
+import linea.domain.BlobCounters
+import linea.domain.BlockCounters
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.ConflationTrigger
 import linea.domain.EthLog
 import linea.ethapi.EthApiBlockClient
 import linea.ethapi.FakeEthApiClient
@@ -27,9 +30,6 @@ import net.consensys.linea.traces.TracesCountersV4
 import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
 import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager

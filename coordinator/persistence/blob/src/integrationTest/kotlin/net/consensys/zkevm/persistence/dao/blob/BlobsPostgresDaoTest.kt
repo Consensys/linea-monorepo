@@ -4,13 +4,13 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
+import linea.domain.BlobRecord
+import linea.domain.BlobStatus
 import linea.kotlin.trimToMillisecondPrecision
 import linea.kotlin.trimToSecondPrecision
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlobStatus
 import net.consensys.zkevm.domain.createBlobRecord
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
