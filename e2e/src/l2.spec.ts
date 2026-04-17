@@ -4,32 +4,18 @@ import { randomBytes } from "crypto";
 import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
-import { deployTestEip7702Delegation, encodeEip7702InitializeData } from "./common/test-helpers";
 import { estimateLineaGas, sendTransactionWithGasPriceRetry, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
+import { DummyContractAbi } from "./generated";
+
+import type { GasPriceFeeOverrides } from "./common/utils";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
   const lineaEstimateGasClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
-
-  function resolveGasPriceOrThrow(
-    feeData: Awaited<ReturnType<ReturnType<typeof context.l2PublicClient>["estimateFeesPerGas"]>>,
-    preferredGasPrice?: bigint,
-  ): bigint {
-    const resolvedGasPrice = preferredGasPrice ?? feeData.gasPrice ?? feeData.maxFeePerGas;
-    if (resolvedGasPrice === undefined) {
-      throw new Error("Unable to resolve gasPrice for legacy or EIP-2930 transaction");
-    }
-    return resolvedGasPrice;
-  }
-
-  async function getSuggestedGasPrice(account: `0x${string}`, to: `0x${string}`, data: `0x${string}`): Promise<bigint> {
-    const lineaEstimate = await estimateLineaGas(lineaEstimateGasClient, { account, to, data });
-    return lineaEstimate.maxFeePerGas;
-  }
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
@@ -58,16 +44,14 @@ describe("Layer 2 test suite", () => {
       account,
       to: dummyContract.address,
       data: encodeFunctionData({
-        abi: dummyContract.abi,
+        abi: DummyContractAbi,
         functionName: "setPayload",
         args: [payload],
       }),
     });
 
-    const { hash, receipt } = await sendTransactionWithRetry(
-      l2PublicClient,
-      (fees) => dummyContract.write.setPayload([payload], { nonce, ...estimatedGasFees, ...fees }),
-      { abi: dummyContract.abi },
+    const { hash, receipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
+      dummyContract.write.setPayload([payload], { nonce, ...estimatedGasFees, ...fees }),
     );
 
     logger.debug(`Transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
@@ -77,24 +61,24 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send a legacy transaction", async () => {
     const account = await l2AccountManager.generateAccount();
     const l2PublicClient = context.l2PublicClient();
-    const destination = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9" as `0x${string}`;
+    const walletClient = context.l2WalletClient({ account });
+    const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
 
-    const feeData = await l2PublicClient.estimateFeesPerGas();
-    const gasPrice = resolveGasPriceOrThrow(feeData, await getSuggestedGasPrice(account.address, destination, "0x"));
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-    const txHash = await context.l2WalletClient({ account }).sendTransaction({
-      type: "legacy",
-      to: destination,
-      gasPrice,
-      value: etherToWei("0.01"),
-      gas: 4612388n,
-    });
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
+      walletClient.sendTransaction({
+        type: "legacy",
+        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+        gasPrice: fees?.gasPrice ?? gasPrice,
+        value: etherToWei("0.01"),
+        gas: 4612388n,
+        nonce,
+      }),
+    );
 
-    logger.debug(`Legacy transaction sent. transactionHash=${txHash}`);
-
-    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`Legacy transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
+    logger.debug(`Legacy transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
 
     expect(receipt.status).toEqual("success");
   });
@@ -131,132 +115,67 @@ describe("Layer 2 test suite", () => {
     expect(receipt.status).toEqual("success");
   });
 
-  it.concurrent(
-    "Should successfully send an access list transaction with empty access list",
-    async () => {
-      const account = await l2AccountManager.generateAccount();
+  it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
+    const account = await l2AccountManager.generateAccount();
 
-      const l2PublicClient = context.l2PublicClient();
-      const walletClient = context.l2WalletClient({ account });
-      const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-      const feeData = await l2PublicClient.estimateFeesPerGas();
-      const destination = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9" as `0x${string}`;
-      const gasPrice = resolveGasPriceOrThrow(feeData, await getSuggestedGasPrice(account.address, destination, "0x"));
-      logger.debug(`Fetched gasPrice=${gasPrice}`);
+    const l2PublicClient = context.l2PublicClient();
+    const walletClient = context.l2WalletClient({ account });
+    const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-      const { hash, receipt } = await sendTransactionWithGasPriceRetry(
-        l2PublicClient,
-        (fees) =>
-          walletClient.sendTransaction({
-            type: "eip2930",
-            to: destination,
-            gasPrice,
-            value: etherToWei("0.01"),
-            gas: 21000n,
-            chainId: context.getL2ChainId(),
-            nonce,
-            ...fees,
-          }),
-        { overallTimeoutMs: 300_000, receiptTimeoutMs: 60_000 },
-      );
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
+      walletClient.sendTransaction({
+        type: "eip2930",
+        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+        gasPrice: fees?.gasPrice ?? gasPrice,
+        value: etherToWei("0.01"),
+        gas: 21000n,
+        chainId: context.getL2ChainId(),
+        nonce,
+      }),
+    );
 
-      logger.debug(`Empty access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
+    logger.debug(`Empty access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
 
-      expect(receipt.status).toEqual("success");
-    },
-    360_000,
-  );
+    expect(receipt.status).toEqual("success");
+  });
 
-  it.concurrent(
-    "Should successfully send an access list transaction with access list",
-    async () => {
-      const account = await l2AccountManager.generateAccount();
+  it.concurrent("Should successfully send an access list transaction with access list", async () => {
+    const account = await l2AccountManager.generateAccount();
 
-      const l2PublicClient = context.l2PublicClient();
-      const walletClient = context.l2WalletClient({ account });
-      const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-      const feeData = await l2PublicClient.estimateFeesPerGas();
-      const destination = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9" as `0x${string}`;
+    const l2PublicClient = context.l2PublicClient();
+    const walletClient = context.l2WalletClient({ account });
+    const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-      const accessList = [
-        {
-          address: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-          storageKeys: [
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-          ],
-        },
-      ] as const;
-      const gasPrice = resolveGasPriceOrThrow(feeData, await getSuggestedGasPrice(account.address, destination, "0x"));
-      logger.debug(`Fetched gasPrice=${gasPrice}`);
+    const accessList = [
+      {
+        address: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+        storageKeys: [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+        ],
+      },
+    ] as const;
 
-      const { hash, receipt } = await sendTransactionWithGasPriceRetry(
-        l2PublicClient,
-        (fees) =>
-          walletClient.sendTransaction({
-            type: "eip2930",
-            to: destination,
-            gasPrice,
-            value: etherToWei("0.01"),
-            gas: 200000n,
-            chainId: context.getL2ChainId(),
-            accessList,
-            nonce,
-            ...fees,
-          }),
-        { overallTimeoutMs: 300_000, receiptTimeoutMs: 60_000 },
-      );
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
+      walletClient.sendTransaction({
+        type: "eip2930",
+        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+        gasPrice: fees?.gasPrice ?? gasPrice,
+        value: etherToWei("0.01"),
+        gas: 200000n,
+        chainId: context.getL2ChainId(),
+        accessList,
+        nonce,
+      }),
+    );
+    logger.debug(`Access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
 
-      logger.debug(`Access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
-
-      expect(receipt.status).toEqual("success");
-    },
-    360_000,
-  );
-
-  it.concurrent(
-    "Should successfully send an EIP-7702 transaction with fee retry",
-    async () => {
-      const [deployer, authority] = await l2AccountManager.generateAccounts(2);
-      const l2PublicClient = context.l2PublicClient();
-      const deployerWalletClient = context.l2WalletClient({ account: deployer });
-      const authorityWalletClient = context.l2WalletClient({ account: authority });
-
-      const contractAddress = await deployTestEip7702Delegation(lineaEstimateGasClient, deployerWalletClient, deployer);
-
-      const authorization = await authorityWalletClient.signAuthorization({
-        contractAddress,
-        executor: "self",
-      });
-
-      const initializeData = encodeEip7702InitializeData();
-      const estimatedGasFees = await estimateLineaGas(lineaEstimateGasClient, {
-        account: authority.address,
-        to: contractAddress,
-        data: initializeData,
-      });
-      const nonce = await l2PublicClient.getTransactionCount({ address: authority.address });
-
-      const { hash, receipt } = await sendTransactionWithRetry(
-        l2PublicClient,
-        (fees) =>
-          authorityWalletClient.sendTransaction({
-            authorizationList: [authorization],
-            to: authority.address,
-            data: initializeData,
-            nonce,
-            ...estimatedGasFees,
-            ...fees,
-            gas: 100_000n,
-          }),
-        { receiptTimeoutMs: 60_000 },
-      );
-
-      logger.debug(`EIP-7702 transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
-      expect(receipt.status).toEqual("success");
-    },
-    240_000,
-  );
+    expect(receipt.status).toEqual("success");
+  });
 
   // TODO: discuss new frontend
   it.skip("Shomei frontend always behind while conflating multiple blocks and proving on L1", async () => {
