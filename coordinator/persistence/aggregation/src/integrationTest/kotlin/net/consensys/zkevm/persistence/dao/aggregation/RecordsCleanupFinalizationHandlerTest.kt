@@ -4,11 +4,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import linea.persistence.ForcedTransactionsDao
-import linea.persistence.ftx.ForcedTransactionRecordFactory
-import linea.persistence.ftx.PostgresForcedTransactionsDao
-import net.consensys.FakeFixedClock
-import net.consensys.linea.async.get
 import linea.domain.createAggregation
 import linea.domain.createBatch
 import linea.domain.createBlobRecordFromBatches
@@ -16,6 +11,11 @@ import linea.finalization.FinalizationMonitor
 import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
+import linea.persistence.ftx.ForcedTransactionRecordFactory
+import linea.persistence.ftx.PostgresForcedTransactionsDao
+import net.consensys.FakeFixedClock
+import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao

@@ -19,10 +19,10 @@ import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
 import linea.domain.FakeBlobShnarfCalculator
 import linea.domain.ProofIndex
+import linea.domain.createBlobRecord
 import linea.kotlin.ByteArrayExt
 import linea.persistence.BlobsRepository
 import net.consensys.linea.traces.TracesCountersV2
-import linea.domain.createBlobRecord
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
@@ -68,7 +68,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       }
     }
   private lateinit var blobsPostgresDao: BlobsPostgresDao
-    private lateinit var blobCompressionProofCoordinator: BlobCompressionProofCoordinator
+  private lateinit var blobCompressionProofCoordinator: BlobCompressionProofCoordinator
 
   private val expectedStartBlock = 1UL
   private val expectedEndBlock = 100UL

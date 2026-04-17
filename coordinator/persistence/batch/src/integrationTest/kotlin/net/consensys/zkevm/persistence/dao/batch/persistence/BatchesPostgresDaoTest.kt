@@ -5,11 +5,11 @@ import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import linea.domain.Batch
+import linea.domain.createBatch
+import linea.error.DuplicatedRecordException
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import linea.domain.createBatch
 import net.consensys.zkevm.persistence.db.DbHelper
-import linea.error.DuplicatedRecordException
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
