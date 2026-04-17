@@ -16,7 +16,7 @@ class BatchProofHandlerImpl(
   private val log = LogManager.getLogger(this::class.java)
   override fun acceptNewBatch(batch: Batch): SafeFuture<Unit> {
     return batchesRepository.saveNewBatch(batch)
-      .exceptionally { th ->
+      .exceptionallyCompose { th ->
         if (th is DuplicatedRecordException) {
           log.debug(
             "Ignoring Batch already persisted error. batch={} errorMessage={}",
