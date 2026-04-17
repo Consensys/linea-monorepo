@@ -151,8 +151,6 @@ type sha2BlockModule struct {
 
 	// LimbsIsZero is 1 iff limb is zero.
 	LimbsIsZero ifaces.Column
-	// SumLimbsIsZeroCol equals Σ LimbsIsZero[i+numLimbsPerBlock+numLimbsPerState].
-	SumLimbsIsZeroCol ifaces.Column
 	// EntireLimbsIntervalIsZero is 1 iff every  limb in the interval equivalent with newState is zero.
 	EntireLimbsIntervalIsZero *dedicated.IsZeroCtx
 	ProverActions             []wizard.ProverAction
@@ -357,7 +355,6 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 	)
 
 	// Forbid all-zero newState on active compressions so gnark cannot skip Permute.
-	res.SumLimbsIsZeroCol = declareCommit("SUM_NEW_STATE_LIMBS_IS_ZERO")
 	var limbIsZeroCtx wizard.ProverAction
 	res.LimbsIsZero, limbIsZeroCtx = dedicated.IsZero(
 		comp,
@@ -371,14 +368,11 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		// shift the column by the offset of the newState interval
 		sumNewStateFlags = sym.Add(sumNewStateFlags, column.Shift(res.LimbsIsZero, numLimbsPerBlock+numLimbsPerState+i))
 	}
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_SUM_NEW_STATE_LIMBS_IS_ZERO_EQ", inp.Name),
-		sym.Sub(res.SumLimbsIsZeroCol, sumNewStateFlags),
-	)
+
 	lenHashCol := verifiercol.NewConstantCol(field.NewElement(uint64(numLimbsPerState)), colSize, inp.Name+"_LEN_HASH_COL")
 	res.EntireLimbsIntervalIsZero = dedicated.IsZero(
 		comp,
-		sym.Sub(lenHashCol, res.SumLimbsIsZeroCol),
+		sym.Sub(lenHashCol, sumNewStateFlags),
 	)
 	comp.InsertGlobal(0,
 		// we can use CanBeBeginningOfInstance.Natural as selector since res.EntireLimbsIntervalIsZero is constructed  by the shift of the LimbsIsZero column by the offset of the newState.
