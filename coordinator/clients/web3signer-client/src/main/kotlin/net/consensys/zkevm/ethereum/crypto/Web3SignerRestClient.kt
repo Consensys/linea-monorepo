@@ -7,6 +7,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.ext.web.client.impl.HttpResponseImpl
 import linea.crypto.Signer
 import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.httprest.client.HttpRestClient
 import java.math.BigInteger
 
@@ -16,7 +17,7 @@ class Web3SignerRestClient(private val client: HttpRestClient, private val publi
     val path = WEB3SIGNER_SIGN_ENDPOINT + publicKey
     val requestJson =
       """
-      {"data":"$bytes"}
+      {"data":"${bytes.encodeHex()}"}
       """.trimIndent()
     val buffer = Buffer.buffer(requestJson)
 
