@@ -3,9 +3,9 @@ package sha2
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -38,7 +38,6 @@ const (
 	// in total) for the initial hash and 16 uint16 (256 bits in total) for the
 	// final hash.
 	numRowPerInstance = numLimbsPerBlock + numLimbsPerState + numLimbsPerState
-
 )
 
 var (
@@ -150,17 +149,13 @@ type sha2BlockModule struct {
 	// span of a hash.
 	Hash [numLimbsPerState]ifaces.Column
 
-	HashIsZero [numLimbsPerState]ifaces.Column
-	// SumHashCol is constrained to Σ HashIsZero[i]. It counts how many
-	// hash limbs are zero on each row.
-	SumHashCol ifaces.Column
-	// LenHashCol is a precomputed column holding numLimbsPerState on every
-	// row.
-	LenHashCol ifaces.Column
-	// EntireHashIsZero is IsZero(LenHashCol − SumHashCol): 1 iff every hash
-	// limb is zero. Constrained via IsActive × EntireHashIsZero = 0.
-	EntireHashIsZero *dedicated.IsZeroCtx
-	ProverActions []wizard.ProverAction
+	// LimbsIsZero is 1 iff limb is zero.
+	LimbsIsZero ifaces.Column
+	// SumLimbsIsZeroCol equals Σ LimbsIsZero[i+numLimbsPerBlock+numLimbsPerState].
+	SumLimbsIsZeroCol ifaces.Column
+	// EntireLimbsIntervalIsZero is 1 iff every  limb in the interval equivalent with newState is zero.
+	EntireLimbsIntervalIsZero *dedicated.IsZeroCtx
+	ProverActions             []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
 	// handles all the Plonk logic responsible for verifying the correctness of
@@ -361,35 +356,38 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		},
 	)
 
-	// Active rows cannot carry an all-zero digest (gnark skips permutation when
-	// every limb is zero). SumHashCol = Σ HashIsZero[i]; LenHashCol is fixed to
-	// numLimbsPerState; EntireHashIsZero = IsZero(LenHashCol − SumHashCol); forbid
-	// IsActive × EntireHashIsZero.
-	res.SumHashCol = declareCommit("SUM_HASH_COL")
-	res.LenHashCol = comp.InsertPrecomputed(
-		ifaces.ColID(inp.Name+"_LEN_HASH_COL"),
-		smartvectors.NewConstant(field.NewElement(uint64(numLimbsPerState)), colSize),
-	)
-	var hashIsZeroCtx [numLimbsPerState]wizard.ProverAction
-	for i := range numLimbsPerState {
-		res.HashIsZero[i], hashIsZeroCtx[i] = dedicated.IsZero(comp, res.Hash[i]).GetColumnAndProverAction()
-	}
-	res.ProverActions = append(res.ProverActions, hashIsZeroCtx[:]...)
-	sumHashIsZero := sym.NewVariable(res.HashIsZero[0])
-	for i := 1; i < numLimbsPerState; i++ {
-		sumHashIsZero = sym.Add(sumHashIsZero, res.HashIsZero[i])
-	}
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_SUM_HASH_COL_EQ", inp.Name),
-		sym.Sub(res.SumHashCol, sumHashIsZero),
-	)
-	res.EntireHashIsZero = dedicated.IsZero(
+	// Forbid all-zero newState on active compressions so gnark cannot skip Permute.
+	res.SumLimbsIsZeroCol = declareCommit("SUM_NEW_STATE_LIMBS_IS_ZERO")
+	var limbIsZeroCtx wizard.ProverAction
+	res.LimbsIsZero, limbIsZeroCtx = dedicated.IsZero(
 		comp,
-		sym.Sub(res.LenHashCol, res.SumHashCol),
+		res.Limbs,
+	).GetColumnAndProverAction()
+
+	res.ProverActions = append(res.ProverActions, limbIsZeroCtx)
+
+	sumNewStateFlags := sym.NewConstant(0)
+	for i := 0; i < numLimbsPerState; i++ {
+		// shift the column by the offset of the newState interval
+		sumNewStateFlags = sym.Add(sumNewStateFlags, column.Shift(res.LimbsIsZero, numLimbsPerBlock+numLimbsPerState+i))
+	}
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%v_SUM_NEW_STATE_LIMBS_IS_ZERO_EQ", inp.Name),
+		sym.Sub(res.SumLimbsIsZeroCol, sumNewStateFlags),
+	)
+	lenHashCol := verifiercol.NewConstantCol(field.NewElement(uint64(numLimbsPerState)), colSize, inp.Name+"_LEN_HASH_COL")
+	res.EntireLimbsIntervalIsZero = dedicated.IsZero(
+		comp,
+		sym.Sub(lenHashCol, res.SumLimbsIsZeroCol),
 	)
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_HASH_CANT_BE_ENTIRELY_ZERO", inp.Name),
-		sym.Mul(res.IsActive, res.EntireHashIsZero.IsZero),
+		// we can use CanBeBeginningOfInstance.Natural as selector since res.EntireLimbsIntervalIsZero is constructed  by the shift of the LimbsIsZero column by the offset of the newState.
+		ifaces.QueryIDf("%v_LIMBS_NEW_STATE_CANT_BE_ENTIRELY_ZERO", inp.Name),
+		sym.Mul(
+			res.IsActive,
+			res.CanBeBeginningOfInstance.Natural,
+			res.EntireLimbsIntervalIsZero.IsZero,
+		),
 	)
 
 	return res

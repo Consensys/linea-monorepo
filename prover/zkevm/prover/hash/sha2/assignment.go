@@ -110,12 +110,12 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 	sbh.CanBeBlockOfInstance.Assign(run)
 	sbh.CanBeEndOfInstance.Assign(run)
 
-	for i := range sbh.ProverActions {
-		sbh.ProverActions[i].Run(run)
+	// Run the LimbsIsZero prover action, then compute the sum and run EntireLimbsIntervalIsZero.
+	for _, pa := range sbh.ProverActions {
+		pa.Run(run)
 	}
-
-	assignSumHash(run, sbh)
-	sbh.EntireHashIsZero.Run(run)
+	assignSumLimbsIsZero(run, sbh)
+	sbh.EntireLimbsIntervalIsZero.Run(run)
 
 	if sbh.HasCircuit {
 		// this is guarded by a once, so it is safe to call multiple times
@@ -161,24 +161,22 @@ func (sbha *sha2BlockHashingAssignment) pushBlock(
 	return newState
 }
 
-// assignSumHash fills SumHashCol from HashIsZero so it satisfies the Σ constraint
-// in [newSha2BlockModule].
-func assignSumHash(run *wizard.ProverRuntime, sbh *sha2BlockModule) {
-	z := make([][]field.Element, numLimbsPerState)
-	for i := range numLimbsPerState {
-		z[i] = sbh.HashIsZero[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-	}
-	n := len(z[0])
+// assignSumLimbsIsZero computes SumLimbsIsZeroCol as Σ Shift(LimbsIsZero, 48+i) for i in [0,16).
+func assignSumLimbsIsZero(run *wizard.ProverRuntime, sbh *sha2BlockModule) {
+	limbsIsZero := sbh.LimbsIsZero.GetColAssignment(run).IntoRegVecSaveAlloc()
+	n := len(limbsIsZero)
 	sumCol := make([]field.Element, n)
+	newStateOffset := numLimbsPerBlock + numLimbsPerState
 	for r := range n {
 		var s field.Element
 		for i := range numLimbsPerState {
-			s.Add(&s, &z[i][r])
+			idx := (r + newStateOffset + i) % n
+			s.Add(&s, &limbsIsZero[idx])
 		}
 		sumCol[r] = s
 	}
 	run.AssignColumn(
-		sbh.SumHashCol.GetColID(),
+		sbh.SumLimbsIsZeroCol.GetColID(),
 		smartvectors.NewRegular(sumCol),
 		wizard.DisableAssignmentSizeReduction,
 	)

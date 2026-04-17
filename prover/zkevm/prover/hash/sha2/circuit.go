@@ -47,10 +47,10 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 		panic(fmt.Sprintf("unexpected error when instantiating `uapi`: %v", err.Error()))
 	}
 
-	// allLimbsAreZero is the count of zero limbs (sum of IsZero). It equals
-	// len(NewDigest) iff every limb is zero — same predicate as EntireHashIsZero
-	// in sha2_block.go. When equal, we skip the permutation check (padding
-	// row): (count - len) is zero so the equality is not enforced.
+	// Count of zero limbs; equals len(NewDigest) iff NewDigest is all-zero.
+	// When equal, skip permutation check for padded / unused Plonk instances.
+	// Real compressions must not be all-zero in Limbs: see sha2_block.go
+	// (IsActive × CanBeBeginning × EntireLimbsNewStateIsZero).
 	var allLimbsAreZero frontend.Variable = 0
 	for i := range sbpi.NewDigest {
 		allLimbsAreZero = api.Add(allLimbsAreZero, api.IsZero(sbpi.NewDigest[i]))
@@ -71,7 +71,6 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 	recomputedNewDigest := sha2.Permute(uapi, prevDigest, blockBytes)
 
 	for i := range recomputedNewDigest {
-		// newDigest == recomputedDigest unless all limbs of NewDigest are zero.
 		api.AssertIsEqual(
 			api.Mul(
 				api.Sub(allLimbsAreZero, len(sbpi.NewDigest)),
