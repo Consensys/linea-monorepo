@@ -41,25 +41,6 @@ jobs:
           cat e2e/e2e-runtime-report-summary.json >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Format flaky tests for Slack
-        id: flaky
-        env:
-          SUMMARY_JSON: ${{ steps.summary.outputs.json }}
-        run: |
-          node -e '
-            const summary = JSON.parse(process.env.SUMMARY_JSON);
-            const tests = summary.topFlakyTests || [];
-            if (tests.length === 0) {
-              process.stdout.write("has_flaky=false\n");
-            } else {
-              const line = tests.map((t, i) => {
-                const spec = t.specFile.replace("src/", "").replace(".spec.ts", "");
-                return (i+1) + ". " + t.testName + " (" + spec + ") - " + (t.failRate*100).toFixed(1) + "% fail rate (" + t.failures + "/" + t.appearances + ")";
-              }).join("\\n");
-              process.stdout.write("has_flaky=true\ntext=" + line + "\n");
-            }
-          ' >> "$GITHUB_OUTPUT"
-
       - name: Upload HTML report
         if: ${{ fromJSON(steps.summary.outputs.json).totalRuns > 0 }}
         uses: actions/upload-artifact@v4
@@ -125,7 +106,7 @@ jobs:
                         style:
                           bold: true
                       - type: text
-                        text: "${{ steps.flaky.outputs.has_flaky == 'true' && steps.flaky.outputs.text || 'None detected this period.' }}"
+                        text: "${{ fromJSON(steps.summary.outputs.json).flakySlackText }}"
 
               - type: rich_text
                 elements:

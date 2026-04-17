@@ -47,6 +47,7 @@ interface ReportSummary {
   medianRunDurationSeconds: number;
   maxRunDurationSeconds: number;
   topFlakyTests: FlakyTestEntry[];
+  flakySlackText: string;
 }
 
 const DEFAULT_DAYS = 30;
@@ -232,6 +233,16 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
   const maxRunDuration = runDurations.length > 0 ? Math.max(...runDurations) : NaN;
 
   const allFlakyTests = computeFlakyTests(runResults);
+  const topFlakyTests = allFlakyTests.slice(0, 3);
+  const flakySlackText =
+    topFlakyTests.length === 0
+      ? "None detected this period."
+      : topFlakyTests
+          .map((t, i) => {
+            const spec = t.specFile.replace("src/", "").replace(".spec.ts", "");
+            return `${i + 1}. ${t.testName} (${spec}) - ${(t.failRate * 100).toFixed(1)}% fail rate (${t.failures}/${t.appearances})`;
+          })
+          .join("\n");
 
   const summary: ReportSummary = {
     totalRuns,
@@ -240,7 +251,8 @@ function renderHtmlReport(runResults: E2eRunResult[]): { html: string; summary: 
     dateRange,
     medianRunDurationSeconds: Math.round(isNaN(medianRunDuration) ? 0 : medianRunDuration),
     maxRunDurationSeconds: Math.round(isNaN(maxRunDuration) ? 0 : maxRunDuration),
-    topFlakyTests: allFlakyTests.slice(0, 3),
+    topFlakyTests,
+    flakySlackText,
   };
 
   // Build HTML
@@ -524,6 +536,7 @@ async function main(): Promise<void> {
       medianRunDurationSeconds: 0,
       maxRunDurationSeconds: 0,
       topFlakyTests: [],
+      flakySlackText: "None detected this period.",
     };
     writeFileSync("e2e-runtime-report-summary.json", JSON.stringify(emptySummary) + "\n");
     process.exit(0);
