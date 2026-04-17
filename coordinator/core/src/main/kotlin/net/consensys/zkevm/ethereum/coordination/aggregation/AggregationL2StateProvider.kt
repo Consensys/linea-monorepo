@@ -59,9 +59,8 @@ class AggregationL2StateProviderImpl(
     }
 
     return forcedTransactionsDao
-      .findHighestForcedTransaction(
-        upToSimulatedExecutionBlockNumberInclusive = aggEndBlockNumber.minus(1uL),
-      ).thenApply { highestFtx ->
+      .findHighestForcedTransaction(upToSimulatedExecutionBlockNumberInclusive = aggEndBlockNumber)
+      .thenApply { highestFtx ->
         highestFtx
           ?.let { FtxRollingInfo(it.ftxNumber, it.ftxRollingHash) }
           ?: FtxRollingInfo.GENESIS
