@@ -11,6 +11,9 @@ import type { Logger } from "winston";
 const COORDINATOR_HEALTH_URL = "http://localhost:9545/health";
 const COORDINATOR_READINESS_TIMEOUT_MS = 60_000;
 const COORDINATOR_READINESS_POLLING_MS = 500;
+// Extra time after the health endpoint is up for internal services (e.g. MessageAnchoringApp)
+// to fully initialise their L1 polling loops before tests send new messages.
+const COORDINATOR_ANCHORING_WARMUP_MS = 10_000;
 
 async function waitForCoordinatorReadiness(logger: Logger): Promise<void> {
   logger.debug("Waiting for coordinator readiness...");
@@ -22,6 +25,10 @@ async function waitForCoordinatorReadiness(logger: Logger): Promise<void> {
     (isHealthy) => isHealthy,
     { pollingIntervalMs: COORDINATOR_READINESS_POLLING_MS, timeoutMs: COORDINATOR_READINESS_TIMEOUT_MS },
   );
+  logger.debug(
+    `Coordinator HTTP endpoint is ready. Waiting ${COORDINATOR_ANCHORING_WARMUP_MS}ms for internal services to initialise...`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, COORDINATOR_ANCHORING_WARMUP_MS));
   logger.debug("Coordinator is ready.");
 }
 
@@ -249,7 +256,12 @@ describe("Coordinator restart test suite", () => {
       // Phase 2: Restart coordinator
       await restartBarrier.arrive(logger);
 
-      // Phase 3: Send a new L1->L2 message after restart and wait for anchoring
+      // Phase 3: Send a new L1->L2 message after restart and wait for anchoring.
+      // Capture the L2 block baseline before sending so that if the coordinator
+      // anchors the message very quickly the RollingHashUpdated event is not
+      // missed by a fromBlock that was sampled after the event was already mined.
+      const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
+
       const { receipt: l1ReceiptAfterRestart } = await sendL1ToL2Message(context, {
         account: l1MessageSender,
         fee: messageFee,
@@ -261,8 +273,6 @@ describe("Coordinator restart test suite", () => {
       logger.debug(
         `Waiting for L1->L2 anchoring after coordinator restart. messageNumber=${l1MessageAfterRestart.messageNumber}`,
       );
-
-      const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
 
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(l2PublicClient, {
         abi: l2MessageService.abi,

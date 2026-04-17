@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-import { addToDenyList, removeFromDenyList, withDenyListAddresses } from "./deny-list";
+import { addToDenyList, removeFromDenyList, waitForDenyListEffect, withDenyListAddresses } from "./deny-list";
 
 type MockSequencerClient = {
   pluginsReloadPluginConfig: ReturnType<typeof jest.fn<() => Promise<unknown>>>;
@@ -14,6 +14,11 @@ function createMockSequencerClient(): MockSequencerClient {
     pluginsReloadPluginConfig: jest.fn(async (): Promise<unknown> => undefined),
   };
 }
+
+/** Instantly confirms the deny list is active — used in tests that don't care about the real async probe. */
+const immediatelyBlocked = async (): Promise<never> => {
+  throw new Error("sender is blocked");
+};
 
 function createDeferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -81,7 +86,7 @@ describe("deny-list helper", () => {
     });
 
     // Act
-    await withDenyListAddresses(client, ["0xabc123"], run, denyListPath);
+    await withDenyListAddresses(client, ["0xabc123"], run, immediatelyBlocked, denyListPath);
 
     // Assert
     expect(run).toHaveBeenCalledTimes(1);
@@ -103,6 +108,7 @@ describe("deny-list helper", () => {
         async () => {
           throw runError;
         },
+        immediatelyBlocked,
         denyListPath,
       ),
     ).rejects.toThrow("callback failed");
@@ -132,6 +138,7 @@ describe("deny-list helper", () => {
         await releaseFirstRun.promise;
         events.push("first:end");
       },
+      immediatelyBlocked,
       denyListPath,
     );
 
@@ -147,6 +154,7 @@ describe("deny-list helper", () => {
         await releaseSecondRun.promise;
         events.push("second:end");
       },
+      immediatelyBlocked,
       denyListPath,
     );
 
@@ -191,6 +199,7 @@ describe("deny-list helper", () => {
         runEntered.resolve();
         await releaseRun.promise;
       },
+      immediatelyBlocked,
       denyListPath,
     );
 
@@ -216,5 +225,73 @@ describe("deny-list helper", () => {
     expect(addCompleted).toBe(true);
     expect(client.pluginsReloadPluginConfig).toHaveBeenCalledTimes(3);
     expect(readFileSync(denyListPath, "utf-8")).toEqual("0xdef456\n");
+  });
+});
+
+describe("waitForDenyListEffect", () => {
+  it("resolves immediately when probe throws 'blocked' on first attempt", async () => {
+    const probe = jest.fn(async () => {
+      throw new Error("sender 0xabc is blocked as appearing on the SDN or other legally prohibited list");
+    });
+
+    await expect(waitForDenyListEffect(probe, { timeoutMs: 5_000 })).resolves.toBeUndefined();
+    expect(probe).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries until probe throws 'blocked'", async () => {
+    let attempts = 0;
+    const probe = jest.fn(async () => {
+      attempts++;
+      if (attempts < 3) {
+        return "0xhash"; // not blocked yet
+      }
+      throw new Error("sender is blocked");
+    });
+
+    await expect(waitForDenyListEffect(probe, { timeoutMs: 5_000, pollingIntervalMs: 10 })).resolves.toBeUndefined();
+    expect(probe).toHaveBeenCalledTimes(3);
+  });
+
+  it("times out if probe never throws 'blocked'", async () => {
+    const probe = jest.fn(async () => "0xhash");
+
+    await expect(waitForDenyListEffect(probe, { timeoutMs: 100, pollingIntervalMs: 20 })).rejects.toThrow(
+      "awaitUntil timed out",
+    );
+  });
+
+  it("rethrows unexpected errors from probe as transient (awaitUntil retries them)", async () => {
+    let attempts = 0;
+    const probe = jest.fn(async () => {
+      attempts++;
+      if (attempts < 2) {
+        throw new Error("network error");
+      }
+      throw new Error("sender is blocked");
+    });
+
+    await expect(waitForDenyListEffect(probe, { timeoutMs: 5_000, pollingIntervalMs: 10 })).resolves.toBeUndefined();
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
+  it("withDenyListAddresses calls verifyEffect before running the callback", async () => {
+    const denyListPath = createTempDenyListFile("");
+    const client = createMockSequencerClient();
+    const callOrder: string[] = [];
+
+    const verifyEffect = jest.fn(async () => {
+      callOrder.push("verify");
+      throw new Error("sender is blocked");
+    });
+
+    const run = jest.fn(async () => {
+      callOrder.push("run");
+    });
+
+    await withDenyListAddresses(client, ["0xabc123"], run, verifyEffect, denyListPath);
+
+    expect(callOrder).toEqual(["verify", "run"]);
+    expect(verifyEffect).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });
