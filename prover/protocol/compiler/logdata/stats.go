@@ -146,8 +146,12 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			}
 
 			col := comp.Columns.GetHandle(msgName)
-			tr.NumFieldWritten += col.Size()
-			tr.WeightColumns += col.Size()
+			w := col.Size()
+			if !col.IsBase() {
+				w *= 4
+			}
+			tr.NumFieldWritten += w
+			tr.WeightColumns += w
 		}
 
 		paramsToFS := comp.QueriesParams.AllKeysAt(round)
@@ -193,7 +197,7 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 
 			info := comp.Coins.Data(myCoin)
 			if info.Type == coin.FieldExt {
-				tr.NumFieldSampled++
+				tr.NumFieldSampled += 4
 			} else {
 
 				var (
