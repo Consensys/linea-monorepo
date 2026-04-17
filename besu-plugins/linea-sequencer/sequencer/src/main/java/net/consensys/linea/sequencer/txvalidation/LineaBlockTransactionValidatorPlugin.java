@@ -21,8 +21,8 @@ import org.hyperledger.besu.plugin.services.TransactionValidatorService;
 
 /**
  * Registers protocol-level transaction validation rules via {@link TransactionValidatorService}.
- * These rules apply during block import and transaction selection, enforcing which transaction types
- * (e.g. blob, delegate code) are accepted at the protocol level.
+ * These rules apply during block import and transaction selection, enforcing which transaction
+ * types (e.g. blob, delegate code) are accepted at the protocol level.
  *
  * <p>Note: Besu's {@link TransactionValidatorService} rules also run during transaction pool
  * admission (RPC/P2P). Pool-level type validation is explicitly handled by {@link
