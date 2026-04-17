@@ -2,7 +2,7 @@ package net.consensys.linea.testing.submission
 
 import linea.domain.Aggregation
 import linea.domain.BlobRecord
-import linea.domain.Constants.LINEA_BLOCK_INTERVAL
+import linea.domain.TestConstants.LINEA_BLOCK_INTERVAL
 import linea.domain.createAggregation
 import linea.domain.createBlobRecords
 import net.consensys.linea.testing.filesystem.getPathTo
