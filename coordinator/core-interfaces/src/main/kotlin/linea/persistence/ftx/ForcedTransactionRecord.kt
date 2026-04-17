@@ -1,4 +1,4 @@
-package net.consensys.zkevm.domain
+package linea.persistence.ftx
 
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.kotlin.encodeHex

@@ -1,6 +1,5 @@
 package linea.persistence.ftx
 
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentHashMap
 

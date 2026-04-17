@@ -5,7 +5,6 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level

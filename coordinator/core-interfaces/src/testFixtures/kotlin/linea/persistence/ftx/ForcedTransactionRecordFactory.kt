@@ -1,4 +1,4 @@
-package net.consensys.zkevm.domain
+package linea.persistence.ftx
 
 import linea.forcedtx.ForcedTransactionInclusionResult
 import kotlin.time.Instant
@@ -8,7 +8,7 @@ object ForcedTransactionRecordFactory {
     ftxNumber: ULong = 1UL,
     inclusionResult: ForcedTransactionInclusionResult = ForcedTransactionInclusionResult.BadNonce,
     simulatedExecutionBlockNumber: ULong = 100UL,
-    simulatedExecutionBlockTimestamp: Instant = Instant.fromEpochSeconds(0),
+    simulatedExecutionBlockTimestamp: Instant = Instant.Companion.fromEpochSeconds(0),
     ftxBlockNumberDeadline: ULong = 200UL,
     ftxRollingHash: ByteArray = byteArrayOf(0x00),
     ftxRlp: ByteArray = byteArrayOf(0x00),

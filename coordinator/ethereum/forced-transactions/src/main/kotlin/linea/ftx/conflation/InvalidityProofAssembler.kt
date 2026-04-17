@@ -12,13 +12,13 @@ import linea.ethapi.EthLogsClient
 import linea.ethapi.EthLogsFilterOptions
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.kotlin.toHexStringUInt256
+import linea.persistence.ftx.ForcedTransactionRecord
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
 import net.consensys.zkevm.coordinator.clients.InvalidityProofResponse
 import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.InvalidityReason
 import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.domain.InvalidityProofIndex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

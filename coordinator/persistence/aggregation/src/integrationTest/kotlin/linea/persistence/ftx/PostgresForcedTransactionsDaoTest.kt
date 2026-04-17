@@ -11,7 +11,6 @@ import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.inclusionRe
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.proofStatusToDbValue
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat

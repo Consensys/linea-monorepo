@@ -20,6 +20,7 @@ import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
 import linea.ftx.conflation.SafeBlockNumberUpdateListener
 import linea.log4j.configureLoggers
 import linea.persistence.ftx.FakeForcedTransactionsDao
+import linea.persistence.ftx.ForcedTransactionRecord
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV4
@@ -29,7 +30,6 @@ import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClien
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
