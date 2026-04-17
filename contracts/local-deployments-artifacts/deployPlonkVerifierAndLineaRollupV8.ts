@@ -191,22 +191,13 @@ async function main() {
         gasPrice,
       },
     ),
-    deployContractFromArtifacts(
-      MimcAddressContractName,
-      MimcAddressAbi,
-      MimcAddressFilterBytecode,
-      wallet,
-      {
-        nonce: walletNonce + 5,
-        gasPrice,
-      },
-    ),
+    deployContractFromArtifacts(MimcAddressContractName, MimcAddressAbi, MimcAddressFilterBytecode, wallet, {
+      nonce: walletNonce + 5,
+      gasPrice,
+    }),
   ]);
 
-  const [lineaRollupAddress, mimcAddress] = await Promise.all([
-    lineaRollupContract.getAddress(),
-    mimc.getAddress(),
-  ]);
+  const [lineaRollupAddress, mimcAddress] = await Promise.all([lineaRollupContract.getAddress(), mimc.getAddress()]);
 
   const args = [
     lineaRollupAddress,
