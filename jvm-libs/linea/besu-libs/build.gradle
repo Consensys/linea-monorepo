@@ -3,27 +3,25 @@ plugins {
   id 'java-library'
 }
 
-def besuVersion="${libs.versions.besu.get()}"
-
 dependencies {
-  api("${besuArtifactGroup}:besu-datatypes:${besuVersion}") {
+  api("${besuArtifactGroup}:besu-datatypes") {
     transitive = false
   }
-  api("${besuArtifactGroup}:besu-evm:${besuVersion}") {
+  api("${besuArtifactGroup}:besu-evm") {
     transitive = false
   }
-  api("${besuArtifactGroup}.internal:besu-ethereum-core:${besuVersion}") {
+  api("${besuArtifactGroup}.internal:besu-ethereum-core") {
     transitive = false
   }
-  api("${besuArtifactGroup}.internal:besu-crypto-algorithms:${besuVersion}") {
-    transitive = false
-  }
-
-  api("${besuArtifactGroup}:besu-plugin-api:${besuVersion}") {
+  api("${besuArtifactGroup}.internal:besu-crypto-algorithms") {
     transitive = false
   }
 
-  api("${besuArtifactGroup}.internal:besu-ethereum-rlp:${besuVersion}") {
+  api("${besuArtifactGroup}:besu-plugin-api") {
+    transitive = false
+  }
+
+  api("${besuArtifactGroup}.internal:besu-ethereum-rlp") {
     transitive = false
   }
 

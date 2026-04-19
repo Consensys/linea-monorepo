@@ -1,5 +1,9 @@
 rootProject.name = 'linea'
 
+// linea-besu is declared first so dependent modules can wire task dependencies to
+// :linea-besu:buildAndPublishBesu and read the resolved version cache file lazily.
+include 'linea-besu'
+
 // please keep deps sorted by group and alphabetically
 include 'jvm-libs:generic:serialization:jackson'
 include 'jvm-libs:generic:json-rpc'
