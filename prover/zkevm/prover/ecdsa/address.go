@@ -278,14 +278,8 @@ func (addr *Addresses) assignMainColumns(
 ) {
 
 	var (
-		pkModule = addr.buildGenericModule(addr.HashNum, uaGnark)
-		split    = totalNbEcRecoverRows(nbEcRecover)
-		// numRowCurrFrame indicates the number of rows in the current frame.
-		// E.g. when the loop is iterating over rows corresponding to an
-		// ecrecover, numRowCurrFrame = nbRowsPerEcRec and when the loop is
-		// iterating over rows corresponding to a txSignature
-		// numRowCurrFrame = nbRowsPerTxSign.
-		numRowCurrFrame      = nbRowsPerEcRec
+		pkModule             = addr.buildGenericModule(addr.HashNum, uaGnark)
+		split                = totalNbEcRecoverRows(nbEcRecover)
 		streams              = pkModule.Data.ScanStreams(run)
 		permTrace            = keccak.GenerateTrace(streams)
 		addressUntrimmedHi   = limbs.NewVectorBuilder(addr.AddressHiUntrimmed.AsDynSize())
@@ -313,7 +307,6 @@ func (addr *Addresses) assignMainColumns(
 	// ECRECOVER slots explicitly (consuming a digest only for successful
 	// frames, and pushing zeros with isHash=0 for failed frames), then
 	// iterate the remaining digests for TX-signature frames.
-	_ = numRowCurrFrame
 	digestIdx := 0
 	for i := 0; i < nbEcRecover; i++ {
 		if frameSuccessful[i] {
