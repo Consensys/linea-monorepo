@@ -1,9 +1,7 @@
 rootProject.name = 'linea'
 
-// linea-besu MUST be declared first: its build.gradle reads the cached Besu version
-// (cheap file read) and sets rootProject.ext.resolvedBesuVer at configuration time.
-// It also ensures Besu artifacts exist (build/fetch if missing, skip if present) because
-// the besu-plugin-library plugin resolves the BOM during configuration (afterEvaluate).
+// linea-besu is declared first so dependent modules can wire task dependencies to
+// :linea-besu:buildAndPublishBesu and read the resolved version cache file lazily.
 include 'linea-besu'
 
 // please keep deps sorted by group and alphabetically

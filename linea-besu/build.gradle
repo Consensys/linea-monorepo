@@ -27,10 +27,6 @@ def cachedCommitFile = new File(rootDirFile, 'linea-besu/.besu-resolved-commit')
 // Capture providers at configuration time so task actions never touch Project/rootProject.
 def providers = rootProject.providers
 
-def resolvedBesuVer = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedVersionFile, cachedCommitFile)
-rootProject.ext.resolvedBesuVer = resolvedBesuVer
-logger.lifecycle("Resolved besu version (configuration phase, cached): ${resolvedBesuVer}")
-
 def publishToMaven = project.hasProperty('publishToMaven') ? project.publishToMaven.toBoolean() : false
 def skipDownloadBesuDist = project.hasProperty('skipDownloadBesuDist') ? project.skipDownloadBesuDist.toBoolean() : true
 def cloudsmithUser = project.hasProperty('cloudsmithUser') ? project.cloudsmithUser.toString() : ''
@@ -39,22 +35,40 @@ def mavenLocalBase = providers.systemProperty('maven.repo.local')
     .orElse(providers.systemProperty('user.home').map { it + '/.m2/repository' })
     .get()
 
-// The net.consensys.besu-plugin-library plugin (used by tracer & linea-sequencer) resolves
-// a detached configuration against the Besu BOM during its afterEvaluate hook — still
-// configuration phase. Besu artifacts must therefore exist before downstream projects
-// finish configuring. This call is cheap when artifacts are already present (file-existence
-// checks only); it only performs an expensive build/download when they are genuinely missing.
-buildAndPublishBesuAction(
-    logger,
-    providers,
-    rootDirFile,
-    publishToMaven,
-    skipDownloadBesuDist,
-    resolvedBesuVer,
-    cloudsmithUser,
-    cloudsmithApiKey,
-    mavenLocalBase
-    )
+// Expose lazy Besu version/materialization helper for other modules that need a Besu version
+// during dependency resolution (before task execution).
+rootProject.ext.resolveBesuVersion = {
+  def resolvedVersion = null
+
+  if (cachedVersionFile.exists() && cachedCommitFile.exists() && cachedCommitFile.text.trim() == besuCommit) {
+    resolvedVersion = cachedVersionFile.text.trim()
+  }
+
+  if (!resolvedVersion) {
+    resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedVersionFile, cachedCommitFile)
+  }
+
+  def mavenLocalBomPom = new File(mavenLocalBase, "org/hyperledger/besu/bom/${resolvedVersion}/bom-${resolvedVersion}.pom")
+  if (!mavenLocalBomPom.exists()) {
+    logger.lifecycle("Besu BOM ${resolvedVersion} missing in mavenLocal; building/publishing Besu on-demand")
+    buildAndPublishBesuAction(
+        logger,
+        providers,
+        rootDirFile,
+        false,
+        skipDownloadBesuDist,
+        resolvedVersion,
+        cloudsmithUser,
+        cloudsmithApiKey,
+        mavenLocalBase
+        )
+  }
+
+  return resolvedVersion
+}
+
+// Besu build/publish is intentionally deferred to task execution.
+// Downstream projects wire task dependencies to this module's buildAndPublishBesu task.
 
 tasks.register('resolveBesuVersion') { t ->
   group = 'Build'
@@ -70,6 +84,7 @@ tasks.register('buildAndPublishBesu') { t ->
   description = 'Build Besu at the resolved version (distTar publish/publishToMavenLocal)'
   dependsOn tasks.named('resolveBesuVersion')
   doLast {
+    def resolvedBesuVer = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedVersionFile, cachedCommitFile)
     buildAndPublishBesuAction(
         t.logger,
         providers,

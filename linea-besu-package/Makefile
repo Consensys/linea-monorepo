@@ -24,7 +24,7 @@ build-tracer-and-sequencer:
 	cd ..; \
 	echo "Build versions: TRACER_PLUGIN_VERSION=${TRACER_PLUGIN_VERSION} SEQUENCER_PLUGIN_VERSION=$(SEQUENCER_PLUGIN_VERSION)" ; \
 	echo "Clean and build distribution for tracer" ; \
-	./gradlew tracer:clean && ./gradlew tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
+	./gradlew tracer:plugin:clean && ./gradlew tracer:plugins:installDist -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
 	echo "Clean and build distribution for sequencer" ; \
 	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:installDist -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
 
