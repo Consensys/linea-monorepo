@@ -101,4 +101,16 @@ describe("createSignerClient", () => {
 
     expect(AwsKmsSignerClientAdapter.create).toHaveBeenCalledWith(logger, config.kmsKeyId, { region: config.region });
   });
+
+  it("throws with the unsupported type for an unknown signer type (runtime guard)", async () => {
+    const malformedConfig = { type: "gcp-kms" };
+
+    await expect(
+      createSignerClient(malformedConfig as unknown as SignerConfig, logger, TEST_RPC_URL, mainnet),
+    ).rejects.toThrow("Unsupported signer type: gcp-kms");
+
+    expect(ViemWalletSignerClientAdapter).not.toHaveBeenCalled();
+    expect(Web3SignerClientAdapter).not.toHaveBeenCalled();
+    expect(AwsKmsSignerClientAdapter.create).not.toHaveBeenCalled();
+  });
 });

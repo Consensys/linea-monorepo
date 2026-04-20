@@ -43,5 +43,10 @@ export async function createSignerClient(
         config.kmsKeyId,
         config.region ? { region: config.region } : undefined,
       );
+
+    default: {
+      const exhaustiveCheck: never = config;
+      throw new Error(`Unsupported signer type: ${(exhaustiveCheck as { type: string }).type}`);
+    }
   }
 }
