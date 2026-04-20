@@ -146,8 +146,12 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			}
 
 			col := comp.Columns.GetHandle(msgName)
-			tr.NumFieldWritten += col.Size()
-			tr.WeightColumns += col.Size()
+			w := col.Size()
+			if !col.IsBase() {
+				w *= 4
+			}
+			tr.NumFieldWritten += w
+			tr.WeightColumns += w
 		}
 
 		paramsToFS := comp.QueriesParams.AllKeysAt(round)
@@ -160,24 +164,28 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 
 			switch q := q_.(type) {
 			case query.UnivariateEval:
-				tr.NumFieldWritten += len(q.Pols)
-				tr.WeightUnivariate += len(q.Pols)
+				tr.NumFieldWritten += len(q.Pols) * 4
+				tr.WeightUnivariate += len(q.Pols) * 4
 			case query.InnerProduct:
-				tr.NumFieldWritten += len(q.Bs)
-				tr.WeightInnerProduct += len(q.Bs)
+				tr.NumFieldWritten += len(q.Bs) * 4
+				tr.WeightInnerProduct += len(q.Bs) * 4
 			case *query.Horner:
-				w := 1 + 2*len(q.Parts)
+				w := 4 + 2*len(q.Parts)
 				tr.NumFieldWritten += w
 				tr.WeightHorner += w
 			case query.LocalOpening:
-				tr.NumFieldWritten++
-				tr.WeightLocalOpenings++
+				cost := 4
+				if q.IsBase() {
+					cost = 1
+				}
+				tr.NumFieldWritten += cost
+				tr.WeightLocalOpenings += cost
 			case query.LogDerivativeSum:
-				tr.NumFieldWritten++
-				tr.WeightLogDerivativeSum++
+				tr.NumFieldWritten += 4
+				tr.WeightLogDerivativeSum += 4
 			case query.GrandProduct:
-				tr.NumFieldWritten++
-				tr.WeightGrandProduct++
+				tr.NumFieldWritten += 4
+				tr.WeightGrandProduct += 4
 			}
 		}
 
@@ -189,7 +197,7 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 
 			info := comp.Coins.Data(myCoin)
 			if info.Type == coin.FieldExt {
-				tr.NumFieldSampled++
+				tr.NumFieldSampled += 4
 			} else {
 
 				var (
