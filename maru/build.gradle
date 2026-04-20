@@ -160,6 +160,9 @@ allprojects {
   }
 
   tasks.withType(Test).configureEach {
+    // Java 25: Byte Buddy (pulled in by Mockito inline mocks) may not list 25 as supported yet;
+    // this flag opts in so tests run until Byte Buddy catches up.
+    jvmArgs("-Dnet.bytebuddy.experimental=true")
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
     systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
     systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
@@ -177,12 +180,19 @@ subprojects {
 
   configurations {
     testSupportImplementation.extendsFrom implementation
-    integrationTestImplementation.extendsFrom implementation
     testSupportArtifacts
   }
 
-  // making sure assemble task invokes integration test compile
+  // Gradle 9: do not declare `integrationTestImplementation` in the `configurations { }` block above.
+  // Defining it before `sourceSets { integrationTest { } }` (e.g. in :app) causes a duplicate name error.
+  // After evaluation, extend the configuration only if the integrationTest source set created it.
   afterEvaluate { subproject ->
+    def integrationTestImpl = subproject.configurations.findByName("integrationTestImplementation")
+    if (integrationTestImpl != null) {
+      integrationTestImpl.extendsFrom(subproject.configurations.implementation)
+    }
+
+    // making sure assemble task invokes integration test compile
     project.tasks.jacocoTestReport {
       if (project.tasks.findByName('acceptanceTest')) {
         executionData(tasks.named("acceptanceTest").get())
@@ -206,7 +216,9 @@ task jacocoAggregatedReport(type: JacocoReport) {
   executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'])
   reports {
     xml.required = true
-    html.destination file("build/reports/jacocoHtml")
+    html.required = true
+    // Gradle 9: `html.destination` was removed from the reporting API; use `outputLocation` instead.
+    html.outputLocation.set(layout.buildDirectory.dir("reports/jacocoHtml"))
   }
 }
 

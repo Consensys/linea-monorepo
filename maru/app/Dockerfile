@@ -1,5 +1,5 @@
 # BUILDER image
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:25-jre-noble
 
 WORKDIR /opt/consensys/maru
 

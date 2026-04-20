@@ -3,7 +3,7 @@ A consensus layer client implementing QBFT protocol adhering to Eth 2.0 CL / EL 
 
 ## Requirements
 
-- Java 21+
+- Java 25+
 - Make 3.81
 
 ## Quick Start
@@ -14,12 +14,20 @@ docker-run-stack
 
 ## Build from sources
 
+Use **JDK 25** (same major version as CI). Check with `java -version`.
+
 To build Maru from source code:
 
 ```sh
 # Create a distribution ready to run
 ./gradlew :app:installDist
 ```
+
+### Validating a full build
+
+- Run unit and integration tests and checks: `./gradlew build` (several minutes).
+- If Spotless reports drift: `./gradlew spotlessApply`, then `./gradlew spotlessCheck`.
+- After changing `app/Dockerfile` or the Java baseline, confirm the image still builds (see **Build Docker Image Locally** below).
 
 After building, you can run Maru using:
 
