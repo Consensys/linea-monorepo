@@ -81,7 +81,8 @@ jobs:
               - 'prover/**'
               - '.github/workflows/prover-*.yml'
               - '.github/workflows/build-and-publish.yml'
-              - '.github/workflows/main.yml'
+              # TEMPORARY: commented out to avoid triggering prover tests on CI-only changes during testing
+              # - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
