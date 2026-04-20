@@ -100,12 +100,7 @@ func MustBeConstant(comp *wizard.CompiledIOP, c ifaces.Column) {
 	)
 }
 
-func LimbsMustBeConstant(comp *wizard.CompiledIOP, c []ifaces.Column) {
-	for i := range c {
-		MustBeConstant(comp, c[i])
-	}
-}
-
+// MustBeAccumulatorBackward constrains the colAccumulator to be the accumulator backward of col. Namely: colAccumulator[i] = colAccumulator[i+1] + col[i] for all i and colAccumulator[last-row] = col[last-row].
 func MustBeAccumulatorBackward(comp *wizard.CompiledIOP, colAccumulator ifaces.Column, col ifaces.Column) {
 	comp.InsertLocal(
 		0,
