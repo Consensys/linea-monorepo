@@ -201,9 +201,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f e2e-failure-summary.txt ]]; then
-            # Strip newlines so the single-line $GITHUB_OUTPUT format is not truncated
+            # Strip newlines; heredoc avoids percent-encoded sequences (%0A/%0D) corrupting the GITHUB_OUTPUT protocol
             summary=$(head -c 300 e2e-failure-summary.txt | tr -d '\n')
-            echo "summary=${summary}" >> "$GITHUB_OUTPUT"
+            echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+            echo "${summary}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
           else
             echo 'summary=""' >> "$GITHUB_OUTPUT"
