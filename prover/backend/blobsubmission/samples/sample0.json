@@ -1,0 +1,17 @@
+{
+    "eip4844Enabled": false,
+    "compressedData": "AJT9wvov/MBB0/8SBFtzyG5P+V/2YqXu6Cq99EotC3UAGA2vSKee4LENOUZRhQ/UoXiJLuKF7OFRFFV4CHXWTgDT0NDea/j5tEzoX/BExrH4O46IO7+FequZxbJSx0KcAPOorree+Fb2WcGPDc7Md8deeoG/3idfZ8/iQs88w1QA7eLWvsxOo65eiFJqn0pXi8ue8tSmUxR2jW0pl2HqngBapq7D/HjGquCBrIEgxyDvzWzqhLaSXmB74GNxb5bdANAddQRcPwAPinlrzmxRLDgBqsru361bUGZk6MDkp3EA4Li3wZZdkYElG3ycnKUgWvwWojai783S0S0qedB0qAAK6UOesNauyggjrgLWfYZqwsT+SnJQU9oRm51PUVFAANcjnEC0WsOVDZQfxP4cDLlq0yLWIoIpX7/hHiakMwcAtcFETDo00ypcSn/76NGB9+07jP6QT5P48G0pvNnthAAYLgRkEPRLxLDz8DoNBoIKMPJX+BFBMGeKwEWGwePJACyLgFXEZtiGRB0lmQbWms2JS5aK6fDrnZZc5qRpPE4AiBUBt9mEa2brArV+XNp7bLpokdYWvWhsN7g0YTrIugAsAI/+aINSc0rk4/Ehes1fgycIFDAYZ7XQZxGyOAAcAFeydxnOPzGI3+V97r9vgllaEPe7ViygTVw9J5QpWMY=",
+    "conflationOrder": {
+        "startingBlockNumber": 0,
+        "upperBoundaries": [
+            10,
+            20,
+            30,
+            40
+        ]
+    },
+    "dataParentHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "parentStateRootHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "finalStateRootHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "prevShnarf": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

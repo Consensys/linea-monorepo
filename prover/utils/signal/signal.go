@@ -15,9 +15,6 @@ import (
 // Registers a signal handler that dumps the StackTraces upon receiving a
 // SIGUSR1. On SIGUSR2, it starts a profiling session for 10 seconds and then
 // writes the result in a unique timestamped file.
-//
-// This function may possibly be deadcode but is there mainly to help
-// instrumenting a job when we don't know why the process is slow or halted.
 func RegisterStackTraceDumpHandler() {
 
 	sigChan := make(chan os.Signal, 1<<8)
@@ -34,12 +31,19 @@ func RegisterStackTraceDumpHandler() {
 				logrus.Infof("stack trace: %s", string(buf[:n]))
 
 			case syscall.SIGUSR2:
+
 				profilePath := fmt.Sprintf("profiling/onsigusr2-%d", time.Now().Unix())
 				logrus.Infof("received signal %v -> profiling for 10 sec and dumping the result", sig)
-				p := profile.Start(profile.ProfilePath(profilePath), profile.CPUProfile)
+
+				p := profile.Start(
+					profile.ProfilePath(profilePath),
+					profile.CPUProfile,
+				)
+
 				// Purposefully block the signal handler as we don't want several
 				// profiles to be created simultaneously to avoid interferences.
 				<-time.After(10 * time.Second)
+
 				p.Stop()
 				logrus.Infof("done profile, you may now open %v", profilePath)
 			}

@@ -2,12 +2,12 @@ package types
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
-	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func DecodeQuotedHexString(b []byte) ([]byte, error) {
@@ -18,7 +18,7 @@ func DecodeQuotedHexString(b []byte) ([]byte, error) {
 			string(b), err,
 		)
 	}
-	decoded, err := hex.DecodeString(strings.TrimPrefix(unquoted, "0x"))
+	decoded, err := utils.HexDecodeString(unquoted)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"could not unmarshal hex string : expected an hex string but got `%v`, error : %w",
@@ -29,7 +29,7 @@ func DecodeQuotedHexString(b []byte) ([]byte, error) {
 }
 
 func MarshalHexBytesJSON(b []byte) []byte {
-	hexstring := "0x" + hex.EncodeToString(b)
+	hexstring := utils.HexEncodeToString(b)
 	return []byte(strconv.Quote(hexstring))
 }
 

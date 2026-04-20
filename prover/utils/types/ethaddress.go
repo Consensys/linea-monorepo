@@ -1,11 +1,11 @@
 package types
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // EthAddress represents an ethereum address. It consists of 20bytes and is the
@@ -15,7 +15,7 @@ type EthAddress [20]byte
 
 // Marshal "e" into JSON format
 func (e EthAddress) MarshalJSON() ([]byte, error) {
-	hexAddress := "0x" + hex.EncodeToString(e[:])
+	hexAddress := utils.HexEncodeToString(e[:])
 	marshalled, err := json.Marshal(hexAddress)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal eth address : %w", err)
@@ -68,11 +68,11 @@ func (e *EthAddress) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func (e EthAddress) Hex() string {
-	return "0x" + hex.EncodeToString(e[:])
+	return utils.HexEncodeToString(e[:])
 }
 
 func AddressFromHex(h string) (EthAddress, error) {
-	byt, err := hex.DecodeString(strings.TrimPrefix(h, "0x"))
+	byt, err := utils.HexDecodeString(h)
 	if err != nil {
 		return EthAddress{}, fmt.Errorf("reading hex address %s : %w", h, err)
 	}

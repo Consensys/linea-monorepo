@@ -1,10 +1,8 @@
 package types
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -38,7 +36,7 @@ func (f *FullBytes32) ReadPacked(r io.Reader) (n int64, err error) {
 }
 
 func (f FullBytes32) Hex() string {
-	return "0x" + hex.EncodeToString(f[:])
+	return utils.HexEncodeToString(f[:])
 }
 
 func AsFullBytes32(b []byte) FullBytes32 {
@@ -48,7 +46,7 @@ func AsFullBytes32(b []byte) FullBytes32 {
 // Creates a bytes32 from an hexstring. Panic if it fails. Mostly useful for
 // testing.
 func FullBytes32FromHex(s string) FullBytes32 {
-	b, err := hex.DecodeString(strings.TrimPrefix(s, "0x"))
+	b, err := utils.HexDecodeString(s)
 	if err != nil {
 		utils.Panic("not an hexadecimal %v", s)
 	}

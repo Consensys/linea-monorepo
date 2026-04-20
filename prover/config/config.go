@@ -8,6 +8,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -373,4 +375,18 @@ type PerformanceMonitor struct {
 	SampleDuration time.Duration `mapstructure:"sample_duration"`
 	ProfileDir     string        `mapstructure:"profile_dir"`
 	Profile        string        `mapstructure:"profile" validate:"oneof=prover-steps prover-rounds all"`
+}
+
+// BlobDecompressionDictStore returns a decompression dictionary store
+// loaded from paths specified in [DataAvailability.DictPaths].
+// If no such path is provided, it loads one from the
+// prover assets path depending on the provided circuitID.
+func (cfg *Config) BlobDecompressionDictStore(circuitID string) dictionary.Store {
+
+	paths := cfg.DataAvailability.DictPaths
+	if len(paths) == 0 {
+		paths = []string{filepath.Join(cfg.PathForSetup(circuitID), DefaultDictionaryFileName)}
+	}
+
+	return dictionary.NewStore(paths...)
 }
