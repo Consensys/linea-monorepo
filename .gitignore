@@ -172,5 +172,4 @@ contracts/.claude/settings.local.json
 *.analysis-report.html
 .worktrees/
 
-/linea-besu/.besu-resolved-version
-/linea-besu/.besu-resolved-commit
+/linea-besu/.besu-resolved
