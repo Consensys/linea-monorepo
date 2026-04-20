@@ -116,7 +116,6 @@ func (vb *VectorBuilder) PushBytes(b []byte) {
 	if err := f.SetBytesCanonical(b[:]); err != nil {
 		panic(err)
 	}
-	f.SetBytes(b)
 	vb.PushField(f)
 }
 
@@ -237,7 +236,4 @@ func (vb *VectorBuilder) Last() field.Element {
 // Column returns the column of the VectorBuilder
 func (vb *VectorBuilder) Column() ifaces.Column {
 	return vb.column
-}
-func (vb *VectorBuilder) Prettify() string {
-	return vector.Prettify(vb.slice)
 }

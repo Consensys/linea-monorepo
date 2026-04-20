@@ -15,8 +15,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	keccakDummy "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -136,6 +136,12 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			}
 			txHash := ethereum.GetTxHash(tx)
 			txSignature := ethereum.GetJsonSignature(tx)
+			//  Schwarz–Zipfel X must
+			// match empty execution-data commitment (invalidity inner zkEVM has no
+			// execution-data blob; a zero fext.Element trips GetMainProverStep).
+			execDataCommit := public_input.ComputeExecutionDataMultiCommitment(nil)
+			// Invalidity blocks don't really exist, so use zero hashes.
+			zeroHashes := make([]linTypes.FullBytes32, len(req.ZkStateMerkleProof))
 			zkevmWitness := &zkevm.Witness{
 				ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
 				SMTraces:               req.ZkStateMerkleProof,
@@ -145,9 +151,9 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 				ChainID:                cfg.Layer2.ChainID,
 				BaseFee:                cfg.Layer2.BaseFee,
 				CoinBase:               linTypes.EthAddress(cfg.Layer2.CoinBase),
-				BlockHashList:          []linTypes.FullBytes32{},
-				ExecDataSchwarzZipfelX: fext.Element{},
-				ExecData:               []byte{},
+				BlockHashList:          zeroHashes,
+				ExecDataSchwarzZipfelX: execDataCommit.X,
+				ExecData:               execDataCommit.Data,
 			}
 
 			var zkEvm *zkevm.ZkEvm
@@ -191,7 +197,14 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			if err := zkEvm.VerifyInner(proof); err != nil {
 				utils.Panic("zkEVM proof verification failed: %v", err)
 			}
-			assigningInputs.ZkEvmComp = zkEvm.RecursionCompiledIOP
+			// FullZkEVMCheckOnly (partial mode) skips the recursion compile pass,
+			// so RecursionCompiledIOP is nil; ProveInner/VerifyInner then use
+			// InitialCompiledIOP and the proof must be checked against that IOP.
+			if zkEvm.RecursionCompiledIOP != nil {
+				assigningInputs.ZkEvmComp = zkEvm.RecursionCompiledIOP
+			} else {
+				assigningInputs.ZkEvmComp = zkEvm.InitialCompiledIOP
+			}
 			assigningInputs.ZkEvmWizardProof = proof
 
 		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
@@ -205,9 +218,9 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 
 		if isPartial {
 			if err := c.CheckOnly(assigningInputs); err != nil {
-				utils.Panic("circuit constraint check failed: %v", err)
+				utils.Panic("gnark-circuit constraint check failed (checkonly): %v", err)
 			}
-			logrus.Info("Circuit constraint check passed")
+			logrus.Info("gnark-circuit constraint check passed (checkonly)")
 		} else {
 			logrus.Info("Loading setup...")
 			if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {

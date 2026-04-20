@@ -27,7 +27,7 @@ jobs:
 
       - name: Run Claude Coordinator Review
         id: review
-        uses: anthropics/claude-code-action@bee87b3258c251f9279e5371b0cc3660f37f3f77 #v1.0.83
+        uses: anthropics/claude-code-action@38ec876110f9fbf8b950c79f534430740c3ac009 #v1.0.101
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: --model claude-opus-4-6
@@ -122,7 +122,7 @@ jobs:
 
       - name: Upload review file
         if: ${{ github.event.inputs.save_review_file == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coordinator-review
           path: /tmp/coordinator-review.md

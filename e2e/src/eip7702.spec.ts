@@ -125,18 +125,13 @@ describe("EIP-7702 test suite", () => {
         contractAddress,
       });
 
-      await withDenyListAddresses(
-        sequencerClient,
-        [scenario.denyListAddress],
-        async () => {
-          logger.debug(`Authority address added to deny list. address=${scenario.denyListAddress}`);
-          const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
+        logger.debug(`Authority address added to deny list. address=${scenario.denyListAddress}`);
+        const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
 
-          await expectBlockedTransaction(sendTransactionPromise);
-          logger.debug("EIP-7702 transaction correctly rejected for denied authority.");
-        },
-        () => scenario.sendDelegatedInitializeTx(),
-      );
+        await expectBlockedTransaction(l2PublicClient, sendTransactionPromise);
+        logger.debug("EIP-7702 transaction correctly rejected for denied authority.");
+      });
 
       logger.debug("Authority address removed from deny list.");
     },
@@ -152,18 +147,13 @@ describe("EIP-7702 test suite", () => {
         scenarioType: DelegationScenarioType.DenylistedContract,
         contractAddress,
       });
-      await withDenyListAddresses(
-        sequencerClient,
-        [scenario.denyListAddress],
-        async () => {
-          logger.debug(`Contract address added to deny list. address=${scenario.denyListAddress}`);
-          const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
+        logger.debug(`Contract address added to deny list. address=${scenario.denyListAddress}`);
+        const sendTransactionPromise = scenario.sendDelegatedInitializeTx();
 
-          await expectBlockedTransaction(sendTransactionPromise);
-          logger.debug("EIP-7702 transaction correctly rejected for denied contract delegation.");
-        },
-        () => scenario.sendDelegatedInitializeTx(),
-      );
+        await expectBlockedTransaction(l2PublicClient, sendTransactionPromise);
+        logger.debug("EIP-7702 transaction correctly rejected for denied contract delegation.");
+      });
 
       logger.debug("Contract address removed from deny list.");
     },
@@ -182,14 +172,9 @@ describe("EIP-7702 test suite", () => {
 
       await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
 
-      await withDenyListAddresses(
-        sequencerClient,
-        [scenario.denyListAddress],
-        async () => {
-          await expectBlockedTransaction(scenario.sendDelegatedInitializeTx());
-        },
-        () => scenario.sendDelegatedInitializeTx(),
-      );
+      await withDenyListAddresses(sequencerClient, [scenario.denyListAddress], async () => {
+        await expectBlockedTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
+      });
     },
     120_000,
   );
