@@ -228,6 +228,33 @@ describe("parseJestLog", () => {
     expect(hasNestedHelperSpec).toBe(false);
   });
 
+  it("does not leak nested helper spec tests into the preceding top-level spec when ordering is reversed", () => {
+    // Arrange - nested helper spec appears AFTER a top-level spec (reversed from the typical fast-first ordering)
+    const logWithReversedOrder = `PASS src/l2.spec.ts (8.867 s)
+  Layer 2 test suite
+    ✓ Should succeed if transaction data size is below the limit (8212 ms)
+
+PASS src/common/test-helpers/deny-list.spec.ts
+  deny-list helper
+    ✓ should append lowercase addresses (6 ms)
+    ✓ should remove only target addresses case-insensitively (1 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        9 s
+Ran all test suites.`;
+
+    // Act
+    const result = parseJestLog(logWithReversedOrder, "success");
+
+    // Assert
+    expect(result).toHaveLength(1);
+    expect(result[0].specFile).toBe("src/l2.spec.ts");
+    expect(result[0].tests).toHaveLength(1);
+    expect(result[0].tests[0].name).toBe("Should succeed if transaction data size is below the limit");
+  });
+
   it("parses the separate liveness command output as a top-level spec", () => {
     // Arrange
     const result = parseJestLog(RAW_LOG, "success");

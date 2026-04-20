@@ -18,6 +18,9 @@ export interface SpecResult {
 }
 
 const SPEC_FILE_RE = /^(PASS|FAIL)\s+(src\/[^/]+\.spec\.ts)(?:\s+\(([0-9.]+)\s*s\))?/;
+// Matches any PASS/FAIL spec line regardless of path depth - used to detect non-top-level
+// specs so we can null out currentSpec and avoid leaking their tests into the previous spec.
+const ANY_SPEC_LINE_RE = /^(PASS|FAIL)\s+src\//;
 const TEST_CASE_RE = /^\s+(✓|✕|×)\s+(.+?)\s+\((\d+)\s*ms\)/;
 const SKIPPED_TEST_RE = /^\s+○\s+skipped\s+(.+)/;
 const GHA_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s/;
@@ -44,6 +47,11 @@ export function parseJestLog(
         tests: [],
       };
       specResults.push(currentSpec);
+      continue;
+    }
+
+    if (ANY_SPEC_LINE_RE.test(line)) {
+      currentSpec = null;
       continue;
     }
 
