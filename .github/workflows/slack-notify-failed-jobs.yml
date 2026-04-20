@@ -147,9 +147,9 @@ jobs:
 
             ## Output
 
-            Write TWO files:
+            Write TWO files (paths are relative to the current working directory):
 
-            ### /tmp/e2e-failure-analysis.md
+            ### e2e-failure-analysis.md
             Full structured analysis:
 
             # E2E Failure Analysis
@@ -176,7 +176,7 @@ jobs:
             ## Infrastructure Notes
             <Container-level issues from Docker logs, or "No issues detected">
 
-            ### /tmp/e2e-failure-summary.txt
+            ### e2e-failure-summary.txt
             A single line, max 300 characters, for a Slack notification. For each failure
             include: what failed, the likely root cause, and the confidence level.
             Example:
@@ -190,7 +190,7 @@ jobs:
         continue-on-error: true
         with:
           name: ai-failure-analysis
-          path: /tmp/e2e-failure-analysis.md
+          path: e2e-failure-analysis.md
           if-no-files-found: ignore
 
       - name: Extract summary for Slack
@@ -199,9 +199,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f /tmp/e2e-failure-summary.txt ]]; then
+          if [[ -f e2e-failure-summary.txt ]]; then
             # Strip newlines so the single-line $GITHUB_OUTPUT format is not truncated
-            summary=$(head -c 300 /tmp/e2e-failure-summary.txt | tr -d '\n')
+            summary=$(head -c 300 e2e-failure-summary.txt | tr -d '\n')
             echo "summary=${summary}" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
           else
