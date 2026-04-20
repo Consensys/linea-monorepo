@@ -172,7 +172,7 @@ jobs:
             Full structured analysis:
 
             # E2E Failure Analysis
-            **Run:** ${{ inputs.run_id }}
+            **Run:** [${{ inputs.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ inputs.run_id }})
             **Date:** <current UTC timestamp>
 
             ## Summary
