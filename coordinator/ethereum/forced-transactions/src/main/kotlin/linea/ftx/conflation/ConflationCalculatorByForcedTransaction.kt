@@ -82,8 +82,6 @@ class ConflationCalculatorByForcedTransaction(
     val highestPendingTrigger = pendingTriggerBlocks.maxOrNull() ?: 0UL
     val newTriggerBlocks = processedFtxs
       .filter { ftx ->
-        // FIXME: tmp make cut off at Included, suboptimal but will fix correctnes issue
-        // ftx.inclusionResult != ForcedTransactionInclusionResult.Included &&
         ftx.blockNumber > highestPendingTrigger
       }
       .map { ftx ->
