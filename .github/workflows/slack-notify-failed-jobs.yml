@@ -97,39 +97,42 @@ jobs:
 
             ## Instructions
 
-            1. Read `/tmp/failed-job-logs.txt` to identify which tests failed and how.
-            2. If `/tmp/docker-logs/` exists, read relevant container logs to find
-               infrastructure-level root causes (coordinator crashes, prover failures,
-               node sync issues, OOM, etc.).
-            3. For each failing test, read the test source file under `e2e/src/` to
-               understand what the test was asserting.
-            4. Also read relevant helpers/utilities referenced in stack traces.
+            1. Read `/tmp/failed-job-logs.txt`.
+               - Extract the list of tests that are explicitly marked `FAIL` or `✕` in
+                 the Jest output. This is your authoritative failure list.
+               - **Do not infer, predict, or speculate about tests that might fail.**
+                 A test only appears in the report if Jest reported it as failed.
+            2. For each actually-failed test:
+               a. Extract the error message, file path, and line number from the Jest output.
+               b. Read the test source file under `e2e/src/` to understand the assertion.
+               c. Read relevant helpers referenced in stack traces.
+               d. If `/tmp/docker-logs/` exists, read only the container logs that are
+                  directly relevant to explaining that specific test's failure (e.g. the
+                  shomei container logs for a shomei timeout). Do not read unrelated containers.
 
-            Parse logs for these failure patterns:
+            Parse the Jest output for these markers:
+            - `FAIL <file>` - failed test suite
+            - `✕ <test name> (<duration>)` - individual failed test
+            - `● <test name>` - error detail block
+            - `Exceeded timeout` / `thrown:` - timeout or thrown error
 
-            | Pattern Type | Indicators |
-            |---|---|
-            | Test failures | `FAIL`, `AssertionError`, `Expected`, stack traces |
-            | Timeouts | `Exceeded timeout`, jest timeout errors |
-            | Transaction reverts | `reverted`, `execution reverted`, revert reason strings |
-            | Build/setup errors | `error:`, `Error:`, `Cannot find module`, `ECONNREFUSED` |
-            | Infrastructure | OOM, container exit codes, connection refused in Docker logs |
-
-            Extract from errors:
-            - File paths and line numbers (e.g., `e2e/src/file.spec.ts:42:10`)
-            - Error messages and assertion details
-            - Stack traces (full chain from symptom to origin)
-
-            For each file path extracted, read the actual source file for context.
+            Extract from each failure:
+            - File path and line number (e.g., `e2e/src/file.spec.ts:42:10`)
+            - The exact error message or thrown value
+            - Stack trace (full chain from symptom to origin)
 
             ## Analysis Rules
 
-            - Analyze ALL failed tests before producing output.
+            - **Only report tests that Jest explicitly marked as failed.**
+              Do not create entries for tests that passed, were skipped, or might
+              theoretically fail based on infrastructure observations.
             - For test failures, prefer diagnosing the code/infrastructure under test
               over blaming the test itself, unless the test is clearly wrong.
             - If a failure cannot be diagnosed, say "Manual investigation needed" with
               whatever partial context you have. Do not guess.
             - Include the actual error snippet (max 10 lines) in each failure entry.
+            - Infrastructure observations from Docker logs belong only in the
+              "Infrastructure Notes" section, never as standalone failure entries.
 
             ## Failure Types and Fix Strategies
 
