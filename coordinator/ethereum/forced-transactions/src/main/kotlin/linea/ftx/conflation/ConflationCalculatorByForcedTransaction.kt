@@ -2,7 +2,6 @@ package linea.ftx.conflation
 
 import linea.domain.BlockCounters
 import linea.domain.ConflationTrigger
-import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCounters
