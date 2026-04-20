@@ -283,6 +283,7 @@ func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antic
 
 	ecRec = &EcRecover{
 		EcRecoverIsRes: comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_ISRES"), size, true),
+		SuccessBit:     comp.InsertCommit(0, ifaces.ColIDf("ECRECOVER_SUCCESSBIT"), size, true),
 		Limb:           limbs.NewUint128Le(comp, "ECRECOVER_LIMB", size),
 	}
 
@@ -290,7 +291,6 @@ func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antic
 	return td, ecRec
 }
 
-// AssignEcRecTxnData assigns columns for cross-module testing of the ECDSA antichamber.
 func AssignEcRecTxnData(
 	run *wizard.ProverRuntime,
 	gbm generic.GenDataModule,
@@ -299,6 +299,7 @@ func AssignEcRecTxnData(
 	td *txnData, ecRec *EcRecover,
 	ac *Antichamber,
 ) {
+
 	var (
 		nbRowsPerTxInTxnData = 9
 
@@ -306,6 +307,7 @@ func AssignEcRecTxnData(
 		permTrace = keccak.GenerateTrace(streams)
 
 		isEcRecRes  = common.NewVectorBuilder(ecRec.EcRecoverIsRes)
+		successBit  = common.NewVectorBuilder(ecRec.SuccessBit)
 		ecRecLimb   = limbs.NewVectorBuilder(ecRec.Limb.AsDynSize())
 		txnCt       = common.NewVectorBuilder(td.Ct)
 		txnUser     = common.NewVectorBuilder(td.User)
@@ -327,28 +329,37 @@ func AssignEcRecTxnData(
 	}
 
 	for i := 0; i < nbEcRec; i++ {
+
 		hashRes := permTrace.HashOutPut[i]
 
+		// Sanity-check that the heights of the builder is the expected one
 		if currHeight := i * nbRowsPerEcRec; isEcRecRes.Height() != currHeight || ecRecLimb.Height() != currHeight {
 			utils.Panic("isEcRecRes.Height() || ecRecLimb.Height() != %v, %v", isEcRecRes.Height(), ecRecLimb.Height())
 		}
 
+		// Pushing the hi part
 		isEcRecRes.PushOne()
+		successBit.PushOne()
 		ecRecLimb.PushLeftPaddedBytes(hashRes[12:16])
 
+		// Pushing the lo part
 		isEcRecRes.PushOne()
+		successBit.PushOne()
 		ecRecLimb.PushBytes(hashRes[16:])
 
+		// Fill the rest of the frame with zeroes
 		isEcRecRes.PushSeqOfZeroes(nbRowsPerEcRec - 2)
+		successBit.PushSeqOfZeroes(nbRowsPerEcRec - 2)
 		ecRecLimb.PushSeqOfZeroes(nbRowsPerEcRec - 2)
 	}
 
 	ecRecLimb.PadAndAssignZero(run)
 	isEcRecRes.PadAndAssign(run)
-	txnCt.PadLeftAndAssign(run)
-	txnUser.PadLeftAndAssign(run)
-	txnSelector.PadLeftAndAssign(run)
-	txnFrom.PadLeftAndAssignZero(run)
+	successBit.PadAndAssign(run)
+	txnCt.PadAndAssign(run)
+	txnUser.PadAndAssign(run)
+	txnSelector.PadAndAssign(run)
+	txnFrom.PadAndAssignZero(run)
 
 	effectiveSize := nbEcRec*nbRowsPerEcRec + nbTxS*nbRowsPerTxSign
 	isActive := vector.Repeat(field.One(), effectiveSize)
