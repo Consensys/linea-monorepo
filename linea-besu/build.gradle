@@ -58,6 +58,7 @@ rootProject.ext.resolveBesuVersion = {
 
   if (!resolvedVersion) {
     resolvedVersion = resolveBesuVersionViaCheckout(providers, besuCommit, rootDirFile)
+    writeCachedBesuVersion(cachedResolvedFile, besuCommit, resolvedVersion)
   }
 
   if (!isBesuAvailableInMavenLocal(logger, resolvedVersion, mavenLocalBase)
