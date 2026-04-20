@@ -42,7 +42,7 @@ undercouchDownload = "5.6.0"
 # This is the single source of truth for the Besu version.
 # During task execution, linea-besu/build.gradle resolves this commit,
 # writes linea-besu/.besu-resolved-version, and read by dependent modules.
-besuCommit = "6f5b43a68534f00fad138634c83f6620b6fe5f19"
+besuCommit = "6529db03800189ac00f7d15c7d4eb1af8a78f893"
 blobCompressor = "4.0.1"
 commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"
