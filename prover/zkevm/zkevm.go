@@ -128,10 +128,15 @@ func NewZkEVM(
 			*settings.PostRecursionCompilationSuite...,
 		)
 
-		// This sets the public input extractor metadata in the recursion IOP
+		// Copy PI extractor metadata from initial IOP to recursion IOP so that
+		// both execution and invalidity circuits can find their extractors.
 		res.RecursionCompiledIOP.
 			ExtraData[publicInput.PublicInputExtractorMetadata] = res.
 			InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
+
+		if invExt, ok := res.InitialCompiledIOP.ExtraData[invalidity.InvalidityPIExtractorMetadata]; ok {
+			res.RecursionCompiledIOP.ExtraData[invalidity.InvalidityPIExtractorMetadata] = invExt
+		}
 	}
 
 	return res

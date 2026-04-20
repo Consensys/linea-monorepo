@@ -3,6 +3,7 @@ package invalidity
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
@@ -11,7 +12,6 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	smtKoala "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/ethereum/go-ethereum/common"
@@ -160,58 +160,42 @@ func (c *CircuitInvalidity) MakeProof(
 	return serialized
 }
 
-// CheckOnly compiles the circuit, assigns it, and verifies the constraint
-// system is satisfied without generating a real proof. Mirrors MakeProof but
-// only checks constraint satisfaction. Used in partial mode.
+// CheckOnly verifies the constraint system is satisfied without generating a
+// real proof. Used in partial mode.
+//
+// All types use native Go checks, avoiding the expensive frontend.Compile:
+//   - BadPrecompile/TooManyLogs: wizard constraints are validated by the dummy
+//     compiler during ProveInner/VerifyInner; outer PI extraction + type
+//     assertions are checked natively.
+//   - BadNonce/BadBalance: keccak wizard is validated by dummy compiler; RLP
+//     parsing, account trie membership, and nonce/balance assertions are
+//     checked natively.
+//   - FilteredAddressFrom/FilteredAddressTo: keccak wizard is validated by
+//     dummy compiler; RLP to-address extraction and filtered flag assertions
+//     are checked natively.
 func (c *CircuitInvalidity) CheckOnly(assi AssigningInputs) error {
+	t0 := time.Now()
+	var err error
+
 	switch assi.InvalidityType {
-	case BadNonce, BadBalance:
-		c.SubCircuit = &BadNonceBalanceCircuit{}
 	case BadPrecompile, TooManyLogs:
-		c.SubCircuit = &BadPrecompileCircuit{}
+		if assi.ZkEvmComp == nil {
+			return fmt.Errorf("ZkEvmComp is nil for %s", assi.InvalidityType)
+		}
+		err = CheckOnlyNativeBadPrecompile(assi.ZkEvmComp, assi.ZkEvmWizardProof, assi.FuncInputs, assi.InvalidityType)
+
+	case BadNonce, BadBalance:
+		err = CheckOnlyNativeNonceBalance(assi)
+
 	case FilteredAddressFrom, FilteredAddressTo:
-		c.SubCircuit = &FilteredAddressCircuit{}
+		err = CheckOnlyNativeFilteredAddress(assi)
+
 	default:
 		return fmt.Errorf("unsupported invalidity type: %d", assi.InvalidityType)
 	}
 
-	c.Allocate(Config{
-		KeccakCompiledIOP: assi.KeccakCompiledIOP,
-		Depth:             smtKoala.DefaultDepth,
-		MaxRlpByteSize:    assi.MaxRlpByteSize,
-		ZkEvmComp:         assi.ZkEvmComp,
-	})
-
-	ccs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
-		scs.NewBuilder,
-		c,
-	)
-	if err != nil {
-		return fmt.Errorf("circuit compilation failed: %w", err)
-	}
-
-	assignment := CircuitInvalidity{}
-	switch assi.InvalidityType {
-	case BadNonce, BadBalance:
-		assignment.SubCircuit = &BadNonceBalanceCircuit{}
-	case BadPrecompile, TooManyLogs:
-		assignment.SubCircuit = &BadPrecompileCircuit{}
-	case FilteredAddressFrom, FilteredAddressTo:
-		assignment.SubCircuit = &FilteredAddressCircuit{}
-	}
-	assignment.Assign(assi)
-
-	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		return fmt.Errorf("witness creation failed: %w", err)
-	}
-
-	if err := ccs.IsSolved(witness); err != nil {
-		return fmt.Errorf("circuit constraint check failed: %w", err)
-	}
-
-	return nil
+	logrus.Infof("invalidity CheckOnly (type=%s): native check done in %s", assi.InvalidityType, time.Since(t0))
+	return err
 }
 
 // Config collects the data used for the sub circuits allocation
