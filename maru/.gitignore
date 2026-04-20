@@ -52,3 +52,9 @@ out/
 # Generated files
 docker/initialization/*.json
 tmp/
+
+# Ignore .cursor config but commit shared team rules (BUGBOT.md, rules/).
+.cursor/*
+!.cursor/BUGBOT.md
+!.cursor/rules/
+

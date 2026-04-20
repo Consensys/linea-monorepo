@@ -90,4 +90,4 @@ Corresponding node ID: 16Uiu2HAm...
 ⚠️ **Warning**: The generated private keys are logged as plaintext for development and testing purposes. In production environments, ensure proper key management and never expose private keys in logs.
 
 ### Prerequisites
-- Java 21+
+- Java 25+
