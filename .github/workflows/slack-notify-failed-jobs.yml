@@ -80,6 +80,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "Read,Write,Bash"
           prompt: |
             You are analyzing a CI failure in the Linea monorepo's E2E test suite.
 
