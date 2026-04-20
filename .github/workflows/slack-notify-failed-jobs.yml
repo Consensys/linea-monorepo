@@ -231,8 +231,9 @@ jobs:
           fi
 
   notify:
-    # always() so Slack still runs if ai-analysis fails; needs to wait on ai-analysis job.
+    # always() so Slack still runs when ai-analysis is skipped, fails, or succeeds; needs still gates ordering.
     needs: [ai-analysis]
+    if: always()
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Compute context values
