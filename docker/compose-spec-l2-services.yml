@@ -307,7 +307,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${LINEA_COORDINATOR_TAG:-7c850f2}
+    image: consensys/linea-coordinator:${LINEA_COORDINATOR_TAG:-37e5396}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
@@ -479,7 +479,7 @@ services:
     ports:
       - "8889:8888"
     healthcheck:
-      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei-frontend/LOCK ]\"" ]
       interval: 1s
       timeout: 1s
       retries: 60

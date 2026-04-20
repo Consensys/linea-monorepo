@@ -6,17 +6,19 @@ import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
+import linea.clients.ExecutionProverClientV2
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
+import linea.domain.Aggregation
 import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.kotlin.decodeHex
-import linea.persistence.ftx.DisabledForcedTransactionsDao
+import linea.persistence.DisabledForcedTransactionsDao
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
@@ -27,10 +29,8 @@ import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
 import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderSync
 import net.consensys.zkevm.coordinator.blockcreation.TargetCheckpointPauseController
-import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
-import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
@@ -93,18 +93,16 @@ class ConflationBacktestingApp(
 
   fun onConflationProgress(
     blockNumber: ULong,
-  ): SafeFuture<*> {
-    return if (blockNumber == conflationBacktestingAppConfig.endBlockNumber) {
+  ) {
+    if (blockNumber == conflationBacktestingAppConfig.endBlockNumber) {
       conflationBacktestingComplete.store(true)
       log.info("Conflation backtesting complete")
-      this.stop()
     } else {
       log.info(
         "Conflation backtesting progress: processed till blockNumber={}, targetEndBlock={}",
         blockNumber,
         conflationBacktestingAppConfig.endBlockNumber,
       )
-      SafeFuture.completedFuture(Unit)
     }
   }
 
@@ -322,9 +320,7 @@ class ConflationBacktestingApp(
           "Backtesting compression proof request produced: blob={}",
           blobRecord.intervalString(),
         )
-
         inMemoryProvenBlobsTracker.acceptProvenBlobRecord(proofIndex, blobRecord)
-        SafeFuture.completedFuture(Unit)
       },
       log = log,
       metricsFacade = metricsFacade,
