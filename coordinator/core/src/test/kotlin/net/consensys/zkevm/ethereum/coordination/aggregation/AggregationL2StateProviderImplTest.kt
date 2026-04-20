@@ -4,7 +4,7 @@ import linea.contract.l2.FakeL2MessageService
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.FakeEthApiClient
 import linea.persistence.ftx.FakeForcedTransactionsDao
-import net.consensys.zkevm.domain.ForcedTransactionRecordFactory
+import linea.persistence.ftx.ForcedTransactionRecordFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
