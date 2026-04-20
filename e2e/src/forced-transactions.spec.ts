@@ -1,6 +1,6 @@
 import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
-import { type Address, encodeFunctionData, GetTransactionReceiptErrorType } from "viem";
+import { type Address, encodeDeployData, encodeFunctionData, GetTransactionReceiptErrorType } from "viem";
 
 import { deployContract } from "./common/deployments";
 import {
@@ -8,7 +8,7 @@ import {
   getDefaultLastFinalizedTimestamp,
   resolveLastFinalizedState,
 } from "./common/test-helpers/forced-transactions";
-import { getEvents, sendTransactionWithRetry, waitForEvents } from "./common/utils";
+import { estimateLineaGas, getEvents, sendTransactionWithRetry, waitForEvents } from "./common/utils";
 import { createTestContext } from "./config/setup";
 import {
   ExcludedPrecompilesAbi,
@@ -286,9 +286,21 @@ describe("Forced transaction test suite", () => {
     const l2DeployerWalletClient = context.l2WalletClient({ account: l2Deployer });
 
     // Deploy ExcludedPrecompiles contract on L2
+    const excludedPrecompilesDeployFees = await estimateLineaGas(l2PublicClient, {
+      account: l2Deployer.address,
+      data: encodeDeployData({
+        abi: ExcludedPrecompilesAbi,
+        bytecode: ExcludedPrecompilesAbiBytecode as `0x${string}`,
+      }),
+      value: 0n,
+    });
     const contractAddress = await deployContract(l2DeployerWalletClient, {
+      account: l2Deployer,
+      chain: l2DeployerWalletClient.chain,
       abi: ExcludedPrecompilesAbi,
       bytecode: ExcludedPrecompilesAbiBytecode as `0x${string}`,
+      maxFeePerGas: excludedPrecompilesDeployFees.maxFeePerGas,
+      maxPriorityFeePerGas: excludedPrecompilesDeployFees.maxPriorityFeePerGas,
     });
 
     logger.debug(`ExcludedPrecompiles deployed on L2. address=${contractAddress}`);
@@ -434,9 +446,21 @@ describe("Forced transaction test suite", () => {
       const l2DeployerWalletClient = context.l2WalletClient({ account: l2Deployer });
 
       // Deploy MultiMessageSender contract on L2
+      const multiMessageSenderDeployFees = await estimateLineaGas(l2PublicClient, {
+        account: l2Deployer.address,
+        data: encodeDeployData({
+          abi: MultiMessageSenderAbi,
+          bytecode: MultiMessageSenderAbiBytecode as `0x${string}`,
+        }),
+        value: 0n,
+      });
       const contractAddress = await deployContract(l2DeployerWalletClient, {
+        account: l2Deployer,
+        chain: l2DeployerWalletClient.chain,
         abi: MultiMessageSenderAbi,
         bytecode: MultiMessageSenderAbiBytecode as `0x${string}`,
+        maxFeePerGas: multiMessageSenderDeployFees.maxFeePerGas,
+        maxPriorityFeePerGas: multiMessageSenderDeployFees.maxPriorityFeePerGas,
       });
 
       logger.debug(`MultiMessageSender deployed on L2. address=${contractAddress}`);
