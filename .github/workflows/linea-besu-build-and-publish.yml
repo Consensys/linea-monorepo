@@ -1,6 +1,7 @@
 name: Build and Publish Linea Besu
 
 permissions:
+  contents: write  # required to push update to the PR branch
   actions: read
   packages: write
 
