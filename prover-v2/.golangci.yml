@@ -1,0 +1,41 @@
+version: "2"
+run:
+  issues-exit-code: 1
+linters:
+  default: none
+  enable:
+    - gosec
+    - ineffassign
+  settings:
+    gosec:
+      excludes:
+        - G115
+        - G602
+    staticcheck:
+      checks:
+        - -SA1006
+        - -SA1019
+        - all
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: '.*printf: non-constant format string in call to.*'
+    paths:
+      - compressor
+      - zkevm/arithmetization
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
