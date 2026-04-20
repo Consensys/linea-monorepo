@@ -40,7 +40,7 @@ def mavenLocalBase = providers.systemProperty('maven.repo.local')
 //
 // Fast path: cached version file hit, BOM already in maven -> returns immediately.
 // Medium path: cached version file missed, resolve besu version by checking out besu repo,
-//              BOM available in a remote maven repo -> skip build/publish besu in buildAndPublishBesuAction
+//              BOM available in a remote maven repo -> skip build/publish besu in buildAndPublishBesuAction.
 // Slow path: (unpublished commit, nothing local): runs the full resolve besu version and besu build+publish.
 rootProject.ext.resolveBesuVersion = {
   def resolvedVersion = null
