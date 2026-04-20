@@ -21,7 +21,7 @@ class AggregationL2StateProviderImpl(
     val rollingHash: ByteArray,
   ) {
     companion object {
-      val GENESIS = AnchoredMessage(0uL, ByteArray(32))
+      val GENESIS = AnchoredMessage(0uL, GENESIS_ZERO_HASH)
     }
   }
 
@@ -30,7 +30,7 @@ class AggregationL2StateProviderImpl(
     val ftxRollingHash: ByteArray,
   ) {
     companion object {
-      val GENESIS = FtxRollingInfo(0uL, ByteArray(32))
+      val GENESIS = FtxRollingInfo(0uL, GENESIS_ZERO_HASH)
     }
   }
 
@@ -90,5 +90,9 @@ class AggregationL2StateProviderImpl(
           parentAggregationLastFtxRollingHash = ftxRollingHash,
         )
       }
+  }
+
+  companion object {
+    internal val GENESIS_ZERO_HASH = ByteArray(32)
   }
 }

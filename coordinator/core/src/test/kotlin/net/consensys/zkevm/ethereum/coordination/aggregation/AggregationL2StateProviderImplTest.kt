@@ -31,9 +31,9 @@ class AggregationL2StateProviderImplTest {
     val state = provider.getAggregationL2State(0L).get()
 
     assertThat(state.parentAggregationLastL1RollingHashMessageNumber).isEqualTo(0uL)
-    assertThat(state.parentAggregationLastL1RollingHash).isEqualTo(ByteArray(32))
+    assertThat(state.parentAggregationLastL1RollingHash).isEqualTo(AggregationL2StateProviderImpl.GENESIS_ZERO_HASH)
     assertThat(state.parentAggregationLastFtxNumber).isEqualTo(0uL)
-    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(ByteArray(32))
+    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(AggregationL2StateProviderImpl.GENESIS_ZERO_HASH)
   }
 
   @Test
@@ -49,7 +49,7 @@ class AggregationL2StateProviderImplTest {
     val state = provider.getAggregationL2State(blockNumber).get()
 
     assertThat(state.parentAggregationLastL1RollingHashMessageNumber).isEqualTo(0uL)
-    assertThat(state.parentAggregationLastL1RollingHash).isEqualTo(ByteArray(32))
+    assertThat(state.parentAggregationLastL1RollingHash).isEqualTo(AggregationL2StateProviderImpl.GENESIS_ZERO_HASH)
   }
 
   @Test
@@ -74,7 +74,7 @@ class AggregationL2StateProviderImplTest {
     val state = provider.getAggregationL2State(blockNumber).get()
 
     assertThat(state.parentAggregationLastFtxNumber).isEqualTo(0uL)
-    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(ByteArray(32))
+    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(AggregationL2StateProviderImpl.GENESIS_ZERO_HASH)
   }
 
   @Test
@@ -124,7 +124,7 @@ class AggregationL2StateProviderImplTest {
     val state = provider.getAggregationL2State(blockNumber).get()
 
     assertThat(state.parentAggregationLastFtxNumber).isEqualTo(0uL)
-    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(ByteArray(32))
+    assertThat(state.parentAggregationLastFtxRollingHash).isEqualTo(AggregationL2StateProviderImpl.GENESIS_ZERO_HASH)
   }
 
   @Test
