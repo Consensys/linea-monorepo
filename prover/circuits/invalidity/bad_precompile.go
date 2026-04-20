@@ -99,11 +99,11 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	// check that hasBadPrecompile is non-zero, if invalidityType == 2 (BadPrecompile)
 	// When binaryType=0: (1-0)*hasBadPrecompile + 0 = hasBadPrecompile != 0
 	// When binaryType=1: (1-1)*hasBadPrecompile + 1 = 1 != 0  (always passes)
-	/*	api.AssertIsDifferent(
+	api.AssertIsDifferent(
 		api.Add(
 			api.Mul(api.Sub(1, binaryType), circuit.hasBadPrecompile),
 			binaryType),
-		0)*/
+		0)
 
 	// check that NbL2Logs is greater than MAX_L2_LOGS, if invalidityType == 3 (TooManyLogs)
 	// When binaryType=1: 17 <= 1*NbL2Logs + 0 = NbL2Logs

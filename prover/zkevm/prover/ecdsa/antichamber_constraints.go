@@ -18,10 +18,7 @@ func (ac *Antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
 	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.cols(false)...)
 	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.EcRecover.cols()...)
 	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.Addresses.cols()...)
-	// TODO(invalidity): disabled for invalidity proofs where the inner zkEVM
-	// processes the full conflated traces (many tx) but only 1 forced-tx
-	// signature is provided, leaving TxHash non-zero in inactive rows.
-	// commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.TxSignature.cols()...)
+	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.TxSignature.cols()...)
 	commoncs.MustZeroWhenInactive(comp, ac.IsActive, ac.UnalignedGnarkData.cols()...)
 }
 

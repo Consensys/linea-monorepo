@@ -195,7 +195,14 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			if err := zkEvm.VerifyInner(proof); err != nil {
 				utils.Panic("zkEVM proof verification failed: %v", err)
 			}
-			assigningInputs.ZkEvmComp = zkEvm.RecursionCompiledIOP
+			// FullZkEVMCheckOnly (partial mode) skips the recursion compile pass,
+			// so RecursionCompiledIOP is nil; ProveInner/VerifyInner then use
+			// InitialCompiledIOP and the proof must be checked against that IOP.
+			if zkEvm.RecursionCompiledIOP != nil {
+				assigningInputs.ZkEvmComp = zkEvm.RecursionCompiledIOP
+			} else {
+				assigningInputs.ZkEvmComp = zkEvm.InitialCompiledIOP
+			}
 			assigningInputs.ZkEvmWizardProof = proof
 
 		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
@@ -209,9 +216,9 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 
 		if isPartial {
 			if err := c.CheckOnly(assigningInputs); err != nil {
-				utils.Panic("circuit constraint check failed: %v", err)
+				utils.Panic("gnark-circuit constraint check failed (checkonly): %v", err)
 			}
-			logrus.Info("Circuit constraint check passed")
+			logrus.Info("gnark-circuit constraint check passed (checkonly)")
 		} else {
 			logrus.Info("Loading setup...")
 			if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
