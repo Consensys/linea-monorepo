@@ -3,7 +3,7 @@ package wiop
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Fraction is a value type pairing a Numerator and a Denominator expression.

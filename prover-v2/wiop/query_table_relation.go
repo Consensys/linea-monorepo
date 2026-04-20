@@ -3,7 +3,7 @@ package wiop
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // TableRelationKind identifies the relational predicate asserted by a
@@ -394,7 +394,7 @@ func tableRowHash(alpha field.FieldElem, rt Runtime, cols []*ColumnView, idx, n 
 // assignment, applying the cyclic shift and the module's padding semantics.
 // n is the module size.
 func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.FieldElem {
-	phys := ((idx + cv.ShiftingOffset) % n + n) % n
+	phys := ((idx+cv.ShiftingOffset)%n + n) % n
 	return rt.GetColumnAssignment(cv.Column).ElementAt(cv.Column.Module, phys)
 }
 

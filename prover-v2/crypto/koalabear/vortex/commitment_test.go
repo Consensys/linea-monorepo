@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 	"github.com/stretchr/testify/require"
 )
 

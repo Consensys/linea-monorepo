@@ -3,7 +3,7 @@ package wiop
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Annotations is a string-keyed map of arbitrary values. Both compiler passes

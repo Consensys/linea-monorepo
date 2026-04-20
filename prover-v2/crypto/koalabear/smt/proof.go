@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/utils/types"
 )
 
 var ErrInvalidProof = errors.New("can't verify Merkle proof")

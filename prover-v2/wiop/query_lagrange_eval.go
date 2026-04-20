@@ -5,8 +5,8 @@ import (
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/polynomials"
 )
 
 // LagrangeEval is a [Query] that evaluates a batch of polynomials at a single

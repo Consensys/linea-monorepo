@@ -2,7 +2,7 @@ package smt_koalabear
 
 import (
 	"github.com/consensys/gnark/frontend"
-	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
+	poseidon2 "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
 )
 
 // GnarkProof mirrors [Proof] in a gnark circuit.

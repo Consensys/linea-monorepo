@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/circuit"
 )
 
 // KoalagnarkOctuplet is an octuplet of circuit.Element

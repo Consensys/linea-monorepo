@@ -3,9 +3,9 @@ package global_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/wiop"
-	"github.com/consensys/linea-monorepo/prover/wiop/compilers/global"
-	"github.com/consensys/linea-monorepo/prover/wiop/wioptest"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop/compilers/global"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop/wioptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

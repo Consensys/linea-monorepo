@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop"
 )
 
 // Options controls the output of [Generate].
@@ -44,7 +44,7 @@ func Generate(sys *wiop.System, vars ActionVars, opts Options, w io.Writer) erro
 	extraImports := collectActionImports(vars)
 	allImports := dedup(append([]string{
 		"fmt",
-		"github.com/consensys/linea-monorepo/prover/wiop",
+		"github.com/consensys/linea-monorepo/prover-v2/wiop",
 	}, append(extraImports, opts.Imports...)...))
 	sort.Strings(allImports)
 

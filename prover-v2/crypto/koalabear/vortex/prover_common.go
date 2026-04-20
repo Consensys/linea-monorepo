@@ -1,9 +1,9 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/utils/parallel"
 )
 
 // OpeningProof represents an opening proof for a Vortex commitment

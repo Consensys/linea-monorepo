@@ -1,6 +1,6 @@
 package wiop
 
-import "github.com/consensys/linea-monorepo/prover/utils/arena"
+import "github.com/consensys/linea-monorepo/prover-v2/utils/arena"
 
 // System is the top-level container for an abstract cryptographic protocol.
 // It owns all rounds, modules, and the single precomputed round. It is also

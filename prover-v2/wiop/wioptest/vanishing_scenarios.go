@@ -1,8 +1,8 @@
 package wioptest
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop"
 )
 
 // NewFibonacciVanishingScenario returns a scenario for the Fibonacci recurrence

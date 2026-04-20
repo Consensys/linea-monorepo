@@ -1,6 +1,6 @@
 package wioptest
 
-import "github.com/consensys/linea-monorepo/prover/wiop"
+import "github.com/consensys/linea-monorepo/prover-v2/wiop"
 
 // VanishingScenario is a fixture for testing the global-quotient compiler.
 //

@@ -1,10 +1,10 @@
 package vortex
 
 import (
-	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/ringsis"
-	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	poseidon2 "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/ringsis"
+	smt "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/smt"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].

@@ -1,9 +1,9 @@
 package vortex
 
 import (
-	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	smt "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/smt"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
 )
 
 func Prove(

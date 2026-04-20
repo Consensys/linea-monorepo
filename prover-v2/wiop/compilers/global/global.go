@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/wiop"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/polynomials"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/wiop"
 )
 
 // Compile adds the global-quotient compilation pass to sys. It groups each
@@ -469,7 +469,6 @@ func (a *EvalProverAction) Run(rt wiop.Runtime) {
 		le.SelfAssign(rt)
 	}
 }
-
 
 // ---------------------------------------------------------------------------
 // Verifier action

@@ -10,8 +10,8 @@ import (
 
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/circuit"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 const BlockSize = 8

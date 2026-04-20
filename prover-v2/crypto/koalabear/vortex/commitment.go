@@ -2,11 +2,11 @@ package vortex
 
 import (
 	vgnark "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
-	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	poseidon2 "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
+	smt "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/smt"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/utils/parallel"
 )
 
 // When SIS: hash_columns = poseidon2(SIS(col))

@@ -3,7 +3,7 @@ package polynomials
 import (
 	"math/bits"
 
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // EvalLagrange evaluates a polynomial given in Lagrange (evaluation) basis at

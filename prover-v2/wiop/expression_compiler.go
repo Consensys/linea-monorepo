@@ -3,7 +3,7 @@ package wiop
 import (
 	"fmt"
 
-	field "github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	field "github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // opCode identifies a single VM instruction.
@@ -75,8 +75,8 @@ func compileExpr(root *ArithmeticOperation) *compiledProgram {
 	// 1. Topological sort — DFS post-order, deduplicated by Expression pointer.
 	//    Children always appear before the nodes that use them.
 	// -----------------------------------------------------------------------
-	var order []Expression          // post-order sequence
-	index := map[Expression]int{}  // expr → position in order
+	var order []Expression        // post-order sequence
+	index := map[Expression]int{} // expr → position in order
 
 	var visit func(e Expression)
 	visit = func(e Expression) {

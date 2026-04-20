@@ -3,9 +3,9 @@ package vortex
 import (
 	"testing"
 
-	smt "github.com/consensys/linea-monorepo/prover/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
+	smt "github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/smt"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/polynomials"
 )
 
 func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (

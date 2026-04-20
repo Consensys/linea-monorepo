@@ -1,9 +1,9 @@
 package smt_koalabear
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
 )
 
 // Update overwrites a leaf in the tree and updates the associated parent nodes.

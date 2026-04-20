@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/circuit"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/circuit"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 func init() {

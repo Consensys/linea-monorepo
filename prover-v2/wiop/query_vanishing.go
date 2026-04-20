@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Vanishing is a [Query] asserting that an expression evaluates to zero. It

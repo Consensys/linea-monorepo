@@ -6,9 +6,9 @@ import (
 	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/reedsolomon"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/polynomials"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/polynomials"
 )
 
 var (

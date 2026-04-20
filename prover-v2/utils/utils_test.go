@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover-v2/utils"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )

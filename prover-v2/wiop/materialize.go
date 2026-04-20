@@ -1,6 +1,6 @@
 package wiop
 
-import "github.com/consensys/linea-monorepo/prover/utils/arena"
+import "github.com/consensys/linea-monorepo/prover-v2/utils/arena"
 
 // scratchArenaCap is the mmap arena capacity reserved for prover scratch
 // buffers. Pages are lazily allocated by the kernel, so over-provisioning is

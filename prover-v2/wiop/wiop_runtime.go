@@ -3,8 +3,8 @@ package wiop
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/koalabear/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/crypto/koalabear/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Runtime is the execution context for protocol [ProverAction]s. It holds column

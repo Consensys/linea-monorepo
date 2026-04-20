@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	field "github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	field "github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Expression is the interface satisfied by all symbolic arithmetic expressions

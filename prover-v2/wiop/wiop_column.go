@@ -3,7 +3,7 @@ package wiop
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-v2/maths/koalabear/field"
 )
 
 // Module is a group of columns sharing the same domain size and padding
@@ -275,14 +275,14 @@ func (cv *ColumnView) EvaluateVector(rt Runtime) ConcreteVector {
 	if cv.Column.IsExtension {
 		dst := make([]field.Ext, n)
 		for i := range n {
-			phys := ((i + cv.ShiftingOffset) % n + n) % n
+			phys := ((i+cv.ShiftingOffset)%n + n) % n
 			dst[i] = concrete.ElementAt(m, phys).Ext
 		}
 		result = field.VecFromExt(dst)
 	} else {
 		dst := make([]field.Element, n)
 		for i := range n {
-			phys := ((i + cv.ShiftingOffset) % n + n) % n
+			phys := ((i+cv.ShiftingOffset)%n + n) % n
 			dst[i] = concrete.ElementAt(m, phys).AsBase()
 		}
 		result = field.VecFromBase(dst)
