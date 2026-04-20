@@ -22,7 +22,6 @@ plugins {
 
 def lineaSequencerProject = project(lineaSequencerProjectPath)
 apply from: lineaSequencerProject.file("gradle/java.gradle")
-apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
 apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
 kapt {
@@ -34,7 +33,7 @@ kapt {
 }
 
 compileJava {
-  options.annotationProcessorGeneratedSourcesDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
+  options.generatedSourceOutputDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
   options.compilerArgs += [
     '-Alog4j.graalvm.groupId=' + project.group,
     '-Alog4j.graalvm.artifactId=' + project.name
@@ -48,9 +47,13 @@ web3j {
 solidity {
   resolvePackages = false
   optimizeRuns = 1
-  // TODO: remove the forced version, when DEV network is upgraded to support latest forks
-  version '0.8.19'
 }
+
+sourceSets.test.solidity.srcDirs = [
+  file("src/test/solidity"),
+  file("${rootProject.projectDir}/contracts/src/_testing/integration"),
+]
+sourceSets.test.solidity.exclude("IntegrationTestTrueVerifier.sol")
 
 tasks.matching { it.name == "kaptGenerateStubsKotlin" || it.name == "kaptGenerateStubsTestKotlin" }.configureEach {
   dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateContractWrappers")
@@ -63,6 +66,10 @@ processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:ge
 
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
+
+  // Gradle 9: custom Test tasks must explicitly wire the test source set
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
 
   inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
 

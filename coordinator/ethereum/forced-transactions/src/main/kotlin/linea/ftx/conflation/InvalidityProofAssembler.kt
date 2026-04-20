@@ -4,7 +4,6 @@ import build.linea.clients.GetZkEVMStateMerkleProofResponse
 import build.linea.clients.LineaAccountProof
 import build.linea.clients.StateManagerAccountProofClient
 import build.linea.clients.StateManagerClientV1
-import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrThrow
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.domain.BlockInterval
@@ -59,7 +58,13 @@ class InvalidityProofAssembler(
     )
 
     return invalidityProofClient
-      .isProofAlreadyDone(InvalidityProofIndex(ftx.simulatedExecutionBlockNumber, ftx.ftxNumber))
+      .isProofAlreadyDone(
+        InvalidityProofIndex(
+          simulatedExecutionBlockNumber = ftx.simulatedExecutionBlockNumber,
+          ftxNumber = ftx.ftxNumber,
+          startBlockTimestamp = ftx.simulatedExecutionBlockTimestamp,
+        ),
+      )
       .thenCompose { alreadyDone ->
         if (alreadyDone) {
           SafeFuture.completedFuture(InvalidityProofResponse(ftx.ftxNumber))
@@ -111,8 +116,8 @@ class InvalidityProofAssembler(
       ForcedTransactionInclusionResult.BadBalance -> InvalidityReason.BadBalance
       ForcedTransactionInclusionResult.BadPrecompile -> InvalidityReason.BadPrecompile
       ForcedTransactionInclusionResult.TooManyLogs -> InvalidityReason.TooManyLogs
-      ForcedTransactionInclusionResult.FilteredAddressFrom -> InvalidityReason.FilteredAddressesFrom
-      ForcedTransactionInclusionResult.FilteredAddressTo -> InvalidityReason.FilteredAddressesTo
+      ForcedTransactionInclusionResult.FilteredAddressFrom -> InvalidityReason.FilteredAddressFrom
+      ForcedTransactionInclusionResult.FilteredAddressTo -> InvalidityReason.FilteredAddressTo
       ForcedTransactionInclusionResult.Phylax ->
         throw IllegalArgumentException("Phylax invalidity proofs are not supported yet")
     }
@@ -124,7 +129,31 @@ class InvalidityProofAssembler(
     val tracesFile: String? = null,
     val accountProof: LineaAccountProof? = null,
     val zkStateMerkleProof: GetZkEVMStateMerkleProofResponse? = null,
-  )
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as RequiredInvalidityProofData
+
+      if (!prevFtxRollingHash.contentEquals(other.prevFtxRollingHash)) return false
+      if (!zkParentStateRootHash.contentEquals(other.zkParentStateRootHash)) return false
+      if (tracesFile != other.tracesFile) return false
+      if (accountProof != other.accountProof) return false
+      if (zkStateMerkleProof != other.zkStateMerkleProof) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = prevFtxRollingHash.contentHashCode()
+      result = 31 * result + zkParentStateRootHash.contentHashCode()
+      result = 31 * result + (tracesFile?.hashCode() ?: 0)
+      result = 31 * result + (accountProof?.hashCode() ?: 0)
+      result = 31 * result + (zkStateMerkleProof?.hashCode() ?: 0)
+      return result
+    }
+  }
 
   private fun fetchRequiredDataForInvalidityProof(
     invalidityReason: InvalidityReason,

@@ -6,7 +6,7 @@ This guide provides instructions for setting up and running Linea services local
 
 Before you start, make sure you have the following installed:
 
-- Node.js >= 22.22.2 (see `.nvmrc`)
+- Node.js >= 24.14.1 (see `.nvmrc`)
 - Docker v24 or higher
   - Docker should have ~16 GB of Memory and 4+ CPUs to run the entire stack
 - Docker Compose version v2.19+
@@ -68,7 +68,7 @@ The recommended way to run the coordinator is as part of the complete Linea stac
 
 ```bash
 # Start the entire stack with tracing v2 using your local coordinator image
-COORDINATOR_TAG=local make start-env-with-tracing-v2
+LINEA_COORDINATOR_TAG=local make start-env-with-tracing-v2
 ```
 
 This command:

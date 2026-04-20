@@ -4,7 +4,18 @@ import { z } from "zod";
 import { AccountManager } from "../accounts/account-manager";
 
 const urlSchema = z.instanceof(URL);
-const addressSchema = z.custom<Address>((val) => getAddress(val));
+const addressSchema = z.custom<Address>(
+  (val) => {
+    if (typeof val !== "string") return false;
+    try {
+      getAddress(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Invalid Ethereum address" },
+);
 
 export const BaseConfigSchema = z.object({
   rpcUrl: urlSchema,

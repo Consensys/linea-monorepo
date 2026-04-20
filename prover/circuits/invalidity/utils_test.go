@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -397,7 +398,7 @@ func TestMerkleProofs(t *testing.T) {
 	// generate witness using smt_koalabear
 	proof, leaf, root := getMerkleProof(t)
 
-	var witness invalidity.MerkleProofCircuit
+	var witness circuitSmt
 
 	// Assign siblings (each is a KoalagnarkOctuplet)
 	witness.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(proof.Siblings))
@@ -415,7 +416,7 @@ func TestMerkleProofs(t *testing.T) {
 	}
 
 	// compile circuit using KoalaBear field
-	var circuit invalidity.MerkleProofCircuit
+	var circuit circuitSmt
 	circuit.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(proof.Siblings))
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
@@ -432,6 +433,12 @@ func TestMerkleProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+type circuitSmt smt.MerkleProofKoalagnark
+
+func (c *circuitSmt) Define(api frontend.API) error {
+	return smt.KoalagnarkVerifyMerkleProof(api, c.Proofs, c.Leaf, c.Root)
 }
 
 // it tests the Poseidon2 Hashing over [types.Account]
@@ -504,7 +511,7 @@ func genShomei(t *testing.T, tcases []TestCases, depth int) (*smt_koalabear.Tree
 	var leaves = []field.Octuplet{}
 	for _, c := range tcases {
 		// Hash the account using Poseidon2
-		accountHash := hashAccountNative(&c.Account)
+		accountHash := hashAccount(&c.Account)
 
 		// Create leaf opening and hash it
 		leafOpening := accumulator.LeafOpening{
@@ -544,18 +551,6 @@ func genShomei(t *testing.T, tcases []TestCases, depth int) (*smt_koalabear.Tree
 	return tree, proofs, leaves
 }
 
-// hashAccountNative hashes an account using Poseidon2
-func hashAccountNative(a *Account) linTypes.KoalaOctuplet {
-	hasher := poseidon2_koalabear.NewMDHasher()
-	a.WriteTo(hasher)
-	digest := hasher.Sum(nil)
-	var d linTypes.KoalaOctuplet
-	if err := d.SetBytes(digest); err != nil {
-		panic(err)
-	}
-	return d
-}
-
 // it gets a leaf via its position and check it has the expected value.
 func TestShomei(t *testing.T) {
 
@@ -567,7 +562,7 @@ func TestShomei(t *testing.T) {
 		c := tcases[i]
 
 		// Hash the account using Poseidon2
-		accountHash := hashAccountNative(&c.Account)
+		accountHash := hashAccount(&c.Account)
 
 		// Create expected leaf hash
 		expectedLeafOpening := accumulator.LeafOpening{

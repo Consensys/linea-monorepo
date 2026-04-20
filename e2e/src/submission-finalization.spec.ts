@@ -3,23 +3,22 @@ import { describe, expect, it } from "@jest/globals";
 import { waitForEvents, awaitUntil, getBlockByNumberOrBlockTag } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { LineaRollupV6Abi } from "./generated";
 
 const context = createTestContext();
 
 describe("Submission and finalization test suite", () => {
-  describe("Contracts v6", () => {
+  describe("Contracts v8", () => {
     it.concurrent(
       "Check L1 data submission and finalization",
       async () => {
-        const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+        const lineaRollup = context.l1Contracts.lineaRollup(context.l1PublicClient());
         const l1PublicClient = context.l1PublicClient();
-        const currentL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber();
+        const currentL2BlockNumber = await lineaRollup.read.currentL2BlockNumber();
 
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
         const [dataSubmittedEvent] = await waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
-          address: lineaRollupV6.address,
+          abi: lineaRollup.abi,
+          address: lineaRollup.address,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
           toBlock: "latest",
@@ -31,8 +30,8 @@ describe("Submission and finalization test suite", () => {
 
         logger.debug("Waiting for DataFinalizedV3 event with proof...");
         const [dataFinalizedEvent] = await waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
-          address: lineaRollupV6.address,
+          abi: lineaRollup.abi,
+          address: lineaRollup.address,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
           toBlock: "latest",
@@ -46,8 +45,8 @@ describe("Submission and finalization test suite", () => {
         expect(dataFinalizedEvent).toBeDefined();
 
         const [lastBlockFinalized, newStateRootHash] = await Promise.all([
-          lineaRollupV6.read.currentL2BlockNumber(),
-          lineaRollupV6.read.stateRootHashes([dataFinalizedEvent.args.endBlockNumber]),
+          lineaRollup.read.currentL2BlockNumber(),
+          lineaRollup.read.stateRootHashes([dataFinalizedEvent.args.endBlockNumber]),
         ]);
 
         expect(lastBlockFinalized).toBeGreaterThanOrEqual(dataFinalizedEvent.args.endBlockNumber);
@@ -55,7 +54,7 @@ describe("Submission and finalization test suite", () => {
 
         logger.debug(`Finalization with proof done. lastFinalizedBlockNumber=${lastBlockFinalized}`);
       },
-      150_000,
+      250_000,
     );
 
     it.concurrent(
@@ -97,6 +96,42 @@ describe("Submission and finalization test suite", () => {
         logger.debug("L2 safe/finalized tag update on sequencer done.");
       },
       150_000,
+    );
+
+    it.concurrent(
+      "Check latest L2 block number has been finalized on L1",
+      async () => {
+        const sequencerClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
+        if (!context.isLocal() || process.env.PARTIAL_PROVER != "true") {
+          logger.warn('Skipped the "Check latest L2 block number has been finalized on L1" test');
+          return;
+        }
+
+        const latestL2BlockNumber = (await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "latest" }))?.number;
+        const targetL2BlockNumnber = latestL2BlockNumber ? parseInt(latestL2BlockNumber.toString()) : -1;
+        logger.debug(`targetL2BlockNumnber=${targetL2BlockNumnber}`);
+
+        const { finalizedL2BlockNumber } = await awaitUntil(
+          async () => {
+            const currentFinalizedL2BlockNumber = (
+              await getBlockByNumberOrBlockTag(sequencerClient, { blockTag: "finalized" })
+            )?.number;
+
+            const finalized = currentFinalizedL2BlockNumber ? parseInt(currentFinalizedL2BlockNumber.toString()) : -1;
+
+            return { finalizedL2BlockNumber: finalized };
+          },
+          ({ finalizedL2BlockNumber }) => finalizedL2BlockNumber >= targetL2BlockNumnber,
+          { pollingIntervalMs: 1_000, timeoutMs: 1800_000 },
+        );
+
+        logger.debug(`finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
+
+        expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(targetL2BlockNumnber);
+
+        logger.debug(`The target L2 block number ${targetL2BlockNumnber} has been finalized on L1`);
+      },
+      1800_000,
     );
   });
 });

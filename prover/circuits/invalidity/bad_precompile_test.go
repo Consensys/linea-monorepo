@@ -96,7 +96,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				},
 			}
 
-			comp, proof = invalidity.MockZkevmPI(rng, inputs, limitlessInputs)
+			comp, proof = invalidity.MockZkEvmPI(rng, inputs, limitlessInputs)
 
 			// Verify the wizard proof first
 			err := wizard.Verify(comp, proof)

@@ -3,7 +3,6 @@ package invalidity
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -37,7 +36,7 @@ type CircuitInvalidity struct {
 // Allocation and assignment are handled via concrete type methods.
 type SubCircuit interface {
 	frontend.Circuit
-	FunctionalPIQGnark() FunctinalPIQGnark
+	FunctionalPIQGnark() FunctionalPIQGnark
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -55,6 +54,11 @@ type AssigningInputs struct {
 	// inputs related to zkevm-wizard
 	ZkEvmComp        *wizard.CompiledIOP
 	ZkEvmWizardProof wizard.Proof
+
+	// CachedProofPath, if set, enables proof caching: on first run the proof
+	// is written to this path; on subsequent runs with the same witness the
+	// cached proof is loaded and verified instead of re-proving.
+	CachedProofPath string
 }
 
 // Define the constraints
@@ -65,7 +69,7 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// Use the subcircuit's functional public inputs directly.
 	// TxHash, FromAddress, StateRootHash, ToAddress come from the subcircuit via gnark:"-" fields;
 	// TxNumber, ExpectedBlockNumber, FtxRollingHash are outer-circuit witness fields.
-	c.FuncInputs.FunctinalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
+	c.FuncInputs.FunctionalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
 
 	// Range-check the functional public inputs to their expected bit widths.
 	c.FuncInputs.RangeCheck(api)
@@ -127,21 +131,33 @@ func (c *CircuitInvalidity) MakeProof(
 
 	c.Assign(assi)
 
+	opts := []any{
+		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+	}
+	if assi.CachedProofPath != "" {
+		opts = append(opts, circuits.WithCachedProof(assi.CachedProofPath))
+	}
+
 	proof, err := circuits.ProveCheck(
 		&setup,
 		c,
-		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
-		emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		opts...,
 	)
 
 	if err != nil {
 		panic(err)
 	}
 
-	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
+	// Do not read c.PublicInput after ProveCheck: gnark may replace it with []uint8 in the assignment.
+	serialized := circuits.SerializeProofRaw(proof)
+	proofByteLen := (len(serialized) - 2) / 2 // hexutil.Encode: "0x" + 2 hex chars per byte
+	if proofByteLen < 0 {
+		proofByteLen = 0
+	}
+	logrus.Infof("generated invalidity circuit proof (%d bytes) for public input 0x%x", proofByteLen, assi.FuncInputs.Sum(nil))
 
-	// Write the serialized proof
-	return circuits.SerializeProofRaw(proof)
+	return serialized
 }
 
 // CheckOnly verifies the constraint system is satisfied without generating a
@@ -181,7 +197,6 @@ func (c *CircuitInvalidity) CheckOnly(assi AssigningInputs) error {
 	logrus.Infof("invalidity CheckOnly (type=%s): native check done in %s", assi.InvalidityType, time.Since(t0))
 	return err
 }
-
 
 // Config collects the data used for the sub circuits allocation
 type Config struct {

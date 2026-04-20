@@ -1,9 +1,11 @@
 package invalidity
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
@@ -224,6 +226,18 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
 				return nil, fmt.Errorf("could not load the setup: %w", err)
 			}
+
+			// Enable proof caching: derive cache path from public input hash
+			// and VK digest. Including the VK digest ensures stale proofs are
+			// not reused after a trusted-setup change.
+			cacheDir := filepath.Join(os.TempDir(), "linea-invalidity-proof-cache")
+			if err := os.MkdirAll(cacheDir, 0755); err == nil {
+				piHash := hex.EncodeToString(funcInput.Sum(nil))
+				vkDigest := setup.VerifyingKeyDigest()
+				assigningInputs.CachedProofPath = filepath.Join(cacheDir, fmt.Sprintf("%s-%s-%s.proof", circuitID, vkDigest, piHash))
+				logrus.Infof("Proof cache path: %s", assigningInputs.CachedProofPath)
+			}
+
 			serializedProof = c.MakeProof(setup, assigningInputs)
 		}
 	}

@@ -101,7 +101,14 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
     preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
-      if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
+      // Address when we support eip-8037 (likely never by this tracer)
+      final long cumulativeStateGasUsed = 0;
+      if (!hasAvailableBlockBudget(
+          blockHeader,
+          transaction,
+          currentGasUsed,
+          cumulativeStateGasUsed,
+          BlockGasAccountingStrategy.FRONTIER)) {
         return new BlockProcessingResult(Optional.empty(), "provided gas insufficient");
       }
 
