@@ -1,37 +1,122 @@
 version: "2"
+
 run:
   issues-exit-code: 1
+  timeout: 5m
+
 linters:
   default: none
   enable:
+    # Correctness
+    - govet
+    - errcheck
+    - staticcheck
     - gosec
     - ineffassign
+    - nilerr
+
+    # Find dead code and always-same parameters (invaluable during refactoring)
+    - unused
+    - unparam
+
+    # Style & quality
+    - revive
+    - misspell
+    - unconvert
+    - goconst
+
+    # Documentation hygiene — flags TODO/FIXME (use issues, not comments)
+    - godox
+
+    # Performance — flags missing slice pre-allocations
+    - prealloc
+
+    # Size limits (per AGENTS.md: 50-line target, 120-char hard limit)
+    - funlen
+    - lll
+
+    # Error handling — enforces errors.Is/As instead of == comparisons
+    - errorlint
+
+    # Testing
+    - testifylint
+    - thelper
+
   settings:
     gosec:
       excludes:
         - G115
         - G602
     staticcheck:
-      checks:
-        - -SA1006
-        - -SA1019
-        - all
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    rules:
-      - path: (.+)\.go$
-        text: '.*printf: non-constant format string in call to.*'
-    paths:
-      - compressor
-      - zkevm/arithmetization
-      - third_party$
-      - builtin$
-      - examples$
+      checks: ["all"]
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: receiver-naming
+        - name: error-return
+        - name: error-naming
+        - name: if-return
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: unused-parameter
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: modifies-value-receiver
+        # Soft 50-line limit: warning in IDE, does not block CI
+        - name: function-length
+          arguments: [0, 50]  # [max-stmts (disabled), max-lines]
+          severity: warning
+    funlen:
+      lines: 80
+      statements: 50
+      ignore-comments: true
+    lll:
+      line-length: 120
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    testifylint:
+      enable-all: true
+    godox:
+      keywords:
+        - TODO
+        - FIXME
+        - HACK
+
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - revive
+      text: "has too many lines"
+      severity: warning
+
+exclusions:
+  generated: lax
+  presets:
+    - comments
+    - common-false-positives
+    - legacy
+    - std-error-handling
+  rules:
+    - path: (.+)\.go$
+      text: '.*printf: non-constant format string in call to.*'
+  paths:
+    - compressor
+    - zkevm/arithmetization
+    - third_party$
+    - builtin$
+    - examples$
+
 formatters:
   exclusions:
     generated: lax
