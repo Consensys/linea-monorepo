@@ -62,10 +62,25 @@ jobs:
       - name: Fetch failed job logs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.run_id }}
         run: |
           set -euo pipefail
-          gh run view ${{ inputs.run_id }} --log-failed > /tmp/failed-job-logs-raw.txt 2>&1 || true
-          # Trim to last 500 KB: failures appear at the end of logs, and this keeps Claude's input within context limits
+          # gh run view --log-failed requires the run to be complete, but the notify job
+          # is part of the same run so the run is still in_progress. Fetch logs for each
+          # already-completed failed job individually instead - those are available immediately.
+          failed_job_ids=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '[.jobs[] | select(.conclusion == "failure") | .id] | .[]')
+
+          > /tmp/failed-job-logs-raw.txt
+          for job_id in $failed_job_ids; do
+            job_name=$(gh api "repos/${REPO}/actions/jobs/${job_id}" --jq '.name')
+            echo "=== Job: ${job_name} (${job_id}) ===" >> /tmp/failed-job-logs-raw.txt
+            # The logs endpoint returns a redirect to a pre-signed URL
+            gh api "repos/${REPO}/actions/jobs/${job_id}/logs" >> /tmp/failed-job-logs-raw.txt 2>&1 || true
+          done
+
+          # Trim to last 500 KB: failures appear at the end of logs
           tail -c 500000 /tmp/failed-job-logs-raw.txt > /tmp/failed-job-logs.txt
 
       - name: Download Docker logs artifact
