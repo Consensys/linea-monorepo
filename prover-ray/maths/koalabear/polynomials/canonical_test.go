@@ -13,21 +13,32 @@ const (
 )
 
 func newRng() *rand.Rand {
+	// #nosec G404 -- we are fine with this RNG for testcases
 	return rand.New(rand.NewPCG(testSeed, 0))
 }
 
-func randBase(rng *rand.Rand) field.Element {
+func randBase(_ *rand.Rand) field.Element {
 	var e field.Element
-	e.SetRandom()
+	if _, err := e.SetRandom(); err != nil {
+		panic(err)
+	}
 	return e
 }
 
-func randExt(rng *rand.Rand) field.Ext {
+func randExt(_ *rand.Rand) field.Ext {
 	var e field.Ext
-	e.B0.A0.SetRandom()
-	e.B0.A1.SetRandom()
-	e.B1.A0.SetRandom()
-	e.B1.A1.SetRandom()
+	if _, err := e.B0.A0.SetRandom(); err != nil {
+		panic(err)
+	}
+	if _, err := e.B0.A1.SetRandom(); err != nil {
+		panic(err)
+	}
+	if _, err := e.B1.A0.SetRandom(); err != nil {
+		panic(err)
+	}
+	if _, err := e.B1.A1.SetRandom(); err != nil {
+		panic(err)
+	}
 	return e
 }
 
@@ -133,7 +144,7 @@ func TestEvalCanonicalBatch(t *testing.T) {
 	lengths := []int{3, 7, 10, 1, 5}
 
 	for range testN {
-		polys := make([]field.FieldVec, len(lengths))
+		polys := make([]field.Vec, len(lengths))
 		for i, l := range lengths {
 			base := make([]field.Element, l)
 			for j := range base {
@@ -168,7 +179,7 @@ func TestEvalCanonicalBatch(t *testing.T) {
 		}
 		poly := field.VecFromBase(base)
 		z := field.ElemFromBase(randBase(rng))
-		batch := EvalCanonicalBatch([]field.FieldVec{poly}, z)
+		batch := EvalCanonicalBatch([]field.Vec{poly}, z)
 		want := EvalCanonical(poly, z)
 		if !extEq(batch[0].AsExt(), want.AsExt()) {
 			t.Fatal("single-poly batch should match EvalCanonical")

@@ -16,7 +16,7 @@ var (
 	ErrInvalidVerifierInputs = errors.New("invalid verification input")
 )
 
-// VerifierInput
+// VerifierInput holds the public inputs needed by the verifier.
 type VerifierInput struct {
 	// RsParams *reedsolomon.RsParams
 
@@ -33,6 +33,7 @@ type VerifierInput struct {
 	EntryList []int
 }
 
+// CheckStatement verifies that the linear combination is consistent with the claimed evaluations ys at point x.
 func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
 
 	// Check the consistency of Ys and proof.Linear combination
@@ -47,10 +48,12 @@ func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) e
 	return nil
 }
 
+// CheckIsCodeWord returns nil iff v is a valid Reed-Solomon codeword.
 func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v []field.Ext) error {
 	return rsParams.IsCodewordExt(v)
 }
 
+// CheckLinComb verifies the linear combination of opened columns against the proof.
 func CheckLinComb(
 	linComb []field.Ext,
 	entryList []int,

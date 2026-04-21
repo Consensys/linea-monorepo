@@ -1,4 +1,4 @@
-package smt_koalabear
+package smtkoalabear
 
 import (
 	"testing"
@@ -14,12 +14,15 @@ import (
 func randomOctuplet() field.Octuplet {
 	var res field.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i].SetRandom()
+		if _, err := res[i].SetRandom(); err != nil {
+			panic(err)
+		}
 	}
 	return res
 }
 
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
+	t.Helper()
 
 	tree := NewEmptyTree()
 
@@ -57,7 +60,9 @@ type MerkleProofCircuit struct {
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root)
+		if err := GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root); err != nil {
+			return err
+		}
 	}
 	return nil
 }

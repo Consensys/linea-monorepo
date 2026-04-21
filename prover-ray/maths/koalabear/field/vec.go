@@ -6,31 +6,31 @@ import (
 	"strings"
 )
 
-// FieldVec holds a vector of field elements in either the base field 𝔽_p or
+// Vec holds a vector of field elements in either the base field 𝔽_p or
 // the degree-4 extension 𝔽_{p^4}. Exactly one of base or ext is non-nil;
 // this invariant is the caller's responsibility when constructing via
 // [VecFromBase] or [VecFromExt].
 //
-// FieldVec is a pure view: it holds slice headers but does not own the backing
+// Vec is a pure view: it holds slice headers but does not own the backing
 // memory. The caller controls allocation (including arena or pool strategies).
-// All vector operation functions accept a pre-allocated result [FieldVec]
+// All vector operation functions accept a pre-allocated result [Vec]
 // whose field type must be consistent with the operand types.
-type FieldVec struct {
+type Vec struct {
 	base []Element
 	ext  []Ext
 }
 
-// VecFromBase wraps a []Element slice as a base-field [FieldVec].
-func VecFromBase(v []Element) FieldVec { return FieldVec{base: v} }
+// VecFromBase wraps a []Element slice as a base-field [Vec].
+func VecFromBase(v []Element) Vec { return Vec{base: v} }
 
-// VecFromExt wraps a []Ext slice as an extension-field [FieldVec].
-func VecFromExt(v []Ext) FieldVec { return FieldVec{ext: v} }
+// VecFromExt wraps a []Ext slice as an extension-field [Vec].
+func VecFromExt(v []Ext) Vec { return Vec{ext: v} }
 
 // IsBase reports whether the vector lives in the base field.
-func (v FieldVec) IsBase() bool { return v.base != nil }
+func (v Vec) IsBase() bool { return v.base != nil }
 
 // Len returns the number of elements in the vector.
-func (v FieldVec) Len() int {
+func (v Vec) Len() int {
 	if v.base != nil {
 		return len(v.base)
 	}
@@ -38,8 +38,8 @@ func (v FieldVec) Len() int {
 }
 
 // AsBase returns the underlying []Element. Panics if the vector is not base;
-// check [FieldVec.IsBase] first.
-func (v FieldVec) AsBase() []Element {
+// check [Vec.IsBase] first.
+func (v Vec) AsBase() []Element {
 	if v.base == nil {
 		panic("field: AsBase called on an extension FieldVec; check IsBase() first")
 	}
@@ -47,8 +47,8 @@ func (v FieldVec) AsBase() []Element {
 }
 
 // AsExt returns the underlying []Ext. Panics if the vector is not extension;
-// check [FieldVec.IsBase] first.
-func (v FieldVec) AsExt() []Ext {
+// check [Vec.IsBase] first.
+func (v Vec) AsExt() []Ext {
 	if v.ext == nil {
 		panic("field: AsExt called on a base FieldVec; check IsBase() first")
 	}
@@ -116,7 +116,7 @@ func VecAddExtExt(res, a, b []Ext) {
 //
 // res must be pre-allocated; its field type (IsBase) must be true iff both a
 // and b are base. All vectors must have equal length. Panics otherwise.
-func VecAddInto(res, a, b FieldVec) {
+func VecAddInto(res, a, b Vec) {
 	switch {
 	case res.IsBase():
 		VecAddBaseBase(res.base, a.base, b.base)
@@ -182,7 +182,7 @@ func VecSubExtExt(res, a, b []Ext) {
 //
 // res must be pre-allocated; its field type (IsBase) must be true iff both a
 // and b are base. All vectors must have equal length. Panics otherwise.
-func VecSubInto(res, a, b FieldVec) {
+func VecSubInto(res, a, b Vec) {
 	switch {
 	case res.IsBase():
 		VecSubBaseBase(res.base, a.base, b.base)
@@ -245,7 +245,7 @@ func VecMulExtExt(res, a, b []Ext) {
 //
 // res must be pre-allocated; its field type (IsBase) must be true iff both a
 // and b are base. All vectors must have equal length. Panics otherwise.
-func VecMulInto(res, a, b FieldVec) {
+func VecMulInto(res, a, b Vec) {
 	switch {
 	case res.IsBase():
 		VecMulBaseBase(res.base, a.base, b.base)
@@ -282,7 +282,7 @@ func VecNegExt(res, a []Ext) {
 
 // VecNegInto sets res[i] = -a[i] for all i, dispatching on the field type of
 // res. res and a must have the same field type and equal length. Panics otherwise.
-func VecNegInto(res, a FieldVec) {
+func VecNegInto(res, a Vec) {
 	if res.IsBase() {
 		VecNegBase(res.base, a.base)
 	} else {
@@ -345,7 +345,7 @@ func VecScaleExtExt(res []Ext, s Ext, a []Ext) {
 //
 // res must be pre-allocated; its field type (IsBase) must be true iff both s
 // and v are base. res and v must have equal length. Panics otherwise.
-func VecScaleInto(res FieldVec, s FieldElem, v FieldVec) {
+func VecScaleInto(res Vec, s Gen, v Vec) {
 	switch {
 	case res.IsBase():
 		VecScaleBaseBase(res.base, s.B0.A0, v.base)
@@ -381,7 +381,7 @@ func VecBatchInvExt(res, a []Ext) {
 // VecBatchInvInto sets res[i] = 1/a[i] for all i, dispatching on the field
 // type of res. res and a must have the same field type and equal length.
 // Panics if any element is zero or if lengths/types are inconsistent.
-func VecBatchInvInto(res, a FieldVec) {
+func VecBatchInvInto(res, a Vec) {
 	if res.IsBase() {
 		VecBatchInvBase(res.base, a.base)
 	} else {

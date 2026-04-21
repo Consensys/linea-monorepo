@@ -263,7 +263,7 @@ func (a *ArithmeticOperation) EvaluateVector(rt Runtime) ConcreteVector {
 	}
 	a.once.Do(func() { a.prog = compileExpr(a) })
 	result := a.prog.evaluateVector(rt)
-	return ConcreteVector{Plain: []field.FieldVec{result}, promise: a}
+	return ConcreteVector{Plain: []field.Vec{result}, promise: a}
 }
 
 // EvaluateSingle implements [Expression].
@@ -272,8 +272,8 @@ func (a *ArithmeticOperation) EvaluateSingle(rt Runtime) ConcreteField {
 	if a.IsMultiValued() {
 		panic("wiop: EvaluateSingle() called on a vector ArithmeticOperation; check IsMultiValued() first")
 	}
-	eval := func(i int) field.FieldElem { return a.Operands[i].EvaluateSingle(rt).Value }
-	var v field.FieldElem
+	eval := func(i int) field.Gen { return a.Operands[i].EvaluateSingle(rt).Value }
+	var v field.Gen
 	switch a.Operator {
 	case ArithmeticOperatorAdd:
 		v = eval(0).Add(eval(1))
@@ -412,7 +412,7 @@ func (c *Constant) Size() int {
 }
 
 // EvaluateVector implements [Expression]. Returns a [ConcreteVector] whose
-// Plain slice contains a single [field.FieldVec] with Value repeated
+// Plain slice contains a single [field.Vec] with Value repeated
 // Module.Size() times, and whose Padding is Value. Panics if scalar; check
 // [Constant.IsMultiValued] first.
 func (c *Constant) EvaluateVector(_ Runtime) ConcreteVector {
@@ -425,7 +425,7 @@ func (c *Constant) EvaluateVector(_ Runtime) ConcreteVector {
 		elems[i] = c.Value
 	}
 	return ConcreteVector{
-		Plain:   []field.FieldVec{field.VecFromBase(elems)},
+		Plain:   []field.Vec{field.VecFromBase(elems)},
 		Padding: c.Value,
 		promise: c,
 	}

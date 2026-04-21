@@ -13,6 +13,7 @@ const (
 
 // newRng returns a deterministic RNG seeded with testSeed.
 func newRng() *rand.Rand {
+	// #nosec G404 -- we are fine with this RNG for testcases
 	return rand.New(rand.NewPCG(testSeed, 0))
 }
 
@@ -404,32 +405,32 @@ func TestElemDiv(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		mkA      func() FieldElem
-		mkB      func() FieldElem
+		mkA      func() Gen
+		mkB      func() Gen
 		wantBase bool
 	}{
 		{
 			"BaseBase",
-			func() FieldElem { return ElemFromBase(PseudoRand(rng)) },
-			func() FieldElem { return ElemFromBase(PseudoRand(rng)) },
+			func() Gen { return ElemFromBase(PseudoRand(rng)) },
+			func() Gen { return ElemFromBase(PseudoRand(rng)) },
 			true,
 		},
 		{
 			"ExtBase",
-			func() FieldElem { return ElemFromExt(PseudoRandExt(rng)) },
-			func() FieldElem { return ElemFromBase(PseudoRand(rng)) },
+			func() Gen { return ElemFromExt(PseudoRandExt(rng)) },
+			func() Gen { return ElemFromBase(PseudoRand(rng)) },
 			false,
 		},
 		{
 			"BaseExt",
-			func() FieldElem { return ElemFromBase(PseudoRand(rng)) },
-			func() FieldElem { return ElemFromExt(PseudoRandExt(rng)) },
+			func() Gen { return ElemFromBase(PseudoRand(rng)) },
+			func() Gen { return ElemFromExt(PseudoRandExt(rng)) },
 			false,
 		},
 		{
 			"ExtExt",
-			func() FieldElem { return ElemFromExt(PseudoRandExt(rng)) },
-			func() FieldElem { return ElemFromExt(PseudoRandExt(rng)) },
+			func() Gen { return ElemFromExt(PseudoRandExt(rng)) },
+			func() Gen { return ElemFromExt(PseudoRandExt(rng)) },
 			false,
 		},
 	}

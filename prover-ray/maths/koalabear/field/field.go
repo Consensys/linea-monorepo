@@ -14,8 +14,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/utils/parallel"
 )
 
+// Element is the base field element type alias for the KoalaBear field.
 type Element = koalabear.Element
+
+// Vector is a slice of base field elements.
 type Vector = koalabear.Vector
+
+// Octuplet is an array of 8 base field elements.
 type Octuplet = [8]Element
 
 const (
@@ -23,7 +28,7 @@ const (
 	MaxOrderRoot uint64 = 24
 	// MultiplicativeGen generator of 𝔽ᵣ*
 	MultiplicativeGen uint64 = 3
-	// number of 32 bits words needed to represent a Element
+	// Limbs is the number of 32-bit words needed to represent an Element.
 	Limbs = 1
 	// Bits is the number of bits needed to represent a field element.
 	Bits = koalabear.Bits
@@ -32,7 +37,9 @@ const (
 )
 
 var (
-	RootOfUnity     = NewFromString("1791270792")
+	// RootOfUnity is a primitive 2^24-th root of unity in the KoalaBear field.
+	RootOfUnity = NewFromString("1791270792")
+	// MontConstant is the Montgomery constant R = 2^32 mod p used for Montgomery multiplication.
 	MontConstant    = NewFromString("33554430")
 	MontConstantInv = NewFromString("1057030144")
 	Modulus         = koalabear.Modulus
@@ -101,7 +108,9 @@ func ExpToInt(z *Element, x Element, k int) *Element {
 // RandomElement returns a random element
 func RandomElement() Element {
 	var res Element
-	res.SetRandom()
+	if _, err := res.SetRandom(); err != nil {
+		panic(err)
+	}
 	return res
 }
 
@@ -124,7 +133,7 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
 		bigInt    = &big.Int{}
 		res       = Element{}
 		bareU32   = [1]uint32{rng.Uint32()}
-		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32)) // #nosec G103 -- audited
 	)
 
 	bigInt.SetBytes(bareBytes[:sizeByte]).Mod(bigInt, Modulus())
@@ -173,6 +182,7 @@ func OctupletToBytes(octuplet [8]Element) [32]byte {
 	return res
 }
 
+// RandomOctuplet returns a cryptographically random Octuplet.
 func RandomOctuplet() Octuplet {
 	var oct Octuplet
 	for i := range oct {
@@ -181,6 +191,7 @@ func RandomOctuplet() Octuplet {
 	return oct
 }
 
+// PseudoRandOctuplet returns a pseudo-random Octuplet drawn from rng.
 func PseudoRandOctuplet(rng *rand.Rand) Octuplet {
 	var oct Octuplet
 	for i := range oct {
@@ -189,6 +200,7 @@ func PseudoRandOctuplet(rng *rand.Rand) Octuplet {
 	return oct
 }
 
+// WriteOctupletTo writes the octuplet to w as a sequence of 4-byte big-endian values.
 func WriteOctupletTo(w io.Writer, octuplet Octuplet) error {
 	for i := range octuplet {
 		f := octuplet[i].Bytes()
@@ -219,6 +231,7 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 	return res
 }
 
+// ToInt returns the field element as a native int.
 func ToInt(e *Element) int {
 	n := e.Uint64()
 	return int(n)

@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //---------------------------------------
@@ -15,7 +15,7 @@ import (
 
 type GnarkMDHasherCircuit struct {
 	Inputs []frontend.Variable
-	Ouput  GnarkOctuplet
+	Output GnarkOctuplet
 }
 
 func (ghc *GnarkMDHasherCircuit) Define(api frontend.API) error {
@@ -33,7 +33,7 @@ func (ghc *GnarkMDHasherCircuit) Define(api frontend.API) error {
 
 	// check the result
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(ghc.Ouput[i], res[i])
+		api.AssertIsEqual(ghc.Output[i], res[i])
 	}
 
 	return nil
@@ -45,8 +45,9 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 	nbElmts := 16
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		vals[i].SetRandom()
-		// vals[i].SetUint64(uint64(10 + i))
+		if _, err := vals[i].SetRandom(); err != nil {
+			panic(err)
+		}
 	}
 
 	// sum
@@ -62,7 +63,7 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 		witness.Inputs[i] = vals[i].String()
 	}
 	for i := 0; i < 8; i++ {
-		witness.Ouput[i] = res[i].String()
+		witness.Output[i] = res[i].String()
 	}
 
 	return &circuit, &witness
@@ -74,11 +75,11 @@ func TestCircuit(t *testing.T) {
 	circuit, witness := getGnarkMDHasherCircuitWitness()
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 }

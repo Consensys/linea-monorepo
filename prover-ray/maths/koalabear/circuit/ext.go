@@ -646,23 +646,23 @@ func mulExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error 
 }
 
 // IsConstantZeroExt returns true if e is a constant zero element.
-func (api *API) IsConstantZeroExt(e Ext) bool {
-	return api.IsConstantZero(e.B0.A0) &&
-		api.IsConstantZero(e.B0.A1) &&
-		api.IsConstantZero(e.B1.A0) &&
-		api.IsConstantZero(e.B1.A1)
+func (a *API) IsConstantZeroExt(e Ext) bool {
+	return a.IsConstantZero(e.B0.A0) &&
+		a.IsConstantZero(e.B0.A1) &&
+		a.IsConstantZero(e.B1.A0) &&
+		a.IsConstantZero(e.B1.A1)
 }
 
 // BaseValueOfElement returns true if the Ext element actually represents a
 // a base field element and returns it as an [Element]. Namely, the function
 // checks if the non-constant terms of the extension element are zero constants
 // and returns the constant term if so.
-func (api *API) BaseValueOfElement(e Ext) (*Element, bool) {
+func (a *API) BaseValueOfElement(e Ext) (*Element, bool) {
 
 	var (
-		b1a0IsConst = api.IsConstantZero(e.B1.A0)
-		b0a1IsConst = api.IsConstantZero(e.B0.A1)
-		b1a1IsConst = api.IsConstantZero(e.B1.A1)
+		b1a0IsConst = a.IsConstantZero(e.B1.A0)
+		b0a1IsConst = a.IsConstantZero(e.B0.A1)
+		b1a1IsConst = a.IsConstantZero(e.B1.A1)
 	)
 
 	if !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {

@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
@@ -21,25 +20,20 @@ func init() {
 }
 
 var (
+	// ErrSizeNotAMultipleOfFour is returned when the input size is not a multiple of 4.
 	ErrSizeNotAMultipleOfFour = errors.New("size(inputs) should be a multiple of 4")
-	ErrSizesDontMatch         = errors.New("size(inputs) should be equal to size(outputs)")
-	ErrNotAPowerOfTwo         = errors.New("size(inputs) should be a power of two")
+	// ErrSizesDontMatch is returned when input and output slices have different sizes.
+	ErrSizesDontMatch = errors.New("size(inputs) should be equal to size(outputs)")
+	// ErrNotAPowerOfTwo is returned when the input size is not a power of two.
+	ErrNotAPowerOfTwo = errors.New("size(inputs) should be a power of two")
 )
-
-func fftInvHint(t circuit.VType) solver.Hint {
-	if t == circuit.Native {
-		return fftExtInvHintNative
-	} else {
-		return fftExtInvHintEmulated
-	}
-}
 
 func fftExtInvHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
 	return emulated.UnwrapHint(inputs, output, fftExtInvHintNative)
 }
 
 // Each chunk of 4 inputs corresponds to a E4 element.
-func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error {
+func fftExtInvHintNative(_ *big.Int, inputs, outputs []*big.Int) error {
 
 	if len(inputs)%4 != 0 {
 		return ErrSizeNotAMultipleOfFour

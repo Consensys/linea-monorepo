@@ -1,3 +1,4 @@
+// Package utils provides general-purpose utility functions used across the prover.
 package utils
 
 import (
@@ -14,7 +15,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Encode the uint64 into an hexstring representing it as a u256 in bigendian form
+// HexHashUint64 encodes the uint64 into an hexstring representing it as a u256 in bigendian form.
 func HexHashUint64(v ...uint64) string {
 	buffer := bytes.Buffer{}
 	var I big.Int
@@ -28,6 +29,7 @@ func HexHashUint64(v ...uint64) string {
 	return hexutil.Encode(res)
 }
 
+// FmtInt32Bytes formats an integer v as a 32-byte big-endian representation.
 func FmtInt32Bytes(v int) [32]byte {
 	var res [32]byte
 	b := big.NewInt(int64(v)).Bytes()
@@ -35,64 +37,53 @@ func FmtInt32Bytes(v int) [32]byte {
 	return res
 }
 
-func FmtUint32Bytes(v uint) [32]byte {
-	var res [32]byte
-	var i big.Int
-	i.SetUint64(uint64(v))
-	b := i.Bytes()
-	copy(res[32-len(b):], b)
-	return res
-}
-
-// Format an integer as a 32 bytes hex string
+// FmtIntHex32Bytes formats an integer as a 32 bytes hex string.
 func FmtIntHex32Bytes(v int) string {
 	bytes := FmtInt32Bytes(v)
 	return hexutil.Encode(bytes[:])
 }
 
-// Apply the modulus of the BLS12-377 scalar field
+// ApplyModulusBn254 applies the modulus of the BN254 scalar field.
 func ApplyModulusBn254(b string) string {
 	var f bn254fr.Element
-	f.SetString(b)
+	if _, err := f.SetString(b); err != nil {
+		panic(err)
+	}
 	fbytes := f.Bytes()
 	return hexutil.Encode(fbytes[:])
 }
 
-// Apply the modulus
+// ApplyModulusBls12377 applies the modulus of the BLS12-377 scalar field.
 func ApplyModulusBls12377(b string) string {
 	var f bls12377fr.Element
-	f.SetString(b)
+	if _, err := f.SetString(b); err != nil {
+		panic(err)
+	}
 	fbytes := f.Bytes()
 	return hexutil.Encode(fbytes[:])
 }
 
+// HexEncodeToString encodes a byte array into a hex string
+func HexEncodeToString(b []byte) string {
+	return "0x" + hex.EncodeToString(b)
+}
+
+// HexDecodeString decodes a hex string into a byte array or error if it failed doing the conversion.
 func HexDecodeString(s string) ([]byte, error) {
 	s = strings.TrimPrefix(s, "0x")
 	return hex.DecodeString(s)
 }
 
-func HexMustDecodeString(s string) []byte {
-	b, err := HexDecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func HexEncodeToString(b []byte) string {
-	return "0x" + hex.EncodeToString(b)
-}
-
-// Compute the keccak of a stream of bytes. Returns the hex string.
+// KeccakHash computes the keccak of a stream of bytes. Returns the hex string.
 func KeccakHash(stream []byte) []byte {
 	h := sha3.NewLegacyKeccak256()
 	h.Write(stream)
 	return h.Sum(nil)
 }
 
-// Parse one or more hex string into a byte array, hash it and return the result
-// as an hexstring. If several hex string are passed, what is hashed is the
-// concatenation of the strings and the hasher is implictly updated only once.
+// HexHashHex parses one or more hex strings into a byte array, hashes it and returns the result
+// as a hexstring. If several hex strings are passed, what is hashed is the
+// concatenation of the strings and the hasher is implicitly updated only once.
 // The hash function is Keccak.
 func HexHashHex(v ...string) string {
 	buffer := bytes.Buffer{}
@@ -108,7 +99,7 @@ func HexHashHex(v ...string) string {
 	return hexutil.Encode(res)
 }
 
-// Concatenate hex strings
+// HexConcat concatenates hex strings.
 func HexConcat(v ...string) string {
 	buffer := bytes.Buffer{}
 	for i := range v {
@@ -118,7 +109,7 @@ func HexConcat(v ...string) string {
 	return hexutil.Encode(buffer.Bytes())
 }
 
-// Format an integer as a big-endian uint256
+// AsBigEndian32Bytes formats an integer as a big-endian uint256.
 func AsBigEndian32Bytes(x int) (res [32]byte) {
 	new(big.Int).SetInt64(int64(x)).FillBytes(res[:])
 	return res

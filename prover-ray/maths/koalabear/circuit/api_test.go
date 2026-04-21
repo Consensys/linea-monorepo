@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestVarCircuit tests basic Var operations
@@ -44,8 +44,12 @@ func (c *TestVarCircuit) Define(api frontend.API) error {
 
 func getVarWitness() TestVarCircuit {
 	var a, b, mulab, addab, subab, divab, nega field.Element
-	a.SetRandom()
-	b.SetRandom()
+	if _, err := a.SetRandom(); err != nil {
+		panic(err)
+	}
+	if _, err := b.SetRandom(); err != nil {
+		panic(err)
+	}
 	mulab.Mul(&a, &b)
 	addab.Add(&a, &b)
 	subab.Sub(&a, &b)
@@ -68,13 +72,13 @@ func TestVarNative(t *testing.T) {
 	var circuit TestVarCircuit
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestVarEmulated(t *testing.T) {
@@ -82,13 +86,13 @@ func TestVarEmulated(t *testing.T) {
 	var circuit TestVarCircuit
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestExtCircuit tests Ext operations
@@ -128,8 +132,12 @@ func (c *TestExtCircuit) Define(api frontend.API) error {
 
 func getExtWitness() *TestExtCircuit {
 	var a, b, addab, subab, mulab, squarea, inva, divab field.Ext
-	a.SetRandom()
-	b.SetRandom()
+	if _, err := a.SetRandom(); err != nil {
+		panic(err)
+	}
+	if _, err := b.SetRandom(); err != nil {
+		panic(err)
+	}
 	addab.Add(&a, &b)
 	subab.Sub(&a, &b)
 	mulab.Mul(&a, &b)
@@ -154,13 +162,13 @@ func TestExtNative(t *testing.T) {
 	var circuit TestExtCircuit
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestExtEmulated(t *testing.T) {
@@ -168,11 +176,11 @@ func TestExtEmulated(t *testing.T) {
 	var circuit TestExtCircuit
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

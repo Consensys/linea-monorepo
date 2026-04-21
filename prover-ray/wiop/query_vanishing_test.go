@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVanishing_Module_Round(t *testing.T) {
@@ -38,7 +39,7 @@ func TestVanishing_Check_Scalar_Zero(t *testing.T) {
 	expr := wiop.Sub(cell, cell)
 	mod := sys.NewSizedModule(sys.Context.Childf("modScZero"), 1, wiop.PaddingDirectionNone)
 	v := mod.NewVanishing(sys.Context.Childf("scVanish"), expr)
-	assert.NoError(t, v.Check(rt))
+	require.NoError(t, v.Check(rt))
 }
 
 func TestVanishing_Check_Scalar_NonZero(t *testing.T) {
@@ -60,7 +61,7 @@ func TestVanishing_Check_Vector_AllZero(t *testing.T) {
 	rt.AssignColumn(col, baseVec(4, 0))
 
 	v := mod.NewVanishing(sys.Context.Childf("allZVan"), col.View())
-	assert.NoError(t, v.Check(rt))
+	require.NoError(t, v.Check(rt))
 }
 
 func TestVanishing_Check_Vector_NonZero(t *testing.T) {
@@ -83,7 +84,7 @@ func TestVanishing_Check_Vector_CancelledPositions(t *testing.T) {
 
 	// negative indices: -4 = row 0, -3 = row 1, -2 = row 2, -1 = row 3
 	v := mod.NewVanishingManual(sys.Context.Childf("cancelVan"), col.View(), -4, -3, -2, -1)
-	assert.NoError(t, v.Check(rt))
+	require.NoError(t, v.Check(rt))
 }
 
 func TestVanishing_NewVanishing_NilCtxPanic(t *testing.T) {
@@ -164,8 +165,8 @@ func TestVanishing_Check_Vector_ExtZero(t *testing.T) {
 	for i := range elems {
 		elems[i] = zeroExt
 	}
-	rt.AssignColumn(extCol, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromExt(elems)}})
+	rt.AssignColumn(extCol, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromExt(elems)}})
 
 	v := mod.NewVanishing(sys.Context.Childf("extZeroVan"), extCol.View())
-	assert.NoError(t, v.Check(rt))
+	require.NoError(t, v.Check(rt))
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 )
 
-func getProofVortexNCommitmentsWithMerkle(t *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
+func getProofVortexNCommitmentsWithMerkle(_ *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
 	*Params,
 	*OpeningProof,
 	VerifierInput,
@@ -73,7 +73,8 @@ func TestVerifier(t *testing.T) {
 	WithSis[1] = true
 	WithSis[2] = false
 	WithSis[3] = true
-	params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, WithSis)
+	params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys,
+		polySize, rate, WithSis)
 
 	err := Verify(params, proof, &vi, commitments, merkleProofs, WithSis)
 	if err != nil {

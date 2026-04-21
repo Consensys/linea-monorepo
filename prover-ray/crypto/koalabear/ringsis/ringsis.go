@@ -1,3 +1,4 @@
+// Package ringsis implements the ring-SIS hash function.
 package ringsis
 
 import (
@@ -11,12 +12,10 @@ import (
 )
 
 const (
-	// The seed of the ring sis key
-	RING_SIS_SEED int64 = 42069
+	ringSISSeed int64 = 42069
 )
 
-// Standard parameter that we use for ring-SIS they are benchmarked at achieve
-// more than the 128 level of security.
+// StdParams are the standard ring-SIS parameters, benchmarked to achieve more than 128-bit security.
 var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 9}
 
 // Params encapsulates the parameters of a ring SIS instance
@@ -44,6 +43,7 @@ type Key struct {
 	MaxNumFieldToHash int
 }
 
+// LogTwoBound returns the log2 of the infinity-norm bound for limbs.
 func (k Key) LogTwoBound() int {
 	return k.SisGnarkCrypto.LogTwoBound
 }
@@ -52,10 +52,12 @@ func (k Key) modulusDegree() int {
 	return k.SisGnarkCrypto.Degree
 }
 
+// OutputSize returns the number of field elements in the hash output.
 func (k Key) OutputSize() int {
 	return k.SisGnarkCrypto.Degree
 }
 
+// NumLimbs returns the number of limbs per field element after decomposition.
 func (k Key) NumLimbs() int {
 	return utils.DivCeil(field.Bytes*8, k.SisGnarkCrypto.LogTwoBound)
 }
@@ -66,16 +68,16 @@ func (k Key) maxNumLimbsHashable() int {
 
 // MaxNumFieldHashable returns a positive integer indicating how many field
 // elements can be provided to the hasher together at once in a single hash.
-func (key *Key) MaxNumFieldHashable() int {
+func (k *Key) MaxNumFieldHashable() int {
 
 	var (
 		// numLimbsTotal counts the number of ring elements totalling the SIS key
-		numLimbsTotal = key.maxNumLimbsHashable()
+		numLimbsTotal = k.maxNumLimbsHashable()
 		// numLimbsPerField contains the number of limbs needed to represent one field
 		// element. The DivCeil is important because we want to ensure that
 		// *all* the bits of the inbound field element can be represented in
 		// `numLimbsPerField`.
-		numLimbsPerField = utils.DivCeil(8*field.Bytes, key.LogTwoBound())
+		numLimbsPerField = utils.DivCeil(8*field.Bytes, k.LogTwoBound())
 	)
 
 	return numLimbsTotal / numLimbsPerField
@@ -91,8 +93,7 @@ func GenerateKey(logTwoDegree, logTwoBound int, maxNumFieldToHash int) *Key {
 		utils.Panic("Log two bound cannot be larger than 64")
 	}
 
-	rsis, err := sis.NewRSis(RING_SIS_SEED, logTwoDegree, logTwoBound, maxNumFieldToHash)
-	// TODO @thomas fixme handle error
+	rsis, err := sis.NewRSis(ringSISSeed, logTwoDegree, logTwoBound, maxNumFieldToHash)
 	if err != nil {
 		panic(err)
 	}
@@ -110,10 +111,10 @@ func GenerateKey(logTwoDegree, logTwoBound int, maxNumFieldToHash int) *Key {
 // to the sum sum_i A[i]*m Mod X^{d}+1
 //
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
-func (s *Key) Hash(v []field.Element) []field.Element {
+func (k *Key) Hash(v []field.Element) []field.Element {
 
-	result := make([]field.Element, s.SisGnarkCrypto.Degree)
-	err := s.SisGnarkCrypto.Hash(v, result)
+	result := make([]field.Element, k.SisGnarkCrypto.Degree)
+	err := k.SisGnarkCrypto.Hash(v, result)
 
 	if err != nil {
 		panic(err)
@@ -125,10 +126,10 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // LimbSplit breaks down the entries of `v` into short limbs representing
 // `LogTwoBound` bits each. The function then flatten and flatten them in a
 // vector, casted as field elements in Montgommery form.
-func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
+func (k *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound()/8)
-	m := make([]field.Element, len(vReg)*s.NumLimbs())
+	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), k.LogTwoBound()/8)
+	m := make([]field.Element, len(vReg)*k.NumLimbs())
 	var ok bool
 	for i := 0; i < len(m); i++ {
 		m[i][0], ok = vr.NextLimb()
@@ -151,57 +152,57 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 // of a batch of SIS hashes.
 //
 // The vector of limbs has to be provided in Montgommery form.
-func (s Key) HashModXnMinus1(limbs []field.Ext) []field.Ext {
+func (k Key) HashModXnMinus1(limbs []field.Ext) []field.Ext {
 
 	// inputReader is a subslice of `limbs` and it is meant to be used as a
 	// reader. We periodically pop the first element by reassigning the input
 	// reader to `inputReader[1:]`.
 	inputReader := limbs
 
-	// if len(limbs) > s.maxNumLimbsHashable() {
-	// 	utils.Panic("Wrong size : %v > %v", len(limbs), s.maxNumLimbsHashable())
+	// if len(limbs) > k.maxNumLimbsHashable() {
+	// 	utils.Panic("Wrong size : %v > %v", len(limbs), k.maxNumLimbsHashable())
 	// }
 
-	nbPolyUsed := utils.DivCeil(len(limbs), s.modulusDegree())
+	nbPolyUsed := utils.DivCeil(len(limbs), k.modulusDegree())
 
 	/*
 		To perform the modulo X^n - 1 operation, we use the FFT method
 
-		Let a, k, r be vectors of size d
+		Let a, polyK, r be vectors of size d
 
-		k <- FFT(k)
+		polyK <- FFT(polyK)
 		a <- FFT(a)
-		r += k * a (element-wise)
+		r += polyK * a (element-wise)
 		r <- FFTInv(r)
 	*/
 
-	domain := s.SisGnarkCrypto.Domain
-	k := make([]field.Ext, s.modulusDegree())
-	a := make([]field.Element, s.modulusDegree())
-	r := make([]field.Ext, s.OutputSize())
+	domain := k.SisGnarkCrypto.Domain
+	polyK := make([]field.Ext, k.modulusDegree())
+	a := make([]field.Element, k.modulusDegree())
+	r := make([]field.Ext, k.OutputSize())
 
 	for i := 0; i < nbPolyUsed; i++ {
-		copy(a, s.SisGnarkCrypto.A[i])
-		copy(k, inputReader)
+		copy(a, k.SisGnarkCrypto.A[i])
+		copy(polyK, inputReader)
 
 		// consume the "reader"
 		if i < nbPolyUsed-1 {
-			inputReader = inputReader[s.modulusDegree():]
+			inputReader = inputReader[k.modulusDegree():]
 		} else {
 			// we may need to zero-pad the last one if incomplete
-			for i := len(inputReader); i < s.modulusDegree(); i++ {
-				k[i].SetZero()
+			for i := len(inputReader); i < k.modulusDegree(); i++ {
+				polyK[i].SetZero()
 			}
 			// we can give the inputReader back
 			inputReader = nil
 		}
 
-		domain.FFTExt(k, fft.DIF)
+		domain.FFTExt(polyK, fft.DIF)
 		domain.FFT(a, fft.DIF)
 
 		var tmp field.Ext
 		for i := range r {
-			tmp.MulByElement(&k[i], &a[i])
+			tmp.MulByElement(&polyK[i], &a[i])
 			r[i].Add(&r[i], &tmp)
 		}
 	}
@@ -230,11 +231,11 @@ func (s Key) HashModXnMinus1(limbs []field.Ext) []field.Ext {
 // The function stores the key polynomial per polynomials. In coefficient form
 // and multiplied by RInv so that it can account for the "Montgommery skip".
 // See [Key.Hash] for more details.
-func (s *Key) FlattenedKey() []field.Element {
-	res := make([]field.Element, 0, s.maxNumLimbsHashable())
-	for i := range s.SisGnarkCrypto.A {
-		for j := range s.SisGnarkCrypto.A[i] {
-			t := s.SisGnarkCrypto.A[i][j]
+func (k *Key) FlattenedKey() []field.Element {
+	res := make([]field.Element, 0, k.maxNumLimbsHashable())
+	for i := range k.SisGnarkCrypto.A {
+		for j := range k.SisGnarkCrypto.A[i] {
+			t := k.SisGnarkCrypto.A[i][j]
 			t = field.MulRInv(t)
 			res = append(res, t)
 		}
@@ -246,11 +247,11 @@ func (s *Key) FlattenedKey() []field.Element {
 // Each smart-vector is seen as the row of a matrix. All rows must have the same
 // size or panic. The function returns the hash of the columns. The column hashes
 // are concatenated into a single array.
-func (s *Key) TransversalHash(rows [][]field.Element, res []field.Element) []field.Element {
+func (k *Key) TransversalHash(rows [][]field.Element, res []field.Element) []field.Element {
 	// nbRows is the number of rows in the matrix
 	nbRows := len(rows)
-	if nbRows == 0 || nbRows > s.MaxNumFieldToHash {
-		utils.Panic("nbRows=%v out of bounds [1,%v]", nbRows, s.MaxNumFieldToHash)
+	if nbRows == 0 || nbRows > k.MaxNumFieldToHash {
+		utils.Panic("nbRows=%v out of bounds [1,%v]", nbRows, k.MaxNumFieldToHash)
 	}
 
 	// nbCols is the number of columns in the matrix
@@ -266,7 +267,7 @@ func (s *Key) TransversalHash(rows [][]field.Element, res []field.Element) []fie
 		}
 	}
 
-	sisKeySize := s.OutputSize()
+	sisKeySize := k.OutputSize()
 
 	parallel.Execute(nbCols, func(start, end int) {
 		// we transpose the columns using a windowed approach
@@ -309,7 +310,9 @@ func (s *Key) TransversalHash(rows [][]field.Element, res []field.Element) []fie
 				}
 			}
 			for j := 0; j < currentWindowSize; j++ {
-				s.SisGnarkCrypto.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
+				if err := k.SisGnarkCrypto.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize]); err != nil {
+					panic(err)
+				}
 			}
 		}
 	})

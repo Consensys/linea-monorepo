@@ -1,4 +1,5 @@
-package smt_koalabear
+// Package smtkoalabear provides Merkle functionalities with Poseidon2-koalabear
+package smtkoalabear
 
 import (
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/utils/types"
 )
 
+// ErrInvalidProof is returned when a Merkle proof verification fails.
 var ErrInvalidProof = errors.New("can't verify Merkle proof")
 
 // ProvedClaim is the composition of a proof with the claim it proves.

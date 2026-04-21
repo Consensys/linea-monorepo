@@ -1,3 +1,5 @@
+// Package fiatshamir implements the Fiat-Shamir transcript hashing to build non-interactive protocol.
+// Use by instantiating a transcripting, updating it with prover messages and sampling randomness.
 package fiatshamir
 
 import (
@@ -21,23 +23,27 @@ type FiatShamir struct {
 	h *poseidon2.MDHasher
 }
 
+// NewFiatShamir creates a new FiatShamir transcript accumulator.
 func NewFiatShamir() *FiatShamir {
 	return &FiatShamir{h: poseidon2.NewMDHasher()}
 }
 
+// Update adds base field elements to the transcript.
 func (fs *FiatShamir) Update(vec ...field.Element) {
 	fs.h.WriteElements(vec...)
 }
 
+// UpdateExt adds extension field elements to the transcript.
 func (fs *FiatShamir) UpdateExt(vec ...field.Ext) {
 	if len(vec) == 0 {
 		return
 	}
-	vElems := unsafe.Slice((*field.Element)(unsafe.Pointer(&vec[0])), 4*len(vec))
+	vElems := unsafe.Slice((*field.Element)(unsafe.Pointer(&vec[0])), 4*len(vec)) //nolint
 	fs.h.WriteElements(vElems...)
 }
 
-func (fs *FiatShamir) UpdateGeneric(vec ...field.FieldElem) {
+// UpdateGeneric adds generic field elements to the transcript, dispatching on their type.
+func (fs *FiatShamir) UpdateGeneric(vec ...field.Gen) {
 	if len(vec) == 0 {
 		return
 	}
@@ -51,14 +57,16 @@ func (fs *FiatShamir) UpdateGeneric(vec ...field.FieldElem) {
 		}
 	}
 }
+
+// UpdateVec adds slices of base field elements to the transcript.
 func (fs *FiatShamir) UpdateVec(vecs ...[]field.Element) {
 	for i := range vecs {
 		fs.Update(vecs[i]...)
 	}
 }
 
-// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
-// field elements.
+// UpdateVecExt updates the Fiat-Shamir state by passing one or more slices of
+// extension field elements.
 func (fs *FiatShamir) UpdateVecExt(vecs ...[]field.Ext) {
 	for i := range vecs {
 		fs.UpdateExt(vecs[i]...)
@@ -67,7 +75,7 @@ func (fs *FiatShamir) UpdateVecExt(vecs ...[]field.Ext) {
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func (fs *FiatShamir) UpdateSV(sv field.FieldVec) {
+func (fs *FiatShamir) UpdateSV(sv field.Vec) {
 	if sv.Len() == 0 {
 		return
 	}
@@ -81,11 +89,13 @@ func (fs *FiatShamir) UpdateSV(sv field.FieldVec) {
 	}
 }
 
+// RandomField samples a random octuplet from the current transcript state.
 func (fs *FiatShamir) RandomField() field.Octuplet {
 	defer fs.safeguardUpdate()
 	return fs.h.SumElement()
 }
 
+// RandomFext samples a random extension field element from the transcript.
 func (fs *FiatShamir) RandomFext() field.Ext {
 	s := fs.RandomField() // already calls safeguardUpdate()
 	var res field.Ext
@@ -97,6 +107,7 @@ func (fs *FiatShamir) RandomFext() field.Ext {
 	return res
 }
 
+// RandomFieldFromSeed derives a deterministic extension field element from a seed and name.
 func (fs *FiatShamir) RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext {
 
 	// The first step encodes the 'name' into a single field element. The
@@ -119,6 +130,7 @@ func (fs *FiatShamir) RandomFieldFromSeed(seed field.Octuplet, name string) fiel
 	return res
 }
 
+// RandomManyIntegers samples num integers uniformly in [0, upperBound).
 func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
 	n := utils.NextPowerOfTwo(upperBound)
 	mask := n - 1
@@ -139,10 +151,12 @@ func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
 	return res
 }
 
+// SetState replaces the internal hasher state with s.
 func (fs *FiatShamir) SetState(s field.Octuplet) {
 	fs.h.SetStateOctuplet(s)
 }
 
+// State returns the current internal hasher state.
 func (fs *FiatShamir) State() field.Octuplet {
 	return fs.h.GetStateOctuplet()
 }

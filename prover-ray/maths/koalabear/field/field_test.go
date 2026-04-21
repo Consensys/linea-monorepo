@@ -235,11 +235,11 @@ func TestToInt(t *testing.T) {
 }
 
 // TestRandomElement is a smoke test verifying that RandomElement does not panic.
-func TestRandomElement(t *testing.T) {
+func TestRandomElement(_ *testing.T) {
 	_ = RandomElement()
 }
 
 // TestRandomOctuplet is a smoke test verifying that RandomOctuplet does not panic.
-func TestRandomOctuplet(t *testing.T) {
+func TestRandomOctuplet(_ *testing.T) {
 	_ = RandomOctuplet()
 }

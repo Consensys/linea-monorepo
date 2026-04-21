@@ -1,4 +1,4 @@
-package smt_koalabear
+package smtkoalabear
 
 import (
 	"testing"

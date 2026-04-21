@@ -7,10 +7,10 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
 	kbcircuit "github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // KoalagnarkMDHasherCircuit is a test circuit for the koalagnark-based Poseidon2 hasher
@@ -29,7 +29,7 @@ func (c *KoalagnarkMDHasherCircuit) Define(api frontend.API) error {
 	res := h.Sum()
 
 	// check the result using koalagnark API
-	koalaAPI := circuit.NewAPI(api)
+	koalaAPI := kbcircuit.NewAPI(api)
 	for i := 0; i < 8; i++ {
 		koalaAPI.AssertIsEqual(c.Output[i], res[i])
 	}
@@ -41,7 +41,9 @@ func getKoalagnarkMDHasherWitness(nbElmts int) (*KoalagnarkMDHasherCircuit, *Koa
 	// values to hash
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		vals[i].SetRandom()
+		if _, err := vals[i].SetRandom(); err != nil {
+			panic(err)
+		}
 	}
 
 	// sum using the native hasher
@@ -81,13 +83,13 @@ func TestKoalagnarkMDHasherNative(t *testing.T) {
 			circuit, witness := getKoalagnarkMDHasherWitness(tc.nbElmts)
 
 			ccs, err := frontend.CompileU32(field.Modulus(), scs.NewBuilder, circuit)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			fullWitness, err := frontend.NewWitness(witness, field.Modulus())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = ccs.IsSolved(fullWitness)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -110,13 +112,13 @@ func TestKoalagnarkMDHasherEmulated(t *testing.T) {
 			circuit, witness := getKoalagnarkMDHasherWitness(tc.nbElmts)
 
 			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = ccs.IsSolved(fullWitness)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -131,7 +133,7 @@ func (c *KoalagnarkCompressCircuit) Define(api frontend.API) error {
 	h := NewKoalagnarkMDHasher(api)
 	res := h.compressPoseidon2(c.A, c.B)
 
-	koalaAPI := circuit.NewAPI(api)
+	koalaAPI := kbcircuit.NewAPI(api)
 	for i := 0; i < 8; i++ {
 		koalaAPI.AssertIsEqual(c.Output[i], res[i])
 	}
@@ -141,8 +143,12 @@ func (c *KoalagnarkCompressCircuit) Define(api frontend.API) error {
 func getCompressWitness() (*KoalagnarkCompressCircuit, *KoalagnarkCompressCircuit) {
 	var a, b field.Octuplet
 	for i := 0; i < 8; i++ {
-		a[i].SetRandom()
-		b[i].SetRandom()
+		if _, err := a[i].SetRandom(); err != nil {
+			panic(err)
+		}
+		if _, err := b[i].SetRandom(); err != nil {
+			panic(err)
+		}
 	}
 
 	// Compute expected output using native Compress
@@ -162,26 +168,26 @@ func TestKoalagnarkCompressNative(t *testing.T) {
 	circuit, witness := getCompressWitness()
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestKoalagnarkCompressEmulated(t *testing.T) {
 	circuit, witness := getCompressWitness()
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestKoalagnarkConsistencyWithOriginal verifies that the koalagnark implementation
@@ -191,7 +197,9 @@ func TestKoalagnarkConsistencyWithOriginal(t *testing.T) {
 	nbElmts := 16
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		vals[i].SetRandom()
+		if _, err := vals[i].SetRandom(); err != nil {
+			panic(err)
+		}
 	}
 
 	// Compute hash using native hasher

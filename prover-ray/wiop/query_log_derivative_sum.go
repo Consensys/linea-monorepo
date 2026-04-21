@@ -71,7 +71,7 @@ func (rr *LogDerivativeSum) Check(rt Runtime) error {
 	acc := rr.reduce(rt)
 	got := rt.GetCellValue(rr.Result)
 	diff := acc.Sub(got)
-	if !diff.Ext.IsZero() {
+	if !diff.IsZero() {
 		return fmt.Errorf(
 			"wiop: LogDerivativeSum.Check(%s): result mismatch",
 			rr.context.Path(),
@@ -84,7 +84,7 @@ func (rr *LogDerivativeSum) Check(rt Runtime) error {
 // assignments. It is the shared core of [SelfAssign] and [Check].
 //
 // Panics on a zero denominator.
-func (rr *LogDerivativeSum) reduce(rt Runtime) field.FieldElem {
+func (rr *LogDerivativeSum) reduce(rt Runtime) field.Gen {
 	acc := field.ElemZero()
 
 	for _, f := range rr.Fractions {
@@ -117,7 +117,7 @@ func (rr *LogDerivativeSum) reduce(rt Runtime) field.FieldElem {
 		}
 
 		for row := 0; row < n; row++ {
-			var num, den field.FieldElem
+			var num, den field.Gen
 
 			if numIsVec {
 				fv := numVec.Plain[0]

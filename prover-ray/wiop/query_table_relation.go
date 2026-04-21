@@ -90,6 +90,7 @@ func newTable(selector *ColumnView, columns []*ColumnView) Table {
 		}
 	}
 	if selector != nil && selector.Module() != m {
+		//nolint
 		panic(fmt.Sprintf(
 			"wiop: Table selector belongs to module %q but columns belong to module %q; selector and columns must share a module",
 			selector.Module().Context.Path(), m.Context.Path(),
@@ -209,7 +210,7 @@ func (tr *TableRelation) checkPermutation(rt Runtime) error {
 // When all column views have zero shift and the module has directional padding,
 // the gap identical padding rows are registered as a single entry with count
 // sign*gap instead of iterating them individually.
-func permTableCountInto(counts map[field.Ext]int, sign int, alpha field.FieldElem, rt Runtime, tab Table) {
+func permTableCountInto(counts map[field.Ext]int, sign int, alpha field.Gen, rt Runtime, tab Table) {
 	n := tab.Module().Size()
 	m := tab.Module()
 
@@ -269,14 +270,14 @@ func (tr *TableRelation) checkInclusion(rt Runtime) error {
 
 // inclusionBuildSet adds the hashes of all selected rows of tab to bSet.
 // Padding rows are handled with a single anchor probe when applicable.
-func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Runtime, tab Table) {
+func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.Gen, rt Runtime, tab Table) {
 	n := tab.Module().Size()
 	m := tab.Module()
 
 	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
 		for row := range n {
 			if tab.Selector != nil {
-				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+				if sel := tableElemAt(rt, tab.Selector, row, n); sel.IsZero() {
 					continue
 				}
 			}
@@ -299,7 +300,7 @@ func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 		paddingSelected := tab.Selector == nil
 		if tab.Selector != nil {
 			sel := tableElemAt(rt, tab.Selector, anchor, n)
-			paddingSelected = !sel.Ext.IsZero()
+			paddingSelected = !sel.IsZero()
 		}
 		if paddingSelected {
 			bSet[tableRowHash(alpha, rt, tab.Columns, anchor, n)] = struct{}{}
@@ -307,7 +308,7 @@ func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 	}
 	for row := dataStart; row < dataStart+plainLen; row++ {
 		if tab.Selector != nil {
-			if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+			if sel := tableElemAt(rt, tab.Selector, row, n); sel.IsZero() {
 				continue
 			}
 		}
@@ -317,14 +318,14 @@ func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 
 // inclusionCheckSet verifies that all selected rows of tab are present in bSet.
 // Padding rows are checked with a single anchor probe when applicable.
-func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Runtime, tab Table, path string) error {
+func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.Gen, rt Runtime, tab Table, path string) error {
 	n := tab.Module().Size()
 	m := tab.Module()
 
 	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
 		for row := range n {
 			if tab.Selector != nil {
-				if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+				if sel := tableElemAt(rt, tab.Selector, row, n); sel.IsZero() {
 					continue
 				}
 			}
@@ -352,7 +353,7 @@ func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 		paddingSelected := tab.Selector == nil
 		if tab.Selector != nil {
 			sel := tableElemAt(rt, tab.Selector, anchor, n)
-			paddingSelected = !sel.Ext.IsZero()
+			paddingSelected = !sel.IsZero()
 		}
 		if paddingSelected {
 			if _, ok := bSet[tableRowHash(alpha, rt, tab.Columns, anchor, n)]; !ok {
@@ -365,7 +366,7 @@ func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 	}
 	for row := dataStart; row < dataStart+plainLen; row++ {
 		if tab.Selector != nil {
-			if sel := tableElemAt(rt, tab.Selector, row, n); sel.Ext.IsZero() {
+			if sel := tableElemAt(rt, tab.Selector, row, n); sel.IsZero() {
 				continue
 			}
 		}
@@ -382,8 +383,8 @@ func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.FieldElem, rt Ru
 // tableRowHash computes a Horner linear combination of all column values at
 // logical row idx, using alpha as the mixing scalar. Returns the raw [field.Ext]
 // value for use as a map key.
-func tableRowHash(alpha field.FieldElem, rt Runtime, cols []*ColumnView, idx, n int) field.Ext {
-	var acc field.FieldElem
+func tableRowHash(alpha field.Gen, rt Runtime, cols []*ColumnView, idx, n int) field.Ext {
+	var acc field.Gen
 	for _, cv := range cols {
 		acc = acc.Mul(alpha).Add(tableElemAt(rt, cv, idx, n))
 	}
@@ -393,7 +394,7 @@ func tableRowHash(alpha field.FieldElem, rt Runtime, cols []*ColumnView, idx, n 
 // tableElemAt returns the field element at logical row idx in cv's concrete
 // assignment, applying the cyclic shift and the module's padding semantics.
 // n is the module size.
-func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.FieldElem {
+func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.Gen {
 	phys := ((idx+cv.ShiftingOffset)%n + n) % n
 	return rt.GetColumnAssignment(cv.Column).ElementAt(cv.Column.Module, phys)
 }

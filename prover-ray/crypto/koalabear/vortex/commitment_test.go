@@ -132,8 +132,8 @@ func referenceNoSisTransversalHash(v [][]field.Element) []field.Octuplet {
 func makeNoSisRows(numRows, numCols int) [][]field.Element {
 	rows := make([][]field.Element, numRows)
 	for row := 0; row < numRows; row++ {
-		switch {
-		case row%17 == 0:
+		switch row % 17 {
+		case 0:
 			rows[row] = field.VecRepeatBase(field.NewElement(uint64(row+1)), numCols)
 		default:
 			vec := make([]field.Element, numCols)

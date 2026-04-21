@@ -106,7 +106,7 @@ func (le *LagrangeEval) Check(rt Runtime) error {
 		}
 		claim := rt.GetCellValue(claimCell)
 		diff := got.Sub(claim)
-		if !diff.Ext.IsZero() {
+		if !diff.IsZero() {
 			return fmt.Errorf(
 				"wiop: LagrangeEval(%s): polynomial[%d] evaluation mismatch at claim cell %q",
 				le.context.Path(), i, claimCell.Context.Path(),
@@ -120,9 +120,9 @@ func (le *LagrangeEval) Check(rt Runtime) error {
 // evalPolynomials evaluates each polynomial in le.Polynomials at the
 // EvaluationPoint, applying the cyclic-shift adjustment for each [ColumnView].
 // It is the shared kernel used by both [Check] and [SelfAssign].
-func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.FieldElem {
+func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.Gen {
 	evalPoint := le.EvaluationPoint.EvaluateSingle(rt)
-	results := make([]field.FieldElem, len(le.Polynomials))
+	results := make([]field.Gen, len(le.Polynomials))
 	for i, pv := range le.Polynomials {
 		// Adjust the evaluation point for the column view's cyclic shift.
 		// C'[j] = C[(j+k) mod n]  implies  C'(z) = C(ω^k · z),
@@ -147,8 +147,6 @@ func (le *LagrangeEval) evalPolynomials(rt Runtime) []field.FieldElem {
 //
 // Precondition: all polynomials and the EvaluationPoint must be publicly
 // visible; panics otherwise.
-//
-// TODO: Implement once the gnark layer is defined.
 func (le *LagrangeEval) CheckGnark(_ frontend.API, _ GnarkRuntime) {
 	panic("wiop: LagrangeEval.CheckGnark not yet implemented")
 }
@@ -209,7 +207,8 @@ func (sys *System) NewLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x Fie
 // the same set of alleged evaluations).
 //
 // Panics if ctx is nil, polys is empty, or len(claims) != len(polys).
-func (sys *System) NewLagrangeEvalFrom(ctx *ContextFrame, polys []*ColumnView, x FieldPromise, claims []*Cell) *LagrangeEval {
+func (sys *System) NewLagrangeEvalFrom(ctx *ContextFrame, polys []*ColumnView, x FieldPromise,
+	claims []*Cell) *LagrangeEval {
 	if ctx == nil {
 		panic("wiop: System.NewLagrangeEvalFrom requires a non-nil ContextFrame")
 	}
@@ -228,7 +227,8 @@ func (sys *System) NewLagrangeEvalFrom(ctx *ContextFrame, polys []*ColumnView, x
 // newLagrangeEval is the shared constructor used by [System.NewLagrangeEval]
 // and [System.NewLagrangeEvalFrom]. It builds the [LagrangeEval], appends it
 // to sys.LagrangeEvals, and returns it.
-func (sys *System) newLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x FieldPromise, claims []*Cell) *LagrangeEval {
+func (sys *System) newLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x FieldPromise,
+	claims []*Cell) *LagrangeEval {
 	le := &LagrangeEval{
 		baseQuery: baseQuery{
 			context:     ctx,
@@ -250,7 +250,7 @@ func (sys *System) newLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x Fie
 // barycentric sum directly from Plain[0], treating padding and data rows
 // separately with a single shared batch of denominator inverses. This avoids
 // materialising the full n-length padded data vector.
-func evalLagrangePadded(cv *ConcreteVector, m *Module, z field.FieldElem) field.FieldElem {
+func evalLagrangePadded(cv *ConcreteVector, m *Module, z field.Gen) field.Gen {
 	data := cv.Plain[0]
 	if m.Padding == PaddingDirectionNone {
 		return polynomials.EvalLagrange(data, z)

@@ -1,4 +1,4 @@
-package smt_koalabear
+package smtkoalabear
 
 import (
 	"fmt"
@@ -220,6 +220,7 @@ func NewTree(leaves []field.Octuplet) *Tree {
 	return tree
 }
 
+// GetRoot returns the root hash of the Merkle tree.
 func (t *Tree) GetRoot() field.Octuplet {
 	return t.Root
 }

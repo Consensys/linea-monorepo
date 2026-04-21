@@ -1,5 +1,3 @@
+// Package poseidon2 provides Poseidon2 hash implementations over the KoalaBear field,
+// both native (out-of-circuit) and in-circuit variants.
 package poseidon2
-
-// Contains the poseidon2 implem over koalabear, both out of circuit and in circuit.
-// The circuits use frontend.Variable instead of WrappedVariable because a circuit using poseidon2 on koalabear
-// will alsways be compiled on koalabear, otherwise we use poseidon2 on bls12377.

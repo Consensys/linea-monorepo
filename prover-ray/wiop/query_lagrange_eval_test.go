@@ -106,7 +106,7 @@ func TestLagrangeEval_SelfAssign_Check(t *testing.T) {
 	assert.False(t, le.IsAlreadyAssigned(rt))
 	le.SelfAssign(rt)
 	assert.True(t, le.IsAlreadyAssigned(rt))
-	assert.NoError(t, le.Check(rt))
+	require.NoError(t, le.Check(rt))
 }
 
 func TestLagrangeEval_Check_ColumnNotAssigned(t *testing.T) {
@@ -187,11 +187,11 @@ func TestLagrangeEval_PaddingLeft_SelfAssign_Check(t *testing.T) {
 	var v field.Element
 	v.SetUint64(2)
 	elems := []field.Element{v, v, v}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
 	rt.AdvanceRound()
 
 	le.SelfAssign(rt)
-	assert.NoError(t, le.Check(rt))
+	require.NoError(t, le.Check(rt))
 }
 
 func TestLagrangeEval_NewLagrangeEvalFrom_NilCtxPanic(t *testing.T) {
@@ -282,13 +282,13 @@ func evalWithBaseZ(t *testing.T, padding wiop.PaddingDirection, ext bool) {
 		for i := range elems {
 			elems[i] = e
 		}
-		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromExt(elems)}})
+		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromExt(elems)}})
 	} else {
 		// Base column: assign 3 elements all equal to 5, padded to 4.
 		var v field.Element
 		v.SetUint64(5)
 		elems := []field.Element{v, v, v}
-		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
+		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
 	}
 
 	// Advance to r1 so we can assign the Cell in r1.
@@ -300,7 +300,7 @@ func evalWithBaseZ(t *testing.T, padding wiop.PaddingDirection, ext bool) {
 	rt.AssignCell(ep, field.ElemFromBase(z))
 
 	le.SelfAssign(rt)
-	assert.NoError(t, le.Check(rt))
+	require.NoError(t, le.Check(rt))
 }
 
 // TestEvalLagrangePaddedBaseBase: base data, left padding, base z.
@@ -334,11 +334,11 @@ func TestEvalLagrangePaddedExtExt(t *testing.T) {
 	for i := range elems {
 		elems[i] = e
 	}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromExt(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromExt(elems)}})
 	rt.AdvanceRound()
 
 	le.SelfAssign(rt)
-	assert.NoError(t, le.Check(rt))
+	require.NoError(t, le.Check(rt))
 }
 
 // TestEvalPolynomials_Shift: covers the k != 0 branch in evalPolynomials.
@@ -359,7 +359,7 @@ func TestEvalPolynomials_Shift(t *testing.T) {
 	rt.AdvanceRound()
 
 	le.SelfAssign(rt)
-	assert.NoError(t, le.Check(rt))
+	require.NoError(t, le.Check(rt))
 }
 
 // TestLagrangeEval_Check_ColumnUnassigned tests the first guard in Check: when

@@ -231,18 +231,18 @@ func compileExpr(root *ArithmeticOperation) *compiledProgram {
 }
 
 // evaluateVector runs the compiled program against the given runtime and
-// returns the resulting [field.FieldVec].
+// returns the resulting [field.Vec].
 //
 // Assumptions about ConcreteVector:
 //   - A leaf's ConcreteVector.Plain is a non-empty slice; Plain[0] is the
 //     column data this compiler operates on. This assumption should be revisited
 //     once the Runtime / ConcreteVector contract is finalised.
-func (p *compiledProgram) evaluateVector(rt Runtime) field.FieldVec {
+func (p *compiledProgram) evaluateVector(rt Runtime) field.Vec {
 	// ------------------------------------------------------------------
 	// Evaluate all leaves up-front to determine the vector length and to
 	// avoid re-evaluating leaves inside the main execution loop.
 	// ------------------------------------------------------------------
-	leafVecs := make([]field.FieldVec, len(p.leaves))
+	leafVecs := make([]field.Vec, len(p.leaves))
 	n := 0
 	for i, leaf := range p.leaves {
 		cv := leaf.EvaluateVector(rt)
@@ -268,7 +268,7 @@ func (p *compiledProgram) evaluateVector(rt Runtime) field.FieldVec {
 	// Allocate backing memory for every slot up-front.
 	// The type (base vs ext) is known statically from compilation.
 	// ------------------------------------------------------------------
-	slots := make([]field.FieldVec, p.numSlots)
+	slots := make([]field.Vec, p.numSlots)
 	for i, isBase := range p.slotTypes {
 		if isBase {
 			slots[i] = field.VecFromBase(make([]field.Element, n))
@@ -318,7 +318,7 @@ func (p *compiledProgram) evaluateVector(rt Runtime) field.FieldVec {
 			// type as src2 to satisfy VecBatchInvInto's same-type requirement.
 			s1, s2 := bc[pc], bc[pc+1]
 			pc += 2
-			var inv2 field.FieldVec
+			var inv2 field.Vec
 			if slots[s2].IsBase() {
 				inv2 = field.VecFromBase(make([]field.Element, n))
 			} else {

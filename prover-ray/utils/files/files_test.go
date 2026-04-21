@@ -23,13 +23,19 @@ func TestCheckFilePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("cleanup failed: %v", err)
+		}
+	}()
 
 	tmpFile, err := os.CreateTemp(tmpDir, "testfile")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("success existing file", func(t *testing.T) {
 		if gotErr := CheckFilePath(tmpFile.Name()); gotErr != nil {
@@ -72,13 +78,19 @@ func TestCheckDirPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("cleanup failed: %v", err)
+		}
+	}()
 
 	tmpFile, err := os.CreateTemp(tmpDir, "testfile")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Run("success existing dir", func(t *testing.T) {
 		if gotErr := CheckDirPath(tmpDir); gotErr != nil {
@@ -128,7 +140,7 @@ func TestFilesCompressed(t *testing.T) {
 	_, err = w.Write(b)
 	require.NoError(t, err)
 
-	w.Close()
+	require.NoError(t, w.Close())
 
 	r := MustReadCompressed(path)
 	newB := make([]byte, fileSize)
@@ -153,7 +165,7 @@ func TestFilesRW(t *testing.T) {
 	_, err = w.Write(b)
 	require.NoError(t, err)
 
-	w.Close()
+	require.NoError(t, w.Close())
 
 	r := MustRead(path)
 	newB := make([]byte, fileSize)

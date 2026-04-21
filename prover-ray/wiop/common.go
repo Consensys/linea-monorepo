@@ -89,7 +89,7 @@ func (pd PaddingDirection) String() string {
 // separately.
 type ConcreteVector struct {
 	// Plain holds the field elements of the evaluated vector.
-	Plain []field.FieldVec
+	Plain []field.Vec
 	// Padding is the constant fill value used when the assignment is padded.
 	Padding field.Element
 	// promise is the symbolic vector-promise this concrete value fulfils.
@@ -108,7 +108,7 @@ type ConcreteVector struct {
 //     rows 0..plainLen-1 index Plain[0], the rest are the padding value.
 //
 // Panics if pos is out of bounds for the module size, or if m is unsized.
-func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.FieldElem {
+func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.Gen {
 	n := m.Size() // panics if unsized
 	if pos < 0 || pos >= n {
 		panic(fmt.Sprintf("wiop: ConcreteVector.ElementAt: pos %d out of bounds [0, %d)", pos, n))
@@ -151,7 +151,7 @@ func (cv *ConcreteVector) ElementAt(m *Module, pos int) field.FieldElem {
 // carrying it separately.
 type ConcreteField struct {
 	// Value is the evaluated field element.
-	Value field.FieldElem
+	Value field.Gen
 	// promise is the symbolic field-promise this concrete value fulfils.
 	// Set once at construction, never mutated.
 	promise FieldPromise

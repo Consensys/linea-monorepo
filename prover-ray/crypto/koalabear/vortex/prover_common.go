@@ -17,11 +17,10 @@ type OpeningProof struct {
 	LinearCombination []field.Ext
 }
 
+// LinearCombination computes the linear combination of the vectors v[i]
 // Let x := randomCoin
 // computes ∑ᵢxⁱ * v[i]
 // n is the size of each vector v[i]
-//
-// TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
 func LinearCombination(proof *OpeningProof, v [][]field.Element, randomCoin field.Ext) []field.Ext {
 
 	if len(v) == 0 {
@@ -52,6 +51,8 @@ func LinearCombination(proof *OpeningProof, v [][]field.Element, randomCoin fiel
 
 		copy(linComb[start:stop], localLinComb)
 	})
+
+	proof.LinearCombination = linComb
 
 	return linComb
 }

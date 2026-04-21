@@ -39,6 +39,7 @@ func NewKoalagnarkMDHasher(api frontend.API) *KoalagnarkMDHasher {
 	return &res
 }
 
+// Reset clears the buffer and resets the state to zero.
 func (h *KoalagnarkMDHasher) Reset() {
 	h.buffer = h.buffer[:0]
 	for i := 0; i < 8; i++ {
@@ -50,17 +51,20 @@ func (h *KoalagnarkMDHasher) Write(data ...circuit.Element) {
 	h.buffer = append(h.buffer, data...)
 }
 
+// WriteOctuplet appends octuplets to the hash buffer.
 func (h *KoalagnarkMDHasher) WriteOctuplet(data ...KoalagnarkOctuplet) {
 	for i := 0; i < len(data); i++ {
 		h.buffer = append(h.buffer, data[i][:]...)
 	}
 }
 
+// SetState resets the hasher and sets its state to the given octuplet.
 func (h *KoalagnarkMDHasher) SetState(state KoalagnarkOctuplet) {
 	h.Reset()
 	copy(h.state[:], state[:])
 }
 
+// State returns the current hash state without consuming the buffer.
 func (h *KoalagnarkMDHasher) State() KoalagnarkOctuplet {
 	// State will flush the buffer, take the state and restore the initial
 	// state of the hasher.
@@ -76,6 +80,7 @@ func (h *KoalagnarkMDHasher) State() KoalagnarkOctuplet {
 	return res
 }
 
+// Sum finalizes the hash and returns the digest as a KoalagnarkOctuplet.
 func (h *KoalagnarkMDHasher) Sum() KoalagnarkOctuplet {
 	for len(h.buffer) != 0 {
 		var buf [BlockSize]circuit.Element
@@ -106,7 +111,10 @@ func (h *KoalagnarkMDHasher) compressPoseidon2(a, b KoalagnarkOctuplet) Koalagna
 	// Create a buffer to hold the feed-forward input.
 	copy(res[:], x[8:])
 
-	koalagnarkCompressPerm.Permutation(h.koalaAPI, x[:])
+	err := koalagnarkCompressPerm.Permutation(h.koalaAPI, x[:])
+	if err != nil {
+		panic(err)
+	}
 
 	for i := range res {
 		res[i] = h.koalaAPI.Add(res[i], x[8+i])
@@ -132,6 +140,8 @@ type koalagnarkPermutation struct {
 
 // NewKoalagnarkPermutation creates a permutation with KoalaBear parameters.
 // It mirrors NewPermutation in poseidon2_circuit.go but uses koalagnark arithmetic.
+// nolint -- we are fine with returning an unexported type as we want
+// this to be a protected constructor.
 func NewKoalagnarkPermutation() koalagnarkPermutation {
 	params := poseidon2.NewParameters(16, 6, 21)
 	return koalagnarkPermutation{params: params}

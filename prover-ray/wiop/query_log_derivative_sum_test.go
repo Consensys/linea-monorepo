@@ -48,7 +48,7 @@ func TestLogDerivativeSum_Sum(t *testing.T) {
 	rr.SelfAssign(rt)
 	assert.True(t, rr.IsAlreadyAssigned(rt))
 
-	assert.NoError(t, rr.Check(rt))
+	require.NoError(t, rr.Check(rt))
 	assert.Equal(t, r1, rr.Round())
 }
 
@@ -145,7 +145,7 @@ func TestLogDerivativeSum_ScalarNumVecDen(t *testing.T) {
 	rt.AssignColumn(col, baseVec(4, 2))
 	rt.AdvanceRound()
 	rr.SelfAssign(rt)
-	assert.NoError(t, rr.Check(rt))
+	require.NoError(t, rr.Check(rt))
 }
 
 func TestLogDerivativeSum_VecNumScalarDen(t *testing.T) {
@@ -164,7 +164,7 @@ func TestLogDerivativeSum_VecNumScalarDen(t *testing.T) {
 	rt.AssignColumn(col, baseVec(4, 3))
 	rt.AdvanceRound()
 	rr.SelfAssign(rt)
-	assert.NoError(t, rr.Check(rt))
+	require.NoError(t, rr.Check(rt))
 }
 
 func TestNewLogDerivativeSum_NilDenominatorPanic(t *testing.T) {

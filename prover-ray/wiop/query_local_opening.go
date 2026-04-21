@@ -64,7 +64,7 @@ func (lo *LocalOpening) Check(rt Runtime) error {
 	claim := rt.GetCellValue(lo.Result)
 
 	diff := got.Sub(claim)
-	if !diff.Ext.IsZero() {
+	if !diff.IsZero() {
 		return fmt.Errorf(
 			"wiop: LocalOpening(%s): opening mismatch at column %q position %d",
 			lo.context.Path(), col.Context.Path(), lo.Pol.Position,
@@ -75,8 +75,6 @@ func (lo *LocalOpening) Check(rt Runtime) error {
 
 // CheckGnark implements [GnarkCheckableQuery]. Asserts inside a gnark circuit
 // that Result equals the column's gnark variable at Pol.Position.
-//
-// TODO: Implement once the gnark layer is defined.
 func (lo *LocalOpening) CheckGnark(_ frontend.API, _ GnarkRuntime) {
 	panic("wiop: LocalOpening.CheckGnark not yet implemented")
 }
@@ -87,27 +85,27 @@ func (lo *LocalOpening) CheckGnark(_ frontend.API, _ GnarkRuntime) {
 // the parent column.
 //
 // Panics if ctx or the receiver is nil.
-func (pos *ColumnPosition) Open(ctx *ContextFrame) *LocalOpening {
-	if pos == nil {
+func (cp *ColumnPosition) Open(ctx *ContextFrame) *LocalOpening {
+	if cp == nil {
 		panic("wiop: ColumnPosition.Open requires a non-nil ColumnPosition")
 	}
 	if ctx == nil {
 		panic("wiop: ColumnPosition.Open requires a non-nil ContextFrame")
 	}
 
-	colRound := pos.Column.Round()
-	result := colRound.NewCell(ctx.Childf("result"), pos.Column.IsExtension)
+	colRound := cp.Column.Round()
+	result := colRound.NewCell(ctx.Childf("result"), cp.Column.IsExtension)
 
 	lo := &LocalOpening{
 		baseQuery: baseQuery{
 			context:     ctx,
 			Annotations: make(Annotations),
 		},
-		Pol:    pos,
+		Pol:    cp,
 		Result: result,
 	}
 
-	module := pos.Column.Module
+	module := cp.Column.Module
 	module.LocalOpenings = append(module.LocalOpenings, lo)
 	return lo
 }

@@ -1,4 +1,4 @@
-package smt_koalabear
+package smtkoalabear
 
 import (
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"

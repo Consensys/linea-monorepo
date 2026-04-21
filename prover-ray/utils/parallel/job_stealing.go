@@ -5,12 +5,9 @@ import (
 	"sync"
 )
 
-// ExecuteJobStealing parallelizes a workload specified by a function consuming
-// a channel distributing the workload. It is appropriate when each iteration
-// takes an order of magnitude more time than the other functions.
-//
-// This is as [ExecuteChunky] but gives more freedom to the caller to initialize
-// its threads.
+// ExecuteFromChan parallelizes a workload by distributing tasks via a shared counter.
+// It is appropriate when each iteration takes an order of magnitude more time than others.
+// This is as [ExecuteChunky] but gives more freedom to the caller to initialize its threads.
 func ExecuteFromChan(nbIterations int, work func(wg *sync.WaitGroup, taskCounter *AtomicCounter), numcpus ...int) {
 
 	numcpu := runtime.GOMAXPROCS(0)

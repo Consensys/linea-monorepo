@@ -21,13 +21,18 @@ type CodeWriter struct {
 	indent int
 }
 
+// Line appends a formatted line with the current indentation level.
 func (w *CodeWriter) Line(format string, args ...any) {
 	fmt.Fprintf(&w.buf, "%s%s\n", strings.Repeat("\t", w.indent), fmt.Sprintf(format, args...))
 }
 
+// Blank appends a blank line.
 func (w *CodeWriter) Blank() { w.buf.WriteByte('\n') }
 
-func (w *CodeWriter) In()  { w.indent++ }
+// In increases the indentation level by one.
+func (w *CodeWriter) In() { w.indent++ }
+
+// Out decreases the indentation level by one.
 func (w *CodeWriter) Out() { w.indent-- }
 
 // Bytes returns the gofmt-formatted source. Returns raw bytes on format error
@@ -41,9 +46,9 @@ func (w *CodeWriter) Bytes() []byte {
 	return formatted
 }
 
-// WriteTo writes the formatted source to w.
-func (cw *CodeWriter) WriteTo(w io.Writer) (int64, error) {
-	b := cw.Bytes()
-	n, err := w.Write(b)
+// WriteTo writes the formatted source to dst.
+func (w *CodeWriter) WriteTo(dst io.Writer) (int64, error) {
+	b := w.Bytes()
+	n, err := dst.Write(b)
 	return int64(n), err
 }

@@ -28,10 +28,10 @@ func TestDivCeil(t *testing.T) {
 }
 
 func TestIsPowerOfTwo(t *testing.T) {
-	require.Equal(t, true, utils.IsPowerOfTwo(4))
+	require.True(t, utils.IsPowerOfTwo(4))
 	// The below negative number is the only one giving true if the constraint in
 	// IsPowerOfTwo were n != 0 instead of n > 0 (found by zkSecurity audit)
-	require.Equal(t, false, utils.IsPowerOfTwo(-9223372036854775808))
+	require.False(t, utils.IsPowerOfTwo(-9223372036854775808))
 }
 
 func TestNextPowerOfTwo(t *testing.T) {

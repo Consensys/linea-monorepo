@@ -6,14 +6,13 @@ import (
 	"slices"
 
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/gnark/frontend"
 
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
+// BlockSize is the number of field elements in a Poseidon2 compression block.
 const BlockSize = 8
 
 // MDHasher Merkle Damgard Hasher using Poseidon2 as compression function
@@ -78,6 +77,7 @@ func (d *MDHasher) SetStateOctuplet(state field.Octuplet) {
 	}
 }
 
+// GetStateOctuplet returns the current hash state as an octuplet without consuming the buffer.
 func (d *MDHasher) GetStateOctuplet() field.Octuplet {
 	// State will flush the buffer, take the state and restore the initiat
 	// state of the hasher.
@@ -100,6 +100,7 @@ func (d *MDHasher) WriteElements(elmts ...field.Element) {
 	d.buffer = append(d.buffer, elmts[:]...)
 }
 
+// SumElement finalizes the hash and returns the digest as an octuplet.
 func (d *MDHasher) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
 		var buf [BlockSize]field.Element
@@ -119,7 +120,7 @@ func (d *MDHasher) SumElement() field.Octuplet {
 	return d.state
 }
 
-// WriteElements adds a slice of field elements to the running hash.
+// Write adds a byte slice to the running hash. The input length must be a multiple of 4.
 func (d *MDHasher) Write(p []byte) (int, error) {
 
 	elemByteSize := field.Bytes // 4 bytes = 1 field element
@@ -141,8 +142,10 @@ func (d *MDHasher) Write(p []byte) (int, error) {
 	d.WriteElements(elems...)
 	return len(p), nil
 }
-func (h *MDHasher) State() [BlockSize]field.Element {
-	return h.GetStateOctuplet()
+
+// State returns the current state of the hasher as a block-sized array.
+func (d *MDHasher) State() [BlockSize]field.Element {
+	return d.GetStateOctuplet()
 }
 
 // Sum computes the poseidon2 hash of msg
@@ -152,12 +155,6 @@ func (d *MDHasher) Sum(msg []byte) []byte {
 	}
 	h := d.Sum(nil)
 	return h
-}
-
-// GnarkBlockCompression applies the poseidon permutation to a given block within
-// a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]circuit.Element) (newState [BlockSize]circuit.Element) {
-	panic("unimplemented")
 }
 
 // HashVec hashes a vector of field elements

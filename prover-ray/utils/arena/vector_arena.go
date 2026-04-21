@@ -1,3 +1,4 @@
+// Package arena provides memory arena utilities for efficient batch allocation.
 package arena
 
 import (
@@ -53,7 +54,9 @@ func NewVectorArenaMmap[T any](capacity int) *VectorArena {
 // Safe to call multiple times.
 func (a *VectorArena) Free() {
 	if a.isMmap && a.data != nil {
-		syscall.Munmap(a.data)
+		if err := syscall.Munmap(a.data); err != nil {
+			panic(err)
+		}
 		a.data = nil
 		a.isMmap = false
 	}
@@ -80,6 +83,7 @@ func (a *VectorArena) Reset(offset int64) {
 	atomic.StoreInt64(&a.offset, offset)
 }
 
+// Offset returns the current allocation offset within the arena.
 func (a *VectorArena) Offset() int64 {
 	return atomic.LoadInt64(&a.offset)
 }
@@ -100,5 +104,6 @@ func Get[T any](a *VectorArena, vectorLen int) []T {
 	}
 
 	// Create a typed slice header pointing to the raw memory.
+	// #nosec G103 -- audited
 	return unsafe.Slice((*T)(unsafe.Pointer(&chunk[0])), vectorLen)
 }

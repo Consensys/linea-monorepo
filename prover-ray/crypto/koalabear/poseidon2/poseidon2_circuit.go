@@ -46,6 +46,7 @@ func NewGnarkMDHasher(api frontend.API) (GnarkMDHasher, error) {
 	return res, nil
 }
 
+// Reset clears the buffer and resets the state to zero.
 func (h *GnarkMDHasher) Reset() {
 	h.buffer = h.buffer[:0]
 	for i := 0; i < 8; i++ {
@@ -57,17 +58,20 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
+// WriteOctuplet appends octuplets to the hash buffer.
 func (h *GnarkMDHasher) WriteOctuplet(data ...GnarkOctuplet) {
 	for i := 0; i < len(data); i++ {
 		h.buffer = append(h.buffer, data[i][:]...)
 	}
 }
 
+// SetState resets the hasher and sets its state to the given octuplet.
 func (h *GnarkMDHasher) SetState(state GnarkOctuplet) {
 	h.Reset()
 	copy(h.state[:], state[:])
 }
 
+// State returns the current hash state without consuming the buffer.
 func (h *GnarkMDHasher) State() GnarkOctuplet {
 
 	// State will flush the buffer, take the state and restore the initiat
@@ -84,6 +88,7 @@ func (h *GnarkMDHasher) State() GnarkOctuplet {
 	return res
 }
 
+// Sum finalizes the hash and returns the digest as a GnarkOctuplet.
 func (h *GnarkMDHasher) Sum() GnarkOctuplet {
 
 	for len(h.buffer) != 0 {
@@ -105,6 +110,7 @@ func (h *GnarkMDHasher) Sum() GnarkOctuplet {
 	return h.state
 }
 
+// CompressPoseidon2 applies the Poseidon2 compression function to two octuplets within a gnark circuit.
 func CompressPoseidon2(api frontend.API, a, b GnarkOctuplet) GnarkOctuplet {
 	res := GnarkOctuplet{}
 
@@ -126,6 +132,7 @@ func CompressPoseidon2(api frontend.API, a, b GnarkOctuplet) GnarkOctuplet {
 }
 
 var (
+	// ErrInvalidSizebuffer is returned when the input size does not match the hash buffer size.
 	ErrInvalidSizebuffer = errors.New("the size of the input should match the size of the hash buffer")
 	compressPerm         permutation
 	once                 sync.Once
@@ -137,6 +144,9 @@ func init() {
 	})
 }
 
+// NewPermutation creates a permutation with Poseidon2 parameters.
+// nolint -- we are using unexported return type as we want this to
+// be a protected constructor.
 func NewPermutation() permutation {
 	// same params than gnark-crypto/field/koalabear/vortex/hash.go
 	params := poseidon2.NewParameters(16, 6, 21)

@@ -71,7 +71,7 @@ func TestBatchInvertExtInto(t *testing.T) {
 		})
 	})
 
-	t.Run("EmptySlice", func(t *testing.T) {
+	t.Run("EmptySlice", func(_ *testing.T) {
 		// Must return immediately without panicking.
 		BatchInvertExtInto([]Ext{}, []Ext{})
 	})
@@ -607,6 +607,6 @@ func TestExtFromBytes(t *testing.T) {
 
 // TestRandomElementExt is a smoke test verifying that RandomElementExt does
 // not panic and returns some value.
-func TestRandomElementExt(t *testing.T) {
+func TestRandomElementExt(_ *testing.T) {
 	_ = RandomElementExt()
 }

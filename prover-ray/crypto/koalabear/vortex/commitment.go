@@ -19,12 +19,7 @@ type EncodedMatrix = [][]field.Element
 // Commitment represents the root of a Merkle tree
 type Commitment = field.Octuplet
 
-// CommitMerkleWithSIS
-//
-// let h: koala* -> field.Octuplet
-// 				a,b,.. -> poseidon2(SIS(a,b,...)
-
-// commits to ps by hashing the columns like this:
+// CommitMerkleWithSIS commits to ps by hashing the columns like this:
 // [v11 v12 .... v1n ]
 // ..
 // [vm1 vm2 .... vmn ]
@@ -34,7 +29,8 @@ type Commitment = field.Octuplet
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree,
+	[]field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
@@ -66,7 +62,7 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 	n := numCols / 16
 
 	if chunkSize%8 != 0 {
-		// TODO @gbotrel make the fast path generic with different SIS params
+		// @gbotrel make the fast path generic with different SIS params
 		parallel.Execute(numCols, func(start, stop int) {
 			hasher := poseidon2.NewMDHasher()
 			for chunkID := start; chunkID < stop; chunkID++ {
@@ -84,7 +80,8 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 	parallel.Execute(n, func(start, stop int) {
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * 16 * chunkSize
-			vgnark.CompressPoseidon2x16(sisHashes[startChunk:startChunk+16*chunkSize], chunkSize, leaves[chunkID*16:(chunkID+1)*16])
+			vgnark.CompressPoseidon2x16(sisHashes[startChunk:startChunk+16*chunkSize], chunkSize,
+				leaves[chunkID*16:(chunkID+1)*16])
 		}
 	})
 
@@ -100,22 +97,9 @@ func (p *Params) sisTransversalHash(v [][]field.Element) ([]field.Octuplet, []fi
 	return leaves, sisHashes
 }
 
-// CommitMerkleWithoutSIS
-//
-// let h: koala* -> field.Octuplet
-// 				a,b,.. -> poseidon2(a,b,...)
-
-// commits to ps by hashing the columns like this:
-// [v11 v12 .... v1n ]
-// ..
-// [vm1 vm2 .... vmn ]
-//
-//	|             |
-//	v             v
-//
-// [h() .. ....   h()] := v
-// Compute MT of v
-func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
+// CommitMerkleWithoutSIS commits to ps by hashing the columns without SIS.
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree,
+	[]field.Element) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
@@ -173,12 +157,12 @@ func (p *Params) noSisTransversalHash(v [][]field.Element) []field.Octuplet {
 // EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
 // encoding each of the [smartvectors.SmartVector] it contains separately.
-func (params *Params) EncodeRows(ps [][]field.Element) (encodedMatrix EncodedMatrix) {
+func (p *Params) EncodeRows(ps [][]field.Element) (encodedMatrix EncodedMatrix) {
 
 	// Sanity-check, all the vectors must have the right length
 	for i := range ps {
-		if len(ps[i]) != params.NbColumns {
-			utils.Panic("Bad length : expected %v columns but col %v has size %v", params.NbColumns, i, len(ps[i]))
+		if len(ps[i]) != p.NbColumns {
+			utils.Panic("Bad length : expected %v columns but col %v has size %v", p.NbColumns, i, len(ps[i]))
 		}
 	}
 
@@ -187,7 +171,7 @@ func (params *Params) EncodeRows(ps [][]field.Element) (encodedMatrix EncodedMat
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.RsParams.RsEncodeBase(ps[i])
+			encodedMatrix[i] = p.RsParams.RsEncodeBase(ps[i])
 		}
 	})
 

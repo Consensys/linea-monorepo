@@ -1,7 +1,6 @@
 package wiop_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
@@ -89,5 +88,5 @@ func TestContextFrame_CallerInfo(t *testing.T) {
 	child := root.Childf("c")
 	info := child.CallerInfo()
 	require.NotEmpty(t, info, "child frame should have a caller info")
-	assert.True(t, strings.Contains(info, ":"), "CallerInfo should be file:line")
+	assert.Contains(t, info, ":", "CallerInfo should be file:line")
 }

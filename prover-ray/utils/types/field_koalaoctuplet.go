@@ -26,15 +26,15 @@ func (e *KoalaOctuplet) ReadFrom(r io.Reader) (int64, error) {
 // WriteTo writes a koalabear octuplet to a writer.
 func (e KoalaOctuplet) WriteTo(w io.Writer) (int64, error) {
 	b := e.ToBytes()
-	n_, err := w.Write(b)
-	return int64(n_), err
+	n, err := w.Write(b)
+	return int64(n), err
 }
 
 // ToBytes converts a koalabear octuplet to bytes.
 func (e KoalaOctuplet) ToBytes() []byte {
 	res := [32]byte{}
 	for i := range e {
-		x := field.Element(e[i])
+		x := e[i]
 		b := x.Bytes()
 		copy(res[4*i:], b[:])
 	}

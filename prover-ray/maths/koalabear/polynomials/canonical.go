@@ -6,7 +6,7 @@ import (
 
 // evalNative evaluates p(X) = Σᵢ p[i]·Xⁱ at z using Horner's method.
 // It is the inner kernel shared by [EvalCanonical] and [EvalCanonicalBatch].
-func evalNative(poly field.FieldVec, z field.FieldElem) field.FieldElem {
+func evalNative(poly field.Vec, z field.Gen) field.Gen {
 	res := field.ElemZero()
 	n := poly.Len()
 	if poly.IsBase() {
@@ -25,7 +25,7 @@ func evalNative(poly field.FieldVec, z field.FieldElem) field.FieldElem {
 
 // EvalCanonical evaluates p(X) = Σᵢ p[i]·Xⁱ at z using Horner's method.
 // The result is tagged base iff both poly and z are base-field values.
-func EvalCanonical(poly field.FieldVec, z field.FieldElem) field.FieldElem {
+func EvalCanonical(poly field.Vec, z field.Gen) field.Gen {
 	return evalNative(poly, z)
 }
 
@@ -37,12 +37,12 @@ func EvalCanonical(poly field.FieldVec, z field.FieldElem) field.FieldElem {
 //
 // Falls back to [EvalCanonical] when len(polys) == 1 since Horner is cheaper
 // for a single polynomial.
-func EvalCanonicalBatch(polys []field.FieldVec, z field.FieldElem) []field.FieldElem {
+func EvalCanonicalBatch(polys []field.Vec, z field.Gen) []field.Gen {
 	if len(polys) == 0 {
 		return nil
 	}
 	if len(polys) == 1 {
-		return []field.FieldElem{EvalCanonical(polys[0], z)}
+		return []field.Gen{EvalCanonical(polys[0], z)}
 	}
 
 	maxDeg := 0
@@ -53,7 +53,7 @@ func EvalCanonicalBatch(polys []field.FieldVec, z field.FieldElem) []field.Field
 	}
 
 	if maxDeg == 0 {
-		res := make([]field.FieldElem, len(polys))
+		res := make([]field.Gen, len(polys))
 		for i := range res {
 			res[i] = field.ElemZero()
 		}
@@ -61,13 +61,13 @@ func EvalCanonicalBatch(polys []field.FieldVec, z field.FieldElem) []field.Field
 	}
 
 	// Precompute powers[i] = z^i
-	powers := make([]field.FieldElem, maxDeg)
+	powers := make([]field.Gen, maxDeg)
 	powers[0] = field.ElemOne()
 	for i := 1; i < maxDeg; i++ {
 		powers[i] = powers[i-1].Mul(z)
 	}
 
-	results := make([]field.FieldElem, len(polys))
+	results := make([]field.Gen, len(polys))
 	for j, poly := range polys {
 		n := poly.Len()
 		if n == 0 {

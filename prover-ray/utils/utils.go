@@ -10,14 +10,16 @@ import (
 	All * standard * functions that we manually implement
 */
 
-// Return true if n is a power of two
+// IsPowerOfTwo returns true if n is a power of two.
 func IsPowerOfTwo[T ~int](n T) bool {
 	return n&(n-1) == 0 && n > 0
 }
 
+// Abs returns the absolute value of a.
 func Abs(a int) int {
 	mask := a >> (strconv.IntSize - 1) // made up of the sign bit
-	return (a ^ mask) - mask           // if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
+	// if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
+	return (a ^ mask) - mask
 }
 
 // DivCeil for int a, b
@@ -90,7 +92,7 @@ func Log2Ceil(a int) int {
 	return floor
 }
 
-// GCD calculates GCD of a and b by Euclidian algorithm.
+// GCD calculates GCD of a and b by Euclidean algorithm.
 func GCD[T ~int](a, b T) T {
 	for a != b {
 		if a > b {
@@ -103,6 +105,7 @@ func GCD[T ~int](a, b T) T {
 	return a
 }
 
+// BigsToBytes converts a slice of big.Int values to a slice of bytes.
 func BigsToBytes(ins []*big.Int) []byte {
 	res := make([]byte, len(ins))
 	for i := range ins {
@@ -111,6 +114,7 @@ func BigsToBytes(ins []*big.Int) []byte {
 	return res
 }
 
+// BigsToInts converts a slice of big.Int values to a slice of ints.
 func BigsToInts(ints []*big.Int) []int {
 	res := make([]int, len(ints))
 	for i := range ints {

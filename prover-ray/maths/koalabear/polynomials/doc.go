@@ -1,6 +1,6 @@
 // Package polynomials provides native polynomial evaluation utilities over the
 // KoalaBear field and its degree-4 extension, using the union types
-// [field.FieldVec] and [field.FieldElem] for type-aware dispatch.
+// [field.Vec] and [field.Gen] for type-aware dispatch.
 //
 // Two evaluation bases are supported:
 //   - Canonical (coefficient) form: P(X) = Σᵢ p[i]·Xⁱ

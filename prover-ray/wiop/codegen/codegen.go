@@ -121,6 +121,7 @@ type ActionVars struct {
 	counter  int
 }
 
+// NewActionVars creates an empty ActionVars registry.
 func NewActionVars() ActionVars {
 	return ActionVars{
 		prover:   make(map[wiop.ProverAction]string),

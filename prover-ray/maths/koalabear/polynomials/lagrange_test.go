@@ -132,7 +132,7 @@ func TestEvalLagrangeBatch(t *testing.T) {
 	fftExtInplace(lagrange, d)
 
 	poly := field.VecFromExt(lagrange)
-	zs := []field.FieldElem{
+	zs := []field.Gen{
 		field.ElemFromExt(randExt(rng)),
 		field.ElemFromExt(randExt(rng)),
 		field.ElemFromExt(randExt(rng)),
@@ -159,7 +159,7 @@ func TestComputeLagrangeAtZ(t *testing.T) {
 
 	// Reference: for each i, build the i-th Lagrange basis polynomial
 	// as an indicator in evaluation form, IFFT to canonical, then evaluate at z.
-	reference := make([]field.FieldElem, size)
+	reference := make([]field.Gen, size)
 	for i := 0; i < size; i++ {
 		indicator := make([]field.Ext, size) // all zeros
 		indicator[i].B0.A0.SetOne()

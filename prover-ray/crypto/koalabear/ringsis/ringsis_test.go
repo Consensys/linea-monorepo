@@ -68,6 +68,7 @@ var testCasesKey = []struct {
 func TestHashModXnMinusOne(t *testing.T) {
 
 	runTest := func(t *testing.T, key *Key, limbs []field.Ext) {
+		t.Helper()
 
 		var (
 			dualHash       = key.HashModXnMinus1(limbs)
@@ -116,14 +117,15 @@ func TestLimbSplit(t *testing.T) {
 		{randX, field.One(), field.NewFromString("-1")},
 	}
 
-	coreTest := func(subT *testing.T, v []field.Element, key Key) {
+	coreTest := func(t *testing.T, v []field.Element, key Key) {
+		t.Helper()
 		bound := field.NewElement(1 << key.LogTwoBound())
 		limbs := key.LimbSplit(v)
 		for i := range v {
 			subLimbs := limbs[i*key.NumLimbs() : (i+1)*key.NumLimbs()]
 			recomposed := polynomials.EvalCanonical(field.VecFromBase(subLimbs), field.ElemFromBase(bound))
 			got := recomposed.AsBase()
-			assert.Equal(subT, v[i].String(), got.String())
+			assert.Equal(t, v[i].String(), got.String())
 		}
 	}
 
@@ -143,6 +145,7 @@ func TestLimbSplit(t *testing.T) {
 func TestHashFromLimbs(t *testing.T) {
 
 	coreTest := func(t *testing.T, key *Key, v []field.Element) {
+		t.Helper()
 		hashed := key.Hash(v)
 		limbs := key.LimbSplit(v)
 		hashedFromLimbs := key.hashFromLimbs(limbs)
@@ -160,10 +163,10 @@ func TestHashFromLimbs(t *testing.T) {
 		field.VecRandomBase(17),
 	}
 
-	for pId, tcParams := range testCasesKey {
-		for vecId, tcVec := range testCaseVecs {
+	for pID, tcParams := range testCasesKey {
+		for vecID, tcVec := range testCaseVecs {
 			key := GenerateKey(tcParams.LogTwoDegree, tcParams.LogTwoBound, len(tcVec))
-			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
+			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pID, vecID), func(t *testing.T) {
 				coreTest(t, key, tcVec)
 			})
 		}
@@ -224,7 +227,8 @@ func testPolyAddExt(a, b []field.Ext) []field.Ext {
 }
 
 // For testing purposes
-func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain *fft.Domain, degree int) []field.Element {
+func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain *fft.Domain,
+	degree int) []field.Element {
 
 	nbPolyUsed := utils.DivCeil(len(limbs), degree)
 
@@ -268,23 +272,23 @@ func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain 
 
 // hashFromLimbs hashes a vector of limbs in Montgommery form. Unoptimized, only
 // there for testing purpose.
-func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
+func (k *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 
-	nbPolyUsed := utils.DivCeil(len(limbs), key.OutputSize())
+	nbPolyUsed := utils.DivCeil(len(limbs), k.OutputSize())
 
-	if nbPolyUsed > len(key.SisGnarkCrypto.Ag) {
-		utils.Panic("Too many inputs max is %v but has %v", len(key.SisGnarkCrypto.Ag)*key.OutputSize(), len(limbs))
+	if nbPolyUsed > len(k.SisGnarkCrypto.Ag) {
+		utils.Panic("Too many inputs max is %v but has %v", len(k.SisGnarkCrypto.Ag)*k.OutputSize(), len(limbs))
 	}
 
 	var (
 		// res accumulates and stores the result of the hash as we compute it
 		// throughout the function
-		res = make([]field.Element, key.OutputSize())
+		res = make([]field.Element, k.OutputSize())
 
-		// k serves as a preallocated buffer aimed at storing a copy of the
+		// preallocatedBuffer serves as a preallocated buffer aimed at storing a copy of the
 		// limbs as we compute them. Its purpose is to minimize the number of
 		// allocations made throughout the hashing procedure.
-		k = make([]field.Element, key.modulusDegree())
+		preallocatedBuffer = make([]field.Element, k.modulusDegree())
 	)
 
 	for i := 0; i < nbPolyUsed; i++ {
@@ -292,15 +296,15 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		// This accounts for the fact that limbs may be smaller than the modulus
 		// degree. When that happens, there won't be an OOB error but will need
 		// to manually zeroize the buffer.
-		copy(k, limbs[i*key.modulusDegree():])
-		for i := len(limbs[i*key.modulusDegree():]); i < key.modulusDegree(); i++ {
-			k[i].SetZero()
+		copy(preallocatedBuffer, limbs[i*k.modulusDegree():])
+		for i := len(limbs[i*k.modulusDegree():]); i < k.modulusDegree(); i++ {
+			preallocatedBuffer[i].SetZero()
 		}
 
-		key.SisGnarkCrypto.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
+		k.SisGnarkCrypto.Domain.FFT(preallocatedBuffer, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
 		var tmp field.Element
 		for j := range res {
-			tmp.Mul(&k[j], &key.SisGnarkCrypto.Ag[i][j])
+			tmp.Mul(&preallocatedBuffer[j], &k.SisGnarkCrypto.Ag[i][j])
 			res[j].Add(&res[j], &tmp)
 		}
 	}
@@ -312,6 +316,6 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		res[j] = field.MulRInv(res[j])
 	}
 
-	key.SisGnarkCrypto.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
+	k.SisGnarkCrypto.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }

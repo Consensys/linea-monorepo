@@ -5,9 +5,13 @@ import (
 	"sync"
 )
 
+// ThreadInit is a function called once per goroutine before processing tasks.
 type ThreadInit func(threadID int)
+
+// Worker is a function that processes a single task identified by taskID on the given threadID.
 type Worker func(taskID, threadID int)
 
+// ExecuteThreadAware runs worker for each iteration in parallel, calling init once per goroutine.
 func ExecuteThreadAware(nbIterations int, init ThreadInit, worker Worker, numcpus ...int) {
 
 	numcpu := runtime.GOMAXPROCS(0)

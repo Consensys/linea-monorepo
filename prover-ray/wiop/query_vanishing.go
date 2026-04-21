@@ -53,7 +53,7 @@ func (v *Vanishing) Round() *Round {
 func (v *Vanishing) Check(rt Runtime) error {
 	if !v.Expression.IsMultiValued() {
 		val := v.Expression.EvaluateSingle(rt)
-		if !val.Value.Ext.IsZero() {
+		if !val.Value.IsZero() {
 			return fmt.Errorf("wiop: Vanishing(%s).Check: scalar expression is non-zero", v.context.Path())
 		}
 		return nil
@@ -77,13 +77,13 @@ func (v *Vanishing) Check(rt Runtime) error {
 		if _, skip := cancelled[row]; skip {
 			continue
 		}
-		var elem field.FieldElem
+		var elem field.Gen
 		if fv.IsBase() {
 			elem = field.ElemFromBase(fv.AsBase()[row])
 		} else {
 			elem = field.ElemFromExt(fv.AsExt()[row])
 		}
-		if !elem.Ext.IsZero() {
+		if !elem.IsZero() {
 			return fmt.Errorf(
 				"wiop: Vanishing(%s).Check: expression is non-zero at row %d",
 				v.context.Path(), row,
@@ -94,8 +94,6 @@ func (v *Vanishing) Check(rt Runtime) error {
 }
 
 // CheckGnark implements [GnarkCheckableQuery].
-//
-// TODO: Implement once the gnark layer is defined.
 func (v *Vanishing) CheckGnark(_ frontend.API, _ GnarkRuntime) {
 	panic("wiop: Vanishing.CheckGnark not yet implemented")
 }

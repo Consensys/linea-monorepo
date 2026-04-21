@@ -1,3 +1,4 @@
+// Package pool provides a goroutine pool for parallel task execution.
 package pool
 
 import (
@@ -9,6 +10,7 @@ var queue chan func() = make(chan func())
 var available chan struct{} = make(chan struct{}, runtime.GOMAXPROCS(0))
 var once sync.Once
 
+// ExecutePoolChunky runs work(k) for k in [0, nbIterations) using a bounded goroutine pool.
 func ExecutePoolChunky(nbIterations int, work func(k int)) {
 	once.Do(initialize)
 

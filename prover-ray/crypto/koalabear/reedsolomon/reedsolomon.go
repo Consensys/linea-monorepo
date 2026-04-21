@@ -1,3 +1,4 @@
+// Package reedsolomon implements the Reed-Solomon error-correcting code
 package reedsolomon
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
+// RsParams holds the precomputed parameters for a Reed-Solomon code.
 type RsParams struct {
 
 	// Domain[0] for FFT^-1, Domain[1] for FFT
@@ -22,12 +24,12 @@ type RsParams struct {
 	Rate int
 }
 
+// NewRsParams creates Reed-Solomon parameters for a code of given size and rate.
 func NewRsParams(size, rate int) *RsParams {
 
 	var res RsParams
 	res.Rate = rate
 
-	// TODO @thomas fixme handle error
 	shift, err := koalabear.Generator(uint64(size * rate))
 	if err != nil {
 		panic(err)
@@ -37,7 +39,6 @@ func NewRsParams(size, rate int) *RsParams {
 	res.Domains[1] = fft.NewDomain(uint64(rate * size))
 
 	cosetTable, err := res.Domains[0].CosetTable()
-	// TODO @thomas fixme handle error
 	if err != nil {
 		panic(err)
 	}
@@ -50,12 +51,12 @@ func NewRsParams(size, rate int) *RsParams {
 	return &res
 }
 
-// TODO @thomas rename that
+// NbEncodedColumns returns the number of encoded columns (domain size after blow-up).
 func (r *RsParams) NbEncodedColumns() int {
 	return int(r.Domains[1].Cardinality)
 }
 
-// TODO @thomas rename that
+// NbColumns returns the number of systematic columns (original domain size).
 func (r *RsParams) NbColumns() int {
 	return int(r.Domains[0].Cardinality)
 }
@@ -66,22 +67,22 @@ func (r *RsParams) NbColumns() int {
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *RsParams) RsEncodeBase(v []field.Element) []field.Element {
+func (r *RsParams) RsEncodeBase(v []field.Element) []field.Element {
 
-	expandedCoeffs := make([]field.Element, p.NbEncodedColumns())
+	expandedCoeffs := make([]field.Element, r.NbEncodedColumns())
 	copy(expandedCoeffs, v)
 	n := len(v)
 
 	const rho = 2
-	if rho != p.Rate {
+	if rho != r.Rate {
 
-		smallDomain := p.Domains[0]
-		largeDomain := p.Domains[1]
+		smallDomain := r.Domains[0]
+		largeDomain := r.Domains[1]
 		smallDomain.FFTInverse(expandedCoeffs[:n], fft.DIF, fft.WithNbTasks(1))
 
 		// @thomas this seems to work... bitreverse commutes with scaling ?
 		for j := n - 1; j > 0; j-- {
-			expandedCoeffs[p.Rate*j] = expandedCoeffs[j]
+			expandedCoeffs[r.Rate*j] = expandedCoeffs[j]
 			expandedCoeffs[j] = field.Element{}
 		}
 
@@ -91,12 +92,12 @@ func (p *RsParams) RsEncodeBase(v []field.Element) []field.Element {
 
 	// fast path; we avoid the bit reverse operations and work on the smaller domain.
 
-	inputCoeffs := koalabear.Vector(expandedCoeffs[:p.NbColumns()])
-	p.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
-	inputCoeffs.Mul(inputCoeffs, p.CosetTableBitReverse)
+	inputCoeffs := koalabear.Vector(expandedCoeffs[:r.NbColumns()])
+	r.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
+	inputCoeffs.Mul(inputCoeffs, r.CosetTableBitReverse)
 
-	p.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
-	for j := p.NbColumns() - 1; j >= 0; j-- {
+	r.Domains[0].FFT(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
+	for j := r.NbColumns() - 1; j >= 0; j-- {
 		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
 		expandedCoeffs[rho*j] = v[j]
 	}
@@ -107,18 +108,18 @@ func (p *RsParams) RsEncodeBase(v []field.Element) []field.Element {
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise. The function panics if the provided v does
 // not have the expected length for a codeword.
-func (p *RsParams) IsCodeword(v []field.Element) error {
+func (r *RsParams) IsCodeword(v []field.Element) error {
 
-	if len(v) != p.NbEncodedColumns() {
-		return fmt.Errorf("invalid length for a codeword, expected %v got %v", p.NbEncodedColumns(), len(v))
+	if len(v) != r.NbEncodedColumns() {
+		return fmt.Errorf("invalid length for a codeword, expected %v got %v", r.NbEncodedColumns(), len(v))
 	}
 
-	coeffs := make([]field.Element, p.NbEncodedColumns())
+	coeffs := make([]field.Element, r.NbEncodedColumns())
 	copy(coeffs, v)
 
-	p.Domains[1].FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+	r.Domains[1].FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
+	for i := r.NbColumns(); i < r.NbEncodedColumns(); i++ {
 		c := coeffs[i]
 		if !c.IsZero() {
 			return fmt.Errorf("not a reed-solomon codeword")
@@ -134,23 +135,23 @@ func (p *RsParams) IsCodeword(v []field.Element) error {
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *RsParams) rsEncodeExt(v []field.Ext) []field.Ext {
+func (r *RsParams) rsEncodeExt(v []field.Ext) []field.Ext {
 
-	expandedCoeffs := make([]field.Ext, p.NbEncodedColumns())
+	expandedCoeffs := make([]field.Ext, r.NbEncodedColumns())
 	copy(expandedCoeffs, v)
 	n := len(v)
 
 	const rho = 2
-	if rho != p.Rate {
+	if rho != r.Rate {
 
-		smallDomain := p.Domains[0]
-		largeDomain := p.Domains[1]
+		smallDomain := r.Domains[0]
+		largeDomain := r.Domains[1]
 		smallDomain.FFTInverseExt(expandedCoeffs[:n], fft.DIF, fft.WithNbTasks(1))
 
 		// this loop dispatches the values that are all located at the beginning
 		// of the domain to the entire domain by homothety
 		for j := n - 1; j > 0; j-- {
-			expandedCoeffs[p.Rate*j] = expandedCoeffs[j]
+			expandedCoeffs[r.Rate*j] = expandedCoeffs[j]
 			expandedCoeffs[j] = field.Ext{}
 		}
 
@@ -159,12 +160,12 @@ func (p *RsParams) rsEncodeExt(v []field.Ext) []field.Ext {
 	}
 
 	// fast path; we avoid the bit reverse operations and work on the smaller domain.
-	inputCoeffs := extensions.Vector(expandedCoeffs[:p.NbColumns()])
-	p.Domains[0].FFTInverseExt(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
-	inputCoeffs.MulByElement(inputCoeffs, p.CosetTableBitReverse)
+	inputCoeffs := extensions.Vector(expandedCoeffs[:r.NbColumns()])
+	r.Domains[0].FFTInverseExt(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
+	inputCoeffs.MulByElement(inputCoeffs, r.CosetTableBitReverse)
 
-	p.Domains[0].FFTExt(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
-	for j := p.NbColumns() - 1; j >= 0; j-- {
+	r.Domains[0].FFTExt(inputCoeffs, fft.DIT, fft.WithNbTasks(1))
+	for j := r.NbColumns() - 1; j >= 0; j-- {
 		expandedCoeffs[rho*j+1] = expandedCoeffs[j]
 		expandedCoeffs[rho*j] = v[j]
 	}
@@ -172,20 +173,20 @@ func (p *RsParams) rsEncodeExt(v []field.Ext) []field.Ext {
 	return expandedCoeffs
 }
 
-// IsCodeword returns nil iff the argument `v` is a correct codeword and an
+// IsCodewordExt returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
-func (p *RsParams) IsCodewordExt(v []field.Ext) error {
+func (r *RsParams) IsCodewordExt(v []field.Ext) error {
 
-	if len(v) != p.NbEncodedColumns() {
+	if len(v) != r.NbEncodedColumns() {
 		return fmt.Errorf("invalid length for a codeword")
 	}
 
-	coeffs := make([]field.Ext, p.NbEncodedColumns())
+	coeffs := make([]field.Ext, r.NbEncodedColumns())
 	copy(coeffs, v)
 
-	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	r.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
 	utils.BitReverse(coeffs)
-	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
+	for i := r.NbColumns(); i < r.NbEncodedColumns(); i++ {
 		c := coeffs[i]
 		if !c.IsZero() {
 			return fmt.Errorf("not a reed-solomon codeword")

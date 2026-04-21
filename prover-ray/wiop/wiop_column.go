@@ -221,14 +221,13 @@ func (c *Column) View() *ColumnView {
 
 // Shift plain-copies the current view and increments the shifting by offset.
 // The shift is cyclic. It does not mutate the receiver.
-func (c *ColumnView) Shift(offset int) *ColumnView {
-	if c == nil || c.Column == nil {
+func (cv *ColumnView) Shift(offset int) *ColumnView {
+	if cv == nil || cv.Column == nil {
 		panic("wiop: Shift requires a non-nil parent Column or ColumnView")
 	}
 	// Doing the update with a plain struct copy makes the code supports better
 	// new field additions.
-	var new ColumnView
-	new = *c
+	new := *cv
 	new.ShiftingOffset += offset
 	return &new
 }
@@ -271,7 +270,7 @@ func (cv *ColumnView) EvaluateVector(rt Runtime) ConcreteVector {
 	m := cv.Column.Module
 	n := m.Size()
 
-	var result field.FieldVec
+	var result field.Vec
 	if cv.Column.IsExtension {
 		dst := make([]field.Ext, n)
 		for i := range n {
@@ -289,7 +288,7 @@ func (cv *ColumnView) EvaluateVector(rt Runtime) ConcreteVector {
 	}
 
 	return ConcreteVector{
-		Plain:   []field.FieldVec{result},
+		Plain:   []field.Vec{result},
 		Padding: concrete.Padding,
 		promise: cv,
 	}

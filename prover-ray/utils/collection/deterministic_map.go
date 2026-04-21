@@ -14,11 +14,11 @@ type DeterministicMap[K comparable, V any] struct {
 }
 
 // MakeDeterministicMap returns a DeterministicMap with the requested capacity
-func MakeDeterministicMap[K comparable, V any](cap int) *DeterministicMap[K, V] {
+func MakeDeterministicMap[K comparable, V any](size int) *DeterministicMap[K, V] {
 	return &DeterministicMap[K, V]{
-		InnerMap: make(map[K]int, cap),
-		Values:   make([]V, 0, cap),
-		Keys:     make([]K, 0, cap),
+		InnerMap: make(map[K]int, size),
+		Values:   make([]V, 0, size),
+		Keys:     make([]K, 0, size),
 	}
 }
 
@@ -81,7 +81,7 @@ func (kv *DeterministicMap[K, V]) HasKey(key K) bool {
 	return ok
 }
 
-// Iter returns an iterator over the map's key
+// IterKey returns an iterator over the map's keys.
 func (kv *DeterministicMap[K, V]) IterKey() iter.Seq[K] {
 	return func(yield func(K) bool) {
 		for k := range kv.Keys {

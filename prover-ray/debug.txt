@@ -1,0 +1,676 @@
+
+	                                  ^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:44:20: Error return value of `(*github.com/consensys/gnark-crypto/field/koalabear.Element).SetRandom` is not checked (errcheck)
+		vals[i].SetRandom()
+		                 ^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:144:17: Error return value of `(*github.com/consensys/gnark-crypto/field/koalabear.Element).SetRandom` is not checked (errcheck)
+		a[i].SetRandom()
+		              ^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:145:17: Error return value of `(*github.com/consensys/gnark-crypto/field/koalabear.Element).SetRandom` is not checked (errcheck)
+		b[i].SetRandom()
+		              ^
+crypto/koalabear/ringsis/ringsis.go:312:26: Error return value of `s.SisGnarkCrypto.Hash` is not checked (errcheck)
+				s.SisGnarkCrypto.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
+				                     ^
+crypto/koalabear/smt/gnark_test.go:60:25: Error return value is not checked (errcheck)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root)
+		                      ^
+crypto/koalabear/vortex/verifier.go:24:28: Error return value of `sis.SisGnarkCrypto.Hash` is not checked (errcheck)
+				sis.SisGnarkCrypto.Hash(columns[i][j], sisHash)
+				                       ^
+maths/koalabear/circuit/api_test.go:47:13: Error return value of `a.SetRandom` is not checked (errcheck)
+	a.SetRandom()
+	           ^
+maths/koalabear/circuit/api_test.go:48:13: Error return value of `b.SetRandom` is not checked (errcheck)
+	b.SetRandom()
+	           ^
+maths/koalabear/circuit/api_test.go:131:13: Error return value of `a.SetRandom` is not checked (errcheck)
+	a.SetRandom()
+	           ^
+maths/koalabear/circuit/api_test.go:132:13: Error return value of `b.SetRandom` is not checked (errcheck)
+	b.SetRandom()
+	           ^
+maths/koalabear/field/ext.go:167:20: Error return value of `z.B0.A0.SetString` is not checked (errcheck)
+		z.B0.A0.SetString(c1)
+		                 ^
+maths/koalabear/field/ext.go:304:15: Error return value of `res.SetRandom` is not checked (errcheck)
+	res.SetRandom()
+	             ^
+maths/koalabear/field/field.go:104:15: Error return value of `res.SetRandom` is not checked (errcheck)
+	res.SetRandom()
+	             ^
+maths/koalabear/polynomials/canonical_test.go:21:13: Error return value of `e.SetRandom` is not checked (errcheck)
+	e.SetRandom()
+	           ^
+maths/koalabear/polynomials/canonical_test.go:27:19: Error return value of `e.B0.A0.SetRandom` is not checked (errcheck)
+	e.B0.A0.SetRandom()
+	                 ^
+maths/koalabear/polynomials/canonical_test.go:28:19: Error return value of `e.B0.A1.SetRandom` is not checked (errcheck)
+	e.B0.A1.SetRandom()
+	                 ^
+maths/koalabear/polynomials/canonical_test.go:29:19: Error return value of `e.B1.A0.SetRandom` is not checked (errcheck)
+	e.B1.A0.SetRandom()
+	                 ^
+maths/koalabear/polynomials/canonical_test.go:30:19: Error return value of `e.B1.A1.SetRandom` is not checked (errcheck)
+	e.B1.A1.SetRandom()
+	                 ^
+utils/arena/vector_arena.go:56:17: Error return value of `syscall.Munmap` is not checked (errcheck)
+		syscall.Munmap(a.data)
+		              ^
+utils/files/files_test.go:26:20: Error return value of `os.RemoveAll` is not checked (errcheck)
+	defer os.RemoveAll(tmpDir)
+	                  ^
+utils/files/files_test.go:32:15: Error return value of `tmpFile.Close` is not checked (errcheck)
+	tmpFile.Close()
+	             ^
+utils/files/files_test.go:75:20: Error return value of `os.RemoveAll` is not checked (errcheck)
+	defer os.RemoveAll(tmpDir)
+	                  ^
+utils/files/files_test.go:81:15: Error return value of `tmpFile.Close` is not checked (errcheck)
+	tmpFile.Close()
+	             ^
+utils/files/files_test.go:131:9: Error return value of `w.Close` is not checked (errcheck)
+	w.Close()
+	       ^
+utils/files/files_test.go:156:9: Error return value of `w.Close` is not checked (errcheck)
+	w.Close()
+	       ^
+utils/hex.go:56:13: Error return value of `f.SetString` is not checked (errcheck)
+	f.SetString(b)
+	           ^
+utils/hex.go:64:13: Error return value of `f.SetString` is not checked (errcheck)
+	f.SetString(b)
+	           ^
+utils/profiling/trace.go:75:9: Error return value of `f.Close` is not checked (errcheck)
+	f.Close()
+	       ^
+utils/types/common.go:117:9: Error return value of `w.Write` is not checked (errcheck)
+	w.Write(make([]byte, 32-len(xBytes)))
+	       ^
+utils/types/common_test.go:20:28: Error return value of `types.WriteBigIntOn64Bytes` is not checked (errcheck)
+	types.WriteBigIntOn64Bytes(buffer, b)
+	                          ^
+utils/types/common_test.go:50:28: Error return value of `types.WriteInt64On64Bytes` is not checked (errcheck)
+		types.WriteInt64On64Bytes(buffer, n)
+		                         ^
+utils/types/common_test.go:72:28: Error return value of `types.WriteInt64On64Bytes` is not checked (errcheck)
+		types.WriteInt64On64Bytes(buffer, n)
+		                         ^
+utils/types/common_test.go:89:29: Error return value of `types.WriteBigIntOn64Bytes` is not checked (errcheck)
+		types.WriteBigIntOn64Bytes(buffer, n)
+		                          ^
+utils/types/common_test.go:98:28: Error return value of `types.WriteBigIntOn64Bytes` is not checked (errcheck)
+	types.WriteBigIntOn64Bytes(buffer, n)
+	                          ^
+utils/types/common.go:190:81: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors (errorlint)
+		return nil, fmt.Errorf("reading big int, could not 32 bytes from reader: %v", err)
+		                                                                              ^
+utils/types/common.go:200:81: non-wrapping format verb for fmt.Errorf. Use `%w` to format errors (errorlint)
+		return nil, fmt.Errorf("reading big int, could not 64 bytes from reader: %v", err)
+		                                                                              ^
+crypto/koalabear/reedsolomon/reedsolomon.go:30:3: Line contains TODO/FIXME/HACK: "TODO @thomas fixme handle error" (godox)
+	// TODO @thomas fixme handle error
+	 ^
+crypto/koalabear/reedsolomon/reedsolomon.go:40:3: Line contains TODO/FIXME/HACK: "TODO @thomas fixme handle error" (godox)
+	// TODO @thomas fixme handle error
+	 ^
+crypto/koalabear/ringsis/ringsis.go:95:3: Line contains TODO/FIXME/HACK: "TODO @thomas fixme handle error" (godox)
+	// TODO @thomas fixme handle error
+	 ^
+crypto/koalabear/vortex/commitment.go:69:4: Line contains TODO/FIXME/HACK: "TODO @gbotrel make the fast path generic..." (godox)
+		// TODO @gbotrel make the fast path generic with different SIS params
+		 ^
+crypto/koalabear/vortex/prover_common.go:24:2: Line contains TODO/FIXME/HACK: "TODO @thomaspiellard why not use directl..." (godox)
+// TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
+ ^
+maths/koalabear/field/ext.go:40:2: Line contains TODO/FIXME/HACK: "TODO @gbotrel move in gnark-crypto" (godox)
+// TODO @gbotrel move in gnark-crypto
+ ^
+maths/koalabear/field/ext.go:43:4: Line contains TODO/FIXME/HACK: "TODO @gbotrel add check that a != res" (godox)
+		// TODO @gbotrel add check that a != res
+		 ^
+maths/koalabear/field/ext.go:331:2: Line contains TODO/FIXME/HACK: "TODO: check if this way is correct" (godox)
+// TODO: check if this way is correct
+ ^
+utils/files/files.go:47:2: Line contains TODO/FIXME/HACK: "TODO @gbotrel most of this \"MustXXX\" fun..." (godox)
+// TODO @gbotrel most of this "MustXXX" functions must go away and be replaced by proper error handling
+ ^
+utils/types/common.go:146:31: Line contains TODO/FIXME/HACK: "TODO delete this if negative numbers are..." (godox)
+	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
+	                             ^
+wiop/query.go:9:2: Line contains TODO/FIXME/HACK: "TODO: Replace with the full GnarkRuntime..." (godox)
+// TODO: Replace with the full GnarkRuntime definition once the gnark layer is
+ ^
+wiop/query_lagrange_eval.go:151:2: Line contains TODO/FIXME/HACK: "TODO: Implement once the gnark layer is ..." (godox)
+// TODO: Implement once the gnark layer is defined.
+ ^
+wiop/query_local_opening.go:79:2: Line contains TODO/FIXME/HACK: "TODO: Implement once the gnark layer is ..." (godox)
+// TODO: Implement once the gnark layer is defined.
+ ^
+wiop/query_vanishing.go:98:2: Line contains TODO/FIXME/HACK: "TODO: Implement once the gnark layer is ..." (godox)
+// TODO: Implement once the gnark layer is defined.
+ ^
+crypto/koalabear/fiatshamir/poseidon2.go:36:12: G103: Use of unsafe calls should be audited (gosec)
+	vElems := unsafe.Slice((*field.Element)(unsafe.Pointer(&vec[0])), 4*len(vec))
+	          ^
+maths/koalabear/field/elem_test.go:16:9: G404: Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand) (gosec)
+	return rand.New(rand.NewPCG(testSeed, 0))
+	       ^
+maths/koalabear/field/field.go:127:27: G103: Use of unsafe calls should be audited (gosec)
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+		                        ^
+maths/koalabear/polynomials/canonical_test.go:16:9: G404: Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand) (gosec)
+	return rand.New(rand.NewPCG(testSeed, 0))
+	       ^
+utils/arena/vector_arena.go:103:9: G103: Use of unsafe calls should be audited (gosec)
+	return unsafe.Slice((*T)(unsafe.Pointer(&chunk[0])), vectorLen)
+	       ^
+utils/files/files.go:51:12: G304: Potential file inclusion via variable (gosec)
+	f, err := os.Open(path)
+	          ^
+utils/files/files.go:67:9: G301: Expect directory permissions to be 0750 or less (gosec)
+	err := os.MkdirAll(dir, 0770)
+	       ^
+utils/files/files.go:75:12: G304: Potential file inclusion via variable (gosec)
+	f, err := os.Create(p)
+	          ^
+utils/profiling/profiling.go:46:9: G301: Expect directory permissions to be 0750 or less (gosec)
+	err := os.MkdirAll(dir, 0775)
+	       ^
+utils/profiling/trace.go:57:12: G304: Potential file inclusion via variable (gosec)
+	f, err := os.Create(path)
+	          ^
+crypto/koalabear/ringsis/ringsis.go:264:1: The line is 134 characters long, which exceeds the maximum of 120 characters. (lll)
+			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
+^
+crypto/koalabear/ringsis/ringsis_test.go:227:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)
+func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain *fft.Domain, degree int) []field.Element {
+^
+crypto/koalabear/vortex/commitment.go:37:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)
+func (p *Params) CommitMerkleWithSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
+^
+crypto/koalabear/vortex/commitment.go:87:1: The line is 123 characters long, which exceeds the maximum of 120 characters. (lll)
+			vgnark.CompressPoseidon2x16(sisHashes[startChunk:startChunk+16*chunkSize], chunkSize, leaves[chunkID*16:(chunkID+1)*16])
+^
+crypto/koalabear/vortex/commitment.go:118:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix [][]field.Element) (EncodedMatrix, Commitment, *smt.Tree, []field.Element) {
+^
+crypto/koalabear/vortex/commitment.go:150:1: The line is 134 characters long, which exceeds the maximum of 120 characters. (lll)
+			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
+^
+crypto/koalabear/vortex/verifier_test.go:76:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)
+	params, proof, vi, commitments, merkleProofs := getProofVortexNCommitmentsWithMerkle(t, nCommitments, nbPolys, polySize, rate, WithSis)
+^
+maths/koalabear/field/ext.go:196:1: The line is 128 characters long, which exceeds the maximum of 120 characters. (lll)
+	res := fmt.Sprintf("%s + %s*u + (%s + %s*u)*v", z.B0.A0.Text(base), z.B0.A1.Text(base), z.B1.A0.Text(base), z.B1.A1.Text(base))
+^
+maths/koalabear/field/field.go:120:1: The line is 154 characters long, which exceeds the maximum of 120 characters. (lll)
+		utils.Panic("supplied a byteSize larger than 4 (%v), this must be a mistake. Please check that the supplied value is not instead a BIT-size.", sizeByte)
+^
+maths/koalabear/field/field.go:240:1: The line is 124 characters long, which exceeds the maximum of 120 characters. (lll)
+		utils.Panic("supplied a root of unity larger than %v, this must be a mistake. The provided value was %v", MaxOrderRoot, n)
+^
+utils/profiling/trace.go:87:1: The line is 462 characters long, which exceeds the maximum of 120 characters. (lll)
+			// {Alloc:362521518000 TotalAlloc:1076776397968 Sys:378298843400 Lookups:0 Mallocs:12131948845 Frees:8937352031 HeapAlloc:362521518000 HeapSys:362600792064 HeapIdle:28925952 HeapInuse:362571866112 HeapReleased:28925952 HeapObjects:3194596814 StackInuse:5177344 StackSys:5177344 MSpanInuse:1939723120 MSpanSys:1988836800 MCacheInuse:115200 MCacheSys:124800 BuckHashSys:1967672 GCSys:13477260696 OtherSys:224684024 NextGC:448199664696 LastGC:1690054704225362140
+^
+utils/profiling/trace.go:89:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)
+				"Memory usage (GiB) : Alloc %.4f - TotalAlloc %.4f - Sys %.4f - Mallocs %.4f - Frees %.4f - HeapAlloc %.4f - NextGC %.4f",
+^
+utils/profiling/trace.go:90:1: The line is 167 characters long, which exceeds the maximum of 120 characters. (lll)
+				float64(m.Alloc)/GiB, float64(m.TotalAlloc)/GiB, float64(m.Sys)/GiB, float64(m.Mallocs)/GiB, float64(m.Frees)/GiB, float64(m.HeapAlloc)/GiB, float64(m.NextGC)/GiB,
+^
+utils/types/common_test.go:26:1: The line is 133 characters long, which exceeds the maximum of 120 characters. (lll)
+		"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a",
+^
+utils/types/common_test.go:39:1: The line is 144 characters long, which exceeds the maximum of 120 characters. (lll)
+			Expected: "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a",
+^
+utils/types/common_test.go:43:1: The line is 144 characters long, which exceeds the maximum of 120 characters. (lll)
+			Expected: "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000790000e30b",
+^
+utils/utils.go:20:1: The line is 127 characters long, which exceeds the maximum of 120 characters. (lll)
+	return (a ^ mask) - mask           // if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
+^
+wiop/compilers/global/global.go:782:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)
+func applyBaseFFT4(d *fft.Domain, v []field.Ext, fn func(*fft.Domain, []field.Element), c0, c1, c2, c3 []field.Element) {
+^
+wiop/expression_test.go:276:1: The line is 136 characters long, which exceeds the maximum of 120 characters. (lll)
+	assert.Equal(t, wiop.VisibilityOracle, wiop.Add(oracle.View(), oracle.View()).(interface{ Visibility() wiop.Visibility }).Visibility())
+^
+wiop/expression_test.go:278:1: The line is 140 characters long, which exceeds the maximum of 120 characters. (lll)
+	assert.Equal(t, wiop.VisibilityInternal, wiop.Add(oracle.View(), internal.View()).(interface{ Visibility() wiop.Visibility }).Visibility())
+^
+wiop/query_lagrange_eval.go:212:1: The line is 126 characters long, which exceeds the maximum of 120 characters. (lll)
+func (sys *System) NewLagrangeEvalFrom(ctx *ContextFrame, polys []*ColumnView, x FieldPromise, claims []*Cell) *LagrangeEval {
+^
+wiop/query_lagrange_eval.go:231:1: The line is 122 characters long, which exceeds the maximum of 120 characters. (lll)
+func (sys *System) newLagrangeEval(ctx *ContextFrame, polys []*ColumnView, x FieldPromise, claims []*Cell) *LagrangeEval {
+^
+wiop/query_lagrange_eval_test.go:33:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)
+func lagrangeSystem(t *testing.T) (*wiop.System, *wiop.Round, *wiop.Round, *wiop.Module, *wiop.Column, *wiop.CoinField) {
+^
+wiop/query_table_relation.go:94:1: The line is 121 characters long, which exceeds the maximum of 120 characters. (lll)
+			"wiop: Table selector belongs to module %q but columns belong to module %q; selector and columns must share a module",
+^
+wiop/wiop_system_test.go:55:1: The line is 125 characters long, which exceeds the maximum of 120 characters. (lll)
+		{"coin id=1,2", wiop.ObjectID(wiop.KindCoinField)<<56 | wiop.ObjectID(1)<<40 | wiop.ObjectID(2), wiop.KindCoinField, 1, 2},
+^
+crypto/koalabear/poseidon2/poseidon2_test.go:18:2: `Ouput` is a misspelling of `Output` (misspell)
+	Ouput  GnarkOctuplet
+	^
+crypto/koalabear/poseidon2/poseidon2_test.go:36:25: `Ouput` is a misspelling of `Output` (misspell)
+		api.AssertIsEqual(ghc.Ouput[i], res[i])
+		                      ^
+crypto/koalabear/poseidon2/poseidon2_test.go:65:11: `Ouput` is a misspelling of `Output` (misspell)
+		witness.Ouput[i] = res[i].String()
+		        ^
+utils/utils.go:93:37: `Euclidian` is a misspelling of `Euclidean` (misspell)
+// GCD calculates GCD of a and b by Euclidian algorithm.
+                                    ^
+crypto/koalabear/fiatshamir/poseidon2.go:24:1: exported: exported function NewFiatShamir should have comment or be unexported (revive)
+func NewFiatShamir() *FiatShamir {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:28:1: exported: exported method FiatShamir.Update should have comment or be unexported (revive)
+func (fs *FiatShamir) Update(vec ...field.Element) {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:32:1: exported: exported method FiatShamir.UpdateExt should have comment or be unexported (revive)
+func (fs *FiatShamir) UpdateExt(vec ...field.Ext) {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:40:1: exported: exported method FiatShamir.UpdateGeneric should have comment or be unexported (revive)
+func (fs *FiatShamir) UpdateGeneric(vec ...field.FieldElem) {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:54:1: exported: exported method FiatShamir.UpdateVec should have comment or be unexported (revive)
+func (fs *FiatShamir) UpdateVec(vecs ...[]field.Element) {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:60:1: exported: comment on exported method FiatShamir.UpdateVecExt should be of the form "UpdateVecExt ..." (revive)
+// UpdateVec updates the Fiat-Shamir state by passing one of more slices of
+^
+crypto/koalabear/fiatshamir/poseidon2.go:84:1: exported: exported method FiatShamir.RandomField should have comment or be unexported (revive)
+func (fs *FiatShamir) RandomField() field.Octuplet {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:89:1: exported: exported method FiatShamir.RandomFext should have comment or be unexported (revive)
+func (fs *FiatShamir) RandomFext() field.Ext {
+^
+crypto/koalabear/fiatshamir/poseidon2.go:100:1: exported: exported method FiatShamir.RandomFieldFromSeed should have comment or be unexported (revive)
+func (fs *FiatShamir) RandomFieldFromSeed(seed field.Octuplet, name string) field.Ext {
+^
+crypto/koalabear/poseidon2/poseidon2.go:17:7: exported: exported const BlockSize should have comment or be unexported (revive)
+const BlockSize = 8
+      ^
+crypto/koalabear/poseidon2/poseidon2.go:81:1: exported: exported method MDHasher.GetStateOctuplet should have comment or be unexported (revive)
+func (d *MDHasher) GetStateOctuplet() field.Octuplet {
+^
+crypto/koalabear/poseidon2/poseidon2.go:103:1: exported: exported method MDHasher.SumElement should have comment or be unexported (revive)
+func (d *MDHasher) SumElement() field.Octuplet {
+^
+crypto/koalabear/poseidon2/poseidon2.go:144:1: exported: exported method MDHasher.State should have comment or be unexported (revive)
+func (h *MDHasher) State() [BlockSize]field.Element {
+^
+crypto/koalabear/poseidon2/poseidon2.go:157:1: exported: comment on exported function GnarkBlockCompressionMekle should be of the form "GnarkBlockCompressionMekle ..." (revive)
+// GnarkBlockCompression applies the poseidon permutation to a given block within
+^
+crypto/koalabear/poseidon2/poseidon2.go:159:33: unused-parameter: parameter 'api' seems to be unused, consider removing or renaming it as _ (revive)
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]circuit.Element) (newState [BlockSize]circuit.Element) {
+                                ^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:49:1: exported: exported method GnarkMDHasher.Reset should have comment or be unexported (revive)
+func (h *GnarkMDHasher) Reset() {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:60:1: exported: exported method GnarkMDHasher.WriteOctuplet should have comment or be unexported (revive)
+func (h *GnarkMDHasher) WriteOctuplet(data ...GnarkOctuplet) {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:66:1: exported: exported method GnarkMDHasher.SetState should have comment or be unexported (revive)
+func (h *GnarkMDHasher) SetState(state GnarkOctuplet) {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:71:1: exported: exported method GnarkMDHasher.State should have comment or be unexported (revive)
+func (h *GnarkMDHasher) State() GnarkOctuplet {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:87:1: exported: exported method GnarkMDHasher.Sum should have comment or be unexported (revive)
+func (h *GnarkMDHasher) Sum() GnarkOctuplet {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:108:1: exported: exported function CompressPoseidon2 should have comment or be unexported (revive)
+func CompressPoseidon2(api frontend.API, a, b GnarkOctuplet) GnarkOctuplet {
+^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:129:2: exported: exported var ErrInvalidSizebuffer should have comment or be unexported (revive)
+	ErrInvalidSizebuffer = errors.New("the size of the input should match the size of the hash buffer")
+	^
+crypto/koalabear/poseidon2/poseidon2_circuit.go:140:23: unexported-return: exported func NewPermutation returns unexported type poseidon2.permutation, which can be annoying to use (revive)
+func NewPermutation() permutation {
+                      ^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:42:1: exported: exported method KoalagnarkMDHasher.Reset should have comment or be unexported (revive)
+func (h *KoalagnarkMDHasher) Reset() {
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:53:1: exported: exported method KoalagnarkMDHasher.WriteOctuplet should have comment or be unexported (revive)
+func (h *KoalagnarkMDHasher) WriteOctuplet(data ...KoalagnarkOctuplet) {
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:59:1: exported: exported method KoalagnarkMDHasher.SetState should have comment or be unexported (revive)
+func (h *KoalagnarkMDHasher) SetState(state KoalagnarkOctuplet) {
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:64:1: exported: exported method KoalagnarkMDHasher.State should have comment or be unexported (revive)
+func (h *KoalagnarkMDHasher) State() KoalagnarkOctuplet {
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:79:1: exported: exported method KoalagnarkMDHasher.Sum should have comment or be unexported (revive)
+func (h *KoalagnarkMDHasher) Sum() KoalagnarkOctuplet {
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark.go:135:33: unexported-return: exported func NewKoalagnarkPermutation returns unexported type poseidon2.koalagnarkPermutation, which can be annoying to use (revive)
+func NewKoalagnarkPermutation() koalagnarkPermutation {
+                                ^
+maths/koalabear/polynomials/canonical_test.go:19:15: unused-parameter: parameter 'rng' seems to be unused, consider removing or renaming it as _ (revive)
+func randBase(rng *rand.Rand) field.Element {
+              ^
+maths/koalabear/polynomials/canonical_test.go:25:14: unused-parameter: parameter 'rng' seems to be unused, consider removing or renaming it as _ (revive)
+func randExt(rng *rand.Rand) field.Ext {
+             ^
+utils/arena/vector_arena.go:83:1: exported: exported method VectorArena.Offset should have comment or be unexported (revive)
+func (a *VectorArena) Offset() int64 {
+^
+utils/collection/deterministic_map.go:17:48: redefines-builtin-id: redefinition of the built-in function cap (revive)
+func MakeDeterministicMap[K comparable, V any](cap int) *DeterministicMap[K, V] {
+                                               ^
+utils/collection/deterministic_map.go:84:1: exported: comment on exported method DeterministicMap.IterKey should be of the form "IterKey ..." (revive)
+// Iter returns an iterator over the map's key
+^
+utils/profiling/profiling.go:14:5: exported: exported var SKIP_PROFILING should have comment or be unexported (revive)
+var SKIP_PROFILING = true
+    ^
+utils/profiling/timelog.go:17:1: exported: comment on exported function LogTimer should be of the form "LogTimer ..." (revive)
+// LogTime registers the current time and returns a closure logging the
+^
+utils/profiling/trace.go:17:2: exported: exported const KiB should have comment (or a comment on this block) or be unexported (revive)
+	KiB
+	^
+utils/profiling/trace.go:23:1: exported: exported function Trace should have comment or be unexported (revive)
+func Trace(ctx context.Context, dir string) {
+^
+utils/profiling/trace.go:78:1: exported: comment on exported function LogMemUsage should be of the form "LogMemUsage ..." (revive)
+// Log memory usage
+^
+wiop/codegen/codegen.go:124:1: exported: exported function NewActionVars should have comment or be unexported (revive)
+func NewActionVars() ActionVars {
+^
+wiop/codegen/writer.go:24:1: exported: exported method CodeWriter.Line should have comment or be unexported (revive)
+func (w *CodeWriter) Line(format string, args ...any) {
+^
+wiop/codegen/writer.go:28:1: exported: exported method CodeWriter.Blank should have comment or be unexported (revive)
+func (w *CodeWriter) Blank() { w.buf.WriteByte('\n') }
+^
+wiop/codegen/writer.go:30:1: exported: exported method CodeWriter.In should have comment or be unexported (revive)
+func (w *CodeWriter) In()  { w.indent++ }
+^
+wiop/codegen/writer.go:31:1: exported: exported method CodeWriter.Out should have comment or be unexported (revive)
+func (w *CodeWriter) Out() { w.indent-- }
+^
+wiop/codegen/writer.go:45:1: receiver-naming: receiver name cw should be consistent with previous receiver name w for CodeWriter (revive)
+func (cw *CodeWriter) WriteTo(w io.Writer) (int64, error) {
+	b := cw.Bytes()
+	n, err := w.Write(b)
+	return int64(n), err
+}
+wiop/compilers/global/global.go:107:1: function-length: maximum number of lines per function exceeded; max 100 but got 118 (revive)
+func compileModule(
+	sys *wiop.System,
+	m *wiop.Module,
+	ctx *wiop.ContextFrame,
+	quotientRound, evalRound *wiop.Round,
+) {
+	n := m.Size()
+	if n == 0 {
+		panic(fmt.Sprintf("wiop/compilers: module %q must be sized before calling Compile", m.Context.Path()))
+	}
+
+	// --- Step 1: bucket vanishing constraints by ratio ---
+	ratioToEntries := make(map[int][]*wiop.Vanishing)
+	var ratioOrder []int
+	for _, v := range m.Vanishings {
+		r := computeRatio(v, n)
+		if _, exists := ratioToEntries[r]; !exists {
+			ratioOrder = append(ratioOrder, r)
+		}
+		ratioToEntries[r] = append(ratioToEntries[r], v)
+	}
+
+	// --- Step 2: merging coin in quotientRound ---
+	mergeCoin := quotientRound.NewCoinField(ctx.Childf("merge-coin"))
+
+	// --- Step 3: declare quotient share columns (extension) per bucket ---
+	rawBuckets := make([]rawBucket, 0, len(ratioOrder))
+	for _, ratio := range ratioOrder {
+		vs := ratioToEntries[ratio]
+		shares := make([]*wiop.Column, ratio)
+		for k := range ratio {
+			shareCtx := ctx.Childf("q-r%d-s%d", ratio, k)
+			shares[k] = m.NewExtensionColumn(shareCtx, wiop.VisibilityOracle, quotientRound)
+		}
+		rawBuckets = append(rawBuckets, rawBucket{ratio: ratio, vanishings: vs, shares: shares})
+	}
+
+	// --- Step 4: eval coin in evalRound ---
+	evalCoin := evalRound.NewCoinField(ctx.Childf("eval-coin"))
+
+	// --- Step 5: collect all unique column views across all vanishings ---
+	viewKeyToIdx := make(map[colViewKey]int)
+	var views []*wiop.ColumnView
+	for _, bkt := range rawBuckets {
+		for _, v := range bkt.vanishings {
+			for _, cv := range collectColumnViews(v.Expression) {
+				key := colViewKey{id: cv.Column.Context.ID, shift: cv.ShiftingOffset}
+				if _, exists := viewKeyToIdx[key]; !exists {
+					viewKeyToIdx[key] = len(views)
+					views = append(views, cv)
+				}
+			}
+		}
+	}
+
+	// --- Step 6: claim cells for witness LagrangeEval (all extension, eval at ext point) ---
+	witnessClaims := make([]*wiop.Cell, len(views))
+	for i := range views {
+		witnessClaims[i] = evalRound.NewCell(ctx.Childf("w-claim%d", i), true)
+	}
+	var witnessLagrangeEval *wiop.LagrangeEval
+	if len(views) > 0 {
+		witnessLagrangeEval = sys.NewLagrangeEvalFrom(
+			ctx.Childf("witness-eval"),
+			views,
+			evalCoin,
+			witnessClaims,
+		)
+	}
+
+	// --- Step 7: LagrangeEvals for quotient shares ---
+	allLagrangeEvals := make([]*wiop.LagrangeEval, 0)
+	if witnessLagrangeEval != nil {
+		allLagrangeEvals = append(allLagrangeEvals, witnessLagrangeEval)
+	}
+	quotientBucketClaims := make([][]*wiop.Cell, len(rawBuckets))
+	for i, bkt := range rawBuckets {
+		shareViews := make([]*wiop.ColumnView, bkt.ratio)
+		claimsForBucket := make([]*wiop.Cell, bkt.ratio)
+		for k, shareCol := range bkt.shares {
+			shareViews[k] = shareCol.View()
+			claimsForBucket[k] = evalRound.NewCell(ctx.Childf("q-claim-r%d-s%d", bkt.ratio, k), true)
+		}
+		qLE := sys.NewLagrangeEvalFrom(
+			ctx.Childf("q-eval%d", i),
+			shareViews,
+			evalCoin,
+			claimsForBucket,
+		)
+		allLagrangeEvals = append(allLagrangeEvals, qLE)
+		quotientBucketClaims[i] = claimsForBucket
+	}
+
+	// --- Step 8: build prover buckets (precompute coset data) ---
+	proverBuckets := buildProverBuckets(rawBuckets, n)
+
+	// --- Step 9: register prover actions ---
+	quotientRound.RegisterAction(&QuotientProverAction{
+		m:         m,
+		mergeCoin: mergeCoin,
+		buckets:   proverBuckets,
+	})
+	evalRound.RegisterAction(&EvalProverAction{
+		lagrangeEvals: allLagrangeEvals,
+	})
+
+	// --- Step 10: register verifier action ---
+	vBuckets := make([]verifierBucket, len(rawBuckets))
+	for i, bkt := range rawBuckets {
+		vBuckets[i] = verifierBucket{
+			ratio:          bkt.ratio,
+			vanishings:     bkt.vanishings,
+			quotientClaims: quotientBucketClaims[i],
+		}
+	}
+	evalRound.RegisterVerifierAction(&GlobalVerifier{
+		n:             n,
+		mergeCoin:     mergeCoin,
+		evalCoin:      evalCoin,
+		witnessViews:  views,
+		witnessClaims: witnessClaims,
+		viewKeyToIdx:  viewKeyToIdx,
+		buckets:       vBuckets,
+	})
+}
+wiop/compilers/global/global.go:354:1: exported: exported method QuotientProverAction.Run should have comment or be unexported (revive)
+func (a *QuotientProverAction) Run(rt wiop.Runtime) {
+^
+wiop/compilers/global/global.go:467:1: exported: exported method EvalProverAction.Run should have comment or be unexported (revive)
+func (a *EvalProverAction) Run(rt wiop.Runtime) {
+^
+wiop/compilers/global/global.go:479:6: exported: type name will be used as global.GlobalVerifier by other packages, and that stutters; consider calling this Verifier (revive)
+type GlobalVerifier struct {
+     ^
+wiop/compilers/global/global.go:489:1: exported: exported method GlobalVerifier.Check should have comment or be unexported (revive)
+func (gv *GlobalVerifier) Check(rt wiop.Runtime) error {
+^
+crypto/koalabear/poseidon2/poseidon2.go:122:1: ST1020: comment on exported method Write should be of the form "Write ..." (staticcheck)
+// WriteElements adds a slice of field elements to the running hash.
+^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:10:2: ST1019: package "github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit" is being imported more than once (staticcheck)
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
+	^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:11:2: ST1019(related information): other import of "github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit" (staticcheck)
+	kbcircuit "github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/circuit"
+	^
+crypto/koalabear/smt/gnark_test.go:1:9: ST1003: should not use underscores in package names (staticcheck)
+package smt_koalabear
+        ^
+crypto/koalabear/smt/smt_test.go:1:9: ST1003: should not use underscores in package names (staticcheck)
+package smt_koalabear
+        ^
+crypto/koalabear/vortex/commitment_test.go:135:3: QF1002: could use tagged switch on row % 17 (staticcheck)
+		switch {
+		^
+maths/koalabear/circuit/api.go:116:15: ST1016: methods on the same type should have the same receiver name (seen 3x "api", 73x "a") (staticcheck)
+func (a *API) Add(x, y Element) Element {
+              ^
+maths/koalabear/field/elem.go:57:11: QF1008: could remove embedded field "Ext" from selector (staticcheck)
+	return e.Ext.B0.A0
+	         ^
+maths/koalabear/field/elem.go:84:14: QF1008: could remove embedded field "Ext" from selector (staticcheck)
+		res.Mul(&e.Ext.B0.A0, &b.Ext.B0.A0)
+		           ^
+utils/arena/vector_arena.go:1:1: ST1000: at least one file in a package should have a package comment (staticcheck)
+package arena
+^
+utils/files/files.go:110:15: QF1008: could remove embedded field "Writer" from selector (staticcheck)
+		if err := z.Writer.Flush(); err != nil {
+		            ^
+utils/profiling/profiling.go:1:1: ST1000: at least one file in a package should have a package comment (staticcheck)
+package profiling
+^
+utils/profiling/timelog.go:1:1: ST1000: at least one file in a package should have a package comment (staticcheck)
+package profiling
+^
+wiop/compilers/global/global.go:543:12: QF1008: could remove embedded field "Ext" from selector (staticcheck)
+		if !diff.Ext.IsZero() {
+		         ^
+wiop/expression_test.go:141:2: S1021: should merge variable declaration with assignment on next line (staticcheck)
+	var e3 field.Element
+	^
+wiop/wiop_column.go:342:27: ST1016: methods on the same type should have the same receiver name (seen 10x "cp", 1x "pos") (staticcheck)
+func (cp *ColumnPosition) Degree() int { return 0 }
+                          ^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:84:4: require-error: for error assertions use require (testifylint)
+			require.NoError(t, err)
+			^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:113:4: require-error: for error assertions use require (testifylint)
+			require.NoError(t, err)
+			^
+crypto/koalabear/poseidon2/poseidon2_koalagnark_test.go:116:4: require-error: for error assertions use require (testifylint)
+			require.NoError(t, err)
+			^
+utils/utils_test.go:31:2: bool-compare: use require.True (testifylint)
+	require.Equal(t, true, utils.IsPowerOfTwo(4))
+	^
+utils/utils_test.go:34:2: bool-compare: use require.False (testifylint)
+	require.Equal(t, false, utils.IsPowerOfTwo(-9223372036854775808))
+	^
+wiop/context_test.go:92:2: contains: use assert.Contains (testifylint)
+	assert.True(t, strings.Contains(info, ":"), "CallerInfo should be file:line")
+	^
+crypto/koalabear/ringsis/ringsis_test.go:70:13: test helper function should start from t.Helper() (thelper)
+	runTest := func(t *testing.T, key *Key, limbs []field.Ext) {
+	           ^
+crypto/koalabear/ringsis/ringsis_test.go:119:14: parameter *testing.T should have name t (thelper)
+	coreTest := func(subT *testing.T, v []field.Element, key Key) {
+	            ^
+crypto/koalabear/ringsis/ringsis_test.go:145:14: test helper function should start from t.Helper() (thelper)
+	coreTest := func(t *testing.T, key *Key, v []field.Element) {
+	            ^
+crypto/koalabear/smt/gnark_test.go:22:6: test helper function should start from t.Helper() (thelper)
+func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
+     ^
+utils/types/field_koalaoctuplet.go:37:21: unnecessary conversion (unconvert)
+		x := field.Element(e[i])
+		                  ^
+wiop/compilers/global/global.go:754:12: unnecessary conversion (unconvert)
+	return int(utils.NextPowerOfTwo(ratio))
+	          ^
+maths/koalabear/field/vec_test.go:8:18: randomElems - n always receives testN (100) (unparam)
+func randomElems(n int) []Element {
+                 ^
+maths/koalabear/field/vec_test.go:18:17: randomExts - n always receives testN (100) (unparam)
+func randomExts(n int) []Ext {
+                ^
+wiop/expression_compiler_test.go:13:39: makeVecEvalSystem - result 0 (*github.com/consensys/linea-monorepo/prover-ray/wiop.System) is never used (unparam)
+func makeVecEvalSystem(t *testing.T) (*wiop.System, *wiop.Column, *wiop.Column, wiop.Runtime) {
+                                      ^
+wiop/expression_compiler_test.go:24:36: vecAt - i always receives 0 (unparam)
+func vecAt(cv wiop.ConcreteVector, i int) field.Element {
+                                   ^
+wiop/wiop_runtime_test.go:25:14: baseVec - n always receives 4 (unparam)
+func baseVec(n int, val uint64) *wiop.ConcreteVector {
+             ^
+wiop/wioptest/helpers.go:9:14: baseVec - n always receives 4 (unparam)
+func baseVec(n int, val uint64) *wiop.ConcreteVector {
+             ^
+crypto/koalabear/vortex/utils.go:29:6: func fftInvHint is unused (unused)
+func fftInvHint(t circuit.VType) solver.Hint {
+     ^
+maths/koalabear/circuit/element.go:114:2: var zeroKoalaFr is unused (unused)
+	zeroKoalaFr = field.Zero()
+	^
+maths/koalabear/circuit/element.go:115:2: var oneKoalaFr is unused (unused)
+	oneKoalaFr  = field.One()
+	^
+maths/koalabear/circuit/element.go:116:2: var oneBigInt is unused (unused)
+	oneBigInt   = big.NewInt(1)
+	^
+wiop/compilers/global/global.go:764:6: func extIFFTOnCoset is unused (unused)
+func extIFFTOnCoset(d *fft.Domain, v []field.Ext) {
+     ^
+179 issues:
+* errcheck: 35
+* errorlint: 2
+* godox: 14
+* gosec: 10
+* lll: 25
+* misspell: 4
+* revive: 50
+* staticcheck: 16
+* testifylint: 6
+* thelper: 4
+* unconvert: 2
+* unparam: 6
+* unused: 5

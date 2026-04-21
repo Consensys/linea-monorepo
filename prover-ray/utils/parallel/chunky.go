@@ -7,8 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Execute in parallel. This implementation is optimized for the case where
-// the workload is a sequence of unbalanced and long computation time jobs.
+// ExecuteChunky executes work in parallel, optimized for unbalanced long-running jobs.
 func ExecuteChunky(nbIterations int, work func(start, stop int), numcpus ...int) {
 
 	numcpu := runtime.GOMAXPROCS(0)

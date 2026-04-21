@@ -24,13 +24,13 @@ func TestLocalOpening_Round_IsAlreadyAssigned_SelfAssign_Check(t *testing.T) {
 	for i := range 4 {
 		elems[i].SetUint64(uint64(i))
 	}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
 
 	assert.False(t, lo.IsAlreadyAssigned(rt))
 	lo.SelfAssign(rt)
 	assert.True(t, lo.IsAlreadyAssigned(rt))
 
-	assert.NoError(t, lo.Check(rt))
+	require.NoError(t, lo.Check(rt))
 }
 
 func TestLocalOpening_Check_Mismatch(t *testing.T) {

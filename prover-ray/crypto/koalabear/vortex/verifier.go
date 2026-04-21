@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
-// Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
-// The leaves are poseidon2_bls12377(sis(columns[i][j]))
+// CheckColumnInclusion checks the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
+// The leaves are poseidon2_bls12377(sis(columns[i][j])).
 func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 	merkleProofs [][]smt.Proof, commitments []Commitment, WithSis []bool) error {
 
@@ -21,7 +21,9 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 			var leaf field.Octuplet
 			if WithSis[i] {
 				// compute leaf = poseidon2_bls12377(columns[i][j]))
-				sis.SisGnarkCrypto.Hash(columns[i][j], sisHash)
+				if err := sis.SisGnarkCrypto.Hash(columns[i][j], sisHash); err != nil {
+					panic(err)
+				}
 				h.Reset()
 				h.WriteElements(sisHash...)
 				leaf = h.SumElement()
@@ -43,7 +45,9 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 	return nil
 }
 
-func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments []Commitment, merkleProofs [][]smt.Proof, WithSis []bool) error {
+// Verify verifies an opening proof against the given commitments and Merkle proofs.
+func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments []Commitment,
+	merkleProofs [][]smt.Proof, WithSis []bool) error {
 
 	// If WithSis is not assigned, we assign them with default true values
 	if WithSis == nil {
@@ -64,6 +68,7 @@ func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments 
 	return err
 }
 
+// VerifyCommon performs the common verification steps shared by Verify and similar functions.
 func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error {
 
 	err := CheckIsCodeWord(params.RsParams, proof.LinearCombination)

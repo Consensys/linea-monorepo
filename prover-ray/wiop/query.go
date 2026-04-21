@@ -5,9 +5,6 @@ import "github.com/consensys/gnark/frontend"
 // GnarkRuntime is the execution context passed to circuit-verification methods.
 // It provides access to gnark-variable column assignments and coin values inside
 // an arithmetic circuit.
-//
-// TODO: Replace with the full GnarkRuntime definition once the gnark layer is
-// implemented.
 type GnarkRuntime interface{}
 
 // Query is the base interface for all verifier predicates in the protocol.

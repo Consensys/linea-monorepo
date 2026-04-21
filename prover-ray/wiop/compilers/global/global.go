@@ -219,7 +219,7 @@ func compileModule(
 			quotientClaims: quotientBucketClaims[i],
 		}
 	}
-	evalRound.RegisterVerifierAction(&GlobalVerifier{
+	evalRound.RegisterVerifierAction(&Verifier{
 		n:             n,
 		mergeCoin:     mergeCoin,
 		evalCoin:      evalCoin,
@@ -351,6 +351,7 @@ func (a *QuotientProverAction) Plan(ctx *wiop.PlanningContext) {
 	}
 }
 
+// Run executes the quotient polynomial computation and assigns quotient share columns.
 func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 	n := a.m.Size()
 	coinExt := rt.GetCoinValue(a.mergeCoin).Ext
@@ -420,7 +421,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			extFFT(bkt.smallDomain, chunk)
 
 			cv := &wiop.ConcreteVector{
-				Plain: []field.FieldVec{field.VecFromExt(chunk)},
+				Plain: []field.Vec{field.VecFromExt(chunk)},
 			}
 			rt.AssignColumn(bkt.shares[k], cv)
 		}
@@ -464,6 +465,7 @@ type EvalProverAction struct {
 	lagrangeEvals []*wiop.LagrangeEval
 }
 
+// Run self-assigns all LagrangeEval queries registered for this module.
 func (a *EvalProverAction) Run(rt wiop.Runtime) {
 	for _, le := range a.lagrangeEvals {
 		le.SelfAssign(rt)
@@ -474,9 +476,9 @@ func (a *EvalProverAction) Run(rt wiop.Runtime) {
 // Verifier action
 // ---------------------------------------------------------------------------
 
-// GlobalVerifier checks the PLONK quotient identity for one module.
+// Verifier checks the PLONK quotient identity for one module.
 // It runs in evalRound.
-type GlobalVerifier struct {
+type Verifier struct {
 	n             int
 	mergeCoin     *wiop.CoinField
 	evalCoin      *wiop.CoinField
@@ -486,13 +488,14 @@ type GlobalVerifier struct {
 	buckets       []verifierBucket
 }
 
-func (gv *GlobalVerifier) Check(rt wiop.Runtime) error {
+// Check verifies the PLONK quotient identity for the module using the runtime's claimed values.
+func (gv *Verifier) Check(rt wiop.Runtime) error {
 	n := gv.n
 	r := rt.GetCoinValue(gv.evalCoin)
 	coinExt := rt.GetCoinValue(gv.mergeCoin).Ext
 
 	// Build the map from column-view key → evaluation at r.
-	viewEvals := make(map[colViewKey]field.FieldElem, len(gv.witnessViews))
+	viewEvals := make(map[colViewKey]field.Gen, len(gv.witnessViews))
 	for i, cv := range gv.witnessViews {
 		key := colViewKey{id: cv.Column.Context.ID, shift: cv.ShiftingOffset}
 		viewEvals[key] = rt.GetCellValue(gv.witnessClaims[i])
@@ -540,7 +543,7 @@ func (gv *GlobalVerifier) Check(rt wiop.Runtime) error {
 		lhs := pagg
 		rhs := annihilator.Mul(qr)
 		diff := lhs.Sub(rhs)
-		if !diff.Ext.IsZero() {
+		if !diff.IsZero() {
 			return fmt.Errorf(
 				"wiop/compilers: global quotient check failed for module (n=%d, ratio=%d): P_agg(r) ≠ (r^n−1)·Q(r)",
 				n, bkt.ratio,
@@ -551,12 +554,12 @@ func (gv *GlobalVerifier) Check(rt wiop.Runtime) error {
 }
 
 // computeAnnihilator computes r^n − 1.
-func computeAnnihilator(r field.FieldElem, n int) field.FieldElem {
+func computeAnnihilator(r field.Gen, n int) field.Gen {
 	return expFieldElem(r, n).Sub(field.ElemOne())
 }
 
 // expFieldElem computes base^exp using binary exponentiation.
-func expFieldElem(base field.FieldElem, exp int) field.FieldElem {
+func expFieldElem(base field.Gen, exp int) field.Gen {
 	result := field.ElemOne()
 	b := base
 	for exp > 0 {
@@ -570,7 +573,7 @@ func expFieldElem(base field.FieldElem, exp int) field.FieldElem {
 }
 
 // evalCancellationAtPoint evaluates C(r) = Π_{k ∈ cancelled} (r − ω_n^{norm(k)}).
-func evalCancellationAtPoint(cancelled []int, n int, r field.FieldElem) field.FieldElem {
+func evalCancellationAtPoint(cancelled []int, n int, r field.Gen) field.Gen {
 	if len(cancelled) == 0 {
 		return field.ElemOne()
 	}
@@ -594,9 +597,9 @@ func evalCancellationAtPoint(cancelled []int, n int, r field.FieldElem) field.Fi
 // Coins and cells are looked up directly from the runtime.
 func evalExprAtPoint(
 	expr wiop.Expression,
-	viewEvals map[colViewKey]field.FieldElem,
+	viewEvals map[colViewKey]field.Gen,
 	rt wiop.Runtime,
-) field.FieldElem {
+) field.Gen {
 	switch e := expr.(type) {
 	case *wiop.ColumnView:
 		key := colViewKey{id: e.Column.Context.ID, shift: e.ShiftingOffset}
@@ -609,7 +612,7 @@ func evalExprAtPoint(
 		}
 		return v
 	case *wiop.ArithmeticOperation:
-		eval := func(i int) field.FieldElem {
+		eval := func(i int) field.Gen {
 			return evalExprAtPoint(e.Operands[i], viewEvals, rt)
 		}
 		a0 := eval(0)
@@ -751,21 +754,12 @@ func computeRatio(v *wiop.Vanishing, n int) int {
 	effectiveDeg := exprDeg + cancelDeg
 	quotientSize := effectiveDeg - n + 1
 	ratio := utils.DivCeil(max(1, quotientSize), n)
-	return int(utils.NextPowerOfTwo(ratio))
+	return utils.NextPowerOfTwo(ratio)
 }
 
 // ---------------------------------------------------------------------------
 // Extension-field FFT helpers
 // ---------------------------------------------------------------------------
-
-// extIFFTOnCoset applies the inverse coset-FFT to the extension-field slice v,
-// operating component-wise on the four base-field coordinates of each element.
-// After the call, v contains the canonical polynomial coefficients.
-func extIFFTOnCoset(d *fft.Domain, v []field.Ext) {
-	applyBaseFFT4(d, v, func(d *fft.Domain, c []field.Element) {
-		d.FFTInverse(c, fft.DIF, fft.OnCoset())
-	}, nil, nil, nil, nil)
-}
 
 // extFFT applies the forward standard-domain FFT to the extension-field slice v,
 // operating component-wise. After the call, v contains standard Lagrange
@@ -779,7 +773,8 @@ func extFFT(d *fft.Domain, v []field.Ext) {
 // applyBaseFFT4 deinterleaves v into four base-field coordinate slices, applies
 // fn to each, then reassembles the result back into v. If any of c0..c3 is
 // non-nil and long enough, it is used as scratch instead of allocating.
-func applyBaseFFT4(d *fft.Domain, v []field.Ext, fn func(*fft.Domain, []field.Element), c0, c1, c2, c3 []field.Element) {
+func applyBaseFFT4(d *fft.Domain, v []field.Ext, fn func(*fft.Domain, []field.Element),
+	c0, c1, c2, c3 []field.Element) {
 	n := len(v)
 	if len(c0) < n {
 		c0 = make([]field.Element, n)

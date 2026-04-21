@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
 )
 
+// Prove constructs an opening proof for the given encoded matrices at the positions in entryList.
 func Prove(
 	entryList []int,
 	encodedMatrices []EncodedMatrix,

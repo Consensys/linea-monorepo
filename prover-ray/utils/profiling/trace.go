@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// KiB, MiB, GiB, TiB are byte-size constants.
 const (
 	_ = 1 << (10 * iota)
 	KiB
@@ -20,6 +21,7 @@ const (
 	TiB
 )
 
+// Trace starts a rotating trace session writing files to dir, stopping when ctx is cancelled.
 func Trace(ctx context.Context, dir string) {
 
 	LogMemUsage()
@@ -72,10 +74,12 @@ func closeTraceFile(f *os.File) {
 	// close the file after we stop the tracer otherwise,
 	// this will create a failure in the tracer
 	trace.Stop()
-	f.Close()
+	if err := f.Close(); err != nil {
+		panic(err)
+	}
 }
 
-// Log memory usage
+// LogMemUsage logs memory usage statistics periodically in the background.
 func LogMemUsage() {
 	go func() {
 		ticker := time.NewTicker(time.Second)
@@ -84,10 +88,11 @@ func LogMemUsage() {
 			// read information about the memory usage
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-			// {Alloc:362521518000 TotalAlloc:1076776397968 Sys:378298843400 Lookups:0 Mallocs:12131948845 Frees:8937352031 HeapAlloc:362521518000 HeapSys:362600792064 HeapIdle:28925952 HeapInuse:362571866112 HeapReleased:28925952 HeapObjects:3194596814 StackInuse:5177344 StackSys:5177344 MSpanInuse:1939723120 MSpanSys:1988836800 MCacheInuse:115200 MCacheSys:124800 BuckHashSys:1967672 GCSys:13477260696 OtherSys:224684024 NextGC:448199664696 LastGC:1690054704225362140
+			//nolint
 			logrus.Debugf(
 				"Memory usage (GiB) : Alloc %.4f - TotalAlloc %.4f - Sys %.4f - Mallocs %.4f - Frees %.4f - HeapAlloc %.4f - NextGC %.4f",
-				float64(m.Alloc)/GiB, float64(m.TotalAlloc)/GiB, float64(m.Sys)/GiB, float64(m.Mallocs)/GiB, float64(m.Frees)/GiB, float64(m.HeapAlloc)/GiB, float64(m.NextGC)/GiB,
+				float64(m.Alloc)/GiB, float64(m.TotalAlloc)/GiB, float64(m.Sys)/GiB, float64(m.Mallocs)/GiB,
+				float64(m.Frees)/GiB, float64(m.HeapAlloc)/GiB, float64(m.NextGC)/GiB,
 			)
 
 			if m.Alloc > 800_000_000_000 {

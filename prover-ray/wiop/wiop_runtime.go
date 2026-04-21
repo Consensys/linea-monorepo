@@ -28,9 +28,9 @@ type Runtime struct {
 	// columns maps each column's [ObjectID] to its concrete vector assignment.
 	columns map[ObjectID]*ConcreteVector
 	// cells maps each cell's [ObjectID] to its concrete scalar value.
-	cells map[ObjectID]field.FieldElem
+	cells map[ObjectID]field.Gen
 	// coins maps each coin's [ObjectID] to its sampled coin value.
-	coins map[ObjectID]field.FieldElem
+	coins map[ObjectID]field.Gen
 	// state is a free-form key-value store for stateful actions.
 	state map[string]any
 }
@@ -45,8 +45,8 @@ func NewRuntime(sys *System) Runtime {
 		System:  sys,
 		fs:      fiatshamir.NewFiatShamir(),
 		columns: make(map[ObjectID]*ConcreteVector),
-		cells:   make(map[ObjectID]field.FieldElem),
-		coins:   make(map[ObjectID]field.FieldElem),
+		cells:   make(map[ObjectID]field.Gen),
+		coins:   make(map[ObjectID]field.Gen),
 		state:   make(map[string]any),
 	}
 	if len(sys.Rounds) == 0 {
@@ -164,7 +164,7 @@ func (run Runtime) HasCellValue(cell *Cell) bool {
 
 // AssignCell stores a concrete scalar value for cell. Panics if cell does not
 // belong to the current round or has already been assigned.
-func (run Runtime) AssignCell(cell *Cell, v field.FieldElem) {
+func (run Runtime) AssignCell(cell *Cell, v field.Gen) {
 	if cell.round != run.currentRound {
 		panic(fmt.Sprintf(
 			"wiop: AssignCell: cell %q belongs to round %d but current round is %v",
@@ -183,7 +183,7 @@ func (run Runtime) AssignCell(cell *Cell, v field.FieldElem) {
 
 // GetCellValue returns the concrete scalar value of cell. Panics if cell has
 // not been assigned yet.
-func (run Runtime) GetCellValue(cell *Cell) field.FieldElem {
+func (run Runtime) GetCellValue(cell *Cell) field.Gen {
 	v, ok := run.cells[cell.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
@@ -202,7 +202,7 @@ func (run Runtime) HasCellAssignment(cell *Cell) bool {
 
 // GetCoinValue returns the value sampled for coin by [Runtime.AdvanceRound].
 // Panics if the round containing coin has not been entered yet.
-func (run Runtime) GetCoinValue(coin *CoinField) field.FieldElem {
+func (run Runtime) GetCoinValue(coin *CoinField) field.Gen {
 	v, ok := run.coins[coin.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(

@@ -26,7 +26,7 @@ func TestElementAt_PaddingLeft(t *testing.T) {
 	// plain has 2 elements [3,3], module size 4, padding left → [pad,pad,3,3]
 	var e field.Element
 	e.SetUint64(3)
-	plain := wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase([]field.Element{e, e})}}
+	plain := wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase([]field.Element{e, e})}}
 
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
@@ -47,7 +47,7 @@ func TestElementAt_PaddingRight(t *testing.T) {
 	// plain has 2 elements [5,5], module size 4, padding right → [5,5,pad,pad]
 	var e field.Element
 	e.SetUint64(5)
-	plain := wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase([]field.Element{e, e})}}
+	plain := wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase([]field.Element{e, e})}}
 
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
@@ -148,7 +148,7 @@ func TestColumnView_EvaluateVector_Shifted(t *testing.T) {
 	for i := range 4 {
 		elems[i].SetUint64(uint64(i))
 	}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
 
 	result := col.View().Shift(1).EvaluateVector(rt)
 	require.Len(t, result.Plain, 1)
@@ -195,7 +195,7 @@ func TestColumnPosition_EvaluateSingle(t *testing.T) {
 	for i := range 4 {
 		elems[i].SetUint64(uint64(i))
 	}
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.FieldVec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
 
 	result := col.At(2).EvaluateSingle(rt)
 	var want field.Element

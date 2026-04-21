@@ -1,3 +1,4 @@
+// Package profiling provides utilities for conditional CPU profiling and execution tracing.
 package profiling
 
 import (
@@ -11,13 +12,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var SKIP_PROFILING = true
+// skipProfiling disables all profiling globally when set to true.
+var skipProfiling = true
 
 // ProfileTrace run the benchmark function with optionally, benchmarking and tracing
 // The path should neither start nor end with a "/".
 func ProfileTrace(name string, profiled, traced bool, fn func()) {
 
-	if SKIP_PROFILING {
+	if skipProfiling {
 		logrus.Warnf("Skipping the profiling globally")
 		fn()
 		return

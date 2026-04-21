@@ -14,8 +14,8 @@ func TimeIt(f func()) time.Duration {
 	return time.Since(t)
 }
 
-// LogTime registers the current time and returns a closure logging the
-// duration since [LogTimer] was called. The function will mute the
+// LogTimer registers the current time and returns a closure logging the
+// duration since it was called. The function will mute the
 // log if the duration is less than 1ms to prevent flooding.
 func LogTimer(msg string, args ...any) func() {
 	msgString := fmt.Sprintf(msg, args...)

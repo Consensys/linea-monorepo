@@ -10,33 +10,17 @@ The proving pipeline works as follows. The `go-corset` library supplies the
 circuit description and witness assignments for the zkEVM arithmetization.
 The prover extends this circuit with constraints for precompiles and public
 inputs, then compiles it using the custom proving framework in
-`./protocol/wizard` to produce an inner proof system. Inner proofs are then
-wrapped via proof composition into a Plonk circuit — the execution proof —
-defined in `./circuits`. A separate data-availability proof, also in
-`./circuits`, proves in Plonk that the execution data across a group of
-execution proofs is consistent with the data published on L1. Batches of
-execution and data-availability proofs are then aggregated by the aggregation
-circuit, which uses the BW6-761 / BLS12-377 curve pair to enable efficient
-recursive verification. A pi-interconnection subproof, embedded in the
-aggregation proof, checks consistency of the sub-proofs' public inputs.
-Finally, an emulation proof converts the aggregation proof into a proof over
-the BN254 scalar field, which is what the L1 verifier contract checks.
+`./protocol/wiop` to produce an inner proof system.
 
 ## How to Run
 
 ```bash
-# Build
-cd prover && make build
-
 # Run tests (excludes corset, includes fuzz-light)
-cd prover && go test ./... -tags nocorset,fuzzlight -timeout 30m
+cd prover && go test ./... -timeout 30m
 
 # Static checks
 cd prover && gofmt -l .
 cd prover && golangci-lint run
-
-# Build Docker image
-docker build -f prover/Dockerfile -t consensys/linea-prover:local .
 ```
 
 ## Go-Specific Conventions
@@ -45,7 +29,6 @@ docker build -f prover/Dockerfile -t consensys/linea-prover:local .
 - **Formatting:** `gofmt` (standard Go formatting, tabs)
 - **Linting:** `golangci-lint`
 - **Indentation:** tabs (per `.editorconfig` Go section)
-- **Build tags:** `nocorset` and `fuzzlight` for standard test runs
 - **Cross-compilation:** Targets Linux AMD64 (musl) and Darwin ARM64
 
 ### Key Dependencies
@@ -55,10 +38,6 @@ docker build -f prover/Dockerfile -t consensys/linea-prover:local .
 | `github.com/consensys/gnark` | ZK circuit compiler |
 | `github.com/consensys/gnark-crypto` | Cryptographic primitives |
 | `github.com/consensys/go-corset` | Constraint system |
-| `github.com/crate-crypto/go-kzg-4844` | KZG polynomial commitments |
-| `github.com/sirupsen/logrus` | Logging |
-| `github.com/spf13/cobra` | CLI framework |
-| `github.com/prometheus/client_golang` | Metrics |
 
 ### Directory Structure
 

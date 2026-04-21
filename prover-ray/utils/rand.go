@@ -22,4 +22,3 @@ func NewRandSource(seed int64) *rand.ChaCha8 {
 	copy(seed32Bytes[:], seed8Bytes[:])
 	return rand.NewChaCha8(seed32Bytes)
 }
-

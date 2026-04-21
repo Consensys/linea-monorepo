@@ -138,8 +138,7 @@ func TestArithmeticOperation_ScalarEval(t *testing.T) {
 	rt := wiop.NewRuntime(sys)
 
 	three := field.NewFromString("3")
-	var e3 field.Element
-	e3 = three
+	e3 := three
 	rt.AssignCell(cell, field.ElemFromBase(e3))
 
 	// Constant 2.
@@ -149,30 +148,30 @@ func TestArithmeticOperation_ScalarEval(t *testing.T) {
 	cases := []struct {
 		name string
 		expr wiop.Expression
-		want func() field.FieldElem
+		want func() field.Gen
 	}{
-		{"add", wiop.Add(cell, k2), func() field.FieldElem {
+		{"add", wiop.Add(cell, k2), func() field.Gen {
 			return field.ElemFromBase(three).Add(field.ElemFromBase(two))
 		}},
-		{"sub", wiop.Sub(cell, k2), func() field.FieldElem {
+		{"sub", wiop.Sub(cell, k2), func() field.Gen {
 			return field.ElemFromBase(three).Sub(field.ElemFromBase(two))
 		}},
-		{"mul", wiop.Mul(cell, k2), func() field.FieldElem {
+		{"mul", wiop.Mul(cell, k2), func() field.Gen {
 			return field.ElemFromBase(three).Mul(field.ElemFromBase(two))
 		}},
-		{"double", wiop.Double(cell), func() field.FieldElem {
+		{"double", wiop.Double(cell), func() field.Gen {
 			return field.ElemFromBase(three).Add(field.ElemFromBase(three))
 		}},
-		{"square", wiop.Square(k2), func() field.FieldElem {
+		{"square", wiop.Square(k2), func() field.Gen {
 			return field.ElemFromBase(two).Square()
 		}},
-		{"negate", wiop.Negate(k2), func() field.FieldElem {
+		{"negate", wiop.Negate(k2), func() field.Gen {
 			return field.ElemFromBase(two).Neg()
 		}},
-		{"inverse", wiop.Inverse(k2), func() field.FieldElem {
+		{"inverse", wiop.Inverse(k2), func() field.Gen {
 			return field.ElemFromBase(two).Inverse()
 		}},
-		{"div", wiop.Div(cell, k2), func() field.FieldElem {
+		{"div", wiop.Div(cell, k2), func() field.Gen {
 			return field.ElemFromBase(three).Div(field.ElemFromBase(two))
 		}},
 	}

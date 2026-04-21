@@ -1,3 +1,4 @@
+// Package files provides utilities for reading, writing, and compressing files.
 package files
 
 import (
@@ -44,9 +45,7 @@ func CheckDirPath(dirPath string) error {
 	return nil
 }
 
-// TODO @gbotrel most of this "MustXXX" functions must go away and be replaced by proper error handling
-
-// opens an existing file with read access
+// MustRead opens an existing file with read access or panics.
 func MustRead(path string) *os.File {
 	f, err := os.Open(path)
 	if err != nil {
@@ -56,8 +55,7 @@ func MustRead(path string) *os.File {
 	return f
 }
 
-// create a file and the parent's folder if necessary. Overwrite the file
-// if it already exists.
+// MustOverwrite creates a file and its parent directory if necessary, overwriting any existing file.
 func MustOverwrite(p string) *os.File {
 
 	/*
@@ -80,14 +78,14 @@ func MustOverwrite(p string) *os.File {
 	return f
 }
 
-// Wrapper for os.File allowing to close cleanly
+// ZipFile wraps os.File with a gzip reader/writer to allow clean close handling.
 type ZipFile struct {
 	f *os.File
 	*gzip.Writer
 	*gzip.Reader
 }
 
-// Read a .gz archive or panic
+// MustReadCompressed reads a .gz archive or panics.
 func MustReadCompressed(path string) *ZipFile {
 	f := MustRead(path)
 	unzipped, err := gzip.NewReader(f)
@@ -107,7 +105,7 @@ func (z *ZipFile) Close() error {
 	if z.Writer != nil {
 		// For some reason, forgetting to call `Flush` here causes
 		// `EOF`` errors.
-		if err := z.Writer.Flush(); err != nil {
+		if err := z.Flush(); err != nil {
 			return err
 		}
 
@@ -124,9 +122,5 @@ func (z *ZipFile) Close() error {
 	}
 
 	// Close the file
-	if err := z.f.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return z.f.Close()
 }

@@ -13,7 +13,7 @@ import (
 //
 // The subgroup size n = len(p) must be a power of two not exceeding 2^MaxOrderRoot.
 // z must not be a root of unity.
-func EvalLagrange(p field.FieldVec, z field.FieldElem) field.FieldElem {
+func EvalLagrange(p field.Vec, z field.Gen) field.Gen {
 	if p.Len() == 0 {
 		return field.ElemZero()
 	}
@@ -35,12 +35,12 @@ func EvalLagrange(p field.FieldVec, z field.FieldElem) field.FieldElem {
 //
 // For k evaluation points this saves approximately (k-1)·n multiplications
 // compared to k individual calls to [EvalLagrange].
-func EvalLagrangeBatch(p field.FieldVec, zs []field.FieldElem) []field.FieldElem {
+func EvalLagrangeBatch(p field.Vec, zs []field.Gen) []field.Gen {
 	if len(zs) == 0 {
 		return nil
 	}
 	if len(zs) == 1 {
-		return []field.FieldElem{EvalLagrange(p, zs[0])}
+		return []field.Gen{EvalLagrange(p, zs[0])}
 	}
 	n := p.Len()
 	gen := field.RootOfUnityBy(n)
@@ -56,7 +56,7 @@ func EvalLagrangeBatch(p field.FieldVec, zs []field.FieldElem) []field.FieldElem
 		omegaPowers[i].Mul(&omegaPowers[i-1], &gen)
 	}
 
-	results := make([]field.FieldElem, len(zs))
+	results := make([]field.Gen, len(zs))
 	if p.IsBase() {
 		weightedP := make([]field.Element, n)
 		pBase := p.AsBase()
@@ -102,19 +102,19 @@ func EvalLagrangeBatch(p field.FieldVec, zs []field.FieldElem) []field.FieldElem
 //
 // cardinality must be a power of two not exceeding 2^MaxOrderRoot; z must not
 // be a root of unity.
-func ComputeLagrangeAtZ(z field.FieldElem, cardinality uint64) []field.FieldElem {
+func ComputeLagrangeAtZ(z field.Gen, cardinality uint64) []field.Gen {
 	gen := field.RootOfUnityBy(int(cardinality))
 	n := int(cardinality)
 	if z.IsBase() {
 		res := computeLagrangeAtZBase(z.AsBase(), gen, n)
-		out := make([]field.FieldElem, n)
+		out := make([]field.Gen, n)
 		for i, e := range res {
 			out[i] = field.ElemFromBase(e)
 		}
 		return out
 	}
 	res := computeLagrangeAtZExt(z.AsExt(), gen, n)
-	out := make([]field.FieldElem, n)
+	out := make([]field.Gen, n)
 	for i, e := range res {
 		out[i] = field.ElemFromExt(e)
 	}
