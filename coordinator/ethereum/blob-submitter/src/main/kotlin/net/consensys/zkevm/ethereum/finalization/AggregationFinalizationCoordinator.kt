@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import linea.contract.l1.LineaSmartContractClient
 import linea.domain.BlobRecord
 import linea.domain.ProofToFinalize
+import linea.kotlin.ZERO_HASH_32
 import linea.kotlin.trimToMinutePrecision
 import linea.persistence.AggregationsRepository
 import linea.persistence.BlobsRepository
@@ -188,7 +189,7 @@ class AggregationFinalizationCoordinator(
           aggregationProof = aggregationProof,
           aggregationEndBlob = aggregationEndBlob,
           parentShnarf = parentShnarf,
-          parentL1RollingHash = ByteArray(32),
+          parentL1RollingHash = ZERO_HASH_32,
           parentL1RollingHashMessageNumber = 0,
         )
       }
