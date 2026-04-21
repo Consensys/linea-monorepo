@@ -22,8 +22,9 @@ import kotlin.collections.map
  * - Trigger conflation at (ftx.blockNumber - 1) when inclusionResult != Included
  * - Do NOT trigger if inclusionResult == Included (successfully executed FTXs)
  *
- * Note: This calculator reads from the queue without consuming.
- * AggregationCalculatorByForcedTransaction is responsible for consuming items.
+ * Note: This calculator has its own dedicated queue (not shared with the aggregation calculator)
+ * and consumes entries via poll(). This prevents the aggregation calculator from draining
+ * entries before the conflation calculator reads them.
  *
  * This ensures that:
  * 1. Failed FTXs are isolated in their own conflation for invalidity proof generation
@@ -44,21 +45,20 @@ class ConflationCalculatorByForcedTransaction(
 
   @Synchronized
   override fun checkOverflow(blockCounters: BlockCounters): ConflationCalculator.OverflowTrigger? {
-    // First, read all available processed FTXs from the queue (without consuming)
-    log.debug(
-      "checking ftx conflation trigger: blockNumber={} ftxProcessed={}",
-      blockCounters.blockNumber,
-      processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
-    )
-
     readProcessedFtxs()
+
+    log.debug(
+      "checking ftx conflation trigger: blockNumber={} pendingTriggers={}",
+      blockCounters.blockNumber,
+      pendingTriggerBlocks.sorted(),
+    )
 
     // Check if this block should trigger conflation
     return if (pendingTriggerBlocks.contains(blockCounters.blockNumber)) {
       log.info(
-        "FTX conflation detected at block={} ftxExecuted={}",
+        "FTX conflation trigger at block={} pendingTriggers={}",
         blockCounters.blockNumber,
-        processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
+        pendingTriggerBlocks.sorted(),
       )
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.FORCED_TRANSACTION,
@@ -70,31 +70,19 @@ class ConflationCalculatorByForcedTransaction(
   }
 
   private fun readProcessedFtxs() {
-    // Read all available FTX statuses from the queue WITHOUT consuming
-    // they cannot be consumed, it's AggregationCalculatorByForcedTransaction responsibility to consume them
-    val processedFtxs = processedFtxQueue.toList()
+    // Consume from dedicated queue — safe because this queue is not shared with the aggregation calculator.
+    val newFtxs = mutableListOf<ForcedTransactionInclusionStatus>()
+    while (true) {
+      newFtxs.add(processedFtxQueue.poll() ?: break)
+    }
 
-    if (processedFtxs.isEmpty()) {
+    if (newFtxs.isEmpty()) {
       return
     }
 
-    // Only add trigger blocks for FTXs that were NOT successfully included
-    val highestPendingTrigger = pendingTriggerBlocks.maxOrNull() ?: 0UL
-    val newTriggerBlocks = processedFtxs
-      .filter { ftx ->
-        ftx.blockNumber > highestPendingTrigger
-      }
-      .map { ftx ->
-        // ftx.blockNumber is always greater than 0 (0 is genesis block),
-        // In practice, greater than 2 most of the cases because network bootstrapping
-        // takes a few blocks to deploy L2 protocol contracts
-        ftx.blockNumber
-      }
-      .toSet()
-
-    // Only update if we have new trigger blocks not already tracked
+    val newTriggerBlocks = newFtxs.map { it.blockNumber }.toSet()
     pendingTriggerBlocks.addAll(newTriggerBlocks)
-    logNewFtxConflationTriggers(newTriggerBlocks, processedFtxs)
+    logNewFtxConflationTriggers(newTriggerBlocks, newFtxs)
   }
 
   fun logNewFtxConflationTriggers(
