@@ -7,7 +7,7 @@ import io.vertx.micrometer.backends.NoopBackendRegistry
 import io.vertx.sqlclient.SqlClient
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.DatabaseConfig
-import linea.persistence.ftx.DisabledForcedTransactionsDao
+import linea.persistence.DisabledForcedTransactionsDao
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -64,18 +64,6 @@ class CoordinatorApp(
     configs = configs,
     metricsFacade = MicrometerMetricsFacade(NoopBackendRegistry.INSTANCE.meterRegistry, "conflationbacktesting"),
   )
-  private val api =
-    Api(
-      configs = Api.Config(
-        observabilityPort = configs.api.observabilityPort,
-        jsonRpcPort = configs.api.jsonRpcPort,
-        jsonRpcPath = configs.api.jsonRpcPath,
-        jsonRpcServerVerticles = configs.api.jsonRpcServerVerticles,
-      ),
-      vertx = vertx,
-      conflationBacktestingService = conflationBacktestingService,
-      metricsFacade = micrometerMetricsFacade,
-    )
 
   private val persistenceRetryer =
     PersistenceRetryer(
@@ -158,6 +146,20 @@ class CoordinatorApp(
       smartContractErrors = configs.smartContractErrors,
       metricsFacade = micrometerMetricsFacade,
       clock = this.clock,
+    )
+
+  private val api =
+    Api(
+      configs = Api.Config(
+        observabilityPort = configs.api.observabilityPort,
+        jsonRpcPort = configs.api.jsonRpcPort,
+        jsonRpcPath = configs.api.jsonRpcPath,
+        jsonRpcServerVerticles = configs.api.jsonRpcServerVerticles,
+      ),
+      vertx = vertx,
+      conflationBacktestingService = conflationBacktestingService,
+      metricsFacade = micrometerMetricsFacade,
+      conflationCheckpointResumeLatch = l1App::signalTargetCheckpointResumeFromApi,
     )
 
   private val requestFileCleanup =

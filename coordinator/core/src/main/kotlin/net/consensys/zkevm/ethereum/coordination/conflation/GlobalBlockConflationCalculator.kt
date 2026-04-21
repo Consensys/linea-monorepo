@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.domain.BlockCounters
+import linea.domain.ConflationCalculationResult
+import linea.domain.ConflationTrigger
 import net.consensys.linea.traces.TracesCounters
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.ConflationCalculationResult
-import net.consensys.zkevm.domain.ConflationTrigger
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -73,10 +73,17 @@ class GlobalBlockConflationCalculator(
       inflightConflation.counters,
     )
     val triggers =
-      calculators.mapNotNull {
-        val overflowTrigger = it.checkOverflow(blockCounters)
-        log.trace("CHECK: calculator={}, blockNumber={}, trigger={}", it.id, blockCounters.blockNumber, overflowTrigger)
-        overflowTrigger
+      calculators.mapNotNull { calculator ->
+        calculator
+          .checkOverflow(blockCounters)
+          .also { overflowTrigger ->
+            log.trace(
+              "CHECK: calculator={}, blockNumber={}, trigger={}",
+              calculator.id,
+              blockCounters.blockNumber,
+              overflowTrigger,
+            )
+          }
       }.sortedBy { it.trigger.triggerPriority }
 
     if (triggers.isNotEmpty()) {

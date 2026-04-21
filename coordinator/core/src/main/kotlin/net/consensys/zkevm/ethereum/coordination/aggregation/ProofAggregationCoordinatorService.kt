@@ -2,20 +2,20 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Vertx
 import linea.LongRunningService
+import linea.clients.ProofAggregationProverClientV2
+import linea.domain.Aggregation
+import linea.domain.AggregationProofIndex
+import linea.domain.BlobAndBatchCounters
+import linea.domain.BlobsToAggregate
 import linea.domain.BlockIntervals
+import linea.domain.CompressionProofIndex
+import linea.domain.ProofsToAggregate
 import linea.domain.toBlockIntervalsString
+import linea.metrics.LineaMetricsCategory
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
-import net.consensys.zkevm.domain.Aggregation
-import net.consensys.zkevm.domain.AggregationProofIndex
-import net.consensys.zkevm.domain.BlobAndBatchCounters
-import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -33,6 +33,7 @@ class ProofAggregationCoordinatorService(
   private var nextBlockNumberToPoll: Long,
   private val aggregationCalculator: AggregationCalculator,
   private val aggregationProofHandler: AggregationProofHandler,
+  private val aggregationProofRequestHandler: AggregationProofRequestHandler? = null,
   private val invalidityProofProvider: InvalidityProofProvider,
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
@@ -208,7 +209,17 @@ class ProofAggregationCoordinatorService(
             batchCount = batchCount.toULong(),
             aggregationProof = null,
           )
-        aggregationProofPoller.addProofRequestsInProgressForPolling(aggregationProofIndex, unProvenAggregation)
+        try {
+          aggregationProofRequestHandler?.acceptNewAggregationProofRequest(
+            proofIndex = aggregationProofIndex,
+            unProvenAggregation = unProvenAggregation,
+          )
+        } finally {
+          aggregationProofPoller.addProofRequestsInProgressForPolling(
+            aggregationProofIndex,
+            unProvenAggregation,
+          )
+        }
       }
   }
 
@@ -269,6 +280,7 @@ class ProofAggregationCoordinatorService(
       maxBlobsPerAggregation: UInt?,
       startBlockNumberInclusive: ULong,
       aggregationProofHandler: AggregationProofHandler,
+      aggregationProofRequestHandler: AggregationProofRequestHandler? = null,
       invalidityProofProvider: InvalidityProofProvider,
       aggregationL2StateProvider: AggregationL2StateProvider,
       consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
@@ -346,6 +358,7 @@ class ProofAggregationCoordinatorService(
           nextBlockNumberToPoll = startBlockNumberInclusive.toLong(),
           aggregationCalculator = globalAggregationCalculator,
           aggregationProofHandler = aggregationProofHandler,
+          aggregationProofRequestHandler = aggregationProofRequestHandler,
           invalidityProofProvider = invalidityProofProvider,
           consecutiveProvenBlobsProvider = consecutiveProvenBlobsProvider,
           proofAggregationClient = proofAggregationClient,

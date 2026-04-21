@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.domain.BlockCounters
+import linea.domain.ConflationTrigger
 import net.consensys.linea.traces.fakeTracesCountersV2
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.ConflationTrigger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,16 +20,15 @@ class ConflationCalculatorByTargetBlockNumbersTest {
 
   @Test
   fun `checkOverflow should return overflow trigger for targetBlockNumber + 1`() {
-    for (i in 1uL..targetBlockNumber1) {
-      assertThat(calculator.checkOverflow(blockCounters(i))).isNull()
-    }
+    assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber1))).isNull()
     assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber1 + 1uL)))
-      .isEqualTo((ConflationCalculator.OverflowTrigger(ConflationTrigger.TARGET_BLOCK_NUMBER, false)))
-    for (i in targetBlockNumber1 + 2uL..targetBlockNumber2) {
-      assertThat(calculator.checkOverflow(blockCounters(i))).isNull()
-    }
+      .isEqualTo(ConflationCalculator.OverflowTrigger(ConflationTrigger.TARGET_BLOCK_NUMBER, false))
+    assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber1 + 2UL))).isNull()
+
+    assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber2))).isNull()
     assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber2 + 1uL)))
-      .isEqualTo((ConflationCalculator.OverflowTrigger(ConflationTrigger.TARGET_BLOCK_NUMBER, false)))
+      .isEqualTo(ConflationCalculator.OverflowTrigger(ConflationTrigger.TARGET_BLOCK_NUMBER, false))
+    assertThat(calculator.checkOverflow(blockCounters(targetBlockNumber2 + 2UL))).isNull()
   }
 
   private fun blockCounters(blockNumber: ULong): BlockCounters {

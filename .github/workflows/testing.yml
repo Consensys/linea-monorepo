@@ -62,16 +62,22 @@ jobs:
   native-yield-automation-service:
     uses: ./.github/workflows/native-yield-automation-service-testing.yml
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   lido-governance-monitor:
     uses: ./.github/workflows/lido-governance-monitor-testing.yml
     if: ${{ inputs.lido_governance_monitor_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ inputs.postman_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   transaction-exclusion-api:
@@ -110,7 +116,7 @@ jobs:
 
   # Run Jacoco report after all JVM tests complete
   jacoco-report:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Generate Jacoco Coverage Report
     # Run if at least one JVM test job completed (whether passed, failed, or cancelled)
     # Don't run if all test jobs were skipped due to no changes
@@ -173,7 +179,7 @@ jobs:
         run: |
           ./gradlew jacocoRootReport
       - name: Upload Jacoco test coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
           if-no-files-found: error
@@ -181,7 +187,7 @@ jobs:
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 #v6.0.0
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
