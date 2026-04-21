@@ -42,10 +42,9 @@ on:
         required: false
 
 jobs:
-<<<<<<< HEAD
   ai-analysis:
     if: ${{ inputs.enable_ai_analysis }}
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     timeout-minutes: 10
     permissions:
       contents: read
@@ -54,13 +53,6 @@ jobs:
       summary: ${{ steps.extract_summary.outputs.summary }}
       has_analysis: ${{ steps.extract_summary.outputs.has_analysis }}
       artifact_url: ${{ steps.extract_summary.outputs.artifact_url }}
-||||||| a6ed80399
-  notify:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-=======
-  notify:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
->>>>>>> main
 
     steps:
       - name: Checkout repository
@@ -248,7 +240,7 @@ jobs:
     # always() so Slack still runs when ai-analysis is skipped, fails, or succeeds; needs still gates ordering.
     needs: [ai-analysis]
     if: always()
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Compute context values
         id: ctx
