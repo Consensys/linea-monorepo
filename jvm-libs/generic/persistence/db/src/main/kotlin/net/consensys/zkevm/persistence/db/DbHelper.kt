@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.db
 
+import java.sql.SQLException
 import java.time.Clock
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -34,7 +35,7 @@ object DbHelper {
         ps.setString(1, db)
         ps.execute()
       }
-    } catch (ignored: Exception) {
+    } catch (ignored: SQLException) {
       // The current connection will be dropped as well and the exception will be thrown
     }
   }

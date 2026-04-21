@@ -444,8 +444,8 @@ class ConflationBacktestingApp(
     ).thenApply {
       try {
         blobCompressor.close()
-      } catch (_: Throwable) {
-        // Ignored, we want to attempt to close the compressor but it should not prevent the rest of the shutdown
+      } catch (e: Exception) {
+        log.warn("Failed to close blobCompressor during shutdown: errorMessage={}", e.message, e)
       }
       log.info("Conflation backtesting stopped successfully")
     }

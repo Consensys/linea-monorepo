@@ -26,8 +26,12 @@ class JvmTimer(
     val timerTask = timerTask {
       try {
         task.run()
-      } catch (e: Throwable) {
-        errorHandler(e)
+      } catch (e: Exception) {
+        try {
+          errorHandler(e)
+        } catch (handlerEx: Exception) {
+          System.err.println("JvmTimer[$name] errorHandler threw: ${handlerEx.message}")
+        }
       }
     }
     when (timerSchedule) {

@@ -92,7 +92,7 @@ class GlobalBlobAwareConflationCalculator(
   }
 
   private fun recordBatchMetrics(conflation: ConflationCalculationResult) {
-    runCatching {
+    try {
       val filteredBlockCounters =
         blobBlockCounters
           .filter { conflation.blocksRange.contains(it.blockNumber) }
@@ -117,13 +117,13 @@ class GlobalBlobAwareConflationCalculator(
           0.0
         },
       )
-    }.onFailure {
-      log.error("Error when recording batch metrics: errorMessage={}", it.message)
+    } catch (e: Exception) {
+      log.error("Error when recording batch metrics: errorMessage={}", e.message)
     }
   }
 
   private fun recordBlobMetrics(blobInterval: BlockInterval, blobCompressedDataSize: Int) {
-    runCatching {
+    try {
       val filteredBlockCounters =
         blobBlockCounters
           .filter { blobInterval.blocksRange.contains(it.blockNumber) }
@@ -134,8 +134,8 @@ class GlobalBlobAwareConflationCalculator(
         filteredBlockCounters.sumOf { it.blockRLPEncoded.size }.toDouble(),
       )
       compressedDataSizeInBlobHistogram.record(blobCompressedDataSize.toDouble())
-    }.onFailure {
-      log.error("Error when recording blob metrics: errorMessage={}", it.message)
+    } catch (e: Exception) {
+      log.error("Error when recording blob metrics: errorMessage={}", e.message)
     }
   }
 
