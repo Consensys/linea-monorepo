@@ -1,7 +1,6 @@
 package linea.ftx
 
 import linea.contract.events.ForcedTransactionAddedEvent
-import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
 import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager

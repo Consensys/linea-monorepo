@@ -132,6 +132,7 @@ internal class ForcedTransactionsAppImpl(
 ) : ForcedTransactionsApp {
   private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
   internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
+
   // Separate queues per calculator: prevents the aggregation calculator (which consumes via poll())
   // from draining entries before the conflation calculator reads them.
   private val conflationFtxQueue: Queue<ForcedTransactionInclusionStatus> = LinkedBlockingQueue(10_000)

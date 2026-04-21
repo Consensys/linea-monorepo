@@ -6,7 +6,6 @@ import linea.domain.ConflationTrigger
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.linea.traces.TracesCountersV4
-import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCounters
 import org.assertj.core.api.Assertions.assertThat
@@ -255,8 +254,11 @@ class ConflationCalculatorByForcedTransactionTest {
 
     // Aggregation processes blob [20..20] — drains BOTH FTX#1 and FTX#2 from its queue
     val blob20 = BlobCounters(
-      startBlockNumber = 20UL, endBlockNumber = 20UL,
-      numberOfBatches = 1u, startBlockTimestamp = timestamp, endBlockTimestamp = timestamp,
+      startBlockNumber = 20UL,
+      endBlockNumber = 20UL,
+      numberOfBatches = 1u,
+      startBlockTimestamp = timestamp,
+      endBlockTimestamp = timestamp,
       expectedShnarf = ByteArray(0),
     )
     val aggTrigger = aggregationCalc.checkAggregationTrigger(blob20)
