@@ -313,6 +313,13 @@ type Invalidity struct {
 	// MaxRlpByteSize specifies the maximum size of the RLP-encoded data,
 	// in bytes (this is the payload size without signature)
 	MaxRlpByteSize int `mapstructure:"max_rlp_byte_size" validate:"gte=0"`
+
+	// LimitlessWithDebug is only looked at when the limitless invalidity prover is
+	// activated. When set to true, the limitless invalidity prover will only run in
+	// debug mode and not produce any proof. This is useful to investigate
+	// bugs in the limitless invalidity prover. The field is optional and defaults to
+	// false.
+	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
 type Aggregation struct {
