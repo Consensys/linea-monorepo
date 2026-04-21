@@ -47,18 +47,17 @@ def mavenLocalBase = providers.systemProperty('maven.repo.local')
     .get()
 
 // Expose Besu version/materialization helper for other modules that need a Besu version
-// during dependency resolution.
+// during dependency resolution
 //
 // Fast path: cached version file hit, BOM already in maven -> returns immediately.
 // Medium path: cached version file missed, resolve besu version by checking out besu repo,
-//              BOM available in a remote maven repo -> skip build/publish besu.
+//              BOM available in a remote maven repo -> skip build/publish besu in buildAndPublishBesuAction.
 // Slow path: (unpublished commit, nothing local): runs the full resolve besu version and besu build+publish.
 rootProject.ext.resolveBesuVersion = {
-  def resolvedVersion = tryParseCachedVersion(cachedContentProvider.getOrNull(), besuCommit)
+  def resolvedVersion = readCachedBesuVersion(cachedResolvedFile, besuCommit)
 
   if (!resolvedVersion) {
-    resolvedVersion = resolveBesuVersionViaCheckout(providers, besuCommit, rootDirFile)
-    writeCachedBesuVersion(cachedResolvedFile, besuCommit, resolvedVersion)
+    resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedResolvedFile)
   }
 
   if (!isBesuAvailableInMavenLocal(logger, resolvedVersion, mavenLocalBase)
@@ -144,32 +143,25 @@ tasks.named('clean').configure { t ->
 }
 
 /**
- * Pure Properties parse of the cache file's content. Takes the content as a String (typically
- * obtained via providers.fileContents so the read is tracked by the configuration cache).
- * Returns the cached besuVersion only if the recorded besuCommit matches the expected one.
+ * Reads the cached resolved Besu version from the single Properties-format cache file
+ * when the recorded {@code besuCommit} matches the expected one. Returns null when the
+ * cache is missing, malformed, or stale.
  */
-static String tryParseCachedVersion(String content, String expectedCommit) {
-  if (!content) return null
+static String readCachedBesuVersion(File cachedResolvedFile, String expectedCommit) {
+  if (!cachedResolvedFile.exists()) return null
   def props = new Properties()
-  new StringReader(content).withCloseable { props.load(it) }
+  cachedResolvedFile.withInputStream { props.load(it) }
   def cachedCommit = props.getProperty('besuCommit')?.trim()
   def cachedVersion = props.getProperty('besuVersion')?.trim()
-  return (cachedCommit == expectedCommit && cachedVersion) ? cachedVersion : null
-}
-
-/**
- * Direct-File reader used by task actions (execution phase). NOT configuration-cache-safe
- * — call only from task doLast blocks.
- */
-static String readCachedBesuVersionFromFile(File cachedResolvedFile, String expectedCommit) {
-  if (!cachedResolvedFile.exists()) return null
-  return tryParseCachedVersion(cachedResolvedFile.text, expectedCommit)
+  if (cachedCommit == expectedCommit && cachedVersion) {
+    return cachedVersion
+  }
+  return null
 }
 
 /**
  * Writes the (besuCommit, besuVersion) pair to the single cache file with a header that
- * warns humans not to edit it manually. Only call from task actions — writes at config
- * time are untracked outputs as far as the configuration cache is concerned.
+ * warns humans not to edit it manually.
  */
 static void writeCachedBesuVersion(File cachedResolvedFile, String besuCommit, String besuVersion) {
   cachedResolvedFile.text =
@@ -182,11 +174,14 @@ static void writeCachedBesuVersion(File cachedResolvedFile, String besuCommit, S
 }
 
 /**
- * Runs the checkout script via providers.exec. Configuration-cache-safe: Gradle tracks the
- * command line, env, and captured stdout as inputs. Does no direct file I/O — writes of
- * the cache file are the responsibility of the caller (task action only).
+ * Read the resolved version from the cache file when the cached commit matches besuCommit.
+ * Falls back to running the checkout script via {@code providers.exec} (configuration-cache
+ * safe — Gradle records the external process output) if the cache is missing or stale.
  */
-static String resolveBesuVersionViaCheckout(providers, String besuCommit, File rootDir) {
+static String resolveBesuVersionCached(providers, String besuCommit, File rootDir, File cachedResolvedFile) {
+  def cached = readCachedBesuVersion(cachedResolvedFile, besuCommit)
+  if (cached) return cached
+
   def outputText = providers.exec { spec ->
     spec.workingDir(rootDir)
     spec.environment('BESU_DIR', rootDir.absolutePath + '/tmp/besu-eth')
@@ -194,19 +189,8 @@ static String resolveBesuVersionViaCheckout(providers, String besuCommit, File r
     spec.environment('VERSION_LABEL', '')
     spec.commandLine('bash', rootDir.absolutePath + '/linea-besu/scripts/checkout-and-resolve-version.sh')
   }.standardOutput.asText.get()
-  return outputText.trim().readLines().last()
-}
 
-/**
- * Read the resolved version from the cache file when the cached commit matches besuCommit.
- * Falls back to running the checkout script via {@code providers.exec} if the cache is
- * missing or stale, and writes the refreshed value back. Uses direct File I/O — safe only
- * from task actions.
- */
-static String resolveBesuVersionCached(providers, String besuCommit, File rootDir, File cachedResolvedFile) {
-  def cached = readCachedBesuVersionFromFile(cachedResolvedFile, besuCommit)
-  if (cached) return cached
-  def ver = resolveBesuVersionViaCheckout(providers, besuCommit, rootDir)
+  def ver = outputText.trim().readLines().last()
   writeCachedBesuVersion(cachedResolvedFile, besuCommit, ver)
   return ver
 }
