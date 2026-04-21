@@ -1,8 +1,8 @@
 package linea.ftx.conflation
 
+import linea.domain.BlobCounters
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
-import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTrigger
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
@@ -65,9 +65,6 @@ class AggregationCalculatorByForcedTransaction(
     // Only add trigger blocks for FTXs that were NOT successfully included
     // Trigger at (blockNumber - 1) to seal aggregation before failed FTX execution block
     val newTriggerBlocks = processedFtxs
-      .filter { ftx ->
-        ftx.inclusionResult != ForcedTransactionInclusionResult.Included
-      }
       .map { ftx ->
         // ftx.blockNumber is always greater than 0 (0 is genesis block),
         // In practice, greater than 2 most of the cases because network bootstrapping
