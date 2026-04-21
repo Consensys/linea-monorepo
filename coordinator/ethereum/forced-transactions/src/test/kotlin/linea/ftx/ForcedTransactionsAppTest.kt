@@ -4,14 +4,19 @@ import build.linea.clients.StateManagerAccountProofClient
 import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.clients.InvalidityProverClientV1
+import linea.clients.TracesConflationVirtualBlockClientV1
+import linea.contract.events.FactoryForcedTransactionAddedEvent
 import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.FakeLineaRollupSmartContractClient
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
-import linea.contrat.events.FactoryForcedTransactionAddedEvent
+import linea.domain.BlobCounters
+import linea.domain.BlockCounters
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.ConflationTrigger
 import linea.domain.EthLog
 import linea.ethapi.EthApiBlockClient
 import linea.ethapi.FakeEthApiClient
@@ -19,17 +24,12 @@ import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
 import linea.ftx.conflation.SafeBlockNumberUpdateListener
 import linea.log4j.configureLoggers
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.FakeForcedTransactionsDao
-import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV4
 import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
-import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -156,6 +156,7 @@ class ForcedTransactionsAppTest {
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
     app.start().get()
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
+    app.stop().get()
   }
 
   @Test
@@ -246,6 +247,7 @@ class ForcedTransactionsAppTest {
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
+    app.stop().get()
   }
 
   @Test
@@ -291,6 +293,7 @@ class ForcedTransactionsAppTest {
     assertThat(ftxClient.ftxReceivedIds).isEmpty()
     // Verify no ftx records were created
     assertThat(fxtDao.list().get()).isEmpty()
+    app.stop().get()
   }
 
   @Test
@@ -493,6 +496,7 @@ class ForcedTransactionsAppTest {
 
     // Safe block number should be updated to the highest processed FTX block number
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(2_030UL)
+    app.stop().get()
   }
 
   @Test
@@ -640,6 +644,7 @@ class ForcedTransactionsAppTest {
       10UL, // locked at L2 block number when processing FTX 1
       null, // released after processing FTX 1
     )
+    app.stop().get()
   }
 
   @Test
@@ -715,7 +720,7 @@ class ForcedTransactionsAppTest {
         l2DeadLine = 100UL,
       ),
       createFtxAddedEvent(
-        l1BlockNumber = 200UL,
+        l1BlockNumber = 101UL,
         ftxNumber = 2UL,
         l2DeadLine = 200UL,
       ),
@@ -757,8 +762,8 @@ class ForcedTransactionsAppTest {
     )
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 2UL,
-      l2BlockNumber = 200UL,
-      inclusionResult = ForcedTransactionInclusionResult.Included,
+      l2BlockNumber = 101UL,
+      inclusionResult = ForcedTransactionInclusionResult.BadNonce,
     )
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 3UL,
@@ -815,16 +820,23 @@ class ForcedTransactionsAppTest {
     }
     assertThat(conflationTriggers).isEqualTo(
       listOf(
-        99UL to ConflationTrigger.FORCED_TRANSACTION,
-        499UL to ConflationTrigger.FORCED_TRANSACTION,
+        100UL to ConflationTrigger.FORCED_TRANSACTION,
+        101UL to ConflationTrigger.FORCED_TRANSACTION,
+        300UL to ConflationTrigger.FORCED_TRANSACTION,
+        400UL to ConflationTrigger.FORCED_TRANSACTION,
+        500UL to ConflationTrigger.FORCED_TRANSACTION,
       ),
     )
     assertThat(aggregationTriggers).isEqualTo(
       listOf(
         99UL to AggregationTriggerType.FORCED_TRANSACTION,
+        100UL to AggregationTriggerType.FORCED_TRANSACTION,
+        299UL to AggregationTriggerType.FORCED_TRANSACTION,
+        399UL to AggregationTriggerType.FORCED_TRANSACTION,
         499UL to AggregationTriggerType.FORCED_TRANSACTION,
       ),
     )
+    app.stop().get()
   }
 
   private fun EthApiBlockClient.blockTimestamp(blockParameter: BlockParameter): Instant =

@@ -29,17 +29,15 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     # ~1.5 mins saved vs small
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Transaction exclusion api tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
-        with:
-          distribution: temurin
-          java-version: 21
-      - name: Build besu from source 
+
+      - name: Build besu from source
         shell: bash
         run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
         env:
@@ -63,7 +61,7 @@ jobs:
           ./gradlew transaction-exclusion-api:app:integrationTestAllNeeded
       - name: Upload Jacoco execution data
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-transaction-exclusion-api-exec
           path: |

@@ -32,6 +32,7 @@ apply from: lineaTracerProject.file("gradle/lint.gradle")
 
 dependencies {
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+  implementation libs.commonsIo
   testImplementation project(':tracer:testing')
   testImplementation 'org.assertj:assertj-core'
   testImplementation 'org.junit.platform:junit-platform-launcher'
@@ -55,9 +56,9 @@ jar {
   manifest {
     attributes(
         'Specification-Title': archiveBaseName.get(),
-        'Specification-Version': calculateVersion(),
+        'Specification-Version': version,
         'Implementation-Title': archiveBaseName.get(),
-        'Implementation-Version': calculateVersion()
+        'Implementation-Version': version
         )
   }
 }

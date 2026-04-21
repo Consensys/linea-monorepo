@@ -3,18 +3,27 @@ package net.consensys.zkevm.coordinator.app
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
 import linea.LongRunningService
-import linea.contract.l1.LineaRollupSmartContractClientReadOnly
+import linea.contract.l1.FinalizedStateDataProvider
+import linea.contract.l1.LineaSmartContractClient
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.Type2StateProofManagerConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
+import linea.domain.BlobSubmittedEvent
 import linea.domain.BlockNumberAndHash
+import linea.domain.FinalizationSubmittedEvent
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
+import linea.finalization.FinalizationHandler
+import linea.finalization.FinalizationMonitor
 import linea.kotlin.toKWeiUInt
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.metrics.LineaMetricsCategory
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
 import linea.web3j.SmartContractErrors
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -38,14 +47,10 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1Calcula
 import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
 import net.consensys.zkevm.ethereum.coordination.LatestBlobSubmittedBlockNumberTracker
@@ -53,14 +58,9 @@ import net.consensys.zkevm.ethereum.coordination.LatestFinalizationSubmittedBloc
 import net.consensys.zkevm.ethereum.coordination.blockcreation.ForkChoiceUpdaterImpl
 import net.consensys.zkevm.ethereum.finalization.AggregationFinalizationCoordinator
 import net.consensys.zkevm.ethereum.finalization.AggregationSubmitterImpl
-import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
-import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesPostgresDao
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesRepositoryImpl
@@ -166,7 +166,7 @@ class L1DependentApp(
     )
   }
 
-  val lineaRollupClientForFinalizationMonitor: LineaRollupSmartContractClientReadOnly = run {
+  val lineaRollupClientForFinalizationMonitor = run {
     val web3j = createWeb3jHttpClient(
       rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.finalization-monitor"),
@@ -189,7 +189,7 @@ class L1DependentApp(
         pollingInterval = configs.l1FinalizationMonitor.l1PollingInterval,
         l1QueryBlockTag = configs.l1FinalizationMonitor.l1QueryBlockTag,
       ),
-      contract = lineaRollupClientForFinalizationMonitor,
+      finalizedStateDataProvider = lineaRollupClientForFinalizationMonitor,
       l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.finalization-monitor"),
@@ -210,7 +210,7 @@ class L1DependentApp(
     setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig = configs.type2StateProofProvider,
       httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-      lineaRollupClient = lineaRollupClientForFinalizationMonitor,
+      finalizedStateDataProvider = lineaRollupClientForFinalizationMonitor,
       l2EthApiClient = l2EthApiClient,
       vertx = vertx,
     )
@@ -275,32 +275,30 @@ class L1DependentApp(
       null
     }
 
-  private val gasPriceCapProviderForDataSubmission = if (configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
-    GasPriceCapProviderForDataSubmission(
-      config = GasPriceCapProviderForDataSubmission.Config(
-        maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
-        maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
-      ),
-      gasPriceCapProvider = gasPriceCapProvider!!,
-      metricsFacade = metricsFacade,
-    )
-  } else {
-    null
-  }
+  private val gasPriceCapProviderForDataSubmission =
+    gasPriceCapProvider?.let { provider ->
+      GasPriceCapProviderForDataSubmission(
+        config = GasPriceCapProviderForDataSubmission.Config(
+          maxPriorityFeePerGasCap = configs.l1Submission!!.blob.gas.maxPriorityFeePerGasCap,
+          maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
+          maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
+        ),
+        gasPriceCapProvider = provider,
+        metricsFacade = metricsFacade,
+      )
+    }
 
-  private val gasPriceCapProviderForFinalization = if (configs.l1Submission!!.dynamicGasPriceCap.isEnabled()) {
-    GasPriceCapProviderForFinalization(
-      config = GasPriceCapProviderForFinalization.Config(
-        maxPriorityFeePerGasCap = configs.l1Submission.aggregation.gas.maxPriorityFeePerGasCap,
-        maxFeePerGasCap = configs.l1Submission.aggregation.gas.maxFeePerGasCap,
-      ),
-      gasPriceCapProvider = gasPriceCapProvider!!,
-      metricsFacade = metricsFacade,
-    )
-  } else {
-    null
-  }
+  private val gasPriceCapProviderForFinalization =
+    gasPriceCapProvider?.let { provider ->
+      GasPriceCapProviderForFinalization(
+        config = GasPriceCapProviderForFinalization.Config(
+          maxPriorityFeePerGasCap = configs.l1Submission!!.aggregation.gas.maxPriorityFeePerGasCap,
+          maxFeePerGasCap = configs.l1Submission.aggregation.gas.maxFeePerGasCap,
+        ),
+        gasPriceCapProvider = provider,
+        metricsFacade = metricsFacade,
+      )
+    }
 
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
@@ -672,6 +670,7 @@ class L1DependentApp(
         batchesRepository = batchesRepository,
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
+        forcedTransactionsDao = forcedTransactionsDao,
       ),
       "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
         highestAcceptedFinalizationTracker(update.blockNumber)
@@ -696,6 +695,10 @@ class L1DependentApp(
       }
   }
 
+  fun signalTargetCheckpointResumeFromApi(): Boolean {
+    return conflationApp.signalTargetCheckpointResumeFromApi()
+  }
+
   override fun stop(): CompletableFuture<Unit> {
     return SafeFuture.allOf(
       conflationApp.stop(),
@@ -714,7 +717,7 @@ class L1DependentApp(
     fun setupL1FinalizationMonitorForShomeiFrontend(
       type2StateProofProviderConfig: Type2StateProofManagerConfig,
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
-      lineaRollupClient: LineaRollupSmartContractClientReadOnly,
+      finalizedStateDataProvider: FinalizedStateDataProvider,
       l2EthApiClient: EthApiClient,
       vertx: Vertx,
     ): LongRunningService {
@@ -743,7 +746,7 @@ class L1DependentApp(
             pollingInterval = type2StateProofProviderConfig.l1PollingInterval,
             l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag,
           ),
-          contract = lineaRollupClient,
+          finalizedStateDataProvider = finalizedStateDataProvider,
           l2EthApiClient = l2EthApiClient,
           vertx = vertx,
         )

@@ -42,6 +42,7 @@ on:
         required: false
 
 jobs:
+<<<<<<< HEAD
   ai-analysis:
     if: ${{ inputs.enable_ai_analysis }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
@@ -53,6 +54,13 @@ jobs:
       summary: ${{ steps.extract_summary.outputs.summary }}
       has_analysis: ${{ steps.extract_summary.outputs.has_analysis }}
       artifact_url: ${{ steps.extract_summary.outputs.artifact_url }}
+||||||| a6ed80399
+  notify:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+=======
+  notify:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+>>>>>>> main
 
     steps:
       - name: Checkout repository
@@ -441,7 +449,7 @@ jobs:
 
       - name: Send Slack Notification
         if: ${{ steps.extract_jobs.outputs.has_results == 'true' }}
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 #v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.slack_bot_token }}

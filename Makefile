@@ -1,4 +1,4 @@
-include makefile-contracts.mk
+include contracts/makefile-contracts.mk
 
 docker-pull-images-external-to-monorepo:
 		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
@@ -35,9 +35,9 @@ start-env:
 	mkdir -p tmp/local; \
 	COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d; \
 	while [ "$(SKIP_L1_L2_NODE_HEALTH_CHECK)" = "false" ] && \
-			{ [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
-				[ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-cl-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
-  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
+			{ [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
+				[ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-cl-node | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
+  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
   			sleep 2; \
   			echo "Checking health status of: l1-el-node, l1-cl-node and l2 sequencer..."; \
   	done
@@ -69,6 +69,10 @@ fresh-start-l2-blockchain-only:
 ##
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
+
+## Run with tracing-v2 with partial prover
+start-env-with-tracing-v2-partialprover:
+	make start-env COMPOSE_FILE="docker/compose-tracing-v2.yml -f docker/compose-tracing-v2-partialprover-override.yml"
 
 ## Enable L2 geth node
 start-env-with-tracing-v2-extra:
@@ -103,5 +107,3 @@ stop_pid:
 		else \
 			echo "$(PID_FILE) does not exist. No process to stop."; \
 		fi
-
-

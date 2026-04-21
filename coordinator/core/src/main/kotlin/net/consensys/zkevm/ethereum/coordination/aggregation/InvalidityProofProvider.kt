@@ -1,7 +1,7 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import linea.persistence.ftx.ForcedTransactionsDao
-import net.consensys.zkevm.domain.InvalidityProofIndex
+import linea.domain.InvalidityProofIndex
+import linea.persistence.ForcedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface InvalidityProofProvider {
@@ -27,6 +27,7 @@ class InvalidityProofProviderImpl(
           InvalidityProofIndex(
             ftxNumber = forcedTransaction.ftxNumber,
             simulatedExecutionBlockNumber = forcedTransaction.simulatedExecutionBlockNumber,
+            startBlockTimestamp = forcedTransaction.simulatedExecutionBlockTimestamp,
           )
         }
       }

@@ -4,7 +4,7 @@
 
 | Tool | Version |
 |------|---------|
-| Node.js | >= 22.22.2 (see `.nvmrc`) |
+| Node.js | >= 24.14.1 (see `.nvmrc`) |
 | pnpm | >= 10.32.1 |
 | JDK | 21 (for coordinator, Besu plugins) |
 | Docker | 24+ with 16 GB memory, 4+ CPUs |
@@ -16,7 +16,7 @@
 ```bash
 git clone https://github.com/Consensys/linea-monorepo.git
 cd linea-monorepo
-nvm use          # or install Node 22.22.2
+nvm use          # or install Node 24.14.1
 pnpm install     # installs all workspaces + sets up Husky hooks
 ```
 
@@ -26,9 +26,6 @@ pnpm install     # installs all workspaces + sets up Husky hooks
 # Smart contracts
 pnpm -F contracts run build
 pnpm -F contracts run test
-
-# Bridge UI
-pnpm -F bridge-ui dev
 
 # Coordinator (Kotlin)
 ./gradlew :coordinator:app:build
@@ -80,7 +77,6 @@ cd prover && gofmt -w . && golangci-lint run && go test ./... -tags nocorset,fuz
 ## Package-Specific Guides
 
 - **Smart contracts:** See [contracts/AGENTS.md](contracts/AGENTS.md) and [contracts/docs/contract-style-guide.md](contracts/docs/contract-style-guide.md)
-- **Bridge UI:** See [bridge-ui/AGENTS.md](bridge-ui/AGENTS.md)
 - **Prover:** See [prover/AGENTS.md](prover/AGENTS.md)
 
 ## Additional Resources

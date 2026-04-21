@@ -5,6 +5,7 @@ plugins {
 dependencies {
   implementation project(':transaction-exclusion-api:core')
   implementation project(':transaction-exclusion-api:persistence:rejectedtransaction')
+  implementation project(':jvm-libs:generic:errors')
   implementation project(':jvm-libs:generic:extensions:futures')
   implementation project(':jvm-libs:generic:extensions:kotlin')
   implementation project(':jvm-libs:generic:json-rpc')
@@ -108,16 +109,14 @@ task integrationTest(type: Test) { test ->
   dependsOn(":localStackPostgresDbOnlyComposeUp")
 }
 
-task integrationTestAllNeeded {
+tasks.register('integrationTestAllNeeded') {
   description = "Runs integration tests of transaction-exclusion-api:app and that of all dependencies"
   group = "verification"
 
-  def projectDependencies = configurations.implementation.getAllDependencies().withType(ProjectDependency)
-  def dependentProjects = projectDependencies.dependencyProject
-  dependentProjects.each { dependency ->
-    if (dependency.project.tasks.findByName("integrationTest")) {
-      def integrationTestTask = "${dependency.path}:integrationTest"
-      dependsOn integrationTestTask
+  configurations.implementation.getAllDependencies().withType(ProjectDependency).each { dep ->
+    def depProject = project(dep.path)
+    if (depProject.tasks.findByName("integrationTest")) {
+      dependsOn "${dep.path}:integrationTest"
     }
   }
   dependsOn "integrationTest"
