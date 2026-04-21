@@ -53,7 +53,11 @@ export async function expectBlockedTransaction(
     if (name !== "TransactionReceiptNotFoundError") {
       throw new Error(
         `expectBlockedTransaction: unexpected error checking receipt for ${hash}: ${name} — ${error instanceof Error ? error.message : String(error)}`,
-      );
+    const e = error as GetTransactionReceiptErrorType;
+
+    if (e.name !== "TransactionReceiptNotFoundError") {
+      throw error;
+    }
     }
   }
 }
