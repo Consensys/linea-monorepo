@@ -60,13 +60,12 @@ class ConflationCalculatorByForcedTransactionTest {
   }
 
   @Test
-  fun `does not consume items from the queue`() {
+  fun `consumes items from its dedicated queue`() {
     queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce))
 
     calculator.checkOverflow(blockCounters(blockNumber = 9UL))
-    calculator.appendBlock(blockCounters(blockNumber = 9UL))
 
-    assertThat(queue).hasSize(1)
+    assertThat(queue).isEmpty()
   }
 
   @Test
