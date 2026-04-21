@@ -11,25 +11,18 @@ import java.util.Queue
 import kotlin.collections.map
 
 /**
- * Deferred trigger calculator that creates conflation boundaries at FTX execution blocks
- * that require invalidity proofs.
+ * Trigger calculator that creates conflation boundaries AT FTX execution blocks.
  *
- * Reads from processedFtxQueue (shared with AggregationCalculatorByForcedTransaction)
- * to detect processed FTXs with non-Included results and triggers FORCED_TRANSACTION
- * conflation at (blockNumber - 1) to isolate the FTX block for invalidity proof generation.
+ * Consumes from a dedicated processedFtxQueue (not shared with the aggregation calculator)
+ * and triggers FORCED_TRANSACTION conflation at ftx.blockNumber for every processed FTX,
+ * regardless of inclusion result. This makes each FTX execution block the first block
+ * of a new blob.
  *
  * Rules:
- * - Trigger conflation at (ftx.blockNumber - 1) when inclusionResult != Included
- * - Do NOT trigger if inclusionResult == Included (successfully executed FTXs)
+ * - Trigger conflation overflow at ftx.blockNumber for every processed FTX
  *
- * Note: This calculator has its own dedicated queue (not shared with the aggregation calculator)
- * and consumes entries via poll(). This prevents the aggregation calculator from draining
- * entries before the conflation calculator reads them.
- *
- * This ensures that:
- * 1. Failed FTXs are isolated in their own conflation for invalidity proof generation
- * 2. Successfully included FTXs don't create unnecessary conflation boundaries
- * 3. The conflation before the failed FTX block is sealed at (blockNumber - 1)
+ * The queue is dedicated to this calculator (populated by onFtxProcessed callback).
+ * Entries are consumed via poll() so there is no race with the aggregation calculator.
  */
 class ConflationCalculatorByForcedTransaction(
   private val processedFtxQueue: Queue<ForcedTransactionInclusionStatus>,
@@ -37,7 +30,7 @@ class ConflationCalculatorByForcedTransaction(
 ) : ConflationCalculator {
   override val id: String = ConflationTrigger.FORCED_TRANSACTION.name
 
-  // Track pending trigger blocks (blockNumber) for non-included FTXs
+  // Track pending trigger blocks (ftx.blockNumber) for all processed FTXs
   private val pendingTriggerBlocks = mutableSetOf<ULong>()
 
   @Volatile
@@ -80,21 +73,14 @@ class ConflationCalculatorByForcedTransaction(
       return
     }
 
-    val newTriggerBlocks = newFtxs.map { it.blockNumber }.toSet()
-    pendingTriggerBlocks.addAll(newTriggerBlocks)
-    logNewFtxConflationTriggers(newTriggerBlocks, newFtxs)
-  }
-
-  fun logNewFtxConflationTriggers(
-    actuallyNewBlocks: Set<ULong>,
-    processedFtxs: List<ForcedTransactionInclusionStatus>,
-  ) {
-    if (actuallyNewBlocks.isNotEmpty()) {
-      val newFailedFtxs = processedFtxs.filter { actuallyNewBlocks.contains(it.blockNumber) }
+    val triggerBlocks = newFtxs.map { it.blockNumber }.toSet()
+    val actuallyNew = triggerBlocks - pendingTriggerBlocks
+    pendingTriggerBlocks.addAll(triggerBlocks)
+    if (actuallyNew.isNotEmpty()) {
       log.info(
-        "appended new conflation triggers {} of non-included ftxs={}, all pending triggers {}",
-        actuallyNewBlocks,
-        newFailedFtxs.map { it.toStringShortForLogging() },
+        "appended new conflation triggers {} for ftxs={}, all pending triggers={}",
+        actuallyNew,
+        newFtxs.filter { it.blockNumber in actuallyNew }.map { it.toStringShortForLogging() },
         pendingTriggerBlocks.sorted(),
       )
     }
