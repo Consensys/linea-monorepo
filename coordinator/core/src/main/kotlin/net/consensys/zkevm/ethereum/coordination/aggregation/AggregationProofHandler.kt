@@ -1,7 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import net.consensys.zkevm.domain.Aggregation
-import net.consensys.zkevm.persistence.AggregationsRepository
+import linea.domain.Aggregation
+import linea.domain.AggregationProofIndex
+import linea.persistence.AggregationsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -10,6 +11,13 @@ import java.util.function.Supplier
 
 fun interface AggregationProofHandler {
   fun acceptNewAggregation(provenAggregation: Aggregation): SafeFuture<*>
+}
+
+fun interface AggregationProofRequestHandler {
+  fun acceptNewAggregationProofRequest(
+    proofIndex: AggregationProofIndex,
+    unProvenAggregation: Aggregation,
+  )
 }
 
 class AggregationProofHandlerImpl(

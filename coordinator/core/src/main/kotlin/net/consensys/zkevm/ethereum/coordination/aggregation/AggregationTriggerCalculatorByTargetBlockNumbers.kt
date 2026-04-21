@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
+import linea.domain.BlobCounters
+import linea.domain.BlobsToAggregate
 import linea.domain.BlockInterval
-import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlobsToAggregate
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
@@ -15,6 +15,11 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
   private var inFlightAggregation: BlobsToAggregate? = null
 
   internal fun <T : BlockInterval> checkAggregationTrigger(blob: T): AggregationTrigger? {
+    log.debug(
+      "checking aggregation trigger: blockNumber={} targetEndBlockNumbers={}",
+      blob.intervalString(),
+      targetEndBlockNumbers.toList().sorted(),
+    )
     val endBlockNumbers = targetEndBlockNumbers.sorted()
 
     if (endBlockNumbers.isEmpty()) {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 
 	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -22,9 +21,6 @@ import (
 
 const (
 	nbRowsPerPublicKey = 4
-
-	// gnarkDataLeftAlignmentOffset is the number of bits that were offset in UnalignedGnarkData.GnarkData.
-	gnarkDataLeftAlignmentOffset = (generic.TotalLimbSize - generic.TotalLimbSize/common.NbLimbU128) * 8
 )
 
 type UnalignedGnarkData struct {
@@ -90,14 +86,7 @@ func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGna
 		Size: size,
 	}
 
-	// IsPkHashFilter must be binary and a subset of IsPublicKey.
-	commoncs.MustBeBinary(comp, res.IsPkHashFilter)
-	comp.InsertGlobal(
-		ROUND_NR,
-		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "PK_HASH_FILTER_SUBSET"),
-		sym.Mul(res.IsPkHashFilter, sym.Sub(1, res.IsPublicKey)),
-	)
-
+	res.csPublicKeyFilter(comp, src)
 	res.csDataIds(comp)
 	res.csIndex(comp, src)
 	res.csProjectionEcRecover(comp, src)
@@ -111,6 +100,41 @@ func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGna
 	// the projection to aligned gnark data we do not use the data.
 
 	return res
+}
+
+func (res *UnalignedGnarkData) csPublicKeyFilter(
+	comp *wizard.CompiledIOP,
+	src *unalignedGnarkDataSource,
+) {
+	// IsPkHashFilter must be binary and must exactly select the pk rows that
+	// participate in the address-keccak hash:
+	//   - all tx-signature pk rows
+	//   - successful ECRECOVER pk rows
+	//   - no failed ECRECOVER pk rows
+	//
+	// The filter cannot use src.SuccessBit from the current row directly because
+	// ECRECOVER SUCCESS_BIT lives in the fetching phase, while IsPublicKey lives
+	// in the first 4 rows of the later pushing phase. The 10-row shift aligns
+	// the current pk row with the corresponding fetching row of its frame.
+	commoncs.MustBeBinary(comp, res.IsPkHashFilter)
+	comp.InsertGlobal(
+		ROUND_NR,
+		ifaces.QueryIDf("%v_%v", NAME_UNALIGNED_GNARKDATA, "PK_HASH_FILTER"),
+		sym.Sub(
+			res.IsPkHashFilter,
+			sym.Mul(
+				res.IsPublicKey,
+				sym.Add(
+					// Source=0 <> ECRecover, Source=1 <> TxSignature
+					src.Source, // if source is TxSignature, filter all rows where IsPublicKey=1
+					sym.Mul( // if source is ECRecover, filter only rows where IsPublicKey=1 and SuccessBit=1
+						sym.Sub(1, src.Source),
+						column.Shift(src.SuccessBit, -nbRowsPerEcRecFetching),
+					),
+				),
+			),
+		),
+	)
 }
 
 func (d *UnalignedGnarkData) Assign(run *wizard.ProverRuntime, src *unalignedGnarkDataSource, txSigs TxSignatureGetter) {

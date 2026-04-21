@@ -4,6 +4,10 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
+/**
+ * Tracks the highest safe block number (inclusive) that can be conflated.
+ *
+ */
 internal class ForcedTransactionsSafeBlockNumberManager(
   private val listener: SafeBlockNumberUpdateListener,
 ) {
@@ -13,8 +17,13 @@ internal class ForcedTransactionsSafeBlockNumberManager(
   private val ftxInSequencerForProcessing: MutableList<ULong> = mutableListOf()
 
   private fun updateSafeBlockNumber(value: ULong?) {
-    safeBlockNumber = value
-    listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    if (safeBlockNumber != value) {
+      if (value == null) {
+        log.info("releasing safeBlockNumber lock: safeBlockNumber={} --> null", safeBlockNumber)
+      }
+      safeBlockNumber = value
+      listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    }
   }
 
   @Synchronized
@@ -53,20 +62,20 @@ internal class ForcedTransactionsSafeBlockNumberManager(
           "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",
       )
     }
-    log.info(
-      "locking conflation: ftxNumber={} at blockNumber={}",
-      ftxNumber,
-      simulatedExecutionBlockNumber,
-    )
-    safeBlockNumber = simulatedExecutionBlockNumber
 
     this.ftxInSequencerForProcessing.removeIf { it <= ftxNumber }
     if (ftxInSequencerForProcessing.isEmpty() && startUpScanFinished) {
-      log.info("all ftx sent to sequencer were processed, releasing Safe Block Number lock")
+      log.info(
+        "all ftx sent to sequencer were processed, releasing lock: safeBlockNumber={} --> null",
+        safeBlockNumber,
+      )
       updateSafeBlockNumber(null)
     } else {
       log.info(
-        "ftx={} processed at safeBlockNumber={}, ftx in the sequencer {}",
+        "updating safeBlockNumber={}-->{} by processed ftx={} at blockNumber={}, " +
+          "ftx in the sequencer {}",
+        safeBlockNumber,
+        simulatedExecutionBlockNumber,
         ftxNumber,
         simulatedExecutionBlockNumber,
         ftxInSequencerForProcessing,
@@ -81,7 +90,6 @@ internal class ForcedTransactionsSafeBlockNumberManager(
     if (!startUpScanFinished) {
       return
     }
-    log.info("releasing Safe Block Number lock")
     updateSafeBlockNumber(null)
   }
 

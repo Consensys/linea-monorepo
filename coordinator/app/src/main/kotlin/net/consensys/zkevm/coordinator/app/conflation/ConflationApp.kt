@@ -3,22 +3,28 @@ package net.consensys.zkevm.coordinator.app.conflation
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
+import linea.clients.ExecutionProverClientV2
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
+import linea.domain.BlobRecord
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.BlocksConflation
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.ftx.ForcedTransactionsApp
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.metrics.LineaMetricsCategory
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.createCalculatorsForBlobsAndConflation
@@ -28,11 +34,9 @@ import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resume
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory.createTracesClients
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
+import net.consensys.zkevm.coordinator.blockcreation.ConflationTargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
-import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
@@ -61,11 +65,8 @@ import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConfl
 import net.consensys.zkevm.ethereum.coordination.conflation.TimestampHardForkConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
+import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandlerImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
@@ -193,6 +194,33 @@ class ConflationApp(
     lastProcessedBlockNumber.toBlockParameter(),
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
+
+  private val lastProvenBlockNumberProvider = run {
+    val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
+      lastProcessedBlockNumber.toLong(),
+      lastFinalizedBlock.toLong(),
+      batchesRepository,
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BATCH,
+      name = "proven.highest.consecutive.block.number",
+      description = "Highest proven consecutive execution batch block number",
+      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() },
+    )
+    lastProvenConsecutiveBatchBlockNumberProvider
+  }
+
+  private val targetCheckpointPauseController =
+    ConflationTargetCheckpointPauseController(
+      ConflationTargetCheckpointPauseController.Config(
+        initialLastImportedBlockTimestamp = lastProcessedTimestamp,
+        targetEndBlocks = (configs.conflation.proofAggregation.targetEndBlocks ?: emptyList()).toSet(),
+        targetTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
+        waitTargetBlockL1Finalization = configs.conflation.proofAggregation.waitTargetBlockL1Finalization,
+        waitApiResumeAfterTargetBlock = configs.conflation.proofAggregation.waitApiResumeAfterTargetBlock,
+      ),
+      latestL1FinalizedBlockProvider = lastProvenBlockNumberProvider,
+    )
 
   private val dynamicTargetEndBlockNumberSet =
     DynamicBlockNumberSet(
@@ -486,21 +514,6 @@ class ConflationApp(
     )
   }
 
-  private val lastProvenBlockNumberProvider = run {
-    val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
-      lastProcessedBlockNumber.toLong(),
-      lastFinalizedBlock.toLong(),
-      batchesRepository,
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BATCH,
-      name = "proven.highest.consecutive.block.number",
-      description = "Highest proven consecutive execution batch block number",
-      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() },
-    )
-    lastProvenConsecutiveBatchBlockNumberProvider
-  }
-
   // This object acts as an independent periodic polling service which is responsible
   // for monitoring the highest consecutive proven block number in the batch db
   private val provenBlockNumberMonitor = object : VertxPeriodicPollingService(
@@ -533,6 +546,7 @@ class ConflationApp(
         lastL2BlockNumberToProcessInclusive = configs.conflation.forceStopConflationAtBlockInclusive?.inc(),
         lastL2BlockTimestampToProcessInclusive = configs.conflation.forceStopConflationAtBlockTimestampInclusive,
       ),
+      targetCheckpointPauseController = targetCheckpointPauseController,
     )
     blockCreationMonitor
   }
@@ -573,5 +587,9 @@ class ConflationApp(
 
   fun updateLatestL1FinalizedBlock(blockNumber: Long): SafeFuture<Unit> {
     return lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(blockNumber)
+  }
+
+  fun signalTargetCheckpointResumeFromApi(): Boolean {
+    return targetCheckpointPauseController.signalResumeFromApi()
   }
 }

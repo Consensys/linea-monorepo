@@ -21,7 +21,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `bridge-ui/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -42,7 +42,7 @@ Only propose rules that are repository-specific and repeatable.
 
 ## Repository
 
-Linea zkEVM monorepo — the principal repository for [Linea](https://linea.build), a Layer 2 zero-knowledge rollup scaling Ethereum. Contains smart contracts, ZK prover, coordinator, postman (bridge message executor), bridge UI, SDKs, and supporting tooling. Licensed under Apache-2.0 and MIT.
+Linea zkEVM monorepo — the principal repository for [Linea](https://linea.build), a Layer 2 zero-knowledge rollup scaling Ethereum. Contains smart contracts, ZK prover, coordinator, postman (bridge message executor), SDKs, and supporting tooling. Licensed under Apache-2.0 and MIT.
 
 ## How to Run
 
@@ -52,7 +52,7 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 |------|---------|-------|
 | Node.js | >= 24.14.1 | See `.nvmrc` |
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
-| JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
+| JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
 | Gradle | 9.4+ | use ./gradlew <task> |
 | Go | 1.24.6 | Prover |
 | Docker | 24+ | Local stack, CI |
@@ -72,7 +72,6 @@ This triggers `husky` setup via the `prepare` script. Only `pnpm` is allowed (en
 
 | Package | Command |
 |---------|---------|
-| Bridge UI | `pnpm -F bridge-ui dev` |
 | Full local stack | `make start-env` |
 | L1 + L2 with tracing | `make start-env-with-tracing-v2` |
 
@@ -90,9 +89,6 @@ cd prover && make build
 
 # Contracts (Solidity)
 pnpm -F contracts run build
-
-# Bridge UI (Next.js)
-pnpm -F bridge-ui run build
 ```
 
 ### Test
@@ -107,7 +103,6 @@ pnpm -F bridge-ui run build
 | SDK viem | `pnpm -F @consensys/linea-sdk-viem run test` |
 | Postman | `pnpm -F @consensys/linea-postman run test` |
 | E2E (requires local stack) | `pnpm -F e2e run test:local` |
-| Bridge UI unit | `pnpm -F bridge-ui run test:unit` |
 | Coordinator (Kotlin) | `./gradlew :coordinator:app:test` |
 | Prover (Go) | `cd prover && go test ./... -tags nocorset,fuzzlight -timeout 30m` |
 | Native libs | `pnpm -F @consensys/linea-native-libs run test` |
@@ -130,8 +125,47 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 
 ### Typecheck
 
-- Bridge UI: `pnpm -F bridge-ui run check-types`
-- Other TS packages: typecheck is part of build (`tsc`)
+- TypeScript packages: typecheck is part of build (`tsc`)
+
+## Code Intelligence (LSP)
+
+LSP provides precise navigation (go-to-definition, find-references, diagnostics) and is far more reliable than text search. Use it as the primary navigation strategy when LSP tools are available.
+
+### Setup
+
+#### Step 1 — install language server binaries
+
+| Language | macOS | Linux/Windows |
+|----------|-------|---------------|
+| TypeScript / JS | `npm install -g typescript-language-server typescript` | same |
+| Go | `go install golang.org/x/tools/gopls@latest` (ensure `$GOPATH/bin` is in `$PATH`) | same |
+| Java | `brew install jdtls` | download from [eclipse-jdtls releases](https://github.com/eclipse-jdtls/eclipse.jdt.ls/releases), symlink `bin/jdtls` into `$PATH` |
+| Kotlin | `brew install JetBrains/utils/kotlin-lsp` | download from [kotlin-lsp releases](https://github.com/Kotlin/kotlin-lsp/releases), add `bin/` to `$PATH` |
+
+#### Step 2 — install plugins in Claude Code
+
+Run `/plugins` and install `typescript-lsp`, `gopls-lsp`, `jdtls-lsp`, and `kotlin-lsp` from the
+`claude-plugins-official` marketplace.  The project's `.claude/settings.json` already enables them
+and sets `ENABLE_LSP_TOOL=1`, so no changes to your personal settings are needed.
+
+Restart Claude Code after installing.
+
+### Usage
+
+Prefer LSP tools over Grep/Glob/Read for code navigation:
+
+- `goToDefinition` / `goToImplementation` — jump to source instead of grepping
+- `findReferences` — find all call sites before renaming or changing a signature
+- `workspaceSymbol` — locate where a type or function is defined
+- `documentSymbol` — list all symbols in the current file
+- `hover` — get type info without opening the file
+- `incomingCalls` / `outgoingCalls` — trace call hierarchy
+
+Use Grep/Glob only for text/pattern searches (comments, string literals, config values) where LSP doesn't apply.
+
+**Important:** Every LSP operation requires a `filePath` pointing to a **file**, never a directory.  The file routes the request to the correct language server — pass any relevant file in the project if you don't have a specific one in mind.
+
+After writing or editing code, check LSP diagnostics and fix any type errors or missing imports before moving on.
 
 ## Code Conventions
 
@@ -162,7 +196,7 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Context | Convention | Example |
 |---------|-----------|---------|
 | TS/JS files | kebab-case | `message-service.ts` |
-| React components | PascalCase | `BridgeForm.tsx` |
+| React components | PascalCase | `ResultsPanel.tsx` |
 | Solidity files | PascalCase | `LineaRollup.sol` |
 | Solidity interfaces | `I` prefix + PascalCase | `ILineaRollup.sol` |
 | Kotlin files | PascalCase | `CoordinatorApp.kt` |
@@ -183,7 +217,6 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Contracts (Hardhat) | Hardhat + ethers.js | `pnpm -F contracts run test` |
 | Contracts (Foundry) | Forge | `test/foundry/*` |
 | TypeScript packages | Jest 29.7.0 + ts-jest | `pnpm -F <pkg> run test` |
-| Bridge UI unit | Playwright | `pnpm -F bridge-ui run test:unit` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
@@ -280,11 +313,13 @@ These require human approval and follow the release process:
 
 1. Read existing code in the affected area
 2. Check for existing tests, conventions, and patterns in that package
-3. Plan the minimal change needed
-4. **Plan review**: Before starting implementation, review the plan using a separate agent with isolated context — give it only the original user request and the plan document, not the planning conversation or exploration history. This ensures the reviewer cannot inherit reasoning errors made during planning.
-5. Implement with tests
-6. Run the package-specific lint and test commands
-7. Verify no secrets or credentials are exposed
+3. Prefer built-in language, framework, library, and repository helpers over hand-rolled replacements when equivalent functionality already exists
+4. Extend or compose existing helpers before introducing a new utility when that keeps the implementation smaller and clearer
+5. Plan the minimal change needed
+6. **Plan review**: Before starting implementation, review the plan using a separate agent with isolated context — give it only the original user request and the plan document, not the planning conversation or exploration history. This ensures the reviewer cannot inherit reasoning errors made during planning.
+7. Implement with tests
+8. Run the package-specific lint and test commands
+9. Verify no secrets or credentials are exposed
 
 ### Limiting Change Surface
 
@@ -304,7 +339,6 @@ These require human approval and follow the release process:
 | `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
 | `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
 | `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
-| `bridge-ui` | Frontend | Next.js 16.1.5, React 19, Wagmi, Viem | Bridge user interface |
 | `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
 | `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
 | `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
@@ -329,7 +363,6 @@ coordinator/             Kotlin coordinator service
 prover/                  Go ZK prover
 corset/                  Rust constraint compiler
 postman/                 TypeScript bridge message executor
-bridge-ui/               Next.js bridge frontend
 sdk/                     TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
 operations/              Operations CLI tool
@@ -342,7 +375,7 @@ tracer/                  EVM tracer
 config/                  Service configuration files (TOML, JSON, XML)
 docker/                  Docker Compose files for local stack
 docs/                    Project documentation
-.github/workflows/       CI/CD workflows (78 files)
+.github/workflows/       CI/CD workflows
 .github/actions/         Custom GitHub Actions
 .cursor/rules/           Cursor IDE rules
 .agents/skills/          Agent skills (smart contract development)
@@ -363,8 +396,8 @@ docs/                    Project documentation
 ### Cross-Package Dependencies
 
 ```
-bridge-ui -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
-postman -> @consensys/linea-sdk, @consensys/linea-native-libs, @consensys/linea-shared-utils
+postman -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
+postman -> @consensys/linea-native-libs, @consensys/linea-shared-utils
 e2e -> @consensys/linea-shared-utils
 operations -> (standalone, uses ethers + viem)
 native-yield-operations/* -> @consensys/linea-shared-utils

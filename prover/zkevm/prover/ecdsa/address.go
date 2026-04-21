@@ -18,17 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
-const (
-	// addressHiBytes is the size of the leftover from trimmed addressHi part (in bytes).
-	addressHiBytes = 4
-	// addressHiColumns is the number of addressHi columns.
-	addressHiColumns = addressHiBytes / common.LimbBytes
-	// addressTrimmedBytes size of the trimmed address part (in bytes).
-	addressTrimmedBytes = common.NbLimbU256 - addressHiBytes
-	// addressTrimmedColumns number of columns that represent the trimmed address part.
-	addressTrimmedColumns = addressTrimmedBytes / common.LimbBytes
-)
-
 // Addresses submodule is responsible for the columns holding the address of the sender,
 // and checking their consistency with the claimed public key
 // (since address is the truncated hash of public key).
@@ -71,18 +60,6 @@ type Addresses struct {
 
 	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
 	Provider generic.GenericByteModule
-}
-
-// Addresses returns the addresses in a limbs.Uint160Le
-// in LE form.
-func (addr *Addresses) Addresses() limbs.Uint160Le {
-
-	_, address := limbs.FuseLimbs(
-		addr.AddressHiUntrimmed.AsDynSize(),
-		addr.AddressLo.AsDynSize(),
-	).SplitOnBit(160)
-
-	return address.AssertUint160()
 }
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
@@ -278,14 +255,8 @@ func (addr *Addresses) assignMainColumns(
 ) {
 
 	var (
-		pkModule = addr.buildGenericModule(addr.HashNum, uaGnark)
-		split    = totalNbEcRecoverRows(nbEcRecover)
-		// numRowCurrFrame indicates the number of rows in the current frame.
-		// E.g. when the loop is iterating over rows corresponding to an
-		// ecrecover, numRowCurrFrame = nbRowsPerEcRec and when the loop is
-		// iterating over rows corresponding to a txSignature
-		// numRowCurrFrame = nbRowsPerTxSign.
-		numRowCurrFrame      = nbRowsPerEcRec
+		pkModule             = addr.buildGenericModule(addr.HashNum, uaGnark)
+		split                = totalNbEcRecoverRows(nbEcRecover)
 		streams              = pkModule.Data.ScanStreams(run)
 		permTrace            = keccak.GenerateTrace(streams)
 		addressUntrimmedHi   = limbs.NewVectorBuilder(addr.AddressHiUntrimmed.AsDynSize())
@@ -313,7 +284,6 @@ func (addr *Addresses) assignMainColumns(
 	// ECRECOVER slots explicitly (consuming a digest only for successful
 	// frames, and pushing zeros with isHash=0 for failed frames), then
 	// iterate the remaining digests for TX-signature frames.
-	_ = numRowCurrFrame
 	digestIdx := 0
 	for i := 0; i < nbEcRecover; i++ {
 		if frameSuccessful[i] {
