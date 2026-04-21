@@ -21,7 +21,7 @@ type BlockAndReceiptClient = {
  *    is merely pending is not mistaken for a blocked one.
  */
 export async function expectBlockedTransaction(
-  client: BlockAndReceiptClient,
+  client: PublicClient,
   sendTransactionPromise: Promise<Hash>,
 ): Promise<void> {
   let hash: Hash;
