@@ -52,6 +52,7 @@ jobs:
     outputs:
       summary: ${{ steps.extract_summary.outputs.summary }}
       has_analysis: ${{ steps.extract_summary.outputs.has_analysis }}
+      artifact_url: ${{ steps.extract_summary.outputs.artifact_url }}
 
     steps:
       - name: Checkout repository
@@ -204,6 +205,7 @@ jobs:
             fee calculation regression (Medium)"
 
       - name: Upload analysis artifact
+        id: upload_artifact
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         continue-on-error: true
@@ -216,6 +218,8 @@ jobs:
         id: extract_summary
         if: ${{ always() }}
         shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload_artifact.outputs.artifact-id }}
         run: |
           set -euo pipefail
           if [[ -f e2e-failure-summary.txt ]]; then
@@ -225,9 +229,11 @@ jobs:
             echo "${summary}" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
+            echo "artifact_url=https://github.com/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts/${ARTIFACT_ID}" >> "$GITHUB_OUTPUT"
           else
             echo 'summary=""' >> "$GITHUB_OUTPUT"
             echo "has_analysis=false" >> "$GITHUB_OUTPUT"
+            echo "artifact_url=" >> "$GITHUB_OUTPUT"
           fi
 
   notify:
@@ -401,7 +407,7 @@ jobs:
         shell: bash
         env:
           AI_SUMMARY: ${{ needs.ai-analysis.outputs.summary }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ inputs.run_id }}
+          ARTIFACT_URL: ${{ needs.ai-analysis.outputs.artifact_url }}
         run: |
           set -euo pipefail
 
@@ -418,13 +424,13 @@ jobs:
             }]
           }')
 
-          link_block=$(jq -n -c --arg url "$RUN_URL" '{
+          link_block=$(jq -n -c --arg url "$ARTIFACT_URL" '{
             type: "rich_text",
             elements: [{
               type: "rich_text_section",
               elements: [
                 { type: "text", text: "Full Analysis: ", style: { bold: true } },
-                { type: "link", url: $url, text: "View artifact" }
+                { type: "link", url: $url, text: "Download ai-failure-analysis artifact" }
               ]
             }]
           }')
