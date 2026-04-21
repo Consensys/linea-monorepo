@@ -109,6 +109,6 @@ describe("Shomei Linea get proof test suite", () => {
 
       expect(isInvalid).toBeTruthy();
     },
-    150_000,
+    300_000, // sum of two inner timeout values
   );
 });
