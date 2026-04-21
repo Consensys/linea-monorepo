@@ -210,8 +210,14 @@ internal class ForcedTransactionsAppImpl(
           ftxClient = this.ftxClient,
           ftxQueue = this.ftxQueue,
           onFtxProcessed = { ftxStatus ->
-            conflationFtxQueue.add(ftxStatus)
-            aggregationFtxQueue.add(ftxStatus)
+            // offer() returns false on a full queue instead of throwing, so the
+            // safeBlockNumber update that follows this callback is never skipped.
+            if (!conflationFtxQueue.offer(ftxStatus) || !aggregationFtxQueue.offer(ftxStatus)) {
+              log.error(
+                "FTX processed queue full, calculator may miss trigger for ftx={}",
+                ftxStatus.ftxNumber,
+              )
+            }
           },
           lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
           safeBlockNumberManager = safeBlockNumberManager,

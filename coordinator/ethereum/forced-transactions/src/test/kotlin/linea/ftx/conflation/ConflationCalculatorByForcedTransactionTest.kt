@@ -61,7 +61,7 @@ class ConflationCalculatorByForcedTransactionTest {
   }
 
   @Test
-  fun `consumes items from its dedicated queue`() {
+  fun `checkOverflow polls entries from the queue`() {
     queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce))
 
     calculator.checkOverflow(blockCounters(blockNumber = 9UL))
