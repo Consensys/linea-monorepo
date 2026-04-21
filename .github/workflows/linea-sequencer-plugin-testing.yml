@@ -14,7 +14,7 @@ concurrency:
 jobs:
   run-linea-sequencer-plugins-unit-tests:
     name: "Sequencer Plugin Unit Tests"
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -33,13 +33,13 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-report
           path: besu-plugins/linea-sequencer/sequencer/build/reports/tests/test/
       - name: Upload Jacoco execution data
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-linea-sequencer-unit-exec
           path: |
@@ -48,7 +48,7 @@ jobs:
 
   run-linea-sequencer-plugins-acceptance-tests:
     name: "Sequencer Plugin Acceptance Tests"
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -63,13 +63,13 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: acceptance-test-report
           path: besu-plugins/linea-sequencer/acceptance-tests/build/reports/tests/
       - name: Upload Jacoco execution data
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-linea-sequencer-acceptance-exec
           path: |
