@@ -53,8 +53,6 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 | Node.js | >= 24.14.1 | See `.nvmrc` |
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
 | JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
-| jdtls | latest | Java LSP server — install instructions in [Code Intelligence](#code-intelligence-lsp) section |
-| kotlin-lsp | latest | Kotlin LSP server — install instructions in [Code Intelligence](#code-intelligence-lsp) section |
 | Gradle | 9.4+ | use ./gradlew <task> |
 | Go | 1.24.6 | Prover |
 | Docker | 24+ | Local stack, CI |
