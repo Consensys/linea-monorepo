@@ -66,6 +66,35 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 		ExecData:               execDataCommit.Data,
 	}
 
+	rsp := &backendInvalidity.Response{
+		Transaction:                      tx,
+		Signer:                           funcInput.FromAddress,
+		TxHash:                           utils.HexEncodeToString(funcInput.TxHash[:]),
+		RLPEncodedTx:                     req.RlpEncodedTx,
+		ForcedTransactionNumber:          req.ForcedTransactionNumber,
+		PrevFtxRollingHash:               req.PrevFtxRollingHash,
+		DeadlineBlockHeight:              req.DeadlineBlockHeight,
+		InvalidityType:                   req.InvalidityType,
+		ZkParentStateRootHash:            req.ZkParentStateRootHash,
+		SimulatedExecutionBlockNumber:    req.SimulatedExecutionBlockNumber,
+		SimulatedExecutionBlockTimestamp: req.SimulatedExecutionBlockTimestamp,
+		ChainID:                          cfg.Layer2.ChainID,
+		BaseFee:                          cfg.Layer2.BaseFee,
+		CoinBase:                         linTypes.EthAddress(cfg.Layer2.CoinBase),
+		L2BridgeAddress:                  linTypes.EthAddress(cfg.Layer2.MsgSvcContract),
+		ProverVersion:                    cfg.Version,
+		PublicInput:                      linTypes.Bls12377Fr(funcInput.Sum(nil)),
+		FtxRollingHash:                   funcInput.FtxRollingHash,
+		ProverMode:                       cfg.Invalidity.ProverMode,
+	}
+
+	if cfg.Invalidity.LimitlessWithDebug {
+		logrus.Info("Running limitless invalidity prover in debug mode")
+		limitlessZkEVM := zkevm.NewLimitlessDebugZkEVM(cfg)
+		limitlessZkEVM.RunDebug(cfg, zkevmWitness)
+		return rsp, nil
+	}
+
 	// -- 1-4. Run the distributed pipeline: bootstrapper → GL/LPP segment
 	// proofs → shared randomness → hierarchical conglomeration.
 	pipeline, err := execLimitless.RunDistributedPipeline(cfg, zkevmWitness, plog)
@@ -105,28 +134,8 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 
 	serializedProof := c.MakeProof(setup, assigningInputs)
 
-	rsp := &backendInvalidity.Response{
-		Transaction:                      tx,
-		Signer:                           funcInput.FromAddress,
-		TxHash:                           utils.HexEncodeToString(funcInput.TxHash[:]),
-		RLPEncodedTx:                     req.RlpEncodedTx,
-		ForcedTransactionNumber:          req.ForcedTransactionNumber,
-		PrevFtxRollingHash:               req.PrevFtxRollingHash,
-		DeadlineBlockHeight:              req.DeadlineBlockHeight,
-		InvalidityType:                   req.InvalidityType,
-		ZkParentStateRootHash:            req.ZkParentStateRootHash,
-		SimulatedExecutionBlockNumber:    req.SimulatedExecutionBlockNumber,
-		SimulatedExecutionBlockTimestamp: req.SimulatedExecutionBlockTimestamp,
-		ChainID:                          cfg.Layer2.ChainID,
-		BaseFee:                          cfg.Layer2.BaseFee,
-		CoinBase:                         linTypes.EthAddress(cfg.Layer2.CoinBase),
-		L2BridgeAddress:                  linTypes.EthAddress(cfg.Layer2.MsgSvcContract),
-		ProverVersion:                    cfg.Version,
-		Proof:                            serializedProof,
-		VerifyingKeyShaSum:               setup.VerifyingKeyDigest(),
-		PublicInput:                      linTypes.Bls12377Fr(funcInput.Sum(nil)),
-		FtxRollingHash:                   funcInput.FtxRollingHash,
-		ProverMode:                       cfg.Invalidity.ProverMode,
-	}
+	rsp.Proof = serializedProof
+	rsp.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+
 	return rsp, nil
 }

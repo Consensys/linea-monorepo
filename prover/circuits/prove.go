@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/consensys/gnark/backend/witness"
-
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
@@ -19,17 +18,6 @@ import (
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
 )
 
-type proveCheckSettings struct {
-	cachedProofPath string
-}
-type ProveCheckOption func(*proveCheckSettings)
-
-func WithCachedProof(path string) ProveCheckOption {
-	return func(s *proveCheckSettings) {
-		s.cachedProofPath = path
-	}
-}
-
 // Generates a PlonkProof and sanity-checks it against the verifying key. Can
 // take a list of options which can of either backend.ProverOption of backend.
 // VerifierOption.
@@ -38,7 +26,6 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 	proverOpts := []backend.ProverOption{}
 	verifierOpts := []backend.VerifierOption{}
 	solverOpts := []solver.Option{}
-	var settings proveCheckSettings
 
 	// @alex: we cannot incrementally pass the solver options to the prover
 	// options (they are overridden at every call). That's why we need to collect
@@ -52,9 +39,6 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 			proverOpts = append(proverOpts, o)
 		case backend.VerifierOption:
 			verifierOpts = append(verifierOpts, o)
-		case ProveCheckOption:
-			o(&settings)
-
 		default:
 			return nil, fmt.Errorf("unknown option type to prove-check: %++v", o)
 		}
@@ -70,13 +54,6 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 
 	logrus.Infof("Generating the proof")
 	var proof plonk.Proof
-
-	if settings.cachedProofPath != "" {
-		proof = tryReadCachedProof(*setup, settings.cachedProofPath, verifierOpts, witness)
-		if proof != nil {
-			return proof, nil
-		}
-	}
 
 	proof, err = plonk.Prove(setup.Circuit, setup.ProvingKey, witness, proverOpts...)
 	if err != nil {
@@ -106,10 +83,6 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 			panic(err)
 		}
 		// logrus.Infof("the proof passed with\nproof=%++v\nwit=%++v\nvkey=%++v\n", proof, pubwitness, pp.VK)
-	}
-
-	if settings.cachedProofPath != "" {
-		tryCacheProof(settings.cachedProofPath, proof)
 	}
 
 	return proof, nil
