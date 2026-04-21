@@ -1,9 +1,14 @@
+include "utils/constants.zkc"
+include "utils/type.zkc"
 include "instruction_processing/b_type.zkc"
 include "instruction_processing/r_type.zkc"
 include "instruction_processing/i_type.zkc"
 include "instruction_processing/s_type.zkc"
 include "instruction_processing/j_type.zkc"
 include "instruction_processing/u_type.zkc"
+
+memory ram(address:Address)->(bytes:u8)
+memory registers(id:Register)->(value:DoubleWord)
 
 fn interpreter<ram,registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
 
