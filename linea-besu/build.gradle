@@ -30,14 +30,6 @@ def cachedResolvedFile = new File(rootDirFile, 'linea-besu/.besu-resolved')
 // Capture providers at configuration time so task actions never touch Project/rootProject.
 def providers = rootProject.providers
 
-// Configuration-cache-tracked view of the cache file's contents. providers.fileContents
-// registers this path as a build-input so CI-refreshed (or manually-regenerated) cache
-// files invalidate the configuration cache correctly. .asText is absent when the file
-// doesn't exist; otherwise it yields the Properties-format text.
-def cachedContentProvider = providers.fileContents(
-    rootProject.layout.projectDirectory.file('linea-besu/.besu-resolved')
-    ).asText
-
 def publishToMaven = project.hasProperty('publishToMaven') ? project.publishToMaven.toBoolean() : false
 def skipDownloadBesuDist = project.hasProperty('skipDownloadBesuDist') ? project.skipDownloadBesuDist.toBoolean() : true
 def cloudsmithUser = project.hasProperty('cloudsmithUser') ? project.cloudsmithUser.toString() : ''
