@@ -22,11 +22,11 @@ AS = riscv64-unknown-elf-as
 AS_FLAGS = -march=rv64im
 
 # Paths below are determined by the extension
-SRC ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig,asm)/src/$(TEST)
-BIN ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME)
-JSON ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME).json
+SRC ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
+BIN ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME)
+JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME).json
 
-# Set STRIP to true to generate stripped binary
+# Set STRIP to true to generate stripped binary too
 STRIP ?= false
 BIN_STRIPPED ?= $(BIN).stripped
 
@@ -47,6 +47,8 @@ compile: $(SRC)
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME); \
+	elif [ "$(EXT)" = ".rs" ]; then \
+		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=0 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -71,3 +73,4 @@ clean:
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
+	rm -rf $(MAKEFILE_DIR)rust/bin/
