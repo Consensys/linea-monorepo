@@ -46,11 +46,8 @@ class GasPriceCapProviderForDataSubmission(
       .run { if (this <= 0uL) config.maxPriorityFeePerGasCap else this }
 
     val maxFeePerGasCap = (
-      if (gasPriceCaps.maxBaseFeePerGasCap != null) {
-        gasPriceCaps.maxBaseFeePerGasCap!! + maxPriorityFeePerGasCap
-      } else {
-        gasPriceCaps.maxFeePerGasCap
-      }
+      gasPriceCaps.maxBaseFeePerGasCap?.let { it + maxPriorityFeePerGasCap }
+        ?: gasPriceCaps.maxFeePerGasCap
       )
       .coerceAtMost(config.maxFeePerGasCap)
       .run { if (this <= 0uL) config.maxFeePerGasCap else this }

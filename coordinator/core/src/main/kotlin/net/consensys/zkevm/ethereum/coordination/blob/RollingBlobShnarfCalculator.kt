@@ -91,20 +91,22 @@ class RollingBlobShnarfCalculator(
           blobShnarf = genesisShnarf,
         ),
       )
-    } else if (parentBlobShnarfMetaDataReference.get() != null) {
-      val parentBlobData = parentBlobShnarfMetaDataReference.get()!!
-      if (parentBlobData.endBlockNumber != parentBlobEndBlockNumber) {
-        SafeFuture.failedFuture(
-          IllegalStateException(
-            "Blob block range start block number=${blobBlockRange.startBlockNumber} " +
-              "is not equal to parent blob end block number=${parentBlobData.endBlockNumber} + 1",
-          ),
-        )
-      } else {
-        SafeFuture.completedFuture(parentBlobData)
-      }
     } else {
-      parentBlobDataProvider.getParentBlobShnarfMetaData(blobBlockRange)
+      val parentBlobData = parentBlobShnarfMetaDataReference.get()
+      if (parentBlobData != null) {
+        if (parentBlobData.endBlockNumber != parentBlobEndBlockNumber) {
+          SafeFuture.failedFuture(
+            IllegalStateException(
+              "Blob block range start block number=${blobBlockRange.startBlockNumber} " +
+                "is not equal to parent blob end block number=${parentBlobData.endBlockNumber} + 1",
+            ),
+          )
+        } else {
+          SafeFuture.completedFuture(parentBlobData)
+        }
+      } else {
+        parentBlobDataProvider.getParentBlobShnarfMetaData(blobBlockRange)
+      }
     }
   }
 

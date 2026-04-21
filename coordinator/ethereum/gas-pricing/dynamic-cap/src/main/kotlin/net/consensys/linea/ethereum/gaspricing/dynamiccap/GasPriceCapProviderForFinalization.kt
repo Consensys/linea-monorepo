@@ -48,11 +48,8 @@ class GasPriceCapProviderForFinalization(
 
     val amplifiedMaxFeePerGasCap = (config.maxFeePerGasCap.toDouble() * config.gasPriceCapMultiplier).toULong()
     val maxFeePerGasCap = (
-      if (gasPriceCaps.maxBaseFeePerGasCap != null) {
-        gasPriceCaps.maxBaseFeePerGasCap!! + maxPriorityFeePerGasCap
-      } else {
-        gasPriceCaps.maxFeePerGasCap
-      }
+      gasPriceCaps.maxBaseFeePerGasCap?.let { it + maxPriorityFeePerGasCap }
+        ?: gasPriceCaps.maxFeePerGasCap
       )
       .coerceAtMost(amplifiedMaxFeePerGasCap)
       .run { if (this <= 0uL) amplifiedMaxFeePerGasCap else this }
