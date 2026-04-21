@@ -4,7 +4,12 @@ import { randomBytes } from "crypto";
 import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
-import { estimateLineaGas, sendTransactionWithGasPriceRetry, sendTransactionWithRetry } from "./common/utils";
+import {
+  estimateLineaGas,
+  sendTransactionWithGasPriceRetry,
+  sendTransactionWithRetry,
+  withRetryOnBlockNotFound,
+} from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { DummyContractAbi } from "./generated";
@@ -64,7 +69,7 @@ describe("Layer 2 test suite", () => {
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
 
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await withRetryOnBlockNotFound(() => l2PublicClient.estimateFeesPerGas());
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -121,7 +126,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await withRetryOnBlockNotFound(() => l2PublicClient.estimateFeesPerGas());
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -147,7 +152,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await withRetryOnBlockNotFound(() => l2PublicClient.estimateFeesPerGas());
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const accessList = [
@@ -191,7 +196,9 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const l2WalletClient = context.l2WalletClient({ account });
     for (let i = 0; i < 5; i++) {
-      const { maxPriorityFeePerGas, maxFeePerGas } = await l2PublicClient.estimateFeesPerGas();
+      const { maxPriorityFeePerGas, maxFeePerGas } = await withRetryOnBlockNotFound(() =>
+        l2PublicClient.estimateFeesPerGas(),
+      );
       logger.debug(
         `Fetched fee data. transactionNumber=${i + 1} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
       );

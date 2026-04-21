@@ -2,7 +2,7 @@ import { Mutex } from "async-mutex";
 import { Address, Client, PrivateKeyAccount } from "viem";
 import { estimateFeesPerGas, getTransactionCount, sendTransaction } from "viem/actions";
 
-import { estimateLineaGas, normalizeEip1559Fees, type Eip1559Fees } from "../../common/utils";
+import { estimateLineaGas, normalizeEip1559Fees, withRetryOnBlockNotFound, type Eip1559Fees } from "../../common/utils";
 import { sendTransactionWithRetry, type TransactionResult } from "../../common/utils/retry";
 
 import type { Logger } from "winston";
@@ -117,7 +117,7 @@ export class AccountFundingService {
       };
     }
 
-    const feeData = await estimateFeesPerGas(this.client);
+    const feeData = await withRetryOnBlockNotFound(() => estimateFeesPerGas(this.client));
     return normalizeEip1559Fees(feeData.maxPriorityFeePerGas, feeData.maxFeePerGas);
   }
 }
