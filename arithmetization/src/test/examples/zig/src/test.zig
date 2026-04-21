@@ -8,7 +8,7 @@ export fn _start() noreturn {
     // _ = @divTrunc(a, b);
     // _ = @rem(a, b);
 
-    // freestanding has no OS to return to so halt the CPU until an interrupt fires, then sleep again
+    // no OS to return to, sleep until an interrupt fires, then sleep again
     while (true) {
         asm volatile ("wfi");
     }

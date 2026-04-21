@@ -26,10 +26,9 @@ SRC ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig,asm)/src/$(TEST)
 BIN ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME)
 JSON ?= $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME).json
 
-# Set if strip should be applied to the binary
+# Set STRIP to true to generate stripped binary
 STRIP ?= false
-BIN_STRIPPED = $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME).stripped
-JSON_STRIPPED = $(MAKEFILE_DIR)$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,asm/bin/)$(NAME).stripped.json
+BIN_STRIPPED ?= $(BIN).stripped
 
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
 GO_MAIN ?= $(MAKEFILE_DIR)main.go
@@ -43,8 +42,10 @@ debug: compile zkc-debug
 compile: $(SRC)
 	@if [ "$(EXT)" = ".s" ]; then \
 		mkdir -p $(MAKEFILE_DIR)asm/bin; \
+		echo "\nGenerating $(BIN) from $(SRC)"; \
 		$(AS) ${AS_FLAGS} -o $(BIN) $^; \
 	elif [ "$(EXT)" = ".zig" ]; then \
+		echo "\nGenerating $(BIN) from $(SRC)"; \
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
@@ -52,36 +53,20 @@ compile: $(SRC)
 	fi
 	@if [ "$(STRIP)" = "true" ]; then \
 		cp $(BIN) $(BIN_STRIPPED); \
+		echo "\nGenerating $(BIN_STRIPPED) from $(BIN)"; \
 		riscv64-unknown-elf-strip -S $(BIN_STRIPPED); \
-		echo "\nGenerating $(JSON_STRIPPED) from $(BIN_STRIPPED)"; \
-		go run $(GO_MAIN) $(BIN_STRIPPED) > $(JSON_STRIPPED); \
 	fi
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) > $(JSON)
 
 zkc-exec:
-	@if [ "$(STRIP)" = "true" ]; then \
-		echo "\nExecuting $(JSON_STRIPPED)"; \
-		zkc exec $(JSON_STRIPPED) $(ZKC_MAIN); \
-	else \
-		echo "\nExecuting $(JSON)"; \
-		zkc exec $(JSON) $(ZKC_MAIN); \
-	fi
+	zkc exec $(JSON) $(ZKC_MAIN)
 
 zkc-debug:
-	@if [ "$(STRIP)" = "true" ]; then \
-		echo "\nDebugging $(JSON_STRIPPED)"; \
-		zkc debug $(JSON_STRIPPED) $(ZKC_MAIN); \
-	else \
-		echo "\nDebugging $(JSON)"; \
-		zkc debug $(JSON) $(ZKC_MAIN); \
-	fi
+	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	@rm $(BIN) $(JSON) 
-	@if [ "$(STRIP)" = "true" ]; then \
-		 rm $(BIN_STRIPPED) $(JSON_STRIPPED); \
-	fi
+	rm -f $(BIN) $(JSON) $(BIN_STRIPPED)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/

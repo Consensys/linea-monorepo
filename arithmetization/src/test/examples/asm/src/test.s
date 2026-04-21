@@ -15,3 +15,10 @@ _start:
     mv      a0, t1
     li      a7, 93
     ecall
+
+# TODO: shall we change with:
+#    # no OS to return to, sleep until an interrupt fires, then sleep again
+# 1:
+#    wfi
+#    j       1b
+# ?
