@@ -63,6 +63,7 @@ func Compress(state, block field.Octuplet) field.Octuplet {
 
 // Reset clears the buffer, and reset state to iv
 func (d *MDHasher) Reset() {
+	d.buffer = d.buffer[:0]
 	d.bufferPosition = 0
 	d.state = field.Octuplet{}
 }
@@ -153,8 +154,9 @@ func (d *MDHasher) Sum(msg []byte) []byte {
 	if _, err := d.Write(msg); err != nil {
 		panic(err)
 	}
-	h := d.StateStorer.Sum(nil)
-	return h
+	h := d.SumElement()
+	h32 := field.OctupletToBytes(h)
+	return h32[:]
 }
 
 // HashVec hashes a vector of field elements

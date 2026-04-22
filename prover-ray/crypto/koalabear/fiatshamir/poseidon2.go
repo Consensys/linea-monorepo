@@ -139,9 +139,8 @@ func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
 	}
 
 	var (
-		mask = upperBound - 1
-		i    = 0
-		res  = make([]int, num)
+		i   = 0
+		res = make([]int, num)
 	)
 
 	for i < num {
@@ -149,7 +148,7 @@ func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
 		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
-			res[i] = int(b[0]) % mask
+			res[i] = int(b[0]) % upperBound
 			i++
 			if i >= num {
 				break
