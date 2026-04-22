@@ -5,6 +5,11 @@ permissions:
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/coordinator-automate-changelog-versioning-poc
+    paths:
+      - coordinator/RELEASE_TEST.md
 
 concurrency:
   group: coordinator-release-${{ github.ref }}
