@@ -40,7 +40,7 @@ type Params struct {
 //     directly while not using the SIS hashing.
 //   - merkleHashFunc: the hash function to use to hash the nodes of the Merkle-tree.
 func NewParams(
-	rate int,
+	inverseRate int,
 	nbColumns int,
 	maxNbRows int,
 	logTwoDegree int,
@@ -51,15 +51,15 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if !utils.IsPowerOfTwo(rate) {
-		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
+	if !utils.IsPowerOfTwo(inverseRate) {
+		utils.Panic("The inverse-rate has to be a power of two, got %v", inverseRate)
 	}
 
 	if maxNbRows < 1 {
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
 	res := &Params{
-		RsParams:  reedsolomon.NewRsParams(nbColumns, rate),
+		RsParams:  reedsolomon.NewRsParams(nbColumns, inverseRate),
 		NbColumns: nbColumns,
 		MaxNbRows: maxNbRows,
 		Key:       ringsis.GenerateKey(logTwoDegree, logTwoBound, maxNbRows),
