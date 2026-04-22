@@ -80,59 +80,10 @@ For local testing and development conflation deadline is set to 6s `conflation-d
 Hence, only a two-block conflation.
 If you want bigger conflations, increase the deadline accordingly.
 
-### Target checkpoints, L1 finalization, and API resume
-
-Under `[conflation.proof-aggregation]` in the coordinator TOML configuration,
-you can define **target checkpoints** and optional **gates** that pause L2 block import / conflation until release
-conditions are met.
-
-**`target-end-blocks`** — Block numbers that mark checkpoints. The coordinator uses the same target set across the
-conflation pipeline so that, for each configured **`N`**, work is **cut off with end block number `N`**: an execution
-**batch** ends at **`N`**, the enclosing **blob** is closed so its range ends at **`N`**, and **proof aggregation** is
-triggered so that aggregation’s block range also ends at **`N`**. When the wait flags below are enabled, **import /
-conflation then pauses** at that boundary: the pause is recognized when block **`N + 1`** is handed to conflation—that
-is, after the batch/blob/aggregation slice through **`N`** has been completed and the coordinator is about to progress
-past **`N`**.
-
-**`timestamp-based-hard-forks`** — Ordered list of L2 block timestamp thresholds (ISO-8601 strings or Unix epoch
-seconds, as in other coordinator TOML `Instant` fields). The list must be **strictly ascending** with **no
-duplicates**. Conflation uses the same crossing rule as `TimestampHardForkConflationCalculator`: the **first** L2 block
-whose timestamp is **at or above** a threshold **T**, while the previous block’s timestamp was **strictly below** **T**,
-is the block **`N + 1`** for that fork. The coordinator closes conflation so that the execution **batch**,
-enclosing **blob**, and **aggregation** all have **end block number `N`** (the last block still strictly before the
-fork in time). The crossing block **`N + 1`** starts the next batch after the boundary. For the optional checkpoint
-**pause** (when the wait flags below are enabled), the same **`N` / `N + 1`** split applies as for `target-end-blocks`:
-the pause is tied to handing **`N + 1`** into conflation once the work through **`N`** has been completed.
-
-**`wait-target-block-l1-finalization`** — When `true`, after a checkpoint the coordinator waits until the
-**L1-finalized** L2 block number reported by the rollup is at least the checkpoint height before it may resume
-importing.
-
-**`wait-api-resume-after-target-block`** — When `true`, after a checkpoint the coordinator also waits for an operator
-**JSON-RPC** call before resuming. If both wait flags are `true`, **both** the L1-finalization condition and the API
-signal must be satisfied before the pause clears. If only one flag is `true`, only that gate applies.
-
-The pause machinery is active when **either** wait flag is `true`. If both are `false`, `target-end-blocks` and
-`timestamp-based-hard-forks` do not trigger this import pause (they can still affect proof aggregation layout
-elsewhere).
-
-**Resume API** — JSON-RPC method name: `conflation_signalTargetCheckpointResume`. The body is standard JSON-RPC 2.0;
-`params` may be an empty array. The `result` is a boolean: `true` if the resume signal was accepted (API gate enabled
-and a checkpoint pause was actually waiting on the API), `false` otherwise.
-
-Coordinator API settings live under `[api]` (`json-rpc-port`, optional `json-rpc-path`; default path is `/`). In the
-default Docker tracing stack, `json-rpc-port` is **9546** and is **not** published to the host; call it from inside the
-`coordinator` container or add a port mapping if you need host access.
-
-Example:
-
-```bash
-curl -sS -X POST "http://127.0.0.1:9546/" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"conflation_signalTargetCheckpointResume","params":[]}'
-```
-
-If you set a non-default `json-rpc-path` (for example `/jsonrpc`), append that path to the URL instead of `/`.
+For **target block / timestamp checkpoints**, L1 finalization and API **resume** (`target-end-blocks`,
+`timestamp-based-hard-forks`, `wait-target-block-l1-finalization`, `wait-api-resume-after-target-block`, and
+`conflation_signalTargetCheckpointResume`), see
+[Target checkpoints, L1 finalization, and API resume](conflation-target-checkpoints.md).
 
 ## Next steps
 
