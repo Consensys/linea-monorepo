@@ -404,6 +404,7 @@ describe("Forced transaction test suite", () => {
       fromBlock: receipt.blockNumber,
       toBlock: "latest",
       pollingIntervalMs: 2_000,
+      timeoutMs: 200_000,
       strict: true,
       criteria: async (events) =>
         events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -574,6 +575,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
+        timeoutMs: 200_000,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
