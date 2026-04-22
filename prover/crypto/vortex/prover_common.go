@@ -37,7 +37,9 @@ func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, random
 
 		x := fext.One()
 		var scratch vectorext.Vector // lazy-allocated only if needed (default case)
-		localLinComb := make(vectorext.Vector, stop-start)
+		// Accumulate directly into the shared linComb slice — each goroutine
+		// owns a disjoint [start:stop) range, so no data race and no copy needed.
+		localLinComb := vectorext.Vector(linComb[start:stop])
 		for i := range v {
 			_sv := v[i]
 			// we distinguish the case of a regular vector and constant to avoid
@@ -70,7 +72,6 @@ func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, random
 			x.Mul(&x, &randomCoin)
 
 		}
-		copy(linComb[start:stop], localLinComb)
 	})
 
 	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
