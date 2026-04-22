@@ -1,2 +1,5 @@
-build/
 .cache/
+.codex
+build/
+third_party/tinygo/
+third_party/libriscv/

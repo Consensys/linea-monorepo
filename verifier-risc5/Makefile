@@ -1,39 +1,71 @@
 .DEFAULT_GOAL := help
 
+GO_MAIN := ./cmd/verifier
+
 BUILD_DIR := build
 BAREMETAL_DIR := baremetal
-TINYGO_TARGET := toolchains/tinygo/riscv64im_zicclsm-qemu-virt.json
-TINYGO_TARGET_LD := toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld
-TINYGO_TARGET_BUILD := $(BUILD_DIR)/$(notdir $(TINYGO_TARGET))
-TAMAGO_BIOS_SRC := toolchains/tamago/sifive_u_bios.S
 LIBRISCV_TOOLCHAIN_DIR := toolchains/libriscv
+TAMAGO_TOOLCHAIN_DIR := toolchains/tamago
+TINYGO_TOOLCHAIN_DIR := toolchains/tinygo
+
 LIBRISCV_CMAKE := $(LIBRISCV_TOOLCHAIN_DIR)/CMakeLists.txt
 LIBRISCV_RUNNER_SRC := $(LIBRISCV_TOOLCHAIN_DIR)/runner.cpp
-GO_MAIN := ./cmd/verifier
+TAMAGO_BIOS_SRC := $(TAMAGO_TOOLCHAIN_DIR)/sifive_u_bios.S
+TINYGO_TARGET := $(TINYGO_TOOLCHAIN_DIR)/riscv64im_zicclsm-qemu-virt.json
+TINYGO_TARGET_LD := $(TINYGO_TOOLCHAIN_DIR)/riscv64im_zicclsm-qemu-virt.ld
+
+GO ?= go
+CMAKE ?= cmake
+CLANG ?= clang
+LD_LLD ?= ld.lld
+QEMU_SYSTEM ?= qemu-system-riscv64
+QEMU_USER ?= qemu-riscv64
+READELF ?= readelf
+RISCV_GCC ?= riscv64-unknown-elf-gcc
+RISCV_OBJCOPY ?= riscv64-unknown-elf-objcopy
+
+HOST_GO_VERSION := $(shell $(GO) env GOVERSION)
+XDG_CACHE_HOME_LOCAL ?= $(abspath .cache/xdg)
 
 LLVM_VERSION ?= 20
 LLVM_BIN_DIR ?= /usr/lib/llvm-$(LLVM_VERSION)/bin
 LLVM_DEV_DIR ?= /usr/lib/llvm-$(LLVM_VERSION)
 LLVM_INCLUDE_DIR ?= $(if $(wildcard $(LLVM_DEV_DIR)/include/llvm-c/Core.h),$(LLVM_DEV_DIR)/include,/usr/include/llvm-$(LLVM_VERSION))
-CLANG ?= $(if $(wildcard $(LLVM_BIN_DIR)/clang),$(LLVM_BIN_DIR)/clang,clang)
-LD_LLD ?= $(if $(wildcard $(LLVM_BIN_DIR)/ld.lld),$(LLVM_BIN_DIR)/ld.lld,ld.lld)
+CLANG := $(if $(wildcard $(LLVM_BIN_DIR)/clang),$(LLVM_BIN_DIR)/clang,$(CLANG))
+LD_LLD := $(if $(wildcard $(LLVM_BIN_DIR)/ld.lld),$(LLVM_BIN_DIR)/ld.lld,$(LD_LLD))
 
-GO ?= go
-CMAKE ?= cmake
-HOST_GO_VERSION := $(shell $(GO) env GOVERSION)
 TINYGO_ROOT ?= third_party/tinygo
+TINYGO_VERSION ?= v0.41.0
+TINYGO_COMMIT ?= 1f114b2acff247f52eb77a92363119e7327107b3
+TINYGO_PATCH ?= third_party/tinygo-riscv64im_zicclsm.patch
 TINYGO_BIN := $(abspath $(TINYGO_ROOT))/build/tinygo
+TINYGO_LLVM_PROJECT_BRANCH ?= tinygo_20.x
 TINYGO_LLVM_PROJECT_DIR := $(TINYGO_ROOT)/llvm-project
-LIBRISCV_ROOT ?= third_party/libriscv
-XDG_CACHE_HOME_LOCAL ?= $(abspath .cache/xdg)
-TAMAGO_CACHE_HOME ?= $(XDG_CACHE_HOME_LOCAL)
-TAMAGO ?= XDG_CACHE_HOME=$(TAMAGO_CACHE_HOME) $(GO) tool tamago
-RISCV_GCC ?= riscv64-unknown-elf-gcc
-RISCV_OBJCOPY ?= riscv64-unknown-elf-objcopy
-READELF ?= readelf
+TINYGO_TARGET_BUILD := $(BUILD_DIR)/$(notdir $(TINYGO_TARGET))
+TINYGO_SCHEDULER ?= none
+TINYGO_GC ?= conservative
+TINYGO_PANIC ?= trap
+TINYGO_OPT ?= z
+TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
 
-QEMU_SYSTEM ?= qemu-system-riscv64
-QEMU_USER ?= qemu-riscv64
+TAMAGO_TOOL_VERSION ?= v1.26.2
+TAMAGO_CACHE_HOME ?= $(XDG_CACHE_HOME_LOCAL)
+TAMAGO_GOROOT := $(TAMAGO_CACHE_HOME)/tamago-go/tamago-go$(patsubst v%,%,$(TAMAGO_TOOL_VERSION))
+TAMAGO_BIN := $(TAMAGO_GOROOT)/bin/go
+TAMAGO_TAGS ?= baremetal,tamago_sifive_u,tiny
+TAMAGO_LDFLAGS ?= -T 0x80010000 -R 0x1000
+TAMAGO_ELF := $(BUILD_DIR)/verifier-tamago-sifive_u.elf
+TAMAGO_BIOS_ELF := $(BUILD_DIR)/tamago-sifive_u-bios.elf
+TAMAGO_BIOS_BIN := $(BUILD_DIR)/tamago-sifive_u-bios.bin
+TAMAGO_DTB := $(BUILD_DIR)/qemu-sifive_u.dtb
+
+LIBRISCV_ROOT ?= third_party/libriscv
+LIBRISCV_VERSION ?= v1.15
+LIBRISCV_BUILD_DIR := $(BUILD_DIR)/libriscv-host
+LIBRISCV_RUNNER := $(LIBRISCV_BUILD_DIR)/libriscv_runner
+LIBRISCV_GUEST ?= $(CLANG_ELF)
+LIBRISCV_MAX_INSTRUCTIONS ?= 50000000
+
 QEMU_TIMEOUT ?= 1s
 QEMU_MACHINE ?= virt
 QEMU_CPU ?= rv64
@@ -46,34 +78,12 @@ RV_ABI ?= lp64
 RV_CODE_MODEL ?= medany
 GO_RISCV_PROFILE ?= rva20u64
 
-TAMAGO_TAGS ?= baremetal,tamago_sifive_u,tiny
-TAMAGO_LDFLAGS ?= -T 0x80010000 -R 0x1000
-TINYGO_VERSION ?= v0.41.0
-TINYGO_SCHEDULER ?= none
-TINYGO_GC ?= conservative
-TINYGO_PANIC ?= trap
-TINYGO_OPT ?= z
-TINYGO_LLVM_PROJECT_BRANCH ?= tinygo_20.x
-TAMAGO_TOOL_VERSION ?= v1.26.2
-LIBRISCV_VERSION ?= v1.15
-TAMAGO_GOROOT := $(TAMAGO_CACHE_HOME)/tamago-go/tamago-go$(patsubst v%,%,$(TAMAGO_TOOL_VERSION))
-TAMAGO_BIN := $(TAMAGO_GOROOT)/bin/go
-LIBRISCV_BUILD_DIR := $(BUILD_DIR)/libriscv-host
-LIBRISCV_RUNNER := $(LIBRISCV_BUILD_DIR)/libriscv_runner
-LIBRISCV_GUEST ?= $(CLANG_ELF)
-LIBRISCV_MAX_INSTRUCTIONS ?= 50000000
-
 CLANG_ELF := $(BUILD_DIR)/verifier-clang.elf
 GCC_ELF := $(BUILD_DIR)/verifier-gcc.elf
 GO_LINUX_BIN := $(BUILD_DIR)/verifier-go-linux-riscv64
-TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
-TAMAGO_ELF := $(BUILD_DIR)/verifier-tamago-sifive_u.elf
-TAMAGO_BIOS_ELF := $(BUILD_DIR)/tamago-sifive_u-bios.elf
-TAMAGO_BIOS_BIN := $(BUILD_DIR)/tamago-sifive_u-bios.bin
-TAMAGO_DTB := $(BUILD_DIR)/qemu-sifive_u.dtb
 
 .PHONY: help \
-	tools-sync tools-list clean-tool-cache vendor-tinygo tinygo-bootstrap \
+	clean-tool-cache vendor-tinygo tinygo-bootstrap \
 	vendor-libriscv build-libriscv-runner \
 	build-clang build-gcc build-go-linux build-tinygo build-tamago \
 	emulate-clang emulate-gcc emulate-go-linux emulate-tinygo emulate-tamago emulate-libriscv \
@@ -82,56 +92,41 @@ TAMAGO_DTB := $(BUILD_DIR)/qemu-sifive_u.dtb
 help:
 	@printf '%s\n' \
 		'Targets:' \
-		'  make build-clang      - bare-metal ELF with clang + ld.lld' \
-		'  make build-gcc        - bare-metal ELF with riscv64-unknown-elf-gcc' \
-			'  make build-go-linux   - linux/riscv64 ELF with upstream Go' \
-			'  make vendor-tinygo    - clone the vendored TinyGo checkout, submodules, and llvm-project builtins sources' \
-			'  make vendor-libriscv  - clone the vendored libriscv checkout and submodules' \
-			'  make tinygo-bootstrap - build the local TinyGo binary from the vendored TinyGo checkout' \
-			'  make build-libriscv-runner - build the local bare-metal libriscv host runner' \
-			'  make build-tinygo     - bare-metal ELF with the vendored TinyGo binary' \
-			'  make build-tamago     - bare-metal ELF for QEMU sifive_u with TamaGo' \
-			'  make tools-sync       - re-pin TamaGo in go.mod via go get -tool' \
-		'  make tools-list       - show builtin and module-managed Go tools' \
-		'  make clean-tool-cache - remove the local TinyGo/TamaGo XDG cache' \
-		'  make emulate-clang    - run the clang bare-metal ELF on QEMU virt' \
-		'  make emulate-gcc      - run the gcc bare-metal ELF on QEMU virt' \
-			'  make emulate-go-linux - run the upstream Go ELF under qemu-riscv64' \
-			'  make emulate-tinygo   - run the TinyGo bare-metal ELF on QEMU virt' \
-			'  make emulate-tamago   - run the TamaGo ELF on QEMU sifive_u' \
-			'  make emulate-libriscv - run the bare-metal ELF in the vendored libriscv runner' \
-			'' \
-			'Useful overrides:' \
-			'  TINYGO_ROOT=third_party/tinygo - location of the vendored TinyGo checkout used by build-tinygo' \
-			'  LIBRISCV_ROOT=third_party/libriscv - location of the vendored libriscv checkout used by emulate-libriscv' \
-			'  TINYGO_VERSION=v0.41.0      - TinyGo tag cloned by make vendor-tinygo' \
-			'  LIBRISCV_VERSION=v1.15      - libriscv tag cloned by make vendor-libriscv' \
-			'  TINYGO_LLVM_PROJECT_BRANCH=tinygo_20.x - llvm-project branch cloned for TinyGo compiler-rt builtins' \
-			'  HOST_GO_VERSION=go1.26.2    - Go toolchain used to bootstrap the vendored TinyGo binary' \
-			'  LIBRISCV_GUEST=build/verifier-clang.elf - bare-metal ELF passed to emulate-libriscv' \
-			'  TINYGO_GC=conservative      - TinyGo GC mode used by build-tinygo' \
-			'  TINYGO_SCHEDULER=none       - TinyGo scheduler mode used by build-tinygo' \
-			'  LLVM_VERSION=20             - select the host LLVM major version used for TinyGo and the clang/lld bare-metal path' \
-			'' \
-			'Ubuntu packages usually needed for the tested paths:' \
-			'  sudo apt install clang-20 lld-20 llvm-20-tools llvm-20-dev libclang-20-dev gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc qemu-user cmake g++' \
-			'' \
-		'Go tool-managed compilers in this module:' \
-		'  TamaGo: XDG_CACHE_HOME=.cache/xdg go tool tamago ...' \
+		'  make vendor-tinygo        - clone TinyGo at the pinned commit and apply the local RISC-V patch' \
+		'  make vendor-libriscv      - clone libriscv and its submodules under third_party/' \
+		'  make tinygo-bootstrap     - build the local TinyGo binary from third_party/tinygo' \
+		'  make build-clang          - build the freestanding clang/ld.lld ELF' \
+		'  make build-gcc            - build the freestanding GCC ELF' \
+		'  make build-go-linux       - build the hosted linux/riscv64 Go baseline' \
+		'  make build-tinygo         - build the freestanding TinyGo ELF' \
+		'  make build-tamago         - build the TamaGo sifive_u ELF' \
+		'  make build-libriscv-runner - build the local libriscv bare-metal runner' \
+		'  make emulate-clang        - run the clang ELF on QEMU virt' \
+		'  make emulate-gcc          - run the GCC ELF on QEMU virt' \
+		'  make emulate-go-linux     - run the hosted Go ELF under qemu-riscv64' \
+		'  make emulate-tinygo       - run the TinyGo ELF on QEMU virt' \
+		'  make emulate-tamago       - run the TamaGo ELF on QEMU sifive_u' \
+		'  make emulate-libriscv     - run a generic bare-metal ELF in the vendored libriscv runner' \
+		'  make clean-tool-cache     - remove local TinyGo/TamaGo caches under .cache/' \
+		'' \
+		'Useful overrides:' \
+		'  LLVM_VERSION=20                   - host LLVM major version used by clang/lld and TinyGo bootstrap' \
+		'  TINYGO_ROOT=third_party/tinygo    - TinyGo checkout location' \
+		'  TINYGO_COMMIT=$(TINYGO_COMMIT) - pinned TinyGo commit expected by the local patch' \
+		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
+		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
+		'  QEMU_CPU=rv64                     - QEMU CPU string for the virt machine targets' \
+		'' \
+		'Ubuntu packages usually needed:' \
+		'  sudo apt install clang-20 lld-20 llvm-20-tools llvm-20-dev libclang-20-dev gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc qemu-user cmake g++' \
 		'' \
 		'Notes:' \
 		'  TinyGo is vendored instead of module-managed because the upstream module archive omits required git submodules such as src/net.' \
-		'  The default checkout lives under third_party/ rather than vendor/ because vendor/ triggers Go module vendoring semantics and breaks normal go/tinygo builds.' \
-		'  build-tinygo defaults to third_party/tinygo, bootstraps third_party/tinygo/build/tinygo locally, vendors tinygo-org/llvm-project for compiler-rt builtins, and still requires LLVM headers and libclang development files on the host.' \
-		'  This Makefile defaults to LLVM $(LLVM_VERSION), injects headers/libs from $(LLVM_DEV_DIR) for the vendored TinyGo bootstrap, and redirects tool caches under .cache/xdg.' \
-		'  go tool tamago bootstraps tamago-go into a cache directory; this Makefile keeps that cache under .cache/ so go test ./... will not recurse into it.' \
-			'  build-tamago uses the installed tamago-go binary directly with GODEBUG=goindex=0 because tamago-go1.26.2 misclassifies std packages for tamago/riscv64 when the module index is enabled.' \
-			'  emulate-tamago dumps a DTB from QEMU and builds a tiny BIOS trampoline locally, so no separate dtc installation is required for the sifive_u path.' \
-			'  emulate-libriscv uses a tiny vendored host runner with UART MMIO traps for generic bare-metal guests, rather than the Linux-oriented rvlinux CLI.' \
-			'  TamaGo sifive_u images are board-specific machine-mode guests and should be run with make emulate-tamago, not emulate-libriscv.' \
-			'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted linux/riscv64 baseline.' \
-			'  The bare-metal C/LLVM path uses riscv64-unknown-none-elf plus -march=rv64im_zicclsm because that is accepted more widely than an extension-bearing triple.' \
-			'  QEMU_CPU defaults to rv64. Override it if your local QEMU supports an exact extension string.'
+		'  vendor-tinygo checks that the checkout is at the pinned commit before applying third_party/tinygo-riscv64im_zicclsm.patch.' \
+		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
+		'  emulate-libriscv is for generic bare-metal guests, not for the board-specific TamaGo sifive_u image.' \
+		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
+		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.'
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
@@ -139,22 +134,31 @@ $(BUILD_DIR):
 $(TINYGO_TARGET_BUILD): $(TINYGO_TARGET) $(TINYGO_TARGET_LD) | $(BUILD_DIR)
 	sed 's|"linkerscript": "riscv64im_zicclsm-qemu-virt.ld"|"linkerscript": "$(abspath $(TINYGO_TARGET_LD))"|' "$(TINYGO_TARGET)" > "$@"
 
-tools-sync:
-	$(GO) get -tool github.com/usbarmory/tamago/cmd/tamago@$(TAMAGO_TOOL_VERSION)
-
-tools-list:
-	$(GO) tool
-
 clean-tool-cache:
-	rm -rf $(TAMAGO_CACHE_HOME) $(BUILD_DIR)/xdg-cache
+	rm -rf $(XDG_CACHE_HOME_LOCAL) $(BUILD_DIR)/xdg-cache
 
-vendor-tinygo:
+vendor-tinygo: $(TINYGO_PATCH)
 	if [ "$(TINYGO_ROOT)" != "vendor/tinygo" ] && [ -d "vendor/tinygo" ] && [ ! -e "$(TINYGO_ROOT)" ]; then mkdir -p "$(dir $(TINYGO_ROOT))" && mv "vendor/tinygo" "$(TINYGO_ROOT)"; fi
 	if [ "$(TINYGO_ROOT)" != "vendor/tinygo" ]; then rmdir "vendor" 2>/dev/null || true; fi
+	test -f "$(TINYGO_PATCH)"
 	test -d "$(TINYGO_ROOT)" || git clone --branch "$(TINYGO_VERSION)" --depth 1 --recursive https://github.com/tinygo-org/tinygo "$(TINYGO_ROOT)"
 	test -f "$(TINYGO_ROOT)/go.mod"
+	@head="$$(git -C "$(TINYGO_ROOT)" rev-parse HEAD)"; \
+	if [ "$$head" != "$(TINYGO_COMMIT)" ]; then \
+		printf '%s\n' "vendor-tinygo: $(TINYGO_ROOT) is at $$head, expected $(TINYGO_COMMIT)."; \
+		printf '%s\n' "vendor-tinygo: remove $(TINYGO_ROOT) and rerun if you want a clean repin."; \
+		exit 1; \
+	fi
 	git -C "$(TINYGO_ROOT)" submodule update --init --recursive
 	test -d "$(TINYGO_LLVM_PROJECT_DIR)" || git clone --branch "$(TINYGO_LLVM_PROJECT_BRANCH)" --depth 1 https://github.com/tinygo-org/llvm-project "$(TINYGO_LLVM_PROJECT_DIR)"
+	@if git -C "$(TINYGO_ROOT)" apply --reverse --check "$(abspath $(TINYGO_PATCH))" >/dev/null 2>&1; then \
+		:; \
+	elif git -C "$(TINYGO_ROOT)" apply --check "$(abspath $(TINYGO_PATCH))" >/dev/null 2>&1; then \
+		git -C "$(TINYGO_ROOT)" apply "$(abspath $(TINYGO_PATCH))"; \
+	else \
+		printf '%s\n' "vendor-tinygo: patch $(TINYGO_PATCH) does not apply to $(TINYGO_COMMIT)."; \
+		exit 1; \
+	fi
 
 vendor-libriscv:
 	test -d "$(LIBRISCV_ROOT)" || git clone --branch "$(LIBRISCV_VERSION)" --depth 1 --recursive https://github.com/libriscv/libriscv "$(LIBRISCV_ROOT)"

@@ -1,0 +1,109 @@
+diff --git a/builder/library.go b/builder/library.go
+index 73fa254..c1f75fd 100644
+--- a/builder/library.go
++++ b/builder/library.go
+@@ -167,9 +167,16 @@ func (l *Library) load(config *compileopts.Config, tmpdir string) (job *compileJ
+ 		// double.
+ 		args = append(args, "-mdouble=64")
+ 	case "riscv32":
+-		args = append(args, "-march="+riscvMarch(config, "rv32imac"), "-fforce-enable-int128")
++		args = append(args, "-march="+riscvMarch(config, "rv32imac"))
++		if codeModel := riscvCFlag(config, "-mcmodel="); codeModel != "" {
++			args = append(args, "-mcmodel="+codeModel)
++		}
++		args = append(args, "-fforce-enable-int128")
+ 	case "riscv64":
+ 		args = append(args, "-march="+riscvMarch(config, "rv64gc"))
++		if codeModel := riscvCFlag(config, "-mcmodel="); codeModel != "" {
++			args = append(args, "-mcmodel="+codeModel)
++		}
+ 	case "mips":
+ 		args = append(args, "-fno-pic")
+ 	}
+@@ -305,10 +312,17 @@ func (l *Library) load(config *compileopts.Config, tmpdir string) (job *compileJ
+ // with the correct ISA extensions for each target (e.g. rv32imc for
+ // ESP32-C3 which lacks the atomic extension).
+ func riscvMarch(config *compileopts.Config, defaultMarch string) string {
++	if march := riscvCFlag(config, "-march="); march != "" {
++		return march
++	}
++	return defaultMarch
++}
++
++func riscvCFlag(config *compileopts.Config, prefix string) string {
+ 	for _, flag := range config.Target.CFlags {
+-		if strings.HasPrefix(flag, "-march=") {
+-			return flag[len("-march="):]
++		if strings.HasPrefix(flag, prefix) {
++			return flag[len(prefix):]
+ 		}
+ 	}
+-	return defaultMarch
++	return ""
+ }
+diff --git a/compileopts/config.go b/compileopts/config.go
+index 1920d2b..3c88065 100644
+--- a/compileopts/config.go
++++ b/compileopts/config.go
+@@ -22,8 +22,9 @@ import (
+ // builder.Library struct but that's hard to do since we want to know the
+ // library path in advance in several places).
+ var libVersions = map[string]int{
+-	"musl":  3,
+-	"bdwgc": 2,
++	"musl":        3,
++	"bdwgc":       2,
++	"compiler-rt": 1,
+ }
+ 
+ // Config keeps all configuration affecting the build in a single struct.
+diff --git a/compiler/defer.go b/compiler/defer.go
+index 7c95f0a..56d3c79 100644
+--- a/compiler/defer.go
++++ b/compiler/defer.go
+@@ -212,6 +212,13 @@ sw $$ra, 4($$5)
+ la a2, 1f
+ sw a2, 4(a1)
+ li a0, 0
++1:`
++		constraints = "={a0},{a1},~{a1},~{a2},~{a3},~{a4},~{a5},~{a6},~{a7},~{s0},~{s1},~{s2},~{s3},~{s4},~{s5},~{s6},~{s7},~{s8},~{s9},~{s10},~{s11},~{t0},~{t1},~{t2},~{t3},~{t4},~{t5},~{t6},~{ra},~{f0},~{f1},~{f2},~{f3},~{f4},~{f5},~{f6},~{f7},~{f8},~{f9},~{f10},~{f11},~{f12},~{f13},~{f14},~{f15},~{f16},~{f17},~{f18},~{f19},~{f20},~{f21},~{f22},~{f23},~{f24},~{f25},~{f26},~{f27},~{f28},~{f29},~{f30},~{f31},~{memory}"
++	case "riscv64":
++		asmString = `
++la a2, 1f
++sd a2, 8(a1)
++li a0, 0
+ 1:`
+ 		constraints = "={a0},{a1},~{a1},~{a2},~{a3},~{a4},~{a5},~{a6},~{a7},~{s0},~{s1},~{s2},~{s3},~{s4},~{s5},~{s6},~{s7},~{s8},~{s9},~{s10},~{s11},~{t0},~{t1},~{t2},~{t3},~{t4},~{t5},~{t6},~{ra},~{f0},~{f1},~{f2},~{f3},~{f4},~{f5},~{f6},~{f7},~{f8},~{f9},~{f10},~{f11},~{f12},~{f13},~{f14},~{f15},~{f16},~{f17},~{f18},~{f19},~{f20},~{f21},~{f22},~{f23},~{f24},~{f25},~{f26},~{f27},~{f28},~{f29},~{f30},~{f31},~{memory}"
+ 	default:
+diff --git a/src/runtime/asm_riscv.S b/src/runtime/asm_riscv.S
+index 9cf6571..a8f097a 100644
+--- a/src/runtime/asm_riscv.S
++++ b/src/runtime/asm_riscv.S
+@@ -47,8 +47,8 @@ tinygo_scanCurrentStack:
+ tinygo_longjmp:
+     // Note: the code we jump to assumes a0 is non-zero, which is already the
+     // case because that's the defer frame pointer.
+-    lw sp, 0(a0)       // jumpSP
+-    lw a1, REGSIZE(a0) // jumpPC
++    LREG sp, 0(a0)       // jumpSP
++    LREG a1, REGSIZE(a0) // jumpPC
+     jr a1
+ 
+ .section .text.tinygo_checkpointJump
+diff --git a/src/runtime/runtime_tinygoriscv_qemu.go b/src/runtime/runtime_tinygoriscv_qemu.go
+index 1ee0d22..8ba5b02 100644
+--- a/src/runtime/runtime_tinygoriscv_qemu.go
++++ b/src/runtime/runtime_tinygoriscv_qemu.go
+@@ -377,9 +377,9 @@ func (l *spinLock) Unlock() {
+ // Hint to the CPU that this core is just waiting, and the core can go into a
+ // lower energy state.
+ func spinLoopWait() {
+-	// This is a no-op in QEMU TCG (but added here for completeness):
+-	// https://github.com/qemu/qemu/blob/v9.2.3/target/riscv/insn_trans/trans_rvi.c.inc#L856
+-	riscv.Asm("pause")
++	// Keep the local riscv64im_zicclsm experiment within the requested ISA set:
++	// `pause` would require Zihintpause, which this target intentionally omits.
++	riscv.Asm("nop")
+ }
+ 
+ func currentCPU() uint32 {
