@@ -53,12 +53,10 @@ type Request struct {
 	SimulatedExecutionBlockTimestamp uint64 `json:"simulatedExecutionBlockTimestamp,omitempty"`
 }
 
-// AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof.
-// Used for BadNonce and BadBalance cases.
+// AccountTrieInputs decodes AccountMerkleProof into circuit assignment inputs.
 func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if req.AccountMerkleProof == nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{},
-			fmt.Errorf("accountMerkleProof is nil")
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("accountMerkleProof is nil")
 	}
 	return DecodeAccountTrieInputs(*req.AccountMerkleProof)
 }
@@ -83,16 +81,20 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 	switch req.InvalidityType {
 
 	case invalidity.BadNonce, invalidity.BadBalance:
-		if err := req.validateAccountMerkleProof(); err != nil {
-			return err
+		if req.AccountMerkleProof != nil || proverMode != config.ProverModeDev {
+			if err := req.validateAccountMerkleProof(); err != nil {
+				return err
+			}
 		}
 
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
-		if req.ConflatedExecutionTracesFile == "" {
-			return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
-		}
-		if req.ZkStateMerkleProof == nil {
-			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+		if proverMode != config.ProverModeDev {
+			if req.ConflatedExecutionTracesFile == "" {
+				return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+			}
+			if req.ZkStateMerkleProof == nil {
+				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+			}
 		}
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
 		// No additional fields required.
@@ -107,7 +109,7 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 // validateAccountMerkleProof performs comprehensive sanity checks on the
 // decoded accountMerkleProof, covering both existing and non-existing accounts.
 func (req *Request) validateAccountMerkleProof() error {
-	inputs, addr, topRoot, err := req.AccountTrieInputs()
+	inputs, addr, topRoot, err := DecodeAccountTrieInputs(*req.AccountMerkleProof)
 	if err != nil {
 		return fmt.Errorf(`accountMerkleProof decode error, accountMerkleProof should be of the form {"key": <address>, "leafIndex": <leafIndex>, "proof": <proof>} for the existing account, or {"key": <address>, "leftProof": <leftProof>, "rightProof": <rightProof>, "leftLeafIndex": <leftLeafIndex>, "rightLeafIndex": <rightLeafIndex>} for the non-existing account: %w`, err)
 	}

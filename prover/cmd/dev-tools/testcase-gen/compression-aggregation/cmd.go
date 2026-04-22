@@ -54,7 +54,7 @@ var cfg = &config.Config{
 	AssetsDir: "./prover-assets",
 	Layer2: struct {
 		ChainID           uint           `mapstructure:"chain_id" validate:"required"`
-		BaseFee           uint           `mapstructure:"base_fee" validate:"required"`
+		BaseFee           uint           `mapstructure:"base_fee"`
 		MsgSvcContractStr string         `mapstructure:"message_service_contract" validate:"required,eth_addr"`
 		MsgSvcContract    common.Address `mapstructure:"-"`
 		CoinBaseStr       string         `mapstructure:"coin_base" validate:"required,eth_addr"`

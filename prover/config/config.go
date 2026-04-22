@@ -150,7 +150,7 @@ type Config struct {
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
 		ChainID uint `mapstructure:"chain_id" validate:"required"`
-		BaseFee uint `mapstructure:"base_fee" validate:"required"`
+		BaseFee uint `mapstructure:"base_fee"`
 
 		// MsgSvcContractStr stores the unique ID of the Service Contract (SC), that is, it's
 		// address, as a string. The Service Contract (SC) is a smart contract that the L2
