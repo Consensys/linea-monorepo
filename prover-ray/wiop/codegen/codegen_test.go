@@ -116,7 +116,7 @@ import (
 var (
 	_act1   *global.QuotientProverAction
 	_act2   *global.EvalProverAction
-	_check3 *global.GlobalVerifier
+	_check3 *global.Verifier
 )
 
 // Prove executes all prover rounds and verifier checks in declaration order.

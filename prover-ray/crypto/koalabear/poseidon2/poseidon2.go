@@ -153,7 +153,7 @@ func (d *MDHasher) Sum(msg []byte) []byte {
 	if _, err := d.Write(msg); err != nil {
 		panic(err)
 	}
-	h := d.Sum(nil)
+	h := d.StateStorer.Sum(nil)
 	return h
 }
 

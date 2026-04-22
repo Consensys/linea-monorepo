@@ -130,18 +130,26 @@ func (fs *FiatShamir) RandomFieldFromSeed(seed field.Octuplet, name string) fiel
 	return res
 }
 
-// RandomManyIntegers samples num integers uniformly in [0, upperBound).
+// RandomManyIntegers samples num integers uniformly in [0, upperBound). The function expects
+// upperBound to be a power of two.
 func (fs *FiatShamir) RandomManyIntegers(num, upperBound int) []int {
-	n := utils.NextPowerOfTwo(upperBound)
-	mask := n - 1
-	i := 0
-	res := make([]int, num)
+
+	if !utils.IsPowerOfTwo(upperBound) {
+		panic("upperBound must be a power of two")
+	}
+
+	var (
+		mask = upperBound - 1
+		i    = 0
+		res  = make([]int, num)
+	)
+
 	for i < num {
 		// take the remainder mod n of each limb
 		c := fs.RandomField() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := c[j].Bits()
-			res[i] = int(b[0]) & mask
+			res[i] = int(b[0]) % mask
 			i++
 			if i >= num {
 				break

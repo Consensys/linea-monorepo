@@ -38,13 +38,13 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 func TestReedSolomonConstant(t *testing.T) {
 
 	var (
-		polySize      = 1 << 10
-		_blowUpFactor = 2
-		x             = field.RandomElemExt()
-		params        = NewRsParams(_blowUpFactor, polySize)
-		vec           = field.VecRepeatBase(field.NewElement(42), polySize)
-		rsEncoded     = params.RsEncodeBase(vec)
-		err           = params.IsCodeword(rsEncoded)
+		polySize     = 1 << 10
+		blowUpFactor = 2
+		x            = field.RandomElemExt()
+		params       = NewRsParams(polySize, blowUpFactor)
+		vec          = field.VecRepeatBase(field.NewElement(42), polySize)
+		rsEncoded    = params.RsEncodeBase(vec)
+		err          = params.IsCodeword(rsEncoded)
 	)
 
 	require.NoError(t, err)
