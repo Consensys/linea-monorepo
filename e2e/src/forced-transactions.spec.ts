@@ -1,6 +1,6 @@
 import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
-import { type Address, encodeDeployData, encodeFunctionData, GetTransactionReceiptErrorType } from "viem";
+import { type Address, type Hash, encodeDeployData, encodeFunctionData } from "viem";
 
 import { deployContract } from "./common/deployments";
 import {
@@ -20,6 +20,15 @@ import {
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
 const l2AccountManager = context.getL2AccountManager();
+
+async function expectReceiptNotFound(
+  client: { getTransactionReceipt: (args: { hash: Hash }) => Promise<unknown> },
+  hash: Hash,
+): Promise<void> {
+  await expect(client.getTransactionReceipt({ hash })).rejects.toMatchObject({
+    name: "TransactionReceiptNotFoundError",
+  });
+}
 
 describe("Forced transaction test suite", () => {
   it.skip("Should successfully submit a forced transaction containing a valid l2 transaction", async () => {
@@ -249,19 +258,7 @@ describe("Forced transaction test suite", () => {
 
     const l2PublicClient = context.l2PublicClient();
     logger.debug(`Verifying that the forced transaction receipt is not available on L2 for l2TxHash=${l2TxHash}`);
-
-    try {
-      await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
-      throw new Error(
-        "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
-      );
-    } catch (error) {
-      const e = error as GetTransactionReceiptErrorType;
-      if (e.name !== "TransactionReceiptNotFoundError") {
-        throw new Error("Test failed: Unexpected error type thrown. Expected TransactionReceiptNotFoundError.");
-      }
-    }
-
+    await expectReceiptNotFound(l2PublicClient, l2TxHash);
     logger.debug("Checked for forced transaction receipt on L2; confirmed that receipt was not found as expected.");
   }, 200_000);
 
@@ -408,19 +405,7 @@ describe("Forced transaction test suite", () => {
 
     // Verify L2 receipt is NOT available (BadPrecompile triggers virtual trace generation, tx is not executed on L2)
     logger.debug(`Verifying that the forced transaction receipt is not available on L2 for l2TxHash=${l2TxHash}`);
-
-    try {
-      await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
-      throw new Error(
-        "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
-      );
-    } catch (error) {
-      const e = error as GetTransactionReceiptErrorType;
-      if (e.name !== "TransactionReceiptNotFoundError") {
-        throw new Error("Test failed: Unexpected error type thrown. Expected TransactionReceiptNotFoundError.");
-      }
-    }
-
+    await expectReceiptNotFound(l2PublicClient, l2TxHash);
     logger.debug("BadPrecompile forced transaction confirmed: receipt not found on L2 as expected.");
   }, 300_000);
 
@@ -577,19 +562,7 @@ describe("Forced transaction test suite", () => {
 
     // Verify L2 receipt is NOT available (TooManyLogs triggers virtual trace generation, tx is not executed on L2)
     logger.debug(`Verifying that the forced transaction receipt is not available on L2 for l2TxHash=${l2TxHash}`);
-
-    try {
-      await l2PublicClient.getTransactionReceipt({ hash: l2TxHash });
-      throw new Error(
-        "Test failed: Expected getTransactionReceipt to throw TransactionReceiptNotFoundError, but it did not.",
-      );
-    } catch (error) {
-      const e = error as GetTransactionReceiptErrorType;
-      if (e.name !== "TransactionReceiptNotFoundError") {
-        throw new Error("Test failed: Unexpected error type thrown. Expected TransactionReceiptNotFoundError.");
-      }
-    }
-
+    await expectReceiptNotFound(l2PublicClient, l2TxHash);
     logger.debug("TooManyLogs forced transaction confirmed: receipt not found on L2 as expected.");
   }, 300_000);
 });
