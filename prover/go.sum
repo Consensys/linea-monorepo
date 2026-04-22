@@ -79,6 +79,8 @@ github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565 h1:NlOAmbLYsVb/
 github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565/go.mod h1:EoWWbEboQRydCqJDSA7zrFxucIeoy/5R+MDx04oFpF4=
 github.com/consensys/gnark-crypto v0.20.2-0.20260402204920-39238e584b99 h1:FREtFb4IoZWOj6MexddSuReVU7ViMChjuspD7SO8dGY=
 github.com/consensys/gnark-crypto v0.20.2-0.20260402204920-39238e584b99/go.mod h1:NzeBHSZ49bIM7RtrNTYYR2kymTqwvI/A4eTgQlyQc+Q=
+github.com/consensys/go-corset v1.2.10 h1:uKUICiHmERuMWzDRiRJr285fV2WncNGiCENSdNcQodY=
+github.com/consensys/go-corset v1.2.10/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
@@ -132,8 +134,6 @@ github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sa
 github.com/fxamacker/cbor/v2 v2.9.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gabriel-vasile/mimetype v1.4.10 h1:zyueNbySn/z8mJZHLt6IPw0KoZsiQNszIpU+bX4+ZK0=
 github.com/gabriel-vasile/mimetype v1.4.10/go.mod h1:d+9Oxyo1wTzWdyVUPMmXFvp4F9tea18J8ufA774AB3s=
-github.com/gbotrel/go-corset v1.2.8-0.20260407134214-d8ed0848d782 h1:tdjv5MfeUZAvXsInaB4j5fenc2H0/Uh9Ff3a2u5HdPU=
-github.com/gbotrel/go-corset v1.2.8-0.20260407134214-d8ed0848d782/go.mod h1:V13xVb/IIwLTfk1/2Sx2lxC5vhuiI3w6ZM76wr69gMQ=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=

@@ -7,7 +7,7 @@ require (
 	github.com/consensys/compress v0.3.0
 	github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565
 	github.com/consensys/gnark-crypto v0.20.2-0.20260402204920-39238e584b99
-	github.com/consensys/go-corset v1.2.8-0.20260407134214-d8ed0848d782
+	github.com/consensys/go-corset v1.2.10
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/fxamacker/cbor/v2 v2.9.0
@@ -103,5 +103,3 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/consensys/go-corset => github.com/gbotrel/go-corset v1.2.8-0.20260407134214-d8ed0848d782
