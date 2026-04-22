@@ -40,10 +40,10 @@ class ConflationCalculatorByForcedTransaction(
   override fun checkOverflow(blockCounters: BlockCounters): ConflationCalculator.OverflowTrigger? {
     readProcessedFtxs()
 
-    log.debug(
-      "checking ftx conflation trigger: blockNumber={} pendingTriggers={}",
+    log.info(
+      "FTX conflation detected at block={} ftxEvaluated={}",
       blockCounters.blockNumber,
-      pendingTriggerBlocks.sorted(),
+      processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
     )
 
     // Check if this block should trigger conflation
@@ -80,7 +80,7 @@ class ConflationCalculatorByForcedTransaction(
       log.info(
         "appended new conflation triggers {} for ftxs={}, all pending triggers={}",
         actuallyNew,
-        newFtxs.filter { it.blockNumber in actuallyNew }.map { it.toStringShortForLogging() },
+        newFtxs.filter { it.blockNumber in actuallyNew }.map(ForcedTransactionInclusionStatus::toStringShortForLogging),
         pendingTriggerBlocks.sorted(),
       )
     }
