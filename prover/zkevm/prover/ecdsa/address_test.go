@@ -130,6 +130,7 @@ func TestAddressesFunction(t *testing.T) {
 		uaGnark = &UnalignedGnarkData{
 			GnarkPublicKeyIndex: gbmGnark.Index,
 			IsPublicKey:         gbmGnark.ToHash,
+			IsPkHashFilter:      gbmGnark.ToHash,
 		}
 		uaGnark.GnarkData = gbmGnark.Limbs.ToLittleEndianUint()
 		ac.UnalignedGnarkData = uaGnark
