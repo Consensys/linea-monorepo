@@ -1,3 +1,5 @@
+/// TODO: modify to make it compile to freestanding RV64
+
 /// Blake2b‑F compression function (used in EIP‑152 precompile, zkVMs, etc.)
 ///
 /// Reference: RFC 7693, plus the Java gist:
