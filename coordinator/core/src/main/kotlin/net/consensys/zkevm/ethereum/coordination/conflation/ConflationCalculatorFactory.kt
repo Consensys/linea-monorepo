@@ -1,57 +1,17 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
-import linea.blob.BlobCompressorVersion
+import linea.blob.BlobCompressor
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCounters
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
-import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressorAdapter
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import kotlin.time.Instant
 
 object ConflationCalculatorFactory {
-  fun conflationCalculator(
-    blobCompressorVersion: BlobCompressorVersion,
-    blobSizeLimit: UInt,
-    tracesCountersLimit: TracesCounters,
-    blocksLimit: UInt?,
-    timestampBasedHardForks: List<Instant> = emptyList(),
-    lastProcessedBlockNumber: ULong,
-    lastProcessedTimestamp: Instant,
-    blobBatchesLimit: UInt? = null,
-    aggregationProofsLimit: UInt,
-    dynamicBlockNumberSet: DynamicBlockNumberSet,
-    extraSyncCalculators: List<ConflationCalculator> = emptyList(),
-    deferredTriggerConflationCalculators: List<DeferredTriggerConflationCalculator> = emptyList(),
-    metricsFacade: MetricsFacade,
-    log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java),
-  ): GlobalBlobAwareConflationCalculator {
-    // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
-      compressorVersion = blobCompressorVersion,
-      dataLimit = blobSizeLimit,
-      metricsFacade = metricsFacade,
-    )
-
-    return conflationCalculator(
-      compressedBlobCalculator = ConflationCalculatorByDataCompressed(blobCompressor = blobCompressor),
-      tracesCountersLimit = tracesCountersLimit,
-      blocksLimit = blocksLimit,
-      timestampBasedHardForks = timestampBasedHardForks,
-      lastProcessedBlockNumber = lastProcessedBlockNumber,
-      lastProcessedTimestamp = lastProcessedTimestamp,
-      blobBatchesLimit = blobBatchesLimit,
-      aggregationProofsLimit = aggregationProofsLimit,
-      dynamicBlockNumberSet = dynamicBlockNumberSet,
-      extraSyncCalculators = extraSyncCalculators,
-      deferredTriggerConflationCalculators = deferredTriggerConflationCalculators,
-      metricsFacade = metricsFacade,
-      log = log,
-    )
-  }
 
   fun conflationCalculator(
-    compressedBlobCalculator: ConflationCalculatorByDataCompressed,
+    blobCompressor: BlobCompressor,
     tracesCountersLimit: TracesCounters,
     blocksLimit: UInt?,
     timestampBasedHardForks: List<Instant> = emptyList(),
@@ -65,11 +25,12 @@ object ConflationCalculatorFactory {
     metricsFacade: MetricsFacade,
     log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
   ): GlobalBlobAwareConflationCalculator {
+    val blobCalculator = ConflationCalculatorByDataCompressed(blobCompressor = blobCompressor)
     val syncCalculators = createCalculatorsForBlobsAndConflation(
       tracesCountersLimit = tracesCountersLimit,
       blocksLimit = blocksLimit,
       timestampBasedHardForks = timestampBasedHardForks,
-      compressedBlobCalculator = compressedBlobCalculator,
+      compressedBlobCalculator = blobCalculator,
       lastProcessedTimestamp = lastProcessedTimestamp,
       dynamicTargetEndBlockNumberSet = dynamicBlockNumberSet,
       logger = log,
@@ -90,7 +51,7 @@ object ConflationCalculatorFactory {
 
     return GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
+      blobCalculator = blobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = blobBatchesLimit ?: (aggregationProofsLimit - 1U),
       dynamicBlockNumberSet = dynamicBlockNumberSet,

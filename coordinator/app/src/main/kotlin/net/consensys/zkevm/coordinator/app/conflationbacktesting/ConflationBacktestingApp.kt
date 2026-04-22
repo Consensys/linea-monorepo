@@ -43,7 +43,6 @@ import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
 import net.consensys.zkevm.ethereum.coordination.conflation.BlockToBatchSubmissionCoordinator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorFactory
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationService
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationServiceImpl
@@ -175,7 +174,7 @@ class ConflationBacktestingApp(
   )
 
   private val conflationCalculator: TracesConflationCalculator = ConflationCalculatorFactory.conflationCalculator(
-    compressedBlobCalculator = ConflationCalculatorByDataCompressed(blobCompressor = blobCompressor),
+    blobCompressor = blobCompressor,
     tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
     blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,
     timestampBasedHardForks = backtestingCoordinatorConfig.conflation.proofAggregation.timestampBasedHardForks,

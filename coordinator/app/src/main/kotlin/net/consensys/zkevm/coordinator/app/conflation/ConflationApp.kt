@@ -50,6 +50,7 @@ import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProv
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
+import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressorAdapter
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProviderImpl
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
@@ -232,21 +233,27 @@ class ConflationApp(
     }
   }
 
-  private val conflationCalculator: TracesConflationCalculator = ConflationCalculatorFactory.conflationCalculator(
-    blobCompressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
-    blobSizeLimit = configs.conflation.blobCompression.blobSizeLimit,
-    tracesCountersLimit = configs.conflation.tracesLimits,
-    blocksLimit = configs.conflation.blocksLimit,
-    timestampBasedHardForks = configs.conflation.proofAggregation.timestampBasedHardForks,
-    lastProcessedBlockNumber = lastProcessedBlockNumber,
-    lastProcessedTimestamp = lastProcessedTimestamp,
-    blobBatchesLimit = configs.conflation.blobCompression.batchesLimit,
-    aggregationProofsLimit = configs.conflation.proofAggregation.proofsLimit,
-    dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
-    extraSyncCalculators = listOf(forcedTransactionsApp.conflationCalculator),
-    deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
-    metricsFacade = metricsFacade,
-  )
+  private val conflationCalculator: TracesConflationCalculator = run {
+    val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
+      compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
+      dataLimit = configs.conflation.blobCompression.blobSizeLimit,
+      metricsFacade = metricsFacade,
+    )
+    ConflationCalculatorFactory.conflationCalculator(
+      blobCompressor = blobCompressor,
+      tracesCountersLimit = configs.conflation.tracesLimits,
+      blocksLimit = configs.conflation.blocksLimit,
+      timestampBasedHardForks = configs.conflation.proofAggregation.timestampBasedHardForks,
+      lastProcessedBlockNumber = lastProcessedBlockNumber,
+      lastProcessedTimestamp = lastProcessedTimestamp,
+      blobBatchesLimit = configs.conflation.blobCompression.batchesLimit,
+      aggregationProofsLimit = configs.conflation.proofAggregation.proofsLimit,
+      dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
+      extraSyncCalculators = listOf(forcedTransactionsApp.conflationCalculator),
+      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
+      metricsFacade = metricsFacade,
+    )
+  }
 
   private val conflationService: ConflationService =
     ConflationServiceImpl(
