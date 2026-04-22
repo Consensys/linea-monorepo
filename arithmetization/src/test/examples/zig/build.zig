@@ -10,10 +10,10 @@ pub fn build(b: *std.Build) void {
         .default_target = .{
             .cpu_arch = .riscv64,
             .cpu_model = .{ .explicit = &std.Target.riscv.cpu.baseline_rv64 },
-            .cpu_features_add = std.Target.riscv.featureSet(&.{.m}),
+            .cpu_features_add = std.Target.riscv.featureSet(&.{.m}), // Zicclsm extension does not affect the generated ELF so it is omitted
             .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zaamo, .zalrsc }),
             .os_tag = .freestanding,
-            .abi = .none, // No need to set this to LP64 (soft-float) as we do not have floats
+            .abi = .none, // LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted
         },
     });
 
