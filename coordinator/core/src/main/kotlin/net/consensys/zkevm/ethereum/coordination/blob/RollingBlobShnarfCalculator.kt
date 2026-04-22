@@ -10,6 +10,7 @@ import linea.domain.BlobShnarfCalculator
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
 import linea.domain.ShnarfResult
+import linea.kotlin.ZERO_HASH_32
 import linea.kotlin.encodeHex
 import linea.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
@@ -87,24 +88,26 @@ class RollingBlobShnarfCalculator(
         BlobShnarfMetaData(
           startBlockNumber = 0UL,
           endBlockNumber = 0UL,
-          blobHash = ByteArray(32),
+          blobHash = ZERO_HASH_32,
           blobShnarf = genesisShnarf,
         ),
       )
-    } else if (parentBlobShnarfMetaDataReference.get() != null) {
-      val parentBlobData = parentBlobShnarfMetaDataReference.get()!!
-      if (parentBlobData.endBlockNumber != parentBlobEndBlockNumber) {
-        SafeFuture.failedFuture(
-          IllegalStateException(
-            "Blob block range start block number=${blobBlockRange.startBlockNumber} " +
-              "is not equal to parent blob end block number=${parentBlobData.endBlockNumber} + 1",
-          ),
-        )
-      } else {
-        SafeFuture.completedFuture(parentBlobData)
-      }
     } else {
-      parentBlobDataProvider.getParentBlobShnarfMetaData(blobBlockRange)
+      val parentBlobData = parentBlobShnarfMetaDataReference.get()
+      if (parentBlobData != null) {
+        if (parentBlobData.endBlockNumber != parentBlobEndBlockNumber) {
+          SafeFuture.failedFuture(
+            IllegalStateException(
+              "Blob block range start block number=${blobBlockRange.startBlockNumber} " +
+                "is not equal to parent blob end block number=${parentBlobData.endBlockNumber} + 1",
+            ),
+          )
+        } else {
+          SafeFuture.completedFuture(parentBlobData)
+        }
+      } else {
+        parentBlobDataProvider.getParentBlobShnarfMetaData(blobBlockRange)
+      }
     }
   }
 

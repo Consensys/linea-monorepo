@@ -133,7 +133,7 @@ fun loadConfigsOrError(
 
   val finalConfig =
     CoordinatorConfigToml(
-      configs = coordinatorBaseConfigs.get()!!,
+      configs = requireNotNull(coordinatorBaseConfigs.get()) { "coordinatorBaseConfigs must be Ok after Err check" },
       tracesLimitsV4 = tracesLimitsV4Configs?.get(),
       tracesLimitsV5 = tracesLimitsV5Configs?.get(),
       l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),

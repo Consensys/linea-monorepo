@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.db
 
+import java.sql.SQLException
 import java.time.Clock
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

@@ -92,7 +92,7 @@ class GlobalBlobAwareConflationCalculator(
   }
 
   private fun recordBatchMetrics(conflation: ConflationCalculationResult) {
-    runCatching {
+    try {
       val filteredBlockCounters =
         blobBlockCounters
           .filter { conflation.blocksRange.contains(it.blockNumber) }
@@ -117,13 +117,13 @@ class GlobalBlobAwareConflationCalculator(
           0.0
         },
       )
-    }.onFailure {
-      log.error("Error when recording batch metrics: errorMessage={}", it.message)
+    } catch (e: Exception) {
+      log.error("Error when recording batch metrics: errorMessage={}", e.message)
     }
   }
 
   private fun recordBlobMetrics(blobInterval: BlockInterval, blobCompressedDataSize: Int) {
-    runCatching {
+    try {
       val filteredBlockCounters =
         blobBlockCounters
           .filter { blobInterval.blocksRange.contains(it.blockNumber) }
@@ -134,8 +134,8 @@ class GlobalBlobAwareConflationCalculator(
         filteredBlockCounters.sumOf { it.blockRLPEncoded.size }.toDouble(),
       )
       compressedDataSizeInBlobHistogram.record(blobCompressedDataSize.toDouble())
-    }.onFailure {
-      log.error("Error when recording blob metrics: errorMessage={}", it.message)
+    } catch (e: Exception) {
+      log.error("Error when recording blob metrics: errorMessage={}", e.message)
     }
   }
 
@@ -187,11 +187,13 @@ class GlobalBlobAwareConflationCalculator(
         conflations = blobBatches,
         compressedData = compressedData,
         startBlockTime =
-        blobBlockCounters
-          .find { it.blockNumber == blobInterval.startBlockNumber }!!.blockTimestamp,
+        checkNotNull(blobBlockCounters.find { it.blockNumber == blobInterval.startBlockNumber }) {
+          "No block counter found for startBlockNumber=${blobInterval.startBlockNumber}"
+        }.blockTimestamp,
         endBlockTime =
-        blobBlockCounters
-          .find { it.blockNumber == blobInterval.endBlockNumber }!!.blockTimestamp,
+        checkNotNull(blobBlockCounters.find { it.blockNumber == blobInterval.endBlockNumber }) {
+          "No block counter found for endBlockNumber=${blobInterval.endBlockNumber}"
+        }.blockTimestamp,
       )
     val triggerName =
       if (numberOfBatches >= batchesLimit) {

@@ -28,7 +28,7 @@ internal class ForcedTransactionsSafeBlockNumberManager(
 
   @Synchronized
   fun lockSafeBlockNumberBeforeSendingToSequencer(headBlockNumber: ULong) {
-    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
+    if (safeBlockNumber?.let { it > 0UL } == true) {
       log.info(
         "conflation already locked at safeBlockNumber={}, will not lock block={}",
         safeBlockNumber,
@@ -56,7 +56,7 @@ internal class ForcedTransactionsSafeBlockNumberManager(
    */
   @Synchronized
   fun ftxProcessedBySequencer(ftxNumber: ULong, simulatedExecutionBlockNumber: ULong) {
-    if (safeBlockNumber != null && simulatedExecutionBlockNumber < safeBlockNumber!!) {
+    if (safeBlockNumber?.let { simulatedExecutionBlockNumber < it } == true) {
       throw IllegalStateException(
         "simulatedExecutionBlockNumber must be greater than or equal to safeBlockNumber" +
           "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",

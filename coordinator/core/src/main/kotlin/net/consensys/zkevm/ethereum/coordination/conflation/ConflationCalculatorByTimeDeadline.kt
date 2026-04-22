@@ -74,7 +74,7 @@ class ConflationCalculatorByTimeDeadline(
     )
 
     val deadlineReachedForFirstBlockInProgress =
-      startBlockTimestamp != null && now > startBlockTimestamp!!.plus(config.conflationDeadline)
+      startBlockTimestamp?.let { now > it.plus(config.conflationDeadline) } == true
 
     if (!deadlineReachedForFirstBlockInProgress) {
       // deadline not reached yet. Can just return
