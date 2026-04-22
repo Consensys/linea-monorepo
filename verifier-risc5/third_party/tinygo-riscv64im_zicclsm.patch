@@ -91,10 +91,80 @@ index 9cf6571..a8f097a 100644
  
  .section .text.tinygo_checkpointJump
 diff --git a/src/runtime/runtime_tinygoriscv_qemu.go b/src/runtime/runtime_tinygoriscv_qemu.go
-index 1ee0d22..8ba5b02 100644
+index 1ee0d22..b7e3f13 100644
 --- a/src/runtime/runtime_tinygoriscv_qemu.go
 +++ b/src/runtime/runtime_tinygoriscv_qemu.go
-@@ -377,9 +377,9 @@ func (l *spinLock) Unlock() {
+@@ -4,7 +4,6 @@ package runtime
+ 
+ import (
+ 	"device/riscv"
+-	"internal/task"
+ 	"math/bits"
+ 	"runtime/interrupt"
+ 	"runtime/volatile"
+@@ -99,10 +98,7 @@ func handleInterrupt() {
+ 			if exitCodePlusOne.Load() != 0 {
+ 				exitNow(exitCodePlusOne.Load() - 1)
+ 			}
+-			if gcScanState.Load() != 0 {
+-				// The GC needs to run.
+-				gcInterruptHandler(hartID)
+-			}
++			gcHandleInterrupt(hartID)
+ 			checkpoint := &schedulerWaitCheckpoints[hartID]
+ 			if checkpoint.Saved() {
+ 				aclintMSWI.MSIP[hartID].Set(0)
+@@ -132,49 +128,6 @@ func handleInterrupt() {
+ 	riscv.MCAUSE.Set(0)
+ }
+ 
+-// The GC interrupted this core for the stop-the-world phase.
+-// This function handles that, and only returns after the stop-the-world phase
+-// ended.
+-func gcInterruptHandler(hartID uint32) {
+-	// *only* enable the MSIE interrupt
+-	savedMIE := riscv.MIE.Get()
+-	riscv.MIE.Set(riscv.MIE_MSIE)
+-
+-	// Disable this interrupt (to be enabled again soon).
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Let the GC know we're ready.
+-	gcScanState.Add(1)
+-
+-	// Wait until we get a signal to start scanning.
+-	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
+-		riscv.Asm("wfi")
+-	}
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Scan the stack(s) of this core.
+-	scanCurrentStack()
+-	if !task.OnSystemStack() {
+-		// Mark system stack.
+-		markRoots(task.SystemStack(), coreStackTop(hartID))
+-	}
+-
+-	// Signal we've finished scanning.
+-	gcScanState.Store(1)
+-
+-	// Wait until we get a signal that the stop-the-world phase has ended.
+-	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
+-		riscv.Asm("wfi")
+-	}
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Restore MIE bits.
+-	riscv.MIE.Set(savedMIE)
+-
+-	// Signal we received the signal and are going to exit the interrupt.
+-	gcScanState.Add(1)
+-}
+-
+ //go:extern _stack_top
+ var stack0TopSymbol [0]byte
+ 
+@@ -377,9 +330,9 @@ func (l *spinLock) Unlock() {
  // Hint to the CPU that this core is just waiting, and the core can go into a
  // lower energy state.
  func spinLoopWait() {
