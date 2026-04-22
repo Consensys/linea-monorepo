@@ -5,11 +5,14 @@ export fn _start() noreturn {
     _ = a + b;
     _ = a - b;
     _ = a * b;
-    // _ = @divTrunc(a, b);
-    // _ = @rem(a, b);
+    _ = @divTrunc(a, b);
+    _ = @rem(a, b);
 
-    // no OS to return to, sleep until an interrupt fires, then sleep again
-    while (true) {
-        asm volatile ("wfi");
-    }
+    // no OS to return to, signal halt via ecall
+    asm volatile (
+        \\li a0, 0   # exit code 0
+        \\li a7, 93  # syscall number for exit
+        \\ecall
+    );
+    unreachable;
 }
