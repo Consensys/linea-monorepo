@@ -15,3 +15,4 @@ _start:
     mv      a0, t1
     li      a7, 93
     ecall
+    

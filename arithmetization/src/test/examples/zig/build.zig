@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
             .cpu_features_add = std.Target.riscv.featureSet(&.{.m}),
             .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zaamo, .zalrsc }),
             .os_tag = .freestanding,
-            .abi = .none,
+            .abi = .none, // No need to set this to LP64 (soft-float) as we do not have floats
         },
     });
 
@@ -31,7 +31,6 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path(source),
             .target = target,
             .optimize = optimize,
-            .strip = true, // Remove debug symbols from the output binary
         }),
     });
 
