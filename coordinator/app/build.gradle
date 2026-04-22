@@ -6,6 +6,7 @@
 // Testing for feat version bump
 // Testing for fix version bump
 // Testing for fix version bump
+// Testing for feat version bump
 
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
