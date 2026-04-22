@@ -35,7 +35,7 @@ object DbHelper {
         ps.setString(1, db)
         ps.execute()
       }
-    } catch (ignored: SQLException) {
+    } catch (ignored: Exception) {
       // The current connection will be dropped as well and the exception will be thrown
     }
   }
