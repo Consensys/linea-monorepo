@@ -32,7 +32,7 @@ jobs:
           submodules: false
 
       - name: Lint latest PR commit with commitlint
-        uses: wagoid/commitlint-github-action@v6
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed #(v6.2.1)
         with:
           configFile: commitlint.config.mjs
           commitDepth: 1
@@ -55,7 +55,7 @@ jobs:
 
       - name: Generate coordinator [Unreleased] changelog
         id: changelog
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
         with:
           config: cliff.toml
           args: >-
@@ -65,7 +65,7 @@ jobs:
 
       - name: Compute next coordinator version (semver)
         id: version
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
         with:
           config: cliff.toml
           args: >-
@@ -74,7 +74,7 @@ jobs:
             --tag-pattern "releases/coordinator/v*"
 
       - name: Post/update changelog preview comment on PR
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: coordinator-changelog-preview
           message: |
