@@ -1,4 +1,5 @@
 // Testing for automating coordinator changelog and tag
+// Testing for feat version bump
 
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
