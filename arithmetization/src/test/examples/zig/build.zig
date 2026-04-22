@@ -23,6 +23,8 @@ pub fn build(b: *std.Build) void {
     });
 
     const name = b.option([]const u8, "name", "Name of the program (source: src/<name>.zig, binary: <name>)") orelse @panic("'-Dname=<name>' is required");
+    const strip = b.option(bool, "strip", "Whether to strip the binary (default: false)") orelse false;
+
     const source = b.fmt("src/{s}.zig", .{name});
 
     const exe = b.addExecutable(.{
@@ -31,8 +33,12 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path(source),
             .target = target,
             .optimize = optimize,
+            .strip = strip, // Removes symbols information and other metadata
         }),
     });
+
+    // Remove unused code sections
+    exe.link_gc_sections = true;
 
     b.installArtifact(exe);
 }

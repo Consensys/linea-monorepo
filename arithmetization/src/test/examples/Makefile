@@ -30,6 +30,10 @@ JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EX
 # Set STRIP to strip the ELF (remove debug symbols)
 STRIP ?= false
 
+# Set ZIG_STRIP to strip the ELF when compiling Zig (removing debug symbols and reducing size)
+# Ignored for .s and .rs files
+ZIG_STRIP ?= true
+
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
 GO_MAIN ?= $(MAKEFILE_DIR)main.go
 ZKC_MAIN ?= $(abspath $(MAKEFILE_DIR)../../main/riscv/main.zkc)
@@ -46,7 +50,7 @@ compile: $(SRC)
 		riscv64-unknown-elf-as -march=rv64im -o $(BIN) $^; \
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME); \
+		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=0 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
