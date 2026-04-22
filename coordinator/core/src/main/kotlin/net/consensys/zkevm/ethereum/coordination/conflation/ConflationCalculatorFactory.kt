@@ -24,7 +24,7 @@ object ConflationCalculatorFactory {
     extraSyncCalculators: List<ConflationCalculator> = emptyList(),
     deferredTriggerConflationCalculators: List<DeferredTriggerConflationCalculator> = emptyList(),
     metricsFacade: MetricsFacade,
-    log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
+    log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java),
   ): GlobalBlobAwareConflationCalculator {
     // To fail faster for JNA reasons
     val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
@@ -94,6 +94,7 @@ object ConflationCalculatorFactory {
       metricsFacade = metricsFacade,
       batchesLimit = blobBatchesLimit ?: (aggregationProofsLimit - 1U),
       dynamicBlockNumberSet = dynamicBlockNumberSet,
+      log = log,
     )
   }
 
