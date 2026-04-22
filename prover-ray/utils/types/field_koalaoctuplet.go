@@ -58,26 +58,6 @@ func (e *KoalaOctuplet) SetBytes(b []byte) error {
 	return nil
 }
 
-// BytesToKoalaOctuplet attempts to convert a byte slice into a koalabear
-// element.
-func BytesToKoalaOctuplet(b []byte) (KoalaOctuplet, error) {
-	var e KoalaOctuplet
-	if err := e.SetBytes(b); err != nil {
-		return KoalaOctuplet{}, err
-	}
-	return e, nil
-}
-
-// MustBytesToKoalaOctuplet attempts to convert a byte slice into a koalabear
-// element.
-func MustBytesToKoalaOctuplet(b []byte) KoalaOctuplet {
-	e, err := BytesToKoalaOctuplet(b)
-	if err != nil {
-		panic(err)
-	}
-	return e
-}
-
 // BytesToKoalaOctupletLoose converts a bytestring into an octuplet of koalabear
 // element. The function will right-pad with zeroes up to 32 bytes or cut-off
 // the input down to 32 bytes and then it will automatically apply the modulo
@@ -167,47 +147,10 @@ func (e *KoalaOctuplet) UnmarshalJSON(b []byte) error {
 	return e.SetBytes(decoded)
 }
 
-var negativeOne = field.NewFromString("-1")
-
-// IsMaxOctuplet checks if the current octuplet is equal to (-1, -1, -1, -1, -1,
-// -1, -1, -1).
-func (e KoalaOctuplet) IsMaxOctuplet() bool {
-	for i := range e {
-		if e[i] != negativeOne {
-			return false
-		}
-	}
-	return true
-}
-
-// MaxKoalaOctuplet returns (-1, -1, -1, -1, -1, -1, -1, -1)
-func MaxKoalaOctuplet() KoalaOctuplet {
-	return KoalaOctuplet{
-		negativeOne, negativeOne, negativeOne, negativeOne,
-		negativeOne, negativeOne, negativeOne, negativeOne,
-	}
-}
-
-// Cmp compares two koalabear octuplets assuming big-endian order.
-func (e KoalaOctuplet) Cmp(other KoalaOctuplet) int {
-	for i := range e {
-		r := e[i].Cmp(&other[i])
-		if r != 0 {
-			return r
-		}
-	}
-	return 0
-}
-
 // ToOctuplet converts the koalabear octuplet to an octuplet. Calling this
 // function may be avoided most of the time but it cannot be always avoided.
 func (e KoalaOctuplet) ToOctuplet() field.Octuplet {
 	return e
-}
-
-// ToBytes32 converts the koalabear octuplet to a bytes32.
-func (e KoalaOctuplet) ToBytes32() [32]byte {
-	return [32]byte(e.ToBytes())
 }
 
 // DummyKoalaOctuplet generates a dummy koalabear octuplet from an integer and
