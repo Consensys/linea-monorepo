@@ -23,7 +23,6 @@ import org.web3j.tx.gas.StaticGasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.random.Random
 
 class Web3JL2MessageServiceSmartContractClient(
   private val web3j: Web3j,
@@ -87,7 +86,7 @@ class Web3JL2MessageServiceSmartContractClient(
     ): L2MessageServiceSmartContractClientReadOnly {
       val unUsedTxManager = AsyncFriendlyTransactionManager(
         web3j = web3jClient,
-        credentials = Credentials.create(Random.nextBytes(64).encodeHex()),
+        credentials = FAKE_READ_ONLY_CREDENTIALS,
         chainId = 1L,
       )
       return create(

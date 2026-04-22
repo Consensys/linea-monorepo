@@ -104,5 +104,3 @@ class GoBackedBlobCompressorAdapter private constructor(
     return compressedData
   }
 }
-
-

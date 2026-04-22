@@ -115,7 +115,9 @@ data class ConflationToml(
       blobCompression = this.blobCompression.reified(),
       proofAggregation = this.proofAggregation.reified(),
       tracesLimits = tracesCountersLimitsV4
-        ?: requireNotNull(tracesCountersLimitsV5) { "either tracesCountersLimitsV4 or tracesCountersLimitsV5 must be set" },
+        ?: requireNotNull(tracesCountersLimitsV5) {
+          "either tracesCountersLimitsV4 or tracesCountersLimitsV5 must be set"
+        },
       backtestingDirectory = backtestingDirectory,
     )
   }
