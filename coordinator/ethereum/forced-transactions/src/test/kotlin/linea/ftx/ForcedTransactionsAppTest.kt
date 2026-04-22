@@ -28,7 +28,7 @@ import linea.persistence.ForcedTransactionRecord
 import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.FakeForcedTransactionsDao
 import net.consensys.FakeFixedClock
-import net.consensys.linea.traces.TracesCountersV4
+import net.consensys.linea.traces.TracesCountersV5
 import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
@@ -792,32 +792,40 @@ class ForcedTransactionsAppTest {
     val conflationTriggers = mutableListOf<Pair<ULong, ConflationTrigger>>()
     val aggregationTriggers = mutableListOf<Pair<ULong, AggregationTriggerType>>()
     (1UL..600UL).forEach { blockNumber ->
-      app.conflationCalculator.checkOverflow(
-        blockCounters = BlockCounters(
-          blockNumber = blockNumber,
-          blockTimestamp = Clock.System.now(),
-          tracesCounters = TracesCountersV4.EMPTY_TRACES_COUNT,
-          blockRLPEncoded = ByteArray(0),
-        ),
-      )?.also { conflationTrigger ->
-        conflationTriggers.add(blockNumber to conflationTrigger.trigger)
-        app.conflationCalculator.reset()
-      }
+      val blockCounters = BlockCounters(
+        blockNumber = blockNumber,
+        blockTimestamp = Clock.System.now(),
+        tracesCounters = TracesCountersV5.EMPTY_TRACES_COUNT,
+        blockRLPEncoded = ByteArray(0),
+      )
+      val blobCounters = BlobCounters(
+        numberOfBatches = 1u,
+        startBlockNumber = blockNumber,
+        endBlockNumber = blockNumber,
+        startBlockTimestamp = Clock.System.now(),
+        endBlockTimestamp = Clock.System.now(),
+        expectedShnarf = ByteArray(0),
+      )
 
-      app.aggregationCalculator.checkAggregationTrigger(
-        blobCounters = BlobCounters(
-          numberOfBatches = 1u,
-          startBlockNumber = blockNumber,
-          endBlockNumber = blockNumber,
-          startBlockTimestamp = Clock.System.now(),
-          endBlockTimestamp = Clock.System.now(),
-          expectedShnarf = ByteArray(0),
-        ),
-      )?.also { trigger ->
-        aggregationTriggers.add(blockNumber to trigger.aggregationTriggerType)
-        app.aggregationCalculator.reset()
-      }
+      app.aggregationCalculator.checkAggregationTrigger(blobCounters)
+        ?.also { trigger ->
+          aggregationTriggers.add(blockNumber to trigger.aggregationTriggerType)
+          app.aggregationCalculator.reset()
+        }
+
+      app.conflationCalculator.checkOverflow(blockCounters)
+        ?.also { conflationTrigger ->
+          conflationTriggers.add(blockNumber to conflationTrigger.trigger)
+          app.conflationCalculator.reset()
+        }
+
+      app.aggregationCalculator.checkAggregationTrigger(blobCounters)
+        ?.also { trigger ->
+          aggregationTriggers.add(blockNumber to trigger.aggregationTriggerType)
+          app.aggregationCalculator.reset()
+        }
     }
+
     assertThat(conflationTriggers).isEqualTo(
       listOf(
         100UL to ConflationTrigger.FORCED_TRANSACTION,
