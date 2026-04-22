@@ -96,7 +96,7 @@ jobs:
           message: |
             ## Coordinator Changelog Preview (informational)
 
-            **Next proposed version:** `${{ steps.version.outputs.version }}`
+            **Next proposed version:** `${{ steps.version.outputs.tag }}`
 
             <details>
             <summary><strong>[Unreleased] diff</strong> (commits touching <code>coordinator/**</code> since latest <code>releases/coordinator/v*</code> tag)</summary>
