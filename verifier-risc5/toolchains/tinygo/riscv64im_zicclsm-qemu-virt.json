@@ -1,0 +1,21 @@
+{
+  "inherits": ["riscv64"],
+  "llvm-target": "riscv64-unknown-none-elf",
+  "cpu": "generic-rv64",
+  "target-abi": "lp64",
+  "code-model": "medium",
+  "build-tags": ["qemu_virt", "virt", "qemu"],
+  "scheduler": "none",
+  "default-stack-size": 16384,
+  "cflags": [
+    "-march=rv64im_zicclsm",
+    "-mabi=lp64",
+    "-mcmodel=medany",
+    "-DTINYGO_CORES=4"
+  ],
+  "ldflags": [
+    "--defsym=__num_stacks=4"
+  ],
+  "linkerscript": "riscv64im_zicclsm-qemu-virt.ld",
+  "emulator": "qemu-system-riscv64 -machine virt,aclint=on -smp 4 -nographic -bios none -device virtio-rng-device -kernel {}"
+}
