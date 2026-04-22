@@ -82,7 +82,7 @@ allprojects {
           ] &&
           (!details.requested.version || details.requested.version.trim().isEmpty())) {
         details.useVersion(rootProject.ext.resolveBesuVersion())
-        details.because('Versionless Besu dependencies are aligned to the lazily resolved Besu version')
+        details.because('Versionless Besu dependencies are aligned to the lazily resolved Besu version') // e.g. jvm-libs:linea:besu-libs
       }
     }
   }
