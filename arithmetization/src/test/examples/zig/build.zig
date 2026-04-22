@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path(source),
             .target = target,
             .optimize = optimize,
-            .strip = strip, // Removes symbols information and other metadata
+            .strip = strip, // Removes debug symbols and other metadata
         }),
     });
 
