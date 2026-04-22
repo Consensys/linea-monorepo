@@ -47,6 +47,8 @@ TINYGO_GC ?= leaking
 TINYGO_PANIC ?= trap
 TINYGO_OPT ?= z
 TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
+TINYGO_QEMU_MACHINE ?= virt,aclint=on
+TINYGO_QEMU_SMP ?= 4
 
 TAMAGO_TOOL_VERSION ?= v1.26.2
 TAMAGO_CACHE_HOME ?= $(XDG_CACHE_HOME_LOCAL)
@@ -328,11 +330,13 @@ emulate-tinygo: $(TINYGO_ELF)
 	@status=0; \
 	timeout $(QEMU_TIMEOUT) \
 		$(QEMU_SYSTEM) \
-		-machine $(QEMU_MACHINE) \
+		-machine $(TINYGO_QEMU_MACHINE) \
+		-smp $(TINYGO_QEMU_SMP) \
 		-cpu $(QEMU_CPU) \
 		-m $(QEMU_MEM) \
 		-nographic \
 		-bios none \
+		-device virtio-rng-device \
 		-kernel $(TINYGO_ELF) || status=$$?; \
 	test $$status -eq 0 -o $$status -eq 124
 
