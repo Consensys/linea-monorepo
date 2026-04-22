@@ -8,7 +8,6 @@ import {
   estimateLineaGas,
   sendTransactionWithRetry,
   normalizeEip1559Fees,
-  withRetryOnBlockNotFound,
 } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
@@ -41,8 +40,8 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
       logger.debug("Minting and approving tokens to L1 TokenBridge");
 
-      const { maxPriorityFeePerGas, maxFeePerGas } = await withRetryOnBlockNotFound(() =>
-        l1PublicClient.estimateFeesPerGas(),
+      const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.withRetryOnBlockNotFound((c) =>
+        c.estimateFeesPerGas(),
       );
       const normalizedFees = normalizeEip1559Fees(maxPriorityFeePerGas, maxFeePerGas);
 
@@ -84,7 +83,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       const bridgeNonce = await l1PublicClient.getTransactionCount({ address: l1Account.address, blockTag: "pending" });
 
       const { maxPriorityFeePerGas: maxPriorityFeeBridgeToken, maxFeePerGas: maxFeeBridgeToken } =
-        await withRetryOnBlockNotFound(() => l1PublicClient.estimateFeesPerGas());
+        await l1PublicClient.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas());
       const normalizedBridgeFees = normalizeEip1559Fees(maxPriorityFeeBridgeToken, maxFeeBridgeToken);
 
       const { receipt: bridgedTxReceipt } = await sendTransactionWithRetry(

@@ -1,4 +1,5 @@
 import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-factory";
+import { createRetryExtension } from "./linea-rpc/extensions";
 import { Config } from "../schema/config-schema";
 
 export class L1Client {
@@ -9,7 +10,7 @@ export class L1Client {
   }
 
   public publicClient(params?: PublicClientParams) {
-    return this.factory.getPublic(params);
+    return this.factory.getPublic(params).extend(createRetryExtension());
   }
 
   public walletClient(params?: WalletClientParams) {

@@ -6,7 +6,7 @@ import { L2RpcEndpoint } from "../../config/clients/l2-client";
 import { createTestLogger } from "../../config/logger";
 import { DummyContractAbi, L2MessageServiceV1Abi } from "../../generated";
 import { MINIMUM_FEE_IN_WEI } from "../constants";
-import { normalizeEip1559Fees, withRetryOnBlockNotFound } from "../utils";
+import { normalizeEip1559Fees } from "../utils";
 import { estimateLineaGas } from "../utils/gas";
 import { sendTransactionWithRetry } from "../utils/retry";
 
@@ -57,8 +57,8 @@ export async function sendL1ToL2Message(context: TestContext, params: SendMessag
   const calldata = generateCalldata(withCalldata);
   const destinationAddress = withCalldata ? dummyContract.address : DEFAULT_L2_DESTINATION_ADDRESS;
 
-  const { maxPriorityFeePerGas, maxFeePerGas } = await withRetryOnBlockNotFound(() =>
-    l1PublicClient.estimateFeesPerGas(),
+  const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.withRetryOnBlockNotFound((c) =>
+    c.estimateFeesPerGas(),
   );
   const normalizedFees = normalizeEip1559Fees(maxPriorityFeePerGas, maxFeePerGas);
   const nonce = await l1PublicClient.getTransactionCount({ address: account.address, blockTag: "pending" });
