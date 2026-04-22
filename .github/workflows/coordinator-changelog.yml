@@ -63,15 +63,31 @@ jobs:
             --include-path "coordinator/**"
             --tag-pattern "releases/coordinator/v*"
 
+      # Install git-cliff directly so we can call --bumped-version without the
+      # git-cliff-action post-processing that jq-parses stdout and breaks on
+      # prefixed tag output like `releases/coordinator/v0.2.0`.
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
       - name: Compute next coordinator version (semver)
         id: version
-        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
-        with:
-          config: cliff.toml
-          args: >-
-            --bumped-version
-            --include-path "coordinator/**"
-            --tag-pattern "releases/coordinator/v*"
+        shell: bash
+        run: |
+          set -euo pipefail
+          next_tag=$(git cliff \
+            --config cliff.toml \
+            --bumped-version \
+            --include-path "coordinator/**" \
+            --tag-pattern "releases/coordinator/v*")
+          next_semver="${next_tag#releases/coordinator/v}"
+          echo "next coordinator tag:    ${next_tag}"
+          echo "next coordinator semver: ${next_semver}"
+          {
+            echo "tag=${next_tag}"
+            echo "version=${next_semver}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Post/update changelog preview comment on PR
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
