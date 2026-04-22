@@ -81,8 +81,7 @@ jobs:
               - 'prover/**'
               - '.github/workflows/prover-*.yml'
               - '.github/workflows/build-and-publish.yml'
-              # TEMPORARY: commented out to avoid triggering prover tests on CI-only changes during testing
-              # - '.github/workflows/main.yml'
+              - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
@@ -324,7 +323,7 @@ jobs:
         publish-images-after-run-tests-success-on-main,
         cleanup-deployments,
       ]
-    if: ${{ always() && contains(needs.*.result, 'failure') }} # TEMPORARY: branch guard removed for testing
+    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     permissions:
       contents: read
       actions: read
