@@ -2,14 +2,9 @@ import { expect } from "@jest/globals";
 
 import { awaitUntil } from "../utils/wait";
 
-import type { Hash } from "viem";
+import type { GetTransactionReceiptErrorType, Hash, PublicClient } from "viem";
 
 const BLOCKS_TO_WAIT = 5n;
-
-type BlockAndReceiptClient = {
-  getBlockNumber: () => Promise<bigint>;
-  getTransactionReceipt: (params: { hash: Hash }) => Promise<unknown>;
-};
 
 /**
  * Asserts that a transaction was blocked by the sequencer's deny list.
@@ -49,15 +44,10 @@ export async function expectBlockedTransaction(
     if (error instanceof Error && error.message.includes("expectBlockedTransaction")) {
       throw error;
     }
-    const name = (error as { name?: string }).name ?? "";
-    if (name !== "TransactionReceiptNotFoundError") {
-      throw new Error(
-        `expectBlockedTransaction: unexpected error checking receipt for ${hash}: ${name} — ${error instanceof Error ? error.message : String(error)}`,
-    const e = error as GetTransactionReceiptErrorType;
 
+    const e = error as GetTransactionReceiptErrorType;
     if (e.name !== "TransactionReceiptNotFoundError") {
       throw error;
-    }
     }
   }
 }
