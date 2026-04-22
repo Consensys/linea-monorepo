@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - 'coordinator/**'
+      - '!coordinator/CHANGELOG.md'
       - 'cliff.toml'
       - 'commitlint.config.mjs'
       - '.github/workflows/coordinator-changelog.yml'
