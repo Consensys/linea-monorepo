@@ -43,7 +43,7 @@ TINYGO_LLVM_PROJECT_BRANCH ?= tinygo_20.x
 TINYGO_LLVM_PROJECT_DIR := $(TINYGO_ROOT)/llvm-project
 TINYGO_TARGET_BUILD := $(BUILD_DIR)/$(notdir $(TINYGO_TARGET))
 TINYGO_SCHEDULER ?= none
-TINYGO_GC ?= conservative
+TINYGO_GC ?= leaking
 TINYGO_PANIC ?= trap
 TINYGO_OPT ?= z
 TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
@@ -113,6 +113,7 @@ help:
 		'  LLVM_VERSION=20                   - host LLVM major version used by clang/lld and TinyGo bootstrap' \
 		'  TINYGO_ROOT=third_party/tinygo    - TinyGo checkout location' \
 		'  TINYGO_COMMIT=$(TINYGO_COMMIT) - pinned TinyGo commit expected by the local patch' \
+		'  TINYGO_GC=leaking                 - TinyGo GC mode, defaults to the smallest working option' \
 		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
 		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
 		'  QEMU_CPU=rv64                     - QEMU CPU string for the virt machine targets' \
@@ -126,7 +127,8 @@ help:
 		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
 		'  emulate-libriscv is for generic bare-metal guests, not for the board-specific TamaGo sifive_u image.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
-		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.'
+		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
+		'  TinyGo now defaults to -gc=leaking for the smallest working bare-metal image; use TINYGO_GC=conservative if you want the previous collector.'
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)

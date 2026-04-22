@@ -42,7 +42,7 @@ Current ISA and runtime targets:
 | --- | --- | --- | --- |
 | `build-clang` | `build/verifier-clang.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding, no libc, no syscalls |
 | `build-gcc` | `build/verifier-gcc.elf` | `rv64im`, `lp64`, `medany` | intended comparison against the same core profile, but the packaged GCC toolchain used here rejects `zicclsm` |
-| `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set |
+| `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set, defaulting to `-gc=leaking` |
 | `build-go-linux` | `build/verifier-go-linux-riscv64` | `linux/riscv64`, `GORISCV64=rva20u64` | hosted baseline only, not a zkVM-style guest |
 | `build-tamago` | `build/verifier-tamago-sifive_u.elf` | `tamago/riscv64` on `sifive_u` | board-specific machine-mode image, not a generic `rv64im_zicclsm` guest |
 
@@ -63,6 +63,15 @@ make build-go-linux
 make build-tinygo
 make build-tamago
 ```
+
+TinyGo collector selection:
+
+```bash
+make build-tinygo
+make build-tinygo TINYGO_GC=conservative
+```
+
+The default is `TINYGO_GC=leaking` because it produces the smallest working bare-metal image for this target.
 
 Useful one-time preparation:
 
