@@ -33,7 +33,6 @@ func LinearCombination(proof *OpeningProof, v [][]field.Element, randomCoin fiel
 
 		var (
 			x            = field.OneExt()
-			scratch      = make([]field.Ext, stop-start)
 			localLinComb = make([]field.Ext, stop-start)
 			tmp          field.Ext
 		)
@@ -41,7 +40,7 @@ func LinearCombination(proof *OpeningProof, v [][]field.Element, randomCoin fiel
 		for i := range v {
 			// we distinguish the case of a regular vector and constant to avoid
 			// unnecessary allocations and copies
-			for j := range scratch {
+			for j := range localLinComb {
 				tmp.MulByElement(&x, &v[i][start+j])
 				localLinComb[j].Add(&localLinComb[j], &tmp)
 			}
