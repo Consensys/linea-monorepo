@@ -83,20 +83,16 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 	switch req.InvalidityType {
 
 	case invalidity.BadNonce, invalidity.BadBalance:
-		if proverMode != config.ProverModeDev {
-			if err := req.validateAccountMerkleProof(); err != nil {
-				return err
-			}
+		if err := req.validateAccountMerkleProof(); err != nil {
+			return err
 		}
 
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
-		if proverMode != config.ProverModeDev {
-			if req.ConflatedExecutionTracesFile == "" {
-				return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
-			}
-			if req.ZkStateMerkleProof == nil {
-				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
-			}
+		if req.ConflatedExecutionTracesFile == "" {
+			return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+		}
+		if req.ZkStateMerkleProof == nil {
+			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
 		}
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
 		// No additional fields required.
@@ -113,12 +109,12 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 func (req *Request) validateAccountMerkleProof() error {
 	inputs, addr, topRoot, err := req.AccountTrieInputs()
 	if err != nil {
-		return fmt.Errorf("accountMerkleProof decode error: %w", err)
+		return fmt.Errorf(`accountMerkleProof decode error, accountMerkleProof should be of the form {"key": <address>, "leafIndex": <leafIndex>, "proof": <proof>} for the existing account, or {"key": <address>, "leftProof": <leftProof>, "rightProof": <rightProof>, "leftLeafIndex": <leftLeafIndex>, "rightLeafIndex": <rightLeafIndex>} for the non-existing account: %w`, err)
 	}
 
 	// topRoot must match the request's zkParentStateRootHash
 	if topRoot != req.ZkParentStateRootHash {
-		return fmt.Errorf("topRoot mismatch: topRoot=%s, zkParentStateRootHash=%s",
+		return fmt.Errorf("topRoot mismatch: topRoot from accountMerkleProof=%s, zkParentStateRootHash from request=%s",
 			topRoot.Hex(), req.ZkParentStateRootHash.Hex())
 	}
 
