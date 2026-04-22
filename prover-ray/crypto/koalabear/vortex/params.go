@@ -31,7 +31,7 @@ type Params struct {
 
 // NewParams creates and returns a [Params]:
 //
-//   - blowUpFactor: inverse-rate of the RS code ( > 1). Must be a power of 2.
+//   - inverseRate: inverse-rate of the RS code ( > 1). Must be a power of 2.
 //   - nbColumns: the number of columns in the witness matrix
 //   - maxNbRows: the maximum number of rows in the witness matrix
 //   - sisParams: the parameters of the SIS instance to use to hash the columns
