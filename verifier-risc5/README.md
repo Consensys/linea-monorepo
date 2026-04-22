@@ -205,3 +205,4 @@ The build split is:
 - `third_party/tinygo` and `third_party/libriscv` are ignored by Git on purpose
 - the TinyGo fixes live in `third_party/tinygo-riscv64im_zicclsm.patch`
 - if you want a fully fresh TinyGo checkout, remove `third_party/tinygo` and run `make vendor-tinygo` again
+- the Makefile suppresses command echo consistently; use `make -n <target>` if you want to inspect the exact shell commands

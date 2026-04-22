@@ -1,4 +1,5 @@
 .DEFAULT_GOAL := help
+.SILENT:
 
 GO_MAIN := ./cmd/verifier
 INPUTGEN_MAIN := ./cmd/inputgen
@@ -117,7 +118,7 @@ esac
 endef
 
 help:
-	@printf '%s\n' \
+	printf '%s\n' \
 		'Targets:' \
 		'  make vendor-tinygo        - clone TinyGo at the pinned commit and apply the local RISC-V patch' \
 		'  make vendor-libriscv      - clone libriscv and its submodules under third_party/' \
@@ -162,7 +163,7 @@ help:
 		'  TinyGo now defaults to -gc=leaking for the smallest working bare-metal image; use TINYGO_GC=conservative if you want the previous collector.'
 
 $(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
 build-input: | $(BUILD_DIR)
 	$(GO) run $(INPUTGEN_MAIN) -in $(INPUT_JSON) -out $(INPUT_BIN)
@@ -179,7 +180,7 @@ vendor-tinygo: $(TINYGO_PATCH)
 	test -f "$(TINYGO_PATCH)"
 	test -d "$(TINYGO_ROOT)" || git clone --branch "$(TINYGO_VERSION)" --depth 1 --recursive https://github.com/tinygo-org/tinygo "$(TINYGO_ROOT)"
 	test -f "$(TINYGO_ROOT)/go.mod"
-	@head="$$(git -C "$(TINYGO_ROOT)" rev-parse HEAD)"; \
+	head="$$(git -C "$(TINYGO_ROOT)" rev-parse HEAD)"; \
 	if [ "$$head" != "$(TINYGO_COMMIT)" ]; then \
 		printf '%s\n' "vendor-tinygo: $(TINYGO_ROOT) is at $$head, expected $(TINYGO_COMMIT)."; \
 		printf '%s\n' "vendor-tinygo: remove $(TINYGO_ROOT) and rerun if you want a clean repin."; \
@@ -187,7 +188,7 @@ vendor-tinygo: $(TINYGO_PATCH)
 	fi
 	git -C "$(TINYGO_ROOT)" submodule update --init --recursive
 	test -d "$(TINYGO_LLVM_PROJECT_DIR)" || git clone --branch "$(TINYGO_LLVM_PROJECT_BRANCH)" --depth 1 https://github.com/tinygo-org/llvm-project "$(TINYGO_LLVM_PROJECT_DIR)"
-	@if git -C "$(TINYGO_ROOT)" apply --reverse --check "$(abspath $(TINYGO_PATCH))" >/dev/null 2>&1; then \
+	if git -C "$(TINYGO_ROOT)" apply --reverse --check "$(abspath $(TINYGO_PATCH))" >/dev/null 2>&1; then \
 		:; \
 	elif git -C "$(TINYGO_ROOT)" apply --check "$(abspath $(TINYGO_PATCH))" >/dev/null 2>&1; then \
 		git -C "$(TINYGO_ROOT)" apply "$(abspath $(TINYGO_PATCH))"; \
@@ -332,7 +333,7 @@ $(TAMAGO_BIOS_BIN): $(TAMAGO_BIOS_ELF) | $(BUILD_DIR)
 	$(RISCV_OBJCOPY) -O binary "$(TAMAGO_BIOS_ELF)" "$(TAMAGO_BIOS_BIN)"
 
 emulate-clang: build-input $(CLANG_ELF)
-	@status=0; \
+	status=0; \
 	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(QEMU_MACHINE) \
@@ -345,7 +346,7 @@ emulate-clang: build-input $(CLANG_ELF)
 	$(call check_qemu_finisher_status,emulate-clang)
 
 emulate-gcc: build-input $(GCC_ELF)
-	@status=0; \
+	status=0; \
 	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(QEMU_MACHINE) \
@@ -361,7 +362,7 @@ emulate-go-linux: $(GO_LINUX_BIN)
 	$(QEMU_USER) $(GO_LINUX_BIN)
 
 emulate-tinygo: build-input $(TINYGO_ELF)
-	@status=0; \
+	status=0; \
 	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(TINYGO_QEMU_MACHINE) \
@@ -376,7 +377,7 @@ emulate-tinygo: build-input $(TINYGO_ELF)
 	$(call check_qemu_finisher_status,emulate-tinygo)
 
 emulate-tamago: build-input $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
-	@status=0; \
+	status=0; \
 	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine sifive_u \
@@ -392,12 +393,12 @@ emulate-tamago: build-input $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
 	test $$status -eq 0 -o $$status -eq 124
 
 emulate-libriscv: build-input build-libriscv-runner $(LIBRISCV_GUEST)
-	@if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_ELF))" ]; then \
+	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_ELF))" ]; then \
 		printf '%s\n' 'emulate-libriscv: $(TAMAGO_ELF) is a TamaGo sifive_u image and expects machine-mode CSRs/board state.'; \
 		printf '%s\n' 'emulate-libriscv: use make emulate-tamago for this guest, or pass a generic bare-metal ELF such as build/verifier-clang.elf.'; \
 		exit 2; \
 	fi
-	@if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TINYGO_ELF))" ]; then \
+	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TINYGO_ELF))" ]; then \
 		printf '%s\n' 'emulate-libriscv: $(TINYGO_ELF) currently touches machine CSRs such as mtvec during startup.'; \
 		printf '%s\n' 'emulate-libriscv: use make emulate-tinygo for this guest, or pass a generic freestanding ELF such as build/verifier-clang.elf.'; \
 		exit 2; \
