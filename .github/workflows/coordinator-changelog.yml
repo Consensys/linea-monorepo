@@ -50,6 +50,7 @@ jobs:
         with:
           # git-cliff needs full history + tags to compute changelog/version
           fetch-depth: 0
+          fetch-tags: true
           submodules: false
 
       - name: Generate coordinator [Unreleased] changelog
