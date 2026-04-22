@@ -1,9 +1,11 @@
 #include <libriscv/machine.hpp>
 
 #include <cstdlib>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -12,11 +14,31 @@ namespace {
 using Machine = riscv::Machine<riscv::RISCV64>;
 using Address = Machine::address_t;
 
-constexpr Address kUARTBase = 0x10000000ULL;
-constexpr uint32_t kUARTTHROffset = 0;
-constexpr uint32_t kUARTLSROffset = 5;
-constexpr uint8_t kUARTLSRTHRE = 0x20;
+constexpr Address kGuestStatusBase = 0x80eff000ULL;
+constexpr Address kGuestInputBase = 0x80f00000ULL;
+constexpr Address kQEMUTestBase = 0x00100000ULL;
+constexpr uint32_t kStatusMagic = 0x56535441U;
+constexpr uint32_t kStatusVersion = 1U;
+constexpr uint32_t kStatusCodeSuccess = 1U;
+constexpr uint32_t kStatusCodeInputError = 2U;
+constexpr uint32_t kStatusCodeMismatch = 3U;
+constexpr uint32_t kQEMUTestPass = 0x5555U;
+constexpr uint32_t kQEMUTestFail = 0x3333U;
 constexpr uint64_t kDefaultMaxInstructions = 50'000'000ULL;
+
+struct GuestStatus {
+	uint32_t magic;
+	uint32_t version;
+	uint32_t code;
+	uint32_t reserved;
+	uint64_t result;
+	uint64_t expected;
+};
+
+struct GuestFinish {
+	bool seen = false;
+	uint32_t value = 0;
+};
 
 std::vector<uint8_t> read_binary(const char* path) {
 	std::ifstream stream(path, std::ios::binary);
@@ -27,15 +49,6 @@ std::vector<uint8_t> read_binary(const char* path) {
 	return std::vector<uint8_t>(
 		(std::istreambuf_iterator<char>(stream)),
 		std::istreambuf_iterator<char>());
-}
-
-bool has_complete_result_line(const std::string& output) {
-	const auto start = output.find("verifier result ");
-	if (start == std::string::npos) {
-		return false;
-	}
-
-	return output.find('\n', start) != std::string::npos;
 }
 
 void write_trapped_value(riscv::Page& page, uint32_t offset, int mode, int64_t value) {
@@ -57,15 +70,44 @@ void write_trapped_value(riscv::Page& page, uint32_t offset, int mode, int64_t v
 	}
 }
 
+bool read_guest_status(const Machine& machine, GuestStatus& status) {
+	try {
+		machine.copy_from_guest(&status, kGuestStatusBase, sizeof(status));
+		return status.magic == kStatusMagic && status.version == kStatusVersion;
+	} catch (...) {
+		return false;
+	}
+}
+
+int report_guest_status(const GuestStatus& status) {
+	switch (status.code) {
+	case kStatusCodeSuccess:
+		return 0;
+	case kStatusCodeInputError:
+		std::cerr << "libriscv runner: guest reported invalid input\n";
+		return 5;
+	case kStatusCodeMismatch:
+		std::cerr << "libriscv runner: guest reported mismatch (got=0x"
+			  << std::hex << status.result
+			  << ", expected=0x" << status.expected
+			  << std::dec << ")\n";
+		return 4;
+	default:
+		std::cerr << "libriscv runner: guest reported unknown status code "
+			  << status.code << '\n';
+		return 6;
+	}
+}
+
 uint64_t parse_max_instructions(int argc, char** argv) {
-	if (argc < 3) {
+	if (argc < 4) {
 		return kDefaultMaxInstructions;
 	}
 
 	char* end = nullptr;
-	const auto parsed = std::strtoull(argv[2], &end, 0);
+	const auto parsed = std::strtoull(argv[3], &end, 0);
 	if (end == nullptr || *end != '\0') {
-		throw std::runtime_error(std::string("invalid instruction limit: ") + argv[2]);
+		throw std::runtime_error(std::string("invalid instruction limit: ") + argv[3]);
 	}
 
 	return parsed;
@@ -82,13 +124,14 @@ std::string describe_guest_state(const Machine& machine) {
 } // namespace
 
 int main(int argc, char** argv) {
-	if (argc < 2) {
-		std::cerr << "usage: " << argv[0] << " <guest.elf> [max-instructions]\n";
+	if (argc < 3) {
+		std::cerr << "usage: " << argv[0] << " <guest.elf> <input.bin> [max-instructions]\n";
 		return 64;
 	}
 
 	try {
 		const auto binary = read_binary(argv[1]);
+		const auto input = read_binary(argv[2]);
 		const auto max_instructions = parse_max_instructions(argc, argv);
 
 		Machine::on_unhandled_csr = [] (Machine&, int csr, int, int) {
@@ -104,30 +147,21 @@ int main(int argc, char** argv) {
 			.use_memory_arena = false,
 		};
 		Machine machine { binary, options };
+		machine.copy_to_guest(kGuestInputBase, input.data(), input.size());
 
-		std::string output;
-		auto& uart_page =
-			machine.memory.create_writable_pageno(riscv::Memory<riscv::RISCV64>::page_number(kUARTBase));
-		uart_page.page().template aligned_write<uint8_t>(kUARTLSROffset, kUARTLSRTHRE);
-		uart_page.set_trap(
+		GuestFinish finisher;
+		auto& finisher_page =
+			machine.memory.create_writable_pageno(riscv::Memory<riscv::RISCV64>::page_number(kQEMUTestBase));
+		finisher_page.set_trap(
 			[&] (riscv::Page& page, uint32_t offset, int mode, int64_t value) {
 				switch (riscv::Page::trap_mode(mode)) {
-				case riscv::TRAP_READ:
-					if (offset == kUARTLSROffset) {
-						page.page().template aligned_write<uint8_t>(offset, kUARTLSRTHRE);
-					}
-					return;
 				case riscv::TRAP_WRITE:
-					if (offset == kUARTTHROffset && riscv::Page::trap_size(mode) >= 1) {
-						const char ch = static_cast<char>(value & 0xff);
-						output.push_back(ch);
-						std::cout.put(ch);
-						std::cout.flush();
-						if (has_complete_result_line(output)) {
-							machine.stop();
-						}
-					}
 					write_trapped_value(page, offset, mode, value);
+					if (offset == 0 && riscv::Page::trap_size(mode) >= 4) {
+						finisher.seen = true;
+						finisher.value = static_cast<uint32_t>(value);
+						machine.stop();
+					}
 					return;
 				default:
 					return;
@@ -136,16 +170,24 @@ int main(int argc, char** argv) {
 
 		try {
 			const bool stopped_normally = machine.simulate<false>(max_instructions);
-			if (has_complete_result_line(output)) {
-				return 0;
+
+			GuestStatus status {};
+			if (read_guest_status(machine, status)) {
+				return report_guest_status(status);
 			}
 
 			if (!stopped_normally && machine.instruction_limit_reached()) {
-				std::cerr << "libriscv runner: instruction limit reached before complete output\n";
+				std::cerr << "libriscv runner: instruction limit reached before guest status was written\n";
 				return 2;
 			}
 
-			std::cerr << "libriscv runner: guest stopped without producing a complete result line\n";
+			if (finisher.seen) {
+				std::cerr << "libriscv runner: guest stopped via finisher without a valid status page"
+					  << " (value=0x" << std::hex << finisher.value << std::dec << ")\n";
+				return 6;
+			}
+
+			std::cerr << "libriscv runner: guest stopped without producing a valid status page\n";
 			return 3;
 		} catch (const riscv::MachineException& err) {
 			std::cerr << "libriscv runner: " << err.what()

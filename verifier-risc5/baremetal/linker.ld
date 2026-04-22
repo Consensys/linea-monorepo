@@ -3,7 +3,9 @@ ENTRY(_start)
 
 MEMORY
 {
-	RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 16M
+	RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 0x00eff000
+	GUEST_STATUS (rw) : ORIGIN = 0x80eff000, LENGTH = 0x1000
+	GUEST_INPUT (rw) : ORIGIN = 0x80f00000, LENGTH = 1M
 }
 
 SECTIONS
@@ -49,3 +51,8 @@ SECTIONS
 		*(.note*)
 	}
 }
+
+__guest_input_base = ORIGIN(GUEST_INPUT);
+__guest_input_end = ORIGIN(GUEST_INPUT) + LENGTH(GUEST_INPUT);
+__guest_status_base = ORIGIN(GUEST_STATUS);
+__guest_status_end = ORIGIN(GUEST_STATUS) + LENGTH(GUEST_STATUS);

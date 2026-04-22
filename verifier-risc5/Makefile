@@ -1,9 +1,12 @@
 .DEFAULT_GOAL := help
 
 GO_MAIN := ./cmd/verifier
+INPUTGEN_MAIN := ./cmd/inputgen
+GO_SOURCES := $(shell find cmd internal -name '*.go' -print)
 
 BUILD_DIR := build
 BAREMETAL_DIR := baremetal
+INPUTS_DIR := inputs
 LIBRISCV_TOOLCHAIN_DIR := toolchains/libriscv
 TAMAGO_TOOLCHAIN_DIR := toolchains/tamago
 TINYGO_TOOLCHAIN_DIR := toolchains/tinygo
@@ -68,10 +71,13 @@ LIBRISCV_RUNNER := $(LIBRISCV_BUILD_DIR)/libriscv_runner
 LIBRISCV_GUEST ?= $(CLANG_ELF)
 LIBRISCV_MAX_INSTRUCTIONS ?= 50000000
 
-QEMU_TIMEOUT ?= 1s
+QEMU_TIMEOUT ?=
 QEMU_MACHINE ?= virt
 QEMU_CPU ?= rv64
 QEMU_MEM ?= 256M
+QEMU_FINISHER_SUCCESS_EXIT ?= 0
+QEMU_FINISHER_FAILURE_EXIT ?= 3
+QEMU_TIMEOUT_CMD := $(if $(strip $(QEMU_TIMEOUT)),timeout $(QEMU_TIMEOUT),)
 
 TARGET_TRIPLE ?= riscv64-unknown-none-elf
 RV_MARCH ?= rv64im_zicclsm
@@ -83,13 +89,32 @@ GO_RISCV_PROFILE ?= rva20u64
 CLANG_ELF := $(BUILD_DIR)/verifier-clang.elf
 GCC_ELF := $(BUILD_DIR)/verifier-gcc.elf
 GO_LINUX_BIN := $(BUILD_DIR)/verifier-go-linux-riscv64
+INPUT_JSON ?= $(INPUTS_DIR)/default.json
+INPUT_BIN := $(BUILD_DIR)/verifier-input.bin
+GUEST_INPUT_ADDR ?= 0x80f00000
 
 .PHONY: help \
 	clean-tool-cache vendor-tinygo tinygo-bootstrap \
 	vendor-libriscv build-libriscv-runner \
-	build-clang build-gcc build-go-linux build-tinygo build-tamago \
+	build-input build-clang build-gcc build-go-linux build-tinygo build-tamago \
 	emulate-clang emulate-gcc emulate-go-linux emulate-tinygo emulate-tamago emulate-libriscv \
 	clean
+
+define check_qemu_finisher_status
+case $$status in \
+	$(QEMU_FINISHER_SUCCESS_EXIT)) \
+		printf '%s\n' '$(1): guest reported success' ;; \
+	$(QEMU_FINISHER_FAILURE_EXIT)) \
+		printf '%s\n' '$(1): guest reported failure via the QEMU finisher' >&2; \
+		exit $$status ;; \
+	124) \
+		printf '%s\n' '$(1): timed out before the guest signaled completion' >&2; \
+		exit $$status ;; \
+	*) \
+		printf '%s %s\n' '$(1): unexpected QEMU exit' "$$status" >&2; \
+		exit $$status ;; \
+esac
+endef
 
 help:
 	@printf '%s\n' \
@@ -97,6 +122,7 @@ help:
 		'  make vendor-tinygo        - clone TinyGo at the pinned commit and apply the local RISC-V patch' \
 		'  make vendor-libriscv      - clone libriscv and its submodules under third_party/' \
 		'  make tinygo-bootstrap     - build the local TinyGo binary from third_party/tinygo' \
+		'  make build-input          - generate the preloaded verifier input blob' \
 		'  make build-clang          - build the freestanding clang/ld.lld ELF' \
 		'  make build-gcc            - build the freestanding GCC ELF' \
 		'  make build-go-linux       - build the hosted linux/riscv64 Go baseline' \
@@ -116,9 +142,12 @@ help:
 		'  TINYGO_ROOT=third_party/tinygo    - TinyGo checkout location' \
 		'  TINYGO_COMMIT=$(TINYGO_COMMIT) - pinned TinyGo commit expected by the local patch' \
 		'  TINYGO_GC=leaking                 - TinyGo GC mode, defaults to the smallest working option' \
+		'  INPUT_JSON=inputs/default.json   - JSON fixture used to generate the preloaded input blob' \
 		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
 		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
+		'  GUEST_INPUT_ADDR=0x80f00000      - guest RAM address where the input blob is preloaded' \
 		'  QEMU_CPU=rv64                     - QEMU CPU string for the virt machine targets' \
+		'  QEMU_TIMEOUT=5s                  - optional safety timeout for QEMU system emulation' \
 		'' \
 		'Ubuntu packages usually needed:' \
 		'  sudo apt install clang-20 lld-20 llvm-20-tools llvm-20-dev libclang-20-dev gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf qemu-system-misc qemu-user cmake g++' \
@@ -127,13 +156,16 @@ help:
 		'  TinyGo is vendored instead of module-managed because the upstream module archive omits required git submodules such as src/net.' \
 		'  vendor-tinygo checks that the checkout is at the pinned commit before applying third_party/tinygo-riscv64im_zicclsm.patch.' \
 		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
-		'  emulate-libriscv is for generic bare-metal guests, not for the board-specific TamaGo sifive_u image.' \
+		'  emulate-libriscv is for the generic freestanding clang/gcc guests; the current TinyGo and TamaGo images still touch machine CSRs that this minimal runner does not model.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
 		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
 		'  TinyGo now defaults to -gc=leaking for the smallest working bare-metal image; use TINYGO_GC=conservative if you want the previous collector.'
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
+
+build-input: | $(BUILD_DIR)
+	$(GO) run $(INPUTGEN_MAIN) -in $(INPUT_JSON) -out $(INPUT_BIN)
 
 $(TINYGO_TARGET_BUILD): $(TINYGO_TARGET) $(TINYGO_TARGET_LD) | $(BUILD_DIR)
 	sed 's|"linkerscript": "riscv64im_zicclsm-qemu-virt.ld"|"linkerscript": "$(abspath $(TINYGO_TARGET_LD))"|' "$(TINYGO_TARGET)" > "$@"
@@ -243,13 +275,13 @@ $(GCC_ELF): $(BAREMETAL_DIR)/entry.S $(BAREMETAL_DIR)/guest.c $(BAREMETAL_DIR)/l
 
 build-gcc: $(GCC_ELF)
 
-$(GO_LINUX_BIN): | $(BUILD_DIR)
+$(GO_LINUX_BIN): $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
 	GOOS=linux GOARCH=riscv64 GORISCV64=$(GO_RISCV_PROFILE) \
 		$(GO) build -trimpath -o $(GO_LINUX_BIN) $(GO_MAIN)
 
 build-go-linux: $(GO_LINUX_BIN)
 
-$(TINYGO_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_LD) | $(BUILD_DIR)
+$(TINYGO_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_LD) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
 	XDG_CACHE_HOME="$(XDG_CACHE_HOME_LOCAL)" \
 	GOTOOLCHAIN="$(HOST_GO_VERSION)" \
 	TINYGOROOT="$(abspath $(TINYGO_ROOT))" \
@@ -269,7 +301,7 @@ $(TAMAGO_BIN): | $(BUILD_DIR)
 	test -x "$(TAMAGO_BIN)" || env -u GOOS -u GOARCH -u GOOSPKG XDG_CACHE_HOME="$(TAMAGO_CACHE_HOME)" $(GO) tool tamago version >/dev/null
 	test -x "$(TAMAGO_BIN)"
 
-$(TAMAGO_ELF): $(TAMAGO_BIN) | $(BUILD_DIR)
+$(TAMAGO_ELF): $(TAMAGO_BIN) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
 	GODEBUG=goindex=0 GOWORK=off GOOS=tamago GOOSPKG=github.com/usbarmory/tamago GOARCH=riscv64 \
 		GOROOT="$(TAMAGO_GOROOT)" PATH="$(TAMAGO_GOROOT)/bin:$$PATH" \
 		"$(TAMAGO_BIN)" build \
@@ -299,36 +331,38 @@ $(TAMAGO_BIOS_ELF): $(TAMAGO_BIOS_SRC) $(TAMAGO_ELF) | $(BUILD_DIR)
 $(TAMAGO_BIOS_BIN): $(TAMAGO_BIOS_ELF) | $(BUILD_DIR)
 	$(RISCV_OBJCOPY) -O binary "$(TAMAGO_BIOS_ELF)" "$(TAMAGO_BIOS_BIN)"
 
-emulate-clang: $(CLANG_ELF)
+emulate-clang: build-input $(CLANG_ELF)
 	@status=0; \
-	timeout $(QEMU_TIMEOUT) \
+	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(QEMU_MACHINE) \
 		-cpu $(QEMU_CPU) \
 		-m $(QEMU_MEM) \
 		-nographic \
 		-bios none \
+		-device loader,file=$(INPUT_BIN),addr=$(GUEST_INPUT_ADDR),force-raw=on \
 		-kernel $(CLANG_ELF) || status=$$?; \
-	test $$status -eq 0 -o $$status -eq 124
+	$(call check_qemu_finisher_status,emulate-clang)
 
-emulate-gcc: $(GCC_ELF)
+emulate-gcc: build-input $(GCC_ELF)
 	@status=0; \
-	timeout $(QEMU_TIMEOUT) \
+	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(QEMU_MACHINE) \
 		-cpu $(QEMU_CPU) \
 		-m $(QEMU_MEM) \
 		-nographic \
 		-bios none \
+		-device loader,file=$(INPUT_BIN),addr=$(GUEST_INPUT_ADDR),force-raw=on \
 		-kernel $(GCC_ELF) || status=$$?; \
-	test $$status -eq 0 -o $$status -eq 124
+	$(call check_qemu_finisher_status,emulate-gcc)
 
 emulate-go-linux: $(GO_LINUX_BIN)
 	$(QEMU_USER) $(GO_LINUX_BIN)
 
-emulate-tinygo: $(TINYGO_ELF)
+emulate-tinygo: build-input $(TINYGO_ELF)
 	@status=0; \
-	timeout $(QEMU_TIMEOUT) \
+	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine $(TINYGO_QEMU_MACHINE) \
 		-smp $(TINYGO_QEMU_SMP) \
@@ -337,12 +371,13 @@ emulate-tinygo: $(TINYGO_ELF)
 		-nographic \
 		-bios none \
 		-device virtio-rng-device \
+		-device loader,file=$(INPUT_BIN),addr=$(GUEST_INPUT_ADDR),force-raw=on \
 		-kernel $(TINYGO_ELF) || status=$$?; \
-	test $$status -eq 0 -o $$status -eq 124
+	$(call check_qemu_finisher_status,emulate-tinygo)
 
-emulate-tamago: $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
+emulate-tamago: build-input $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
 	@status=0; \
-	timeout $(QEMU_TIMEOUT) \
+	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
 		-machine sifive_u \
 		-m 512M \
@@ -350,18 +385,24 @@ emulate-tamago: $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
 		-monitor none \
 		-serial stdio \
 		-net none \
+		-device loader,file=$(INPUT_BIN),addr=$(GUEST_INPUT_ADDR),force-raw=on \
 		-dtb $(TAMAGO_DTB) \
 		-bios $(TAMAGO_BIOS_BIN) \
 		-kernel $(TAMAGO_ELF) || status=$$?; \
 	test $$status -eq 0 -o $$status -eq 124
 
-emulate-libriscv: build-libriscv-runner $(LIBRISCV_GUEST)
+emulate-libriscv: build-input build-libriscv-runner $(LIBRISCV_GUEST)
 	@if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_ELF))" ]; then \
 		printf '%s\n' 'emulate-libriscv: $(TAMAGO_ELF) is a TamaGo sifive_u image and expects machine-mode CSRs/board state.'; \
 		printf '%s\n' 'emulate-libriscv: use make emulate-tamago for this guest, or pass a generic bare-metal ELF such as build/verifier-clang.elf.'; \
 		exit 2; \
 	fi
-	"$(LIBRISCV_RUNNER)" "$(LIBRISCV_GUEST)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
+	@if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TINYGO_ELF))" ]; then \
+		printf '%s\n' 'emulate-libriscv: $(TINYGO_ELF) currently touches machine CSRs such as mtvec during startup.'; \
+		printf '%s\n' 'emulate-libriscv: use make emulate-tinygo for this guest, or pass a generic freestanding ELF such as build/verifier-clang.elf.'; \
+		exit 2; \
+	fi
+	"$(LIBRISCV_RUNNER)" "$(LIBRISCV_GUEST)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
 
 clean:
 	rm -rf $(BUILD_DIR)

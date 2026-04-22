@@ -7,6 +7,14 @@ The project has two main goals:
 - compare bare-metal and hosted code generation for a small Go workload
 - keep the bare-metal paths close to a zkVM guest model: fixed memory, no syscalls, and minimal runtime
 
+The current guest ABI follows the zkVM shape:
+
+- the host generates a raw input blob and preloads it into guest RAM at `0x80f00000`
+- the guest reads that memory directly, computes the verifier-style hash, and checks it against the expected value stored in the same blob
+- the guest writes its result code and computed value to a fixed status page at `0x80eff000`
+
+For the generic `qemu-system-riscv64 -machine virt` runs, the guest also writes to QEMU's SiFive test finisher MMIO register at `0x00100000` so the VM stops without any guest-side stdout or syscalls.
+
 ## Dependency Setup
 
 The Go toolchain version is taken from `go.mod`, so a recent `go` install is enough. The module will download the exact Go toolchain it needs.
@@ -48,7 +56,8 @@ Current ISA and runtime targets:
 
 Important caveat:
 
-- `clang`, `TinyGo`, and the C guest path are the closest match to the intended bare-metal zkVM model
+- `clang` and the freestanding C guest path are the closest match to the intended bare-metal zkVM model
+- `TinyGo` can target the same memory layout and status ABI on QEMU `virt`, but its current runtime startup still programs machine CSRs such as `mtvec`
 - `Go` is only a hosted Linux baseline
 - `TamaGo` is useful as a bare-metal Go comparison, but it expects a `sifive_u` machine model with privileged CSRs and board state
 
@@ -57,11 +66,18 @@ Important caveat:
 Build all supported outputs explicitly:
 
 ```bash
+make build-input
 make build-clang
 make build-gcc
 make build-go-linux
 make build-tinygo
 make build-tamago
+```
+
+`make build-input` converts `inputs/default.json` into `build/verifier-input.bin`. Override the fixture with:
+
+```bash
+make build-input INPUT_JSON=/path/to/other.json
 ```
 
 TinyGo collector selection:
@@ -92,6 +108,13 @@ make emulate-gcc
 make emulate-tinygo
 ```
 
+Those targets automatically preload `build/verifier-input.bin` into guest RAM using QEMU's generic loader device. The guest itself stays silent: it writes the outcome to the fixed status page and then exits QEMU through the finisher MMIO device instead of printing text. The Makefile interprets the resulting QEMU host exit code and prints a short host-side summary such as `emulate-clang: guest reported success` or `emulate-clang: guest reported failure via the QEMU finisher`. By default there is no host-side timeout for these `virt` guests because they are expected to exit on their own; if you want a safety kill, pass something like `QEMU_TIMEOUT=5s`. To try a different fixture:
+
+```bash
+make emulate-clang INPUT_JSON=inputs/default.json
+make emulate-tinygo INPUT_JSON=inputs/verifier-mismatch.json
+```
+
 Hosted Go baseline:
 
 ```bash
@@ -109,19 +132,22 @@ libriscv runner examples:
 ```bash
 make emulate-libriscv
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-gcc.elf
-make emulate-libriscv LIBRISCV_GUEST=build/verifier-tinygo.elf
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tamago-sifive_u.elf
 ```
 
 Meaning of those commands:
 
 - plain `make emulate-libriscv` runs the default `clang` bare-metal ELF
-- the `gcc` and `TinyGo` ELFs are supported in the same runner
+- the `gcc` ELF is supported in the same runner
+- the `TinyGo` command is intentionally rejected because the current TinyGo bare-metal runtime still touches machine CSRs such as `mtvec`
 - the `TamaGo` command is intentionally rejected with a clear error because that image expects `sifive_u` machine-mode CSRs and board initialization
+- `emulate-libriscv` also preloads the same `build/verifier-input.bin` blob at `0x80f00000`
+- `emulate-libriscv` validates the fixed status page at `0x80eff000` instead of watching guest stdout
 
 `libriscv` is not used for:
 
 - `build/verifier-go-linux-riscv64`, because that is a hosted Linux userspace binary
+- `build/verifier-tinygo.elf`, because the current TinyGo startup still relies on machine CSRs that the minimal runner does not model
 - `build/verifier-tamago-sifive_u.elf`, because that is a board-specific machine-mode image
 
 ## Repository Layout
@@ -129,26 +155,44 @@ Meaning of those commands:
 ### `baremetal/`
 
 - `baremetal/entry.S`: minimal freestanding entrypoint for the C guest
-- `baremetal/guest.c`: no-libc guest workload and UART MMIO output
-- `baremetal/linker.ld`: memory layout and ELF segment placement for the freestanding guest
+- `baremetal/guest.c`: no-libc guest workload that reads the preloaded input blob, computes the result, writes the fixed status page, and exits QEMU through the finisher MMIO register
+- `baremetal/linker.ld`: memory layout and ELF segment placement for the freestanding guest, with the top `4 KiB` reserved for status and the top `1 MiB` reserved for preloaded input
 
 ### `toolchains/`
 
 - `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.json`: custom TinyGo target definition for `rv64im_zicclsm`
-- `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine
+- `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine, reserving both the fixed status page and the input window
 - `toolchains/tamago/sifive_u_bios.S`: tiny BIOS trampoline used to boot the TamaGo `sifive_u` guest under QEMU
 - `toolchains/libriscv/CMakeLists.txt`: host build for the local libriscv runner
-- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with UART MMIO trapping and compatibility diagnostics
+- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, and status-page validation
 
 ### `cmd/verifier/`
 
 - `cmd/verifier/core.go`: shared verifier-style computation used by every Go build
+- `cmd/verifier/input.go`: shared Go-side input representation
+- `cmd/verifier/input_default.go`: hosted fallback input source using the default fixture
+- `cmd/verifier/input_baremetal.go`: bare-metal reader for the fixed guest input window at `0x80f00000`
+- `cmd/verifier/status_baremetal.go`: bare-metal writer for the fixed guest status page at `0x80eff000`
+- `cmd/verifier/halt_baremetal.go`: explicit bare-metal fallback halt helper used after reporting status
 - `cmd/verifier/main_hosted.go`: hosted entrypoint used outside bare-metal builds
 - `cmd/verifier/main_baremetal.go`: bare-metal entrypoint used with the `baremetal` build tag
-- `cmd/verifier/announce_none.go`: no-op bare-metal announcement fallback
-- `cmd/verifier/announce_qemu_virt.go`: UART MMIO output path for the `qemu_virt` bare-metal target
-- `cmd/verifier/announce_tamago_sifiveu.go`: TamaGo-specific output path
+- `cmd/verifier/announce_none.go`: generic bare-metal status-page reporting fallback
+- `cmd/verifier/announce_qemu_virt.go`: `qemu_virt` status-page reporting plus the QEMU finisher MMIO exit path
+- `cmd/verifier/announce_tamago_sifiveu.go`: TamaGo-specific status-page reporting path
 - `cmd/verifier/tamago_sifiveu.go`: imports the TamaGo `qemu/sifive_u` board package
+
+### `cmd/inputgen/`
+
+- `cmd/inputgen/main.go`: host-side generator that turns a JSON fixture into the raw preloaded guest input blob
+
+### `inputs/`
+
+- `inputs/default.json`: default host-side fixture containing the words array and expected result
+
+### `internal/`
+
+- `internal/workload/workload.go`: shared computation and default fixture values used by the Go guest and the input generator
+- `internal/guestabi/abi.go`: fixed-address guest ABI constants for both the input blob and the result status page
 
 The build split is:
 

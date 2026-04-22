@@ -2,7 +2,22 @@
 
 package main
 
+import (
+	"os"
+
+	"github.com/consensys/linea-monorepo/verifier-risc5/internal/guestabi"
+)
+
 func main() {
-	Result = Compute()
-	println("verifier result", Result)
+	input, ok := loadVerifierInput()
+	if !ok {
+		os.Exit(int(guestabi.StatusCodeInputError))
+	}
+
+	Result = ComputeWords(input.Words)
+	if Result == input.Expected {
+		os.Exit(int(guestabi.StatusCodeSuccess))
+	}
+
+	os.Exit(int(guestabi.StatusCodeMismatch))
 }

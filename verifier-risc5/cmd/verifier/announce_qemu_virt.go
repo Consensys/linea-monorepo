@@ -2,42 +2,33 @@
 
 package main
 
-import "unsafe"
+import (
+	"unsafe"
 
-const (
-	qemuVirtUARTBase = uintptr(0x10000000)
-	uartTHROffset    = uintptr(0)
-	uartLSROffset    = uintptr(5)
-	uartLSRTHRE      = 0x20
+	"github.com/consensys/linea-monorepo/verifier-risc5/internal/guestabi"
 )
 
-func announceBaremetal(value uint64) {
-	uartWriteString("verifier result 0x")
-	uartWriteHex64(value)
-	uartWriteString("\r\n")
+func announceBaremetalResult(value uint64) {
+	writeGuestStatus(guestabi.StatusCodeSuccess, value, value)
+	qemuVirtExit(guestabi.StatusCodeSuccess)
 }
 
-func uartWriteString(s string) {
-	for i := 0; i < len(s); i++ {
-		uartWriteByte(s[i])
-	}
+func announceBaremetalMismatch(expected, got uint64) {
+	writeGuestStatus(guestabi.StatusCodeMismatch, got, expected)
+	qemuVirtExit(guestabi.StatusCodeMismatch)
 }
 
-func uartWriteHex64(value uint64) {
-	const hex = "0123456789abcdef"
-
-	for shift := uint(60); shift < 64; shift -= 4 {
-		nibble := byte((value >> shift) & 0x0f)
-		uartWriteByte(hex[nibble])
-		if shift == 0 {
-			return
-		}
-	}
+func announceBaremetalInputError() {
+	writeGuestStatus(guestabi.StatusCodeInputError, 0, 0)
+	qemuVirtExit(guestabi.StatusCodeInputError)
 }
 
-func uartWriteByte(value byte) {
-	for (*(*uint8)(unsafe.Pointer(qemuVirtUARTBase + uartLSROffset)) & uartLSRTHRE) == 0 {
+func qemuVirtExit(code uint32) {
+	value := guestabi.QEMUTestPass
+	if code != guestabi.StatusCodeSuccess {
+		value = (code << 16) | guestabi.QEMUTestFail
 	}
 
-	*(*uint8)(unsafe.Pointer(qemuVirtUARTBase + uartTHROffset)) = value
+	*(*uint32)(unsafe.Pointer(guestabi.QEMUTestBase)) = value
+	haltForever()
 }
