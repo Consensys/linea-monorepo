@@ -4,26 +4,7 @@ plugins {
 }
 
 dependencies {
-  api("${besuArtifactGroup}:besu-datatypes") {
-    transitive = false
-  }
-  api("${besuArtifactGroup}:besu-evm") {
-    transitive = false
-  }
-  api("${besuArtifactGroup}.internal:besu-ethereum-core") {
-    transitive = false
-  }
-  api("${besuArtifactGroup}.internal:besu-crypto-algorithms") {
-    transitive = false
-  }
-
-  api("${besuArtifactGroup}:besu-plugin-api") {
-    transitive = false
-  }
-
-  api("${besuArtifactGroup}.internal:besu-ethereum-rlp") {
-    transitive = false
-  }
+  api project(":linea-besu")
 
   api("io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}") {
     transitive = false

@@ -14,10 +14,37 @@
  */
 
 plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
   id 'java-library'
 }
 
-description = 'Ensures Hyperledger Besu artifacts for besuCommit in gradle/libs.versions.toml are built or fetched before dependent modules compile'
+description = 'Ensures Hyperledger Besu artifacts for besuCommit in gradle/libs.versions.toml are built or fetched before dependent modules compile, and re-exports the curated set of Besu api jars that downstream JVM modules consume'
+
+// Re-export the curated subset of Besu jars that downstream modules (jvm-libs/linea/besu-libs,
+// etc.) consume via `api project(':linea-besu')`. Kept versionless so the root
+// resolutionStrategy.eachDependency rewrite aligns them with the current resolved besuVersion.
+// transitive=false keeps Besu's own transitive graph (tuweni, jackson, netty, ...) out of
+// consumers' classpaths; those are declared explicitly where needed.
+dependencies {
+  api("${besuArtifactGroup}:besu-datatypes") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}:besu-evm") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}.internal:besu-ethereum-core") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}.internal:besu-crypto-algorithms") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}:besu-plugin-api") {
+    transitive = false
+  }
+  api("${besuArtifactGroup}.internal:besu-ethereum-rlp") {
+    transitive = false
+  }
+}
 
 def besuCommit = rootProject.libs.versions.besuCommit.get()
 def rootDirFile = rootProject.layout.projectDirectory.asFile
@@ -39,36 +66,46 @@ def mavenLocalBase = providers.systemProperty('maven.repo.local')
     .get()
 
 // Expose Besu version/materialization helper for other modules that need a Besu version
-// during dependency resolution
+// during dependency resolution.
 //
 // Fast path: cached version file hit, BOM already in maven -> returns immediately.
 // Medium path: cached version file missed, resolve besu version by checking out besu repo,
 //              BOM available in a remote maven repo -> skip build/publish besu in buildAndPublishBesuAction.
 // Slow path: (unpublished commit, nothing local): runs the full resolve besu version and besu build+publish.
+def resolvedVersionMemo = new java.util.concurrent.atomic.AtomicReference<String>()
+def resolvedVersionLock = new Object()
 rootProject.ext.resolveBesuVersion = {
-  def resolvedVersion = readCachedBesuVersion(cachedResolvedFile, besuCommit)
+  def cached = resolvedVersionMemo.get()
+  if (cached != null) return cached
+  synchronized (resolvedVersionLock) {
+    cached = resolvedVersionMemo.get()
+    if (cached != null) return cached
 
-  if (!resolvedVersion) {
-    resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedResolvedFile)
+    def resolvedVersion = readCachedBesuVersion(cachedResolvedFile, besuCommit)
+
+    if (!resolvedVersion) {
+      resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedResolvedFile)
+    }
+
+    if (!isBesuAvailableInMavenLocal(logger, resolvedVersion, mavenLocalBase)
+        && !isBesuAvailableInMaven(logger, resolvedVersion)) {
+      logger.lifecycle("Besu BOM ${resolvedVersion} missing in both remote and local maven; building/publishing Besu to maven local on-demand")
+      buildAndPublishBesuAction(
+          logger,
+          providers,
+          rootDirFile,
+          false,
+          skipDownloadBesuDist,
+          resolvedVersion,
+          cloudsmithUser,
+          cloudsmithApiKey,
+          mavenLocalBase
+          )
+    }
+
+    resolvedVersionMemo.set(resolvedVersion)
+    return resolvedVersion
   }
-
-  if (!isBesuAvailableInMavenLocal(logger, resolvedVersion, mavenLocalBase)
-      && !isBesuAvailableInMaven(logger, resolvedVersion)) {
-    logger.lifecycle("Besu BOM ${resolvedVersion} missing in both remote and local maven; building/publishing Besu to maven local on-demand")
-    buildAndPublishBesuAction(
-        logger,
-        providers,
-        rootDirFile,
-        false,
-        skipDownloadBesuDist,
-        resolvedVersion,
-        cloudsmithUser,
-        cloudsmithApiKey,
-        mavenLocalBase
-        )
-  }
-
-  return resolvedVersion
 }
 
 // Besu build/publish is intentionally deferred to task execution.
