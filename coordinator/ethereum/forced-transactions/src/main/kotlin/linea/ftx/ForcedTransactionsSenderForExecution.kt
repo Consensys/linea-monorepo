@@ -36,9 +36,6 @@ internal class ForcedTransactionsSenderForExecution(
   ),
   LongRunningService {
 
-  override fun handleError(error: Throwable) {
-  }
-
   override fun action(): SafeFuture<*> {
     return unprocessedFtxProvider
       .getUnprocessedForcedTransactions()

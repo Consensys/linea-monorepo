@@ -10,11 +10,9 @@ class FtxProcessedQueuerForConflation(
 
   /**
    * Add the ftx for conflation and aggregation queues.
-   * It should add it for both queues or none of them
+   * It fails if any of them is full, the caller shall retry latter
    */
   override fun onFtxProcessed(ftxStatus: FtxConflationInfo) {
-    // Add the processed FTX to both queues (conflation and aggregation)
-    if (conflationFtxQueue.offer(ftxStatus)) {}
     conflationFtxQueue.add(ftxStatus)
     aggregationFtxQueue.add(ftxStatus)
   }
