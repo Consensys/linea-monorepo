@@ -166,7 +166,7 @@ jobs:
         id: append_change_log
         shell: bash
         run: |
-          cd release
+          mkdir release && cd release
           echo "$(cat coordinator/CHANGELOG.md)" >> output.md
           echo "### Docker Image Details" >> output.md
           echo "" >> output.md
@@ -180,7 +180,7 @@ jobs:
         with:
           name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
           tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
-          body_path: coordinator/CHANGELOG.md
+          body_path: release/output.md
           draft: true 
           prerelease: false
           generate_release_notes: false
