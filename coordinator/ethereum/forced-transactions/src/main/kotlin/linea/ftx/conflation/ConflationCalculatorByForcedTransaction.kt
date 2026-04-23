@@ -64,8 +64,8 @@ class ConflationCalculatorByForcedTransaction(
 
   private fun readProcessedFtxs() {
     // Consume from dedicated queue — safe because this queue is not shared with the aggregation calculator.
-    val highestFtxPolledFromQueue = pendingTriggerBlocks.lastOrNull() ?: 0UL
-    val newFtxs = processedFtxQueue.toList().filter { it.blockNumber > highestFtxPolledFromQueue }
+    val highestFtxTrigger = pendingTriggerBlocks.maxByOrNull { it } ?: 0UL
+    val newFtxs = processedFtxQueue.toList().filter { it.blockNumber > highestFtxTrigger }
     if (newFtxs.isEmpty()) {
       return
     }
