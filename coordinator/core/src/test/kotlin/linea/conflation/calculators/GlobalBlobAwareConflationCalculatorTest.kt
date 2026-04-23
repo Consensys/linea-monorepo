@@ -3,6 +3,7 @@ package linea.conflation.calculators
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import linea.blob.BlobCompressor
 import linea.conflation.DynamicBlockNumberSet
+import linea.conflation.SafeBlockProvider
 import linea.domain.Blob
 import linea.domain.BlockCounters
 import linea.domain.BlockHeaderSummary
@@ -17,7 +18,6 @@ import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.fakeTracesCountersV2
 import net.consensys.zkevm.ethereum.coordination.blob.FakeBlobCompressor
-import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -221,7 +221,7 @@ class GlobalBlobAwareConflationCalculatorTest {
         blobCalculator = calculatorByDataCompressed,
         batchesLimit = defaultBatchesLimit,
         metricsFacade = metricsFacade,
-        dynamicBlockNumberSet = dynamicBlockNumberSet,
+        aggregationTargetEndBlocksDynamicSet = dynamicBlockNumberSet,
       )
     conflations = mutableListOf()
     blobs = mutableListOf()
