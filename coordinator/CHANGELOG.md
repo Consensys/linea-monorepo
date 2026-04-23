@@ -1,3 +1,12 @@
+## [1.2.5] - 2026-04-23
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Add comment to test for automating coordinator changelog and tag for 1.2.5
+
+### 🧪 Testing
+
+- *(coordinator)* For auto coordinator changelog update and tag for 1.2.5
 ## [1.2.4] - 2026-04-23
 
 ### 🐛 Bug Fixes
