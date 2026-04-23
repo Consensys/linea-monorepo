@@ -723,16 +723,6 @@ class ForcedTransactionsAppTest {
 
   @Test
   fun `should trigger conflation and aggregation when sequencer processes ftxs`() {
-    configureLoggers(
-      rootLevel = Level.INFO,
-      "l1.FakeEthApiClient" to Level.INFO,
-      "l2.FakeEthApiClient" to Level.INFO,
-      "linea.ethapi" to Level.INFO,
-      "linea.ftx" to Level.INFO,
-      "linea.ftx.conflation" to Level.DEBUG,
-      "linea.ftx.conflation.ConflationCalculatorByForcedTransaction" to Level.TRACE,
-      "linea.ftx.conflation.ForcedTransactionsStatusUpdater" to Level.TRACE,
-    )
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
         l1BlockNumber = 100UL,
@@ -787,29 +777,30 @@ class ForcedTransactionsAppTest {
     )
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 3UL,
-      l2BlockNumber = 300UL,
+      l2BlockNumber = 130UL,
       inclusionResult = ForcedTransactionInclusionResult.Included,
     )
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 4UL,
-      l2BlockNumber = 400UL,
+      l2BlockNumber = 140UL,
       inclusionResult = ForcedTransactionInclusionResult.Included,
     )
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 5UL,
-      l2BlockNumber = 500UL,
+      l2BlockNumber = 150UL,
       inclusionResult = ForcedTransactionInclusionResult.BadBalance,
     )
     this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
     val conflationTriggers = mutableListOf<Pair<BlockInterval, ConflationTrigger>>()
     val aggregationTriggers = mutableListOf<BlockInterval>()
 
+    val conflationStartBlockNumberInclusive = 90UL
     val blobCompressor = FakeBlobCompressor(dataLimit = 1000)
     val conflationCalculator = ConflationCalculatorFactory.conflationCalculator(
       blobCompressor = blobCompressor,
       tracesCountersLimit = TracesCountersV5(TracingModuleV5.entries.associateWith { UInt.MAX_VALUE }),
       blocksLimit = 1000u,
-      lastProcessedBlockNumber = 0UL,
+      lastProcessedBlockNumber = conflationStartBlockNumberInclusive - 1UL,
       lastProcessedTimestamp = l2Client.genesisTimestamp,
       blobBatchesLimit = UInt.MAX_VALUE,
       aggregationProofsLimit = UInt.MAX_VALUE,
@@ -819,7 +810,7 @@ class ForcedTransactionsAppTest {
       metricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     )
     val aggregationCalculator = AggregationCalculatorFactory.createAggregationCalculator(
-      startBlockNumberInclusive = 1UL,
+      startBlockNumberInclusive = conflationStartBlockNumberInclusive,
       maxProofsPerAggregation = UInt.MAX_VALUE,
       maxBlobsPerAggregation = UInt.MAX_VALUE,
       aggregationSizeMultipleOf = 6U,
@@ -858,7 +849,7 @@ class ForcedTransactionsAppTest {
         assertThat(this.fxtDao.list().get().lastOrNull()?.ftxNumber ?: 0UL).isGreaterThanOrEqualTo(1UL)
       }
 
-    (1UL..600UL).forEach { blockNumber ->
+    (conflationStartBlockNumberInclusive..160UL).forEach { blockNumber ->
       await()
         .pollInterval(1.milliseconds.toJavaDuration())
         .atMost(2.seconds.toJavaDuration())
@@ -877,20 +868,20 @@ class ForcedTransactionsAppTest {
 
     assertThat(conflationTriggers).isEqualTo(
       listOf(
-        BlockInterval(1UL, 99UL) to ConflationTrigger.FORCED_TRANSACTION,
+        BlockInterval(90UL, 99UL) to ConflationTrigger.FORCED_TRANSACTION,
         BlockInterval(100UL, 100UL) to ConflationTrigger.FORCED_TRANSACTION,
-        BlockInterval(101UL, 299UL) to ConflationTrigger.FORCED_TRANSACTION,
-        BlockInterval(300UL, 399UL) to ConflationTrigger.FORCED_TRANSACTION,
-        BlockInterval(400UL, 499UL) to ConflationTrigger.FORCED_TRANSACTION,
+        BlockInterval(101UL, 129UL) to ConflationTrigger.FORCED_TRANSACTION,
+        BlockInterval(130UL, 139UL) to ConflationTrigger.FORCED_TRANSACTION,
+        BlockInterval(140UL, 149UL) to ConflationTrigger.FORCED_TRANSACTION,
       ),
     )
     assertThat(aggregationTriggers).isEqualTo(
       listOf(
-        BlockInterval(1UL, 99UL),
+        BlockInterval(90UL, 99UL),
         BlockInterval(100UL, 100UL),
-        BlockInterval(101UL, 299UL),
-        BlockInterval(300UL, 399UL),
-        BlockInterval(400UL, 499UL),
+        BlockInterval(101UL, 129UL),
+        BlockInterval(130UL, 139UL),
+        BlockInterval(140UL, 149UL),
       ),
     )
     app.stop().get()
