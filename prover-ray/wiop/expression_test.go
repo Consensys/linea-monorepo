@@ -109,7 +109,6 @@ func TestConstant_Vector_EvaluateVector(t *testing.T) {
 	c := wiop.NewConstantVector(mod, v)
 
 	cv := c.EvaluateVector(rt)
-	require.Len(t, cv.Plain, 1)
 	vec := cv.Plain
 	assert.Equal(t, 4, vec.Len())
 	for i := range 4 {
@@ -289,7 +288,6 @@ func TestArithmeticOperation_VectorEval_Add(t *testing.T) {
 	cv := expr.(interface {
 		EvaluateVector(wiop.Runtime) wiop.ConcreteVector
 	}).EvaluateVector(rt)
-	require.Len(t, cv.Plain, 1)
 	// each element should be 3+3 = 6
 	six := field.NewFromString("6")
 	for i := range 4 {
