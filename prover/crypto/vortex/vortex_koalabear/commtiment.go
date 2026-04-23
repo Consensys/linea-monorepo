@@ -173,18 +173,13 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	paddedSize := colChunksPad * 8
 	res := make([]field.Octuplet, nbCols)
 	parallel.Execute(nbCols, func(start, end int) {
-		curCol := make([]field.Element, paddedSize) // zero-initialized = right-padded
+		// curCol[nbRows:] is the right-padding; only curCol[:nbRows] is written
+		// per iteration, so the padding stays at make's zero-init throughout.
+		curCol := make([]field.Element, paddedSize)
 		h := poseidon2_koalabear.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
 				curCol[j] = v[j].Get(i)
-			}
-			// Clear trailing slots from the previous iteration. Skipped on the
-			// first iteration (i == start) since make already zero-initializes.
-			if i > start {
-				for j := nbRows; j < paddedSize; j++ {
-					curCol[j] = field.Zero()
-				}
 			}
 			h.WriteElements(curCol...)
 			res[i] = h.SumElement()
