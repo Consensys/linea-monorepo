@@ -25,7 +25,7 @@ type Settings struct {
 	// Specifically, it does not require the constraints and the trace file to
 	// have both originated from the same commit.  By default, the compatibility
 	// check should be enabled.
-	IgnoreCompatibilityCheck *bool
+	IgnoreCompatibilityCheck bool
 	// OptimisationLevel determines the optimisation level which go-corset will
 	// apply when compiling the zkevm.bin file to AIR constraints.  If in doubt,
 	// use mir.DEFAULT_OPTIMISATION_LEVEL.
@@ -127,7 +127,7 @@ func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadResult) 
 	// Performs a compatibility check by comparing the constraints
 	// commit of zkevm.bin with the constraints commit of the trace file.
 	// Panics if an incompatibility is detected.
-	if !*a.Settings.IgnoreCompatibilityCheck {
+	if !a.Settings.IgnoreCompatibilityCheck {
 		var errors []string
 
 		if !zkevmBinCommitOk {
