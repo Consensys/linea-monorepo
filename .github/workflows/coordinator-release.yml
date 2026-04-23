@@ -20,7 +20,9 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Prepare coordinator release (changelog + tag)
     outputs:
-      dockertag: ${{ steps.dockertag.outputs.dockertag }}
+      release_tag: ${{ steps.version.outputs.tag }}
+      release_version: ${{ steps.version.outputs.version }}
+      docker_tag: ${{ steps.dockertag.outputs.dockertag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -143,9 +145,22 @@ jobs:
   build-docker-image-coordinator:
     needs: [release-coordinator]
     uses: ./.github/workflows/coordinator-build-and-publish.yml
-    if: needs.release-coordinator.outputs.dockertag != ''
+    if: needs.release-coordinator.outputs.docker_tag != ''
     with:
-      commit_tag: ${{ needs.release-coordinator.outputs.dockertag }}
+      commit_tag: ${{ needs.release-coordinator.outputs.docker_tag }}
       develop_tag: "develop"
       image_name: consensys/linea-coordinator
       push_image: true
+
+  gh-release-coordinator:
+    needs: [release-coordinator, build-docker-image-coordinator]
+    uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+    with:
+      name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
+      tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
+      body_path: coordinator/CHANGELOG.md
+      draft: true 
+      prerelease: false
+      generate_release_notes: false
+      target_commitish: ${{ github.sha }}
+      fail_on_unmatched_files: true
