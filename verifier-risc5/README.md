@@ -57,7 +57,7 @@ Current ISA and runtime targets:
 Important caveat:
 
 - `clang` and the freestanding C guest path are the closest match to the intended bare-metal zkVM model
-- `TinyGo` can target the same memory layout and status ABI on QEMU `virt`, but its current runtime startup still programs machine CSRs such as `mtvec`
+- `TinyGo` can target the same memory layout and status ABI on QEMU `virt`, and the current minimal runtime is also accepted by the local `libriscv` runner
 - `Go` is only a hosted Linux baseline
 - `TamaGo` is useful as a bare-metal Go comparison, but it expects a `sifive_u` machine model with privileged CSRs and board state
 
@@ -92,8 +92,8 @@ The default is `TINYGO_GC=none` because the current guest does not allocate and 
 
 Current TinyGo size result with the checked-in defaults:
 
-- `build/verifier-tinygo.elf`: about `872 B` of `.text`, one `2 KiB` stack, and no DWARF sections
-- this uses a target-local minimal TinyGo runtime variant for `scheduler=none` plus non-scanning GC, which drops the multicore interrupt and spinlock paths for this zkVM-style guest
+- `build/verifier-tinygo.elf`: about `656 B` of `.text`, one `2 KiB` stack, and no DWARF sections
+- this uses a target-local minimal TinyGo runtime variant for `scheduler=none` plus non-scanning GC, which drops the multicore interrupt, spinlock, and CSR startup paths for this zkVM-style guest
 - compared to the older 4-hart TinyGo profile, this removes roughly `48 KiB` of extra stack reservations, all debug sections, and most of the target-local runtime text
 
 One optional extra flag exists for local experiments only:
@@ -143,6 +143,7 @@ libriscv runner examples:
 ```bash
 make emulate-libriscv
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-gcc.elf
+make emulate-libriscv LIBRISCV_GUEST=build/verifier-tinygo.elf
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tamago-sifive_u.elf
 ```
 
@@ -150,7 +151,7 @@ Meaning of those commands:
 
 - plain `make emulate-libriscv` runs the default `clang` bare-metal ELF
 - the `gcc` ELF is supported in the same runner
-- the `TinyGo` command is intentionally rejected because the current TinyGo bare-metal runtime still touches machine CSRs such as `mtvec`
+- the current minimal `TinyGo` ELF is also supported in the same runner
 - the `TamaGo` command is intentionally rejected with a clear error because that image expects `sifive_u` machine-mode CSRs and board initialization
 - `emulate-libriscv` also preloads the same `build/verifier-input.bin` blob at `0x80f00000`
 - `emulate-libriscv` validates the fixed status page at `0x80eff000` instead of watching guest stdout
@@ -158,7 +159,6 @@ Meaning of those commands:
 `libriscv` is not used for:
 
 - `build/verifier-go-linux-riscv64`, because that is a hosted Linux userspace binary
-- `build/verifier-tinygo.elf`, because the current TinyGo startup still relies on machine CSRs that the minimal runner does not model
 - `build/verifier-tamago-sifive_u.elf`, because that is a board-specific machine-mode image
 
 ## Repository Layout

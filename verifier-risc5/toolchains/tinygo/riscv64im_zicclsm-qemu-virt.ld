@@ -9,6 +9,12 @@ REGION_ALIAS("FLASH_TEXT", RAM)
 
 _stack_size = 2K;
 
+PHDRS
+{
+	text PT_LOAD FLAGS(5);
+	data PT_LOAD FLAGS(6);
+}
+
 SECTIONS
 {
 	.text :
@@ -19,35 +25,37 @@ SECTIONS
 		*(.text .text.*)
 		*(.rodata .rodata.*)
 		. = ALIGN(4);
-	} > FLASH_TEXT
+	} > FLASH_TEXT :text
 
-	.stack0 (NOLOAD) :
+	. = ALIGN(0x1000);
+
+	.stack0 ALIGN(0x1000) (NOLOAD) :
 	{
 		. = ALIGN(16);
 		. += _stack_size;
 		_stack_top = .;
-	} > RAM
+	} > RAM :data
 
 	.stack1 (NOLOAD) :
 	{
 		. = ALIGN(16);
 		. += DEFINED(__num_stacks) && __num_stacks >= 2 ? _stack_size : 0;
 		_stack1_top = .;
-	} > RAM
+	} > RAM :data
 
 	.stack2 (NOLOAD) :
 	{
 		. = ALIGN(16);
 		. += DEFINED(__num_stacks) && __num_stacks >= 3 ? _stack_size : 0;
 		_stack2_top = .;
-	} > RAM
+	} > RAM :data
 
 	.stack3 (NOLOAD) :
 	{
 		. = ALIGN(16);
 		. += DEFINED(__num_stacks) && __num_stacks >= 4 ? _stack_size : 0;
 		_stack3_top = .;
-	} > RAM
+	} > RAM :data
 
 	_sidata = LOADADDR(.data);
 
@@ -60,7 +68,7 @@ SECTIONS
 		*(.data .data.*)
 		. = ALIGN(16);
 		_edata = .;
-	} > RAM AT>FLASH_TEXT
+	} > RAM :data
 
 	.bss :
 	{
@@ -71,7 +79,7 @@ SECTIONS
 		*(COMMON)
 		. = ALIGN(16);
 		_ebss = .;
-	} > RAM
+	} > RAM :data
 
 	/DISCARD/ :
 	{

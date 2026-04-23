@@ -82,6 +82,7 @@ bool read_guest_status(const Machine& machine, GuestStatus& status) {
 int report_guest_status(const GuestStatus& status) {
 	switch (status.code) {
 	case kStatusCodeSuccess:
+		std::cout << "libriscv runner: guest reported success\n";
 		return 0;
 	case kStatusCodeInputError:
 		std::cerr << "libriscv runner: guest reported invalid input\n";

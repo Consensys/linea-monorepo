@@ -162,7 +162,7 @@ help:
 		'  TinyGo is vendored instead of module-managed because the upstream module archive omits required git submodules such as src/net.' \
 		'  vendor-tinygo checks that the checkout is at the pinned commit before applying third_party/tinygo-riscv64im_zicclsm.patch.' \
 		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
-		'  emulate-libriscv is for the generic freestanding clang/gcc guests; the current TinyGo and TamaGo images still touch machine CSRs that this minimal runner does not model.' \
+		'  emulate-libriscv supports the generic freestanding clang/gcc guests and the current minimal TinyGo guest; the TamaGo image still expects sifive_u machine-mode board state.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
 		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
 		'  TinyGo now defaults to a single-hart, no-debug, -gc=none profile plus a minimal target-local runtime variant; use TINYGO_GC=leaking if your guest starts allocating.'
@@ -403,11 +403,6 @@ emulate-libriscv: build-input build-libriscv-runner $(LIBRISCV_GUEST)
 	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_ELF))" ]; then \
 		printf '%s\n' 'emulate-libriscv: $(TAMAGO_ELF) is a TamaGo sifive_u image and expects machine-mode CSRs/board state.'; \
 		printf '%s\n' 'emulate-libriscv: use make emulate-tamago for this guest, or pass a generic bare-metal ELF such as build/verifier-clang.elf.'; \
-		exit 2; \
-	fi
-	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TINYGO_ELF))" ]; then \
-		printf '%s\n' 'emulate-libriscv: $(TINYGO_ELF) currently touches machine CSRs such as mtvec during startup.'; \
-		printf '%s\n' 'emulate-libriscv: use make emulate-tinygo for this guest, or pass a generic freestanding ELF such as build/verifier-clang.elf.'; \
 		exit 2; \
 	fi
 	"$(LIBRISCV_RUNNER)" "$(LIBRISCV_GUEST)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"

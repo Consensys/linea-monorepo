@@ -266,10 +266,10 @@ index 0000000..e5c54ac
 +}
 diff --git a/src/runtime/runtime_tinygoriscv_qemu_minimal.go b/src/runtime/runtime_tinygoriscv_qemu_minimal.go
 new file mode 100644
-index 0000000..9f7acb0
+index 0000000..753105d
 --- /dev/null
 +++ b/src/runtime/runtime_tinygoriscv_qemu_minimal.go
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,106 @@
 +//go:build tinygo.riscv && virt && qemu && scheduler.none && !(gc.conservative || gc.precise || gc.boehm)
 +
 +package runtime
@@ -285,18 +285,8 @@ index 0000000..9f7acb0
 +
 +//export main
 +func main() {
-+	riscv.MCAUSE.Set(0)
-+	riscv.MTVEC.Set(uintptr(unsafe.Pointer(&handleInterruptASM)))
 +	run()
 +	exit(0)
-+}
-+
-+//go:extern handleInterruptASM
-+var handleInterruptASM [0]uintptr
-+
-+//export handleInterrupt
-+func handleInterrupt() {
-+	abort()
 +}
 +
 +// Memory-mapped I/O as defined by QEMU.
