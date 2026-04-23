@@ -1,4 +1,5 @@
 import { BlockNotFoundError, type Client, type PublicActions } from "viem";
+import { estimateFeesPerGas } from "viem/actions";
 
 import { awaitUntil } from "./wait";
 
@@ -43,11 +44,8 @@ type EstimateFeesPerGasAction = PublicActions["estimateFeesPerGas"];
  * so every call site on the extended client gets retry behaviour automatically.
  */
 export function createBlockNotFoundRetryExtension() {
-  return (client: Client): { estimateFeesPerGas: EstimateFeesPerGasAction } => {
-    const publicClient = client as Client & { estimateFeesPerGas: EstimateFeesPerGasAction };
-    return {
-      estimateFeesPerGas: ((args) =>
-        withRetryOnBlockNotFound(() => publicClient.estimateFeesPerGas(args))) as EstimateFeesPerGasAction,
-    };
-  };
+  return (client: Client): { estimateFeesPerGas: EstimateFeesPerGasAction } => ({
+    estimateFeesPerGas: ((args) =>
+      withRetryOnBlockNotFound(() => estimateFeesPerGas(client, args))) as EstimateFeesPerGasAction,
+  });
 }
