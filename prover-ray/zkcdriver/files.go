@@ -120,10 +120,6 @@ func readTraceFile(path string) (io.ReadCloser, error) {
 
 	f, err := os.Open(path)
 
-	if f != nil {
-		defer f.Close()
-	}
-
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = fmt.Errorf("missing trace file, at %v : %w", path, err)
