@@ -182,16 +182,19 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 		if n16 > 0 {
 			parallel.Execute(n16, func(start, stop int) {
-				matrix := make([]field.Element, 16*nbRows)
+				// matrix[col*paddedSize+nbRows : col*paddedSize+paddedSize] is
+				// the right-padding region; only rows [0, nbRows) are written
+				// per iteration, so the padding stays at make's zero-init.
+				matrix := make([]field.Element, 16*paddedSize)
 				for batchID := start; batchID < stop; batchID++ {
 					colStart := batchID * 16
 					// Transpose: collect 16 columns into column-major layout
 					for col := 0; col < 16; col++ {
 						for row := 0; row < nbRows; row++ {
-							matrix[col*nbRows+row] = v[row].Get(colStart + col)
+							matrix[col*paddedSize+row] = v[row].Get(colStart + col)
 						}
 					}
-					vgnark.CompressPoseidon2x16(matrix, nbRows, res[colStart:colStart+16])
+					vgnark.CompressPoseidon2x16(matrix, paddedSize, res[colStart:colStart+16])
 				}
 			})
 		}
@@ -199,7 +202,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 		// Handle remaining columns (< 16) with per-column hashing
 		if r16 > 0 {
 			startRemaining := n16 * 16
-			curCol := make([]field.Element, nbRows)
+			curCol := make([]field.Element, paddedSize)
 			h := poseidon2_koalabear.NewMDHasher()
 			for i := startRemaining; i < nbCols; i++ {
 				for j := 0; j < nbRows; j++ {
