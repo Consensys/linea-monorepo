@@ -19,7 +19,7 @@ $(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig|.rs))
 endif
 endif
 NAME := $(basename $(TEST))
-EXT := $(suffix $(TEST))
+EXT  := $(suffix $(TEST))
 
 # Paths below are determined by the extension
 SRC ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
@@ -35,8 +35,14 @@ STRIP ?= false
 ZIG_STRIP ?= true
 
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
-GO_MAIN ?= $(MAKEFILE_DIR)main.go
+GO_MAIN  ?= $(MAKEFILE_DIR)main.go
 ZKC_MAIN ?= $(abspath $(MAKEFILE_DIR)../../main/riscv/main.zkc)
+
+# Inputs and offsets for the program
+INBYTES        ?=dummy_input_bytes
+PROGRAM_OFFSET ?= 0
+INBYTES_OFFSET ?= 1024
+ENTRY_POINT    ?= 0
 
 # Default target (make)
 exec: compile zkc-exec
@@ -63,7 +69,7 @@ compile: $(SRC)
 		riscv64-unknown-elf-strip -S $(BIN); \
 	fi
 	@echo "\nGenerating $(JSON) from $(BIN)"
-	@go run $(GO_MAIN) $(BIN) > $(JSON)
+	@go run $(GO_MAIN) $(BIN) $(INBYTES) $(PROGRAM_OFFSET) $(INBYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
 zkc-exec:
 	zkc exec $(JSON) $(ZKC_MAIN)

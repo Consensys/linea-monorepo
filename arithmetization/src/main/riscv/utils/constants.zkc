@@ -1,13 +1,5 @@
 include "type.zkc"
 
-// TODO: temporary solution: could be extracted from the linker script,
-// or from the elf header, or passed as a public input along with the
-// program. TBD
-
-const ENTRY_POINT:Address = 0
-const PROGRAM_OFFSET:Address = 0
-const IN_BYTES_OFFSET:Address = 0
-
 const UNDEFINED_TYPE:Type = 0
 const R_TYPE:Type =  1
 const I_TYPE:Type =  2
