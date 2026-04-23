@@ -154,13 +154,32 @@ jobs:
 
   gh-release-coordinator:
     needs: [release-coordinator, build-docker-image-coordinator]
-    uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
-    with:
-      name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
-      tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
-      body_path: coordinator/CHANGELOG.md
-      draft: true 
-      prerelease: false
-      generate_release_notes: false
-      target_commitish: ${{ github.sha }}
-      fail_on_unmatched_files: true
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Append Changelog Action to release note
+        id: append_change_log
+        shell: bash
+        run: |
+          cd release
+          echo "$(cat coordinator/CHANGELOG.md)" >> output.md
+          echo "### Docker Image Details" >> output.md
+          echo "" >> output.md
+          echo "To pull the image, use the following command:" >> output.md
+          echo "\`\`\`" >> output.md
+          echo "docker pull consensys/linea-coordinator:${{ needs.release-coordinator.outputs.docker_tag }}" >> output.md
+          echo "\`\`\`" >> output.md
+
+      - name: gh-release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
+          tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
+          body_path: coordinator/CHANGELOG.md
+          draft: true 
+          prerelease: false
+          generate_release_notes: false
+          target_commitish: ${{ github.sha }}
+          fail_on_unmatched_files: true
