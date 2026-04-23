@@ -30,6 +30,8 @@ data class InvalidityProofRequestDto(
   val simulatedExecutionBlockTimestamp: Long,
 ) {
   companion object {
+    private val objectMapper = jacksonObjectMapper()
+
     fun fromDomainObject(invalidityProofRequest: InvalidityProofRequest): InvalidityProofRequestDto {
       return InvalidityProofRequestDto(
         ftxRLP = invalidityProofRequest.ftxRlp.encodeHex(),
@@ -40,7 +42,7 @@ data class InvalidityProofRequestDto(
         zkParentStateRootHash = invalidityProofRequest.zkParentStateRootHash.encodeHex(),
         conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse,
         accountMerkleProof = invalidityProofRequest.accountProof?.accountProof?.let {
-          jacksonObjectMapper().readTree(it)
+          objectMapper.readTree(it)
         },
         zkStateMerkleProof = invalidityProofRequest.zkStateMerkleProof?.zkStateMerkleProof,
         simulatedExecutionBlockNumber = invalidityProofRequest.simulatedExecutionBlockNumber.toLong(),
