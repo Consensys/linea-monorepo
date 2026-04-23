@@ -318,10 +318,6 @@ type linearHashMerkleProverActionBuilder struct {
 	// NonSisLeaves[i][j] is leaf of the jth selected column
 	// for the ith non sis round matrix
 	NonSisLeaves [][]field.Element
-	// The MiMC hash pre images of the
-	// non sis round matrices, NonSisHashPreimages[i][j]
-	// is the jth selected column for the ith non sis round matrix
-	NonSisHashPreimages [][]field.Element
 	// the size of the sis hash digest
 	SisHashSize int
 	// the number of opened/selected columns
@@ -349,7 +345,6 @@ func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *li
 	lmp.MerkleNonSisRoots = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
 	lmp.SisLeaves = make([][]field.Element, 0, a.NumSisRound)
 	lmp.NonSisLeaves = make([][]field.Element, 0, a.NumNonSisRound)
-	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumNonSisRound)
 	lmp.SisHashSize = a.Ctx.VortexCtx.SisParams.OutputSize()
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
@@ -437,7 +432,6 @@ func processPrecomputedRound(
 	} else {
 		precompColMiMCHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompMimcHashValues := make([]field.Element, 0, lmp.NumOpenedCol)
-		precompMimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*len(a.Ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 		for _, selectedCol := range openingIndices {
 			srcStart := selectedCol
 			// MiMC hash is a single value
@@ -456,11 +450,8 @@ func processPrecomputedRound(
 			lmp.MerkleNonSisRoots = append(lmp.MerkleNonSisRoots, rootPrecomp)
 			lmp.MerkleNonSisPositions = append(lmp.MerkleNonSisPositions, field.NewElement(uint64(selectedCol)))
 			precompMimcHashValues = append(precompMimcHashValues, leaf)
-			precompMimcHashPreimages = append(precompMimcHashPreimages, mimcPreimage...)
 		}
-		// Append the hash values and preimages
 		lmp.NonSisLeaves = append(lmp.NonSisLeaves, precompMimcHashValues)
-		lmp.NonSisHashPreimages = append(lmp.NonSisHashPreimages, precompMimcHashPreimages)
 		lmp.CommittedRound++
 		lmp.TotalNumRounds++
 	}
@@ -552,7 +543,6 @@ func processRound(
 			// Fetch the root for the round
 			rooth := a.Ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
 			mimcHashValues := make([]field.Element, 0, lmp.NumOpenedCol)
-			mimcHashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*a.Ctx.VortexCtx.GetNumPolsForNonSisRounds(round))
 			for i, selectedCol := range openingIndices {
 				srcStart := selectedCol
 				// MiMC hash is a single value
@@ -571,11 +561,8 @@ func processRound(
 				lmp.MerkleNonSisRoots = append(lmp.MerkleNonSisRoots, rooth)
 				lmp.MerkleNonSisPositions = append(lmp.MerkleNonSisPositions, field.NewElement(uint64(selectedCol)))
 				mimcHashValues = append(mimcHashValues, leaf)
-				mimcHashPreimages = append(mimcHashPreimages, mimcPreimage...)
 			}
-			// Append the hash values and preimages
 			lmp.NonSisLeaves = append(lmp.NonSisLeaves, mimcHashValues)
-			lmp.NonSisHashPreimages = append(lmp.NonSisHashPreimages, mimcHashPreimages)
 			run.State.TryDel(colMimcHashName)
 			lmp.CommittedRound++
 			nonSisRoundCount++
