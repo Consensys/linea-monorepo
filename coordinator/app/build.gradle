@@ -1,4 +1,4 @@
-// Testing for fix version bump 2
+// Testing for fix version bump 3
 
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
