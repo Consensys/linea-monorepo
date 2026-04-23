@@ -39,9 +39,9 @@ GO_MAIN  ?= $(MAKEFILE_DIR)main.go
 ZKC_MAIN ?= $(abspath $(MAKEFILE_DIR)../../main/riscv/main.zkc)
 
 # Inputs and offsets for the program
-INBYTES        ?=dummy_input_bytes
+INBYTES        ?= ""
 PROGRAM_OFFSET ?= 0
-INBYTES_OFFSET ?= 1024
+INBYTES_OFFSET ?= 0
 ENTRY_POINT    ?= 0
 
 # Default target (make)
