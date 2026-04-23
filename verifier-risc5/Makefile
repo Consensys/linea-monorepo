@@ -53,6 +53,8 @@ TINYGO_OPT ?= z
 TINYGO_NO_DEBUG ?= 1
 TINYGO_EXTRA_FLAGS ?=
 TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
+TINYGO_PRECOMPILE_ELF := $(BUILD_DIR)/verifier-tinygo-precompile.elf
+TINYGO_PRECOMPILE_TAGS ?= zkvm_precompile
 TINYGO_QEMU_MACHINE ?= virt,aclint=on
 TINYGO_QEMU_SMP ?= 1
 
@@ -90,6 +92,7 @@ RV_CODE_MODEL ?= medany
 GO_RISCV_PROFILE ?= rva20u64
 
 CLANG_ELF := $(BUILD_DIR)/verifier-clang.elf
+CLANG_PRECOMPILE_ELF := $(BUILD_DIR)/verifier-clang-precompile.elf
 GCC_ELF := $(BUILD_DIR)/verifier-gcc.elf
 GO_LINUX_BIN := $(BUILD_DIR)/verifier-go-linux-riscv64
 INPUT_JSON ?= $(INPUTS_DIR)/default.json
@@ -100,8 +103,9 @@ TINYGO_DEBUG_FLAG := $(if $(filter 1 true yes,$(TINYGO_NO_DEBUG)),-no-debug,)
 .PHONY: help \
 	clean-tool-cache vendor-tinygo tinygo-bootstrap \
 	vendor-libriscv build-libriscv-runner \
-	build-input build-clang build-gcc build-go-linux build-tinygo build-tamago \
+	build-input build-clang build-clang-precompile build-gcc build-go-linux build-tinygo build-tinygo-precompile build-tamago \
 	emulate-clang emulate-gcc emulate-go-linux emulate-tinygo emulate-tamago emulate-libriscv \
+	emulate-libriscv-clang-precompile emulate-libriscv-tinygo-precompile \
 	clean
 
 define check_qemu_finisher_status
@@ -128,9 +132,11 @@ help:
 		'  make tinygo-bootstrap     - build the local TinyGo binary from third_party/tinygo' \
 		'  make build-input          - generate the preloaded verifier input blob' \
 		'  make build-clang          - build the freestanding clang/ld.lld ELF' \
+		'  make build-clang-precompile - build the freestanding clang ELF that offloads compute through ECALL' \
 		'  make build-gcc            - build the freestanding GCC ELF' \
 		'  make build-go-linux       - build the hosted linux/riscv64 Go baseline' \
 		'  make build-tinygo         - build the freestanding TinyGo ELF' \
+		'  make build-tinygo-precompile - build the TinyGo ELF that offloads compute through ECALL' \
 		'  make build-tamago         - build the TamaGo sifive_u ELF' \
 		'  make build-libriscv-runner - build the local libriscv bare-metal runner' \
 		'  make emulate-clang        - run the clang ELF on QEMU virt' \
@@ -139,6 +145,8 @@ help:
 		'  make emulate-tinygo       - run the TinyGo ELF on QEMU virt' \
 		'  make emulate-tamago       - run the TamaGo ELF on QEMU sifive_u' \
 		'  make emulate-libriscv     - run a generic bare-metal ELF in the vendored libriscv runner' \
+		'  make emulate-libriscv-clang-precompile - run the clang ECALL/precompile guest in libriscv' \
+		'  make emulate-libriscv-tinygo-precompile - run the TinyGo ECALL/precompile guest in libriscv' \
 		'  make clean-tool-cache     - remove local TinyGo/TamaGo caches under .cache/' \
 		'' \
 		'Useful overrides:' \
@@ -148,6 +156,7 @@ help:
 		'  TINYGO_GC=none                    - TinyGo GC mode, defaults to the no-allocation profile for this guest' \
 		'  TINYGO_NO_DEBUG=1                - strip DWARF/debug sections from the TinyGo ELF (default on)' \
 		'  TINYGO_EXTRA_FLAGS=-nobounds     - pass extra TinyGo build flags for local experiments' \
+		'  TINYGO_PRECOMPILE_TAGS=zkvm_precompile - TinyGo tags used by build-tinygo-precompile' \
 		'  INPUT_JSON=inputs/default.json   - JSON fixture used to generate the preloaded input blob' \
 		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
 		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
@@ -162,7 +171,7 @@ help:
 		'  TinyGo is vendored instead of module-managed because the upstream module archive omits required git submodules such as src/net.' \
 		'  vendor-tinygo checks that the checkout is at the pinned commit before applying third_party/tinygo-riscv64im_zicclsm.patch.' \
 		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
-		'  emulate-libriscv supports the generic freestanding clang/gcc guests and the current minimal TinyGo guest; the TamaGo image still expects sifive_u machine-mode board state.' \
+		'  emulate-libriscv supports the generic freestanding clang/gcc guests, the current minimal TinyGo guest, and the clang/TinyGo ECALL precompile variants; the TamaGo image still expects sifive_u machine-mode board state.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
 		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
 		'  TinyGo now defaults to a single-hart, no-debug, -gc=none profile plus a minimal target-local runtime variant; use TINYGO_GC=leaking if your guest starts allocating.'
@@ -255,6 +264,19 @@ $(BUILD_DIR)/guest.o: $(BAREMETAL_DIR)/guest.c | $(BUILD_DIR)
 		-o $@ \
 		$<
 
+$(BUILD_DIR)/guest-precompile.o: $(BAREMETAL_DIR)/guest.c | $(BUILD_DIR)
+	$(CLANG) \
+		--target=$(TARGET_TRIPLE) \
+		-ffreestanding \
+		-fno-builtin \
+		-DZKVM_PRECOMPILE=1 \
+		-march=$(RV_MARCH) \
+		-mabi=$(RV_ABI) \
+		-mcmodel=$(RV_CODE_MODEL) \
+		-c \
+		-o $@ \
+		$<
+
 $(CLANG_ELF): $(BUILD_DIR)/entry.o $(BUILD_DIR)/guest.o $(BAREMETAL_DIR)/linker.ld
 	$(LD_LLD) \
 		-melf64lriscv \
@@ -264,6 +286,16 @@ $(CLANG_ELF): $(BUILD_DIR)/entry.o $(BUILD_DIR)/guest.o $(BAREMETAL_DIR)/linker.
 		$(BUILD_DIR)/guest.o
 
 build-clang: $(CLANG_ELF)
+
+$(CLANG_PRECOMPILE_ELF): $(BUILD_DIR)/entry.o $(BUILD_DIR)/guest-precompile.o $(BAREMETAL_DIR)/linker.ld
+	$(LD_LLD) \
+		-melf64lriscv \
+		-T $(BAREMETAL_DIR)/linker.ld \
+		-o $@ \
+		$(BUILD_DIR)/entry.o \
+		$(BUILD_DIR)/guest-precompile.o
+
+build-clang-precompile: $(CLANG_PRECOMPILE_ELF)
 
 build-gcc: | $(BUILD_DIR)
 $(GCC_ELF): $(BAREMETAL_DIR)/entry.S $(BAREMETAL_DIR)/guest.c $(BAREMETAL_DIR)/linker.ld | $(BUILD_DIR)
@@ -303,6 +335,24 @@ $(TINYGO_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_LD) $(GO_SOU
 		$(GO_MAIN)
 
 build-tinygo: $(TINYGO_ELF)
+
+$(TINYGO_PRECOMPILE_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_LD) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
+	XDG_CACHE_HOME="$(XDG_CACHE_HOME_LOCAL)" \
+	GOTOOLCHAIN="$(HOST_GO_VERSION)" \
+	TINYGOROOT="$(abspath $(TINYGO_ROOT))" \
+	"$(TINYGO_BIN)" build \
+		-target=$(abspath $(TINYGO_TARGET_BUILD)) \
+		-tags=$(TINYGO_PRECOMPILE_TAGS) \
+		-scheduler=$(TINYGO_SCHEDULER) \
+		-gc=$(TINYGO_GC) \
+		-panic=$(TINYGO_PANIC) \
+		-opt=$(TINYGO_OPT) \
+		$(TINYGO_DEBUG_FLAG) \
+		$(TINYGO_EXTRA_FLAGS) \
+		-o $(TINYGO_PRECOMPILE_ELF) \
+		$(GO_MAIN)
+
+build-tinygo-precompile: $(TINYGO_PRECOMPILE_ELF)
 
 $(TAMAGO_BIN): | $(BUILD_DIR)
 	if [ ! -x "$(TAMAGO_BIN)" ]; then rm -rf "$(TAMAGO_GOROOT)"; fi
@@ -406,6 +456,12 @@ emulate-libriscv: build-input build-libriscv-runner $(LIBRISCV_GUEST)
 		exit 2; \
 	fi
 	"$(LIBRISCV_RUNNER)" "$(LIBRISCV_GUEST)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
+
+emulate-libriscv-clang-precompile: build-input build-libriscv-runner $(CLANG_PRECOMPILE_ELF)
+	"$(LIBRISCV_RUNNER)" "$(CLANG_PRECOMPILE_ELF)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
+
+emulate-libriscv-tinygo-precompile: build-input build-libriscv-runner $(TINYGO_PRECOMPILE_ELF)
+	"$(LIBRISCV_RUNNER)" "$(TINYGO_PRECOMPILE_ELF)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -14,7 +14,12 @@ func main() {
 		os.Exit(int(guestabi.StatusCodeInputError))
 	}
 
-	Result = ComputeWords(input.Words)
+	var okCompute bool
+	Result, okCompute = ComputeWordsChecked(input.Words)
+	if !okCompute {
+		os.Exit(int(guestabi.StatusCodeInputError))
+	}
+
 	if Result == input.Expected {
 		os.Exit(int(guestabi.StatusCodeSuccess))
 	}

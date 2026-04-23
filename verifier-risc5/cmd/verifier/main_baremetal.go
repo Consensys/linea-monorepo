@@ -9,7 +9,13 @@ func main() {
 		haltForever()
 	}
 
-	Result = ComputeWords(input.Words)
+	var okCompute bool
+	Result, okCompute = ComputeWordsChecked(input.Words)
+	if !okCompute {
+		announceBaremetalInputError()
+		haltForever()
+	}
+
 	if Result == input.Expected {
 		announceBaremetalResult(Result)
 	} else {

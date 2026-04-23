@@ -76,10 +76,10 @@ index 7c95f0a..56d3c79 100644
  		constraints = "={a0},{a1},~{a1},~{a2},~{a3},~{a4},~{a5},~{a6},~{a7},~{s0},~{s1},~{s2},~{s3},~{s4},~{s5},~{s6},~{s7},~{s8},~{s9},~{s10},~{s11},~{t0},~{t1},~{t2},~{t3},~{t4},~{t5},~{t6},~{ra},~{f0},~{f1},~{f2},~{f3},~{f4},~{f5},~{f6},~{f7},~{f8},~{f9},~{f10},~{f11},~{f12},~{f13},~{f14},~{f15},~{f16},~{f17},~{f18},~{f19},~{f20},~{f21},~{f22},~{f23},~{f24},~{f25},~{f26},~{f27},~{f28},~{f29},~{f30},~{f31},~{memory}"
  	default:
 diff --git a/src/runtime/asm_riscv.S b/src/runtime/asm_riscv.S
-index 9cf6571..a8f097a 100644
+index 9cf6571..0c8f5a5 100644
 --- a/src/runtime/asm_riscv.S
 +++ b/src/runtime/asm_riscv.S
-@@ -47,8 +47,8 @@ tinygo_scanCurrentStack:
+@@ -47,10 +47,18 @@ tinygo_scanCurrentStack:
  tinygo_longjmp:
      // Note: the code we jump to assumes a0 is non-zero, which is already the
      // case because that's the defer frame pointer.
@@ -89,7 +89,17 @@ index 9cf6571..a8f097a 100644
 +    LREG a1, REGSIZE(a0) // jumpPC
      jr a1
  
++.section .text.tinygo_zkvmPrecompile
++.global tinygo_zkvmPrecompile
++.type   tinygo_zkvmPrecompile, %function
++tinygo_zkvmPrecompile:
++    li a7, 500
++    ecall
++    ret
++
  .section .text.tinygo_checkpointJump
+ .global tinygo_checkpointJump
+ tinygo_checkpointJump:
 diff --git a/src/runtime/runtime_tinygoriscv_qemu.go b/src/runtime/runtime_tinygoriscv_qemu.go
 index 1ee0d22..db66b3d 100644
 --- a/src/runtime/runtime_tinygoriscv_qemu.go

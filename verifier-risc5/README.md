@@ -12,6 +12,7 @@ The current guest ABI follows the zkVM shape:
 - the host generates a raw input blob and preloads it into guest RAM at `0x80f00000`
 - the guest reads that memory directly, computes the verifier-style hash, and checks it against the expected value stored in the same blob
 - the guest writes its result code and computed value to a fixed status page at `0x80eff000`
+- optional precompile builds reserve a request/result page at `0x80efe000`; the guest writes inputs there, executes `ECALL` with syscall number `500`, and the `libriscv` host handler writes the result back
 
 For the generic `qemu-system-riscv64 -machine virt` runs, the guest also writes to QEMU's SiFive test finisher MMIO register at `0x00100000` so the VM stops without any guest-side stdout or syscalls.
 
@@ -49,8 +50,10 @@ Current ISA and runtime targets:
 | Path | Output | ISA / ABI target | Notes |
 | --- | --- | --- | --- |
 | `build-clang` | `build/verifier-clang.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding, no libc, no syscalls |
+| `build-clang-precompile` | `build/verifier-clang-precompile.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding C guest that offloads the workload through the `libriscv` ECALL precompile |
 | `build-gcc` | `build/verifier-gcc.elf` | `rv64im`, `lp64`, `medany` | intended comparison against the same core profile, but the packaged GCC toolchain used here rejects `zicclsm` |
 | `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set, defaulting to a stripped single-hart `-gc=none` profile |
+| `build-tinygo-precompile` | `build/verifier-tinygo-precompile.elf` | `rv64im_zicclsm`, `lp64`, `medany` | TinyGo guest that calls the same `libriscv` ECALL precompile through a patched assembly shim |
 | `build-go-linux` | `build/verifier-go-linux-riscv64` | `linux/riscv64`, `GORISCV64=rva20u64` | hosted baseline only, not a zkVM-style guest |
 | `build-tamago` | `build/verifier-tamago-sifive_u.elf` | `tamago/riscv64` on `sifive_u` | board-specific machine-mode image, not a generic `rv64im_zicclsm` guest |
 
@@ -68,9 +71,11 @@ Build all supported outputs explicitly:
 ```bash
 make build-input
 make build-clang
+make build-clang-precompile
 make build-gcc
 make build-go-linux
 make build-tinygo
+make build-tinygo-precompile
 make build-tamago
 ```
 
@@ -84,6 +89,7 @@ TinyGo collector selection:
 
 ```bash
 make build-tinygo
+make build-tinygo-precompile
 make build-tinygo TINYGO_GC=leaking
 make build-tinygo TINYGO_EXTRA_FLAGS=-nobounds
 ```
@@ -144,6 +150,8 @@ libriscv runner examples:
 make emulate-libriscv
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-gcc.elf
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tinygo.elf
+make emulate-libriscv-clang-precompile
+make emulate-libriscv-tinygo-precompile
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tamago-sifive_u.elf
 ```
 
@@ -152,6 +160,7 @@ Meaning of those commands:
 - plain `make emulate-libriscv` runs the default `clang` bare-metal ELF
 - the `gcc` ELF is supported in the same runner
 - the current minimal `TinyGo` ELF is also supported in the same runner
+- the `clang-precompile` and `tinygo-precompile` targets exercise the zkVM-style ECALL precompile path in the same runner
 - the `TamaGo` command is intentionally rejected with a clear error because that image expects `sifive_u` machine-mode CSRs and board initialization
 - `emulate-libriscv` also preloads the same `build/verifier-input.bin` blob at `0x80f00000`
 - `emulate-libriscv` validates the fixed status page at `0x80eff000` instead of watching guest stdout
@@ -161,13 +170,27 @@ Meaning of those commands:
 - `build/verifier-go-linux-riscv64`, because that is a hosted Linux userspace binary
 - `build/verifier-tamago-sifive_u.elf`, because that is a board-specific machine-mode image
 
+## Precompile Experiment
+
+The precompile proof-of-concept models a zkVM host operation without adding a guest-side OS ABI:
+
+- guest request page: `0x80efe000..0x80eff000`
+- syscall selector: `a7 = 500`
+- request pointer: `a0 = 0x80efe000`
+- request header: magic `"PRCP"`, version `1`, opcode `1`, status, word count, reserved, result
+- payload: `uint64` words immediately after the 32-byte request header
+
+On `ECALL`, the `libriscv` runner validates the request page, computes the same workload on the host side, stores the result back into the request header, sets status to success, and returns success in `a0`. The guest then compares that result against the expected output from the preloaded input blob and reports through the normal fixed status page.
+
+This is intentionally `libriscv`-only for now. Under QEMU, arbitrary bare-metal `ECALL` is a guest trap, not a convenient host callback, so the precompile targets are wired to `emulate-libriscv-*` only.
+
 ## Repository Layout
 
 ### `baremetal/`
 
 - `baremetal/entry.S`: minimal freestanding entrypoint for the C guest
-- `baremetal/guest.c`: no-libc guest workload that reads the preloaded input blob, computes the result, writes the fixed status page, and exits QEMU through the finisher MMIO register
-- `baremetal/linker.ld`: memory layout and ELF segment placement for the freestanding guest, with the top `4 KiB` reserved for status and the top `1 MiB` reserved for preloaded input
+- `baremetal/guest.c`: no-libc guest workload that reads the preloaded input blob, computes the result locally or through the ECALL precompile, writes the fixed status page, and exits QEMU through the finisher MMIO register
+- `baremetal/linker.ld`: memory layout and ELF segment placement for the freestanding guest, with fixed pages reserved for precompile requests, status, and preloaded input
 
 ### `toolchains/`
 
@@ -175,11 +198,13 @@ Meaning of those commands:
 - `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine, reserving both the fixed status page and the input window and keeping the TinyGo stack small
 - `toolchains/tamago/sifive_u_bios.S`: tiny BIOS trampoline used to boot the TamaGo `sifive_u` guest under QEMU
 - `toolchains/libriscv/CMakeLists.txt`: host build for the local libriscv runner
-- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, and status-page validation
+- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, status-page validation, and the syscall `500` precompile handler
 
 ### `cmd/verifier/`
 
 - `cmd/verifier/core.go`: shared verifier-style computation used by every Go build
+- `cmd/verifier/compute_local.go`: default in-guest computation path
+- `cmd/verifier/compute_precompile_baremetal.go`: TinyGo bare-metal precompile path that writes the request page and invokes the patched ECALL assembly shim
 - `cmd/verifier/input.go`: shared Go-side input representation
 - `cmd/verifier/input_default.go`: hosted fallback input source using the default fixture
 - `cmd/verifier/input_baremetal.go`: bare-metal reader for the fixed guest input window at `0x80f00000`
@@ -203,7 +228,7 @@ Meaning of those commands:
 ### `internal/`
 
 - `internal/workload/workload.go`: shared computation and default fixture values used by the Go guest and the input generator
-- `internal/guestabi/abi.go`: fixed-address guest ABI constants for both the input blob and the result status page
+- `internal/guestabi/abi.go`: fixed-address guest ABI constants for the precompile page, input blob, and result status page
 
 The build split is:
 

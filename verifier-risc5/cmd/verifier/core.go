@@ -5,7 +5,12 @@ import "github.com/consensys/linea-monorepo/verifier-risc5/internal/workload"
 var Result uint64
 
 func ComputeWords(words []uint64) uint64 {
-	return workload.Compute(words)
+	result, _ := ComputeWordsChecked(words)
+	return result
+}
+
+func ComputeWordsChecked(words []uint64) (uint64, bool) {
+	return computeWordsImpl(words)
 }
 
 func Compute() uint64 {

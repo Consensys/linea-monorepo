@@ -16,6 +16,8 @@ using Address = Machine::address_t;
 
 constexpr Address kGuestStatusBase = 0x80eff000ULL;
 constexpr Address kGuestInputBase = 0x80f00000ULL;
+constexpr Address kGuestPrecompileBase = 0x80efe000ULL;
+constexpr Address kGuestPrecompileEnd = 0x80eff000ULL;
 constexpr Address kQEMUTestBase = 0x00100000ULL;
 constexpr uint32_t kStatusMagic = 0x56535441U;
 constexpr uint32_t kStatusVersion = 1U;
@@ -24,6 +26,13 @@ constexpr uint32_t kStatusCodeInputError = 2U;
 constexpr uint32_t kStatusCodeMismatch = 3U;
 constexpr uint32_t kQEMUTestPass = 0x5555U;
 constexpr uint32_t kQEMUTestFail = 0x3333U;
+constexpr uint32_t kPrecompileMagic = 0x50435250U;
+constexpr uint32_t kPrecompileVersion = 1U;
+constexpr uint32_t kPrecompileOpcodeCompute = 1U;
+constexpr uint32_t kPrecompileStatusSuccess = 1U;
+constexpr uint32_t kPrecompileStatusBadInput = 2U;
+constexpr size_t kPrecompileSyscall = 500U;
+constexpr Address kPrecompileWordsOffset = 32ULL;
 constexpr uint64_t kDefaultMaxInstructions = 50'000'000ULL;
 
 struct GuestStatus {
@@ -38,6 +47,16 @@ struct GuestStatus {
 struct GuestFinish {
 	bool seen = false;
 	uint32_t value = 0;
+};
+
+struct GuestPrecompileRequest {
+	uint32_t magic;
+	uint32_t version;
+	uint32_t opcode;
+	uint32_t status;
+	uint32_t word_count;
+	uint32_t reserved;
+	uint64_t result;
 };
 
 std::vector<uint8_t> read_binary(const char* path) {
@@ -68,6 +87,69 @@ void write_trapped_value(riscv::Page& page, uint32_t offset, int mode, int64_t v
 	default:
 		return;
 	}
+}
+
+uint64_t mix64(uint64_t value) {
+	value ^= value >> 30U;
+	value *= 0xbf58476d1ce4e5b9ULL;
+	value ^= value >> 27U;
+	value *= 0x94d049bb133111ebULL;
+	value ^= value >> 31U;
+	return value;
+}
+
+uint64_t compute_words(const std::vector<uint64_t>& words) {
+	uint64_t acc = 0x9e3779b97f4a7c15ULL;
+	for (const auto word : words) {
+		acc = mix64(acc ^ word);
+	}
+	return acc;
+}
+
+bool precompile_range_ok(Address address, uint64_t size) {
+	return address >= kGuestPrecompileBase
+		&& address <= kGuestPrecompileEnd
+		&& size <= kGuestPrecompileEnd - address;
+}
+
+void finish_bad_precompile(Machine& machine, Address request_address, GuestPrecompileRequest request) {
+	if (precompile_range_ok(request_address, sizeof(request))) {
+		request.status = kPrecompileStatusBadInput;
+		machine.copy_to_guest(request_address, &request, sizeof(request));
+	}
+	machine.cpu.reg(riscv::REG_ARG0) = kPrecompileStatusBadInput;
+}
+
+void handle_compute_precompile(Machine& machine) {
+	const auto request_address = static_cast<Address>(machine.cpu.reg(riscv::REG_ARG0));
+
+	GuestPrecompileRequest request {};
+	if (!precompile_range_ok(request_address, sizeof(request))) {
+		finish_bad_precompile(machine, request_address, request);
+		return;
+	}
+
+	machine.copy_from_guest(&request, request_address, sizeof(request));
+	const auto words_address = request_address + kPrecompileWordsOffset;
+	const auto words_size = static_cast<uint64_t>(request.word_count) * sizeof(uint64_t);
+	if (request.magic != kPrecompileMagic
+		|| request.version != kPrecompileVersion
+		|| request.opcode != kPrecompileOpcodeCompute
+		|| request.word_count > (kGuestPrecompileEnd - words_address) / sizeof(uint64_t)
+		|| !precompile_range_ok(words_address, words_size)) {
+		finish_bad_precompile(machine, request_address, request);
+		return;
+	}
+
+	std::vector<uint64_t> words(request.word_count);
+	if (!words.empty()) {
+		machine.copy_from_guest(words.data(), words_address, words_size);
+	}
+
+	request.result = compute_words(words);
+	request.status = kPrecompileStatusSuccess;
+	machine.copy_to_guest(request_address, &request, sizeof(request));
+	machine.cpu.reg(riscv::REG_ARG0) = kPrecompileStatusSuccess;
 }
 
 bool read_guest_status(const Machine& machine, GuestStatus& status) {
@@ -141,6 +223,13 @@ int main(int argc, char** argv) {
 				"unsupported CSR in bare-metal libriscv runner",
 				static_cast<uint64_t>(csr));
 		};
+		Machine::on_unhandled_syscall = [] (Machine&, size_t syscall) {
+			throw riscv::MachineException(
+				riscv::UNHANDLED_SYSCALL,
+				"unsupported ECALL in bare-metal libriscv runner",
+				static_cast<uint64_t>(syscall));
+		};
+		Machine::install_syscall_handler(kPrecompileSyscall, handle_compute_precompile);
 
 		riscv::MachineOptions<riscv::RISCV64> options {
 			.memory_max = 64ULL << 20,
