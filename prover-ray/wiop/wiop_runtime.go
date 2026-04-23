@@ -148,9 +148,6 @@ func (run *Runtime) AdvanceRound() {
 //   - Static module: the data length must not exceed the module's declared size.
 //   - Dynamic module: each time we add a column we potentially grow the
 //     module's size. There is no upper bound.
-//
-// Panics if col does not belong to the current round, has already been
-// assigned, or its data length violates the size constraints above.
 func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 
 	if col.round != run.currentRound {

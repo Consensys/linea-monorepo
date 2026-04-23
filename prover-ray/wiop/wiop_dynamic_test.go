@@ -76,7 +76,7 @@ func TestDynamicModule_AutoSizeOnFirstAssign(t *testing.T) {
 
 // TestDynamicModule_OverflowSecondColumnPanic verifies that a second column
 // whose data length exceeds the module's recorded size causes a panic.
-func TestDynamicModule_OverflowSecondColumnPanic(t *testing.T) {
+func TestDynamicModule_GrowOnLargerColumn(t *testing.T) {
 	sys, r0, _, dyn := newDynamicTestSystem(t)
 	colA := dyn.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
 	colB := dyn.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
