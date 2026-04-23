@@ -25,6 +25,7 @@ jobs:
       release_tag: ${{ steps.version.outputs.tag }}
       release_version: ${{ steps.version.outputs.version }}
       docker_tag: ${{ steps.dockertag.outputs.dockertag }}
+      changelog: ${{ steps.changelog.outputs.content }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -90,6 +91,17 @@ jobs:
             --include-path "coordinator/**" \
             --tag-pattern "releases/coordinator/v*" \
             --prepend coordinator/CHANGELOG.md
+
+      - name: Generate coordinator latest changelog
+        if: steps.version.outputs.tag != ''
+        id: changelog
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
+        with:
+          config: cliff.toml
+          args: >-
+            --latest
+            --include-path "coordinator/**"
+            --tag-pattern "releases/coordinator/v*"
 
       - name: Commit and push coordinator/CHANGELOG.md
         id: commit
@@ -167,7 +179,7 @@ jobs:
         shell: bash
         run: |
           mkdir release && cd release
-          echo "$(cat coordinator/CHANGELOG.md)" >> output.md
+          echo "${{ needs.release-coordinator.outputs.changelog }}" >> output.md
           echo "### Docker Image Details" >> output.md
           echo "" >> output.md
           echo "To pull the image, use the following command:" >> output.md
