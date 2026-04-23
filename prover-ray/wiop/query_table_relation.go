@@ -211,7 +211,7 @@ func (tr *TableRelation) checkPermutation(rt Runtime) error {
 // the gap identical padding rows are registered as a single entry with count
 // sign*gap instead of iterating them individually.
 func permTableCountInto(counts map[field.Ext]int, sign int, alpha field.Gen, rt Runtime, tab Table) {
-	n := tab.Module().Size()
+	n := tab.Module().RuntimeSize(rt)
 	m := tab.Module()
 
 	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
@@ -271,7 +271,7 @@ func (tr *TableRelation) checkInclusion(rt Runtime) error {
 // inclusionBuildSet adds the hashes of all selected rows of tab to bSet.
 // Padding rows are handled with a single anchor probe when applicable.
 func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.Gen, rt Runtime, tab Table) {
-	n := tab.Module().Size()
+	n := tab.Module().RuntimeSize(rt)
 	m := tab.Module()
 
 	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {
@@ -319,7 +319,7 @@ func inclusionBuildSet(bSet map[field.Ext]struct{}, alpha field.Gen, rt Runtime,
 // inclusionCheckSet verifies that all selected rows of tab are present in bSet.
 // Padding rows are checked with a single anchor probe when applicable.
 func inclusionCheckSet(bSet map[field.Ext]struct{}, alpha field.Gen, rt Runtime, tab Table, path string) error {
-	n := tab.Module().Size()
+	n := tab.Module().RuntimeSize(rt)
 	m := tab.Module()
 
 	if m.Padding == PaddingDirectionNone || !tableHasZeroShift(tab) {

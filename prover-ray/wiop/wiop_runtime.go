@@ -171,7 +171,7 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 	m := col.Module
 	dataLen := v.Plain[0].Len()
 
-	if dataLen >= columnSizeMaxSupported {
+	if dataLen > columnSizeMaxSupported {
 		utils.Panic("wiop: AssignColumn: data length too large for column: %v, size=%v", dataLen, columnSizeMaxSupported)
 	}
 

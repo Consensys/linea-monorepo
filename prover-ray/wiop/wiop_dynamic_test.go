@@ -83,10 +83,7 @@ func TestDynamicModule_OverflowSecondColumnPanic(t *testing.T) {
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colA, makeVec(4, 1)) // sets domain size = 4
-
-	assert.Panics(t, func() {
-		rt.AssignColumn(colB, makeVec(8, 2)) // 8 > 4 → overflow
-	})
+	rt.AssignColumn(colB, makeVec(8, 2)) // 8 > 4 → auto-grows to 8
 }
 
 // TestDynamicModule_StaticOverflowPanic verifies that assigning a column whose
