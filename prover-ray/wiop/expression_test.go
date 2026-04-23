@@ -110,7 +110,7 @@ func TestConstant_Vector_EvaluateVector(t *testing.T) {
 
 	cv := c.EvaluateVector(rt)
 	require.Len(t, cv.Plain, 1)
-	vec := cv.Plain[0]
+	vec := cv.Plain
 	assert.Equal(t, 4, vec.Len())
 	for i := range 4 {
 		assert.Equal(t, field.ElemFromBase(v), field.ElemFromBase(vec.AsBase()[i]))
@@ -293,7 +293,7 @@ func TestArithmeticOperation_VectorEval_Add(t *testing.T) {
 	// each element should be 3+3 = 6
 	six := field.NewFromString("6")
 	for i := range 4 {
-		assert.Equal(t, six, cv.Plain[0].AsBase()[i])
+		assert.Equal(t, six, cv.Plain.AsBase()[i])
 	}
 }
 
