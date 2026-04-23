@@ -47,12 +47,14 @@ TINYGO_LLVM_PROJECT_BRANCH ?= tinygo_20.x
 TINYGO_LLVM_PROJECT_DIR := $(TINYGO_ROOT)/llvm-project
 TINYGO_TARGET_BUILD := $(BUILD_DIR)/$(notdir $(TINYGO_TARGET))
 TINYGO_SCHEDULER ?= none
-TINYGO_GC ?= leaking
+TINYGO_GC ?= none
 TINYGO_PANIC ?= trap
 TINYGO_OPT ?= z
+TINYGO_NO_DEBUG ?= 1
+TINYGO_EXTRA_FLAGS ?=
 TINYGO_ELF := $(BUILD_DIR)/verifier-tinygo.elf
 TINYGO_QEMU_MACHINE ?= virt,aclint=on
-TINYGO_QEMU_SMP ?= 4
+TINYGO_QEMU_SMP ?= 1
 
 TAMAGO_TOOL_VERSION ?= v1.26.2
 TAMAGO_CACHE_HOME ?= $(XDG_CACHE_HOME_LOCAL)
@@ -93,6 +95,7 @@ GO_LINUX_BIN := $(BUILD_DIR)/verifier-go-linux-riscv64
 INPUT_JSON ?= $(INPUTS_DIR)/default.json
 INPUT_BIN := $(BUILD_DIR)/verifier-input.bin
 GUEST_INPUT_ADDR ?= 0x80f00000
+TINYGO_DEBUG_FLAG := $(if $(filter 1 true yes,$(TINYGO_NO_DEBUG)),-no-debug,)
 
 .PHONY: help \
 	clean-tool-cache vendor-tinygo tinygo-bootstrap \
@@ -142,7 +145,9 @@ help:
 		'  LLVM_VERSION=20                   - host LLVM major version used by clang/lld and TinyGo bootstrap' \
 		'  TINYGO_ROOT=third_party/tinygo    - TinyGo checkout location' \
 		'  TINYGO_COMMIT=$(TINYGO_COMMIT) - pinned TinyGo commit expected by the local patch' \
-		'  TINYGO_GC=leaking                 - TinyGo GC mode, defaults to the smallest working option' \
+		'  TINYGO_GC=none                    - TinyGo GC mode, defaults to the no-allocation profile for this guest' \
+		'  TINYGO_NO_DEBUG=1                - strip DWARF/debug sections from the TinyGo ELF (default on)' \
+		'  TINYGO_EXTRA_FLAGS=-nobounds     - pass extra TinyGo build flags for local experiments' \
 		'  INPUT_JSON=inputs/default.json   - JSON fixture used to generate the preloaded input blob' \
 		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
 		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
@@ -160,7 +165,7 @@ help:
 		'  emulate-libriscv is for the generic freestanding clang/gcc guests; the current TinyGo and TamaGo images still touch machine CSRs that this minimal runner does not model.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
 		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
-		'  TinyGo now defaults to -gc=leaking for the smallest working bare-metal image; use TINYGO_GC=conservative if you want the previous collector.'
+		'  TinyGo now defaults to a single-hart, no-debug, -gc=none profile plus a minimal target-local runtime variant; use TINYGO_GC=leaking if your guest starts allocating.'
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -292,6 +297,8 @@ $(TINYGO_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_LD) $(GO_SOU
 		-gc=$(TINYGO_GC) \
 		-panic=$(TINYGO_PANIC) \
 		-opt=$(TINYGO_OPT) \
+		$(TINYGO_DEBUG_FLAG) \
+		$(TINYGO_EXTRA_FLAGS) \
 		-o $(TINYGO_ELF) \
 		$(GO_MAIN)
 

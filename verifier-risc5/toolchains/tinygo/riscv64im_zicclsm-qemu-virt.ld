@@ -7,7 +7,7 @@ MEMORY
 
 REGION_ALIAS("FLASH_TEXT", RAM)
 
-_stack_size = 16K;
+_stack_size = 2K;
 
 SECTIONS
 {

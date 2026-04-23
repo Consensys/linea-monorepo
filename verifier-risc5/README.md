@@ -50,7 +50,7 @@ Current ISA and runtime targets:
 | --- | --- | --- | --- |
 | `build-clang` | `build/verifier-clang.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding, no libc, no syscalls |
 | `build-gcc` | `build/verifier-gcc.elf` | `rv64im`, `lp64`, `medany` | intended comparison against the same core profile, but the packaged GCC toolchain used here rejects `zicclsm` |
-| `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set, defaulting to `-gc=leaking` |
+| `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set, defaulting to a stripped single-hart `-gc=none` profile |
 | `build-go-linux` | `build/verifier-go-linux-riscv64` | `linux/riscv64`, `GORISCV64=rva20u64` | hosted baseline only, not a zkVM-style guest |
 | `build-tamago` | `build/verifier-tamago-sifive_u.elf` | `tamago/riscv64` on `sifive_u` | board-specific machine-mode image, not a generic `rv64im_zicclsm` guest |
 
@@ -84,10 +84,21 @@ TinyGo collector selection:
 
 ```bash
 make build-tinygo
-make build-tinygo TINYGO_GC=conservative
+make build-tinygo TINYGO_GC=leaking
+make build-tinygo TINYGO_EXTRA_FLAGS=-nobounds
 ```
 
-The default is `TINYGO_GC=leaking` because it produces the smallest working bare-metal image for this target.
+The default is `TINYGO_GC=none` because the current guest does not allocate and this removes a small amount of runtime state. If the guest starts allocating later, switch back to `TINYGO_GC=leaking`.
+
+Current TinyGo size result with the checked-in defaults:
+
+- `build/verifier-tinygo.elf`: about `872 B` of `.text`, one `2 KiB` stack, and no DWARF sections
+- this uses a target-local minimal TinyGo runtime variant for `scheduler=none` plus non-scanning GC, which drops the multicore interrupt and spinlock paths for this zkVM-style guest
+- compared to the older 4-hart TinyGo profile, this removes roughly `48 KiB` of extra stack reservations, all debug sections, and most of the target-local runtime text
+
+One optional extra flag exists for local experiments only:
+
+- `TINYGO_EXTRA_FLAGS=-nobounds` trims a little more code size, but it disables bounds checks and is not the default
 
 Useful one-time preparation:
 
@@ -161,7 +172,7 @@ Meaning of those commands:
 ### `toolchains/`
 
 - `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.json`: custom TinyGo target definition for `rv64im_zicclsm`
-- `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine, reserving both the fixed status page and the input window
+- `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine, reserving both the fixed status page and the input window and keeping the TinyGo stack small
 - `toolchains/tamago/sifive_u_bios.S`: tiny BIOS trampoline used to boot the TamaGo `sifive_u` guest under QEMU
 - `toolchains/libriscv/CMakeLists.txt`: host build for the local libriscv runner
 - `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, and status-page validation
