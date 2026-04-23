@@ -172,7 +172,7 @@ class InvalidityProofAssembler(
       .thenApply {
         RequiredInvalidityProofData(
           prevFtxRollingHash = prevFtxRollingHashFuture.get(),
-          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkParentStateRootHash,
+          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkEndStateRootHash,
           tracesFile = tracesFuture.get()?.tracesFileName,
           accountProof = accountProofFuture.get(),
           zkStateMerkleProof = stateProofFuture.get(),
