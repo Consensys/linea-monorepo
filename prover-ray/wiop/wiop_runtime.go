@@ -5,7 +5,13 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-ray/utils"
 )
+
+// columnSizeMaxSupported is the maximum supported size of a column. The value
+// comes from the 2-adicity of the koalabear field and having an upper-bound
+// is required to permit the construction of the global constraints quotient.
+const columnSizeMaxSupported = 1 << 22
 
 // Runtime is the execution context for protocol [ProverAction]s. It holds column
 // assignments, cell values, coin values, and an arbitrary state bag. A single
@@ -140,20 +146,20 @@ func (run *Runtime) AdvanceRound() {
 //
 // Size semantics:
 //   - Static module: the data length must not exceed the module's declared size.
-//   - Dynamic module, first assignment: the data length is recorded as the
-//     module's domain size for this Runtime.
-//   - Dynamic module, subsequent assignments: the data length must not exceed
-//     the previously recorded domain size.
+//   - Dynamic module: each time we add a column we potentially grow the
+//     module's size. There is no upper bound.
 //
 // Panics if col does not belong to the current round, has already been
 // assigned, or its data length violates the size constraints above.
 func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
+
 	if col.round != run.currentRound {
 		panic(fmt.Sprintf(
 			"wiop: AssignColumn: column %q belongs to round %d but current round is %v",
 			col.Context.Path(), col.round.ID, run.currentRound,
 		))
 	}
+
 	id := col.Context.ID
 	if _, exists := run.columns[id]; exists {
 		panic(fmt.Sprintf(
@@ -164,17 +170,14 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 
 	m := col.Module
 	dataLen := v.Plain[0].Len()
+
+	if dataLen >= columnSizeMaxSupported {
+		utils.Panic("wiop: AssignColumn: data length too large for column: %v, size=%v", dataLen, columnSizeMaxSupported)
+	}
+
 	if m.IsDynamic() {
-		if existing, ok := run.dynamicSizes[m.index]; ok {
-			if dataLen != existing {
-				panic(fmt.Sprintf(
-					"wiop: AssignColumn: column %q has data length %d which mismatchs dynamic module %q size %d",
-					col.Context.Path(), dataLen, m.Context.Path(), existing,
-				))
-			}
-		} else {
-			run.dynamicSizes[m.index] = dataLen
-		}
+		currSize := run.dynamicSizes[m.index]
+		run.dynamicSizes[m.index] = max(currSize, dataLen)
 	} else if m.IsSized() && dataLen > m.Size() {
 		panic(fmt.Sprintf(
 			"wiop: AssignColumn: column %q has data length %d which overflows module %q size %d",
