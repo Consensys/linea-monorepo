@@ -117,9 +117,7 @@ func (run *Runtime) AdvanceRound() {
 			continue
 		}
 		cv := run.GetColumnAssignment(col) // panics if unassigned
-		for _, chunk := range cv.Plain {
-			run.fs.UpdateSV(chunk)
-		}
+		run.fs.UpdateSV(cv.Plain)
 	}
 
 	// Feed all cell values into the Fiat-Shamir state.
@@ -166,8 +164,7 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 	}
 
 	m := col.Module
-	dataLen := v.Plain[0].Len()
-
+	dataLen := v.Plain.Len()
 	if dataLen > columnSizeMaxSupported {
 		utils.Panic("wiop: AssignColumn: data length too large for column: %v, size=%v", dataLen, columnSizeMaxSupported)
 	}

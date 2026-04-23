@@ -33,6 +33,9 @@ type System struct {
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena
+	// Annotation is some user-defined information that can be attached to the
+	// System.
+	Annotations Annotations
 }
 
 // NewSystemf constructs an empty System. It creates a root [ContextFrame]
