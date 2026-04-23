@@ -15,7 +15,7 @@ func newDynamicTestSystem(t *testing.T) (*wiop.System, *wiop.Round, *wiop.Round,
 	sys := wiop.NewSystemf("dyn-test")
 	r0 := sys.NewRound()
 	r1 := sys.NewRound()
-	mod := sys.NewDynamicModule(sys.Context.Childf("dynmod"), wiop.PaddingDirectionNone)
+	mod := sys.NewDynamicModule(sys.Context.Childf("dynmod"), wiop.PaddingDirectionRight)
 	return sys, r0, r1, mod
 }
 
@@ -35,7 +35,7 @@ func TestDynamicModule_IsDynamic(t *testing.T) {
 	sys := wiop.NewSystemf("test")
 	sys.NewRound()
 	static := sys.NewModule(sys.Context.Childf("static"), wiop.PaddingDirectionNone)
-	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionNone)
+	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
 
 	assert.False(t, static.IsDynamic())
 	assert.True(t, dyn.IsDynamic())
@@ -46,7 +46,7 @@ func TestDynamicModule_IsDynamic(t *testing.T) {
 func TestDynamicModule_StaticAPI(t *testing.T) {
 	sys := wiop.NewSystemf("test")
 	sys.NewRound()
-	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionNone)
+	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
 
 	assert.False(t, dyn.IsSized())
 	assert.Equal(t, 0, dyn.Size())
@@ -56,7 +56,7 @@ func TestDynamicModule_StaticAPI(t *testing.T) {
 func TestDynamicModule_SetSizePanic(t *testing.T) {
 	sys := wiop.NewSystemf("test")
 	sys.NewRound()
-	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionNone)
+	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
 
 	assert.Panics(t, func() { dyn.SetSize(8) })
 }
@@ -84,6 +84,7 @@ func TestDynamicModule_OverflowSecondColumnPanic(t *testing.T) {
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colA, makeVec(4, 1)) // sets domain size = 4
 	rt.AssignColumn(colB, makeVec(8, 2)) // 8 > 4 → auto-grows to 8
+	assert.Equal(t, 8, dyn.RuntimeSize(rt))
 }
 
 // TestDynamicModule_StaticOverflowPanic verifies that assigning a column whose

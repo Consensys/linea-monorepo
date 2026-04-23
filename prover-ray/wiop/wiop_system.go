@@ -104,8 +104,13 @@ func (sys *System) NewSizedModule(ctx *ContextFrame, size int, pd PaddingDirecti
 // System can therefore be reused across proving sessions that differ in trace
 // length.
 //
-// Panics if ctx is nil.
+// Panics if ctx is nil or if pd is [PaddingDirectionNone] (dynamic modules
+// require a padding direction so that shorter columns can be padded to the
+// module's runtime size).
 func (sys *System) NewDynamicModule(ctx *ContextFrame, pd PaddingDirection) *Module {
+	if pd == PaddingDirectionNone {
+		panic("wiop: NewDynamicModule: dynamic modules require a padding direction (PaddingDirectionLeft or PaddingDirectionRight)")
+	}
 	m := sys.NewModule(ctx, pd)
 	m.isDynamic = true
 	return m
