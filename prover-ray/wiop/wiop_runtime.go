@@ -166,9 +166,9 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 	dataLen := v.Plain[0].Len()
 	if m.IsDynamic() {
 		if existing, ok := run.dynamicSizes[m.index]; ok {
-			if dataLen > existing {
+			if dataLen != existing {
 				panic(fmt.Sprintf(
-					"wiop: AssignColumn: column %q has data length %d which overflows dynamic module %q size %d",
+					"wiop: AssignColumn: column %q has data length %d which mismatchs dynamic module %q size %d",
 					col.Context.Path(), dataLen, m.Context.Path(), existing,
 				))
 			}
