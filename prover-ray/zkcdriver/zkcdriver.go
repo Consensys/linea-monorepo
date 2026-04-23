@@ -32,11 +32,11 @@ type Settings struct {
 	OptimisationLevel *mir.OptimisationConfig
 }
 
-// Arithmetization exposes all the methods relevant for the user to interact
+// ZkCDriver exposes all the methods relevant for the user to interact
 // with the arithmetization of the zkEVM. It is a sub-component of the whole
 // ZkEvm object as it does not includes the precompiles, the keccaks and the
 // signature verification.
-type Arithmetization struct {
+type ZkCDriver struct {
 	Settings *Settings
 	// Binary encoding of the zkevm.bin file, which captures the high-level
 	// structure of constraints.  This is primarily useful for assembly
@@ -56,20 +56,22 @@ type Arithmetization struct {
 	Metadata typed.Map `serde:"omit"`
 }
 
-// NewArithmetization is the function that declares all the columns and the constraints of
+// NewZkCDriver is the function that declares all the columns and the constraints of
 // the zkEVM in the input builder object.
-func NewArithmetization(sys *wiop.System, settings Settings, bin io.Reader) *Arithmetization {
+func NewZkCDriver(sys *wiop.System, settings Settings, bin io.Reader) *ZkCDriver {
+
 	// Read and parse the binary file
 	binf, metadata, errS := ReadZkevmBin(bin)
 	if errS != nil {
 		panic(errS)
 	}
+
 	// Compile binary file into an air.Schema
 	schema, mapping := CompileZkevmBin(binf, settings.OptimisationLevel)
 	// Translate air.Schema into prover's internal representation
 	Define(sys, schema)
-	// Done
-	return &Arithmetization{
+
+	return &ZkCDriver{
 		BinaryFile:  binf,
 		AirSchema:   schema,
 		Settings:    &settings,
@@ -84,7 +86,7 @@ func NewArithmetization(sys *wiop.System, settings Settings, bin io.Reader) *Ari
 // according to the given schema.  The expansion process is about filling in
 // computed columns with concrete values, such for determining multiplicative
 // inverses, etc.
-func (a *Arithmetization) Assign(run *wiop.Runtime, traceFile string) {
+func (a *ZkCDriver) Assign(run *wiop.Runtime, traceFile string) {
 	a.AssignWithPreRead(run, PreReadTrace(traceFile))
 }
 
@@ -108,7 +110,7 @@ func PreReadTrace(traceFile string) PreReadResult {
 }
 
 // AssignWithPreRead assigns arithmetization columns using a pre-read trace.
-func (a *Arithmetization) AssignWithPreRead(run *wiop.Runtime, preRead PreReadResult) {
+func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadResult) {
 	assignStart := time.Now()
 	var (
 		errs     []error

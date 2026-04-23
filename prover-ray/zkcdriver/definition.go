@@ -23,7 +23,7 @@ const (
 // schemaScanner is a transient scanner structure whose goal is to port the
 // content of an [air.Schema] inside of a pre-initialized [wiop.System]
 type schemaScanner struct {
-	Wiop    *wiop.System
+	Sys     *wiop.System
 	Schema  *air.Schema[koalabear.Element]
 	Modules []schema.Module[koalabear.Element]
 	// ModulesIDsWiop maps corset-module names to their wiop module IDs
@@ -35,7 +35,7 @@ type schemaScanner struct {
 
 // Define registers the arithmetization from a corset air.Schema and trace limits
 // from config.
-func Define(wiop *wiop.System, schema *air.Schema[koalabear.Element]) {
+func Define(sys *wiop.System, schema *air.Schema[koalabear.Element]) {
 
 	// Collect modules and sort them by name to ensure deterministic processing order
 	modules := schema.Modules().Collect()
@@ -44,15 +44,17 @@ func Define(wiop *wiop.System, schema *air.Schema[koalabear.Element]) {
 	})
 
 	scanner := &schemaScanner{
-		Wiop:    wiop,
-		Schema:  schema,
-		Modules: modules,
+		Sys:            sys,
+		Schema:         schema,
+		Modules:        modules,
+		ModulesIDsWiop: map[string]int{},
+		ColumnIDs:      map[string]wiop.ObjectID{},
 	}
 
 	scanner.scanColumns()
 	scanner.scanConstraints()
 
-	wiop.Annotations[corsetColumnMapAnnotationKey] = scanner.ColumnIDs
+	sys.Annotations[corsetColumnMapAnnotationKey] = scanner.ColumnIDs
 }
 
 // scanColumns scans the column declaration of the corset [air.Schema] into the
@@ -75,8 +77,8 @@ func (s *schemaScanner) scanColumns() {
 
 		// moduleName is the name of the module as given by the arithmetization
 		moduleName := modDecl.Name().String()
-		moduleWIOP := s.Wiop.NewDynamicModule(
-			s.Wiop.Context.Childf("module-%v", moduleName),
+		moduleWIOP := s.Sys.NewDynamicModule(
+			s.Sys.Context.Childf("module-%v", moduleName),
 			wiop.PaddingDirectionLeft)
 
 		// This works assuming the [System] appends-only to the list of modules.
@@ -91,7 +93,7 @@ func (s *schemaScanner) scanColumns() {
 				col              = moduleWIOP.NewColumn(
 					moduleWIOP.Context.Parent.Childf("column-%v", colName),
 					wiop.VisibilityOracle,
-					s.Wiop.Rounds[0],
+					s.Sys.Rounds[0],
 				)
 			)
 
@@ -176,8 +178,8 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			tableTarget = wiop.NewTable(wTargets...)
 		}
 
-		_ = s.Wiop.NewInclusion(
-			s.Wiop.Context.Childf("lookup-%v", name),
+		_ = s.Sys.NewInclusion(
+			s.Sys.Context.Childf("lookup-%v", name),
 			[]wiop.Table{tableSource},
 			[]wiop.Table{tableTarget},
 		)
@@ -199,8 +201,8 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 			wTargets[i] = s.compColumnByCorsetID(pc.Context, cTargets[i]).View()
 		}
 
-		s.Wiop.NewPermutation(
-			s.Wiop.Context.Childf("permutation-%v", name),
+		s.Sys.NewPermutation(
+			s.Sys.Context.Childf("permutation-%v", name),
 			[]wiop.Table{wiop.NewTable(wSources...)},
 			[]wiop.Table{wiop.NewTable(wTargets...)},
 		)
@@ -242,12 +244,13 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		module.NewVanishing(module.Context.Childf("local-%v", name), wExpr)
 
 	case air.RangeConstraint[koalabear.Element]:
-
 		panic("not implemented yet")
-
 	case air.Assertion[koalabear.Element]:
 		// Property assertions can be ignored, as they are a debugging tool and
 		// not part of the constraints proper.
+	case air.InterleavingConstraint[koalabear.Element]:
+		panic("to be removed once corset, removes it. We will never support this.")
+
 	default:
 		utils.Panic("unexpected constraint type: %s", cs.Lisp(s.Schema).String(false))
 	}
@@ -343,5 +346,5 @@ func (s *schemaScanner) compColumnByCorsetID(
 		columnName = qualifiedCorsetName(moduleName, cCol.Name())
 	)
 
-	return s.Wiop.LookupColumn(s.ColumnIDs[columnName])
+	return s.Sys.LookupColumn(s.ColumnIDs[columnName])
 }
