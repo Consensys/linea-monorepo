@@ -30,7 +30,7 @@ import linea.persistence.ForcedTransactionRecord
 import linea.persistence.ForcedTransactionsDao
 import linea.persistence.ftx.FakeForcedTransactionsDao
 import net.consensys.FakeFixedClock
-import net.consensys.linea.metrics.FakeMetricsFacade
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV5
 import net.consensys.linea.traces.TracingModuleV5
 import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
@@ -45,6 +45,8 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mockito
+import org.mockito.kotlin.mock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -721,6 +723,16 @@ class ForcedTransactionsAppTest {
 
   @Test
   fun `should trigger conflation and aggregation when sequencer processes ftxs`() {
+    configureLoggers(
+      rootLevel = Level.INFO,
+      "l1.FakeEthApiClient" to Level.INFO,
+      "l2.FakeEthApiClient" to Level.INFO,
+      "linea.ethapi" to Level.INFO,
+      "linea.ftx" to Level.INFO,
+      "linea.ftx.conflation" to Level.DEBUG,
+      "linea.ftx.conflation.ConflationCalculatorByForcedTransaction" to Level.TRACE,
+      "linea.ftx.conflation.ForcedTransactionsStatusUpdater" to Level.TRACE,
+    )
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
         l1BlockNumber = 100UL,
@@ -804,7 +816,7 @@ class ForcedTransactionsAppTest {
       dynamicBlockNumberSet = DynamicBlockNumberSet(),
       extraSyncCalculators = listOf(app.conflationCalculator),
       deferredTriggerConflationCalculators = emptyList(),
-      metricsFacade = FakeMetricsFacade(),
+      metricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     )
     val aggregationCalculator = AggregationCalculatorFactory.createAggregationCalculator(
       startBlockNumberInclusive = 1UL,
@@ -813,7 +825,7 @@ class ForcedTransactionsAppTest {
       aggregationSizeMultipleOf = 6U,
       initialTimestamp = l2Client.blockTimestamp(1UL.toBlockParameter()),
       forcedTransactionTriggerAggCalculator = app.aggregationCalculator,
-      metricsFacade = FakeMetricsFacade(),
+      metricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     )
     conflationCalculator.onConflatedBatch { conflation: ConflationCalculationResult ->
       conflationTriggers.add(
