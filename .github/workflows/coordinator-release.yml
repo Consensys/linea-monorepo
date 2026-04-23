@@ -19,6 +19,8 @@ jobs:
   release-coordinator:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Prepare coordinator release (changelog + tag)
+    outputs:
+      dockertag: ${{ steps.dockertag.outputs.dockertag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -120,3 +122,30 @@ jobs:
           git tag -a "${TAG}" -m "Coordinator release ${TAG}"
           git push origin "${TAG}"
           echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
+
+      - name: Compute version tags
+        if: steps.commit.outputs.changed == 'true'
+        id: compute_version_tags
+        uses: ./.github/actions/compute-version-tags
+
+      - name: Set timestamp
+        if: steps.commit.outputs.changed == 'true'
+        id: timestamp
+        run: |
+          echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: set docker tag
+        if: steps.commit.outputs.changed == 'true'
+        id: dockertag
+        run: |
+          echo "dockertag=${{ steps.version.outputs.version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
+
+  build-docker-image-coordinator:
+    needs: [release-coordinator]
+    uses: ./.github/workflows/coordinator-build-and-publish.yml
+    if: needs.release-coordinator.outputs.dockertag != ''
+    with:
+      commit_tag: ${{ needs.release-coordinator.outputs.dockertag }}
+      develop_tag: "develop"
+      image_name: consensys/linea-coordinator
+      push_image: true
