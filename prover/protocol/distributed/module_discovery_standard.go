@@ -1286,14 +1286,6 @@ func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 	}
 }
 
-func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModule) int {
-	var weight int
-	for i := range group {
-		weight += group[i].Weight(0)
-	}
-	return weight
-}
-
 // LPPSegmentBoundaryCalculator is an ad-hoc structure used to help the
 // inclusion compiler understanding which parts of the S columns to use
 // to compute the M columns.
