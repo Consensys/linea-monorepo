@@ -76,6 +76,7 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	chainConfigHash := computeChainConfigurationHash(p.ChainID, p.BaseFee, p.CoinBase, p.L2MessageServiceAddr)
 
 	hsh.Reset()
+	writeHex(p.ParentStateRootHash)
 	writeHex(p.ParentAggregationFinalShnarf)
 	writeHex(p.FinalShnarf)
 	writeUint(p.ParentAggregationLastBlockTimestamp)
@@ -254,8 +255,15 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 }
 
 func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
-	// number of hashes: 13
+	hi := gnarkutil.ToBytes16(api, pi.InitialStateRootHash[0])
+	lo := gnarkutil.ToBytes16(api, pi.InitialStateRootHash[1])
+	var initialStateRoot [32]frontend.Variable
+	copy(initialStateRoot[:16], hi[:])
+	copy(initialStateRoot[16:], lo[:])
+
+	// number of hashes: 14
 	sum := hash.Sum(nil,
+		initialStateRoot,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
 		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
@@ -270,7 +278,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration
-		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
+		gnarkutil.ToBytes32(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
 	// turn the hash into a bn254 element
