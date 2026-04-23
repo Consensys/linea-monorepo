@@ -41,6 +41,7 @@ func AssignFromLtTraces(run *wiop.Runtime, expTraces trace.Trace[koalabear.Eleme
 					)
 
 					if _, ok := columnIDMap[name]; !ok {
+						logrus.Debugf("zkcdriver: AssignFromLtTraces: skipping unknown column %q", name)
 						continue
 					}
 

@@ -82,7 +82,7 @@ func (s *schemaScanner) scanColumns() {
 			wiop.PaddingDirectionLeft)
 
 		// This works assuming the [System] appends-only to the list of modules.
-		s.ModulesIDsWiop[moduleName] = len(s.Modules) - 1
+		s.ModulesIDsWiop[moduleName] = len(s.Sys.Modules) - 1
 
 		// Iterate each register (i.e. column) in that module
 		for _, colDecl := range modDecl.Registers() {
@@ -91,7 +91,7 @@ func (s *schemaScanner) scanColumns() {
 				colName          = colDecl.Name()
 				colQualifiedName = qualifiedCorsetName(moduleName, colName)
 				col              = moduleWIOP.NewColumn(
-					moduleWIOP.Context.Parent.Childf("column-%v", colName),
+					moduleWIOP.Context.Childf("column-%v", colName),
 					wiop.VisibilityOracle,
 					s.Sys.Rounds[0],
 				)
@@ -116,18 +116,19 @@ func (s *schemaScanner) scanConstraints() {
 		indices[i] = i
 	}
 
-	// Sort indices by constraint name for deterministic ordering
+	// Pre-compute Lisp names to avoid O(n²) serialisation inside the comparator.
+	names := make([]string, len(corsetCSS))
+	for i, cs := range corsetCSS {
+		names[i] = cs.Lisp(s.Schema).String(false)
+	}
+
 	sort.Slice(indices, func(i, j int) bool {
-		nameI := fmt.Sprintf("%v", corsetCSS[indices[i]].Lisp(s.Schema).String(false))
-		nameJ := fmt.Sprintf("%v", corsetCSS[indices[j]].Lisp(s.Schema).String(false))
-		return nameI < nameJ
+		return names[indices[i]] < names[indices[j]]
 	})
 
 	// Process constraints in the sorted order
 	for _, idx := range indices {
-		corsetCS := corsetCSS[idx]
-		name := corsetCS.Lisp(s.Schema).String(false)
-		s.addConstraintInComp(name, corsetCS)
+		s.addConstraintInComp(names[idx], corsetCSS[idx])
 	}
 }
 
@@ -149,9 +150,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 
 		// Sanity check for fragment lookup
 		if len(cs.Unwrap().Sources) != 1 {
-			// Indicates more than one fragment.  For now just fail, as this
-			// cannot (yet) arise in practice.
-			panic("unreachable")
+			utils.Panic("lookup %q has %d source fragments; only single-fragment lookups are supported", name, len(cs.Unwrap().Sources))
 		}
 
 		// this will panic over interleaved columns, we can debug that later
@@ -244,7 +243,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		module.NewVanishing(module.Context.Childf("local-%v", name), wExpr)
 
 	case air.RangeConstraint[koalabear.Element]:
-		panic("not implemented yet")
+		utils.Panic("RangeConstraint is not yet supported (constraint: %s)", name)
 	case air.Assertion[koalabear.Element]:
 		// Property assertions can be ignored, as they are a debugging tool and
 		// not part of the constraints proper.

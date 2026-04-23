@@ -159,28 +159,29 @@ func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadResult) 
 	}
 
 	if errT != nil {
-		fmt.Printf("error loading the trace fpath=%q err=%v", preRead.TraceFile, errT.Error())
+		logrus.Warnf("error loading the trace fpath=%q err=%v", preRead.TraceFile, errT.Error())
 	}
-	// Perform trace propagation
+
 	propStart := time.Now()
 	rawTrace, errs = asm.Propagate(a.BinaryFile.Schema, rawTrace)
-	// error check
+
 	if len(errs) > 0 {
 		logrus.Warnf("corset propagation gave the following errors: %v", errors.Join(errs...).Error())
 	}
+
 	logrus.Infof("[bootstrapper] propagation: %v", time.Since(propStart))
-	// Perform trace expansion
+
 	expStart := time.Now()
 	expandedTrace, errs := ir.NewTraceBuilder[koalabear.Element]().
 		WithBatchSize(1024).
 		WithRegisterMapping(a.LimbMapping).
 		Build(a.AirSchema, rawTrace)
-	//
+
 	if len(errs) > 0 {
 		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
 	}
 	logrus.Infof("[bootstrapper] expansion: %v", time.Since(expStart))
-	// Passed
+
 	copyStart := time.Now()
 	AssignFromLtTraces(run, expandedTrace)
 	logrus.Infof("[bootstrapper] column assignment: %v", time.Since(copyStart))
