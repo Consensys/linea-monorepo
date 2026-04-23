@@ -69,12 +69,12 @@ class ConflationCalculatorByForcedTransaction(
     if (newFtxs.isEmpty()) {
       return
     }
-    val actualNewFtxs = newFtxs.map { it.blockNumber } - pendingTriggerBlocks
-    if (actualNewFtxs.isNotEmpty()) {
-      pendingTriggerBlocks.addAll(actualNewFtxs)
+    val actualNewTriggers = newFtxs.map { it.blockNumber } - pendingTriggerBlocks
+    if (actualNewTriggers.isNotEmpty()) {
+      pendingTriggerBlocks.addAll(actualNewTriggers)
       log.info(
-        "appended new conflation triggers {} for ftxs={}, all pending triggers={}",
-        newFtxs.size,
+        "appended new conflationTriggers={} for ftxs={}, all pending triggers={}",
+        actualNewTriggers.sorted(),
         newFtxs.map(FtxConflationInfo::toStringShortForLogging),
         pendingTriggerBlocks,
       )

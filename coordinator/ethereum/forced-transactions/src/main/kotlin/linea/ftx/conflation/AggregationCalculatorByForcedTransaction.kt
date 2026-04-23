@@ -1,7 +1,6 @@
 package linea.ftx.conflation
 
 import linea.domain.BlobCounters
-import linea.forcedtx.ForcedTransactionInclusionResult
 import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTrigger
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
@@ -78,11 +77,10 @@ class AggregationCalculatorByForcedTransaction(
 
   fun logFtxPendingAggregation(processedFtxs: List<FtxConflationInfo>, newTriggerBlocks: Set<ULong>) {
     if (newTriggerBlocks.isNotEmpty()) {
-      val failedFtxs = processedFtxs.filter { it.inclusionResult != ForcedTransactionInclusionResult.Included }
       log.info(
-        "appended new aggregation trigger of non-included FTXs: blockNumbers={} ftxs={}, total pending triggers {}",
+        "appended new aggregation trigger for FTXs: newTriggers={} ftxs={}, total pending triggers {}",
         newTriggerBlocks,
-        failedFtxs.map(FtxConflationInfo::toStringShortForLogging),
+        processedFtxs.map(FtxConflationInfo::toStringShortForLogging),
         pendingTriggerBlocks.sorted(),
       )
     } else {
