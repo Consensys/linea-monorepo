@@ -2,6 +2,25 @@ include "../memory.zkc"
 include "../utils/constants.zkc"
 include "../utils/signed_comparisons.zkc"
 
+// Process a RISC-V B-type (branch) instruction and return the next program counter.
+//
+// B-type instructions encode a 13-bit signed PC-relative byte offset (imm) spread
+// across four non-contiguous fields in bits [31:7] of the raw 32-bit word; the 7-bit
+// opcode is stripped before this function is called, so `instruction_parameters`
+// carries the remaining 25 bits in the order:
+//
+//   imm[12] :: imm[10:5] :: rs2 :: rs1 :: funct3 :: imm[4:1] :: imm[11]
+//
+// The six branch variants and their conditions are:
+//   BEQ  (funct3 = 0b000) — branch if rs1 == rs2
+//   BNE  (funct3 = 0b001) — branch if rs1 != rs2
+//   BLT  (funct3 = 0b100) — branch if rs1 <  rs2 (signed)
+//   BGE  (funct3 = 0b101) — branch if rs1 >= rs2 (signed)
+//   BLTU (funct3 = 0b110) — branch if rs1 <  rs2 (unsigned)
+//   BGEU (funct3 = 0b111) — branch if rs1 >= rs2 (unsigned)
+//
+// When the branch condition is false, pc_new = pc + 4 (fall-through).
+// When the branch condition is true,  pc_new = pc + imm (taken branch).
 fn process_B_type_instruction<registers>(instruction_parameters:u25, pc:Address) -> (pc_new:Address) {
 
     // var funct3 : Funct3

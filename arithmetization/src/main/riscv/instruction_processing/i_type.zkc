@@ -3,6 +3,35 @@ include "../ram/read.zkc"
 include "../utils/signed_comparisons.zkc"
 include "../utils/sign_extend.zkc"
 
+// Process a RISC-V I-type instruction and return the next program counter.
+//
+// I-type instructions share a common 25-bit encoding (opcode stripped) laid out as:
+//
+//   imm12 :: rs1 :: funct3 :: rd
+//
+// where imm12 is a 12-bit signed immediate, rs1 the source register, and rd the
+// destination register.  The `opcode` argument selects the operation group:
+//
+//   LOAD      — read from memory at address (rs1 + sign_extend(imm12)) into rd:
+//                 LB/LH/LW/LD  sign-extend the loaded value to 64 bits
+//                 LBU/LHU/LWU  zero-extend the loaded value to 64 bits
+//
+//   OP_IMM    — immediate arithmetic/logic on rs1 with sign_extend(imm12) → rd:
+//                 ADDI, SLTI, SLTIU, XORI, ORI, ANDI
+//               shift instructions use the upper bits of imm12 as funct6 and the
+//               lower bits as a 6-bit shift amount (uimm6):
+//                 SLLI, SRLI, SRAI
+//
+//   OP_IMM_32 — RV64 word-width (*W) variants; result is sign-extended from 32 bits:
+//                 ADDIW; shift variants use a 5-bit amount (uimm5): SLLIW, SRLIW, SRAIW
+//
+//   JALR      — jump-and-link register:
+//                 new_pc = (rs1 + sign_extend(imm12)) with LSB cleared
+//                 rd     = pc + 4  (return address)
+//
+//   SYSTEM    — system calls (not yet implemented)
+//
+// For all opcodes except JALR, new_pc = pc + 4 (sequential fall-through).
 fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
     
     var funct6:Funct6

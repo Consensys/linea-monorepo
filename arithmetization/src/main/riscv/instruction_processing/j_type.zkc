@@ -1,6 +1,23 @@
 include "../memory.zkc"
 include "../utils/sign_extend.zkc"
 
+// Process a RISC-V J-type instruction (JAL) and return the next program counter.
+//
+// J-type is used exclusively for JAL (Jump And Link).  The 25-bit encoding
+// (opcode stripped) scrambles the immediate bits to share control lines with
+// other formats; the fields arrive in this order:
+//
+//   imm[20] :: imm[10:1] :: imm[11] :: imm[19:12] :: rd
+//
+// They are reassembled into a 21-bit signed PC-relative byte offset:
+//
+//   imm21 = imm[20] :: imm[19:12] :: imm[11] :: imm[10:1] :: 0
+//
+// The appended zero means the target is always 2-byte aligned (LSB always 0).
+//
+// Effect:
+//   rd     = pc + 4           (return address saved in destination register)
+//   pc_new = pc + sign_extend(imm21)  (unconditional jump to target)
 fn process_J_type_instruction<registers>(instruction_parameters:u25, pc:Address) -> (pc_new:Address) {
 
     // var funct3 : Funct3

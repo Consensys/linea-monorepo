@@ -6,6 +6,36 @@ include "../utils/sign_bit.zkc"
 include "../utils/sign_extend.zkc"
 include "../utils/signed_comparisons.zkc"
 
+// Process a RISC-V R-type instruction, writing the result into the register file.
+//
+// R-type instructions operate on two source registers (rs1, rs2) and write the
+// result to a destination register (rd).  They never affect the program counter
+// (no pc parameter — the caller always advances by 4).  The 25-bit encoding
+// (opcode stripped) is:
+//
+//   funct7 :: rs2 :: rs1 :: funct3 :: rd
+//
+// funct3 selects the operation family; funct7 disambiguates within that family
+// (e.g. ADD vs SUB, SRL vs SRA, or base vs M-extension).
+//
+// Supported operation groups:
+//
+//   Base RV64I — register arithmetic/logic (64-bit):
+//     ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
+//
+//   RV64I *W — word-width (32-bit) variants, result sign-extended to 64 bits:
+//     ADDW, SUBW, SLLW, SRLW, SRAW
+//
+//   M-extension — integer multiply/divide/remainder (64-bit):
+//     MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU
+//
+//   M-extension *W — word-width multiply/divide/remainder, sign-extended to 64 bits:
+//     MULW, DIVW, DIVUW, REMW, REMUW
+//
+// Signed operations (SLT, SRA, MULH, MULHSU, DIV, REM, and their *W variants)
+// treat register values as two's-complement integers.  Division and remainder
+// follow RISC-V semantics: division by zero returns −1 (or the dividend for REM),
+// and signed overflow (INT_MIN / −1) returns INT_MIN (or 0 for REM).
 fn process_R_type_instruction<registers>(instruction_parameters:u25) {
     
     var funct7:Funct7
