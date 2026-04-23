@@ -267,7 +267,6 @@ services:
     container_name: prover-v3
     hostname: prover-v3
     image: consensys/linea-prover:${LINEA_PROVER_TAG:-7d56432}
-    platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
     environment:
