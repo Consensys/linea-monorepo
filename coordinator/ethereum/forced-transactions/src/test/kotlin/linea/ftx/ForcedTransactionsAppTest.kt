@@ -82,7 +82,7 @@ class ForcedTransactionsAppTest {
       "l2.FakeEthApiClient" to Level.INFO,
       "linea.ethapi" to Level.INFO,
       "linea.ftx" to Level.INFO,
-      "linea.ftx.conflation" to Level.TRACE,
+      "linea.ftx.conflation" to Level.INFO,
     )
 
     this.vertx = vertx
@@ -749,6 +749,16 @@ class ForcedTransactionsAppTest {
         ftxNumber = 5UL,
         l2DeadLine = 500UL,
       ),
+      createFtxAddedEvent(
+        l1BlockNumber = 600UL,
+        ftxNumber = 6UL,
+        l2DeadLine = 600UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 700UL,
+        ftxNumber = 7UL,
+        l2DeadLine = 700UL,
+      ),
     )
     this.l1Client.setLogs(ftxAddedEvents)
     this.fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
@@ -789,6 +799,16 @@ class ForcedTransactionsAppTest {
       ftxNumber = 5UL,
       l2BlockNumber = 150UL,
       inclusionResult = ForcedTransactionInclusionResult.BadBalance,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 6UL,
+      l2BlockNumber = 160UL,
+      inclusionResult = ForcedTransactionInclusionResult.Phylax,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 7UL,
+      l2BlockNumber = 170UL,
+      inclusionResult = ForcedTransactionInclusionResult.BadNonce,
     )
     this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
     val conflationTriggers = mutableListOf<Pair<BlockInterval, ConflationTrigger>>()
@@ -849,13 +869,13 @@ class ForcedTransactionsAppTest {
         assertThat(this.fxtDao.list().get().lastOrNull()?.ftxNumber ?: 0UL).isGreaterThanOrEqualTo(1UL)
       }
 
-    (conflationStartBlockNumberInclusive..160UL).forEach { blockNumber ->
+    (conflationStartBlockNumberInclusive..190UL).forEach { blockNumber ->
       await()
         .pollInterval(1.milliseconds.toJavaDuration())
         .atMost(2.seconds.toJavaDuration())
         .untilAsserted {
-          assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber() ?: ULong.MAX_VALUE)
-            .isGreaterThanOrEqualTo(blockNumber)
+          assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber() ?: 159UL)
+            .isGreaterThanOrEqualTo(blockNumber.coerceAtMost(150UL))
         }
       val blockCounters = BlockCounters(
         blockNumber = blockNumber,
@@ -884,6 +904,8 @@ class ForcedTransactionsAppTest {
         BlockInterval(140UL, 149UL),
       ),
     )
+    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber())
+      .isEqualTo(150UL)
     app.stop().get()
   }
 

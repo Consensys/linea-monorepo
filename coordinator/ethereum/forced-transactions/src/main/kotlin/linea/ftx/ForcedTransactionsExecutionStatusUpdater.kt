@@ -1,6 +1,7 @@
 package linea.ftx
 
 import linea.contract.events.ForcedTransactionAddedEvent
+import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.ftx.conflation.FtxConflationInfo
@@ -197,23 +198,33 @@ internal class ForcedTransactionsStatusUpdater(
     return ftxClient
       .lineaFindForcedTransactionStatus(ftx.forcedTransactionNumber)
       .thenCompose { ftxStatus ->
-        log.info("ftx={} sequencerStatus={}", ftx.forcedTransactionNumber, ftxStatus)
         if (ftxStatus == null) {
           SafeFuture.completedFuture(null)
         } else {
-          val record = ForcedTransactionRecord(
-            ftxNumber = ftx.forcedTransactionNumber,
-            inclusionResult = ftxStatus.inclusionResult,
-            simulatedExecutionBlockNumber = ftxStatus.blockNumber,
-            simulatedExecutionBlockTimestamp = ftxStatus.blockTimestamp,
-            ftxBlockNumberDeadline = ftx.blockNumberDeadline,
-            ftxRollingHash = ftx.forcedTransactionRollingHash,
-            ftxRlp = ftx.rlpEncodedSignedTransaction,
-            proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
-          )
-          dao
-            .save(record)
-            .thenApply { record }
+          if (ftxStatus.inclusionResult == ForcedTransactionInclusionResult.Phylax) {
+            log.warn(
+              "FTX rejected by Phylax: potential security incident, please notify Ops/Support immediately." +
+                " Stopping conflation. sequencerResult={}",
+              ftxStatus,
+            )
+            // we cannot proceed with ftx conflations, shall short circuit here!!
+            SafeFuture.completedFuture(null)
+          } else {
+            log.info("ftx={} sequencerResult={}", ftx.forcedTransactionNumber, ftxStatus)
+            val record = ForcedTransactionRecord(
+              ftxNumber = ftx.forcedTransactionNumber,
+              inclusionResult = ftxStatus.inclusionResult,
+              simulatedExecutionBlockNumber = ftxStatus.blockNumber,
+              simulatedExecutionBlockTimestamp = ftxStatus.blockTimestamp,
+              ftxBlockNumberDeadline = ftx.blockNumberDeadline,
+              ftxRollingHash = ftx.forcedTransactionRollingHash,
+              ftxRlp = ftx.rlpEncodedSignedTransaction,
+              proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+            )
+            dao
+              .save(record)
+              .thenApply { record }
+          }
         }
       }
   }
