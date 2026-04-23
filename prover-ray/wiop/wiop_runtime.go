@@ -2,6 +2,7 @@ package wiop
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
@@ -43,6 +44,9 @@ type Runtime struct {
 	// this Runtime. Populated lazily by [Runtime.AssignColumn] on the first
 	// column assignment to each dynamic module.
 	dynamicSizes map[int]int
+	// lock is a concurrency lock to prevent concurrent access to the maps in
+	// the runtime.
+	lock *sync.Mutex
 }
 
 // NewRuntime creates a fresh Runtime for sys. currentRound is initialised to
@@ -59,6 +63,7 @@ func NewRuntime(sys *System) Runtime {
 		coins:        make(map[ObjectID]field.Gen),
 		state:        make(map[string]any),
 		dynamicSizes: make(map[int]int),
+		lock:         &sync.Mutex{},
 	}
 	if len(sys.Rounds) == 0 {
 		panic("wiop: NewRuntime: system has no interactive rounds")
@@ -147,7 +152,8 @@ func (run *Runtime) AdvanceRound() {
 //   - Dynamic module: each time we add a column we potentially grow the
 //     module's size. There is no upper bound.
 func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
-
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	if col.round != run.currentRound {
 		panic(fmt.Sprintf(
 			"wiop: AssignColumn: column %q belongs to round %d but current round is %v",
@@ -185,6 +191,8 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 // GetColumnAssignment returns the concrete assignment of col. Panics if col
 // has not been assigned yet.
 func (run Runtime) GetColumnAssignment(col *Column) *ConcreteVector {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	v, ok := run.columns[col.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
@@ -197,12 +205,16 @@ func (run Runtime) GetColumnAssignment(col *Column) *ConcreteVector {
 
 // HasColumnAssignment reports whether col has been assigned in this runtime.
 func (run Runtime) HasColumnAssignment(col *Column) bool {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	_, ok := run.columns[col.Context.ID]
 	return ok
 }
 
 // HasCellValue reports whether cell has been assigned in this runtime.
 func (run Runtime) HasCellValue(cell *Cell) bool {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	_, ok := run.cells[cell.Context.ID]
 	return ok
 }
@@ -210,6 +222,8 @@ func (run Runtime) HasCellValue(cell *Cell) bool {
 // AssignCell stores a concrete scalar value for cell. Panics if cell does not
 // belong to the current round or has already been assigned.
 func (run Runtime) AssignCell(cell *Cell, v field.Gen) {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	if cell.round != run.currentRound {
 		panic(fmt.Sprintf(
 			"wiop: AssignCell: cell %q belongs to round %d but current round is %v",
@@ -229,6 +243,8 @@ func (run Runtime) AssignCell(cell *Cell, v field.Gen) {
 // GetCellValue returns the concrete scalar value of cell. Panics if cell has
 // not been assigned yet.
 func (run Runtime) GetCellValue(cell *Cell) field.Gen {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	v, ok := run.cells[cell.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
@@ -241,6 +257,8 @@ func (run Runtime) GetCellValue(cell *Cell) field.Gen {
 
 // HasCellAssignment reports whether cell has been assigned in this runtime.
 func (run Runtime) HasCellAssignment(cell *Cell) bool {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	_, ok := run.cells[cell.Context.ID]
 	return ok
 }
@@ -248,6 +266,8 @@ func (run Runtime) HasCellAssignment(cell *Cell) bool {
 // GetCoinValue returns the value sampled for coin by [Runtime.AdvanceRound].
 // Panics if the round containing coin has not been entered yet.
 func (run Runtime) GetCoinValue(coin *CoinField) field.Gen {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	v, ok := run.coins[coin.Context.ID]
 	if !ok {
 		panic(fmt.Sprintf(
@@ -260,11 +280,15 @@ func (run Runtime) GetCoinValue(coin *CoinField) field.Gen {
 
 // GetState returns the value stored under key and whether it was present.
 func (run Runtime) GetState(key string) (any, bool) {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	v, ok := run.state[key]
 	return v, ok
 }
 
 // SetState stores value under key in the runtime's state bag.
 func (run Runtime) SetState(key string, value any) {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	run.state[key] = value
 }
