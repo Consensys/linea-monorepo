@@ -110,6 +110,10 @@ func (rr *LogDerivativeSum) reduce(rt Runtime) field.Gen {
 
 		// Determine the row count from the evaluated concrete vector so that
 		// dynamic modules (whose size is not known statically) are handled correctly.
+		// At least one side must be vector-valued; both-scalar is a construction error.
+		if !numIsVec && !denIsVec {
+			panic("wiop: LogDerivativeSum.reduce: fraction has no vector-valued side; at least one of numerator or denominator must be multi-valued")
+		}
 		var n int
 		if numIsVec {
 			n = numVec.Plain[0].Len()
