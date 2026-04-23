@@ -1,9 +1,9 @@
 package linea.ftx
 
 import linea.contract.events.ForcedTransactionAddedEvent
-import linea.forcedtx.ForcedTransactionInclusionStatus
 import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
+import linea.ftx.conflation.FtxConflationInfo
 import linea.persistence.ForcedTransactionRecord
 import linea.persistence.ForcedTransactionsDao
 import org.apache.logging.log4j.LogManager
@@ -17,6 +17,10 @@ fun interface ForcedTransactionsProvider {
   fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>>
 }
 
+fun interface ForcedTransactionProcessedListener {
+  fun onFtxProcessed(ftxStatus: FtxConflationInfo)
+}
+
 /**
  * Responsible for getting Forced Transactions status from the sequencer and update local DB.
  * Ensures sequential processing without gaps: only processes FTX #N after all FTXs < N are processed.
@@ -26,7 +30,7 @@ internal class ForcedTransactionsStatusUpdater(
   private val ftxClient: ForcedTransactionsClient,
   private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
   private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
-  private val onFtxProcessed: (ForcedTransactionInclusionStatus) -> Unit,
+  private val ftxProcessedListener: ForcedTransactionProcessedListener,
   lastProcessedFtxNumber: ULong,
   private val ftxProcessingDelay: Duration = Duration.ZERO,
   private val clock: Clock,
@@ -117,7 +121,7 @@ internal class ForcedTransactionsStatusUpdater(
    * For each processed transaction, remove it from the queue.
    * Stop at the first unprocessed transaction.
    */
-  fun processConsecutiveTransactions(
+  private fun processConsecutiveTransactions(
     remaining: List<ForcedTransactionWithTimestamp>,
   ): SafeFuture<List<ForcedTransactionWithTimestamp>> {
     if (remaining.isEmpty()) {
@@ -134,8 +138,11 @@ internal class ForcedTransactionsStatusUpdater(
   }
 
   private fun processTransaction(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
-    return isAlreadyProcessed(ftx).thenApply { alreadyProcessed ->
-      if (alreadyProcessed) {
+    return findSequencerProcessingRecord(ftx).thenApply { dbRecord ->
+      if (dbRecord != null) {
+        // IMPORTANT: only remove from FTX queue if addFtxToConflation succeeds,
+        // if conflation queue is full, addFtxToConflation fails and retries on next tick
+        addFtxToConflation(dbRecord)
         // Remove from queue by matching the event's ftx number
         ftxQueue.removeIf { it.event.forcedTransactionNumber == ftx.forcedTransactionNumber }
         nextExpectedFtxNumber = ftx.forcedTransactionNumber + 1uL
@@ -155,25 +162,44 @@ internal class ForcedTransactionsStatusUpdater(
     }
   }
 
-  private fun isAlreadyProcessed(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
+  private fun addFtxToConflation(ftxDbRecord: ForcedTransactionRecord) {
+    // IMPORTANT: notify calculators BEFORE releasing the safeBlockNumber lock.
+    // ftxProcessedBySequencer may release the lock, allowing conflation to proceed
+    // immediately. If the result isn't visible to the conflation calculator before
+    // the lock release, it would miss the trigger.
+    ftxProcessedListener.onFtxProcessed(
+      FtxConflationInfo(
+        ftxNumber = ftxDbRecord.ftxNumber,
+        blockNumber = ftxDbRecord.simulatedExecutionBlockNumber,
+        inclusionResult = ftxDbRecord.inclusionResult,
+      ),
+    )
+    safeBlockNumberManager.ftxProcessedBySequencer(
+      ftxNumber = ftxDbRecord.ftxNumber,
+      simulatedExecutionBlockNumber = ftxDbRecord.simulatedExecutionBlockNumber,
+    )
+  }
+
+  private fun findSequencerProcessingRecord(ftx: ForcedTransactionAddedEvent): SafeFuture<ForcedTransactionRecord?> {
     // 1. check local db, if not present, check sequencer and update DB if processed by sequencer
     return dao
       .findByNumber(ftxNumber = ftx.forcedTransactionNumber)
       .thenCompose { dbRecord ->
         if (dbRecord != null) {
-          SafeFuture.completedFuture(true)
+          SafeFuture.completedFuture(dbRecord)
         } else {
           checkStatusAndUpdateLocalDb(ftx)
         }
       }
   }
 
-  private fun checkStatusAndUpdateLocalDb(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
+  private fun checkStatusAndUpdateLocalDb(ftx: ForcedTransactionAddedEvent): SafeFuture<ForcedTransactionRecord?> {
     return ftxClient
       .lineaFindForcedTransactionStatus(ftx.forcedTransactionNumber)
       .thenCompose { ftxStatus ->
+        log.info("ftx={} sequencerStatus={}", ftx.forcedTransactionNumber, ftxStatus)
         if (ftxStatus == null) {
-          SafeFuture.completedFuture(false)
+          SafeFuture.completedFuture(null)
         } else {
           val record = ForcedTransactionRecord(
             ftxNumber = ftx.forcedTransactionNumber,
@@ -187,18 +213,7 @@ internal class ForcedTransactionsStatusUpdater(
           )
           dao
             .save(record)
-            .thenApply {
-              // IMPORTANT: notify calculators BEFORE releasing the safeBlockNumber lock.
-              // ftxProcessedBySequencer may release the lock, allowing conflation to proceed
-              // immediately. If the result isn't visible to the conflation calculator before
-              // the lock release, it would miss the trigger.
-              onFtxProcessed(ftxStatus)
-              safeBlockNumberManager.ftxProcessedBySequencer(
-                ftxNumber = record.ftxNumber,
-                simulatedExecutionBlockNumber = record.simulatedExecutionBlockNumber,
-              )
-              true
-            }
+            .thenApply { record }
         }
       }
   }

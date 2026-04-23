@@ -2,7 +2,6 @@ package linea.ftx.conflation
 
 import linea.domain.BlockCounters
 import linea.domain.ConflationTrigger
-import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCounters
 import org.apache.logging.log4j.LogManager
@@ -25,7 +24,7 @@ import kotlin.collections.map
  * Entries are consumed via poll() so there is no race with the aggregation calculator.
  */
 class ConflationCalculatorByForcedTransaction(
-  private val processedFtxQueue: Queue<ForcedTransactionInclusionStatus>,
+  private val processedFtxQueue: Queue<FtxConflationInfo>,
   private val log: Logger = LogManager.getLogger(ConflationCalculatorByForcedTransaction::class.java),
 ) : ConflationCalculator {
   override val id: String = ConflationTrigger.FORCED_TRANSACTION.name
@@ -40,10 +39,11 @@ class ConflationCalculatorByForcedTransaction(
   override fun checkOverflow(blockCounters: BlockCounters): ConflationCalculator.OverflowTrigger? {
     readProcessedFtxs()
 
-    log.info(
-      "FTX conflation detected at block={} ftxEvaluated={}",
-      blockCounters.blockNumber,
-      processedFtxQueue.toList().map(ForcedTransactionInclusionStatus::toStringShortForLogging),
+    log.debug(
+      "checking ftx conflation trigger: blockNumber={} conflationTiggers={} processedFtxQueue={}",
+      { blockCounters.blockNumber },
+      { pendingTriggerBlocks.sorted() },
+      { processedFtxQueue.map(FtxConflationInfo::toStringShortForLogging) },
     )
 
     // Check if this block should trigger conflation
@@ -51,7 +51,7 @@ class ConflationCalculatorByForcedTransaction(
       log.info(
         "FTX conflation trigger at block={} pendingTriggers={}",
         blockCounters.blockNumber,
-        pendingTriggerBlocks.sorted(),
+        pendingTriggerBlocks,
       )
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.FORCED_TRANSACTION,
@@ -64,24 +64,19 @@ class ConflationCalculatorByForcedTransaction(
 
   private fun readProcessedFtxs() {
     // Consume from dedicated queue — safe because this queue is not shared with the aggregation calculator.
-    val newFtxs = mutableListOf<ForcedTransactionInclusionStatus>()
-    while (true) {
-      newFtxs.add(processedFtxQueue.poll() ?: break)
-    }
-
+    val highestFtxPolledFromQueue = pendingTriggerBlocks.lastOrNull() ?: 0UL
+    val newFtxs = processedFtxQueue.toList().filter { it.blockNumber > highestFtxPolledFromQueue }
     if (newFtxs.isEmpty()) {
       return
     }
-
-    val triggerBlocks = newFtxs.map { it.blockNumber }.toSet()
-    val actuallyNew = triggerBlocks - pendingTriggerBlocks
-    pendingTriggerBlocks.addAll(triggerBlocks)
-    if (actuallyNew.isNotEmpty()) {
+    val actualNewFtxs = newFtxs.map { it.blockNumber } - pendingTriggerBlocks
+    if (actualNewFtxs.isNotEmpty()) {
+      pendingTriggerBlocks.addAll(actualNewFtxs)
       log.info(
         "appended new conflation triggers {} for ftxs={}, all pending triggers={}",
-        actuallyNew,
-        newFtxs.filter { it.blockNumber in actuallyNew }.map(ForcedTransactionInclusionStatus::toStringShortForLogging),
-        pendingTriggerBlocks.sorted(),
+        newFtxs.size,
+        newFtxs.map(FtxConflationInfo::toStringShortForLogging),
+        pendingTriggerBlocks,
       )
     }
   }
@@ -89,6 +84,7 @@ class ConflationCalculatorByForcedTransaction(
   @Synchronized
   override fun appendBlock(blockCounters: BlockCounters) {
     pendingTriggerBlocks.removeIf { it <= blockCounters.blockNumber }
+    processedFtxQueue.removeIf { it.blockNumber <= blockCounters.blockNumber }
     lastBlockNumber = blockCounters.blockNumber
   }
 

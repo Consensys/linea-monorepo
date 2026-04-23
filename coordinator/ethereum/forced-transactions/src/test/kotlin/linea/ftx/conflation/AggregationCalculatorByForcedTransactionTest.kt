@@ -3,7 +3,6 @@ package linea.ftx.conflation
 import linea.domain.BlobCounters
 import linea.domain.BlobsToAggregate
 import linea.forcedtx.ForcedTransactionInclusionResult
-import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTrigger
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.assertj.core.api.Assertions.assertThat
@@ -27,7 +26,7 @@ class AggregationCalculatorByForcedTransactionTest {
     expectedShnarf = ByteArray(32),
   )
 
-  private lateinit var queue: Queue<ForcedTransactionInclusionStatus>
+  private lateinit var queue: Queue<FtxConflationInfo>
   private lateinit var calculator: AggregationCalculatorByForcedTransaction
 
   private val timestamp = Instant.parse("2024-01-01T00:00:00Z")
@@ -42,13 +41,10 @@ class AggregationCalculatorByForcedTransactionTest {
     ftxNumber: ULong,
     blockNumber: ULong,
     inclusionResult: ForcedTransactionInclusionResult = ForcedTransactionInclusionResult.BadNonce,
-  ) = ForcedTransactionInclusionStatus(
+  ) = FtxConflationInfo(
     ftxNumber = ftxNumber,
     blockNumber = blockNumber,
-    blockTimestamp = timestamp,
     inclusionResult = inclusionResult,
-    ftxHash = ByteArray(32),
-    from = ByteArray(20),
   )
 
   private fun expectedTrigger(endBlockNumber: ULong) = AggregationTrigger(

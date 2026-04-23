@@ -32,9 +32,12 @@ internal class ForcedTransactionsSenderForExecution(
     pollingIntervalMs = pollingInterval.inWholeMilliseconds,
     log = log,
     timerSchedule = TimerSchedule.FIXED_DELAY,
-    name = "ForcedTransactionsRelayerForExecution",
+    name = "ForcedTransactionsSenderForExecution",
   ),
   LongRunningService {
+
+  override fun handleError(error: Throwable) {
+  }
 
   override fun action(): SafeFuture<*> {
     return unprocessedFtxProvider
