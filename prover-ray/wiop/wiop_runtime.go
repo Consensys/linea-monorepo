@@ -33,6 +33,10 @@ type Runtime struct {
 	coins map[ObjectID]field.Gen
 	// state is a free-form key-value store for stateful actions.
 	state map[string]any
+	// dynamicSizes maps the index of each dynamic module to its domain size for
+	// this Runtime. Populated lazily by [Runtime.AssignColumn] on the first
+	// column assignment to each dynamic module.
+	dynamicSizes map[int]int
 }
 
 // NewRuntime creates a fresh Runtime for sys. currentRound is initialised to
@@ -42,12 +46,13 @@ type Runtime struct {
 // Panics if sys has no interactive rounds (len(sys.Rounds) == 0).
 func NewRuntime(sys *System) Runtime {
 	run := Runtime{
-		System:  sys,
-		fs:      fiatshamir.NewFiatShamir(),
-		columns: make(map[ObjectID]*ConcreteVector),
-		cells:   make(map[ObjectID]field.Gen),
-		coins:   make(map[ObjectID]field.Gen),
-		state:   make(map[string]any),
+		System:       sys,
+		fs:           fiatshamir.NewFiatShamir(),
+		columns:      make(map[ObjectID]*ConcreteVector),
+		cells:        make(map[ObjectID]field.Gen),
+		coins:        make(map[ObjectID]field.Gen),
+		state:        make(map[string]any),
+		dynamicSizes: make(map[int]int),
 	}
 	if len(sys.Rounds) == 0 {
 		panic("wiop: NewRuntime: system has no interactive rounds")
@@ -58,6 +63,19 @@ func NewRuntime(sys *System) Runtime {
 		run.columns[col.Context.ID] = pr.PrecomputedValues[i]
 	}
 	return run
+}
+
+// dynamicModuleSize returns the domain size registered for m in this Runtime.
+// Called by [Module.RuntimeSize] for dynamic modules.
+func (run Runtime) dynamicModuleSize(m *Module) int {
+	size, ok := run.dynamicSizes[m.index]
+	if !ok {
+		panic(fmt.Sprintf(
+			"wiop: dynamic module %q has no size yet in this runtime; assign a column first",
+			m.Context.Path(),
+		))
+	}
+	return size
 }
 
 // CurrentRound returns the round currently being processed, or nil if the
@@ -118,8 +136,17 @@ func (run *Runtime) AdvanceRound() {
 	}
 }
 
-// AssignColumn stores a concrete vector assignment for col. Panics if col does
-// not belong to the current round or has already been assigned.
+// AssignColumn stores a concrete vector assignment for col.
+//
+// Size semantics:
+//   - Static module: the data length must not exceed the module's declared size.
+//   - Dynamic module, first assignment: the data length is recorded as the
+//     module's domain size for this Runtime.
+//   - Dynamic module, subsequent assignments: the data length must not exceed
+//     the previously recorded domain size.
+//
+// Panics if col does not belong to the current round, has already been
+// assigned, or its data length violates the size constraints above.
 func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 	if col.round != run.currentRound {
 		panic(fmt.Sprintf(
@@ -134,6 +161,27 @@ func (run Runtime) AssignColumn(col *Column, v *ConcreteVector) {
 			col.Context.Path(),
 		))
 	}
+
+	m := col.Module
+	dataLen := v.Plain[0].Len()
+	if m.IsDynamic() {
+		if existing, ok := run.dynamicSizes[m.index]; ok {
+			if dataLen > existing {
+				panic(fmt.Sprintf(
+					"wiop: AssignColumn: column %q has data length %d which overflows dynamic module %q size %d",
+					col.Context.Path(), dataLen, m.Context.Path(), existing,
+				))
+			}
+		} else {
+			run.dynamicSizes[m.index] = dataLen
+		}
+	} else if m.IsSized() && dataLen > m.Size() {
+		panic(fmt.Sprintf(
+			"wiop: AssignColumn: column %q has data length %d which overflows module %q size %d",
+			col.Context.Path(), dataLen, m.Context.Path(), m.Size(),
+		))
+	}
+
 	run.columns[id] = v
 }
 

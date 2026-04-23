@@ -396,7 +396,7 @@ func tableRowHash(alpha field.Gen, rt Runtime, cols []*ColumnView, idx, n int) f
 // n is the module size.
 func tableElemAt(rt Runtime, cv *ColumnView, idx, n int) field.Gen {
 	phys := ((idx+cv.ShiftingOffset)%n + n) % n
-	return rt.GetColumnAssignment(cv.Column).ElementAt(cv.Column.Module, phys)
+	return rt.GetColumnAssignment(cv.Column).ElementAtN(cv.Column.Module.Padding, n, phys)
 }
 
 // tableHasZeroShift reports whether all column views and the selector (if

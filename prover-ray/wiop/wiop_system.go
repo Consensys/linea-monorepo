@@ -98,3 +98,15 @@ func (sys *System) NewSizedModule(ctx *ContextFrame, size int, pd PaddingDirecti
 	m.SetSize(size)
 	return m
 }
+
+// NewDynamicModule creates a module whose domain size is provided per-Runtime
+// via [WithModuleSize] rather than fixed once via [Module.SetSize]. The same
+// System can therefore be reused across proving sessions that differ in trace
+// length.
+//
+// Panics if ctx is nil.
+func (sys *System) NewDynamicModule(ctx *ContextFrame, pd PaddingDirection) *Module {
+	m := sys.NewModule(ctx, pd)
+	m.isDynamic = true
+	return m
+}
