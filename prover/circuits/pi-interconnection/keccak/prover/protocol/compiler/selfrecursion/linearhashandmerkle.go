@@ -599,4 +599,3 @@ func rightPadWithZero(input []field.Element) []field.Element {
 	copy(padded, input)
 	return padded
 }
-
