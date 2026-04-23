@@ -64,7 +64,7 @@ describe("Layer 2 test suite", () => {
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
 
-    const { gasPrice } = await l2PublicClient.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas());
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -121,7 +121,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas());
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -147,7 +147,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas());
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const accessList = [
@@ -191,9 +191,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const l2WalletClient = context.l2WalletClient({ account });
     for (let i = 0; i < 5; i++) {
-      const { maxPriorityFeePerGas, maxFeePerGas } = await l2PublicClient.withRetryOnBlockNotFound((c) =>
-        c.estimateFeesPerGas(),
-      );
+      const { maxPriorityFeePerGas, maxFeePerGas } = await l2PublicClient.estimateFeesPerGas();
       logger.debug(
         `Fetched fee data. transactionNumber=${i + 1} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
       );

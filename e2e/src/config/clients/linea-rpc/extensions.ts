@@ -22,7 +22,6 @@ import {
   type RollupGetZkEVMStateMerkleProofV0Parameters,
   type RollupGetZkEVMStateMerkleProofV0Rpc,
 } from "./rollup-get-zkevm-state-merkle-proof-v0";
-import { withRetryOnBlockNotFound } from "../../../common/utils/viem-retry";
 
 import type { Client, Transport, Chain, Account } from "viem";
 
@@ -38,7 +37,6 @@ export type SequencerActions = ReturnType<ReturnType<typeof createSequencerExten
 export type ShomeiActions = ReturnType<ReturnType<typeof createShomeiExtension>>;
 export type ShomeiFrontendActions = ReturnType<ReturnType<typeof createShomeiFrontendExtension>>;
 export type TransactionExclusionActions = ReturnType<ReturnType<typeof createTransactionExclusionExtension>>;
-export type RetryActions = ReturnType<ReturnType<typeof createRetryExtension>>;
 
 export function createBesuNodeExtension() {
   return (client: Client) => ({
@@ -77,24 +75,5 @@ export function createTransactionExclusionExtension() {
       getTransactionExclusionStatusV1(client as RpcClient<GetTransactionExclusionStatusV1Rpc>, args),
     saveRejectedTransactionV1: (args: SaveRejectedTransactionV1Parameters) =>
       saveRejectedTransactionV1(client as RpcClient<SaveRejectedTransactionV1Rpc>, args),
-  });
-}
-
-/**
- * Exposes `withRetryOnBlockNotFound` as a client method. Callers pass an action
- * closure receiving the underlying client so the wrapped call retains full typing
- * (e.g. `client.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas())`).
- *
- * The wrapped action is retried only on `BlockNotFoundError`; all other errors
- * propagate immediately. See `common/utils/viem-retry.ts` for details.
- */
-export function createRetryExtension() {
-  return <TClient extends Client>(client: TClient) => ({
-    withRetryOnBlockNotFound<T>(
-      fn: (client: TClient) => Promise<T>,
-      options?: { pollingIntervalMs?: number; timeoutMs?: number },
-    ): Promise<T> {
-      return withRetryOnBlockNotFound(() => fn(client), options);
-    },
   });
 }

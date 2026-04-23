@@ -19,7 +19,7 @@ export { normalizeEip1559Fees } from "./fees";
 export type { Eip1559Fees } from "./fees";
 
 // Viem retry
-export { withRetryOnBlockNotFound } from "./viem-retry";
+export { withRetryOnBlockNotFound, createBlockNotFoundRetryExtension } from "./viem-retry";
 
 // Traffic
 export { sendTransactionsToGenerateTrafficWithInterval } from "./traffic";

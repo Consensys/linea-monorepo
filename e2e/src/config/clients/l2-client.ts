@@ -2,7 +2,6 @@ import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-
 import { L2Config, LocalL2Config } from "../schema/config-schema";
 import {
   createBesuNodeExtension,
-  createRetryExtension,
   createSequencerExtension,
   createShomeiExtension,
   createShomeiFrontendExtension,
@@ -41,13 +40,11 @@ function createBaseL2PublicClient(
   chainId: number,
   httpConfig?: PublicClientParams["httpConfig"],
 ) {
-  return factory
-    .getPublic({
-      chainId,
-      rpcUrl: url,
-      ...(httpConfig ? { httpConfig } : {}),
-    })
-    .extend(createRetryExtension());
+  return factory.getPublic({
+    chainId,
+    rpcUrl: url,
+    ...(httpConfig ? { httpConfig } : {}),
+  });
 }
 
 export type L2BasePublicClient = ReturnType<typeof createBaseL2PublicClient>;

@@ -40,9 +40,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
       logger.debug("Minting and approving tokens to L1 TokenBridge");
 
-      const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.withRetryOnBlockNotFound((c) =>
-        c.estimateFeesPerGas(),
-      );
+      const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
       const normalizedFees = normalizeEip1559Fees(maxPriorityFeePerGas, maxFeePerGas);
 
       await Promise.all([
@@ -83,7 +81,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       const bridgeNonce = await l1PublicClient.getTransactionCount({ address: l1Account.address, blockTag: "pending" });
 
       const { maxPriorityFeePerGas: maxPriorityFeeBridgeToken, maxFeePerGas: maxFeeBridgeToken } =
-        await l1PublicClient.withRetryOnBlockNotFound((c) => c.estimateFeesPerGas());
+        await l1PublicClient.estimateFeesPerGas();
       const normalizedBridgeFees = normalizeEip1559Fees(maxPriorityFeeBridgeToken, maxFeeBridgeToken);
 
       const { receipt: bridgedTxReceipt } = await sendTransactionWithRetry(
