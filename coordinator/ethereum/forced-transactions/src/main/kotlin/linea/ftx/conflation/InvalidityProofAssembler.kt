@@ -160,8 +160,9 @@ class InvalidityProofAssembler(
     ftx: ForcedTransactionRecord,
   ): SafeFuture<RequiredInvalidityProofData> {
     val prevFtxRollingHashFuture = getPrevFtxRollingHash(ftx.ftxNumber)
+    val parentBlockNumber = ftx.simulatedExecutionBlockNumber - 1uL
     val zkParentStateRootHashFuture = stateManagerClient
-      .rollupGetStateMerkleProof(BlockInterval(ftx.simulatedExecutionBlockNumber, ftx.simulatedExecutionBlockNumber))
+      .rollupGetStateMerkleProof(BlockInterval(parentBlockNumber, parentBlockNumber))
     var accountProofFuture: SafeFuture<LineaAccountProof?> = SafeFuture.completedFuture(null)
     var stateProofFuture: SafeFuture<GetZkEVMStateMerkleProofResponse?> = SafeFuture.completedFuture(null)
     var tracesFuture: SafeFuture<GenerateTracesResponse?> = SafeFuture.completedFuture(null)
@@ -196,7 +197,7 @@ class InvalidityProofAssembler(
       .thenApply {
         RequiredInvalidityProofData(
           prevFtxRollingHash = prevFtxRollingHashFuture.get(),
-          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkParentStateRootHash,
+          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkEndStateRootHash,
           tracesFile = tracesFuture.get()?.tracesFileName,
           accountProof = accountProofFuture.get(),
           zkStateMerkleProof = stateProofFuture.get(),
