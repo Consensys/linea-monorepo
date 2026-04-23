@@ -132,7 +132,11 @@ internal class ForcedTransactionsAppImpl(
 ) : ForcedTransactionsApp {
   private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
   internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
-  internal val ftxProcessedQueue: Queue<ForcedTransactionInclusionStatus> = LinkedBlockingQueue(10_000)
+
+  // Separate queues per calculator: prevents the aggregation calculator (which consumes via poll())
+  // from draining entries before the conflation calculator reads them.
+  private val conflationFtxQueue: Queue<ForcedTransactionInclusionStatus> = LinkedBlockingQueue(10_000)
+  private val aggregationFtxQueue: Queue<ForcedTransactionInclusionStatus> = LinkedBlockingQueue(10_000)
   private val ftxResumePointProvider = ForcedTransactionsResumePointProviderImpl(
     finalizedStateProvider = finalizedStateProvider,
     l1HighestBlock = config.l1HighestBlockTag,
@@ -144,10 +148,10 @@ internal class ForcedTransactionsAppImpl(
   private var safeBlockNumberManager = ForcedTransactionsSafeBlockNumberManager(listener = safeBlockNumberProvider)
   override val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider = safeBlockNumberProvider
   override val conflationCalculator: ConflationCalculator = ConflationCalculatorByForcedTransaction(
-    processedFtxQueue = ftxProcessedQueue,
+    processedFtxQueue = conflationFtxQueue,
   )
   override val aggregationCalculator: SyncAggregationTriggerCalculator = AggregationCalculatorByForcedTransaction(
-    processedFtxQueue = ftxProcessedQueue,
+    processedFtxQueue = aggregationFtxQueue,
   )
   private val ftxInvalidityProofService = ForcedTransactionsInvalidityProofService(
     ftxDao = ftxDao,
@@ -205,7 +209,16 @@ internal class ForcedTransactionsAppImpl(
           dao = this.ftxDao,
           ftxClient = this.ftxClient,
           ftxQueue = this.ftxQueue,
-          ftxProcessedQueue = this.ftxProcessedQueue,
+          onFtxProcessed = { ftxStatus ->
+            // offer() returns false on a full queue instead of throwing, so the
+            // safeBlockNumber update that follows this callback is never skipped.
+            if (!conflationFtxQueue.offer(ftxStatus) || !aggregationFtxQueue.offer(ftxStatus)) {
+              log.error(
+                "FTX processed queue full, calculator may miss trigger for ftx={}",
+                ftxStatus.ftxNumber,
+              )
+            }
+          },
           lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
           safeBlockNumberManager = safeBlockNumberManager,
           ftxProcessingDelay = config.ftxProcessingDelay,

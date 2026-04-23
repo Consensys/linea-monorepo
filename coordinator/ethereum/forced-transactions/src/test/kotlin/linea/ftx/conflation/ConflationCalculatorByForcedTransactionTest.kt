@@ -1,5 +1,6 @@
 package linea.ftx.conflation
 
+import linea.domain.BlobCounters
 import linea.domain.BlockCounters
 import linea.domain.ConflationTrigger
 import linea.forcedtx.ForcedTransactionInclusionResult
@@ -60,13 +61,12 @@ class ConflationCalculatorByForcedTransactionTest {
   }
 
   @Test
-  fun `does not consume items from the queue`() {
+  fun `checkOverflow polls entries from the queue`() {
     queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce))
 
     calculator.checkOverflow(blockCounters(blockNumber = 9UL))
-    calculator.appendBlock(blockCounters(blockNumber = 9UL))
 
-    assertThat(queue).hasSize(1)
+    assertThat(queue).isEmpty()
   }
 
   @Test
@@ -176,5 +176,96 @@ class ConflationCalculatorByForcedTransactionTest {
 
       assertThat(calculator.checkOverflow(blockCounters(blockNumber = 10UL))).isEqualTo(ftxOverflowTrigger)
     }
+  }
+
+  @Test
+  fun `consecutive FTXs arriving one at a time each produce conflation and aggregation triggers`() {
+    val conflationQueue = LinkedList<ForcedTransactionInclusionStatus>()
+    val aggregationQueue = LinkedList<ForcedTransactionInclusionStatus>()
+    val conflationCalc = ConflationCalculatorByForcedTransaction(conflationQueue)
+    val aggregationCalc = AggregationCalculatorByForcedTransaction(aggregationQueue)
+
+    val conflationTriggers = mutableListOf<ULong>()
+    val aggregationTriggers = mutableListOf<ULong>()
+
+    // 4 consecutive FTXs, blocks 21-24 — mirrors the e2e forced-transactions test
+    for (i in 0 until 4) {
+      val block = 21UL + i.toULong()
+      val result = ftx(
+        ftx = (i + 1).toULong(),
+        blockNumber = block,
+        inclusionResult = ForcedTransactionInclusionResult.BadNonce,
+      )
+
+      // FTX result arrives — each calculator gets its own copy (production wiring)
+      conflationQueue.add(result)
+      aggregationQueue.add(result)
+
+      // Conflation processes the FTX block
+      if (conflationCalc.checkOverflow(blockCounters(block)) != null) {
+        conflationTriggers.add(block)
+        conflationCalc.reset()
+        conflationCalc.appendBlock(blockCounters(block))
+      }
+
+      // Aggregation processes the blob that just sealed ([block-1 .. block-1])
+      val blobEnd = block - 1UL
+      val blob = BlobCounters(
+        startBlockNumber = blobEnd,
+        endBlockNumber = blobEnd,
+        numberOfBatches = 1u,
+        startBlockTimestamp = timestamp,
+        endBlockTimestamp = timestamp,
+        expectedShnarf = ByteArray(0),
+      )
+      if (aggregationCalc.checkAggregationTrigger(blob) != null) {
+        aggregationTriggers.add(blobEnd)
+        aggregationCalc.reset()
+      }
+    }
+
+    // Each FTX block fires a conflation trigger (FTX is first block of new blob)
+    assertThat(conflationTriggers).isEqualTo(listOf(21UL, 22UL, 23UL, 24UL))
+    // Each aggregation seals at (ftxBlock - 1), so FTX starts the next aggregation
+    assertThat(aggregationTriggers).isEqualTo(listOf(20UL, 21UL, 22UL, 23UL))
+  }
+
+  @Test
+  fun `aggregation draining its queue does not affect conflation triggers`() {
+    val conflationQueue = LinkedList<ForcedTransactionInclusionStatus>()
+    val aggregationQueue = LinkedList<ForcedTransactionInclusionStatus>()
+    val conflationCalc = ConflationCalculatorByForcedTransaction(conflationQueue)
+    val aggregationCalc = AggregationCalculatorByForcedTransaction(aggregationQueue)
+
+    // FTX#1@21 arrives
+    val ftx1 = ftx(ftx = 1UL, blockNumber = 21UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce)
+    conflationQueue.add(ftx1)
+    aggregationQueue.add(ftx1)
+
+    // Conflation processes block 21 → trigger fires
+    assertThat(conflationCalc.checkOverflow(blockCounters(21UL))).isEqualTo(ftxOverflowTrigger)
+    conflationCalc.reset()
+    conflationCalc.appendBlock(blockCounters(21UL))
+
+    // FTX#2@22 arrives
+    val ftx2 = ftx(ftx = 2UL, blockNumber = 22UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce)
+    conflationQueue.add(ftx2)
+    aggregationQueue.add(ftx2)
+
+    // Aggregation processes blob [20..20] — drains BOTH FTX#1 and FTX#2 from its queue
+    val blob20 = BlobCounters(
+      startBlockNumber = 20UL,
+      endBlockNumber = 20UL,
+      numberOfBatches = 1u,
+      startBlockTimestamp = timestamp,
+      endBlockTimestamp = timestamp,
+      expectedShnarf = ByteArray(0),
+    )
+    val aggTrigger = aggregationCalc.checkAggregationTrigger(blob20)
+    assertThat(aggTrigger).isNotNull // fires at 20 (= 21-1)
+    assertThat(aggregationQueue).isEmpty() // aggregation drained everything
+
+    // Conflation processes block 22 — still fires because it has its own queue
+    assertThat(conflationCalc.checkOverflow(blockCounters(22UL))).isEqualTo(ftxOverflowTrigger)
   }
 }

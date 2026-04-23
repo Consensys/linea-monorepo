@@ -26,7 +26,7 @@ internal class ForcedTransactionsStatusUpdater(
   private val ftxClient: ForcedTransactionsClient,
   private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
   private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
-  private val ftxProcessedQueue: Queue<ForcedTransactionInclusionStatus>,
+  private val onFtxProcessed: (ForcedTransactionInclusionStatus) -> Unit,
   lastProcessedFtxNumber: ULong,
   private val ftxProcessingDelay: Duration = Duration.ZERO,
   private val clock: Clock,
@@ -188,11 +188,15 @@ internal class ForcedTransactionsStatusUpdater(
           dao
             .save(record)
             .thenApply {
+              // IMPORTANT: notify calculators BEFORE releasing the safeBlockNumber lock.
+              // ftxProcessedBySequencer may release the lock, allowing conflation to proceed
+              // immediately. If the result isn't visible to the conflation calculator before
+              // the lock release, it would miss the trigger.
+              onFtxProcessed(ftxStatus)
               safeBlockNumberManager.ftxProcessedBySequencer(
                 ftxNumber = record.ftxNumber,
                 simulatedExecutionBlockNumber = record.simulatedExecutionBlockNumber,
               )
-              ftxProcessedQueue.add(ftxStatus)
               true
             }
         }
