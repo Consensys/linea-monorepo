@@ -1136,41 +1136,6 @@ func (module *QueryBasedModule) NumColumn() int {
 	return module.Ds.Size()
 }
 
-// NewSizeOf returns the size (length) of a column.
-func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col column.Natural) int {
-	size := col.Size()
-	mod := disc.ModuleOf(col)
-
-	for i := range disc.Modules {
-		if disc.Modules[i].ModuleName == mod {
-			qbm := disc.Modules[i]
-			if qbm.CantChangeSize {
-				return size
-			}
-		}
-	}
-
-	return size
-}
-
-// ModuleList returns a list of all module names.
-func (disc *QueryBasedModuleDiscoverer) ModuleList() []ModuleName {
-	disc.Mutex.Lock()
-	defer disc.Mutex.Unlock()
-	return disc.ModuleNames
-}
-
-// ModuleOf returns the module name for a given column.
-func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
-	disc.Mutex.Lock()
-	defer disc.Mutex.Unlock()
-
-	if moduleName, exists := disc.ColumnsToModule.Get(col.ID); exists {
-		return moduleName
-	}
-	return ""
-}
-
 type plonkConstraintCacheKey struct {
 	circuitType string
 	circuitPtr  uintptr
