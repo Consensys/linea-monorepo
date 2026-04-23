@@ -153,6 +153,7 @@ jobs:
       develop_tag: "develop"
       image_name: consensys/linea-coordinator
       push_image: true
+    secrets: inherit
 
   gh-release-coordinator:
     needs: [release-coordinator, build-docker-image-coordinator]
