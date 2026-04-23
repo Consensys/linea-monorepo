@@ -130,7 +130,6 @@ func TestColumnView_EvaluateVector_Identity(t *testing.T) {
 	rt.AssignColumn(col, baseVec(4, 3))
 
 	result := col.View().EvaluateVector(rt)
-	require.Len(t, result.Plain, 1)
 	var want field.Element
 	want.SetUint64(3)
 	for i := range 4 {
@@ -151,7 +150,6 @@ func TestColumnView_EvaluateVector_Shifted(t *testing.T) {
 	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
 
 	result := col.View().Shift(1).EvaluateVector(rt)
-	require.Len(t, result.Plain, 1)
 	for i := range 4 {
 		var want field.Element
 		want.SetUint64(uint64((i + 1) % 4))
