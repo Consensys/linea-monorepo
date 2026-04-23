@@ -129,15 +129,40 @@ class InvalidityProofAssembler(
     val tracesFile: String? = null,
     val accountProof: LineaAccountProof? = null,
     val zkStateMerkleProof: GetZkEVMStateMerkleProofResponse? = null,
-  )
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as RequiredInvalidityProofData
+
+      if (!prevFtxRollingHash.contentEquals(other.prevFtxRollingHash)) return false
+      if (!zkParentStateRootHash.contentEquals(other.zkParentStateRootHash)) return false
+      if (tracesFile != other.tracesFile) return false
+      if (accountProof != other.accountProof) return false
+      if (zkStateMerkleProof != other.zkStateMerkleProof) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = prevFtxRollingHash.contentHashCode()
+      result = 31 * result + zkParentStateRootHash.contentHashCode()
+      result = 31 * result + (tracesFile?.hashCode() ?: 0)
+      result = 31 * result + (accountProof?.hashCode() ?: 0)
+      result = 31 * result + (zkStateMerkleProof?.hashCode() ?: 0)
+      return result
+    }
+  }
 
   private fun fetchRequiredDataForInvalidityProof(
     invalidityReason: InvalidityReason,
     ftx: ForcedTransactionRecord,
   ): SafeFuture<RequiredInvalidityProofData> {
     val prevFtxRollingHashFuture = getPrevFtxRollingHash(ftx.ftxNumber)
+    val parentBlockNumber = ftx.simulatedExecutionBlockNumber - 1uL
     val zkParentStateRootHashFuture = stateManagerClient
-      .rollupGetStateMerkleProof(BlockInterval(ftx.simulatedExecutionBlockNumber, ftx.simulatedExecutionBlockNumber))
+      .rollupGetStateMerkleProof(BlockInterval(parentBlockNumber, parentBlockNumber))
     var accountProofFuture: SafeFuture<LineaAccountProof?> = SafeFuture.completedFuture(null)
     var stateProofFuture: SafeFuture<GetZkEVMStateMerkleProofResponse?> = SafeFuture.completedFuture(null)
     var tracesFuture: SafeFuture<GenerateTracesResponse?> = SafeFuture.completedFuture(null)
@@ -172,7 +197,7 @@ class InvalidityProofAssembler(
       .thenApply {
         RequiredInvalidityProofData(
           prevFtxRollingHash = prevFtxRollingHashFuture.get(),
-          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkParentStateRootHash,
+          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkEndStateRootHash,
           tracesFile = tracesFuture.get()?.tracesFileName,
           accountProof = accountProofFuture.get(),
           zkStateMerkleProof = stateProofFuture.get(),

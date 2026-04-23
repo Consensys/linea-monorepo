@@ -1,6 +1,5 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
-import build.linea.clients.LineaAccountProof
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
@@ -25,7 +24,7 @@ data class InvalidityProofRequestDto(
   val invalidityType: String,
   val zkParentStateRootHash: String,
   val conflatedExecutionTracesFile: String?,
-  val accountMerkleProof: AccountProofDto?,
+  val accountMerkleProof: JsonNode?,
   val zkStateMerkleProof: ArrayNode?,
   val simulatedExecutionBlockNumber: Long,
   val simulatedExecutionBlockTimestamp: Long,
@@ -40,23 +39,13 @@ data class InvalidityProofRequestDto(
         invalidityType = invalidityProofRequest.invalidityReason.name,
         zkParentStateRootHash = invalidityProofRequest.zkParentStateRootHash.encodeHex(),
         conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse,
-        accountMerkleProof = AccountProofDto.fromDomainObject(invalidityProofRequest.accountProof),
+        accountMerkleProof = invalidityProofRequest.accountProof?.accountProof?.let {
+          jacksonObjectMapper().readTree(it)
+        },
         zkStateMerkleProof = invalidityProofRequest.zkStateMerkleProof?.zkStateMerkleProof,
         simulatedExecutionBlockNumber = invalidityProofRequest.simulatedExecutionBlockNumber.toLong(),
         simulatedExecutionBlockTimestamp = invalidityProofRequest.simulatedExecutionBlockTimestamp.epochSeconds,
       )
-    }
-  }
-}
-
-data class AccountProofDto(val accountProof: JsonNode) {
-  companion object {
-    fun fromDomainObject(lineaAccountProof: LineaAccountProof?): AccountProofDto? {
-      return lineaAccountProof
-        ?.accountProof
-        ?.let {
-          AccountProofDto(accountProof = jacksonObjectMapper().readTree(it))
-        }
     }
   }
 }
