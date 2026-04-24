@@ -11,7 +11,13 @@ echo "SHORT_COMMIT=$SHORT_COMMIT"
 if [ ! -d "$BESU_DIR/.git" ]; then
   echo "Cloning https://github.com/besu-eth/besu into $BESU_DIR"
   mkdir -p "$(dirname "$BESU_DIR")"
-  git clone --no-checkout https://github.com/besu-eth/besu.git "$BESU_DIR"
+  # Partial clone: skip trees + blobs on the initial fetch so we only download the
+  # commit graph + tag refs. That's all `git describe --tags --abbrev=0 <commit>`
+  # below needs, keeping the version-only resolve fast for published commits. If a
+  # later step (build-dist-and-publish.sh) actually needs source files, 
+  # a subsequent git checkout will fetch the needed blobs on demand as Git's
+  # promisor machinery fetches the missing trees/blobs on demand transparently.
+  git clone --filter=tree:0 --no-checkout https://github.com/besu-eth/besu.git "$BESU_DIR"
   cd "$BESU_DIR" && git checkout "$BESU_COMMIT"
 else
   (cd "$BESU_DIR" && git reset --hard && git fetch origin && git checkout "$BESU_COMMIT")
