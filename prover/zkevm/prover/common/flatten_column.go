@@ -2,7 +2,6 @@ package common
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -154,7 +153,6 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 
 	l.Limbs = comp.InsertCommit(0, baseID, l.Size, true)
 
-	pragmas.MarkRightPadded(l.Limbs)
 }
 
 // Run maps trace limb columns and mask into the flattened columns.
@@ -179,8 +177,6 @@ func (l *FlattenColumn) assignMask(run *wizard.ProverRuntime) {
 }
 
 func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
-	pragmas.MarkRightPadded(l.Limbs)
-
 	limbsCols := make([][]field.Element, l.NbLimbsCols)
 	for i, limb := range l.OriginalLimbs {
 		limbsCols[i] = limb.GetColAssignment(run).IntoRegVecSaveAlloc()
