@@ -83,4 +83,5 @@ clean:
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
+	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/bin/
