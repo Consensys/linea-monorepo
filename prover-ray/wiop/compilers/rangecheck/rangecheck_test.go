@@ -53,7 +53,7 @@ func TestCompile_SharedRangeColumn(t *testing.T) {
 	rangecheck.Compile(sys)
 
 	// One range module for B=4 shared across both RangeChecks.
-	assert.Equal(t, modulesBeforeCompile+1, len(sys.Modules))
+	assert.Len(t, sys.Modules, modulesBeforeCompile+1)
 	require.Len(t, sys.TableRelations, 2)
 }
 
@@ -70,7 +70,7 @@ func TestCompile_DistinctBoundsDistinctModules(t *testing.T) {
 	rangecheck.Compile(sys)
 
 	// Two distinct bounds → two distinct range modules.
-	assert.Equal(t, modulesBeforeCompile+2, len(sys.Modules))
+	assert.Len(t, sys.Modules, modulesBeforeCompile+2)
 	require.Len(t, sys.TableRelations, 2)
 }
 
@@ -82,9 +82,9 @@ func TestCompile_Idempotent(t *testing.T) {
 
 	rangecheck.Compile(sys)
 
-	assert.Equal(t, relationsAfterFirst, len(sys.TableRelations),
+	assert.Len(t, sys.TableRelations, relationsAfterFirst,
 		"second Compile must not add new relations")
-	assert.Equal(t, modulesAfterFirst, len(sys.Modules),
+	assert.Len(t, sys.Modules, modulesAfterFirst,
 		"second Compile must not add new modules")
 }
 
