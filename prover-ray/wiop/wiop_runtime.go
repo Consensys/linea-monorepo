@@ -79,6 +79,8 @@ func NewRuntime(sys *System) Runtime {
 // dynamicModuleSize returns the domain size registered for m in this Runtime.
 // Called by [Module.RuntimeSize] for dynamic modules.
 func (run Runtime) dynamicModuleSize(m *Module) int {
+	run.lock.Lock()
+	defer run.lock.Unlock()
 	size, ok := run.dynamicSizes[m.index]
 	if !ok {
 		panic(fmt.Sprintf(
