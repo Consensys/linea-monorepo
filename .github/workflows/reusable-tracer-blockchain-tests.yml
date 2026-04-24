@@ -78,7 +78,7 @@ jobs:
         timeout-minutes: 360
         env:
           JUNIT_TESTS_PARALLELISM: 2
-          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --field=KOALABEAR_16 --report --air
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ github.head_ref || github.ref_name }}/
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
           FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}

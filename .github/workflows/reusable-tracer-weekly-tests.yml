@@ -29,7 +29,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew :tracer:arithmetization:weeklyTest
         env:
           JUNIT_TESTS_PARALLELISM: 2
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -v -b1024 --field=KOALABEAR_16 --ansi-escapes=false --report --mir
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
       - name: Upload test report
