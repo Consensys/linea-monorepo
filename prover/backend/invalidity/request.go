@@ -2,6 +2,7 @@ package invalidity
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
@@ -94,6 +95,10 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 			}
 			if req.ZkStateMerkleProof == nil {
 				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+			}
+			// Validate that beacon-roots timestamp in Shomei matches the request's simulatedExecutionBlockTimestamp, for EIP-4788
+			if err := ValidateShomeiTimestamp(req.ZkStateMerkleProof, req.SimulatedExecutionBlockTimestamp); err != nil {
+				return err
 			}
 		}
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
@@ -203,6 +208,110 @@ func validateNonExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.
 	if hKey.Cmp(plus.LeafOpening.HKey) >= 0 {
 		return fmt.Errorf("non-existing account: Hash(address)=%s >= hKey(plus)=%s",
 			hKey.Hex(), plus.LeafOpening.HKey.Hex())
+	}
+
+	return nil
+}
+
+// BeaconRootsAddress is the EIP-4788 beacon roots contract address.
+// This contract stores block timestamps in a ring buffer at slot = timestamp mod 8191.
+const BeaconRootsAddress = "0x000f3df6d732807ef1319fb7b8bb8522d0beac02"
+
+// BeaconRootsRingBufferSize is the ring buffer size for EIP-4788 (8191).
+const BeaconRootsRingBufferSize = 8191
+
+// ExtractBeaconTimestampFromShomei scans zkStateMerkleProof for storage operations
+// on the beacon-roots contract and extracts the implied block timestamp.
+// Returns (timestamp, found, error). If no beacon-roots entries are found, found=false.
+func ExtractBeaconTimestampFromShomei(traces [][]statemanager.DecodedTrace) (uint64, bool, error) {
+	beaconAddr := strings.ToLower(BeaconRootsAddress)
+
+	for _, blockTraces := range traces {
+		for _, trace := range blockTraces {
+			// Skip world-state traces (location == "0x")
+			if trace.Location == "0x" {
+				continue
+			}
+
+			// Check if this is a storage trace for the beacon-roots contract
+			location := strings.ToLower(trace.Location)
+			if location != beaconAddr {
+				continue
+			}
+
+			// Extract key and value based on trace type
+			key, value, ok := extractStorageKeyValue(trace)
+			if !ok {
+				continue
+			}
+
+			// The timestamp slot has key = timestamp mod 8191
+			// and value = timestamp itself
+			// Skip the beacon root slot (key = timestamp mod 8191 + 8191)
+			keyInt, _ := key.Uint64BigEndian()
+			if keyInt >= BeaconRootsRingBufferSize {
+				// This is the beacon root slot, not the timestamp slot
+				continue
+			}
+
+			valueInt, ok := value.Uint64BigEndian()
+			if !ok || valueInt == 0 {
+				continue
+			}
+
+			// Verify: value mod 8191 should equal key
+			if valueInt%BeaconRootsRingBufferSize != keyInt {
+				// Not a valid timestamp entry
+				continue
+			}
+
+			return valueInt, true, nil
+		}
+	}
+
+	return 0, false, nil
+}
+
+// extractStorageKeyValue extracts the storage key and new value from a decoded trace.
+// Returns (key, newValue, ok). Only handles storage trie traces (not world-state).
+func extractStorageKeyValue(trace statemanager.DecodedTrace) (types.FullBytes32, types.FullBytes32, bool) {
+	switch t := trace.Underlying.(type) {
+	case statemanager.ReadNonZeroTraceST:
+		return t.Key, t.Value, true
+	case statemanager.UpdateTraceST:
+		return t.Key, t.NewValue, true
+	case statemanager.InsertionTraceST:
+		return t.Key, t.Val, true
+	default:
+		return types.FullBytes32{}, types.FullBytes32{}, false
+	}
+}
+
+// ValidateShomeiTimestamp checks that the beacon-roots timestamp in zkStateMerkleProof
+// matches the simulatedExecutionBlockTimestamp in the request.
+func ValidateShomeiTimestamp(traces [][]statemanager.DecodedTrace, expectedTimestamp uint64) error {
+	shomeiTimestamp, found, err := ExtractBeaconTimestampFromShomei(traces)
+	if err != nil {
+		return fmt.Errorf("failed to extract beacon timestamp from zkStateMerkleProof: %w", err)
+	}
+
+	if !found {
+		// No beacon-roots entries found; this might be okay for some scenarios
+		return nil
+	}
+
+	if shomeiTimestamp != expectedTimestamp {
+		delta := int64(shomeiTimestamp) - int64(expectedTimestamp)
+		shomeiKey := shomeiTimestamp % BeaconRootsRingBufferSize
+		expectedKey := expectedTimestamp % BeaconRootsRingBufferSize
+		return fmt.Errorf(
+			"beacon-roots timestamp mismatch: zkStateMerkleProof implies timestamp %d (slot 0x%x), "+
+				"but simulatedExecutionBlockTimestamp is %d (slot 0x%x); delta=%d seconds. "+
+				"The Shomei proof was likely generated for a different block than the conflation",
+			shomeiTimestamp, shomeiKey,
+			expectedTimestamp, expectedKey,
+			delta,
+		)
 	}
 
 	return nil

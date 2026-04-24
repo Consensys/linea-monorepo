@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	backend "github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
@@ -15,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -147,4 +149,123 @@ func TestAccountTrieInputsNilProof(t *testing.T) {
 
 	_, _, _, err = req2.AccountTrieInputs()
 	require.Error(t, err, "should error on empty proof (no proof/leftProof/rightProof)")
+}
+
+func TestExtractBeaconTimestampFromShomei(t *testing.T) {
+	// Create a mock trace with beacon-roots storage update
+	// Timestamp 1777037095 -> slot 7836 (0x1e9c), value 0x69eb6f27
+	timestamp := uint64(1777037095)
+	slot := timestamp % backend.BeaconRootsRingBufferSize // 7836
+
+	// Create key = slot (as FullBytes32)
+	var key types.FullBytes32
+	key[31] = byte(slot & 0xff)
+	key[30] = byte((slot >> 8) & 0xff)
+
+	// Create value = timestamp (as FullBytes32)
+	var value types.FullBytes32
+	value[31] = byte(timestamp & 0xff)
+	value[30] = byte((timestamp >> 8) & 0xff)
+	value[29] = byte((timestamp >> 16) & 0xff)
+	value[28] = byte((timestamp >> 24) & 0xff)
+
+	trace := statemanager.DecodedTrace{
+		Location: backend.BeaconRootsAddress,
+		Type:     statemanager.UPDATE_TRACE_CODE,
+		Underlying: statemanager.UpdateTraceST{
+			Key:      key,
+			NewValue: value,
+		},
+	}
+
+	traces := [][]statemanager.DecodedTrace{{trace}}
+
+	extractedTimestamp, found, err := backend.ExtractBeaconTimestampFromShomei(traces)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, timestamp, extractedTimestamp)
+}
+
+func TestExtractBeaconTimestampFromShomei_NoBeaconRoots(t *testing.T) {
+	// Empty traces
+	traces := [][]statemanager.DecodedTrace{}
+	_, found, err := backend.ExtractBeaconTimestampFromShomei(traces)
+	require.NoError(t, err)
+	assert.False(t, found)
+
+	// Trace for different address
+	var key, value types.FullBytes32
+	trace := statemanager.DecodedTrace{
+		Location: "0x1234567890123456789012345678901234567890",
+		Type:     statemanager.UPDATE_TRACE_CODE,
+		Underlying: statemanager.UpdateTraceST{
+			Key:      key,
+			NewValue: value,
+		},
+	}
+	traces = [][]statemanager.DecodedTrace{{trace}}
+	_, found, err = backend.ExtractBeaconTimestampFromShomei(traces)
+	require.NoError(t, err)
+	assert.False(t, found)
+}
+
+func TestValidateShomeiTimestamp_Match(t *testing.T) {
+	timestamp := uint64(1777037095)
+	slot := timestamp % backend.BeaconRootsRingBufferSize
+
+	var key types.FullBytes32
+	key[31] = byte(slot & 0xff)
+	key[30] = byte((slot >> 8) & 0xff)
+
+	var value types.FullBytes32
+	value[31] = byte(timestamp & 0xff)
+	value[30] = byte((timestamp >> 8) & 0xff)
+	value[29] = byte((timestamp >> 16) & 0xff)
+	value[28] = byte((timestamp >> 24) & 0xff)
+
+	trace := statemanager.DecodedTrace{
+		Location: backend.BeaconRootsAddress,
+		Type:     statemanager.UPDATE_TRACE_CODE,
+		Underlying: statemanager.UpdateTraceST{
+			Key:      key,
+			NewValue: value,
+		},
+	}
+
+	traces := [][]statemanager.DecodedTrace{{trace}}
+
+	err := backend.ValidateShomeiTimestamp(traces, timestamp)
+	assert.NoError(t, err)
+}
+
+func TestValidateShomeiTimestamp_Mismatch(t *testing.T) {
+	shomeiTimestamp := uint64(1777037102) // 7 seconds later
+	requestTimestamp := uint64(1777037095)
+	slot := shomeiTimestamp % backend.BeaconRootsRingBufferSize
+
+	var key types.FullBytes32
+	key[31] = byte(slot & 0xff)
+	key[30] = byte((slot >> 8) & 0xff)
+
+	var value types.FullBytes32
+	value[31] = byte(shomeiTimestamp & 0xff)
+	value[30] = byte((shomeiTimestamp >> 8) & 0xff)
+	value[29] = byte((shomeiTimestamp >> 16) & 0xff)
+	value[28] = byte((shomeiTimestamp >> 24) & 0xff)
+
+	trace := statemanager.DecodedTrace{
+		Location: backend.BeaconRootsAddress,
+		Type:     statemanager.UPDATE_TRACE_CODE,
+		Underlying: statemanager.UpdateTraceST{
+			Key:      key,
+			NewValue: value,
+		},
+	}
+
+	traces := [][]statemanager.DecodedTrace{{trace}}
+
+	err := backend.ValidateShomeiTimestamp(traces, requestTimestamp)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "beacon-roots timestamp mismatch")
+	assert.Contains(t, err.Error(), "delta=7")
 }
