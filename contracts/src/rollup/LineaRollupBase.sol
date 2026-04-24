@@ -368,7 +368,6 @@ abstract contract LineaRollupBase is
    * @dev Computing the public input as the following:
    * keccak256(
    *  abi.encode(
-   *     _finalizationData.parentStateRootHash,
    *     _lastFinalizedShnarf,
    *     _finalShnarf,
    *     _finalizationData.lastFinalizedTimestamp,
@@ -422,23 +421,19 @@ abstract contract LineaRollupBase is
   ) private pure returns (uint256 publicInput) {
     assembly {
       let mPtr := mload(0x40)
-
-      // _finalizationData.parentStateRootHash
-      calldatacopy(mPtr, _finalizationData, 0x20)
-
-      mstore(add(mPtr, 0x20), _lastFinalizedShnarf)
-      mstore(add(mPtr, 0x40), _finalShnarf)
+      mstore(mPtr, _lastFinalizedShnarf)
+      mstore(add(mPtr, 0x20), _finalShnarf)
 
       /**
        * _finalizationData.lastFinalizedTimestamp
        * _finalizationData.finalTimestamp
        */
-      calldatacopy(add(mPtr, 0x60), add(_finalizationData, 0xe0), 0x40)
+      calldatacopy(add(mPtr, 0x40), add(_finalizationData, 0xe0), 0x40)
 
-      mstore(add(mPtr, 0xA0), _lastFinalizedBlockNumber)
+      mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
       // _finalizationData.endBlockNumber
-      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x20), 0x20)
+      calldatacopy(add(mPtr, 0xA0), add(_finalizationData, 0x20), 0x20)
 
       /**
        * _finalizationData.lastFinalizedL1RollingHash
@@ -447,22 +442,22 @@ abstract contract LineaRollupBase is
        * _finalizationData.l1RollingHashMessageNumber
        * _finalizationData.l2MerkleTreesDepth
        */
-      calldatacopy(add(mPtr, 0xE0), add(_finalizationData, 0x120), 0xA0)
+      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
 
       /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
-       * as we need the space left for the array hash to be stored at 0x180.
+       * as we need the space left for the array hash to be stored at 0x160.
        */
-      let mPtrMerkleRoot := add(mPtr, 0x1C0)
+      let mPtrMerkleRoot := add(mPtr, 0x180)
       let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x1c0)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
-      mstore(add(mPtr, 0x180), l2MerkleRootsHash)
-      mstore(add(mPtr, 0x1A0), _verifierChainConfiguration)
+      mstore(add(mPtr, 0x160), l2MerkleRootsHash)
+      mstore(add(mPtr, 0x180), _verifierChainConfiguration)
 
-      publicInput := mod(keccak256(mPtr, 0x1C0), MODULO_R)
+      publicInput := mod(keccak256(mPtr, 0x1A0), MODULO_R)
     }
   }
 
