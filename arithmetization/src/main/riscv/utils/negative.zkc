@@ -30,4 +30,3 @@ fn negative_of_word(a:Word) -> (a_neg:Word) {
     }
 }
 
-
