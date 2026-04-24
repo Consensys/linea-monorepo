@@ -18,21 +18,22 @@ var pc          : Address = entry_point[0]
 var opcode      : Opcode
 var instruction : Instruction
 var stop_signal : u1 = 0
-var length : Address = riscV_program_length[0]
-var program_offset : Address = riscV_program_offset[0]
-var in_bytes_offset : Address = in_bytes_offset[0]
+var program_len : Address = riscV_program_length[0]
+var in_bytes_len : Address = in_bytes_length[0]
+var program_off : Address = riscV_program_offset[0]
+var in_bytes_off : Address = in_bytes_offset[0]
 
 // copy public inputs and r5-program into the RAM
-for i:Address=0; i<riscV_program_length[0] as Address; i=i+1 {
-    write_8((program_offset + i) as Address, riscV_program[i])
+for i:Address=0; i<program_len as Address; i=i+1 {
+    write_8((program_off + i) as Address, riscV_program[i])
 }
-for j:Address=0; j<in_bytes_length[0]; j=j+1 {
-    write_8((in_bytes_offset + j) as Address, in_bytes[j])
+for j:Address=0; j<in_bytes_len; j=j+1 {
+    write_8((in_bytes_off + j) as Address, in_bytes[j])
 }
 
-printf "program length=%d\n", riscV_program_length[0]
+printf "program length=%d\n", program_len
 
-while stop_signal == 0 && pc < length {
+while stop_signal == 0 && pc < program_len {
       printf "PC=%x\n", pc      
       instruction = read_32(pc) as Instruction
       pc = interpreter(instruction, pc)
