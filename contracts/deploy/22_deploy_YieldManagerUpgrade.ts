@@ -16,18 +16,23 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
     const contractName = "YieldManager";
     const contract = await deployFromFactory(contractName, signer, lineaRollupAddress);
-    const yieldManagerAddress = await contract.getAddress();
+    const newYieldManagerImplementationAddress = await contract.getAddress();
     await LogContractDeployment(contractName, contract);
-    await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
-      lineaRollupAddress,
-    ]);
+    await tryVerifyContractWithConstructorArgs(
+      newYieldManagerImplementationAddress,
+      "src/yield/YieldManager.sol:YieldManager",
+      [lineaRollupAddress],
+    );
 
     // Encoding for the upgrade call to be executed through the Safe.
     // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
     // https://www.4byte.directory/signatures/?bytes4_signature=0x99a88ec4
     const upgradeCallUsingSecurityCouncil = ethers.concat([
       "0x99a88ec4",
-      ethers.AbiCoder.defaultAbiCoder().encode(["address", "address"], [yieldManagerProxyAddress, yieldManagerAddress]),
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "address"],
+        [yieldManagerProxyAddress, newYieldManagerImplementationAddress],
+      ),
     ]);
 
     console.log("Encoded Tx Upgrade from Security Council:", "\n", upgradeCallUsingSecurityCouncil);
