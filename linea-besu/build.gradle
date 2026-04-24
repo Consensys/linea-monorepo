@@ -205,12 +205,13 @@ static void writeCachedBesuVersion(File cachedResolvedFile, String besuCommit, S
  * tmp/besu-eth is created or updated to a git checkout at besuCommit. Configuration-cache
  * safe — Gradle tracks the exec inputs and captured output.
  */
-static String runCheckoutAndResolveScript(providers, String besuCommit, File rootDir) {
+static String runCheckoutAndResolveScript(providers, String besuCommit, File rootDir, Boolean skipCheckoutAfterClone = false) {
   return providers.exec { spec ->
     spec.workingDir(rootDir)
     spec.environment('BESU_DIR', rootDir.absolutePath + '/tmp/besu-eth')
     spec.environment('BESU_COMMIT', besuCommit)
     spec.environment('VERSION_LABEL', '')
+    spec.environment('SKIP_CHECKOUT_AFTER_CLONE', skipCheckoutAfterClone)
     spec.commandLine('bash', rootDir.absolutePath + '/linea-besu/scripts/checkout-and-resolve-version.sh')
   }.standardOutput.asText.get()
 }
@@ -223,7 +224,9 @@ static String resolveBesuVersionCached(providers, String besuCommit, File rootDi
   def cached = readCachedBesuVersion(cachedResolvedFile, besuCommit)
   if (cached) return cached
 
-  def besuVer = runCheckoutAndResolveScript(providers, besuCommit, rootDir).trim().readLines().last()
+  // set last parameter as true to skip checkout the besu commit
+  // to save time as we only needs to retrieve the git tag
+  def besuVer = runCheckoutAndResolveScript(providers, besuCommit, rootDir, true).trim().readLines().last()
   writeCachedBesuVersion(cachedResolvedFile, besuCommit, besuVer)
   return besuVer
 }
