@@ -5,6 +5,7 @@ services:
   l2-genesis-initialization:
     image: busybox:latest
     container_name: l2-genesis-intialization
+    profiles: [ "external-to-monorepo" ]
     environment:
       CREATE_EMPTY_BLOCKS: ${CREATE_EMPTY_BLOCKS:-false}
     entrypoint: [ "sh","/initialization/init.sh" ]
@@ -95,7 +96,7 @@ services:
     hostname: l2-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "debug" ]
+    profiles: [ "l2", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -171,7 +172,7 @@ services:
     hostname: l2-node-besu-leader
     container_name: l2-node-besu-leader
     image: consensys/linea-besu-package-with-fleet:${LINEA_BESU_PACKAGE_TAG:-beta-v6-20260410083640-74d51b7}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -215,7 +216,7 @@ services:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
     image: consensys/linea-besu-package-with-fleet:${LINEA_BESU_PACKAGE_TAG:-beta-v6-20260410083640-74d51b7}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug" ]
     depends_on:
       sequencer:
         condition: service_healthy
