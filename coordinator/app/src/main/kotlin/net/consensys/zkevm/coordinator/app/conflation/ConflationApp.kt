@@ -4,6 +4,10 @@ import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.clients.ExecutionProverClientV2
+import linea.conflation.ConflationService
+import linea.conflation.DynamicBlockNumberSet
+import linea.conflation.calculators.BlockConflationCalculator
+import linea.conflation.calculators.ConflationCalculatorFactory
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
@@ -27,7 +31,6 @@ import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.createCalculatorsForBlobsAndConflation
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.createDeadlineConflationCalculatorRunner
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeAggregationFrom
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
@@ -37,7 +40,6 @@ import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.ConflationTargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
-import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -56,14 +58,8 @@ import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculat
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProviderImpl
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.BlockToBatchSubmissionCoordinator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationService
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationServiceImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlobAwareConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlockConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConflationHandlerImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.TimestampHardForkConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandlerImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
@@ -237,51 +233,25 @@ class ConflationApp(
     }
   }
 
-  private val conflationCalculator: TracesConflationCalculator = run {
-    val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
-
-    // To fail faster for JNA reasons
+  private val conflationCalculator: BlockConflationCalculator = run {
     val blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
       compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
       dataLimit = configs.conflation.blobCompression.blobSizeLimit,
       metricsFacade = metricsFacade,
     )
-
-    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
+    ConflationCalculatorFactory.conflationCalculator(
       blobCompressor = blobCompressor,
-    )
-    val syncCalculators = createCalculatorsForBlobsAndConflation(
-      configs = configs,
-      compressedBlobCalculator = compressedBlobCalculator,
+      tracesCountersLimit = configs.conflation.tracesLimits,
+      blocksLimit = configs.conflation.blocksLimit,
+      timestampBasedHardForks = configs.conflation.proofAggregation.timestampBasedHardForks,
+      lastProcessedBlockNumber = lastProcessedBlockNumber,
       lastProcessedTimestamp = lastProcessedTimestamp,
-      dynamicTargetEndBlockNumberSet = dynamicTargetEndBlockNumberSet,
-      logger = logger,
-      metricsFacade = metricsFacade,
-    ).also {
-      it.filterIsInstance<TimestampHardForkConflationCalculator>().forEach { calculator ->
-        log.info(
-          "Added timestamp-based hard fork calculator={} ",
-          calculator,
-        )
-      }
-    }
-
-    val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
-      syncCalculators = syncCalculators + forcedTransactionsApp.conflationCalculator,
-      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
-      emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
-      log = logger,
-    )
-
-    val batchesLimit = configs.conflation.blobCompression.batchesLimit
-      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
-    GlobalBlobAwareConflationCalculator(
-      conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
-      metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit,
+      blobBatchesLimit = configs.conflation.blobCompression.batchesLimit,
+      aggregationProofsLimit = configs.conflation.proofAggregation.proofsLimit,
       dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
+      extraSyncCalculators = listOf(forcedTransactionsApp.conflationCalculator),
+      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
+      metricsFacade = metricsFacade,
     )
   }
 

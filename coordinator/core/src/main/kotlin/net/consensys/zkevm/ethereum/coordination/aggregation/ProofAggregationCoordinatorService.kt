@@ -3,6 +3,12 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.clients.ProofAggregationProverClientV2
+import linea.conflation.calculators.AggregationCalculator
+import linea.conflation.calculators.AggregationCalculatorFactory
+import linea.conflation.calculators.AggregationHandler
+import linea.conflation.calculators.AggregationTriggerCalculatorByDeadline
+import linea.conflation.calculators.AggregationTriggerCalculatorByDeadlineRunner
+import linea.conflation.calculators.SyncAggregationTriggerCalculator
 import linea.domain.Aggregation
 import linea.domain.AggregationProofIndex
 import linea.domain.BlobAndBatchCounters
@@ -305,35 +311,19 @@ class ProofAggregationCoordinatorService(
           clock = Clock.System,
           latestBlockProvider = latestBlockProvider,
         )
-      val syncAggregationTriggerCalculators = mutableListOf<SyncAggregationTriggerCalculator>(
-        forcedTransactionTriggerAggCalculator,
-        AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = maxProofsPerAggregation),
-        AggregationTriggerCalculatorByTargetBlockNumbers(
-          targetEndBlockNumbers = targetEndBlockNumbers,
-        ),
+
+      val globalAggregationCalculator = AggregationCalculatorFactory.createAggregationCalculator(
+        startBlockNumberInclusive = startBlockNumberInclusive,
+        maxProofsPerAggregation = maxProofsPerAggregation,
+        maxBlobsPerAggregation = maxBlobsPerAggregation,
+        targetEndBlockNumbers = targetEndBlockNumbers,
+        aggregationSizeMultipleOf = aggregationSizeMultipleOf,
+        hardForkTimestamps = hardForkTimestamps,
+        initialTimestamp = initialTimestamp,
+        forcedTransactionTriggerAggCalculator = forcedTransactionTriggerAggCalculator,
+        deferredAggregationTriggerCalculators = listOf(aggregationCalculatorByDeadline),
+        metricsFacade = metricsFacade,
       )
-      if (maxBlobsPerAggregation != null) {
-        syncAggregationTriggerCalculators
-          .add(AggregationTriggerCalculatorByBlobLimit(maxBlobsPerAggregation = maxBlobsPerAggregation))
-      }
-
-      if (hardForkTimestamps.isNotEmpty()) {
-        syncAggregationTriggerCalculators.add(
-          AggregationTriggerCalculatorByTimestampHardFork(
-            hardForkTimestamps = hardForkTimestamps,
-            initialTimestamp = initialTimestamp,
-          ),
-        )
-      }
-
-      val globalAggregationCalculator =
-        GlobalAggregationCalculator(
-          lastBlockNumber = startBlockNumberInclusive - 1UL,
-          syncAggregationTrigger = syncAggregationTriggerCalculators,
-          deferredAggregationTrigger = listOf(aggregationCalculatorByDeadline),
-          metricsFacade = metricsFacade,
-          aggregationSizeMultipleOf = aggregationSizeMultipleOf,
-        )
 
       val deadlineCheckRunner =
         AggregationTriggerCalculatorByDeadlineRunner(
