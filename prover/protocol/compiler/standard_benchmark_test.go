@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -100,23 +101,23 @@ var (
 			Permutations: SubModuleParameters{
 				Count:  5,
 				NumCol: 3,
-				NumRow: 1 << 20,
+				NumRow: 1 << 17,
 			},
 			Lookup: SubModuleParameters{
 				Count:     50,
 				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
 			},
 			Projection: SubModuleParameters{
 				Count:     5,
 				NumCol:    3,
-				NumRow:    1 << 20,
-				NumRowAux: 1 << 20,
+				NumRow:    1 << 17,
+				NumRowAux: 1 << 17,
 			},
 			Fibo: SubModuleParameters{
 				Count:  200,
-				NumRow: 1 << 20,
+				NumRow: 1 << 17,
 			},
 		},
 		// {
@@ -183,14 +184,19 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	const NbOpenedColumns = 64
 	const RsInverseRate = 16
+	var (
+		initialColSizeRange = [2]int{10, 13}
+		midRowSizeRange     = [2]int{10, 13}
+		finalRowSizeRange   = [2]int{10, 12}
+	)
 
 	// nbIteration = 2 is the best setting with minimun proof size
 	// go test -timeout=10h -test.fullpath=true -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
-	for nbIteration := 1; nbIteration < 5; nbIteration++ {
+	for nbIteration := 1; nbIteration < 3; nbIteration++ {
 
 		fmt.Printf("\n\n\n\n-------------------------------------------\n nbIteration = %v\n\n", nbIteration)
 
-		for lastIterationTargetRowSize := 9; lastIterationTargetRowSize < 14; lastIterationTargetRowSize++ {
+		for lastIterationTargetRowSize := finalRowSizeRange[0]; lastIterationTargetRowSize <= finalRowSizeRange[1]; lastIterationTargetRowSize++ {
 
 			lastIterationParams := selfRecursionParameters{
 				NbOpenedColumns: NbOpenedColumns,
@@ -198,7 +204,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 				TargetRowSize:   1 << lastIterationTargetRowSize,
 			}
 
-			for midIterationsTargetRowSize := 6; midIterationsTargetRowSize < 14; midIterationsTargetRowSize++ {
+			for midIterationsTargetRowSize := midRowSizeRange[0]; midIterationsTargetRowSize <= midRowSizeRange[1]; midIterationsTargetRowSize++ {
 
 				midIterationsParams := selfRecursionParameters{
 					NbOpenedColumns: NbOpenedColumns,
@@ -206,7 +212,12 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 					TargetRowSize:   1 << midIterationsTargetRowSize,
 				}
 
-				for initIterationTargetColSize := 13; initIterationTargetColSize < 20; initIterationTargetColSize++ {
+				for initIterationTargetColSize := initialColSizeRange[0]; initIterationTargetColSize <= initialColSizeRange[1]; initIterationTargetColSize++ {
+
+					// // This rules out inconsistent configurations
+					// if lastIterationTargetRowSize >= midIterationsTargetRowSize {
+					// 	continue
+					// }
 
 					iterationParams := selfRecursionIterationParameters{
 						InitTargetColSize: 1 << initIterationTargetColSize,
@@ -220,8 +231,15 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 							sbc.Define,
 							compiler.Arcane(
 								compiler.WithTargetColSize(1<<initIterationTargetColSize),
-								compiler.WithStitcherMinSize(1<<8),
+								compiler.WithStitcherMinSize(16),
 							),
+						)
+
+						statsInitial := logdata.GetWizardStats(comp)
+						b.ReportMetric(float64(statsInitial.NumCellsCommitted), "#committed-cells-initial")
+
+						comp = wizard.ContinueCompilation(
+							comp,
 							vortex.Compile(
 								RsInverseRate,
 								false,
@@ -232,19 +250,122 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 						)
 
 						for i := 0; i < nbIteration-1; i++ {
-							applySelfRecursionThenArcane(comp, midIterationsParams)
+							midColSize, midPostSR := applySelfRecursionThenArcane(comp, midIterationsParams)
+							b.ReportMetric(float64(midColSize), fmt.Sprintf("#arcane-colsize-mid-%d", i))
+							b.ReportMetric(float64(midPostSR), fmt.Sprintf("#committed-cells-post-sr-mid-%d", i))
+
+							statsmid := logdata.GetWizardStats(comp)
+							b.ReportMetric(float64(statsmid.NumCellsCommitted), fmt.Sprintf("#committed-cells-mid-%d", i))
+
 							applyVortex(comp, midIterationsParams, false)
 						}
 
+						lastColSize, lastPostSR := applySelfRecursionThenArcane(comp, lastIterationParams)
+						b.ReportMetric(float64(lastColSize), "#arcane-colsize-last")
+						b.ReportMetric(float64(lastPostSR), "#committed-cells-post-sr-last")
+
+						statsmid := logdata.GetWizardStats(comp)
+						b.ReportMetric(float64(statsmid.NumCellsCommitted), "#committed-cells-last")
+						b.ReportMetric(float64(statsmid.NumColumnsCommitted), "#committed-rows-last")
+						b.ReportMetric(float64(statsmid.NumColumnsPrecomputed), "#precomputed-rows-last")
+						b.ReportMetric(float64(utils.NextPowerOfTwo(statsmid.NumColumnsCommitted+statsmid.NumColumnsPrecomputed)), "#committed-rows-total-pow2")
+
+						applyVortex(comp, lastIterationParams, false)
+
 						statsVortex := logdata.GetWizardStats(comp)
 
-						applySelfRecursionThenArcane(comp, lastIterationParams)
-
-						statsArcane := logdata.GetWizardStats(comp)
-
-						b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
 						b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
 
+						// Compute the total transcript size
+						fsCost := 0
+						for _, s := range statsVortex.Transcript {
+							fsCost += s.NumFieldSampled + utils.DivCeil(s.NumFieldWritten, 8)
+						}
+
+						b.ReportMetric(float64(fsCost), "#fiat-shamir-poseidon")
+
+						// Breakdown of the FS cost by message category. Each column
+						// contributes ceil(weightBaseCells / 8) Poseidon2 perms; each
+						// coin contributes NumFieldSampled directly (mirrors the
+						// stats.go accounting).
+						var (
+							ualphaCells     int
+							selectedCells   int
+							merkleProofCell int
+							merkleRootCell  int
+							otherColCells   int
+							queryParamCells int
+							coinSampled     int
+						)
+						for round := 0; round < comp.NumRounds(); round++ {
+							for _, colName := range comp.Columns.AllKeysInProverTranscript(round) {
+								if comp.Columns.IsExplicitlyExcludedFromProverFS(colName) {
+									continue
+								}
+								if comp.Precomputed.Exists(colName) {
+									continue
+								}
+								col := comp.Columns.GetHandle(colName)
+								w := col.Size()
+								if !col.IsBase() {
+									w *= 4
+								}
+								name := string(colName)
+								switch {
+								case strings.Contains(name, "ROW_LINEAR_COMBINATION"):
+									ualphaCells += w
+								case strings.Contains(name, "SELECTED_COL"):
+									selectedCells += w
+								case strings.Contains(name, "MERKLEPROOF"):
+									merkleProofCell += w
+								case strings.Contains(name, "MERKLEROOT"):
+									merkleRootCell += w
+								default:
+									otherColCells += w
+								}
+							}
+							for _, qName := range comp.QueriesParams.AllKeysAt(round) {
+								if comp.QueriesParams.IsSkippedFromProverTranscript(qName) {
+									continue
+								}
+								switch q := comp.QueriesParams.Data(qName).(type) {
+								case query.UnivariateEval:
+									queryParamCells += len(q.Pols) * 4
+								case query.InnerProduct:
+									queryParamCells += len(q.Bs) * 4
+								case *query.Horner:
+									queryParamCells += 4 + 2*len(q.Parts)
+								case query.LocalOpening:
+									if q.IsBase() {
+										queryParamCells += 1
+									} else {
+										queryParamCells += 4
+									}
+								case query.LogDerivativeSum, query.GrandProduct:
+									queryParamCells += 4
+								}
+							}
+							for _, coinName := range comp.Coins.AllKeysAt(round) {
+								if comp.Coins.IsSkippedFromProverTranscript(coinName) {
+									continue
+								}
+								info := comp.Coins.Data(coinName)
+								if info.Type == coin.FieldExt {
+									coinSampled += 4
+								} else {
+									coinSampled += utils.DivCeil(info.Size*utils.Log2Ceil(info.UpperBound), field.Bits)
+								}
+							}
+						}
+
+						b.ReportMetric(float64(ualphaCells/4), "#codeword")
+						b.ReportMetric(float64(utils.DivCeil(ualphaCells, 8)), "#fs-ualpha")
+						b.ReportMetric(float64(utils.DivCeil(selectedCells, 8)), "#fs-selected-col")
+						b.ReportMetric(float64(utils.DivCeil(merkleProofCell, 8)), "#fs-merkle-proof")
+						b.ReportMetric(float64(utils.DivCeil(merkleRootCell, 8)), "#fs-merkle-root")
+						b.ReportMetric(float64(utils.DivCeil(otherColCells, 8)), "#fs-other-col")
+						b.ReportMetric(float64(utils.DivCeil(queryParamCells, 8)), "#fs-query-params")
+						b.ReportMetric(float64(coinSampled), "#fs-coin-sampled")
 					})
 				}
 			}
@@ -469,25 +590,26 @@ func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRu
 }
 
 // applySelfRecursionThenArcane applies the self-recursion step and then the
-// arcane step using the provided parameters.
-func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+// arcane step using the provided parameters. Returns the derived colSize and
+// the post-SR / pre-Arcane committed-cell count (the divisor input).
+func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursionParameters) (colSize, postSRCells int) {
 
 	selfrecursion.SelfRecurse(comp)
 
-	var (
-		stats      = logdata.GetWizardStats(comp)
-		totalCells = stats.NumCellsCommitted
-		rowSize    = utils.NextPowerOfTwo(utils.DivCeil(totalCells, params.TargetRowSize))
-	)
+	stats := logdata.GetWizardStats(comp)
+	postSRCells = stats.NumCellsCommitted
+	colSize = utils.NextPowerOfTwo(utils.DivCeil(postSRCells, params.TargetRowSize))
 
 	_ = wizard.ContinueCompilation(
 		comp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(rowSize),
+			compiler.WithTargetColSize(colSize),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 	)
+
+	return colSize, postSRCells
 }
 
 // applyVortex applies the vortex step using the provided parameters.
