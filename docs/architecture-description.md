@@ -1,4 +1,4 @@
-# Linea architecture alpha v3
+# Linea architecture beta v4
 
 > For per-feature documentation covering contracts, backend services, test coverage, and configuration, see the [Feature Documentation](features/README.md).
 
@@ -9,13 +9,18 @@ B) IntelliJ - https://www.jetbrains.com/help/idea/markdown.html#table-of-content
 -->
 
 <!-- TOC -->
-* [Linea architecture - alpha v3](#linea-architecture---alpha-v3)
+* [Linea architecture beta v4](#linea-architecture-beta-v4)
 * [Transaction execution and management](#transaction-execution-and-management)
   * [File system](#file-system)
+  * [Full node](#full-node)
   * [Sequencer](#sequencer)
+    * [Finalized Block Tag on L2](#finalized-block-tag-on-l2)
+    * [Credible layer](#credible-layer)
+  * [Invalid Tx reporting tool](#invalid-tx-reporting-tool)
   * [State manager](#state-manager)
     * [For L1 finalized states](#for-l1-finalized-states)
     * [For latest L2 states](#for-latest-l2-states)
+  * [State reconstruction](#state-reconstruction)
   * [Coordinator](#coordinator)
     * [Batches](#batches)
     * [Blobs](#blobs)
@@ -30,18 +35,22 @@ B) IntelliJ - https://www.jetbrains.com/help/idea/markdown.html#table-of-content
   * [Traces API](#traces-api)
   * [Provers](#provers)
     * [Execution proofs](#execution-proofs)
-    * [Compression Proof](#compression-proof)
+    * [Compression proof](#compression-proof)
     * [Aggregation proof](#aggregation-proof)
   * [Web3 signer](#web3-signer)
   * [L2 message service](#l2-message-service)
 * [Gas price setting](#gas-price-setting)
+  * [Gas pricing propagation](#gas-pricing-propagation)
+    * [ExtraData](#extradata)
+    * [Direct RPC calls](#direct-rpc-calls)
+    * [Ways to compute Legacy cost](#ways-to-compute-legacy-cost)
 * [L1 &lt;-> L2 interactions](#l1---l2-interactions)
   * [L1 finalization](#l1-finalization)
     * [Blobs](#blobs-1)
     * [Aggregation](#aggregation-1)
   * [L1 -> L2 messages](#l1---l2-messages)
   * [L2 -> L1](#l2---l1)
-* [Finalized block tag on L2](#finalized-block-tag-on-l2)
+  * [Forced transactions](#forced-transactions)
 <!-- TOC -->
 
 # Transaction execution and management
@@ -86,18 +95,29 @@ The file system is used to store files for:
 
 A script automatically removes all files that are more than one week old.
 
+## Full node
+Full nodes consist of a consensus layer (CL) and an execution layer (EL). Full nodes connected to Linea must use Maru as a
+consensus layer and can choose any Execution layer working for the ethereum mainnet.
+Besu, Geth, Nethermind are tested as part of our release process.
+The CL and EL interactions are done via the engine API as per Ethereum specifications.
+
+When a Full node receives a transaction via RPC it evaluates whether the sequencer will accept it by doing both a light
+counting using the tracer plugin (in limitless mode) and a profitability check. The tracer plugin is called internally
+the same way the sequencer would do it.
+
 
 ## Sequencer
-
 > **Note**: The consensus protocol has since moved from Clique to QBFT via the [Maru](https://github.com/Consensys/maru) consensus client. See the [official architecture docs](https://docs.linea.build/protocol/architecture) for the current design.
 
-There is a unique instance of Sequencer. It’s a special instance of a consensus client based on Besu. The consensus protocol used is Clique.
+There is a unique instance of Sequencer. It’s a special instance of a full node using Besu as the Execution Layer.
+The consensus protocol used is QBFT with a single node, being functionally equivalent
+to Clique.
 
-The sequencer receives the transactions pre-validated by the Ethereum nodes in order to execute them. It arranges and combines the transactions into blocks.
-
+The EL of the sequencer selects and combines the transactions into blocks.
 Blocks produced by the sequencer, in addition to common verifications, must fulfill the below requirements:
 
-
+The Besu part of the sequencer has the following plugins enabled: tracer (in limitless mode), credible layer.
+Besu makes internal calls to the plugins through the [Besu's plugin interfaces](https://besu.hyperledger.org/en/stable/Concepts/Plugins/Plugin-Interface/).
 
 1. trace counts are small enough to ensure the prover can prove the block
 2. the block total gas usage is below the gasLimit parameter
@@ -109,11 +129,15 @@ Blocks produced by the sequencer, in addition to common verifications, must fulf
    e. gas limit is below the configured limit.
 4. compressed block data can fit into a blob of size 128kB.
 
-Transactions exceeding trace limits are added to an unexecutableTxList in-memory to avoid reconsidering them. Similarly transactions that take too long to be processed by the sequencer are added to the unexecutable list. Transactions from the unexecutable lists are removed from the pool.
+Transactions exceeding trace limits are added to an unexecutableTxList in-memory to avoid reconsidering them. Similarly,
+transactions that take too long to be processed by the sequencer are added to the unexecutable list.
+Transactions from the unexecutable lists are removed from the pool.
 
-Priority transactions are prioritized over normal ones. Priority transactions are those sent by a user whose address is in a predefined list. It typically corresponds to transactions triggered by the Linea system.
+Priority transactions are prioritized over normal ones. Priority transactions are those sent by a user whose address is
+in a predefined list. It typically corresponds to transactions triggered by the Linea system.
 
-Note that if no transactions are received within the block window, no block is generated. This behavior differs from Ethereum mainnet, where empty blocks are still produced to maintain chain continuity and prevent certain attacks.
+Note that if no transactions are received within the block window, no block is generated.
+This behavior differs from Ethereum mainnet, where empty blocks are still produced to maintain chain continuity and prevent certain attacks.
 
 If a transaction could not be included in the current block, it will remain as a candidate for inclusion in the next block.
 
@@ -131,30 +155,90 @@ eth_getBlockByNumber(
 )
 ```
 
+### Finalized Block Tag on L2
+[Maru](https://github.com/Consensys/maru) will be responsible on updating the execution clients for `finalized` block tag on L1.
+It will connect to Ethereum mainnet and track Linea finalization events.
+
+### Credible layer
+When the sequencer evaluates transactions for inclusion in a block, it also sends it for validation to the credible layer service.
+The credible layer is a set of third party service that is responsible for validating assertion attached to the smart contract with which the transactions interact.
+In case some assertions are not respected, the sequencer will not include the tx in the block being built.
+The architecture of the credible layer is out of scope of this document.
+
+## Invalid Tx reporting tool
+This is a service reporting transactions that are not selected by the sequencer for reasons related to the proof system. Such reasons are typically
+because the transaction overflows the line counts, or because it is a forced transaction but is invalid.
+
+The API exposed by this service are:
+```
+linea_getTransactionExclusionStatusV1(
+        List[string]
+):
+result: {
+        txHash            string
+        from              string
+        nonce             string
+        txRejectionStage  timestamp // enum "SEQUENCER"
+        reasonMessage     string
+        blockNumber       string
+        timestamp         timestamp
+}
+```
+
+
+```
+linea_saveRejectedTransactionV1(
+        txRejectionStage  string // enum "SEQUENCER"
+        timestamp         timestamp
+        blockNumber       int
+        transactionRLP    string
+        reasonMessage     string
+        overflows         List[ {
+                module   string
+                count    int
+                limit    int
+            } ]
+    })
+result: {
+        txHash   string
+        status   string // enum "SAVED" or "DUPLICATE_ALREADY_SAVED_BEFORE"
+}
+```
+
 ## State manager
-<a id = "StateManagerL1"></a>
+
 
 ### For L1 finalized states
 
-The state manager is configured differently based on the role it serves. The node described in this section is configured to serve the linea_getProof method, and has a different configuration than the one described in
+The state manager is configured differently based on the role it serves. The node described in this section is configured
+to serve the linea_getProof method, and has a different configuration than the one described in
 [State manager - for latest L2 states](#StateManagerL2).
 
 The publicly exposed method linea_getProof is served by the state manager. We have a single instance of state manager.
 
-The state manager keeps its representation of the Linea state by applying the block transactions computed by the sequencer, which it receives through P2P. It is composed of two parts:
+The state manager keeps its representation of the Linea state by applying the block transactions computed by the sequencer,
+which it receives through P2P. It is composed of two parts:
 
-1. a Besu node with a Shomei plugin
+1. a Besu node with a Shomei plugin and tracer plugin (in full tracer mode)
 2. and a Shomei node.
 
-The Besu node is connected to the other Ethereum nodes using P2P, and from the blocks it receives, it generates a trielog which it sends to the Shomei node. The trielog is a list of state modifications that occurred during the execution of the block. As soon as Shomei receives this trielog it will apply these changes to his state. The Shomei nodes use Sparse Merkle trees to represent Linea’s state.
+The Besu node is connected to the other Ethereum nodes using P2P, and from the blocks it receives, it generates a trielog
+which it sends to the Shomei node. The trielog is a list of state modifications that occurred during the execution of the
+block. As soon as Shomei receives this trielog it will apply these changes to his state. The Shomei nodes use Sparse Merkle
+trees to represent Linea’s state.
 
 Besu and Shomei nodes know each other's IP and port for direct communication.
 
-The Shomei plugin implements the RPC endpoint to return rollup proofs. Rollup proofs are used to provide a Merkle proof of the existence of a key in a given block number for a specific address. This proof can be used onchain in the Ethereum L1 for the blocks that have been finalized given their root hashes are present onchain.
+The Shomei plugin implements the RPC endpoint to return rollup proofs. Rollup proofs are used to provide a Merkle proof
+of the existence of a key in a given block number for a specific address. This proof can be used onchain in the Ethereum
+L1 for the blocks that have been finalized given their root hashes are present onchain.
 
-This state manager instance, which is configured to handle the linea_getProof requests, is configured to store only the states corresponding to the L2 blocks finalized on L1.
+This state manager instance, which is configured to handle the linea_getProof requests, is configured to store only the s
+tates corresponding to the L2 blocks finalized on L1.
 
-To serve the linea_getProof requests, the Shomei instance needs to know the latest L2 block finalized on L1. It is pushed by the coordinator to Shomei through a dedicated RPC endpoint. The IP address and port of Shomei are set in the coordinator configuration, allowing direct communication.
+To serve the linea_getProof requests, the Shomei instance needs to know the latest L2 block finalized on L1. It is pushed
+by the coordinator to Shomei through a dedicated RPC endpoint. The IP address and port of Shomei are set in the coordinator
+configuration, allowing direct communication.
 
 The endpoint `linea_getProof` is as follows:
 
@@ -196,12 +280,15 @@ rollup_getZkEVMStateMerkleProofV0(
 
 [^1]: Cf Shomei [documentation](#https://documenter.getpostman.com/view/27370530/2s93ebTr7h)
 
+## State reconstruction
+A service rebuilding Linea's state from the data posted on L1 is available.
+This service is connected to Ethereum mainnet. Every time a finalization of Linea happens, the service imports the transactions in the finalized blobs and reconstruct Linea state from it.
+The state is validated against shomei state.
+
 
 ## Coordinator
 
 The coordinator is responsible for
-
-
 
 * deciding how many blocks can be conflated into a batch,
 * deciding when to create a blob,
@@ -404,16 +491,23 @@ CalculateShnarfResult
 
 ## Traces API
 
-This component is used to generate line counts for each block and execution traces for batches. It is called by the coordinator. It is based on Geth and implements the traces-API endpoints. It has a representation of the ethereum state and executes the block to generate the traces.
+This component is used to generate line counts for each block and execution traces for batches. It is called by the
+coordinator. It is a Besu node using archive configuration with tracer plugin using full tracing configuration.
+It executes the block to generate the traces.
 
 Traces-API has two endpoints:
 
 * Trace counts `linea_getBlockTracesCountersV2` returning the trace counts for a given block.
-* Conflated trace generation `linea_generateConflatedTracesToFileV2` used to trigger the generation of conflated traces. Conflated traces are expected to be of size 100MB~500MB (JSON + gzipped). They are stored in a shared folder inside shared/traces/conflated. This shared folder acts as a queue for other services. This call returns the name of the file once it is generated.
+* Conflated trace generation `linea_generateConflatedTracesToFileV2` used to trigger the generation of conflated traces.
+Conflated traces are in a custom lt format and stored compressed. They are stored in a shared folder inside
+shared/traces/conflated. This shared folder acts as a queue for other services. This call returns the name of the file
+once it is generated.
 
 The number of trace generators is static for a given deployment. It’s determined in the deployment configuration.
 
-The current implementation of traces-API proactively produces trace files for blocks produced as soon as it receives them via P2P. Each instance of traces-API is configured to handle blocks whose id is 0 modulo the instance number. This allows the generation of block traces across multiple instances.
+The current implementation of traces-API proactively produces trace files for blocks produced as soon as it receives
+them via P2P. Each instance of traces-API is configured to handle blocks whose id is 0 modulo the instance number.
+This allows the generation of block traces across multiple instances.
 
 Trace count works by loading the generated trace file of a block and returning the actual number of lines in the file.
 
@@ -475,7 +569,7 @@ Corset is hosted inside the same process as the short-running component of the p
   * Reduce the probability of incompatibility between Corset/Prover versions and their input/output formats;
 * Reduce latency of the overall system (rather a beneficial side effect than a driving motivation);
 
-The paragraphs highlight the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses 
+The paragraphs highlight the roles of the different proofs that are generated. Please refer to the prover backend codebase [here](https://github.com/Consensys/linea-monorepo/tree/main/prover/backend) for details on the objects and attributes for various types of proof requests and responses
 
 ### Execution proofs
 
@@ -517,7 +611,7 @@ RlpBridgeLogsData
   blockNumber             string
   transactionHash         string
   transactionIndex        string
-  blockHash               string 
+  blockHash               string
   logIndex                string
   removed                 boolean
 ```
@@ -537,11 +631,11 @@ ProofResponse
   firstBlockNumber                    int
   execDataChecksum                    bytes32
   chainID                             uint
-  l2BridgeAddress                     [20]byte 
+  l2BridgeAddress                     [20]byte
   maxNbL2MessageHashes                int
   allRollingHashEvent                 List[RollingHashUpdatedEvent]
   allL2L1MessageHashes                List[string] // hex encoded
-  publicInput                         bytes32 
+  publicInput                         bytes32
 ```
 
 ```
@@ -586,7 +680,7 @@ Compression proof request file format:
 BlobCompressionProofJsonRequest
   eip4844Enabled       boolean
   compressedData       string // base64 encoded
-  dataParentHash       string 
+  dataParentHash       string
   conflationOrder      ConflationOrder
   parentStateRootHash  string // hex encoded
   finalStateRootHash   string // hex encoded
@@ -658,14 +752,14 @@ ProofToFinalizeJsonResponse
   dataHashes                                 List[string]
   dataParentHash                             string
   parentStateRootHash                        string
-  parentAggregationLastBlockTimestamp        uint 
+  parentAggregationLastBlockTimestamp        uint
   lastFinalizedBlockNumber                   uint
   finalTimestamp                             uint
   finalBlockNumber                           uint
   l1RollingHash                               string
   l1RollingHashMessageNumber                  uint
   l2MerkleRoots                               List[string]
-  l2MerkleTreesDepth                          uint 
+  l2MerkleTreesDepth                          uint
   l2MessagingBlocksOffsets                    string
 ```
 
@@ -719,15 +813,15 @@ l1RollingHashes(
 
 Gas pricing on Linea is designed to ensure the following three properties:
 * Sequencer's inclusion logic is aligned to the L1 fee market. This is to avoid exploiting Linea to execute
-transactions for unsustainably low fees
+  transactions for unsustainably low fees
 * The fees charged to Linea's user represent their fair usage of the network. Unlike the vanilla Ethereum
-protocol, the gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There are at least L1 fees
-(execution fees and blob fees), infrastructural costs (mostly proving, but not only), and a potential priority fee
-(only when there is high congestion and competition for L2 block space). This is an issue for interoperability,
-because vanilla Ethreum API isn't tailored for this. That's why there is a Besu plugin addressing this issue and
-providing gas price depending on input transaction
+  protocol, the gas price on Linea and other rollups is not 2-dimensional (base fee, priority fee). There are at least L1 fees
+  (execution fees and blob fees), infrastructural costs (mostly proving, but not only), and a potential priority fee
+  (only when there is high congestion and competition for L2 block space). This is an issue for interoperability,
+  because vanilla Ethreum API isn't tailored for this. That's why there is a Besu plugin addressing this issue and
+  providing gas price depending on input transaction
 * Linea remains compatible with users running vanilla nodes. Namely, `eth_gasPrice` returns fees guaranteeing that
-99.9% of transactions are includable on Linea.
+  99.9% of transactions are includable on Linea.
 
 This is how these challenges were solved technically:
 
@@ -735,9 +829,9 @@ This is how these challenges were solved technically:
 
 The Coordinator fetches L1 fees data, based on which it will compute gas pricing components. There are 3 of them:
 * Fixed cost. Represents infrastructural cost per unit of L2 gas. Doesn't really depend on the L1, and it's just a
-configuration in the Coordinator
+  configuration in the Coordinator
 * Variable cost. Cost of 1 byte of compressed data on L2, which is finalized on L1 contract. Depends on the fees Linea
-pays for finalization, which in turn depends on the L1 blob and execution fee market
+  pays for finalization, which in turn depends on the L1 blob and execution fee market
 * Legacy cost. Recommended gas price for the vanilla Ethereum API (`eth_gasPrice`)
 
 ## Gas pricing propagation
@@ -774,7 +868,7 @@ A summary of each of them is given below.
 ### Blobs
 
 The coordinator submits up to six blobs it generates at once to L1 using eip4844 standard to `v3.1 LineaRollup.submitBlobs` alongside
- the KZG proof. The LineaRollup smart contract verifies the validity of the proofs for the given blob data.
+the KZG proof. The LineaRollup smart contract verifies the validity of the proofs for the given blob data.
 
 Blob submission can support sending up to six blobs at once. This allows for saving cost by amortizing the processing overhead over multiple blobs.
 
@@ -922,7 +1016,6 @@ sendMessage(
 )
 ```
 
-
 Optional eth can be set, this value is then mapped to the value field of the MessageSent event.
 
 Fee must have a minimum value of 0.0001 ETH to prevent DDOS attacks.
@@ -971,6 +1064,60 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 7. Pick the group for the required message hash and construct a Merkle proof to claim against using the group's message hashes.
 
 
-# Finalized Block Tag on L2
+## Forced transactions
+A Smart contract on L1 allows any user to post Linea-based transactions to it, with the guarantee that it will be processed on Linea if valid.
 
-[Maru](https://github.com/Consensys/maru), a consensus client developed by Linea team, will be responsible on updating the execution clients for `finalized` block tag on L1
+For this, the user has to send the different fields of the Linea transaction  (including signature fields) in the calldata of the transaction being sent on
+Ethereum mainnet. The smart contract method is as follows:
+
+```
+  function submitForcedTransaction(
+    Eip1559Transaction memory _forcedTransaction,
+    LastFinalizedState memory _lastFinalizedState
+  )
+```
+
+where:
+```
+  struct LastFinalizedState {
+    uint256 timestamp;
+    uint256 messageNumber;
+    bytes32 messageRollingHash;
+    uint256 forcedTransactionNumber;
+    bytes32 forcedTransactionRollingHash;
+  }
+```
+
+```
+  struct Eip1559Transaction {
+    uint256 nonce;
+    uint256 maxPriorityFeePerGas;
+    uint256 maxFeePerGas;
+    uint256 gasLimit;
+    address to;
+    uint256 value;
+    bytes input;
+    RlpEncoder.AccessList[] accessList;
+    uint8 yParity;
+    uint256 r;
+    uint256 s;
+  }
+```
+
+```
+  struct AccessList {
+    address contractAddress;
+    bytes32[] storageKeys;
+  }
+```
+
+
+The smart contract filters out invalid transactions. Transactions can be invalid if, for instance, the signature is invalid.
+RLP encoding of the tx is computed on the smart contract. A hash of it is stored on L1 chain to ensure censorship resistance.
+Then an event is emitted.
+
+Linea operator monitors the events and includes the transactions if they are valid. All forced transactions are taken into account
+by the prover. The prover includes a proof that each of them has been processed and computes an aggregated hash of the RLP encoded transactions.
+The aggregated hash is compared at finalization time to the one stored on L1. This guarantees that no forced transaction has been censored.
+
+Invalid forced transactions not included are reported via the [reporting tool](#invalid-tx-reporting-tool).
