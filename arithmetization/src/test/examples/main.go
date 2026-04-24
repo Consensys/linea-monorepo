@@ -42,7 +42,7 @@ func main() {
 	var entryPoint uint64
 	programOffset, err = strconv.ParseUint(os.Args[3], 0, 64)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading textOffset: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error reading programOffset: %v\n", err)
 		os.Exit(1)
 	}
 	inputsOffset, err = strconv.ParseUint(os.Args[4], 0, 64)
