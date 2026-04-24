@@ -96,7 +96,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          settings: '{"permissions":{"allow":["Bash(*)","Read(*)","Write(*)"],"deny":[]}}'
+          settings: '{"permissions":{"allow":["Bash(*)","Read(*)","Write(e2e-failure-analysis.md)","Write(e2e-failure-summary.txt)"],"deny":[]}}'
           prompt: |
             You are analyzing a CI failure in the Linea monorepo's E2E test suite.
 
