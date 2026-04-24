@@ -169,7 +169,11 @@ func tryCacheProof(cachedProofPath string, proof plonk.Proof) {
 		logrus.Error(err)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			logrus.Error(err)
+		}
+	}()
 	if _, err = proof.WriteTo(f); err != nil {
 		logrus.Error(err)
 	}
