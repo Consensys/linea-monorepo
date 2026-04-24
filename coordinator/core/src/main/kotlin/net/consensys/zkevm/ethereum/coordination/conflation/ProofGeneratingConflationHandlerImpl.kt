@@ -7,6 +7,7 @@ import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.getOrThrow
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
+import linea.conflation.ConflationHandler
 import linea.domain.Batch
 import linea.domain.Block
 import linea.domain.BlocksConflation
@@ -17,6 +18,7 @@ import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
+import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofRequestHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -28,6 +30,7 @@ class ProofGeneratingConflationHandlerImpl(
   private val tracesProductionCoordinator: TracesConflationCoordinator,
   private val zkProofProductionCoordinator: ZkProofCreationCoordinator,
   private val batchProofHandler: BatchProofHandler,
+  private val batchProofRequestHandler: BatchProofRequestHandler? = null,
   private val vertx: Vertx,
   private val config: Config,
   private val log: Logger = LogManager.getLogger(ProofGeneratingConflationHandlerImpl::class.java),
@@ -159,7 +162,11 @@ class ProofGeneratingConflationHandlerImpl(
                   .createZkProofRequest(conflation, blocksTracesConflated)
                   .thenApply { proofIndex ->
                     log.info("execution proof request generated: proofIndex={}", proofIndex)
-                    proofRequestsInProgress.addLast(proofIndex)
+                    try {
+                      batchProofRequestHandler?.acceptNewBatchProofRequest(proofIndex, batch)
+                    } finally {
+                      proofRequestsInProgress.addLast(proofIndex)
+                    }
                   }
                   .whenException { th ->
                     log.debug(

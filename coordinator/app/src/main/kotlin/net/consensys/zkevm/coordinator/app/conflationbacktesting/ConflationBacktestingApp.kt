@@ -7,6 +7,11 @@ import linea.LongRunningService
 import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
 import linea.clients.ExecutionProverClientV2
+import linea.conflation.ConflationService
+import linea.conflation.DynamicBlockNumberSet
+import linea.conflation.calculators.AggregationTriggerCalculatorByTargetBlockNumbers
+import linea.conflation.calculators.BlockConflationCalculator
+import linea.conflation.calculators.ConflationCalculatorFactory
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
@@ -23,7 +28,6 @@ import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
@@ -31,9 +35,7 @@ import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProvid
 import net.consensys.zkevm.coordinator.blockcreation.TargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
-import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
-import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
 import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProviderImpl
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
@@ -44,19 +46,15 @@ import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
 import net.consensys.zkevm.ethereum.coordination.conflation.BlockToBatchSubmissionCoordinator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationService
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationServiceImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlobAwareConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlockConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConflationHandlerImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -85,7 +83,7 @@ class ConflationBacktestingApp(
       ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
   }
 
-  private val log = LogManager.getLogger("conflation_backtesting.job_${conflationBacktestingAppConfig.jobId()}")
+  private val log = LogManager.getLogger("conflation_backtesting_job_${conflationBacktestingAppConfig.jobId()}")
 
   private val conflationBacktestingComplete = AtomicBoolean(false)
 
@@ -108,7 +106,6 @@ class ConflationBacktestingApp(
 
   val backtestingCoordinatorConfig: CoordinatorConfig = mainCoordinatorConfig.copy(
     conflation = mainCoordinatorConfig.conflation.copy(
-      l2FetchBlocksLimit = UInt.MAX_VALUE,
       blocksLimit = conflationBacktestingAppConfig.batchesFixedSize,
       forceStopConflationAtBlockInclusive = conflationBacktestingAppConfig.endBlockNumber,
       conflationDeadline = null,
@@ -176,40 +173,19 @@ class ConflationBacktestingApp(
     dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit.toInt(),
   )
 
-  private val conflationCalculator: TracesConflationCalculator = run {
-    // To fail faster for JNA reasons
-
-    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
-      blobCompressor = blobCompressor,
-    )
-
-    val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
-      syncCalculators = ConflationAppHelper.createCalculatorsForBlobsAndConflation(
-        configs = backtestingCoordinatorConfig,
-        compressedBlobCalculator = compressedBlobCalculator,
-        lastProcessedTimestamp = lastProcessedTimestamp,
-        dynamicTargetEndBlockNumberSet = dynamicTargetEndBlockNumberSet,
-        logger = log,
-        metricsFacade = metricsFacade,
-      ),
-      deferredTriggerConflationCalculators = emptyList(),
-      emptyTracesCounters = backtestingCoordinatorConfig.conflation.tracesLimits.emptyTracesCounters,
-      log = log,
-    )
-
-    val batchesLimit = backtestingCoordinatorConfig.conflation.blobCompression.batchesLimit
-      ?: (backtestingCoordinatorConfig.conflation.proofAggregation.proofsLimit - 1U)
-
-    GlobalBlobAwareConflationCalculator(
-      conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
-      metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit,
-      dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
-      log = log,
-    )
-  }
+  private val conflationCalculator: BlockConflationCalculator = ConflationCalculatorFactory.conflationCalculator(
+    blobCompressor = blobCompressor,
+    tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
+    blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,
+    timestampBasedHardForks = backtestingCoordinatorConfig.conflation.proofAggregation.timestampBasedHardForks,
+    lastProcessedBlockNumber = lastProcessedBlockNumber,
+    lastProcessedTimestamp = lastProcessedTimestamp,
+    blobBatchesLimit = backtestingCoordinatorConfig.conflation.blobCompression.batchesLimit,
+    aggregationProofsLimit = backtestingCoordinatorConfig.conflation.proofAggregation.proofsLimit,
+    dynamicBlockNumberSet = dynamicTargetEndBlockNumberSet,
+    metricsFacade = metricsFacade,
+    log = log,
+  )
 
   private val conflationService: ConflationService =
     ConflationServiceImpl(
@@ -243,6 +219,7 @@ class ConflationBacktestingApp(
     logger = log,
   )
 
+  val lastProcessedBatchEndBlockNumber = AtomicLong(conflationBacktestingAppConfig.startBlockNumber.toLong() - 1)
   val proofGeneratingConflationHandlerImpl = run {
     val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(log = log)
 
@@ -264,6 +241,13 @@ class ConflationBacktestingApp(
         log = log,
       ),
       batchProofHandler = { _ -> SafeFuture.completedFuture(Unit) },
+      batchProofRequestHandler = { proofIndex, unProvenBatch ->
+        log.info(
+          "Backtesting execution proof request produced: batch={}",
+          unProvenBatch.intervalString(),
+        )
+        lastProcessedBatchEndBlockNumber.store(proofIndex.endBlockNumber.toLong())
+      },
       vertx = vertx,
       config = ProofGeneratingConflationHandlerImpl.Config(
         conflationAndProofGenerationRetryBackoffDelay = 5.seconds,
@@ -405,7 +389,7 @@ class ConflationBacktestingApp(
     blockCreationListener = blockToBatchSubmissionCoordinator,
     lastProvenBlockNumberProviderSync = object : LastProvenBlockNumberProviderSync {
       override fun getLastKnownProvenBlockNumber(): Long {
-        return conflationBacktestingAppConfig.startBlockNumber.toLong() - 1
+        return lastProcessedBatchEndBlockNumber.load()
       }
     },
     config = BlockCreationMonitor.Config(
