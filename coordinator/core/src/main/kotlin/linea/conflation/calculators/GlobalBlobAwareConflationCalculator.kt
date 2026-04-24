@@ -1,7 +1,6 @@
 package linea.conflation.calculators
 
 import linea.conflation.BlobCreationHandler
-import linea.conflation.DynamicBlockNumberSet
 import linea.domain.Blob
 import linea.domain.BlockCounters
 import linea.domain.BlockInterval
@@ -28,7 +27,7 @@ class GlobalBlobAwareConflationCalculator(
   private val blobCalculator: ConflationTriggerCalculatorByDataCompressed,
   private val batchesLimit: UInt,
   metricsFacade: MetricsFacade,
-  private val aggregationTargetEndBlocksDynamicSet: DynamicBlockNumberSet,
+  private val aggregationTargetEndBlocksDynamicSet: MutableSet<ULong>,
   private val blobCutOffTiggers: Set<ConflationTrigger> = setOf(
     ConflationTrigger.DATA_LIMIT,
     ConflationTrigger.TIME_LIMIT,
@@ -171,7 +170,7 @@ class GlobalBlobAwareConflationCalculator(
       numberOfBatches >= batchesLimit
     ) {
       if (conflation.conflationTrigger in aggregationCutOffTiggers) {
-        aggregationTargetEndBlocksDynamicSet.addBlockNumber(conflation.endBlockNumber)
+        aggregationTargetEndBlocksDynamicSet.add(conflation.endBlockNumber)
       }
       fireBlobTriggerAndResetState(conflation.conflationTrigger)
     } else {

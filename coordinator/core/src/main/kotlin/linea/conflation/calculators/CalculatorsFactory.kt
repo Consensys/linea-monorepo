@@ -3,13 +3,13 @@ package linea.conflation.calculators
 import linea.DisabledService
 import linea.LongRunningService
 import linea.blob.BlobCompressor
-import linea.conflation.DynamicBlockNumberSet
 import linea.conflation.SafeBlockProvider
 import linea.timer.TimerFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCounters
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.util.concurrent.ConcurrentSkipListSet
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -53,7 +53,7 @@ object CalculatorFactory {
     clock: Clock,
     log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
   ): ConflationCalculators {
-    val aggregationTargetEndBlockNumbersSet = DynamicBlockNumberSet(aggregationTargetEndBlockNumbers)
+    val aggregationTargetEndBlockNumbersSet: MutableSet<ULong> = ConcurrentSkipListSet(aggregationTargetEndBlockNumbers)
     val blobCalculator = ConflationTriggerCalculatorByDataCompressed(blobCompressor = blobCompressor)
     val syncCalculators = createConflationTriggerCalculators(
       tracesCountersLimit = tracesCountersLimit,
@@ -236,7 +236,7 @@ object CalculatorFactory {
     timestampBasedHardForks: List<Instant> = emptyList(),
     compressedBlobCalculator: ConflationTriggerCalculatorByDataCompressed,
     lastConflatedTimestamp: Instant,
-    aggregationTargetEndBlockNumbersSet: DynamicBlockNumberSet,
+    aggregationTargetEndBlockNumbersSet: MutableSet<ULong>,
     logger: Logger,
     metricsFacade: MetricsFacade,
   ): List<ConflationTriggerCalculator> {
