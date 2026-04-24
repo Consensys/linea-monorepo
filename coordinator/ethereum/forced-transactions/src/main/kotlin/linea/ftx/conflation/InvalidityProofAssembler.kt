@@ -147,7 +147,7 @@ class InvalidityProofAssembler(
         EncodingContext.POOLED_TRANSACTION,
       ).sender.bytes.toArray()
     if (invalidityReason == InvalidityReason.BadNonce || invalidityReason == InvalidityReason.BadBalance) {
-      accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber)
+      accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber - 1UL)
         .thenApply { it }
     }
     if (invalidityReason == InvalidityReason.BadPrecompile || invalidityReason == InvalidityReason.TooManyLogs) {
@@ -172,7 +172,7 @@ class InvalidityProofAssembler(
       .thenApply {
         RequiredInvalidityProofData(
           prevFtxRollingHash = prevFtxRollingHashFuture.get(),
-          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkEndStateRootHash,
+          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkParentStateRootHash,
           tracesFile = tracesFuture.get()?.tracesFileName,
           accountProof = accountProofFuture.get(),
           zkStateMerkleProof = stateProofFuture.get(),
