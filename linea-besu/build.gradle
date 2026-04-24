@@ -234,7 +234,7 @@ static String resolveBesuVersionCached(providers, String besuCommit, File rootDi
 static void ensureBesuCheckedOut(providers, String besuCommit, File rootDir) {
   def besuGitDir = new File(rootDir, 'tmp/besu-eth/.git')
   if (besuGitDir.exists()) return
-  runCheckoutAndResolveScript(providers, besuCommit, rootDir)
+    runCheckoutAndResolveScript(providers, besuCommit, rootDir)
 }
 
 static void buildAndPublishBesuAction(
