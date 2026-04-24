@@ -181,6 +181,19 @@ class ConflationApp(
   private val lastConflatedBlock = lastProcessedBlocks.lastConflatedBlock
   private val lastAggregatedBlock = lastProcessedBlocks.lastAggregatedBlock
 
+  init {
+    log.info(
+      "Resuming conflation from block={} inclusive blockTime={}",
+      lastConflatedBlock.number + 1UL,
+      lastConflatedBlock.headerSummary.timestamp,
+    )
+    log.info(
+      "Resuming aggregation from block={} inclusive blockTime={}",
+      lastAggregatedBlock.number + 1u,
+      lastAggregatedBlock.headerSummary.timestamp,
+    )
+  }
+
   private val lastProvenBlockNumberProvider = run {
     val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
       lastConflatedBlock.headerSummary.number.toLong(),
@@ -338,7 +351,6 @@ class ConflationApp(
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
-    log.info("Resuming aggregation from block={} inclusive", lastAggregatedBlock.number + 1u)
 
     val l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
       web3jClient = createWeb3jHttpClient(
@@ -476,7 +488,6 @@ class ConflationApp(
   }
 
   private val blockCreationMonitor = run {
-    log.info("Resuming conflation from block={} inclusive", lastConflatedBlock.number + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
       ethApi = l2EthClient,

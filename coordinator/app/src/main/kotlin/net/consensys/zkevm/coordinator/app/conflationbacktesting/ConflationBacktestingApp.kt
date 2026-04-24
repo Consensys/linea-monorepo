@@ -166,7 +166,7 @@ class ConflationBacktestingApp(
     dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit.toInt(),
   )
 
-  val conflationCalculators = CalculatorFactory.create(
+  private val conflationCalculators = CalculatorFactory.create(
     blobCompressor = blobCompressor,
     tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
     blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,
