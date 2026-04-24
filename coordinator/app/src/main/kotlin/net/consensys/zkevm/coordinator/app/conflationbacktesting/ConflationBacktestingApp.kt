@@ -10,7 +10,7 @@ import linea.clients.ExecutionProverClientV2
 import linea.conflation.AlwaysSafeBlockNumberProvider
 import linea.conflation.ConflationService
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
-import linea.conflation.calculators.CalculatorFactory
+import linea.conflation.calculators.CalculatorsFactory
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
@@ -166,7 +166,7 @@ class ConflationBacktestingApp(
     dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit.toInt(),
   )
 
-  private val conflationCalculators = CalculatorFactory.create(
+  private val conflationCalculators = CalculatorsFactory.create(
     blobCompressor = blobCompressor,
     tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
     blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,

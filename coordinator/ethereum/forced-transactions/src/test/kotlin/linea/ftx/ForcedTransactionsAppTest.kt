@@ -7,7 +7,7 @@ import io.vertx.junit5.VertxExtension
 import linea.clients.InvalidityProverClientV1
 import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
-import linea.conflation.calculators.CalculatorFactory
+import linea.conflation.calculators.CalculatorsFactory
 import linea.contract.events.FactoryForcedTransactionAddedEvent
 import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.contract.events.ForcedTransactionAddedEvent
@@ -816,7 +816,7 @@ class ForcedTransactionsAppTest {
     val aggregationTriggers = mutableListOf<BlockInterval>()
 
     val blobCompressor = FakeBlobCompressor(dataLimit = 1000)
-    val calculators = CalculatorFactory
+    val calculators = CalculatorsFactory
       .create(
         blobCompressor = blobCompressor,
         tracesCountersLimit = TracesCountersV5(TracingModuleV5.entries.associateWith { UInt.MAX_VALUE }),

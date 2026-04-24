@@ -6,7 +6,7 @@ import linea.LongRunningService
 import linea.clients.ExecutionProverClientV2
 import linea.conflation.ConflationService
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
-import linea.conflation.calculators.CalculatorFactory
+import linea.conflation.calculators.CalculatorsFactory
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
@@ -221,7 +221,7 @@ class ConflationApp(
       latestL1FinalizedBlockProvider = lastProvenBlockNumberProvider,
     )
 
-  val conflationCalculators = CalculatorFactory.create(
+  val conflationCalculators = CalculatorsFactory.create(
     blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
       compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
       dataLimit = configs.conflation.blobCompression.blobSizeLimit,

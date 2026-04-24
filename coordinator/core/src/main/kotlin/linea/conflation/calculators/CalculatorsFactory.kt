@@ -25,7 +25,7 @@ data class AggregationCalculators(
   val service: LongRunningService,
 )
 
-object CalculatorFactory {
+object CalculatorsFactory {
   fun create(
     blobCompressor: BlobCompressor,
     tracesCountersLimit: TracesCounters,
