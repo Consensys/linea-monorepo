@@ -1,0 +1,113 @@
+--- a/src/runtime/minimal_libriscv_default.go
++++ b/src/runtime/minimal_libriscv_default.go
+@@ -0,0 +1,9 @@
++//go:build !(tamago && riscv64 && tamago_libriscv)
++
++package runtime
++
++const minimalTamagoLibriscv = false
++
++func minimalTamagoAbort() {
++	exit(2)
++}
+--- a/src/runtime/minimal_libriscv_tamago.go
++++ b/src/runtime/minimal_libriscv_tamago.go
+@@ -0,0 +1,17 @@
++//go:build tamago && riscv64 && tamago_libriscv
++
++package runtime
++
++import "runtime/goos"
++
++const minimalTamagoLibriscv = true
++
++//go:nosplit
++func minimalTamagoAbort() {
++	if goos.Exit != nil {
++		goos.Exit(2)
++	}
++
++	for {
++	}
++}
+--- a/src/runtime/panic.go
++++ b/src/runtime/panic.go
+@@ -807,6 +807,10 @@
+ //
+ //go:linkname gopanic
+ func gopanic(e any) {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	if e == nil {
+ 		if debug.panicnil.Load() != 1 {
+ 			e = new(PanicNilError)
+@@ -1218,6 +1222,10 @@
+ //go:linkname throw
+ //go:nosplit
+ func throw(s string) {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	// Everything throw does should be recursively nosplit so it
+ 	// can be called even when it's unsafe to grow the stack.
+ 	systemstack(func() {
+@@ -1239,6 +1247,10 @@
+ //
+ //go:nosplit
+ func fatal(s string) {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	p := getg()._panic
+ 	// Everything fatal does should be recursively nosplit so it
+ 	// can be called even when it's unsafe to grow the stack.
+@@ -1418,6 +1430,10 @@
+ //
+ //go:nosplit
+ func fatalthrow(t throwType) {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	pc := sys.GetCallerPC()
+ 	sp := sys.GetCallerSP()
+ 	gp := getg()
+@@ -1454,6 +1470,10 @@
+ //
+ //go:nosplit
+ func fatalpanic(msgs *_panic) {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	pc := sys.GetCallerPC()
+ 	sp := sys.GetCallerSP()
+ 	gp := getg()
+--- a/src/runtime/proc.go
++++ b/src/runtime/proc.go
+@@ -590,6 +590,10 @@
+ //go:nosplit
+ //go:nowritebarrierrec
+ func badmorestackg0() {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	if !crashStackImplemented {
+ 		writeErrStr("fatal: morestack on g0\n")
+ 		return
+@@ -609,6 +613,10 @@
+ //go:nosplit
+ //go:nowritebarrierrec
+ func badmorestackgsignal() {
++	if minimalTamagoLibriscv {
++		minimalTamagoAbort()
++	}
++
+ 	writeErrStr("fatal: morestack on gsignal\n")
+ }
+ 

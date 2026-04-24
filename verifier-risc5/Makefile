@@ -3,7 +3,7 @@
 
 GO_MAIN := ./cmd/verifier
 INPUTGEN_MAIN := ./cmd/inputgen
-GO_SOURCES := $(shell find cmd internal -name '*.go' -print)
+GO_SOURCES := $(shell find cmd goos internal -type f \( -name '*.go' -o -name '*.s' \) -print 2>/dev/null)
 
 BUILD_DIR := build
 BAREMETAL_DIR := baremetal
@@ -27,6 +27,7 @@ QEMU_USER ?= qemu-riscv64
 READELF ?= readelf
 RISCV_GCC ?= riscv64-unknown-elf-gcc
 RISCV_OBJCOPY ?= riscv64-unknown-elf-objcopy
+MODULE_PATH := $(shell $(GO) list -m -f '{{.Path}}')
 
 HOST_GO_VERSION := $(shell $(GO) env GOVERSION)
 XDG_CACHE_HOME_LOCAL ?= $(abspath .cache/xdg)
@@ -58,16 +59,23 @@ TINYGO_PRECOMPILE_TAGS ?= zkvm_precompile
 TINYGO_QEMU_MACHINE ?= virt,aclint=on
 TINYGO_QEMU_SMP ?= 1
 
-TAMAGO_TOOL_VERSION ?= v1.26.2
-TAMAGO_CACHE_HOME ?= $(XDG_CACHE_HOME_LOCAL)
-TAMAGO_GOROOT := $(TAMAGO_CACHE_HOME)/tamago-go/tamago-go$(patsubst v%,%,$(TAMAGO_TOOL_VERSION))
-TAMAGO_BIN := $(TAMAGO_GOROOT)/bin/go
-TAMAGO_TAGS ?= baremetal,tamago_sifive_u,tiny
-TAMAGO_LDFLAGS ?= -T 0x80010000 -R 0x1000
-TAMAGO_ELF := $(BUILD_DIR)/verifier-tamago-sifive_u.elf
-TAMAGO_BIOS_ELF := $(BUILD_DIR)/tamago-sifive_u-bios.elf
-TAMAGO_BIOS_BIN := $(BUILD_DIR)/tamago-sifive_u-bios.bin
-TAMAGO_DTB := $(BUILD_DIR)/qemu-sifive_u.dtb
+TAMAGO_ROOT ?= third_party/tamago-go
+TAMAGO_VERSION ?= tamago-go1.26.2
+TAMAGO_PATCH ?= third_party/tamago-go-tamago_libriscv.patch
+TAMAGO_BIN := $(abspath $(TAMAGO_ROOT))/bin/go
+TAMAGO_BOOTSTRAP_GOROOT ?= $(shell env -u GOOS -u GOARCH -u GOOSPKG $(GO) env GOROOT)
+TAMAGO_GOOSPKG ?= $(MODULE_PATH)
+TAMAGO_TAGS ?= baremetal,tamago_libriscv,tiny
+TAMAGO_LDFLAGS ?= -T 0x80010000 -R 0x1000 -w -buildid=
+TAMAGO_STRIP_FLAGS ?= --remove-section=.go.buildinfo --remove-section=.go.fipsinfo
+TAMAGO_VENDOR_STAMP := $(TAMAGO_ROOT)/.vendor-stamp
+TAMAGO_ELF := $(BUILD_DIR)/verifier-tamago.elf
+TAMAGO_SIFIVE_U_TAGS ?= baremetal,tamago_sifive_u,tiny
+TAMAGO_SIFIVE_U_LDFLAGS ?= -T 0x80010000 -R 0x1000 -w -buildid=
+TAMAGO_SIFIVE_U_ELF := $(BUILD_DIR)/verifier-tamago-sifive_u.elf
+TAMAGO_SIFIVE_U_BIOS_ELF := $(BUILD_DIR)/tamago-sifive_u-bios.elf
+TAMAGO_SIFIVE_U_BIOS_BIN := $(BUILD_DIR)/tamago-sifive_u-bios.bin
+TAMAGO_SIFIVE_U_DTB := $(BUILD_DIR)/qemu-sifive_u.dtb
 
 LIBRISCV_ROOT ?= third_party/libriscv
 LIBRISCV_VERSION ?= v1.15
@@ -101,10 +109,10 @@ GUEST_INPUT_ADDR ?= 0x80f00000
 TINYGO_DEBUG_FLAG := $(if $(filter 1 true yes,$(TINYGO_NO_DEBUG)),-no-debug,)
 
 .PHONY: help \
-	clean-tool-cache vendor-tinygo tinygo-bootstrap \
+	clean-tool-cache vendor-tinygo tinygo-bootstrap vendor-tamago tamago-bootstrap \
 	vendor-libriscv build-libriscv-runner \
-	build-input build-clang build-clang-precompile build-gcc build-go-linux build-tinygo build-tinygo-precompile build-tamago \
-	emulate-clang emulate-gcc emulate-go-linux emulate-tinygo emulate-tamago emulate-libriscv \
+	build-input build-clang build-clang-precompile build-gcc build-go-linux build-tinygo build-tinygo-precompile build-tamago build-tamago-sifiveu \
+	emulate-clang emulate-gcc emulate-go-linux emulate-tinygo emulate-tamago emulate-tamago-sifiveu emulate-libriscv \
 	emulate-libriscv-clang-precompile emulate-libriscv-tinygo-precompile \
 	clean
 
@@ -128,8 +136,10 @@ help:
 	printf '%s\n' \
 		'Targets:' \
 		'  make vendor-tinygo        - clone TinyGo at the pinned commit and apply the local RISC-V patch' \
+		'  make vendor-tamago        - clone tamago-go at the pinned tag and apply the local libriscv patch' \
 		'  make vendor-libriscv      - clone libriscv and its submodules under third_party/' \
 		'  make tinygo-bootstrap     - build the local TinyGo binary from third_party/tinygo' \
+		'  make tamago-bootstrap     - build the local TamaGo toolchain from third_party/tamago-go' \
 		'  make build-input          - generate the preloaded verifier input blob' \
 		'  make build-clang          - build the freestanding clang/ld.lld ELF' \
 		'  make build-clang-precompile - build the freestanding clang ELF that offloads compute through ECALL' \
@@ -137,17 +147,19 @@ help:
 		'  make build-go-linux       - build the hosted linux/riscv64 Go baseline' \
 		'  make build-tinygo         - build the freestanding TinyGo ELF' \
 		'  make build-tinygo-precompile - build the TinyGo ELF that offloads compute through ECALL' \
-		'  make build-tamago         - build the TamaGo sifive_u ELF' \
+		'  make build-tamago         - build the minimal TamaGo ELF for the local libriscv runner' \
+		'  make build-tamago-sifiveu - build the original TamaGo sifive_u ELF for QEMU board emulation' \
 		'  make build-libriscv-runner - build the local libriscv bare-metal runner' \
 		'  make emulate-clang        - run the clang ELF on QEMU virt' \
 		'  make emulate-gcc          - run the GCC ELF on QEMU virt' \
 		'  make emulate-go-linux     - run the hosted Go ELF under qemu-riscv64' \
 		'  make emulate-tinygo       - run the TinyGo ELF on QEMU virt' \
-		'  make emulate-tamago       - run the TamaGo ELF on QEMU sifive_u' \
+		'  make emulate-tamago       - run the minimal TamaGo ELF in the local libriscv runner' \
+		'  make emulate-tamago-sifiveu - run the original TamaGo sifive_u ELF on QEMU' \
 		'  make emulate-libriscv     - run a generic bare-metal ELF in the vendored libriscv runner' \
 		'  make emulate-libriscv-clang-precompile - run the clang ECALL/precompile guest in libriscv' \
 		'  make emulate-libriscv-tinygo-precompile - run the TinyGo ECALL/precompile guest in libriscv' \
-		'  make clean-tool-cache     - remove local TinyGo/TamaGo caches under .cache/' \
+		'  make clean-tool-cache     - remove local TinyGo and build caches under .cache/' \
 		'' \
 		'Useful overrides:' \
 		'  LLVM_VERSION=20                   - host LLVM major version used by clang/lld and TinyGo bootstrap' \
@@ -157,6 +169,8 @@ help:
 		'  TINYGO_NO_DEBUG=1                - strip DWARF/debug sections from the TinyGo ELF (default on)' \
 		'  TINYGO_EXTRA_FLAGS=-nobounds     - pass extra TinyGo build flags for local experiments' \
 		'  TINYGO_PRECOMPILE_TAGS=zkvm_precompile - TinyGo tags used by build-tinygo-precompile' \
+		'  TAMAGO_ROOT=third_party/tamago-go - TamaGo checkout/toolchain location' \
+		'  TAMAGO_VERSION=$(TAMAGO_VERSION) - tamago-go tag expected by the local patch' \
 		'  INPUT_JSON=inputs/default.json   - JSON fixture used to generate the preloaded input blob' \
 		'  LIBRISCV_ROOT=third_party/libriscv - libriscv checkout location' \
 		'  LIBRISCV_GUEST=build/verifier-gcc.elf - ELF passed to emulate-libriscv' \
@@ -170,11 +184,13 @@ help:
 		'Notes:' \
 		'  TinyGo is vendored instead of module-managed because the upstream module archive omits required git submodules such as src/net.' \
 		'  vendor-tinygo checks that the checkout is at the pinned commit before applying third_party/tinygo-riscv64im_zicclsm.patch.' \
-		'  TamaGo remains pinned in go.mod and is bootstrapped via go tool tamago into .cache/xdg.' \
-		'  emulate-libriscv supports the generic freestanding clang/gcc guests, the current minimal TinyGo guest, and the clang/TinyGo ECALL precompile variants; the TamaGo image still expects sifive_u machine-mode board state.' \
+		'  vendor-tamago checks out $(TAMAGO_VERSION) into third_party/tamago-go and applies third_party/tamago-go-tamago_libriscv.patch.' \
+		'  build-tamago now uses a repo-local GOOS overlay under goos/ to avoid sifive_u board startup and trim the runtime for libriscv.' \
+		'  emulate-libriscv supports the generic freestanding clang/gcc guests, the current minimal TinyGo guest, the minimal TamaGo guest, and the clang/TinyGo ECALL precompile variants.' \
 		'  Upstream Go cannot target unknown-none-elf; build-go-linux is only a hosted baseline.' \
 		'  The freestanding clang and TinyGo paths target rv64im_zicclsm. The GCC path currently drops zicclsm because the packaged GCC toolchain only accepts rv64im.' \
-		'  TinyGo now defaults to a single-hart, no-debug, -gc=none profile plus a minimal target-local runtime variant; use TINYGO_GC=leaking if your guest starts allocating.'
+		'  TinyGo now defaults to a single-hart, no-debug, -gc=none profile plus a minimal target-local runtime variant; use TINYGO_GC=leaking if your guest starts allocating.' \
+		'  TamaGo keeps .go.module in the ELF because stripping it breaks the local libriscv runner; the default build keeps symbols, strips DWARF, and removes only .go.buildinfo and .go.fipsinfo.'
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -210,6 +226,28 @@ vendor-tinygo: $(TINYGO_PATCH)
 		printf '%s\n' "vendor-tinygo: patch $(TINYGO_PATCH) does not apply to $(TINYGO_COMMIT)."; \
 		exit 1; \
 	fi
+
+$(TAMAGO_VENDOR_STAMP): $(TAMAGO_PATCH)
+	test -f "$(TAMAGO_PATCH)"
+	test -d "$(TAMAGO_ROOT)" || git clone --branch "$(TAMAGO_VERSION)" --depth 1 https://github.com/usbarmory/tamago-go "$(TAMAGO_ROOT)"
+	test -f "$(TAMAGO_ROOT)/src/make.bash"
+	tag="$$(git -C "$(TAMAGO_ROOT)" describe --tags --exact-match 2>/dev/null || true)"; \
+	if [ "$$tag" != "$(TAMAGO_VERSION)" ]; then \
+		printf '%s\n' "vendor-tamago: $(TAMAGO_ROOT) is at tag '$$tag', expected $(TAMAGO_VERSION)."; \
+		printf '%s\n' "vendor-tamago: remove $(TAMAGO_ROOT) and rerun if you want a clean repin."; \
+		exit 1; \
+	fi
+	if git -C "$(TAMAGO_ROOT)" apply --reverse --check "$(abspath $(TAMAGO_PATCH))" >/dev/null 2>&1; then \
+		:; \
+	elif git -C "$(TAMAGO_ROOT)" apply --check "$(abspath $(TAMAGO_PATCH))" >/dev/null 2>&1; then \
+		git -C "$(TAMAGO_ROOT)" apply "$(abspath $(TAMAGO_PATCH))"; \
+	else \
+		printf '%s\n' "vendor-tamago: patch $(TAMAGO_PATCH) does not apply to $(TAMAGO_VERSION)."; \
+		exit 1; \
+	fi
+	touch "$(TAMAGO_VENDOR_STAMP)"
+
+vendor-tamago: $(TAMAGO_VENDOR_STAMP)
 
 vendor-libriscv:
 	test -d "$(LIBRISCV_ROOT)" || git clone --branch "$(LIBRISCV_VERSION)" --depth 1 --recursive https://github.com/libriscv/libriscv "$(LIBRISCV_ROOT)"
@@ -354,27 +392,49 @@ $(TINYGO_PRECOMPILE_ELF): $(TINYGO_BIN) $(TINYGO_TARGET_BUILD) $(TINYGO_TARGET_L
 
 build-tinygo-precompile: $(TINYGO_PRECOMPILE_ELF)
 
-$(TAMAGO_BIN): | $(BUILD_DIR)
-	if [ ! -x "$(TAMAGO_BIN)" ]; then rm -rf "$(TAMAGO_GOROOT)"; fi
-	test -x "$(TAMAGO_BIN)" || env -u GOOS -u GOARCH -u GOOSPKG XDG_CACHE_HOME="$(TAMAGO_CACHE_HOME)" $(GO) tool tamago version >/dev/null
-	test -x "$(TAMAGO_BIN)"
+$(TAMAGO_BIN): $(TAMAGO_VENDOR_STAMP)
+	cd "$(TAMAGO_ROOT)/src" && \
+		env -u GOOS -u GOARCH -u GOOSPKG GOROOT_BOOTSTRAP="$(TAMAGO_BOOTSTRAP_GOROOT)" ./make.bash
 
-$(TAMAGO_ELF): $(TAMAGO_BIN) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
-	GODEBUG=goindex=0 GOWORK=off GOOS=tamago GOOSPKG=github.com/usbarmory/tamago GOARCH=riscv64 \
-		GOROOT="$(TAMAGO_GOROOT)" PATH="$(TAMAGO_GOROOT)/bin:$$PATH" \
+tamago-bootstrap: $(TAMAGO_BIN)
+
+$(TAMAGO_ELF): Makefile $(TAMAGO_BIN) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
+	GODEBUG=goindex=0 GOWORK=off GOOS=tamago GOOSPKG="$(TAMAGO_GOOSPKG)" GOARCH=riscv64 \
+		GOROOT="$(abspath $(TAMAGO_ROOT))" PATH="$(abspath $(TAMAGO_ROOT))/bin:$$PATH" \
 		"$(TAMAGO_BIN)" build \
+		-a \
+		-buildvcs=false \
+		-trimpath \
 		-tags $(TAMAGO_TAGS) \
 		-ldflags '$(TAMAGO_LDFLAGS)' \
-		-o $(TAMAGO_ELF) \
+		-o "$(TAMAGO_ELF).tmp" \
 		$(GO_MAIN)
+	$(RISCV_OBJCOPY) $(TAMAGO_STRIP_FLAGS) "$(TAMAGO_ELF).tmp" "$(TAMAGO_ELF)"
+	rm -f "$(TAMAGO_ELF).tmp"
 
 build-tamago: $(TAMAGO_ELF)
 
-$(TAMAGO_DTB): | $(BUILD_DIR)
+$(TAMAGO_SIFIVE_U_ELF): Makefile $(TAMAGO_BIN) $(GO_SOURCES) go.mod go.sum | $(BUILD_DIR)
+	GODEBUG=goindex=0 GOWORK=off GOOS=tamago GOOSPKG=github.com/usbarmory/tamago GOARCH=riscv64 \
+		GOROOT="$(abspath $(TAMAGO_ROOT))" PATH="$(abspath $(TAMAGO_ROOT))/bin:$$PATH" \
+		"$(TAMAGO_BIN)" build \
+		-a \
+		-buildvcs=false \
+		-trimpath \
+		-tags $(TAMAGO_SIFIVE_U_TAGS) \
+		-ldflags '$(TAMAGO_SIFIVE_U_LDFLAGS)' \
+		-o "$(TAMAGO_SIFIVE_U_ELF).tmp" \
+		$(GO_MAIN)
+	$(RISCV_OBJCOPY) $(TAMAGO_STRIP_FLAGS) "$(TAMAGO_SIFIVE_U_ELF).tmp" "$(TAMAGO_SIFIVE_U_ELF)"
+	rm -f "$(TAMAGO_SIFIVE_U_ELF).tmp"
+
+build-tamago-sifiveu: $(TAMAGO_SIFIVE_U_ELF)
+
+$(TAMAGO_SIFIVE_U_DTB): | $(BUILD_DIR)
 	$(QEMU_SYSTEM) -machine sifive_u,dumpdtb=$@ -display none -S
 
-$(TAMAGO_BIOS_ELF): $(TAMAGO_BIOS_SRC) $(TAMAGO_ELF) | $(BUILD_DIR)
-	ENTRY_ADDR=`$(READELF) -h "$(TAMAGO_ELF)" | awk '/Entry point address:/ {print $$4}'` && \
+$(TAMAGO_SIFIVE_U_BIOS_ELF): $(TAMAGO_BIOS_SRC) $(TAMAGO_SIFIVE_U_ELF) | $(BUILD_DIR)
+	ENTRY_ADDR=`$(READELF) -h "$(TAMAGO_SIFIVE_U_ELF)" | awk '/Entry point address:/ {print $$4}'` && \
 	$(RISCV_GCC) \
 		-nostdlib \
 		-march=rv64imac \
@@ -383,11 +443,11 @@ $(TAMAGO_BIOS_ELF): $(TAMAGO_BIOS_SRC) $(TAMAGO_ELF) | $(BUILD_DIR)
 		-Wl,--build-id=none \
 		-DENTRY_ADDR=$$ENTRY_ADDR \
 		-x assembler-with-cpp \
-		-o "$(TAMAGO_BIOS_ELF)" \
+		-o "$(TAMAGO_SIFIVE_U_BIOS_ELF)" \
 		"$(TAMAGO_BIOS_SRC)"
 
-$(TAMAGO_BIOS_BIN): $(TAMAGO_BIOS_ELF) | $(BUILD_DIR)
-	$(RISCV_OBJCOPY) -O binary "$(TAMAGO_BIOS_ELF)" "$(TAMAGO_BIOS_BIN)"
+$(TAMAGO_SIFIVE_U_BIOS_BIN): $(TAMAGO_SIFIVE_U_BIOS_ELF) | $(BUILD_DIR)
+	$(RISCV_OBJCOPY) -O binary "$(TAMAGO_SIFIVE_U_BIOS_ELF)" "$(TAMAGO_SIFIVE_U_BIOS_BIN)"
 
 emulate-clang: build-input $(CLANG_ELF)
 	status=0; \
@@ -433,7 +493,10 @@ emulate-tinygo: build-input $(TINYGO_ELF)
 		-kernel $(TINYGO_ELF) || status=$$?; \
 	$(call check_qemu_finisher_status,emulate-tinygo)
 
-emulate-tamago: build-input $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
+emulate-tamago: build-input build-libriscv-runner $(TAMAGO_ELF)
+	"$(LIBRISCV_RUNNER)" "$(TAMAGO_ELF)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"
+
+emulate-tamago-sifiveu: build-input $(TAMAGO_SIFIVE_U_ELF) $(TAMAGO_SIFIVE_U_BIOS_BIN) $(TAMAGO_SIFIVE_U_DTB)
 	status=0; \
 	$(QEMU_TIMEOUT_CMD) \
 		$(QEMU_SYSTEM) \
@@ -444,15 +507,15 @@ emulate-tamago: build-input $(TAMAGO_ELF) $(TAMAGO_BIOS_BIN) $(TAMAGO_DTB)
 		-serial stdio \
 		-net none \
 		-device loader,file=$(INPUT_BIN),addr=$(GUEST_INPUT_ADDR),force-raw=on \
-		-dtb $(TAMAGO_DTB) \
-		-bios $(TAMAGO_BIOS_BIN) \
-		-kernel $(TAMAGO_ELF) || status=$$?; \
+		-dtb $(TAMAGO_SIFIVE_U_DTB) \
+		-bios $(TAMAGO_SIFIVE_U_BIOS_BIN) \
+		-kernel $(TAMAGO_SIFIVE_U_ELF) || status=$$?; \
 	test $$status -eq 0 -o $$status -eq 124
 
 emulate-libriscv: build-input build-libriscv-runner $(LIBRISCV_GUEST)
-	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_ELF))" ]; then \
-		printf '%s\n' 'emulate-libriscv: $(TAMAGO_ELF) is a TamaGo sifive_u image and expects machine-mode CSRs/board state.'; \
-		printf '%s\n' 'emulate-libriscv: use make emulate-tamago for this guest, or pass a generic bare-metal ELF such as build/verifier-clang.elf.'; \
+	if [ "$(abspath $(LIBRISCV_GUEST))" = "$(abspath $(TAMAGO_SIFIVE_U_ELF))" ]; then \
+		printf '%s\n' 'emulate-libriscv: $(TAMAGO_SIFIVE_U_ELF) is a TamaGo sifive_u image and expects machine-mode CSRs/board state.'; \
+		printf '%s\n' 'emulate-libriscv: use make emulate-tamago-sifiveu for this guest, or pass a generic bare-metal ELF such as build/verifier-clang.elf.'; \
 		exit 2; \
 	fi
 	"$(LIBRISCV_RUNNER)" "$(LIBRISCV_GUEST)" "$(INPUT_BIN)" "$(LIBRISCV_MAX_INSTRUCTIONS)"

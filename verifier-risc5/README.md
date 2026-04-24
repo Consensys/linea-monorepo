@@ -30,7 +30,7 @@ sudo apt install clang-20 lld-20 llvm-20-tools llvm-20-dev libclang-20-dev \
 
 Tool management split:
 
-- TamaGo is module-managed through `go.mod` and is bootstrapped with `go tool tamago`
+- TamaGo is vendored under `third_party/tamago-go` because this repo now carries a local runtime patch for the minimal `tamago_libriscv` profile
 - TinyGo is vendored under `third_party/tinygo` because the module archive is missing required submodules
 - libriscv is vendored under `third_party/libriscv`
 
@@ -38,10 +38,12 @@ Vendor the external trees when needed:
 
 ```bash
 make vendor-tinygo
+make vendor-tamago
 make vendor-libriscv
 ```
 
 `make vendor-tinygo` checks out TinyGo at the pinned commit `1f114b2acff247f52eb77a92363119e7327107b3` and applies `third_party/tinygo-riscv64im_zicclsm.patch`.
+`make vendor-tamago` checks out `tamago-go1.26.2` and applies `third_party/tamago-go-tamago_libriscv.patch`.
 
 ## Target Profiles
 
@@ -55,14 +57,15 @@ Current ISA and runtime targets:
 | `build-tinygo` | `build/verifier-tinygo.elf` | `rv64im_zicclsm`, `lp64`, `medany` | freestanding TinyGo target with a local patch set, defaulting to a stripped single-hart `-gc=none` profile |
 | `build-tinygo-precompile` | `build/verifier-tinygo-precompile.elf` | `rv64im_zicclsm`, `lp64`, `medany` | TinyGo guest that calls the same `libriscv` ECALL precompile through a patched assembly shim |
 | `build-go-linux` | `build/verifier-go-linux-riscv64` | `linux/riscv64`, `GORISCV64=rva20u64` | hosted baseline only, not a zkVM-style guest |
-| `build-tamago` | `build/verifier-tamago-sifive_u.elf` | `tamago/riscv64` on `sifive_u` | board-specific machine-mode image, not a generic `rv64im_zicclsm` guest |
+| `build-tamago` | `build/verifier-tamago.elf` | `tamago/riscv64` with the repo-local `goos/` overlay | minimal TamaGo guest for the local `libriscv` runner |
+| `build-tamago-sifiveu` | `build/verifier-tamago-sifive_u.elf` | `tamago/riscv64` on `sifive_u` | original board-specific machine-mode image kept as a baseline |
 
 Important caveat:
 
 - `clang` and the freestanding C guest path are the closest match to the intended bare-metal zkVM model
 - `TinyGo` can target the same memory layout and status ABI on QEMU `virt`, and the current minimal runtime is also accepted by the local `libriscv` runner
 - `Go` is only a hosted Linux baseline
-- `TamaGo` is useful as a bare-metal Go comparison, but it expects a `sifive_u` machine model with privileged CSRs and board state
+- `TamaGo` now has two profiles in this repo: the default `build-tamago` uses the local `goos/` overlay for a `libriscv`-friendly guest, while `build-tamago-sifiveu` remains the original board-specific comparison target
 
 ## Build
 
@@ -77,6 +80,7 @@ make build-go-linux
 make build-tinygo
 make build-tinygo-precompile
 make build-tamago
+make build-tamago-sifiveu
 ```
 
 `make build-input` converts `inputs/default.json` into `build/verifier-input.bin`. Override the fixture with:
@@ -106,12 +110,22 @@ One optional extra flag exists for local experiments only:
 
 - `TINYGO_EXTRA_FLAGS=-nobounds` trims a little more code size, but it disables bounds checks and is not the default
 
+Current TamaGo size result with the checked-in defaults:
+
+- `build/verifier-tamago.elf`: about `959 KiB` total allocated section size with symbols preserved and DWARF removed
+- the vendored TamaGo patch turns the `tamago_libriscv` panic/throw path into a direct guest abort, which drops roughly `86 KiB` from the previous minimal build
+- the TamaGo build removes `.go.buildinfo` and `.go.fipsinfo`, but keeps `.go.module`
+- the default TamaGo build keeps the ELF symbol table so `riscv64-unknown-elf-objdump -d` shows function labels again
+- stripping `.go.module` breaks the minimal TamaGo guest under the local `libriscv` runner, so the Makefile intentionally preserves it
+
 Useful one-time preparation:
 
 ```bash
 make vendor-tinygo
+make vendor-tamago
 make vendor-libriscv
 make tinygo-bootstrap
+make tamago-bootstrap
 make build-libriscv-runner
 ```
 
@@ -138,10 +152,16 @@ Hosted Go baseline:
 make emulate-go-linux
 ```
 
-TamaGo on the board model it expects:
+Minimal TamaGo on the local `libriscv` runner:
 
 ```bash
 make emulate-tamago
+```
+
+Board-specific TamaGo baseline on `sifive_u`:
+
+```bash
+make emulate-tamago-sifiveu
 ```
 
 libriscv runner examples:
@@ -150,6 +170,7 @@ libriscv runner examples:
 make emulate-libriscv
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-gcc.elf
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tinygo.elf
+make emulate-libriscv LIBRISCV_GUEST=build/verifier-tamago.elf
 make emulate-libriscv-clang-precompile
 make emulate-libriscv-tinygo-precompile
 make emulate-libriscv LIBRISCV_GUEST=build/verifier-tamago-sifive_u.elf
@@ -160,8 +181,9 @@ Meaning of those commands:
 - plain `make emulate-libriscv` runs the default `clang` bare-metal ELF
 - the `gcc` ELF is supported in the same runner
 - the current minimal `TinyGo` ELF is also supported in the same runner
+- the current minimal `TamaGo` ELF is also supported in the same runner
 - the `clang-precompile` and `tinygo-precompile` targets exercise the zkVM-style ECALL precompile path in the same runner
-- the `TamaGo` command is intentionally rejected with a clear error because that image expects `sifive_u` machine-mode CSRs and board initialization
+- the `sifive_u` TamaGo ELF is intentionally rejected with a clear error because that image expects machine-mode CSRs and board initialization
 - `emulate-libriscv` also preloads the same `build/verifier-input.bin` blob at `0x80f00000`
 - `emulate-libriscv` validates the fixed status page at `0x80eff000` instead of watching guest stdout
 
@@ -169,6 +191,14 @@ Meaning of those commands:
 
 - `build/verifier-go-linux-riscv64`, because that is a hosted Linux userspace binary
 - `build/verifier-tamago-sifive_u.elf`, because that is a board-specific machine-mode image
+
+One optional runner debugging knob is available for startup issues:
+
+```bash
+LIBRISCV_TRACE_STEPS=64 make emulate-tamago
+```
+
+That makes the local runner single-step the first `64` guest instructions and print the decoded instruction stream before continuing normal execution.
 
 ## Precompile Experiment
 
@@ -198,7 +228,14 @@ This is intentionally `libriscv`-only for now. Under QEMU, arbitrary bare-metal 
 - `toolchains/tinygo/riscv64im_zicclsm-qemu-virt.ld`: TinyGo linker script for the QEMU `virt` machine, reserving both the fixed status page and the input window and keeping the TinyGo stack small
 - `toolchains/tamago/sifive_u_bios.S`: tiny BIOS trampoline used to boot the TamaGo `sifive_u` guest under QEMU
 - `toolchains/libriscv/CMakeLists.txt`: host build for the local libriscv runner
-- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, status-page validation, and the syscall `500` precompile handler
+- `toolchains/libriscv/runner.cpp`: bare-metal ELF runner with input preloading, QEMU finisher trapping, status-page validation, the syscall `500` precompile handler, and an optional startup trace mode
+
+### `goos/`
+
+- `goos/doc.go`: marker package for the repo-local TamaGo GOOS overlay
+- `goos/mem.go` and `goos/mem_tiny.go`: heap arena constants for the minimal TamaGo profile
+- `goos/overlay_tamago_riscv64.go`: minimal runtime hooks for the `libriscv` TamaGo guest, including fixed RAM layout, deterministic RNG, and finisher-based exit handling
+- `goos/startup_tamago_riscv64.s`: custom TamaGo startup shim that sets the initial stack and jumps into `runtime.rt0_riscv64_tamago`
 
 ### `cmd/verifier/`
 
@@ -214,7 +251,9 @@ This is intentionally `libriscv`-only for now. Under QEMU, arbitrary bare-metal 
 - `cmd/verifier/main_baremetal.go`: bare-metal entrypoint used with the `baremetal` build tag
 - `cmd/verifier/announce_none.go`: generic bare-metal status-page reporting fallback
 - `cmd/verifier/announce_qemu_virt.go`: `qemu_virt` status-page reporting plus the QEMU finisher MMIO exit path
+- `cmd/verifier/announce_tamago_libriscv.go`: TamaGo `libriscv` reporting path that writes the fixed status page and exits through the finisher MMIO register
 - `cmd/verifier/announce_tamago_sifiveu.go`: TamaGo-specific status-page reporting path
+- `cmd/verifier/qemu_mmio_tamago_libriscv.s`: TamaGo assembly shim for the finisher MMIO write
 - `cmd/verifier/tamago_sifiveu.go`: imports the TamaGo `qemu/sifive_u` board package
 
 ### `cmd/inputgen/`
@@ -234,11 +273,13 @@ The build split is:
 
 - hosted Go uses `main_hosted.go`
 - bare-metal Go uses `main_baremetal.go`
-- bare-metal output behavior is selected by build tags such as `qemu_virt` and `tamago_sifive_u`
+- bare-metal output behavior is selected by build tags such as `qemu_virt`, `tamago_libriscv`, and `tamago_sifive_u`
 
 ## Notes
 
-- `third_party/tinygo` and `third_party/libriscv` are ignored by Git on purpose
+- `third_party/tinygo`, `third_party/tamago-go`, and `third_party/libriscv` are ignored by Git on purpose
 - the TinyGo fixes live in `third_party/tinygo-riscv64im_zicclsm.patch`
+- the TamaGo fixes live in `third_party/tamago-go-tamago_libriscv.patch`
 - if you want a fully fresh TinyGo checkout, remove `third_party/tinygo` and run `make vendor-tinygo` again
+- if you want a fully fresh TamaGo checkout, remove `third_party/tamago-go` and run `make vendor-tamago` again
 - the Makefile suppresses command echo consistently; use `make -n <target>` if you want to inspect the exact shell commands

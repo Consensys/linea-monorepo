@@ -196,11 +196,40 @@ uint64_t parse_max_instructions(int argc, char** argv) {
 	return parsed;
 }
 
+uint64_t parse_env_u64(const char* name) {
+	const char* value = std::getenv(name);
+	if (value == nullptr || *value == '\0') {
+		return 0;
+	}
+
+	char* end = nullptr;
+	const auto parsed = std::strtoull(value, &end, 0);
+	if (end == nullptr || *end != '\0') {
+		throw std::runtime_error(std::string("invalid numeric environment variable ") + name + "=" + value);
+	}
+
+	return parsed;
+}
+
 std::string describe_guest_state(const Machine& machine) {
 	try {
 		return machine.cpu.current_instruction_to_string();
 	} catch (...) {
 		return "instruction unavailable";
+	}
+}
+
+void trace_guest_startup(Machine& machine, uint64_t steps) {
+	for (uint64_t i = 0; i < steps; i++) {
+		const auto pc = machine.cpu.pc();
+		std::cout << "trace[" << i << "] pc=0x"
+			  << std::hex << pc
+			  << " sp=0x" << machine.cpu.reg(riscv::REG_SP)
+			  << " ra=0x" << machine.cpu.reg(riscv::REG_RA)
+			  << std::dec << " :: "
+			  << describe_guest_state(machine)
+			  << '\n';
+		machine.cpu.step_one();
 	}
 }
 
@@ -259,6 +288,11 @@ int main(int argc, char** argv) {
 			});
 
 		try {
+			const auto trace_steps = parse_env_u64("LIBRISCV_TRACE_STEPS");
+			if (trace_steps != 0) {
+				trace_guest_startup(machine, trace_steps);
+			}
+
 			const bool stopped_normally = machine.simulate<false>(max_instructions);
 
 			GuestStatus status {};
@@ -284,6 +318,12 @@ int main(int argc, char** argv) {
 				  << " (type=" << err.type()
 				  << ", data=0x" << std::hex << err.data() << std::dec
 				  << ", pc=0x" << std::hex << machine.cpu.pc() << std::dec << ")\n";
+			if (err.data() != 0) {
+				try {
+					std::cerr << "libriscv runner: " << machine.memory.get_page_info(err.data()) << '\n';
+				} catch (...) {
+				}
+			}
 			std::cerr << "libriscv runner: " << describe_guest_state(machine) << '\n';
 			return 1;
 		} catch (const std::exception& err) {

@@ -1,4 +1,4 @@
-//go:build baremetal && !qemu_virt && !tamago_sifive_u
+//go:build baremetal && !qemu_virt && !tamago_libriscv && !tamago_sifive_u
 
 package main
 

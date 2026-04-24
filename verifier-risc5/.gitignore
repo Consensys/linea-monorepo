@@ -3,3 +3,4 @@
 build/
 third_party/tinygo/
 third_party/libriscv/
+third_party/tamago-go/
