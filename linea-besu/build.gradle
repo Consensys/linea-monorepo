@@ -81,18 +81,14 @@ rootProject.ext.resolveBesuVersion = {
     cached = resolvedVersionMemo.get()
     if (cached != null) return cached
 
-    def resolvedVersion = readCachedBesuVersion(cachedResolvedFile, besuCommit)
-
-    if (!resolvedVersion) {
-      resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedResolvedFile)
-    }
-
+    def resolvedVersion = resolveBesuVersionCached(providers, besuCommit, rootDirFile, cachedResolvedFile)
     if (!isBesuAvailableInMavenLocal(logger, resolvedVersion, mavenLocalBase)
         && !isBesuAvailableInMaven(logger, resolvedVersion)) {
       logger.lifecycle("Besu BOM ${resolvedVersion} missing in both remote and local maven; building/publishing Besu to maven local on-demand")
       buildAndPublishBesuAction(
           logger,
           providers,
+          besuCommit,
           rootDirFile,
           false,
           skipDownloadBesuDist,
@@ -129,6 +125,7 @@ tasks.register('buildAndPublishBesu') { t ->
     buildAndPublishBesuAction(
         t.logger,
         providers,
+        besuCommit,
         rootDirFile,
         publishToMaven,
         skipDownloadBesuDist,
@@ -203,30 +200,47 @@ static void writeCachedBesuVersion(File cachedResolvedFile, String besuCommit, S
 }
 
 /**
- * Read the resolved version from the cache file when the cached commit matches besuCommit.
- * Falls back to running the checkout script via {@code providers.exec} (configuration-cache
- * safe — Gradle records the external process output) if the cache is missing or stale.
+ * Single provider.exec entry point for linea-besu/scripts/checkout-and-resolve-version.sh.
+ * Returns the script's full stdout (last line is the resolved besuVersion). Side effect:
+ * tmp/besu-eth is created or updated to a git checkout at besuCommit. Configuration-cache
+ * safe — Gradle tracks the exec inputs and captured output.
  */
-static String resolveBesuVersionCached(providers, String besuCommit, File rootDir, File cachedResolvedFile) {
-  def cached = readCachedBesuVersion(cachedResolvedFile, besuCommit)
-  if (cached) return cached
-
-  def outputText = providers.exec { spec ->
+static String runCheckoutAndResolveScript(providers, String besuCommit, File rootDir) {
+  return providers.exec { spec ->
     spec.workingDir(rootDir)
     spec.environment('BESU_DIR', rootDir.absolutePath + '/tmp/besu-eth')
     spec.environment('BESU_COMMIT', besuCommit)
     spec.environment('VERSION_LABEL', '')
     spec.commandLine('bash', rootDir.absolutePath + '/linea-besu/scripts/checkout-and-resolve-version.sh')
   }.standardOutput.asText.get()
+}
 
-  def ver = outputText.trim().readLines().last()
-  writeCachedBesuVersion(cachedResolvedFile, besuCommit, ver)
-  return ver
+/**
+ * Read the resolved version from the cache file when the cached commit matches besuCommit.
+ * Falls back to running the checkout script if the cache is missing or stale.
+ */
+static String resolveBesuVersionCached(providers, String besuCommit, File rootDir, File cachedResolvedFile) {
+  def cached = readCachedBesuVersion(cachedResolvedFile, besuCommit)
+  if (cached) return cached
+
+  def besuVer = runCheckoutAndResolveScript(providers, besuCommit, rootDir).trim().readLines().last()
+  writeCachedBesuVersion(cachedResolvedFile, besuCommit, besuVer)
+  return besuVer
+}
+
+/**
+ * Ensures {@code tmp/besu-eth} is a git checkout at the configured {@code besuCommit}.
+ */
+static void ensureBesuCheckedOut(providers, String besuCommit, File rootDir) {
+  def besuGitDir = new File(rootDir, 'tmp/besu-eth/.git')
+  if (besuGitDir.exists()) return
+  runCheckoutAndResolveScript(providers, besuCommit, rootDir)
 }
 
 static void buildAndPublishBesuAction(
     logger,
     providers,
+    String besuCommit,
     File rootDir,
     boolean publishToMaven,
     boolean skipDownloadBesuDist,
@@ -260,6 +274,8 @@ static void buildAndPublishBesuAction(
     return
   }
   logger.lifecycle("Running buildAndPublishBesu as Besu ${resolvedBesuVer} was not found in remote/local maven")
+  // build-dist-and-publish.sh assumes tmp/besu-eth is a git checkout at besuCommit.
+  ensureBesuCheckedOut(providers, besuCommit, rootDir)
   def rootPath = rootDir.absolutePath
   providers.exec { spec ->
     spec.workingDir(rootDir)
