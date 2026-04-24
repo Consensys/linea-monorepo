@@ -70,7 +70,7 @@ jobs:
           # gh run view --log-failed requires the run to be complete, but the notify job
           # is part of the same run so the run is still in_progress. Fetch logs for each
           # already-completed failed job individually instead - those are available immediately.
-          failed_job_ids=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+          failed_job_ids=$(gh api --paginate "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
             --jq '[.jobs[] | select(.conclusion == "failure") | .id] | .[]')
 
           > /tmp/failed-job-logs-raw.txt
@@ -273,11 +273,13 @@ jobs:
         id: jobs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ steps.ctx.outputs.repo }}
+          RUN_ID: ${{ inputs.run_id }}
         run: |
-          curl -s \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ steps.ctx.outputs.repo }}/actions/runs/${{ inputs.run_id }}/jobs \
+          set -euo pipefail
+          gh api --paginate "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs' \
+            | jq -s '{jobs: map(.[]) }' \
             > jobs.json
 
           echo "json<<EOF" >> $GITHUB_OUTPUT
