@@ -232,9 +232,19 @@ static String resolveBesuVersionCached(providers, String besuCommit, File rootDi
  * Ensures {@code tmp/besu-eth} is a git checkout at the configured {@code besuCommit}.
  */
 static void ensureBesuCheckedOut(providers, String besuCommit, File rootDir) {
-  def besuGitDir = new File(rootDir, 'tmp/besu-eth/.git')
-  if (besuGitDir.exists()) return
-    runCheckoutAndResolveScript(providers, besuCommit, rootDir)
+  def besuDir = new File(rootDir, 'tmp/besu-eth')
+  if (new File(besuDir, '.git').exists()) {
+    def revParse = providers.exec { spec ->
+      spec.workingDir(besuDir)
+      spec.commandLine('git', 'rev-parse', 'HEAD')
+      spec.setIgnoreExitValue(true)
+    }
+    if (revParse.result.get().exitValue == 0) {
+      def currentHead = revParse.standardOutput.asText.get().trim()
+      if (currentHead == besuCommit || currentHead.startsWith(besuCommit)) return
+    }
+  }
+  runCheckoutAndResolveScript(providers, besuCommit, rootDir)
 }
 
 static void buildAndPublishBesuAction(
@@ -274,8 +284,10 @@ static void buildAndPublishBesuAction(
     return
   }
   logger.lifecycle("Running buildAndPublishBesu as Besu ${resolvedBesuVer} was not found in remote/local maven")
-  // build-dist-and-publish.sh assumes tmp/besu-eth is a git checkout at besuCommit.
+
+  // ensure the tmp besu folder has been checkout at besuCommit
   ensureBesuCheckedOut(providers, besuCommit, rootDir)
+
   def rootPath = rootDir.absolutePath
   providers.exec { spec ->
     spec.workingDir(rootDir)

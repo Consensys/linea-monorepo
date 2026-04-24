@@ -11,4 +11,4 @@ else
 fi
 
 echo "Building Besu with version $RESOLVED_BESU_VERSION (distTar $PUBLISH_TASK)"
-(cd "$BESU_DIR" && ./gradlew -Prelease.releaseVersion="$RESOLVED_BESU_VERSION" -Pversion="$RESOLVED_BESU_VERSION" distTar "$PUBLISH_TASK")
+(cd "$BESU_DIR" && ./gradlew clean && ./gradlew -Prelease.releaseVersion="$RESOLVED_BESU_VERSION" -Pversion="$RESOLVED_BESU_VERSION" distTar "$PUBLISH_TASK")
