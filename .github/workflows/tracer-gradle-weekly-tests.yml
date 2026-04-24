@@ -39,7 +39,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew :tracer:arithmetization:weeklyReplayTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          GOCORSET_FLAGS: -v --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -v --ansi-escapes=false --field=KOALABEAR_16 --report --air
           JUNIT_TESTS_PARALLELISM: 2
 
       - name: Upload test report
