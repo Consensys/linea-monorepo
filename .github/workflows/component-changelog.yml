@@ -1,4 +1,4 @@
-name: "Coordinator Changelog (PR preview)"
+name: "Component Changelog (PR preview)"
 
 permissions:
   contents: read
@@ -16,13 +16,13 @@ on:
       - '.github/workflows/coordinator-changelog.yml'
 
 concurrency:
-  group: coordinator-changelog-${{ github.workflow }}-${{ github.ref }}
+  group: component-changelog-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   lint-latest-commit-message:
     if: github.event.pull_request.head.repo.fork == false
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Lint latest PR commit message
     steps:
       - name: Checkout
@@ -40,11 +40,15 @@ jobs:
           failOnWarnings: true
           helpURL: https://www.conventionalcommits.org
 
-  generate-coordinator-changelog:
+  generate-component-changelog:
     needs: lint-latest-commit-message
     if: github.event.pull_request.head.repo.fork == false
-    runs-on: ubuntu-latest
-    name: Generate coordinator [Unreleased] changelog & next version
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [ "coordinator", "postman", "transaction-exclusion-api" ]
+    name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,15 +58,15 @@ jobs:
           fetch-tags: true
           submodules: false
 
-      - name: Generate coordinator [Unreleased] changelog
+      - name: Generate ${{ matrix.component }} [Unreleased] changelog
         id: changelog
         uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
         with:
           config: cliff.toml
           args: >-
             --unreleased
-            --include-path "coordinator/**"
-            --tag-pattern "releases/coordinator/v*"
+            --include-path "${{ matrix.component }}/**"
+            --tag-pattern "releases/${{ matrix.component }}/v*"
 
       # Install git-cliff directly so we can call --bumped-version without the
       # git-cliff-action post-processing that jq-parses stdout and breaks on
@@ -72,7 +76,7 @@ jobs:
         with:
           tool: git-cliff
 
-      - name: Compute next coordinator version (semver)
+      - name: Compute next ${{ matrix.component }} version (semver)
         id: version
         shell: bash
         run: |
@@ -80,27 +84,27 @@ jobs:
           next_tag=$(git cliff \
             --config cliff.toml \
             --bumped-version \
-            --include-path "coordinator/**" \
-            --tag-pattern "releases/coordinator/v*")
-          next_semver="${next_tag#releases/coordinator/v}"
-          echo "next coordinator tag:    ${next_tag}"
-          echo "next coordinator semver: ${next_semver}"
+            --include-path "${{ matrix.component }}/**" \
+            --tag-pattern "releases/${{ matrix.component }}/v*")
+          next_semver="${next_tag#releases/${{ matrix.component }}/v}"
+          echo "next ${{ matrix.component }} tag:    ${next_tag}"
+          echo "next ${{ matrix.component }} semver: ${next_semver}"
           {
             echo "tag=${next_tag}"
             echo "version=${next_semver}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Post/update changelog preview comment on PR
+      - name: Post/update ${{ matrix.component }} changelog preview comment on PR
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
-          header: coordinator-changelog-preview
+          header: ${{ matrix.component }}-changelog-preview
           message: |
-            ## Coordinator Changelog Preview (informational)
+            ## ${{ matrix.component }} Changelog Preview (informational)
 
             **Next proposed version:** `${{ steps.version.outputs.tag }}`
 
             <details>
-            <summary><strong>[Unreleased] diff</strong> (commits touching <code>coordinator/**</code> since latest <code>releases/coordinator/v*</code> tag)</summary>
+            <summary><strong>[Unreleased] diff</strong> (commits touching <code>${{ matrix.component }}/**</code> since latest <code>releases/${{ matrix.component }}/v*</code> tag)</summary>
 
             ${{ steps.changelog.outputs.content }}
 
