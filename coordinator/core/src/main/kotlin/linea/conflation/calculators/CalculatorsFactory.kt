@@ -53,7 +53,7 @@ object CalculatorFactory {
     clock: Clock,
     log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
   ): ConflationCalculators {
-    val aggregationTargetEndBlockNumbersSet: MutableSet<ULong> = ConcurrentSkipListSet(aggregationTargetEndBlockNumbers)
+    val aggregationTargetEndBlockNumbers: MutableSet<ULong> = ConcurrentSkipListSet(aggregationTargetEndBlockNumbers)
     val blobCalculator = ConflationTriggerCalculatorByDataCompressed(blobCompressor = blobCompressor)
     val syncCalculators = createConflationTriggerCalculators(
       tracesCountersLimit = tracesCountersLimit,
@@ -61,7 +61,7 @@ object CalculatorFactory {
       timestampBasedHardForks = timestampBasedHardForks,
       compressedBlobCalculator = blobCalculator,
       lastConflatedTimestamp = lastConflatedTimestamp,
-      aggregationTargetEndBlockNumbersSet = aggregationTargetEndBlockNumbersSet,
+      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
       logger = log,
       metricsFacade = metricsFacade,
     ).also {
@@ -101,14 +101,14 @@ object CalculatorFactory {
       blobCalculator = blobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = blobBatchesLimit ?: (aggregationProofsLimit - 1U),
-      aggregationTargetEndBlocksDynamicSet = aggregationTargetEndBlockNumbersSet,
+      aggregationTargetEndBlocks = aggregationTargetEndBlockNumbers,
       log = log,
     )
 
     val aggCalc = createAggregationCalculator(
       lastAggregatedBlockNumber = lastAggregatedBlockNumber,
       lastAggregatedTimestamp = lastAggregatedTimestamp,
-      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbersSet,
+      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
       timestampBasedHardForks = timestampBasedHardForks,
       aggregationProofsLimit = aggregationProofsLimit,
       aggregationBlobLimit = aggregationBlobLimit,
@@ -236,7 +236,7 @@ object CalculatorFactory {
     timestampBasedHardForks: List<Instant> = emptyList(),
     compressedBlobCalculator: ConflationTriggerCalculatorByDataCompressed,
     lastConflatedTimestamp: Instant,
-    aggregationTargetEndBlockNumbersSet: MutableSet<ULong>,
+    aggregationTargetEndBlockNumbers: MutableSet<ULong>,
     logger: Logger,
     metricsFacade: MetricsFacade,
   ): List<ConflationTriggerCalculator> {
@@ -248,7 +248,7 @@ object CalculatorFactory {
           metricsFacade = metricsFacade,
           log = logger,
         ),
-        ConflationTriggerCalculatorByTargetBlockNumbers(targetEndBlockNumbers = aggregationTargetEndBlockNumbersSet),
+        ConflationTriggerCalculatorByTargetBlockNumbers(targetEndBlockNumbers = aggregationTargetEndBlockNumbers),
         compressedBlobCalculator,
       )
     if (blocksLimit != null) {

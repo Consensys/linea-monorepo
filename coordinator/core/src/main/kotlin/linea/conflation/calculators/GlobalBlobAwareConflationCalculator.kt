@@ -27,7 +27,7 @@ class GlobalBlobAwareConflationCalculator(
   private val blobCalculator: ConflationTriggerCalculatorByDataCompressed,
   private val batchesLimit: UInt,
   metricsFacade: MetricsFacade,
-  private val aggregationTargetEndBlocksDynamicSet: MutableSet<ULong>,
+  private val aggregationTargetEndBlocks: MutableSet<ULong>,
   private val blobCutOffTiggers: Set<ConflationTrigger> = setOf(
     ConflationTrigger.DATA_LIMIT,
     ConflationTrigger.TIME_LIMIT,
@@ -170,7 +170,7 @@ class GlobalBlobAwareConflationCalculator(
       numberOfBatches >= batchesLimit
     ) {
       if (conflation.conflationTrigger in aggregationCutOffTiggers) {
-        aggregationTargetEndBlocksDynamicSet.add(conflation.endBlockNumber)
+        aggregationTargetEndBlocks.add(conflation.endBlockNumber)
       }
       fireBlobTriggerAndResetState(conflation.conflationTrigger)
     } else {

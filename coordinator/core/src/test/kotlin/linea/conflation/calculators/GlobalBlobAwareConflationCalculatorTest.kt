@@ -221,7 +221,7 @@ class GlobalBlobAwareConflationCalculatorTest {
         blobCalculator = calculatorByDataCompressed,
         batchesLimit = defaultBatchesLimit,
         metricsFacade = metricsFacade,
-        aggregationTargetEndBlocksDynamicSet = aggregationTargetEndBlockNumbers,
+        aggregationTargetEndBlocks = aggregationTargetEndBlockNumbers,
       )
     conflations = mutableListOf()
     blobs = mutableListOf()
