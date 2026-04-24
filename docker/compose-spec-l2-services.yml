@@ -5,7 +5,7 @@ services:
   l2-genesis-initialization:
     image: busybox:latest
     container_name: l2-genesis-intialization
-    profiles: [ "external-to-monorepo" ]
+    profiles: [ "l2", "external-to-monorepo" ]
     environment:
       CREATE_EMPTY_BLOCKS: ${CREATE_EMPTY_BLOCKS:-false}
     entrypoint: [ "sh","/initialization/init.sh" ]
