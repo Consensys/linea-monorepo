@@ -652,7 +652,7 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
-  val highestAcceptedFinalizationTracker = HighestULongTracker(lastConflatedBlockNumber).also {
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "highest.accepted.block.number",
