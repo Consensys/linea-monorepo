@@ -270,7 +270,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration
-		utils.ToBytes(api, pi.ChainConfigurationFPISnark.Sum(api)),
+		gnarkutil.ToBytes32(api, pi.ChainConfigurationFPISnark.Sum(api)),
 	)
 
 	// turn the hash into a bn254 element
