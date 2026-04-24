@@ -96,6 +96,8 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 			if req.ZkStateMerkleProof == nil {
 				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
 			}
+		}
+		if req.ZkStateMerkleProof != nil {
 			// Validate that beacon-roots timestamp in Shomei matches the request's simulatedExecutionBlockTimestamp, for EIP-4788
 			if err := ValidateShomeiTimestamp(req.ZkStateMerkleProof, req.SimulatedExecutionBlockTimestamp); err != nil {
 				return err
