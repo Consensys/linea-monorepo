@@ -24,8 +24,8 @@ const func: DeployFunction = withSignerUiSession(
       [lineaRollupAddress],
     );
 
-    // Encoding for the upgrade call to be executed through the Safe.
-    // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
+    // Encodes the upgrade calldata to be executed through the Security Council Safe.
+    // upgrade(address proxy, address implementation) - selector 0x99a88ec4
     // https://www.4byte.directory/signatures/?bytes4_signature=0x99a88ec4
     const upgradeCallUsingSecurityCouncil = ethers.concat([
       "0x99a88ec4",
