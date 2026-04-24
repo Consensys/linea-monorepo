@@ -1,11 +1,11 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
-import linea.persistence.ftx.ForcedTransactionsDao
-import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
-import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
+import linea.finalization.FinalizationHandler
+import linea.finalization.FinalizationMonitor
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RecordsCleanupFinalizationHandler(
@@ -47,8 +47,12 @@ class RecordsCleanupFinalizationHandler(
     )
     val aggregationsCleanup = aggregationsRepository
       .deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive = update.blockNumber.toLong() - 1L)
-    val ftxRecordsCleanup = update.forcedTransactionNumber?.let { forcedTransactionsDao.deleteFtxUpToInclusive(it) }
-      ?: SafeFuture.completedFuture(Unit)
+    val ftxRecordsCleanup =
+      if (update.forcedTransactionNumber > 0UL) {
+        forcedTransactionsDao.deleteFtxUpToInclusive(update.forcedTransactionNumber - 1UL)
+      } else {
+        SafeFuture.completedFuture(Unit)
+      }
 
     return SafeFuture.allOf(batchesCleanup, blobsCleanup, aggregationsCleanup, ftxRecordsCleanup)
   }

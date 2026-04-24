@@ -96,12 +96,6 @@ __pycache__/
 
 /besu-plugins/linea-sequencer/**/site
 
-/bridge-ui/.env*.local
-!/bridge-ui/.env.test
-/bridge-ui/cache
-/bridge-ui/out
-/bridge-ui/test-results
-
 /contracts/.env~
 /contracts/coverage.json
 /contracts/**/cache
@@ -169,7 +163,7 @@ __pycache__/
 # Usually the profiling pdfs
 prover/*.pdf
 # Usually request/response files
-prover/*.json 
+prover/*.json
 # Usually helper shell scripts to run the prover
 prover/*.sh
 
@@ -177,3 +171,5 @@ prover/*.sh
 contracts/.claude/settings.local.json
 *.analysis-report.html
 .worktrees/
+e2e/e2e-runtime-report.html
+e2e/e2e-runtime-report-summary.json

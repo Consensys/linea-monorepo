@@ -1,13 +1,13 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import linea.domain.BlobCounters
+import linea.domain.BlobsToAggregate
 import linea.domain.BlockHeaderSummary
 import linea.kotlin.ByteArrayExt
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
@@ -62,21 +62,15 @@ class GlobalAggregationCalculatorTest {
     metricsFacade: MetricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
     aggregationHandler: AggregationHandler = AggregationHandler.NOOP_HANDLER,
   ): GlobalAggregationCalculator {
-    val syncAggregationTriggers = mutableListOf<SyncAggregationTriggerCalculator>()
-      .apply {
-        proofLimit?.also { add(AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = it)) }
-        blobLimit?.also { add(AggregationTriggerCalculatorByBlobLimit(maxBlobsPerAggregation = it)) }
-        targetBlockNumbers?.also {
-          add(AggregationTriggerCalculatorByTargetBlockNumbers(targetBlockNumbers.map { it.toULong() }.toSet()))
-        }
-        hardForkTimestamps?.also {
-          aggregationTriggerCalculatorByTimestampHardFork = AggregationTriggerCalculatorByTimestampHardFork(
-            hardForkTimestamps = it,
-            initialTimestamp = initialTimestamp,
-          )
-          add(aggregationTriggerCalculatorByTimestampHardFork)
-        }
+    val fakeFtxCalculator = object : SyncAggregationTriggerCalculator {
+      override fun newBlob(blobCounters: BlobCounters) {
+        // no op
       }
+      override fun checkAggregationTrigger(blobCounters: BlobCounters): AggregationTrigger? = null
+      override fun reset() {
+        // no op
+      }
+    }
 
     val deferredAggregationTriggers = mutableListOf<DeferredAggregationTriggerCalculator>().apply {
       aggregationDeadline?.also {
@@ -93,12 +87,17 @@ class GlobalAggregationCalculatorTest {
       }
     }
 
-    return GlobalAggregationCalculator(
-      lastBlockNumber = lastBlockNumber,
-      syncAggregationTrigger = syncAggregationTriggers,
-      deferredAggregationTrigger = deferredAggregationTriggers,
-      metricsFacade = metricsFacade,
+    return AggregationCalculatorFactory.createAggregationCalculator(
+      startBlockNumberInclusive = lastBlockNumber + 1u,
+      maxProofsPerAggregation = proofLimit ?: UInt.MAX_VALUE,
+      maxBlobsPerAggregation = blobLimit,
+      targetEndBlockNumbers = targetBlockNumbers?.map { it.toULong() }?.toSet() ?: emptySet(),
       aggregationSizeMultipleOf = aggregationSizeMultipleOf.toUInt(),
+      hardForkTimestamps = hardForkTimestamps ?: emptyList(),
+      initialTimestamp = initialTimestamp,
+      forcedTransactionTriggerAggCalculator = fakeFtxCalculator,
+      deferredAggregationTriggerCalculators = deferredAggregationTriggers,
+      metricsFacade = metricsFacade,
     ).apply { onAggregation(aggregationHandler) }
   }
 

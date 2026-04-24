@@ -4,18 +4,18 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.domain.createAggregation
+import linea.domain.createBatch
+import linea.domain.createBlobRecordFromBatches
+import linea.finalization.FinalizationMonitor
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
+import linea.persistence.ftx.ForcedTransactionRecordFactory
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.domain.ForcedTransactionRecordFactory
-import net.consensys.zkevm.domain.createAggregation
-import net.consensys.zkevm.domain.createBatch
-import net.consensys.zkevm.domain.createBlobRecordFromBatches
-import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
@@ -189,10 +189,7 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
       .isNotNull()
 
     val forcedTransactionsAfterCleanup = forcedTransactionsDao.list().get()
-    Assertions.assertThat(forcedTransactionsAfterCleanup.size).isEqualTo(1)
-    Assertions.assertThat(
-      forcedTransactionsDao.findByNumber(ftx4.ftxNumber).get(),
-    )
-      .isNotNull()
+    Assertions.assertThat(forcedTransactionsAfterCleanup.map { it.ftxNumber })
+      .isEqualTo(listOf(3UL, 4UL))
   }
 }

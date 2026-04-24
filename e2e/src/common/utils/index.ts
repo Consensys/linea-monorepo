@@ -18,6 +18,9 @@ export { estimateLineaGas } from "./gas";
 export { normalizeEip1559Fees } from "./fees";
 export type { Eip1559Fees } from "./fees";
 
+// Viem retry
+export { withRetryOnBlockNotFound, createBlockNotFoundRetryExtension } from "./viem-retry";
+
 // Traffic
 export { sendTransactionsToGenerateTrafficWithInterval } from "./traffic";
 
@@ -28,5 +31,11 @@ export { execDockerCommand, getDockerImageTag } from "./docker";
 export { expectSuccessfulTransaction, getRawTransactionHex, getTransactionHash } from "./transaction";
 
 // Retry
-export { sendTransactionWithRetry } from "./retry";
-export type { FeeOverrides, SendTransactionWithRetryOptions, TransactionResult } from "./retry";
+export { sendTransactionWithGasPriceRetry, sendTransactionWithRetry } from "./retry";
+export type {
+  FeeOverrides,
+  GasPriceFeeOverrides,
+  SendTransactionWithGasPriceRetryOptions,
+  SendTransactionWithRetryOptions,
+  TransactionResult,
+} from "./retry";
