@@ -22,7 +22,7 @@ const (
 // file for a given RISC-V binary program.
 func main() {
 	if len(os.Args) < 6 {
-		fmt.Fprintln(os.Stderr, "usage: zkc-gen <elf-file>")
+		fmt.Fprintln(os.Stderr, "usage: go run main.go <elfFile> <inputs> <programOffset> <inputsOffset> <entryPoint>")
 		os.Exit(1)
 	}
 
