@@ -34,7 +34,7 @@ restassured = "5.3.0"
 wiremock = "3.13.2"
 logcaptor = "2.11.0"
 shomei = "3.1.0"
-besuShomeiPluginVersion = "v1.0.0"
+besuShomeiPluginVersion = "v1.0.4"
 undercouchDownload = "5.6.0"
 
 # Runtime
@@ -42,7 +42,7 @@ undercouchDownload = "5.6.0"
 # This is the single source of truth for the Besu version.
 # During task execution, linea-besu/build.gradle resolves this commit,
 # writes linea-besu/.besu-resolved, and read by dependent modules.
-besuCommit = "067610071de5f6760050ef434f5549c9ab8fbacf"
+besuCommit = "41cad9916393d73c1d050340b586b6f796405d57"
 blobCompressor = "4.0.1"
 commonsIo = "2.21.0"
 blobShnarfCalculator = "3.0.1"
