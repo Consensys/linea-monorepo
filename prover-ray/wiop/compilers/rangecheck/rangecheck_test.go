@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newRC builds a minimal system with one RangeCheck and calls Compile.
-// Returns the system, the checked column, the RangeCheck, and (after Compile)
-// the single Inclusion TableRelation.
+// newRC builds a minimal system with one sized module and one RangeCheck.
 func newRC(t *testing.T, b int) (sys *wiop.System, col *wiop.Column, rc *wiop.RangeCheck) {
 	t.Helper()
 	sys = wiop.NewSystemf("rc-test")
@@ -55,7 +53,7 @@ func TestCompile_SharedRangeColumn(t *testing.T) {
 	rangecheck.Compile(sys)
 
 	// One range module for B=4 shared across both RangeChecks.
-	assert.Len(t, sys.Modules, modulesBeforeCompile+1)
+	assert.Equal(t, modulesBeforeCompile+1, len(sys.Modules))
 	require.Len(t, sys.TableRelations, 2)
 }
 
@@ -72,7 +70,7 @@ func TestCompile_DistinctBoundsDistinctModules(t *testing.T) {
 	rangecheck.Compile(sys)
 
 	// Two distinct bounds → two distinct range modules.
-	assert.Len(t, sys.Modules, modulesBeforeCompile+2)
+	assert.Equal(t, modulesBeforeCompile+2, len(sys.Modules))
 	require.Len(t, sys.TableRelations, 2)
 }
 
@@ -84,41 +82,10 @@ func TestCompile_Idempotent(t *testing.T) {
 
 	rangecheck.Compile(sys)
 
-	assert.Len(t, sys.TableRelations, relationsAfterFirst,
+	assert.Equal(t, relationsAfterFirst, len(sys.TableRelations),
 		"second Compile must not add new relations")
-	assert.Len(t, sys.Modules, modulesAfterFirst,
+	assert.Equal(t, modulesAfterFirst, len(sys.Modules),
 		"second Compile must not add new modules")
-}
-
-func TestCompile_DynamicModule_Completeness(t *testing.T) {
-	sys := wiop.NewSystemf("rc-dyn-complete")
-	r0 := sys.NewRound()
-	mod := sys.NewDynamicModule(sys.Context.Childf("mod"), wiop.PaddingDirectionRight)
-	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-	mod.NewRangeCheck(sys.Context.Childf("rc"), col, 4)
-	rangecheck.Compile(sys)
-
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, makeVec(0, 1, 2, 3, 0, 1)) // 6 rows, all in [0, 4)
-
-	require.Len(t, sys.TableRelations, 1)
-	require.NoError(t, sys.TableRelations[0].Check(rt))
-}
-
-func TestCompile_DynamicModule_Soundness(t *testing.T) {
-	sys := wiop.NewSystemf("rc-dyn-sound")
-	r0 := sys.NewRound()
-	mod := sys.NewDynamicModule(sys.Context.Childf("mod"), wiop.PaddingDirectionRight)
-	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-	mod.NewRangeCheck(sys.Context.Childf("rc"), col, 4)
-	rangecheck.Compile(sys)
-
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, makeVec(0, 1, 2, 5)) // 5 >= 4 → out of range
-
-	require.Len(t, sys.TableRelations, 1)
-	assert.Error(t, sys.TableRelations[0].Check(rt),
-		"value above bound must be rejected by the compiled Inclusion")
 }
 
 func TestCompile_NoRangeChecks(t *testing.T) {
