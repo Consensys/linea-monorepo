@@ -343,7 +343,7 @@ class L1DependentApp(
     )
   }
 
-  private val highestAcceptedBlobTracker = HighestULongTracker(lastConflatedBlockNumber).also {
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "highest.accepted.block.number",
