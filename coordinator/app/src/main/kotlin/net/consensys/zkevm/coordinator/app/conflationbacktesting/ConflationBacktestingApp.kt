@@ -81,8 +81,8 @@ class ConflationBacktestingApp(
       .plus(mainCoordinatorConfig.traces.conflation?.endpoints ?: emptyList())
 
     val backtestingTracesEndpoints = setOf(
-      conflationBacktestingAppConfig.tracesApi.endpoint.toString(),
-      conflationBacktestingAppConfig.tracesConflationApi?.endpoint?.toString(),
+      conflationBacktestingAppConfig.tracesApi.endpoint,
+      conflationBacktestingAppConfig.tracesConflationApi?.endpoint,
     ).filterNotNull().toSet()
 
     require(mainCoordinatorConfigTracesEndpoints.intersect(backtestingTracesEndpoints).isEmpty()) {
