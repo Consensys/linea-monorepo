@@ -33,7 +33,7 @@ for j:Address=0; j<in_bytes_len; j=j+1 {
 
 printf "program length=%d\n", program_len
 
-while stop_signal == 0 && pc < program_len {
+while stop_signal == 0 && pc < (program_off + program_len) {
       printf "PC=%x\n", pc      
       instruction = read_32(pc) as Instruction
       pc = interpreter(instruction, pc)
