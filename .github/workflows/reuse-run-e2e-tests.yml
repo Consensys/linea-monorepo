@@ -96,16 +96,6 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+rw tmp/local/
-      - name: Pull all external-to-monorepo images with retry
-        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
-        if: ${{ inputs.linea_besu_package_tag == '' }}
-        with:
-          max_attempts: 10
-          retry_on: error
-          retry_wait_seconds: 30
-          timeout_minutes: 10
-          command: |
-            make docker-pull-images-external-to-monorepo
 
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v7
