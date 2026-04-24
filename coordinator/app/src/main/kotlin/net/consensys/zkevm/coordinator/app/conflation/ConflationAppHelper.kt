@@ -12,7 +12,7 @@ object ConflationAppHelper {
    * Returns the last block number inclusive upto which we have consecutive proven blobs or the last finalized block
    * number inclusive
    */
-  fun resumeConflationFrom(
+  internal fun resumeConflationFrom(
     aggregationsRepository: AggregationsRepository,
     lastFinalizedBlock: ULong,
   ): SafeFuture<ULong> {
