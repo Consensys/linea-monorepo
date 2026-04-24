@@ -30,9 +30,10 @@ object CalculatorFactory {
     blobCompressor: BlobCompressor,
     tracesCountersLimit: TracesCounters,
     blocksLimit: UInt?,
-    lastProcessedBlockNumber: ULong,
-    lastProcessedTimestamp: Instant,
-    // nextBlockToProcessTimestamp: Instant,
+    lastAggregatedBlockNumber: ULong,
+    lastAggregatedTimestamp: Instant,
+    lastConflatedBlockNumber: ULong = lastAggregatedBlockNumber,
+    lastConflatedTimestamp: Instant = lastAggregatedTimestamp,
     timestampBasedHardForks: List<Instant> = emptyList(),
     blobBatchesLimit: UInt? = null,
     aggregationTargetEndBlockNumbers: Set<ULong> = emptySet(),
@@ -59,7 +60,7 @@ object CalculatorFactory {
       blocksLimit = blocksLimit,
       timestampBasedHardForks = timestampBasedHardForks,
       compressedBlobCalculator = blobCalculator,
-      lastProcessedTimestamp = lastProcessedTimestamp,
+      lastConflatedTimestamp = lastConflatedTimestamp,
       aggregationTargetEndBlockNumbersSet = aggregationTargetEndBlockNumbersSet,
       logger = log,
       metricsFacade = metricsFacade,
@@ -80,7 +81,7 @@ object CalculatorFactory {
             conflationDeadline = conflationDeadline,
             conflationDeadlineLastBlockConfirmationDelay = conflationDeadlineLastBlockConfirmationDelay,
           ),
-          lastBlockNumber = lastProcessedBlockNumber,
+          lastBlockNumber = lastConflatedBlockNumber,
           clock = clock,
           latestBlockProvider = safeBlockProvider,
         ),
@@ -88,7 +89,7 @@ object CalculatorFactory {
     }
 
     val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
+      lastBlockNumber = lastConflatedBlockNumber,
       syncCalculators = syncCalculators + extraSyncCalculators,
       deferredTriggerConflationCalculators = listOfNotNull(conflationDeadlineCalculator),
       emptyTracesCounters = tracesCountersLimit.emptyTracesCounters,
@@ -105,8 +106,8 @@ object CalculatorFactory {
     )
 
     val aggCalc = createAggregationCalculator(
-      lastProcessedBlockNumber = lastProcessedBlockNumber,
-      lastProcessedTimestamp = lastProcessedTimestamp,
+      lastAggregatedBlockNumber = lastAggregatedBlockNumber,
+      lastAggregatedTimestamp = lastAggregatedTimestamp,
       aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbersSet,
       timestampBasedHardForks = timestampBasedHardForks,
       aggregationProofsLimit = aggregationProofsLimit,
@@ -137,9 +138,9 @@ object CalculatorFactory {
     )
   }
 
-  fun createAggregationCalculator(
-    lastProcessedBlockNumber: ULong,
-    lastProcessedTimestamp: Instant,
+  private fun createAggregationCalculator(
+    lastAggregatedBlockNumber: ULong,
+    lastAggregatedTimestamp: Instant,
     aggregationTargetEndBlockNumbers: Set<ULong> = emptySet(),
     timestampBasedHardForks: List<Instant> = emptyList(),
     aggregationProofsLimit: UInt,
@@ -177,8 +178,8 @@ object CalculatorFactory {
     }
 
     val aggregationCalculator = createAggregationCalculator(
-      lastProcessedBlockNumber = lastProcessedBlockNumber,
-      lastProcessedTimestamp = lastProcessedTimestamp,
+      lastAggregatedBlockNumber = lastAggregatedBlockNumber,
+      lastAggregatedTimestamp = lastAggregatedTimestamp,
       aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
       timestampBasedHardForks = timestampBasedHardForks,
       aggregationProofsLimit = aggregationProofsLimit,
@@ -195,8 +196,8 @@ object CalculatorFactory {
   }
 
   fun createAggregationCalculator(
-    lastProcessedBlockNumber: ULong,
-    lastProcessedTimestamp: Instant,
+    lastAggregatedBlockNumber: ULong,
+    lastAggregatedTimestamp: Instant,
     aggregationTargetEndBlockNumbers: Set<ULong> = emptySet(),
     timestampBasedHardForks: List<Instant> = emptyList(),
     aggregationProofsLimit: UInt,
@@ -214,14 +215,14 @@ object CalculatorFactory {
         add(
           AggregationTriggerCalculatorByTimestampHardFork(
             hardForkTimestamps = timestampBasedHardForks,
-            initialTimestamp = lastProcessedTimestamp,
+            initialTimestamp = lastAggregatedTimestamp,
           ),
         )
       }
     }
 
     return GlobalAggregationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
+      lastBlockNumber = lastAggregatedBlockNumber,
       syncAggregationTrigger = syncAggregationTriggerCalculators,
       deferredAggregationTrigger = listOfNotNull(aggregationDeadlineCalculator),
       metricsFacade = metricsFacade,
@@ -234,7 +235,7 @@ object CalculatorFactory {
     blocksLimit: UInt?,
     timestampBasedHardForks: List<Instant> = emptyList(),
     compressedBlobCalculator: ConflationTriggerCalculatorByDataCompressed,
-    lastProcessedTimestamp: Instant,
+    lastConflatedTimestamp: Instant,
     aggregationTargetEndBlockNumbersSet: DynamicBlockNumberSet,
     logger: Logger,
     metricsFacade: MetricsFacade,
@@ -257,7 +258,7 @@ object CalculatorFactory {
       calculators.add(
         ConflationTriggerCalculatorByHardForkTimestamp(
           hardForkTimestamps = timestampBasedHardForks,
-          initialTimestamp = lastProcessedTimestamp,
+          initialTimestamp = lastConflatedTimestamp,
         ),
       )
     }

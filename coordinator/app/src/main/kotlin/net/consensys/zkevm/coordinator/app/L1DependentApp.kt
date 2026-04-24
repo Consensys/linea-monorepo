@@ -301,7 +301,7 @@ class L1DependentApp(
     }
 
   private val lastFinalizedBlock = lastFinalizedBlock().get()
-  private val lastProcessedBlockNumber = resumeConflationFrom(
+  private val lastConflatedBlockNumber = resumeConflationFrom(
     aggregationsRepository,
     lastFinalizedBlock,
   ).get()
@@ -343,7 +343,7 @@ class L1DependentApp(
     )
   }
 
-  private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastConflatedBlockNumber).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "highest.accepted.block.number",
@@ -652,7 +652,7 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
-  val highestAcceptedFinalizationTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastConflatedBlockNumber).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "highest.accepted.block.number",

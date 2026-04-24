@@ -9,7 +9,6 @@ import linea.blob.BlobCompressorVersion
 import linea.clients.ExecutionProverClientV2
 import linea.conflation.AlwaysSafeBlockNumberProvider
 import linea.conflation.ConflationService
-import linea.conflation.DynamicBlockNumberSet
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
 import linea.conflation.calculators.CalculatorFactory
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
@@ -162,13 +161,6 @@ class ConflationBacktestingApp(
     BlockParameter.fromNumber(lastProcessedBlockNumber),
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock.timestamp.toLong())
-
-  private val dynamicTargetEndBlockNumberSet =
-    DynamicBlockNumberSet(
-      initialBlockNumbers =
-      backtestingCoordinatorConfig.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
-    )
-
   val blobCompressor = BlobCompressorFactory.getInstance(
     compressorVersion = backtestingCoordinatorConfig.conflation.blobCompression.blobCompressorVersion,
     dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit.toInt(),
@@ -179,8 +171,8 @@ class ConflationBacktestingApp(
     tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
     blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,
     timestampBasedHardForks = backtestingCoordinatorConfig.conflation.proofAggregation.timestampBasedHardForks,
-    lastProcessedBlockNumber = lastProcessedBlockNumber,
-    lastProcessedTimestamp = lastProcessedTimestamp,
+    lastAggregatedBlockNumber = lastProcessedBlockNumber,
+    lastAggregatedTimestamp = lastProcessedTimestamp,
     blobBatchesLimit = backtestingCoordinatorConfig.conflation.blobCompression.batchesLimit,
     aggregationProofsLimit = backtestingCoordinatorConfig.conflation.proofAggregation.proofsLimit,
     aggregationBlobLimit = backtestingCoordinatorConfig.conflation.proofAggregation.blobsLimit,

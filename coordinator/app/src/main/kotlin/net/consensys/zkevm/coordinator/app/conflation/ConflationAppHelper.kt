@@ -1,5 +1,7 @@
 package net.consensys.zkevm.coordinator.app.conflation
 
+import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.ethapi.EthApiClient
 import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
@@ -25,7 +27,7 @@ object ConflationAppHelper {
       }
   }
 
-  fun resumeAggregationFrom(
+  private fun resumeAggregationFrom(
     aggregationsRepository: AggregationsRepository,
     lastFinalizedBlock: ULong,
   ): SafeFuture<ULong> {
@@ -33,6 +35,34 @@ object ConflationAppHelper {
       .findHighestConsecutiveEndBlockNumber(lastFinalizedBlock.toLong() + 1)
       .thenApply { highestEndBlockNumber ->
         highestEndBlockNumber?.toULong() ?: lastFinalizedBlock
+      }
+  }
+
+  fun getLastConflatedAndAggregatedBlocks(
+    lastFinalizedBlock: ULong,
+    aggregationsRepository: AggregationsRepository,
+    l2EthClient: EthApiClient,
+  ): SafeFuture<LastProcessedBlocks> {
+    val lastConflatedBlock = resumeConflationFrom(
+      aggregationsRepository,
+      lastFinalizedBlock,
+    ).thenCompose { lastProcessedBlockNumber ->
+      l2EthClient.ethGetBlockByNumberTxHashes(
+        lastProcessedBlockNumber.toBlockParameter(),
+      )
+    }
+    val lastAggregatedBlock = resumeAggregationFrom(
+      aggregationsRepository,
+      lastFinalizedBlock,
+    ).thenCompose { lastConsecutiveAggregatedBlockNumber ->
+      l2EthClient.ethGetBlockByNumberTxHashes(
+        lastConsecutiveAggregatedBlockNumber.toBlockParameter(),
+      )
+    }
+
+    return SafeFuture.collectAll(lastConflatedBlock, lastAggregatedBlock)
+      .thenApply { blocks ->
+        LastProcessedBlocks(lastConflatedBlock = blocks.first(), lastAggregatedBlock = blocks.last())
       }
   }
 

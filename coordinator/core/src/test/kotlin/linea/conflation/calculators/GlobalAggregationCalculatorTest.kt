@@ -76,8 +76,8 @@ class GlobalAggregationCalculatorTest {
       }
 
     return CalculatorFactory.createAggregationCalculator(
-      lastProcessedBlockNumber = lastBlockNumber,
-      lastProcessedTimestamp = initialTimestamp,
+      lastAggregatedBlockNumber = lastBlockNumber,
+      lastAggregatedTimestamp = initialTimestamp,
       aggregationTargetEndBlockNumbers = targetBlockNumbers?.map { it.toULong() }?.toSet() ?: emptySet(),
       timestampBasedHardForks = hardForkTimestamps ?: emptyList(),
       aggregationProofsLimit = proofLimit ?: UInt.MAX_VALUE,
