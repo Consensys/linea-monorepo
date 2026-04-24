@@ -75,7 +75,7 @@ class GlobalAggregationCalculatorTest {
         aggregationTriggerCalculatorByDeadline = it
       }
 
-    return CalculatorsFactory.createAggregationCalculator(
+    return GlobalAggregationCalculator.create(
       lastAggregatedBlockNumber = lastBlockNumber,
       lastAggregatedTimestamp = initialTimestamp,
       aggregationTargetEndBlockNumbers = targetBlockNumbers?.map { it.toULong() }?.toSet() ?: emptySet(),

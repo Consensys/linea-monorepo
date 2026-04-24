@@ -53,7 +53,8 @@ object CalculatorsFactory {
     clock: Clock,
     log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
   ): ConflationCalculators {
-    val aggregationTargetEndBlockNumbers: MutableSet<ULong> = ConcurrentSkipListSet(aggregationTargetEndBlockNumbers)
+    val aggregationTargetEndBlockNumbersUpdatable: MutableSet<ULong> =
+      ConcurrentSkipListSet(aggregationTargetEndBlockNumbers)
     val blobCalculator = ConflationTriggerCalculatorByDataCompressed(blobCompressor = blobCompressor)
     val syncCalculators = createConflationTriggerCalculators(
       tracesCountersLimit = tracesCountersLimit,
@@ -61,7 +62,7 @@ object CalculatorsFactory {
       timestampBasedHardForks = timestampBasedHardForks,
       compressedBlobCalculator = blobCalculator,
       lastConflatedTimestamp = lastConflatedTimestamp,
-      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
+      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbersUpdatable,
       logger = log,
       metricsFacade = metricsFacade,
     ).also {
@@ -101,14 +102,14 @@ object CalculatorsFactory {
       blobCalculator = blobCalculator,
       metricsFacade = metricsFacade,
       batchesLimit = blobBatchesLimit ?: (aggregationProofsLimit - 1U),
-      aggregationTargetEndBlocks = aggregationTargetEndBlockNumbers,
+      aggregationTargetEndBlocks = aggregationTargetEndBlockNumbersUpdatable,
       log = log,
     )
 
     val aggCalc = createAggregationCalculator(
       lastAggregatedBlockNumber = lastAggregatedBlockNumber,
       lastAggregatedTimestamp = lastAggregatedTimestamp,
-      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
+      aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbersUpdatable,
       timestampBasedHardForks = timestampBasedHardForks,
       aggregationProofsLimit = aggregationProofsLimit,
       aggregationBlobLimit = aggregationBlobLimit,
@@ -177,7 +178,7 @@ object CalculatorsFactory {
       )
     }
 
-    val aggregationCalculator = createAggregationCalculator(
+    val aggregationCalculator = GlobalAggregationCalculator.create(
       lastAggregatedBlockNumber = lastAggregatedBlockNumber,
       lastAggregatedTimestamp = lastAggregatedTimestamp,
       aggregationTargetEndBlockNumbers = aggregationTargetEndBlockNumbers,
@@ -192,41 +193,6 @@ object CalculatorsFactory {
     return AggregationCalculators(
       aggregationCalculator = aggregationCalculator,
       service = aggregationDeadlineCalculator ?: DisabledService("Aggregation Deadline"),
-    )
-  }
-
-  fun createAggregationCalculator(
-    lastAggregatedBlockNumber: ULong,
-    lastAggregatedTimestamp: Instant,
-    aggregationTargetEndBlockNumbers: Set<ULong> = emptySet(),
-    timestampBasedHardForks: List<Instant> = emptyList(),
-    aggregationProofsLimit: UInt,
-    aggregationBlobLimit: UInt?,
-    aggregationSizeMultipleOf: UInt,
-    aggregationDeadlineCalculator: DeferredAggregationTriggerCalculator? = null,
-    metricsFacade: MetricsFacade,
-  ): GlobalAggregationCalculator {
-    val syncAggregationTriggerCalculators = mutableListOf(
-      AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = aggregationProofsLimit),
-      AggregationTriggerCalculatorByTargetBlockNumbers(targetEndBlockNumbers = aggregationTargetEndBlockNumbers),
-    ).apply {
-      aggregationBlobLimit?.let { add(AggregationTriggerCalculatorByBlobLimit(maxBlobsPerAggregation = it)) }
-      if (timestampBasedHardForks.isNotEmpty()) {
-        add(
-          AggregationTriggerCalculatorByTimestampHardFork(
-            hardForkTimestamps = timestampBasedHardForks,
-            initialTimestamp = lastAggregatedTimestamp,
-          ),
-        )
-      }
-    }
-
-    return GlobalAggregationCalculator(
-      lastBlockNumber = lastAggregatedBlockNumber,
-      syncAggregationTrigger = syncAggregationTriggerCalculators,
-      deferredAggregationTrigger = listOfNotNull(aggregationDeadlineCalculator),
-      metricsFacade = metricsFacade,
-      aggregationSizeMultipleOf = aggregationSizeMultipleOf,
     )
   }
 
