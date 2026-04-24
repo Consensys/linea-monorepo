@@ -220,6 +220,7 @@ jobs:
         shell: bash
         env:
           ARTIFACT_ID: ${{ steps.upload_artifact.outputs.artifact-id }}
+          UPLOAD_OUTCOME: ${{ steps.upload_artifact.outcome }}
         run: |
           set -euo pipefail
           if [[ -f e2e-failure-summary.txt ]]; then
@@ -229,7 +230,13 @@ jobs:
             echo "${summary}" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             echo "has_analysis=true" >> "$GITHUB_OUTPUT"
-            echo "artifact_url=https://github.com/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts/${ARTIFACT_ID}" >> "$GITHUB_OUTPUT"
+            # Only emit the artifact URL when the upload actually succeeded; a failed upload
+            # (continue-on-error: true) leaves ARTIFACT_ID empty, producing a broken link.
+            if [[ "${UPLOAD_OUTCOME}" == "success" && -n "${ARTIFACT_ID}" ]]; then
+              echo "artifact_url=https://github.com/${{ github.repository }}/actions/runs/${{ inputs.run_id }}/artifacts/${ARTIFACT_ID}" >> "$GITHUB_OUTPUT"
+            else
+              echo "artifact_url=" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo 'summary=""' >> "$GITHUB_OUTPUT"
             echo "has_analysis=false" >> "$GITHUB_OUTPUT"
@@ -426,20 +433,25 @@ jobs:
             }]
           }')
 
-          link_block=$(jq -n -c --arg url "$ARTIFACT_URL" '{
-            type: "rich_text",
-            elements: [{
-              type: "rich_text_section",
-              elements: [
-                { type: "text", text: "Full Analysis: ", style: { bold: true } },
-                { type: "link", url: $url, text: "Download ai-failure-analysis artifact" }
-              ]
-            }]
-          }')
-
           echo "divider_block=- ${divider}" >> "$GITHUB_OUTPUT"
           echo "analysis_block=- ${analysis_block}" >> "$GITHUB_OUTPUT"
-          echo "link_block=- ${link_block}" >> "$GITHUB_OUTPUT"
+
+          # Only emit the link block when the artifact URL is known-good.
+          if [[ -n "${ARTIFACT_URL}" ]]; then
+            link_block=$(jq -n -c --arg url "$ARTIFACT_URL" '{
+              type: "rich_text",
+              elements: [{
+                type: "rich_text_section",
+                elements: [
+                  { type: "text", text: "Full Analysis: ", style: { bold: true } },
+                  { type: "link", url: $url, text: "Download ai-failure-analysis artifact" }
+                ]
+              }]
+            }')
+            echo "link_block=- ${link_block}" >> "$GITHUB_OUTPUT"
+          else
+            echo "link_block=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Send Slack Notification
         if: ${{ steps.extract_jobs.outputs.has_results == 'true' }}
