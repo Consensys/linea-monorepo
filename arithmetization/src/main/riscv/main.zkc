@@ -18,17 +18,17 @@ fn main<ram, registers>() {
     var opcode:Opcode
     var instruction:Instruction
     var stop_signal:u1 = 0
-    var program_len:Address = riscV_program_length[0]
-    var in_bytes_len:Address = in_bytes_length[0]
-    var program_off:Address = riscV_program_offset[0]
-    var in_bytes_off:Address = in_bytes_offset[0]
+    var program_len:Length = riscV_program_length[0]
+    var in_bytes_len:Length = in_bytes_length[0]
+    var program_off:Offset = riscV_program_offset[0]
+    var in_bytes_off:Offset = in_bytes_offset[0]
 
     // copy public inputs and r5-program into the RAM
-    for i:Address = 0; i<program_len as Address; i = i + 1 {
-        write_8((program_off + i) as Address, riscV_program[i])
+    for i:Address = 0; i<program_len; i = i + 1 {
+        write_8(program_off + i, riscV_program[i])
     }
     for j:Address = 0; j<in_bytes_len; j = j + 1 {
-        write_8((in_bytes_off + j) as Address, in_bytes[j])
+        write_8(in_bytes_off + j, in_bytes[j])
     }
 
     printf "program length=%d\n", program_len
