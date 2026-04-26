@@ -1,0 +1,200 @@
+name: "Coordinator Release (manual)"
+
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/coordinator-automate-changelog-versioning-poc
+    paths:
+      - coordinator/RELEASE_TEST.md
+
+concurrency:
+  group: coordinator-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-coordinator:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
+    name: Prepare coordinator release (changelog + tag)
+    outputs:
+      release_tag: ${{ steps.version.outputs.tag }}
+      release_version: ${{ steps.version.outputs.version }}
+      docker_tag: ${{ steps.dockertag.outputs.dockertag }}
+      changelog: ${{ steps.changelog.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # git-cliff needs full history + tags
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
+      # Compute the release version and tag up front, so the changelog entry
+      # prepended in the next step is stamped with the version (not [unreleased]).
+      - name: Compute next coordinator version (semver)
+        id: version
+        run: |
+          set -euo pipefail
+          next_tag=$(git cliff \
+            --config cliff.toml \
+            --bumped-version \
+            --include-path "coordinator/**" \
+            --tag-pattern "releases/coordinator/v*")
+          if [ -z "${next_tag}" ]; then
+            echo "git-cliff returned no version; nothing to release."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          next_semver="${next_tag#releases/coordinator/v}"
+          echo "next coordinator tag:    ${next_tag}"
+          echo "next coordinator semver: ${next_semver}"
+          {
+            echo "tag=${next_tag}"
+            echo "version=${next_semver}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Ensure coordinator/CHANGELOG.md exists
+        if: steps.version.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          if [ ! -f coordinator/CHANGELOG.md ]; then
+            printf "# Coordinator Changelog\n\n" > coordinator/CHANGELOG.md
+          fi
+
+      # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-23"),
+      # via --tag, so the body template renders {{ version }} instead of [unreleased].
+      - name: Generate and prepend release changelog section
+        if: steps.version.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          git cliff \
+            --config cliff.toml \
+            --unreleased \
+            --tag "${{ steps.version.outputs.version }}" \
+            --include-path "coordinator/**" \
+            --tag-pattern "releases/coordinator/v*" \
+            --prepend coordinator/CHANGELOG.md
+
+      - name: Commit and push coordinator/CHANGELOG.md
+        id: commit
+        if: steps.version.outputs.tag != ''
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- coordinator/CHANGELOG.md; then
+            echo "No unreleased coordinator changes; nothing to do."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git add coordinator/CHANGELOG.md
+          git commit -m "chore(coordinator): CHANGELOG.md update for ${TAG} release"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push coordinator release tag
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAG}" ]; then
+            echo "No tag computed; aborting."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
+            echo "Tag ${TAG} already exists; aborting."
+            exit 1
+          fi
+          git tag -a "${TAG}" -m "Coordinator release ${TAG}"
+          git push origin "${TAG}"
+          echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
+
+      - name: Generate coordinator latest changelog
+        if: steps.version.outputs.tag != ''
+        id: changelog
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
+        with:
+          config: cliff.toml
+          args: >-
+            --latest
+            --include-path "coordinator/**"
+            --tag-pattern "releases/coordinator/v*"
+
+      - name: Compute version tags
+        if: steps.commit.outputs.changed == 'true'
+        id: compute_version_tags
+        uses: ./.github/actions/compute-version-tags
+
+      - name: Set timestamp
+        if: steps.commit.outputs.changed == 'true'
+        id: timestamp
+        run: |
+          echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: set docker tag
+        if: steps.commit.outputs.changed == 'true'
+        id: dockertag
+        run: |
+          echo "dockertag=${{ steps.version.outputs.version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
+
+  build-docker-image-coordinator:
+    needs: [release-coordinator]
+    uses: ./.github/workflows/coordinator-build-and-publish.yml
+    if: needs.release-coordinator.outputs.docker_tag != ''
+    with:
+      commit_tag: ${{ needs.release-coordinator.outputs.docker_tag }}
+      develop_tag: "develop"
+      image_name: consensys/linea-coordinator
+      push_image: true
+    secrets: inherit
+
+  gh-release-coordinator:
+    needs: [release-coordinator, build-docker-image-coordinator]
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Append Changelog Action to release note
+        id: append_change_log
+        shell: bash
+        run: |
+          mkdir release && cd release
+          echo "${{ needs.release-coordinator.outputs.changelog }}" >> output.md
+          echo "### Docker Image Details" >> output.md
+          echo "" >> output.md
+          echo "To pull the image, use the following command:" >> output.md
+          echo "\`\`\`" >> output.md
+          echo "docker pull consensys/linea-coordinator:${{ needs.release-coordinator.outputs.docker_tag }}" >> output.md
+          echo "\`\`\`" >> output.md
+
+      - name: gh-release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
+          tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
+          body_path: release/output.md
+          draft: true 
+          prerelease: false
+          generate_release_notes: false
+          target_commitish: ${{ github.sha }}
+          fail_on_unmatched_files: true
