@@ -10,13 +10,12 @@ termination_grace_period_seconds = 1800
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "./"
-requests_root_dir = "./"
+conflated_traces_dir = "/home/ubuntu/test_mainnet/traces/conflated/"
+requests_root_dir = "/home/ubuntu/test_mainnet/prover-execution/"
 limitless_with_debug = false
 ignore_compatibility_check = false
 keep_traces_until_block = 0
 serialization = false
-
 
 [data_availability]
 prover_mode = "full"
