@@ -64,7 +64,7 @@ that are not allowed to add transactions to the pool.
 | Option Name             | Default Value     | Command Line Argument                 |
 |-------------------------|-------------------|---------------------------------------|
 | DENY_LIST_PATH          | lineaDenyList.txt | `--plugin-linea-deny-list-path`       |
-| MAX_TX_GAS_LIMIT_OPTION | 30_000_000        | `--plugin-linea-max-tx-gas-limit`     |
+| MAX_TX_GAS_LIMIT_OPTION | 16_777_216        | `--plugin-linea-max-tx-gas-limit`     |
 | MAX_TX_CALLDATA_SIZE    | 60_000            | `--plugin-linea-max-tx-calldata-size` |
 
 ## RPC

@@ -96,6 +96,10 @@ This includes setting limits such as `TraceLineLimit`, `maxTxGasLimit`, and chec
 of a transaction, and enforcing deny list rules against sender, recipient, and EIP-7702 authorization list entries
 (recovered authority and delegation target address). Per-transaction calldata size validation is optional and only enabled when
 `--plugin-linea-max-tx-calldata-size` is set.
+Since EIP-7825, the effective transaction gas limit is capped at `16_777_216` even when
+`--plugin-linea-max-tx-gas-limit` is configured higher. Values above `16_777_216` are accepted for compatibility with
+existing profiles but do not raise the effective limit above the EIP-7825 cap. Values below `16_777_216` remain stricter
+local limits.
 The validators are in the package `net.consensys.linea.sequencer.txpoolvalidation.validators`.
 
 #### CLI options
@@ -103,7 +107,7 @@ The validators are in the package `net.consensys.linea.sequencer.txpoolvalidatio
 | Command Line Argument                                    | Default Value     |
 |----------------------------------------------------------|-------------------|
 | `--plugin-linea-deny-list-path`                          | lineaDenyList.txt |
-| `--plugin-linea-max-tx-gas-limit`                        | 30_000_000        |
+| `--plugin-linea-max-tx-gas-limit`                        | 16_777_216        |
 | `--plugin-linea-max-tx-calldata-size`                    | not set (disabled)|
 | `--plugin-linea-tx-pool-simulation-check-api-enabled`    | false             |
 | `--plugin-linea-tx-pool-simulation-check-p2p-enabled`    | false             |
