@@ -143,6 +143,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
         if funct3 == FUNCT3_ECALL {
             // imm12 is interpreted as funct12 for SYSTEM opcode
             if imm12 == FUNCT12_ECALL {
+                // Note: as we don't fully support CSR, we use ECALL as generic STOP instruction for now
                 new_pc = MAX_UINT_64 // set the stop signal to end the program execution
             } else if imm12 == FUNCT12_EBREAK {
                 printf "[ERROR] EBREAK instruction triggered\n"
