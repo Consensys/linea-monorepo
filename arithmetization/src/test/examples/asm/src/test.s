@@ -1,4 +1,4 @@
-    .section .rodata
+.section .rodata
 value:
     .word 42
 
