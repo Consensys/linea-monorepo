@@ -129,7 +129,7 @@ jobs:
           echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
 
       - name: Generate coordinator latest changelog
-        if: steps.version.outputs.tag != ''
+        if: steps.commit.outputs.changed == 'true'
         id: changelog
         uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
         with:
