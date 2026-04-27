@@ -1,4 +1,5 @@
 # Smart Contracts
+# Test for auto coordinator changelog and tag for feat 
 
 Contains Ethereum smart contract code for the Linea Rollup and Message Service.
 
