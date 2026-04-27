@@ -2,8 +2,8 @@
 value:
     .word 42
 
-    .section .text
-    .global _start
+.section .text
+.global _start
 _start:
     # Load the address of value into t0
     la      t0, value
