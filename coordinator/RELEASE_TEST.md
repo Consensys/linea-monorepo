@@ -1,1 +1,1 @@
-# Test for auto coordinator changelog and tag update for fixing multi component commit msg 3
+# Test for auto coordinator changelog and tag update for CHANGELOG skip
