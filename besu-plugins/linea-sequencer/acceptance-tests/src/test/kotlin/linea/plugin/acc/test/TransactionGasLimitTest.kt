@@ -8,6 +8,7 @@
  */
 package linea.plugin.acc.test
 
+import net.consensys.linea.config.TransactionGasLimitCap.EIP_7825_MAX_TRANSACTION_GAS_LIMIT
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
@@ -71,8 +72,7 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
     )
 
     assertThat(txTooBigResp.hasError()).isTrue()
-    assertThat(txTooBigResp.error.message)
-      .isEqualTo("Gas limit of transaction is greater than the allowed max of 9000000")
+    assertThat(txTooBigResp.error.message).isEqualTo(EIP_7825_GAS_LIMIT_ERROR_MESSAGE)
   }
 
   /**
@@ -116,8 +116,7 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
     )
 
     assertThat(txTooBigResp.hasError()).isTrue()
-    assertThat(txTooBigResp.error.message)
-      .isEqualTo("Gas limit of transaction is greater than the allowed max of 9000000")
+    assertThat(txTooBigResp.error.message).isEqualTo(EIP_7825_GAS_LIMIT_ERROR_MESSAGE)
 
     expectedConfirmedTxs
       .map { it.bytes.toHexString() }
@@ -125,8 +124,10 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
   }
 
   companion object {
-    val MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.toInt()
+    val MAX_TX_GAS_LIMIT = EIP_7825_MAX_TRANSACTION_GAS_LIMIT
     private val GAS_PRICE = DefaultGasProvider.GAS_PRICE
     private val VALUE = BigInteger.ZERO
+    private const val EIP_7825_GAS_LIMIT_ERROR_MESSAGE =
+      "Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216"
   }
 }

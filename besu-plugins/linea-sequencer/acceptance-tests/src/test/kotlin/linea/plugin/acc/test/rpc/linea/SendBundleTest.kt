@@ -109,7 +109,8 @@ class SendBundleTest : AbstractSendBundleTest() {
     assertThat(sendBundleResponse.error.message)
       .isEqualTo(
         "Invalid transaction in bundle: hash 0x3f6ff4384305623a7c5cbf05afd9b97c8409be23c4b39c7b16d60001aee4340b," +
-          " reason: Gas limit of transaction is greater than the allowed max of 9000000",
+          " reason: Gas limit 9000001 exceeds configured maximum transaction gas limit of 9000000 " +
+          "(EIP-7825 maximum transaction gas limit is 16777216)",
       )
   }
 
