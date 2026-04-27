@@ -1,6 +1,9 @@
 package vortex
 
 import (
+	"os"
+	"time"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -11,6 +14,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuvortex "github.com/consensys/linea-monorepo/prover/gpu/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -19,6 +24,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
+
+// useGPUVortex gates GPU dispatch on LIMITLESS_GPU_VORTEX=1. Default off.
+func useGPUVortex() bool { return os.Getenv("LIMITLESS_GPU_VORTEX") == "1" }
 
 type commitmentMode int
 
@@ -124,7 +132,17 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			if useGPUVortex() && gpu.GetDevice() != nil {
+				start := time.Now()
+				committedMatrix, _, tree, sisColHashes = gpuvortex.CommitMerkleWithSIS(ctx.VortexKoalaParams, pols)
+				gpu.TraceEvent("vortex_commit_sis", 0, time.Since(start), map[string]any{
+					"round": round,
+					"rows":  len(pols),
+					"cols":  ctx.VortexKoalaParams.NbColumns,
+				})
+			} else {
+				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			}
 		}
 
 		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)

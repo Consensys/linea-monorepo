@@ -2,6 +2,7 @@ package globalcs
 
 import (
 	"math/big"
+	"os"
 	"reflect"
 	"runtime"
 	"sync"
@@ -15,6 +16,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuquotient "github.com/consensys/linea-monorepo/prover/gpu/quotient"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -195,8 +198,52 @@ type coeffEntry struct {
 	ext      []fext.Element
 }
 
-// compute the quotient shares.
+// compute the quotient shares. When LIMITLESS_GPU_QUOTIENT=1 and a GPU is
+// available, the work is delegated to gpu/quotient.RunGPU; on any error the
+// CPU implementation runs as a fallback so correctness is preserved.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
+	if useGPUQuotient() {
+		dev := gpu.GetDeviceN(quotientDeviceID(run))
+		if dev != nil {
+			start := time.Now()
+			err := gpuquotient.RunGPU(
+				dev, run,
+				ctx.DomainSize,
+				ctx.Ratios,
+				ctx.AggregateExpressionsBoard,
+				ctx.RootsForRatio,
+				ctx.ShiftedColumnsForRatio,
+				ctx.QuotientShares,
+				ctx.ConstraintsByRatio,
+			)
+			if err == nil {
+				gpu.TraceEvent("quotient", 0, time.Since(start), map[string]any{
+					"domain": ctx.DomainSize,
+					"ok":     true,
+				})
+				return
+			}
+			gpu.TraceEvent("quotient", 0, time.Since(start), map[string]any{
+				"domain": ctx.DomainSize,
+				"ok":     false,
+				"error":  err.Error(),
+			})
+			log.Warnf("[quotient d=%d] GPU path failed, falling back to CPU: %v", ctx.DomainSize, err)
+		}
+	}
+	ctx.runCPU(run)
+}
+
+// useGPUQuotient gates GPU dispatch on LIMITLESS_GPU_QUOTIENT=1. Default off.
+func useGPUQuotient() bool { return os.Getenv("LIMITLESS_GPU_QUOTIENT") == "1" }
+
+// quotientDeviceID picks a GPU when multiple are available. For now the
+// caller's segment goroutine is not yet pinned to a device (Phase 2), so
+// we always hit device 0. The signature accepts run to allow future
+// per-segment routing without churning callers.
+func quotientDeviceID(_ *wizard.ProverRuntime) int { return 0 }
+
+func (ctx *QuotientCtx) runCPU(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)
 	defer stopTimer()
 

@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -30,14 +31,30 @@ import (
 )
 
 var (
-	witnessDir = "/tmp/witnesses"
+	// witnessDir holds segmented witnesses between the bootstrapper and the
+	// GL/LPP provers. Override with $LIMITLESS_WITNESS_DIR — point it at fast
+	// scratch storage when /tmp lives on a small root partition.
+	witnessDir = func() string {
+		if d := os.Getenv("LIMITLESS_WITNESS_DIR"); d != "" {
+			return d
+		}
+		return "/tmp/witnesses"
+	}()
 	// numConcurrentWitnessWritingGoroutines governs the goroutine serializing,
 	// compressing and writing the  witness. The writing part is also controlled
 	// by a semaphore on top of this.
 	numConcurrentWitnessWritingGoroutines = 20
 	// numConcurrentSubProverJobs governs the number of concurrent sub-prover
-	// jobs.
-	numConcurrentSubProverJobs = 4
+	// jobs. Override with $LIMITLESS_SUB_PROVER_JOBS — when GPU-accelerated,
+	// concurrency should match the GPU count rather than CPU count.
+	numConcurrentSubProverJobs = func() int {
+		if v := os.Getenv("LIMITLESS_SUB_PROVER_JOBS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				return n
+			}
+		}
+		return 4
+	}()
 	// numConcurrentMergeJobs governs the number of concurrent conglomeration
 	// merge operations during hierarchical reduction.
 	numConcurrentMergeJobs = 4
@@ -52,6 +69,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// Initialize JSONL performance event logger
 	plog := newPerfLogger()
 	defer plog.close()
+	// GPU per-phase trace (no-op unless LIMITLESS_GPU_PROFILE=1)
+	defer gpu.TraceClose()
 
 	// Setting the issue handler to exit on unsatisfied constraint and missing trace file,
 	// but not limit overflow.
