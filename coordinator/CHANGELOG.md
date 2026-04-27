@@ -1,3 +1,9 @@
+## [1.4.1] - 2026-04-27
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* For auto coordinator changelog update and tag
+- *(coordinator)* For auto coordinator changelog update and tag
 ## [1.4.0] - 2026-04-27
 
 ### 🚀 Features
