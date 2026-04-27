@@ -1,1 +1,1 @@
-# Test for auto coordinator changelog and tag update for CHANGELOG skip
+# Test for auto coordinator changelog and tag
