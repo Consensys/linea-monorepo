@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linea Prover Deep Dive + GPU Acceleration Plan</title>
+    <style>
+        :root {
+            --bg: #0a0f1a;
+            --panel: #10192a;
+            --panel2: #13203a;
+            --text: #d9e6ff;
+            --muted: #98a8c7;
+            --acc: #63b3ff;
+            --acc2: #6ee7b7;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --line: #253658;
+            --code: #0b1324;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(1200px 800px at 80% -10%, #18305f 0%, var(--bg) 55%);
+            color: var(--text);
+            font: 15px/1.6 Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif
+        }
+
+        a {
+            color: var(--acc)
+        }
+
+        .wrap {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh
+        }
+
+        .nav {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: auto;
+            padding: 24px;
+            border-right: 1px solid var(--line);
+            background: linear-gradient(180deg, #0f1a2d, #0b1426)
+        }
+
+        .nav h3 {
+            margin: 0 0 10px;
+            font-size: 13px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--acc2)
+        }
+
+        .nav a {
+            display: block;
+            padding: 7px 10px;
+            margin: 2px 0;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--muted)
+        }
+
+        .nav a:hover {
+            background: #142442;
+            color: var(--text)
+        }
+
+        .main {
+            padding: 32px 44px 80px;
+            max-width: 1200px
+        }
+
+        h1 {
+            font-size: 34px;
+            line-height: 1.15;
+            margin: 0 0 12px
+        }
+
+        h2 {
+            margin: 34px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+            font-size: 24px
+        }
+
+        h3 {
+            margin: 24px 0 8px;
+            font-size: 18px;
+            color: var(--acc)
+        }
+
+        p {
+            margin: 8px 0
+        }
+
+        ul {
+            margin: 8px 0 14px;
+            padding-left: 20px
+        }
+
+        .hero {
+            background: linear-gradient(145deg, #12233f, #132b52);
+            border: 1px solid #2f4f85;
+            border-radius: 16px;
+            padding: 20px 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .35)
+        }
+
+        .meta {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .chip {
+            border: 1px solid var(--line);
+            background: #10203b;
+            padding: 6px 10px;
+            border-radius: 999px
+        }
+
+        .box {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin: 12px 0
+        }
+
+        .good {
+            border-left: 4px solid var(--acc2)
+        }
+
+        .warn {
+            border-left: 4px solid var(--warn)
+        }
+
+        .risk {
+            border-left: 4px solid var(--danger)
+        }
+
+        .state {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 10px;
+            padding: 10px;
+            border-bottom: 1px dashed #2a3d65
+        }
+
+        .state:last-child {
+            border-bottom: none
+        }
+
+        .k {
+            color: var(--acc2);
+            font-weight: 600
+        }
+
+        pre {
+            background: var(--code);
+            border: 1px solid #233353;
+            border-radius: 10px;
+            padding: 12px 14px;
+            overflow: auto;
+            margin: 10px 0 14px
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 16px;
+            background: var(--panel)
+        }
+
+        th,
+        td {
+            border: 1px solid var(--line);
+            padding: 8px 10px;
+            vertical-align: top
+        }
+
+        th {
+            background: var(--panel2);
+            text-align: left;
+            color: #cfe2ff
+        }
+
+        .grid2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px
+        }
+
+        .tiny {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .diagram {
+            background: #0d1a30;
+            border: 1px solid #294374;
+            border-radius: 12px;
+            padding: 14px;
+            overflow: auto;
+            white-space: pre;
+            font: 12px/1.45 ui-monospace, monospace;
+            color: #cde0ff
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #37568f;
+            background: #13274a;
+            color: #bcd7ff;
+            font-size: 12px
+        }
+
+        @media (max-width: 1080px) {
+            .wrap {
+                grid-template-columns: 1fr
+            }
+
+            .nav {
+                position: relative;
+                height: auto;
+                border-right: 0;
+                border-bottom: 1px solid var(--line)
+            }
+
+            .main {
+                padding: 24px
+            }
+
+            .grid2 {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <aside class="nav">
+            <h3>Sections</h3>
+            <a href="#scope">0. Scope & assumptions</a>
+            <a href="#glossary">1. Key terms</a>
+            <a href="#flow">2. End-to-end flow</a>
+            <a href="#state-machine">3. Runtime state machine</a>
+            <a href="#hotspots">4. Hotspots (Vortex / Quotient / Outer)</a>
+            <a href="#resources">5. 40B-cell resource model</a>
+            <a href="#gpu">6. GPU integration plan</a>
+            <a href="#multi-gpu">7. Multi-GPU on g7e.24xlarge</a>
+            <a href="#simplify">8. Fundamental simplifications</a>
+            <a href="#roadmap">9. Delivery roadmap</a>
+            <a href="#refs">References</a>
+        </aside>
+
+        <main class="main">
+            <section class="hero">
+                <h1>Linea prover deep dive + GPU acceleration architecture report</h1>
+                <p>This report is the requested <strong>part 1 + part 2</strong>: exact proving flow from execution
+                    request to final proof, then a concrete multi-GPU integration strategy focused on the heavy kernels
+                    in <code>crypto/vortex</code>, <code>protocol/compiler/globalcs/quotient.go</code>, and the final
+                    gnark outer proof path.</p>
+                <div class="meta">
+                    <span class="chip">Repo: <code>linea-monorepo/prover</code></span>
+                    <span class="chip">Date: February 18, 2026</span>
+                    <span class="chip">Assumed scale: 40,000,000,000 cells</span>
+                </div>
+            </section>
+
+            <section id="scope">
+                <h2>0) Scope & assumptions</h2>
+                <div class="box warn">
+                    <ul>
+                        <li>This is static code-path analysis (no heavy compile/run on this machine, per your
+                            constraint).</li>
+                        <li>Numbers are engineering estimates using code structure and element sizes; they are not
+                            profiler measurements.</li>
+                        <li>For 40B cells, this report assumes those are <strong>base-field witness cells</strong>
+                            before RS encoding.</li>
+                        <li>AWS instance specs are taken from AWS EC2 G7e docs as of <strong>Feb 18, 2026</strong>.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="glossary">
+                <h2>1) Key terms</h2>
+                <table>
+                    <tr>
+                        <th>Term</th>
+                        <th>Definition in this codebase</th>
+                    </tr>
+                    <tr>
+                        <td>CompiledIOP</td>
+                        <td>Static protocol object: columns, queries, coins, prover/verifier actions by round
+                            (<code>protocol/wizard/compiled.go</code>).</td>
+                    </tr>
+                    <tr>
+                        <td>ProverRuntime</td>
+                        <td>Mutable runtime state during proving: assigned columns, query params, coins, and transient
+                            state map (<code>protocol/wizard/prover.go</code>).</td>
+                    </tr>
+                    <tr>
+                        <td>Arcane</td>
+                        <td>Compiler pipeline reducing generic constraints into polynomial checks + quotient/opening
+                            machinery (<code>protocol/compiler/arcane.go</code>).</td>
+                    </tr>
+                    <tr>
+                        <td>Vortex</td>
+                        <td>Polynomial commitment system used after Arcane, with RS encoding + Merkle proofs + optional
+                            SIS hashing.</td>
+                    </tr>
+                    <tr>
+                        <td>Self-recursion</td>
+                        <td>Re-encodes verifier logic back into wizard so inner proof gets recursively compressed
+                            (<code>protocol/compiler/recursion</code> and <code>selfrecursion</code>).</td>
+                    </tr>
+                    <tr>
+                        <td>Outer proof</td>
+                        <td>Final gnark proof that verifies the recursed wizard proof and checks functional execution
+                            inputs (<code>circuits/execution</code>).</td>
+                    </tr>
+                </table>
+            </section>
+
+            <section id="flow">
+                <h2>2) End-to-end flow (request → final proof)</h2>
+
+                <h3>2.1 Request ingestion and job dispatch</h3>
+                <p><span class="badge">Entry path</span> <code>cmd/prover/cmd/prove.go</code> decides job type from
+                    input filename and routes execution jobs to <code>backend/execution.Prove</code>.</p>
+                <pre><code># Python-like pseudocode
+req = json.load(input_file)
+if "getZkProof" in input_name:
+    resp = execution.Prove(cfg, req, large)
+write_json(output_file, resp)</code></pre>
+
+                <h3>2.2 Functional output + witness creation</h3>
+                <p><code>CraftProverOutput</code> parses blocks/logs, computes execution-data multi-commitment, and
+                    assembles public-functional input context. Then <code>NewWitness</code> links trace file +
+                    signatures + block hashes + execution-data commitment witness.</p>
+                <pre><code>// backend/execution/craft.go
+execDataMultiCommitment := public_input.ComputeExecutionDataMultiCommitment(execDataBuf.Bytes())
+rsp.ExecDataChecksum = execDataMultiCommitment.Bls12377
+
+// backend/execution/craft.go
+return &Witness{
+  ZkEVM: &zkevm.Witness{ExecTracesFPath: ..., TxSignatures: ..., ExecData: ...},
+  FuncInp: rsp.FuncInput(),
+}</code></pre>
+
+                <h3>2.3 Full-mode proving split: inner then outer</h3>
+                <p>In full mode (<code>backend/execution/prove.go</code>):</p>
+                <ul>
+                    <li>Load/compile full zkEVM IOP.</li>
+                    <li>Generate inner proof: <code>fullZkEvm.ProveInner</code>.</li>
+                    <li>Sanity verify inner proof.</li>
+                    <li>Generate final outer gnark proof via <code>circuits/execution.MakeProof</code>.</li>
+                </ul>
+                <pre><code>// backend/execution/prove.go (full mode)
+proof := fullZkEvm.ProveInner(w.ZkEVM)
+if err := fullZkEvm.VerifyInner(proof); err != nil { ... }
+return execution.MakeProof(traces, setup, fullZkEvm.RecursionCompiledIOP, proof, *w.FuncInp, w.ZkEVM.ExecData)</code></pre>
+
+                <h3>2.4 zkEVM module assignment order</h3>
+                <p>Main assignment function is <code>ZkEvm.GetMainProverStep</code> in <code>zkevm/zkevm.go</code>.
+                    Critical ordering: arithmetization first, then dependent modules.</p>
+                <pre><code>// zkevm/zkevm.go
+z.Arithmetization.Assign(run, input.ExecTracesFPath)
+z.Ecdsa.Assign(run, ...)
+z.StateManager.Assign(run, ...)
+z.Keccak.Run(run)
+...
+z.PublicInput.Assign(run, ...)</code></pre>
+
+                <h3>2.5 Arcane + Vortex compilation suites</h3>
+                <p><code>zkevm/full.go</code> chains multiple suites (poseidon2, Arcane, Vortex, self-recursion,
+                    cleanup), then a second post-recursion suite. This creates a staged protocol where the heavy
+                    commitment/opening logic is repeated on progressively compressed instances.</p>
+
+                <h3>2.6 Inner proof recursion boundary</h3>
+                <p><code>ZkEvm.ProveInner</code> runs initial prover only up to
+                    <code>VortexQueryRound(initial)+1</code>, verifies up to same round, extracts recursion witness,
+                    then proves the recursion-compiled IOP.</p>
+                <pre><code>// zkevm/zkevm.go
+stoppingRound := recursion.VortexQueryRound(z.InitialCompiledIOP) + 1
+initialRun := wizard.RunProverUntilRound(..., stoppingRound, ...)
+recWitness := recursion.ExtractWitness(initialRun)
+finalProof := wizard.Prove(z.RecursionCompiledIOP, ...)</code></pre>
+
+                <h3>2.7 Outer gnark circuit semantics</h3>
+                <p><code>circuits/execution/circuit.go</code> verifies the recursed wizard transcript in-circuit, checks
+                    extracted public inputs against functional execution inputs, checks execution-data commitment, and
+                    enforces final public-input hash equality.</p>
+                <pre><code>// circuits/execution/circuit.go
+c.WizardVerifier.Verify(api)
+checkPublicInputs(api, &c.WizardVerifier, c.FuncInputs, c.ExecDataBytes)
+api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))</code></pre>
+
+                <h3>2.8 Full step-by-step object evolution</h3>
+                <table>
+                    <tr>
+                        <th>Step</th>
+                        <th>Primary function</th>
+                        <th>Input state</th>
+                        <th>Output state</th>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td><code>cmd.Prove</code></td>
+                        <td>CLI args + JSON input path</td>
+                        <td>Typed <code>execution.Request</code></td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><code>execution.CraftProverOutput</code></td>
+                        <td>Request blocks/logs/traces</td>
+                        <td>Functional response skeleton + execution-data checksum</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><code>execution.NewWitness</code></td>
+                        <td>Config + request + response</td>
+                        <td><code>zkevm.Witness</code> and <code>public_input.Execution</code></td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><code>zkevm.FullZkEvm</code></td>
+                        <td>Trace limits + config</td>
+                        <td>Compiled initial and recursion IOP contexts</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><code>wizard.RunProverUntilRound</code></td>
+                        <td>Main prover step + compiled IOP</td>
+                        <td><code>ProverRuntime</code> at recursion boundary round</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><code>Arithmetization.Assign</code></td>
+                        <td>Trace file + module limits</td>
+                        <td>Massive round-0 column assignments</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><code>QuotientCtx.Run</code></td>
+                        <td>Assigned roots + constraints</td>
+                        <td>Quotient-share columns assigned</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td><code>ColumnAssignmentProverAction.Run</code></td>
+                        <td>Committed rows for round</td>
+                        <td>Round Merkle roots + heavy artifacts in <code>run.State</code></td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td><code>OpenSelectedColumnsProverAction.Run</code></td>
+                        <td>All round matrices + trees + challenge q</td>
+                        <td>Opened columns + packed Merkle proofs</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td><code>recursion.ExtractWitness</code></td>
+                        <td>Prover runtime boundary snapshot</td>
+                        <td>Recursion witness: proof + FS + matrices + trees + hashes</td>
+                    </tr>
+                    <tr>
+                        <td>11</td>
+                        <td><code>wizard.Prove(RecursionCompiledIOP)</code></td>
+                        <td>Recursion witness</td>
+                        <td>Final inner proof</td>
+                    </tr>
+                    <tr>
+                        <td>12</td>
+                        <td><code>execution.MakeProof</code></td>
+                        <td>Inner proof + functional inputs + exec data</td>
+                        <td>Final outer gnark proof hex</td>
+                    </tr>
+                </table>
+
+                <div class="diagram">Trace and matrix transformations (conceptual)
+
+                    Raw execution trace file (.lt)
+                    |
+                    v
+                    Expanded module columns (wizard round 0 assignments)
+                    |
+                    v
+                    For each Vortex round r:
+                    Matrix_r = [rows = committed polynomials of round r,
+                    cols = polynomial length NumCols]
+                    |
+                    +-- RS encode rows --> EncodedMatrix_r [rows, EncodedCols=NumCols*rho]
+                    |
+                    +-- Column hash (SIS or no-SIS Poseidon2) --> Leaves_r
+                    |
+                    +-- Merkle tree --> Root_r + auth data
+                    |
+                    v
+                    After challenge q: open selected columns across all rounds
+                    |
+                    v
+                    Inner proof transcript + recursion witness + final outer proof</div>
+            </section>
+
+            <section id="state-machine">
+                <h2>3) Runtime state machine (what state exists at each phase)</h2>
+                <div class="box">
+                    <div class="state">
+                        <div class="k">S0</div>
+                        <div>Raw request JSON loaded, config loaded.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S1</div>
+                        <div>Functional response fields populated (<code>BlocksData</code>, hashes, state roots,
+                            execution-data checksum).</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S2</div>
+                        <div><code>zkevm.Witness</code> created: trace filepath + tx signatures + block hashes +
+                            commitment opening data.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S3</div>
+                        <div><code>ProverRuntime</code> created: precomputed columns loaded, FS seeded with
+                            <code>FiatShamirSetup</code>.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S4</div>
+                        <div>Round-0 assignments: full arithmetization and all module witnesses inserted into
+                            <code>run.Columns</code>.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S5</div>
+                        <div>Compiler-generated round actions execute: quotient shares, Vortex commitments, query
+                            params, random coins.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S6</div>
+                        <div>Vortex stores heavy transient artifacts in <code>run.State</code>: encoded matrices, Merkle
+                            trees, SIS/noSIS hashes.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S7</div>
+                        <div>Vortex opening phase: linear combination <code>Ualpha</code>, selected columns, packed
+                            Merkle proofs assigned.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S8</div>
+                        <div>Partial proof extracted at recursion boundary; final FS state captured.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S9</div>
+                        <div>Recursion witness materialized (proof + committed matrices + trees + hashes + public
+                            inputs).</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S10</div>
+                        <div>Recursion compiled IOP fully proven → final inner proof.</div>
+                    </div>
+                    <div class="state">
+                        <div class="k">S11</div>
+                        <div>Outer gnark assignment built, wizard verifier circuit assigned, final proof generated and
+                            serialized.</div>
+                    </div>
+                </div>
+
+                <h3>3.1 <code>run.State</code> heavy keys and lifetimes</h3>
+                <table>
+                    <tr>
+                        <th>Key pattern</th>
+                        <th>Producer</th>
+                        <th>Consumer</th>
+                        <th>Lifetime</th>
+                    </tr>
+                    <tr>
+                        <td><code>VORTEX_*_PROVER_STATE_round</code></td>
+                        <td>Vortex commitment round action</td>
+                        <td>Vortex opening action</td>
+                        <td>Long (until opening round)</td>
+                    </tr>
+                    <tr>
+                        <td><code>VORTEX_*_MERKLE_TREE_round</code></td>
+                        <td>Vortex commitment round action</td>
+                        <td>Vortex opening action / recursion extraction</td>
+                        <td>Long</td>
+                    </tr>
+                    <tr>
+                        <td><code>VORTEX_*_SIS_HASH_round</code></td>
+                        <td>Vortex commitment round action</td>
+                        <td>Recursion/self-recursion logic</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td><code>VORTEX_*_NOSIS_COLUMN_HASH_round</code></td>
+                        <td>Vortex commitment round action</td>
+                        <td>Recursion/self-recursion logic</td>
+                        <td>Medium</td>
+                    </tr>
+                </table>
+
+                <h3>Fiat-Shamir transition logic</h3>
+                <p>On each round transition, prover appends proof-visible messages and query params to FS transcript,
+                    increments round, samples new coins (<code>goNextRound()</code> in
+                    <code>protocol/wizard/prover.go</code>).</p>
+                <pre><code>// protocol/wizard/prover.go
+msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
+for each msg in msgsToFS: FS.Update(msg)
+for each params in queryParamsAtRound: params.UpdateFS(FS)
+run.currRound++
+for each coin in coinsAtNewRound: run.Coins[name] = Sample(FS, seed)</code></pre>
+            </section>
+
+            <section id="hotspots">
+                <h2>4) Hotspots: exact heavy zones</h2>
+
+                <h3>4.1 Global constraints quotient (<code>protocol/compiler/globalcs/quotient.go</code>)</h3>
+                <ul>
+                    <li>Builds quotient shares by coset evaluation, with repeated FFT/IFFT over involved root columns.
+                    </li>
+                    <li>Computes shifted columns via <code>SoftRotate</code> over reevaluated roots.</li>
+                    <li>Uses a big arena:
+                        <code>arena.NewVectorArena[fext.Element](DomainSize * len(AllInvolvedRoots))</code>.</li>
+                </ul>
+                <pre><code>// protocol/compiler/globalcs/quotient.go
+arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
+...
+domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
+domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))</code></pre>
+
+                <h3>4.2 Vortex commitment/opening path (<code>protocol/compiler/vortex/prover.go</code>)</h3>
+                <ul>
+                    <li>Per commitment round: RS encode + column hashing + Merkle root assignment.</li>
+                    <li>Stores heavy state by round in <code>run.State</code> (<code>encodedMatrix</code>, tree).</li>
+                    <li>Later opening round reads all matrices + trees, selects random columns, packs Merkle proofs.
+                    </li>
+                </ul>
+                <pre><code>// protocol/compiler/vortex/prover.go
+run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+...
+entryList := run.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
+vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)</code></pre>
+
+                <pre><code>// protocol/compiler/vortex/prover.go
+committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
+run.State.Del(ctx.VortexProverStateName(round)) // frees heavy object once consumed</code></pre>
+
+                <h3>4.3 Crypto kernels inside Vortex</h3>
+                <ul>
+                    <li><code>RsEncodeBase</code> (FFT-based RS encoding) in
+                        <code>crypto/reedsolomon/reedsolomon.go</code>.</li>
+                    <li><code>TransversalHash</code> (matrix transpose + SIS hash per encoded column) in
+                        <code>crypto/ringsis/ringsis.go</code>.</li>
+                    <li>Poseidon2 leaf hashing (SIS and no-SIS modes) in
+                        <code>crypto/vortex/vortex_koalabear/commtiment.go</code>.</li>
+                    <li>Linear combination over encoded rows in <code>crypto/vortex/prover_common.go</code>.</li>
+                </ul>
+
+                <h3>4.4 Outer proof (gnark)</h3>
+                <p>Final proving call is <code>circuits.ProveCheck</code> in <code>circuits/execution/circuit.go</code>.
+                    It includes the in-circuit wizard verifier, which itself replays all verifier-round logic and FS
+                    coin generation in-circuit.</p>
+
+                <h3>4.5 Recursion witness extraction bridge</h3>
+                <pre><code>// protocol/compiler/recursion/actions.go
+return Witness{
+  Proof: run.ExtractProof(),
+  CommittedMatrices: committedMatrices,
+  SisHashes: sisHashes,
+  Poseidon2Hashes: mimcHashes,
+  Trees: trees,
+  FinalFS: run.KoalaFS.State(),
+  Pub: pubs,
+}</code></pre>
+            </section>
+
+            <section id="resources">
+                <h2>5) 40B-cell memory/CPU model</h2>
+
+                <h3>5.1 Size assumptions from code</h3>
+                <table>
+                    <tr>
+                        <th>Object</th>
+                        <th>Code basis</th>
+                        <th>Bytes</th>
+                    </tr>
+                    <tr>
+                        <td>Base element</td>
+                        <td><code>field.Element = koalabear.Element</code>, <code>field.Bytes</code></td>
+                        <td>4</td>
+                    </tr>
+                    <tr>
+                        <td>Extension element</td>
+                        <td><code>fext.Element = E4</code> (4 base coords)</td>
+                        <td>16</td>
+                    </tr>
+                    <tr>
+                        <td>Koala octuplet</td>
+                        <td><code>field.Octuplet = [8]Element</code></td>
+                        <td>32</td>
+                    </tr>
+                    <tr>
+                        <td>BLS field element</td>
+                        <td><code>bls12-377/fr.Element</code></td>
+                        <td>32</td>
+                    </tr>
+                </table>
+
+                <h3>5.2 Matrix model used here</h3>
+                <div class="diagram">Assume:
+                    N = 40,000,000,000 base cells (pre-RS committed witness volume)
+                    rho = 2 (common Vortex blow-up)
+                    NumCols = 2^22 = 4,194,304 (typical large target column size)
+                    Rows ~= N / NumCols ~= 9,537
+                    EncodedCols = NumCols * rho = 8,388,608</div>
+
+                <h3>5.2.1 Gap vs current devnet-full limits</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Configured trace modules</td>
+                        <td>71</td>
+                    </tr>
+                    <tr>
+                        <td>Sum of normal limits (<code>limit</code>)</td>
+                        <td>18,937,921 cells</td>
+                    </tr>
+                    <tr>
+                        <td>Sum of large limits (<code>limit_large</code>)</td>
+                        <td>28,146,437 cells</td>
+                    </tr>
+                    <tr>
+                        <td>Target in this report</td>
+                        <td>40,000,000,000 cells</td>
+                    </tr>
+                    <tr>
+                        <td>Scale factor vs large mode</td>
+                        <td>~1,421×</td>
+                    </tr>
+                </table>
+
+                <div class="box warn">
+                    The 40B scenario is far beyond static full/large limits from
+                    <code>config/config-devnet-full.toml</code>; it requires a scalable/limitless-style execution
+                    strategy plus memory-aware scheduling.
+                </div>
+
+                <h3>5.3 Memory footprint (order-of-magnitude)</h3>
+                <table>
+                    <tr>
+                        <th>Component</th>
+                        <th>Formula</th>
+                        <th>Estimate</th>
+                    </tr>
+                    <tr>
+                        <td>Raw base witness</td>
+                        <td><code>N * 4</code></td>
+                        <td>~149 GiB</td>
+                    </tr>
+                    <tr>
+                        <td>RS-encoded matrices</td>
+                        <td><code>N * rho * 4</code></td>
+                        <td>~298 GiB</td>
+                    </tr>
+                    <tr>
+                        <td>Extra transpose/scratch pass</td>
+                        <td><code>~N * rho * 4</code></td>
+                        <td>up to ~298 GiB</td>
+                    </tr>
+                    <tr>
+                        <td>Merkle leaves + internal nodes (per commitment batch)</td>
+                        <td><code>~2 * EncodedCols * 32</code></td>
+                        <td>~0.5 GiB</td>
+                    </tr>
+                    <tr>
+                        <td>GlobalCS arena (example)</td>
+                        <td><code>DomainSize * Roots * 16</code>, with <code>2^22</code>, 256 roots</td>
+                        <td>~16 GiB</td>
+                    </tr>
+                </table>
+
+                <div class="box risk">
+                    <strong>Implication:</strong> At 40B cells, naive CPU-only residency of raw + encoded + scratch
+                    alone is already ~745 GiB before other runtime objects. This is why state-lifetime control and tiled
+                    processing are mandatory.
+                </div>
+
+                <h3>5.4 CPU work model (ballpark)</h3>
+                <table>
+                    <tr>
+                        <th>Kernel</th>
+                        <th>Work estimate</th>
+                        <th>Why it hurts</th>
+                    </tr>
+                    <tr>
+                        <td>RS encode</td>
+                        <td>~8.8e11 FFT butterflies (with above dimensions)</td>
+                        <td>Dominant arithmetic + memory traffic</td>
+                    </tr>
+                    <tr>
+                        <td>SIS/noSIS transversal hashing</td>
+                        <td>touches ~8.0e10 encoded cells</td>
+                        <td>transpose + hash; cache/memory bound</td>
+                    </tr>
+                    <tr>
+                        <td>Linear combination</td>
+                        <td>~8.0e10 extension MAC-style ops</td>
+                        <td>full scan over encoded rows</td>
+                    </tr>
+                    <tr>
+                        <td>GlobalCS quotient FFTs</td>
+                        <td>for 256 roots, 4 cosets: ~8.6e9 point-level FFT passes</td>
+                        <td>repeated domain transforms</td>
+                    </tr>
+                </table>
+
+                <div class="box good">
+                    <strong>Expected CPU behavior:</strong> near-flat 100% utilization across available cores during
+                    these kernels. Wall-clock is then bounded by memory bandwidth + FFT implementation throughput +
+                    allocation churn.
+                </div>
+            </section>
+
+            <section id="gpu">
+                <h2>6) GPU integration plan (where + how)</h2>
+
+                <h3>6.1 Integration points (surgical, highest ROI first)</h3>
+                <table>
+                    <tr>
+                        <th>Priority</th>
+                        <th>File / function</th>
+                        <th>GPU operation</th>
+                    </tr>
+                    <tr>
+                        <td>P0</td>
+                        <td><code>crypto/reedsolomon/reedsolomon.go:71</code> <code>RsEncodeBase</code></td>
+                        <td>Batched NTT/INTT over many rows</td>
+                    </tr>
+                    <tr>
+                        <td>P0</td>
+                        <td><code>crypto/ringsis/ringsis.go:251</code> <code>TransversalHash</code></td>
+                        <td>Column-transpose + SIS polynomial hash kernel</td>
+                    </tr>
+                    <tr>
+                        <td>P0</td>
+                        <td><code>crypto/vortex/vortex_koalabear/commtiment.go:56</code></td>
+                        <td>Poseidon2 leaf hashing + Merkle build</td>
+                    </tr>
+                    <tr>
+                        <td>P1</td>
+                        <td><code>crypto/vortex/prover_common.go:28</code> <code>LinearCombination</code></td>
+                        <td>Large vector fused multiply-add in extension field</td>
+                    </tr>
+                    <tr>
+                        <td>P1</td>
+                        <td><code>protocol/compiler/globalcs/quotient.go:185</code></td>
+                        <td>Batched coset FFT path for roots per ratio</td>
+                    </tr>
+                </table>
+
+                <h3>6.2 Minimal architecture change</h3>
+                <div class="diagram">Current call stack
+                    Vortex compiler action -> crypto/* direct CPU kernels
+
+                    Target stack
+                    Vortex compiler action -> Accelerator interface
+                    |- CPU backend (existing code, default)
+                    \- GPU backend (CUDA/HIP)
+
+                    Keep deterministic behavior + exact transcript ordering identical.</div>
+
+                <pre><code># Python-like API sketch
+class KernelBackend:
+    def rs_encode_rows(rows, domain): ...
+    def transversal_hash(encoded_rows, sis_key): ...
+    def poseidon2_leaves(chunks): ...
+    def merkle_build(leaves): ...
+    def linear_comb(rows, alpha): ...
+
+backend = GPUBackend() if cfg.gpu.enabled else CPUBackend()</code></pre>
+
+                <h3>6.3 Data-layout and execution strategy</h3>
+                <ul>
+                    <li>Use <strong>row-major batches</strong> for RS encode, then <strong>column tiles</strong> for
+                        transversal hash.</li>
+                    <li>Pin host memory for large movement boundaries; overlap transfer + compute using streams.</li>
+                    <li>Avoid whole-matrix residency on one device; tile by row chunks and/or encoded-column chunks.
+                    </li>
+                    <li>Keep FS and transcript sequencing on CPU exactly as-is; GPU kernels must be pure compute
+                        subroutines.</li>
+                </ul>
+
+                <h3>6.4 Pseudocode for multi-stage Vortex GPU commit</h3>
+                <pre><code># pseudo scheduler
+for round in committed_rounds:
+    chunks = partition_rows(round_rows, rows_per_chunk)
+    for chunk in chunks:
+        h2d_async(chunk)
+        encoded = gpu.rs_encode_rows(chunk)
+        sis_or_leaf = gpu.transversal_hash(encoded)
+        leaves = gpu.poseidon2(sis_or_leaf)
+        partial_tree = gpu.merkle(leaves)
+        d2h_async(partial_tree.root, partial_tree.auth_data_if_needed)
+    reduce_partial_trees_on_cpu_or_gpu()
+    assign_merkle_root_columns()</code></pre>
+            </section>
+
+            <section id="multi-gpu">
+                <h2>7) Multi-GPU plan for AWS g7e.24xlarge</h2>
+
+                <h3>7.1 Instance facts (as of Feb 18, 2026)</h3>
+                <table>
+                    <tr>
+                        <th>Spec</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>vCPUs</td>
+                        <td>96</td>
+                    </tr>
+                    <tr>
+                        <td>Host RAM</td>
+                        <td>1024 GiB</td>
+                    </tr>
+                    <tr>
+                        <td>GPUs</td>
+                        <td>4 × NVIDIA RTX PRO 6000 Blackwell (96 GB each)</td>
+                    </tr>
+                    <tr>
+                        <td>Total GPU memory</td>
+                        <td>384 GB</td>
+                    </tr>
+                    <tr>
+                        <td>GPU memory bandwidth</td>
+                        <td>~1597 GB/s per GPU</td>
+                    </tr>
+                </table>
+
+                <h3>7.2 Fit analysis for 40B cells</h3>
+                <ul>
+                    <li>Raw base witness (~149 GiB) + encoded (~298 GiB) cannot be safely duplicated in VRAM with
+                        scratch.</li>
+                    <li>Therefore: <strong>streamed/tiled execution is required</strong> even with 4×96GB.</li>
+                    <li>Host RAM (1024 GiB) is enough for large staging windows if state lifetimes are controlled.</li>
+                </ul>
+
+                <h3>7.3 Recommended partitioning</h3>
+                <div class="grid2">
+                    <div class="box">
+                        <strong>Across rounds</strong>
+                        <ul>
+                            <li>Assign independent commitment rounds to devices if round sizes are balanced.</li>
+                            <li>Good for reducing cross-device synchronization.</li>
+                        </ul>
+                    </div>
+                    <div class="box">
+                        <strong>Within one big round</strong>
+                        <ul>
+                            <li>Split by row chunks (e.g. 512–1024 rows/chunk at 2^22 cols).</li>
+                            <li>Then split encoded columns per device for hash/tree stage.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>7.4 Concrete chunk sizing example</h3>
+                <table>
+                    <tr>
+                        <th>Chunk rows</th>
+                        <th>Raw chunk (GiB)</th>
+                        <th>Encoded chunk (GiB, rho=2)</th>
+                        <th>Comment</th>
+                    </tr>
+                    <tr>
+                        <td>512</td>
+                        <td>~8</td>
+                        <td>~16</td>
+                        <td>Conservative, easy overlap</td>
+                    </tr>
+                    <tr>
+                        <td>1024</td>
+                        <td>~16</td>
+                        <td>~32</td>
+                        <td>Good throughput/overhead trade-off</td>
+                    </tr>
+                    <tr>
+                        <td>1536</td>
+                        <td>~24</td>
+                        <td>~48</td>
+                        <td>Aggressive but still practical with 96GB</td>
+                    </tr>
+                </table>
+
+                <div class="box warn">
+                    If each GPU keeps encoded + scratch + leaf/tree buffers, practical occupancy per device is usually
+                    50–75 GB, not full 96 GB.
+                </div>
+            </section>
+
+            <section id="simplify">
+                <h2>8) Fundamental simplifications to make acceleration easier</h2>
+
+                <h3>8.1 Replace "store everything in run.State" with streaming lifetimes</h3>
+                <ul>
+                    <li>Today Vortex stores encoded matrices and trees by round until opening round.</li>
+                    <li>Introduce a staged artifact manager: allow spill-to-disk/mmap or immediate compaction of tree
+                        layers.</li>
+                    <li>This directly lowers peak RAM and eases GPU pipeline overlap.</li>
+                </ul>
+
+                <h3>8.2 GlobalCS quotient: cache coefficient form across cosets</h3>
+                <ul>
+                    <li>Current path repeatedly does IFFT + FFT per root/coset combination.</li>
+                    <li>Cache root coefficients once per root, then only coset FFT per coset.</li>
+                    <li>Cuts repeated transforms and lowers both CPU and GPU work.</li>
+                </ul>
+
+                <h3>8.3 Unify commitment modes under one batch API</h3>
+                <ul>
+                    <li>Currently no-SIS and SIS branches diverge in multiple places.</li>
+                    <li>Create one batch commitment API with mode flag; move branching to backend.</li>
+                    <li>Improves kernel fusion opportunities and simplifies device scheduling.</li>
+                </ul>
+
+                <h3>8.4 Introduce accelerator capability matrix</h3>
+                <ul>
+                    <li>Not all kernels should be GPU-first at day one.</li>
+                    <li>Build feature-gated backend map: <code>rs_encode</code>, <code>sis_hash</code>,
+                        <code>poseidon2</code>, <code>linear_comb</code>, <code>quotient_fft</code>.</li>
+                    <li>Lets you deploy partial acceleration without protocol-level risk.</li>
+                </ul>
+
+                <h3>8.5 Explicit deterministic transcript checks in CI</h3>
+                <ul>
+                    <li>Any GPU path must preserve exact proof bytes / FS state transitions.</li>
+                    <li>Add cross-backend equivalence tests (CPU vs GPU) per round and final proof.</li>
+                </ul>
+            </section>
+
+            <section id="roadmap">
+                <h2>9) Delivery roadmap (pragmatic)</h2>
+                <table>
+                    <tr>
+                        <th>Phase</th>
+                        <th>Scope</th>
+                        <th>Expected outcome</th>
+                    </tr>
+                    <tr>
+                        <td>Phase A</td>
+                        <td>GPU RS encode + linear combination only</td>
+                        <td>Immediate speedup with low transcript risk</td>
+                    </tr>
+                    <tr>
+                        <td>Phase B</td>
+                        <td>GPU SIS/noSIS hashing + Merkle build</td>
+                        <td>Major Vortex speedup and CPU offload</td>
+                    </tr>
+                    <tr>
+                        <td>Phase C</td>
+                        <td>GPU GlobalCS quotient FFT path</td>
+                        <td>Fix second major bottleneck</td>
+                    </tr>
+                    <tr>
+                        <td>Phase D</td>
+                        <td>Outer proof acceleration (if gnark backend supports your curve stack)</td>
+                        <td>Reduce tail latency</td>
+                    </tr>
+                </table>
+
+                <div class="box good">
+                    Recommended first implementation target: <strong>Vortex-only acceleration path</strong> (RS + hash +
+                    Merkle + linear-comb) behind a runtime flag. This captures most ROI before touching
+                    recursion/outer-circuit logic.
+                </div>
+            </section>
+
+            <section id="refs">
+                <h2>References</h2>
+                <ul>
+                    <li>AWS G7e instance specs (g7e.24xlarge table): <a
+                            href="https://aws.amazon.com/ec2/instance-types/g7e/">aws.amazon.com/ec2/instance-types/g7e/</a>
+                    </li>
+                    <li>Main code paths analyzed: <code>backend/execution/prove.go</code>, <code>zkevm/zkevm.go</code>,
+                        <code>protocol/wizard/prover.go</code>, <code>protocol/compiler/globalcs/quotient.go</code>,
+                        <code>protocol/compiler/vortex/*</code>, <code>protocol/compiler/recursion/*</code>,
+                        <code>circuits/execution/*</code>.</li>
+                </ul>
+                <p class="tiny">This file is self-contained HTML (no external JS/CSS dependencies).</p>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>

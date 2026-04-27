@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linea zkEVM Prover — Deep Dive &amp; GPU Acceleration Strategy</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #1c2128;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --accent2: #3fb950;
+            --accent3: #f0883e;
+            --accent4: #bc8cff;
+            --red: #f85149;
+            --cyan: #39d353;
+            --yellow: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        nav h2 {
+            color: var(--accent);
+            font-size: 14px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        nav ul {
+            list-style: none;
+        }
+
+        nav li {
+            margin-bottom: 4px;
+        }
+
+        nav a {
+            color: var(--text-dim);
+            font-size: 13px;
+            display: block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--text);
+            background: var(--bg3);
+            text-decoration: none;
+        }
+
+        nav .section-label {
+            color: var(--accent3);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 16px;
+            margin-bottom: 4px;
+            padding-left: 8px;
+        }
+
+        /* Main content */
+        main {
+            margin-left: 280px;
+            padding: 40px 60px;
+            max-width: 1100px;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        h1 .sub {
+            font-size: 18px;
+            color: var(--text-dim);
+            font-weight: 400;
+            display: block;
+            margin-top: 8px;
+        }
+
+        h2 {
+            font-size: 26px;
+            color: #fff;
+            margin-top: 60px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        h3 {
+            font-size: 20px;
+            color: var(--accent);
+            margin-top: 36px;
+            margin-bottom: 12px;
+        }
+
+        h4 {
+            font-size: 16px;
+            color: var(--accent3);
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 14px;
+        }
+
+        ul,
+        ol {
+            margin-bottom: 14px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* Code */
+        pre {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        pre code {
+            color: var(--text);
+        }
+
+        :not(pre)>code {
+            background: var(--bg3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--accent4);
+        }
+
+        /* Keyword highlighting in code blocks */
+        .kw {
+            color: var(--accent4);
+        }
+
+        .fn {
+            color: var(--accent);
+        }
+
+        .cm {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .st {
+            color: var(--accent2);
+        }
+
+        .nu {
+            color: var(--accent3);
+        }
+
+        .ty {
+            color: var(--yellow);
+        }
+
+        /* Diagrams */
+        .diagram {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre;
+            color: var(--accent);
+        }
+
+        .diagram .highlight {
+            color: var(--accent3);
+            font-weight: bold;
+        }
+
+        .diagram .dim {
+            color: var(--text-dim);
+        }
+
+        .diagram .red {
+            color: var(--red);
+        }
+
+        .diagram .green {
+            color: var(--accent2);
+        }
+
+        .diagram .yellow {
+            color: var(--yellow);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        th {
+            background: var(--bg3);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+        }
+
+        tr:nth-child(even) {
+            background: var(--bg2);
+        }
+
+        /* Info boxes */
+        .info-box {
+            border-left: 4px solid var(--accent);
+            background: rgba(88, 166, 255, 0.05);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warn-box {
+            border-left: 4px solid var(--accent3);
+            background: rgba(240, 136, 62, 0.05);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .perf-box {
+            border-left: 4px solid var(--red);
+            background: rgba(248, 81, 73, 0.05);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .gpu-box {
+            border-left: 4px solid var(--accent2);
+            background: rgba(63, 185, 80, 0.05);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* Metrics */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .metric {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .metric .label {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .metric.warn .value {
+            color: var(--accent3);
+        }
+
+        .metric.hot .value {
+            color: var(--red);
+        }
+
+        .metric.good .value {
+            color: var(--accent2);
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-hot {
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--red);
+        }
+
+        .tag-gpu {
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent2);
+        }
+
+        .tag-mem {
+            background: rgba(188, 140, 255, 0.2);
+            color: var(--accent4);
+        }
+
+        .tag-cpu {
+            background: rgba(240, 136, 62, 0.2);
+            color: var(--accent3);
+        }
+
+        /* Phase indicator */
+        .phase {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .phase-1 {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .phase-2 {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent2);
+        }
+
+        .phase-3 {
+            background: rgba(240, 136, 62, 0.15);
+            color: var(--accent3);
+        }
+
+        /* Separator */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 40px 0;
+        }
+
+        /* Header banner */
+        .banner {
+            background: linear-gradient(135deg, #1a1f35, #0d1117 60%, #0a1628);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 40px;
+        }
+
+        .banner h1 {
+            margin-bottom: 0;
+        }
+
+        /* Estimation bar */
+        .est-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+
+        .est-bar .bar {
+            flex: 1;
+            height: 8px;
+            background: var(--bg3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .est-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .est-bar .label {
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 160px;
+        }
+
+        .est-bar .pct {
+            font-size: 12px;
+            color: var(--text);
+            min-width: 50px;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <h2>Contents</h2>
+        <ul>
+            <li class="section-label">Part I — Understanding</li>
+            <li><a href="#overview">High-Level Overview</a></li>
+            <li><a href="#glossary">Glossary of Terms</a></li>
+            <li><a href="#pipeline">End-to-End Pipeline</a></li>
+            <li><a href="#trace">Trace &amp; Witness Generation</a></li>
+            <li><a href="#wizard">Wizard Compilation</a></li>
+            <li><a href="#quotient">Quotient Computation</a></li>
+            <li><a href="#vortex">Vortex Commitment Scheme</a></li>
+            <li><a href="#recursion">Self-Recursion &amp; Outer Proof</a></li>
+            <li><a href="#memory">Memory &amp; CPU Estimates</a></li>
+            <li class="section-label">Part II — GPU Acceleration</li>
+            <li><a href="#hardware">Target Hardware: g7e.24xlarge</a></li>
+            <li><a href="#bottlenecks">Bottleneck Analysis</a></li>
+            <li><a href="#fft-gpu">GPU FFT Strategy</a></li>
+            <li><a href="#hash-gpu">GPU Hashing Strategy</a></li>
+            <li><a href="#multi-gpu">Multi-GPU Orchestration</a></li>
+            <li><a href="#integration">Go–GPU Integration</a></li>
+            <li class="section-label">Part III — Simplifications</li>
+            <li><a href="#simplifications">Algorithmic Improvements</a></li>
+            <li><a href="#roadmap">Implementation Roadmap</a></li>
+        </ul>
+    </nav>
+
+    <main>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="banner">
+            <h1>Linea zkEVM Prover
+                <span class="sub">Deep Dive &amp; GPU Acceleration Strategy for 40B-Cell Traces</span>
+            </h1>
+            <p style="margin-top:16px;color:var(--text-dim);">February 2026 — Confidential Technical Report</p>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="overview">1. High-Level Overview</h2>
+
+        <p>The Linea prover transforms EVM execution traces into succinct zero-knowledge proofs verifiable on Ethereum
+            L1. The system operates over the <strong>KoalaBear field</strong> (p = 2<sup>31</sup> − 2<sup>27</sup> + 1 ≈
+            2.13 × 10<sup>9</sup>), a 31-bit prime optimized for 32-bit arithmetic. The pipeline can be decomposed into
+            five macro-phases:</p>
+
+        <div class="diagram"><span class="dim">┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+                ┌─────────────────┐ ┌─────────────────┐</span>
+            <span class="highlight">│ 1. TRACE LOAD │</span> ──▶ <span class="highlight">│ 2. WIZARD IOP │</span> ──▶
+            <span class="highlight">│ 3. QUOTIENT + │</span> ──▶ <span class="highlight">│ 4. VORTEX PCS │</span> ──▶
+            <span class="highlight">│ 5. OUTER PROOF │</span>
+            <span class="dim">│ Parse .lt file │ │ Compile arith. │ │ CONSTRAINT │ │ Commit + Open │ │ gnark PLONK
+                │</span>
+            <span class="dim">│ Expand columns │ │ → polynomial │ │ EVALUATION │ │ RS + SIS + MT │ │
+                BLS12→BW6→BN254│</span>
+            <span class="dim">│ Pad to 2^k │ │ IOP │ │ │ │ │ │ │</span>
+            <span class="dim">└─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
+                └─────────────────┘</span>
+            <span class="green">~5%</span> <span class="green">~5%</span> <span class="red">~40%</span> <span
+                class="red">~35%</span> <span class="yellow">~15%</span>
+        </div>
+
+        <p>For a <strong>40 billion cell</strong> trace (≈ thousands of columns × millions of rows), the dominant costs
+            are in phases 3 and 4: the quotient polynomial computation and the Vortex polynomial commitment scheme.
+            Together, these account for roughly <strong>75% of total proving time</strong>.</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="glossary">2. Glossary of Key Terms</h2>
+
+        <table>
+            <tr>
+                <th>Term</th>
+                <th>Definition</th>
+            </tr>
+            <tr>
+                <td><strong>KoalaBear</strong></td>
+                <td>The base field: 𝔽<sub>p</sub> where p = 2<sup>31</sup> − 2<sup>27</sup> + 1. Each element is 4
+                    bytes. Supports NTT with max order root 2<sup>24</sup>.</td>
+            </tr>
+            <tr>
+                <td><strong>𝔽<sub>p</sub><sup>4</sup></strong></td>
+                <td>Degree-4 extension of KoalaBear: 𝔽<sub>p²</sub>[u]/(u²−3), then 𝔽<sub>p⁴</sub>[v]/(v²−u). Each
+                    element = 16 bytes. Used for Fiat-Shamir challenges and polynomial commitments.</td>
+            </tr>
+            <tr>
+                <td><strong>Column</strong></td>
+                <td>A vector of field elements representing one register across all rows of a trace module. Stored as a
+                    <code>SmartVector</code>.</td>
+            </tr>
+            <tr>
+                <td><strong>Module</strong></td>
+                <td>A logical grouping of columns representing an EVM component (e.g., <code>hub</code>,
+                    <code>mmu</code>, <code>keccak</code>). Each module has its own height limit.</td>
+            </tr>
+            <tr>
+                <td><strong>Wizard</strong></td>
+                <td>The custom polynomial-IOP framework. An <code>CompiledIOP</code> accumulates columns, constraints,
+                    and random coins through multiple "rounds" of interaction.</td>
+            </tr>
+            <tr>
+                <td><strong>Global Constraint</strong></td>
+                <td>A polynomial identity that must hold over an entire domain H of size n: C(x) ≡ 0 for all x ∈ H.</td>
+            </tr>
+            <tr>
+                <td><strong>Quotient Polynomial</strong></td>
+                <td>Q(x) = C(x) / (x<sup>n</sup> − 1). Proving C vanishes on H is equivalent to showing Q is a
+                    polynomial. Split into <em>ratio</em> many shares.</td>
+            </tr>
+            <tr>
+                <td><strong>Ratio</strong></td>
+                <td>For a constraint of degree d over domain of size n: ratio = ⌈(d−n+1)/n⌉ rounded up to next power of
+                    2. Determines how many coset evaluations are needed.</td>
+            </tr>
+            <tr>
+                <td><strong>Vortex</strong></td>
+                <td>A polynomial commitment scheme based on Reed-Solomon codes + Ring-SIS hashing + Merkle trees.
+                    Polynomials are laid out as a matrix (rows × columns), RS-encoded, then column-hashed into a Merkle
+                    tree.</td>
+            </tr>
+            <tr>
+                <td><strong>Ring-SIS</strong></td>
+                <td>A lattice-based hash: H(m) = Σ<sub>i</sub> A<sub>i</sub> · m<sub>i</sub> mod (X<sup>d</sup>+1).
+                    Parameters: degree=512, logTwoBound=16. Collision-resistant and algebraically structured.</td>
+            </tr>
+            <tr>
+                <td><strong>Reed-Solomon</strong></td>
+                <td>Systematic encoding: IFFT → zero-pad → FFT on larger domain. Rate ρ (typically 2) means the encoded
+                    vector is ρ× the original size.</td>
+            </tr>
+            <tr>
+                <td><strong>Self-Recursion</strong></td>
+                <td>The Vortex verifier is itself expressed as a circuit in the Wizard framework, enabling proof
+                    composition without a separate recursive step.</td>
+            </tr>
+            <tr>
+                <td><strong>Arcane</strong></td>
+                <td>The master compilation pipeline that reduces a high-level Wizard protocol into a single-point
+                    polynomial IOP suitable for Vortex.</td>
+            </tr>
+            <tr>
+                <td><strong>SmartVector</strong></td>
+                <td>Memory-optimized polynomial representation: Regular (dense), Constant (single value),
+                    PaddedCircularWindow (sparse with padding), Rotated (lazy shift).</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="pipeline">3. End-to-End Pipeline</h2>
+
+        <h3>3.1 Entry Point</h3>
+        <p>The CLI is built with Cobra. The <code>prove</code> command reads a JSON request, determines the job type,
+            and dispatches:</p>
+        <pre><code><span class="cm">// cmd/prover/cmd/prove.go</span>
+<span class="kw">func</span> <span class="fn">runProve</span>(cmd *cobra.Command, args []string) {
+    input := readInputFile(inFlag)
+    <span class="kw">switch</span> determineJobType(input) {
+    <span class="kw">case</span> <span class="st">"getZkProof"</span>:
+        handleExecutionJob(cfg, input, outFlag)   <span class="cm">// ← we focus here</span>
+    <span class="kw">case</span> <span class="st">"getZkBlobCompressionProof"</span>:
+        handleDataAvailabilityJob(cfg, input, outFlag)
+    <span class="kw">case</span> <span class="st">"getZkAggregatedProof"</span>:
+        handleAggregationJob(cfg, input, outFlag)
+    }
+}</code></pre>
+
+        <h3>3.2 Execution Proof — Full Pipeline</h3>
+
+        <div class="diagram"><span class="dim">─────────────── PHASE 1: Input Processing ───────────────</span>
+
+            JSON Request ──▶ <span class="fn">CraftProverOutput()</span>
+            ├─ Parse RLP blocks
+            ├─ Extract transactions &amp; signatures
+            ├─ Decode Shomei state proofs
+            └─ Compute execution data checksum (Poseidon2)
+            │
+            ▼
+            <span class="fn">NewWitness()</span> → Witness{FuncInp, ZkEVM}
+
+            <span class="dim">─────────────── PHASE 2: Trace Loading ───────────────────</span>
+
+            .lt file ──▶ <span class="fn">ReadLtTraces()</span>
+            ├─ go-corset binary parser
+            ├─ <span class="fn">asm.Propagate()</span> → fill computed columns
+            └─ <span class="fn">ir.TraceBuilder().Build()</span> → limb splitting
+            │
+            ▼
+            <span class="fn">AssignFromLtTraces()</span>
+            ├─ For each module: check height ≤ limit
+            ├─ Convert koalabear.Element → field.Element
+            ├─ Pad columns to next power of 2
+            └─ <span class="fn">run.AssignColumn(name, smartvec)</span>
+
+            <span class="dim">─────────────── PHASE 3: Compilation (Arcane) ───────────</span>
+
+            CompiledIOP ──▶ <span class="fn">Arcane()</span> pipeline:
+            <span class="green">1.</span> RangeProof (decompose into bits)
+            <span class="green">2.</span> FixedPermutations (sort-based proofs)
+            <span class="green">3.</span> GrandProduct (permutation arguments)
+            <span class="green">4.</span> Lookups (log-derivative sum)
+            <span class="green">5.</span> Projection (Horner evaluation)
+            <span class="green">6.</span> InnerProduct (inner product arguments)
+            <span class="yellow">7.</span> DegreeReduction (split high-degree exprs)
+            <span class="yellow">8.</span> StitchSplit (rectangularize columns)
+            <span class="red">9.</span> LocalConstraints (boundary → global)
+            <span class="red">10.</span> GlobalConstraints (quotient computation) <span class="red">← BOTTLENECK</span>
+            <span class="green">11.</span> Naturalize (univariate queries)
+            <span class="green">12.</span> MPTS (multi→single point)
+
+            <span class="dim">─────────────── PHASE 4: Polynomial Commitment ──────────</span>
+
+            Columns ──▶ <span class="fn">Vortex()</span>
+            <span class="red">1.</span> RS-encode each row (FFT⁻¹ + FFT) <span class="red">← BOTTLENECK</span>
+            <span class="red">2.</span> Ring-SIS transversal hash of columns <span class="red">← BOTTLENECK</span>
+            <span class="green">3.</span> Poseidon2 hash into Merkle leaves
+            <span class="green">4.</span> Build Merkle tree
+            <span class="red">5.</span> Linear combination (opening proof) <span class="red">← BOTTLENECK</span>
+
+            <span class="dim">─────────────── PHASE 5: Outer Proof ────────────────────</span>
+
+            WizardProof ──▶ <span class="fn">SelfRecursion()</span>
+            ├─ Verify Vortex inside Wizard circuit
+            └─ Produces recursed proof
+            │
+            ▼
+            <span class="fn">gnark PLONK prove</span> (BLS12-377)
+            ├─ ~128M constraint circuit
+            └─ KZG commitment on BLS12-377
+            │
+            ▼
+            <span class="fn">Aggregation</span> (BW6-761)
+            ├─ Emulates BLS12-377 scalar field
+            └─ Batch verifies multiple proofs
+            │
+            ▼
+            <span class="fn">Emulation</span> (BN254)
+            └─ Final proof for Ethereum L1
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="trace">4. Trace &amp; Witness Generation</h2>
+
+        <h3>4.1 What Is a Trace?</h3>
+        <p>A trace is the complete record of an EVM execution, organized as a matrix: each <strong>module</strong> is a
+            sub-matrix, and each <strong>column</strong> within a module represents a register (e.g., program counter,
+            stack pointer, memory address) across all execution steps (rows).</p>
+
+        <div class="diagram"><span class="dim">Module "hub" (2^21 rows × ~200 columns):</span>
+
+            Row PC OPCODE STACK_PTR GAS_LEFT ...
+            ───── ──── ─────── ────────── ───────── ────
+            0 0 PUSH1 0 30000000
+            1 2 PUSH1 1 29999997
+            2 4 ADD 2 29999994
+            ... ... ... ... ...
+            2^21-1 <span class="dim">(zero-padded)</span>
+
+            <span class="dim">Module "keccak" (2^18 rows × ~150 columns):</span>
+
+            Row ROUND A[0][0] A[0][1] ...
+            ───── ────── ──────── ──────── ────
+            ...
+        </div>
+
+        <h3>4.2 Field Elements</h3>
+        <p>Every cell in the trace is a <strong>KoalaBear field element</strong> — a 31-bit integer stored in Montgomery
+            form in 4 bytes:</p>
+
+        <pre><code><span class="cm">// maths/field/element.go</span>
+<span class="kw">type</span> <span class="ty">Element</span> = koalabear.Element  <span class="cm">// 4 bytes, Montgomery form</span>
+
+<span class="cm">// Field parameters:</span>
+<span class="cm">//   p = 2^31 - 2^27 + 1 = 2,130,706,433</span>
+<span class="cm">//   Multiplicative generator: 3</span>
+<span class="cm">//   Max NTT size: 2^24 (16M elements)</span>
+<span class="cm">//   Montgomery constant R = 2^32 mod p</span></code></pre>
+
+        <div class="info-box">
+            <strong>Why KoalaBear?</strong> A 31-bit prime enables fast 32-bit arithmetic on both CPU and GPU. Two
+            elements fit in a 64-bit register, and Montgomery reduction needs only a single multiply + shift. The
+            multiplicative group supports NTT up to size 2<sup>24</sup>, large enough for most column sizes.
+        </div>
+
+        <h3>4.3 Extension Field</h3>
+        <p>Fiat-Shamir challenges and polynomial commitments operate over a degree-4 extension:</p>
+
+        <pre><code><span class="cm">// maths/field/fext/doc.go</span>
+<span class="cm">// 𝔽r²[u] = 𝔽r / (u² − 3)      → quadratic extension</span>
+<span class="cm">// 𝔽r⁴[v] = 𝔽r² / (v² − u)     → quartic extension</span>
+
+<span class="kw">type</span> <span class="ty">Element</span> = extensions.E4  <span class="cm">// 4 × KoalaBear = 16 bytes</span>
+<span class="cm">// Contains: B0.A0, B0.A1, B1.A0, B1.A1</span></code></pre>
+
+        <h3>4.4 SmartVector — Memory-Optimized Storage</h3>
+        <p>Columns are not stored as plain arrays. The <code>SmartVector</code> abstraction recognizes common patterns
+            to minimize memory:</p>
+
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Storage</th>
+                <th>Use Case</th>
+            </tr>
+            <tr>
+                <td><code>Regular</code></td>
+                <td>N × 4 bytes</td>
+                <td>Dense columns with varying data</td>
+            </tr>
+            <tr>
+                <td><code>Constant</code></td>
+                <td>4 bytes total</td>
+                <td>Columns filled with a single value (zeros, ones)</td>
+            </tr>
+            <tr>
+                <td><code>PaddedCircularWindow</code></td>
+                <td>W × 4 bytes + padding val</td>
+                <td>Columns where only W rows have non-padding values</td>
+            </tr>
+            <tr>
+                <td><code>Rotated</code></td>
+                <td>Pointer + offset</td>
+                <td>Cyclic shift of another column (zero copy)</td>
+            </tr>
+        </table>
+
+        <h3>4.5 Memory for 40B Cells</h3>
+
+        <div class="metrics">
+            <div class="metric hot">
+                <div class="value">160 GB</div>
+                <div class="label">Raw Trace (40B × 4 bytes)</div>
+            </div>
+            <div class="metric warn">
+                <div class="value">~80 GB</div>
+                <div class="label">With SmartVector savings</div>
+            </div>
+            <div class="metric">
+                <div class="value">~320 GB</div>
+                <div class="label">Peak working memory (FFTs etc.)</div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="wizard">5. Wizard Compilation (Arcane)</h2>
+
+        <h3>5.1 The CompiledIOP Object</h3>
+        <p>The Wizard framework organizes the proof as a multi-round interactive oracle protocol. The
+            <code>CompiledIOP</code> accumulates columns, constraints, and random coins:</p>
+
+        <pre><code><span class="cm">// Simplified view of CompiledIOP</span>
+<span class="kw">type</span> <span class="ty">CompiledIOP</span> <span class="kw">struct</span> {
+    Columns        ColumnStore       <span class="cm">// All columns by (round, index)</span>
+    QueriesNoParams  <span class="cm">// Global/Local constraints</span>
+    QueriesParams    <span class="cm">// Univariate evaluation queries</span>
+    Coins          [][]coin.Info     <span class="cm">// Fiat-Shamir challenges per round</span>
+    SubProvers     [][]ProverAction  <span class="cm">// Prover work items per round</span>
+    SubVerifiers   [][]VerifierAction
+    Precomputed    map[ColID]SmartVector
+}</code></pre>
+
+        <h3>5.2 Arcane Compilation Passes</h3>
+        <p>The <code>Arcane</code> function (<code>protocol/compiler/arcane.go</code>) chains 12 compilation passes.
+            Each pass transforms high-level queries into lower-level ones:</p>
+
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Pass</th>
+                <th>What it does</th>
+                <th>CPU Cost</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>RangeProof</td>
+                <td>Decompose values into bits for range checks</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>FixedPermutations</td>
+                <td>Sorting-based permutation proofs</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>GrandProduct</td>
+                <td>Z(x) accumulator for permutation arguments</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Lookups (logderivativesum)</td>
+                <td>Log-derivative lookup arguments</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Projection (Horner)</td>
+                <td>Horner evaluation for projection queries</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>InnerProduct</td>
+                <td>Inner product arguments</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>DegreeReduction</td>
+                <td>Split expressions exceeding degree bound (4)</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>StitchSplit</td>
+                <td>Merge small columns (stitch) / split large ones</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>LocalConstraints</td>
+                <td>Convert boundary constraints → global via Lagrange mult.</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td style="color:var(--red)">10</td>
+                <td style="color:var(--red)"><strong>GlobalConstraints</strong></td>
+                <td style="color:var(--red)"><strong>Quotient polynomial computation — main bottleneck</strong></td>
+                <td style="color:var(--red)"><strong>Very High</strong></td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td>Naturalize</td>
+                <td>Convert multivariate → univariate evaluation queries</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td>MPTS</td>
+                <td>Multi-point → single-point evaluation</td>
+                <td>Medium</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="quotient">6. Quotient Polynomial Computation</h2>
+
+        <p>This is the <strong>single most expensive step</strong> in the prover. File:
+            <code>protocol/compiler/globalcs/quotient.go</code>.</p>
+
+        <h3>6.1 The Mathematical Problem</h3>
+        <p>Given a polynomial constraint C(X) that must vanish on a domain H = {ω<sup>0</sup>, ω<sup>1</sup>, ...,
+            ω<sup>n-1</sup>}:</p>
+
+        <pre><code><span class="cm"># Python pseudocode</span>
+<span class="kw">def</span> <span class="fn">compute_quotient</span>(constraint_expr, witness_columns, domain_H):
+    <span class="st">"""
+    If C(x) = 0 for all x in H, then (x^n - 1) | C(x).
+    We compute Q(x) = C(x) / (x^n - 1) and split it into shares.
+    """</span>
+    n = len(domain_H)
+
+    <span class="cm"># Determine degree: if C has degree d, quotient has degree d - n</span>
+    <span class="cm"># ratio = ceil((d - n + 1) / n), rounded up to power of 2</span>
+    ratio = next_power_of_2(ceil((degree(constraint_expr) - n + 1) / n))
+
+    <span class="cm"># For each coset i in [0, ratio):</span>
+    quotient_shares = []
+    <span class="kw">for</span> i <span class="kw">in</span> range(ratio):
+        <span class="cm"># 1. Compute shift for this coset</span>
+        shift = generator_full_group * omega_coset^i
+        coset_domain = [shift * omega^j <span class="kw">for</span> j <span class="kw">in</span> range(n)]
+
+        <span class="cm"># 2. Re-evaluate each witness column on the coset</span>
+        <span class="cm">#    This is the expensive part: IFFT + FFT per column</span>
+        <span class="kw">for</span> col <span class="kw">in</span> unique_root_columns:
+            coeffs = IFFT(col.values, domain_H)        <span class="cm"># O(n log n)</span>
+            col_on_coset = FFT(coeffs, coset_domain)    <span class="cm"># O(n log n)</span>
+
+        <span class="cm"># 3. Apply shifts (rotations are free — just pointer offset)</span>
+        <span class="kw">for</span> shifted_col <span class="kw">in</span> shifted_columns:
+            shifted_col_on_coset = rotate(root_col_on_coset, offset)
+
+        <span class="cm"># 4. Evaluate constraint expression (DAG evaluation)</span>
+        constraint_values = expr_board.evaluate(col_values_on_coset)
+
+        <span class="cm"># 5. Divide by vanishing polynomial: (x^n - 1)^{-1}</span>
+        annulator_inv = precomputed_annulator_inverse[i]
+        quotient_share = constraint_values * annulator_inv
+
+        quotient_shares.append(quotient_share)
+
+    <span class="kw">return</span> quotient_shares</code></pre>
+
+        <h3>6.2 Actual Go Implementation</h3>
+        <pre><code><span class="cm">// protocol/compiler/globalcs/quotient.go:185-378 (simplified)</span>
+<span class="kw">func</span> (ctx *<span class="ty">QuotientCtx</span>) <span class="fn">Run</span>(run *wizard.ProverRuntime) {
+    domain0 := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
+    maxRatio := utils.Max(ctx.Ratios...)
+
+    arenaExt := arena.NewVectorArena[fext.Element](
+        ctx.DomainSize * len(ctx.AllInvolvedRoots))
+
+    <span class="kw">for</span> i := <span class="nu">0</span>; i < maxRatio; i++ {
+        <span class="kw">for</span> ratio, constraintIndices := <span class="kw">range</span> ctx.ConstraintsByRatio {
+            <span class="kw">if</span> i%(maxRatio/ratio) != <span class="nu">0</span> { <span class="kw">continue</span> }
+
+            arenaExt.Reset(<span class="nu">0</span>)  <span class="cm">// reuse memory each iteration</span>
+            shift := computeShift(ctx.DomainSize, ratio, share)
+            domain := fft.NewDomain(ctx.DomainSize, fft.WithShift(shift))
+
+            <span class="cm">// FFT re-evaluation of root columns on coset</span>
+            parallel.Execute(len(uniqueRoots), <span class="kw">func</span>(start, stop <span class="ty">int</span>) {
+                <span class="kw">for</span> k := start; k < stop; k++ {
+                    witness := run.Columns.Get(rootName)
+                    res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
+                    witness.WriteInSlice(res)
+                    domain0.FFTInverse(res, fft.DIF, <span class="red">fft.WithNbTasks(2)</span>)
+                    domain.FFT(res, fft.DIT, fft.OnCoset(), <span class="red">fft.WithNbTasks(2)</span>)
+                }
+            })
+
+            <span class="cm">// Evaluate expression + divide by annihilator</span>
+            quotientShare := board.Evaluate(evalInputs)
+            vq.ScalarMul(vq, &annulatorInvVals[i])
+            run.AssignColumn(quotientShareName, quotientShare)
+        }
+    }
+}</code></pre>
+
+        <div class="perf-box">
+            <strong>Performance Analysis for 40B Cells:</strong>
+            <ul>
+                <li>With domainSize = 2<sup>21</sup> (typical largest module), ~200 root columns, and maxRatio = 4:</li>
+                <li>FFT operations: 4 cosets × 200 columns × 2 FFTs = <strong>1,600 FFTs of size 2<sup>21</sup></strong>
+                </li>
+                <li>Each FFT of size 2M: ~50ms on modern CPU → <strong>~80 seconds just for FFTs</strong></li>
+                <li>Plus DAG evaluation, scalar multiplication, memory copies → <strong>~120s total for
+                        quotient</strong></li>
+                <li>Note: <code>fft.WithNbTasks(2)</code> means each FFT uses only 2 threads — significant
+                    under-utilization</li>
+            </ul>
+        </div>
+
+        <h3>6.3 State Between Steps</h3>
+        <div class="diagram"><span class="dim">Before quotient.Run():</span>
+            ┌──────────────────────────────────────────────────────┐
+            │ ProverRuntime.Columns = { │
+            │ "hub.PC": SmartVector(Regular, 2^21 elems) │
+            │ "hub.OPCODE": SmartVector(Regular, 2^21 elems) │
+            │ "hub.GAS": SmartVector(Regular, 2^21 elems) │
+            │ ... (~5000 columns total) │
+            │ } │
+            │ AggregateExpressions = [expr0, expr1, ...] │
+            │ Ratios = [1, 2, 4] (grouped by degree) │
+            └──────────────────────────────────────────────────────┘
+
+            <span class="dim">After quotient.Run():</span>
+            ┌──────────────────────────────────────────────────────┐
+            │ ProverRuntime.Columns += { │
+            │ "QUOTIENT_R1_S0": SmartVector(2^21 elems) │
+            │ "QUOTIENT_R2_S0": SmartVector(2^21 elems) │
+            │ "QUOTIENT_R2_S1": SmartVector(2^21 elems) │
+            │ "QUOTIENT_R4_S0..S3": 4 × SmartVector(2^21 elems)│
+            │ } │
+            └──────────────────────────────────────────────────────┘
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="vortex">7. Vortex Polynomial Commitment Scheme</h2>
+
+        <h3>7.1 Architecture</h3>
+        <p>Vortex commits to polynomials by organizing them as a matrix, Reed-Solomon encoding each row, hashing columns
+            with Ring-SIS, and building a Merkle tree:</p>
+
+        <div class="diagram"><span class="dim">Step 1: Arrange polynomials as matrix rows</span>
+
+            Poly₁: [a₁ a₂ a₃ ... aₙ] <span class="dim">← n = NbColumns (e.g., 1024)</span>
+            Poly₂: [b₁ b₂ b₃ ... bₙ]
+            ...
+            Polyₘ: [m₁ m₂ m₃ ... mₙ] <span class="dim">← m = NbRows (e.g., 256)</span>
+
+            <span class="dim">Step 2: RS-encode each row (ρ=2 → doubles width)</span>
+
+            Enc₁: [a₁ â₁ a₂ â₂ ... aₙ âₙ] <span class="dim">← 2n elements</span>
+            Enc₂: [b₁ b̂₁ b₂ b̂₂ ... bₙ b̂ₙ]
+            ...
+            Encₘ: [m₁ m̂₁ m₂ m̂₂ ... mₙ m̂ₙ]
+
+            <span class="dim">Step 3: Hash each COLUMN with Ring-SIS + Poseidon2</span>
+
+            Col₁: SIS([a₁,b₁,...,m₁]) → [h₁₁...h₁ₛ] → Poseidon2 → <span class="green">leaf₁</span>
+            Col₂: SIS([â₁,b̂₁,...,m̂₁]) → [h₂₁...h₂ₛ] → Poseidon2 → <span class="green">leaf₂</span>
+            ...
+            Col₂ₙ: → <span class="green">leaf₂ₙ</span>
+
+            <span class="dim">Step 4: Build Merkle tree</span>
+
+            <span class="highlight">ROOT</span>
+            / \
+            H(0,1) H(2,3)
+            / \ / \
+            <span class="green">leaf₁</span> <span class="green">leaf₂</span> <span class="green">leaf₃</span> <span
+                class="green">leaf₄</span> ...
+        </div>
+
+        <h3>7.2 Reed-Solomon Encoding — The FFT Cost</h3>
+        <pre><code><span class="cm">// crypto/reedsolomon/reedsolomon.go — RS encoding per row</span>
+<span class="kw">func</span> (p *<span class="ty">RsParams</span>) <span class="fn">RsEncodeBase</span>(v SmartVector) SmartVector {
+    expandedCoeffs := make([]field.Element, p.NbEncodedColumns()) <span class="cm">// 2n</span>
+    v.WriteInSlice(expandedCoeffs[:v.Len()])
+
+    <span class="cm">// Fast path for rate=2:</span>
+    inputCoeffs := expandedCoeffs[:p.NbColumns()]
+    p.Domains[<span class="nu">0</span>].FFTInverse(inputCoeffs, fft.DIF, <span class="red">fft.WithNbTasks(1)</span>)
+    inputCoeffs.Mul(inputCoeffs, p.CosetTableBitReverse)
+    p.Domains[<span class="nu">0</span>].FFT(inputCoeffs, fft.DIT, <span class="red">fft.WithNbTasks(1)</span>)
+
+    <span class="cm">// Interleave original and encoded values</span>
+    <span class="kw">for</span> j := p.NbColumns()-<span class="nu">1</span>; j >= <span class="nu">0</span>; j-- {
+        expandedCoeffs[<span class="nu">2</span>*j+<span class="nu">1</span>] = expandedCoeffs[j]  <span class="cm">// encoded</span>
+        expandedCoeffs[<span class="nu">2</span>*j] = v.Get(j)              <span class="cm">// original</span>
+    }
+    <span class="kw">return</span> NewRegular(expandedCoeffs)
+}</code></pre>
+
+        <div class="warn-box">
+            <strong>Critical observation:</strong> <code>fft.WithNbTasks(1)</code> means each individual RS encoding
+            runs <strong>single-threaded</strong>. The parallelism happens at the row level (multiple rows encoded in
+            parallel via <code>parallel.Execute</code>). This is the right strategy when you have thousands of rows, but
+            wasteful when a single large domain FFT could benefit from parallelism.
+        </div>
+
+        <h3>7.3 Ring-SIS Transversal Hash</h3>
+        <p>After RS encoding, each column (across all rows) is hashed with Ring-SIS:</p>
+
+        <pre><code><span class="cm">// crypto/ringsis/ringsis.go — TransversalHash (simplified)</span>
+<span class="kw">func</span> (s *<span class="ty">Key</span>) <span class="fn">TransversalHash</span>(v []SmartVector, res []field.Element) {
+    parallel.Execute(nbCols, <span class="kw">func</span>(start, end <span class="ty">int</span>) {
+        <span class="cm">// Windowed transposition for cache efficiency</span>
+        <span class="kw">const</span> windowSize = <span class="nu">32</span>
+        <span class="kw">const</span> padding = <span class="nu">8</span>  <span class="cm">// avoid cache set aliasing</span>
+
+        transposedArena := arena.NewVectorArena(paddedNbRows * windowSize)
+
+        <span class="kw">for</span> col := start; col < end; col += windowSize {
+            <span class="cm">// Transpose 32-column window</span>
+            <span class="kw">for</span> row := <span class="nu">0</span>; row < nbRows; row++ {
+                <span class="kw">for</span> j := <span class="nu">0</span>; j < windowSize; j++ {
+                    transposed[j][row] = v[row].Get(col + j)
+                }
+            }
+            <span class="cm">// Hash each column in window</span>
+            <span class="kw">for</span> j := <span class="nu">0</span>; j < windowSize; j++ {
+                s.SisGnarkCrypto.Hash(transposed[j], result)
+            }
+        }
+    })
+}</code></pre>
+
+        <h3>7.4 Poseidon2 + Merkle Tree</h3>
+        <p>The SIS hash output is compressed with Poseidon2 to produce Merkle leaves. The KoalaBear variant uses an
+            optimized SIMD path processing 16 columns at once:</p>
+
+        <pre><code><span class="cm">// crypto/vortex/vortex_koalabear/commtiment.go</span>
+<span class="cm">// Fast path: 16-column batches using SIMD-optimized Poseidon2</span>
+parallel.Execute(n, <span class="kw">func</span>(start, stop <span class="ty">int</span>) {
+    <span class="kw">for</span> chunkID := start; chunkID < stop; chunkID++ {
+        vgnark.CompressPoseidon2x16(
+            sisHashes[startChunk:startChunk+<span class="nu">16</span>*chunkSize],
+            chunkSize,
+            leaves[chunkID*<span class="nu">16</span>:(chunkID+<span class="nu">1</span>)*<span class="nu">16</span>],
+        )
+    }
+})</code></pre>
+
+        <h3>7.5 Opening Proof — Linear Combination</h3>
+        <pre><code><span class="cm">// crypto/vortex/prover_common.go</span>
+<span class="cm">// Computes L = Σᵢ αⁱ · encodedRow[i]  (α is random challenge)</span>
+<span class="kw">func</span> <span class="fn">LinearCombination</span>(proof *OpeningProof, v []SmartVector, α fext.Element) {
+    linComb := make([]fext.Element, n)
+    parallel.Execute(len(linComb), <span class="kw">func</span>(start, stop <span class="ty">int</span>) {
+        x := fext.One()
+        <span class="kw">for</span> i := <span class="kw">range</span> v {
+            scratch.ScalarMul(scratch, &x)
+            localLinComb.Add(localLinComb, scratch)
+            x.Mul(&x, &α)
+        }
+    })
+}</code></pre>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="recursion">8. Self-Recursion &amp; Outer Proof</h2>
+
+        <h3>8.1 The Curve Tower</h3>
+        <div class="diagram">
+            <span class="highlight">KoalaBear</span> (31-bit) Inner IOP + Vortex PCS
+            │
+            ▼
+            <span class="highlight">BLS12-377</span> (253-bit scalar) gnark PLONK circuit verifies Wizard proof
+            │ ~128M constraints
+            ▼
+            <span class="highlight">BW6-761</span> (761-bit scalar) Aggregation: verifies multiple BLS12-377 proofs
+            │ BW6 scalar field = BLS12-377 base field (native!)
+            ▼
+            <span class="highlight">BN254</span> (254-bit scalar) Final proof for Ethereum on-chain verification
+        </div>
+
+        <h3>8.2 Self-Recursion</h3>
+        <p>Instead of a separate recursive circuit, the Vortex verifier is embedded back into the Wizard framework
+            itself. The self-recursion compiler (<code>protocol/compiler/selfrecursion/</code>) performs these steps:
+        </p>
+
+        <ol>
+            <li><strong>PlonkInWizard context</strong>: The non-Vortex part of the proof is verified as PLONK
+                constraints within the Wizard</li>
+            <li><strong>Vortex context translation</strong>: Commitments, coins, and Merkle roots are mirrored in the
+                outer circuit</li>
+            <li><strong>Three prover actions</strong>: ConsistencyCheck, AssignVortexUAlpha (linear combination),
+                AssignVortexOpenedCols</li>
+        </ol>
+
+        <h3>8.3 Gnark PLONK Proving</h3>
+        <p>The final outer proof uses gnark's PLONK implementation:</p>
+        <pre><code><span class="cm">// circuits/prove.go</span>
+<span class="kw">func</span> <span class="fn">ProveCheck</span>(setup *Setup, assignment frontend.Circuit) {
+    witness := frontend.NewWitness(assignment, setup.Field)
+    proof := plonk.Prove(setup.CCS, setup.PK, witness)
+    plonk.Verify(proof, setup.VK, publicWitness)  <span class="cm">// sanity check</span>
+}</code></pre>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="memory">9. Memory &amp; CPU Estimates for 40B Cells</h2>
+
+        <h3>9.1 Memory Breakdown</h3>
+
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Calculation</th>
+                <th>Estimate</th>
+            </tr>
+            <tr>
+                <td>Raw trace storage</td>
+                <td>40 × 10<sup>9</sup> × 4 bytes</td>
+                <td><strong>160 GB</strong></td>
+            </tr>
+            <tr>
+                <td>SmartVector overhead</td>
+                <td>~50% savings from constants/padding</td>
+                <td><strong>~80 GB</strong></td>
+            </tr>
+            <tr>
+                <td>Quotient working memory</td>
+                <td>domainSize × numRoots × 16 bytes (ext) × maxRatio</td>
+                <td><strong>~40 GB</strong></td>
+            </tr>
+            <tr>
+                <td>RS encoded matrix</td>
+                <td>numRows × 2 × NbColumns × 4 bytes</td>
+                <td><strong>~60 GB</strong></td>
+            </tr>
+            <tr>
+                <td>SIS hash intermediates</td>
+                <td>NbEncodedColumns × SIS_degree × 4 bytes</td>
+                <td><strong>~20 GB</strong></td>
+            </tr>
+            <tr>
+                <td>Merkle trees + proofs</td>
+                <td>~2× leaf count × hash size</td>
+                <td><strong>~5 GB</strong></td>
+            </tr>
+            <tr>
+                <td>gnark circuit witness</td>
+                <td>128M constraints × ~32 bytes</td>
+                <td><strong>~4 GB</strong></td>
+            </tr>
+            <tr>
+                <td style="color:var(--red)"><strong>Peak total</strong></td>
+                <td></td>
+                <td style="color:var(--red)"><strong>~350–400 GB</strong></td>
+            </tr>
+        </table>
+
+        <h3>9.2 CPU Time Breakdown (estimated on 96-core machine)</h3>
+
+        <div class="est-bar">
+            <span class="label">Quotient FFTs</span>
+            <div class="bar">
+                <div class="fill" style="width:35%;background:var(--red)"></div>
+            </div>
+            <span class="pct">~35%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">RS Encoding FFTs</span>
+            <div class="bar">
+                <div class="fill" style="width:20%;background:var(--red)"></div>
+            </div>
+            <span class="pct">~20%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">Ring-SIS hashing</span>
+            <div class="bar">
+                <div class="fill" style="width:15%;background:var(--accent3)"></div>
+            </div>
+            <span class="pct">~15%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">Expression DAG eval</span>
+            <div class="bar">
+                <div class="fill" style="width:10%;background:var(--accent3)"></div>
+            </div>
+            <span class="pct">~10%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">Linear combination</span>
+            <div class="bar">
+                <div class="fill" style="width:5%;background:var(--yellow)"></div>
+            </div>
+            <span class="pct">~5%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">Poseidon2 + Merkle</span>
+            <div class="bar">
+                <div class="fill" style="width:5%;background:var(--yellow)"></div>
+            </div>
+            <span class="pct">~5%</span>
+        </div>
+        <div class="est-bar">
+            <span class="label">gnark outer proof</span>
+            <div class="bar">
+                <div class="fill" style="width:10%;background:var(--accent)"></div>
+            </div>
+            <span class="pct">~10%</span>
+        </div>
+
+        <div class="info-box">
+            <strong>Key insight:</strong> FFT operations dominate at <strong>~55% of total proving time</strong>. All
+            FFTs are over the KoalaBear field (31-bit), making them excellent GPU targets — 32-bit arithmetic maps
+            perfectly to GPU ALUs.
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="hardware">10. Target Hardware: AWS g7e.24xlarge</h2>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="value">96</div>
+                <div class="label">vCPUs</div>
+            </div>
+            <div class="metric">
+                <div class="value">1,024 GB</div>
+                <div class="label">Host RAM</div>
+            </div>
+            <div class="metric good">
+                <div class="value">8 × RTX PRO 6000</div>
+                <div class="label">Blackwell GPUs</div>
+            </div>
+            <div class="metric good">
+                <div class="value">768 GB</div>
+                <div class="label">Total GPU Memory</div>
+            </div>
+            <div class="metric">
+                <div class="value">96 GB/GPU</div>
+                <div class="label">Per-GPU VRAM</div>
+            </div>
+            <div class="metric">
+                <div class="value">800 Gbps</div>
+                <div class="label">Network Bandwidth</div>
+            </div>
+        </div>
+
+        <div class="gpu-box">
+            <strong>Why this instance is ideal:</strong>
+            <ul>
+                <li><strong>1 TB host RAM</strong>: Comfortably holds the 350–400 GB peak working set with room for OS +
+                    buffers</li>
+                <li><strong>8 GPUs × 96 GB each</strong>: Can hold the entire RS-encoded matrix (~60 GB) plus working
+                    buffers across GPUs</li>
+                <li><strong>Blackwell architecture</strong>: Native FP32 ALUs perfect for 31-bit KoalaBear field
+                    arithmetic</li>
+                <li><strong>High bandwidth</strong>: NVLink or PCIe Gen5 for GPU↔GPU and GPU↔Host transfers</li>
+            </ul>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="bottlenecks">11. Bottleneck Analysis &amp; GPU Targets</h2>
+
+        <h3>11.1 Priority Matrix</h3>
+
+        <table>
+            <tr>
+                <th>Operation</th>
+                <th>% Time</th>
+                <th>GPU Suitability</th>
+                <th>Parallelism</th>
+                <th>Priority</th>
+            </tr>
+            <tr style="color:var(--red)">
+                <td><strong>FFT/IFFT (quotient)</strong></td>
+                <td>35%</td>
+                <td>Excellent</td>
+                <td>Per-column + intra-FFT</td>
+                <td><span class="tag tag-hot">P0</span></td>
+            </tr>
+            <tr style="color:var(--red)">
+                <td><strong>FFT/IFFT (RS encode)</strong></td>
+                <td>20%</td>
+                <td>Excellent</td>
+                <td>Per-row, thousands of rows</td>
+                <td><span class="tag tag-hot">P0</span></td>
+            </tr>
+            <tr>
+                <td><strong>Ring-SIS hash</strong></td>
+                <td>15%</td>
+                <td>Good</td>
+                <td>Per-column, thousands of columns</td>
+                <td><span class="tag tag-gpu">P1</span></td>
+            </tr>
+            <tr>
+                <td><strong>DAG expression eval</strong></td>
+                <td>10%</td>
+                <td>Medium</td>
+                <td>Element-wise across domain</td>
+                <td><span class="tag tag-cpu">P2</span></td>
+            </tr>
+            <tr>
+                <td><strong>Linear combination</strong></td>
+                <td>5%</td>
+                <td>Good</td>
+                <td>Element-wise</td>
+                <td><span class="tag tag-gpu">P1</span></td>
+            </tr>
+            <tr>
+                <td><strong>Poseidon2 + Merkle</strong></td>
+                <td>5%</td>
+                <td>Medium</td>
+                <td>Per-leaf, parallel hash</td>
+                <td><span class="tag tag-cpu">P2</span></td>
+            </tr>
+            <tr>
+                <td><strong>gnark PLONK</strong></td>
+                <td>10%</td>
+                <td>Good (MSM/FFT)</td>
+                <td>Existing gnark-gpu work</td>
+                <td><span class="tag tag-gpu">P1</span></td>
+            </tr>
+        </table>
+
+        <h3>11.2 Why FFTs Are the #1 Target</h3>
+
+        <div class="diagram"><span class="dim">Current: CPU FFT (single-threaded per FFT, parallelized across
+                columns)</span>
+
+            Column 0: <span class="yellow">FFT(2^21)</span> ─ <span class="dim">~50ms</span>
+            ──────────────────────────────────▶
+            Column 1: <span class="yellow">FFT(2^21)</span> ─ <span class="dim">~50ms</span>
+            ──────────────────────────────────▶
+            Column 2: <span class="yellow">FFT(2^21)</span> ─ <span class="dim">~50ms</span>
+            ──────────────────────────────────▶
+            ...
+            <span class="dim">Total for 200 columns × 4 cosets × 2 FFTs:</span> <span class="red">~1600 FFTs →
+                ~80s</span>
+
+            <span class="dim">GPU: Batch FFT (all columns in parallel on GPU)</span>
+
+            All 200 columns × 1 coset: <span class="green">BatchFFT(200 × 2^21)</span> ─ <span class="dim">~200ms</span>
+            ─▶
+            All 200 columns × 1 coset: <span class="green">BatchIFFT(200 × 2^21)</span> ─ <span
+                class="dim">~200ms</span> ─▶
+            <span class="dim">Total for 4 cosets:</span> <span class="green">~1.6s (50× speedup)</span>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="fft-gpu">12. GPU FFT Strategy</h2>
+
+        <h3>12.1 KoalaBear NTT on GPU</h3>
+        <p>KoalaBear's 31-bit modulus is perfect for GPU NTT:</p>
+
+        <pre><code><span class="cm"># Python pseudocode for GPU KoalaBear NTT kernel</span>
+
+<span class="kw">MODULUS</span> = <span class="nu">2130706433</span>  <span class="cm"># 2^31 - 2^27 + 1</span>
+
+<span class="kw">def</span> <span class="fn">butterfly_kernel</span>(a, b, twiddle):
+    <span class="st">"""Single NTT butterfly — maps to 2 GPU multiply-adds."""</span>
+    <span class="cm"># All ops in uint32, Montgomery form</span>
+    t = montgomery_mul(b, twiddle)  <span class="cm"># 1 multiply + 1 reduce</span>
+    <span class="kw">return</span> (a + t) % MODULUS, (a - t + MODULUS) % MODULUS
+
+<span class="kw">def</span> <span class="fn">batch_ntt_gpu</span>(data, n_polynomials, poly_size, twiddles):
+    <span class="st">"""
+    Launch kernel with grid = (n_polynomials, poly_size / 2).
+    Each thread handles one butterfly across log2(poly_size) stages.
+    """</span>
+    <span class="kw">for</span> stage <span class="kw">in</span> range(log2(poly_size)):
+        <span class="cm"># Early stages: butterflies within warp (shared memory)</span>
+        <span class="cm"># Late stages: butterflies across blocks (global memory)</span>
+        butterfly_stage_kernel<<<grid, block>>>(
+            data, twiddles[stage], stage, poly_size
+        )</code></pre>
+
+        <h3>12.2 Memory Layout for GPU</h3>
+        <div class="diagram"><span class="dim">GPU Memory Layout for RS Encoding (per GPU):</span>
+
+            ┌───────────────── GPU 0 (96 GB) ─────────────────┐
+            │ │
+            │ Input polynomials: rows 0..R/8 │
+            │ [R/8 × NbColumns × 4 bytes] │
+            │ │
+            │ Output (RS encoded): rows 0..R/8 │
+            │ [R/8 × 2*NbColumns × 4 bytes] │
+            │ │
+            │ Twiddle factors (cached): │
+            │ [NbColumns × 4 bytes] │
+            │ │
+            │ Working memory: │
+            │ [R/8 × NbColumns × 4 bytes] │
+            └───────────────────────────────────────────────────┘
+
+            <span class="dim">Repeat for GPUs 1..7 with rows R/8..R</span>
+        </div>
+
+        <h3>12.3 Handling NTT Size &gt; 2<sup>24</sup></h3>
+        <p>The KoalaBear field supports NTT only up to size 2<sup>24</sup>. For larger domains, use
+            <strong>mixed-radix</strong> or <strong>Bluestein's algorithm</strong>. However, in practice, trace modules
+            are capped at 2<sup>21</sup>–2<sup>23</sup>, well within limits.</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="hash-gpu">13. GPU Hashing Strategy</h2>
+
+        <h3>13.1 Ring-SIS on GPU</h3>
+        <p>Ring-SIS hashing is fundamentally FFT-based polynomial multiplication:</p>
+
+        <pre><code><span class="cm"># Per-column Ring-SIS hash (currently on CPU)</span>
+<span class="kw">def</span> <span class="fn">ring_sis_hash_gpu</span>(column_values, sis_key):
+    <span class="st">"""
+    For each polynomial A[i] in SIS key:
+        k = input_limbs[i*degree : (i+1)*degree]
+        k_fft = NTT(k)
+        a_fft = NTT(A[i])  # precomputed
+        result_fft += k_fft * a_fft   # element-wise
+    result = INTT(result_fft)
+    """</span>
+    <span class="cm"># GPU parallelism: batch all columns together</span>
+    <span class="cm"># 2048 columns × 512-degree NTTs = batch NTT of size 2048×512</span>
+    <span class="kw">return</span> batch_ring_sis(all_columns, precomputed_key_ffts)</code></pre>
+
+        <h3>13.2 Poseidon2 on GPU</h3>
+        <p>Poseidon2 is already optimized with SIMD (16-column batches via <code>CompressPoseidon2x16</code>). GPU can
+            extend this to thousands of parallel hashes:</p>
+        <ul>
+            <li>Each Poseidon2 permutation: ~8 MDS matrix multiplications + S-box layers</li>
+            <li>All 2n leaf hashes can run in parallel: one thread per leaf</li>
+            <li>The MDS matrix is small (width 8 for KoalaBear octuplets)</li>
+        </ul>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="multi-gpu">14. Multi-GPU Orchestration</h2>
+
+        <h3>14.1 Work Distribution Strategy</h3>
+
+        <div class="diagram"><span class="dim">─────────── Multi-GPU Partitioning ───────────</span>
+
+            <span class="highlight">Strategy A: Partition by Vortex Commitment Round</span>
+            GPU 0-1: Commitment round 0 (initial witness columns)
+            GPU 2-3: Commitment round 1 (lookup columns)
+            GPU 4-5: Commitment round 2 (quotient shares)
+            GPU 6-7: Commitment round 3 (evaluation columns)
+
+            <span class="highlight">Strategy B: Partition by Matrix Rows (preferred)</span>
+            GPU 0: Rows 0 .. R/8 (RS encode + hash)
+            GPU 1: Rows R/8 .. 2R/8
+            ...
+            GPU 7: Rows 7R/8 .. R
+            <span class="dim">→ Merkle tree reduction on host (small)</span>
+
+            <span class="highlight">Strategy C: Partition Quotient by Cosets</span>
+            GPU 0-1: Coset 0 (all root columns, FFT eval)
+            GPU 2-3: Coset 1
+            GPU 4-5: Coset 2
+            GPU 6-7: Coset 3
+            <span class="dim">→ Each GPU needs all witness columns (read-only, can broadcast)</span>
+        </div>
+
+        <h3>14.2 Data Transfer Analysis</h3>
+
+        <table>
+            <tr>
+                <th>Transfer</th>
+                <th>Size</th>
+                <th>Frequency</th>
+                <th>PCIe Gen5 Time</th>
+            </tr>
+            <tr>
+                <td>Witness columns → GPU</td>
+                <td>~80 GB</td>
+                <td>Once</td>
+                <td>~2.5s</td>
+            </tr>
+            <tr>
+                <td>Twiddle factors → GPU</td>
+                <td>~64 MB per domain</td>
+                <td>Once (cached)</td>
+                <td>~2ms</td>
+            </tr>
+            <tr>
+                <td>RS encoded matrix ← GPU</td>
+                <td>~60 GB</td>
+                <td>Per commitment</td>
+                <td>~2s</td>
+            </tr>
+            <tr>
+                <td>SIS hashes ← GPU</td>
+                <td>~20 GB</td>
+                <td>Per commitment</td>
+                <td>~0.6s</td>
+            </tr>
+            <tr>
+                <td>Quotient shares ← GPU</td>
+                <td>~2 GB</td>
+                <td>Once</td>
+                <td>~60ms</td>
+            </tr>
+        </table>
+
+        <div class="info-box">
+            <strong>Key insight:</strong> With 768 GB total GPU memory, it's feasible to keep the entire witness +
+            encoded matrix resident on GPUs, eliminating most round-trip transfers. Only final results (Merkle roots,
+            quotient shares) need to come back to host.
+        </div>
+
+        <h3>14.3 Pipeline Architecture</h3>
+        <pre><code><span class="cm"># Proposed GPU pipeline — overlaps compute with transfer</span>
+
+<span class="kw">async def</span> <span class="fn">gpu_vortex_commit</span>(witness_columns, gpu_pool):
+    <span class="cm"># Phase 1: Stream witness to GPUs (overlapped with previous work)</span>
+    futures = []
+    <span class="kw">for</span> gpu_id, chunk <span class="kw">in</span> partition(witness_columns, <span class="nu">8</span>):
+        f = gpu_pool[gpu_id].upload_async(chunk)
+        futures.append(f)
+
+    <span class="cm"># Phase 2: RS encode on each GPU (embarrassingly parallel)</span>
+    encoded = []
+    <span class="kw">for</span> gpu_id <span class="kw">in</span> range(<span class="nu">8</span>):
+        e = gpu_pool[gpu_id].batch_rs_encode_async()  <span class="cm"># NTTs on GPU</span>
+        encoded.append(e)
+
+    <span class="cm"># Phase 3: Ring-SIS hash on each GPU</span>
+    hashes = []
+    <span class="kw">for</span> gpu_id <span class="kw">in</span> range(<span class="nu">8</span>):
+        h = gpu_pool[gpu_id].batch_sis_hash_async()
+        hashes.append(h)
+
+    <span class="cm"># Phase 4: Gather hashes to host, Poseidon2 + Merkle on host/GPU</span>
+    all_hashes = gather(hashes)
+    leaves = poseidon2_batch_gpu(all_hashes, gpu_pool[<span class="nu">0</span>])
+    root = merkle_tree_host(leaves)
+
+    <span class="kw">return</span> root, encoded</code></pre>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="integration">15. Go–GPU Integration Architecture</h2>
+
+        <h3>15.1 Recommended Approach: CGo + CUDA</h3>
+
+        <pre><code><span class="cm">// gpu/ntt.go — Go wrapper for GPU NTT</span>
+<span class="kw">package</span> gpu
+
+<span class="cm">// #cgo LDFLAGS: -L${SRCDIR}/lib -lkoalabear_ntt -lcudart</span>
+<span class="cm">// #include "koalabear_ntt.h"</span>
+<span class="kw">import</span> <span class="st">"C"</span>
+<span class="kw">import</span> <span class="st">"unsafe"</span>
+
+<span class="kw">func</span> <span class="fn">BatchNTT</span>(data []field.Element, n, batchSize <span class="ty">int</span>, inverse <span class="ty">bool</span>, gpuID <span class="ty">int</span>) {
+    C.koalabear_batch_ntt(
+        (*C.uint32_t)(unsafe.Pointer(&data[<span class="nu">0</span>])),
+        C.int(n),
+        C.int(batchSize),
+        C.bool(inverse),
+        C.int(gpuID),
+    )
+}
+
+<span class="kw">func</span> <span class="fn">BatchRingSISHash</span>(
+    matrix []field.Element,    <span class="cm">// flattened encoded matrix</span>
+    nbRows, nbCols <span class="ty">int</span>,
+    sisKey []field.Element,    <span class="cm">// precomputed SIS key (NTT form)</span>
+    result []field.Element,    <span class="cm">// output SIS hashes</span>
+    gpuID <span class="ty">int</span>,
+) {
+    C.koalabear_batch_ring_sis(
+        (*C.uint32_t)(unsafe.Pointer(&matrix[<span class="nu">0</span>])),
+        C.int(nbRows), C.int(nbCols),
+        (*C.uint32_t)(unsafe.Pointer(&sisKey[<span class="nu">0</span>])),
+        (*C.uint32_t)(unsafe.Pointer(&result[<span class="nu">0</span>])),
+        C.int(gpuID),
+    )
+}</code></pre>
+
+        <h3>15.2 Integration Points in Existing Code</h3>
+
+        <table>
+            <tr>
+                <th>File</th>
+                <th>Function</th>
+                <th>Change</th>
+            </tr>
+            <tr>
+                <td><code>crypto/reedsolomon/reedsolomon.go</code></td>
+                <td><code>RsEncodeBase()</code></td>
+                <td>Replace FFT calls with <code>gpu.BatchNTT()</code></td>
+            </tr>
+            <tr>
+                <td><code>protocol/compiler/globalcs/quotient.go</code></td>
+                <td><code>QuotientCtx.Run()</code></td>
+                <td>Batch all root-column FFTs onto GPU</td>
+            </tr>
+            <tr>
+                <td><code>crypto/ringsis/ringsis.go</code></td>
+                <td><code>TransversalHash()</code></td>
+                <td>Replace per-column hash with <code>gpu.BatchRingSISHash()</code></td>
+            </tr>
+            <tr>
+                <td><code>crypto/vortex/prover_common.go</code></td>
+                <td><code>LinearCombination()</code></td>
+                <td>GPU vector operations for large combinations</td>
+            </tr>
+            <tr>
+                <td><code>crypto/vortex/vortex_koalabear/commtiment.go</code></td>
+                <td><code>CommitMerkleWithSIS()</code></td>
+                <td>Orchestrate GPU pipeline for full commit</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="simplifications">16. Proposed Algorithmic Improvements</h2>
+
+        <h3>16.1 Fuse IFFT+FFT in Quotient Computation</h3>
+        <p>Currently, each quotient coset evaluation does IFFT (to get coefficients) then FFT (to evaluate on coset).
+            These can be fused into a single "coset shift" operation:</p>
+
+        <pre><code><span class="cm"># Current: 2 FFTs per column per coset</span>
+coeffs = IFFT(values_on_H)       <span class="cm"># O(n log n)</span>
+values_on_coset = FFT(coeffs, coset)  <span class="cm"># O(n log n)</span>
+
+<span class="cm"># Proposed: 1 FFT + element-wise multiply</span>
+<span class="cm"># If coset = shift * H, then evaluating on coset is:</span>
+<span class="cm">#   f(shift·ωʲ) for all j</span>
+<span class="cm"># Which equals: IFFT(values) → multiply by shift_powers → FFT</span>
+<span class="cm"># But we can precompute the "coset transfer matrix" and apply in one pass</span>
+
+coeffs = IFFT(values_on_H)
+coeffs *= coset_twiddles[:]  <span class="cm"># element-wise, O(n)</span>
+values_on_coset = FFT(coeffs)  <span class="cm"># same domain, no shift</span>
+
+<span class="cm"># This saves creating new Domain objects and their twiddle tables</span></code></pre>
+
+        <h3>16.2 Cache Root Column FFTs Across Cosets</h3>
+        <p>Currently, the arena is reset between cosets, discarding previously computed coefficient representations. If
+            we cache the IFFT result (coefficient form) of each root column, subsequent coset evaluations only need a
+            single FFT:</p>
+
+        <pre><code><span class="cm"># Current flow (quotient.go)</span>
+<span class="kw">for</span> coset <span class="kw">in</span> range(maxRatio):
+    arenaExt.Reset(<span class="nu">0</span>)  <span class="cm">← discards previous IFFT results!</span>
+    <span class="kw">for</span> col <span class="kw">in</span> roots:
+        coeffs = IFFT(witness)   <span class="cm">← redundant for coset &gt; 0!</span>
+        vals = FFT_on_coset(coeffs)
+
+<span class="cm"># Proposed: cache coefficient form</span>
+coeff_cache = {}
+<span class="kw">for</span> col <span class="kw">in</span> roots:
+    coeff_cache[col] = IFFT(witness)  <span class="cm">← once per column</span>
+
+<span class="kw">for</span> coset <span class="kw">in</span> range(maxRatio):
+    <span class="kw">for</span> col <span class="kw">in</span> roots:
+        vals = FFT_on_coset(coeff_cache[col])  <span class="cm">← only 1 FFT/col/coset</span></code></pre>
+
+        <div class="gpu-box">
+            <strong>Impact:</strong> This eliminates ~50% of FFT calls in the quotient computation (all the IFFTs after
+            the first coset). For 200 columns × 4 cosets: saves 600 FFTs → <strong>~30s on CPU, sub-second on
+                GPU</strong>.
+        </div>
+
+        <h3>16.3 Batch SIS Hash with Precomputed NTT Keys</h3>
+        <p>The SIS key polynomials A[i] can be precomputed in NTT form once during setup. The current code computes
+            <code>FFT(A[i])</code> for every hash call. Precomputing saves one NTT per key polynomial per hash
+            invocation.</p>
+
+        <h3>16.4 Reduce Extension Field Usage</h3>
+        <p>Many operations currently use 𝔽<sub>p</sub><sup>4</sup> (16 bytes per element) where 𝔽<sub>p</sub> (4
+            bytes) would suffice. The extension is needed only for Fiat-Shamir challenges. Profile which columns are
+            always in the base field and add fast-path branching:</p>
+
+        <pre><code><span class="cm">// Already partially done in quotient.go:</span>
+<span class="kw">if</span> smartvectors.IsBase(witness) {
+    <span class="cm">// 4× faster path using base field FFT</span>
+    res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
+    domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(<span class="nu">2</span>))
+    domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(<span class="nu">2</span>))
+} <span class="kw">else</span> {
+    <span class="cm">// Extension field path (4× slower)</span>
+    res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
+    domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(<span class="nu">2</span>))
+    domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(<span class="nu">2</span>))
+}</code></pre>
+
+        <h3>16.5 Increase FFT Parallelism</h3>
+        <p>Currently <code>fft.WithNbTasks(2)</code> is used throughout. On a 96-core machine, each individual FFT could
+            use 4-8 threads for the initial butterfly stages, improving latency when fewer columns are being processed
+            in parallel.</p>
+
+        <h3>16.6 Streaming Merkle Tree Construction</h3>
+        <p>Instead of computing all leaf hashes first and then building the tree, stream: as soon as two adjacent leaves
+            are ready, compute their parent. This enables overlapping hash computation with tree building and reduces
+            peak memory.</p>
+
+        <h3>16.7 Unified GPU Memory Manager</h3>
+        <p>Replace per-operation arena allocators with a unified GPU memory manager that:</p>
+        <ul>
+            <li>Pre-allocates all GPU memory at startup based on column count and domain sizes</li>
+            <li>Uses pinned host memory for zero-copy transfers</li>
+            <li>Implements a pool allocator for temporary FFT buffers</li>
+            <li>Supports async memcpy overlapped with compute</li>
+        </ul>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="roadmap">17. Implementation Roadmap</h2>
+
+        <h3>Phase 1: GPU NTT Kernel <span class="phase phase-1">4-6 weeks</span></h3>
+        <ol>
+            <li>Implement KoalaBear Montgomery multiplication CUDA kernel</li>
+            <li>Implement radix-2 NTT with shared memory optimization</li>
+            <li>Implement batch NTT (multiple polynomials in parallel)</li>
+            <li>CGo wrapper + benchmark vs CPU FFT</li>
+            <li>Integration into <code>reedsolomon.RsEncodeBase()</code></li>
+        </ol>
+        <p><strong>Expected speedup: 30-50× for RS encoding phase</strong></p>
+
+        <h3>Phase 2: GPU Quotient Computation <span class="phase phase-2">3-4 weeks</span></h3>
+        <ol>
+            <li>Implement coefficient caching (algorithmic improvement 16.2)</li>
+            <li>Batch all root-column FFTs per coset onto GPU</li>
+            <li>Implement GPU DAG expression evaluator (element-wise kernel)</li>
+            <li>Integration into <code>QuotientCtx.Run()</code></li>
+        </ol>
+        <p><strong>Expected speedup: 20-40× for quotient phase</strong></p>
+
+        <h3>Phase 3: GPU Ring-SIS + Multi-GPU <span class="phase phase-3">4-6 weeks</span></h3>
+        <ol>
+            <li>GPU Ring-SIS kernel (batch NTT + element-wise multiply)</li>
+            <li>GPU Poseidon2 hash kernel</li>
+            <li>Multi-GPU work distribution (Strategy B: partition by rows)</li>
+            <li>Async pipeline: overlap transfers with compute</li>
+            <li>Integration into full Vortex commit path</li>
+        </ol>
+        <p><strong>Expected speedup: 20-30× for hashing phase</strong></p>
+
+        <h3>Expected Overall Speedup</h3>
+
+        <div class="metrics">
+            <div class="metric hot">
+                <div class="value">~15 min</div>
+                <div class="label">Current (estimated, CPU-only)</div>
+            </div>
+            <div class="metric good">
+                <div class="value">~30-60s</div>
+                <div class="label">After Phase 1+2</div>
+            </div>
+            <div class="metric good">
+                <div class="value">~15-30s</div>
+                <div class="label">After Phase 3</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <p style="text-align:center;color:var(--text-dim);margin-top:40px;font-size:13px;">
+            Generated February 2026 · Based on analysis of <code>github.com/consensys/linea-monorepo/prover</code> @
+            branch <code>prover/dev-small-fields</code>
+        </p>
+
+    </main>
+</body>
+
+</html>

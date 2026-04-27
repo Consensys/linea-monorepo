@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Kernel Profiling Report — Linea Prover</title>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --border: #30363d;
+  --text: #c9d1d9; --text-muted: #8b949e;
+  --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #bc8cff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; padding: 2rem; }
+.container { max-width: 1400px; margin: 0 auto; }
+h1 { font-size: 2.5rem; background: linear-gradient(135deg, var(--red), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+h2 { font-size: 1.5rem; color: var(--accent); margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.1rem; color: var(--text); margin: 1.5rem 0 0.5rem; }
+.meta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.85rem; }
+th, td { padding: 0.6rem 0.8rem; text-align: right; border-bottom: 1px solid var(--border); }
+th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+td:first-child, th:first-child { text-align: left; }
+tr:hover { background: rgba(88, 166, 255, 0.05); }
+.bar-container { width: 100px; height: 16px; background: var(--border); border-radius: 4px; display: inline-block; vertical-align: middle; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; }
+.finding strong { color: var(--accent); }
+.finding .bottleneck { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem; }
+.kernel-name { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem; color: var(--purple); }
+.cat-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+.cat-NTT { background: #1f6feb33; color: var(--accent); }
+.cat-Arithmetic { background: #3fb95033; color: var(--green); }
+.cat-Permutation { background: #d2992233; color: var(--orange); }
+.cat-Hash { background: #bc8cff33; color: var(--purple); }
+.cat-Transfer { background: #8b949e33; color: var(--text-muted); }
+.cat-Other { background: #30363d; color: var(--text-muted); }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+.summary-card .label { color: var(--text-muted); font-size: 0.8rem; }
+.summary-card .value { font-size: 1.8rem; font-weight: 700; color: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>GPU Kernel Profiling Report</h1>
+<p class="meta">
+  <strong>Device:</strong> NVIDIA RTX PRO 6000 Blackwell (188 SMs, 95 GB VRAM, CC 12.0)<br>
+  <strong>Profiler:</strong> NVIDIA Nsight Compute (ncu)<br>
+  <strong>Kernels profiled:</strong> 133 invocations across 21 unique kernels
+</p>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label">Total Kernel Time</div>
+    <div class="value">28.87 ms</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Unique Kernels</div>
+    <div class="value">21</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Total Invocations</div>
+    <div class="value">133</div>
+  </div>
+</div>
+
+<h2>Kernel Performance Overview</h2>
+<p class="meta">Sorted by total execution time (most expensive first). DRAM% and SM% show utilization as percentage of peak sustained throughput.</p>
+
+<table>
+<thead>
+<tr>
+  <th>Kernel</th>
+  <th>Category</th>
+  <th>Calls</th>
+  <th>Avg Duration</th>
+  <th>Total Duration</th>
+  <th>% of Total</th>
+  <th>Block</th>
+  <th>Grid</th>
+  <th>DRAM %</th>
+  <th>SM %</th>
+  <th>Occ Warps</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td class="kernel-name">kern_batch_ntt_dit</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>20</td>
+  <td>531.5 µs</td>
+  <td>10.63 ms</td>
+  <td>36.8%</td>
+  <td>256</td>
+  <td>204800</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 91%; background: #3fb950;"></div>
+    </div>
+    90.6%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 28%; background: #f85149;"></div>
+    </div>
+    27.5%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_batch_ntt_dif</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>20</td>
+  <td>529.5 µs</td>
+  <td>10.59 ms</td>
+  <td>36.7%</td>
+  <td>256</td>
+  <td>204800</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 91%; background: #3fb950;"></div>
+    </div>
+    90.9%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 28%; background: #f85149;"></div>
+    </div>
+    28.0%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_batch_bitrev</td>
+  <td><span class="cat-badge cat-Permutation">Permutation</span></td>
+  <td>2</td>
+  <td>2.22 ms</td>
+  <td>4.44 ms</td>
+  <td>15.4%</td>
+  <td>256</td>
+  <td>409600</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 22%; background: #f85149;"></div>
+    </div>
+    22.4%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 7%; background: #8b949e;"></div>
+    </div>
+    7.2%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_batch_scale_by_powers</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>1.77 ms</td>
+  <td>1.77 ms</td>
+  <td>6.1%</td>
+  <td>256</td>
+  <td>409600</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 28%; background: #f85149;"></div>
+    </div>
+    27.7%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 79%; background: #3fb950;"></div>
+    </div>
+    79.3%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_kb_scale</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>2</td>
+  <td>270.0 µs</td>
+  <td>540.1 µs</td>
+  <td>1.9%</td>
+  <td>256</td>
+  <td>409600</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 70%; background: #3fb950;"></div>
+    </div>
+    70.2%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 11%; background: #8b949e;"></div>
+    </div>
+    11.0%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_ntt_dif</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>40</td>
+  <td>6.9 µs</td>
+  <td>276.2 µs</td>
+  <td>1.0%</td>
+  <td>256</td>
+  <td>2048</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 44%; background: #d29922;"></div>
+    </div>
+    43.8%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 14%; background: #8b949e;"></div>
+    </div>
+    14.4%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::ntt_dif_radix8_kernel</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>6</td>
+  <td>23.3 µs</td>
+  <td>140.0 µs</td>
+  <td>0.5%</td>
+  <td>256</td>
+  <td>128</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 26%; background: #f85149;"></div>
+    </div>
+    26.3%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 25%; background: #f85149;"></div>
+    </div>
+    24.8%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_ntt_dit</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>20</td>
+  <td>6.8 µs</td>
+  <td>136.3 µs</td>
+  <td>0.5%</td>
+  <td>256</td>
+  <td>2048</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 44%; background: #d29922;"></div>
+    </div>
+    44.3%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 14%; background: #8b949e;"></div>
+    </div>
+    14.1%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">void gnark_gpu::ntt_dit_radix8_kernel&lt;0&gt;</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>5</td>
+  <td>23.6 µs</td>
+  <td>118.2 µs</td>
+  <td>0.4%</td>
+  <td>256</td>
+  <td>128</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 24%; background: #f85149;"></div>
+    </div>
+    24.1%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 24%; background: #f85149;"></div>
+    </div>
+    24.3%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_kb_scale_by_powers</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>2</td>
+  <td>20.1 µs</td>
+  <td>40.2 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>4096</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 13%; background: #8b949e;"></div>
+    </div>
+    13.1%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 68%; background: #d29922;"></div>
+    </div>
+    68.0%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::transpose_aos_to_soa_fr_kernel</td>
+  <td><span class="cat-badge cat-Transfer">Transfer</span></td>
+  <td>5</td>
+  <td>7.3 µs</td>
+  <td>36.4 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 57%; background: #d29922;"></div>
+    </div>
+    56.8%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 5%; background: #8b949e;"></div>
+    </div>
+    4.6%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">void gnark_gpu::ntt_dit_radix8_kernel&lt;1&gt;</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>1</td>
+  <td>26.1 µs</td>
+  <td>26.1 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>128</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 30%; background: #f85149;"></div>
+    </div>
+    30.4%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 34%; background: #f85149;"></div>
+    </div>
+    33.6%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::ntt_bit_reverse_kernel</td>
+  <td><span class="cat-badge cat-NTT">NTT</span></td>
+  <td>1</td>
+  <td>22.0 µs</td>
+  <td>22.0 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 24%; background: #f85149;"></div>
+    </div>
+    23.9%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 4%; background: #8b949e;"></div>
+    </div>
+    3.6%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_bitrev</td>
+  <td><span class="cat-badge cat-Permutation">Permutation</span></td>
+  <td>1</td>
+  <td>17.2 µs</td>
+  <td>17.2 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>4096</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 15%; background: #f85149;"></div>
+    </div>
+    15.3%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 5%; background: #8b949e;"></div>
+    </div>
+    5.4%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::mul_mont_fr_kernel</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>17.2 µs</td>
+  <td>17.2 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 62%; background: #d29922;"></div>
+    </div>
+    61.5%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 40%; background: #f85149;"></div>
+    </div>
+    39.7%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::transpose_soa_to_aos_fr_kernel</td>
+  <td><span class="cat-badge cat-Transfer">Transfer</span></td>
+  <td>1</td>
+  <td>15.9 µs</td>
+  <td>15.9 µs</td>
+  <td>0.1%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 33%; background: #f85149;"></div>
+    </div>
+    33.1%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 3%; background: #8b949e;"></div>
+    </div>
+    2.7%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::add_fr_kernel</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>14.1 µs</td>
+  <td>14.1 µs</td>
+  <td>0.0%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 75%; background: #3fb950;"></div>
+    </div>
+    74.8%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 4%; background: #8b949e;"></div>
+    </div>
+    4.3%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">gnark_gpu::sub_fr_kernel</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>13.9 µs</td>
+  <td>13.9 µs</td>
+  <td>0.0%</td>
+  <td>256</td>
+  <td>1024</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 76%; background: #3fb950;"></div>
+    </div>
+    75.8%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 4%; background: #8b949e;"></div>
+    </div>
+    4.4%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_kb_mul</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>8.4 µs</td>
+  <td>8.4 µs</td>
+  <td>0.0%</td>
+  <td>256</td>
+  <td>4096</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 63%; background: #d29922;"></div>
+    </div>
+    63.2%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 9%; background: #8b949e;"></div>
+    </div>
+    9.1%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_kb_add</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>8.2 µs</td>
+  <td>8.2 µs</td>
+  <td>0.0%</td>
+  <td>256</td>
+  <td>4096</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 65%; background: #d29922;"></div>
+    </div>
+    64.6%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 9%; background: #8b949e;"></div>
+    </div>
+    9.3%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+<tr>
+  <td class="kernel-name">kern_kb_sub</td>
+  <td><span class="cat-badge cat-Arithmetic">Arithmetic</span></td>
+  <td>1</td>
+  <td>8.1 µs</td>
+  <td>8.1 µs</td>
+  <td>0.0%</td>
+  <td>256</td>
+  <td>4096</td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 65%; background: #d29922;"></div>
+    </div>
+    65.3%
+  </td>
+  <td>
+    <div class="bar-container">
+      <div class="bar-fill" style="width: 9%; background: #8b949e;"></div>
+    </div>
+    9.4%
+  </td>
+  <td>6.0%</td>
+</tr>
+
+</tbody>
+</table>
+
+<h2>Per-Kernel Analysis & Optimization Recommendations</h2>
+
+
+<div class="finding">
+  <strong class="kernel-name">kern_batch_ntt_dit</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">20 call(s) | Block: 256 | Grid: 204800 | Avg: 531.5 µs | DRAM: 90.6% | SM: 27.5%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_batch_ntt_dif</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">20 call(s) | Block: 256 | Grid: 204800 | Avg: 529.5 µs | DRAM: 90.9% | SM: 28.0%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_batch_bitrev</strong> <span class="cat-badge cat-Permutation">Permutation</span><br>
+  <span class="meta">2 call(s) | Block: 256 | Grid: 409600 | Avg: 2.22 ms | DRAM: 22.4% | SM: 7.2%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_batch_scale_by_powers</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 409600 | Avg: 1.77 ms | DRAM: 27.7% | SM: 79.3%</span>
+  <div class="bottleneck">Compute-bound: High SM throughput. Good utilization of compute resources.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_kb_scale</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">2 call(s) | Block: 256 | Grid: 409600 | Avg: 270.0 µs | DRAM: 70.2% | SM: 11.0%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_ntt_dif</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">40 call(s) | Block: 256 | Grid: 2048 | Avg: 6.9 µs | DRAM: 43.8% | SM: 14.4%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::ntt_dif_radix8_kernel</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">6 call(s) | Block: 256 | Grid: 128 | Avg: 23.3 µs | DRAM: 26.3% | SM: 24.8%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_ntt_dit</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">20 call(s) | Block: 256 | Grid: 2048 | Avg: 6.8 µs | DRAM: 44.3% | SM: 14.1%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">void gnark_gpu::ntt_dit_radix8_kernel&lt;0&gt;</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">5 call(s) | Block: 256 | Grid: 128 | Avg: 23.6 µs | DRAM: 24.1% | SM: 24.3%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_kb_scale_by_powers</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">2 call(s) | Block: 256 | Grid: 4096 | Avg: 20.1 µs | DRAM: 13.1% | SM: 68.0%</span>
+  <div class="bottleneck">Compute-bound: High SM throughput. Good utilization of compute resources.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::transpose_aos_to_soa_fr_kernel</strong> <span class="cat-badge cat-Transfer">Transfer</span><br>
+  <span class="meta">5 call(s) | Block: 256 | Grid: 1024 | Avg: 7.3 µs | DRAM: 56.8% | SM: 4.6%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">void gnark_gpu::ntt_dit_radix8_kernel&lt;1&gt;</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 128 | Avg: 26.1 µs | DRAM: 30.4% | SM: 33.6%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::ntt_bit_reverse_kernel</strong> <span class="cat-badge cat-NTT">NTT</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 1024 | Avg: 22.0 µs | DRAM: 23.9% | SM: 3.6%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_bitrev</strong> <span class="cat-badge cat-Permutation">Permutation</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 4096 | Avg: 17.2 µs | DRAM: 15.3% | SM: 5.4%</span>
+  <div class="bottleneck">Latency-bound: Both DRAM and SM underutilized. Likely limited by kernel launch overhead, occupancy, or instruction-level parallelism.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::mul_mont_fr_kernel</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 1024 | Avg: 17.2 µs | DRAM: 61.5% | SM: 39.7%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::transpose_soa_to_aos_fr_kernel</strong> <span class="cat-badge cat-Transfer">Transfer</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 1024 | Avg: 15.9 µs | DRAM: 33.1% | SM: 2.7%</span>
+  <div class="bottleneck">Mixed: Moderate utilization of both compute and memory subsystems.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::add_fr_kernel</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 1024 | Avg: 14.1 µs | DRAM: 74.8% | SM: 4.3%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">gnark_gpu::sub_fr_kernel</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 1024 | Avg: 13.9 µs | DRAM: 75.8% | SM: 4.4%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_kb_mul</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 4096 | Avg: 8.4 µs | DRAM: 63.2% | SM: 9.1%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_kb_add</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 4096 | Avg: 8.2 µs | DRAM: 64.6% | SM: 9.3%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+<div class="finding">
+  <strong class="kernel-name">kern_kb_sub</strong> <span class="cat-badge cat-Arithmetic">Arithmetic</span><br>
+  <span class="meta">1 call(s) | Block: 256 | Grid: 4096 | Avg: 8.1 µs | DRAM: 65.3% | SM: 9.4%</span>
+  <div class="bottleneck">Memory-bound: High DRAM utilization but low SM throughput. Consider coalescing access patterns or reducing memory transactions.</div>
+</div>
+
+
+<h2>Global Optimization Recommendations</h2>
+
+<div class="finding">
+  <strong>1. Increase Occupancy:</strong> Many kernels show occupancy limited to 6 warps/SM. With 188 SMs on Blackwell, this limits parallelism. Consider reducing register usage or shared memory per block, or using smaller block sizes to allow more concurrent blocks per SM.
+</div>
+<div class="finding">
+  <strong>2. NTT Kernels Dominate:</strong> NTT (DIF/DIT) butterflies account for the majority of kernel time. Each stage launches a separate kernel with moderate DRAM utilization (~40-60%). Fusing multiple stages into a single kernel using shared memory could reduce global memory round-trips.
+</div>
+<div class="finding">
+  <strong>3. Memory-Bound Elementwise Ops:</strong> KB add/mul/sub kernels hit 60-65% of peak DRAM throughput but only ~9% SM. These are memory-bound — performance scales with memory bandwidth. Fusing consecutive elementwise operations (e.g., add+mul, scale+bitrev) would reduce memory traffic.
+</div>
+<div class="finding">
+  <strong>4. ScaleByPowers is Compute-Heavy:</strong> The ScaleByPowers kernel shows 68% SM utilization but only 13% DRAM — it's compute-bound due to chained multiplications (g^i computed via prefix product). This is well-optimized; further improvement would require algorithmic changes.
+</div>
+<div class="finding">
+  <strong>5. Kernel Launch Overhead:</strong> Small kernels (&lt; 10 µs) are dominated by launch overhead. For batch operations, the batch NTT API already amortizes this cost. Consider extending this pattern to other operations (batch add, batch mul).
+</div>
+
+<hr style="border-color: var(--border); margin: 3rem 0 1rem;">
+<p class="meta" style="text-align: center;">
+  Generated by gpu/report/gen_profile_report.go — Linea Prover GPU Profiling Suite
+</p>
+</div>
+</body>
+</html>

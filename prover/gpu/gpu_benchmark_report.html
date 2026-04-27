@@ -1,0 +1,2438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Benchmark Report — Linea Prover</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+  --purple: #bc8cff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  padding: 2rem;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+h2 {
+  font-size: 1.5rem;
+  color: var(--accent);
+  margin: 2rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+h3 { font-size: 1.1rem; color: var(--text); margin: 1.5rem 0 0.5rem; }
+.meta {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+.summary-card .label { color: var(--text-muted); font-size: 0.85rem; }
+.summary-card .value { font-size: 2rem; font-weight: 700; color: var(--green); }
+.summary-card .unit { font-size: 0.9rem; color: var(--text-muted); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+th, td {
+  padding: 0.6rem 1rem;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+td:first-child, th:first-child { text-align: left; }
+tr:hover { background: rgba(88, 166, 255, 0.05); }
+.excellent { color: var(--green); font-weight: 700; }
+.good { color: var(--accent); }
+.moderate { color: var(--orange); }
+.poor { color: var(--red); }
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  height: 400px;
+  position: relative;
+}
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) { .chart-row { grid-template-columns: 1fr; } }
+.key-finding {
+  background: linear-gradient(135deg, rgba(88,166,255,0.1), rgba(188,140,255,0.1));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.key-finding strong { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>GPU Benchmark Report</h1>
+<p class="meta">
+  <strong>Device:</strong> NVIDIA RTX PRO 6000 Blackwell (98 GB VRAM)<br>
+  <strong>Generated:</strong> <script>document.write(new Date().toISOString().split('T')[0])</script><br>
+  <strong>Benchmarks:</strong> 212 measurements across 40 test groups
+</p>
+
+
+<h2>Key Findings</h2>
+<div class="key-finding">
+  <strong>Transfer Bandwidth:</strong> KoalaBear H2D peaks at ~54 GB/s with pinned memory (3x faster than pageable ~19 GB/s). BLS12-377 H2D peaks at ~17 GB/s (AoS→SoA transpose overhead). D2D copies reach ~1.9 TB/s internal bandwidth.
+</div>
+<div class="key-finding">
+  <strong>NTT Performance:</strong> KoalaBear NTT at 16M elements: 2.1 ms (31.8 GB/s effective). BLS12-377 NTT at 4M: 3.2 ms (41.3 GB/s effective). End-to-end (H2D+FFT+D2H): KoalaBear 16M in 8.7 ms, BLS12-377 4M in 21.6 ms — dominated by PCIe transfers at large sizes.
+</div>
+<div class="key-finding">
+  <strong>GPU vs CPU Speedup:</strong> BLS12-377 FFT: 15.9x (16K) to 58.2x (1M). KoalaBear vector multiply: 50x-283x at large sizes. Vortex commit: 7.2x (4K×128) to 13.7x (64K×512) — limited by H2D copy of raw rows.
+</div>
+<div class="key-finding">
+  <strong>MSM Performance:</strong> Pippenger MSM peaks at ~1.2 GB/s (scalar throughput) at 1M points, 17.3 ms per MSM. Scales to 128M points (2.5 s) using chunked two-pass approach to fit sort buffers in VRAM.
+</div>
+<div class="key-finding">
+  <strong>Batch NTT:</strong> Amortized kernel launch overhead via batch API: 100 × 256K NTTs in 1.68 ms (62.3 GB/s effective) vs 7.2 ms for 100 individual calls — 4.3x improvement from batching.
+</div>
+<div class="key-finding">
+  <strong>Poseidon2:</strong> Batch compression (width=16) at 65K hashes: embedded in the Vortex commit pipeline. GPU Vortex commit for 64K×512 matrix: 13 ms total (RS encode + SIS + Poseidon2 + Merkle tree).
+</div>
+
+
+<h2>Data Transfer (KoalaBear)</h2>
+
+<h3>KBVecH2D</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>13.4 µs</td>
+  <td>4.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>23.9 µs</td>
+  <td>11.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>70.2 µs</td>
+  <td>14.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>258.9 µs</td>
+  <td>16.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>913.8 µs</td>
+  <td>18.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>3.59 ms</td>
+  <td>18.7 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecH2DPinned</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>9.9 µs</td>
+  <td>6.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>13.1 µs</td>
+  <td>20.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>33.7 µs</td>
+  <td>31.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>85.0 µs</td>
+  <td>49.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>324.0 µs</td>
+  <td>51.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>1.24 ms</td>
+  <td>54.2 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecD2H</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>15.2 µs</td>
+  <td>4.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>28.9 µs</td>
+  <td>9.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>85.6 µs</td>
+  <td>12.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>260.5 µs</td>
+  <td>16.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>917.1 µs</td>
+  <td>18.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>3.55 ms</td>
+  <td>18.9 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecD2D</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>2.7 µs</td>
+  <td>24.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>2.6 µs</td>
+  <td>99.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>2.9 µs</td>
+  <td>360.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>4.4 µs</td>
+  <td>954.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>8.8 µs</td>
+  <td>1.9 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>34.5 µs</td>
+  <td>1.9 TB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>Vector Arithmetic (KB)</h2>
+
+<h3>KBVecAdd</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>2.7 µs</td>
+  <td>74.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>2.7 µs</td>
+  <td>288.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>2.8 µs</td>
+  <td>1.1 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>4.6 µs</td>
+  <td>2.7 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>14.2 µs</td>
+  <td>3.5 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>145.0 µs</td>
+  <td>1.4 TB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecMul</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>4.1 µs</td>
+  <td>48.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>4.2 µs</td>
+  <td>186.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>4.0 µs</td>
+  <td>784.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>6.8 µs</td>
+  <td>1.9 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>14.6 µs</td>
+  <td>3.4 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>290.2 µs</td>
+  <td>693.7 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecScale</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>4.1 µs</td>
+  <td>31.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>4.0 µs</td>
+  <td>129.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>3.9 µs</td>
+  <td>542.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>6.5 µs</td>
+  <td>1.3 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>16.0 µs</td>
+  <td>2.1 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>74.7 µs</td>
+  <td>1.8 TB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecScaleByPowers</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>8.2 µs</td>
+  <td>16.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>7.7 µs</td>
+  <td>68.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>10.8 µs</td>
+  <td>194.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>27.4 µs</td>
+  <td>306.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>101.8 µs</td>
+  <td>329.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>503.6 µs</td>
+  <td>266.5 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBVecBitReverse</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>4.0 µs</td>
+  <td>32.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>3.8 µs</td>
+  <td>137.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>7.8 µs</td>
+  <td>267.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>18.4 µs</td>
+  <td>457.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>80.7 µs</td>
+  <td>415.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>290.9 µs</td>
+  <td>461.3 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>NTT / FFT (KoalaBear)</h2>
+
+<h3>KBNTTForward</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>57.5 µs</td>
+  <td>1.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>61.8 µs</td>
+  <td>4.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>65.6 µs</td>
+  <td>16.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>198.4 µs</td>
+  <td>21.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>525.1 µs</td>
+  <td>31.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>2.11 ms</td>
+  <td>31.8 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBNTTInverse</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>56.0 µs</td>
+  <td>1.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>67.7 µs</td>
+  <td>3.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>108.6 µs</td>
+  <td>9.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>205.6 µs</td>
+  <td>20.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>530.4 µs</td>
+  <td>31.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>1.53 ms</td>
+  <td>43.9 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBNTTCosetFwd</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>53.0 µs</td>
+  <td>1.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>75.1 µs</td>
+  <td>3.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>123.0 µs</td>
+  <td>8.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>227.7 µs</td>
+  <td>18.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>633.4 µs</td>
+  <td>26.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>2.54 ms</td>
+  <td>26.4 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBNTTE2E</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  <th>H2D</th><th>Compute</th><th>D2H</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>528.6 µs</td>
+  <td>248.0 MB/s</td>
+  <td>238.0 µs</td>
+  <td>273.0 µs</td>
+  <td>16.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>341.4 µs</td>
+  <td>1.5 GB/s</td>
+  <td>26.0 µs</td>
+  <td>283.0 µs</td>
+  <td>30.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>251.1 µs</td>
+  <td>8.4 GB/s</td>
+  <td>78.0 µs</td>
+  <td>90.0 µs</td>
+  <td>82.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>1.16 ms</td>
+  <td>7.2 GB/s</td>
+  <td>282.0 µs</td>
+  <td>606.0 µs</td>
+  <td>275.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>2.23 ms</td>
+  <td>15.1 GB/s</td>
+  <td>935.0 µs</td>
+  <td>352.0 µs</td>
+  <td>937.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>8.69 ms</td>
+  <td>15.5 GB/s</td>
+  <td>3736.0 µs</td>
+  <td>1141.0 µs</td>
+  <td>3805.0 µs</td>
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBNTTScaling</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=1K</td>
+  <td>29.8 µs</td>
+  <td>137.3 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4K</td>
+  <td>36.9 µs</td>
+  <td>444.4 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16K</td>
+  <td>41.4 µs</td>
+  <td>1.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>64.5 µs</td>
+  <td>4.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>114.3 µs</td>
+  <td>9.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>206.6 µs</td>
+  <td>20.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>528.5 µs</td>
+  <td>31.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>1.89 ms</td>
+  <td>35.6 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBBatchCosetFFT</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=256K_batch=1</td>
+  <td>72.1 µs</td>
+  <td>14.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=10</td>
+  <td>201.5 µs</td>
+  <td>52.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=100</td>
+  <td>1.68 ms</td>
+  <td>62.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=500</td>
+  <td>16.08 ms</td>
+  <td>32.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=1000</td>
+  <td>32.16 ms</td>
+  <td>32.6 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>KBBatchIFFTScale</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=256K_batch=1</td>
+  <td>101.6 µs</td>
+  <td>10.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=10</td>
+  <td>172.7 µs</td>
+  <td>60.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=100</td>
+  <td>1.84 ms</td>
+  <td>57.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=500</td>
+  <td>22.02 ms</td>
+  <td>23.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K_batch=1000</td>
+  <td>49.44 ms</td>
+  <td>21.2 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>Vortex Pipeline</h2>
+
+<h3>VortexCommitE2E</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>cols=1K_rows=128_rate=2</td>
+  <td>2.38 ms</td>
+  <td>220.2 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=4K_rows=256_rate=2</td>
+  <td>2.32 ms</td>
+  <td>1.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=16K_rows=256_rate=2</td>
+  <td>3.52 ms</td>
+  <td>4.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=64K_rows=512_rate=2</td>
+  <td>13.09 ms</td>
+  <td>10.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=128K_rows=1K_rate=2</td>
+  <td>43.27 ms</td>
+  <td>12.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=256K_rows=2K_rate=2</td>
+  <td>149.09 ms</td>
+  <td>14.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=512K_rows=2K_rate=2</td>
+  <td>424.44 ms</td>
+  <td>10.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=1M_rows=4K_rate=2</td>
+  <td>4.64 s</td>
+  <td>3.7 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>VortexCommitBreakdown</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>full_commit</td>
+  <td>2.74 ms</td>
+  <td>5.8 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>VortexProve</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>lincomb</td>
+  <td>224.5 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>extract_columns</td>
+  <td>241.1 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>full_prove</td>
+  <td>466.1 µs</td>
+  <td>-</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>Vortex</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>Commit</td>
+  <td>4.36 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>Prove</td>
+  <td>4.79 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>Verify</td>
+  <td>1.30 ms</td>
+  <td>-</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>Data Transfer (BLS12-377)</h2>
+
+<h3>FrVecH2D</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>95.8 µs</td>
+  <td>5.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>106.9 µs</td>
+  <td>19.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>478.3 µs</td>
+  <td>17.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>1.96 ms</td>
+  <td>17.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>7.99 ms</td>
+  <td>16.8 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecD2H</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>499.4 µs</td>
+  <td>1.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>631.5 µs</td>
+  <td>3.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>1.22 ms</td>
+  <td>6.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>2.27 ms</td>
+  <td>14.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>8.76 ms</td>
+  <td>15.3 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecD2D</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>16.9 µs</td>
+  <td>31.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>16.8 µs</td>
+  <td>124.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>16.8 µs</td>
+  <td>499.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>33.8 µs</td>
+  <td>992.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>334.0 µs</td>
+  <td>401.9 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>Vector Arithmetic (BLS)</h2>
+
+<h3>FrVecAdd</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>4.3 µs</td>
+  <td>369.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>8.5 µs</td>
+  <td>743.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>12.6 µs</td>
+  <td>2.0 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>30.6 µs</td>
+  <td>3.3 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>562.4 µs</td>
+  <td>716.0 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecMul</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>7.9 µs</td>
+  <td>198.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>8.4 µs</td>
+  <td>744.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>21.0 µs</td>
+  <td>1.2 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>62.0 µs</td>
+  <td>1.6 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>586.8 µs</td>
+  <td>686.2 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecSub</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>3.9 µs</td>
+  <td>398.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>8.5 µs</td>
+  <td>742.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>12.6 µs</td>
+  <td>2.0 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>30.2 µs</td>
+  <td>3.3 TB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>552.3 µs</td>
+  <td>729.1 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecScaleByPowers</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>38.1 µs</td>
+  <td>27.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>49.5 µs</td>
+  <td>84.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>120.5 µs</td>
+  <td>139.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>402.8 µs</td>
+  <td>166.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>1.59 ms</td>
+  <td>168.7 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVecBatchInvert</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>4.54 ms</td>
+  <td>115.4 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>5.63 ms</td>
+  <td>372.3 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>10.58 ms</td>
+  <td>793.2 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>14.51 ms</td>
+  <td>2.3 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVectorMul</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>1K</td>
+  <td>11.5 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>16K</td>
+  <td>11.6 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>256K</td>
+  <td>17.4 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>1M</td>
+  <td>35.9 µs</td>
+  <td>-</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>FrVectorMulCPU</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>1K</td>
+  <td>9.9 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>16K</td>
+  <td>157.0 µs</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>256K</td>
+  <td>2.52 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>1M</td>
+  <td>10.16 ms</td>
+  <td>-</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>NTT / FFT (BLS12-377)</h2>
+
+<h3>BLSFFTForward</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>123.4 µs</td>
+  <td>4.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>134.4 µs</td>
+  <td>15.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>150.6 µs</td>
+  <td>55.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>616.0 µs</td>
+  <td>54.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>3.25 ms</td>
+  <td>41.3 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>BLSFFTInverse</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>130.1 µs</td>
+  <td>4.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>143.7 µs</td>
+  <td>14.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>195.5 µs</td>
+  <td>42.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>615.2 µs</td>
+  <td>54.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>1.86 ms</td>
+  <td>72.2 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>BLSFFTCoset</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>86.2 µs</td>
+  <td>6.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>102.6 µs</td>
+  <td>20.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>140.9 µs</td>
+  <td>59.6 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>481.7 µs</td>
+  <td>69.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>2.68 ms</td>
+  <td>50.0 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>BLSFFTE2E</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  <th>H2D</th><th>Compute</th><th>D2H</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>239.6 µs</td>
+  <td>4.4 GB/s</td>
+  <td>100.0 µs</td>
+  <td>72.0 µs</td>
+  <td>66.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>443.0 µs</td>
+  <td>9.5 GB/s</td>
+  <td>186.0 µs</td>
+  <td>89.0 µs</td>
+  <td>166.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>1.25 ms</td>
+  <td>13.4 GB/s</td>
+  <td>579.0 µs</td>
+  <td>114.0 µs</td>
+  <td>560.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>6.44 ms</td>
+  <td>10.4 GB/s</td>
+  <td>1874.0 µs</td>
+  <td>992.0 µs</td>
+  <td>3575.0 µs</td>
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>21.61 ms</td>
+  <td>12.4 GB/s</td>
+  <td>8053.0 µs</td>
+  <td>3586.0 µs</td>
+  <td>9959.0 µs</td>
+</tr>
+
+</tbody>
+</table>
+
+<h3>BLSFFTScaling</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=1K</td>
+  <td>61.8 µs</td>
+  <td>530.4 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4K</td>
+  <td>113.7 µs</td>
+  <td>1.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16K</td>
+  <td>111.3 µs</td>
+  <td>4.7 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>124.0 µs</td>
+  <td>16.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>88.0 µs</td>
+  <td>95.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>283.9 µs</td>
+  <td>118.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=4M</td>
+  <td>1.46 ms</td>
+  <td>91.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=16M</td>
+  <td>7.82 ms</td>
+  <td>68.7 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>MSM (BLS12-377)</h2>
+
+<h3>MSMComprehensive</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=16K</td>
+  <td>6.52 ms</td>
+  <td>80.4 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=64K</td>
+  <td>5.86 ms</td>
+  <td>357.7 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>10.18 ms</td>
+  <td>823.7 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>27.83 ms</td>
+  <td>1.2 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>MSMBreakdown</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>n=64K</td>
+  <td>3.69 ms</td>
+  <td>569.0 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=256K</td>
+  <td>7.79 ms</td>
+  <td>1.1 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>n=1M</td>
+  <td>17.38 ms</td>
+  <td>1.9 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>MSM</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>64K</td>
+  <td>3.60 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>1M</td>
+  <td>19.12 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>16M</td>
+  <td>289.51 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>64M</td>
+  <td>821.30 ms</td>
+  <td>-</td>
+  
+</tr>
+
+<tr>
+  <td>128M</td>
+  <td>2.52 s</td>
+  <td>-</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+<h2>GPU vs CPU Comparison</h2>
+
+<h3>VortexGPUvsCPU</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>cols=4K_rows=128/GPU</td>
+  <td>1.53 ms</td>
+  <td>1.4 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=4K_rows=128/CPU</td>
+  <td>11.03 ms</td>
+  <td>190.1 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=16K_rows=256/GPU</td>
+  <td>2.66 ms</td>
+  <td>6.3 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=16K_rows=256/CPU</td>
+  <td>34.81 ms</td>
+  <td>482.0 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=64K_rows=512/GPU</td>
+  <td>9.63 ms</td>
+  <td>13.9 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>cols=64K_rows=512/CPU</td>
+  <td>131.49 ms</td>
+  <td>1.0 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+<h3>BLSFFTvsCPU</h3>
+<table>
+<thead>
+<tr>
+  <th>Configuration</th>
+  <th>Time/op</th>
+  <th>Throughput</th>
+  
+</tr>
+</thead>
+<tbody>
+
+<tr>
+  <td>GPU/n=16K</td>
+  <td>59.4 µs</td>
+  <td>8.8 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>CPU/n=16K</td>
+  <td>945.1 µs</td>
+  <td>554.8 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>GPU/n=64K</td>
+  <td>71.8 µs</td>
+  <td>29.2 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>CPU/n=64K</td>
+  <td>2.30 ms</td>
+  <td>910.9 MB/s</td>
+  
+</tr>
+
+<tr>
+  <td>GPU/n=256K</td>
+  <td>88.3 µs</td>
+  <td>95.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>CPU/n=256K</td>
+  <td>5.76 ms</td>
+  <td>1.5 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>GPU/n=1M</td>
+  <td>286.7 µs</td>
+  <td>117.0 GB/s</td>
+  
+</tr>
+
+<tr>
+  <td>CPU/n=1M</td>
+  <td>16.70 ms</td>
+  <td>2.0 GB/s</td>
+  
+</tr>
+
+</tbody>
+</table>
+
+
+
+
+<h2>Performance Scaling Charts</h2>
+
+<div id="charts"></div>
+
+<script>
+const chartColors = [
+  '#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff',
+  '#79c0ff', '#56d364', '#e3b341', '#ff7b72', '#d2a8ff'
+];
+
+function createChart(container, title, labels, datasets) {
+  const div = document.createElement('div');
+  div.className = 'chart-container';
+  const canvas = document.createElement('canvas');
+  div.appendChild(canvas);
+  container.appendChild(div);
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: title, color: '#c9d1d9', font: { size: 16 } },
+        legend: { labels: { color: '#8b949e' } }
+      },
+      scales: {
+        x: {
+          type: 'logarithmic',
+          title: { display: true, text: 'Vector Size', color: '#8b949e' },
+          ticks: { color: '#8b949e' },
+          grid: { color: '#30363d' }
+        },
+        y: {
+          type: 'logarithmic',
+          title: { display: true, text: 'Time (µs)', color: '#8b949e' },
+          ticks: { color: '#8b949e' },
+          grid: { color: '#30363d' }
+        }
+      }
+    }
+  });
+}
+
+function createThroughputChart(container, title, labels, datasets) {
+  const div = document.createElement('div');
+  div.className = 'chart-container';
+  const canvas = document.createElement('canvas');
+  div.appendChild(canvas);
+  container.appendChild(div);
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: title, color: '#c9d1d9', font: { size: 16 } },
+        legend: { labels: { color: '#8b949e' } }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8b949e' },
+          grid: { color: '#30363d' }
+        },
+        y: {
+          type: 'logarithmic',
+          title: { display: true, text: 'Throughput (MB/s)', color: '#8b949e' },
+          ticks: { color: '#8b949e' },
+          grid: { color: '#30363d' }
+        }
+      }
+    }
+  });
+}
+
+const chartsDiv = document.getElementById('charts');
+
+
+const data = "[{\"name\":\"KBVecH2D\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":13434.0,\"mbs\":4878.2},{\"label\":\"n=64K\",\"n\":65536,\"ns\":23870.0,\"mbs\":10982.0},{\"label\":\"n=256K\",\"n\":262144,\"ns\":70208.0,\"mbs\":14935.3},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":258891.0,\"mbs\":16201.0},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":913803.0,\"mbs\":18359.8},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":3592620.0,\"mbs\":18679.6}]},{\"name\":\"KBVecH2DPinned\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":9894.0,\"mbs\":6623.7},{\"label\":\"n=64K\",\"n\":65536,\"ns\":13065.0,\"mbs\":20064.3},{\"label\":\"n=256K\",\"n\":262144,\"ns\":33704.0,\"mbs\":31111.6},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":84966.0,\"mbs\":49364.4},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":324008.0,\"mbs\":51780.3},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":1237774.0,\"mbs\":54217.4}]},{\"name\":\"KBVecD2H\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":15181.0,\"mbs\":4316.9},{\"label\":\"n=64K\",\"n\":65536,\"ns\":28938.0,\"mbs\":9058.7},{\"label\":\"n=256K\",\"n\":262144,\"ns\":85569.0,\"mbs\":12254.2},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":260540.0,\"mbs\":16098.5},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":917135.0,\"mbs\":18293.1},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":3549952.0,\"mbs\":18904.2}]},{\"name\":\"KBVecD2D\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":2660.0,\"mbs\":24634.3},{\"label\":\"n=64K\",\"n\":65536,\"ns\":2630.0,\"mbs\":99660.2},{\"label\":\"n=256K\",\"n\":262144,\"ns\":2912.0,\"mbs\":360119.2},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":4395.0,\"mbs\":954430.1},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":8788.0,\"mbs\":1909170.2},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":34541.0,\"mbs\":1942864.5}]},{\"name\":\"KBVecAdd\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":2657.0,\"mbs\":73984.1},{\"label\":\"n=64K\",\"n\":65536,\"ns\":2727.0,\"mbs\":288350.6},{\"label\":\"n=256K\",\"n\":262144,\"ns\":2752.0,\"mbs\":1143026.3},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":4641.0,\"mbs\":2711052.7},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":14195.0,\"mbs\":3545674.7},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":145023.0,\"mbs\":1388236.9}]},{\"name\":\"KBVecMul\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":4066.0,\"mbs\":48348.9},{\"label\":\"n=64K\",\"n\":65536,\"ns\":4211.0,\"mbs\":186744.0},{\"label\":\"n=256K\",\"n\":262144,\"ns\":4008.0,\"mbs\":784933.4},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":6792.0,\"mbs\":1852599.7},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":14596.0,\"mbs\":3448337.8},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":290213.0,\"mbs\":693721.2}]},{\"name\":\"KBVecScale\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":4128.0,\"mbs\":31750.8},{\"label\":\"n=64K\",\"n\":65536,\"ns\":4037.0,\"mbs\":129855.9},{\"label\":\"n=256K\",\"n\":262144,\"ns\":3866.0,\"mbs\":542401.4},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":6495.0,\"mbs\":1291634.9},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":15988.0,\"mbs\":2098674.1},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":74687.0,\"mbs\":1797062.8}]},{\"name\":\"KBVecScaleByPowers\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":8188.0,\"mbs\":16008.7},{\"label\":\"n=64K\",\"n\":65536,\"ns\":7679.0,\"mbs\":68277.0},{\"label\":\"n=256K\",\"n\":262144,\"ns\":10771.0,\"mbs\":194700.4},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":27403.0,\"mbs\":306118.4},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":101848.0,\"mbs\":329456.3},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":503644.0,\"mbs\":266493.3}]},{\"name\":\"KBVecBitReverse\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":4030.0,\"mbs\":32523.7},{\"label\":\"n=64K\",\"n\":65536,\"ns\":3810.0,\"mbs\":137601.6},{\"label\":\"n=256K\",\"n\":262144,\"ns\":7844.0,\"mbs\":267364.1},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":18358.0,\"mbs\":456957.6},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":80714.0,\"mbs\":415721.4},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":290947.0,\"mbs\":461313.2}]},{\"name\":\"KBNTTForward\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":57453.0,\"mbs\":1140.7},{\"label\":\"n=64K\",\"n\":65536,\"ns\":61762.0,\"mbs\":4244.4},{\"label\":\"n=256K\",\"n\":262144,\"ns\":65639.0,\"mbs\":15974.9},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":198417.0,\"mbs\":21138.8},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":525138.0,\"mbs\":31948.2},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":2112121.0,\"mbs\":31773.2}]},{\"name\":\"KBNTTInverse\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":56007.0,\"mbs\":1170.1},{\"label\":\"n=64K\",\"n\":65536,\"ns\":67710.0,\"mbs\":3871.6},{\"label\":\"n=256K\",\"n\":262144,\"ns\":108594.0,\"mbs\":9656.0},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":205629.0,\"mbs\":20397.4},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":530418.0,\"mbs\":31630.2},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":1528952.0,\"mbs\":43892.1}]},{\"name\":\"KBNTTCosetFwd\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":53040.0,\"mbs\":1235.6},{\"label\":\"n=64K\",\"n\":65536,\"ns\":75061.0,\"mbs\":3492.4},{\"label\":\"n=256K\",\"n\":262144,\"ns\":123004.0,\"mbs\":8524.7},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":227742.0,\"mbs\":18416.9},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":633363.0,\"mbs\":26489.1},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":2542342.0,\"mbs\":26396.5}]},{\"name\":\"KBNTTE2E\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":528561.0,\"mbs\":248.0},{\"label\":\"n=64K\",\"n\":65536,\"ns\":341412.0,\"mbs\":1535.7},{\"label\":\"n=256K\",\"n\":262144,\"ns\":251054.0,\"mbs\":8353.4},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":1164687.0,\"mbs\":7202.5},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":2225475.0,\"mbs\":15077.4},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":8685525.0,\"mbs\":15453.0}]},{\"name\":\"KBNTTScaling\",\"points\":[{\"label\":\"n=1K\",\"n\":1024,\"ns\":29836.0,\"mbs\":137.3},{\"label\":\"n=4K\",\"n\":4096,\"ns\":36868.0,\"mbs\":444.4},{\"label\":\"n=16K\",\"n\":16384,\"ns\":41409.0,\"mbs\":1582.6},{\"label\":\"n=64K\",\"n\":65536,\"ns\":64541.0,\"mbs\":4061.7},{\"label\":\"n=256K\",\"n\":262144,\"ns\":114294.0,\"mbs\":9174.4},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":206608.0,\"mbs\":20300.8},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":528487.0,\"mbs\":31745.7},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":1885380.0,\"mbs\":35594.3}]},{\"name\":\"KBBatchCosetFFT\",\"points\":[{\"label\":\"n=256K_batch=1\",\"n\":262144,\"ns\":72053.0,\"mbs\":14552.8},{\"label\":\"n=256K_batch=10\",\"n\":262144,\"ns\":201510.0,\"mbs\":52036.0},{\"label\":\"n=256K_batch=100\",\"n\":262144,\"ns\":1682577.0,\"mbs\":62319.7},{\"label\":\"n=256K_batch=500\",\"n\":262144,\"ns\":16080320.0,\"mbs\":32604.3},{\"label\":\"n=256K_batch=1000\",\"n\":262144,\"ns\":32162450.0,\"mbs\":32602.5}]},{\"name\":\"KBBatchIFFTScale\",\"points\":[{\"label\":\"n=256K_batch=1\",\"n\":262144,\"ns\":101619.0,\"mbs\":10318.7},{\"label\":\"n=256K_batch=10\",\"n\":262144,\"ns\":172664.0,\"mbs\":60729.1},{\"label\":\"n=256K_batch=100\",\"n\":262144,\"ns\":1838489.0,\"mbs\":57034.7},{\"label\":\"n=256K_batch=500\",\"n\":262144,\"ns\":22018099.0,\"mbs\":23811.7},{\"label\":\"n=256K_batch=1000\",\"n\":262144,\"ns\":49439214.0,\"mbs\":21209.4}]},{\"name\":\"VortexCommitE2E\",\"points\":[{\"label\":\"cols=1K_rows=128_rate=2\",\"n\":1024,\"ns\":2380660.0,\"mbs\":220.2},{\"label\":\"cols=4K_rows=256_rate=2\",\"n\":4096,\"ns\":2316659.0,\"mbs\":1810.5},{\"label\":\"cols=16K_rows=256_rate=2\",\"n\":16384,\"ns\":3523570.0,\"mbs\":4761.4},{\"label\":\"cols=64K_rows=512_rate=2\",\"n\":65536,\"ns\":13086243.0,\"mbs\":10256.4},{\"label\":\"cols=128K_rows=1K_rate=2\",\"n\":131072,\"ns\":43267829.0,\"mbs\":12408.1},{\"label\":\"cols=256K_rows=2K_rate=2\",\"n\":262144,\"ns\":149089485.0,\"mbs\":14404.0},{\"label\":\"cols=512K_rows=2K_rate=2\",\"n\":524288,\"ns\":424436766.0,\"mbs\":10119.2},{\"label\":\"cols=1M_rows=4K_rate=2\",\"n\":1048576,\"ns\":4637219439.0,\"mbs\":3704.8}]},{\"name\":\"VortexCommitBreakdown\",\"points\":[{\"label\":\"full_commit\",\"n\":0,\"ns\":2744972.0,\"mbs\":5829.3}]},{\"name\":\"VortexProve\",\"points\":[{\"label\":\"lincomb\",\"n\":0,\"ns\":224454.0,\"mbs\":0.0},{\"label\":\"extract_columns\",\"n\":0,\"ns\":241062.0,\"mbs\":0.0},{\"label\":\"full_prove\",\"n\":0,\"ns\":466080.0,\"mbs\":0.0}]},{\"name\":\"VortexGPUvsCPU\",\"points\":[{\"label\":\"cols=4K_rows=128/GPU\",\"n\":4096,\"ns\":1529091.0,\"mbs\":1371.5},{\"label\":\"cols=4K_rows=128/CPU\",\"n\":4096,\"ns\":11032929.0,\"mbs\":190.1},{\"label\":\"cols=16K_rows=256/GPU\",\"n\":16384,\"ns\":2655243.0,\"mbs\":6318.5},{\"label\":\"cols=16K_rows=256/CPU\",\"n\":16384,\"ns\":34806355.0,\"mbs\":482.0},{\"label\":\"cols=64K_rows=512/GPU\",\"n\":65536,\"ns\":9629580.0,\"mbs\":13938.1},{\"label\":\"cols=64K_rows=512/CPU\",\"n\":65536,\"ns\":131488144.0,\"mbs\":1020.8}]},{\"name\":\"Vortex\",\"points\":[{\"label\":\"Commit\",\"n\":0,\"ns\":4359627.0,\"mbs\":0.0},{\"label\":\"Prove\",\"n\":0,\"ns\":4786523.0,\"mbs\":0.0},{\"label\":\"Verify\",\"n\":0,\"ns\":1303302.0,\"mbs\":0.0}]},{\"name\":\"FrVecH2D\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":95759.0,\"mbs\":5475.1},{\"label\":\"n=64K\",\"n\":65536,\"ns\":106866.0,\"mbs\":19624.2},{\"label\":\"n=256K\",\"n\":262144,\"ns\":478308.0,\"mbs\":17538.1},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":1959836.0,\"mbs\":17121.0},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":7991430.0,\"mbs\":16795.2}]},{\"name\":\"FrVecD2H\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":499374.0,\"mbs\":1049.9},{\"label\":\"n=64K\",\"n\":65536,\"ns\":631513.0,\"mbs\":3320.8},{\"label\":\"n=256K\",\"n\":262144,\"ns\":1221135.0,\"mbs\":6869.5},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":2273346.0,\"mbs\":14759.9},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":8763858.0,\"mbs\":15314.9}]},{\"name\":\"FrVecD2D\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":16932.0,\"mbs\":30964.7},{\"label\":\"n=64K\",\"n\":65536,\"ns\":16829.0,\"mbs\":124615.7},{\"label\":\"n=256K\",\"n\":262144,\"ns\":16780.0,\"mbs\":499921.8},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":33822.0,\"mbs\":992079.2},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":333999.0,\"mbs\":401850.8}]},{\"name\":\"FrVecAdd\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":4256.0,\"mbs\":369583.3},{\"label\":\"n=64K\",\"n\":65536,\"ns\":8461.0,\"mbs\":743582.5},{\"label\":\"n=256K\",\"n\":262144,\"ns\":12618.0,\"mbs\":1994368.3},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":30619.0,\"mbs\":3287558.0},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":562379.0,\"mbs\":715982.5}]},{\"name\":\"FrVecMul\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":7922.0,\"mbs\":198543.9},{\"label\":\"n=64K\",\"n\":65536,\"ns\":8449.0,\"mbs\":744641.2},{\"label\":\"n=256K\",\"n\":262144,\"ns\":21039.0,\"mbs\":1196143.2},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":62041.0,\"mbs\":1622520.3},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":586799.0,\"mbs\":686186.4}]},{\"name\":\"FrVecSub\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":3947.0,\"mbs\":398545.6},{\"label\":\"n=64K\",\"n\":65536,\"ns\":8470.0,\"mbs\":742830.8},{\"label\":\"n=256K\",\"n\":262144,\"ns\":12637.0,\"mbs\":1991397.7},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":30164.0,\"mbs\":3337187.4},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":552274.0,\"mbs\":729082.1}]},{\"name\":\"FrVecScaleByPowers\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":38142.0,\"mbs\":27491.5},{\"label\":\"n=64K\",\"n\":65536,\"ns\":49543.0,\"mbs\":84660.4},{\"label\":\"n=256K\",\"n\":262144,\"ns\":120503.0,\"mbs\":139227.1},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":402834.0,\"mbs\":166591.9},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":1591358.0,\"mbs\":168683.3}]},{\"name\":\"FrVecBatchInvert\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":4541559.0,\"mbs\":115.4},{\"label\":\"n=64K\",\"n\":65536,\"ns\":5632974.0,\"mbs\":372.3},{\"label\":\"n=256K\",\"n\":262144,\"ns\":10575109.0,\"mbs\":793.2},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":14512994.0,\"mbs\":2312.0}]},{\"name\":\"BLSFFTForward\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":123440.0,\"mbs\":4247.3},{\"label\":\"n=64K\",\"n\":65536,\"ns\":134438.0,\"mbs\":15599.5},{\"label\":\"n=256K\",\"n\":262144,\"ns\":150584.0,\"mbs\":55707.1},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":615999.0,\"mbs\":54471.6},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":3249357.0,\"mbs\":41305.9}]},{\"name\":\"BLSFFTInverse\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":130084.0,\"mbs\":4030.4},{\"label\":\"n=64K\",\"n\":65536,\"ns\":143746.0,\"mbs\":14589.3},{\"label\":\"n=256K\",\"n\":262144,\"ns\":195528.0,\"mbs\":42902.3},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":615233.0,\"mbs\":54539.3},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":1858745.0,\"mbs\":72208.8}]},{\"name\":\"BLSFFTCoset\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":86239.0,\"mbs\":6079.5},{\"label\":\"n=64K\",\"n\":65536,\"ns\":102598.0,\"mbs\":20440.4},{\"label\":\"n=256K\",\"n\":262144,\"ns\":140858.0,\"mbs\":59553.8},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":481653.0,\"mbs\":69665.2},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":2684328.0,\"mbs\":50000.5}]},{\"name\":\"BLSFFTE2E\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":239607.0,\"mbs\":4376.2},{\"label\":\"n=64K\",\"n\":65536,\"ns\":443009.0,\"mbs\":9467.8},{\"label\":\"n=256K\",\"n\":262144,\"ns\":1254944.0,\"mbs\":13368.9},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":6444673.0,\"mbs\":10413.1},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":21607678.0,\"mbs\":12423.1}]},{\"name\":\"BLSFFTScaling\",\"points\":[{\"label\":\"n=1K\",\"n\":1024,\"ns\":61783.0,\"mbs\":530.4},{\"label\":\"n=4K\",\"n\":4096,\"ns\":113738.0,\"mbs\":1152.4},{\"label\":\"n=16K\",\"n\":16384,\"ns\":111301.0,\"mbs\":4710.6},{\"label\":\"n=64K\",\"n\":65536,\"ns\":124040.0,\"mbs\":16907.1},{\"label\":\"n=256K\",\"n\":262144,\"ns\":87965.0,\"mbs\":95363.3},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":283920.0,\"mbs\":118182.7},{\"label\":\"n=4M\",\"n\":4194304,\"ns\":1462424.0,\"mbs\":91777.6},{\"label\":\"n=16M\",\"n\":16777216,\"ns\":7815231.0,\"mbs\":68695.5}]},{\"name\":\"BLSFFTvsCPU\",\"points\":[{\"label\":\"GPU/n=16K\",\"n\":16384,\"ns\":59389.0,\"mbs\":8828.1},{\"label\":\"CPU/n=16K\",\"n\":16384,\"ns\":945067.0,\"mbs\":554.8},{\"label\":\"GPU/n=64K\",\"n\":65536,\"ns\":71768.0,\"mbs\":29221.3},{\"label\":\"CPU/n=64K\",\"n\":65536,\"ns\":2302336.0,\"mbs\":910.9},{\"label\":\"GPU/n=256K\",\"n\":262144,\"ns\":88315.0,\"mbs\":94985.5},{\"label\":\"CPU/n=256K\",\"n\":262144,\"ns\":5761835.0,\"mbs\":1455.9},{\"label\":\"GPU/n=1M\",\"n\":1048576,\"ns\":286692.0,\"mbs\":117040.1},{\"label\":\"CPU/n=1M\",\"n\":1048576,\"ns\":16697005.0,\"mbs\":2009.6}]},{\"name\":\"FrVectorMul\",\"points\":[{\"label\":\"1K\",\"n\":0,\"ns\":11518.0,\"mbs\":0.0},{\"label\":\"16K\",\"n\":0,\"ns\":11628.0,\"mbs\":0.0},{\"label\":\"256K\",\"n\":0,\"ns\":17407.0,\"mbs\":0.0},{\"label\":\"1M\",\"n\":0,\"ns\":35917.0,\"mbs\":0.0}]},{\"name\":\"FrVectorMulCPU\",\"points\":[{\"label\":\"1K\",\"n\":0,\"ns\":9905.0,\"mbs\":0.0},{\"label\":\"16K\",\"n\":0,\"ns\":156957.0,\"mbs\":0.0},{\"label\":\"256K\",\"n\":0,\"ns\":2523397.0,\"mbs\":0.0},{\"label\":\"1M\",\"n\":0,\"ns\":10157081.0,\"mbs\":0.0}]},{\"name\":\"MSMComprehensive\",\"points\":[{\"label\":\"n=16K\",\"n\":16384,\"ns\":6521005.0,\"mbs\":80.4},{\"label\":\"n=64K\",\"n\":65536,\"ns\":5863606.0,\"mbs\":357.7},{\"label\":\"n=256K\",\"n\":262144,\"ns\":10184470.0,\"mbs\":823.7},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":27832385.0,\"mbs\":1205.6}]},{\"name\":\"MSMBreakdown\",\"points\":[{\"label\":\"n=64K\",\"n\":65536,\"ns\":3685588.0,\"mbs\":569.0},{\"label\":\"n=256K\",\"n\":262144,\"ns\":7794588.0,\"mbs\":1076.2},{\"label\":\"n=1M\",\"n\":1048576,\"ns\":17376254.0,\"mbs\":1931.0}]},{\"name\":\"MSM\",\"points\":[{\"label\":\"64K\",\"n\":0,\"ns\":3601894.0,\"mbs\":0.0},{\"label\":\"1M\",\"n\":0,\"ns\":19118062.0,\"mbs\":0.0},{\"label\":\"16M\",\"n\":0,\"ns\":289511036.0,\"mbs\":0.0},{\"label\":\"64M\",\"n\":0,\"ns\":821295426.0,\"mbs\":0.0},{\"label\":\"128M\",\"n\":0,\"ns\":2522841748.0,\"mbs\":0.0}]}]";
+
+
+const nttGroups = data.filter(g => g.name.includes('NTT') && g.name.includes('Scaling'));
+if (nttGroups.length > 0) {
+  const labels = nttGroups[0].points.map(p => p.label);
+  const datasets = nttGroups.map((g, i) => ({
+    label: g.name,
+    data: g.points.map(p => p.ns / 1000),
+    borderColor: chartColors[i],
+    backgroundColor: chartColors[i] + '33',
+    tension: 0.3
+  }));
+  createChart(chartsDiv, 'NTT Scaling (Time vs Size)',
+    nttGroups[0].points.map(p => p.n), datasets);
+}
+
+
+const xferGroups = data.filter(g => g.name.includes('H2D') || g.name.includes('D2H') || g.name.includes('D2D'));
+if (xferGroups.length > 0) {
+  const maxPoints = Math.max(...xferGroups.map(g => g.points.length));
+  const ref = xferGroups.reduce((a, b) => a.points.length > b.points.length ? a : b);
+  const labels = ref.points.map(p => p.label);
+  const datasets = xferGroups.map((g, i) => ({
+    label: g.name,
+    data: g.points.map(p => p.mbs),
+    backgroundColor: chartColors[i] + 'cc',
+    borderColor: chartColors[i]
+  }));
+  createThroughputChart(chartsDiv, 'Transfer Bandwidth (MB/s)',
+    labels, datasets);
+}
+
+
+const vsCPU = data.filter(g => g.name.includes('vsCPU'));
+if (vsCPU.length > 0) {
+  vsCPU.forEach((g, gi) => {
+    const gpuPoints = g.points.filter(p => p.label.startsWith('GPU'));
+    const cpuPoints = g.points.filter(p => p.label.startsWith('CPU'));
+    if (gpuPoints.length > 0 && cpuPoints.length > 0) {
+      const labels = gpuPoints.map(p => p.label.replace('GPU/', ''));
+      createThroughputChart(chartsDiv, g.name + ' — GPU vs CPU Throughput',
+        labels,
+        [
+          { label: 'GPU', data: gpuPoints.map(p => p.mbs), backgroundColor: '#3fb95099', borderColor: '#3fb950' },
+          { label: 'CPU', data: cpuPoints.map(p => p.mbs), backgroundColor: '#f8514999', borderColor: '#f85149' }
+        ]);
+    }
+  });
+}
+
+
+const arithGroups = data.filter(g =>
+  (g.name.includes('VecAdd') || g.name.includes('VecMul') || g.name.includes('VecSub') || g.name.includes('VecScale')) &&
+  !g.name.includes('CPU'));
+if (arithGroups.length > 0) {
+  const ref = arithGroups[0];
+  const labels = ref.points.map(p => p.label);
+  const datasets = arithGroups.map((g, i) => ({
+    label: g.name,
+    data: g.points.map(p => p.ns / 1000),
+    borderColor: chartColors[i],
+    backgroundColor: chartColors[i] + '33',
+    tension: 0.3
+  }));
+  createChart(chartsDiv, 'Vector Arithmetic Latency',
+    ref.points.map(p => p.n), datasets);
+}
+</script>
+
+<hr style="border-color: var(--border); margin: 3rem 0 1rem;">
+<p class="meta" style="text-align: center;">
+  Generated by gpu/report/gen_report.go — Linea Prover GPU Benchmark Suite
+</p>
+</div>
+</body>
+</html>
