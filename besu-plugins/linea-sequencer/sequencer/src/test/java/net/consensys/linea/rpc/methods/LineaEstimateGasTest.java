@@ -72,14 +72,11 @@ class LineaEstimateGasTest {
 
     assertThatThrownBy(
             () ->
-                context
-                    .method()
-                    .validateEstimatedGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L))
+                context.method().validateEstimatedGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L))
         .isInstanceOf(PluginRpcEndpointException.class)
         .extracting(exception -> ((PluginRpcEndpointException) exception).getRpcMethodError())
         .satisfies(
-            error ->
-                assertThat(error.getMessage()).isEqualTo(EIP_7825_LIMIT_EXCEEDED_MESSAGE));
+            error -> assertThat(error.getMessage()).isEqualTo(EIP_7825_LIMIT_EXCEEDED_MESSAGE));
   }
 
   @Test
@@ -90,8 +87,7 @@ class LineaEstimateGasTest {
         .isInstanceOf(PluginRpcEndpointException.class)
         .extracting(exception -> ((PluginRpcEndpointException) exception).getRpcMethodError())
         .satisfies(
-            error ->
-                assertThat(error.getMessage()).isEqualTo(CONFIGURED_LIMIT_EXCEEDED_MESSAGE));
+            error -> assertThat(error.getMessage()).isEqualTo(CONFIGURED_LIMIT_EXCEEDED_MESSAGE));
   }
 
   @Test
@@ -107,8 +103,7 @@ class LineaEstimateGasTest {
         .isInstanceOf(PluginRpcEndpointException.class)
         .extracting(exception -> ((PluginRpcEndpointException) exception).getRpcMethodError())
         .satisfies(
-            error ->
-                assertThat(error.getMessage()).isEqualTo(EIP_7825_LIMIT_EXCEEDED_MESSAGE));
+            error -> assertThat(error.getMessage()).isEqualTo(EIP_7825_LIMIT_EXCEEDED_MESSAGE));
     verify(context.transactionSimulationService(), never())
         .simulate(
             any(org.hyperledger.besu.datatypes.CallParameter.class),
@@ -124,7 +119,8 @@ class LineaEstimateGasTest {
   @Test
   void executeRejectsCallerProvidedGasAboveEip7825MaxWhenConfiguredLimitIsHigher() {
     final TestContext context = createLineaEstimateGas(24_000_000);
-    final PluginRpcRequest request = request(callParameter(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L));
+    final PluginRpcRequest request =
+        request(callParameter(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L));
 
     assertThatThrownBy(() -> context.method().execute(request))
         .isInstanceOf(InvalidJsonRpcParameters.class)

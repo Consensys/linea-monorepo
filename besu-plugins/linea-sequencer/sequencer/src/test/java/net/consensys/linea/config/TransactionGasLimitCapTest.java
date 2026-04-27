@@ -45,8 +45,7 @@ class TransactionGasLimitCapTest {
         TransactionGasLimitCap.gasLimitExceededMessage(gasLimit, configuredMaxTxGasLimit);
 
     assertThat(message)
-        .isEqualTo(
-            "Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
+        .isEqualTo("Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
   }
 
   @Test

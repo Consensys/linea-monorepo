@@ -33,25 +33,25 @@ public class GasLimitValidatorTest {
   @Test
   public void rejectsTransactionAboveEip7825MaxWhenConfiguredAtEip7825Max() {
     final GasLimitValidator validator = new GasLimitValidator(EIP_7825_MAX_TRANSACTION_GAS_LIMIT);
-    final Transaction transaction = transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
+    final Transaction transaction =
+        transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
     assertThat(result)
-        .contains(
-            "Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
+        .contains("Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
   }
 
   @Test
   public void rejectsTransactionAboveEip7825MaxWhenConfiguredAboveEip7825Max() {
     final GasLimitValidator validator = new GasLimitValidator(24_000_000);
-    final Transaction transaction = transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
+    final Transaction transaction =
+        transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
     assertThat(result)
-        .contains(
-            "Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
+        .contains("Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
   }
 
   @Test
