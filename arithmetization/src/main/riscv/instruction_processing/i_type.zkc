@@ -130,15 +130,15 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
         } else if (funct3 == FUNCT3_SRAIW) && (funct7 == FUNCT7_SRAIW) {
             registers[rd] = sgn_extension_u32_u64(_ashr_u32(registers[rs1], uimm5))
         }
-    } 
-    
-    else if opcode == JALR {
+    }
+
+     else if opcode == JALR {
         // only instruction is JALR, no need to switch over funct3
         new_pc = ((registers[rs1] + signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
         registers[rd] = (pc + 4) as DoubleWord
-    } 
-    
-    else if opcode == SYSTEM {
+    }
+
+     else if opcode == SYSTEM {
         // imm12 is interpreted as funct12 for SYSTEM opcode
         if imm12 == FUNCT12_ECALL {
             new_pc = MAX_UINT_64 // set the stop signal to end the program execution
