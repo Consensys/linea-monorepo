@@ -41,11 +41,8 @@ describe("Forced transaction test suite", () => {
     const l1WalletClient = context.l1WalletClient({ account: l1Account });
 
     const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-    // TODO: wire up forcedTransactionGateway in l1-contract-registry once feat/ftx-traces-generation is merged
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gateway = (context.l1Contracts as any).forcedTransactionGateway(l1WalletClient);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gatewayRead = (context.l1Contracts as any).forcedTransactionGateway(l1PublicClient);
+    const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
+    const gatewayRead = context.l1Contracts.forcedTransactionGateway(l1PublicClient);
 
     const destinationChainId = await gatewayRead.read.DESTINATION_CHAIN_ID();
     logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
@@ -162,11 +159,8 @@ describe("Forced transaction test suite", () => {
     const l1WalletClient = context.l1WalletClient({ account: l1Account });
 
     const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-    // TODO: wire up forcedTransactionGateway in l1-contract-registry once feat/ftx-traces-generation is merged
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gateway = (context.l1Contracts as any).forcedTransactionGateway(l1WalletClient);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gatewayRead = (context.l1Contracts as any).forcedTransactionGateway(l1PublicClient);
+    const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
+    const gatewayRead = context.l1Contracts.forcedTransactionGateway(l1PublicClient);
 
     const destinationChainId = await gatewayRead.read.DESTINATION_CHAIN_ID();
     logger.debug(`Gateway config — destinationChainId=${destinationChainId}`);
@@ -308,9 +302,7 @@ describe("Forced transaction test suite", () => {
     });
 
     const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-    // TODO: wire up forcedTransactionGateway in l1-contract-registry once feat/ftx-traces-generation is merged
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gateway = (context.l1Contracts as any).forcedTransactionGateway(l1WalletClient);
+    const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
 
     // Resolve finalized state
     let lastFinalizedState = await resolveLastFinalizedState(
@@ -467,9 +459,7 @@ describe("Forced transaction test suite", () => {
     const totalValue = minimumFeeInWei * messageCount;
 
     const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-    // TODO: wire up forcedTransactionGateway in l1-contract-registry once feat/ftx-traces-generation is merged
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gateway = (context.l1Contracts as any).forcedTransactionGateway(l1WalletClient);
+    const gateway = context.l1Contracts.forcedTransactionGateway(l1WalletClient);
 
     // Resolve finalized state
     let lastFinalizedState = await resolveLastFinalizedState(
