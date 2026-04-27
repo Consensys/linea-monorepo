@@ -56,7 +56,7 @@ jobs:
           - component: tx-exclusion-api
             include-path: 'transaction-exclusion-api/**'
           - component: besu-package
-            include-path: '{tracer,tracer-constraints,besu-plugins/linea-sequencer,linea-besu,linea-besu-package,gradle}/**'
+            include-path: [ 'tracer/**', 'tracer-constraints/**', 'besu-plugins/linea-sequencer/**', 'linea-besu/**', 'linea-besu-package/**', 'gradle/libs.versions.toml' ]
 
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
@@ -68,16 +68,6 @@ jobs:
           fetch-tags: true
           submodules: false
 
-      - name: Generate ${{ matrix.component }} [Unreleased] changelog
-        id: changelog
-        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
-        with:
-          config: cliff.toml
-          args: >-
-            --unreleased
-            --include-path "${{ matrix.include-path }}"
-            --tag-pattern "releases/${{ matrix.component }}/v*"
-
       # Install git-cliff directly so we can call --bumped-version without the
       # git-cliff-action post-processing that jq-parses stdout and breaks on
       # prefixed tag output like `releases/coordinator/v0.2.0`.
@@ -86,16 +76,50 @@ jobs:
         with:
           tool: git-cliff
 
+      # Normalize matrix.include-path (string or JSON array) into one path per
+      # line so downstream steps can reconstruct a bash array without quoting
+      # or glob-expansion issues.
+      - name: Build include-path list
+        id: paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'include_paths<<__PATHS_EOF__'
+            echo '${{ toJSON(matrix.include-path) }}' \
+              | jq -r 'if type == "array" then .[] else . end'
+            echo '__PATHS_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate ${{ matrix.component }} [Unreleased] changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+          cliff_args=(--config cliff.toml --unreleased)
+          for p in "${paths[@]}"; do
+            cliff_args+=(--include-path "${p}")
+          done
+          cliff_args+=(--tag-pattern "releases/${{ matrix.component }}/v*")
+          {
+            echo 'content<<__CLIFF_EOF__'
+            git cliff "${cliff_args[@]}"
+            echo '__CLIFF_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Compute next ${{ matrix.component }} version (semver)
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          next_tag=$(git cliff \
-            --config cliff.toml \
-            --bumped-version \
-            --include-path "${{ matrix.include-path }}" \
-            --tag-pattern "releases/${{ matrix.component }}/v*")
+          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+          cliff_args=(--config cliff.toml --bumped-version)
+          for p in "${paths[@]}"; do
+            cliff_args+=(--include-path "${p}")
+          done
+          cliff_args+=(--tag-pattern "releases/${{ matrix.component }}/v*")
+          next_tag=$(git cliff "${cliff_args[@]}")
           next_semver="${next_tag#releases/${{ matrix.component }}/v}"
           echo "next ${{ matrix.component }} tag:    ${next_tag}"
           echo "next ${{ matrix.component }} semver: ${next_semver}"
