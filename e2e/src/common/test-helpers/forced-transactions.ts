@@ -58,7 +58,7 @@ export function getDefaultLastFinalizedTimestamp() {
   if (!existsSync(filePath)) {
     throw new Error(`File not found: ${filePath}`);
   }
-  const timestamp = readFileSync(filePath, "utf-8");
+  const timestamp = readFileSync(filePath, "utf-8").trim();
 
   if (!Number(timestamp)) {
     throw new Error(`Invalid timestamp value in file: ${filePath}`);
