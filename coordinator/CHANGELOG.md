@@ -1,3 +1,8 @@
+## [2.0.0] - 2026-04-27
+
+### 🚀 Features
+
+- *(coordinator)* [**breaking**] Test breaking change
 ## [1.4.1] - 2026-04-27
 
 ### 🐛 Bug Fixes
