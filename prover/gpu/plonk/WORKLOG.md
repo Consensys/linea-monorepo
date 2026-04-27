@@ -360,6 +360,73 @@ optimization left in MSM at this scale.
 3. **Fused inverse-coset NTT kernel**. Small NTT-side win
    (~30% of `CosetFFTInverse`, ~1 ms saved per call at large n).
 
+## Step 7 — SW affine foundation primitives (in progress)
+
+Goal: lay the groundwork for batched-affine bucket accumulation. Even though
+the full integration is multi-day work, the primitives can be built and
+validated incrementally.
+
+### Implemented and validated
+
+- **`fp_inv`** in `fp.cuh` — modular inverse via Fermat's little theorem
+  (`a^(p-2) mod p`). Square-and-multiply over the 377-bit exponent, ~565
+  fp_mul calls per inversion. Marked `__noinline__`. Used sparingly: only
+  for the single global inversion in batched-invert contexts.
+- **`G1AffineSW`** struct in `ec.cuh` — 96-byte SW affine point matching
+  gnark's `bls12377.G1Affine` memory layout (12 limbs Montgomery form).
+  Identity encoded as (0,0) (off-curve sentinel since 0² ≠ 1 = 0³+1).
+- **`g1sw_neg`, `g1sw_cnegate`** — branchless conditional negate.
+- **`g1sw_pair_add_with_inv_dx`** — non-unified affine pair add given
+  precomputed 1/(x1-x0). Cost: 1S + 3M (the λ multiply is one of the 3M).
+- **`g1sw_double_with_inv2y`** — affine doubling with precomputed 1/(2y).
+  Included for completeness; near-zero hit rate in random-scalar MSM.
+- **`g1sw_to_te_extended`** — SW affine → TE extended conversion at the
+  output boundary of the new kernel. Mirrors the `convertToEdMSM` math
+  from g1_te.go but for a single point. Uses one fp_inv internally
+  (recovers two denominators with a single inversion via the standard
+  `inv(a*b) → a, b` trick).
+
+### Test infrastructure
+
+- `gnark_gpu_test_sw_pair_add` / `gnark_gpu_test_sw_to_te` C entrypoints
+  (msm.cu) running 1-thread test kernels and copying back to host.
+- Go wrappers: `plonk.TestSWPairAddGPU`, `plonk.TestSWToTEGPU`
+  (sw_affine_test_helpers.go — unfortunate name; cgo wrappers must live in
+  the package, not in `_test.go`).
+- `sw_affine_test.go`:
+  - `TestGPUSWPairAdd` — 10 random pair-adds match `bls12377.G1Affine`
+    addition exactly.
+  - `TestGPUSWToTEExtended` — 5 random conversions match the reference
+    formulas (constants and math from g1_te.go) exactly.
+
+Both tests pass. The `fp_inv` correctness is implicitly validated end-to-end
+via these tests since both rely on it.
+
+### Why this is "in progress", not "done"
+
+The full batched-affine MSM kernel still needs:
+
+1. **Block-local Montgomery batched invert** of pair Δx values in shared
+   memory. Sequential single-lane version (~120 muls per wave for B=60)
+   is the simplest first cut; cross-bucket batching is a future
+   optimization once block-local proves the approach wins.
+2. **Pair-organization within a block** — load points, pair `(2i, 2i+1)`,
+   compute Δx, batch-invert, apply, repeat with halved active count.
+3. **SW affine point storage** alongside the existing TE-precomp buffer.
+   Either: (a) extend `ConvertG1Points` to also write a 96-byte SW blob,
+   (b) add a TE→SW GPU conversion kernel run once at point load.
+4. **Hook into the accumulate phase** via env var
+   `GNARK_GPU_MSM_BATCHED_AFFINE` so we can A/B against the current
+   1-thread-per-bucket sequential kernel without breaking it.
+5. **Validate** via existing reference results in msm_test.go (1024,
+   32K, 1M, 128M).
+6. **Benchmark** `accum_seq` and overall MSM. Decide keep/revert.
+
+The plan is sound but the kernel is substantial. Foundation is committed
+so the next session can pick up from validated primitives.
+
+
+
 
 
 

@@ -188,6 +188,8 @@ int msm_get_num_windows(MSMContext *ctx);
 int msm_get_phase_timings(MSMContext *ctx, float *out);
 void msm_pin_buffers(MSMContext *ctx);
 void msm_release_buffers(MSMContext *ctx);
+cudaError_t test_sw_pair_add_run(const uint64_t *p0, const uint64_t *p1, uint64_t *out);
+cudaError_t test_sw_to_te_run(const uint64_t *p_sw, uint64_t *out_te);
 
 // Forward declarations for NTT functions (defined in ntt.cu)
 struct NTTDomain;
@@ -643,6 +645,18 @@ extern "C" gnark_gpu_error_t gnark_gpu_msm_release_work_buffers(gnark_gpu_msm_t 
     if (err != cudaSuccess) return check_cuda(err);
     gnark_gpu::msm_release_buffers(msm->msm_ctx);
     return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_test_sw_pair_add(
+    const uint64_t *p0, const uint64_t *p1, uint64_t *out) {
+    if (!p0 || !p1 || !out) return GNARK_GPU_ERROR_INVALID_ARG;
+    return check_cuda(gnark_gpu::test_sw_pair_add_run(p0, p1, out));
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_test_sw_to_te(
+    const uint64_t *p_sw, uint64_t *out_te) {
+    if (!p_sw || !out_te) return GNARK_GPU_ERROR_INVALID_ARG;
+    return check_cuda(gnark_gpu::test_sw_to_te_run(p_sw, out_te));
 }
 
 extern "C" gnark_gpu_error_t gnark_gpu_msm_offload_points(gnark_gpu_msm_t msm) {

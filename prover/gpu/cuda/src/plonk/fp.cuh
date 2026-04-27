@@ -474,6 +474,48 @@ __device__ __forceinline__ void fp_ccopy(uint64_t r[6], const uint64_t src[6], b
 	r[5] = (src[5] & mask) | (r[5] & ~mask);
 }
 
+// fp_inv: r = a^(p-2) mod p (Fermat's little theorem inversion).
+//
+// Uses square-and-multiply over the 377-bit exponent p-2. Cost on the order of
+// 377 fp_sqr + popcount(p-2) fp_mul ≈ 565 fp_mul calls (one inversion takes
+// roughly the cost of 565 multiplications).
+//
+// Use sparingly: in batched-inversion contexts call this only on the single
+// global product. For block-local batched invert we still pay this cost once
+// per block per wave; the fp_mul calls in the prefix-product/back-scan
+// dominate over many waves.
+__device__ __noinline__ void fp_inv(uint64_t r[6], const uint64_t a[6]) {
+	// p - 2, little-endian limbs (BLS12-377 base field).
+	// p[0] = 0x8508c00000000001 → p[0]-2 = 0x8508bfffffffffff (no borrow propagation).
+	static constexpr uint64_t P_MINUS_2[6] = {
+		0x8508bfffffffffffULL, 0x170b5d4430000000ULL,
+		0x1ef3622fba094800ULL, 0x1a22d9f300f5138fULL,
+		0xc63b05c06ca1493bULL, 0x01ae3a4617c510eaULL,
+	};
+
+	uint64_t result[6];
+	fp_set_one(result);
+
+	// Square-and-multiply, MSB first. The leading zeros above bit 376 cost a few
+	// no-op squarings of 1 (negligible).
+	#pragma unroll 1
+	for(int limb = 5; limb >= 0; limb--) {
+		uint64_t e = P_MINUS_2[limb];
+		#pragma unroll 1
+		for(int bit = 63; bit >= 0; bit--) {
+			uint64_t sq[6];
+			fp_sqr(sq, result);
+			fp_copy(result, sq);
+			if((e >> bit) & 1ULL) {
+				uint64_t prod[6];
+				fp_mul(prod, result, a);
+				fp_copy(result, prod);
+			}
+		}
+	}
+	fp_copy(r, result);
+}
+
 // fp_negate: r = -a mod p (branchless: 0 stays 0)
 __device__ __forceinline__ void fp_negate(uint64_t r[6], const uint64_t a[6]) {
 	const uint64_t *p = FP_MODULUS;

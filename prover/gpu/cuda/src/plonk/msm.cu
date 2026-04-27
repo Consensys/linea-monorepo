@@ -964,6 +964,84 @@ void msm_release_buffers(MSMContext *ctx) {
 int msm_get_c(MSMContext *ctx) { return ctx->c; }
 int msm_get_num_windows(MSMContext *ctx) { return ctx->num_windows; }
 
+// =============================================================================
+// Test kernels for SW affine primitives (validation against host reference).
+// =============================================================================
+
+// Compute out = p0 + p1 in SW affine using fp_inv to recover 1/(x1-x0) and
+// then the unified pair-add formula. Inputs and outputs use the gnark
+// G1Affine memory layout (12 uint64 limbs in Montgomery form: x[0..6], y[0..6]).
+__global__ void test_sw_pair_add_kernel(
+	const uint64_t *p0_xy,
+	const uint64_t *p1_xy,
+	uint64_t *out_xy) {
+
+	if(threadIdx.x != 0) return;
+
+	G1AffineSW p0, p1;
+	for(int i = 0; i < 6; i++) p0.x[i] = p0_xy[i];
+	for(int i = 0; i < 6; i++) p0.y[i] = p0_xy[6 + i];
+	for(int i = 0; i < 6; i++) p1.x[i] = p1_xy[i];
+	for(int i = 0; i < 6; i++) p1.y[i] = p1_xy[6 + i];
+
+	uint64_t dx[6], inv_dx[6];
+	fp_sub(dx, p1.x, p0.x);
+	fp_inv(inv_dx, dx);
+
+	G1AffineSW out;
+	g1sw_pair_add_with_inv_dx(out, p0, p1, inv_dx);
+
+	for(int i = 0; i < 6; i++) out_xy[i] = out.x[i];
+	for(int i = 0; i < 6; i++) out_xy[6 + i] = out.y[i];
+}
+
+// Compute out_te = SW→TE forward mapping of p_sw. Output is G1EdExtended
+// (X, Y, T, Z) — 24 uint64 limbs in Montgomery form.
+__global__ void test_sw_to_te_kernel(
+	const uint64_t *p_sw_xy,
+	uint64_t *out_te_xytz) {
+
+	if(threadIdx.x != 0) return;
+
+	G1AffineSW p;
+	for(int i = 0; i < 6; i++) p.x[i] = p_sw_xy[i];
+	for(int i = 0; i < 6; i++) p.y[i] = p_sw_xy[6 + i];
+
+	G1EdExtended out;
+	g1sw_to_te_extended(out, p);
+
+	for(int i = 0; i < 6; i++) out_te_xytz[i] = out.x[i];
+	for(int i = 0; i < 6; i++) out_te_xytz[6 + i] = out.y[i];
+	for(int i = 0; i < 6; i++) out_te_xytz[12 + i] = out.t[i];
+	for(int i = 0; i < 6; i++) out_te_xytz[18 + i] = out.z[i];
+}
+
+cudaError_t test_sw_pair_add_run(const uint64_t *p0, const uint64_t *p1, uint64_t *out) {
+	uint64_t *d_p0, *d_p1, *d_out;
+	cudaMalloc(&d_p0, 12 * sizeof(uint64_t));
+	cudaMalloc(&d_p1, 12 * sizeof(uint64_t));
+	cudaMalloc(&d_out, 12 * sizeof(uint64_t));
+	cudaMemcpy(d_p0, p0, 12 * sizeof(uint64_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_p1, p1, 12 * sizeof(uint64_t), cudaMemcpyHostToDevice);
+	test_sw_pair_add_kernel<<<1, 32>>>(d_p0, d_p1, d_out);
+	cudaError_t err = cudaDeviceSynchronize();
+	cudaMemcpy(out, d_out, 12 * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+	cudaFree(d_p0); cudaFree(d_p1); cudaFree(d_out);
+	return err;
+}
+
+cudaError_t test_sw_to_te_run(const uint64_t *p_sw, uint64_t *out_te) {
+	uint64_t *d_in, *d_out;
+	cudaMalloc(&d_in, 12 * sizeof(uint64_t));
+	cudaMalloc(&d_out, 24 * sizeof(uint64_t));
+	cudaMemcpy(d_in, p_sw, 12 * sizeof(uint64_t), cudaMemcpyHostToDevice);
+	test_sw_to_te_kernel<<<1, 32>>>(d_in, d_out);
+	cudaError_t err = cudaDeviceSynchronize();
+	cudaMemcpy(out_te, d_out, 24 * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+	cudaFree(d_in); cudaFree(d_out);
+	return err;
+}
+
 // Copy the last-run per-phase timings into out (length = PHASE_COUNT, 9 floats).
 // Returns the number of phases written (always PHASE_COUNT when valid).
 int msm_get_phase_timings(MSMContext *ctx, float *out) {

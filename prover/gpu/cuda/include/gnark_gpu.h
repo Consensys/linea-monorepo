@@ -182,6 +182,16 @@ gnark_gpu_error_t gnark_gpu_msm_pin_work_buffers(gnark_gpu_msm_t msm);
 // registration). Subsequent gnark_gpu_msm_run calls re-allocate lazily.
 gnark_gpu_error_t gnark_gpu_msm_release_work_buffers(gnark_gpu_msm_t msm);
 
+// Test entrypoints for SW affine primitives — used to validate the GPU
+// arithmetic against gnark-crypto host reference. Inputs/outputs use
+// gnark's bls12377.G1Affine memory layout (12 uint64 limbs, Montgomery form).
+gnark_gpu_error_t gnark_gpu_test_sw_pair_add(
+    const uint64_t *p0, const uint64_t *p1, uint64_t *out);
+
+// Convert SW affine to TE extended (X, Y, T, Z) — output is 24 uint64s.
+gnark_gpu_error_t gnark_gpu_test_sw_to_te(
+    const uint64_t *p_sw, uint64_t *out_te);
+
 // Per-phase timings of the last gnark_gpu_msm_run call. Phase order
 // (9 floats, milliseconds):
 //   0: H2D (scalar upload)
