@@ -366,6 +366,14 @@ func newGPUInstanceWithBSB22Ready(
 	}
 	gpk.pinnedCanonical = nil // ownership transferred to MSM
 
+	// Pin work buffers across the wave of commitments that runs before the
+	// quotient phase. Released in computeQuotientGPU around OffloadPoints
+	// (the quotient needs that VRAM back). Saves ~5–10 ms per MSM call vs
+	// lazy alloc/free + cudaHostRegister/Unregister.
+	if perr := inst.msm.PinWorkBuffers(); perr != nil {
+		return fail("pin MSM work buffers", perr)
+	}
+
 	// Step 3: FFT domain (enough for BSB22 hint iFFT path)
 	inst.fftDom, err = NewFFTDomain(dev, inst.n)
 	if err != nil {
@@ -897,12 +905,18 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 		return fmt.Errorf("domain size %d too small for GPU prover (minimum 8)", n)
 	}
 
-	// Offload MSM points during quotient compute (saves ~6 GiB at n=2^27).
+	// Offload MSM points and release work buffers during quotient compute
+	// (saves ~6 GiB of points + multi-GB sort buffers at large n).
 	inst.msm.OffloadPoints()
+	if rerr := inst.msm.ReleaseWorkBuffers(); rerr != nil {
+		return fmt.Errorf("release MSM work buffers: %w", rerr)
+	}
 	pointsOffloaded := true
 	defer func() {
 		if pointsOffloaded {
 			inst.msm.ReloadPoints()
+			// Re-pin for the post-quotient commit wave (h1/h2/h3, linPol, etc.).
+			_ = inst.msm.PinWorkBuffers()
 		}
 	}()
 
@@ -926,6 +940,9 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 
 	// Reload MSM points and commit h1, h2, h3 (batched canonical MSM).
 	inst.msm.ReloadPoints()
+	if perr := inst.msm.PinWorkBuffers(); perr != nil {
+		return fmt.Errorf("re-pin MSM work buffers: %w", perr)
+	}
 	pointsOffloaded = false
 	hCommits := gpuCommitN(inst.msm, p.h1, p.h2, p.h3)
 	p.proof.H[0] = hCommits[0]

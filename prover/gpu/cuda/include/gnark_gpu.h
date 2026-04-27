@@ -170,6 +170,32 @@ void gnark_gpu_msm_destroy(gnark_gpu_msm_t msm);
 // Query MSM configuration (c = window bits, num_windows = ceil(253/c))
 void gnark_gpu_msm_get_config(gnark_gpu_msm_t msm, int *c, int *num_windows);
 
+// Pin work buffers (sort buffers + cudaHostRegister of caller scalars) across
+// gnark_gpu_msm_run calls. Without this, msm_run lazily allocates several
+// GB of sort buffers and registers caller memory at the start of each call,
+// then frees them at the end — costing 5–10 ms of host overhead per call.
+// Use this when running back-to-back MSMs (e.g., a wave of PlonK commitments).
+// Caller MUST release before any phase that needs the VRAM (e.g., quotient).
+gnark_gpu_error_t gnark_gpu_msm_pin_work_buffers(gnark_gpu_msm_t msm);
+
+// Release pinned work buffers immediately (frees VRAM, drops host
+// registration). Subsequent gnark_gpu_msm_run calls re-allocate lazily.
+gnark_gpu_error_t gnark_gpu_msm_release_work_buffers(gnark_gpu_msm_t msm);
+
+// Per-phase timings of the last gnark_gpu_msm_run call. Phase order
+// (9 floats, milliseconds):
+//   0: H2D (scalar upload)
+//   1: build_pairs (signed-digit decomposition)
+//   2: sort (CUB radix sort)
+//   3: boundaries (memset + detect_bucket_boundaries)
+//   4: accumulate_seq (sequential bucket accumulation, with cap)
+//   5: accumulate_par (parallel overflow tail; 0 if no overflow buckets)
+//   6: reduce_partial (per-window range scan)
+//   7: reduce_finalize (combine ranges into per-window result)
+//   8: D2H (window results download)
+// Returns the number of phases written (9 on success, 0 if msm/out is null).
+int gnark_gpu_msm_get_phase_timings(gnark_gpu_msm_t msm, float *out);
+
 // Offload: free d_points from GPU, keep working buffers
 gnark_gpu_error_t gnark_gpu_msm_offload_points(gnark_gpu_msm_t msm);
 

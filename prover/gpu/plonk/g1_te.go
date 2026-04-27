@@ -58,6 +58,21 @@ type G1TEPoint [12]uint64
 // g1TEPointSize is the size of a single G1TEPoint in bytes.
 const g1TEPointSize = int(unsafe.Sizeof(G1TEPoint{})) // 96
 
+// g1TEPrecompPoint is the GPU-resident precomputed Twisted Edwards format,
+// matching the C struct G1EdYZD layout exactly:
+//
+//	limbs[0..6]   = (Y_te - X_te) mod p   (Montgomery form, fully reduced)
+//	limbs[6..12]  = (Y_te + X_te) mod p
+//	limbs[12..18] = (2d · X_te · Y_te) mod p
+//
+// Trades 50% more memory per point (144 vs 96 bytes) for 2 fewer fp_mul
+// in the mixed-addition kernel (9M → 7M). Only used internally — the public
+// G1TEPoint type and its serialization formats remain compact.
+type g1TEPrecompPoint [18]uint64
+
+// g1TEPrecompPointSize is the size of a g1TEPrecompPoint in bytes (144).
+const g1TEPrecompPointSize = int(unsafe.Sizeof(g1TEPrecompPoint{}))
+
 // g1TEMagic identifies the safe serialization format for G1TEPoint data.
 var g1TEMagic = [8]byte{'G', 'N', 'R', 'K', 'T', 'E', '0', '2'}
 
@@ -194,6 +209,72 @@ func packEdXY(x, y fp.Element) G1TEPoint {
 	out[10] = y[4]
 	out[11] = y[5]
 	return out
+}
+
+// precompFromCompact converts a compact (X, Y) TE point to the precomputed
+// (Y-X, Y+X, 2d·X·Y) format used by the GPU MSM accumulator. Inputs and
+// outputs are in Montgomery form. Cost per point: 1 fp.Sub + 1 fp.Add + 2 fp.Mul.
+func precompFromCompact(c G1TEPoint) g1TEPrecompPoint {
+	var x, y, ymx, ypx, twoDxy fp.Element
+	x[0] = c[0]
+	x[1] = c[1]
+	x[2] = c[2]
+	x[3] = c[3]
+	x[4] = c[4]
+	x[5] = c[5]
+	y[0] = c[6]
+	y[1] = c[7]
+	y[2] = c[8]
+	y[3] = c[9]
+	y[4] = c[10]
+	y[5] = c[11]
+
+	ymx.Sub(&y, &x)
+	ypx.Add(&y, &x)
+	twoDxy.Mul(&x, &y)
+	twoDxy.Mul(&twoDxy, &teDCoeffDouble)
+
+	var out g1TEPrecompPoint
+	out[0] = ymx[0]
+	out[1] = ymx[1]
+	out[2] = ymx[2]
+	out[3] = ymx[3]
+	out[4] = ymx[4]
+	out[5] = ymx[5]
+	out[6] = ypx[0]
+	out[7] = ypx[1]
+	out[8] = ypx[2]
+	out[9] = ypx[3]
+	out[10] = ypx[4]
+	out[11] = ypx[5]
+	out[12] = twoDxy[0]
+	out[13] = twoDxy[1]
+	out[14] = twoDxy[2]
+	out[15] = twoDxy[3]
+	out[16] = twoDxy[4]
+	out[17] = twoDxy[5]
+	return out
+}
+
+// precompBatchFromCompact converts a slice of compact TE points to the
+// precomputed format. Allocates a fresh slice; for pinned destinations,
+// use writePrecompFromCompact to write directly into a pre-allocated buffer.
+func precompBatchFromCompact(src []G1TEPoint) []g1TEPrecompPoint {
+	out := make([]g1TEPrecompPoint, len(src))
+	for i := range src {
+		out[i] = precompFromCompact(src[i])
+	}
+	return out
+}
+
+// writePrecompFromCompact converts compact TE points to the precomputed format
+// and writes the results directly into the destination slice (typically
+// pinned host memory). Avoids the temporary heap allocation of
+// precompBatchFromCompact for large SRS uploads.
+func writePrecompFromCompact(dst []g1TEPrecompPoint, src []G1TEPoint) {
+	for i := range src {
+		dst[i] = precompFromCompact(src[i])
+	}
 }
 
 // ---------------------------------------------------------------------------

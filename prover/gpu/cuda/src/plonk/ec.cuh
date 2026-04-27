@@ -232,4 +232,109 @@ __device__ __forceinline__ void ec_te_unified_add(G1EdExtended &p, const G1EdExt
 	fp_mul_nr(p.z, F, G);                   // [0, 2p)
 }
 
+// =============================================================================
+// Precomputed Twisted Edwards mixed-add input format (G1EdYZD)
+//
+// Stores per-point precomputed (Y-X, Y+X, 2d·X·Y) — three Fp coords (144 B
+// total, vs 96 B for compact G1EdXY). The mixed-add formula then drops the
+// on-the-fly T_q = 2d·X·Y computation, saving 2 fp_mul per add (9M → 7M).
+//
+// Tradeoff: 50% larger point memory; but for compute-bound accumulate phases
+// at moderate n (≲ 2²⁵ on Blackwell), the saved muls dominate the extra
+// bandwidth. See WORKLOG.md for measurements.
+//
+// Coordinates are loaded from device memory in [0, p) (fully reduced by the
+// host conversion). Output of mixed-add stays in [0, 2p) — same lazy
+// reduction discipline as G1EdXY.
+// =============================================================================
+
+struct G1EdYZD {
+	uint64_t y_minus_x[6];  // (Y_te - X_te) mod p
+	uint64_t y_plus_x[6];   // (Y_te + X_te) mod p
+	uint64_t two_d_xy[6];   // (2d * X_te * Y_te) mod p
+};
+
+// Branchless conditional negate of a precomputed point.
+//
+// Negating a TE point (X, Y) → (-X, Y) corresponds in precomputed format to:
+//   y_minus_x ↔ y_plus_x  (swap), two_d_xy → -two_d_xy (mod p).
+//
+// We swap by computing both candidate values (no-op or negate) and picking
+// branchlessly with fp_ccopy. Saves warp divergence in MSM accumulate.
+__device__ __forceinline__ void ec_te_cnegate_yzd(G1EdYZD &p, bool negate) {
+	// Snapshot y_minus_x and y_plus_x before swap.
+	uint64_t orig_minus[6];
+#pragma unroll
+	for(int i = 0; i < 6; i++) orig_minus[i] = p.y_minus_x[i];
+
+	// If negate: y_minus_x = y_plus_x_old; y_plus_x = y_minus_x_old.
+	fp_ccopy(p.y_minus_x, p.y_plus_x, negate);
+	fp_ccopy(p.y_plus_x, orig_minus, negate);
+
+	// Negate two_d_xy: candidate = p - two_d_xy (mod p).
+	const uint64_t *mod = FP_MODULUS;
+	uint64_t neg[6];
+	asm volatile("sub.cc.u64 %0, %1, %2;" : "=l"(neg[0]) : "l"(mod[0]), "l"(p.two_d_xy[0]));
+	asm volatile("subc.cc.u64 %0, %1, %2;" : "=l"(neg[1]) : "l"(mod[1]), "l"(p.two_d_xy[1]));
+	asm volatile("subc.cc.u64 %0, %1, %2;" : "=l"(neg[2]) : "l"(mod[2]), "l"(p.two_d_xy[2]));
+	asm volatile("subc.cc.u64 %0, %1, %2;" : "=l"(neg[3]) : "l"(mod[3]), "l"(p.two_d_xy[3]));
+	asm volatile("subc.cc.u64 %0, %1, %2;" : "=l"(neg[4]) : "l"(mod[4]), "l"(p.two_d_xy[4]));
+	asm volatile("subc.u64 %0, %1, %2;" : "=l"(neg[5]) : "l"(mod[5]), "l"(p.two_d_xy[5]));
+	fp_ccopy(p.two_d_xy, neg, negate);
+}
+
+// =============================================================================
+// Unified mixed addition with precomputed input: G1EdExtended += G1EdYZD (7M)
+//
+// Same lazy-reduction strategy as ec_te_unified_mixed_add_xy, two muls
+// cheaper because T_q is precomputed.
+//
+// Formula (madd-2008-hwcd, a=-1, with precomputed q):
+//   A = (Y1-X1) * y_minus_x   [1M]   A ∈ [0, 2p)
+//   B = (Y1+X1) * y_plus_x    [2M]   B ∈ [0, 2p)
+//   C = T1 * two_d_xy          [3M]   C ∈ [0, 2p)
+//   D = 2 * Z1                         D ∈ [0, 4p)
+//   E = B - A;  H = B + A
+//   F = D - C;  G = D + C
+//   X3 = E * F  → [0, 2p)      [4M]
+//   Y3 = G * H  → [0, 2p)      [5M]
+//   T3 = E * H  → [0, 2p)      [6M]
+//   Z3 = F * G  → [0, 2p)      [7M]
+// =============================================================================
+__device__ __forceinline__ void ec_te_unified_mixed_add_yzd(G1EdExtended &p, const G1EdYZD &q) {
+	// A = (Y1 - X1) * (Y_q - X_q)
+	uint64_t A[6];
+	fp_sub_nr(A, p.y, p.x);                  // [0, 4p)
+	fp_mul_nr(A, A, q.y_minus_x);            // [0, 2p)
+
+	// B = (Y1 + X1) * (Y_q + X_q)
+	uint64_t B[6];
+	fp_add_nr(B, p.y, p.x);                  // [0, 4p)
+	fp_mul_nr(B, B, q.y_plus_x);             // [0, 2p)
+
+	// C = T1 * (2d * X_q * Y_q)
+	uint64_t C[6];
+	fp_mul_nr(C, p.t, q.two_d_xy);           // [0, 2p)
+
+	// D = 2 * Z1
+	uint64_t D[6];
+	fp_add_nr(D, p.z, p.z);                  // [0, 4p)
+
+	// E = B - A,  H = B + A    (both [0, 2p) inputs)
+	uint64_t E[6], H[6];
+	fp_sub_nr(E, B, A);                      // [0, 4p)
+	fp_add_nr(H, B, A);                      // [0, 4p)
+
+	// F = D - C,  G = D + C    (D [0, 4p), C [0, 2p))
+	uint64_t F[6], G[6];
+	fp_sub_nr(F, D, C);                      // [0, 6p)
+	fp_add_nr(G, D, C);                      // [0, 6p)
+
+	// Final products: outputs ∈ [0, 2p) since max input 6p < R.
+	fp_mul_nr(p.x, E, F);                    // [0, 2p)
+	fp_mul_nr(p.y, G, H);                    // [0, 2p)
+	fp_mul_nr(p.t, E, H);                    // [0, 2p)
+	fp_mul_nr(p.z, F, G);                    // [0, 2p)
+}
+
 } // namespace gnark_gpu

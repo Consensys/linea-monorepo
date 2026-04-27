@@ -185,6 +185,9 @@ void msm_unregister_host(MSMContext *ctx);
 cudaError_t msm_reload_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream);
 int msm_get_c(MSMContext *ctx);
 int msm_get_num_windows(MSMContext *ctx);
+int msm_get_phase_timings(MSMContext *ctx, float *out);
+void msm_pin_buffers(MSMContext *ctx);
+void msm_release_buffers(MSMContext *ctx);
 
 // Forward declarations for NTT functions (defined in ntt.cu)
 struct NTTDomain;
@@ -621,6 +624,25 @@ extern "C" void gnark_gpu_msm_get_config(gnark_gpu_msm_t msm, int *c, int *num_w
         if (c) *c = gnark_gpu::msm_get_c(msm->msm_ctx);
         if (num_windows) *num_windows = gnark_gpu::msm_get_num_windows(msm->msm_ctx);
     }
+}
+
+extern "C" int gnark_gpu_msm_get_phase_timings(gnark_gpu_msm_t msm, float *out) {
+    if (!msm || !msm->msm_ctx || !out) return 0;
+    return gnark_gpu::msm_get_phase_timings(msm->msm_ctx, out);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_msm_pin_work_buffers(gnark_gpu_msm_t msm) {
+    if (!msm || !msm->msm_ctx) return GNARK_GPU_ERROR_INVALID_ARG;
+    gnark_gpu::msm_pin_buffers(msm->msm_ctx);
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_msm_release_work_buffers(gnark_gpu_msm_t msm) {
+    if (!msm || !msm->msm_ctx) return GNARK_GPU_ERROR_INVALID_ARG;
+    cudaError_t err = cudaSetDevice(msm->ctx->device_id);
+    if (err != cudaSuccess) return check_cuda(err);
+    gnark_gpu::msm_release_buffers(msm->msm_ctx);
+    return GNARK_GPU_SUCCESS;
 }
 
 extern "C" gnark_gpu_error_t gnark_gpu_msm_offload_points(gnark_gpu_msm_t msm) {

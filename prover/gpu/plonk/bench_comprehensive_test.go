@@ -458,6 +458,109 @@ func BenchmarkMSMComprehensive(b *testing.B) {
 	}
 }
 
+// BenchmarkMSMPinned compares MSM throughput with vs without pinned work
+// buffers (PinWorkBuffers / ReleaseWorkBuffers). The win is host-side overhead:
+// avoiding cudaMalloc/Free of multi-GB sort buffers and cudaHostRegister/
+// Unregister of caller scalars on every MultiExp.
+func BenchmarkMSMPinned(b *testing.B) {
+	dev := newBenchDev(b)
+	sizes := []int{1 << 16, 1 << 18, 1 << 20, 1 << 22}
+	for _, n := range sizes {
+		tePoints := loadSRSTEPoints(b, n)
+		scalars := loadTestScalars(n)
+
+		// G1MSM takes ownership of the *G1MSMPoints (frees on Close), so
+		// allocate fresh pinned points per sub-benchmark.
+		b.Run(fmt.Sprintf("unpinned/n=%s", fmtSz(n)), func(b *testing.B) {
+			pts, err := plonk.PinG1TEPoints(tePoints)
+			require.NoError(b, err)
+			msm, err := plonk.NewG1MSM(dev, pts)
+			require.NoError(b, err)
+			defer msm.Close()
+			msm.MultiExp(scalars) // warmup
+			dev.Sync()
+
+			b.SetBytes(int64(n) * 32)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				msm.MultiExp(scalars)
+			}
+			b.StopTimer()
+		})
+
+		b.Run(fmt.Sprintf("pinned/n=%s", fmtSz(n)), func(b *testing.B) {
+			pts, err := plonk.PinG1TEPoints(tePoints)
+			require.NoError(b, err)
+			msm, err := plonk.NewG1MSM(dev, pts)
+			require.NoError(b, err)
+			defer msm.Close()
+			require.NoError(b, msm.PinWorkBuffers())
+			defer msm.ReleaseWorkBuffers()
+			msm.MultiExp(scalars) // warmup (also forces lazy alloc)
+			dev.Sync()
+
+			b.SetBytes(int64(n) * 32)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				msm.MultiExp(scalars)
+			}
+			b.StopTimer()
+		})
+	}
+}
+
+func BenchmarkMSMPhaseTimings(b *testing.B) {
+	dev := newBenchDev(b)
+	sizes := []int{1 << 16, 1 << 18, 1 << 20, 1 << 22}
+	for _, n := range sizes {
+		b.Run(fmt.Sprintf("n=%s", fmtSz(n)), func(b *testing.B) {
+			tePoints := loadSRSTEPoints(b, n)
+			pts, err := plonk.PinG1TEPoints(tePoints)
+			require.NoError(b, err)
+			defer pts.Free()
+
+			msm, err := plonk.NewG1MSM(dev, pts)
+			require.NoError(b, err)
+			defer msm.Close()
+
+			scalars := loadTestScalars(n)
+
+			// Warm up — first call may include lazy alloc / cudaHostRegister.
+			msm.MultiExp(scalars)
+			dev.Sync()
+
+			runs := b.N
+			if runs < 5 {
+				runs = 5
+			}
+			var sums [plonk.MSMPhaseCount]float32
+			var totalMs float32
+			b.ResetTimer()
+			for i := 0; i < runs; i++ {
+				t0 := time.Now()
+				msm.MultiExp(scalars)
+				dev.Sync()
+				dt := time.Since(t0)
+				totalMs += float32(dt.Microseconds()) / 1000.0
+				timings := msm.LastPhaseTimings()
+				for j, t := range timings {
+					sums[j] += t
+				}
+			}
+			b.StopTimer()
+			invR := 1.0 / float32(runs)
+			b.ReportMetric(float64(totalMs*invR*1000), "wall_µs")
+			var sumPhases float32
+			for j := plonk.MSMPhase(0); j < plonk.MSMPhaseCount; j++ {
+				avg := sums[j] * invR
+				sumPhases += avg
+				b.ReportMetric(float64(avg*1000), j.String()+"_µs")
+			}
+			b.ReportMetric(float64(sumPhases*1000), "phase_sum_µs")
+		})
+	}
+}
+
 func BenchmarkMSMBreakdown(b *testing.B) {
 	dev := newBenchDev(b)
 

@@ -91,6 +91,7 @@ static bool compact_overflow_buckets(size_t n) {
 	return n <= (1u << 23);
 }
 
+
 // Window-size schedule for BLS12-377 signed-digit MSM.
 // Empirical outcome on real gnark scalar datasets:
 //   - c=13 is best for tiny sizes,
@@ -200,7 +201,7 @@ __global__ void __launch_bounds__(256) detect_bucket_boundaries_kernel(
 
 __global__ void __launch_bounds__(256, 2)
 	accumulate_buckets_kernel(
-		const G1EdXY *__restrict__ points,
+		const G1EdYZD *__restrict__ points,
 		const uint32_t *__restrict__ point_indices,
 		const uint32_t *__restrict__ bucket_offsets,
 		const uint32_t *__restrict__ bucket_ends,
@@ -236,9 +237,9 @@ __global__ void __launch_bounds__(256, 2)
 
 	for(uint32_t i = start; i < end; i++) {
 		uint32_t packed = point_indices[i];
-		G1EdXY pt = points[packed & 0x7FFFFFFFu];
-		ec_te_cnegate_xy(pt, (bool)(packed >> 31));
-		ec_te_unified_mixed_add_xy(acc, pt);
+		G1EdYZD pt = points[packed & 0x7FFFFFFFu];
+		ec_te_cnegate_yzd(pt, (bool)(packed >> 31));
+		ec_te_unified_mixed_add_yzd(acc, pt);
 	}
 
 	buckets[bucket_flat] = acc;
@@ -250,7 +251,7 @@ __global__ void __launch_bounds__(256, 2)
 
 __global__ void __launch_bounds__(128, 4)
 	accumulate_buckets_parallel_kernel(
-		const G1EdXY *__restrict__ points,
+		const G1EdYZD *__restrict__ points,
 		const uint32_t *__restrict__ point_indices,
 		const uint32_t *__restrict__ bucket_offsets,
 		const uint32_t *__restrict__ bucket_ends,
@@ -272,9 +273,9 @@ __global__ void __launch_bounds__(128, 4)
 	ec_te_set_identity(acc);
 	for(uint32_t i = start + tid; i < end; i += ACCUM_PARALLEL_THREADS) {
 		uint32_t packed = point_indices[i];
-		G1EdXY pt = points[packed & 0x7FFFFFFFu];
-		ec_te_cnegate_xy(pt, (bool)(packed >> 31));
-		ec_te_unified_mixed_add_xy(acc, pt);
+		G1EdYZD pt = points[packed & 0x7FFFFFFFu];
+		ec_te_cnegate_yzd(pt, (bool)(packed >> 31));
+		ec_te_unified_mixed_add_yzd(acc, pt);
 	}
 
 	extern __shared__ G1EdExtended shared[];
@@ -473,11 +474,28 @@ __global__ void reduce_buckets_finalize_kernel(
 // MSM context
 // =============================================================================
 
+// Phase-timing event indices (cudaEvents bracket the listed phases of
+// msm_run_full).  Events recorded with cudaEventRecord on the compute stream;
+// no per-phase synchronization is added (events are non-blocking on the host).
+// After the final cudaStreamSynchronize, cudaEventElapsedTime fills timings.
+enum MSMPhase {
+	PHASE_H2D = 0,           // scalar upload
+	PHASE_BUILD_PAIRS = 1,   // signed-digit decomposition
+	PHASE_SORT = 2,          // CUB radix sort
+	PHASE_BOUNDARIES = 3,    // memset + detect_bucket_boundaries
+	PHASE_ACCUM_SEQ = 4,     // accumulate_buckets_kernel (sequential, with cap)
+	PHASE_ACCUM_PAR = 5,     // accumulate_buckets_parallel_kernel (overflow tail)
+	PHASE_REDUCE_PARTIAL = 6,
+	PHASE_REDUCE_FINALIZE = 7,
+	PHASE_D2H = 8,           // window results back to host
+	PHASE_COUNT = 9,
+};
+
 struct MSMContext {
 	size_t max_points;
 	int c, num_windows, num_buckets, sort_key_bits, reduce_blocks_per_window;
 
-	G1EdXY *d_points;
+	G1EdYZD *d_points;
 	uint64_t *d_scalars;
 	uint32_t *d_bucket_offsets, *d_bucket_ends, *d_point_indices;
 	G1EdExtended *d_buckets, *d_window_results, *d_window_accum;
@@ -496,6 +514,18 @@ struct MSMContext {
 	const void *registered_host_ptr;
 	size_t registered_host_bytes;
 	bool host_registered;
+
+	// Per-phase timing events (boundary events: phase i runs between
+	// phase_event[i] and phase_event[i+1]).
+	cudaEvent_t phase_event[PHASE_COUNT + 1];
+	float       phase_timings_ms[PHASE_COUNT];
+	bool        phase_par_recorded;  // accum_par may be skipped (no overflow)
+	bool        phase_events_valid;  // false if event creation failed
+
+	// Persistent-buffer mode. When set, msm_run_full keeps work buffers and
+	// host registration alive across calls. Use for back-to-back MSMs.
+	// Toggle with msm_pin_buffers / msm_release_buffers.
+	bool        buffers_pinned;
 };
 
 // ── Lazy work buffer management ──
@@ -570,7 +600,7 @@ MSMContext *msm_create(size_t max_points) {
 
 	// Permanent small allocations (points, buckets, window results).
 	// Sort buffers are allocated lazily in msm_run_full.
-	cudaMalloc(&ctx->d_points, max_points * sizeof(G1EdXY));
+	cudaMalloc(&ctx->d_points, max_points * sizeof(G1EdYZD));
 	cudaMalloc(&ctx->d_bucket_offsets, total_buckets * sizeof(uint32_t));
 	cudaMalloc(&ctx->d_bucket_ends, total_buckets * sizeof(uint32_t));
 	cudaMalloc(&ctx->d_buckets, total_buckets * sizeof(G1EdExtended));
@@ -615,6 +645,25 @@ MSMContext *msm_create(size_t max_points) {
 		ctx->staging_buf_bytes = 0;
 	}
 
+	// Per-phase timing events (cudaEventDefault — record host timestamps).
+	ctx->phase_events_valid = true;
+	for(int i = 0; i <= PHASE_COUNT; i++) {
+		if(cudaEventCreate(&ctx->phase_event[i]) != cudaSuccess) {
+			ctx->phase_events_valid = false;
+			break;
+		}
+	}
+	if(!ctx->phase_events_valid) {
+		for(int i = 0; i <= PHASE_COUNT; i++) {
+			if(ctx->phase_event[i]) {
+				cudaEventDestroy(ctx->phase_event[i]);
+				ctx->phase_event[i] = nullptr;
+			}
+		}
+	}
+	for(int i = 0; i < PHASE_COUNT; i++) ctx->phase_timings_ms[i] = 0.0f;
+	ctx->phase_par_recorded = false;
+
 	return ctx;
 }
 
@@ -631,11 +680,16 @@ void msm_destroy(MSMContext *ctx) {
 	if(ctx->h_scalar_staging) cudaFreeHost(ctx->h_scalar_staging);
 	if(ctx->h_scalar_staging_b) cudaFreeHost(ctx->h_scalar_staging_b);
 	if(ctx->host_registered && ctx->registered_host_ptr) cudaHostUnregister((void *)ctx->registered_host_ptr);
+	if(ctx->phase_events_valid) {
+		for(int i = 0; i <= PHASE_COUNT; i++) {
+			if(ctx->phase_event[i]) cudaEventDestroy(ctx->phase_event[i]);
+		}
+	}
 	delete ctx;
 }
 
 void msm_load_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream) {
-	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdXY), cudaMemcpyHostToDevice, stream);
+	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdYZD), cudaMemcpyHostToDevice, stream);
 }
 void msm_offload_points(MSMContext *ctx) {
 	if(ctx->d_points) { cudaFree(ctx->d_points); ctx->d_points = nullptr; }
@@ -650,9 +704,9 @@ void msm_unregister_host(MSMContext *ctx) {
 	}
 }
 cudaError_t msm_reload_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream) {
-	cudaError_t err = cudaMalloc(&ctx->d_points, count * sizeof(G1EdXY));
+	cudaError_t err = cudaMalloc(&ctx->d_points, count * sizeof(G1EdYZD));
 	if(err != cudaSuccess) return err;
-	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdXY), cudaMemcpyHostToDevice, stream);
+	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdYZD), cudaMemcpyHostToDevice, stream);
 	return cudaSuccess;
 }
 void msm_upload_scalars(MSMContext *ctx, const uint64_t *host_scalars, size_t n, cudaStream_t stream) {
@@ -671,6 +725,11 @@ void msm_upload_scalars(MSMContext *ctx, const uint64_t *host_scalars, size_t n,
 	}
 }
 
+// Helper: record phase event on stream if event tracking is enabled.
+static inline void msm_record_event(MSMContext *ctx, int idx, cudaStream_t stream) {
+	if(ctx->phase_events_valid) cudaEventRecord(ctx->phase_event[idx], stream);
+}
+
 void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 	constexpr unsigned threads = 256;
 	int total_buckets = ctx->num_windows * ctx->num_buckets;
@@ -683,12 +742,14 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 			ctx->d_scalars, ctx->d_keys_in, ctx->d_vals_in, n,
 			ctx->c, ctx->num_windows, ctx->num_buckets, total_buckets, 0);
 	}
+	msm_record_event(ctx, 2, stream);
 
 	// Radix sort
 	size_t sort_bytes = ctx->sort_temp_bytes;
 	cub::DeviceRadixSort::SortPairs(ctx->d_sort_temp, sort_bytes,
 		ctx->d_keys_in, ctx->d_keys_out, ctx->d_vals_in, ctx->d_point_indices,
 		assignments, 0, ctx->sort_key_bits, stream);
+	msm_record_event(ctx, 3, stream);
 
 	cudaMemsetAsync(ctx->d_bucket_offsets, 0, total_buckets * sizeof(uint32_t), stream);
 	cudaMemsetAsync(ctx->d_bucket_ends, 0, total_buckets * sizeof(uint32_t), stream);
@@ -700,6 +761,7 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 			ctx->d_keys_out, ctx->d_bucket_offsets, ctx->d_bucket_ends,
 			assignments, total_buckets);
 	}
+	msm_record_event(ctx, 4, stream);
 
 	// Accumulate (two-phase: sequential with cap, then parallel for overflow)
 	//
@@ -707,6 +769,7 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 	// cap exceeds the max bucket size (Poisson tail), so phase 1 handles
 	// everything. For concentrated scalars (bucket size >> cap), phase 2
 	// distributes the tail across 128 threads.
+	ctx->phase_par_recorded = false;
 	{
 		size_t avg = assignments / (size_t)total_buckets;
 		int cap = (int)(2 * avg + 64);
@@ -722,6 +785,7 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 				ctx->d_points, ctx->d_point_indices,
 				ctx->d_bucket_offsets, ctx->d_bucket_ends, ctx->d_buckets,
 				total_buckets, false, cap, ctx->d_overflow_buckets, ctx->d_overflow_count);
+			msm_record_event(ctx, 5, stream);
 
 			// Phase 2: Parallel tree-reduce only buckets that exceeded the cap.
 			// Random proving scalars normally produce no overflow buckets; compacting
@@ -736,18 +800,23 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 					ctx->d_points, ctx->d_point_indices,
 					ctx->d_bucket_offsets, ctx->d_bucket_ends, ctx->d_overflow_buckets,
 					ctx->d_buckets, true, (uint32_t)cap);
+				msm_record_event(ctx, 6, stream);
+				ctx->phase_par_recorded = true;
 			}
 		} else {
 			accumulate_buckets_kernel<<<seq_blocks, threads, 0, stream>>>(
 				ctx->d_points, ctx->d_point_indices,
 				ctx->d_bucket_offsets, ctx->d_bucket_ends, ctx->d_buckets,
 				total_buckets, false, cap, nullptr, nullptr);
+			msm_record_event(ctx, 5, stream);
 
 			size_t smem = ACCUM_PARALLEL_THREADS * sizeof(G1EdExtended);
 			accumulate_buckets_parallel_kernel<<<total_buckets, ACCUM_PARALLEL_THREADS, smem, stream>>>(
 				ctx->d_points, ctx->d_point_indices,
 				ctx->d_bucket_offsets, ctx->d_bucket_ends, nullptr,
 				ctx->d_buckets, true, (uint32_t)cap);
+			msm_record_event(ctx, 6, stream);
+			ctx->phase_par_recorded = true;
 		}
 	}
 
@@ -757,11 +826,13 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 		reduce_buckets_partial_kernel<<<ctx->num_windows * bpw, REDUCE_THREADS_PER_WINDOW, 0, stream>>>(
 			ctx->d_buckets, ctx->d_window_partial_totals, ctx->d_window_partial_sums,
 			ctx->num_windows, ctx->num_buckets, bpw);
+		msm_record_event(ctx, 7, stream);
 
 		size_t smem = FINALIZE_THREADS * sizeof(G1EdExtended);
 		reduce_buckets_finalize_kernel<<<ctx->num_windows, FINALIZE_THREADS, smem, stream>>>(
 			ctx->d_window_partial_totals, ctx->d_window_partial_sums, ctx->d_window_results,
 			ctx->num_windows, ctx->num_buckets, bpw);
+		msm_record_event(ctx, 8, stream);
 	}
 }
 
@@ -819,28 +890,86 @@ cudaError_t msm_run_full(MSMContext *ctx, const uint64_t *host_scalars, size_t n
 		registered = ctx->host_registered;
 	}
 
+	msm_record_event(ctx, 0, compute_stream);  // start of H2D
 	if(registered) {
 		cudaMemcpyAsync(ctx->d_scalars, host_scalars, total_bytes,
 		                cudaMemcpyHostToDevice, compute_stream);
 	} else {
 		msm_upload_scalars(ctx, host_scalars, n, compute_stream);
 	}
+	msm_record_event(ctx, 1, compute_stream);  // end of H2D = start of build_pairs
+
 	launch_msm(ctx, n, compute_stream);
+
 	msm_download_results(ctx, host_results, compute_stream);
+	msm_record_event(ctx, 9, compute_stream);  // end of D2H
 
 	// Sync before freeing work buffers (kernels must finish using them).
 	cudaError_t sync_err = cudaStreamSynchronize(compute_stream);
 
-	// Unregister host memory before freeing sort buffers.
-	msm_unregister_host(ctx);
+	// Compute per-phase elapsed times. Skipped accum_par phase reads back as 0.
+	if(sync_err == cudaSuccess && ctx->phase_events_valid) {
+		auto elapsed = [&](int from, int to) -> float {
+			float ms = 0.0f;
+			if(cudaEventElapsedTime(&ms, ctx->phase_event[from], ctx->phase_event[to])
+			   != cudaSuccess) {
+				cudaGetLastError();
+				ms = 0.0f;
+			}
+			return ms;
+		};
+		ctx->phase_timings_ms[PHASE_H2D]              = elapsed(0, 1);
+		ctx->phase_timings_ms[PHASE_BUILD_PAIRS]      = elapsed(1, 2);
+		ctx->phase_timings_ms[PHASE_SORT]             = elapsed(2, 3);
+		ctx->phase_timings_ms[PHASE_BOUNDARIES]       = elapsed(3, 4);
+		ctx->phase_timings_ms[PHASE_ACCUM_SEQ]        = elapsed(4, 5);
+		ctx->phase_timings_ms[PHASE_ACCUM_PAR]        =
+			ctx->phase_par_recorded ? elapsed(5, 6) : 0.0f;
+		// reduce_partial spans event[6] (post-accum_par or post-accum_seq) to event[7]
+		int reduce_start = ctx->phase_par_recorded ? 6 : 5;
+		ctx->phase_timings_ms[PHASE_REDUCE_PARTIAL]   = elapsed(reduce_start, 7);
+		ctx->phase_timings_ms[PHASE_REDUCE_FINALIZE]  = elapsed(7, 8);
+		ctx->phase_timings_ms[PHASE_D2H]              = elapsed(8, 9);
+	}
 
-	// Free sort buffers to reclaim VRAM for other phases.
-	msm_free_work_buffers(ctx);
+	// In pinned mode, keep work buffers and host registration alive so
+	// back-to-back MSMs amortize ~5–10 ms of cudaMalloc/Free + register/
+	// unregister overhead. Caller releases via msm_release_buffers (typically
+	// before the quotient phase that needs the VRAM back).
+	if(!ctx->buffers_pinned) {
+		// Unregister host memory before freeing sort buffers.
+		msm_unregister_host(ctx);
+
+		// Free sort buffers to reclaim VRAM for other phases.
+		msm_free_work_buffers(ctx);
+	}
 
 	return sync_err;
 }
 
+// Pin work buffers (keep allocations and host registration across calls).
+void msm_pin_buffers(MSMContext *ctx) {
+	if(ctx) ctx->buffers_pinned = true;
+}
+
+// Release pinned work buffers immediately (frees VRAM, drops host registration).
+// Subsequent msm_run_full calls will re-allocate lazily.
+void msm_release_buffers(MSMContext *ctx) {
+	if(!ctx) return;
+	ctx->buffers_pinned = false;
+	msm_unregister_host(ctx);
+	msm_free_work_buffers(ctx);
+}
+
 int msm_get_c(MSMContext *ctx) { return ctx->c; }
 int msm_get_num_windows(MSMContext *ctx) { return ctx->num_windows; }
+
+// Copy the last-run per-phase timings into out (length = PHASE_COUNT, 9 floats).
+// Returns the number of phases written (always PHASE_COUNT when valid).
+int msm_get_phase_timings(MSMContext *ctx, float *out) {
+	if(!ctx || !out) return 0;
+	for(int i = 0; i < PHASE_COUNT; i++) out[i] = ctx->phase_timings_ms[i];
+	return PHASE_COUNT;
+}
 
 } // namespace gnark_gpu
