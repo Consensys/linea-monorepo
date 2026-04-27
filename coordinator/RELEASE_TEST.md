@@ -1,1 +1,1 @@
-# Test for auto coordinator changelog and tag update for multi component commit msg
+# Test for auto coordinator changelog and tag update for fixing multi component commit msg
