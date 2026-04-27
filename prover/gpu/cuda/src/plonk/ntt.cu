@@ -369,21 +369,18 @@ __global__ void ntt_dif_first_stage_fused_scale_kernel(
     const uint64_t gh2, const uint64_t gh3,
     uint32_t num_butterflies)
 {
-    uint32_t tid = (uint32_t)blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= num_butterflies) return;
-
-    // Stage 0 indexing: idx_a = tid, idx_b = tid + n/2
-    uint32_t idx_a = tid;
-    uint32_t idx_b = tid + num_butterflies; // n/2 = num_butterflies
+    constexpr unsigned ITEMS_PER_THREAD = 4;
+    uint32_t block_start = (uint32_t)blockIdx.x * blockDim.x * ITEMS_PER_THREAD;
+    uint32_t tid0 = block_start + threadIdx.x;
 
     // --- Compute g^idx_a using shared memory power table ---
     __shared__ uint64_t sh_power[4];    // g^block_start
-    __shared__ uint64_t sh_pow2[8][4];  // g^(2^k) for k in [0,7]
+    __shared__ uint64_t sh_pow2[9][4];  // g^(2^k), k=8 is g^256
 
     if (threadIdx.x == 0) {
         uint64_t pow2[4] = {g0, g1, g2, g3};
         #pragma unroll
-        for (int k = 0; k < 8; k++) {
+        for (int k = 0; k < 9; k++) {
             sh_pow2[k][0] = pow2[0]; sh_pow2[k][1] = pow2[1];
             sh_pow2[k][2] = pow2[2]; sh_pow2[k][3] = pow2[3];
             uint64_t sq[4];
@@ -398,7 +395,7 @@ __global__ void ntt_dif_first_stage_fused_scale_kernel(
             Fr_params::ONE[0], Fr_params::ONE[1],
             Fr_params::ONE[2], Fr_params::ONE[3]
         };
-        size_t exp = (size_t)blockIdx.x * blockDim.x;
+        size_t exp = block_start;
         while (exp > 0) {
             if (exp & 1) {
                 uint64_t tmp[4];
@@ -416,6 +413,8 @@ __global__ void ntt_dif_first_stage_fused_scale_kernel(
         sh_power[2] = result[2]; sh_power[3] = result[3];
     }
     __syncthreads();
+
+    if (tid0 >= num_butterflies) return;
 
     // Reconstruct g^threadIdx from binary power table
     uint64_t my_power[4] = {
@@ -442,34 +441,53 @@ __global__ void ntt_dif_first_stage_fused_scale_kernel(
         fr_mul(g_a, bp, my_power);
     }
 
-    // g^idx_b = g^idx_a * g^(n/2)
-    uint64_t g_b[4];
-    {
-        uint64_t gh[4] = {gh0, gh1, gh2, gh3};
-        fr_mul(g_b, g_a, gh);
-    }
-
-    // Load a, b and apply scale
-    uint64_t a_raw[4] = {d0[idx_a], d1[idx_a], d2[idx_a], d3[idx_a]};
-    uint64_t b_raw[4] = {d0[idx_b], d1[idx_b], d2[idx_b], d3[idx_b]};
-    uint64_t a[4], b[4];
-    fr_mul(a, a_raw, g_a);
-    fr_mul(b, b_raw, g_b);
-
-    // Load twiddle (stage 0: tw_idx = tid)
-    uint64_t w[4] = {
-        __ldg(tw0 + tid), __ldg(tw1 + tid),
-        __ldg(tw2 + tid), __ldg(tw3 + tid)
+    uint64_t stride[4] = {
+        sh_pow2[8][0], sh_pow2[8][1], sh_pow2[8][2], sh_pow2[8][3],
     };
+    uint64_t gh[4] = {gh0, gh1, gh2, gh3};
 
-    // DIF butterfly: a' = a + b; b' = (a - b) * w
-    uint64_t sum[4], diff[4], prod[4];
-    fr_add(sum, a, b);
-    fr_sub(diff, a, b);
-    fr_mul(prod, diff, w);
+    #pragma unroll
+    for (unsigned item = 0; item < ITEMS_PER_THREAD; item++) {
+        uint32_t tid = tid0 + item * blockDim.x;
+        if (tid < num_butterflies) {
+            // Stage 0 indexing: idx_a = tid, idx_b = tid + n/2
+            uint32_t idx_a = tid;
+            uint32_t idx_b = tid + num_butterflies;
 
-    d0[idx_a] = sum[0]; d1[idx_a] = sum[1]; d2[idx_a] = sum[2]; d3[idx_a] = sum[3];
-    d0[idx_b] = prod[0]; d1[idx_b] = prod[1]; d2[idx_b] = prod[2]; d3[idx_b] = prod[3];
+            // g^idx_b = g^idx_a * g^(n/2)
+            uint64_t g_b[4];
+            fr_mul(g_b, g_a, gh);
+
+            // Load a, b and apply scale
+            uint64_t a_raw[4] = {d0[idx_a], d1[idx_a], d2[idx_a], d3[idx_a]};
+            uint64_t b_raw[4] = {d0[idx_b], d1[idx_b], d2[idx_b], d3[idx_b]};
+            uint64_t a[4], b[4];
+            fr_mul(a, a_raw, g_a);
+            fr_mul(b, b_raw, g_b);
+
+            // Load twiddle (stage 0: tw_idx = tid)
+            uint64_t w[4] = {
+                __ldg(tw0 + tid), __ldg(tw1 + tid),
+                __ldg(tw2 + tid), __ldg(tw3 + tid)
+            };
+
+            // DIF butterfly: a' = a + b; b' = (a - b) * w
+            uint64_t sum[4], diff[4], prod[4];
+            fr_add(sum, a, b);
+            fr_sub(diff, a, b);
+            fr_mul(prod, diff, w);
+
+            d0[idx_a] = sum[0]; d1[idx_a] = sum[1]; d2[idx_a] = sum[2]; d3[idx_a] = sum[3];
+            d0[idx_b] = prod[0]; d1[idx_b] = prod[1]; d2[idx_b] = prod[2]; d3[idx_b] = prod[3];
+        }
+
+        if (item + 1 < ITEMS_PER_THREAD) {
+            uint64_t next[4];
+            fr_mul(next, g_a, stride);
+            g_a[0] = next[0]; g_a[1] = next[1];
+            g_a[2] = next[2]; g_a[3] = next[3];
+        }
+    }
 }
 
 // =============================================================================
@@ -1054,7 +1072,11 @@ void launch_ntt_forward_coset(NTTDomain *dom, uint64_t *d0, uint64_t *d1, uint64
     }
 
     // Stage 0: fused ScaleByPowers + DIF butterfly
-    ntt_dif_first_stage_fused_scale_kernel<<<blocks_r2, NTT_THREADS, 0, stream>>>(
+    constexpr unsigned first_stage_items_per_thread = 4;
+    unsigned blocks_first_stage =
+        (num_butterflies + NTT_THREADS * first_stage_items_per_thread - 1) /
+        (NTT_THREADS * first_stage_items_per_thread);
+    ntt_dif_first_stage_fused_scale_kernel<<<blocks_first_stage, NTT_THREADS, 0, stream>>>(
         d0, d1, d2, d3,
         dom->d_twiddles_fwd[0], dom->d_twiddles_fwd[1],
         dom->d_twiddles_fwd[2], dom->d_twiddles_fwd[3],

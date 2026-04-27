@@ -324,6 +324,34 @@ func BenchmarkBLSFFTCoset(b *testing.B) {
 	}
 }
 
+func BenchmarkBLSFFTCosetInverse(b *testing.B) {
+	dev := newBenchDev(b)
+	sizes := []int{1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22}
+	for _, n := range sizes {
+		b.Run(fmt.Sprintf("n=%s", fmtSz(n)), func(b *testing.B) {
+			dom, _ := plonk.NewFFTDomain(dev, n)
+			defer dom.Close()
+			vec, _ := plonk.NewFrVector(dev, n)
+			defer vec.Free()
+			d := genFrVec(n)
+			vec.CopyFromHost(d)
+			domain := fft.NewDomain(uint64(n))
+			g := domain.FrMultiplicativeGen
+			var gInv fr.Element
+			gInv.Inverse(&g)
+			dom.CosetFFT(vec, g)
+			dev.Sync()
+
+			b.SetBytes(int64(n) * 32)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				dom.CosetFFTInverse(vec, gInv)
+			}
+			dev.Sync()
+		})
+	}
+}
+
 func BenchmarkBLSFFTE2E(b *testing.B) {
 	dev := newBenchDev(b)
 	sizes := []int{1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22}

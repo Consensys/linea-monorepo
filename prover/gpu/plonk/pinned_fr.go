@@ -1,0 +1,38 @@
+//go:build cuda
+
+package plonk
+
+/*
+#include "gnark_gpu.h"
+*/
+import "C"
+import (
+	"unsafe"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+)
+
+type pinnedFrBuffer struct {
+	ptr  unsafe.Pointer
+	data []fr.Element
+}
+
+func newPinnedFrBuffer(n int) (pinnedFrBuffer, error) {
+	var ptr unsafe.Pointer
+	nbytes := C.size_t(n) * C.size_t(fr.Bytes)
+	if err := toError(C.gnark_gpu_alloc_pinned(&ptr, nbytes)); err != nil {
+		return pinnedFrBuffer{}, err
+	}
+	return pinnedFrBuffer{
+		ptr:  ptr,
+		data: unsafe.Slice((*fr.Element)(ptr), n),
+	}, nil
+}
+
+func (b *pinnedFrBuffer) free() {
+	if b.ptr != nil {
+		C.gnark_gpu_free_pinned(b.ptr)
+		b.ptr = nil
+		b.data = nil
+	}
+}

@@ -113,9 +113,10 @@ var (
 // ConvertG1AffineToTE: public entry point
 // ---------------------------------------------------------------------------
 
-// ConvertG1AffineToTE converts Short Weierstrass affine points to precomputed
-// Twisted Edwards format suitable for GPU MSM. This is the expensive CPU operation
-// (batch inversion + field arithmetic). Call once, serialize the result for reuse.
+// ConvertG1AffineToTE converts Short Weierstrass affine points to compact
+// Twisted Edwards format suitable for GPU MSM. This is the expensive CPU
+// operation (batch inversion + field arithmetic). Call once, serialize the
+// result for reuse.
 func ConvertG1AffineToTE(points []bls12377.G1Affine) []G1TEPoint {
 	return convertToEdMSM(points)
 }
@@ -211,9 +212,10 @@ func packEdXY(x, y fp.Element) G1TEPoint {
 	return out
 }
 
-// precompFromCompact converts a compact (X, Y) TE point to the precomputed
-// (Y-X, Y+X, 2d·X·Y) format used by the GPU MSM accumulator. Inputs and
-// outputs are in Montgomery form. Cost per point: 1 fp.Sub + 1 fp.Add + 2 fp.Mul.
+// precompFromCompact converts a compact (X, Y) TE point to the experimental
+// precomputed (Y-X, Y+X, 2d·X·Y) format. It is intentionally not the default
+// MSM layout: the 50% larger SRS footprint regresses large PlonK proofs.
+// Inputs and outputs are in Montgomery form.
 func precompFromCompact(c G1TEPoint) g1TEPrecompPoint {
 	var x, y, ymx, ypx, twoDxy fp.Element
 	x[0] = c[0]

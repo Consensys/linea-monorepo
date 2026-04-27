@@ -28,7 +28,8 @@ namespace gnark_gpu {
 // ScaleByPowers: v[i] *= g^i
 // Each block computes a chunk of consecutive elements.
 // Thread 0 computes g^block_start and a small table {g^(2^k)} in shared memory.
-// Threads then reconstruct g^threadIdx from that table.
+// Threads reconstruct g^threadIdx from that table, then process several
+// coalesced elements separated by blockDim.x using a g^blockDim stride.
 // =============================================================================
 
 __global__ void scale_by_powers_kernel(uint64_t *__restrict__ v0,
@@ -38,18 +39,18 @@ __global__ void scale_by_powers_kernel(uint64_t *__restrict__ v0,
                                         const uint64_t g0, const uint64_t g1,
                                         const uint64_t g2, const uint64_t g3,
                                         size_t n) {
-    // Each block processes blockDim.x consecutive elements
-    size_t block_start = (size_t)blockIdx.x * blockDim.x;
+    constexpr unsigned ITEMS_PER_THREAD = 4;
+    size_t block_start = (size_t)blockIdx.x * blockDim.x * ITEMS_PER_THREAD;
     size_t idx = block_start + threadIdx.x;
 
     __shared__ uint64_t sh_power[4];       // g^block_start
-    __shared__ uint64_t sh_pow2[8][4];     // g^(2^k), k in [0,7] for 256-thread blocks
+    __shared__ uint64_t sh_pow2[9][4];     // g^(2^k), k in [0,8]; k=8 is g^256
 
     if (threadIdx.x == 0) {
         // Precompute g^(2^k) once per block.
         uint64_t pow2[4] = {g0, g1, g2, g3};
         #pragma unroll
-        for (int k = 0; k < 8; k++) {
+        for (int k = 0; k < 9; k++) {
             sh_pow2[k][0] = pow2[0];
             sh_pow2[k][1] = pow2[1];
             sh_pow2[k][2] = pow2[2];
@@ -107,25 +108,42 @@ __global__ void scale_by_powers_kernel(uint64_t *__restrict__ v0,
         }
     }
 
-    // Multiply by g^block_start
     uint64_t power[4];
     uint64_t block_pow[4] = {sh_power[0], sh_power[1], sh_power[2], sh_power[3]};
     fr_mul(power, block_pow, my_power);
 
-    // Load v[idx], multiply by power, store back
-    uint64_t val[4] = {v0[idx], v1[idx], v2[idx], v3[idx]};
-    uint64_t result[4];
-    fr_mul(result, val, power);
-    v0[idx] = result[0];
-    v1[idx] = result[1];
-    v2[idx] = result[2];
-    v3[idx] = result[3];
+    uint64_t stride[4] = {
+        sh_pow2[8][0], sh_pow2[8][1], sh_pow2[8][2], sh_pow2[8][3],
+    };
+
+    #pragma unroll
+    for (unsigned item = 0; item < ITEMS_PER_THREAD; item++) {
+        size_t cur = idx + (size_t)item * blockDim.x;
+        if (cur < n) {
+            uint64_t val[4] = {v0[cur], v1[cur], v2[cur], v3[cur]};
+            uint64_t result[4];
+            fr_mul(result, val, power);
+            v0[cur] = result[0];
+            v1[cur] = result[1];
+            v2[cur] = result[2];
+            v3[cur] = result[3];
+        }
+        if constexpr (ITEMS_PER_THREAD > 1) {
+            if (item + 1 < ITEMS_PER_THREAD) {
+                uint64_t next[4];
+                fr_mul(next, power, stride);
+                power[0] = next[0]; power[1] = next[1];
+                power[2] = next[2]; power[3] = next[3];
+            }
+        }
+    }
 }
 
 void launch_scale_by_powers(uint64_t *v0, uint64_t *v1, uint64_t *v2, uint64_t *v3,
                              const uint64_t g[4], size_t n, cudaStream_t stream) {
     constexpr unsigned threads = 256;
-    unsigned blocks = (n + threads - 1) / threads;
+    constexpr unsigned items_per_thread = 4;
+    unsigned blocks = (n + threads * items_per_thread - 1) / (threads * items_per_thread);
     scale_by_powers_kernel<<<blocks, threads, 0, stream>>>(
         v0, v1, v2, v3, g[0], g[1], g[2], g[3], n);
 }
@@ -361,7 +379,17 @@ void launch_plonk_gate_accum(
 //   3. Backward: per-chunk sweep to recover individual inverses (parallel)
 // =============================================================================
 
-constexpr size_t BATCH_INV_CHUNK = 1024;
+// VRAM guardrail: each BatchInvert scratch arena stores bp/sa/tmp for four
+// limbs (12 uint64 arrays). The large-vector path keeps two arenas, so retained
+// scratch is roughly:
+//
+//     2 * 12 * 8 * ceil(n / BATCH_INV_CHUNK) bytes
+//
+// At n=2^27: chunk=256 => 96 MiB, 128 => 192 MiB, 64 => 384 MiB.
+// Chunk 64 was faster in isolation but made repeated 2^27 PlonK proofs OOM.
+// Do not lower this without adding an explicit scratch release/shrink path and
+// validating repeated BenchmarkPlonkECMul750 runs.
+constexpr size_t BATCH_INV_CHUNK = 256;
 
 // Device function: field inversion via Fermat's little theorem (a^(q-2) mod q)
 __device__ void fr_invert(uint64_t result[4], const uint64_t a[4]) {

@@ -30,6 +30,7 @@ import (
 	"log"
 	"math/big"
 	"math/bits"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -249,6 +250,13 @@ type gpuInstance struct {
 // hostBufs holds pre-allocated host memory buffers reused across proofs.
 // Eliminates per-proof GC pressure from large transient allocations.
 //
+// Some hot buffers are backed by pinned host memory, not VRAM. The pinned set
+// is L/R/O/Z blinded plus hFull: about 8n Fr elements total. At n=2^27 this
+// page-locks ~32 GiB of system RAM. That is intentional for H2D/D2H bandwidth,
+// but it must not be counted as GPU memory and can be disabled with
+// GNARK_GPU_DISABLE_PINNED_HOST_BUFS=1 on hosts with tighter pinned-memory
+// limits.
+//
 //	Buffer            Size        Used by
 //	─────────────     ─────────   ───────────────────────────────
 //	lCanonical        n           commitToLRO (iFFT output)
@@ -272,28 +280,51 @@ type hostBufs struct {
 	zBlinded                           []fr.Element
 	hFull                              []fr.Element
 	openZBuf                           []fr.Element
+	pinned                             []pinnedFrBuffer
 }
 
 func (inst *gpuInstance) initHostBufs() {
 	n := inst.n
-	inst.hBufs = hostBufs{
+	var hb hostBufs
+
+	allocPinnedHotBuffer := func(name string, n int) []fr.Element {
+		if os.Getenv("GNARK_GPU_DISABLE_PINNED_HOST_BUFS") == "" {
+			buf, err := newPinnedFrBuffer(n)
+			if err == nil {
+				hb.pinned = append(hb.pinned, buf)
+				return buf.data
+			}
+			log.Printf("gpu: pinned host buffer %s unavailable (%v), using heap", name, err)
+		}
+		return make([]fr.Element, n)
+	}
+
+	hb = hostBufs{
 		lCanonical:  make(fr.Vector, n),
 		rCanonical:  make(fr.Vector, n),
 		oCanonical:  make(fr.Vector, n),
 		zLagrange:   make(fr.Vector, n),
 		qkCanonical: make(fr.Vector, n),
 		qkCoeffs:    make(fr.Vector, n),
-		lBlinded:    make([]fr.Element, n+1+orderBlindingL),
-		rBlinded:    make([]fr.Element, n+1+orderBlindingR),
-		oBlinded:    make([]fr.Element, n+1+orderBlindingO),
-		zBlinded:    make([]fr.Element, n+1+orderBlindingZ),
 		openZBuf:    make([]fr.Element, n+1+orderBlindingZ),
 	}
+	hb.lBlinded = allocPinnedHotBuffer("lBlinded", n+1+orderBlindingL)
+	hb.rBlinded = allocPinnedHotBuffer("rBlinded", n+1+orderBlindingR)
+	hb.oBlinded = allocPinnedHotBuffer("oBlinded", n+1+orderBlindingO)
+	hb.zBlinded = allocPinnedHotBuffer("zBlinded", n+1+orderBlindingZ)
 	hSize := 4 * n
 	if needed := 3 * (n + 2); needed > hSize {
 		hSize = needed
 	}
-	inst.hBufs.hFull = make([]fr.Element, hSize)
+	hb.hFull = allocPinnedHotBuffer("hFull", hSize)
+	inst.hBufs = hb
+}
+
+func (hb *hostBufs) free() {
+	for i := range hb.pinned {
+		hb.pinned[i].free()
+	}
+	*hb = hostBufs{}
 }
 
 // newGPUInstance creates a fully initialized instance. Consumes SRS data from gpk.
@@ -573,6 +604,7 @@ func (inst *gpuInstance) close() {
 		}
 	}
 	inst.dQcp = nil
+	inst.hBufs.free()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1539,6 +1571,7 @@ func computeNumeratorGPU(
 	fftDom := inst.fftDom
 	domain0 := inst.domain0
 	cosetShift := inst.vk.CosetShift
+	qprof := newQuotientProfiler(dev)
 
 	// 8 mandatory working vectors.
 	var allocErr error
@@ -1562,8 +1595,12 @@ func computeNumeratorGPU(
 	}
 
 	// Try 4 extra source vectors for GPU-side coset reduction.
-	// At n=2^27 these cost 16 GiB; if VRAM is tight we fall back to
-	// CPU-side reduceBlindedForCoset + H2D upload per coset.
+	//
+	// VRAM: 4 FrVectors = 128n bytes (8 GiB at n=2^26, 16 GiB at
+	// n=2^27). This is a best-effort optimization only. At 2^27 it often
+	// cannot coexist with all persistent selector vectors and quotient work
+	// vectors, so allocation failure must keep falling back to CPU-side
+	// reduceBlindedForCoset + H2D upload per coset.
 	gpuLSrc, gpuRSrc, gpuOSrc, gpuZSrc := alloc(), alloc(), alloc(), alloc()
 	gpuCosetReduce := allocErr == nil
 	if !gpuCosetReduce {
@@ -1577,8 +1614,11 @@ func computeNumeratorGPU(
 	}
 
 	// Keep per-proof quotient inputs in device layout across all cosets.
-	// Allocation failure is non-fatal; the hot loop falls back to the previous
-	// H2D upload path under tight VRAM.
+	//
+	// VRAM: Qk costs 1 FrVector and each BSB22 pi2 source costs 1 FrVector
+	// (32n bytes each: 2 GiB at n=2^26, 4 GiB at n=2^27). Allocation
+	// failure is non-fatal; the hot loop falls back to H2D upload under
+	// tight VRAM.
 	gpuQkSrc := qkCanonicalGPU
 	freeGpuQkSrc := false
 	if gpuQkSrc == nil {
@@ -1601,8 +1641,11 @@ func computeNumeratorGPU(
 
 	// Preserve the first three coset results on device and keep the fourth in
 	// gpuResult. This avoids four n-sized D2H transfers followed by four H2D
-	// uploads before the decomposed iFFT(4n). If VRAM is tight, fall back to
-	// the host staging path below.
+	// uploads before the decomposed iFFT(4n).
+	//
+	// VRAM: 3 FrVectors = 96n bytes (6 GiB at n=2^26, 12 GiB at n=2^27).
+	// This must remain best-effort; the host staging fallback is required for
+	// the largest proving keys.
 	var gpuCosetBlocks [3]*FrVector
 	gpuCosetResultsOnDevice := true
 	for k := range gpuCosetBlocks {
@@ -1671,6 +1714,9 @@ func computeNumeratorGPU(
 	if err := dev.Sync(); err != nil {
 		return nil, nil, nil, fmt.Errorf("sync cached quotient inputs: %w", err)
 	}
+	if err := qprof.mark("cache quotient inputs"); err != nil {
+		return nil, nil, nil, err
+	}
 
 	lTail := lBlinded[n:]
 	rTail := rBlinded[n:]
@@ -1730,6 +1776,9 @@ func computeNumeratorGPU(
 		gpuS2.CopyFromDevice(inst.dS2, gpu.StreamTransfer)
 		gpuS3.CopyFromDevice(inst.dS3, gpu.StreamTransfer)
 		dev.RecordEvent(gpu.StreamTransfer, evDataReady)
+		if err := qprof.mark("copy permutation selectors"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// Wire polynomial coset reduction + FFT on gpu.StreamCompute.
 		// GPU path: fused kernel reads from persistent src vectors.
@@ -1753,16 +1802,25 @@ func computeNumeratorGPU(
 		fftDom.CosetFFT(gpuR, cosetGen)
 		fftDom.CosetFFT(gpuO, cosetGen)
 		fftDom.CosetFFT(gpuZ, cosetGen)
+		if err := qprof.mark("wire reduce+fft"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Phase 1b: S1,S2,S3 CosetFFT ──
 		dev.WaitEvent(gpu.StreamCompute, evDataReady)
 		fftDom.CosetFFT(gpuS1, cosetGen)
 		fftDom.CosetFFT(gpuS2, cosetGen)
 		fftDom.CosetFFT(gpuS3, cosetGen)
+		if err := qprof.mark("permutation selector fft"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Phase 1c: L₁ denominator inverse ──
 		ComputeL1Den(gpuWork, cosetGen, fftDom)
 		gpuWork.BatchInvert(gpuResult)
+		if err := qprof.mark("l1 denominator invert"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Phase 1d: Permutation + boundary constraint ──
 		var l1Scalar fr.Element
@@ -1776,6 +1834,9 @@ func computeNumeratorGPU(
 			cosetShift, cosetShiftSq, cosetGen,
 			fftDom,
 		)
+		if err := qprof.mark("permutation boundary"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Phase 2a: Pipelined D2D+FFT for Ql,Qr,Qm,Qo,Qk ──
 		//   gpuZ → Ql, gpuS1 → Qr, gpuS2 → Qm, gpuS3 → Qo, gpuWork → Qk
@@ -1813,6 +1874,9 @@ func computeNumeratorGPU(
 		dev.RecordEvent(gpu.StreamTransfer, evDataReady)
 		dev.WaitEvent(gpu.StreamCompute, evDataReady)
 		fftDom.CosetFFT(gpuWork, cosetGen)
+		if err := qprof.mark("gate selector fft"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Phase 2b: Gate constraint accumulation ──
 		var zhKInv fr.Element
@@ -1824,6 +1888,9 @@ func computeNumeratorGPU(
 			gpuL, gpuR, gpuO,
 			zhKInv,
 		)
+		if err := qprof.mark("gate accumulation"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── BSB22 commitment accumulation ──
 		for j := range pi2Canonical {
@@ -1838,6 +1905,9 @@ func computeNumeratorGPU(
 			gpuZ.Mul(gpuZ, gpuWork)
 			gpuResult.AddScalarMul(gpuZ, zhKInv)
 		}
+		if err := qprof.mark("bsb22 accumulation"); err != nil {
+			return nil, nil, nil, err
+		}
 
 		// ── Store coset result ──
 		if gpuCosetResultsOnDevice {
@@ -1847,6 +1917,9 @@ func computeNumeratorGPU(
 			dev.RecordEvent(gpu.StreamCompute, evCosetDone)
 		} else {
 			gpuResult.CopyToHost(hostChunks[k])
+		}
+		if err := qprof.mark("store coset result"); err != nil {
+			return nil, nil, nil, err
 		}
 	}
 
@@ -1873,6 +1946,9 @@ func computeNumeratorGPU(
 		cosetGenInv.Inverse(&cosetGen)
 		fftDom.CosetFFTInverse(blocks[k], cosetGenInv)
 	}
+	if err := qprof.mark("inverse coset fft"); err != nil {
+		return nil, nil, nil, err
+	}
 
 	var omega4Inv, quarter fr.Element
 	{
@@ -1883,6 +1959,9 @@ func computeNumeratorGPU(
 	quarter.SetUint64(4)
 	quarter.Inverse(&quarter)
 	Butterfly4Inverse(blocks[0], blocks[1], blocks[2], blocks[3], omega4Inv, quarter)
+	if err := qprof.mark("butterfly4 inverse"); err != nil {
+		return nil, nil, nil, err
+	}
 
 	var uInvN fr.Element
 	{
@@ -1897,6 +1976,9 @@ func computeNumeratorGPU(
 	var uInv3N fr.Element
 	uInv3N.Mul(&uInv2N, &uInvN)
 	blocks[3].ScalarMul(uInv3N)
+	if err := qprof.mark("scale quotient blocks"); err != nil {
+		return nil, nil, nil, err
+	}
 
 	if err := dev.Sync(); err != nil {
 		return nil, nil, nil, fmt.Errorf("quotient GPU sync: %w", err)
@@ -1905,6 +1987,10 @@ func computeNumeratorGPU(
 	for k := 0; k < 4; k++ {
 		blocks[k].CopyToHost(fr.Vector(hFull[k*n : (k+1)*n]))
 	}
+	if err := qprof.mark("copy quotient to host"); err != nil {
+		return nil, nil, nil, err
+	}
+	qprof.done(n)
 
 	np2 := n + 2
 	h1 = hFull[:np2]
@@ -1912,6 +1998,51 @@ func computeNumeratorGPU(
 	h3 = hFull[2*np2 : 3*np2]
 
 	return h1, h2, h3, nil
+}
+
+type quotientProfiler struct {
+	dev    *gpu.Device
+	last   time.Time
+	order  []string
+	totals map[string]time.Duration
+}
+
+func newQuotientProfiler(dev *gpu.Device) *quotientProfiler {
+	if os.Getenv("GNARK_GPU_QUOTIENT_PROFILE") == "" {
+		return nil
+	}
+	return &quotientProfiler{
+		dev:    dev,
+		last:   time.Now(),
+		totals: make(map[string]time.Duration),
+	}
+}
+
+func (p *quotientProfiler) mark(label string) error {
+	if p == nil {
+		return nil
+	}
+	if err := p.dev.Sync(); err != nil {
+		return fmt.Errorf("quotient profile sync %q: %w", label, err)
+	}
+	elapsed := time.Since(p.last)
+	p.last = time.Now()
+	if _, ok := p.totals[label]; !ok {
+		p.order = append(p.order, label)
+	}
+	p.totals[label] += elapsed
+	log.Printf("  [quotient profile] %-28s %s", label, elapsed)
+	return nil
+}
+
+func (p *quotientProfiler) done(n int) {
+	if p == nil {
+		return
+	}
+	log.Printf("  [quotient profile n=%d] totals:", n)
+	for _, label := range p.order {
+		log.Printf("    %-28s %s", label, p.totals[label])
+	}
 }
 
 // reduceBlindedForCoset reduces a blinded polynomial to n coefficients for a coset.

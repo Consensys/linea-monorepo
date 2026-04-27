@@ -8,10 +8,10 @@ package plonk
 // Architecture:
 //   - Public input is compact Twisted Edwards (G1TEPoint, 96 bytes), as
 //     produced by ConvertG1AffineToTE or read from disk dumps.
-//   - At pin time we expand each point to the precomputed format
-//     (Y-X, Y+X, 2d·X·Y) = 144 bytes, matching the GPU G1EdYZD struct.
-//     This trades 50% larger pinned/VRAM points for 2 fewer fp_mul per
-//     mixed-add (9M → 7M).
+//   - Pinned and GPU-resident points stay in that compact 96-byte layout.
+//     The GPU computes 2d·X·Y on the fly in the unified mixed-add formula
+//     (9M). This costs 2 extra fp_mul versus the 144-byte precomputed layout,
+//     but keeps the 2^27 SRS inside the VRAM envelope.
 //   - G1MSM owns the pinned points and manages GPU uploads internally
 //   - GPU pipeline: decompose → sort → accumulate → reduce (see msm.cu)
 //   - Host: Horner combination of per-window TE results → single TE→Jacobian
@@ -68,16 +68,17 @@ const msmChunkThreshold = 1 << 27
 // G1MSMPoints — pinned host memory for pre-converted TE points
 // ─────────────────────────────────────────────────────────────────────────────
 
-// G1MSMPoints holds pre-converted TE points in pinned host memory in the
-// GPU's precomputed format (144 bytes per point: Y-X, Y+X, 2d·X·Y).
+// G1MSMPoints holds compact TE points in pinned host memory (96 bytes per
+// point: X, Y). Keep this layout compact: the full 2^27 SRS is memory-bound
+// and a 144-byte precomputed format can push large PlonK proofs over VRAM.
 // Reusable across MSM contexts and reload cycles.
 type G1MSMPoints struct {
-	pinned unsafe.Pointer // pinned host memory (18 uint64s per point, 144 bytes)
+	pinned unsafe.Pointer // pinned host memory (12 uint64s per point, 96 bytes)
 	N      int
 }
 
-// ConvertG1Points converts SW affine points to TE precomputed format and stores
-// the result in pinned (page-locked) host memory for fast DMA transfers.
+// ConvertG1Points converts SW affine points to compact TE format and stores the
+// result in pinned (page-locked) host memory for fast DMA transfers.
 // This is the expensive CPU operation — call once, reuse for all reloads.
 func ConvertG1Points(points []bls12377.G1Affine) (*G1MSMPoints, error) {
 	n := len(points)
@@ -88,17 +89,14 @@ func ConvertG1Points(points []bls12377.G1Affine) (*G1MSMPoints, error) {
 	// SW → compact TE (with batch inversion)
 	tePoints := convertToEdMSM(points)
 
-	// Allocate pinned host memory at the precomputed (144-byte) layout, then
-	// expand each compact point in place so we never materialize a heap-allocated
-	// []g1TEPrecompPoint at full SRS size.
-	nbytes := C.size_t(n) * C.size_t(g1TEPrecompPointSize)
+	nbytes := C.size_t(n) * C.size_t(g1TEPointSize)
 	var pinned unsafe.Pointer
 	if err := toError(C.gnark_gpu_alloc_pinned(&pinned, nbytes)); err != nil {
 		return nil, err
 	}
 
-	dst := unsafe.Slice((*g1TEPrecompPoint)(pinned), n)
-	writePrecompFromCompact(dst, tePoints)
+	dst := unsafe.Slice((*G1TEPoint)(pinned), n)
+	copy(dst, tePoints)
 
 	pts := &G1MSMPoints{pinned: pinned, N: n}
 	runtime.SetFinalizer(pts, (*G1MSMPoints).Free)
@@ -119,57 +117,53 @@ func (p *G1MSMPoints) Len() int {
 	return p.N
 }
 
-// PinG1TEPoints copies compact TE points into pinned (page-locked) host
-// memory and expands them to the GPU's precomputed (144-byte) format.
+// PinG1TEPoints copies compact TE points into pinned (page-locked) host memory.
 func PinG1TEPoints(points []G1TEPoint) (*G1MSMPoints, error) {
 	n := len(points)
 	if n == 0 {
 		return nil, &gpu.Error{Code: -1, Message: "points must not be empty"}
 	}
-	nbytes := C.size_t(n) * C.size_t(g1TEPrecompPointSize)
+	nbytes := C.size_t(n) * C.size_t(g1TEPointSize)
 	var pinned unsafe.Pointer
 	if err := toError(C.gnark_gpu_alloc_pinned(&pinned, nbytes)); err != nil {
 		return nil, err
 	}
-	dst := unsafe.Slice((*g1TEPrecompPoint)(pinned), n)
-	writePrecompFromCompact(dst, points)
+	dst := unsafe.Slice((*G1TEPoint)(pinned), n)
+	copy(dst, points)
 	pts := &G1MSMPoints{pinned: pinned, N: n}
 	runtime.SetFinalizer(pts, (*G1MSMPoints).Free)
 	return pts, nil
 }
 
 // ReadG1TEPointsPinned reads n compact TE points from a raw memory dump
-// (96 bytes/point on disk) and stores them in pinned host memory expanded
-// to the GPU's precomputed (144-byte) format.
+// (96 bytes/point on disk) and stores them in pinned host memory in the same
+// compact 96-byte format.
 //
-// To avoid allocating ~12 GB of heap for a 128M-point SRS, we read in
-// fixed-size batches into a small reusable buffer and expand each batch
-// directly into pinned memory.
+// To avoid allocating ~12 GB of heap for a 128M-point SRS, we read directly
+// into the pinned destination in fixed-size batches.
 func ReadG1TEPointsPinned(r io.Reader, n int) (*G1MSMPoints, error) {
 	if n <= 0 {
 		return nil, &gpu.Error{Code: -1, Message: "count must be positive"}
 	}
-	nbytes := C.size_t(n) * C.size_t(g1TEPrecompPointSize)
+	nbytes := C.size_t(n) * C.size_t(g1TEPointSize)
 	var pinned unsafe.Pointer
 	if err := toError(C.gnark_gpu_alloc_pinned(&pinned, nbytes)); err != nil {
 		return nil, err
 	}
-	dst := unsafe.Slice((*g1TEPrecompPoint)(pinned), n)
+	dst := unsafe.Slice((*G1TEPoint)(pinned), n)
 
 	const batchPoints = 1 << 16 // 64K points per batch ≈ 6 MB compact buffer
-	batch := make([]G1TEPoint, batchPoints)
 	read := 0
 	for read < n {
 		take := batchPoints
 		if remaining := n - read; remaining < take {
 			take = remaining
 		}
-		buf := unsafe.Slice((*byte)(unsafe.Pointer(&batch[0])), take*g1TEPointSize)
+		buf := unsafe.Slice((*byte)(unsafe.Pointer(&dst[read])), take*g1TEPointSize)
 		if _, err := io.ReadFull(r, buf); err != nil {
 			C.gnark_gpu_free_pinned(pinned)
 			return nil, err
 		}
-		writePrecompFromCompact(dst[read:read+take], batch[:take])
 		read += take
 	}
 
@@ -521,7 +515,7 @@ func (m *G1MSM) loadPart(part int) {
 			panic("gpu: MSM reload first half failed: " + err.Error())
 		}
 	case 2:
-		offset := uintptr(m.half) * uintptr(g1TEPrecompPointSize)
+		offset := uintptr(m.half) * uintptr(g1TEPointSize)
 		ptr := unsafe.Add(m.pts.pinned, offset)
 		count := m.n - m.half
 		if err := toError(C.gnark_gpu_msm_reload_points(

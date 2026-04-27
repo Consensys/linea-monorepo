@@ -209,7 +209,7 @@ __global__ void __launch_bounds__(256) detect_bucket_boundaries_kernel(
 
 __global__ void __launch_bounds__(256, 2)
 	accumulate_buckets_kernel(
-		const G1EdYZD *__restrict__ points,
+		const G1EdXY *__restrict__ points,
 		const uint32_t *__restrict__ point_indices,
 		const uint32_t *__restrict__ bucket_offsets,
 		const uint32_t *__restrict__ bucket_ends,
@@ -245,9 +245,9 @@ __global__ void __launch_bounds__(256, 2)
 
 	for(uint32_t i = start; i < end; i++) {
 		uint32_t packed = point_indices[i];
-		G1EdYZD pt = points[packed & 0x7FFFFFFFu];
-		ec_te_cnegate_yzd(pt, (bool)(packed >> 31));
-		ec_te_unified_mixed_add_yzd(acc, pt);
+		G1EdXY pt = points[packed & 0x7FFFFFFFu];
+		ec_te_cnegate_xy(pt, (bool)(packed >> 31));
+		ec_te_unified_mixed_add_xy(acc, pt);
 	}
 
 	buckets[bucket_flat] = acc;
@@ -259,7 +259,7 @@ __global__ void __launch_bounds__(256, 2)
 
 __global__ void __launch_bounds__(128, 4)
 	accumulate_buckets_parallel_kernel(
-		const G1EdYZD *__restrict__ points,
+		const G1EdXY *__restrict__ points,
 		const uint32_t *__restrict__ point_indices,
 		const uint32_t *__restrict__ bucket_offsets,
 		const uint32_t *__restrict__ bucket_ends,
@@ -281,9 +281,9 @@ __global__ void __launch_bounds__(128, 4)
 	ec_te_set_identity(acc);
 	for(uint32_t i = start + tid; i < end; i += ACCUM_PARALLEL_THREADS) {
 		uint32_t packed = point_indices[i];
-		G1EdYZD pt = points[packed & 0x7FFFFFFFu];
-		ec_te_cnegate_yzd(pt, (bool)(packed >> 31));
-		ec_te_unified_mixed_add_yzd(acc, pt);
+		G1EdXY pt = points[packed & 0x7FFFFFFFu];
+		ec_te_cnegate_xy(pt, (bool)(packed >> 31));
+		ec_te_unified_mixed_add_xy(acc, pt);
 	}
 
 	extern __shared__ G1EdExtended shared[];
@@ -503,7 +503,7 @@ struct MSMContext {
 	size_t max_points;
 	int c, num_windows, num_buckets, sort_key_bits, reduce_blocks_per_window;
 
-	G1EdYZD *d_points;
+	G1EdXY *d_points;
 	// Optional Short-Weierstrass affine point buffer used by the
 	// batched-affine accumulate kernel (see GNARK_GPU_MSM_BATCHED_AFFINE).
 	// nullptr unless gnark_gpu_msm_load_points_sw was called.
@@ -612,7 +612,7 @@ MSMContext *msm_create(size_t max_points) {
 
 	// Permanent small allocations (points, buckets, window results).
 	// Sort buffers are allocated lazily in msm_run_full.
-	cudaMalloc(&ctx->d_points, max_points * sizeof(G1EdYZD));
+	cudaMalloc(&ctx->d_points, max_points * sizeof(G1EdXY));
 	cudaMalloc(&ctx->d_bucket_offsets, total_buckets * sizeof(uint32_t));
 	cudaMalloc(&ctx->d_bucket_ends, total_buckets * sizeof(uint32_t));
 	cudaMalloc(&ctx->d_buckets, total_buckets * sizeof(G1EdExtended));
@@ -702,7 +702,7 @@ void msm_destroy(MSMContext *ctx) {
 }
 
 void msm_load_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream) {
-	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdYZD), cudaMemcpyHostToDevice, stream);
+	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdXY), cudaMemcpyHostToDevice, stream);
 }
 void msm_offload_points(MSMContext *ctx) {
 	if(ctx->d_points) { cudaFree(ctx->d_points); ctx->d_points = nullptr; }
@@ -717,9 +717,9 @@ void msm_unregister_host(MSMContext *ctx) {
 	}
 }
 cudaError_t msm_reload_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream) {
-	cudaError_t err = cudaMalloc(&ctx->d_points, count * sizeof(G1EdYZD));
+	cudaError_t err = cudaMalloc(&ctx->d_points, count * sizeof(G1EdXY));
 	if(err != cudaSuccess) return err;
-	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdYZD), cudaMemcpyHostToDevice, stream);
+	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdXY), cudaMemcpyHostToDevice, stream);
 	return cudaSuccess;
 }
 

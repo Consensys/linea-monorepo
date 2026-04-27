@@ -500,8 +500,579 @@ correctness validation of the SW arithmetic and the multi-wave
 algorithm. **Do NOT enable in production paths** until cross-bucket
 inversion lands.
 
+## Step 8 — coset-power scheduling in NTT helpers — DONE
 
+### State-of-the-art comparison pass
 
+Checked public ICICLE documentation as a proxy for current production GPU
+MSM/NTT design choices:
 
+- ICICLE exposes MSM knobs for `precompute_factor`, window `c`,
+  `large_bucket_factor`, `batch_size`, and an algorithm switch between
+  bucket accumulation and large-triangle accumulation:
+  https://dev.ingonyama.com/1.10.1/icicle/rust-bindings/msm
+- Its higher-level docs recommend batch MSM when the prover can present
+  multiple MSMs together, and distinguish bucket accumulation from
+  large-triangle accumulation:
+  https://dev.ingonyama.com/1.10.1/icicle/primitives/msm
+- Its multi-GPU guidance is currently the "GPU server" model: one CPU thread
+  per GPU, no hardcoded device IDs, and independent computations per device
+  rather than one tightly-coupled NCCL/NVLink MSM:
+  https://dev.ingonyama.com/2.8.0/icicle/multi-gpu
 
+Implications for this codebase:
 
+1. We already implemented the relevant single-GPU precompute tradeoff for MSM
+   (`G1EdYZD`, Step 3).
+2. True batch MSM and multi-GPU scheduling are still promising for L/R/O and
+   h1/h2/h3 waves, but this host has one GPU, so I did not add unbenchmarked
+   multi-GPU plumbing.
+3. The next small, measurable target was not MSM: quotient coset work still
+   rebuilds powers of the same coset generator many times.
+
+### Failed micro-experiment: shared consecutive power table — REVERTED
+
+Initial idea: in `ScaleByPowers` and the fused first stage of `CosetFFT`,
+thread 0 builds the whole 256-entry table
+`g^block_start ... g^(block_start+255)` in shared memory. Every thread then
+loads its power directly, eliminating per-thread binary reconstruction.
+
+Correctness passed, but performance collapsed because one lane did 255
+serial `fr_mul`s per block before any useful work could start:
+
+| op / n | baseline | shared-table | result |
+|---     |---:      |---:          |---:    |
+| ScaleByPowers / 4M | 929 µs | 2887 µs | 3.1× slower |
+| CosetFFT / 4M      | 2693 µs | 3803 µs | 1.4× slower |
+
+Reverted. Lesson: reducing total field multiplies is not enough; the power
+schedule must preserve lane-level parallelism.
+
+### Successful experiment: four coalesced items per thread
+
+New schedule:
+
+- Each block covers `256 * 4 = 1024` consecutive elements.
+- Each thread reconstructs `g^(block_start + tid)` once using the existing
+  binary table.
+- The same thread processes indices `tid`, `tid+256`, `tid+512`, `tid+768`.
+  Those loads/stores remain coalesced across the warp for each item.
+- A shared `g^256` stride advances the power between the four items.
+
+Implemented in:
+
+- `scale_by_powers_kernel` (`fr_ops.cu`)
+- `ntt_dif_first_stage_fused_scale_kernel` (`ntt.cu`)
+- Added `BenchmarkBLSFFTCosetInverse` so inverse-coset recovery has a direct
+  benchmark target.
+
+### Benchmarks — RTX PRO 6000 Blackwell, CUDA 13.1
+
+`ScaleByPowers`:
+
+| n    | before | after | speedup |
+|---   |---:    |---:   |---:     |
+| 16K  | 31.0 µs | 28.1 µs | 1.10× |
+| 64K  | 61.0 µs | 43.0 µs | 1.42× |
+| 256K | 128.2 µs | 74.2 µs | 1.73× |
+| 1M   | 304.0 µs | 130.4 µs | 2.33× |
+| 4M   | 928.6 µs | 369.3 µs | 2.51× |
+
+`CosetFFT`:
+
+| n    | before | after | speedup |
+|---   |---:    |---:   |---:     |
+| 16K  | 101.6 µs | 101.9 µs | 1.00× |
+| 64K  | 148.4 µs | 137.8 µs | 1.08× |
+| 256K | 247.2 µs | 200.6 µs | 1.23× |
+| 1M   | 610.0 µs | 496.1 µs | 1.23× |
+| 4M   | 2692.9 µs | 2337.2 µs | 1.15× |
+
+New `CosetFFTInverse` benchmark after the change:
+
+| n    | time |
+|---   |---: |
+| 16K  | 104.2 µs |
+| 64K  | 139.3 µs |
+| 256K | 214.4 µs |
+| 1M   | 533.6 µs |
+| 4M   | 2615.1 µs |
+
+No pre-change direct inverse-coset benchmark existed. Since
+`CosetFFTInverse = BitReverse + FFTInverse + ScaleByPowers`, the measured
+4M `ScaleByPowers` delta alone predicts ~0.56 ms saved per inverse-coset
+call.
+
+### Validation
+
+- `cmake --build gpu/cuda/build --target gnark_gpu -j` — pass.
+- `go test ./gpu/plonk -tags cuda -run 'TestFFT|TestScaleByPowers|TestCosetFFT|TestCosetFFTRoundtrip|TestCosetFFTInverse' -count=1` — pass.
+- `go test ./gpu/plonk -tags cuda -run 'TestPlonkECMulBasic|TestPlonkECMulLazyPrepare' -count=1` — pass.
+
+The aggregate `cmake --build gpu/cuda/build -j` still fails while linking the
+optional `sandbox` executable due to an existing duplicate `fp_inv` symbol
+between `sandbox/main.cu.o` and `msm.cu.o`; the `gnark_gpu` library target
+builds successfully.
+
+## Step 9 - compact TE MSM layout regression fix - DONE
+
+### Regression
+
+The 2^27-domain PlonK benchmark regressed from "large but possible" to an
+out-of-memory failure during `build Z`.
+
+The failed run was:
+
+```text
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench 'BenchmarkPlonkECMul(10|30|353|750)$' \
+  -benchtime=1x -count=1 -timeout 90m -v
+```
+
+On `BenchmarkPlonkECMul750`, the prover reached:
+
+```text
+solve: 26.668s
+iFFT L,R,O,Qk + blind: 31.799s
+MSM commit L,R,O: 35.500s
+build Z: alloc gpuO: gpu: error 3: out of GPU memory
+```
+
+Commit history around the GPU MSM point layout:
+
+```text
+9c875ee7d3 gpu/plonk: batched-affine MSM kernel (block-local, env-gated, NOT default)
+40eaf90b26 gpu/plonk: SW affine GPU primitives (foundation for batched-affine MSM)
+d176095045 gpu/plonk: 1.28-1.37x MSM speedup via persistent buffers + precomputed-T
+e5f8003eb8 initial gpu commit
+```
+
+The culprit is the default precomputed-T point layout from `d176095045`. It
+expanded every SRS point from compact TE `(X,Y)` to `(Y-X,Y+X,2dXY)`:
+
+| layout | bytes/point | full 2^27 SRS | half-SRS device chunk |
+|---|---:|---:|---:|
+| compact TE `(X,Y)` | 96 | 12 GiB | 6 GiB |
+| precomputed TE `(Y-X,Y+X,2dXY)` | 144 | 18 GiB | 9 GiB |
+
+The extra 50% SRS footprint leaves too little room for the quotient, copy,
+sort, and temporary vectors at domain size 2^27. The precompute improved MSM
+accumulation speed, but it was the wrong default for full-size PlonK proving.
+
+### Fix
+
+Restored compact TE as the default pinned and GPU-resident MSM point layout:
+
+- `G1MSMPoints` stores 96-byte `G1TEPoint` values again.
+- `ReadG1TEPointsPinned` reads raw 96-byte TE dumps directly into pinned
+  memory, without expanding into an intermediate 144-byte layout.
+- `msm.cu` accumulators now read `G1EdXY` and use the unified compact mixed-add
+  formula (`ec_te_unified_mixed_add_xy`). This pays the extra `2dXY`
+  multiplies per add, but preserves the memory envelope needed by large proofs.
+- Left the precomputed helper type in the tree only as an experimental
+  reference; comments now say explicitly that it must not be the default layout.
+- Added `TestG1MSMPointsPinnedLayoutCompactRegression`, which fails if pinned
+  MSM points stop preserving the 96-byte compact `(X,Y)` format.
+
+This is the correct default tradeoff: coordinates and formulas can be slightly
+more expensive when the alternative prevents a 2^27 proof from fitting at all.
+
+### Validation after the fix
+
+```text
+cmake --build gpu/cuda/build --target gnark_gpu -j
+go test ./gpu/plonk -tags cuda -run \
+  'TestG1MSMPointsPinnedLayoutCompactRegression|TestMSMSmall|TestMSMMedium|TestMSMBatchedMultiExp|TestMSMConvertG1Points|TestPlonkECMulBasicValidation|TestPlonkECMulLazyPrepareValidation' \
+  -count=1
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench 'BenchmarkMSMPinned|BenchmarkMSMPhaseTimings' \
+  -benchtime=3x -count=1 -timeout 30m
+```
+
+All passed.
+
+Compact-layout MSM phase timing, current code:
+
+| n | wall | h2d | sort | accum seq | reduce partial | phase sum |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1M | 15.045 ms | 0.614 ms | 0.548 ms | 8.948 ms | 1.674 ms | 12.405 ms |
+| 4M | 47.177 ms | 2.427 ms | 2.382 ms | 30.187 ms | 1.635 ms | 38.368 ms |
+
+The expected regression versus the 144-byte precompute is localized to bucket
+accumulation. It is acceptable because full-size proving works again.
+
+### PlonK benchmark sweep, current compact layout
+
+Hardware: single NVIDIA RTX PRO 6000 Blackwell Server Edition, CUDA 13.1.
+
+| benchmark | domain | constraints | measured prove | first prove | notes |
+|---|---:|---:|---:|---:|---|
+| `BenchmarkPlonkECMul10` | 2,097,152 | 1,626,016 | 1.052 s | 1.230 s | current compact layout |
+| `BenchmarkPlonkECMul30` | 8,388,608 | 4,353,696 | 3.733 s | 4.638 s | current compact layout |
+| `BenchmarkPlonkECMul353` | 67,108,864 | 48,405,728 | 32.821 s | 36.666 s | run under `nsys`; CUDA kernel capture failed |
+| `BenchmarkPlonkECMul750` | 134,217,728 | 102,550,176 | 82.123 s | 93.196 s | passes after compact fix |
+
+`BenchmarkPlonkECMul750` phase deltas, measured proof:
+
+| phase | delta | share of 82.123 s proof |
+|---|---:|---:|
+| CPU solve | 27.393 s | 33.4% |
+| complete Qk | 0.509 s | 0.6% |
+| iFFT L,R,O,Qk + blind | 2.867 s | 3.5% |
+| MSM commit L,R,O | 3.879 s | 4.7% |
+| build Z | 1.772 s | 2.2% |
+| iFFT+commit Z | 2.791 s | 3.4% |
+| quotient GPU | 29.120 s | 35.5% |
+| MSM commit h1,h2,h3 | 3.857 s | 4.7% |
+| eval+linearize+open Z | 5.291 s | 6.4% |
+| MSM commit linPol | 1.469 s | 1.8% |
+| batch opening | 3.175 s | 3.9% |
+
+The top current bottlenecks are therefore:
+
+1. **Quotient GPU phase** - 29.1 s at 2^27, 35.5% of measured proof time.
+2. **CPU solve** - 27.4 s at 2^27, 33.4% of measured proof time.
+3. **MSM total** - 12.4 s at 2^27, 15.1% of measured proof time after the
+   compact-layout fix.
+4. **Eval/linearize/open Z** - 5.3 s at 2^27, 6.4%.
+
+### Profiling notes
+
+Go CPU profile on `BenchmarkPlonkECMul30`:
+
+```text
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkPlonkECMul30$' -benchtime=1x -count=1 \
+  -timeout 60m -cpuprofile tmp/gpu_plonk_profiles/plonk_30_cpu.pprof
+go tool pprof -top -nodecount=40 tmp/gpu_plonk_profiles/plonk_30_cpu.pprof
+```
+
+Top samples:
+
+| symbol | flat | cumulative | interpretation |
+|---|---:|---:|---|
+| `runtime.cgocall` | 16.7% | 16.7% | time crossing/waiting around CUDA calls |
+| `fr.mul` | 13.7% | 13.7% | field arithmetic |
+| `fr.addVec` | 8.4% | 8.4% | vector field ops |
+| `fr.Element.Inverse` | 5.9% | 9.3% | CPU inversions |
+| `solver.processInstruction` | 2.2% | 35.7% | gnark witness solving |
+| `solver.run.func1` | 1.0% | 36.5% | gnark witness solving |
+| `parallelEvaluateCanonical.func1` | 0.7% | 5.4% | CPU polynomial evaluation |
+| `parallelHornerQuotient` funcs | 0.4% | 7.3% | CPU quotient/opening Horner work |
+
+The CPU profile agrees with the phase timers: CPU solve is a first-class
+bottleneck, not noise around the GPU.
+
+Nsight Systems:
+
+```text
+nsys profile --trace=cuda,osrt,nvtx --stats=true \
+  -o tmp/gpu_plonk_profiles/plonk_353_compact \
+  tmp/gpu_plonk_profiles/plonk.test \
+  -test.run '^$' -test.bench '^BenchmarkPlonkECMul353$' \
+  -test.benchtime=1x -test.count=1 -test.timeout=90m -test.v=true
+```
+
+The run completed, but this Go/cgo setup did not produce CUDA kernel or GPU
+memory rows in the SQLite export. The only useful GPU-adjacent entry was the
+CUB radix sort NVTX range:
+
+```text
+CCCL:cub::DeviceRadixSort: 3.849 s total, 22 instances
+```
+
+Nsight Compute attempts were not productive in this environment: the first run
+used an invalid section set and reported no metrics; a filtered `basic` run did
+not complete promptly and was killed. For now, the reliable GPU attribution is
+the in-code CUDA-event phase timing plus focused microbenchmarks.
+
+Focused microbenchmarks, current compact layout:
+
+```text
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench 'Benchmark(FrVecBatchInvert|BLSFFTCoset|BLSFFTCosetInverse|MSMPhaseTimings)/n=(1M|4M)$' \
+  -benchtime=5x -count=1 -timeout 30m -v
+```
+
+| benchmark | n | time |
+|---|---:|---:|
+| `FrVecBatchInvert` | 1M | 8.232 ms |
+| `BLSFFTCoset` | 1M | 0.496 ms |
+| `BLSFFTCoset` | 4M | 2.339 ms |
+| `BLSFFTCosetInverse` | 1M | 0.542 ms |
+| `BLSFFTCosetInverse` | 4M | 2.560 ms |
+| `MSMPhaseTimings` | 1M | 15.045 ms |
+| `MSMPhaseTimings` | 4M | 47.177 ms |
+
+`BatchInvert` is much slower than a same-size coset FFT. Since quotient
+construction includes L1 denominator computation and batch inversion, the next
+profiling iteration should split `computeNumeratorGPU` into per-coset timers:
+
+- wire and selector coset FFTs,
+- L1 denominator generation,
+- `BatchInvert`,
+- PlonK gate accumulation,
+- permutation boundary accumulation,
+- BSB22/custom-gate accumulation,
+- blinded-coset reduction.
+
+The current single `quotient GPU` span is too coarse to choose the next kernel
+rewrite safely. Do that instrumentation before touching formulas again.
+
+### Next experiment queue
+
+1. Instrument quotient construction internally, then rerun `BenchmarkPlonkECMul353`
+   and `BenchmarkPlonkECMul750`.
+2. Optimize `BatchInvert` if it is confirmed to dominate quotient time. Current
+   code still has a serial fixup path and multiple launch levels; a larger
+   parallel scan or decoupled look-back style prefix product is the likely
+   direction.
+3. Investigate batching the repeated quotient coset FFTs across polynomials.
+   The code repeatedly transforms related vectors over the same domain and
+   coset; a multi-vector NTT launch schedule may reduce launch overhead and
+   improve locality.
+4. Treat CPU solve as a parallel workstream. At 2^27 it is about as large as
+   the GPU quotient phase. GPU-only optimization cannot get the proof below the
+   solve floor.
+5. Do not re-enable 144-byte precomputed TE points globally. If the idea is
+   revisited, make it adaptive with a VRAM check and prove that 2^27 still fits
+   before enabling it for large proving keys.
+
+## Step 10 - computeNumeratorGPU profiling and transfer fixes - DONE
+
+### Goal
+
+Step 9 identified `computeNumeratorGPU` / quotient construction as the largest
+GPU-side bottleneck. The first job was to split the monolithic `quotient GPU`
+timer into actionable subphases, then optimize the pieces that are large and
+safe to change.
+
+### Instrumentation
+
+Added an env-gated profiler:
+
+```text
+GNARK_GPU_QUOTIENT_PROFILE=1
+```
+
+When enabled, `computeNumeratorGPU` synchronizes after each quotient subphase
+and logs both per-coset timings and totals. This intentionally perturbs stream
+overlap, so it is for diagnosis only and is disabled by default.
+
+The measured subphases are:
+
+- cached quotient input upload,
+- wire reduce + four wire coset FFTs,
+- permutation selector FFTs,
+- L1 denominator generation + batch inversion,
+- permutation/boundary kernel,
+- gate selector FFTs,
+- gate accumulation kernel,
+- BSB22 accumulation,
+- decomposed inverse coset FFT,
+- butterfly/scaling,
+- quotient copy back to host.
+
+### Profile before transfer fix, n = 2^26
+
+Command:
+
+```text
+GNARK_GPU_QUOTIENT_PROFILE=1 go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkPlonkECMul353$' -benchtime=1x -count=1 -timeout 90m -v
+```
+
+Representative measured-proof totals:
+
+| subphase | time |
+|---|---:|
+| cache quotient inputs | 1.101 s |
+| wire reduce+fft | 1.183 s |
+| permutation selector fft | 0.827 s |
+| L1 denominator invert | 0.386 s |
+| permutation boundary | 0.060 s |
+| gate selector fft | 1.435 s |
+| gate accumulation | 0.058 s |
+| BSB22 accumulation | 0.608 s |
+| inverse coset fft | 0.267 s |
+| copy quotient to host | 0.478 s |
+
+Main finding: denominator inversion is not the dominant quotient cost. The
+dominant cost is repeated coset FFT work, followed by pageable host transfers
+for the quotient source/output buffers.
+
+### Accepted experiment: pinned host buffers for quotient hot paths
+
+The prover already reuses large host buffers across proofs. The quotient path
+copies the blinded L/R/O/Z coefficient sources to GPU once per proof, then
+copies the 4n quotient result back to host. Those slices were Go heap-backed,
+so the CUDA copy path had to stage pageable memory.
+
+Implemented `pinnedFrBuffer` and backed these long-lived hot buffers with
+page-locked host memory when allocation succeeds:
+
+- `lBlinded`
+- `rBlinded`
+- `oBlinded`
+- `zBlinded`
+- `hFull`
+
+If pinned allocation fails, the code falls back to heap buffers. The env var
+`GNARK_GPU_DISABLE_PINNED_HOST_BUFS=1` disables the pinned path for debugging
+or constrained hosts.
+
+Effect at n = 2^26 with `GNARK_GPU_QUOTIENT_PROFILE=1`:
+
+| subphase | before | after | delta |
+|---|---:|---:|---:|
+| cache quotient inputs | 1.101 s | 0.422 s | -0.679 s |
+| copy quotient to host | 0.478 s | 0.162 s | -0.316 s |
+
+This also helps the later linearization phase because h1/h2/h3 are backed by
+the pinned `hFull` buffer and are copied back to GPU when constructing the
+linearized polynomial.
+
+### BatchInvert chunk-size sweep
+
+The L1 denominator inversion still uses `FrVector.BatchInvert`. I swept the
+local prefix chunk size:
+
+| chunk | 64K | 256K | 1M | disposition |
+|---:|---:|---:|---:|---|
+| 1024 | baseline | baseline | 8.232 ms | old default |
+| 256 | 1.978 ms | 2.845 ms | 2.597 ms | accepted |
+| 128 | 1.530 ms | 1.634 ms | 1.862 ms | faster, not 2^27-validated |
+| 64 | 0.923 ms | 1.060 ms | 1.729 ms | rejected for now |
+| 32 | 0.693 ms | 1.235 ms | 2.716 ms | too small; large n regresses |
+
+Chunk 64 passed microbenchmarks but failed the full 2^27 benchmark on the
+second proof. The first proof succeeded; the retained batch-invert scratch from
+the warmup left the measured proof too close to the VRAM edge and `build Z`
+failed with OOM. Since 2^27 fit is mandatory, I kept chunk 256. It preserves a
+~3.2x `BatchInvert/1M` speedup while keeping scratch memory small enough for the
+large proof.
+
+Future work can revisit 128 or 64 only after adding an explicit batch-invert
+scratch release/shrink API and validating repeated 2^27 proofs.
+
+### VRAM and pinned-memory guardrails
+
+Use these numbers before changing any quotient/MSM parameter. The large proof
+has little VRAM slack, and several "fast path" allocations are intentionally
+best-effort.
+
+Definitions:
+
+- One `FrVector` stores one length-`n` field vector on GPU: `32n` bytes.
+- At `n=2^26`, one `FrVector` is 2 GiB.
+- At `n=2^27`, one `FrVector` is 4 GiB.
+- The test GPU reports 97,887 MiB total, so a 2^27 proof has less than 96 GiB
+  of usable VRAM after driver/runtime overhead.
+
+Persistent GPU memory after instance setup:
+
+| item | formula | 2^26 | 2^27 | guardrail |
+|---|---:|---:|---:|---|
+| FFT domain twiddles | `1 FrVector` | 2 GiB | 4 GiB | Forward+inverse twiddles. Do not duplicate per stream/vector. |
+| permutation table | `24n bytes` | 1.5 GiB | 3 GiB | Three `int64` columns. |
+| selectors/permutation polynomials | `(8 + c) FrVectors` | 18 GiB at `c=1` | 36 GiB at `c=1` | `c` is BSB22 commitment count. Each new commitment adds one persistent `FrVector`. |
+| compact MSM points on device | `96n` below chunk threshold; `96 * ceil(n/2)` when chunked | 6 GiB | 6 GiB | Chunking keeps only half the SRS resident at 2^27. Precomputed 144-byte points would be 9 GiB and caused the Step 9 regression. |
+
+`computeNumeratorGPU` transient GPU memory:
+
+| item | formula | 2^26 | 2^27 | guardrail |
+|---|---:|---:|---:|---|
+| caller `gpuWork` | `1 FrVector` | 2 GiB | 4 GiB | Allocated before quotient. |
+| mandatory quotient work vectors | `8 FrVectors` | 16 GiB | 32 GiB | Required. |
+| GPU-side blinded L/R/O/Z sources | `4 FrVectors` | 8 GiB | 16 GiB | Best-effort only; falls back to CPU reduction + H2D per coset. |
+| cached Qk source | `1 FrVector` | 2 GiB | 4 GiB | Best-effort; falls back to host upload. |
+| cached pi2 source | `c FrVectors` | 2 GiB at `c=1` | 4 GiB at `c=1` | Best-effort; each BSB22 commitment adds one. |
+| on-device coset result blocks | `3 FrVectors` | 6 GiB | 12 GiB | Best-effort; falls back to host staging. |
+
+At 2^27, the mandatory quotient vectors plus persistent data already consume
+most of the device. The optional 4-source and 3-result fast paths cannot be
+assumed to fit together. **Do not remove the allocation-failure fallbacks.**
+
+Batch inversion retained scratch:
+
+```text
+scratch bytes ~= 2 arenas * 12 limb arrays * 8 bytes * ceil(n / BATCH_INV_CHUNK)
+              = 192 * ceil(n / BATCH_INV_CHUNK)
+```
+
+| `BATCH_INV_CHUNK` | scratch at 2^26 | scratch at 2^27 | status |
+|---:|---:|---:|---|
+| 1024 | 12 MiB | 24 MiB | old default, slower |
+| 256 | 48 MiB | 96 MiB | current safe choice |
+| 128 | 96 MiB | 192 MiB | faster microbench, not 2^27-validated |
+| 64 | 192 MiB | 384 MiB | rejected: repeated 2^27 proof OOM |
+| 32 | 384 MiB | 768 MiB | rejected: large-vector speed regresses and VRAM worsens |
+
+Pinned host memory is not VRAM, but it still matters:
+
+| item | formula | 2^26 | 2^27 | guardrail |
+|---|---:|---:|---:|---|
+| compact pinned SRS | `96n bytes` | 6 GiB | 12 GiB | Precomputed 144-byte SRS would be 9/18 GiB pinned host memory. |
+| quotient hot buffers (`l/r/o/z` + `hFull`) | about `8 FrVectors` | 16 GiB | 32 GiB | Page-locked system RAM. Disable with `GNARK_GPU_DISABLE_PINNED_HOST_BUFS=1` if needed. |
+
+Rules for future changes:
+
+1. Count every new length-`n` GPU vector as 2 GiB at 2^26 and 4 GiB at 2^27.
+2. New fast-path vectors in quotient code must be optional or guarded by an
+   explicit VRAM check.
+3. Any reduction of `BATCH_INV_CHUNK` must include scratch release/shrink logic
+   or repeated `BenchmarkPlonkECMul750` validation.
+4. Do not reintroduce 144-byte MSM point storage as a global default.
+5. When adding a BSB22 commitment, budget one persistent selector vector and
+   one optional quotient source vector per commitment, plus two extra coset FFTs
+   per coset.
+
+### End-to-end benchmark results
+
+All numbers are measured proofs, single RTX PRO 6000 Blackwell.
+
+| benchmark | before Step 10 | after Step 10 | speedup |
+|---|---:|---:|---:|
+| `BenchmarkPlonkECMul30` | 3.733 s | 3.536 s | 1.06x |
+| `BenchmarkPlonkECMul353` | 31.9 s | 28.67 s | 1.11x |
+| `BenchmarkPlonkECMul750` | 82.12 s | 78.58 s | 1.05x |
+
+For `BenchmarkPlonkECMul750`, the quotient phase delta improved from about
+29.12 s to about 27.65 s. The full proof improvement is larger because the
+pinned quotient output also reduces later host-to-device traffic in the
+linearized polynomial phase.
+
+### Validation
+
+```text
+cmake --build gpu/cuda/build --target gnark_gpu -j
+go test ./gpu/plonk -tags cuda -run \
+  'TestPlonkECMulBasicValidation|TestPlonkECMulLazyPrepareValidation|TestBatchInvert|TestG1MSMPointsPinnedLayoutCompactRegression' \
+  -count=1
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkFrVecBatchInvert/(n=64K|n=256K|n=1M)$' \
+  -benchtime=5x -count=1 -timeout 20m -v
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkPlonkECMul(30|353)$' \
+  -benchtime=1x -count=1 -timeout 90m -v
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkPlonkECMul750$' \
+  -benchtime=1x -count=1 -timeout 90m -v
+```
+
+All passed with the final chunk-256 configuration.
+
+### Next bottleneck
+
+After this step, `computeNumeratorGPU` is dominated by coset FFT volume:
+
+- 4 wire coset FFTs per coset,
+- 3 permutation selector coset FFTs per coset,
+- 5 gate selector coset FFTs per coset,
+- 2 BSB22 coset FFTs per commitment per coset.
+
+For the current benchmark with one BSB22 commitment this is 14 coset FFTs per
+coset, 56 coset FFTs total before the decomposed inverse. The next meaningful
+quotient optimization is therefore not another scalar kernel tweak; it is a
+batched/multi-vector NTT schedule that transforms several vectors together and
+amortizes twiddle reads, launch overhead, and coset power reconstruction.
