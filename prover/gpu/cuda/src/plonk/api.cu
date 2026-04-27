@@ -183,6 +183,7 @@ cudaError_t msm_run_full(MSMContext *ctx, const uint64_t *host_scalars, size_t n
 void msm_offload_points(MSMContext *ctx);
 void msm_unregister_host(MSMContext *ctx);
 cudaError_t msm_reload_points(MSMContext *ctx, const void *host_points, size_t count, cudaStream_t stream);
+cudaError_t msm_load_points_sw(MSMContext *ctx, const void *host_sw_points, size_t count, cudaStream_t stream);
 int msm_get_c(MSMContext *ctx);
 int msm_get_num_windows(MSMContext *ctx);
 int msm_get_phase_timings(MSMContext *ctx, float *out);
@@ -190,6 +191,7 @@ void msm_pin_buffers(MSMContext *ctx);
 void msm_release_buffers(MSMContext *ctx);
 cudaError_t test_sw_pair_add_run(const uint64_t *p0, const uint64_t *p1, uint64_t *out);
 cudaError_t test_sw_to_te_run(const uint64_t *p_sw, uint64_t *out_te);
+cudaError_t test_batched_affine_reduce_run(const uint64_t *points_aos, uint64_t *out_aos, int N);
 
 // Forward declarations for NTT functions (defined in ntt.cu)
 struct NTTDomain;
@@ -647,6 +649,23 @@ extern "C" gnark_gpu_error_t gnark_gpu_msm_release_work_buffers(gnark_gpu_msm_t 
     return GNARK_GPU_SUCCESS;
 }
 
+extern "C" gnark_gpu_error_t gnark_gpu_msm_load_points_sw(gnark_gpu_msm_t msm,
+                                                           const uint64_t *points_data,
+                                                           size_t count) {
+    if (!msm || !points_data || count == 0) return GNARK_GPU_ERROR_INVALID_ARG;
+    if (count > msm->max_points) return GNARK_GPU_ERROR_SIZE_MISMATCH;
+
+    cudaError_t err = cudaSetDevice(msm->ctx->device_id);
+    if (err != cudaSuccess) return check_cuda(err);
+
+    cudaError_t cuda_err = gnark_gpu::msm_load_points_sw(
+        msm->msm_ctx, points_data, count, msm->ctx->stream);
+    if (cuda_err != cudaSuccess) return check_cuda(cuda_err);
+
+    err = cudaStreamSynchronize(msm->ctx->stream);
+    return check_cuda(err);
+}
+
 extern "C" gnark_gpu_error_t gnark_gpu_test_sw_pair_add(
     const uint64_t *p0, const uint64_t *p1, uint64_t *out) {
     if (!p0 || !p1 || !out) return GNARK_GPU_ERROR_INVALID_ARG;
@@ -657,6 +676,12 @@ extern "C" gnark_gpu_error_t gnark_gpu_test_sw_to_te(
     const uint64_t *p_sw, uint64_t *out_te) {
     if (!p_sw || !out_te) return GNARK_GPU_ERROR_INVALID_ARG;
     return check_cuda(gnark_gpu::test_sw_to_te_run(p_sw, out_te));
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_test_batched_affine_reduce(
+    const uint64_t *points_aos, uint64_t *out_aos, int N) {
+    if (!points_aos || !out_aos || N <= 0) return GNARK_GPU_ERROR_INVALID_ARG;
+    return check_cuda(gnark_gpu::test_batched_affine_reduce_run(points_aos, out_aos, N));
 }
 
 extern "C" gnark_gpu_error_t gnark_gpu_msm_offload_points(gnark_gpu_msm_t msm) {

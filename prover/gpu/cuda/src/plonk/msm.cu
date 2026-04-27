@@ -91,6 +91,14 @@ static bool compact_overflow_buckets(size_t n) {
 	return n <= (1u << 23);
 }
 
+// Enable batched-affine bucket accumulation. Requires d_points_sw to be
+// populated via msm_load_points_sw. Off by default.
+// Read on each invocation so tests can toggle without process restart.
+static bool batched_affine_enabled() {
+	const char *env = std::getenv("GNARK_GPU_MSM_BATCHED_AFFINE");
+	return env && *env && std::atoi(env) != 0;
+}
+
 
 // Window-size schedule for BLS12-377 signed-digit MSM.
 // Empirical outcome on real gnark scalar datasets:
@@ -496,6 +504,10 @@ struct MSMContext {
 	int c, num_windows, num_buckets, sort_key_bits, reduce_blocks_per_window;
 
 	G1EdYZD *d_points;
+	// Optional Short-Weierstrass affine point buffer used by the
+	// batched-affine accumulate kernel (see GNARK_GPU_MSM_BATCHED_AFFINE).
+	// nullptr unless gnark_gpu_msm_load_points_sw was called.
+	G1AffineSW *d_points_sw;
 	uint64_t *d_scalars;
 	uint32_t *d_bucket_offsets, *d_bucket_ends, *d_point_indices;
 	G1EdExtended *d_buckets, *d_window_results, *d_window_accum;
@@ -670,6 +682,7 @@ MSMContext *msm_create(size_t max_points) {
 void msm_destroy(MSMContext *ctx) {
 	if(!ctx) return;
 	cudaFree(ctx->d_points); cudaFree(ctx->d_scalars);
+	if(ctx->d_points_sw) cudaFree(ctx->d_points_sw);
 	cudaFree(ctx->d_bucket_offsets); cudaFree(ctx->d_bucket_ends);
 	cudaFree(ctx->d_point_indices); cudaFree(ctx->d_buckets);
 	cudaFree(ctx->d_window_results); cudaFree(ctx->d_window_accum);
@@ -709,6 +722,20 @@ cudaError_t msm_reload_points(MSMContext *ctx, const void *host_points, size_t c
 	cudaMemcpyAsync(ctx->d_points, host_points, count * sizeof(G1EdYZD), cudaMemcpyHostToDevice, stream);
 	return cudaSuccess;
 }
+
+// Upload SW affine points into the optional d_points_sw buffer used by the
+// batched-affine accumulate kernel. May be called any time after msm_create.
+cudaError_t msm_load_points_sw(MSMContext *ctx, const void *host_sw_points, size_t count, cudaStream_t stream) {
+	if(!ctx) return cudaErrorInvalidValue;
+	if(!ctx->d_points_sw) {
+		cudaError_t err = cudaMalloc(&ctx->d_points_sw, ctx->max_points * sizeof(G1AffineSW));
+		if(err != cudaSuccess) return err;
+	}
+	if(count > ctx->max_points) count = ctx->max_points;
+	cudaMemcpyAsync(ctx->d_points_sw, host_sw_points,
+	                count * sizeof(G1AffineSW), cudaMemcpyHostToDevice, stream);
+	return cudaSuccess;
+}
 void msm_upload_scalars(MSMContext *ctx, const uint64_t *host_scalars, size_t n, cudaStream_t stream) {
 	size_t bytes = n * 4 * sizeof(uint64_t);
 	if(ctx->h_scalar_staging && ctx->h_scalar_staging_b && bytes <= 2 * ctx->staging_buf_bytes) {
@@ -728,6 +755,191 @@ void msm_upload_scalars(MSMContext *ctx, const uint64_t *host_scalars, size_t n,
 // Helper: record phase event on stream if event tracking is enabled.
 static inline void msm_record_event(MSMContext *ctx, int idx, cudaStream_t stream) {
 	if(ctx->phase_events_valid) cudaEventRecord(ctx->phase_event[idx], stream);
+}
+
+// =============================================================================
+// Batched-affine bucket accumulation (one block per bucket).
+//
+// Algorithm: pairwise reduction in SW affine, with block-local Montgomery
+// batched inversion. log₂(B) waves; each wave halves the active count.
+//
+// Phases per wave:
+//   1. Each thread t ∈ [0, B/2) computes Δx[t] = x_{2t+1} − x_{2t}.
+//   2. Lane 0 sequentially walks the Montgomery batched-invert protocol
+//      (forward prefix product, single fp_inv on the global product, backward
+//      scan). All other lanes are idle here — fine for an MVP since fp_inv
+//      and ~B muls are dwarfed by the per-thread serial chain savings of
+//      log₂(B) vs B in the full reduction.
+//   3. Each thread t ∈ [0, B/2) applies pair add using inv_dx[t].
+//   4. If active is odd, the last point is passed through unchanged.
+//
+// Limitations of this MVP:
+//   - Fixed shared-mem layout: B ≤ MAX_BATCHED_AFFINE_B (256). Buckets larger
+//     than this are not handled; caller must dispatch to a fallback.
+//   - Single-lane invert is the obvious bottleneck. Phase 2 will become a
+//     parallel block-scan once the kernel proves the algorithmic win.
+//   - Special cases (Δx=0 → P+P or P+(−P)) are not handled. For random-scalar
+//     MSM with sorted-by-bucket pairs, two distinct point indices in the same
+//     bucket have ~zero probability of identical x-coordinate.
+//
+// Output is per-bucket sum in G1EdExtended for compatibility with the
+// existing reduce phase (the SW→TE conversion is done once per bucket at the
+// end of the kernel — amortized over all the adds that produced this point).
+// =============================================================================
+
+static constexpr int MAX_BATCHED_AFFINE_B = 256;
+static constexpr int MAX_BATCHED_AFFINE_HALF = MAX_BATCHED_AFFINE_B / 2;
+
+__global__ void __launch_bounds__(MAX_BATCHED_AFFINE_B, 1)
+	accumulate_buckets_batched_affine_kernel(
+		const G1AffineSW *__restrict__ points,
+		const uint32_t *__restrict__ point_indices,
+		const uint32_t *__restrict__ bucket_offsets,
+		const uint32_t *__restrict__ bucket_ends,
+		G1EdExtended *__restrict__ buckets,
+		int total_buckets) {
+
+	int bucket_flat = blockIdx.x;
+	if(bucket_flat >= total_buckets) return;
+
+	uint32_t start = bucket_offsets[bucket_flat];
+	uint32_t end = bucket_ends[bucket_flat];
+	int B = (int)(end - start);
+	int tid = threadIdx.x;
+
+	// Empty bucket: write identity and return.
+	if(B == 0) {
+		if(tid == 0) ec_te_set_identity(buckets[bucket_flat]);
+		return;
+	}
+
+	// Truncate to MVP bound. (Caller is responsible for falling back on
+	// any bucket larger than MAX_BATCHED_AFFINE_B.)
+	if(B > MAX_BATCHED_AFFINE_B) B = MAX_BATCHED_AFFINE_B;
+
+	__shared__ G1AffineSW pts[MAX_BATCHED_AFFINE_B];
+	__shared__ uint64_t  dx_orig[MAX_BATCHED_AFFINE_HALF * 6];
+	__shared__ uint64_t  prefix [MAX_BATCHED_AFFINE_HALF * 6];
+	__shared__ uint64_t  inv_dx [MAX_BATCHED_AFFINE_HALF * 6];
+
+	// Phase A: parallel point load with conditional negation.
+	if(tid < B) {
+		uint32_t packed = point_indices[start + tid];
+		G1AffineSW p = points[packed & 0x7FFFFFFFu];
+		g1sw_cnegate(p, (bool)(packed >> 31));
+		pts[tid] = p;
+	}
+	__syncthreads();
+
+	// Phase B: pairwise reduction waves.
+	int active = B;
+	while(active > 1) {
+		int half = active >> 1;          // #pairs
+		bool oddTail = (active & 1) != 0; // last element passes through
+
+		// B.1: each thread t in [0, half) computes Δx[t].
+		if(tid < half) {
+			uint64_t dx[6];
+			fp_sub(dx, pts[2*tid + 1].x, pts[2*tid].x);
+			#pragma unroll
+			for(int k = 0; k < 6; k++) dx_orig[tid*6 + k] = dx[k];
+		}
+		__syncthreads();
+
+		// B.2: lane 0 does Montgomery batched-invert.
+		if(tid == 0 && half > 0) {
+			// Forward scan: prefix[i] = Δx[0] · Δx[1] · … · Δx[i]
+			uint64_t running[6];
+			#pragma unroll
+			for(int k = 0; k < 6; k++) running[k] = dx_orig[k];
+			#pragma unroll
+			for(int k = 0; k < 6; k++) prefix[k] = running[k];
+
+			for(int i = 1; i < half; i++) {
+				uint64_t cur[6];
+				#pragma unroll
+				for(int k = 0; k < 6; k++) cur[k] = dx_orig[i*6 + k];
+				uint64_t next[6];
+				fp_mul(next, running, cur);
+				#pragma unroll
+				for(int k = 0; k < 6; k++) running[k] = next[k];
+				#pragma unroll
+				for(int k = 0; k < 6; k++) prefix[i*6 + k] = next[k];
+			}
+
+			// Single inversion of the global product.
+			uint64_t inv_total[6];
+			fp_inv(inv_total, running);
+
+			// Backward scan: extract individual inverses.
+			//   inv[i]   = inv_total · prefix[i-1]   (for i > 0)
+			//   inv_total ← inv_total · Δx[i]
+			//   inv[0]   = the final inv_total
+			uint64_t r[6];
+			#pragma unroll
+			for(int k = 0; k < 6; k++) r[k] = inv_total[k];
+
+			for(int i = half - 1; i > 0; i--) {
+				uint64_t prev[6];
+				#pragma unroll
+				for(int k = 0; k < 6; k++) prev[k] = prefix[(i-1)*6 + k];
+				uint64_t inv_i[6];
+				fp_mul(inv_i, r, prev);
+				#pragma unroll
+				for(int k = 0; k < 6; k++) inv_dx[i*6 + k] = inv_i[k];
+
+				uint64_t cur_dx[6];
+				#pragma unroll
+				for(int k = 0; k < 6; k++) cur_dx[k] = dx_orig[i*6 + k];
+				uint64_t new_r[6];
+				fp_mul(new_r, r, cur_dx);
+				#pragma unroll
+				for(int k = 0; k < 6; k++) r[k] = new_r[k];
+			}
+			#pragma unroll
+			for(int k = 0; k < 6; k++) inv_dx[k] = r[k];
+		}
+		__syncthreads();
+
+		// B.3 + B.4: read inputs into registers FIRST, sync, then write.
+		// Race fix: passthrough writes pts[half], which pair-add at
+		// tid=half/2 reads as pts[2*(half/2)] = pts[half]. Without separating
+		// read from write with a sync, different warps could read/write the
+		// same slot concurrently.
+		G1AffineSW lhs, rhs, last;
+		bool doPair = (tid < half);
+		bool doPass = (oddTail && tid == half);
+		if(doPair) {
+			lhs = pts[2*tid];
+			rhs = pts[2*tid + 1];
+		}
+		if(doPass) {
+			last = pts[active - 1];
+		}
+		__syncthreads();
+
+		if(doPair) {
+			uint64_t inv[6];
+			#pragma unroll
+			for(int k = 0; k < 6; k++) inv[k] = inv_dx[tid*6 + k];
+			G1AffineSW out;
+			g1sw_pair_add_with_inv_dx(out, lhs, rhs, inv);
+			pts[tid] = out;
+		}
+		if(doPass) {
+			pts[half] = last;
+		}
+		__syncthreads();
+
+		active = (active + 1) >> 1;
+	}
+
+	// Phase C: convert single result to TE extended.
+	if(tid == 0) {
+		G1EdExtended out;
+		g1sw_to_te_extended(out, pts[0]);
+		buckets[bucket_flat] = out;
+	}
 }
 
 void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
@@ -778,7 +990,18 @@ void launch_msm(MSMContext *ctx, size_t n, cudaStream_t stream) {
 
 		unsigned seq_blocks = ((unsigned)total_buckets + threads - 1) / threads;
 
-		if(compact_overflow_buckets(n)) {
+		// Optional path: batched-affine accumulation (one block per bucket).
+		// Requires SW affine points to have been uploaded via msm_load_points_sw.
+		// Skips the seq + parallel-tail kernels entirely when active.
+		if(batched_affine_enabled() && ctx->d_points_sw != nullptr) {
+			constexpr int BAA_BLOCK = MAX_BATCHED_AFFINE_B;
+			accumulate_buckets_batched_affine_kernel<<<total_buckets, BAA_BLOCK, 0, stream>>>(
+				ctx->d_points_sw, ctx->d_point_indices,
+				ctx->d_bucket_offsets, ctx->d_bucket_ends,
+				ctx->d_buckets, total_buckets);
+			msm_record_event(ctx, 5, stream);
+			// No accum_par phase recorded — leave phase_par_recorded = false.
+		} else if(compact_overflow_buckets(n)) {
 			// Phase 1: Sequential — each thread handles min(bucket_size, cap).
 			cudaMemsetAsync(ctx->d_overflow_count, 0, sizeof(uint32_t), stream);
 			accumulate_buckets_kernel<<<seq_blocks, threads, 0, stream>>>(
@@ -1027,6 +1250,124 @@ cudaError_t test_sw_pair_add_run(const uint64_t *p0, const uint64_t *p1, uint64_
 	cudaError_t err = cudaDeviceSynchronize();
 	cudaMemcpy(out, d_out, 12 * sizeof(uint64_t), cudaMemcpyDeviceToHost);
 	cudaFree(d_p0); cudaFree(d_p1); cudaFree(d_out);
+	return err;
+}
+
+// Test kernel: reduce N affine SW points via the same batched-affine
+// pairwise reduction used in the bucket accumulator. Returns the final
+// SW affine sum (one point) — no TE conversion. Used to isolate bugs in
+// the multi-wave reduction logic.
+__global__ void test_batched_affine_reduce_kernel(
+	const uint64_t *points_aos,  // N × 12 uint64s, AoS (x[0..6], y[0..6])
+	uint64_t *out_aos,            // 12 uint64s SW affine
+	int N) {
+
+	if(blockIdx.x != 0) return;
+	int tid = threadIdx.x;
+
+	__shared__ G1AffineSW pts[MAX_BATCHED_AFFINE_B];
+	__shared__ uint64_t  dx_orig[MAX_BATCHED_AFFINE_HALF * 6];
+	__shared__ uint64_t  prefix [MAX_BATCHED_AFFINE_HALF * 6];
+	__shared__ uint64_t  inv_dx [MAX_BATCHED_AFFINE_HALF * 6];
+
+	// Load N points (no negation).
+	if(tid < N) {
+		G1AffineSW p;
+		for(int k = 0; k < 6; k++) p.x[k] = points_aos[tid * 12 + k];
+		for(int k = 0; k < 6; k++) p.y[k] = points_aos[tid * 12 + 6 + k];
+		pts[tid] = p;
+	}
+	__syncthreads();
+
+	int active = N;
+	while(active > 1) {
+		int half = active >> 1;
+		bool oddTail = (active & 1) != 0;
+
+		if(tid < half) {
+			uint64_t dx[6];
+			fp_sub(dx, pts[2*tid + 1].x, pts[2*tid].x);
+			for(int k = 0; k < 6; k++) dx_orig[tid*6 + k] = dx[k];
+		}
+		__syncthreads();
+
+		if(tid == 0 && half > 0) {
+			uint64_t running[6];
+			for(int k = 0; k < 6; k++) running[k] = dx_orig[k];
+			for(int k = 0; k < 6; k++) prefix[k] = running[k];
+			for(int i = 1; i < half; i++) {
+				uint64_t cur[6];
+				for(int k = 0; k < 6; k++) cur[k] = dx_orig[i*6 + k];
+				uint64_t next[6];
+				fp_mul(next, running, cur);
+				for(int k = 0; k < 6; k++) running[k] = next[k];
+				for(int k = 0; k < 6; k++) prefix[i*6 + k] = next[k];
+			}
+			uint64_t inv_total[6];
+			fp_inv(inv_total, running);
+			uint64_t r[6];
+			for(int k = 0; k < 6; k++) r[k] = inv_total[k];
+			for(int i = half - 1; i > 0; i--) {
+				uint64_t prev[6];
+				for(int k = 0; k < 6; k++) prev[k] = prefix[(i-1)*6 + k];
+				uint64_t inv_i[6];
+				fp_mul(inv_i, r, prev);
+				for(int k = 0; k < 6; k++) inv_dx[i*6 + k] = inv_i[k];
+				uint64_t cur_dx[6];
+				for(int k = 0; k < 6; k++) cur_dx[k] = dx_orig[i*6 + k];
+				uint64_t new_r[6];
+				fp_mul(new_r, r, cur_dx);
+				for(int k = 0; k < 6; k++) r[k] = new_r[k];
+			}
+			for(int k = 0; k < 6; k++) inv_dx[k] = r[k];
+		}
+		__syncthreads();
+
+		// Race-safe: read both pair-add inputs and passthrough source into
+		// registers BEFORE any thread writes. See accumulate_buckets_batched_
+		// _affine_kernel for the rationale.
+		G1AffineSW lhs, rhs, last;
+		bool doPair = (tid < half);
+		bool doPass = (oddTail && tid == half);
+		if(doPair) {
+			lhs = pts[2*tid];
+			rhs = pts[2*tid + 1];
+		}
+		if(doPass) {
+			last = pts[active - 1];
+		}
+		__syncthreads();
+
+		if(doPair) {
+			uint64_t inv[6];
+			for(int k = 0; k < 6; k++) inv[k] = inv_dx[tid*6 + k];
+			G1AffineSW out;
+			g1sw_pair_add_with_inv_dx(out, lhs, rhs, inv);
+			pts[tid] = out;
+		}
+		if(doPass) {
+			pts[half] = last;
+		}
+		__syncthreads();
+
+		active = (active + 1) >> 1;
+	}
+
+	if(tid == 0) {
+		for(int k = 0; k < 6; k++) out_aos[k] = pts[0].x[k];
+		for(int k = 0; k < 6; k++) out_aos[6 + k] = pts[0].y[k];
+	}
+}
+
+cudaError_t test_batched_affine_reduce_run(const uint64_t *points_aos, uint64_t *out_aos, int N) {
+	uint64_t *d_in, *d_out;
+	cudaMalloc(&d_in, (size_t)N * 12 * sizeof(uint64_t));
+	cudaMalloc(&d_out, 12 * sizeof(uint64_t));
+	cudaMemcpy(d_in, points_aos, (size_t)N * 12 * sizeof(uint64_t), cudaMemcpyHostToDevice);
+	test_batched_affine_reduce_kernel<<<1, MAX_BATCHED_AFFINE_B>>>(d_in, d_out, N);
+	cudaError_t err = cudaDeviceSynchronize();
+	cudaMemcpy(out_aos, d_out, 12 * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+	cudaFree(d_in); cudaFree(d_out);
 	return err;
 }
 

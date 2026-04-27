@@ -402,28 +402,103 @@ validated incrementally.
 Both tests pass. The `fp_inv` correctness is implicitly validated end-to-end
 via these tests since both rely on it.
 
-### Why this is "in progress", not "done"
+### Built and validated
 
-The full batched-affine MSM kernel still needs:
+1. **Block-local batched-affine accumulate kernel** —
+   `accumulate_buckets_batched_affine_kernel`. One block per bucket,
+   256 threads. Reads SW affine points into shared mem, runs pairwise
+   reduction with single-lane batched invert, converts result to TE
+   extended at the kernel boundary.
+2. **`MSM.LoadPointsSW`** API for uploading SW affine points to a
+   dedicated `d_points_sw` buffer. Kept in parallel with existing
+   TE-precomp `d_points`; new kernel uses one, legacy uses the other.
+3. **Env-var gate** `GNARK_GPU_MSM_BATCHED_AFFINE=1` re-read on each
+   `msm_run` so tests can A/B without process restart.
+4. **Validation** — `TestGPUBatchedAffineReduce` (multi-wave reduce in
+   isolation, N up to 256) AND `TestGPUBatchedAffineMSM` (full MSM
+   pipeline at n=1024, 32K, 1M against reference G1Jac results) — all
+   pass.
 
-1. **Block-local Montgomery batched invert** of pair Δx values in shared
-   memory. Sequential single-lane version (~120 muls per wave for B=60)
-   is the simplest first cut; cross-bucket batching is a future
-   optimization once block-local proves the approach wins.
-2. **Pair-organization within a block** — load points, pair `(2i, 2i+1)`,
-   compute Δx, batch-invert, apply, repeat with halved active count.
-3. **SW affine point storage** alongside the existing TE-precomp buffer.
-   Either: (a) extend `ConvertG1Points` to also write a 96-byte SW blob,
-   (b) add a TE→SW GPU conversion kernel run once at point load.
-4. **Hook into the accumulate phase** via env var
-   `GNARK_GPU_MSM_BATCHED_AFFINE` so we can A/B against the current
-   1-thread-per-bucket sequential kernel without breaking it.
-5. **Validate** via existing reference results in msm_test.go (1024,
-   32K, 1M, 128M).
-6. **Benchmark** `accum_seq` and overall MSM. Decide keep/revert.
+### Race condition found and fixed (2026-04-27)
 
-The plan is sound but the kernel is substantial. Foundation is committed
-so the next session can pick up from validated primitives.
+Initial implementation failed non-deterministically at large N. Root
+cause: in the pair-merge wave, pair-add at `tid=t` reads `pts[2t]` and
+`pts[2t+1]`, while passthrough at `tid=half` writes `pts[half]`. For odd
+active values, `pts[half]` is in the read range of pair-add at
+`tid=half/2`, but in a different warp — no synchronization between read
+and write. Different scheduling outcomes gave different results.
+
+Fix: read all required inputs (lhs, rhs, last) into thread registers in
+the first sub-phase, `__syncthreads()`, then write outputs in the second
+sub-phase. Eliminates the data race entirely.
+
+After the fix, `TestGPUBatchedAffineReduce` passes deterministically at
+all N from 1 to 256 (verified across multiple runs).
+
+### Bench result — `BenchmarkMSMBatchedAffine`, 10 iters
+
+| n     | legacy `accum_seq` | batched-affine `accum_seq` | ratio |
+|---    |---:                 |---:                          |---:   |
+| 64K   |    944 µs           |  2 978 190 µs                |  3155× SLOWER |
+| 256K  |  2 682 µs           |  5 300 524 µs                |  1976× SLOWER |
+| 1M    |  7 014 µs           | 18 606 954 µs                |  2653× SLOWER |
+| 4M    | 24 797 µs           | 26 388 558 µs                |  1064× SLOWER |
+
+The kernel is **catastrophically slow**. Why:
+
+- One block per bucket = ~983K blocks at n=4M.
+- With `__launch_bounds__(256, 1)` only 188 blocks active at a time.
+- Inside each block, the Montgomery batched-invert is single-lane
+  (lane 0 does the entire forward scan + Fermat exp + backward scan,
+  ~720 fp_mul per wave for avg bucket size).
+- Effective concurrency: ~188 threads doing real work at any time,
+  vs ~96K in the legacy kernel. **~500× less parallelism.**
+
+The single Fermat exponentiation (565 fp_muls) per wave per block also
+adds a fixed cost. log₂(B) waves × 565 = 3400+ fp_muls per bucket,
+just for inversions. Compare to ~7B fp_muls in the legacy 7M
+mixed-add chain. At B=15, that's 105 vs 3400 — 32× more inversion
+work alone.
+
+### What sppark/Yrrid actually do
+
+The real win in batched-affine MSM is **cross-bucket batched
+inversion**, not block-local. Across all wave-0 pairs (~30M at n=4M),
+ONE Montgomery batch invert is performed: forward scan on 30M elements
+(parallelizable), single Fermat exp once, backward scan on 30M elements
+(parallelizable). The Fermat exp cost is amortized to ~0 per pair, and
+the prefix product runs at full GPU memory-bandwidth throughput.
+
+This requires:
+
+- A pair-organization kernel that lays out all wave-`w` pairs in a flat
+  buffer keyed by bucket-then-pair-position.
+- A parallel prefix-product kernel (work-efficient scan, e.g.
+  Blelloch).
+- A single inversion kernel.
+- A parallel backward scan that produces individual `inv_dx` for each
+  pair.
+- A finalize kernel that applies the pair-add per pair.
+
+Per wave: 4–5 kernel launches. Across log₂(B) waves: 4–5× log₂(60) ≈
+30 kernel launches. Substantially more orchestration than the current
+1-kernel accumulate, but the parallel scan throughput should make it
+worthwhile.
+
+Effort estimate: 1 dedicated week of kernel work, given the code is
+fresh (validated SW affine primitives, working block-local kernel as
+testbed, validated SW→TE conversion). The next session should pick up
+from this state.
+
+### Disposition for THIS session
+
+Keep the validated infrastructure (primitives, foundation kernel,
+`LoadPointsSW`, env var, tests) on the branch. Default remains the
+legacy 1-thread-per-bucket sequential kernel — batched-affine is
+gated behind `GNARK_GPU_MSM_BATCHED_AFFINE=1` and only useful for
+correctness validation of the SW arithmetic and the multi-wave
+algorithm. **Do NOT enable in production paths** until cross-bucket
+inversion lands.
 
 
 

@@ -32,3 +32,17 @@ func TestSWToTEGPU(pSW *[12]uint64, outTE *[24]uint64) error {
 		(*C.uint64_t)(unsafe.Pointer(&outTE[0])),
 	))
 }
+
+// TestBatchedAffineReduceGPU reduces N (≤ 256) affine SW points via the same
+// pairwise-reduce pipeline used in the bucket accumulator. Returns the SW
+// affine sum.
+func TestBatchedAffineReduceGPU(pointsAoS []uint64, out *[12]uint64, N int) error {
+	if len(pointsAoS) < N*12 {
+		panic("pointsAoS smaller than N*12")
+	}
+	return toError(C.gnark_gpu_test_batched_affine_reduce(
+		(*C.uint64_t)(unsafe.Pointer(&pointsAoS[0])),
+		(*C.uint64_t)(unsafe.Pointer(&out[0])),
+		C.int(N),
+	))
+}

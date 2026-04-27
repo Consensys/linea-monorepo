@@ -170,6 +170,14 @@ void gnark_gpu_msm_destroy(gnark_gpu_msm_t msm);
 // Query MSM configuration (c = window bits, num_windows = ceil(253/c))
 void gnark_gpu_msm_get_config(gnark_gpu_msm_t msm, int *c, int *num_windows);
 
+// Upload Short-Weierstrass affine points (gnark bls12377.G1Affine layout —
+// 12 uint64s per point, Montgomery form) into the optional d_points_sw GPU
+// buffer. Used only by the batched-affine accumulate kernel
+// (GNARK_GPU_MSM_BATCHED_AFFINE=1). Allocates the buffer on first call.
+gnark_gpu_error_t gnark_gpu_msm_load_points_sw(gnark_gpu_msm_t msm,
+                                                const uint64_t *points_data,
+                                                size_t count);
+
 // Pin work buffers (sort buffers + cudaHostRegister of caller scalars) across
 // gnark_gpu_msm_run calls. Without this, msm_run lazily allocates several
 // GB of sort buffers and registers caller memory at the start of each call,
@@ -191,6 +199,12 @@ gnark_gpu_error_t gnark_gpu_test_sw_pair_add(
 // Convert SW affine to TE extended (X, Y, T, Z) — output is 24 uint64s.
 gnark_gpu_error_t gnark_gpu_test_sw_to_te(
     const uint64_t *p_sw, uint64_t *out_te);
+
+// Reduce N affine SW points (≤ 256) via batched-affine pairwise reduction
+// in shared memory. Output is the SW affine sum (12 uint64s). Used to
+// isolate bugs in the multi-wave reduction logic.
+gnark_gpu_error_t gnark_gpu_test_batched_affine_reduce(
+    const uint64_t *points_aos, uint64_t *out_aos, int N);
 
 // Per-phase timings of the last gnark_gpu_msm_run call. Phase order
 // (9 floats, milliseconds):

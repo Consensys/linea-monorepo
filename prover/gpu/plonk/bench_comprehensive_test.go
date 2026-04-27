@@ -509,6 +509,58 @@ func BenchmarkMSMPinned(b *testing.B) {
 	}
 }
 
+// BenchmarkMSMBatchedAffine compares the new SW affine batched-pairwise
+// accumulate kernel vs the legacy 1-thread-per-bucket sequential kernel.
+// Per-phase timings show whether accum_seq actually shrinks in practice.
+func BenchmarkMSMBatchedAffine(b *testing.B) {
+	dev := newBenchDev(b)
+	sizes := []int{1 << 16, 1 << 18, 1 << 20, 1 << 22}
+	for _, n := range sizes {
+		swPoints := loadSRSAffinePoints(b, n)
+		tePoints := loadSRSTEPoints(b, n)
+		scalars := loadTestScalars(n)
+
+		b.Run(fmt.Sprintf("legacy/n=%s", fmtSz(n)), func(b *testing.B) {
+			b.Setenv("GNARK_GPU_MSM_BATCHED_AFFINE", "0")
+			pinned, err := plonk.PinG1TEPoints(tePoints)
+			require.NoError(b, err)
+			msm, err := plonk.NewG1MSM(dev, pinned)
+			require.NoError(b, err)
+			defer msm.Close()
+			msm.MultiExp(scalars)
+			dev.Sync()
+			b.SetBytes(int64(n) * 32)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				msm.MultiExp(scalars)
+			}
+			b.StopTimer()
+			report := msm.LastPhaseTimings()
+			b.ReportMetric(float64(report[plonk.MSMPhaseAccumSeq]*1000), "accum_seq_µs")
+		})
+
+		b.Run(fmt.Sprintf("batched-affine/n=%s", fmtSz(n)), func(b *testing.B) {
+			b.Setenv("GNARK_GPU_MSM_BATCHED_AFFINE", "1")
+			pinned, err := plonk.PinG1TEPoints(tePoints)
+			require.NoError(b, err)
+			msm, err := plonk.NewG1MSM(dev, pinned)
+			require.NoError(b, err)
+			defer msm.Close()
+			require.NoError(b, msm.LoadPointsSW(swPoints))
+			msm.MultiExp(scalars)
+			dev.Sync()
+			b.SetBytes(int64(n) * 32)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				msm.MultiExp(scalars)
+			}
+			b.StopTimer()
+			report := msm.LastPhaseTimings()
+			b.ReportMetric(float64(report[plonk.MSMPhaseAccumSeq]*1000), "accum_seq_µs")
+		})
+	}
+}
+
 func BenchmarkMSMPhaseTimings(b *testing.B) {
 	dev := newBenchDev(b)
 	sizes := []int{1 << 16, 1 << 18, 1 << 20, 1 << 22}

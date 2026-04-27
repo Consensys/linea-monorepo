@@ -340,6 +340,29 @@ func (m *G1MSM) LastPhaseTimings() [MSMPhaseCount]float32 {
 	return result
 }
 
+// LoadPointsSW uploads Short-Weierstrass affine points to the optional
+// d_points_sw GPU buffer used by the batched-affine accumulate kernel
+// (enabled with env GNARK_GPU_MSM_BATCHED_AFFINE=1). Caller must hold
+// the affine points in a contiguous slice; layout matches gnark's
+// bls12377.G1Affine ([12]uint64 in Montgomery form).
+//
+// Allocates the device buffer on first call. Buffer is freed in Close().
+// At n=2²⁷ the buffer is ~12 GiB — caller is responsible for VRAM headroom.
+func (m *G1MSM) LoadPointsSW(swPoints []bls12377.G1Affine) error {
+	n := len(swPoints)
+	if n == 0 {
+		return &gpu.Error{Code: -1, Message: "swPoints must not be empty"}
+	}
+	if n > m.n {
+		n = m.n
+	}
+	return toError(C.gnark_gpu_msm_load_points_sw(
+		m.handle,
+		(*C.uint64_t)(unsafe.Pointer(&swPoints[0])),
+		C.size_t(n),
+	))
+}
+
 // PinWorkBuffers keeps the MSM's sort buffers and host registration alive
 // across MultiExp calls. Use this around a wave of back-to-back MSMs to
 // amortize ~5–10 ms of cudaMalloc/Free + cudaHostRegister/Unregister
