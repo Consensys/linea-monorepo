@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       include-path:
-        description: "git-cliff --include-path filter (e.g. coordinator/**)"
+        description: "git-cliff --include-path filter — single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
         required: true
         type: string
       cliff-config:
@@ -64,22 +64,37 @@ jobs:
         with:
           tool: git-cliff
 
+      # Normalize inputs.include-path (plain string or JSON array string) into
+      # one path per line so downstream steps reconstruct a bash array safely.
+      - name: Build include-path list
+        id: paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'include_paths<<__PATHS_EOF__'
+            echo '${{ inputs.include-path }}' \
+              | jq -r 'if type == "array" then .[] else . end'
+            echo '__PATHS_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       # Compute the release version and tag up front, so the changelog entry
       # prepended in the next step is stamped with the version (not [unreleased]).
       - name: Compute next ${{ inputs.component-name }} version (semver)
         id: version
         env:
           COMPONENT: ${{ inputs.component-name }}
-          INCLUDE_PATH: ${{ inputs.include-path }}
           CLIFF_CONFIG: ${{ inputs.cliff-config }}
         run: |
           set -euo pipefail
+          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+          cliff_args=(--config "${CLIFF_CONFIG}" --bumped-version)
+          for p in "${paths[@]}"; do
+            cliff_args+=(--include-path "${p}")
+          done
+          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
           current_tag=$(git describe --tags --abbrev=0)
-          next_tag=$(git cliff \
-            --config "${CLIFF_CONFIG}" \
-            --bumped-version \
-            --include-path "${INCLUDE_PATH}" \
-            --tag-pattern "releases/${COMPONENT}/v*")
+          next_tag=$(git cliff "${cliff_args[@]}")
           if [ -z "${next_tag}" ]; then
             echo "git-cliff returned no version; nothing to release."
             echo "tag=" >> "$GITHUB_OUTPUT"
@@ -117,18 +132,17 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
-          INCLUDE_PATH: ${{ inputs.include-path }}
           CLIFF_CONFIG: ${{ inputs.cliff-config }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          git cliff \
-            --config "${CLIFF_CONFIG}" \
-            --unreleased \
-            --tag "${VERSION}" \
-            --include-path "${INCLUDE_PATH}" \
-            --tag-pattern "releases/${COMPONENT}/v*" \
-            --prepend "${COMPONENT}/CHANGELOG.md"
+          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+          cliff_args=(--config "${CLIFF_CONFIG}" --unreleased --tag "${VERSION}")
+          for p in "${paths[@]}"; do
+            cliff_args+=(--include-path "${p}")
+          done
+          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${COMPONENT}/CHANGELOG.md")
+          git cliff "${cliff_args[@]}"
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
         if: steps.version.outputs.changed == 'true'
@@ -168,13 +182,23 @@ jobs:
       - name: Generate ${{ inputs.component-name }} latest changelog
         if: steps.version.outputs.changed == 'true'
         id: changelog
-        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
-        with:
-          config: ${{ inputs.cliff-config }}
-          args: >-
-            --latest
-            --include-path "${{ inputs.include-path }}"
-            --tag-pattern "releases/${{ inputs.component-name }}/v*"
+        env:
+          COMPONENT: ${{ inputs.component-name }}
+          CLIFF_CONFIG: ${{ inputs.cliff-config }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+          cliff_args=(--config "${CLIFF_CONFIG}" --latest)
+          for p in "${paths[@]}"; do
+            cliff_args+=(--include-path "${p}")
+          done
+          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
+          {
+            echo 'content<<__CLIFF_EOF__'
+            git cliff "${cliff_args[@]}"
+            echo '__CLIFF_EOF__'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Compute version tags
         if: steps.version.outputs.changed == 'true'

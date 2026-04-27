@@ -50,7 +50,7 @@ jobs:
         component: [ coordinator, postman, tx-exclusion-api, besu-package ]
         include:
           - component: coordinator
-            include-path: 'coordinator/**'
+            include-path: [ 'coordinator/**', 'contracts/**' ]
           - component: postman
             include-path: 'postman/**'
           - component: tx-exclusion-api

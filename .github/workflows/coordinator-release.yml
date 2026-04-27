@@ -22,7 +22,7 @@ jobs:
     uses: ./.github/workflows/reusable-component-release.yml
     with:
       component-name: coordinator
-      include-path: "coordinator/**"
+      include-path: '["coordinator/**","contracts/**"]'
 
   build-docker-image-coordinator:
     needs: [release-coordinator]
