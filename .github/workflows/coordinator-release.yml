@@ -51,6 +51,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
+          current_tag=$(git describe --tags --abbrev=0)
           next_tag=$(git cliff \
             --config cliff.toml \
             --bumped-version \
@@ -63,15 +64,21 @@ jobs:
             exit 0
           fi
           next_semver="${next_tag#releases/coordinator/v}"
+          echo "current coordinator tag: ${current_tag}"
           echo "next coordinator tag:    ${next_tag}"
           echo "next coordinator semver: ${next_semver}"
+          changed=false
+          if [ "$current_tag" != "$next_tag" ]; then
+            changed=true
+          fi
           {
             echo "tag=${next_tag}"
             echo "version=${next_semver}"
+            echo "changed=${changed}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Ensure coordinator/CHANGELOG.md exists
-        if: steps.version.outputs.tag != ''
+        if: steps.version.outputs.changed == 'true'
         run: |
           set -euo pipefail
           if [ ! -f coordinator/CHANGELOG.md ]; then
@@ -81,7 +88,7 @@ jobs:
       # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-23"),
       # via --tag, so the body template renders {{ version }} instead of [unreleased].
       - name: Generate and prepend release changelog section
-        if: steps.version.outputs.tag != ''
+        if: steps.version.outputs.changed == 'true'
         run: |
           set -euo pipefail
           git cliff \
@@ -94,7 +101,7 @@ jobs:
 
       - name: Commit and push coordinator/CHANGELOG.md
         id: commit
-        if: steps.version.outputs.tag != ''
+        if: steps.version.outputs.changed == 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
@@ -107,11 +114,10 @@ jobs:
           git add coordinator/CHANGELOG.md
           git commit -m "chore(coordinator): CHANGELOG.md update for ${TAG} release"
           git push origin "HEAD:${GITHUB_REF_NAME}"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create and push coordinator release tag
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
@@ -129,7 +135,7 @@ jobs:
           echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
 
       - name: Generate coordinator latest changelog
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true'
         id: changelog
         uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 #(v4.7.1)
         with:
@@ -140,18 +146,18 @@ jobs:
             --tag-pattern "releases/coordinator/v*"
 
       - name: Compute version tags
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true'
         id: compute_version_tags
         uses: ./.github/actions/compute-version-tags
 
       - name: Set timestamp
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true'
         id: timestamp
         run: |
           echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
       - name: set docker tag
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true'
         id: dockertag
         run: |
           echo "dockertag=${{ steps.version.outputs.version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
