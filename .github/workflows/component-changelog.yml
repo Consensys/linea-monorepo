@@ -47,7 +47,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [ "coordinator", "postman", "transaction-exclusion-api" ]
+        component: [ coordinator, postman, tx-exclusion-api ]
+        include:
+          - component: coordinator
+            include-path: coordinator
+          - component: postman
+            include-path: postman
+          - component: tx-exclusion-api
+            include-path: transaction-exclusion-api
+
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
       - name: Checkout
@@ -65,7 +73,7 @@ jobs:
           config: cliff.toml
           args: >-
             --unreleased
-            --include-path "${{ matrix.component }}/**"
+            --include-path "${{ matrix.include-path }}/**"
             --tag-pattern "releases/${{ matrix.component }}/v*"
 
       # Install git-cliff directly so we can call --bumped-version without the
@@ -84,7 +92,7 @@ jobs:
           next_tag=$(git cliff \
             --config cliff.toml \
             --bumped-version \
-            --include-path "${{ matrix.component }}/**" \
+            --include-path "${{ matrix.include-path }}/**" \
             --tag-pattern "releases/${{ matrix.component }}/v*")
           next_semver="${next_tag#releases/${{ matrix.component }}/v}"
           echo "next ${{ matrix.component }} tag:    ${next_tag}"
