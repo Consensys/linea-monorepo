@@ -197,8 +197,12 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 	var glCompleted atomic.Int64
 	var glGCMu sync.Mutex
 
-	for _, i := range glOrder {
+	for slotIdx, i := range glOrder {
+		segIdx := slotIdx // distinct schedule slot — used for GPU affinity
 		glErrGroup.Go(func() error {
+			pinGPU(segIdx)
+			defer unpinGPU()
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -288,8 +292,12 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 		lppOrder[i] = numLPP - 1 - i
 	}
 
-	for _, i := range lppOrder {
+	for slotIdx, i := range lppOrder {
+		segIdx := slotIdx
 		lppErrGroup.Go(func() error {
+			pinGPU(segIdx)
+			defer unpinGPU()
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

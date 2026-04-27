@@ -43,9 +43,10 @@ var (
 )
 
 type gpuVortexKey struct {
-	nCols int
-	nRows int
-	rate  int
+	deviceID int
+	nCols    int
+	nRows    int
+	rate     int
 }
 
 // EvictPipelineCache frees all cached GPUVortex pipelines, reclaiming GPU memory.
@@ -60,11 +61,12 @@ func EvictPipelineCache() {
 	}
 }
 
-func getOrCreateGPUVortex(dev *gpu.Device, params *Params, maxNRows int) (*GPUVortex, error) {
+func getOrCreateGPUVortex(dev *gpu.Device, deviceID int, params *Params, maxNRows int) (*GPUVortex, error) {
 	key := gpuVortexKey{
-		nCols: params.inner.NbColumns,
-		nRows: maxNRows,
-		rate:  params.inner.ReedSolomonInvRate,
+		deviceID: deviceID,
+		nCols:    params.inner.NbColumns,
+		nRows:    maxNRows,
+		rate:     params.inner.ReedSolomonInvRate,
 	}
 	gpuVortexMu.Lock()
 	defer gpuVortexMu.Unlock()
@@ -93,16 +95,19 @@ func materializeRows(polysMatrix []smartvectors.SmartVector) [][]koalabear.Eleme
 }
 
 func initGPUForRows(params *vortex_koalabear.Params, maxRows int) (*gpu.Device, *Params, *GPUVortex) {
-	dev := gpu.GetDevice()
+	// Honour per-thread device pinning when set (multi-GPU); fall back to the
+	// process-wide default device otherwise.
+	dev := gpu.CurrentDevice()
 	if dev == nil {
 		return nil, nil, nil
 	}
+	deviceID := gpu.CurrentDeviceID()
 	gpuParams, err := NewParams(params.NbColumns, maxRows, params.Key.SisGnarkCrypto, params.RsParams.Rate, 256)
 	if err != nil {
 		logrus.WithError(err).Warn("GPU params init failed")
 		return nil, nil, nil
 	}
-	gv, err := getOrCreateGPUVortex(dev, gpuParams, maxRows)
+	gv, err := getOrCreateGPUVortex(dev, deviceID, gpuParams, maxRows)
 	if err != nil {
 		logrus.WithError(err).Warn("GPU vortex init failed")
 		return nil, nil, nil

@@ -132,10 +132,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			if useGPUVortex() && gpu.GetDevice() != nil {
+			if useGPUVortex() && gpu.CurrentDevice() != nil {
 				start := time.Now()
 				committedMatrix, _, tree, sisColHashes = gpuvortex.CommitMerkleWithSIS(ctx.VortexKoalaParams, pols)
-				gpu.TraceEvent("vortex_commit_sis", 0, time.Since(start), map[string]any{
+				gpu.TraceEvent("vortex_commit_sis", gpu.CurrentDeviceID(), time.Since(start), map[string]any{
 					"round": round,
 					"rows":  len(pols),
 					"cols":  ctx.VortexKoalaParams.NbColumns,

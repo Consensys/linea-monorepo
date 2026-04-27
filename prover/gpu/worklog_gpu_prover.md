@@ -298,10 +298,59 @@ Validation:
   (pipeline init); subsequent calls reuse the cached `GPUVortex` per
   `getOrCreateGPUVortex`.
 
-## Step 1.4 — end-to-end single-GPU validation — TODO
+## Step 1.4 — end-to-end single-GPU validation — IN PROGRESS
 
-Next: run the actual limitless prover end-to-end with both env vars on, GPU
-0 only, `LIMITLESS_SUB_PROVER_JOBS=2`. Capture JSONL phase timings, verify
-proof passes, snapshot heap profile.
+First two run attempts failed during disk-asset deserialization
+(`decodeSeqItem: offset 7881299347898368 out of bounds`). Both 7.0.1 and
+7.0.7 assets failed identically; the source between asset-build commit
+`0904632ed2` and `origin/main` is unchanged for the `prover/` tree, so the
+mismatch is local to this box (assets weren't rebuilt for this binary).
 
-(Subsequent steps will be documented as they land.)
+Resolution: merged `Consensys/linea-monorepo#2751` (`perf/limitless-onthefly`)
+which adds `ProveOnTheFly` — compile the entire LimitlessZkEVM in memory at
+prover start when `serialization=false`. No disk assets needed.
+
+Merge details:
+- `crypto/vortex/prover_common.go` kept on HEAD's version (#2898 perf is
+  newer than PR #2751's base).
+- `backend/execution/limitless/prove.go` taken from PR with my Phase 0 layer
+  on top: env-driven `witnessDir`, `gpu.TraceClose()` defer in both
+  `Prove` and `ProveOnTheFly`.
+- Env var renamed `LIMITLESS_SUB_PROVER_JOBS` → `LIMITLESS_SUBPROVER_JOBS`
+  to match the PR's `getEnvPositiveInt` helper.
+- Synthetic `TestConglomerationBasic` (3 subtests, full GL+LPP+Conglo flow)
+  passes after the refactor: 574s.
+
+First run aborted near the end of compile when RSS reached 497 GiB on a
+499 GiB box — production uses r8a.24xlarge with 768 GiB. Added 256 GiB of
+NVMe-backed swap on `/scratch/swapfile`, set `vm.swappiness=10` so the
+kernel only swaps under genuine pressure. Total virtual ~755 GiB.
+
+```
+sudo fallocate -l 256G /scratch/swapfile && sudo chmod 600 /scratch/swapfile
+sudo mkswap /scratch/swapfile && sudo swapon /scratch/swapfile
+sudo sysctl vm.swappiness=10
+```
+
+## Step 2 — multi-GPU goroutine pinning — IN PROGRESS
+
+Goal: each GL/LPP segment goroutine pins itself to one of the two GPUs so
+they run in parallel.
+
+Implementation:
+- `gpu/threadlocal.go`: `SetCurrentDevice(*Device)` / `CurrentDevice()` and
+  ID-only counterparts, keyed by `unix.Gettid()`. Goroutines call
+  `runtime.LockOSThread()` first so the tid is stable.
+- `backend/execution/limitless/gpu_pinning.go`: `pinGPU(slotIdx)` /
+  `unpinGPU()`. The slot index is the *schedule slot* (place in the GL/LPP
+  order list), not the witness index — this gives a flat round-robin across
+  GPUs regardless of how the round-robin reorders by module type.
+- `prove_onthefly.go`: each segment goroutine wraps its body with
+  `pinGPU(slotIdx); defer unpinGPU()`.
+- `globalcs.QuotientCtx.Run` and `vortex.ColumnAssignmentProverAction.Run`
+  now consult `gpu.CurrentDevice()` instead of always going to device 0.
+- `gpu/vortex` pipeline cache key extended with `deviceID` so two GPUs
+  don't alias each other's cached `*GPUVortex`.
+
+End-to-end run with `LIMITLESS_GPU_COUNT=2 LIMITLESS_SUBPROVER_JOBS=2` and
+both `LIMITLESS_GPU_*=1` env vars active. (Awaiting completion.)
