@@ -3,6 +3,8 @@ This micro-service will receive the transactions rejected by sequencer or other 
 persist them into a local database and expose a JSON-RPC v2 API to allow Linea users to query
 why their transactions were not included.
 
+# Testing for tx-exclusion-api changelog
+
 ## V1 API Methods
 ### linea_saveRejectedTransactionV1
 ```bash
