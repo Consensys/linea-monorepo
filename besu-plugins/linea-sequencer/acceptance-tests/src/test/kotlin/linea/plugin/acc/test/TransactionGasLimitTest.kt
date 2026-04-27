@@ -72,7 +72,7 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
     )
 
     assertThat(txTooBigResp.hasError()).isTrue()
-    assertThat(txTooBigResp.error.message).isEqualTo(EIP_7825_GAS_LIMIT_ERROR_MESSAGE)
+    assertThat(txTooBigResp.error.message).isEqualTo(DIRECT_RPC_GAS_LIMIT_ERROR_MESSAGE)
   }
 
   /**
@@ -116,7 +116,7 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
     )
 
     assertThat(txTooBigResp.hasError()).isTrue()
-    assertThat(txTooBigResp.error.message).isEqualTo(EIP_7825_GAS_LIMIT_ERROR_MESSAGE)
+    assertThat(txTooBigResp.error.message).isEqualTo(DIRECT_RPC_GAS_LIMIT_ERROR_MESSAGE)
 
     expectedConfirmedTxs
       .map { it.bytes.toHexString() }
@@ -127,7 +127,6 @@ class TransactionGasLimitTest : LineaPluginPoSTestBase() {
     val MAX_TX_GAS_LIMIT = EIP_7825_MAX_TRANSACTION_GAS_LIMIT
     private val GAS_PRICE = DefaultGasProvider.GAS_PRICE
     private val VALUE = BigInteger.ZERO
-    private const val EIP_7825_GAS_LIMIT_ERROR_MESSAGE =
-      "Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216"
+    private const val DIRECT_RPC_GAS_LIMIT_ERROR_MESSAGE = "Transaction gas limit cap exceeded"
   }
 }
