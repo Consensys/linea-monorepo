@@ -1,7 +1,18 @@
 #![no_std]
 #![no_main]
-
 use core::convert::TryInto;
+
+// Note: to execute from main use the imports below instead,
+// replace _start, exit, panic with main (using process::exit)
+// and run rustc src/blake.rs -o bin/blake && ./bin/blake; echo $?
+
+// use std::process;
+// use std::convert::TryInto;
+
+// fn main() {
+//     // ...
+//     process::exit(code);
+// }
 
 /// Blake2b‑F compression function (used in EIP‑152 precompile, zkVMs, etc.)
 ///
@@ -214,17 +225,35 @@ pub extern "C" fn _start() -> ! {
         0x01,
     ];
 
-    let _ = blake2b_f_eip152(&input);
+    // expected output from EIP-152 test vector
+    let expected: [u8; 64] = [
+        0xba, 0x80, 0xa5, 0x3f, 0x98, 0x1c, 0x4d, 0x0d,
+        0x6a, 0x27, 0x97, 0xb6, 0x9f, 0x12, 0xf6, 0xe9,
+        0x4c, 0x21, 0x2f, 0x14, 0x68, 0x5a, 0xc4, 0xb7,
+        0x4b, 0x12, 0xbb, 0x6f, 0xdb, 0xff, 0xa2, 0xd1,
+        0x7d, 0x87, 0xc5, 0x39, 0x2a, 0xab, 0x79, 0x2d,
+        0xc2, 0x52, 0xd5, 0xde, 0x45, 0x33, 0xcc, 0x95,
+        0x18, 0xd3, 0x8a, 0xa8, 0xdb, 0xf1, 0x92, 0x5a,
+        0xb9, 0x23, 0x86, 0xed, 0xd4, 0x00, 0x99, 0x23,
+    ];
+    
 
-    exit()
+    let code = match blake2b_f_eip152(&input) {
+        Ok(result) if result == expected => 0, // success
+        Ok(_) => 1,                            // wrong result
+        Err(_) => 2,                           // compression failed
+    };
+
+    exit(code)
 }
 
-fn exit() -> ! {
+fn exit(code: i32) -> ! {
     unsafe {
         core::arch::asm!(
-            "li a0, 0",   // exit code 0
-            "li a7, 93",  // syscall number for exit
+            "mv a0, {0}",  // exit code
+            "li a7, 93",   // syscall number for exit
             "ecall",
+            in(reg) code,
             options(noreturn)
         );
     }
@@ -233,5 +262,5 @@ fn exit() -> ! {
 // required by the compiler even if unreachable — no std means no default panic handler
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
-    exit();
+    exit(3);
 }
