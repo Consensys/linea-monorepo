@@ -1,4 +1,4 @@
-name: "Besu Package Release (manual)"
+name: "Linea Besu Release (manual)"
 
 permissions:
   actions: read
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag_prefix:
-        description: 'Custom release tag prefix, i.e. docker image tag would be [prefix]-[YYYYMMDDHHMMSS]-[commit], if not given, would be [besu-package-semver]-[YYYYMMDDHHMMSS]-[commit]'
+        description: 'Custom release tag prefix, i.e. docker image tag would be [prefix]-[YYYYMMDDHHMMSS]-[commit], if not given, would be [linea-besu-semver]-[YYYYMMDDHHMMSS]-[commit]'
         required: false
         type: string
         default: ''
@@ -36,29 +36,29 @@ on:
       - linea-besu-package/RELEASE_TEST.md
 
 concurrency:
-  group: besu-package-release-${{ github.ref }}
+  group: linea-besu-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release-besu-package:
+  release-linea-besu:
     uses: ./.github/workflows/reusable-component-release.yml
     with:
-      component-name: besu-package
+      component-name: linea-besu
       folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
 
-  build-besu-package-docker-image-and-gh-release:
-    needs: [release-besu-package]
+  build-linea-besu-docker-image-and-gh-release:
+    needs: [release-linea-besu]
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
-    if: needs.release-besu-package.outputs.docker_tag != ''
+    if: needs.release-linea-besu.outputs.docker_tag != ''
     with:
-      release_tag_prefix: ${{ inputs.release_tag_prefix != '' && inputs.release_tag_prefix || needs.release-besu-package.outputs.release_version }}
+      release_tag_prefix: ${{ inputs.release_tag_prefix != '' && inputs.release_tag_prefix || needs.release-linea-besu.outputs.release_version }}
       run_test: true
       run_e2e_test: true
       push_image: true
       draft_release: ${{ inputs.draft_release || true }}
       pre_release: ${{ inputs.pre_release || false }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
-      changelog: ${{ needs.release-besu-package.outputs.changelog }}
-      release_tag: ${{ needs.release-besu-package.outputs.release_tag }}
+      changelog: ${{ needs.release-linea-besu.outputs.changelog }}
+      release_tag: ${{ needs.release-linea-besu.outputs.release_tag }}
     secrets: inherit

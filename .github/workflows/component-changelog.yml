@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [ coordinator, postman, tx-exclusion-api, besu-package ]
+        component: [ coordinator, postman, tx-exclusion-api, linea-besu ]
         include:
           - component: coordinator
             include-path: [ 'coordinator/**', 'contracts/**' ]
@@ -55,7 +55,7 @@ jobs:
             include-path: 'postman/**'
           - component: tx-exclusion-api
             include-path: 'transaction-exclusion-api/**'
-          - component: besu-package
+          - component: linea-besu
             include-path: [ 'tracer/**', 'tracer-constraints/**', 'besu-plugins/linea-sequencer/**', 'linea-besu/**', 'linea-besu-package/**', 'gradle/libs.versions.toml' ]
 
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
