@@ -2,40 +2,33 @@ package net.consensys.zkevm.ethereum.coordination.blob
 
 import io.vertx.core.Vertx
 import linea.clients.BlobCompressionProverClientV2
+import linea.domain.BlobCompressionProof
 import linea.domain.BlobRecord
 import linea.domain.CompressionProofIndex
 import linea.metrics.LineaMetricsCategory
 import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.zkevm.ethereum.coordination.AbstractProofPoller
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.ConcurrentLinkedDeque
 import kotlin.time.Duration.Companion.milliseconds
 
 class BlobCompressionProofPoller(
   private val blobCompressionProverClient: BlobCompressionProverClientV2,
   private val blobCompressionProofHandler: BlobCompressionProofHandler,
   vertx: Vertx,
-  private val log: Logger,
+  log: Logger,
   pollingIntervalMs: Long = 100.milliseconds.inWholeMilliseconds,
   name: String = "BlobCompressionProofPoller",
   timerSchedule: TimerSchedule = TimerSchedule.FIXED_DELAY,
   metricsFacade: MetricsFacade,
-) : VertxPeriodicPollingService(
+) : AbstractProofPoller<CompressionProofIndex, BlobRecord, BlobCompressionProof>(
   vertx = vertx,
   pollingIntervalMs = pollingIntervalMs,
   log = log,
   name = name,
   timerSchedule = timerSchedule,
 ) {
-  data class ProofInProgress(
-    val proofIndex: CompressionProofIndex,
-    val unProvenBlobRecord: BlobRecord,
-  )
-
-  private val proofRequestsInProgress = ConcurrentLinkedDeque<ProofInProgress>()
-
   init {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
@@ -45,32 +38,17 @@ class BlobCompressionProofPoller(
     )
   }
 
-  @Synchronized
-  fun addProofRequestsInProgressForPolling(proofIndex: CompressionProofIndex, unProvenBlobRecord: BlobRecord) {
-    proofRequestsInProgress.add(ProofInProgress(proofIndex, unProvenBlobRecord))
-  }
+  override fun findProofResponse(proofIndex: CompressionProofIndex): SafeFuture<BlobCompressionProof?> =
+    blobCompressionProverClient.findProofResponse(proofIndex)
 
-  override fun action(): SafeFuture<*> {
-    return if (proofRequestsInProgress.isNotEmpty()) {
-      val proofInProgress = proofRequestsInProgress.peekFirst()
-      blobCompressionProverClient.findProofResponse(proofInProgress.proofIndex)
-        .thenCompose { proofResponse ->
-          if (proofResponse != null) {
-            log.info(
-              "blob compression proof generated: blob={}",
-              proofInProgress.unProvenBlobRecord.intervalString(),
-            )
-            val provenBlobRecord = proofInProgress.unProvenBlobRecord.copy(blobCompressionProof = proofResponse)
-            blobCompressionProofHandler.acceptNewBlobCompressionProof(provenBlobRecord)
-              .thenApply {
-                proofRequestsInProgress.remove(proofInProgress)
-              }
-          } else {
-            SafeFuture.completedFuture(Unit)
-          }
-        }
-    } else {
-      SafeFuture.completedFuture(Unit)
-    }
+  override fun handleProof(
+    proofIndex: CompressionProofIndex,
+    unprovenItem: BlobRecord,
+    proof: BlobCompressionProof,
+  ): SafeFuture<*> {
+    log.info("blob compression proof generated: blob={}", unprovenItem.intervalString())
+    return blobCompressionProofHandler.acceptNewBlobCompressionProof(
+      unprovenItem.copy(blobCompressionProof = proof),
+    )
   }
 }
