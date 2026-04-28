@@ -107,7 +107,7 @@ jobs:
             exit 0
           fi
           next_semver="${next_tag#releases/${COMPONENT}/v}"
-          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*")
+          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*" 2>/dev/null || echo "") 
           echo "current ${COMPONENT} tag: ${current_tag}"
           echo "next ${COMPONENT} tag:    ${next_tag}"
           echo "next ${COMPONENT} semver: ${next_semver}"
