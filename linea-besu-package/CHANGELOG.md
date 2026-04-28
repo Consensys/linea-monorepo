@@ -1,3 +1,16 @@
+## [1.0.0] - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- *(tracer)* This reverts commit 7a88cd4b4e378839dad810a816bd85591ae147d8.
+
+### 🚜 Refactor
+
+- *(sequencer)* [**breaking**] Revert update sequencer plugin
+
+### 🧪 Testing
+
+- *(linea-besu)* Trigger release
 ## [1.1.0] - 2026-04-28
 
 ### 🚀 Features
