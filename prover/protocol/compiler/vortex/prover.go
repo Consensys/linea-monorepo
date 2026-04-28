@@ -398,7 +398,17 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
+		// Read either the new *committedHandle wrapper or the legacy raw
+		// EncodedMatrix. For GPU handles this triggers a full D2H — same
+		// caveat as ExtractWitness above. ComputeLinearCombFromRsMatrix
+		// is on the recursion-vortex hot path where a future improvement
+		// could split host vs GPU partials like the main
+		// LinearCombinationComputationProverAction does.
+		raw := run.State.MustGet(ctx.VortexProverStateName(round))
+		committedMatrix := EncodedMatrixFromState(raw)
+		if committedMatrix == nil {
+			utils.Panic("recursion-vortex linComb: unexpected state type at round %v: %T", round, raw)
+		}
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsNoSis {

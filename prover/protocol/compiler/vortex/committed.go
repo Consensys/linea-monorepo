@@ -127,3 +127,21 @@ func asHandle(v any) *committedHandle {
 	}
 	return nil
 }
+
+// EncodedMatrixFromState reads a committed matrix from the prover state map
+// regardless of whether it's stored as a raw EncodedMatrix (legacy host
+// path) or wrapped in *committedHandle (current path, possibly GPU-resident).
+//
+// For GPU handles, this triggers a full D2H of the encoded matrix —
+// expensive and to be avoided on the hot path. Use only from places that
+// genuinely need the host []SmartVector representation, e.g. self-recursion
+// witness extraction. Returns nil when the state slot is empty.
+func EncodedMatrixFromState(v any) vortex_koalabear.EncodedMatrix {
+	if v == nil {
+		return nil
+	}
+	if h := asHandle(v); h != nil {
+		return h.hostMatrix()
+	}
+	return nil
+}
