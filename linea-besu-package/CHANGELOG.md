@@ -1,3 +1,12 @@
+## [1.0.1] - 2026-04-28
+
+### 🐛 Bug Fixes
+
+- *(besu-package)* Test version bump
+
+### 🧪 Testing
+
+- *(besu-package)* Trigger release
 ## [1.0.0] - 2026-04-28
 
 ### 🚀 Features
