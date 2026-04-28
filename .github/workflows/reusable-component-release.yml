@@ -93,7 +93,6 @@ jobs:
             cliff_args+=(--include-path "${p}")
           done
           cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
-          current_tag=$(git describe --tags --abbrev=0)
           next_tag=$(git cliff "${cliff_args[@]}")
           if [ -z "${next_tag}" ]; then
             echo "git-cliff returned no version; nothing to release."
@@ -103,6 +102,7 @@ jobs:
             exit 0
           fi
           next_semver="${next_tag#releases/${COMPONENT}/v}"
+          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*")
           echo "current ${COMPONENT} tag: ${current_tag}"
           echo "next ${COMPONENT} tag:    ${next_tag}"
           echo "next ${COMPONENT} semver: ${next_semver}"
