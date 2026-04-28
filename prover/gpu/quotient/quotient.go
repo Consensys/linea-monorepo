@@ -228,7 +228,17 @@ func RunGPU(
 
 		if len(rd.baseIDs) > 0 {
 			t0 = time.Now()
-			pinnedBuf := gpuvortex.AllocPinned(len(rd.baseIDs) * domainSize)
+			// Cached pinned buffer keyed on (deviceID, capacity). The
+			// first call on a given (device, ratio-shape) pays the
+			// cudaMallocHost; subsequent calls reuse it. This is the
+			// single biggest pre-optimization improvement for the
+			// quotient hot path — see gpu/vortex/pinned_cache.go.
+			deviceID := 0
+			if dev != nil {
+				deviceID = dev.DeviceID()
+			}
+			capacity := len(rd.baseIDs) * domainSize
+			pinnedBuf := gpuvortex.GetPinned(deviceID, capacity)[:capacity]
 			parallel.Execute(len(rd.baseIDs), func(start, stop int) {
 				for k := start; k < stop; k++ {
 					id := rd.baseIDs[k]
@@ -249,7 +259,6 @@ func RunGPU(
 			t0 = time.Now()
 			rd.dPacked, err = gpuvortex.NewKBVector(dev, len(rd.baseIDs)*domainSize)
 			if err != nil {
-				gpuvortex.FreePinned(pinnedBuf)
 				return fmt.Errorf("gpu/quotient: alloc dPacked (ratio %d, %d elems): %w", ratio, len(rd.baseIDs)*domainSize, err)
 			}
 			defer rd.dPacked.Free()
@@ -260,7 +269,7 @@ func RunGPU(
 			nttDomain.BatchIFFTScale(rd.dPacked, len(rd.baseIDs), nInv)
 			gpuvortex.Sync(dev)
 			tIFFT += time.Since(t0)
-			gpuvortex.FreePinned(pinnedBuf)
+			// Pinned buffer stays in the cache; reused on next call.
 
 			rd.dEvals, err = gpuvortex.NewKBVector(dev, len(rd.baseIDs)*domainSize)
 			if err != nil {
