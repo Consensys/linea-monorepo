@@ -18,26 +18,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-coordinator:
-    uses: ./.github/workflows/reusable-component-release.yml
+  release-coordinator-metadata:
+    uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: coordinator
       folder-name: coordinator
       include-path: '["coordinator/**","contracts/**"]'
 
   build-docker-image-coordinator:
-    needs: [release-coordinator]
+    needs: [release-coordinator-metadata]
     uses: ./.github/workflows/coordinator-build-and-publish.yml
-    if: needs.release-coordinator.outputs.docker_tag != ''
+    if: needs.release-coordinator-metadata.outputs.docker_tag != ''
     with:
-      commit_tag: ${{ needs.release-coordinator.outputs.docker_tag }}
+      commit_tag: ${{ needs.release-coordinator-metadata.outputs.docker_tag }}
       develop_tag: "develop"
       image_name: consensys/linea-coordinator
       push_image: true
     secrets: inherit
 
   gh-release-coordinator:
-    needs: [release-coordinator, build-docker-image-coordinator]
+    needs: [release-coordinator-metadata, build-docker-image-coordinator]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
@@ -48,19 +48,19 @@ jobs:
         shell: bash
         run: |
           mkdir release && cd release
-          echo "${{ needs.release-coordinator.outputs.changelog }}" >> output.md
+          echo "${{ needs.release-coordinator-metadata.outputs.changelog }}" >> output.md
           echo "### Docker Image Details" >> output.md
           echo "" >> output.md
           echo "To pull the image, use the following command:" >> output.md
           echo "\`\`\`" >> output.md
-          echo "docker pull consensys/linea-coordinator:${{ needs.release-coordinator.outputs.docker_tag }}" >> output.md
+          echo "docker pull consensys/linea-coordinator:${{ needs.release-coordinator-metadata.outputs.docker_tag }}" >> output.md
           echo "\`\`\`" >> output.md
 
       - name: gh-release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          name: Coordinator v${{ needs.release-coordinator.outputs.release_version }}
-          tag_name: ${{ needs.release-coordinator.outputs.release_tag }}
+          name: Coordinator v${{ needs.release-coordinator-metadata.outputs.release_version }}
+          tag_name: ${{ needs.release-coordinator-metadata.outputs.release_tag }}
           body_path: release/output.md
           draft: true
           prerelease: false

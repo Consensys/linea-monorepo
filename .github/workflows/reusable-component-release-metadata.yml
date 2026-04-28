@@ -1,4 +1,4 @@
-name: "Reusable: Component Release"
+name: "Reusable: Component Release Metadata"
 
 on:
   workflow_call:
@@ -86,6 +86,7 @@ jobs:
       # prepended in the next step is stamped with the version (not [unreleased]).
       - name: Compute next ${{ inputs.component-name }} version (semver)
         id: version
+        shell: bash
         env:
           COMPONENT: ${{ inputs.component-name }}
           CLIFF_CONFIG: ${{ inputs.cliff-config }}

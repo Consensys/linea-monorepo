@@ -40,25 +40,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-linea-besu:
-    uses: ./.github/workflows/reusable-component-release.yml
+  release-linea-besu-metadata:
+    uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: linea-besu
       folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
 
   build-linea-besu-docker-image-and-gh-release:
-    needs: [release-linea-besu]
+    needs: [release-linea-besu-metadata]
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
-    if: needs.release-linea-besu.outputs.docker_tag != ''
+    if: needs.release-linea-besu-metadata.outputs.docker_tag != ''
     with:
-      release_tag_prefix: ${{ inputs.release_tag_prefix != '' && inputs.release_tag_prefix || needs.release-linea-besu.outputs.release_version }}
+      release_tag_prefix: ${{ inputs.release_tag_prefix != '' && inputs.release_tag_prefix || needs.release-linea-besu-metadata.outputs.release_version }}
       run_test: true
       run_e2e_test: true
       push_image: true
       draft_release: ${{ inputs.draft_release || true }}
       pre_release: ${{ inputs.pre_release || false }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
-      changelog: ${{ needs.release-linea-besu.outputs.changelog }}
-      release_tag: ${{ needs.release-linea-besu.outputs.release_tag }}
+      changelog: ${{ needs.release-linea-besu-metadata.outputs.changelog }}
+      release_tag: ${{ needs.release-linea-besu-metadata.outputs.release_tag }}
     secrets: inherit

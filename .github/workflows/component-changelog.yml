@@ -111,24 +111,42 @@ jobs:
       - name: Compute next ${{ matrix.component }} version (semver)
         id: version
         shell: bash
+        env:
+          COMPONENT: ${{ matrix.component }}
+          CLIFF_CONFIG: cliff.toml
         run: |
           set -euo pipefail
           mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config cliff.toml --bumped-version)
+          cliff_args=(--config "${CLIFF_CONFIG}" --bumped-version)
           for p in "${paths[@]}"; do
             cliff_args+=(--include-path "${p}")
           done
-          cliff_args+=(--tag-pattern "releases/${{ matrix.component }}/v*")
+          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
           next_tag=$(git cliff "${cliff_args[@]}")
-          next_semver="${next_tag#releases/${{ matrix.component }}/v}"
-          echo "next ${{ matrix.component }} tag:    ${next_tag}"
-          echo "next ${{ matrix.component }} semver: ${next_semver}"
+          if [ -z "${next_tag}" ]; then
+            echo "git-cliff returned no version; nothing to release."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          next_semver="${next_tag#releases/${COMPONENT}/v}"
+          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*")
+          echo "current ${COMPONENT} tag: ${current_tag}"
+          echo "next ${COMPONENT} tag:    ${next_tag}"
+          echo "next ${COMPONENT} semver: ${next_semver}"
+          changed=false
+          if [ "${current_tag}" != "${next_tag}" ]; then
+            changed=true
+          fi
           {
             echo "tag=${next_tag}"
             echo "version=${next_semver}"
+            echo "changed=${changed}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
+        if: steps.version.outputs.changed == 'true'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: ${{ matrix.component }}-changelog-preview
