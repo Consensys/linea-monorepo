@@ -97,5 +97,9 @@ ignoredBuiltDependencies:
 
 minimumReleaseAge: 4320
 
+strictDepBuilds: true
+trustPolicy: no-downgrade
+
 onlyBuiltDependencies:
+  # Required by contracts/ blob tests; additions to this allowlist need security review.
   - c-kzg
