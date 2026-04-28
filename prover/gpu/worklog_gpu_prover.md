@@ -352,5 +352,142 @@ Implementation:
 - `gpu/vortex` pipeline cache key extended with `deviceID` so two GPUs
   don't alias each other's cached `*GPUVortex`.
 
-End-to-end run with `LIMITLESS_GPU_COUNT=2 LIMITLESS_SUBPROVER_JOBS=2` and
-both `LIMITLESS_GPU_*=1` env vars active. (Awaiting completion.)
+## Step 3 — vortex bottleneck and device-resident fix — DONE (2026-04-28)
+
+After the on-the-fly compile run started OOMing on this 499 GiB box (the
+production peak is ~500 GiB), pulled back to validate that the GPU paths
+actually deliver wins at the unit level before pushing more end-to-end.
+
+### Drop-in API was slower than CPU at production sizes
+
+`go test -tags cuda -bench BenchmarkCommitMerkleWithSIS_*` head-to-head
+at four sizes:
+
+| size | n_cols × n_rows | CPU (AVX-512) | GPU drop-in | speedup |
+|---|---|---:|---:|---:|
+| Small | 4096 × 256 | 9 ms | 6 ms | 1.38× |
+| Typical | 16384 × 256 | 23 ms | 23 ms | 1.02× |
+| MedLarge | 65536 × 1024 | 105 ms | 136 ms | 0.77× |
+| Large | 524288 × 2048 | 1199 ms | 1853 ms | **0.65×** |
+
+Per-phase CUDA event breakdown @ Large:
+
+```
+H2D + RS encode      95.8 ms
+SIS hash             47.8 ms
+P2 MD hash           94.7 ms
+Merkle + D2H + sync 173.6 ms
+TOTAL on-device     411.9 ms
+```
+
+Wall-clock = 1853 ms ⇒ **~1442 ms of pure Go-side overhead**:
+- `make([]koalabear.Element, 1024 × 524288)` = 8 GiB Go heap alloc + zero
+- parallel copy from pinned host → Go-managed slice (8 GiB)
+- 2048 × `smartvectors.NewRegular` to wrap rows
+- `cloneSMTTreeFromRef` deep copy of Merkle tree
+- `materializeRows` of input SmartVectors
+
+The drop-in's contract (return `EncodedMatrix = []smartvectors.SmartVector`)
+forced the full D2H + reconstruction. The kernel is fast; the API kills it.
+
+### Device-resident path is fast
+
+Same code, same matrix, but `gv.Commit(rows)` returns a `*CommitState`
+that keeps the encoded matrix on device:
+
+| size | CPU | GPU (resident) | speedup |
+|---|---:|---:|---:|
+| MedLarge | 100 ms | 22 ms | **4.5×** |
+| Large | 1083 ms | 258 ms | **4.2×** |
+
+The on-device kernel is identical to the drop-in's kernel — the speedup
+came purely from skipping the Go-side reconstruction.
+
+### Multi-GPU bug + fix
+
+Initial 2-GPU bench gave 565 ms / 2 matrices = 1.05× over single. nvidia-smi
+during run: GPU 0 = 29 GiB resident, GPU 1 = 585 MiB. **GPU 1 wasn't being
+used.**
+
+Root cause: `kb.cu` (vortex) never called `cudaSetDevice`. CUDA's "current
+device" is per-OS-thread, so without an explicit set every alloc + launch
+falls through to device 0 even when the caller "owns" device 1. The plonk
+side already had `cudaSetDevice(ctx->device_id)` at every entry; vortex was
+missing it.
+
+Fix:
+- `gnark_gpu_set_device(int)` C entry.
+- `gpu.Device.Bind()` Go method.
+- Called from `pinGPU(slot)` after `runtime.LockOSThread`, and from
+  `NewGPUVortex` before any allocation.
+
+After the fix:
+
+|  | wall | per-matrix | speedup |
+|---|---:|---:|---|
+| 2-GPU concurrent | 498 ms / 2 | 249 ms | 1.64× over 1-GPU serial |
+| 1-GPU single | 408 ms | 408 ms | — |
+
+PCIe topology is `PIX` (both GPUs behind one switch on this box) — that
+caps 2-GPU H2D bandwidth and prevents perfect 2× scaling. With 4× per-GPU
+over CPU and ~1.6× from running on both GPUs, end-to-end vs the production
+2-segment-concurrent CPU baseline is roughly **6× wall clock** at Large.
+
+### Wired into the protocol compiler
+
+`protocol/compiler/vortex/committed.go` introduces a `*committedHandle`
+tagged union stored under `VortexProverStateName(round)`. Two variants:
+
+- `host: vortex_koalabear.EncodedMatrix` — used for BLS rounds, NoSIS
+  rounds, precomputeds, and SIS rounds when GPU is disabled.
+- `gpu: *gpuvortex.CommitState` — used for SIS-applied Koala rounds when
+  `LIMITLESS_GPU_VORTEX=1` and a GPU is bound to the calling goroutine.
+
+Three actions updated:
+
+- `ColumnAssignmentProverAction` calls `gpuvortex.CommitSIS` for the GPU
+  path (no full D2H), wraps the returned `*CommitState` in a handle.
+- `LinearCombinationComputationProverAction` computes the host portion
+  via the existing parallel `vortex.LinearCombination`, then adds
+  `α^(global_offset) · cs.LinComb(α)` for each GPU matrix. The GPU
+  partial is a single device kernel; only the small UAlpha vector
+  (sizeCodeword × E4) D2Hs.
+- `OpenSelectedColumnsProverAction` extracts columns via
+  `cs.ExtractColumns(entryList)` (small D2H of only the selected
+  columns); Merkle proofs come from the host-side tree. Frees GPU
+  buffers after extraction.
+
+`asHandle()` accepts both `*committedHandle` and raw `EncodedMatrix` for
+backward compatibility with callers that haven't been migrated.
+
+### Validation
+
+```
+go test -tags cuda -run TestCompiler ./protocol/compiler/vortex/                 PASS
+LIMITLESS_GPU_VORTEX=1 go test -tags cuda -run TestCompiler ./protocol/compiler/vortex/  PASS
+```
+
+All 9 mixed-config subtests pass (NoSIS, SIS, precomputed-NoSIS,
+precomputed-SIS, mixed, empty round, multi-round). The end-to-end proof
+verifies through `wizard.VerifyUntilRound` for all configurations.
+
+### Microbench commands
+
+```
+LIMITLESS_GPU_COUNT=2 go test -tags cuda -bench '^BenchmarkCommitGPUResident' \
+  -benchtime=3x ./gpu/vortex/
+
+LIMITLESS_GPU_COUNT=2 go test -tags cuda -bench '^BenchmarkCommitGPUResidentVsCPU' \
+  -benchtime=3x ./gpu/vortex/
+```
+
+### What's left for vortex
+
+1. Per-segment end-to-end timing on a real (non-OOMing) workload. The
+   on-the-fly compile peak is the blocker on this 499 GiB box; need to
+   either swap-extend (256 GiB swap on /scratch is already there) or
+   shrink the segment count.
+2. Better cross-GPU PCIe utilisation: chunked H2D interleaving across
+   the two GPUs to hide PIX-shared upstream contention.
+3. Free the input pinned buffer faster (currently per-pipeline; would be
+   nice to share one across GPUs).
