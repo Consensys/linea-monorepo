@@ -1,8 +1,9 @@
 name: "Besu Package Release (manual)"
 
 permissions:
-  contents: write
   actions: read
+  id-token: write
+  contents: write
   packages: write
 
 on:
@@ -55,8 +56,8 @@ jobs:
       run_test: true
       run_e2e_test: true
       push_image: true
-      draft_release: ${{ inputs.draft_release }}
-      pre_release: ${{ inputs.pre_release }}
+      draft_release: ${{ inputs.draft_release || true }}
+      pre_release: ${{ inputs.pre_release || false}}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
       changelog: ${{ needs.release-besu-package.outputs.changelog }}
     secrets: inherit
