@@ -531,10 +531,19 @@ __device__ void p2_permutation(uint32_t *state, int width,
 
 // Batch compress (width=16): one thread per pair → hash
 // Feed-forward: hash[j] = permuted_state[8+j] + right[j]
-__global__ void kern_p2_compress(const uint32_t *input, uint32_t *output,
-                                  const uint32_t *round_keys,
-                                  const uint32_t *diag,
-                                  size_t count) {
+//
+// Shared-mem diag: each block loads the 16-element diag vector into
+// shared memory once, so the 21 × 2 = 42 partial-round reads per
+// permutation hit shared memory (~zero latency) instead of L2/global.
+__global__ void __launch_bounds__(KB_BLOCK, 4)
+kern_p2_compress(const uint32_t *input, uint32_t *output,
+                  const uint32_t *round_keys,
+                  const uint32_t *diag,
+                  size_t count) {
+    __shared__ uint32_t s_diag[16];
+    if (threadIdx.x < 16) s_diag[threadIdx.x] = diag[threadIdx.x];
+    __syncthreads();
+
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= count) return;
 
@@ -545,7 +554,7 @@ __global__ void kern_p2_compress(const uint32_t *input, uint32_t *output,
     uint32_t ff[8];
     for (int j = 0; j < 8; j++) ff[j] = state[8 + j];
 
-    p2_permutation(state, 16, 6, 21, round_keys, diag);
+    p2_permutation(state, 16, 6, 21, round_keys, s_diag);
 
     uint32_t *out = output + tid * 8;
     for (int j = 0; j < 8; j++)
@@ -554,11 +563,17 @@ __global__ void kern_p2_compress(const uint32_t *input, uint32_t *output,
 
 // Batch sponge (width=24): one thread per input → 8-element digest
 // Absorb: overwrite state[8..23] with input block, permute. Squeeze: state[0..7].
-__global__ void kern_p2_sponge(const uint32_t *input, size_t input_len,
-                                uint32_t *output,
-                                const uint32_t *round_keys,
-                                const uint32_t *diag,
-                                size_t count) {
+__global__ void __launch_bounds__(KB_BLOCK, 4)
+kern_p2_sponge(const uint32_t *input, size_t input_len,
+                uint32_t *output,
+                const uint32_t *round_keys,
+                const uint32_t *diag,
+                size_t count) {
+    // width=24 sponge — diag has 24 elements; cache in shared mem.
+    __shared__ uint32_t s_diag[24];
+    if (threadIdx.x < 24) s_diag[threadIdx.x] = diag[threadIdx.x];
+    __syncthreads();
+
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= count) return;
 
@@ -572,7 +587,7 @@ __global__ void kern_p2_sponge(const uint32_t *input, size_t input_len,
         size_t chunk = (off + rate <= input_len) ? rate : input_len - off;
         for (size_t j = 0; j < chunk; j++)
             state[8 + j] = inp[off + j];
-        p2_permutation(state, 24, 6, 21, round_keys, diag);
+        p2_permutation(state, 24, 6, 21, round_keys, s_diag);
     }
 
     uint32_t *out = output + tid * 8;
@@ -584,11 +599,21 @@ __global__ void kern_p2_sponge(const uint32_t *input, size_t input_len,
 //   state[0..7]  = running hash (capacity, initially zero)
 //   state[8..15] = message block (8 input elements per step)
 //   After permutation: state[j] = P(state)[8+j] + input[j] for j=0..7
-__global__ void kern_p2_md_hash(const uint32_t *input, size_t input_len,
-                                 uint32_t *output,
-                                 const uint32_t *round_keys,
-                                 const uint32_t *diag,
-                                 size_t count) {
+// Davies-Meyer SIS leaf-hash. Each thread processes one column's full
+// SIS digest of length input_len = degree (typically 512). With 21
+// partial rounds × ⌈input_len/8⌉ permutations per thread × 16 diag
+// reads per partial round, caching diag in shared mem saves a lot of
+// L2 traffic.
+__global__ void __launch_bounds__(KB_BLOCK, 4)
+kern_p2_md_hash(const uint32_t *input, size_t input_len,
+                 uint32_t *output,
+                 const uint32_t *round_keys,
+                 const uint32_t *diag,
+                 size_t count) {
+    __shared__ uint32_t s_diag[16];
+    if (threadIdx.x < 16) s_diag[threadIdx.x] = diag[threadIdx.x];
+    __syncthreads();
+
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= count) return;
 
@@ -603,7 +628,7 @@ __global__ void kern_p2_md_hash(const uint32_t *input, size_t input_len,
         for (int j = 0; j < rate; j++)
             state[8 + j] = (off + j < input_len) ? inp[off + j] : 0;
 
-        p2_permutation(state, 16, 6, 21, round_keys, diag);
+        p2_permutation(state, 16, 6, 21, round_keys, s_diag);
 
         // Davies-Meyer feed-forward: state[j] = P(state)[8+j] + input[j]
         for (int j = 0; j < 8; j++) {
@@ -793,10 +818,21 @@ __global__ void kern_scatter_transpose(const uint32_t * __restrict__ src,
 //   h1 = CompressPoseidon2(zero, left)
 //   h2 = CompressPoseidon2(h1, right)
 //   output = h2
-__global__ void kern_merkle_level(const uint32_t *children, uint32_t *parents,
-                                   const uint32_t *round_keys,
-                                   const uint32_t *diag,
-                                   size_t n_pairs) {
+// Merkle tree level compress: each thread compresses one (left, right)
+// pair into one parent hash via two Poseidon2 permutations + Davies-
+// Meyer feed-forward.
+//
+// Shared-mem diag avoids 2 × 21 × 16 = 672 L2 reads per thread
+// (every partial round's matmul_internal reads the full diag vector).
+__global__ void __launch_bounds__(KB_BLOCK, 4)
+kern_merkle_level(const uint32_t *children, uint32_t *parents,
+                   const uint32_t *round_keys,
+                   const uint32_t *diag,
+                   size_t n_pairs) {
+    __shared__ uint32_t s_diag[16];
+    if (threadIdx.x < 16) s_diag[threadIdx.x] = diag[threadIdx.x];
+    __syncthreads();
+
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= n_pairs) return;
 
@@ -811,7 +847,7 @@ __global__ void kern_merkle_level(const uint32_t *children, uint32_t *parents,
     uint32_t ff[8];
     for (int j = 0; j < 8; j++) ff[j] = state[8 + j];
 
-    p2_permutation(state, 16, 6, 21, round_keys, diag);
+    p2_permutation(state, 16, 6, 21, round_keys, s_diag);
 
     // Feed-forward → new capacity (state[0:8])
     for (int j = 0; j < 8; j++)
@@ -823,7 +859,7 @@ __global__ void kern_merkle_level(const uint32_t *children, uint32_t *parents,
 
     for (int j = 0; j < 8; j++) ff[j] = state[8 + j];
 
-    p2_permutation(state, 16, 6, 21, round_keys, diag);
+    p2_permutation(state, 16, 6, 21, round_keys, s_diag);
 
     // Feed-forward → output hash
     uint32_t *out = parents + tid * 8;
@@ -2011,6 +2047,16 @@ struct KBSymProgram {
     uint32_t  num_consts;
     uint32_t  num_slots;
     uint32_t  result_slot;
+
+    // Per-program reusable buffers, sized once on first call and reused on
+    // every subsequent call. Eliminates two cudaMalloc + cudaFree pairs
+    // per kb_sym_eval, which used to be a measurable fraction of the
+    // quotient hot path (especially at small n where the launch + alloc
+    // costs dominate the actual symbolic eval kernel).
+    SymInputDesc *d_inputs_pool;
+    size_t        d_inputs_capacity; // in elements
+    uint32_t     *d_out_pool;
+    size_t        d_out_capacity;    // in uint32_t (== 4 × n_elements_E4)
 };
 
 __device__ E4 sym_read_input(const SymInputDesc *desc, uint32_t i, uint32_t n) {
@@ -2149,6 +2195,8 @@ extern "C" void kb_sym_free(kb_sym_program_t p) {
     if (!p) return;
     cudaFree(p->d_program);
     cudaFree(p->d_consts);
+    if (p->d_inputs_pool) cudaFree(p->d_inputs_pool);
+    if (p->d_out_pool)    cudaFree(p->d_out_pool);
     delete p;
 }
 
@@ -2159,33 +2207,48 @@ extern "C" kb_error_t kb_sym_eval(gnark_gpu_context_t,
                                    uint32_t *h_out) {
     if (!program || !h_out || n == 0) return KB_ERROR_INVALID;
 
-    // Upload input descriptors to device
-    SymInputDesc *d_inputs = nullptr;
+    // Reuse the per-program input descriptor buffer; grow on demand.
+    // Was: cudaMalloc + cudaMemcpy(sync) + cudaFree on every call.
+    // Now: zero alloc on the steady state; D2H stays sync because the
+    //      caller (gpu/quotient.RunGPU) needs the result before the
+    //      host-side annulator scaling pass.
     if (num_inputs > 0) {
-        CUDA_CHECK(cudaMalloc(&d_inputs, num_inputs * sizeof(SymInputDesc)));
-        CUDA_CHECK(cudaMemcpy(d_inputs, h_inputs,
-                              num_inputs * sizeof(SymInputDesc), cudaMemcpyHostToDevice));
+        if (program->d_inputs_capacity < num_inputs) {
+            if (program->d_inputs_pool) cudaFree(program->d_inputs_pool);
+            CUDA_CHECK(cudaMalloc(&program->d_inputs_pool,
+                                  num_inputs * sizeof(SymInputDesc)));
+            program->d_inputs_capacity = num_inputs;
+        }
+        CUDA_CHECK(cudaMemcpy(program->d_inputs_pool, h_inputs,
+                              num_inputs * sizeof(SymInputDesc),
+                              cudaMemcpyHostToDevice));
     }
 
-    // Allocate device output
-    uint32_t *d_out;
-    CUDA_CHECK(cudaMalloc(&d_out, (size_t)n * 4 * sizeof(uint32_t)));
+    // Reuse the per-program output buffer; grow on demand.
+    size_t out_count = (size_t)n * 4;
+    if (program->d_out_capacity < out_count) {
+        if (program->d_out_pool) cudaFree(program->d_out_pool);
+        CUDA_CHECK(cudaMalloc(&program->d_out_pool,
+                              out_count * sizeof(uint32_t)));
+        program->d_out_capacity = out_count;
+    }
 
-    // Launch kernel
     kern_symbolic_eval<<<kb_grid(n), KB_BLOCK>>>(
         program->d_program, program->pgm_len,
         program->d_consts,
-        d_inputs,
+        program->d_inputs_pool,
         n,
         program->result_slot,
-        d_out);
+        program->d_out_pool);
 
-    // D2H result
-    CUDA_CHECK(cudaMemcpy(h_out, d_out, (size_t)n * 4 * sizeof(uint32_t),
+    // D2H of the eval result. Caller materializes it as []fext.E4 in Go
+    // and runs the per-element annulator scaling on host. A future
+    // optimization moves that scaling onto the GPU and D2Hs the smaller
+    // base-field result instead — see worklog Step 4 outstanding items.
+    CUDA_CHECK(cudaMemcpy(h_out, program->d_out_pool,
+                          out_count * sizeof(uint32_t),
                           cudaMemcpyDeviceToHost));
 
-    cudaFree(d_inputs);
-    cudaFree(d_out);
     return KB_SUCCESS;
 }
 
