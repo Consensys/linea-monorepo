@@ -20,12 +20,6 @@ jobs:
       commit-tag: ${{ steps.compute-commit-tag.outputs.COMMIT_TAG }}
       sdk-commit-tag: ${{ steps.compute-commit-tag.outputs.SDK_COMMIT_TAG }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ github.event.workflow_run.head_repository.full_name }}
-          ref:        ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
       - name: Compute commit tag
         shell: bash
         id: compute-commit-tag
@@ -35,12 +29,13 @@ jobs:
           WORKFLOW_RUN_PR_HEAD_SHA: ${{ github.event.workflow_run.pull_requests[0].head.sha || '' }}
         # COMMIT_TAG is derived from workflow_run.head_sha and used by workflows that upload artifacts using the shared commit_tag.
         # SDK_COMMIT_TAG is derived from the PR head SHA for sdk-testing PR runs to match sdk-testing.yml's cov-tag step.
+        # We use bash substring (${VAR:0:7}) instead of `git rev-parse --short=7` to avoid checking out fork code in this privileged workflow_run context.
         run: |
-          COMMIT_TAG="$(git rev-parse --short=7 "$WORKFLOW_RUN_HEAD_SHA")"
+          COMMIT_TAG="${WORKFLOW_RUN_HEAD_SHA:0:7}"
           SDK_COMMIT_TAG="$COMMIT_TAG"
 
           if [[ "$TRIGGERING_WORKFLOW" == "sdk-testing" ]] && [[ -n "$WORKFLOW_RUN_PR_HEAD_SHA" ]]; then
-            SDK_COMMIT_TAG="$(git rev-parse --short=7 "$WORKFLOW_RUN_PR_HEAD_SHA")"
+            SDK_COMMIT_TAG="${WORKFLOW_RUN_PR_HEAD_SHA:0:7}"
           fi
 
           echo "COMMIT_TAG=$COMMIT_TAG" >> "$GITHUB_OUTPUT"
