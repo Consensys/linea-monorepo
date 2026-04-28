@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"reflect"
 	"runtime"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -455,25 +456,46 @@ func RunGPU(
 
 				tP := time.Now()
 				var assigned sv.SmartVector
-				allBaseField := true
-				for k := range result {
-					if !fext.IsBase(&result[k]) {
-						allBaseField = false
-						break
+				// Three host-side passes used to be sequential:
+				//   1. allBaseField detection (n iters of fext.IsBase)
+				//   2. extract B0.A0 into []field.Element (n iters)
+				//   3. parallel ScalarMul by annBase[i]
+				// Total ~3.3 ms at n=1M.
+				//
+				// Now: parallel detect + fused parallel extract+scalarMul.
+				// In the all-base common case the standalone ScalarMul is
+				// folded into the extract pass.
+				//
+				// Use parallel.Execute (NOT ExecuteChunky — the latter
+				// dispatches a goroutine per single iteration, fatal at
+				// n=1M).
+				var anyNonBase atomic.Bool
+				parallel.Execute(len(result), func(lo, hi int) {
+					for k := lo; k < hi; k++ {
+						if !fext.IsBase(&result[k]) {
+							anyNonBase.Store(true)
+							return
+						}
 					}
-				}
+				})
+				allBaseField := !anyNonBase.Load()
+
 				if allBaseField {
 					if !annBaseDone {
 						annBase = fastpoly.EvalXnMinusOneOnACoset(domainSize, domainSize*maxRatio)
 						annBase = field.ParBatchInvert(annBase, runtime.GOMAXPROCS(0))
 						annBaseDone = true
 					}
+					// Fused parallel extract + ScalarMul: br[k] = result[k].B0.A0 * ann.
+					// Eliminates the standalone extract loop AND the standalone
+					// vq.ScalarMul pass.
 					br := make([]field.Element, domainSize)
-					for k := range result {
-						br[k] = result[k].B0.A0
-					}
-					vq := field.Vector(br)
-					vq.ScalarMul(vq, &annBase[i])
+					ann := annBase[i]
+					parallel.Execute(len(result), func(lo, hi int) {
+						for k := lo; k < hi; k++ {
+							br[k].Mul(&result[k].B0.A0, &ann)
+						}
+					})
 					assigned = sv.NewRegular(br)
 				} else {
 					if !annExtDone {
