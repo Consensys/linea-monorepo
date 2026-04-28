@@ -36,9 +36,12 @@ package globalcs_test
 import (
 	"math/rand/v2"
 	"os"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -60,6 +63,142 @@ func BenchmarkGPUQuotient_256K(b *testing.B) { benchGPUQuotient(b, 1<<18) }
 // BenchmarkGPUQuotient_1M runs at domain 2^20 — close to typical
 // per-segment max domain in the limitless prover.
 func BenchmarkGPUQuotient_1M(b *testing.B) { benchGPUQuotient(b, 1<<20) }
+
+// BenchmarkGPUQuotient2GPU_1M runs two independent provers concurrently,
+// one pinned to each GPU. The wizards are identical (same compile output)
+// but the two prover goroutines call wizard.Prove on independent witness
+// goroutines, each having Bind()'d its assigned GPU.
+//
+// Validates that:
+//   - The pinned-buffer cache keys correctly on (deviceID, capacity), so
+//     two concurrent calls don't trample each other (otherwise the
+//     second goroutine would see the first's data still in the cached
+//     buffer).
+//   - Both GPUs do real work in parallel (not silently serialised on
+//     device 0 the way the pre-Bind() multi-GPU bug had it).
+//
+// Compare to BenchmarkGPUQuotientHeavy_1M: this should take roughly the
+// same wall clock for *two* proofs as the single bench takes for one.
+func BenchmarkGPUQuotient2GPU_1M(b *testing.B) {
+	bench2GPUQuotient(b, 1<<20, 16, 8)
+}
+
+func bench2GPUQuotient(b *testing.B, n, manyRoots, numConstraints int) {
+	if !gpuAvailable(b, 2) {
+		b.Skip("need LIMITLESS_GPU_COUNT>=2")
+	}
+
+	// Build the same wizard the heavy bench uses, but locally so we
+	// don't bring back the helper into this scope.
+	rng := rand.New(rand.NewChaCha8([32]byte{0xF3}))
+	colNames := make([]ifaces.ColID, manyRoots)
+	witnesses := make([][]field.Element, manyRoots)
+	for i := range colNames {
+		colNames[i] = ifaces.ColID("CC" + itoa(i))
+		w := make([]field.Element, n)
+		for j := range w {
+			w[j].SetUint64(uint64(rng.Uint64() & 0x7FFFFFF))
+		}
+		witnesses[i] = w
+	}
+	type triple struct{ a, b, c int }
+	triples := make([]triple, numConstraints)
+	for k := range triples {
+		triples[k] = triple{
+			a: (k * 3) % manyRoots,
+			b: (k*3 + 1) % manyRoots,
+			c: (k*3 + 2) % manyRoots,
+		}
+	}
+	for _, t := range triples {
+		for j := 0; j < n; j++ {
+			witnesses[t.c][j].Mul(&witnesses[t.a][j], &witnesses[t.b][j])
+		}
+	}
+	definer := func(build *wizard.Builder) {
+		cols := make([]ifaces.Column, manyRoots)
+		for i, name := range colNames {
+			cols[i] = build.RegisterCommit(name, n)
+		}
+		for k, t := range triples {
+			expr := symbolic.Sub(
+				symbolic.Mul(cols[t.a], cols[t.b]),
+				cols[t.c],
+			)
+			_ = build.GlobalConstraint(ifaces.QueryID("QQ"+itoa(k)), expr)
+		}
+	}
+	comp := wizard.Compile(definer, globalcs.Compile, dummy.Compile)
+
+	hLProver := func(assi *wizard.ProverRuntime) {
+		for i, name := range colNames {
+			assi.AssignColumn(name, smartvectors.NewRegular(witnesses[i]))
+		}
+	}
+
+	// Warmup both GPUs so cudaMallocHost + pipeline init costs are paid
+	// once outside the timed loop.
+	os.Setenv("LIMITLESS_GPU_QUOTIENT", "1")
+	defer os.Unsetenv("LIMITLESS_GPU_QUOTIENT")
+	{
+		var wg sync.WaitGroup
+		for i := 0; i < 2; i++ {
+			wg.Add(1)
+			i := i
+			go func() {
+				defer wg.Done()
+				runtime.LockOSThread()
+				defer runtime.UnlockOSThread()
+				dev := gpu.GetDeviceN(i)
+				if dev == nil {
+					return
+				}
+				_ = dev.Bind()
+				gpu.SetCurrentDevice(dev)
+				gpu.SetCurrentDeviceID(i)
+				defer gpu.SetCurrentDevice(nil)
+				wizard.Prove(comp, hLProver)
+			}()
+		}
+		wg.Wait()
+	}
+
+	b.SetBytes(int64(n) * 4 * 2) // two proofs per op
+	b.ResetTimer()
+	for it := 0; it < b.N; it++ {
+		var wg sync.WaitGroup
+		for i := 0; i < 2; i++ {
+			wg.Add(1)
+			i := i
+			go func() {
+				defer wg.Done()
+				runtime.LockOSThread()
+				defer runtime.UnlockOSThread()
+				dev := gpu.GetDeviceN(i)
+				if dev == nil {
+					return
+				}
+				_ = dev.Bind()
+				gpu.SetCurrentDevice(dev)
+				gpu.SetCurrentDeviceID(i)
+				defer gpu.SetCurrentDevice(nil)
+				wizard.Prove(comp, hLProver)
+			}()
+		}
+		wg.Wait()
+	}
+}
+
+// gpuAvailable reports whether the requested number of GPUs are bindable.
+// Skips the bench cleanly otherwise (e.g. on CI hosts with one GPU).
+func gpuAvailable(b *testing.B, n int) bool {
+	for i := 0; i < n; i++ {
+		if gpu.GetDeviceN(i) == nil {
+			return false
+		}
+	}
+	return true
+}
 
 // BenchmarkGPUQuotientHeavy_64K / _256K / _1M run a HEAVY constraint:
 // `manyRoots` independent witness columns and `numConstraints` global

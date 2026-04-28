@@ -491,3 +491,137 @@ LIMITLESS_GPU_COUNT=2 go test -tags cuda -bench '^BenchmarkCommitGPUResidentVsCP
    the two GPUs to hide PIX-shared upstream contention.
 3. Free the input pinned buffer faster (currently per-pipeline; would be
    nice to share one across GPUs).
+
+## Step 4 — quotient bottleneck and pinned-buffer cache fix — DONE (2026-04-28)
+
+Same exercise as Step 3, but for the quotient path.
+
+### Validation
+
+`TestGPUQuotientCorrectness` (new, in `protocol/compiler/globalcs/`)
+proves a Fibonacci wizard at n=1024 and n=64K with both env-var on and
+off. Both proofs verify. Correctness ✓.
+
+### Microbench, before pinned-buffer cache
+
+Two shapes, both at the wizard.Prove level so the comparison includes
+all prover-step overhead (vortex CPU commit + the quotient swap):
+
+```
+BenchmarkGPUQuotient_*       — 1 Fibonacci-style constraint (thin)
+BenchmarkGPUQuotientHeavy_*  — 16 base roots × 8 deg-2 mul-sub constraints
+```
+
+| size | shape  | CPU | GPU | speedup |
+|---|---|---:|---:|---:|
+| 64K | thin | 5 ms | 6 ms | 0.83× |
+| 256K | thin | 11 ms | 15 ms | 0.71× |
+| 1M | thin | 39 ms | 60 ms | 0.66× |
+| 64K | heavy | 7 ms | 8 ms | 0.82× |
+| 256K | heavy | 17 ms | 23 ms | 0.75× |
+| 1M | heavy | 48 ms | 78 ms | 0.61× |
+
+### Per-phase TIMING @ n=1M heavy (16 roots × 8 constraints)
+
+```
+pack         19.6 ms   ← cudaMallocHost on every call (NEW! 64 MiB pinned alloc)
+h2d           1.4 ms
+ifft          1.1 ms   GPU
+cosetNTT      1.3 ms   GPU
+symEval       6.1 ms total
+                kernel: 2.7 ms  GPU
+                post:   3.4 ms  host (ScalarMul of result by annulator)
+```
+
+GPU compute is fast (5 ms total kernel work) — comparable to CPU AVX-512
+`board.Evaluate` on the same boards. **What kills it is the per-call
+host-side overhead**, exactly the same shape as the vortex drop-in
+problem from Step 3.
+
+### Fix: pinned buffer cache
+
+`gpu/vortex/pinned_cache.go` adds `GetPinned(deviceID, n)` /
+`ReleasePinnedCache(deviceID)`. First call at a given (device, capacity)
+pays the cudaMallocHost; subsequent calls reuse the cached buffer.
+Keyed on (deviceID, capacity) so two GPUs each get their own pool.
+
+`gpu/quotient/quotient.go` switches from `AllocPinned/FreePinned` to
+`GetPinned`. Removes the per-call alloc cost.
+
+### Microbench, after pinned-buffer cache
+
+| size | shape | before | after |
+|---|---|---:|---:|
+| 64K | heavy | 0.82× | 0.82× (kernel-launch bound at this scale) |
+| 256K | heavy | 0.75× | **1.19×** (first GPU win) |
+| 1M | heavy | 0.61× | **0.85×** (warm calls; first call still cold) |
+
+Per-phase TIMING after fix @ n=1M heavy, warm:
+
+```
+pack          1.4 ms   ← was 19.6 ms (-94%)
+h2d           1.4 ms
+ifft          1.1 ms
+cosetNTT      1.3 ms
+symEval       6.0 ms
+TOTAL phases ~12 ms (vs CPU full Prove minus other-overhead ~10 ms)
+```
+
+The remaining gap at n=1M is dominated by:
+- `post` 3.3 ms — host-side ScalarMul-by-annulator on a 1M-element
+  vector. Trivially movable to GPU.
+- `h2d` 1.4 ms running serial with `ifft` 1.1 ms — could overlap on
+  separate streams.
+- The synthetic constraint set: 1 board, 1 ratio, 2 cosets. Real
+  segments have many ratios + many boards per ratio. The GPU symEval
+  kernel scales linearly in board count *with* a fixed launch cost; CPU
+  scales linearly in board count *without*. GPU should win clearly at
+  ≥10–20 boards per ratio.
+
+### Multi-GPU concurrent proving
+
+`BenchmarkGPUQuotient2GPU_1M`: two goroutines, each pinned to one GPU,
+each running `wizard.Prove` on the same compiled wizard.
+
+```
+Two proofs in parallel:    74.7 ms / op (37.4 ms per proof)
+Single proof  (extrapolated): 59 ms (heavy 1M, after pinned cache)
+Serial two proofs would be: 118 ms
+
+Scaling: 1.58× over serial — confirms both GPUs do real work.
+```
+
+The 2-GPU bench is **bottlenecked by the *non-quotient* CPU prover steps**
+(Vortex CPU commit + setup) which contend for the shared 48 cores; it's
+not a clean GPU-only measurement. Real segments will benefit more
+because more of their wall clock is on GPU.
+
+### Bind() prerequisite
+
+The 2-GPU bench is the second thing in the codebase that exercises
+multi-GPU pinning end-to-end (after the vortex 2-GPU bench). The
+`gpu.Device.Bind()` fix from Step 3 (cudaSetDevice per OS thread) was
+non-optional — without it both goroutines silently land on device 0.
+
+### Outstanding optimizations (planned, not yet landed)
+
+1. **ScalarMul-by-annulator on GPU.** Saves ~3.3 ms/call at n=1M. Easy:
+   the eval kernel already writes a device buffer; just call
+   `kb_vec_scale` before D2H instead of host `vq.ScalarMul`.
+2. **Stream H2D + IFFT.** Currently serial. Adding a transfer stream
+   that runs while the previous chunk's IFFT executes saves the ~1.4 ms
+   h2d time at n=1M.
+3. **Cache device-side variables.X / PeriodicSample.** They're
+   deterministic per (domainSize, ratio, cosetIdx); should be a hash-keyed
+   device cache, not rebuilt per call. Currently free at small scale
+   (`auxBuild=0s` in our bench because the synthetic constraint has none)
+   but the real segments use them heavily.
+4. **Multi-GPU within one segment.** Split independent ratio groups
+   across the two GPUs when a segment has >=2 ratios. This is genuinely
+   easy: pin one ratio loop to dev0, another to dev1, accumulate.
+   Skipped for now because the cross-segment 2-GPU pinning (already
+   in place via `pinGPU(slot)`) gives most of the win at the segment
+   level.
+5. **Move ext SoA marshaling to GPU.** The per-coset `extSOA :=
+   make([]field.Element, len(rd.extIDs)*domainSize*4)` host-side
+   transpose is also O(n) per coset; should be a GPU transpose kernel.
