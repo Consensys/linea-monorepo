@@ -2,29 +2,24 @@ package net.consensys.zkevm.persistence.dao.batch.persistence
 
 import linea.domain.Batch
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
+import net.consensys.zkevm.persistence.db.RetryingDaoBase
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RetryingBatchesPostgresDao(
-  private val delegate: BatchesPostgresDao,
-  private val persistenceRetryer: PersistenceRetryer,
-) : BatchesDao {
-  override fun saveNewBatch(batch: Batch): SafeFuture<Unit> {
-    return persistenceRetryer.retryQuery({ delegate.saveNewBatch(batch) })
-  }
+  delegate: BatchesPostgresDao,
+  persistenceRetryer: PersistenceRetryer,
+) : RetryingDaoBase<BatchesPostgresDao>(delegate, persistenceRetryer), BatchesDao {
+  override fun saveNewBatch(batch: Batch): SafeFuture<Unit> =
+    retrying { delegate.saveNewBatch(batch) }
 
   override fun findHighestConsecutiveEndBlockNumberFromBlockNumber(
     startingBlockNumberInclusive: Long,
-  ): SafeFuture<Long?> {
-    return persistenceRetryer.retryQuery(
-      { delegate.findHighestConsecutiveEndBlockNumberFromBlockNumber(startingBlockNumberInclusive) },
-    )
-  }
+  ): SafeFuture<Long?> =
+    retrying { delegate.findHighestConsecutiveEndBlockNumberFromBlockNumber(startingBlockNumberInclusive) }
 
-  override fun deleteBatchesUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int> {
-    return persistenceRetryer.retryQuery({ delegate.deleteBatchesUpToEndBlockNumber(endBlockNumberInclusive) })
-  }
+  override fun deleteBatchesUpToEndBlockNumber(endBlockNumberInclusive: Long): SafeFuture<Int> =
+    retrying { delegate.deleteBatchesUpToEndBlockNumber(endBlockNumberInclusive) }
 
-  override fun deleteBatchesAfterBlockNumber(startingBlockNumberInclusive: Long): SafeFuture<Int> {
-    return persistenceRetryer.retryQuery({ delegate.deleteBatchesAfterBlockNumber(startingBlockNumberInclusive) })
-  }
+  override fun deleteBatchesAfterBlockNumber(startingBlockNumberInclusive: Long): SafeFuture<Int> =
+    retrying { delegate.deleteBatchesAfterBlockNumber(startingBlockNumberInclusive) }
 }
