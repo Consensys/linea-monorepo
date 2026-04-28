@@ -1,0 +1,75 @@
+type Element = u16
+type Address = u16
+type Small = u8
+type Bool = u1
+
+// ZkC memories are not first-class values, so MerkleProofCheck takes the scalar
+// controls and reads position/proofs/roots/leaves from the input memories below.
+pub input numProofs(address:u1) -> (value:Small)
+pub input depth(address:u1) -> (value:Small)
+pub input position(address:Address) -> (value:Address)
+pub input proofs(address:Address) -> (value:Element)
+pub input roots(address:Address) -> (value:Element)
+pub input leaves(address:Address) -> (value:Element)
+
+pub output result(address:u1) -> (value:u8)
+
+fn wrapping_add(a:Element, b:Element) -> (sum:Element) {
+    var room:Element = 0xffff - a
+    if b <= room {
+        sum = a + b
+    } else {
+        sum = (b - room) - 1
+    }
+}
+
+fn wrapping_mul(a:Element, b:Element) -> (product:Element) {
+    product = 0
+    for i:Element = 0; i<b; i = i + 1 {
+        product = wrapping_add(product, a)
+    }
+}
+
+// H(a, b) = a + b + a * b + (a % b)
+fn toy_hash(a:Element, b:Element) -> (h:Element) {
+    var rem:Element = 0
+    if b != 0 {
+        rem = a % b
+    }
+
+    var acc:Element = wrapping_add(a, b)
+    acc = wrapping_add(acc, wrapping_mul(a, b))
+    h = wrapping_add(acc, rem)
+}
+
+fn MerkleProofCheck(numProofsArg:Small, depthArg:Small) -> (valid:Bool) {
+    valid = 1
+
+    for proofIndex:Small = 0; proofIndex<numProofsArg; proofIndex = proofIndex + 1 {
+        var acc:Element = leaves[proofIndex as Address]
+        var path:Address = position[proofIndex as Address]
+        var proofOffset:Address = (proofIndex as Address) * (depthArg as Address)
+
+        for level:Small = 0; level<depthArg; level = level + 1 {
+            var proofAddress:Address = proofOffset + (level as Address)
+            var sibling:Element = proofs[proofAddress]
+            var pathBit:Address = path % 2
+
+            if pathBit == 0 {
+                acc = toy_hash(acc, sibling)
+            } else {
+                acc = toy_hash(sibling, acc)
+            }
+
+            path = path / 2
+        }
+
+        if acc != roots[proofIndex as Address] {
+            valid = 0
+        }
+    }
+}
+
+fn main() {
+    result[0] = MerkleProofCheck(numProofs[0], depth[0]) as u8
+}

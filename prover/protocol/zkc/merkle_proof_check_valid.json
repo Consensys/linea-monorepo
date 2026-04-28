@@ -1,0 +1,9 @@
+{
+  "numProofs": "0x02",
+  "depth": "0x02",
+  "position": "0x0001_0002",
+  "proofs": "0x0004_0005_0008_0009",
+  "roots": "0x007d_031e",
+  "leaves": "0x0003_0007",
+  "result": "0x01"
+}
