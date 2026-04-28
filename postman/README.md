@@ -214,7 +214,7 @@ From the postman folder run the following commands:
 cp .env.sample .env
 
 # Run the postman
-npx ts-node src/main.ts
+pnpm exec ts-node src/main.ts
 ```
 
 ### Building
