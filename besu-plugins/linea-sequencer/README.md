@@ -1,5 +1,4 @@
 # Besu Plugins related to tracer and sequencer functionality
-# Added for testing besu-package release
 
 This repository hosts the implementation of the sequencer, the component of the Linea stack responsible for ordering transactions and building blocks, as well as executing them. It provides a set of [Besu](https://github.com/besu-eth/besu):Linea plugins. 
 
