@@ -44,6 +44,11 @@ PROGRAM_OFFSET ?= 0
 INBYTES_OFFSET ?= 0
 ENTRY_POINT    ?= 0
 
+# TODO: default values may be set to the following
+# PROGRAM_OFFSET ?= 0x80000000 # (up to 128 MB)
+# INBYTES_OFFSET ?= 0x40000000 # (up to 1 GB)
+# ENTRY_POINT    ?= 0x80000000
+
 # Default target (make)
 exec: compile zkc-exec
 
