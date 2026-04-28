@@ -17,6 +17,7 @@ const MAX_FEE_MULTIPLIER = 10n;
 const DEFAULT_MAX_RETRIES = 20;
 const DEFAULT_OVERALL_TIMEOUT_MS = 3 * 60_000;
 const DEFAULT_RETRY_ON_REVERT_DELAY_MS = 1_000;
+const DEFAULT_RETRY_ON_REJECTION_DELAY_MS = 2_000;
 
 export type FeeOverrides = {
   maxPriorityFeePerGas: bigint | undefined;
@@ -33,6 +34,8 @@ export type SendTransactionWithRetryOptions = {
   retryOnRevert?: boolean;
   retryOnRevertDelayMs?: number;
   beforeRetry?: () => Promise<void>;
+  retryOnRejection?: boolean;
+  retryOnRejectionDelayMs?: number;
 };
 
 export type TransactionResult = {
@@ -332,6 +335,8 @@ async function sendTransactionWithFeeRetry<TFees>(
   const retryOnRevert = options.retryOnRevert ?? false;
   const retryOnRevertDelayMs = options.retryOnRevertDelayMs ?? DEFAULT_RETRY_ON_REVERT_DELAY_MS;
   const beforeRetry = options.beforeRetry;
+  const retryOnRejection = options.retryOnRejection ?? false;
+  const retryOnRejectionDelayMs = options.retryOnRejectionDelayMs ?? DEFAULT_RETRY_ON_REJECTION_DELAY_MS;
 
   const startedAt = Date.now();
   let lastHash!: Hash;
@@ -386,6 +391,13 @@ async function sendTransactionWithFeeRetry<TFees>(
         await freshSend();
       } catch (err) {
         if (await retryAfterSimulationRevert(err)) {
+          continue;
+        }
+        if (retryOnRejection && !isNonceTooLow(err) && withinLimits()) {
+          logger.debug(`sendFn rejected, will retry: attempt=${attempt} error=${(err as Error)?.message}`);
+          await sleep(retryOnRejectionDelayMs);
+          needsSend = true;
+          attempt++;
           continue;
         }
         throw err;

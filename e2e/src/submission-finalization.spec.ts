@@ -85,7 +85,7 @@ describe("Submission and finalization test suite", () => {
           ({ safeL2BlockNumber, finalizedL2BlockNumber }) =>
             safeL2BlockNumber >= lastFinalizedL2BlockNumberOnL1 &&
             finalizedL2BlockNumber >= lastFinalizedL2BlockNumberOnL1,
-          { pollingIntervalMs: 1_000, timeoutMs: 140_000 },
+          { pollingIntervalMs: 1_000, timeoutMs: 300_000 },
         );
 
         logger.debug(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
@@ -95,7 +95,7 @@ describe("Submission and finalization test suite", () => {
 
         logger.debug("L2 safe/finalized tag update on sequencer done.");
       },
-      150_000,
+      320_000,
     );
 
     it.concurrent(

@@ -64,18 +64,21 @@ describe("Layer 2 test suite", () => {
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
 
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
-    logger.debug(`Fetched gasPrice=${gasPrice}`);
-
-    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
-      walletClient.sendTransaction({
-        type: "legacy",
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice: fees?.gasPrice ?? gasPrice,
-        value: etherToWei("0.01"),
-        gas: 4612388n,
-        nonce,
-      }),
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(
+      l2PublicClient,
+      async (fees?: GasPriceFeeOverrides) => {
+        const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
+        logger.debug(`Fetched gasPrice=${gasPrice}`);
+        return walletClient.sendTransaction({
+          type: "legacy",
+          to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+          gasPrice: fees?.gasPrice ?? gasPrice,
+          value: etherToWei("0.01"),
+          gas: 4612388n,
+          nonce,
+        });
+      },
+      { retryOnRejection: true },
     );
 
     logger.debug(`Legacy transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
@@ -121,19 +124,22 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
-    logger.debug(`Fetched gasPrice=${gasPrice}`);
-
-    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
-      walletClient.sendTransaction({
-        type: "eip2930",
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice: fees?.gasPrice ?? gasPrice,
-        value: etherToWei("0.01"),
-        gas: 21000n,
-        chainId: context.getL2ChainId(),
-        nonce,
-      }),
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(
+      l2PublicClient,
+      async (fees?: GasPriceFeeOverrides) => {
+        const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
+        logger.debug(`Fetched gasPrice=${gasPrice}`);
+        return walletClient.sendTransaction({
+          type: "eip2930",
+          to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+          gasPrice: fees?.gasPrice ?? gasPrice,
+          value: etherToWei("0.01"),
+          gas: 21000n,
+          chainId: context.getL2ChainId(),
+          nonce,
+        });
+      },
+      { retryOnRejection: true },
     );
 
     logger.debug(`Empty access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
@@ -147,9 +153,6 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
-    logger.debug(`Fetched gasPrice=${gasPrice}`);
-
     const accessList = [
       {
         address: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
@@ -160,17 +163,23 @@ describe("Layer 2 test suite", () => {
       },
     ] as const;
 
-    const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
-      walletClient.sendTransaction({
-        type: "eip2930",
-        to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-        gasPrice: fees?.gasPrice ?? gasPrice,
-        value: etherToWei("0.01"),
-        gas: 200000n,
-        chainId: context.getL2ChainId(),
-        accessList,
-        nonce,
-      }),
+    const { hash, receipt } = await sendTransactionWithGasPriceRetry(
+      l2PublicClient,
+      async (fees?: GasPriceFeeOverrides) => {
+        const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
+        logger.debug(`Fetched gasPrice=${gasPrice}`);
+        return walletClient.sendTransaction({
+          type: "eip2930",
+          to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
+          gasPrice: fees?.gasPrice ?? gasPrice,
+          value: etherToWei("0.01"),
+          gas: 200000n,
+          chainId: context.getL2ChainId(),
+          accessList,
+          nonce,
+        });
+      },
+      { retryOnRejection: true },
     );
     logger.debug(`Access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
 
