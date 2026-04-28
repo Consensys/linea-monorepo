@@ -13,6 +13,8 @@ func (d *Device) Close() error           { panic("gpu: requires cuda build tag")
 func (d *Device) Sync() error            { panic("gpu: requires cuda build tag") }
 func (d *Device) Closed() bool           { return true }
 func (d *Device) Handle() unsafe.Pointer { panic("gpu: requires cuda build tag") }
+func (d *Device) DeviceID() int          { return 0 }
+func (d *Device) Bind() error            { panic("gpu: requires cuda build tag") }
 
 func (d *Device) MemGetInfo() (free, total uint64, err error) {
 	panic("gpu: requires cuda build tag")

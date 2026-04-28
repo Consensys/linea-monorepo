@@ -42,6 +42,7 @@ func toError(code C.gnark_gpu_error_t) error {
 type Device struct {
 	handle          C.gnark_gpu_context_t
 	multiStreamInit bool
+	deviceID        int
 }
 
 // New creates a Device on the specified GPU.
@@ -57,9 +58,23 @@ func New(opts ...Option) (*Device, error) {
 		return nil, err
 	}
 
-	d := &Device{handle: handle}
+	d := &Device{handle: handle, deviceID: cfg.deviceID}
 	runtime.SetFinalizer(d, (*Device).Close)
 	return d, nil
+}
+
+// DeviceID returns the GPU index this Device was created against.
+func (d *Device) DeviceID() int { return d.deviceID }
+
+// Bind sets the CUDA "current device" for the calling OS thread to this
+// Device's GPU. CUDA's current-device state is per-thread, so on multi-GPU
+// hosts every host thread that issues CUDA calls must call Bind once
+// (typically after runtime.LockOSThread). Without it, allocations and
+// kernel launches silently fall through to device 0.
+//
+// Idempotent and cheap — wraps a single cudaSetDevice.
+func (d *Device) Bind() error {
+	return toError(C.gnark_gpu_set_device(C.int(d.deviceID)))
 }
 
 // Close releases GPU resources associated with this device.

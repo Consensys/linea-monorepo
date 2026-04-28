@@ -277,6 +277,13 @@ static cudaStream_t get_stream(GnarkGPUContext *ctx, int stream_id) {
 // Context lifecycle
 // =============================================================================
 
+// Bind the calling OS thread to a CUDA device.
+// See header doc — required before any allocation / kernel launch on
+// multi-GPU hosts so that the call lands on the right device. Idempotent.
+extern "C" gnark_gpu_error_t gnark_gpu_set_device(int device_id) {
+    return check_cuda(cudaSetDevice(device_id));
+}
+
 extern "C" gnark_gpu_error_t gnark_gpu_init(int device_id, gnark_gpu_context_t *ctx) {
     if (!ctx) {
         return GNARK_GPU_ERROR_INVALID_ARG;

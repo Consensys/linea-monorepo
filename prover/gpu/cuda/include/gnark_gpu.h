@@ -42,6 +42,17 @@ gnark_gpu_error_t gnark_gpu_init(int device_id, gnark_gpu_context_t *ctx);
 // Destroy GPU context and release resources
 void gnark_gpu_destroy(gnark_gpu_context_t ctx);
 
+// Bind the calling OS thread to a CUDA device. CUDA's "current device" is
+// per-thread state; on multi-GPU hosts every host thread that issues CUDA
+// calls (allocations, launches, transfers) must set its target device once,
+// otherwise everything falls through to device 0.
+//
+// Used in tandem with runtime.LockOSThread on the Go side: pin a goroutine
+// to its OS thread, set the target device, run the GPU pipeline, unpin.
+//
+// Idempotent and cheap (single cudaSetDevice).
+gnark_gpu_error_t gnark_gpu_set_device(int device_id);
+
 // =============================================================================
 // Fr vector operations
 // =============================================================================

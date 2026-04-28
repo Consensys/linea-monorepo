@@ -538,6 +538,13 @@ type GPUVortex struct {
 // maxNRows is the maximum number of rows that will be passed to Commit().
 // Pre-allocates all device buffers + RS domain data for zero-allocation commits.
 func NewGPUVortex(dev *gpu.Device, params *Params, maxNRows int) (*GPUVortex, error) {
+	// Pin this thread to the chosen device before any allocation. CUDA's
+	// "current device" is per-OS-thread state; without this the pipeline's
+	// device buffers (multi-GB) silently land on device 0 even when
+	// `dev.DeviceID() == 1`, defeating multi-GPU.
+	if err := dev.Bind(); err != nil {
+		return nil, fmt.Errorf("vortex: Bind device %d: %w", dev.DeviceID(), err)
+	}
 	inner := params.inner
 	sisKey := inner.Key
 	degree := sisKey.Degree
