@@ -78,7 +78,7 @@ describe("Layer 2 test suite", () => {
           nonce,
         });
       },
-      { retryOnRejection: true },
+      { retryOnRejection: true, maxRetries: 60 },
     );
 
     logger.debug(`Legacy transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
@@ -139,7 +139,7 @@ describe("Layer 2 test suite", () => {
           nonce,
         });
       },
-      { retryOnRejection: true },
+      { retryOnRejection: true, maxRetries: 60 },
     );
 
     logger.debug(`Empty access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
@@ -179,7 +179,7 @@ describe("Layer 2 test suite", () => {
           nonce,
         });
       },
-      { retryOnRejection: true },
+      { retryOnRejection: true, maxRetries: 60 },
     );
     logger.debug(`Access list transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
 
