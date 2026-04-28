@@ -58,8 +58,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download Jacoco test coverage report (from coordinator-testing.yml)
         continue-on-error: true
@@ -91,8 +89,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download smart contract coverage report (from run-smc.tests.yml)
         id: smc-report-download
@@ -124,8 +120,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download TS test coverage reports (from postman-testing.yml)
         continue-on-error: true
@@ -175,8 +169,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download TS coverage (from native-yield-automation-service-testing.yml)
         continue-on-error: true
@@ -216,8 +208,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download TS coverage (from lido-governance-monitor-testing.yml)
         continue-on-error: true
@@ -257,8 +247,6 @@ jobs:
     permissions:
       actions: read    # download artifacts from another workflow run
       contents: read   # codecov commit correlation
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download TS coverage (from sdk-testing.yml)
         continue-on-error: true
