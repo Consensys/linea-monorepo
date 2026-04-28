@@ -41,9 +41,12 @@ jobs:
           echo "COMMIT_TAG=$COMMIT_TAG" >> "$GITHUB_OUTPUT"
           echo "SDK_COMMIT_TAG=$SDK_COMMIT_TAG" >> "$GITHUB_OUTPUT"
       - name: Show commit tag
+        env:
+          COMMIT_TAG: ${{ steps.compute-commit-tag.outputs.COMMIT_TAG }}
+          SDK_COMMIT_TAG: ${{ steps.compute-commit-tag.outputs.SDK_COMMIT_TAG }}
         run: |
-          echo "COMMIT_TAG: ${{ steps.compute-commit-tag.outputs.COMMIT_TAG }}"
-          echo "SDK_COMMIT_TAG: ${{ steps.compute-commit-tag.outputs.SDK_COMMIT_TAG }}"
+          echo "COMMIT_TAG: $COMMIT_TAG"
+          echo "SDK_COMMIT_TAG: $SDK_COMMIT_TAG"
 
   # Ideally we would use dorny/paths-filter@v3 to conditionally trigger an upload job based on file changes
   # However there is a limitation in Github Actions where workflows triggered by a `workflow_run` event have no access to metadata on external fork PRs - https://github.com/orgs/community/discussions/25220
