@@ -1,5 +1,4 @@
 # Tracer constraints
-# Added for testing besu-package release
 
 This folder hosts the implementation of the constraint system specified in the [linea-specification repo](https://github.com/Consensys/linea-specification).
 
