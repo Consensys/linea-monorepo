@@ -43,6 +43,7 @@ jobs:
     uses: ./.github/workflows/reusable-component-release.yml
     with:
       component-name: besu-package
+      folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
 
   build-besu-package-docker-image-and-gh-release:

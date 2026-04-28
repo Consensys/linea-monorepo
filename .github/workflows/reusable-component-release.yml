@@ -7,6 +7,10 @@ on:
         description: "Component name — used to derive tag pattern, CHANGELOG path and commit scope (e.g. coordinator, postman)"
         required: true
         type: string
+      folder-name:
+        description: "Folder name — home folder name of the component (e.g. besu-package's home folder is linea-besu-package)"
+        required: true
+        type: string
       include-path:
         description: "git-cliff --include-path filter — single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
         required: true
@@ -116,14 +120,15 @@ jobs:
             echo "changed=${changed}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Ensure ${{ inputs.component-name }}/CHANGELOG.md exists
+      - name: Ensure ${{ inputs.folder-name }}/CHANGELOG.md exists
         if: steps.version.outputs.changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
+          FOLDER_NAME: ${{ inputs.folder-name }}
         run: |
           set -euo pipefail
-          if [ ! -f "${COMPONENT}/CHANGELOG.md" ]; then
-            printf "# %s Changelog\n\n" "${COMPONENT^}" > "${COMPONENT}/CHANGELOG.md"
+          if [ ! -f "${FOLDER_NAME}/CHANGELOG.md" ]; then
+            printf "# %s Changelog\n\n" "${COMPONENT^}" > "${FOLDER_NAME}/CHANGELOG.md"
           fi
 
       # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
@@ -132,6 +137,7 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
+          FOLDER_NAME: ${{ inputs.folder-name }}
           CLIFF_CONFIG: ${{ inputs.cliff-config }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -141,21 +147,22 @@ jobs:
           for p in "${paths[@]}"; do
             cliff_args+=(--include-path "${p}")
           done
-          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${COMPONENT}/CHANGELOG.md")
+          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${FOLDER_NAME}/CHANGELOG.md")
           git cliff "${cliff_args[@]}"
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
         if: steps.version.outputs.changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
+          FOLDER_NAME: ${{ inputs.folder-name }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- "${COMPONENT}/CHANGELOG.md"; then
+          if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
             echo "No unreleased ${COMPONENT} changes; nothing to do."
             exit 0
           fi
-          git add "${COMPONENT}/CHANGELOG.md"
+          git add "${FOLDER_NAME}/CHANGELOG.md"
           git commit -m "chore(${COMPONENT}): CHANGELOG.md update for ${TAG} release"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
