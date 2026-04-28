@@ -23,7 +23,7 @@ body = """
 # Remove leading and trailing whitespaces from the changelog's body.
 trim = true
 # Render body even when there are no releases to process.
-render_always = true
+render_always = true  #JONES: can be false?
 # An array of regex based postprocessors to modify the changelog.
 postprocessors = [
     # Replace the placeholder <REPO> with a URL.
@@ -82,7 +82,7 @@ fail_on_unmatched_commit = false
 # An array of link parsers for extracting external references, and turning them into URLs, using regex.
 link_parsers = []
 # Include only the tags that belong to the current branch.
-use_branch_tags = false
+use_branch_tags = false #JONES: shoud be true?
 # Order releases topologically instead of chronologically.
 topo_order = false
 # Order commits topologically instead of chronologically.
