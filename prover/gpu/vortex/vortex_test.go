@@ -35,11 +35,17 @@ func randMatrix(rng *rand.Rand, nRows, nCols int) [][]koalabear.Element {
 	return m
 }
 
+func deterministicRNG(seed byte) *rand.Rand {
+	var s [32]byte
+	s[0] = seed
+	return rand.New(rand.NewChaCha8(s)) //nolint:gosec // deterministic test RNG
+}
+
 // ─── Roundtrip: Commit → Prove → Verify ─────────────────────────────────────
 
 func TestRoundtrip(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{}))
+	rng := deterministicRNG(0)
 
 	nCols := 16
 	nRows := 8
@@ -119,7 +125,7 @@ func TestZeroMatrix(t *testing.T) {
 
 func TestCrossValidationCommitment(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{42}))
+	rng := deterministicRNG(42)
 
 	nCols := 32
 	nRows := 16
@@ -155,7 +161,7 @@ func TestCrossValidationCommitment(t *testing.T) {
 
 func TestCrossValidationFullProtocol(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{99}))
+	rng := deterministicRNG(99)
 
 	nCols := 32
 	nRows := 16
@@ -227,7 +233,7 @@ func TestCrossValidationFullProtocol(t *testing.T) {
 
 func TestReedSolomonEncode(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{7}))
+	rng := deterministicRNG(7)
 
 	nCols := 64
 	rate := 2
@@ -259,7 +265,7 @@ func TestReedSolomonEncode(t *testing.T) {
 
 func TestPoseidon2Compress(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{13}))
+	rng := deterministicRNG(13)
 
 	var a, b Hash
 	for j := 0; j < 8; j++ {
@@ -277,7 +283,7 @@ func TestPoseidon2Compress(t *testing.T) {
 
 func TestPoseidon2Sponge(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{17}))
+	rng := deterministicRNG(17)
 
 	input := make([]koalabear.Element, 48)
 	for j := range input {
@@ -292,7 +298,7 @@ func TestPoseidon2Sponge(t *testing.T) {
 
 func TestPoseidon2CompressX16(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{19}))
+	rng := deterministicRNG(19)
 
 	const (
 		width   = 16
@@ -313,7 +319,7 @@ func TestPoseidon2CompressX16(t *testing.T) {
 
 func TestPolyEval(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{23}))
+	rng := deterministicRNG(23)
 
 	n := 16
 	poly := make([]koalabear.Element, n)
@@ -332,7 +338,7 @@ func TestPolyEval(t *testing.T) {
 
 func TestEvalBasePolyHorner(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{27}))
+	rng := deterministicRNG(27)
 
 	n := 16
 	poly := make([]koalabear.Element, n)
@@ -346,7 +352,7 @@ func TestEvalBasePolyHorner(t *testing.T) {
 
 func TestBatchPolyEvalLagrange(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{29}))
+	rng := deterministicRNG(29)
 
 	const (
 		numPolys = 5
@@ -381,7 +387,7 @@ func TestBatchPolyEvalLagrange(t *testing.T) {
 
 func TestRoundtripRate8(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{31}))
+	rng := deterministicRNG(31)
 
 	nCols := 16
 	nRows := 4
@@ -420,7 +426,7 @@ func TestRoundtripRate8(t *testing.T) {
 
 func TestLargerMatrix(t *testing.T) {
 	assert := require.New(t)
-	rng := rand.New(rand.NewChaCha8([32]byte{37}))
+	rng := deterministicRNG(37)
 
 	nCols := 256
 	nRows := 64
@@ -461,7 +467,7 @@ func TestLargerMatrix(t *testing.T) {
 // ─── Benchmark ───────────────────────────────────────────────────────────────
 
 func BenchmarkVortex(b *testing.B) {
-	rng := rand.New(rand.NewChaCha8([32]byte{}))
+	rng := deterministicRNG(0)
 
 	nCols := 1024
 	nRows := 128

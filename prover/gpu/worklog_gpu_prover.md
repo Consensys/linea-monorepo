@@ -2,14 +2,20 @@
 
 Started: 2026-04-27. Owner: gautam.botrel.
 
-Hardware (g7e.12xlarge):
-- 2× NVIDIA RTX PRO 6000 Blackwell Server Edition, 96 GiB VRAM each, driver 590.48.01, CUDA 13.1.
-- 48 vCPUs, 499 GiB host RAM.
-- Storage: nvme0n1 (root, 1.1 TB, 88% used → 130 GB free); nvme1n1 (3.5 TB, **unmounted** — must mount before runs).
+Hardware (g7e.24xlarge, current):
+- 4× NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB VRAM each,
+  driver 590.48.01, CUDA 13.1.
+- 96 vCPUs, 999 GiB host RAM.
+- No swap is currently configured. The old g7e.12xlarge notes below are
+  historical and should not drive new scheduling decisions.
 
-Reference run (CPU-only, r8a.24xlarge, ~700 GiB RAM): ~10–15 min inner proof + ~4–5 min outer proof = 15–20 min total. Goal: ≥4× on the inner proof using both GPUs, plus a meaningful cut on the outer.
+Reference run (CPU-only, r8a.24xlarge, ~700 GiB RAM): ~10–15 min inner proof
+plus ~4–5 min outer proof = 15–20 min total. Goal: at least 4× on the inner
+proof using all four GPUs, plus a meaningful cut on the outer.
 
-This machine **cannot run the prover all-CPU** — peak host RAM is ~700–800 GiB. Every measurement here must run with GPU enabled and host pressure capped.
+Current goal: use all four GPUs and the full 1 TiB host RAM budget to get the
+end-to-end proof below 5 minutes. CPU-only reference runs may fit in memory on
+this instance, but they are not the target operating mode.
 
 ## Method
 
@@ -625,3 +631,334 @@ non-optional — without it both goroutines silently land on device 0.
 5. **Move ext SoA marshaling to GPU.** The per-coset `extSOA :=
    make([]field.Element, len(rd.extIDs)*domainSize*4)` host-side
    transpose is also O(n) per coset; should be a GPU transpose kernel.
+
+## Step 5 — full-GPU design and Vortex low-memory cleanup — DONE (2026-04-28)
+
+`fullgpu.md` now captures the target architecture for the current
+g7e.24xlarge host: four pinned segment workers, explicit CUDA device
+affinity, GPU quotient and Vortex on every GL/LPP segment, conservative merge
+parallelism while Vortex pipelines are cached, and BLS12-377 GPU PlonK as the
+next required outer-proof integration.
+
+### Build correction
+
+`Makefile` now has `GO_BUILD_TAGS ?= debug` and a `bin/prover-cuda` target.
+The GPU binary must be built with the `cuda` tag:
+
+```
+make bin/prover-cuda
+# or: GO_BUILD_TAGS=debug,cuda make bin/prover
+```
+
+Bare `make bin/prover` still builds the debug-only binary unless
+`GO_BUILD_TAGS` is provided.
+
+### Vortex snapshot/recommit modes
+
+The SIS Koala path now chooses between:
+
+- snapshot mode: `CommitSIS` copies `d_encoded_col` into a per-round GPU
+  buffer and downstream UAlpha/opening read the snapshot;
+- recommit mode: `CommitSISRootOnly` stores only the Merkle tree/root, then
+  `CommitSISLinComb` and `CommitSISExtractColumns` recommit from raw Wizard
+  columns at the later phases.
+
+Selection is adaptive:
+
+- `LIMITLESS_GPU_VORTEX_SNAPSHOT_BUDGET_GIB` controls the default snapshot
+  budget (48 GiB);
+- `LIMITLESS_GPU_VORTEX_RECOMMIT=1` or `LIMITLESS_GPU_VORTEX_SNAPSHOT=0`
+  forces low-memory recommit;
+- self-recursed contexts still force snapshots because
+  `recursion.ExtractWitness` can materialize encoded matrices from prover
+  state before open.
+
+### Pipeline race fix
+
+`GPUVortex.CommitDirectAndThen` holds the cached pipeline mutex through commit
+and the immediate dependent read. This matters for same-device concurrency:
+locking only `CommitDirect` allowed another worker to overwrite
+`d_encoded_col`, pinned SIS hashes, or the pinned Merkle tree before snapshot,
+UAlpha, or selected-column extraction completed.
+
+`CommitSIS`, `CommitSISRootOnly`, `CommitSISLinComb`, and
+`CommitSISExtractColumns` now use that locked path.
+
+### Hybrid UAlpha correctness fix
+
+`LinearCombinationComputationProverAction.Run` now accumulates chunks with an
+explicit global row offset in the protocol's real stack order:
+
+1. NoSIS precomputeds
+2. NoSIS committed rounds
+3. SIS precomputeds
+4. SIS committed rounds
+
+That removes the old hybrid-ordering hazard where host SIS rows and GPU SIS
+rows could be compacted separately and scaled by the wrong alpha powers.
+
+### Validation
+
+No `.cu`, `.cuh`, or CUDA headers changed in this step, so CUDA artifacts did
+not need rebuilding.
+
+```
+go test ./protocol/compiler/vortex/ ./protocol/compiler/globalcs/                  PASS
+LIMITLESS_GPU_COUNT=4 go test -tags cuda ./gpu/vortex ./gpu/quotient               PASS
+LIMITLESS_GPU_VORTEX=1 LIMITLESS_GPU_QUOTIENT=1 LIMITLESS_GPU_COUNT=4 \
+  go test -tags cuda ./protocol/compiler/vortex ./protocol/compiler/globalcs       PASS
+LIMITLESS_GPU_VORTEX=1 LIMITLESS_GPU_VORTEX_RECOMMIT=1 LIMITLESS_GPU_COUNT=4 \
+  go test -tags cuda -run TestCompiler ./protocol/compiler/vortex/                 PASS
+make bin/prover-cuda                                                               PASS
+gofmt -l <touched go files>                                                        PASS
+golangci-lint run                                                                  PASS
+```
+
+The linter also required documenting intentional GPU-test deterministic RNG
+usage and operator-supplied GPU trace paths with `nolint:gosec`.
+
+### E2E attempt — failed after 8m23s
+
+Command:
+
+```
+/usr/bin/time -v env \
+  LIMITLESS_GPU_COUNT=4 \
+  LIMITLESS_SUBPROVER_JOBS=4 \
+  LIMITLESS_MERGE_JOBS=1 \
+  LIMITLESS_GPU_QUOTIENT=1 \
+  LIMITLESS_GPU_VORTEX=1 \
+  LIMITLESS_GPU_PROFILE=1 \
+  LIMITLESS_GPU_VORTEX_RECOMMIT=1 \
+  GOGC=500 \
+  GOMEMLIMIT=900GiB \
+  ./bin/prover prove \
+    --config prover-assets/7.0.1/config/config-mainnet-limitless.toml \
+    --in /home/ubuntu/proverstuff/mainnet/execution/29994327-29994333-getZkProof.json \
+    --out /tmp/proof.whatever
+```
+
+The provided config expected traces under
+`/home/ubuntu/test_mainnet/traces/conflated`; for this local run that path was
+linked to `/home/ubuntu/proverstuff/mainnet`.
+
+Result:
+
+- exit status: 2
+- wall clock: 8m23.31s
+- max RSS: 963,430,192 KiB
+- GPU trace: `/scratch/runs/gpu_profile_20260428_030252.jsonl`
+- proof output: not produced
+
+The run progressed through real GPU quotient and Vortex work, but it missed
+the target before failing. During the run VRAM peaked near the device limits
+and the log reported `GPU vortex init failed` with a generic CUDA error before
+the final crash in the recursive/PlonK solving path.
+
+GPU trace summary:
+
+```
+quotient_count=18 total_ms=362757.426
+vortex_count=30 total_ms=68453.521
+snapshot_true=30
+```
+
+Worst GPU phases:
+
+```
+quotient device=2 domain=131072 ms=169886.233
+quotient device=3 domain=262144 ms=97858.263
+quotient device=0 domain=262144 ms=39199.799
+quotient device=0 domain=262144 ms=28230.118
+vortex_commit_sis device=3 rows=2048 cols=262144 ms=10304.936 snapshot=true
+vortex_commit_sis device=0 rows=2304 cols=262144 ms=9855.681 snapshot=true
+vortex_commit_sis device=2 rows=1536 cols=131072 ms=7375.865 snapshot=true
+```
+
+Immediate conclusions:
+
+1. `LIMITLESS_GPU_VORTEX_RECOMMIT=1` is not enough for this case because
+   self-recursed contexts currently force snapshots for correctness. That keeps
+   30 snapshot buffers alive and pushes VRAM close to the 98 GiB/device limit.
+   The next Vortex step is to make recursion witness extraction consume
+   recomputed/sliced encoded matrices instead of requiring full snapshots.
+2. Large quotient boards are the dominant wall-clock problem. The worst calls
+   still report CPU fallback due to slot pressure (`maxSlots` above the
+   current GPU board limit), making `symEval` minutes long despite GPU mode.
+   The next quotient step is chunked GPU symbolic evaluation for large boards
+   instead of falling back whole boards to CPU.
+3. Host memory is also too close to the machine limit. At 963 GiB RSS, the
+   current design leaves no margin for outer-proof work or transient solver
+   allocations. The GPU path must release Vortex snapshots earlier and avoid
+   duplicate host materialization of encoded matrices.
+
+## 2026-04-28 — Step 6: Vortex-only baseline and focused tests
+
+### Experiment shape
+
+The incremental baseline is now env-gated as:
+
+```bash
+LIMITLESS_GPU_PIPELINE=vortex-only
+```
+
+In this mode Vortex uses the GPU path, but `globalcs.QuotientCtx.Run` stays on
+CPU even when old `LIMITLESS_GPU_QUOTIENT` settings are present. The quotient
+code logs an FFT-placement estimate before CPU quotient execution so we can
+measure whether a GPU-only FFT handoff would be worth its transfers.
+
+For the mainnet-limitless run I used:
+
+```bash
+/usr/bin/time -v env \
+  LIMITLESS_GPU_PIPELINE=vortex-only \
+  LIMITLESS_GPU_COUNT=4 \
+  LIMITLESS_SUBPROVER_JOBS=2 \
+  LIMITLESS_MERGE_JOBS=1 \
+  LIMITLESS_GPU_PROFILE=1 \
+  LIMITLESS_GPU_PROFILE_PATH=/scratch/runs/gpu_profile_vortex_only_2seg_20260428_031523.jsonl \
+  LIMITLESS_GPU_VORTEX_RECOMMIT=1 \
+  GOGC=500 \
+  GOMEMLIMIT=900GiB \
+  ./bin/prover prove \
+    --config prover-assets/7.0.1/config/config-mainnet-limitless.toml \
+    --in /home/ubuntu/proverstuff/mainnet/execution/29994327-29994333-getZkProof.json \
+    --out /tmp/proof.vortex-only-2seg
+```
+
+Result:
+
+- exit status: 2
+- wall clock: 9m17.24s
+- max RSS: 943,604,064 KiB
+- proof output: not produced
+- failure site: cgo SIGSEGV in `gpu/vortex.(*CommitState).ExtractSISHashes`
+  while copying the pinned SIS hash buffer
+
+This is better localized than the previous full-GPU attempt: quotient stayed on
+CPU and was not the crash source. The crash exposed a Vortex cache lifetime bug.
+`EvictPipelineCacheForDevice` could free a cached `GPUVortex` pipeline while
+another goroutine was still inside `CommitDirectAndThen` and reading pinned SIS
+hashes / Merkle buffers / `d_encoded_col`.
+
+### FFT placement finding
+
+The quotient estimator consistently chose CPU in this hybrid. Representative
+logs from the run:
+
+- domain 131072: estimated GPU-only FFT transfers 65.64 GiB, CPU quotient
+  24.824s; ratio-4 FFT 3.834s, ratio-4 eval 14.381s.
+- domain 262144: estimated GPU-only FFT transfers 10.02-31.51 GiB depending on
+  the board; CPU quotient 3.7-7.8s.
+- domain 524288: estimated GPU-only FFT transfers about 15.8-16.0 GiB; CPU
+  quotient 4.2-5.6s.
+
+Conclusion: GPU-only quotient FFT is not worth enabling while quotient
+expression evaluation remains on CPU. It would add large H2D/D2H traffic and
+VRAM pressure, because CPU eval still needs host SmartVectors for every
+re-evaluated root.
+
+### Fixes from the focused pass
+
+- `LIMITLESS_GPU_PIPELINE=vortex-only` now explicitly enables GPU Vortex and
+  disables GPU quotient.
+- Conglomeration workers are pinned after sub-prover worker slots, so
+  `LIMITLESS_SUBPROVER_JOBS=2` and `LIMITLESS_MERGE_JOBS=1` use a spare GPU for
+  the merge worker instead of colliding with segment worker 0.
+- `GPUVortex.Free` now takes the same per-pipeline mutex as commits.
+- `EvictPipelineCache` and `EvictPipelineCacheForDevice` remove cache entries
+  first, then free each victim only after its active commit/use section has
+  returned.
+- `CommitAndExtract` now also takes the per-pipeline mutex.
+- `ExtractSISHashes` now copies into Go-managed memory instead of returning an
+  untracked `mmap` slice. Production SIS slices can be GB-scale and must be
+  visible to GC/GOMEMLIMIT.
+- Added `TestEvictPipelineCacheForDeviceWaitsForActiveCommit`, a small CUDA
+  regression test for the eviction race that caused the full-run crash.
+
+No CUDA `.cu`, `.cuh`, or header files changed in this step, so no CUDA library
+rebuild was needed. The Go CUDA binary still needs rebuilding after Go edits.
+
+### Focused tests and benchmarks
+
+The simpler test set for this stage is:
+
+```bash
+go test -tags cuda ./gpu/vortex -run \
+  'TestEvictPipelineCacheForDeviceWaitsForActiveCommit|TestGPUEncodeAndSIS|TestGPUVortexCommit|TestGPUColumnExtraction' -count=1
+
+go test -tags cuda ./gpu/vortex -count=1
+
+LIMITLESS_GPU_PIPELINE=vortex-only LIMITLESS_GPU_COUNT=4 \
+  go test -tags cuda ./protocol/compiler/vortex ./protocol/compiler/globalcs -count=1
+```
+
+Results:
+
+```text
+go test -tags cuda ./gpu/vortex -run '...' -count=1                       PASS 9.392s
+go test -tags cuda ./gpu/vortex -count=1                                  PASS 8.933s
+LIMITLESS_GPU_PIPELINE=vortex-only LIMITLESS_GPU_COUNT=4 \
+  go test -tags cuda ./protocol/compiler/vortex ./protocol/compiler/globalcs -count=1
+  ./protocol/compiler/vortex                                              PASS 20.485s
+  ./protocol/compiler/globalcs                                            PASS 4.595s
+```
+
+A cheap Vortex benchmark run, still not the full prover:
+
+```bash
+go test -tags cuda ./gpu/vortex -run '^$' \
+  -bench 'BenchmarkCommitGPUResident_MedLarge|BenchmarkCommitMerkleWithSIS_Typical' \
+  -benchtime=1x -count=1
+```
+
+Results:
+
+```text
+BenchmarkCommitGPUResident_MedLarge-96                              65.000859ms/op 4129.72 MB/s
+BenchmarkCommitMerkleWithSIS_Typical/GPU_CommitMerkleWithSIS-96     14.308475ms/op 1172.54 MB/s
+BenchmarkCommitMerkleWithSIS_Typical/CPU_CommitMerkleWithSIS-96     25.620341ms/op  654.84 MB/s
+BenchmarkCommitMerkleWithSIS_Typical/Speedup-96                     3.333 speedup_x
+```
+
+Post-change validation:
+
+```text
+go test ./protocol/compiler/vortex ./protocol/compiler/globalcs -count=1       PASS
+make bin/prover-cuda                                                           PASS
+gofmt -l <touched go files>                                                    PASS
+golangci-lint run                                                              PASS
+```
+
+## 2026-04-28 - plonk2 curve-generic Fr and NTT foundation
+
+Added `gpu/plonk2` as a clean foundation for generalizing the GPU PlonK stack
+across BN254, BLS12-377, and BW6-761. The current `gpu/plonk` BLS12-377 prover
+path remains untouched.
+
+Implemented:
+
+- curve-indexed plonk2 C ABI in `gpu/cuda/include/gnark_gpu.h`
+- generic scalar-field CUDA kernels in `gpu/cuda/src/plonk2`
+- Go wrappers in `gpu/plonk2`
+- MSM memory planner for affine SW and the current BLS12-377 TE layouts
+- package worklog and architecture notes in `gpu/plonk2/WORKLOG.md`
+
+Validation:
+
+```text
+cmake --build gpu/cuda/build --target gnark_gpu -j2        PASS
+go test ./gpu/plonk2                                      PASS 0.003s
+go test -tags cuda ./gpu/plonk2 -count=1                  PASS 3.025s
+```
+
+Benchmarks for 1,048,576 scalar elements:
+
+```text
+BenchmarkFrVectorMul_CUDA/bn254-48          159766 ns/op
+BenchmarkFrVectorMul_CUDA/bls12-377-48      178784 ns/op
+BenchmarkFrVectorMul_CUDA/bw6-761-48        273116 ns/op
+BenchmarkFFTForward_CUDA/bn254-48           615058 ns/op
+BenchmarkFFTForward_CUDA/bls12-377-48       614738 ns/op
+BenchmarkFFTForward_CUDA/bw6-761-48         972631 ns/op
+```

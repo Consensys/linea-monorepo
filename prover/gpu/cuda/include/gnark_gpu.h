@@ -18,6 +18,9 @@ extern "C" {
 typedef struct GnarkGPUContext *gnark_gpu_context_t;
 typedef struct GnarkGPUFrVector *gnark_gpu_fr_vector_t;
 typedef struct GnarkGPUMSM *gnark_gpu_msm_t;
+typedef struct GnarkGPUPlonk2FrVector *gnark_gpu_plonk2_fr_vector_t;
+typedef struct GnarkGPUPlonk2NTTDomain *gnark_gpu_plonk2_ntt_domain_t;
+typedef struct GnarkGPUPlonk2MSM *gnark_gpu_plonk2_msm_t;
 
 // =============================================================================
 // Error codes
@@ -30,6 +33,12 @@ typedef enum {
     GNARK_GPU_ERROR_OUT_OF_MEMORY = 3,
     GNARK_GPU_ERROR_SIZE_MISMATCH = 4,
 } gnark_gpu_error_t;
+
+typedef enum {
+    GNARK_GPU_PLONK2_CURVE_BN254 = 1,
+    GNARK_GPU_PLONK2_CURVE_BLS12_377 = 2,
+    GNARK_GPU_PLONK2_CURVE_BW6_761 = 3,
+} gnark_gpu_plonk2_curve_id_t;
 
 // =============================================================================
 // Context lifecycle
@@ -512,6 +521,254 @@ gnark_gpu_error_t gnark_gpu_plonk_perm_boundary_stream(
     gnark_gpu_fr_vector_t L1_denInv,
     const uint64_t params[28],
     gnark_gpu_ntt_domain_t domain, int stream_id);
+
+// =============================================================================
+// PlonK2 curve-generic Fr primitives
+// =============================================================================
+
+// The plonk2 API is curve-indexed and uses raw AoS host buffers. Element
+// width is inferred from curve_id:
+//   BN254 Fr:      4 uint64 limbs
+//   BLS12-377 Fr: 4 uint64 limbs
+//   BW6-761 Fr:   6 uint64 limbs
+//
+// This API intentionally does not replace the BLS12-377-specialized plonk API
+// above. It is the validation-first foundation for generalized FFT/MSM work.
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_alloc(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    size_t count,
+    gnark_gpu_plonk2_fr_vector_t *vec);
+
+void gnark_gpu_plonk2_fr_vector_free(gnark_gpu_plonk2_fr_vector_t vec);
+
+size_t gnark_gpu_plonk2_fr_vector_len(gnark_gpu_plonk2_fr_vector_t vec);
+
+int gnark_gpu_plonk2_fr_vector_limbs(gnark_gpu_plonk2_fr_vector_t vec);
+
+gnark_gpu_plonk2_curve_id_t gnark_gpu_plonk2_fr_vector_curve(
+    gnark_gpu_plonk2_fr_vector_t vec);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_to_device(
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *host_data,
+    size_t count);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_to_host(
+    gnark_gpu_plonk2_fr_vector_t vec,
+    uint64_t *host_data,
+    size_t count);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_d2d(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_set_zero(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_add(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_sub(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_addmul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scalar_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *scalar);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_add_scalar_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t a,
+    const uint64_t *scalar);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_batch_invert(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t temp);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_butterfly4_inverse(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t b0,
+    gnark_gpu_plonk2_fr_vector_t b1,
+    gnark_gpu_plonk2_fr_vector_t b2,
+    gnark_gpu_plonk2_fr_vector_t b3,
+    const uint64_t *omega4_inv,
+    const uint64_t *quarter);
+
+gnark_gpu_error_t gnark_gpu_plonk2_reduce_blinded_coset(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src,
+    const uint64_t *tail,
+    size_t tail_len,
+    const uint64_t *coset_pow_n);
+
+gnark_gpu_error_t gnark_gpu_plonk2_compute_l1_den(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t out,
+    const uint64_t *coset_gen);
+
+gnark_gpu_error_t gnark_gpu_plonk2_gate_accum(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t ql,
+    gnark_gpu_plonk2_fr_vector_t qr,
+    gnark_gpu_plonk2_fr_vector_t qm,
+    gnark_gpu_plonk2_fr_vector_t qo,
+    gnark_gpu_plonk2_fr_vector_t qk,
+    gnark_gpu_plonk2_fr_vector_t l,
+    gnark_gpu_plonk2_fr_vector_t r,
+    gnark_gpu_plonk2_fr_vector_t o,
+    const uint64_t *zh_k_inv);
+
+gnark_gpu_error_t gnark_gpu_plonk2_perm_boundary(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t l,
+    gnark_gpu_plonk2_fr_vector_t r,
+    gnark_gpu_plonk2_fr_vector_t o,
+    gnark_gpu_plonk2_fr_vector_t z,
+    gnark_gpu_plonk2_fr_vector_t s1,
+    gnark_gpu_plonk2_fr_vector_t s2,
+    gnark_gpu_plonk2_fr_vector_t s3,
+    gnark_gpu_plonk2_fr_vector_t l1_den_inv,
+    const uint64_t *params,
+    gnark_gpu_plonk2_ntt_domain_t domain);
+
+gnark_gpu_error_t gnark_gpu_plonk2_z_compute_factors(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t l_inout,
+    gnark_gpu_plonk2_fr_vector_t r_inout,
+    gnark_gpu_plonk2_fr_vector_t o_in,
+    const void *d_perm,
+    const uint64_t *params,
+    unsigned log2n,
+    gnark_gpu_plonk2_ntt_domain_t domain);
+
+gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase1(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t z_vec,
+    gnark_gpu_plonk2_fr_vector_t ratio_vec,
+    uint64_t *chunk_products_host,
+    size_t *num_chunks_out);
+
+gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase3(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t z_vec,
+    gnark_gpu_plonk2_fr_vector_t temp_vec,
+    const uint64_t *scanned_prefixes_host,
+    size_t num_chunks);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *generator);
+
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_domain_create(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    size_t size,
+    const uint64_t *fwd_twiddles_aos,
+    const uint64_t *inv_twiddles_aos,
+    const uint64_t *inv_n,
+    gnark_gpu_plonk2_ntt_domain_t *domain);
+
+void gnark_gpu_plonk2_ntt_domain_destroy(gnark_gpu_plonk2_ntt_domain_t domain);
+
+size_t gnark_gpu_plonk2_ntt_domain_size(gnark_gpu_plonk2_ntt_domain_t domain);
+
+gnark_gpu_plonk2_curve_id_t gnark_gpu_plonk2_ntt_domain_curve(
+    gnark_gpu_plonk2_ntt_domain_t domain);
+
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_forward(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data);
+
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_inverse(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data);
+
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_bit_reverse(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data);
+
+// Test/validation entrypoints for the curve-generic G1 foundation.
+// Inputs are gnark-crypto G1Affine raw memory: X limbs then Y limbs, both in
+// Montgomery form. Output is Jacobian/projective raw memory: X, Y, Z.
+gnark_gpu_error_t gnark_gpu_plonk2_test_g1_affine_add(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *p,
+    const uint64_t *q,
+    uint64_t *out);
+
+gnark_gpu_error_t gnark_gpu_plonk2_test_g1_affine_double(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *p,
+    uint64_t *out);
+
+gnark_gpu_error_t gnark_gpu_plonk2_test_msm_naive(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    const uint64_t *scalars,
+    size_t count,
+    uint64_t *out);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_pippenger(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    const uint64_t *scalars,
+    size_t count,
+    int window_bits,
+    uint64_t *out);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_create(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    size_t point_count,
+    int window_bits,
+    gnark_gpu_plonk2_msm_t *msm);
+
+void gnark_gpu_plonk2_msm_destroy(gnark_gpu_plonk2_msm_t msm);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_pin_work_buffers(
+    gnark_gpu_plonk2_msm_t msm);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_release_work_buffers(
+    gnark_gpu_plonk2_msm_t msm);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
+    gnark_gpu_plonk2_msm_t msm,
+    const uint64_t *scalars,
+    size_t count,
+    uint64_t *out);
 
 // =============================================================================
 // GPU Z prefix product (two-level parallel scan)

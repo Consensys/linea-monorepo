@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -208,6 +209,20 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	if useGPUQuotient() {
 		dev := gpu.CurrentDevice()
 		if dev != nil {
+			// NOTE: a previous version of this code evicted the per-
+			// device Vortex pipeline cache here in an attempt to free
+			// GPU memory before the quotient's multi-GiB allocations.
+			// That broke under concurrent runs: when multiple worker
+			// goroutines share a device (e.g. GL workers overlapping
+			// with conglo merge workers), one goroutine's evict could
+			// cudaFree another goroutine's in-flight pipeline buffers.
+			// SIGSEGV ensued in the cgo layer.
+			//
+			// The evict at end-of-segment in OpenSelectedColumnsProver-
+			// Action.Run is sufficient when each segment owns its
+			// device. Concurrent contention is mitigated by the per-
+			// GPUVortex mutex (gpu/vortex/gpu.go) and by aligning
+			// numConcurrentMergeJobs to LIMITLESS_GPU_COUNT.
 			devID := gpu.CurrentDeviceID()
 			start := time.Now()
 			err := gpuquotient.RunGPU(
@@ -235,11 +250,123 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			log.Warnf("[quotient d=%d] GPU path failed on device %d, falling back to CPU: %v", ctx.DomainSize, devID, err)
 		}
 	}
+	ctx.logFFTPlacement(run)
 	ctx.runCPU(run)
 }
 
-// useGPUQuotient gates GPU dispatch on LIMITLESS_GPU_QUOTIENT=1. Default off.
-func useGPUQuotient() bool { return os.Getenv("LIMITLESS_GPU_QUOTIENT") == "1" }
+// useGPUQuotient gates GPU dispatch on LIMITLESS_GPU_QUOTIENT=1. The pipeline
+// knob is a convenience for end-to-end experiments where quotient and Vortex
+// placement must be controlled together.
+func useGPUQuotient() bool {
+	switch os.Getenv("LIMITLESS_GPU_PIPELINE") {
+	case "vortex-only":
+		return false
+	case "full":
+		return true
+	}
+	return os.Getenv("LIMITLESS_GPU_QUOTIENT") == "1"
+}
+
+func (ctx *QuotientCtx) logFFTPlacement(run *wizard.ProverRuntime) {
+	if os.Getenv("LIMITLESS_GPU_QUOTIENT_FFT_PLAN") == "0" {
+		return
+	}
+	if os.Getenv("LIMITLESS_GPU_PIPELINE") != "vortex-only" &&
+		os.Getenv("LIMITLESS_GPU_QUOTIENT_FFT_PLAN") != "1" {
+		return
+	}
+	dev := gpu.CurrentDevice()
+	if dev == nil {
+		return
+	}
+
+	uploadBytes, downloadBytes, peakBytes, nonConstRoots := ctx.estimateGPUFFTTransfers(run)
+	totalBytes := uploadBytes + downloadBytes
+	devID := gpu.CurrentDeviceID()
+
+	log.Infof(
+		"[quotient d=%d] fft placement: selected=cpu device=%d nonConstRoots=%d gpuFFTTransfer=%s "+
+			"(h2d=%s d2h=%s peakDeviceScratch=%s). reason=\"CPU quotient eval still needs host SmartVectors; "+
+			"GPU-only FFT would D2H every re-evaluated root and compete with Vortex for VRAM\"",
+		ctx.DomainSize, devID, nonConstRoots, bytesAsGiB(totalBytes),
+		bytesAsGiB(uploadBytes), bytesAsGiB(downloadBytes), bytesAsGiB(peakBytes),
+	)
+	gpu.TraceEvent("quotient_fft_plan", devID, 0, map[string]any{
+		"domain":           ctx.DomainSize,
+		"selected":         "cpu",
+		"nonConstRoots":    nonConstRoots,
+		"h2dBytes":         uploadBytes,
+		"d2hBytes":         downloadBytes,
+		"peakScratchBytes": peakBytes,
+	})
+}
+
+func (ctx *QuotientCtx) estimateGPUFFTTransfers(run *wizard.ProverRuntime) (uploadBytes, downloadBytes, peakBytes uint64, nonConstRoots int) {
+	type rootInfo struct {
+		isConst bool
+		isBase  bool
+	}
+
+	rootInfos := make(map[ifaces.ColID]rootInfo)
+	for _, constraintsIndices := range ctx.ConstraintsByRatio {
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				id := root.GetColID()
+				if _, ok := rootInfos[id]; ok {
+					continue
+				}
+				w, assigned := run.Columns.TryGet(id)
+				if !assigned {
+					w = root.GetColAssignment(run)
+				}
+				switch w.(type) {
+				case *sv.Constant:
+					rootInfos[id] = rootInfo{isConst: true, isBase: true}
+				case *sv.ConstantExt:
+					rootInfos[id] = rootInfo{isConst: true}
+				default:
+					rootInfos[id] = rootInfo{isBase: smartvectors.IsBase(w)}
+					nonConstRoots++
+				}
+			}
+		}
+	}
+
+	for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
+		seen := make(map[ifaces.ColID]struct{})
+		var groupBytes uint64
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				id := root.GetColID()
+				if _, ok := seen[id]; ok {
+					continue
+				}
+				seen[id] = struct{}{}
+				info := rootInfos[id]
+				if info.isConst {
+					continue
+				}
+				elemBytes := uint64(16)
+				if info.isBase {
+					elemBytes = 4
+				}
+				groupBytes += uint64(ctx.DomainSize) * elemBytes
+			}
+		}
+		uploadBytes += groupBytes
+		downloadBytes += groupBytes * uint64(ratio)
+		// A GPU FFT bridge needs coefficient and evaluation buffers for the
+		// largest ratio group. A pinned D2H buffer would add host memory, not
+		// device memory, so it is intentionally excluded from this number.
+		peakBytes = max(peakBytes, groupBytes*2)
+	}
+
+	return uploadBytes, downloadBytes, peakBytes, nonConstRoots
+}
+
+func bytesAsGiB(n uint64) string {
+	return strconv.FormatFloat(float64(n)/(1<<30), 'f', 2, 64) + "GiB"
+}
 
 func (ctx *QuotientCtx) runCPU(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)

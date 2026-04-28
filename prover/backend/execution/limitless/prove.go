@@ -47,8 +47,14 @@ var (
 	// jobs. Override via LIMITLESS_SUBPROVER_JOBS.
 	numConcurrentSubProverJobs = getEnvPositiveInt("LIMITLESS_SUBPROVER_JOBS", 4)
 	// numConcurrentMergeJobs governs the number of concurrent conglomeration
-	// merge operations during hierarchical reduction.
-	numConcurrentMergeJobs = 4
+	// merge operations during hierarchical reduction. Override via
+	// $LIMITLESS_MERGE_JOBS. The default of 1 (was 4) avoids GPU device
+	// oversubscription when conglo workers run in parallel with GL/LPP
+	// workers — without per-pipeline locking, multiple goroutines hitting
+	// the same cached *GPUVortex on the same device caused SIGSEGVs.
+	// Increase only if LIMITLESS_GPU_COUNT >= LIMITLESS_SUBPROVER_JOBS +
+	// LIMITLESS_MERGE_JOBS so workers always have distinct devices.
+	numConcurrentMergeJobs = getEnvPositiveInt("LIMITLESS_MERGE_JOBS", 1)
 )
 
 // getEnvPositiveInt reads a positive integer from an environment variable,
@@ -710,9 +716,26 @@ func RunConglomerationHierarchical(ctx context.Context,
 	// Spawn merge workers. Each worker loops: wait for 2+ items, take a pair,
 	// merge, push the result back. Workers exit when remaining <= 1 or cancelled.
 	for w := 0; w < numConcurrentMergeJobs; w++ {
+		w := w
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// Pin this conglomeration worker to a GPU. Without this,
+			// every conglo merger goroutine inherits gpu.GetDevice() →
+			// device 0 by default, racing with GL/LPP workers also on
+			// device 0. Multiple goroutines hitting the same cached
+			// *GPUVortex pipeline concurrently (its inputBuf is a
+			// single shared host slice) caused SIGSEGVs in
+			// kb_vortex_commit when one goroutine's CommitDirect
+			// overwrote inputBuf while another was reading it.
+			//
+			// Keep merge workers off the segment-worker devices when
+			// LIMITLESS_GPU_COUNT is large enough. For the vortex-only
+			// pipeline, a good first stable shape is 2-3 segment workers
+			// plus one merge worker; this offset assigns the merge worker
+			// to a spare GPU instead of always racing segment 0 on device 0.
+			pinGPU(numConcurrentSubProverJobs + w)
+			defer unpinGPU()
 			for {
 				mu.Lock()
 				for len(items) < 2 && remaining > 1 && !cancelled {

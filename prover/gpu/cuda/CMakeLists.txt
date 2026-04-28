@@ -25,6 +25,9 @@ add_library(gnark_gpu STATIC
     src/plonk/plonk_z.cu
     src/plonk/plonk_eval.cu
     src/plonk/api.cu
+    src/plonk2/g1.cu
+    src/plonk2/kernels.cu
+    src/plonk2/msm.cu
     src/vortex/kb.cu
 )
 set_target_properties(gnark_gpu PROPERTIES
@@ -37,6 +40,7 @@ target_include_directories(gnark_gpu
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/plonk
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/plonk2
         ${CMAKE_CURRENT_SOURCE_DIR}/src/vortex
 )
 

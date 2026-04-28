@@ -43,13 +43,13 @@ func initTrace() {
 			if dir == "" {
 				dir = "/scratch/runs"
 			}
-			if err := os.MkdirAll(dir, 0o755); err != nil {
+			if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // operator-supplied profiling path
 				logrus.Warnf("gpu/trace: mkdir %s: %v (tracing disabled)", dir, err)
 				return
 			}
 			path = fmt.Sprintf("%s/gpu_profile_%s.jsonl", dir, time.Now().UTC().Format("20060102_150405"))
 		}
-		f, err := os.Create(path)
+		f, err := os.Create(path) //nolint:gosec // operator-supplied profiling path
 		if err != nil {
 			logrus.Warnf("gpu/trace: create %s: %v (tracing disabled)", path, err)
 			return

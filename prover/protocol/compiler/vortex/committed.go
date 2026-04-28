@@ -42,6 +42,12 @@ import (
 type committedHandle struct {
 	gpu  *gpuvortex.CommitState         // non-nil when device-resident
 	host vortex_koalabear.EncodedMatrix // non-nil when host-resident
+	// recommit means the original GPU commit kept only the Merkle tree/root.
+	// UAlpha and selected columns must recommit from the original Wizard
+	// columns. This bounds VRAM for large segments that cannot afford one
+	// encoded snapshot per SIS round.
+	recommit bool
+	nRows    int
 }
 
 func newHostHandle(m vortex_koalabear.EncodedMatrix) *committedHandle {
@@ -52,13 +58,22 @@ func newGPUHandle(cs *gpuvortex.CommitState) *committedHandle {
 	return &committedHandle{gpu: cs}
 }
 
+func newGPURecommitHandle(nRows int) *committedHandle {
+	return &committedHandle{recommit: true, nRows: nRows}
+}
+
 // isGPU reports whether the matrix is device-resident.
 func (h *committedHandle) isGPU() bool { return h.gpu != nil }
+
+func (h *committedHandle) isRecommit() bool { return h.recommit }
 
 // numRows is the row count without forcing a host materialization.
 func (h *committedHandle) numRows() int {
 	if h.gpu != nil {
 		return h.gpu.NRows()
+	}
+	if h.recommit {
+		return h.nRows
 	}
 	return len(h.host)
 }

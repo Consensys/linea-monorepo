@@ -29,6 +29,7 @@
 
 #include "gnark_gpu.h"
 #include "field.cuh"
+#include "../plonk2/field.cuh"
 #include <cuda_runtime.h>
 #include <vector>
 
@@ -212,6 +213,124 @@ void ntt_get_fwd_twiddles(const NTTDomain *dom, const uint64_t **out_ptrs);
 
 } // namespace gnark_gpu
 
+namespace gnark_gpu::plonk2 {
+
+void launch_copy_aos_to_soa(gnark_gpu_plonk2_curve_id_t curve, FrView dst,
+                            const uint64_t *src, size_t n, cudaStream_t stream);
+void launch_copy_soa_to_aos(gnark_gpu_plonk2_curve_id_t curve, uint64_t *dst,
+                            ConstFrView src, size_t n, cudaStream_t stream);
+void launch_set_zero(gnark_gpu_plonk2_curve_id_t curve, FrView v, size_t n,
+                     cudaStream_t stream);
+void launch_add(gnark_gpu_plonk2_curve_id_t curve, FrView out, ConstFrView a,
+                ConstFrView b, size_t n, cudaStream_t stream);
+void launch_sub(gnark_gpu_plonk2_curve_id_t curve, FrView out, ConstFrView a,
+                ConstFrView b, size_t n, cudaStream_t stream);
+void launch_mul(gnark_gpu_plonk2_curve_id_t curve, FrView out, ConstFrView a,
+                ConstFrView b, size_t n, cudaStream_t stream);
+void launch_addmul(gnark_gpu_plonk2_curve_id_t curve, FrView out, ConstFrView a,
+                   ConstFrView b, size_t n, cudaStream_t stream);
+void launch_scalar_mul(gnark_gpu_plonk2_curve_id_t curve, FrView out,
+                       const uint64_t *scalar, size_t n, cudaStream_t stream);
+void launch_add_scalar_mul(gnark_gpu_plonk2_curve_id_t curve, FrView out,
+                           ConstFrView a, const uint64_t *scalar, size_t n,
+                           cudaStream_t stream);
+void launch_batch_invert(gnark_gpu_plonk2_curve_id_t curve, FrView data,
+                         size_t n, cudaStream_t stream);
+void launch_butterfly4_inverse(gnark_gpu_plonk2_curve_id_t curve,
+                               FrView b0, FrView b1, FrView b2, FrView b3,
+                               const uint64_t *omega4_inv,
+                               const uint64_t *quarter, size_t n,
+                               cudaStream_t stream);
+void launch_reduce_blinded_coset(gnark_gpu_plonk2_curve_id_t curve,
+                                 FrView dst, ConstFrView src,
+                                 const uint64_t *tail, size_t tail_len,
+                                 const uint64_t *coset_pow_n, size_t n,
+                                 cudaStream_t stream);
+void launch_compute_l1_den(gnark_gpu_plonk2_curve_id_t curve, FrView out,
+                           ConstFrView twiddles, const uint64_t *coset_gen,
+                           size_t n, cudaStream_t stream);
+void launch_gate_accum(gnark_gpu_plonk2_curve_id_t curve, FrView result,
+                       ConstFrView ql, ConstFrView qr, ConstFrView qm,
+                       ConstFrView qo, ConstFrView qk, ConstFrView l,
+                       ConstFrView r, ConstFrView o,
+                       const uint64_t *zh_k_inv, size_t n,
+                       cudaStream_t stream);
+void launch_perm_boundary(gnark_gpu_plonk2_curve_id_t curve, FrView result,
+                          ConstFrView l, ConstFrView r, ConstFrView o,
+                          ConstFrView z, ConstFrView s1, ConstFrView s2,
+                          ConstFrView s3, ConstFrView l1_den_inv,
+                          ConstFrView twiddles, const uint64_t *params,
+                          size_t n, cudaStream_t stream);
+void launch_z_compute_factors(gnark_gpu_plonk2_curve_id_t curve,
+                              FrView l_inout, FrView r_inout,
+                              ConstFrView o, const int64_t *perm,
+                              ConstFrView twiddles, const uint64_t *params,
+                              size_t n, unsigned log2n,
+                              cudaStream_t stream);
+void launch_z_prefix_phase1(gnark_gpu_plonk2_curve_id_t curve, FrView z,
+                            ConstFrView ratio, uint64_t *chunk_products,
+                            size_t n, cudaStream_t stream);
+void launch_z_prefix_phase3(gnark_gpu_plonk2_curve_id_t curve, FrView z,
+                            FrView temp, const uint64_t *scanned_prefixes,
+                            size_t num_chunks, size_t n,
+                            cudaStream_t stream);
+void launch_ntt_forward(gnark_gpu_plonk2_curve_id_t curve, FrView data,
+                        ConstFrView twiddles, size_t n, cudaStream_t stream);
+void launch_ntt_inverse(gnark_gpu_plonk2_curve_id_t curve, FrView data,
+                        ConstFrView twiddles, const uint64_t *inv_n, size_t n,
+                        cudaStream_t stream);
+void launch_scale_by_powers(gnark_gpu_plonk2_curve_id_t curve, FrView data,
+                            const uint64_t *generator, uint64_t *local_powers,
+                            size_t n, cudaStream_t stream);
+void launch_bit_reverse(gnark_gpu_plonk2_curve_id_t curve, FrView data,
+                        size_t n, cudaStream_t stream);
+cudaError_t g1_affine_add_run(gnark_gpu_plonk2_curve_id_t curve,
+                              const uint64_t *p, const uint64_t *q,
+                              uint64_t *out, cudaStream_t stream);
+cudaError_t g1_affine_double_run(gnark_gpu_plonk2_curve_id_t curve,
+                                 const uint64_t *p, uint64_t *out,
+                                 cudaStream_t stream);
+cudaError_t msm_naive_run(gnark_gpu_plonk2_curve_id_t curve,
+                          const uint64_t *points, const uint64_t *scalars,
+                          size_t count, uint64_t *out, cudaStream_t stream);
+cudaError_t msm_pippenger_run(gnark_gpu_plonk2_curve_id_t curve,
+                              const uint64_t *points, const uint64_t *scalars,
+                              size_t count, int window_bits, uint64_t *out,
+                              cudaStream_t stream);
+cudaError_t msm_pippenger_device_points_run(gnark_gpu_plonk2_curve_id_t curve,
+                                            const uint64_t *d_points,
+                                            const uint64_t *scalars,
+                                            size_t count, int window_bits,
+                                            uint64_t *out,
+                                            cudaStream_t stream);
+cudaError_t msm_pippenger_sort_temp_bytes(gnark_gpu_plonk2_curve_id_t curve,
+                                          size_t count, int window_bits,
+                                          size_t *temp_bytes);
+cudaError_t msm_pippenger_device_points_prealloc_run(
+    gnark_gpu_plonk2_curve_id_t curve,
+    const uint64_t *d_points,
+    const uint64_t *scalars,
+    size_t count,
+    int window_bits,
+    uint64_t *out,
+    uint64_t *d_scalars,
+    uint64_t *d_out,
+    uint32_t *d_keys_in,
+    uint32_t *d_keys_out,
+    uint32_t *d_vals_in,
+    uint32_t *d_vals_out,
+    uint32_t *d_bucket_offsets,
+    uint32_t *d_bucket_ends,
+    void *d_buckets,
+    void *d_window_results,
+    void *d_partial_totals,
+    void *d_partial_sums,
+    void *d_sort_temp,
+    size_t sort_temp_bytes,
+    cudaStream_t stream);
+
+} // namespace gnark_gpu::plonk2
+
 // =============================================================================
 // Internal structures
 // =============================================================================
@@ -240,6 +359,9 @@ struct GnarkGPUContext {
     // Shared staging buffer for AoS↔SoA transfers (one per context, reused)
     uint64_t *staging_buffer;
     size_t staging_count; // capacity in Fr elements (buffer is 4*staging_count uint64s)
+    // Curve-generic staging buffer used by plonk2. Capacity is raw uint64 words.
+    uint64_t *plonk2_staging_buffer;
+    size_t plonk2_staging_words;
     // Scratch buffers for Z prefix product and poly eval (context-owned)
     ZPrefixScratch z_prefix_scratch;
     PolyEvalScratch poly_eval_scratch;
@@ -298,6 +420,8 @@ extern "C" gnark_gpu_error_t gnark_gpu_init(int device_id, gnark_gpu_context_t *
     c->device_id = device_id;
     c->staging_buffer = nullptr;
     c->staging_count = 0;
+    c->plonk2_staging_buffer = nullptr;
+    c->plonk2_staging_words = 0;
 
     // Initialize stream/event arrays
     for (int i = 0; i < GNARK_GPU_MAX_STREAMS; i++) {
@@ -326,6 +450,9 @@ extern "C" void gnark_gpu_destroy(gnark_gpu_context_t ctx) {
     if (ctx) {
         if (ctx->staging_buffer) {
             cudaFree(ctx->staging_buffer);
+        }
+        if (ctx->plonk2_staging_buffer) {
+            cudaFree(ctx->plonk2_staging_buffer);
         }
         // Free Z prefix scratch
         for (int i = 0; i < 4; i++) {
@@ -839,6 +966,1025 @@ extern "C" gnark_gpu_error_t gnark_gpu_ntt_bit_reverse(gnark_gpu_ntt_domain_t do
         domain->ctx->stream);
 
     return GNARK_GPU_SUCCESS;
+}
+
+// =============================================================================
+// PlonK2 curve-generic Fr and NTT operations
+// =============================================================================
+
+struct GnarkGPUPlonk2FrVector {
+    GnarkGPUContext *ctx;
+    gnark_gpu_plonk2_curve_id_t curve;
+    int limbs;
+    size_t count;
+    uint64_t *limbs_dev[gnark_gpu::plonk2::MAX_FR_LIMBS];
+};
+
+struct GnarkGPUPlonk2NTTDomain {
+    GnarkGPUContext *ctx;
+    gnark_gpu_plonk2_curve_id_t curve;
+    int limbs;
+    size_t size;
+    uint64_t *fwd[gnark_gpu::plonk2::MAX_FR_LIMBS];
+    uint64_t *inv[gnark_gpu::plonk2::MAX_FR_LIMBS];
+    uint64_t *inv_n;
+};
+
+struct GnarkGPUPlonk2MSM {
+    GnarkGPUContext *ctx;
+    gnark_gpu_plonk2_curve_id_t curve;
+    int base_limbs;
+    int scalar_limbs;
+    size_t point_count;
+    int window_bits;
+    int num_windows;
+    int num_buckets;
+    int total_buckets;
+    int reduce_bpw;
+    size_t assignments_capacity;
+    size_t sort_temp_bytes;
+    uint64_t *d_points;
+    uint64_t *d_scalars;
+    uint64_t *d_out;
+    uint32_t *d_keys_in;
+    uint32_t *d_keys_out;
+    uint32_t *d_vals_in;
+    uint32_t *d_vals_out;
+    uint32_t *d_bucket_offsets;
+    uint32_t *d_bucket_ends;
+    void *d_buckets;
+    void *d_window_results;
+    void *d_partial_totals;
+    void *d_partial_sums;
+    void *d_sort_temp;
+};
+
+static int plonk2_limbs(gnark_gpu_plonk2_curve_id_t curve) {
+    return gnark_gpu::plonk2::curve_limbs(curve);
+}
+
+static int plonk2_base_limbs(gnark_gpu_plonk2_curve_id_t curve) {
+    return gnark_gpu::plonk2::curve_base_limbs(curve);
+}
+
+static bool plonk2_valid_curve(gnark_gpu_plonk2_curve_id_t curve) {
+    return plonk2_limbs(curve) > 0;
+}
+
+static bool plonk2_mul_overflows(size_t a, size_t b) {
+    return a != 0 && b > SIZE_MAX / a;
+}
+
+static int plonk2_scalar_bits(gnark_gpu_plonk2_curve_id_t curve) {
+    switch (curve) {
+    case GNARK_GPU_PLONK2_CURVE_BN254:
+        return 254;
+    case GNARK_GPU_PLONK2_CURVE_BLS12_377:
+        return 253;
+    case GNARK_GPU_PLONK2_CURVE_BW6_761:
+        return 377;
+    default:
+        return 0;
+    }
+}
+
+static int plonk2_signed_window_count(int scalar_bits, int window_bits) {
+    return (scalar_bits + 1 + window_bits - 1) / window_bits;
+}
+
+static int plonk2_reduce_blocks_per_window(int num_windows, int num_buckets) {
+    constexpr int reduce_threads_per_window = 128;
+    constexpr int finalize_threads = 32;
+    int max_bpw = num_buckets / reduce_threads_per_window;
+    int target_bpw = 752 / num_windows;
+    int bpw = max_bpw < target_bpw ? max_bpw : target_bpw;
+    if (bpw < 1) bpw = 1;
+    if (bpw > finalize_threads) bpw = finalize_threads;
+    return bpw;
+}
+
+static bool plonk2_msm_has_work_buffers(const GnarkGPUPlonk2MSM *msm) {
+    return msm && msm->d_scalars && msm->d_out && msm->d_keys_in &&
+           msm->d_keys_out && msm->d_vals_in && msm->d_vals_out &&
+           msm->d_bucket_offsets && msm->d_bucket_ends && msm->d_buckets &&
+           msm->d_window_results && msm->d_partial_totals &&
+           msm->d_partial_sums && msm->d_sort_temp;
+}
+
+static void plonk2_msm_free_work_buffers(GnarkGPUPlonk2MSM *msm) {
+    if (!msm) return;
+    if (msm->d_scalars) cudaFree(msm->d_scalars);
+    if (msm->d_out) cudaFree(msm->d_out);
+    if (msm->d_keys_in) cudaFree(msm->d_keys_in);
+    if (msm->d_keys_out) cudaFree(msm->d_keys_out);
+    if (msm->d_vals_in) cudaFree(msm->d_vals_in);
+    if (msm->d_vals_out) cudaFree(msm->d_vals_out);
+    if (msm->d_bucket_offsets) cudaFree(msm->d_bucket_offsets);
+    if (msm->d_bucket_ends) cudaFree(msm->d_bucket_ends);
+    if (msm->d_buckets) cudaFree(msm->d_buckets);
+    if (msm->d_window_results) cudaFree(msm->d_window_results);
+    if (msm->d_partial_totals) cudaFree(msm->d_partial_totals);
+    if (msm->d_partial_sums) cudaFree(msm->d_partial_sums);
+    if (msm->d_sort_temp) cudaFree(msm->d_sort_temp);
+    msm->d_scalars = nullptr;
+    msm->d_out = nullptr;
+    msm->d_keys_in = nullptr;
+    msm->d_keys_out = nullptr;
+    msm->d_vals_in = nullptr;
+    msm->d_vals_out = nullptr;
+    msm->d_bucket_offsets = nullptr;
+    msm->d_bucket_ends = nullptr;
+    msm->d_buckets = nullptr;
+    msm->d_window_results = nullptr;
+    msm->d_partial_totals = nullptr;
+    msm->d_partial_sums = nullptr;
+    msm->d_sort_temp = nullptr;
+}
+
+static void plonk2_msm_free_all(GnarkGPUPlonk2MSM *msm) {
+    if (!msm) return;
+    plonk2_msm_free_work_buffers(msm);
+    if (msm->d_points) cudaFree(msm->d_points);
+    msm->d_points = nullptr;
+}
+
+static cudaError_t plonk2_msm_alloc_work_buffers(GnarkGPUPlonk2MSM *m) {
+    if (!m) return cudaErrorInvalidValue;
+    if (plonk2_msm_has_work_buffers(m)) return cudaSuccess;
+    plonk2_msm_free_work_buffers(m);
+
+    size_t scalar_words = m->point_count * (size_t)m->scalar_limbs;
+    size_t output_words = (size_t)3 * (size_t)m->base_limbs;
+    size_t bucket_words =
+        (size_t)m->total_buckets * (size_t)3 * (size_t)m->base_limbs;
+    size_t window_words =
+        (size_t)m->num_windows * (size_t)3 * (size_t)m->base_limbs;
+    size_t partial_words =
+        (size_t)m->num_windows * (size_t)m->reduce_bpw *
+        (size_t)3 * (size_t)m->base_limbs;
+
+    cudaError_t err = cudaMalloc(&m->d_scalars, scalar_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_out, output_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_keys_in, m->assignments_capacity * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_keys_out, m->assignments_capacity * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_vals_in, m->assignments_capacity * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_vals_out, m->assignments_capacity * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_bucket_offsets,
+                     (size_t)m->total_buckets * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_bucket_ends,
+                     (size_t)m->total_buckets * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_buckets, bucket_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_window_results, window_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_partial_totals, partial_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_partial_sums, partial_words * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_sort_temp, m->sort_temp_bytes);
+    if (err != cudaSuccess) goto fail;
+    return cudaSuccess;
+
+fail:
+    plonk2_msm_free_work_buffers(m);
+    return err;
+}
+
+static bool plonk2_power_of_two(size_t n) {
+    return n != 0 && (n & (n - 1)) == 0;
+}
+
+static gnark_gpu::plonk2::FrView plonk2_view(uint64_t *const limbs[]) {
+    gnark_gpu::plonk2::FrView out{};
+    for (int i = 0; i < gnark_gpu::plonk2::MAX_FR_LIMBS; i++) out.limbs[i] = limbs[i];
+    return out;
+}
+
+static gnark_gpu::plonk2::ConstFrView plonk2_const_view(uint64_t *const limbs[]) {
+    gnark_gpu::plonk2::ConstFrView out{};
+    for (int i = 0; i < gnark_gpu::plonk2::MAX_FR_LIMBS; i++) out.limbs[i] = limbs[i];
+    return out;
+}
+
+static gnark_gpu::plonk2::FrView plonk2_view(gnark_gpu_plonk2_fr_vector_t v) {
+    return plonk2_view(v->limbs_dev);
+}
+
+static gnark_gpu::plonk2::ConstFrView plonk2_const_view(gnark_gpu_plonk2_fr_vector_t v) {
+    return plonk2_const_view(v->limbs_dev);
+}
+
+static bool plonk2_same_shape(gnark_gpu_plonk2_fr_vector_t result,
+                              gnark_gpu_plonk2_fr_vector_t a,
+                              gnark_gpu_plonk2_fr_vector_t b) {
+    return result->ctx == a->ctx && a->ctx == b->ctx &&
+           result->curve == a->curve && a->curve == b->curve &&
+           result->count == a->count && a->count == b->count;
+}
+
+static bool plonk2_same_vector_shape(gnark_gpu_plonk2_fr_vector_t a,
+                                     gnark_gpu_plonk2_fr_vector_t b) {
+    return a->ctx == b->ctx && a->curve == b->curve && a->count == b->count;
+}
+
+static gnark_gpu_error_t ensure_plonk2_staging_words(GnarkGPUContext *ctx, size_t words) {
+    if (ctx->plonk2_staging_words >= words) return GNARK_GPU_SUCCESS;
+
+    if (ctx->plonk2_staging_buffer) {
+        cudaError_t err = cudaStreamSynchronize(ctx->stream);
+        if (err != cudaSuccess) return check_cuda(err);
+        cudaFree(ctx->plonk2_staging_buffer);
+        ctx->plonk2_staging_buffer = nullptr;
+        ctx->plonk2_staging_words = 0;
+    }
+
+    cudaError_t err = cudaMalloc(&ctx->plonk2_staging_buffer, words * sizeof(uint64_t));
+    if (err != cudaSuccess) return check_cuda(err);
+    ctx->plonk2_staging_words = words;
+    return GNARK_GPU_SUCCESS;
+}
+
+static gnark_gpu_error_t plonk2_upload_aos(GnarkGPUContext *ctx,
+                                           gnark_gpu_plonk2_curve_id_t curve,
+                                           uint64_t *dst_limbs[],
+                                           const uint64_t *host_data,
+                                           size_t count) {
+    int limbs = plonk2_limbs(curve);
+    if (limbs == 0 || plonk2_mul_overflows(count, (size_t)limbs)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    size_t words = count * (size_t)limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    cudaError_t err = cudaMemcpyAsync(ctx->plonk2_staging_buffer, host_data,
+                                      words * sizeof(uint64_t),
+                                      cudaMemcpyHostToDevice, ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+
+    gnark_gpu::plonk2::launch_copy_aos_to_soa(curve, plonk2_view(dst_limbs),
+                                              ctx->plonk2_staging_buffer,
+                                              count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_alloc(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    size_t count,
+    gnark_gpu_plonk2_fr_vector_t *vec) {
+    if (!ctx || !vec || count == 0 || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    GnarkGPUPlonk2FrVector *v = new GnarkGPUPlonk2FrVector{};
+    v->ctx = ctx;
+    v->curve = curve_id;
+    v->limbs = plonk2_limbs(curve_id);
+    v->count = count;
+
+    for (int i = 0; i < v->limbs; i++) {
+        cudaError_t err = cudaMalloc(&v->limbs_dev[i], count * sizeof(uint64_t));
+        if (err != cudaSuccess) {
+            for (int j = 0; j < i; j++) cudaFree(v->limbs_dev[j]);
+            delete v;
+            cudaGetLastError();
+            return check_cuda(err);
+        }
+    }
+
+    *vec = v;
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" void gnark_gpu_plonk2_fr_vector_free(gnark_gpu_plonk2_fr_vector_t vec) {
+    if (!vec) return;
+    for (int i = 0; i < vec->limbs; i++) {
+        if (vec->limbs_dev[i]) cudaFree(vec->limbs_dev[i]);
+    }
+    delete vec;
+}
+
+extern "C" size_t gnark_gpu_plonk2_fr_vector_len(gnark_gpu_plonk2_fr_vector_t vec) {
+    return vec ? vec->count : 0;
+}
+
+extern "C" int gnark_gpu_plonk2_fr_vector_limbs(gnark_gpu_plonk2_fr_vector_t vec) {
+    return vec ? vec->limbs : 0;
+}
+
+extern "C" gnark_gpu_plonk2_curve_id_t gnark_gpu_plonk2_fr_vector_curve(
+    gnark_gpu_plonk2_fr_vector_t vec) {
+    return vec ? vec->curve : (gnark_gpu_plonk2_curve_id_t)0;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_to_device(
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *host_data,
+    size_t count) {
+    if (!vec || !host_data) return GNARK_GPU_ERROR_INVALID_ARG;
+    if (count != vec->count) return GNARK_GPU_ERROR_SIZE_MISMATCH;
+    return plonk2_upload_aos(vec->ctx, vec->curve, vec->limbs_dev, host_data, count);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_to_host(
+    gnark_gpu_plonk2_fr_vector_t vec,
+    uint64_t *host_data,
+    size_t count) {
+    if (!vec || !host_data) return GNARK_GPU_ERROR_INVALID_ARG;
+    if (count != vec->count) return GNARK_GPU_ERROR_SIZE_MISMATCH;
+    if (plonk2_mul_overflows(count, (size_t)vec->limbs)) return GNARK_GPU_ERROR_INVALID_ARG;
+
+    size_t words = count * (size_t)vec->limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(vec->ctx, words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    gnark_gpu::plonk2::launch_copy_soa_to_aos(vec->curve, vec->ctx->plonk2_staging_buffer,
+                                              plonk2_const_view(vec), count, vec->ctx->stream);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) return check_cuda(err);
+
+    err = cudaMemcpyAsync(host_data, vec->ctx->plonk2_staging_buffer,
+                          words * sizeof(uint64_t),
+                          cudaMemcpyDeviceToHost, vec->ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    return check_cuda(cudaStreamSynchronize(vec->ctx->stream));
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_d2d(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src) {
+    if (!ctx || !dst || !src || dst->ctx != ctx || !plonk2_same_vector_shape(dst, src)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    for (int i = 0; i < dst->limbs; i++) {
+        cudaError_t err = cudaMemcpyAsync(dst->limbs_dev[i], src->limbs_dev[i],
+                                          dst->count * sizeof(uint64_t),
+                                          cudaMemcpyDeviceToDevice, ctx->stream);
+        if (err != cudaSuccess) return check_cuda(err);
+    }
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_set_zero(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec) {
+    if (!ctx || !vec || vec->ctx != ctx) return GNARK_GPU_ERROR_INVALID_ARG;
+    gnark_gpu::plonk2::launch_set_zero(vec->curve, plonk2_view(vec), vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_add(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b) {
+    if (!ctx || !result || !a || !b || result->ctx != ctx || !plonk2_same_shape(result, a, b)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_add(result->curve, plonk2_view(result),
+                                  plonk2_const_view(a), plonk2_const_view(b),
+                                  result->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_sub(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b) {
+    if (!ctx || !result || !a || !b || result->ctx != ctx || !plonk2_same_shape(result, a, b)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_sub(result->curve, plonk2_view(result),
+                                  plonk2_const_view(a), plonk2_const_view(b),
+                                  result->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b) {
+    if (!ctx || !result || !a || !b || result->ctx != ctx || !plonk2_same_shape(result, a, b)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_mul(result->curve, plonk2_view(result),
+                                  plonk2_const_view(a), plonk2_const_view(b),
+                                  result->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_addmul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t a,
+    gnark_gpu_plonk2_fr_vector_t b) {
+    if (!ctx || !vec || !a || !b || vec->ctx != ctx || !plonk2_same_shape(vec, a, b)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_addmul(vec->curve, plonk2_view(vec),
+                                     plonk2_const_view(a), plonk2_const_view(b),
+                                     vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scalar_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *scalar) {
+    if (!ctx || !vec || !scalar || vec->ctx != ctx) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_scalar_mul(vec->curve, plonk2_view(vec),
+                                         scalar, vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_add_scalar_mul(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t a,
+    const uint64_t *scalar) {
+    if (!ctx || !vec || !a || !scalar || vec->ctx != ctx ||
+        !plonk2_same_vector_shape(vec, a)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_add_scalar_mul(vec->curve, plonk2_view(vec),
+                                             plonk2_const_view(a), scalar,
+                                             vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_batch_invert(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    gnark_gpu_plonk2_fr_vector_t temp) {
+    if (!ctx || !vec || !temp || vec->ctx != ctx || !plonk2_same_vector_shape(vec, temp)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_batch_invert(vec->curve, plonk2_view(vec),
+                                           vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_butterfly4_inverse(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t b0,
+    gnark_gpu_plonk2_fr_vector_t b1,
+    gnark_gpu_plonk2_fr_vector_t b2,
+    gnark_gpu_plonk2_fr_vector_t b3,
+    const uint64_t *omega4_inv,
+    const uint64_t *quarter) {
+    if (!ctx || !b0 || !b1 || !b2 || !b3 || !omega4_inv || !quarter || b0->ctx != ctx ||
+        !plonk2_same_vector_shape(b0, b1) || !plonk2_same_vector_shape(b0, b2) ||
+        !plonk2_same_vector_shape(b0, b3)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    gnark_gpu::plonk2::launch_butterfly4_inverse(
+        b0->curve, plonk2_view(b0), plonk2_view(b1), plonk2_view(b2), plonk2_view(b3),
+        omega4_inv, quarter, b0->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_reduce_blinded_coset(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src,
+    const uint64_t *tail,
+    size_t tail_len,
+    const uint64_t *coset_pow_n) {
+    if (!ctx || !dst || !src || !tail || !coset_pow_n || dst->ctx != ctx ||
+        !plonk2_same_vector_shape(dst, src)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (tail_len > dst->count) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    size_t tail_words = tail_len * (size_t)dst->limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, tail_words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    cudaError_t err = cudaMemcpyAsync(ctx->plonk2_staging_buffer, tail,
+                                      tail_words * sizeof(uint64_t),
+                                      cudaMemcpyHostToDevice, ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    gnark_gpu::plonk2::launch_reduce_blinded_coset(
+        dst->curve, plonk2_view(dst), plonk2_const_view(src),
+        ctx->plonk2_staging_buffer, tail_len, coset_pow_n, dst->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_compute_l1_den(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t out,
+    const uint64_t *coset_gen) {
+    if (!domain || !out || !coset_gen || domain->ctx != out->ctx ||
+        domain->curve != out->curve) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (domain->size != out->count) return GNARK_GPU_ERROR_SIZE_MISMATCH;
+
+    gnark_gpu::plonk2::launch_compute_l1_den(
+        domain->curve, plonk2_view(out), plonk2_const_view(domain->fwd),
+        coset_gen, domain->size, domain->ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+static bool plonk2_same_context_curve_size(gnark_gpu_plonk2_fr_vector_t a,
+                                           gnark_gpu_plonk2_fr_vector_t b) {
+    return a && b && a->ctx == b->ctx && a->curve == b->curve && a->count == b->count;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_gate_accum(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t ql,
+    gnark_gpu_plonk2_fr_vector_t qr,
+    gnark_gpu_plonk2_fr_vector_t qm,
+    gnark_gpu_plonk2_fr_vector_t qo,
+    gnark_gpu_plonk2_fr_vector_t qk,
+    gnark_gpu_plonk2_fr_vector_t l,
+    gnark_gpu_plonk2_fr_vector_t r,
+    gnark_gpu_plonk2_fr_vector_t o,
+    const uint64_t *zh_k_inv) {
+    if (!ctx || !result || !ql || !qr || !qm || !qo || !qk || !l || !r || !o ||
+        !zh_k_inv || result->ctx != ctx ||
+        !plonk2_same_context_curve_size(result, ql) ||
+        !plonk2_same_context_curve_size(result, qr) ||
+        !plonk2_same_context_curve_size(result, qm) ||
+        !plonk2_same_context_curve_size(result, qo) ||
+        !plonk2_same_context_curve_size(result, qk) ||
+        !plonk2_same_context_curve_size(result, l) ||
+        !plonk2_same_context_curve_size(result, r) ||
+        !plonk2_same_context_curve_size(result, o)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    gnark_gpu::plonk2::launch_gate_accum(
+        result->curve, plonk2_view(result),
+        plonk2_const_view(ql), plonk2_const_view(qr), plonk2_const_view(qm),
+        plonk2_const_view(qo), plonk2_const_view(qk),
+        plonk2_const_view(l), plonk2_const_view(r), plonk2_const_view(o),
+        zh_k_inv, result->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_perm_boundary(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t l,
+    gnark_gpu_plonk2_fr_vector_t r,
+    gnark_gpu_plonk2_fr_vector_t o,
+    gnark_gpu_plonk2_fr_vector_t z,
+    gnark_gpu_plonk2_fr_vector_t s1,
+    gnark_gpu_plonk2_fr_vector_t s2,
+    gnark_gpu_plonk2_fr_vector_t s3,
+    gnark_gpu_plonk2_fr_vector_t l1_den_inv,
+    const uint64_t *params,
+    gnark_gpu_plonk2_ntt_domain_t domain) {
+    if (!ctx || !result || !l || !r || !o || !z || !s1 || !s2 || !s3 ||
+        !l1_den_inv || !params || !domain || result->ctx != ctx ||
+        domain->ctx != ctx || domain->curve != result->curve ||
+        domain->size != result->count ||
+        !plonk2_same_context_curve_size(result, l) ||
+        !plonk2_same_context_curve_size(result, r) ||
+        !plonk2_same_context_curve_size(result, o) ||
+        !plonk2_same_context_curve_size(result, z) ||
+        !plonk2_same_context_curve_size(result, s1) ||
+        !plonk2_same_context_curve_size(result, s2) ||
+        !plonk2_same_context_curve_size(result, s3) ||
+        !plonk2_same_context_curve_size(result, l1_den_inv)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    gnark_gpu::plonk2::launch_perm_boundary(
+        result->curve, plonk2_view(result),
+        plonk2_const_view(l), plonk2_const_view(r), plonk2_const_view(o),
+        plonk2_const_view(z), plonk2_const_view(s1), plonk2_const_view(s2),
+        plonk2_const_view(s3), plonk2_const_view(l1_den_inv),
+        plonk2_const_view(domain->fwd), params, result->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_z_compute_factors(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t l_inout,
+    gnark_gpu_plonk2_fr_vector_t r_inout,
+    gnark_gpu_plonk2_fr_vector_t o_in,
+    const void *d_perm,
+    const uint64_t *params,
+    unsigned log2n,
+    gnark_gpu_plonk2_ntt_domain_t domain) {
+    if (!ctx || !l_inout || !r_inout || !o_in || !d_perm || !params || !domain ||
+        l_inout->ctx != ctx || domain->ctx != ctx || domain->curve != l_inout->curve ||
+        domain->size != l_inout->count ||
+        !plonk2_same_context_curve_size(l_inout, r_inout) ||
+        !plonk2_same_context_curve_size(l_inout, o_in)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    gnark_gpu::plonk2::launch_z_compute_factors(
+        l_inout->curve, plonk2_view(l_inout), plonk2_view(r_inout),
+        plonk2_const_view(o_in), static_cast<const int64_t *>(d_perm),
+        plonk2_const_view(domain->fwd), params, l_inout->count, log2n,
+        ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase1(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t z_vec,
+    gnark_gpu_plonk2_fr_vector_t ratio_vec,
+    uint64_t *chunk_products_host,
+    size_t *num_chunks_out) {
+    if (!ctx || !z_vec || !ratio_vec || !chunk_products_host || !num_chunks_out ||
+        z_vec->ctx != ctx || !plonk2_same_vector_shape(z_vec, ratio_vec)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    size_t n = ratio_vec->count;
+    size_t num_chunks = (n + 1023) / 1024;
+    size_t words = num_chunks * (size_t)ratio_vec->limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    gnark_gpu::plonk2::launch_z_prefix_phase1(
+        z_vec->curve, plonk2_view(z_vec), plonk2_const_view(ratio_vec),
+        ctx->plonk2_staging_buffer, n, ctx->stream);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) return check_cuda(err);
+    err = cudaStreamSynchronize(ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    err = cudaMemcpy(chunk_products_host, ctx->plonk2_staging_buffer,
+                     words * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) return check_cuda(err);
+    *num_chunks_out = num_chunks;
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase3(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t z_vec,
+    gnark_gpu_plonk2_fr_vector_t temp_vec,
+    const uint64_t *scanned_prefixes_host,
+    size_t num_chunks) {
+    if (!ctx || !z_vec || !temp_vec || !scanned_prefixes_host ||
+        z_vec->ctx != ctx || !plonk2_same_vector_shape(z_vec, temp_vec)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    size_t words = num_chunks * (size_t)z_vec->limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    cudaError_t err = cudaMemcpyAsync(ctx->plonk2_staging_buffer,
+                                      scanned_prefixes_host,
+                                      words * sizeof(uint64_t),
+                                      cudaMemcpyHostToDevice, ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+
+    gnark_gpu::plonk2::launch_z_prefix_phase3(
+        z_vec->curve, plonk2_view(z_vec), plonk2_view(temp_vec),
+        ctx->plonk2_staging_buffer, num_chunks, z_vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *generator) {
+    if (!ctx || !vec || !generator || vec->ctx != ctx) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, 256ULL * (size_t)vec->limbs);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    gnark_gpu::plonk2::launch_scale_by_powers(
+        vec->curve, plonk2_view(vec), generator, ctx->plonk2_staging_buffer,
+        vec->count, ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_domain_create(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    size_t size,
+    const uint64_t *fwd_twiddles_aos,
+    const uint64_t *inv_twiddles_aos,
+    const uint64_t *inv_n,
+    gnark_gpu_plonk2_ntt_domain_t *domain) {
+    if (!ctx || !domain || !inv_n || !plonk2_valid_curve(curve_id) || !plonk2_power_of_two(size)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (size > 1 && (!fwd_twiddles_aos || !inv_twiddles_aos)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    cudaError_t err = cudaSetDevice(ctx->device_id);
+    if (err != cudaSuccess) return check_cuda(err);
+
+    GnarkGPUPlonk2NTTDomain *d = new GnarkGPUPlonk2NTTDomain{};
+    d->ctx = ctx;
+    d->curve = curve_id;
+    d->limbs = plonk2_limbs(curve_id);
+    d->size = size;
+
+    size_t twiddle_count = size / 2;
+    for (int i = 0; i < d->limbs; i++) {
+        if (twiddle_count > 0) {
+            err = cudaMalloc(&d->fwd[i], twiddle_count * sizeof(uint64_t));
+            if (err != cudaSuccess) goto fail;
+            err = cudaMalloc(&d->inv[i], twiddle_count * sizeof(uint64_t));
+            if (err != cudaSuccess) goto fail;
+        }
+    }
+
+    err = cudaMalloc(&d->inv_n, (size_t)d->limbs * sizeof(uint64_t));
+    if (err != cudaSuccess) goto fail;
+
+    err = cudaMemcpyAsync(d->inv_n, inv_n, (size_t)d->limbs * sizeof(uint64_t),
+                          cudaMemcpyHostToDevice, ctx->stream);
+    if (err != cudaSuccess) goto fail;
+
+    if (twiddle_count > 0) {
+        gnark_gpu_error_t gerr = plonk2_upload_aos(ctx, curve_id, d->fwd,
+                                                   fwd_twiddles_aos, twiddle_count);
+        if (gerr != GNARK_GPU_SUCCESS) {
+            gnark_gpu_plonk2_ntt_domain_destroy(d);
+            return gerr;
+        }
+        gerr = plonk2_upload_aos(ctx, curve_id, d->inv,
+                                 inv_twiddles_aos, twiddle_count);
+        if (gerr != GNARK_GPU_SUCCESS) {
+            gnark_gpu_plonk2_ntt_domain_destroy(d);
+            return gerr;
+        }
+    }
+
+    *domain = d;
+    return GNARK_GPU_SUCCESS;
+
+fail:
+    gnark_gpu_plonk2_ntt_domain_destroy(d);
+    cudaGetLastError();
+    return check_cuda(err);
+}
+
+extern "C" void gnark_gpu_plonk2_ntt_domain_destroy(gnark_gpu_plonk2_ntt_domain_t domain) {
+    if (!domain) return;
+    for (int i = 0; i < domain->limbs; i++) {
+        if (domain->fwd[i]) cudaFree(domain->fwd[i]);
+        if (domain->inv[i]) cudaFree(domain->inv[i]);
+    }
+    if (domain->inv_n) cudaFree(domain->inv_n);
+    delete domain;
+}
+
+extern "C" size_t gnark_gpu_plonk2_ntt_domain_size(gnark_gpu_plonk2_ntt_domain_t domain) {
+    return domain ? domain->size : 0;
+}
+
+extern "C" gnark_gpu_plonk2_curve_id_t gnark_gpu_plonk2_ntt_domain_curve(
+    gnark_gpu_plonk2_ntt_domain_t domain) {
+    return domain ? domain->curve : (gnark_gpu_plonk2_curve_id_t)0;
+}
+
+static gnark_gpu_error_t plonk2_check_domain_vector(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data) {
+    if (!domain || !data) return GNARK_GPU_ERROR_INVALID_ARG;
+    if (domain->ctx != data->ctx || domain->curve != data->curve) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (domain->size != data->count) return GNARK_GPU_ERROR_SIZE_MISMATCH;
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_forward(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    gnark_gpu::plonk2::launch_ntt_forward(domain->curve, plonk2_view(data),
+                                          plonk2_const_view(domain->fwd),
+                                          domain->size, domain->ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_inverse(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    gnark_gpu::plonk2::launch_ntt_inverse(domain->curve, plonk2_view(data),
+                                          plonk2_const_view(domain->inv),
+                                          domain->inv_n, domain->size,
+                                          domain->ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_bit_reverse(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    gnark_gpu::plonk2::launch_bit_reverse(domain->curve, plonk2_view(data),
+                                          domain->size, domain->ctx->stream);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_test_g1_affine_add(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *p,
+    const uint64_t *q,
+    uint64_t *out) {
+    if (!ctx || !p || !q || !out || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    cudaError_t err = gnark_gpu::plonk2::g1_affine_add_run(
+        curve_id, p, q, out, ctx->stream);
+    return check_cuda(err);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_test_g1_affine_double(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *p,
+    uint64_t *out) {
+    if (!ctx || !p || !out || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    cudaError_t err = gnark_gpu::plonk2::g1_affine_double_run(
+        curve_id, p, out, ctx->stream);
+    return check_cuda(err);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_test_msm_naive(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    const uint64_t *scalars,
+    size_t count,
+    uint64_t *out) {
+    if (!ctx || !points || !scalars || !out || count == 0 || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    cudaError_t err = gnark_gpu::plonk2::msm_naive_run(
+        curve_id, points, scalars, count, out, ctx->stream);
+    return check_cuda(err);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_pippenger(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    const uint64_t *scalars,
+    size_t count,
+    int window_bits,
+    uint64_t *out) {
+    if (!ctx || !points || !scalars || !out || count == 0 || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (window_bits <= 1 || window_bits > 24) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    cudaError_t err = gnark_gpu::plonk2::msm_pippenger_run(
+        curve_id, points, scalars, count, window_bits, out, ctx->stream);
+    return check_cuda(err);
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_create(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_curve_id_t curve_id,
+    const uint64_t *points,
+    size_t point_count,
+    int window_bits,
+    gnark_gpu_plonk2_msm_t *msm) {
+    if (!ctx || !points || !msm || point_count == 0 || !plonk2_valid_curve(curve_id)) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (window_bits <= 1 || window_bits > 24) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    int base_limbs = plonk2_base_limbs(curve_id);
+    int scalar_limbs = plonk2_limbs(curve_id);
+    int scalar_bits = plonk2_scalar_bits(curve_id);
+    if (base_limbs == 0 || scalar_limbs == 0 ||
+        scalar_bits == 0 ||
+        plonk2_mul_overflows(point_count, (size_t)(2 * base_limbs))) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    int num_windows = plonk2_signed_window_count(scalar_bits, window_bits);
+    int num_buckets = 1 << (window_bits - 1);
+    if (num_windows <= 0 || num_buckets <= 0 ||
+        num_windows > INT32_MAX / num_buckets) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    int total_buckets = num_windows * num_buckets;
+    if (plonk2_mul_overflows(point_count, (size_t)num_windows) ||
+        point_count * (size_t)num_windows > UINT32_MAX) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    size_t assignments_capacity = point_count * (size_t)num_windows;
+
+    GnarkGPUPlonk2MSM *m = new GnarkGPUPlonk2MSM{};
+    m->ctx = ctx;
+    m->curve = curve_id;
+    m->base_limbs = base_limbs;
+    m->scalar_limbs = scalar_limbs;
+    m->point_count = point_count;
+    m->window_bits = window_bits;
+    m->num_windows = num_windows;
+    m->num_buckets = num_buckets;
+    m->total_buckets = total_buckets;
+    m->reduce_bpw = plonk2_reduce_blocks_per_window(num_windows, num_buckets);
+    m->assignments_capacity = assignments_capacity;
+
+    size_t point_words = point_count * (size_t)(2 * base_limbs);
+    cudaError_t err = gnark_gpu::plonk2::msm_pippenger_sort_temp_bytes(
+        curve_id, point_count, window_bits, &m->sort_temp_bytes);
+    if (err != cudaSuccess) {
+        delete m;
+        return check_cuda(err);
+    }
+
+    err = cudaMalloc(&m->d_points, point_words * sizeof(uint64_t));
+    if (err != cudaSuccess) {
+        delete m;
+        cudaGetLastError();
+        return check_cuda(err);
+    }
+    err = plonk2_msm_alloc_work_buffers(m);
+    if (err != cudaSuccess) goto fail;
+
+    err = cudaMemcpyAsync(m->d_points, points, point_words * sizeof(uint64_t),
+                          cudaMemcpyHostToDevice, ctx->stream);
+    if (err == cudaSuccess) {
+        err = cudaStreamSynchronize(ctx->stream);
+    }
+    if (err != cudaSuccess) goto fail;
+
+    *msm = m;
+    return GNARK_GPU_SUCCESS;
+
+fail:
+    plonk2_msm_free_all(m);
+    delete m;
+    return check_cuda(err);
+}
+
+extern "C" void gnark_gpu_plonk2_msm_destroy(gnark_gpu_plonk2_msm_t msm) {
+    if (!msm) return;
+    plonk2_msm_free_all(msm);
+    delete msm;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_pin_work_buffers(
+    gnark_gpu_plonk2_msm_t msm) {
+    if (!msm) return GNARK_GPU_ERROR_INVALID_ARG;
+    return check_cuda(plonk2_msm_alloc_work_buffers(msm));
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_release_work_buffers(
+    gnark_gpu_plonk2_msm_t msm) {
+    if (!msm) return GNARK_GPU_ERROR_INVALID_ARG;
+    cudaError_t err = cudaStreamSynchronize(msm->ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    plonk2_msm_free_work_buffers(msm);
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
+    gnark_gpu_plonk2_msm_t msm,
+    const uint64_t *scalars,
+    size_t count,
+    uint64_t *out) {
+    if (!msm || !scalars || !out || count == 0 || count > msm->point_count) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (!plonk2_msm_has_work_buffers(msm)) {
+        cudaError_t alloc_err = plonk2_msm_alloc_work_buffers(msm);
+        if (alloc_err != cudaSuccess) return check_cuda(alloc_err);
+    }
+    cudaError_t err = gnark_gpu::plonk2::msm_pippenger_device_points_prealloc_run(
+        msm->curve, msm->d_points, scalars, count, msm->window_bits, out,
+        msm->d_scalars, msm->d_out, msm->d_keys_in, msm->d_keys_out,
+        msm->d_vals_in, msm->d_vals_out, msm->d_bucket_offsets,
+        msm->d_bucket_ends, msm->d_buckets, msm->d_window_results,
+        msm->d_partial_totals, msm->d_partial_sums, msm->d_sort_temp,
+        msm->sort_temp_bytes, msm->ctx->stream);
+    return check_cuda(err);
 }
 
 // =============================================================================

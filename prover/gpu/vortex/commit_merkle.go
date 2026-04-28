@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	fext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	refvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
@@ -54,10 +55,43 @@ type gpuVortexKey struct {
 // be reused (each level uses different parameters).
 func EvictPipelineCache() {
 	gpuVortexMu.Lock()
-	defer gpuVortexMu.Unlock()
+	victims := make([]*GPUVortex, 0, len(gpuVortexCache))
 	for key, gv := range gpuVortexCache {
-		gv.Free()
 		delete(gpuVortexCache, key)
+		victims = append(victims, gv)
+	}
+	gpuVortexMu.Unlock()
+
+	for _, gv := range victims {
+		gv.Free()
+	}
+}
+
+// EvictPipelineCacheForDevice frees only the cached pipelines bound to the
+// given GPU. Use this when one segment goroutine needs to release its
+// per-device buffers without disturbing pipelines that other goroutines
+// (on other GPUs) are still using.
+//
+// Production segments do many Vortex rounds with different (nCols, nRows,
+// rate) shapes; each cached pipeline holds multi-GiB device buffers
+// (d_work, d_encoded_col, d_sis, d_tree, d_leaves). Without per-device
+// eviction the cache grows monotonically across rounds within a segment
+// and quickly fills the 96 GiB device, causing alloc failures and the
+// CUDA runtime to spend minutes retrying.
+func EvictPipelineCacheForDevice(deviceID int) {
+	gpuVortexMu.Lock()
+	var victims []*GPUVortex
+	for key, gv := range gpuVortexCache {
+		if key.deviceID != deviceID {
+			continue
+		}
+		delete(gpuVortexCache, key)
+		victims = append(victims, gv)
+	}
+	gpuVortexMu.Unlock()
+
+	for _, gv := range victims {
+		gv.Free()
 	}
 }
 
@@ -230,49 +264,152 @@ func CommitSIS(
 	}
 
 	t0 = time.Now()
-	cs, _, err := gv.CommitDirect(len(polysMatrix), func(i int, dst []koalabear.Element) {
-		writeSmartVectorRow(polysMatrix[i], dst)
-	})
-	tCommit = time.Since(t0)
+	var (
+		cs        *CommitState
+		tree      *smt_koalabear.Tree
+		sisHashes []field.Element
+	)
+	err := gv.CommitDirectAndThen(
+		len(polysMatrix),
+		func(i int, dst []koalabear.Element) {
+			writeSmartVectorRow(polysMatrix[i], dst)
+		},
+		func(state *CommitState, _ Hash) error {
+			cs = state
+			cs.dev = dev
+			tCommit = time.Since(t0)
+
+			tTreeStart := time.Now()
+			tree = cloneSMTTreeFromRef(cs.MerkleTree())
+			tTree = time.Since(tTreeStart)
+			if tree == nil {
+				return fmt.Errorf("tree conversion failed")
+			}
+
+			if needSISHashes {
+				tSISStart := time.Now()
+				var extractErr error
+				sisHashes, extractErr = cs.ExtractSISHashes()
+				tSIS = time.Since(tSISStart)
+				if extractErr != nil {
+					return fmt.Errorf("extract SIS hashes: %w", extractErr)
+				}
+			}
+
+			if err := cs.SnapshotEncoded(dev); err != nil {
+				return fmt.Errorf("snapshot encoded matrix: %w", err)
+			}
+			return nil
+		},
+	)
+	if tCommit == 0 {
+		tCommit = time.Since(t0)
+	}
 	if err != nil {
 		logrus.WithError(err).Warn("GPU CommitSIS failed, falling back to CPU")
 		usedCPUFallback = true
 		return commitSISCPU(params, polysMatrix)
 	}
-
-	t0 = time.Now()
-	tree := cloneSMTTreeFromRef(cs.MerkleTree())
-	tTree = time.Since(t0)
-	if tree == nil {
-		logrus.Warn("GPU CommitSIS tree conversion failed, falling back to CPU")
-		usedCPUFallback = true
-		return commitSISCPU(params, polysMatrix)
-	}
-
-	// Extract SIS hashes before downloading encoded matrix (both read from
-	// the shared pipeline's device buffers).
-	var sisHashes []field.Element
-	if needSISHashes {
-		t0 = time.Now()
-		sisHashes, err = cs.ExtractSISHashes()
-		tSIS = time.Since(t0)
-		if err != nil {
-			logrus.WithError(err).Warn("GPU SIS hash extraction failed, falling back to CPU")
-			usedCPUFallback = true
-			return commitSISCPU(params, polysMatrix)
-		}
-	}
-
-	// D2D snapshot: copy encoded matrix to per-round GPU buffer (~35x faster
-	// than D2H). The GPU pipeline is cached and shared across SIS rounds —
-	// each CommitDirect call overwrites d_encoded_col. The snapshot decouples
-	// this round's data from the shared pipeline.
-	if err := cs.SnapshotEncoded(dev); err != nil {
-		logrus.WithError(err).Warn("GPU snapshot failed, falling back to CPU")
-		usedCPUFallback = true
-		return commitSISCPU(params, polysMatrix)
-	}
 	return cs, tree, sisHashes
+}
+
+// CommitSISRootOnly commits on GPU only to produce the Merkle tree/root and
+// optional SIS hashes. It intentionally does not snapshot the encoded matrix.
+// The caller can later recommit for UAlpha and selected-column extraction.
+//
+// Returns ok=false when the GPU path could not run; callers should fall back to
+// the CPU commitment path so correctness is preserved.
+func CommitSISRootOnly(
+	params *vortex_koalabear.Params,
+	polysMatrix []smartvectors.SmartVector,
+	needSISHashes bool,
+) (tree *smt_koalabear.Tree, sisHashes []field.Element, ok bool) {
+	if params.Key.LogTwoBound() != gpuSISLogTwoBound {
+		return nil, nil, false
+	}
+
+	err := withCommitSISState(params, polysMatrix, func(cs *CommitState) error {
+		tree = cloneSMTTreeFromRef(cs.MerkleTree())
+		if tree == nil {
+			return fmt.Errorf("tree conversion failed")
+		}
+		if !needSISHashes {
+			return nil
+		}
+		var err error
+		sisHashes, err = cs.ExtractSISHashes()
+		if err != nil {
+			return fmt.Errorf("extract SIS hashes: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		logrus.WithError(err).Warn("GPU CommitSISRootOnly failed")
+		return nil, nil, false
+	}
+
+	return tree, sisHashes, true
+}
+
+// CommitSISLinComb recommits a SIS round and returns its UAlpha contribution.
+// It is the low-VRAM alternative to keeping a per-round encoded snapshot.
+func CommitSISLinComb(
+	params *vortex_koalabear.Params,
+	polysMatrix []smartvectors.SmartVector,
+	alpha fext.E4,
+) ([]fext.E4, int, error) {
+	if params.Key.LogTwoBound() != gpuSISLogTwoBound {
+		return nil, 0, fmt.Errorf("unsupported SIS LogTwoBound=%d", params.Key.LogTwoBound())
+	}
+	var partial []fext.E4
+	err := withCommitSISState(params, polysMatrix, func(cs *CommitState) error {
+		var err error
+		partial, err = cs.LinComb(alpha)
+		return err
+	})
+	return partial, len(polysMatrix), err
+}
+
+// CommitSISExtractColumns recommits a SIS round and extracts only the selected
+// encoded columns. It avoids retaining a multi-GiB encoded snapshot until the
+// verifier's column-selection coin is known.
+func CommitSISExtractColumns(
+	params *vortex_koalabear.Params,
+	polysMatrix []smartvectors.SmartVector,
+	entries []int,
+) ([][]field.Element, error) {
+	if params.Key.LogTwoBound() != gpuSISLogTwoBound {
+		return nil, fmt.Errorf("unsupported SIS LogTwoBound=%d", params.Key.LogTwoBound())
+	}
+	var cols [][]field.Element
+	err := withCommitSISState(params, polysMatrix, func(cs *CommitState) error {
+		var err error
+		cols, err = cs.ExtractColumns(entries)
+		return err
+	})
+	return cols, err
+}
+
+func withCommitSISState(
+	params *vortex_koalabear.Params,
+	polysMatrix []smartvectors.SmartVector,
+	use func(*CommitState) error,
+) error {
+	dev, _, gv := initGPU(params)
+	if gv == nil {
+		return fmt.Errorf("GPU vortex unavailable")
+	}
+
+	return gv.CommitDirectAndThen(
+		len(polysMatrix),
+		func(i int, dst []koalabear.Element) {
+			writeSmartVectorRow(polysMatrix[i], dst)
+		},
+		func(cs *CommitState, _ Hash) error {
+			cs.dev = dev
+			return use(cs)
+		},
+	)
 }
 
 // commitSISCPU is the CPU fallback. Commits on CPU and wraps the result.

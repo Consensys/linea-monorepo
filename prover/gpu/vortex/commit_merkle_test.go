@@ -327,6 +327,72 @@ func TestGPUColumnExtraction(t *testing.T) {
 	}
 }
 
+func TestEvictPipelineCacheForDeviceWaitsForActiveCommit(t *testing.T) {
+	assert := require.New(t)
+	rng := rand.New(rand.NewChaCha8([32]byte{0xE7}))
+	dev := newTestDevice(t)
+	deviceID := dev.DeviceID()
+	t.Cleanup(func() { EvictPipelineCacheForDevice(deviceID) })
+
+	nCols := 64
+	nRows := 16
+	rate := 2
+	nSelected := 8
+
+	sisParams, err := sis.NewRSis(0, 9, 16, nRows)
+	assert.NoError(err)
+
+	params, err := NewParams(nCols, nRows, sisParams, rate, nSelected)
+	assert.NoError(err)
+
+	gv, err := getOrCreateGPUVortex(dev, deviceID, params, nRows)
+	assert.NoError(err)
+
+	m := randMatrixMixed(rng, nRows, nCols)
+	inUse := make(chan struct{})
+	release := make(chan struct{})
+	doneCommit := make(chan error, 1)
+
+	go func() {
+		doneCommit <- gv.CommitDirectAndThen(
+			nRows,
+			func(i int, dst []koalabear.Element) {
+				copy(dst, m[i])
+			},
+			func(cs *CommitState, _ Hash) error {
+				close(inUse)
+				<-release
+				_, err := cs.ExtractSISHashes()
+				return err
+			},
+		)
+	}()
+
+	<-inUse
+	evicted := make(chan struct{})
+	go func() {
+		EvictPipelineCacheForDevice(deviceID)
+		close(evicted)
+	}()
+
+	select {
+	case <-evicted:
+		close(release)
+		assert.NoError(<-doneCommit)
+		t.Fatal("pipeline eviction returned while CommitDirectAndThen was active")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(release)
+	assert.NoError(<-doneCommit)
+
+	select {
+	case <-evicted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("pipeline eviction did not complete after active commit returned")
+	}
+}
+
 // ─── Benchmarks (drop-in CommitMerkleWithSIS) ───────────────────────────────
 
 // BenchmarkCommitMerkleWithSIS_Small: 4096 × 256 ≈ 1M cells, rate=2.

@@ -15,26 +15,13 @@ package vortex
 #include "gnark_gpu_kb.h"
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
-
-// Allocate pre-faulted memory with huge page hint. Avoids 262K page faults
-// (~2s) for GB-scale allocations by pre-populating pages in-kernel.
-static void *alloc_prefaulted(size_t nbytes) {
-    void *p = mmap(NULL, nbytes, PROT_READ|PROT_WRITE,
-                   MAP_PRIVATE|MAP_ANONYMOUS|MAP_POPULATE, -1, 0);
-    if (p == MAP_FAILED) return NULL;
-    madvise(p, nbytes, MADV_HUGEPAGE);
-    return p;
-}
-static void free_prefaulted(void *p, size_t nbytes) {
-    munmap(p, nbytes);
-}
 */
 import "C"
 import (
 	"fmt"
 	"math/bits"
 	"runtime"
+	"sync"
 	"unsafe"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -522,6 +509,18 @@ func GPULinCombE4(dev *gpu.Device, rows []*KBVector, alpha fext.E4, nCols int) [
 //   proof, _ := cs.Prove(alpha, selectedCols)
 
 type GPUVortex struct {
+	// Serialises all uses of this pipeline. The pinned host buffers
+	// (inputBuf, treeBuf) and the device buffers inside `pipeline` are
+	// shared across calls; concurrent gv.Commit() / gv.CommitDirect()
+	// invocations would race on inputBuf and on the pipeline's d_work /
+	// d_encoded_col / d_tree, leading to SIGSEGVs in the cgo layer.
+	//
+	// Each pinGPU'd segment goroutine normally owns its device's cached
+	// pipeline outright, but when the conglomeration merger runs in
+	// parallel with GL/LPP workers and shares a device (because nWorkers
+	// > nGPUs), this mutex prevents the cgo race.
+	mu sync.Mutex
+
 	dev      *gpu.Device
 	sis      C.kb_sis_t
 	p2s      C.kb_p2_t // width=24 sponge (SIS→leaf)
@@ -721,6 +720,12 @@ func NewGPUVortex(dev *gpu.Device, params *Params, maxNRows int) (*GPUVortex, er
 }
 
 func (gv *GPUVortex) Free() {
+	gv.mu.Lock()
+	defer gv.mu.Unlock()
+	gv.freeLocked()
+}
+
+func (gv *GPUVortex) freeLocked() {
 	if gv.pipeline != nil {
 		C.kb_vortex_pipeline_free(gv.pipeline)
 		gv.pipeline = nil
@@ -737,6 +742,8 @@ func (gv *GPUVortex) Free() {
 		C.kb_p2_free(gv.p2c)
 		gv.p2c = nil
 	}
+	gv.inputBuf = nil
+	gv.treeBuf = nil
 }
 
 // Commit performs GPU-accelerated Vortex commit.
@@ -747,6 +754,11 @@ func (gv *GPUVortex) Free() {
 //
 // A new Commit() call invalidates any previously returned CommitState.
 func (gv *GPUVortex) Commit(rows [][]koalabear.Element) (*CommitState, Hash, error) {
+	gv.mu.Lock()
+	defer gv.mu.Unlock()
+	if gv.pipeline == nil {
+		return nil, Hash{}, fmt.Errorf("vortex: GPUVortex pipeline is freed")
+	}
 	inner := gv.params.inner
 	nCols := inner.NbColumns
 	sizeCodeWord := inner.SizeCodeWord()
@@ -796,6 +808,36 @@ func (gv *GPUVortex) Commit(rows [][]koalabear.Element) (*CommitState, Hash, err
 // avoiding intermediate Go heap allocations. Each call to loadRow(i, dst)
 // must fill dst[:nCols] with the i-th row's data.
 func (gv *GPUVortex) CommitDirect(nRows int, loadRow func(i int, dst []koalabear.Element)) (*CommitState, Hash, error) {
+	gv.mu.Lock()
+	defer gv.mu.Unlock()
+	return gv.commitDirectLocked(nRows, loadRow)
+}
+
+// CommitDirectAndThen commits rows and runs use while the shared pipeline is
+// still locked. Use this for operations that read d_encoded_col immediately
+// after commit, such as snapshotting, lincomb, or selected-column extraction.
+func (gv *GPUVortex) CommitDirectAndThen(
+	nRows int,
+	loadRow func(i int, dst []koalabear.Element),
+	use func(*CommitState, Hash) error,
+) error {
+	gv.mu.Lock()
+	defer gv.mu.Unlock()
+
+	cs, root, err := gv.commitDirectLocked(nRows, loadRow)
+	if err != nil {
+		return err
+	}
+	return use(cs, root)
+}
+
+func (gv *GPUVortex) commitDirectLocked(
+	nRows int,
+	loadRow func(i int, dst []koalabear.Element),
+) (*CommitState, Hash, error) {
+	if gv.pipeline == nil {
+		return nil, Hash{}, fmt.Errorf("vortex: GPUVortex pipeline is freed")
+	}
 	inner := gv.params.inner
 	nCols := inner.NbColumns
 	sizeCodeWord := inner.SizeCodeWord()
@@ -856,6 +898,12 @@ func (gv *GPUVortex) CommitAndExtract(rows [][]koalabear.Element) (
 	tree *refvortex.MerkleTree,
 	err error,
 ) {
+	gv.mu.Lock()
+	defer gv.mu.Unlock()
+	if gv.pipeline == nil {
+		err = fmt.Errorf("vortex: GPUVortex pipeline is freed")
+		return
+	}
 	inner := gv.params.inner
 	nCols := inner.NbColumns
 	sizeCodeWord := inner.SizeCodeWord()
@@ -1274,16 +1322,14 @@ func (cs *CommitState) ExtractSISHashes() ([]koalabear.Element, error) {
 		return nil, fmt.Errorf("vortex: h_sis_pinned is nil")
 	}
 
-	// Allocate pre-faulted memory with huge pages, then memcpy from pinned.
-	// Go's make() for ~1 GB triggers 262K page faults (~2s). MAP_POPULATE
-	// pre-faults in-kernel, and MADV_HUGEPAGE uses 2 MB pages (512 faults).
+	// Keep the result in Go-managed memory. This can be GB-scale for production
+	// self-recursion, so it must remain visible to the GC and GOMEMLIMIT.
 	nbytes := C.size_t(n) * 4
-	cPtr := C.alloc_prefaulted(nbytes)
-	if cPtr == nil {
-		return nil, fmt.Errorf("vortex: alloc_prefaulted(%d) failed", nbytes)
+	out := make([]koalabear.Element, n)
+	if n == 0 {
+		return out, nil
 	}
-	C.memcpy(cPtr, unsafe.Pointer(sisPtr), nbytes)
-	out := unsafe.Slice((*koalabear.Element)(cPtr), n)
+	C.memcpy(unsafe.Pointer(&out[0]), unsafe.Pointer(sisPtr), nbytes)
 	return out, nil
 }
 
