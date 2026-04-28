@@ -12,6 +12,8 @@
     "test": "pnpm run -r --if-present test"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@types/node": "24.12.2",
     "eslint": "catalog:",
     "husky": "9.1.7",
