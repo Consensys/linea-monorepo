@@ -20,34 +20,57 @@ import (
 //
 // The transcript is mutated. polys are not mutated (cloned internally).
 func ProveBatched(claims []Claim, polys []MultiLin, t Transcript) (BatchedProof, error) {
-	N := len(claims)
-	if N == 0 {
-		return BatchedProof{}, fmt.Errorf("sumcheck.ProveBatched: no claims")
+	if err := validateBatchedInputs(claims, polys); err != nil {
+		return BatchedProof{}, err
 	}
-	if len(polys) != N {
-		return BatchedProof{}, fmt.Errorf("sumcheck.ProveBatched: %d polys for %d claims", len(polys), N)
-	}
-	n := len(claims[0].Point)
-	if n == 0 {
-		return BatchedProof{}, fmt.Errorf("sumcheck.ProveBatched: 0-variable claims are not supported")
-	}
-	for i := range claims {
-		if len(claims[i].Point) != n {
-			return BatchedProof{}, fmt.Errorf("sumcheck.ProveBatched: claim %d has %d vars, expected %d",
-				i, len(claims[i].Point), n)
-		}
-		if polys[i].NumVars() != n {
-			return BatchedProof{}, fmt.Errorf("sumcheck.ProveBatched: poly %d has %d vars, expected %d",
-				i, polys[i].NumVars(), n)
-		}
-	}
-
-	// Absorb claims.
+	// Absorb claims into the transcript and derive λ.
 	for i := range claims {
 		t.Append(labelClaimPoint, claims[i].Point...)
 		t.Append(labelClaimEval, claims[i].Eval)
 	}
 	lambda := t.Challenge(labelLambda)
+	proof, _, err := proveBatchedCore(claims, polys, lambda, t)
+	return proof, err
+}
+
+// ProveBatchedWith is like [ProveBatched] but uses a pre-supplied lambda
+// rather than deriving it from the transcript. The transcript t should already
+// be seeded with lambda so that the per-round challenges are bound to it.
+// It returns the proof plus the n per-round challenges forming the residual
+// evaluation point.
+func ProveBatchedWith(claims []Claim, polys []MultiLin, lambda fext.Element, t Transcript) (BatchedProof, []fext.Element, error) {
+	if err := validateBatchedInputs(claims, polys); err != nil {
+		return BatchedProof{}, nil, err
+	}
+	return proveBatchedCore(claims, polys, lambda, t)
+}
+
+func validateBatchedInputs(claims []Claim, polys []MultiLin) error {
+	N := len(claims)
+	if N == 0 {
+		return fmt.Errorf("sumcheck: no claims")
+	}
+	if len(polys) != N {
+		return fmt.Errorf("sumcheck: %d polys for %d claims", len(polys), N)
+	}
+	n := len(claims[0].Point)
+	if n == 0 {
+		return fmt.Errorf("sumcheck: 0-variable claims are not supported")
+	}
+	for i := range claims {
+		if len(claims[i].Point) != n {
+			return fmt.Errorf("sumcheck: claim %d has %d vars, expected %d", i, len(claims[i].Point), n)
+		}
+		if polys[i].NumVars() != n {
+			return fmt.Errorf("sumcheck: poly %d has %d vars, expected %d", i, polys[i].NumVars(), n)
+		}
+	}
+	return nil
+}
+
+func proveBatchedCore(claims []Claim, polys []MultiLin, lambda fext.Element, t Transcript) (BatchedProof, []fext.Element, error) {
+	N := len(claims)
+	n := len(claims[0].Point)
 
 	lambdaPows := make([]fext.Element, N)
 	lambdaPows[0].SetOne()
@@ -72,6 +95,8 @@ func ProveBatched(claims []Claim, polys []MultiLin, t Transcript) (BatchedProof,
 		g0, g1, g2 fext.Element
 		t1, e2, p2 fext.Element
 	)
+
+	challenges := make([]fext.Element, n)
 
 	for k := 0; k < n; k++ {
 		g0.SetZero()
@@ -115,6 +140,7 @@ func ProveBatched(claims []Claim, polys []MultiLin, t Transcript) (BatchedProof,
 		proof.RoundPolys[k] = [3]fext.Element{g0, g1, g2}
 		t.Append(labelRoundPoly, g0, g1, g2)
 		c := t.Challenge(labelRoundChallenge)
+		challenges[k] = c
 
 		for i := 0; i < N; i++ {
 			polyTables[i].Fold(c)
@@ -128,5 +154,5 @@ func ProveBatched(claims []Claim, polys []MultiLin, t Transcript) (BatchedProof,
 	}
 	t.Append(labelFinalEvals, proof.FinalEvals...)
 
-	return proof, nil
+	return proof, challenges, nil
 }

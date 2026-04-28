@@ -880,6 +880,24 @@ func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
+// AssignMultilinearExt assigns the runtime parameters for a [query.MultilinearEval].
+// point must have length q.NumVars; ys must have one entry per polynomial in the query.
+func (run *ProverRuntime) AssignMultilinearExt(name ifaces.QueryID, point []fext.Element, ys ...fext.Element) {
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	q := run.Spec.QueriesParams.Data(name).(query.MultilinearEval)
+	if len(point) != q.NumVars {
+		utils.Panic("AssignMultilinearExt %v: point length %d != NumVars %d", name, len(point), q.NumVars)
+	}
+	if len(ys) != len(q.Pols) {
+		utils.Panic("AssignMultilinearExt %v: %d ys for %d polynomials", name, len(ys), len(q.Pols))
+	}
+	run.QueriesParams.InsertNew(name, query.MultilinearEvalParams{Point: point, Ys: ys})
+}
+
 // GetUnivariateEval get univariate eval metadata. Panic if not found.
 // Deprecated: fallback to run.Spec.GetUnivariateEval instead which does exactly
 // the same thing.
@@ -899,6 +917,14 @@ func (run *ProverRuntime) GetUnivariateParams(name ifaces.QueryID) query.Univari
 	run.lock.Lock()
 	defer run.lock.Unlock()
 	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams)
+}
+
+// GetMultilinearParams returns the runtime parameters for a multilinear
+// evaluation query that has already been assigned in a previous prover step.
+func (run *ProverRuntime) GetMultilinearParams(name ifaces.QueryID) query.MultilinearEvalParams {
+	run.lock.Lock()
+	defer run.lock.Unlock()
+	return run.QueriesParams.MustGet(name).(query.MultilinearEvalParams)
 }
 
 // AssignLocalPoint assign evaluation point and claimed values for a local point

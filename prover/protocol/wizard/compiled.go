@@ -635,6 +635,16 @@ func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []if
 	return q
 }
 
+// InsertMultilinear registers a new [query.MultilinearEval] in the current
+// CompiledIOP. All columns must already be registered, must be distinct, and
+// must have size 2^numVars.
+func (c *CompiledIOP) InsertMultilinear(round int, name ifaces.QueryID, numVars int, pols []ifaces.Column) query.MultilinearEval {
+	c.checkAnyInStore(pols)
+	q := query.NewMultilinearEval(name, numVars, pols...)
+	c.QueriesParams.AddToRound(round, name, q)
+	return q
+}
+
 // InsertLocalOpening registers a new local opening query [query.LocalOpening]
 // in the current CompiledIOP. A local opening query requires the prover of the
 // protocol to "open" the first position of the vector.

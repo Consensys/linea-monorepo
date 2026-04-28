@@ -50,6 +50,7 @@ type Runtime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
+	GetMultilinearParams(name ifaces.QueryID) query.MultilinearEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
 	Fs() fiatshamir.FS
 	InsertCoin(name coin.Name, value any)
@@ -351,6 +352,11 @@ func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 // intended to resolve parameters that have been provided by the proof.
 func (run *VerifierRuntime) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
 	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams)
+}
+
+// GetMultilinearParams retrieves the runtime parameters for a [query.MultilinearEval].
+func (run *VerifierRuntime) GetMultilinearParams(name ifaces.QueryID) query.MultilinearEvalParams {
+	return run.QueriesParams.MustGet(name).(query.MultilinearEvalParams)
 }
 
 /*

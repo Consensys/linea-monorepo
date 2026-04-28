@@ -77,6 +77,41 @@ type GnarkUnivariateEvalParams struct {
 	ExtYs []koalagnark.Ext
 }
 
+// GnarkMultilinearEvalParams is the gnark circuit version of [MultilinearEvalParams].
+type GnarkMultilinearEvalParams struct {
+	Point []koalagnark.Ext
+	Ys    []koalagnark.Ext
+}
+
+// UpdateFS includes the claimed Ys in the Fiat-Shamir state (mirrors
+// MultilinearEvalParams.UpdateFS — the point is excluded per the convention
+// that the verifier computes or derives the opening point independently).
+func (p GnarkMultilinearEvalParams) UpdateFS(fs fiatshamir.GnarkFS) {
+	fs.UpdateExt(p.Ys...)
+}
+
+// GnarkAllocate allocates a [GnarkMultilinearEvalParams] with the right
+// dimensions for use as a circuit witness placeholder.
+func (q MultilinearEval) GnarkAllocate() GnarkMultilinearEvalParams {
+	return GnarkMultilinearEvalParams{
+		Point: make([]koalagnark.Ext, q.NumVars),
+		Ys:    make([]koalagnark.Ext, len(q.Pols)),
+	}
+}
+
+// GnarkAssign converts a native [MultilinearEvalParams] into a circuit
+// witness assignment.
+func (p MultilinearEvalParams) GnarkAssign() GnarkMultilinearEvalParams {
+	point := make([]koalagnark.Ext, len(p.Point))
+	for i, r := range p.Point {
+		point[i] = koalagnark.NewExt(r)
+	}
+	return GnarkMultilinearEvalParams{
+		Point: point,
+		Ys:    vectorext.IntoGnarkAssignment(p.Ys),
+	}
+}
+
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
