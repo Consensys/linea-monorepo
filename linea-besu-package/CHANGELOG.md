@@ -1,3 +1,32 @@
+## [1.1.0] - 2026-04-28
+
+### 🚀 Features
+
+- *(tracer)* Update tracer
+
+### 🐛 Bug Fixes
+
+- *(tracer)* Update tracer-contraints
+
+### 🚜 Refactor
+
+- *(sequencer)* Update sequencer plugin
+
+### 📚 Documentation
+
+- *(deps,besu-package,tracer,sequencer,docker)* Update linea-besu
+
+### ⚡ Performance
+
+- *(beau-package)* Update linea-besu-package
+
+### 🧪 Testing
+
+- *(besu-package)* Trigger release
+
+### ⚙️ Miscellaneous Tasks
+
+- *(besu-package)* Update libs.versions.toml
 ## [1.0.1] - 2026-04-28
 
 ### 🐛 Bug Fixes
