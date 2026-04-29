@@ -327,22 +327,28 @@ func requireCPUSetupCommitmentsBW6761(tb testing.TB, setup setupCommitmentsBW676
 
 func requireGPUSetupCommitmentsBN254(tb testing.TB, msm *G1MSM, setup setupCommitmentsBN254) {
 	tb.Helper()
-	for i := range setup.coeffs {
-		requireGPUCommitBN254(tb, msm, setup.coeffs[i], setup.wants[i], setup.labels[i])
+	outputs, err := msm.commitRawBatch(rawSetupScalarsBN254(setup.coeffs))
+	require.NoError(tb, err, "batched BN254 setup commitments should succeed")
+	for i := range outputs {
+		requireBN254ProjectiveMatches(tb, setup.wants[i], outputs[i], "setup "+setup.labels[i])
 	}
 }
 
 func requireGPUSetupCommitmentsBLS12377(tb testing.TB, msm *G1MSM, setup setupCommitmentsBLS12377) {
 	tb.Helper()
-	for i := range setup.coeffs {
-		requireGPUCommitBLS12377(tb, msm, setup.coeffs[i], setup.wants[i], setup.labels[i])
+	outputs, err := msm.commitRawBatch(rawSetupScalarsBLS12377(setup.coeffs))
+	require.NoError(tb, err, "batched BLS12-377 setup commitments should succeed")
+	for i := range outputs {
+		requireBLS12377ProjectiveMatches(tb, setup.wants[i], outputs[i], "setup "+setup.labels[i])
 	}
 }
 
 func requireGPUSetupCommitmentsBW6761(tb testing.TB, msm *G1MSM, setup setupCommitmentsBW6761) {
 	tb.Helper()
-	for i := range setup.coeffs {
-		requireGPUCommitBW6761(tb, msm, setup.coeffs[i], setup.wants[i], setup.labels[i])
+	outputs, err := msm.commitRawBatch(rawSetupScalarsBW6761(setup.coeffs))
+	require.NoError(tb, err, "batched BW6-761 setup commitments should succeed")
+	for i := range outputs {
+		requireBW6761ProjectiveMatches(tb, setup.wants[i], outputs[i], "setup "+setup.labels[i])
 	}
 }
 
@@ -377,30 +383,18 @@ func commitSetupBW6761CPU(points []bw6761.G1Affine, coeffs [][]bwfr.Element) err
 }
 
 func commitSetupBN254GPU(msm *G1MSM, scalars [][]uint64) error {
-	for i := range scalars {
-		if _, err := msm.CommitRaw(scalars[i]); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := msm.commitRawBatch(scalars)
+	return err
 }
 
 func commitSetupBLS12377GPU(msm *G1MSM, scalars [][]uint64) error {
-	for i := range scalars {
-		if _, err := msm.CommitRaw(scalars[i]); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := msm.commitRawBatch(scalars)
+	return err
 }
 
 func commitSetupBW6761GPU(msm *G1MSM, scalars [][]uint64) error {
-	for i := range scalars {
-		if _, err := msm.CommitRaw(scalars[i]); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := msm.commitRawBatch(scalars)
+	return err
 }
 
 func rawSetupScalarsBN254(coeffs [][]bnfr.Element) [][]uint64 {

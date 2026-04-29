@@ -61,6 +61,39 @@ func TestG1MSMCommitRaw_CUDA(t *testing.T) {
 	t.Run("bw6-761", func(t *testing.T) { testG1MSMCommitRawBW6761(t, dev) })
 }
 
+func TestCommitRawMSMEdgeCases_CUDA(t *testing.T) {
+	dev, err := gpu.New()
+	require.NoError(t, err, "creating CUDA device should succeed")
+	defer dev.Close()
+
+	t.Run("bn254", func(t *testing.T) { testCommitRawMSMEdgeCasesBN254(t, dev) })
+	t.Run("bls12-377", func(t *testing.T) { testCommitRawMSMEdgeCasesBLS12377(t, dev) })
+	t.Run("bw6-761", func(t *testing.T) { testCommitRawMSMEdgeCasesBW6761(t, dev) })
+}
+
+func TestG1MSMCommitRawBatchRejectsMalformedInputs_CUDA(t *testing.T) {
+	dev, err := gpu.New()
+	require.NoError(t, err, "creating CUDA device should succeed")
+	defer dev.Close()
+
+	srs, err := bnkzg.NewSRS(4, big.NewInt(7))
+	require.NoError(t, err, "creating BN254 SRS should succeed")
+	msm, err := NewG1MSM(dev, CurveBN254, rawBN254G1Slice(srs.Pk.G1))
+	require.NoError(t, err, "creating resident BN254 MSM should succeed")
+	defer msm.Close()
+
+	_, err = msm.commitRawBatch(nil)
+	require.Error(t, err, "empty batch should fail")
+
+	_, err = msm.commitRawBatch([][]uint64{nil})
+	require.Error(t, err, "empty batch item should fail")
+
+	valid := cloneRaw(rawBN254([]bnfr.Element{bnfr.NewElement(1), bnfr.NewElement(2)}))
+	truncated := valid[:len(valid)-1]
+	_, err = msm.commitRawBatch([][]uint64{valid, truncated})
+	require.Error(t, err, "truncated batch scalar item should fail")
+}
+
 func testCommitRawBN254(t *testing.T, dev *gpu.Device) {
 	points := []bn254.G1Affine{bn254Point(2), bn254Point(3), bn254Point(5), bn254Point(7)}
 	scalars := []bnfr.Element{
@@ -294,6 +327,13 @@ func testG1MSMCommitRawBW6761(t *testing.T, dev *gpu.Device) {
 	out, err = msm.CommitRaw(cloneRaw(rawBW6761(shortPoly)))
 	require.NoError(t, err, "resident BW6-761 short commitment should succeed")
 	requireBW6761ProjectiveMatches(t, expected, out, "resident short KZG commitment")
+
+	require.NoError(t, msm.PinWorkBuffers(), "pinning BW6-761 MSM work buffers should succeed")
+	expected, err = bwkzg.Commit(poly, srs.Pk)
+	require.NoError(t, err, "BW6-761 repeated KZG commit should succeed")
+	out, err = msm.CommitRaw(cloneRaw(rawBW6761(poly)))
+	require.NoError(t, err, "resident BW6-761 repeated commitment should succeed")
+	requireBW6761ProjectiveMatches(t, expected, out, "resident repeated KZG commitment")
 }
 
 func TestCommitRawRejectsMalformedInputs_CUDA(t *testing.T) {
@@ -316,6 +356,15 @@ func TestCommitRawRejectsMalformedInputs_CUDA(t *testing.T) {
 
 	_, err = CommitRaw(dev, Curve(99), point, scalar)
 	require.Error(t, err, "unsupported curve should fail")
+
+	_, err = NewG1MSM(dev, CurveBN254, point[:len(point)-1])
+	require.Error(t, err, "truncated resident SRS should fail")
+
+	msm, err := NewG1MSM(dev, CurveBN254, point)
+	require.NoError(t, err, "creating resident MSM should succeed")
+	defer msm.Close()
+	_, err = msm.CommitRaw(append(scalar, scalar...))
+	require.Error(t, err, "scalar slice longer than resident SRS should fail")
 }
 
 func TestCommitRawMatchesScalarMultipleForOnePoint_CUDA(t *testing.T) {
@@ -332,6 +381,98 @@ func TestCommitRawMatchesScalarMultipleForOnePoint_CUDA(t *testing.T) {
 	scalarRegular := scalar.ToBigIntRegular(new(big.Int))
 	expected.ScalarMultiplication(&point, scalarRegular)
 	requireBN254ProjectiveMatches(t, expected, out, "single-point raw commitment")
+}
+
+func testCommitRawMSMEdgeCasesBN254(t *testing.T, dev *gpu.Device) {
+	points := make([]bn254.G1Affine, 64)
+	for i := range points {
+		points[i] = bn254Point(int64(i + 2))
+	}
+	run := func(label string, scalars []bnfr.Element) {
+		var expected bn254.G1Jac
+		expected.MultiExp(points[:len(scalars)], scalars, ecc.MultiExpConfig{})
+		var expectedAffine bn254.G1Affine
+		expectedAffine.FromJacobian(&expected)
+		out, err := CommitRaw(
+			dev,
+			CurveBN254,
+			rawBN254G1Slice(points[:len(scalars)]),
+			cloneRaw(rawBN254(scalars)),
+		)
+		require.NoError(t, err, "%s should commit", label)
+		requireBN254ProjectiveMatches(t, expectedAffine, out, label)
+	}
+
+	zero := make([]bnfr.Element, 8)
+	run("zero scalars", zero)
+
+	oneHot := make([]bnfr.Element, 8)
+	oneHot[3].SetOne()
+	run("one-hot scalars", oneHot)
+
+	randomLike := make([]bnfr.Element, 8)
+	for i := range randomLike {
+		randomLike[i].SetUint64(uint64(i*i + 17*i + 3))
+	}
+	run("deterministic random-like scalars", randomLike)
+
+	largeBucket := make([]bnfr.Element, len(points))
+	for i := range largeBucket {
+		largeBucket[i].SetOne()
+	}
+	run("structured large-bucket scalars", largeBucket)
+
+	repeated := []bn254.G1Affine{
+		points[0], points[0], points[0], points[0],
+		points[0], points[0], points[0], points[0],
+	}
+	repeatedScalars := []bnfr.Element{
+		bnfr.NewElement(1), bnfr.NewElement(2), bnfr.NewElement(3), bnfr.NewElement(4),
+		bnfr.NewElement(5), bnfr.NewElement(6), bnfr.NewElement(7), bnfr.NewElement(8),
+	}
+	var expected bn254.G1Jac
+	expected.MultiExp(repeated, repeatedScalars, ecc.MultiExpConfig{})
+	var expectedAffine bn254.G1Affine
+	expectedAffine.FromJacobian(&expected)
+	out, err := CommitRaw(dev, CurveBN254, rawBN254G1Slice(repeated), cloneRaw(rawBN254(repeatedScalars)))
+	require.NoError(t, err, "repeated points should commit")
+	requireBN254ProjectiveMatches(t, expectedAffine, out, "repeated points")
+}
+
+func testCommitRawMSMEdgeCasesBLS12377(t *testing.T, dev *gpu.Device) {
+	points := make([]bls12377.G1Affine, 64)
+	for i := range points {
+		points[i] = bls12377Point(int64(i + 2))
+	}
+	scalars := make([]blsfr.Element, len(points))
+	for i := range scalars {
+		scalars[i].SetOne()
+	}
+	var expected bls12377.G1Jac
+	expected.MultiExp(points, scalars, ecc.MultiExpConfig{})
+	var expectedAffine bls12377.G1Affine
+	expectedAffine.FromJacobian(&expected)
+	out, err := CommitRaw(dev, CurveBLS12377, rawBLS12377G1Slice(points), cloneRaw(rawBLS12377(scalars)))
+	require.NoError(t, err, "structured BLS12-377 MSM should commit")
+	requireBLS12377ProjectiveMatches(t, expectedAffine, out, "structured BLS12-377 MSM")
+}
+
+func testCommitRawMSMEdgeCasesBW6761(t *testing.T, dev *gpu.Device) {
+	points := make([]bw6761.G1Affine, 32)
+	for i := range points {
+		points[i] = bw6761Point(int64(i + 2))
+	}
+	scalars := make([]bwfr.Element, len(points))
+	for i := range scalars {
+		scalars[i].SetUint64(uint64(i%7 + 1))
+	}
+	var expected bw6761.G1Jac
+	expected.MultiExp(points, scalars, ecc.MultiExpConfig{})
+	var expectedAffine bw6761.G1Affine
+	expectedAffine.FromJacobian(&expected)
+	out, err := CommitRaw(dev, CurveBW6761, rawBW6761G1Slice(points), cloneRaw(rawBW6761(scalars)))
+	require.NoError(t, err, "deterministic BW6-761 MSM should commit")
+	requireBW6761ProjectiveMatches(t, expectedAffine, out, "deterministic BW6-761 MSM")
 }
 
 func quotientBN254(poly []bnfr.Element, claimed, point bnfr.Element) []bnfr.Element {

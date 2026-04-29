@@ -22,4 +22,14 @@
 // competitive with gpu/plonk's BLS12-377 twisted-Edwards path. Full GPU PlonK
 // proof generation still needs to wire these primitives under the existing
 // prover orchestration.
+//
+// Rollout model:
+//
+//   - build with `-tags cuda` to enable CUDA primitives;
+//   - use NewProver/Prove with WithEnabled(true) to opt into the GPU prover
+//     once a full prover path is wired;
+//   - keep WithCPUFallback(true), the default, for safe rollout;
+//   - use WithStrictMode(true) when tests must fail instead of falling back;
+//   - use WithTrace(path) for metadata-only JSONL events about curve, memory
+//     plan, phase names, timings, and fallback reasons.
 package plonk2

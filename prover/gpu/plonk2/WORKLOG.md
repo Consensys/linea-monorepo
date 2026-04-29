@@ -1056,3 +1056,379 @@ golangci-lint run --build-tags cuda ./gpu/plonk2
 ```
 
 All commands passed.
+
+## 2026-04-29 — Prompt 00 Non-CUDA Thread-Local Baseline
+
+Split `gpu/threadlocal.go` into a Linux implementation using `unix.Gettid`
+and a non-Linux fallback that compiles without thread-local device pinning.
+Linux keeps the per-OS-thread `SetCurrentDevice`, `CurrentDevice`, and device
+ID maps used by multi-GPU workers. Non-Linux builds now return the default
+device and no-op the setters, which is sufficient for non-CUDA tests.
+
+Inspected `gpu/cuda/src/plonk2/msm.cu` and nearby `plonk2` CUDA cleanup
+blocks. The expected duplicate `cudaFree(d_buckets)` was already absent in
+this checkout; no repeated free was found in the local `plonk2` cleanup paths.
+
+Commands:
+
+```
+gofmt -w gpu/threadlocal_linux.go gpu/threadlocal_other.go
+go test ./gpu ./gpu/plonk2 ./gpu/plonk
+```
+
+Result:
+
+```
+?    github.com/consensys/linea-monorepo/prover/gpu        [no test files]
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.053s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA validation was not run on this host in this pass.
+
+## 2026-04-29 — Prompt 03 MSM Correctness Hardening
+
+Centralized raw gnark-crypto layout assumptions in `raw.go`:
+scalar word count, affine G1 word count, projective G1 word count, and shared
+validation for exact and resident-SRS scalar buffers. `CommitRaw` and
+`G1MSM.CommitRaw` now use these helpers instead of local word-count checks.
+
+Montgomery correction remains host-side through `correctRawMontgomeryMSM`.
+Moving it into CUDA was not done in this pass because it changes the point
+normalization/arithmetic boundary and should be validated on a CUDA host.
+
+Added CPU-only raw layout tests and CUDA-only MSM edge-case tests for zero
+scalars, one-hot scalars, deterministic random-like scalars, repeated points,
+short scalar slices against a longer SRS, structured large-bucket inputs,
+malformed resident SRS/scalar buffers, and release/re-pin work-buffer reuse.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'TestPlan|Test.*Raw|Test.*Curve' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.106s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.115s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA validation and MSM benchmarks were not run on this host in this pass.
+
+## 2026-04-29 — Prompt 04 MSM Run Plan Boundary
+
+Added private `MSMRunPlan` and `MSMRunPlanConfig` for resident MSM handles.
+The plan records curve, point count, scalar bit size, selected window, window
+count, batch size, chunk point count, shared-base mode, precompute factor,
+large-bucket factor, and the attached `MSMMemoryPlan`.
+
+Default policy:
+
+- BN254 and BLS12-377 keep 16-bit windows at representative setup sizes.
+- BW6-761 keeps the existing size-aware 13/16/18-bit policy.
+- Batch size defaults to 1 and shared-base batching remains internal only.
+- Precomputation is disabled (`PrecomputeFactor=1`).
+- Large-bucket factor is recorded as 4 for future segmentation.
+- If an internal memory limit is supplied, the planner selects a chunk size
+  whose chunk estimate fits the limit.
+
+`NewG1MSM` now derives and stores this plan while preserving the existing
+`CommitRaw` execution path. No CUDA bucket metadata or segmentation kernels
+were changed in this pass; the existing accumulation path remains the only
+runtime path.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'TestPlan|Test.*MSMRunPlan' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.003s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.120s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA correctness and benchmark validation were not run on this host in this
+pass.
+
+## 2026-04-29 — Prompt 05 Private Shared-Base Batch Commitments
+
+Added private `(*G1MSM).commitRawBatch`, which accepts a wave of raw scalar
+slices for one resident SRS and returns one raw projective commitment per
+slice. The first implementation deliberately loops over the existing
+`CommitRaw` path so the public API and CUDA ABI remain unchanged. Callers keep
+work buffers pinned before the batch and release them after the whole wave.
+
+Setup-commitment benchmark internals now use the private batch path for GPU
+waves. `MSMMemoryPlan` records batch size metadata, and `MSMRunPlan` forwards
+the internal batch size into the memory plan; peak memory remains modeled as
+one active commitment because this implementation is still a sequential loop
+over the resident handle.
+
+Added CUDA-only malformed batch tests for empty batches, empty batch items,
+and truncated scalar slices.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.118s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.119s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA correctness and setup-commitment benchmarks were not run on this host in
+this pass.
+
+## 2026-04-29 — Prompt 06 NTT Plan and Private Batch Surface
+
+Added internal NTT planning types for order, residency, direction, and batch
+count. The documented current order contract is:
+
+- `FFT`: natural input to bit-reversed output.
+- `FFTInverse`: bit-reversed input to natural output.
+- `CosetFFT`: natural input to natural output.
+- `CosetFFTInverse`: natural input to natural output.
+
+Current residency is device-to-device because the public `FFTDomain` API
+operates on `FrVector` values. Added a private `transformBatch` helper that
+loops over the existing transform methods while checking plan curve, size, and
+batch count. No CUDA ABI change was made.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'Test.*NTTPlan|Test.*FFTSpec' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.003s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.119s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA correctness, bit-reversal benchmarks, and old `gpu/plonk` NTT comparison
+benchmarks were not run on this host in this pass.
+
+## 2026-04-29 — Prompt 07 BLS12-377 Full-Prover API Coverage
+
+Added BLS12-377 full-prover API coverage through the prepared `plonk2.Prover`
+entrypoint:
+
+- valid BLS12-377 witnesses prove and verify through CPU fallback;
+- invalid BLS12-377 witnesses fail through the same API;
+- CUDA-only tests assert that, with a CUDA device present, the BLS12-377
+  prepared prover still uses CPU fallback by default and returns
+  `plonk2: GPU prover not wired yet` when fallback is disabled.
+
+No BLS12-377 full-prover phase was ported to `plonk2` GPU primitives in this
+pass. Proof phases remain on gnark's CPU prover behind the fallback policy.
+The old specialized `gpu/plonk` prover was not used as a substitute for the
+generic `plonk2` path.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'TestPlonkE2E|Test.*Prover' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.114s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.120s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA full-prover tests and full-prover benchmarks were not run on this host in
+this pass.
+
+## 2026-04-29 — Prompt 09 Rollout Controls and Trace Metadata
+
+Added rollout controls:
+
+- `WithEnabled(bool)` to opt into attempting the GPU prover path.
+- `WithCPUFallback(bool)` remains the CPU fallback control.
+- `WithStrictMode(bool)` rejects fallback and returns
+  `plonk2: GPU prover not wired yet`.
+- `WithMemoryLimit` and `WithPinnedHostLimit` continue to be enforced during
+  preparation.
+- `WithTrace(path)` writes metadata-only JSONL events.
+
+Trace events use `event=plonk2_prover` and include phase, curve, domain size,
+commitment count, point count, estimated peak bytes, pinned host bytes, MSM
+window bits, MSM chunk points, and fallback reason. They do not include witness
+values, scalar contents, proof bytes, or transcript data.
+
+Added package documentation for CUDA build tags and rollout options. No
+downstream production call sites were changed.
+
+Commands:
+
+```
+gofmt -w gpu gpu/plonk2
+go test ./gpu/plonk2 ./gpu -run 'Test.*Trace|Test.*Fallback|Test.*Options' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.073s
+?    github.com/consensys/linea-monorepo/prover/gpu        [no test files]
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 cached
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA rollout tests were not run on this host in this pass.
+
+## 2026-04-29 — Prompt 10 Optional Specialization Evaluation
+
+Evaluated BLS12-377 twisted-Edwards MSM as the single specialization
+candidate. Added `gpu/plonk2/SPECIALIZATION.md` with the target bottleneck,
+expected benefit, extra code surface, correctness risk, rollback plan, and
+decision.
+
+Decision: defer. No specialization was implemented because the generic
+`plonk2` full prover is not wired yet and no same-hardware CUDA baseline was
+taken in this pass. The generic affine short-Weierstrass path remains the only
+`plonk2` MSM backend.
+
+Commands:
+
+```
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 cached
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA generic correctness and specialization benchmarks were not run on this
+host in this pass.
+
+## 2026-04-29 — Prompt 08 BN254 and BW6-761 Full-Prover API Coverage
+
+Extended full-prover API coverage across BN254, BLS12-377, and BW6-761:
+
+- valid witnesses prove and verify through `plonk2.Prover` CPU fallback;
+- invalid witnesses fail through the same API for all target curves;
+- CUDA-only tests cover default fallback and disabled-fallback errors for all
+  target curves when a CUDA device is present.
+
+No BN254 or BW6-761 full-prover phase was ported to `plonk2` GPU primitives in
+this pass. The curve adapters currently remain the constructor-time type
+switches and memory-plan metadata derived from typed gnark proving keys.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'TestPlonkE2E|Test.*Prover|Test.*Curve' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.119s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.127s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA full-prover tests and full-prover benchmarks were not run on this host in
+this pass.
+
+## 2026-04-29 — Prompt 02 Memory Planner Runtime Contract
+
+Extended `MSMMemoryPlan` to match the current CUDA MSM buffers more closely:
+resident affine SRS points, scalar staging, output staging, key/value pair
+buffers, CUB sort estimate, bucket offsets/ends, bucket accumulators,
+per-window results, and partial reduction buffers.
+
+Added `ProverMemoryPlan` with prepared-key persistent memory, NTT domain
+twiddles, quotient working vectors, MSM wave memory, pinned host buffers, and
+total peak helpers. The peak estimate is intentionally conservative:
+persistent bytes plus quotient scratch plus MSM wave scratch.
+
+`NewProver` now derives domain size, commitment count, and SRS point count from
+the typed gnark proving key, computes the plan, stores it on the prepared
+prover, and enforces `WithMemoryLimit` and `WithPinnedHostLimit`.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2
+go test ./gpu/plonk2 -run 'TestPlan|Test.*Memory|Test.*Prover' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.065s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.116s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA validation was not run on this host in this pass.
+
+## 2026-04-29 — Prompt 01 Prepared Prover API Skeleton
+
+Added the public `Prover`, `NewProver`, package-level `Prove`, and idempotent
+`Close` skeleton for `gpu/plonk2`. The constructor validates that the gnark
+constraint system and PlonK proving key are both one of BN254, BLS12-377, or
+BW6-761 and that their curves match before any proof call can reach gnark's
+type-switching dispatcher.
+
+CPU fallback is enabled by default. With fallback enabled, `Prover.Prove`
+delegates to `gnark/backend/plonk.Prove`. With fallback disabled, it returns
+`plonk2: GPU prover not wired yet`.
+
+Added CPU-only tests for supported curves, mismatched key/constraint curves,
+unsupported curves, disabled fallback, idempotent close, and package-level
+`Prove`.
+
+Commands:
+
+```
+gofmt -w gpu/plonk2/options.go gpu/plonk2/prove.go gpu/plonk2/prover_api_test.go
+go test ./gpu/plonk2 -run 'TestPlonkE2E|Test.*Prover|Test.*Fallback' -count=1
+go test ./gpu/plonk2 ./gpu/plonk
+```
+
+Results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.105s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.115s
+?    github.com/consensys/linea-monorepo/prover/gpu/plonk  [no test files]
+```
+
+CUDA validation was not run on this host in this pass.

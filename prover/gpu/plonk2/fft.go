@@ -226,3 +226,37 @@ func (d *FFTDomain) CosetFFTInverse(v *FrVector, generatorInv []uint64) error {
 	}
 	return v.ScaleByPowersRaw(generatorInv)
 }
+
+func (d *FFTDomain) transformBatch(plan NTTPlan, vectors []*FrVector, generator []uint64) error {
+	if len(vectors) == 0 {
+		return fmt.Errorf("plonk2: NTT batch must not be empty")
+	}
+	if len(vectors) != plan.BatchCount {
+		return fmt.Errorf("plonk2: NTT batch count %d, plan expects %d", len(vectors), plan.BatchCount)
+	}
+	if d.curve != plan.Curve {
+		return fmt.Errorf("plonk2: NTT plan curve %s, domain curve %s", plan.Curve, d.curve)
+	}
+	if d.size != plan.Size {
+		return fmt.Errorf("plonk2: NTT plan size %d, domain size %d", plan.Size, d.size)
+	}
+	for i, v := range vectors {
+		var err error
+		switch plan.Direction {
+		case nttDirectionForward:
+			err = d.FFT(v)
+		case nttDirectionInverse:
+			err = d.FFTInverse(v)
+		case nttDirectionCosetForward:
+			err = d.CosetFFT(v, generator)
+		case nttDirectionCosetInverse:
+			err = d.CosetFFTInverse(v, generator)
+		default:
+			err = fmt.Errorf("plonk2: unsupported NTT direction %d", plan.Direction)
+		}
+		if err != nil {
+			return fmt.Errorf("plonk2: NTT batch item %d: %w", i, err)
+		}
+	}
+	return nil
+}

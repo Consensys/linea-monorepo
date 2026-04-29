@@ -23,6 +23,7 @@ type G1MSM struct {
 	handle     C.gnark_gpu_plonk2_msm_t
 	points     int
 	windowBits int
+	runPlan    MSMRunPlan
 }
 
 // NewG1MSM uploads affine short-Weierstrass points and returns a reusable MSM.
@@ -38,16 +39,28 @@ func newG1MSMWithWindowBits(dev *gpu.Device, curve Curve, points []uint64, windo
 	if dev == nil || dev.Handle() == nil {
 		return nil, gpu.ErrDeviceClosed
 	}
-	pointWords := 2 * info.BaseFieldLimbs
-	if len(points) == 0 {
-		return nil, fmt.Errorf("plonk2: point buffer must not be empty")
+	_, count, err := validateRawAffinePoints(curve, points)
+	if err != nil {
+		return nil, err
 	}
-	if len(points)%pointWords != 0 {
-		return nil, fmt.Errorf("plonk2: point word count %d is not a multiple of %d", len(points), pointWords)
-	}
-	count := len(points) / pointWords
 	if windowBits == 0 {
-		windowBits = defaultMSMWindowBits(info, count)
+		runPlan, err := defaultMSMRunPlan(MSMRunPlanConfig{
+			Curve:  curve,
+			Points: count,
+		})
+		if err != nil {
+			return nil, err
+		}
+		windowBits = runPlan.WindowBits
+	}
+	runPlan, err := defaultMSMRunPlan(MSMRunPlanConfig{
+		Curve:      curve,
+		Points:     count,
+		WindowBits: windowBits,
+		SharedBase: true,
+	})
+	if err != nil {
+		return nil, err
 	}
 	if windowBits <= 1 || windowBits > 24 {
 		return nil, fmt.Errorf("plonk2: window bits must be in [2,24]")
@@ -73,6 +86,7 @@ func newG1MSMWithWindowBits(dev *gpu.Device, curve Curve, points []uint64, windo
 		handle:     handle,
 		points:     count,
 		windowBits: windowBits,
+		runPlan:    runPlan,
 	}
 	runtime.SetFinalizer(msm, (*G1MSM).Close)
 	return msm, nil
@@ -121,16 +135,9 @@ func (m *G1MSM) CommitRaw(scalars []uint64) ([]uint64, error) {
 	if len(scalars) == 0 {
 		return nil, fmt.Errorf("plonk2: scalar buffer must not be empty")
 	}
-	if len(scalars)%m.info.ScalarLimbs != 0 {
-		return nil, fmt.Errorf(
-			"plonk2: scalar word count %d is not a multiple of %d",
-			len(scalars),
-			m.info.ScalarLimbs,
-		)
-	}
-	count := len(scalars) / m.info.ScalarLimbs
-	if count > m.points {
-		return nil, fmt.Errorf("plonk2: scalar count %d exceeds point count %d", count, m.points)
+	count, err := validateRawScalarsAtMost(m.curve, scalars, m.points)
+	if err != nil {
+		return nil, err
 	}
 
 	raw := make([]uint64, 3*m.info.BaseFieldLimbs)
@@ -144,4 +151,27 @@ func (m *G1MSM) CommitRaw(scalars []uint64) ([]uint64, error) {
 		return nil, err
 	}
 	return correctRawMontgomeryMSM(m.curve, raw)
+}
+
+// commitRawBatch computes a private shared-base commitment wave.
+//
+// The implementation intentionally preserves the existing single-commit CUDA
+// path. Callers that care about amortizing setup costs should pin work buffers
+// before calling and release them after the whole wave.
+func (m *G1MSM) commitRawBatch(scalarBatch [][]uint64) ([][]uint64, error) {
+	if len(scalarBatch) == 0 {
+		return nil, fmt.Errorf("plonk2: scalar batch must not be empty")
+	}
+	out := make([][]uint64, len(scalarBatch))
+	for i := range scalarBatch {
+		if len(scalarBatch[i]) == 0 {
+			return nil, fmt.Errorf("plonk2: scalar batch item %d must not be empty", i)
+		}
+		commitment, err := m.CommitRaw(scalarBatch[i])
+		if err != nil {
+			return nil, fmt.Errorf("plonk2: scalar batch item %d: %w", i, err)
+		}
+		out[i] = commitment
+	}
+	return out, nil
 }

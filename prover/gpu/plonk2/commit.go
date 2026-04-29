@@ -33,16 +33,12 @@ func CommitRaw(dev *gpu.Device, curve Curve, points, scalars []uint64) ([]uint64
 	if err != nil {
 		return nil, err
 	}
-	if len(points) == 0 {
-		return nil, fmt.Errorf("plonk2: point buffer must not be empty")
+	_, count, err := validateRawAffinePoints(curve, points)
+	if err != nil {
+		return nil, err
 	}
-	pointWords := 2 * info.BaseFieldLimbs
-	if len(points)%pointWords != 0 {
-		return nil, fmt.Errorf("plonk2: point word count %d is not a multiple of %d", len(points), pointWords)
-	}
-	count := len(points) / pointWords
-	if len(scalars) != count*info.ScalarLimbs {
-		return nil, fmt.Errorf("plonk2: scalar word count %d, want %d", len(scalars), count*info.ScalarLimbs)
+	if err := validateRawScalarsExact(curve, scalars, count); err != nil {
+		return nil, err
 	}
 	windowBits := 16
 	if info.ScalarBits > 320 {
