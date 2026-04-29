@@ -42,8 +42,8 @@ func EvalEqBase(q, h []field.Element) field.Element {
 	for i := range q {
 		var nxt, xy, sum field.Element
 		xy.Mul(&q[i], &h[i])
-		xy.Add(&xy, &xy)    // 2·q[i]·h[i]
-		nxt.Add(&one, &xy)  // 1 + 2·q[i]·h[i]
+		xy.Add(&xy, &xy)   // 2·q[i]·h[i]
+		nxt.Add(&one, &xy) // 1 + 2·q[i]·h[i]
 		sum.Add(&q[i], &h[i])
 		nxt.Sub(&nxt, &sum) // 1 + 2·q[i]·h[i] − q[i] − h[i]
 		res.Mul(&res, &nxt)
@@ -147,7 +147,9 @@ func FoldedEqTableExt(table []field.Ext, coords []field.Ext, multiplier ...field
 //	copy(table, full[chunkID*chunkSize : (chunkID+1)*chunkSize])
 //
 // An optional multiplier is forwarded to the inner [FoldedEqTableBase] call.
-func ChunkOfEqTableBase(table []field.Element, chunkID, chunkSize int, coords []field.Element, multiplier ...field.Element) {
+func ChunkOfEqTableBase(table []field.Element, chunkID, chunkSize int,
+	coords []field.Element, multiplier ...field.Element) {
+
 	nChunks := (1 << len(coords)) / chunkSize
 	logNChunks := bits.TrailingZeros(uint(nChunks)) // log₂(nChunks); valid since nChunks is a power of 2
 
