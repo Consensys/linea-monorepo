@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       include-path:
-        description: "git-cliff --include-path filter — single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+        description: "git-cliff --include-path filter — single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
         required: true
         type: string
       cliff-config:
@@ -44,12 +44,12 @@ jobs:
     runs-on: ${{ inputs.runner }}
     permissions:
       contents: write
-    name: Prepare ${{ inputs.component-name }} release (changelog + tag)
+    name: Release ${{ inputs.component-name }} (changelog + tag)
     outputs:
-      release_tag: ${{ steps.version.outputs.tag }}
-      release_version: ${{ steps.version.outputs.version }}
+      release_tag: ${{ steps.version.outputs.next_tag }}
+      release_version: ${{ steps.version.outputs.next_version }}
       docker_tag: ${{ steps.dockertag.outputs.dockertag }}
-      changelog: ${{ steps.changelog.outputs.content }}
+      changelog: ${{ steps.latest-changelog.outputs.changelog_content }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -68,95 +68,33 @@ jobs:
         with:
           tool: git-cliff
 
-      # Normalize inputs.include-path (plain string or JSON array string) into
-      # one path per line so downstream steps reconstruct a bash array safely.
-      - name: Build include-path list
-        id: paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          {
-            echo 'include_paths<<__PATHS_EOF__'
-            echo '${{ inputs.include-path }}' \
-              | jq -r 'if type == "array" then .[] else . end'
-            echo '__PATHS_EOF__'
-          } >> "$GITHUB_OUTPUT"
-
       # Compute the release version and tag up front, so the changelog entry
       # prepended in the next step is stamped with the version (not [unreleased]).
       - name: Compute next ${{ inputs.component-name }} version (semver)
         id: version
-        shell: bash
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        run: |
-          set -euo pipefail
-          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config "${CLIFF_CONFIG}" --bumped-version)
-          for p in "${paths[@]}"; do
-            cliff_args+=(--include-path "${p}")
-          done
-          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
-          next_tag=$(git cliff "${cliff_args[@]}")
-          if [ -z "${next_tag}" ]; then
-            echo "git-cliff returned no version; nothing to release."
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          next_semver="${next_tag#releases/${COMPONENT}/v}"
-          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*" 2>/dev/null || echo "") 
-          echo "current ${COMPONENT} tag: ${current_tag}"
-          echo "next ${COMPONENT} tag:    ${next_tag}"
-          echo "next ${COMPONENT} semver: ${next_semver}"
-          changed=false
-          if [ "${current_tag}" != "${next_tag}" ]; then
-            changed=true
-          fi
-          {
-            echo "tag=${next_tag}"
-            echo "version=${next_semver}"
-            echo "changed=${changed}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Ensure ${{ inputs.folder-name }}/CHANGELOG.md exists
-        if: steps.version.outputs.changed == 'true'
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          FOLDER_NAME: ${{ inputs.folder-name }}
-        run: |
-          set -euo pipefail
-          if [ ! -f "${FOLDER_NAME}/CHANGELOG.md" ]; then
-            printf "# %s Changelog\n\n" "${COMPONENT^}" > "${FOLDER_NAME}/CHANGELOG.md"
-          fi
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ inputs.component-name }}
+          include-path: ${{ inputs.include-path }}
+          compute-next-tag-version: "true"
 
       # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
       # via --tag, so the body template renders {{ version }} instead of [unreleased].
       - name: Generate and prepend release changelog section
-        if: steps.version.outputs.changed == 'true'
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          FOLDER_NAME: ${{ inputs.folder-name }}
-          CLIFF_CONFIG: ${{ inputs.cliff-config }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config "${CLIFF_CONFIG}" --unreleased --tag "${VERSION}")
-          for p in "${paths[@]}"; do
-            cliff_args+=(--include-path "${p}")
-          done
-          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${FOLDER_NAME}/CHANGELOG.md")
-          git cliff "${cliff_args[@]}"
+        if: steps.version.outputs.tag_changed == 'true'
+        id: prepend-changelog
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ inputs.component-name }}
+          include-path: ${{ inputs.include-path }}
+          prepend-changelog: "true"
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
           FOLDER_NAME: ${{ inputs.folder-name }}
-          TAG: ${{ steps.version.outputs.tag }}
+          TAG: ${{ steps.version.outputs.next_tag }}
         run: |
           set -euo pipefail
           if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
@@ -169,10 +107,10 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create and push ${{ inputs.component-name }} release tag
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
-          TAG: ${{ steps.version.outputs.tag }}
+          TAG: ${{ steps.version.outputs.next_tag }}
         run: |
           set -euo pipefail
           if [ -z "${TAG}" ]; then
@@ -188,38 +126,26 @@ jobs:
           echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
 
       - name: Generate ${{ inputs.component-name }} latest changelog
-        if: steps.version.outputs.changed == 'true'
-        id: changelog
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config "${CLIFF_CONFIG}" --latest)
-          for p in "${paths[@]}"; do
-            cliff_args+=(--include-path "${p}")
-          done
-          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
-          {
-            echo 'content<<__CLIFF_EOF__'
-            git cliff "${cliff_args[@]}"
-            echo '__CLIFF_EOF__'
-          } >> "$GITHUB_OUTPUT"
+        if: steps.version.outputs.tag_changed == 'true'
+        id: latest-changelog
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ inputs.component-name }}
+          include-path: ${{ inputs.include-path }}
+          generate-changelog-mode: "latest"
 
       - name: Compute version tags
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         id: compute_version_tags
         uses: ./.github/actions/compute-version-tags
 
       - name: Set timestamp
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         id: timestamp
         run: echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
 
       - name: Set docker tag
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         id: dockertag
         run: |
-          echo "dockertag=${{ steps.version.outputs.version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> "$GITHUB_OUTPUT"
+          echo "dockertag=${{ steps.version.outputs.next_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> "$GITHUB_OUTPUT"
