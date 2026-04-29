@@ -2,6 +2,7 @@ package distributed_test
 
 import (
 	"fmt"
+	"math/bits"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -13,10 +14,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilineareval"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilinvortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+	"github.com/consensys/linea-monorepo/prover/protocol/sumcheck"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
@@ -60,6 +64,7 @@ func TestDistributedWizard(t *testing.T) {
 		&ProjectionTestCase{numRow: 1 << NbRow},
 		&PermutationTestCase{numRow: 1 << NbRow},
 		&FibExtTestCase{numRow: 1 << NbRow},
+		&MultilinVortexTestCase{numRow: 1 << NbRow},
 	}
 
 	for _, tc := range testCases {
@@ -108,15 +113,24 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		distWizard *distributed.DistributedWizard
 	)
 
+	// Always create the DistributedWizard first so PostDistribute can run on
+	// the bare Bootstrapper before any further compilation.
+	distWizard = distributed.DistributeWizard(wiop, disc)
+
+	// Allow test cases to compile Bootstrapper-level protocols (e.g. ML Vortex)
+	// that must run after distribution but before proving.
+	type postDistributer interface {
+		PostDistribute(dw *distributed.DistributedWizard)
+	}
+	if pd, ok := tc.(postDistributer); ok {
+		pd.PostDistribute(distWizard)
+	}
+
 	// This tests the compilation of the compiled-IOP
 	if segmentCompilation {
 		// compile with vortex/ self-recursion/recursion
-		distWizard = distributed.DistributeWizard(wiop, disc).
-			CompileSegments(testCompilationParams).
+		distWizard.CompileSegments(testCompilationParams).
 			Conglomerate(testCompilationParams)
-	} else {
-		// dummy compilation
-		distWizard = distributed.DistributeWizard(wiop, disc)
 	}
 
 	// This compilation step is needed for sanity-checking the bootstrapper
@@ -592,5 +606,114 @@ func (d *FibExtTestCase) Assign(run *wizard.ProverRuntime) {
 func (d *FibExtTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
 	return []*distributed.ModuleDiscoveryAdvice{
 		distributed.SameSizeAdvice("fib-ext-module", d.wiop.Columns.GetHandle("extFib")),
+	}
+}
+
+// MultilinVortexTestCase tests that the multilinear Vortex protocol runs
+// correctly through the distributed wizard. The MLEval query is marked IGNORED
+// in Define so DistributeWizard never sees it. PostDistribute compiles the full
+// ML protocol on the Bootstrapper after distribution, avoiding the round>0
+// column check inside FilterCompiledIOP.
+type MultilinVortexTestCase struct {
+	numRow  int
+	numVars int
+	wiop    *wizard.CompiledIOP
+}
+
+func (d *MultilinVortexTestCase) Name() string { return "MultilinVortex" }
+
+// Define registers structural columns plus a single MLEval column. The MLEval
+// query is immediately marked as IGNORED so the distribution infrastructure
+// never encounters it during FilterCompiledIOP.
+func (d *MultilinVortexTestCase) Define(comp *wizard.CompiledIOP) {
+	d.wiop = comp
+	d.numVars = bits.Len(uint(d.numRow)) - 1
+
+	// Two pseudo-modules differentiated by a duplicate constraint so they
+	// produce distinct verifying keys (same pattern as LookupTestCase).
+	a0 := comp.InsertCommit(0, "mlv_a0", d.numRow, true)
+	b0 := comp.InsertCommit(0, "mlv_b0", d.numRow, true)
+	c0 := comp.InsertCommit(0, "mlv_c0", d.numRow, true)
+	a1 := comp.InsertCommit(0, "mlv_a1", d.numRow, true)
+	b1 := comp.InsertCommit(0, "mlv_b1", d.numRow, true)
+	c1 := comp.InsertCommit(0, "mlv_c1", d.numRow, true)
+
+	comp.InsertGlobal(0, "mlv_global_0", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "mlv_global_0_dup", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "mlv_global_1", symbolic.Sub(c1, b1, a1))
+
+	// Inclusion makes a0/b0/c0/a1/b1/c1 LPP columns so CompileSegment places
+	// them at round 0 of the GL module, giving Vortex a round-0 Merkle root.
+	comp.InsertInclusion(0, "mlv_self_incl", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+
+	col := comp.InsertCommit(0, "mlv_col", d.numRow, true)
+	comp.InsertMultilinear(0, "MLV_EVAL", d.numVars, []ifaces.Column{col})
+	// Mark as ignored so FilterCompiledIOP never sees it. The ML protocol is
+	// compiled on the Bootstrapper by PostDistribute after DistributeWizard.
+	comp.QueriesParams.MarkAsIgnored("MLV_EVAL")
+}
+
+// PostDistribute compiles the full multilinear Vortex opening on the
+// Bootstrapper after DistributeWizard has run. This avoids the round>0 column
+// panic in FilterCompiledIOP while still providing a proper ML proof on the
+// Bootstrapper.
+func (d *MultilinVortexTestCase) PostDistribute(dw *distributed.DistributedWizard) {
+	// CompileIgnored picks up the pre-ignored MLV_EVAL and drives it through
+	// 4 rounds of multilinvortex reduction (sufficient for numVars ≤ 8).
+	wizard.ContinueCompilation(
+		dw.Bootstrapper,
+		multilineareval.CompileIgnored,
+		multilinvortex.Compile,
+		multilineareval.Compile,
+		multilinvortex.Compile,
+		multilineareval.Compile,
+		multilinvortex.Compile,
+		multilinvortex.Compile,
+		multilineareval.Compile,
+	)
+}
+
+// Assign assigns the structural columns and the MLEval params for the Bootstrapper.
+func (d *MultilinVortexTestCase) Assign(run *wizard.ProverRuntime) {
+	// RightZeroPadded mirrors the LookupTestCase pattern: the last two rows
+	// are zero so the inclusion query (mlv_self_incl) can match across modules.
+	run.AssignColumn("mlv_a0", smartvectors.RightZeroPadded(vector.Repeat(field.One(), d.numRow-2), d.numRow))
+	run.AssignColumn("mlv_b0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("mlv_c0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
+	run.AssignColumn("mlv_a1", smartvectors.RightZeroPadded(vector.Repeat(field.One(), d.numRow-2), d.numRow))
+	run.AssignColumn("mlv_b1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("mlv_c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
+
+	// MLEval column: values 1, 2, ..., numRow.
+	colVals := make([]field.Element, d.numRow)
+	for i := range colVals {
+		colVals[i] = field.NewElement(uint64(i + 1))
+	}
+	run.AssignColumn("mlv_col", smartvectors.NewRegular(colVals))
+
+	// Fixed evaluation point: (1, 2, ..., numVars) lifted into the extension field.
+	point := make([]fext.Element, d.numVars)
+	for i := range point {
+		point[i] = fext.NewFromInt(int64(i+1), 0, 0, 0)
+	}
+
+	// Compute y = MultilinEval(colVals)(point).
+	valsExt := make([]fext.Element, d.numRow)
+	for i, v := range colVals {
+		valsExt[i].B0.A0 = v
+	}
+	y := sumcheck.MultiLin(valsExt).Evaluate(point)
+
+	run.AssignMultilinearExt("MLV_EVAL", point, y)
+}
+
+// Advices returns module-discovery advice for MultilinVortexTestCase.
+func (d *MultilinVortexTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("mlv-module-0", d.wiop.Columns.GetHandle("mlv_a0")),
+		distributed.SameSizeAdvice("mlv-module-0", d.wiop.Columns.GetHandle("mlv_a1")),
+		// mlv_col forms a singleton QBM (MLV_EVAL is ignored) so it needs
+		// explicit advice to pass analyzeWithAdvices.
+		distributed.SameSizeAdvice("mlv-module-0", d.wiop.Columns.GetHandle("mlv_col")),
 	}
 }

@@ -26,20 +26,29 @@ import (
 func runConglomerationWizardTest(t *testing.T, tc DistributedTestCase, numRow int) {
 	t.Helper()
 
+	comp := wizard.Compile(func(build *wizard.Builder) {
+		tc.Define(build.CompiledIOP)
+	})
+
+	disc := &distributed.StandardModuleDiscoverer{
+		TargetWeight: 3 * numRow / 2,
+		Advices:      tc.Advices(),
+	}
+
+	distWizard := distributed.DistributeWizard(comp, disc).
+		CompileSegments(testCompilationParams).
+		Conglomerate(testCompilationParams)
+
+	// Allow test cases to compile Bootstrapper-level protocols (e.g. ML Vortex)
+	// that must run after distribution but before proving.
+	type postDistributer interface {
+		PostDistribute(dw *distributed.DistributedWizard)
+	}
+	if pd, ok := tc.(postDistributer); ok {
+		pd.PostDistribute(distWizard)
+	}
+
 	var (
-		comp = wizard.Compile(func(build *wizard.Builder) {
-			tc.Define(build.CompiledIOP)
-		})
-
-		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 3 * numRow / 2,
-			Advices:      tc.Advices(),
-		}
-
-		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments(testCompilationParams).
-				Conglomerate(testCompilationParams)
-
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
 			runtimeBoot,
@@ -76,6 +85,7 @@ func TestConglomerationBasic(t *testing.T) {
 		&LookupTestCase{numRow: numRow},
 		&ProjectionTestCase{numRow: numRow},
 		&PermutationTestCase{numRow: numRow},
+		&MultilinVortexTestCase{numRow: numRow},
 	}
 
 	for _, tc := range testCases {

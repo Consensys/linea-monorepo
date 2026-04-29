@@ -68,6 +68,43 @@ func Compile(comp *wizard.CompiledIOP) {
 	}
 }
 
+// CompileIgnored processes all currently-IGNORED MultilinearEval queries in comp,
+// compiling them exactly as Compile does for unignored ones. Call this after
+// DistributeWizard so that the ML columns are only created on the Bootstrapper
+// after FilterCompiledIOP has already run.
+func CompileIgnored(comp *wizard.CompiledIOP) {
+	type groupKey struct{ round, numVars int }
+
+	groups := map[groupKey][]query.MultilinearEval{}
+	var orderedKeys []groupKey
+
+	for _, name := range comp.QueriesParams.AllKeys() {
+		if !comp.QueriesParams.IsIgnored(name) {
+			continue
+		}
+		q, ok := comp.QueriesParams.Data(name).(query.MultilinearEval)
+		if !ok {
+			continue
+		}
+		r := comp.QueriesParams.Round(name)
+		k := groupKey{r, q.NumVars}
+		if _, seen := groups[k]; !seen {
+			orderedKeys = append(orderedKeys, k)
+		}
+		groups[k] = append(groups[k], q)
+	}
+
+	if len(orderedKeys) == 0 {
+		return
+	}
+
+	for _, k := range orderedKeys {
+		ctx := buildContext(comp, k.round, k.numVars, groups[k])
+		comp.RegisterProverAction(k.round+1, &proverAction{ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &verifierAction{ctx: ctx})
+	}
+}
+
 func nextPow2(x int) int {
 	if x <= 1 {
 		return 1

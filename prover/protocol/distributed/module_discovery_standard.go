@@ -362,11 +362,13 @@ func (disc *StandardModuleDiscoverer) NumColumnOf(moduleName ModuleName) int {
 	return 0
 }
 
-// ModuleOf returns the module name for a given column“
+// ModuleOf returns the module name for a given column. Returns NoModuleFound for
+// columns that were added after disc.Analyze ran (e.g. Bootstrapper-level ML
+// columns created by PostDistribute), so callers can safely skip them.
 func (disc *StandardModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
 	res, found := disc.ColumnsToModule[col.GetColID()]
 	if !found {
-		utils.Panic("column not found, col: %q, disc: %v", col.GetColID(), disc.ColumnsToModule)
+		return NoModuleFound
 	}
 	return res
 }
