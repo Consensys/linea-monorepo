@@ -17,19 +17,24 @@ const l2AccountManager = context.getL2AccountManager();
 describe("Layer 2 test suite", () => {
   const lineaEstimateGasClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
-  it.concurrent("Should revert if transaction data size is above the limit", async () => {
-    const account = await l2AccountManager.generateAccount();
-    const walletClient = context.l2WalletClient({ account });
-    const dummyContract = context.l2Contracts.dummyContract(walletClient);
+  // TMP: 1ms timeout forces immediate failure for CI analysis testing
+  it.concurrent(
+    "Should revert if transaction data size is above the limit",
+    async () => {
+      const account = await l2AccountManager.generateAccount();
+      const walletClient = context.l2WalletClient({ account });
+      const dummyContract = context.l2Contracts.dummyContract(walletClient);
 
-    const oversizedData = toHex(randomBytes(TRANSACTION_CALLDATA_LIMIT).toString("hex"));
-    logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
+      const oversizedData = toHex(randomBytes(TRANSACTION_CALLDATA_LIMIT).toString("hex"));
+      logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
 
-    await expect(dummyContract.write.setPayload([oversizedData], { gas: 5_000_000n })).rejects.toThrow(
-      "Calldata of transaction is greater than the allowed max of 30000",
-    );
-    logger.debug("Transaction correctly reverted due to oversized data.");
-  });
+      await expect(dummyContract.write.setPayload([oversizedData], { gas: 5_000_000n })).rejects.toThrow(
+        "Calldata of transaction is greater than the allowed max of 30000",
+      );
+      logger.debug("Transaction correctly reverted due to oversized data.");
+    },
+    1,
+  );
 
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
     const account = await l2AccountManager.generateAccount();

@@ -246,7 +246,7 @@ jobs:
   notify:
     # always() so Slack still runs when ai-analysis is skipped, fails, or succeeds; needs still gates ordering.
     needs: [ai-analysis]
-    if: always()
+    if: false # TMP: disabled to suppress Slack noise during CI analysis testing
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Compute context values
