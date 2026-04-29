@@ -1,1 +1,1 @@
-# Test for auto coordinator changelog and tag
+# Test for auto coordinator changelog and tag 2
