@@ -22,22 +22,6 @@ func buildLagrangeTable(rng *rand.Rand, n int) []field.Element {
 	return coeffs
 }
 
-// evalAtPoint evaluates the Lagrange-form table at an arbitrary point z
-// using the barycentric formula (via the forward-NTT domain helper in gnark).
-// For testing, we just iNTT to get coefficients and evaluate directly.
-func evalCoeffAt(coeffs []field.Element, z field.Ext) field.Ext {
-	var result field.Ext
-	var pow field.Ext
-	pow.SetOne()
-	for i := range coeffs {
-		var term field.Ext
-		term.MulByElement(&pow, &coeffs[i])
-		result.Add(&result, &term)
-		pow.Mul(&pow, &z)
-	}
-	return result
-}
-
 // TestMPTSSinglePoly runs Compile on a single LagrangeEval and verifies that
 // prover and verifier actions are both consistent.
 func TestMPTSSinglePoly(t *testing.T) {

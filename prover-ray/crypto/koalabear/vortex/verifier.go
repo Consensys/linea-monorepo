@@ -7,6 +7,38 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
+// VerifyMultilinear verifies a Vortex opening proof where the statement is a
+// multilinear evaluation claim rather than a Lagrange evaluation.
+func VerifyMultilinear(params *Params, proof *OpeningProof, vi *VerifierInputMultilinear,
+	commitments []Commitment, merkleProofs [][]smt.Proof, withSIS []bool) error {
+
+	if withSIS == nil {
+		withSIS = make([]bool, len(merkleProofs))
+		for i := range withSIS {
+			withSIS[i] = true
+		}
+	}
+
+	if err := VerifyCommonMultilinear(params, proof, vi); err != nil {
+		return err
+	}
+
+	return CheckColumnInclusion(params.Key, proof.Columns, merkleProofs, commitments, withSIS)
+}
+
+// VerifyCommonMultilinear performs the shared verification steps for the
+// multilinear variant: codeword check, linear-combination consistency, and
+// multilinear statement check.
+func VerifyCommonMultilinear(params *Params, proof *OpeningProof, vi *VerifierInputMultilinear) error {
+	if err := CheckIsCodeWord(params.RsParams, proof.LinearCombination); err != nil {
+		return err
+	}
+	if err := CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns); err != nil {
+		return err
+	}
+	return CheckStatementMultilinear(params.RsParams, proof.LinearCombination, vi.Ys, vi.H, vi.Alpha)
+}
+
 // CheckColumnInclusion checks the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_bls12377(sis(columns[i][j])).
 func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,

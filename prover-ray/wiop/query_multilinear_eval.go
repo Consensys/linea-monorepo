@@ -177,7 +177,9 @@ func materializeTable(cv *ConcreteVector, padding PaddingDirection, n int) field
 // Panics if ctx or polys is nil/empty, if any column view is shifted, if the
 // column size is not a power of two, if len(evalPoints) ≠ log₂(size), or if
 // no round follows the latest column round.
-func (sys *System) NewMultilinearEval(ctx *ContextFrame, polys []*ColumnView, evalPoints []FieldPromise) *MultilinearEval {
+func (sys *System) NewMultilinearEval(ctx *ContextFrame, polys []*ColumnView,
+	evalPoints []FieldPromise) *MultilinearEval {
+
 	if ctx == nil {
 		panic("wiop: System.NewMultilinearEval requires a non-nil ContextFrame")
 	}

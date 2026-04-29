@@ -20,7 +20,7 @@ func TestEvalGateDegree(t *testing.T) {
 
 // TestEvalGateImplementsInterface asserts at compile time that *EvalGate
 // satisfies sumcheck.Gate.
-func TestEvalGateImplementsInterface(t *testing.T) {
+func TestEvalGateImplementsInterface(_ *testing.T) {
 	var _ sumcheck.Gate = (*EvalGate)(nil)
 }
 
