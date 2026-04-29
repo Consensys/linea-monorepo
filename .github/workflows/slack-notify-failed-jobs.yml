@@ -95,6 +95,7 @@ jobs:
         uses: anthropics/claude-code-base-action@3080e38742e9e6aab0ecf8713353dc072acca48c # main@2026-04-28 (sync from claude-code-action base-action@11a9dad)
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          show_full_output: true
           settings: '{"permissions":{"allow":["Bash(*)","Read(*)","Edit(./e2e-failure-analysis.md)","Edit(./e2e-failure-summary.txt)"],"deny":[]}}'
           prompt: |
             You are analyzing a CI failure in the Linea monorepo's E2E test suite.
