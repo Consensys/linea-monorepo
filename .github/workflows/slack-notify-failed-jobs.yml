@@ -92,10 +92,10 @@ jobs:
           path: /tmp/docker-logs
 
       - name: Run Claude AI analysis
+        id: claude
         uses: anthropics/claude-code-base-action@3080e38742e9e6aab0ecf8713353dc072acca48c # main@2026-04-28 (sync from claude-code-action base-action@11a9dad)
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
-          show_full_output: true
           settings: '{"permissions":{"allow":["Bash(*)","Read(*)","Edit(./e2e-failure-analysis.md)","Edit(./e2e-failure-summary.txt)"],"deny":[]}}'
           prompt: |
             You are analyzing a CI failure in the Linea monorepo's E2E test suite.
@@ -212,6 +212,15 @@ jobs:
         with:
           name: ai-failure-analysis
           path: e2e-failure-analysis.md
+          if-no-files-found: ignore
+
+      - name: Upload Claude execution log
+        if: ${{ always() && steps.claude.outputs.execution_file != '' }}
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: ai-execution-log
+          path: ${{ steps.claude.outputs.execution_file }}
           if-no-files-found: ignore
 
       - name: Extract summary for Slack
