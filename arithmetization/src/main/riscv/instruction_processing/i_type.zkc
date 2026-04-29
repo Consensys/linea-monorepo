@@ -2,6 +2,7 @@ include "../memory.zkc"
 include "../ram/read.zkc"
 include "../utils/signed_comparisons.zkc"
 include "../utils/sign_extend.zkc"
+include "../utils/signed_sum.zkc"
 
 // Process a RISC-V I-type instruction and return the next program counter.
 //
@@ -52,16 +53,10 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
 
     var signext_imm12_64:DoubleWord
     signext_imm12_64 = sgn_extension_u12_u64(imm12)
-    var sign_bit:u1 = sign_bit_of_double_word(signext_imm12_64)
-    var absolute_value_signext_imm12_64:UnsignedDoubleWord = absolute_value_double_word(signext_imm12_64)
 
     var mem_address:Address
 
-    if (sign_bit == 0) {
-        mem_address = (registers[rs1] + signext_imm12_64) as Address
-    } else {
-        mem_address = (registers[rs1] - absolute_value_signext_imm12_64) as Address
-    }
+    mem_address = signed_sum(registers[rs1], signext_imm12_64) as Address
 
     new_pc = (pc + 4) as Address //TODO: this is the default case, we will overwrite it for JALR. 
     // We should handle this differently to avoid a potential second row just to overwrite the value of new_pc?
@@ -95,11 +90,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
      else if opcode == OP_IMM {
 
         if funct3 == FUNCT3_ADDI {
-            if (sign_bit == 0) {
-                registers[rd] = (registers[rs1] + signext_imm12_64) as DoubleWord
-            } else {
-                registers[rd] = (registers[rs1] - absolute_value_signext_imm12_64) as DoubleWord
-            }
+            registers[rd] = signed_sum(registers[rs1], signext_imm12_64) as DoubleWord 
         } else if funct3 == FUNCT3_SLTI {
             var is_lt:Boolean = signed_LT(registers[rs1], signext_imm12_64)
             if is_lt == 1 {
@@ -108,7 +99,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
                 registers[rd] = 0
             }
         } else if funct3 == FUNCT3_SLTIU {
-            // Warn: this is an unsigned comparaison (even if imm12 is SGN_EXT)
+            // Warn: this is an unsigned comparison (even if imm12 is SGN_EXT)
             if registers[rs1]<signext_imm12_64 {
                 registers[rd] = 1
             } else {
@@ -144,11 +135,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
 
      else if opcode == JALR {
         // only instruction is JALR, no need to switch over funct3
-        if (sign_bit == 0) {
-            new_pc = ((registers[rs1] + signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
-        } else {
-            new_pc = ((registers[rs1] - absolute_value_signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
-        }
+        new_pc = (signed_sum(registers[rs1], signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
         registers[rd] = (pc + 4) as DoubleWord
     }
 
