@@ -1,3 +1,27 @@
+## [3.0.0] - 2026-04-29
+
+### 🚀 Features
+
+- *(coordinator)* Optional traces conflation config for backtesting (#2937)
+- Set linea-besu as a gradle module (#2720)
+- *(coordinator)* [**breaking**] Breaking feature
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Fix ftx conflation cutoff, stop conflation on Phylax rejection
+- *(coordinator)* Enforce l2blocks fetch limit for conflation backtesting (#2908)
+- *(coordinator)* Ftx conflation and fix metrics (#2911)
+- *(coordinator)* Fixing the state root hash verification for the invalidity proofs (#2907)
+
+### 🧪 Testing
+
+- *(coordinator)* Trigger release
+- *(coordinator)* Trigger release
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Refactor: create calculators factory
+- *(coordinator)* Move conflation calculators into linea.conflation package (#2906)
 ## [2.1.0] - 2026-04-27
 
 ### 🚀 Features
