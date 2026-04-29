@@ -25,7 +25,7 @@ EXT  := $(suffix $(TEST))
 SRC  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
 BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME)
 JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME).json
-# Note: the JSON file will be removed and main.zkc will receive directly the ELF file
+# Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
 # Set STRIP to strip the ELF (remove debug symbols)
 STRIP ?= false
@@ -35,8 +35,8 @@ STRIP ?= false
 ZIG_STRIP ?= true
 
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
-GO_MAIN  ?= $(MAKEFILE_DIR)main.go
-ZKC_MAIN ?= $(abspath $(MAKEFILE_DIR)../../main/riscv/main.zkc)
+GO_MAIN  := $(MAKEFILE_DIR)main.go
+ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
 
 # Inputs and offsets for the program
 INBYTES        ?= ""
