@@ -54,46 +54,76 @@ type context struct {
 	RowClaims []query.MultilinearEval
 }
 
-// Compile applies one round of the multilinear Vortex opening protocol. It
-// consumes all MultilinearEval queries (after they have been batched to a
-// shared point by multilineareval.Compile) and produces the two new
-// MultilinearEval claims described in the package doc.
+// Compile applies one round of the multilinear Vortex opening protocol using
+// the balanced split nRow = ⌈n/2⌉. See [CompileWithFold] for a configurable
+// variant.
 func Compile(comp *wizard.CompiledIOP) {
+	compileWithNRow(comp, -1) // -1 signals "use default ⌈n/2⌉"
+}
+
+// CompileWithFold returns a compiler pass that uses nFoldRows row-variables per
+// Vortex round instead of the default ⌈n/2⌉.
+//
+// Setting nFoldRows=1 (WHIR-style minimum) gives a 2-element RowEvals column
+// that is immediately terminal (numVars=1), so the RowClaims path exits after
+// one round for every polynomial regardless of its original size.  The cost is
+// that UAlpha has 2^(n−1) elements instead of 2^⌈n/2⌉, so proof size grows
+// unless the Vortex commitment layer shares a single Merkle tree across
+// same-size UAlpha columns (future work).
+//
+// When paired with [multilineareval.CompileAllRound], nFoldRows=1 produces the
+// WHIR-style early-exit recursion: every round, ALL polynomials (regardless of
+// original size) share the same RowClaims terminal path, and UCols of different
+// sizes are naturally re-batched by the next CompileAllRound call.
+func CompileWithFold(nFoldRows int) func(*wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP) {
+		compileWithNRow(comp, nFoldRows)
+	}
+}
+
+// compileWithNRow is the shared implementation. nFoldRows < 1 means "use ⌈n/2⌉".
+func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
+	idx := 0
 	for _, name := range comp.QueriesParams.AllUnignoredKeys() {
 		q, ok := comp.QueriesParams.Data(name).(query.MultilinearEval)
 		if !ok {
 			continue
 		}
-		// Only process queries that were introduced by the multilineareval
-		// compiler (i.e. residuals). We recognize them by having more than one
-		// polynomial — the residual always collects all columns.
-		// For the prototype we process every MultilinearEval query.
 		comp.QueriesParams.MarkAsIgnored(name)
 		r := comp.QueriesParams.Round(name)
 
-		// Terminal case: a 1-variable query is just a 2-point evaluation.
-		// Promote the columns to Proof status and register a direct verifier.
 		if q.NumVars == 1 {
 			for _, pol := range q.Pols {
 				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
 			}
 			comp.RegisterVerifierAction(comp.NumRounds()-1, &terminalVerifierAction{q: q})
+			idx++
 			continue
 		}
 
-		ctx := buildContext(comp, r, q)
+		// Determine nRow: clamp nFoldRows to [1, n-1].
+		n := q.NumVars
+		nRow := (n + 1) / 2 // default balanced
+		if nFoldRows >= 1 {
+			nRow = nFoldRows
+			if nRow >= n {
+				nRow = n - 1
+			}
+		}
+
+		ctx := buildContext(comp, r, q, nRow, idx)
 		comp.RegisterProverAction(r+1, &proverAction{ctx: ctx})
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &verifierAction{ctx: ctx})
+		idx++
 	}
 }
 
-func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval) *context {
+func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *context {
 	n := q.NumVars
-	nRow := (n + 1) / 2
 	nCol := n - nRow
 	K := len(q.Pols)
 
-	suffix := fmt.Sprintf("n%d_r%d_%d", n, round, comp.SelfRecursionCount)
+	suffix := fmt.Sprintf("n%d_r%d_%d_i%d", n, round, comp.SelfRecursionCount, idx)
 
 	alpha := comp.InsertCoin(
 		round+1,

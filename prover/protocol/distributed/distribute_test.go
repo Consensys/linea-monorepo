@@ -658,18 +658,21 @@ func (d *MultilinVortexTestCase) Define(comp *wizard.CompiledIOP) {
 // panic in FilterCompiledIOP while still providing a proper ML proof on the
 // Bootstrapper.
 func (d *MultilinVortexTestCase) PostDistribute(dw *distributed.DistributedWizard) {
-	// CompileIgnored picks up the pre-ignored MLV_EVAL and drives it through
-	// 4 rounds of multilinvortex reduction (sufficient for numVars ≤ 8).
+	// CompileAllRoundIgnored picks up the pre-ignored MLV_EVAL and batches all
+	// same-round queries (mixed sizes) into one combined sumcheck per round.
+	// CompileAllRound then re-batches Vortex residuals at each subsequent round.
+	// 4 pairs of (CompileAllRound + Compile) are sufficient for numVars ≤ 8.
 	wizard.ContinueCompilation(
 		dw.Bootstrapper,
-		multilineareval.CompileIgnored,
+		multilineareval.CompileAllRoundIgnored,
 		multilinvortex.Compile,
-		multilineareval.Compile,
+		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
-		multilineareval.Compile,
+		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
-		multilineareval.Compile,
+		multilineareval.CompileAllRound,
 	)
 }
 
