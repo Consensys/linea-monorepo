@@ -1,4 +1,4 @@
-# Makefile usage
+# Makefile
 
 The `Makefile` in the present folder allows to compile and run RISC-V test programs against the Linea zkVM.
 Specifically, it allows to compile programs written in assembly, Zig or Rust, convert the resulting ELF to JSON, and pass it to `zkc` as an input file that represents the program to be run.
@@ -73,7 +73,7 @@ zkc-test TEST=test.s
 zkc-test TEST=test.zig ZIG_STRIP=false
 
 # Run a Rust test with input bytes
-zkc-test TEST=test.rs INBYTES="0x01 0x02 0x03"
+zkc-test TEST=test.rs INBYTES="0xAABBCC"
 
 # Compile only, don't execute
 zkc-test compile TEST=test.s
