@@ -44,15 +44,9 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
 
     imm_sign::uimm6::rs2::rs1::funct3::uimm5 = instruction_parameters
 
-    // TODO: uniform this across different files
-    var imm:u64
-    if imm_sign == 1 {
-        imm = DWORD_SIGN_EXT_PREFIX_52_ONES::imm_sign::uimm6::uimm5
-    } else {
-        imm = (imm_sign::uimm6::uimm5) as u64
-    }
+    var signext_imm12_64:DoubleWord = sgn_extension_u12_u64(imm_sign::uimm6::uimm5)
 
-    var mem_address:Address = signed_sum(registers[rs1], imm) as Address
+    var mem_address:Address = signed_sum(registers[rs1], signext_imm12_64) as Address
 
     if funct3 == FUNCT3_SB {
         // Store byte (u8)

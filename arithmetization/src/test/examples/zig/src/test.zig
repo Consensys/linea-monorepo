@@ -1,4 +1,12 @@
 export fn _start() noreturn {
+    asm volatile (
+        \\li sp, 0x7A12001  // set stack pointer to a known memory region
+        \\call main
+    );
+    unreachable;
+}
+
+export fn main() noreturn {
     const a: i64 = 42;
     const b: i64 = 7;
 
