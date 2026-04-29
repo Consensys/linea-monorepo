@@ -113,13 +113,19 @@ jobs:
 
             ## Instructions
 
-            1. Read `/tmp/failed-job-logs.txt`.
-               - Extract the list of tests that are explicitly marked `FAIL` or `✕` in
-                 the Jest output. This is your authoritative failure list.
-               - **Do not infer, predict, or speculate about tests that might fail.**
-                 A test only appears in the report if Jest reported it as failed.
+            **Important:** `/tmp/failed-job-logs.txt` can be very large (500KB+). Never
+            attempt to read it in full. Always use `Bash(grep ...)` or `Bash(sed ...)` to
+            extract specific line ranges. Reading the whole file will fail and waste time.
+
+            1. Extract failed tests using bash - do not read the file directly:
+               ```
+               grep -n "FAIL \|✕ \|● \|Exceeded timeout\|thrown:" /tmp/failed-job-logs.txt
+               ```
+               This is your authoritative failure list. **Do not infer or speculate about
+               tests that are not explicitly marked failed in this output.**
             2. For each actually-failed test:
-               a. Extract the error message, file path, and line number from the Jest output.
+               a. Use `sed -n '<start>,<end>p' /tmp/failed-job-logs.txt` to extract the
+                  relevant error block around the line numbers from step 1.
                b. Read the test source file under `e2e/src/` to understand the assertion.
                c. Read relevant helpers referenced in stack traces.
                d. If `/tmp/docker-logs/` exists, read only the container logs that are
