@@ -1,4 +1,4 @@
 
 fn signed_sum(a:DoubleWord, b:DoubleWord) -> (c:DoubleWord) {
-   c = (((a as u65) + (b as u65)) & (MAX_UINT_64 as u65)) as DoubleWord
+    c = (((a as u65) + (b as u65)) & (MAX_UINT_64 as u65)) as DoubleWord
 }
