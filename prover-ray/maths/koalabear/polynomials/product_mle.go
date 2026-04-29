@@ -201,3 +201,100 @@ func ChunkOfEqTableExt(table []field.Ext, chunkID, chunkSize int, coords []field
 
 	FoldedEqTableExt(table, coords[logNChunks:], r)
 }
+
+// ---------------------------------------------------------------------------
+// Monomial mask: MLE of g(b) = z^{r(b)} where r(b) is the MSB-first integer.
+// ---------------------------------------------------------------------------
+
+// EvalMonomialMaskBase computes Π_{i=0}^{k-1}(1 + h[i]·(z^{2^{k-1-i}} - 1))
+// over the base field. h[0] is the MSB coordinate (pairs with z^{2^{k-1}}).
+// An empty product (k=0) returns 1.
+//
+// This is the MLE of the mask g(b) = z^{r(b)} evaluated at h, where
+// r(b) = b[0]·2^{k-1} + … + b[k-1]·2^0 is the MSB-first integer index.
+// The factored form follows because the b[i]=0 term contributes 1 (not 1-z)
+// in the product-monomial basis.
+func EvalMonomialMaskBase(z field.Element, h []field.Element) field.Element {
+	k := len(h)
+	var one field.Element
+	one.SetOne()
+	res := one
+	pow := z // pow = z^{2^0} = z; doubles each iteration
+	for i := k - 1; i >= 0; i-- {
+		var factor, tmp field.Element
+		tmp.Sub(&pow, &one)    // pow - 1
+		tmp.Mul(&tmp, &h[i])   // h[i] · (pow - 1)
+		factor.Add(&one, &tmp) // 1 + h[i] · (pow - 1)
+		res.Mul(&res, &factor)
+		if i > 0 {
+			pow.Mul(&pow, &pow) // z^{2^{k-1-i}} → z^{2^{k-i}}
+		}
+	}
+	return res
+}
+
+// EvalMonomialMaskExt is the extension-field analogue of [EvalMonomialMaskBase].
+func EvalMonomialMaskExt(z field.Ext, h []field.Ext) field.Ext {
+	k := len(h)
+	var one, res field.Ext
+	one.SetOne()
+	res.SetOne()
+	pow := z
+	for i := k - 1; i >= 0; i-- {
+		var factor, tmp field.Ext
+		tmp.Sub(&pow, &one)
+		tmp.Mul(&tmp, &h[i])
+		factor.Add(&one, &tmp)
+		res.Mul(&res, &factor)
+		if i > 0 {
+			pow.Mul(&pow, &pow)
+		}
+	}
+	return res
+}
+
+// EvalMonomialMask dispatches to [EvalMonomialMaskBase] when both z and all h
+// are base-field elements, and to [EvalMonomialMaskExt] otherwise.
+func EvalMonomialMask(z field.Gen, h []field.Gen) field.Gen {
+	allBase := z.IsBase()
+	for _, hi := range h {
+		if !hi.IsBase() {
+			allBase = false
+			break
+		}
+	}
+	if allBase {
+		hBase := make([]field.Element, len(h))
+		for i, hi := range h {
+			hBase[i] = hi.AsBase()
+		}
+		return field.ElemFromBase(EvalMonomialMaskBase(z.AsBase(), hBase))
+	}
+	hExt := make([]field.Ext, len(h))
+	for i, hi := range h {
+		hExt[i] = hi.AsExt()
+	}
+	return field.ElemFromExt(EvalMonomialMaskExt(z.AsExt(), hExt))
+}
+
+// BuildMonomialMaskExt fills dst[i] = Σ_j rhos[j]·zs[j]^i for all i in [0, len(dst)).
+// This is the combined geometric mask used when batching m polynomial evaluations
+// with recombination weights rhos[j] and evaluation points zs[j].
+// dst must be pre-allocated. O(m·n) where m = len(zs), n = len(dst).
+func BuildMonomialMaskExt(dst []field.Ext, zs []field.Ext, rhos []field.Ext) {
+	if len(zs) != len(rhos) {
+		panic(fmt.Sprintf("polynomials: BuildMonomialMaskExt: len(zs)=%d != len(rhos)=%d",
+			len(zs), len(rhos)))
+	}
+	for i := range dst {
+		dst[i].SetZero()
+	}
+	for j := range zs {
+		acc := rhos[j]
+		dst[0].Add(&dst[0], &acc)
+		for i := 1; i < len(dst); i++ {
+			acc.Mul(&acc, &zs[j])
+			dst[i].Add(&dst[i], &acc)
+		}
+	}
+}

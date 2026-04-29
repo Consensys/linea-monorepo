@@ -558,3 +558,193 @@ func BenchmarkFoldedEqTableBase(b *testing.B) {
 		FoldedEqTableBase(table, q)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// EvalMonomialMask
+// ---------------------------------------------------------------------------
+
+// TestEvalMonomialMaskConsistency is the key correctness property:
+// EvalMonomialMaskExt(z, h) must equal EvalMultilin(maskTable, h) where
+// maskTable[x] = z^x (the geometric progression).
+//
+// This follows because the mask g(b) = z^{r(b)} and r(b) = x (MSB-first integer),
+// so the MLE of [z^0, z^1, …, z^{n-1}] evaluated at h equals the factored product.
+func TestEvalMonomialMaskConsistency(t *testing.T) {
+	rng := newRng()
+
+	for range testN {
+		for k := 0; k <= 6; k++ {
+			n := 1 << k
+			z := field.PseudoRandExt(rng)
+
+			h := make([]field.Ext, k)
+			for i := range h {
+				h[i] = field.PseudoRandExt(rng)
+			}
+
+			// Build maskTable[x] = z^x.
+			maskTable := make([]field.Ext, n)
+			if n > 0 {
+				maskTable[0].SetOne()
+				for x := 1; x < n; x++ {
+					maskTable[x].Mul(&maskTable[x-1], &z)
+				}
+			}
+
+			// EvalMultilin of maskTable at h (reference).
+			hGen := make([]field.Gen, k)
+			for i, hi := range h {
+				hGen[i] = field.ElemFromExt(hi)
+			}
+			wantGen := EvalMultilin(field.VecFromExt(maskTable), hGen)
+			want := wantGen.AsExt()
+
+			got := EvalMonomialMaskExt(z, h)
+
+			if !got.Equal(&want) {
+				t.Fatalf("k=%d: EvalMonomialMaskExt=%v EvalMultilin(maskTable)=%v", k, got, want)
+			}
+		}
+	}
+}
+
+// TestEvalMonomialMaskBaseMatchesExt verifies that EvalMonomialMaskBase and
+// EvalMonomialMaskExt agree when all inputs are base-field elements.
+func TestEvalMonomialMaskBaseMatchesExt(t *testing.T) {
+	rng := newRng()
+
+	for range testN {
+		for k := 0; k <= 6; k++ {
+			zBase := field.PseudoRand(rng)
+			hBase := field.VecPseudoRandBase(rng, k)
+
+			resBase := EvalMonomialMaskBase(zBase, hBase)
+
+			hExt := make([]field.Ext, k)
+			for i, hi := range hBase {
+				hExt[i] = field.Lift(hi)
+			}
+			resExt := EvalMonomialMaskExt(field.Lift(zBase), hExt)
+
+			wantExt := field.Lift(resBase)
+			if !resExt.Equal(&wantExt) {
+				t.Fatalf("k=%d: Base=%v Ext=%v", k, resBase, resExt)
+			}
+		}
+	}
+}
+
+// TestEvalMonomialMaskDispatch verifies that EvalMonomialMask routes correctly:
+// base inputs → base result, ext inputs → ext result.
+func TestEvalMonomialMaskDispatch(t *testing.T) {
+	rng := newRng()
+	const k = 4
+
+	t.Run("base", func(t *testing.T) {
+		zBase := field.PseudoRand(rng)
+		hBase := field.VecPseudoRandBase(rng, k)
+		hGen := make([]field.Gen, k)
+		for i, hi := range hBase {
+			hGen[i] = field.ElemFromBase(hi)
+		}
+		got := EvalMonomialMask(field.ElemFromBase(zBase), hGen)
+		if !got.IsBase() {
+			t.Fatal("EvalMonomialMask(base,base) should return base-tagged Gen")
+		}
+		want := EvalMonomialMaskBase(zBase, hBase)
+		if gotBase := got.AsBase(); !gotBase.Equal(&want) {
+			t.Fatalf("base dispatch mismatch: got %v want %v", gotBase, want)
+		}
+	})
+
+	t.Run("ext", func(t *testing.T) {
+		zExt := field.PseudoRandExt(rng)
+		hExt := field.VecPseudoRandExt(rng, k)
+		hGen := make([]field.Gen, k)
+		for i, hi := range hExt {
+			hGen[i] = field.ElemFromExt(hi)
+		}
+		got := EvalMonomialMask(field.ElemFromExt(zExt), hGen)
+		if got.IsBase() {
+			t.Fatal("EvalMonomialMask(ext,ext) should not return base-tagged Gen")
+		}
+		want := EvalMonomialMaskExt(zExt, hExt)
+		if gotExt := got.AsExt(); !gotExt.Equal(&want) {
+			t.Fatalf("ext dispatch mismatch")
+		}
+	})
+}
+
+// TestEvalMonomialMaskEmpty verifies that an empty coordinate list returns 1.
+func TestEvalMonomialMaskEmpty(t *testing.T) {
+	var one field.Element
+	one.SetOne()
+	var zero field.Element
+
+	got := EvalMonomialMaskBase(zero, nil)
+	if !got.Equal(&one) {
+		t.Fatalf("EvalMonomialMaskBase(z, nil): got %v want 1", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BuildMonomialMaskExt
+// ---------------------------------------------------------------------------
+
+// TestBuildMonomialMaskExtConsistency verifies that BuildMonomialMaskExt matches
+// the naive reference: dst[i] = Σ_j rhos[j]·zs[j]^i computed with repeated mul.
+func TestBuildMonomialMaskExtConsistency(t *testing.T) {
+	rng := newRng()
+
+	for range testN {
+		m := 1 + int(rng.Uint32()%4) // 1..4 polynomials
+		n := 1 << (1 + int(rng.Uint32()%5))  // 2..32
+
+		zs := field.VecPseudoRandExt(rng, m)
+		rhos := field.VecPseudoRandExt(rng, m)
+
+		dst := make([]field.Ext, n)
+		BuildMonomialMaskExt(dst, zs, rhos)
+
+		for i := 0; i < n; i++ {
+			var want field.Ext
+			for j := range zs {
+				// Compute zs[j]^i via repeated multiplication.
+				var pow field.Ext
+				pow.SetOne()
+				for p := 0; p < i; p++ {
+					pow.Mul(&pow, &zs[j])
+				}
+				var term field.Ext
+				term.Mul(&rhos[j], &pow)
+				want.Add(&want, &term)
+			}
+			if !dst[i].Equal(&want) {
+				t.Fatalf("m=%d n=%d i=%d: got %v want %v", m, n, i, dst[i], want)
+			}
+		}
+	}
+}
+
+// TestBuildMonomialMaskExtSinglePoint checks that a single-point mask (m=1, rho=1)
+// produces the simple geometric progression [1, z, z^2, …].
+func TestBuildMonomialMaskExtSinglePoint(t *testing.T) {
+	rng := newRng()
+	const n = 8
+
+	z := field.PseudoRandExt(rng)
+	var one field.Ext
+	one.SetOne()
+
+	dst := make([]field.Ext, n)
+	BuildMonomialMaskExt(dst, []field.Ext{z}, []field.Ext{one})
+
+	var pow field.Ext
+	pow.SetOne()
+	for i := 0; i < n; i++ {
+		if !dst[i].Equal(&pow) {
+			t.Fatalf("i=%d: got %v want z^%d=%v", i, dst[i], i, pow)
+		}
+		pow.Mul(&pow, &z)
+	}
+}
