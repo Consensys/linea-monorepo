@@ -97,7 +97,7 @@ func runProof(
 ) (proof []RoundPoly, challenges []field.Ext, finalClaims []field.Ext) {
 	t.Helper()
 
-	state, err := NewProverState(cfg, gate, tables, qPrimes, mu, claim)
+	state, err := NewProverStateWithEqMask(cfg, gate, tables, qPrimes, mu, claim)
 	if err != nil {
 		t.Fatalf("NewProverState: %v", err)
 	}
@@ -382,6 +382,227 @@ func TestSumcheckParallel(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Tests: NewProverStateWithMask
+// ---------------------------------------------------------------------------
+
+// identityGate is a local degree-1 gate used only in tests.
+type identityGate struct{}
+
+func (identityGate) Degree() int { return 1 }
+func (identityGate) EvalBatch(res []field.Ext, inputs ...[]field.Ext) { copy(res, inputs[0]) }
+
+// evalPolyAtPoint evaluates Σ_h z^h · coeffs[h], the univariate polynomial
+// with base-field coefficient vector coeffs at extension-field point z.
+func evalPolyAtPoint(coeffs []field.Element, z field.Ext) field.Ext {
+	var result, zPow field.Ext
+	zPow.SetOne()
+	for _, c := range coeffs {
+		var term field.Ext
+		term.MulByElement(&zPow, &c)
+		result.Add(&result, &term)
+		zPow.Mul(&zPow, &z)
+	}
+	return result
+}
+
+// runProofWithMask is the NewProverStateWithMask analogue of runProof.
+func runProofWithMask(
+	t *testing.T,
+	cfg *ProverConfig,
+	gate Gate,
+	tables [][]field.Element,
+	mask []field.Ext,
+	claim field.Ext,
+) (proof []RoundPoly, challenges []field.Ext, finalClaims []field.Ext) {
+	t.Helper()
+
+	state, err := NewProverStateWithMask(cfg, gate, tables, mask, claim)
+	if err != nil {
+		t.Fatalf("NewProverStateWithMask: %v", err)
+	}
+
+	logN := state.logN
+	proof = make([]RoundPoly, logN)
+	for i := range logN {
+		rp := state.ComputeRoundPoly()
+		proof[i] = rp
+		ch := deterministicChallenge(rp, i)
+		state.FoldAndAdvance(rp, ch)
+	}
+	finalClaims = state.FinalClaims()
+
+	round := 0
+	finalClaim, challenges, err := Verify(claim, proof, gate.Degree(), func(rp RoundPoly) field.Ext {
+		ch := deterministicChallenge(rp, round)
+		round++
+		return ch
+	})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !finalClaim.Equal(&state.claim) {
+		t.Errorf("verifier finalClaim ≠ prover final claim")
+	}
+
+	return proof, challenges, finalClaims
+}
+
+// TestSumcheckGeomMaskSingle verifies that a single-point geometric mask
+// sumcheck is sound and that the final mask claim matches EvalMonomialMaskExt.
+func TestSumcheckGeomMaskSingle(t *testing.T) {
+	rng := newRng()
+
+	for logN := 1; logN <= 8; logN++ {
+		n := 1 << logN
+		cfg := NewProverConfig(logN, 1, 1)
+
+		coeffs := field.VecPseudoRandBase(rng, n)
+		r := randExt(rng)
+
+		// Build geometric mask M[h] = r^h.
+		var one field.Ext
+		one.SetOne()
+		mask := make([]field.Ext, n)
+		polynomials.BuildMonomialMaskExt(mask, []field.Ext{r}, []field.Ext{one})
+
+		// Reference claim: Y = Σ_h mask[h] * coeffs[h] = P(r).
+		claim := evalPolyAtPoint(coeffs, r)
+		var altClaim field.Ext
+		for h := range n {
+			c := field.Lift(coeffs[h])
+			var term field.Ext
+			term.Mul(&mask[h], &c)
+			altClaim.Add(&altClaim, &term)
+		}
+		if !claim.Equal(&altClaim) {
+			t.Fatalf("logN=%d: claim sanity check failed", logN)
+		}
+
+		_, challenges, finalClaims := runProofWithMask(t, cfg, identityGate{}, [][]field.Element{coeffs}, mask, claim)
+
+		// finalClaims[0] = mask(h'), finalClaims[1] = coeffs_MLE(h').
+		wantMask := polynomials.EvalMonomialMaskExt(r, challenges)
+		if !finalClaims[0].Equal(&wantMask) {
+			t.Errorf("logN=%d: mask final claim mismatch", logN)
+		}
+
+		hGen := make([]field.Gen, logN)
+		for i, h := range challenges {
+			hGen[i] = field.ElemFromExt(h)
+		}
+		wantCoeffsGen := polynomials.EvalMultilin(field.VecFromBase(coeffs), hGen)
+		wantCoeffsExt := wantCoeffsGen.AsExt()
+		if !finalClaims[1].Equal(&wantCoeffsExt) {
+			t.Errorf("logN=%d: coeffs final claim mismatch", logN)
+		}
+	}
+}
+
+// TestSumcheckGeomMaskMultiPoint verifies a multi-point MPTS-style sumcheck:
+// Y = Σ_j λ^j Σ_h geom(r_j, h) P(h) using a combined geometric mask.
+func TestSumcheckGeomMaskMultiPoint(t *testing.T) {
+	rng := newRng()
+	const logN = 7
+	const m = 4
+	n := 1 << logN
+	cfg := NewProverConfig(logN, 1, 1)
+
+	coeffs := field.VecPseudoRandBase(rng, n)
+	rs := field.VecPseudoRandExt(rng, m)
+
+	// lambdas[j] = λ^j.
+	lambdaBase := randExt(rng)
+	lambdas := make([]field.Ext, m)
+	lambdas[0].SetOne()
+	for j := 1; j < m; j++ {
+		lambdas[j].Mul(&lambdas[j-1], &lambdaBase)
+	}
+
+	// Combined mask M[h] = Σ_j λ^j · r_j^h.
+	mask := make([]field.Ext, n)
+	polynomials.BuildMonomialMaskExt(mask, rs, lambdas)
+
+	// Reference claim: Y = Σ_j λ^j · P(r_j).
+	var claim field.Ext
+	for j := range m {
+		Prj := evalPolyAtPoint(coeffs, rs[j])
+		var term field.Ext
+		term.Mul(&lambdas[j], &Prj)
+		claim.Add(&claim, &term)
+	}
+
+	_, challenges, finalClaims := runProofWithMask(t, cfg, identityGate{}, [][]field.Element{coeffs}, mask, claim)
+
+	// Mask final claim must equal Σ_j λ^j · EvalMonomialMaskExt(r_j, h').
+	var wantMask field.Ext
+	for j := range m {
+		g := polynomials.EvalMonomialMaskExt(rs[j], challenges)
+		var term field.Ext
+		term.Mul(&lambdas[j], &g)
+		wantMask.Add(&wantMask, &term)
+	}
+	if !finalClaims[0].Equal(&wantMask) {
+		t.Errorf("mask final claim mismatch")
+	}
+
+	hGen := make([]field.Gen, logN)
+	for i, h := range challenges {
+		hGen[i] = field.ElemFromExt(h)
+	}
+	wantCoeffsGen := polynomials.EvalMultilin(field.VecFromBase(coeffs), hGen)
+	wantCoeffsExt := wantCoeffsGen.AsExt()
+	if !finalClaims[1].Equal(&wantCoeffsExt) {
+		t.Errorf("coeffs final claim mismatch")
+	}
+}
+
+// TestSumcheckNoMask verifies the nil-mask path: Σ_h A[h]·B[h] without any
+// external weighting. The mask final claim must be 1.
+func TestSumcheckNoMask(t *testing.T) {
+	rng := newRng()
+
+	for logN := 1; logN <= 8; logN++ {
+		n := 1 << logN
+		cfg := NewProverConfig(logN, 2, 1)
+
+		A := field.VecPseudoRandBase(rng, n)
+		B := field.VecPseudoRandBase(rng, n)
+
+		// Y = Σ_h A[h] * B[h].
+		var claim field.Ext
+		for h := range n {
+			a, b := field.Lift(A[h]), field.Lift(B[h])
+			var term field.Ext
+			term.Mul(&a, &b)
+			claim.Add(&claim, &term)
+		}
+
+		_, challenges, finalClaims := runProofWithMask(t, cfg, makeProductGate(), [][]field.Element{A, B}, nil, claim)
+
+		// Mask claim must be 1 (all-ones folds to 1 under any challenge).
+		var one field.Ext
+		one.SetOne()
+		if !finalClaims[0].Equal(&one) {
+			t.Errorf("logN=%d: mask final claim = %v, want 1", logN, finalClaims[0])
+		}
+
+		hGen := make([]field.Gen, logN)
+		for i, h := range challenges {
+			hGen[i] = field.ElemFromExt(h)
+		}
+		wantAGen := polynomials.EvalMultilin(field.VecFromBase(A), hGen)
+		wantBGen := polynomials.EvalMultilin(field.VecFromBase(B), hGen)
+		wantAExt, wantBExt := wantAGen.AsExt(), wantBGen.AsExt()
+		if !finalClaims[1].Equal(&wantAExt) {
+			t.Errorf("logN=%d: A final claim mismatch", logN)
+		}
+		if !finalClaims[2].Equal(&wantBExt) {
+			t.Errorf("logN=%d: B final claim mismatch", logN)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Benchmarks
 // ---------------------------------------------------------------------------
 
@@ -403,7 +624,7 @@ func BenchmarkProveProductSum(b *testing.B) {
 	b.ResetTimer()
 	for range b.N {
 		claim := evalSum(gate, [][]field.Element{A, B}, qPrime)
-		state, _ := NewProverState(cfg, gate, [][]field.Element{A, B}, [][]field.Ext{qPrime}, field.Ext{}, claim)
+		state, _ := NewProverStateWithEqMask(cfg, gate, [][]field.Element{A, B}, [][]field.Ext{qPrime}, field.Ext{}, claim)
 
 		proof := make([]RoundPoly, logN)
 		for i := 0; i < logN; i++ {

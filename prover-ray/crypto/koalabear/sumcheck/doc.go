@@ -26,7 +26,7 @@
 // The prover is round-by-round and FS-agnostic:
 //
 //  1. Pre-allocate all scratch memory once: [NewProverConfig]
-//  2. Start a proof: [NewProverState]
+//  2. Start a proof: [NewProverStateWithEqMask]
 //  3. Per round: [ProverState.ComputeRoundPoly], then [ProverState.FoldAndAdvance]
 //  4. After n rounds: [ProverState.FinalClaims]
 //

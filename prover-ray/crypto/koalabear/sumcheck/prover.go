@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"fmt"
+	"math/bits"
 
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
@@ -24,7 +25,7 @@ type ProverState struct {
 	logN  int
 }
 
-// NewProverState initialises the prover for a (multi-)sumcheck.
+// NewProverStateWithEqMask initialises the prover for a (multi-)sumcheck.
 //
 //   - cfg: pre-allocated scratch from [NewProverConfig].
 //   - gate: the multivariate polynomial being sumchecked.
@@ -35,7 +36,9 @@ type ProverState struct {
 //     len(qPrimes) == 1.
 //   - claim: the alleged sum. For multi-sumcheck this must already be the
 //     combined claim Σ_j μʲ · claim_j (computed externally by the caller).
-func NewProverState(
+//
+// It builds the combined eq mask and then delegates to [NewProverStateWithMask].
+func NewProverStateWithEqMask(
 	cfg *ProverConfig,
 	gate Gate,
 	tables [][]field.Element,
@@ -43,47 +46,25 @@ func NewProverState(
 	mu field.Ext,
 	claim field.Ext,
 ) (*ProverState, error) {
-
 	if len(qPrimes) == 0 {
 		return nil, fmt.Errorf("sumcheck: NewProverState: qPrimes must be non-empty")
 	}
 	logN := len(qPrimes[0])
 	n := 1 << logN
 
-	if len(tables) > len(cfg.Tables) {
-		return nil, fmt.Errorf("sumcheck: NewProverState: %d tables exceed cfg.Tables capacity %d",
-			len(tables), len(cfg.Tables))
+	for j, q := range qPrimes {
+		if len(q) != logN {
+			return nil, fmt.Errorf("sumcheck: NewProverState: qPrimes[%d] has length %d, want %d", j, len(q), logN)
+		}
 	}
 	if n > len(cfg.EqScratch) {
 		return nil, fmt.Errorf("sumcheck: NewProverState: n=%d exceeds cfg.EqScratch capacity %d",
 			n, len(cfg.EqScratch))
 	}
 
-	for k, t := range tables {
-		if len(t) != n {
-			return nil, fmt.Errorf("sumcheck: NewProverState: table[%d] has length %d, want %d", k, len(t), n)
-		}
-	}
-	for j, q := range qPrimes {
-		if len(q) != logN {
-			return nil, fmt.Errorf("sumcheck: NewProverState: qPrimes[%d] has length %d, want %d", j, len(q), logN)
-		}
-	}
-
-	// Lift base-field tables to ext.
-	extTables := cfg.Tables[:len(tables)]
-	for k, t := range tables {
-		col := extTables[k][:n]
-		for i, e := range t {
-			col[i] = field.Lift(e)
-		}
-	}
-
-	// Build the combined eq table in EqScratch.
+	// Build the combined eq mask in cfg.EqScratch, then delegate.
 	eq := cfg.EqScratch[:n]
 	buildEqTable(cfg, eq, qPrimes[0])
-
-	// Multi-sumcheck: accumulate μʲ · eq(qPrimes[j]) for j ≥ 1.
 	if len(qPrimes) > 1 {
 		tmp := cfg.EqTmp[:n]
 		muPow := mu // μ¹
@@ -96,22 +77,64 @@ func NewProverState(
 		}
 	}
 
-	// Truncate per-thread accumulators to gate.Degree() elements.
-	d := gate.Degree()
-	for t := range cfg.PerThread {
-		if len(cfg.PerThread[t].Accum) < d {
-			cfg.PerThread[t].Accum = make([]field.Ext, d)
+	return NewProverStateWithMask(cfg, gate, tables, eq, claim)
+}
+
+// NewProverStateWithMask constructs a [ProverState] using a caller-supplied mask
+// table instead of deriving one from evaluation-point coordinates.
+//
+// The prover accumulates Σ_h mask[h]·gate(tables[0][h], tables[1][h], …).
+// Passing mask = nil gives the unweighted sum Σ_h gate(tables[h]), equivalent
+// to a constant-1 mask: an all-ones table folds back to all-ones under any
+// challenge, so the final mask claim is always 1.
+//
+// len(mask) (when non-nil) and len(tables[k]) must all equal 2^logN and must
+// not exceed the capacities pre-allocated in cfg.
+func NewProverStateWithMask(
+	cfg *ProverConfig,
+	gate Gate,
+	tables [][]field.Element,
+	mask []field.Ext,
+	claim field.Ext,
+) (*ProverState, error) {
+	if len(tables) == 0 {
+		return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: tables must be non-empty")
+	}
+	n := len(tables[0])
+	if n == 0 || bits.OnesCount(uint(n)) != 1 {
+		return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: table length %d is not a positive power of two", n)
+	}
+	if len(tables) > len(cfg.Tables) {
+		return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: %d tables exceed cfg.Tables capacity %d",
+			len(tables), len(cfg.Tables))
+	}
+	if n > len(cfg.EqScratch) {
+		return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: n=%d exceeds cfg.EqScratch capacity %d",
+			n, len(cfg.EqScratch))
+	}
+	for k, t := range tables {
+		if len(t) != n {
+			return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: table[%d] has length %d, want %d",
+				k, len(t), n)
+		}
+	}
+	if mask != nil && len(mask) != n {
+		return nil, fmt.Errorf("sumcheck: NewProverStateWithMask: mask length %d != table length %d",
+			len(mask), n)
+	}
+
+	extTables := liftTables(cfg, tables, n)
+
+	eq := cfg.EqScratch[:n]
+	if mask != nil {
+		copy(eq, mask)
+	} else {
+		for i := range eq {
+			eq[i].SetOne()
 		}
 	}
 
-	return &ProverState{
-		tables: extTables,
-		eq:     eq,
-		cfg:    cfg,
-		gate:   gate,
-		claim:  claim,
-		logN:   logN,
-	}, nil
+	return finishProverState(cfg, gate, extTables, eq, bits.TrailingZeros(uint(n)), claim), nil
 }
 
 // ComputeRoundPoly computes the round polynomial for the current round and
@@ -289,6 +312,40 @@ func (s *ProverState) Claim() field.Ext { return s.claim }
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// liftTables lifts base-field tables into cfg.Tables[:len(tables)] and returns
+// the ext-field slice. cfg.Tables[k] must have length ≥ n.
+func liftTables(cfg *ProverConfig, tables [][]field.Element, n int) [][]field.Ext {
+	ext := cfg.Tables[:len(tables)]
+	for k, t := range tables {
+		col := ext[k][:n]
+		for i, e := range t {
+			col[i] = field.Lift(e)
+		}
+	}
+	return ext
+}
+
+// finishProverState wires up a ProverState after cfg.Tables and cfg.EqScratch
+// have been populated. It ensures per-thread Accum slices are large enough for
+// the gate degree.
+func finishProverState(cfg *ProverConfig, gate Gate, extTables [][]field.Ext,
+	eq []field.Ext, logN int, claim field.Ext) *ProverState {
+	d := gate.Degree()
+	for t := range cfg.PerThread {
+		if len(cfg.PerThread[t].Accum) < d {
+			cfg.PerThread[t].Accum = make([]field.Ext, d)
+		}
+	}
+	return &ProverState{
+		tables: extTables,
+		eq:     eq,
+		cfg:    cfg,
+		gate:   gate,
+		claim:  claim,
+		logN:   logN,
+	}
+}
 
 // buildEqTable fills dst with FoldedEqTableExt(qPrime) using parallelism from cfg.
 // An optional multiplier is forwarded to FoldedEqTableExt / ChunkOfEqTableExt.
