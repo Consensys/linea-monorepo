@@ -1,5 +1,9 @@
 # plonk2 GPU Prover Backend Design
 
+See `GPU_PLONK_LIBRARY_DESIGN.md` for the broader branch assessment,
+drop-in-prover target architecture, and milestone roadmap. This file is the
+shorter primitive-backend design note.
+
 `gpu/plonk2` is the curve-generic GPU backend for PlonK prover acceleration.
 It should reuse gnark's PlonK logic and replace only the low-level polynomial
 and commitment kernels that dominate proving time.
