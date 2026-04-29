@@ -16,6 +16,18 @@ type Gate interface {
 	EvalBatch(res []field.Ext, inputs ...[]field.Ext)
 }
 
+// IdentityGate is a degree-1 gate that returns its single input unchanged:
+// Gate(x) = x. Used when the weighting is entirely carried by the mask table.
+type IdentityGate struct{}
+
+// Degree returns 1.
+func (IdentityGate) Degree() int { return 1 }
+
+// EvalBatch implements Gate. Copies inputs[0] into res.
+func (IdentityGate) EvalBatch(res []field.Ext, inputs ...[]field.Ext) {
+	copy(res, inputs[0])
+}
+
 // ProductSumGate evaluates
 //
 //	Gate(x) = Σ_i Lambdas[i] · inputs[2i](x) · inputs[2i+1](x)
