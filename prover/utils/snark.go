@@ -59,6 +59,15 @@ func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBits int) []
 		rc.Check(bytes[i], 8)
 	}
 
+	// Verify the bytes reconstruct the original value (Horner's method, big-endian).
+	// Without this, the hint output is unconstrained and a malicious prover could
+	// supply arbitrary range-valid bytes inconsistent with data.
+	acc := frontend.Variable(0)
+	for i := 0; i < nbBytes; i++ {
+		acc = api.Add(api.Mul(acc, 256), bytes[i])
+	}
+	api.AssertIsEqual(acc, data)
+
 	return bytes
 }
 
