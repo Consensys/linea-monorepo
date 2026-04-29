@@ -75,7 +75,6 @@ func TestCompileAllRoundMixedSizes(t *testing.T) {
 					}
 					b.CompiledIOP.InsertMultilinear(0,
 						ifaces.QueryIDf("MLEVAL_%d", q),
-						nv,
 						cols,
 					)
 				}
@@ -88,7 +87,7 @@ func TestCompileAllRoundMixedSizes(t *testing.T) {
 							smartvectors.NewRegular(colData[q][p]))
 					}
 					_ = nv
-					run.AssignMultilinearExt(ifaces.QueryIDf("MLEVAL_%d", q),
+					run.AssignMultilinearExtShared(ifaces.QueryIDf("MLEVAL_%d", q),
 						points[q], ys[q]...)
 				}
 			}
@@ -148,7 +147,7 @@ func TestCompileAllRoundWithVortex(t *testing.T) {
 			for p := 0; p < nCols[q]; p++ {
 				cols[p] = b.RegisterCommit(ifaces.ColIDf("Q%d_P%d", q, p), 1<<nv)
 			}
-			b.CompiledIOP.InsertMultilinear(0, ifaces.QueryIDf("MLEVAL_%d", q), nv, cols)
+			b.CompiledIOP.InsertMultilinear(0, ifaces.QueryIDf("MLEVAL_%d", q), cols)
 		}
 	}
 
@@ -158,7 +157,7 @@ func TestCompileAllRoundWithVortex(t *testing.T) {
 				run.AssignColumn(ifaces.ColIDf("Q%d_P%d", q, p),
 					smartvectors.NewRegular(colData[q][p]))
 			}
-			run.AssignMultilinearExt(ifaces.QueryIDf("MLEVAL_%d", q), points[q], ys[q]...)
+			run.AssignMultilinearExtShared(ifaces.QueryIDf("MLEVAL_%d", q), points[q], ys[q]...)
 		}
 	}
 
@@ -223,7 +222,7 @@ func TestCompileWithFold1MixedSizes(t *testing.T) {
 			for p := 0; p < nCols[q]; p++ {
 				cols[p] = b.RegisterCommit(ifaces.ColIDf("Q%d_P%d", q, p), 1<<nv)
 			}
-			b.CompiledIOP.InsertMultilinear(0, ifaces.QueryIDf("MLEVAL_%d", q), nv, cols)
+			b.CompiledIOP.InsertMultilinear(0, ifaces.QueryIDf("MLEVAL_%d", q), cols)
 		}
 	}
 
@@ -233,7 +232,7 @@ func TestCompileWithFold1MixedSizes(t *testing.T) {
 				run.AssignColumn(ifaces.ColIDf("Q%d_P%d", q, p),
 					smartvectors.NewRegular(colData[q][p]))
 			}
-			run.AssignMultilinearExt(ifaces.QueryIDf("MLEVAL_%d", q), points[q], ys[q]...)
+			run.AssignMultilinearExtShared(ifaces.QueryIDf("MLEVAL_%d", q), points[q], ys[q]...)
 		}
 	}
 

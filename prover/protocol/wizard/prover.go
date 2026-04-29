@@ -881,21 +881,38 @@ func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Elemen
 }
 
 // AssignMultilinearExt assigns the runtime parameters for a [query.MultilinearEval].
-// point must have length q.NumVars; ys must have one entry per polynomial in the query.
-func (run *ProverRuntime) AssignMultilinearExt(name ifaces.QueryID, point []fext.Element, ys ...fext.Element) {
+// points[k] must have length q.NumVars[k]; ys must have one entry per polynomial.
+func (run *ProverRuntime) AssignMultilinearExt(name ifaces.QueryID, points [][]fext.Element, ys ...fext.Element) {
 	run.lock.Lock()
 	defer run.lock.Unlock()
 
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	q := run.Spec.QueriesParams.Data(name).(query.MultilinearEval)
-	if len(point) != q.NumVars {
-		utils.Panic("AssignMultilinearExt %v: point length %d != NumVars %d", name, len(point), q.NumVars)
+	if len(points) != len(q.Pols) {
+		utils.Panic("AssignMultilinearExt %v: %d points for %d polynomials", name, len(points), len(q.Pols))
+	}
+	for k := range q.Pols {
+		if len(points[k]) != q.NumVars[k] {
+			utils.Panic("AssignMultilinearExt %v: points[%d] length %d != NumVars[%d]=%d",
+				name, k, len(points[k]), k, q.NumVars[k])
+		}
 	}
 	if len(ys) != len(q.Pols) {
 		utils.Panic("AssignMultilinearExt %v: %d ys for %d polynomials", name, len(ys), len(q.Pols))
 	}
-	run.QueriesParams.InsertNew(name, query.MultilinearEvalParams{Point: point, Ys: ys})
+	run.QueriesParams.InsertNew(name, query.MultilinearEvalParams{Points: points, Ys: ys})
+}
+
+// AssignMultilinearExtShared is a convenience wrapper for [AssignMultilinearExt]
+// when all polynomials in the query share the same evaluation point.
+func (run *ProverRuntime) AssignMultilinearExtShared(name ifaces.QueryID, point []fext.Element, ys ...fext.Element) {
+	q := run.Spec.QueriesParams.Data(name).(query.MultilinearEval)
+	points := make([][]fext.Element, len(q.Pols))
+	for k := range q.Pols {
+		points[k] = point
+	}
+	run.AssignMultilinearExt(name, points, ys...)
 }
 
 // GetUnivariateEval get univariate eval metadata. Panic if not found.

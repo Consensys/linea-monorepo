@@ -79,7 +79,6 @@ func TestMultilinearEvalCompilerRoundtrip(t *testing.T) {
 					}
 					b.CompiledIOP.InsertMultilinear(0,
 						ifaces.QueryIDf("MLEVAL_%d", q),
-						tc.numVars,
 						cols,
 					)
 				}
@@ -91,7 +90,7 @@ func TestMultilinearEvalCompilerRoundtrip(t *testing.T) {
 						run.AssignColumn(ifaces.ColIDf("Q%d_P%d", q, p),
 							smartvectors.NewRegular(colData[q][p]))
 					}
-					run.AssignMultilinearExt(ifaces.QueryIDf("MLEVAL_%d", q),
+					run.AssignMultilinearExtShared(ifaces.QueryIDf("MLEVAL_%d", q),
 						points[q], ys[q]...)
 				}
 			}

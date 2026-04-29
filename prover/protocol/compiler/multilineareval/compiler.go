@@ -9,30 +9,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// context holds the compiled artifacts for one batch of MultilinearEval queries
-// that share the same numVars. All input queries are at wizard round [Round];
-// the lambda coin, round-poly proof column, and residual query live at [Round+1].
+// polRef identifies one polynomial within a MultilinearEval query.
+type polRef struct {
+	QueryName ifaces.QueryID
+	PolIdx    int
+	Col       ifaces.Column
+}
+
+// context holds the compiled artifacts for one batch of polynomials sharing
+// the same (round, numVars). All polRefs have NumVars == NumVars.
+// The lambda coin, round-poly proof column, and residual query live at Round+1.
 type context struct {
-	// InputQueries are the MultilinearEval queries being compiled away.
-	InputQueries []query.MultilinearEval
-	// NumVars is the shared n (= log2 of column size) for this batch.
-	NumVars int
-	// Round is the wizard round at which the input queries were registered.
-	Round int
-	// LambdaCoin is the batching coin sampled after the prover commits to the
-	// input evaluations. It seeds the sumcheck transcript.
+	PolRefs    []polRef              // flat list of (queryID, polIdx) pairs
+	NumVars    int                   // shared n for all polys in this batch
+	Round      int
 	LambdaCoin coin.Info
-	// RoundPolys is a proof column of size NumVars*3 holding the three
-	// evaluation points of each per-round sumcheck polynomial (fext).
 	RoundPolys ifaces.Column
-	// Residual is the output MultilinearEval query at the single shared
-	// sumcheck point, combining all input columns.
-	Residual query.MultilinearEval
+	Residual   query.MultilinearEval // all polys at the shared sumcheck point c
 }
 
 // Compile returns a wizard compilation pass that replaces all MultilinearEval
-// queries with a batched sumcheck reduction. Each group of queries sharing the
-// same (round, numVars) is compiled independently.
+// queries with a batched sumcheck reduction. Polynomials are grouped by
+// (round, numVars) — each poly in each query is placed in the matching group
+// independently. The residual MultilinearEval for each group is at the single
+// shared sumcheck point.
 //
 // After compilation the input queries are marked as ignored, and a residual
 // MultilinearEval query is inserted at round+1. A subsequent compiler pass
@@ -40,7 +40,7 @@ type context struct {
 func Compile(comp *wizard.CompiledIOP) {
 	type groupKey struct{ round, numVars int }
 
-	groups := map[groupKey][]query.MultilinearEval{}
+	groups := map[groupKey][]polRef{}
 	var orderedKeys []groupKey
 
 	for _, name := range comp.QueriesParams.AllUnignoredKeys() {
@@ -50,11 +50,15 @@ func Compile(comp *wizard.CompiledIOP) {
 		}
 		comp.QueriesParams.MarkAsIgnored(name)
 		r := comp.QueriesParams.Round(name)
-		k := groupKey{r, q.NumVars}
-		if _, seen := groups[k]; !seen {
-			orderedKeys = append(orderedKeys, k)
+
+		for j, col := range q.Pols {
+			n := q.NumVars[j]
+			k := groupKey{r, n}
+			if _, seen := groups[k]; !seen {
+				orderedKeys = append(orderedKeys, k)
+			}
+			groups[k] = append(groups[k], polRef{QueryName: q.Name(), PolIdx: j, Col: col})
 		}
-		groups[k] = append(groups[k], q)
 	}
 
 	if len(orderedKeys) == 0 {
@@ -75,7 +79,7 @@ func Compile(comp *wizard.CompiledIOP) {
 func CompileIgnored(comp *wizard.CompiledIOP) {
 	type groupKey struct{ round, numVars int }
 
-	groups := map[groupKey][]query.MultilinearEval{}
+	groups := map[groupKey][]polRef{}
 	var orderedKeys []groupKey
 
 	for _, name := range comp.QueriesParams.AllKeys() {
@@ -87,11 +91,15 @@ func CompileIgnored(comp *wizard.CompiledIOP) {
 			continue
 		}
 		r := comp.QueriesParams.Round(name)
-		k := groupKey{r, q.NumVars}
-		if _, seen := groups[k]; !seen {
-			orderedKeys = append(orderedKeys, k)
+
+		for j, col := range q.Pols {
+			n := q.NumVars[j]
+			k := groupKey{r, n}
+			if _, seen := groups[k]; !seen {
+				orderedKeys = append(orderedKeys, k)
+			}
+			groups[k] = append(groups[k], polRef{QueryName: q.Name(), PolIdx: j, Col: col})
 		}
-		groups[k] = append(groups[k], q)
 	}
 
 	if len(orderedKeys) == 0 {
@@ -117,10 +125,10 @@ func nextPow2(x int) int {
 }
 
 // buildContext inserts the protocol items for one group and returns the context.
-func buildContext(comp *wizard.CompiledIOP, round, numVars int, queries []query.MultilinearEval) *context {
-	var allCols []ifaces.Column
-	for _, q := range queries {
-		allCols = append(allCols, q.Pols...)
+func buildContext(comp *wizard.CompiledIOP, round, numVars int, refs []polRef) *context {
+	cols := make([]ifaces.Column, len(refs))
+	for i, ref := range refs {
+		cols[i] = ref.Col
 	}
 
 	suffix := fmt.Sprintf("n%d_r%d_%d", numVars, round, comp.SelfRecursionCount)
@@ -141,16 +149,15 @@ func buildContext(comp *wizard.CompiledIOP, round, numVars int, queries []query.
 	residual := comp.InsertMultilinear(
 		round+1,
 		ifaces.QueryID(fmt.Sprintf("MLEVAL_RESIDUAL_%s", suffix)),
-		numVars,
-		allCols,
+		cols,
 	)
 
 	return &context{
-		InputQueries: queries,
-		NumVars:      numVars,
-		Round:        round,
-		LambdaCoin:   lambdaCoin,
-		RoundPolys:   roundPolysCol,
-		Residual:     residual,
+		PolRefs:    refs,
+		NumVars:    numVars,
+		Round:      round,
+		LambdaCoin: lambdaCoin,
+		RoundPolys: roundPolysCol,
+		Residual:   residual,
 	}
 }

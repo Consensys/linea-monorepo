@@ -16,40 +16,40 @@ import (
 	"github.com/google/uuid"
 )
 
-// MultilinearEval declares that N polynomials P_0, ..., P_{N-1} are all
-// evaluated at the same fext-valued multilinear point. Each P_i is a column
-// of size 2^NumVars whose entries represent the polynomial's hypercube
-// evaluations in the gnark-crypto convention (X_1 = MSB of index).
+// MultilinearEval declares that polynomials P_0, ..., P_{N-1} are each
+// evaluated at their own fext-valued multilinear point. P_i is a column of
+// size 2^NumVars[i]; its hypercube evaluations follow the gnark-crypto
+// convention (X_1 = MSB of index).
 type MultilinearEval struct {
 	Pols    []ifaces.Column
 	QueryID ifaces.QueryID
-	NumVars int
+	NumVars []int
 	uuid    uuid.UUID `serde:"omit"`
 }
 
 // MultilinearEvalParams is the runtime witness for a [MultilinearEval] query:
-// the evaluation point (length NumVars) and the claimed per-polynomial values.
+// Points[i] is the evaluation point for P_i (length NumVars[i]) and Ys[i] is
+// the claimed evaluation P_i(Points[i]).
 type MultilinearEvalParams struct {
-	Point []fext.Element
-	Ys    []fext.Element
+	Points [][]fext.Element
+	Ys     []fext.Element
 }
 
-// NewMultilinearEval constructs and validates a MultilinearEval query. All
-// columns must be distinct, non-empty, and of length exactly 2^numVars.
-func NewMultilinearEval(id ifaces.QueryID, numVars int, pols ...ifaces.Column) MultilinearEval {
+// NewMultilinearEval constructs and validates a MultilinearEval query. NumVars
+// for each polynomial is derived from its column size (must be a power of two).
+func NewMultilinearEval(id ifaces.QueryID, pols ...ifaces.Column) MultilinearEval {
 	if len(pols) == 0 {
 		utils.Panic("MultilinearEval %v declared with zero polynomials", id)
 	}
-	if numVars <= 0 {
-		utils.Panic("MultilinearEval %v: numVars must be positive, got %d", id, numVars)
-	}
-	expectedLen := 1 << numVars
 	polsSet := collection.NewSet[ifaces.ColID]()
-	for _, pol := range pols {
-		if pol.Size() != expectedLen {
-			utils.Panic("MultilinearEval %v: polynomial %v has size %d, expected 2^%d=%d",
-				id, pol.GetColID(), pol.Size(), numVars, expectedLen)
+	numVars := make([]int, len(pols))
+	for i, pol := range pols {
+		size := pol.Size()
+		if size <= 0 || size&(size-1) != 0 {
+			utils.Panic("MultilinearEval %v: polynomial %v size %d is not a power of two",
+				id, pol.GetColID(), size)
 		}
+		numVars[i] = bits.TrailingZeros(uint(size))
 		if polsSet.Insert(pol.GetColID()) {
 			utils.Panic("MultilinearEval %v: duplicate polynomial %v", id, pol.GetColID())
 		}
@@ -64,7 +64,7 @@ func (q MultilinearEval) Name() ifaces.QueryID { return q.QueryID }
 func (q MultilinearEval) UUID() uuid.UUID { return q.uuid }
 
 // UpdateFS includes the claimed evaluation values in the Fiat-Shamir state.
-// The evaluation point is not included because the verifier can compute it
+// The evaluation points are not included because the verifier can compute them
 // independently (same convention as UnivariateEval).
 func (p MultilinearEvalParams) UpdateFS(state fiatshamir.FS) {
 	state.UpdateExt(p.Ys...)
@@ -74,9 +74,9 @@ func (p MultilinearEvalParams) UpdateFS(state fiatshamir.FS) {
 func (q MultilinearEval) Check(run ifaces.Runtime) error {
 	params := run.GetParams(q.QueryID).(MultilinearEvalParams)
 
-	if len(params.Point) != q.NumVars {
-		return fmt.Errorf("MultilinearEval %v: point length %d != NumVars %d",
-			q.QueryID, len(params.Point), q.NumVars)
+	if len(params.Points) != len(q.Pols) {
+		return fmt.Errorf("MultilinearEval %v: %d points for %d polynomials",
+			q.QueryID, len(params.Points), len(q.Pols))
 	}
 	if len(params.Ys) != len(q.Pols) {
 		return fmt.Errorf("MultilinearEval %v: %d claimed Ys for %d polynomials",
@@ -85,9 +85,14 @@ func (q MultilinearEval) Check(run ifaces.Runtime) error {
 
 	var errMsg string
 	for k, pol := range q.Pols {
+		if len(params.Points[k]) != q.NumVars[k] {
+			errMsg += fmt.Sprintf("MultilinearEval %v: poly %v point length %d != NumVars %d\n",
+				q.QueryID, pol.GetColID(), len(params.Points[k]), q.NumVars[k])
+			continue
+		}
 		wit := pol.GetColAssignment(run)
 		vals := smartvectors.IntoRegVecExt(wit)
-		actualY := multilinEvaluate(vals, params.Point)
+		actualY := multilinEvaluate(vals, params.Points[k])
 		if actualY != params.Ys[k] {
 			errMsg += fmt.Sprintf("MultilinearEval %v: poly %v expected %s got %s\n",
 				q.QueryID, pol.GetColID(), params.Ys[k].String(), actualY.String())
@@ -106,7 +111,7 @@ func (q MultilinearEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	for k, pol := range q.Pols {
 		col := pol.GetColAssignmentGnarkExt(run)
-		actualY := evalMultilinGnark(koalaAPI, col, params.Point)
+		actualY := evalMultilinGnark(koalaAPI, col, params.Points[k])
 		koalaAPI.AssertIsEqualExt(actualY, params.Ys[k])
 	}
 }

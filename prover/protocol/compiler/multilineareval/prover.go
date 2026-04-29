@@ -16,33 +16,28 @@ type proverAction struct {
 	ctx *context
 }
 
-// Run reads the lambda coin, builds the sumcheck claims from the input query
-// params and column data, runs the batched sumcheck prover, then assigns the
-// round-poly proof column and residual MultilinearEval params.
+// Run reads the lambda coin, builds the sumcheck claims from per-poly refs,
+// runs the batched sumcheck prover, then assigns the round-poly proof column
+// and residual MultilinearEval params.
 func (p *proverAction) Run(run *wizard.ProverRuntime) {
 	ctx := p.ctx
 	n := ctx.NumVars
 
 	lambda := run.GetRandomCoinFieldExt(ctx.LambdaCoin.Name)
 
-	// Build the flat claims and poly tables from the input queries.
 	var claims []sumcheck.Claim
 	var polys []sumcheck.MultiLin
 
-	for _, q := range ctx.InputQueries {
-		params := run.GetMultilinearParams(q.Name())
-		for j, col := range q.Pols {
-			claims = append(claims, sumcheck.Claim{
-				Point: params.Point,
-				Eval:  params.Ys[j],
-			})
-			colVec := run.GetColumn(col.GetColID()).IntoRegVecSaveAllocExt()
-			ml := sumcheck.MultiLin(colVec)
-			polys = append(polys, ml)
-		}
+	for _, ref := range ctx.PolRefs {
+		params := run.GetMultilinearParams(ref.QueryName)
+		claims = append(claims, sumcheck.Claim{
+			Point: params.Points[ref.PolIdx],
+			Eval:  params.Ys[ref.PolIdx],
+		})
+		colVec := run.GetColumn(ref.Col.GetColID()).IntoRegVecSaveAllocExt()
+		polys = append(polys, sumcheck.MultiLin(colVec))
 	}
 
-	// Create the sumcheck transcript seeded with lambda.
 	t := sumcheck.NewMockTranscript(transcriptSeed)
 	t.Append("lambda", lambda)
 
@@ -61,6 +56,10 @@ func (p *proverAction) Run(run *wizard.ProverRuntime) {
 	}
 	run.AssignColumn(ctx.RoundPolys.GetColID(), smartvectors.NewRegularExt(flat))
 
-	// Assign the residual query: point = sumcheck challenges, ys = final evals.
-	run.AssignMultilinearExt(ctx.Residual.Name(), challenges, proof.FinalEvals...)
+	// Residual: all polys evaluated at the shared sumcheck point c.
+	residualPoints := make([][]fext.Element, len(ctx.PolRefs))
+	for i := range ctx.PolRefs {
+		residualPoints[i] = challenges
+	}
+	run.AssignMultilinearExt(ctx.Residual.Name(), residualPoints, proof.FinalEvals...)
 }

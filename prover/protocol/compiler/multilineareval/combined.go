@@ -71,7 +71,6 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 		residuals[qIdx] = comp.InsertMultilinear(
 			round+1,
 			ifaces.QueryID(fmt.Sprintf("MLEVAL_CMB_RESIDUAL_q%d_%s", qIdx, suffix)),
-			q.NumVars,
 			q.Pols,
 		)
 	}
@@ -115,8 +114,10 @@ func CompileAllRound(comp *wizard.CompiledIOP) {
 		}
 		g := grps[r]
 		g.queries = append(g.queries, q)
-		if q.NumVars > g.nmax {
-			g.nmax = q.NumVars
+		for _, nv := range q.NumVars {
+			if nv > g.nmax {
+				g.nmax = nv
+			}
 		}
 	}
 
@@ -160,8 +161,10 @@ func CompileAllRoundIgnored(comp *wizard.CompiledIOP) {
 		}
 		g := grps[r]
 		g.queries = append(g.queries, q)
-		if q.NumVars > g.nmax {
-			g.nmax = q.NumVars
+		for _, nv := range q.NumVars {
+			if nv > g.nmax {
+				g.nmax = nv
+			}
 		}
 	}
 
@@ -194,13 +197,14 @@ func (p *combinedProverAction) Run(run *wizard.ProverRuntime) {
 
 	for _, q := range ctx.InputQueries {
 		params := run.GetMultilinearParams(q.Name())
-		nq := q.NumVars
-		shift := nmax - nq
-
-		// Extend evaluation point to nmax with zero coordinates.
-		extPoint := make([]fext.Element, nmax)
-		copy(extPoint, params.Point)
 		for j, col := range q.Pols {
+			nq := q.NumVars[j]
+			shift := nmax - nq
+
+			// Extend evaluation point to nmax with zero coordinates.
+			extPoint := make([]fext.Element, nmax)
+			copy(extPoint, params.Points[j])
+
 			// Expand column to 2^nmax: E(f)[i] = f[i >> (nmax-nq)].
 			// In MSB-first convention this replicates each f entry across all
 			// combinations of the LOW (nmax-nq) variables, so
@@ -235,12 +239,16 @@ func (p *combinedProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(ctx.RoundPolys.GetColID(), smartvectors.NewRegularExt(flat))
 
 	// Assign per-query residuals. FinalEvals[i] = expanded_poly_i(challenges)
-	// = original_poly_i(challenges[:nq]), so we truncate the challenge point.
+	// = original_poly_i(challenges[:nq]), so we truncate the challenge point per poly.
 	evalIdx := 0
 	for qIdx, q := range ctx.InputQueries {
-		nq := q.NumVars
 		finalEvals := proof.FinalEvals[evalIdx : evalIdx+len(q.Pols)]
-		run.AssignMultilinearExt(ctx.Residuals[qIdx].Name(), challenges[:nq], finalEvals...)
+		residualPoints := make([][]fext.Element, len(q.Pols))
+		for j := range q.Pols {
+			nq := q.NumVars[j]
+			residualPoints[j] = challenges[:nq]
+		}
+		run.AssignMultilinearExt(ctx.Residuals[qIdx].Name(), residualPoints, finalEvals...)
 		evalIdx += len(q.Pols)
 	}
 }
@@ -261,9 +269,9 @@ func (v *combinedVerifierAction) Run(run wizard.Runtime) error {
 	var claims []sumcheck.Claim
 	for _, q := range ctx.InputQueries {
 		params := run.GetMultilinearParams(q.Name())
-		extPoint := make([]fext.Element, nmax)
-		copy(extPoint, params.Point)
 		for j := range q.Pols {
+			extPoint := make([]fext.Element, nmax)
+			copy(extPoint, params.Points[j])
 			claims = append(claims, sumcheck.Claim{Point: extPoint, Eval: params.Ys[j]})
 		}
 	}
@@ -295,15 +303,17 @@ func (v *combinedVerifierAction) Run(run wizard.Runtime) error {
 
 	// Confirm each residual's point matches the corresponding prefix of challenges.
 	for qIdx, q := range ctx.InputQueries {
-		nq := q.NumVars
 		residualParams := run.GetMultilinearParams(ctx.Residuals[qIdx].Name())
-		if len(residualParams.Point) != nq {
-			return fmt.Errorf("multilineareval combinedVerifier: residual %d point length %d != %d",
-				qIdx, len(residualParams.Point), nq)
-		}
-		for i := 0; i < nq; i++ {
-			if !residualParams.Point[i].Equal(&challenges[i]) {
-				return fmt.Errorf("multilineareval combinedVerifier: residual %d point[%d] mismatch", qIdx, i)
+		for j := range q.Pols {
+			nq := q.NumVars[j]
+			if len(residualParams.Points[j]) != nq {
+				return fmt.Errorf("multilineareval combinedVerifier: residual %d poly %d point length %d != %d",
+					qIdx, j, len(residualParams.Points[j]), nq)
+			}
+			for i := 0; i < nq; i++ {
+				if !residualParams.Points[j][i].Equal(&challenges[i]) {
+					return fmt.Errorf("multilineareval combinedVerifier: residual %d poly %d point[%d] mismatch", qIdx, j, i)
+				}
 			}
 		}
 	}

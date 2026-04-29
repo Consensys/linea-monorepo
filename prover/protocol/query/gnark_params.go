@@ -79,13 +79,13 @@ type GnarkUnivariateEvalParams struct {
 
 // GnarkMultilinearEvalParams is the gnark circuit version of [MultilinearEvalParams].
 type GnarkMultilinearEvalParams struct {
-	Point []koalagnark.Ext
-	Ys    []koalagnark.Ext
+	Points [][]koalagnark.Ext
+	Ys     []koalagnark.Ext
 }
 
 // UpdateFS includes the claimed Ys in the Fiat-Shamir state (mirrors
-// MultilinearEvalParams.UpdateFS — the point is excluded per the convention
-// that the verifier computes or derives the opening point independently).
+// MultilinearEvalParams.UpdateFS — the points are excluded per the convention
+// that the verifier computes or derives the opening points independently).
 func (p GnarkMultilinearEvalParams) UpdateFS(fs fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.Ys...)
 }
@@ -93,22 +93,29 @@ func (p GnarkMultilinearEvalParams) UpdateFS(fs fiatshamir.GnarkFS) {
 // GnarkAllocate allocates a [GnarkMultilinearEvalParams] with the right
 // dimensions for use as a circuit witness placeholder.
 func (q MultilinearEval) GnarkAllocate() GnarkMultilinearEvalParams {
+	points := make([][]koalagnark.Ext, len(q.Pols))
+	for k := range q.Pols {
+		points[k] = make([]koalagnark.Ext, q.NumVars[k])
+	}
 	return GnarkMultilinearEvalParams{
-		Point: make([]koalagnark.Ext, q.NumVars),
-		Ys:    make([]koalagnark.Ext, len(q.Pols)),
+		Points: points,
+		Ys:     make([]koalagnark.Ext, len(q.Pols)),
 	}
 }
 
 // GnarkAssign converts a native [MultilinearEvalParams] into a circuit
 // witness assignment.
 func (p MultilinearEvalParams) GnarkAssign() GnarkMultilinearEvalParams {
-	point := make([]koalagnark.Ext, len(p.Point))
-	for i, r := range p.Point {
-		point[i] = koalagnark.NewExt(r)
+	points := make([][]koalagnark.Ext, len(p.Points))
+	for k, pt := range p.Points {
+		points[k] = make([]koalagnark.Ext, len(pt))
+		for i, r := range pt {
+			points[k][i] = koalagnark.NewExt(r)
+		}
 	}
 	return GnarkMultilinearEvalParams{
-		Point: point,
-		Ys:    vectorext.IntoGnarkAssignment(p.Ys),
+		Points: points,
+		Ys:     vectorext.IntoGnarkAssignment(p.Ys),
 	}
 }
 

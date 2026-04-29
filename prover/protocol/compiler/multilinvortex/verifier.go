@@ -77,13 +77,13 @@ type terminalVerifierAction struct {
 
 func (v *terminalVerifierAction) Run(run wizard.Runtime) error {
 	params := run.GetMultilinearParams(v.q.QueryID)
-	r := params.Point[0]
-
-	var oneMinusR fext.Element
-	oneMinusR.SetOne()
-	oneMinusR.Sub(&oneMinusR, &r)
 
 	for k, pol := range v.q.Pols {
+		r := params.Points[k][0]
+		var oneMinusR fext.Element
+		oneMinusR.SetOne()
+		oneMinusR.Sub(&oneMinusR, &r)
+
 		val0 := run.GetColumnAtExt(pol.GetColID(), 0)
 		val1 := run.GetColumnAtExt(pol.GetColID(), 1)
 

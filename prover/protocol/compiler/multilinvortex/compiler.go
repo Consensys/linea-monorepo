@@ -81,6 +81,23 @@ func CompileWithFold(nFoldRows int) func(*wizard.CompiledIOP) {
 	}
 }
 
+// mustAllSameNumVars returns the shared numVars for all polynomials in q.
+// Panics if the polynomials have mixed sizes, since multilinvortex requires a
+// uniform row/column split.
+func mustAllSameNumVars(q query.MultilinearEval) int {
+	if len(q.NumVars) == 0 {
+		panic("multilinvortex: MultilinearEval has no polynomials")
+	}
+	n := q.NumVars[0]
+	for k, nk := range q.NumVars {
+		if nk != n {
+			panic(fmt.Sprintf("multilinvortex: mixed numVars in query %v: poly 0 has %d, poly %d has %d",
+				q.QueryID, n, k, nk))
+		}
+	}
+	return n
+}
+
 // compileWithNRow is the shared implementation. nFoldRows < 1 means "use ⌈n/2⌉".
 func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 	idx := 0
@@ -92,7 +109,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		comp.QueriesParams.MarkAsIgnored(name)
 		r := comp.QueriesParams.Round(name)
 
-		if q.NumVars == 1 {
+		if mustAllSameNumVars(q) == 1 {
 			for _, pol := range q.Pols {
 				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
 			}
@@ -102,7 +119,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		}
 
 		// Determine nRow: clamp nFoldRows to [1, n-1].
-		n := q.NumVars
+		n := mustAllSameNumVars(q)
 		nRow := (n + 1) / 2 // default balanced
 		if nFoldRows >= 1 {
 			nRow = nFoldRows
@@ -119,7 +136,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 }
 
 func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *context {
-	n := q.NumVars
+	n := mustAllSameNumVars(q)
 	nCol := n - nRow
 	K := len(q.Pols)
 
@@ -153,13 +170,11 @@ func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, 
 		uCols[k] = comp.InsertMultilinear(
 			round+1,
 			ifaces.QueryID(fmt.Sprintf("MLVORTEX_UCOL_%d_%s", k, suffix)),
-			nCol,
 			[]ifaces.Column{uAlpha[k]},
 		)
 		rowClaims[k] = comp.InsertMultilinear(
 			round+1,
 			ifaces.QueryID(fmt.Sprintf("MLVORTEX_ROW_%d_%s", k, suffix)),
-			nRow,
 			[]ifaces.Column{rowEvals[k]},
 		)
 		_ = pol // column already referenced via q.Pols[k]

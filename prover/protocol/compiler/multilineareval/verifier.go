@@ -23,16 +23,14 @@ func (v *verifierAction) Run(run wizard.Runtime) error {
 
 	lambda := run.GetRandomCoinFieldExt(ctx.LambdaCoin.Name)
 
-	// Reconstruct claims from input query params.
+	// Reconstruct claims from per-poly refs.
 	var claims []sumcheck.Claim
-	for _, q := range ctx.InputQueries {
-		params := run.GetMultilinearParams(q.Name())
-		for j := range q.Pols {
-			claims = append(claims, sumcheck.Claim{
-				Point: params.Point,
-				Eval:  params.Ys[j],
-			})
-		}
+	for _, ref := range ctx.PolRefs {
+		params := run.GetMultilinearParams(ref.QueryName)
+		claims = append(claims, sumcheck.Claim{
+			Point: params.Points[ref.PolIdx],
+			Eval:  params.Ys[ref.PolIdx],
+		})
 	}
 
 	// Read the round polys from the proof column.
@@ -43,7 +41,7 @@ func (v *verifierAction) Run(run wizard.Runtime) error {
 		roundPolys[k][2] = run.GetColumnAtExt(ctx.RoundPolys.GetColID(), k*3+2)
 	}
 
-	// Read the residual params — the final evals and residual point.
+	// Read the residual params.
 	residualParams := run.GetMultilinearParams(ctx.Residual.Name())
 
 	proof := sumcheck.BatchedProof{
@@ -51,7 +49,6 @@ func (v *verifierAction) Run(run wizard.Runtime) error {
 		FinalEvals: residualParams.Ys,
 	}
 
-	// Verify the sumcheck using the same transcript as the prover.
 	t := sumcheck.NewMockTranscript(transcriptSeed)
 	t.Append("lambda", lambda)
 
@@ -60,13 +57,15 @@ func (v *verifierAction) Run(run wizard.Runtime) error {
 		return fmt.Errorf("multilineareval verifier: %w", err)
 	}
 
-	// Confirm the residual point matches the sumcheck challenges.
-	if len(challenges) != len(residualParams.Point) {
-		return fmt.Errorf("multilineareval verifier: challenge length mismatch")
-	}
-	for i, c := range challenges {
-		if !c.Equal(&residualParams.Point[i]) {
-			return fmt.Errorf("multilineareval verifier: residual point mismatch at index %d", i)
+	// Confirm every residual poly's point equals the sumcheck challenges.
+	for i := range ctx.PolRefs {
+		if len(residualParams.Points[i]) != len(challenges) {
+			return fmt.Errorf("multilineareval verifier: poly %d residual point length mismatch", i)
+		}
+		for j, c := range challenges {
+			if !c.Equal(&residualParams.Points[i][j]) {
+				return fmt.Errorf("multilineareval verifier: poly %d residual point[%d] mismatch", i, j)
+			}
 		}
 	}
 

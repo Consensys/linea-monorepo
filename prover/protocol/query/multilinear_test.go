@@ -59,14 +59,14 @@ func TestMultilinearEvalWizardRoundtrip(t *testing.T) {
 				for i := 0; i < tc.N; i++ {
 					cols[i] = b.RegisterCommit(ifaces.ColIDf("P_%d", i), size)
 				}
-				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", tc.numVars, cols)
+				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
 			}
 
 			prove := func(run *wizard.ProverRuntime) {
 				for i := 0; i < tc.N; i++ {
 					run.AssignColumn(ifaces.ColIDf("P_%d", i), smartvectors.NewRegular(colData[i]))
 				}
-				run.AssignMultilinearExt("MLEVAL", point, expectedYs...)
+				run.AssignMultilinearExtShared("MLEVAL", point, expectedYs...)
 			}
 
 			compiled := wizard.Compile(define, dummy.Compile)
@@ -105,11 +105,11 @@ func TestMultilinearEvalCheckRejectsWrongY(t *testing.T) {
 
 	define := func(b *wizard.Builder) {
 		col := b.RegisterCommit("P", size)
-		b.CompiledIOP.InsertMultilinear(0, "MLEVAL_BAD", numVars, []ifaces.Column{col})
+		b.CompiledIOP.InsertMultilinear(0, "MLEVAL_BAD", []ifaces.Column{col})
 	}
 	prove := func(run *wizard.ProverRuntime) {
 		run.AssignColumn("P", smartvectors.NewRegular(colData))
-		run.AssignMultilinearExt("MLEVAL_BAD", point, wrongY)
+		run.AssignMultilinearExtShared("MLEVAL_BAD", point, wrongY)
 	}
 
 	compiled := wizard.Compile(define, dummy.Compile)

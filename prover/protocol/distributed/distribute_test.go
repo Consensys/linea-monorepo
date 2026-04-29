@@ -647,7 +647,7 @@ func (d *MultilinVortexTestCase) Define(comp *wizard.CompiledIOP) {
 	comp.InsertInclusion(0, "mlv_self_incl", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
 
 	col := comp.InsertCommit(0, "mlv_col", d.numRow, true)
-	comp.InsertMultilinear(0, "MLV_EVAL", d.numVars, []ifaces.Column{col})
+	comp.InsertMultilinear(0, "MLV_EVAL", []ifaces.Column{col})
 	// Mark as ignored so FilterCompiledIOP never sees it. The ML protocol is
 	// compiled on the Bootstrapper by PostDistribute after DistributeWizard.
 	comp.QueriesParams.MarkAsIgnored("MLV_EVAL")
@@ -707,7 +707,7 @@ func (d *MultilinVortexTestCase) Assign(run *wizard.ProverRuntime) {
 	}
 	y := sumcheck.MultiLin(valsExt).Evaluate(point)
 
-	run.AssignMultilinearExt("MLV_EVAL", point, y)
+	run.AssignMultilinearExtShared("MLV_EVAL", point, y)
 }
 
 // Advices returns module-discovery advice for MultilinVortexTestCase.
@@ -777,11 +777,8 @@ func (d *MultilinVortexMixedTestCase) Define(comp *wizard.CompiledIOP) {
 	bigCol := comp.InsertCommit(0, "mix_big_col", d.numRowBig, true)
 	smallCol := comp.InsertCommit(0, "mix_small_col", d.numRowSmall, true)
 
-	numVarsBig := bits.Len(uint(d.numRowBig)) - 1
-	numVarsSmall := bits.Len(uint(d.numRowSmall)) - 1
-
-	comp.InsertMultilinear(0, "MIX_EVAL_BIG", numVarsBig, []ifaces.Column{bigCol})
-	comp.InsertMultilinear(0, "MIX_EVAL_SMALL", numVarsSmall, []ifaces.Column{smallCol})
+	comp.InsertMultilinear(0, "MIX_EVAL_BIG", []ifaces.Column{bigCol})
+	comp.InsertMultilinear(0, "MIX_EVAL_SMALL", []ifaces.Column{smallCol})
 	comp.QueriesParams.MarkAsIgnored("MIX_EVAL_BIG")
 	comp.QueriesParams.MarkAsIgnored("MIX_EVAL_SMALL")
 }
@@ -859,7 +856,7 @@ func (d *MultilinVortexMixedTestCase) Assign(run *wizard.ProverRuntime) {
 		bigExt[i].B0.A0 = v
 	}
 	bigY := sumcheck.MultiLin(bigExt).Evaluate(bigPoint)
-	run.AssignMultilinearExt("MIX_EVAL_BIG", bigPoint, bigY)
+	run.AssignMultilinearExtShared("MIX_EVAL_BIG", bigPoint, bigY)
 
 	// Evaluation point for small polynomial.
 	smallPoint := make([]fext.Element, numVarsSmall)
@@ -871,7 +868,7 @@ func (d *MultilinVortexMixedTestCase) Assign(run *wizard.ProverRuntime) {
 		smallExt[i].B0.A0 = v
 	}
 	smallY := sumcheck.MultiLin(smallExt).Evaluate(smallPoint)
-	run.AssignMultilinearExt("MIX_EVAL_SMALL", smallPoint, smallY)
+	run.AssignMultilinearExtShared("MIX_EVAL_SMALL", smallPoint, smallY)
 }
 
 // Advices groups each module's columns under its own module name.

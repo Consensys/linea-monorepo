@@ -23,9 +23,10 @@ func (p *proverAction) Run(run *wizard.ProverRuntime) {
 
 	// Read the shared evaluation point from the input query params.
 	inputParams := run.GetMultilinearParams(ctx.InputQuery.Name())
-	// Point has n elements: first nRow are c_row, last nCol are c_col.
-	cRow := inputParams.Point[:nRow]
-	cCol := inputParams.Point[nRow:]
+	// Points[0] holds the shared evaluation point (all polys in the batch share it).
+	// First nRow coordinates are c_row; last nCol coordinates are c_col.
+	cRow := inputParams.Points[0][:nRow]
+	cCol := inputParams.Points[0][nRow:]
 
 	// Pre-compute alpha powers: alphaPow[b] = α^b for b = 0,...,2^nRow-1.
 	nRowSize := 1 << nRow
@@ -70,7 +71,7 @@ func (p *proverAction) Run(run *wizard.ProverRuntime) {
 		run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
 		run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
 
-		run.AssignMultilinearExt(ctx.UCols[k].Name(), cCol, vk)
-		run.AssignMultilinearExt(ctx.RowClaims[k].Name(), cRow, inputParams.Ys[k])
+		run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
+		run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, inputParams.Ys[k])
 	}
 }

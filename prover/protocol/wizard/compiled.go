@@ -636,11 +636,11 @@ func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []if
 }
 
 // InsertMultilinear registers a new [query.MultilinearEval] in the current
-// CompiledIOP. All columns must already be registered, must be distinct, and
-// must have size 2^numVars.
-func (c *CompiledIOP) InsertMultilinear(round int, name ifaces.QueryID, numVars int, pols []ifaces.Column) query.MultilinearEval {
+// CompiledIOP. All columns must already be registered and distinct; each
+// column's size must be a power of two (NumVars is derived from column sizes).
+func (c *CompiledIOP) InsertMultilinear(round int, name ifaces.QueryID, pols []ifaces.Column) query.MultilinearEval {
 	c.checkAnyInStore(pols)
-	q := query.NewMultilinearEval(name, numVars, pols...)
+	q := query.NewMultilinearEval(name, pols...)
 	c.QueriesParams.AddToRound(round, name, q)
 	return q
 }

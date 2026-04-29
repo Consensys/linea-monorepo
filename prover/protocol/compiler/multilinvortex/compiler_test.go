@@ -63,7 +63,7 @@ func TestMultilinVortexRoundtrip(t *testing.T) {
 				for k := 0; k < tc.numCols; k++ {
 					cols[k] = b.RegisterCommit(ifaces.ColIDf("COL_%d", k), size)
 				}
-				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", tc.numVars, cols)
+				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
 			}
 
 			prove := func(run *wizard.ProverRuntime) {
@@ -71,7 +71,7 @@ func TestMultilinVortexRoundtrip(t *testing.T) {
 					run.AssignColumn(ifaces.ColIDf("COL_%d", k),
 						smartvectors.NewRegular(colData[k]))
 				}
-				run.AssignMultilinearExt("MLEVAL", point, ys...)
+				run.AssignMultilinearExtShared("MLEVAL", point, ys...)
 			}
 
 			compiled := wizard.Compile(define,
