@@ -17,7 +17,6 @@ fn main<ram, registers>() {
     var pc:Address = entry_point[0]
     var opcode:Opcode
     var instruction:Instruction
-    var stop_signal:u1 = 0
     var program_len:Length = riscV_program_length[0]
     var in_bytes_len:Length = in_bytes_length[0]
     var program_off:Offset = riscV_program_offset[0]
