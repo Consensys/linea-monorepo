@@ -15,7 +15,7 @@ clean-environment:
 		docker compose -f docker/compose-tracing-v2-ci-fleet-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
 		docker compose -f docker/compose-tracing-v2-ci-fleet-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
-		rm -f docker/config/linea-besu-sequencer/deny-list.txt || true; # remove runtime deny-list so the next env starts empty
+		: > docker/config/linea-besu-sequencer/deny-list.txt; # truncate runtime deny-list so the next env starts empty
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
 

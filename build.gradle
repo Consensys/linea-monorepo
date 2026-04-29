@@ -323,6 +323,21 @@ dockerCompose {
   }
 }
 
+// Seed the gitignored runtime deny-list before any compose-up so the sequencer's
+// bind-mount finds a regular file (not an auto-created directory) on fresh checkouts.
+def seedSequencerDenyList = tasks.register("seedSequencerDenyList") {
+  doLast {
+    def f = file("docker/config/linea-besu-sequencer/deny-list.txt")
+    f.parentFile.mkdirs()
+    if (!f.exists()) {
+      f.createNewFile()
+    }
+  }
+}
+tasks.matching { it.name.endsWith("ComposeUp") }.configureEach {
+  dependsOn(seedSequencerDenyList)
+}
+
 static Boolean hasKotlinPlugin(Project proj) {
   return proj.plugins.hasPlugin("org.jetbrains.kotlin.jvm")
 }
