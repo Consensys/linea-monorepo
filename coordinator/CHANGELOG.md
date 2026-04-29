@@ -1,3 +1,12 @@
+## [3.0.1] - 2026-04-29
+
+### 🧪 Testing
+
+- *(coordinator)* Trigger release
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Trigger release
 ## [3.0.0] - 2026-04-29
 
 ### 🚀 Features
