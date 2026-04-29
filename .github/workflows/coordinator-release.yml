@@ -23,7 +23,7 @@ jobs:
     with:
       component-name: coordinator
       folder-name: coordinator
-      include-path: '["coordinator/**","contracts/**"]'
+      include-path: 'coordinator/**'
 
   build-docker-image-coordinator:
     needs: [release-coordinator-metadata]

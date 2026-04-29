@@ -28,7 +28,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Need enough history to resolve the latest PR commit
+          # Need enough history to resolve the latest PR commit and access commitlint.config.mjs
           fetch-depth: 0
           submodules: false
 
@@ -50,7 +50,7 @@ jobs:
         component: [ coordinator, postman, tx-exclusion-api, linea-besu ]
         include:
           - component: coordinator
-            include-path: [ 'coordinator/**', 'contracts/**' ]
+            include-path: 'coordinator/**'
           - component: postman
             include-path: 'postman/**'
           - component: tx-exclusion-api
@@ -76,74 +76,21 @@ jobs:
         with:
           tool: git-cliff
 
-      # Normalize matrix.include-path (string or JSON array) into one path per
-      # line so downstream steps can reconstruct a bash array without quoting
-      # or glob-expansion issues.
-      - name: Build include-path list
-        id: paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          {
-            echo 'include_paths<<__PATHS_EOF__'
-            echo '${{ toJSON(matrix.include-path) }}' \
-              | jq -r 'if type == "array" then .[] else . end'
-            echo '__PATHS_EOF__'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Generate ${{ matrix.component }} [Unreleased] changelog
         id: changelog
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config cliff.toml --unreleased)
-          for p in "${paths[@]}"; do
-            cliff_args+=(--include-path "${p}")
-          done
-          cliff_args+=(--tag-pattern "releases/${{ matrix.component }}/v*")
-          {
-            echo 'content<<__CLIFF_EOF__'
-            git cliff "${cliff_args[@]}"
-            echo '__CLIFF_EOF__'
-          } >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/run-git-cliff-commands/action.yml
+        with:
+          component-name: ${{ matrix.component }}
+          include-path: ${{ toJSON(matrix.include-path) }}
+          generate-changelog-mode: "unreleased"
 
       - name: Compute next ${{ matrix.component }} version (semver)
         id: version
-        shell: bash
-        env:
-          COMPONENT: ${{ matrix.component }}
-          CLIFF_CONFIG: cliff.toml
-        run: |
-          set -euo pipefail
-          mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-          cliff_args=(--config "${CLIFF_CONFIG}" --bumped-version)
-          for p in "${paths[@]}"; do
-            cliff_args+=(--include-path "${p}")
-          done
-          cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
-          next_tag=$(git cliff "${cliff_args[@]}")
-          if [ -z "${next_tag}" ]; then
-            echo "git-cliff returned no version; nothing to release."
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          next_semver="${next_tag#releases/${COMPONENT}/v}"
-          current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*" 2>/dev/null || echo "") 
-          echo "current ${COMPONENT} tag: ${current_tag}"
-          echo "next ${COMPONENT} tag:    ${next_tag}"
-          echo "next ${COMPONENT} semver: ${next_semver}"
-          changed=false
-          if [ "${current_tag}" != "${next_tag}" ]; then
-            changed=true
-          fi
-          {
-            echo "tag=${next_tag}"
-            echo "version=${next_semver}"
-            echo "changed=${changed}"
-          } >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/run-git-cliff-commands/action.yml
+        with:
+          component-name: ${{ matrix.component }}
+          include-path: ${{ toJSON(matrix.include-path) }}
+          compute-next-tag-version: "true"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
         if: steps.version.outputs.changed == 'true'
