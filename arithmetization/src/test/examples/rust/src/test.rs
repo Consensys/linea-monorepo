@@ -2,8 +2,17 @@
 #![no_main]
 
 // no_mangle so the linker can find this entry point by its exact name
+#[unsafe(naked)]
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub unsafe extern "C" fn _start() -> ! {
+    core::arch::naked_asm!(
+        "li sp, 0x7A12001", // set stack pointer to a known memory region
+        "call main",
+    );
+}
+
+#[no_mangle]
+fn main() -> ! {
     let _ = add(2, 3);
     exit() // no OS to return to, signal halt via ecall
 }

@@ -1,6 +1,6 @@
 .section .rodata
 value:
-    .word 42
+    .word 0x8000000
 
 .section .text
 .global _start
