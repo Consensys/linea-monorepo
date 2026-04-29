@@ -77,7 +77,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew :tracer:reference-tests:referenceExecutionSpecBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
         timeout-minutes: 360
         env:
-          JUNIT_TESTS_PARALLELISM: 1
+          JUNIT_TESTS_PARALLELISM: 2
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ github.head_ref || github.ref_name }}/
           FAILED_MODULE: ${{ inputs.failed_module || '' }}
