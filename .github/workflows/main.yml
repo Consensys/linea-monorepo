@@ -183,8 +183,8 @@ jobs:
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       linea_sequencer_changed: ${{ needs.filter-commit-changes.outputs.linea-sequencer-plugin }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
-      prover_changed: 'false' # TMP: disabled to speed up CI during analysis testing
-      prover_ray_changed: 'false' # TMP: disabled to speed up CI during analysis testing
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      prover_ray_changed: ${{ needs.filter-commit-changes.outputs.prover-ray }}
       smart_contracts_changed: ${{ needs.filter-commit-changes.outputs.smart-contracts }}
       staterecovery_changed: false # disable until we have time to address it ${{ needs.filter-commit-changes.outputs.staterecovery }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
@@ -323,7 +323,7 @@ jobs:
         publish-images-after-run-tests-success-on-main,
         cleanup-deployments,
       ]
-    if: ${{ always() && (github.ref == 'refs/heads/main' || github.event_name == 'pull_request') && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     permissions:
       contents: read
       actions: read
