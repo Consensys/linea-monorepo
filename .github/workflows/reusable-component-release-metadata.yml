@@ -86,6 +86,7 @@ jobs:
         uses: ./.github/actions/run-git-cliff-commands
         with:
           component-name: ${{ inputs.component-name }}
+          folder-name: ${{ inputs.folder-name }}
           include-path: ${{ inputs.include-path }}
           prepend-changelog: "true"
 
