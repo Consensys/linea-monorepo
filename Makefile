@@ -16,13 +16,17 @@ clean-environment:
 		docker compose -f docker/compose-tracing-v2-ci-fleet-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
 		: > docker/config/linea-besu-sequencer/deny-list.txt; # truncate runtime deny-list so the next env starts empty
+		rm -f docker/config/linea-besu-sequencer/deny-list.txt.lock || true; # drop stale cross-worker lockfile from a crashed run
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
 
 # Ensure the runtime sequencer deny-list exists (empty) before docker compose
 # bind-mounts it. Gitignored; may be mutated at test time by withDenyListAddresses.
+# Also drop any stale lockfile from a crashed previous run, otherwise every
+# mutation in the next run would spin for 30s before timing out.
 seed-deny-list:
 		: > docker/config/linea-besu-sequencer/deny-list.txt
+		rm -f docker/config/linea-besu-sequencer/deny-list.txt.lock || true
 
 start-env: COMPOSE_PROFILES:=l1,l2
 start-env: CLEAN_PREVIOUS_ENV:=true
