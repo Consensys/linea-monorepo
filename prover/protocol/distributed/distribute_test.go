@@ -720,3 +720,168 @@ func (d *MultilinVortexTestCase) Advices() []*distributed.ModuleDiscoveryAdvice 
 		distributed.SameSizeAdvice("mlv-module-0", d.wiop.Columns.GetHandle("mlv_col")),
 	}
 }
+
+// MultilinVortexMixedTestCase exercises the cross-size batching path with two
+// multilinear polynomials of different sizes: one big (numVarsBig = numVars of
+// the large module) and one small (numVarsSmall = numVarsBig - 2, i.e. quarter
+// the size). The two query pipelines under test are selected by useNewPipeline:
+//   - false: classic per-size pipeline (CompileIgnored + Compile per-size)
+//   - true:  cross-size pipeline (CompileAllRoundIgnored + CompileAllRound)
+type MultilinVortexMixedTestCase struct {
+	numRowBig      int
+	numRowSmall    int
+	useNewPipeline bool
+	wiop           *wizard.CompiledIOP
+}
+
+func (d *MultilinVortexMixedTestCase) Name() string {
+	if d.useNewPipeline {
+		return "MultilinVortexMixed/New"
+	}
+	return "MultilinVortexMixed/Old"
+}
+
+// Define registers two sets of structural columns (big and small modules) each
+// with an inclusion query so Vortex gets round-0 Merkle roots for both. The two
+// MLEval queries are immediately marked IGNORED so FilterCompiledIOP never sees
+// them; PostDistribute compiles the ML protocol after DistributeWizard.
+func (d *MultilinVortexMixedTestCase) Define(comp *wizard.CompiledIOP) {
+	d.wiop = comp
+	d.numRowSmall = d.numRowBig / 4 // numVarsSmall = numVarsBig - 2
+
+	// Big module structural columns (size numRowBig).
+	a0b := comp.InsertCommit(0, "mix_a0b", d.numRowBig, true)
+	b0b := comp.InsertCommit(0, "mix_b0b", d.numRowBig, true)
+	c0b := comp.InsertCommit(0, "mix_c0b", d.numRowBig, true)
+	a1b := comp.InsertCommit(0, "mix_a1b", d.numRowBig, true)
+	b1b := comp.InsertCommit(0, "mix_b1b", d.numRowBig, true)
+	c1b := comp.InsertCommit(0, "mix_c1b", d.numRowBig, true)
+	comp.InsertGlobal(0, "mix_global_b0", symbolic.Sub(c0b, b0b, a0b))
+	comp.InsertGlobal(0, "mix_global_b0_dup", symbolic.Sub(c0b, b0b, a0b))
+	comp.InsertGlobal(0, "mix_global_b1", symbolic.Sub(c1b, b1b, a1b))
+	comp.InsertInclusion(0, "mix_incl_big", []ifaces.Column{c0b, b0b, a0b}, []ifaces.Column{c1b, b1b, a1b})
+
+	// Small module structural columns (size numRowSmall).
+	a0s := comp.InsertCommit(0, "mix_a0s", d.numRowSmall, true)
+	b0s := comp.InsertCommit(0, "mix_b0s", d.numRowSmall, true)
+	c0s := comp.InsertCommit(0, "mix_c0s", d.numRowSmall, true)
+	a1s := comp.InsertCommit(0, "mix_a1s", d.numRowSmall, true)
+	b1s := comp.InsertCommit(0, "mix_b1s", d.numRowSmall, true)
+	c1s := comp.InsertCommit(0, "mix_c1s", d.numRowSmall, true)
+	comp.InsertGlobal(0, "mix_global_s0", symbolic.Sub(c0s, b0s, a0s))
+	comp.InsertGlobal(0, "mix_global_s0_dup", symbolic.Sub(c0s, b0s, a0s))
+	comp.InsertGlobal(0, "mix_global_s1", symbolic.Sub(c1s, b1s, a1s))
+	comp.InsertInclusion(0, "mix_incl_small", []ifaces.Column{c0s, b0s, a0s}, []ifaces.Column{c1s, b1s, a1s})
+
+	// ML columns: big (size numRowBig) and small (size numRowSmall).
+	bigCol := comp.InsertCommit(0, "mix_big_col", d.numRowBig, true)
+	smallCol := comp.InsertCommit(0, "mix_small_col", d.numRowSmall, true)
+
+	numVarsBig := bits.Len(uint(d.numRowBig)) - 1
+	numVarsSmall := bits.Len(uint(d.numRowSmall)) - 1
+
+	comp.InsertMultilinear(0, "MIX_EVAL_BIG", numVarsBig, []ifaces.Column{bigCol})
+	comp.InsertMultilinear(0, "MIX_EVAL_SMALL", numVarsSmall, []ifaces.Column{smallCol})
+	comp.QueriesParams.MarkAsIgnored("MIX_EVAL_BIG")
+	comp.QueriesParams.MarkAsIgnored("MIX_EVAL_SMALL")
+}
+
+// PostDistribute selects the old (per-size) or new (cross-size) ML pipeline.
+func (d *MultilinVortexMixedTestCase) PostDistribute(dw *distributed.DistributedWizard) {
+	if d.useNewPipeline {
+		wizard.ContinueCompilation(
+			dw.Bootstrapper,
+			multilineareval.CompileAllRoundIgnored,
+			multilinvortex.Compile,
+			multilineareval.CompileAllRound,
+			multilinvortex.Compile,
+			multilineareval.CompileAllRound,
+			multilinvortex.Compile,
+			multilineareval.CompileAllRound,
+			multilinvortex.Compile,
+			multilineareval.CompileAllRound,
+		)
+	} else {
+		wizard.ContinueCompilation(
+			dw.Bootstrapper,
+			multilineareval.CompileIgnored,
+			multilinvortex.Compile,
+			multilineareval.Compile,
+			multilinvortex.Compile,
+			multilineareval.Compile,
+			multilinvortex.Compile,
+			multilinvortex.Compile,
+			multilineareval.Compile,
+		)
+	}
+}
+
+// Assign assigns structural and ML column values for both modules.
+func (d *MultilinVortexMixedTestCase) Assign(run *wizard.ProverRuntime) {
+	numVarsBig := bits.Len(uint(d.numRowBig)) - 1
+	numVarsSmall := bits.Len(uint(d.numRowSmall)) - 1
+
+	// Structural columns satisfy c = a + b (i.e. 3 = 1 + 2) with last 2 rows
+	// zero for inclusion query matching across modules.
+	type abcGroup struct{ a, b, c ifaces.ColID; size int }
+	for _, g := range []abcGroup{
+		{"mix_a0b", "mix_b0b", "mix_c0b", d.numRowBig},
+		{"mix_a1b", "mix_b1b", "mix_c1b", d.numRowBig},
+		{"mix_a0s", "mix_b0s", "mix_c0s", d.numRowSmall},
+		{"mix_a1s", "mix_b1s", "mix_c1s", d.numRowSmall},
+	} {
+		run.AssignColumn(g.a, smartvectors.RightZeroPadded(vector.Repeat(field.One(), g.size-2), g.size))
+		run.AssignColumn(g.b, smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), g.size-2), g.size))
+		run.AssignColumn(g.c, smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), g.size-2), g.size))
+	}
+
+	// Big ML column: values 1..numRowBig.
+	bigVals := make([]field.Element, d.numRowBig)
+	for i := range bigVals {
+		bigVals[i] = field.NewElement(uint64(i + 1))
+	}
+	run.AssignColumn("mix_big_col", smartvectors.NewRegular(bigVals))
+
+	// Small ML column: values 1..numRowSmall.
+	smallVals := make([]field.Element, d.numRowSmall)
+	for i := range smallVals {
+		smallVals[i] = field.NewElement(uint64(i + 1))
+	}
+	run.AssignColumn("mix_small_col", smartvectors.NewRegular(smallVals))
+
+	// Evaluation point for big polynomial.
+	bigPoint := make([]fext.Element, numVarsBig)
+	for i := range bigPoint {
+		bigPoint[i] = fext.NewFromInt(int64(i+1), 0, 0, 0)
+	}
+	bigExt := make([]fext.Element, d.numRowBig)
+	for i, v := range bigVals {
+		bigExt[i].B0.A0 = v
+	}
+	bigY := sumcheck.MultiLin(bigExt).Evaluate(bigPoint)
+	run.AssignMultilinearExt("MIX_EVAL_BIG", bigPoint, bigY)
+
+	// Evaluation point for small polynomial.
+	smallPoint := make([]fext.Element, numVarsSmall)
+	for i := range smallPoint {
+		smallPoint[i] = fext.NewFromInt(int64(i+1), 0, 0, 0)
+	}
+	smallExt := make([]fext.Element, d.numRowSmall)
+	for i, v := range smallVals {
+		smallExt[i].B0.A0 = v
+	}
+	smallY := sumcheck.MultiLin(smallExt).Evaluate(smallPoint)
+	run.AssignMultilinearExt("MIX_EVAL_SMALL", smallPoint, smallY)
+}
+
+// Advices groups each module's columns under its own module name.
+func (d *MultilinVortexMixedTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("mix-module-big", d.wiop.Columns.GetHandle("mix_a0b")),
+		distributed.SameSizeAdvice("mix-module-big", d.wiop.Columns.GetHandle("mix_a1b")),
+		distributed.SameSizeAdvice("mix-module-big", d.wiop.Columns.GetHandle("mix_big_col")),
+		distributed.SameSizeAdvice("mix-module-small", d.wiop.Columns.GetHandle("mix_a0s")),
+		distributed.SameSizeAdvice("mix-module-small", d.wiop.Columns.GetHandle("mix_a1s")),
+		distributed.SameSizeAdvice("mix-module-small", d.wiop.Columns.GetHandle("mix_small_col")),
+	}
+}

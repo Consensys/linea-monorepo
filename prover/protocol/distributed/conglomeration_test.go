@@ -86,6 +86,8 @@ func TestConglomerationBasic(t *testing.T) {
 		&ProjectionTestCase{numRow: numRow},
 		&PermutationTestCase{numRow: numRow},
 		&MultilinVortexTestCase{numRow: numRow},
+		&MultilinVortexMixedTestCase{numRowBig: numRow, useNewPipeline: false},
+		&MultilinVortexMixedTestCase{numRowBig: numRow, useNewPipeline: true},
 	}
 
 	for _, tc := range testCases {
