@@ -78,7 +78,7 @@ jobs:
 
       - name: Generate ${{ matrix.component }} [Unreleased] changelog
         id: changelog
-        uses: ./.github/actions/run-git-cliff-commands/action.yml
+        uses: ./.github/actions/run-git-cliff-commands
         with:
           component-name: ${{ matrix.component }}
           include-path: ${{ toJSON(matrix.include-path) }}
