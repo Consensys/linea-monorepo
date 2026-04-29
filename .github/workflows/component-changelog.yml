@@ -93,19 +93,19 @@ jobs:
           compute-next-tag-version: "true"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.tag_changed == 'true'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: ${{ matrix.component }}-changelog-preview
           message: |
             ## ${{ matrix.component }} Changelog Preview (informational)
 
-            **Next proposed version:** `${{ steps.version.outputs.tag }}`
+            **Next proposed version:** `${{ steps.version.outputs.next_tag }}`
 
             <details>
             <summary><strong>[Unreleased] diff</strong> (commits touching <code>${{ matrix.component }}/**</code> since latest <code>releases/${{ matrix.component }}/v*</code> tag)</summary>
 
-            ${{ steps.changelog.outputs.content }}
+            ${{ steps.changelog.outputs.changelog_content }}
 
             </details>
 
