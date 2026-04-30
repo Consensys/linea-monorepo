@@ -11,9 +11,10 @@
 //
 //	Σ_b α^b · RowEvals[b] == v   where v comes from the U_α MultilinearEval params.
 //
-// Check 1 (RS codeword) and Check 2 (Merkle spot-checks) are deferred to the
-// subsequent Vortex compilation pass; the prover is trusted to commit honestly
-// in the prototype.
+// Check 2 (Merkle spot-checks on UAlpha) is handled by CommitMLColumns.
+// Check 1 (UAlpha = α-combination of committed original data) and the
+// corresponding original-column Merkle commitment are handled by
+// CommitOriginalMLColumns.
 //
 // The output MultilinearEval queries feed into the next round of
 // multilineareval.Compile and multilinvortex.Compile.
@@ -30,7 +31,7 @@ import (
 )
 
 // context holds the compiled artifacts for one batch of MultilinearEval queries.
-type context struct {
+type Context struct {
 	// InputQuery is the batched MultilinearEval at the shared point c.
 	// After multilineareval.Compile, there is one residual per numVars group.
 	InputQuery query.MultilinearEval
@@ -113,7 +114,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 			for _, pol := range q.Pols {
 				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
 			}
-			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{q: q})
+			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{Q: q})
 			idx++
 			continue
 		}
@@ -129,13 +130,25 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		}
 
 		ctx := buildContext(comp, r, q, nRow, idx)
-		comp.RegisterProverAction(r+1, &ProverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &ProverAction{Ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
+
+		// Store context so later passes (e.g. CommitOriginalMLColumns) can read it.
+		if comp.ExtraData == nil {
+			comp.ExtraData = make(map[string]any)
+		}
+		ctxs, _ := comp.ExtraData[mlvortexContextsKey].([]*Context)
+		comp.ExtraData[mlvortexContextsKey] = append(ctxs, ctx)
+
 		idx++
 	}
 }
 
-func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *context {
+// mlvortexContextsKey indexes the slice of *Context values stored in ExtraData
+// by compileWithNRow, for use by CommitOriginalMLColumns.
+const mlvortexContextsKey = "mlvortex_contexts"
+
+func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *Context {
 	n := mustAllSameNumVars(q)
 	nCol := n - nRow
 	K := len(q.Pols)
@@ -180,7 +193,7 @@ func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, 
 		_ = pol // column already referenced via q.Pols[k]
 	}
 
-	return &context{
+	return &Context{
 		InputQuery: q,
 		NumVars:    n,
 		NRow:       nRow,

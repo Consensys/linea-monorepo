@@ -86,6 +86,78 @@ func TestMultilinVortexRoundtrip(t *testing.T) {
 	}
 }
 
+// TestCommitMLColumnsCheck2 verifies that CommitMLColumns produces a prover
+// action that fills the Merkle root/opened/paths proof columns, and a verifier
+// action that successfully re-hashes and checks the Merkle paths (Check 2).
+func TestCommitMLColumnsCheck2(t *testing.T) {
+	cases := []struct {
+		name    string
+		numCols int
+		numVars int
+	}{
+		{"1col_n4", 1, 4},
+		{"2col_n4", 2, 4},
+		{"4col_n6", 4, 6},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rng := rand.New(rand.NewPCG(uint64(tc.numCols*100+1), uint64(tc.numVars+1)))
+			size := 1 << tc.numVars
+
+			colData := make([][]field.Element, tc.numCols)
+			for k := 0; k < tc.numCols; k++ {
+				colData[k] = make([]field.Element, size)
+				for j := range colData[k] {
+					colData[k][j] = field.PseudoRand(rng)
+				}
+			}
+
+			point := make([]fext.Element, tc.numVars)
+			for i := range point {
+				point[i] = fext.PseudoRand(rng)
+			}
+			ys := make([]fext.Element, tc.numCols)
+			for k := 0; k < tc.numCols; k++ {
+				vals := make([]fext.Element, size)
+				for j, v := range colData[k] {
+					vals[j].B0.A0 = v
+				}
+				ys[k] = evalMultilin(vals, point)
+			}
+
+			define := func(b *wizard.Builder) {
+				cols := make([]ifaces.Column, tc.numCols)
+				for k := 0; k < tc.numCols; k++ {
+					cols[k] = b.RegisterCommit(ifaces.ColIDf("COL_%d", k), size)
+				}
+				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
+			}
+			prove := func(run *wizard.ProverRuntime) {
+				for k := 0; k < tc.numCols; k++ {
+					run.AssignColumn(ifaces.ColIDf("COL_%d", k),
+						smartvectors.NewRegular(colData[k]))
+				}
+				run.AssignMultilinearExtShared("MLEVAL", point, ys...)
+			}
+
+			compiled := wizard.Compile(define,
+				multilineareval.Compile,
+				multilinvortex.Compile,
+				multilinvortex.CommitMLColumns,
+				multilinvortex.CommitOriginalMLColumns,
+				multilineareval.Compile,
+				multilinvortex.Compile,
+				multilinvortex.CommitMLColumns,
+				multilineareval.Compile,
+				dummy.Compile,
+			)
+			proof := wizard.Prove(compiled, prove)
+			require.NoError(t, wizard.Verify(compiled, proof))
+		})
+	}
+}
+
 func evalMultilin(vals []fext.Element, point []fext.Element) fext.Element {
 	work := make([]fext.Element, len(vals))
 	copy(work, vals)

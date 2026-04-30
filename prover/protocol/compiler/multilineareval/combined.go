@@ -28,10 +28,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// combinedContext holds the compiled artifacts for one cross-size combined
+// CombinedContext holds the compiled artifacts for one cross-size combined
 // sumcheck. One context is created per wizard round that contains unignored
 // MultilinearEval queries.
-type combinedContext struct {
+type CombinedContext struct {
 	// InputQueries are all MultilinearEval queries in this batch (mixed numVars).
 	InputQueries []query.MultilinearEval
 	// MaxNumVars is nmax = max(q.NumVars for q in InputQueries).
@@ -46,11 +46,9 @@ type combinedContext struct {
 	// Residuals[i].NumVars == InputQueries[i].NumVars; its evaluation point is
 	// the first InputQueries[i].NumVars coordinates of the shared challenge.
 	Residuals []query.MultilinearEval
-
-	skipped bool `serde:"omit"`
 }
 
-func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []query.MultilinearEval) *combinedContext {
+func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []query.MultilinearEval) *CombinedContext {
 	suffix := fmt.Sprintf("nmax%d_r%d_%d", nmax, round, comp.SelfRecursionCount)
 
 	lambdaCoin := comp.InsertCoin(
@@ -75,7 +73,7 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 		)
 	}
 
-	return &combinedContext{
+	return &CombinedContext{
 		InputQueries: queries,
 		MaxNumVars:   nmax,
 		Round:        round,
@@ -129,8 +127,8 @@ func CompileAllRound(comp *wizard.CompiledIOP) {
 	for _, r := range rounds {
 		g := grps[r]
 		ctx := buildCombinedContext(comp, r, g.nmax, g.queries)
-		comp.RegisterProverAction(r+1, &CombinedProverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &CombinedProverAction{Ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{Ctx: ctx})
 	}
 }
 
@@ -176,18 +174,18 @@ func CompileAllRoundIgnored(comp *wizard.CompiledIOP) {
 	for _, r := range rounds {
 		g := grps[r]
 		ctx := buildCombinedContext(comp, r, g.nmax, g.queries)
-		comp.RegisterProverAction(r+1, &CombinedProverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &CombinedProverAction{Ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{Ctx: ctx})
 	}
 }
 
-// combinedProverAction runs the prover side of the combined sumcheck.
+// CombinedProverAction runs the prover side of the combined sumcheck.
 type CombinedProverAction struct {
-	ctx *combinedContext
+	Ctx *CombinedContext
 }
 
 func (p *CombinedProverAction) Run(run *wizard.ProverRuntime) {
-	ctx := p.ctx
+	ctx := p.Ctx
 	nmax := ctx.MaxNumVars
 
 	lambda := run.GetRandomCoinFieldExt(ctx.LambdaCoin.Name)
@@ -253,14 +251,14 @@ func (p *CombinedProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// combinedVerifierAction verifies the combined sumcheck.
+// CombinedVerifierAction verifies the combined sumcheck.
 type CombinedVerifierAction struct {
-	ctx     *combinedContext
-	skipped bool `serde:"omit"`
+	Ctx     *CombinedContext
+	Skipped bool `serde:"omit"`
 }
 
 func (v *CombinedVerifierAction) Run(run wizard.Runtime) error {
-	ctx := v.ctx
+	ctx := v.Ctx
 	nmax := ctx.MaxNumVars
 
 	lambda := run.GetRandomCoinFieldExt(ctx.LambdaCoin.Name)
@@ -324,5 +322,5 @@ func (v *CombinedVerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime)
 	panic("multilineareval.combinedVerifierAction.RunGnark: not yet implemented")
 }
 
-func (v *CombinedVerifierAction) Skip()           { v.skipped = true }
-func (v *CombinedVerifierAction) IsSkipped() bool { return v.skipped }
+func (v *CombinedVerifierAction) Skip()           { v.Skipped = true }
+func (v *CombinedVerifierAction) IsSkipped() bool { return v.Skipped }

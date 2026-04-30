@@ -16,13 +16,13 @@ import (
 // for each column k. The MultilinearEval correctness of UCols_k and RowClaims_k
 // is delegated to the next compiler pass.
 type VerifierAction struct {
-	ctx     *context
-	skipped bool `serde:"omit"`
+	Ctx     *Context
+	Skipped bool `serde:"omit"`
 }
 
 // Run verifies the α-combination consistency between RowEvals and U_α.
 func (v *VerifierAction) Run(run wizard.Runtime) error {
-	ctx := v.ctx
+	ctx := v.Ctx
 	nRowSize := 1 << ctx.NRow
 
 	alpha := run.GetRandomCoinFieldExt(ctx.AlphaCoin.Name)
@@ -65,20 +65,20 @@ func (v *VerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime) {
 	panic("multilinvortex.RunGnark: not yet implemented")
 }
 
-func (v *VerifierAction) Skip()           { v.skipped = true }
-func (v *VerifierAction) IsSkipped() bool { return v.skipped }
+func (v *VerifierAction) Skip()           { v.Skipped = true }
+func (v *VerifierAction) IsSkipped() bool { return v.Skipped }
 
 // TerminalVerifierAction handles 1-variable MultilinearEval queries directly:
 // it checks P(r) = (1-r)*col[0] + r*col[1] for each polynomial in the query.
 type TerminalVerifierAction struct {
-	q       query.MultilinearEval
-	skipped bool `serde:"omit"`
+	Q       query.MultilinearEval
+	Skipped bool `serde:"omit"`
 }
 
 func (v *TerminalVerifierAction) Run(run wizard.Runtime) error {
-	params := run.GetMultilinearParams(v.q.QueryID)
+	params := run.GetMultilinearParams(v.Q.QueryID)
 
-	for k, pol := range v.q.Pols {
+	for k, pol := range v.Q.Pols {
 		r := params.Points[k][0]
 		var oneMinusR fext.Element
 		oneMinusR.SetOne()
@@ -105,5 +105,5 @@ func (v *TerminalVerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime)
 	panic("multilinvortex.TerminalVerifierAction.RunGnark: not yet implemented")
 }
 
-func (v *TerminalVerifierAction) Skip()           { v.skipped = true }
-func (v *TerminalVerifierAction) IsSkipped() bool { return v.skipped }
+func (v *TerminalVerifierAction) Skip()           { v.Skipped = true }
+func (v *TerminalVerifierAction) IsSkipped() bool { return v.Skipped }

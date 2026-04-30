@@ -8,15 +8,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// proverAction implements [wizard.ProverAction].
+// ProverAction implements [wizard.ProverAction].
 type ProverAction struct {
-	ctx *context
+	Ctx *Context
 }
 
 // Run computes UAlpha and RowEvals for each input column, then assigns all
 // committed columns and MultilinearEval params.
 func (p *ProverAction) Run(run *wizard.ProverRuntime) {
-	ctx := p.ctx
+	ctx := p.Ctx
 	nRow := ctx.NRow
 	nCol := ctx.NCol
 

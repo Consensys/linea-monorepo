@@ -55,34 +55,34 @@ func InsertBootstrapperOpenings(comp *wizard.CompiledIOP) {
 		qName := ifaces.QueryID(fmt.Sprintf("ML_OPEN_nv%d", g.numVars))
 		q := comp.InsertMultilinear(1, qName, g.cols)
 		comp.RegisterProverAction(1, &MlOpeningProverAction{
-			q:         q,
-			cols:      g.cols,
-			coinNames: g.coinNames,
+			Q:         q,
+			Cols:      g.cols,
+			CoinNames: g.coinNames,
 		})
 	}
 }
 
 type MlOpeningProverAction struct {
-	q         query.MultilinearEval
-	cols      []ifaces.Column
-	coinNames []coin.Name
+	Q         query.MultilinearEval
+	Cols      []ifaces.Column
+	CoinNames []coin.Name
 }
 
 func (a *MlOpeningProverAction) Run(run *wizard.ProverRuntime) {
-	nv := len(a.coinNames)
+	nv := len(a.CoinNames)
 	point := make([]fext.Element, nv)
-	for d, name := range a.coinNames {
+	for d, name := range a.CoinNames {
 		point[d] = run.GetRandomCoinFieldExt(name)
 	}
 
-	points := make([][]fext.Element, len(a.cols))
-	ys := make([]fext.Element, len(a.cols))
+	points := make([][]fext.Element, len(a.Cols))
+	ys := make([]fext.Element, len(a.Cols))
 
 	// Evaluate each column at point in parallel. IntoRegVecSaveAllocExt returns
 	// a freshly allocated slice, so we fold it in-place (no Clone needed).
-	parallel.Execute(len(a.cols), func(start, stop int) {
+	parallel.Execute(len(a.Cols), func(start, stop int) {
 		for k := start; k < stop; k++ {
-			ml := sumcheck.MultiLin(run.GetColumn(a.cols[k].GetColID()).IntoRegVecSaveAllocExt())
+			ml := sumcheck.MultiLin(run.GetColumn(a.Cols[k].GetColID()).IntoRegVecSaveAllocExt())
 			for _, r := range point {
 				ml.Fold(r)
 			}
@@ -91,5 +91,5 @@ func (a *MlOpeningProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	run.AssignMultilinearExt(a.q.Name(), points, ys...)
+	run.AssignMultilinearExt(a.Q.Name(), points, ys...)
 }

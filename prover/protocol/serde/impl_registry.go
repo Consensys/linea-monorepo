@@ -152,10 +152,12 @@ func init() {
 	RegisterImplementation(query.MultilinearEval{})
 
 	// Multilinear Vortex compiler
+	RegisterImplementation(multilinvortex.Context{})
 	RegisterImplementation(multilinvortex.MlOpeningProverAction{})
 	RegisterImplementation(multilinvortex.ProverAction{})
 	RegisterImplementation(multilinvortex.VerifierAction{})
 	RegisterImplementation(multilinvortex.TerminalVerifierAction{})
+	RegisterImplementation(multilineareval.CombinedContext{})
 	RegisterImplementation(multilineareval.CombinedProverAction{})
 	RegisterImplementation(multilineareval.CombinedVerifierAction{})
 

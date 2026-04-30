@@ -11,9 +11,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilineareval"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilinvortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -31,21 +34,25 @@ type colSpec struct {
 // keep the benchmark under a minute; multiply measured latency by 64 to
 // estimate production overhead.
 var productionApprox = []colSpec{
-	{count: 2000, size: 1 << 10},  // 2K  → 2.0M cells
-	{count: 500, size: 1 << 14},   // 16K → 8.0M cells
-	{count: 100, size: 1 << 17},   // 128K → 12.8M cells
-	{count: 20, size: 1 << 20},    // 1M  → 20.0M cells
-	{count: 5, size: 1 << 22},     // 4M  → 20.0M cells
-	{count: 1, size: 1 << 24},     // 16M → 16.0M cells
+	{count: 2000, size: 1 << 10}, // 2K  → 2.0M cells
+	{count: 500, size: 1 << 14},  // 16K → 8.0M cells
+	{count: 100, size: 1 << 17},  // 128K → 12.8M cells
+	{count: 20, size: 1 << 20},   // 1M  → 20.0M cells
+	{count: 5, size: 1 << 22},    // 4M  → 20.0M cells
+	{count: 1, size: 1 << 24},    // 16M → 16.0M cells
 	// Total: ~78.8M cells (≈ 1/300 of production 23.75B)
 }
 
-// insertUnivariateBootstrapperQuery is a compile step that must run AFTER
-// Arcane (which normalizes all committed columns to a uniform size via stitch +
-// split). It inserts a single UnivariateEval query covering every round-0
-// committed column and registers the prover action that evaluates them at the
-// Fiat-Shamir challenge. This gives the univariate vortex actual opening work
-// to do, making it comparable to the ML path's InsertBootstrapperOpenings.
+// benchSISParams matches the SIS instance used by full.go for the bootstrapper
+// (LogTwoBound=16, LogTwoDegree=6, i.e. degree-64 ring).
+var benchSISParams = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+// insertUnivariateBootstrapperQuery is a compile step that MUST run after
+// Arcane (which normalises all committed columns to a uniform size via
+// Stitcher + Splitter). It inserts a single UnivariateEval query covering
+// every round-0 committed column and registers the matching prover action that
+// evaluates them at the Fiat-Shamir challenge. Without this step vortex.Compile
+// would skip (no query found) and the prover would do no cryptographic work.
 func insertUnivariateBootstrapperQuery(comp *wizard.CompiledIOP) {
 	cols := comp.Columns.AllHandleCommittedAt(0)
 	if len(cols) == 0 {
@@ -84,16 +91,18 @@ func (a *uniBootstrapProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignUnivariateExt(a.q.QueryID, x, ys...)
 }
 
-// BenchmarkMLBootstrapperProver measures the full InsertBootstrapperOpenings +
-// CompileAllRound + Compile prove cycle with a synthetic column distribution
-// that approximates the production bootstrapper at ~1/300 scale.
+// BenchmarkMLBootstrapperProver compares the multilinear-vortex bootstrapper
+// commitment scheme against the production univariate-vortex pipeline on the
+// same synthetic column distribution.
 //
-// Three sub-benchmarks:
-//   - ML:         multilinear vortex path (InsertBootstrapperOpenings + 7
-//                 rounds of multilinvortex.Compile/CompileAllRound)
-//   - Univariate: Arcane (stitch+split to 1M rows) + one vortex.Compile
-//                 round with the same blowUp/SIS params as production
-//   - Baseline:   dummy compile, column-assign overhead only (lower bound)
+// Both endpoints are cryptographically equivalent:
+//   - ML path:         InsertBootstrapperOpenings + 7×(Compile+CompileAllRound)
+//     Seven rounds fully reduce any numVars ≤ 128; the final
+//     dummy.Compile is a no-op terminator.
+//   - Univariate path: Arcane(1M) + vortex(round 1, blowUp=2, 256 cols)
+//   - 3× [SelfRecurse + CleanUp + poseidon2 + Arcane + vortex]
+//     matching the four-round full.go production pipeline.
+//   - Baseline:        dummy compile — column-assign overhead only (lower bound).
 func BenchmarkMLBootstrapperProver(b *testing.B) {
 	rng := rand.New(rand.NewPCG(42, 0))
 
@@ -122,37 +131,44 @@ func BenchmarkMLBootstrapperProver(b *testing.B) {
 		}
 	}
 
-	// Compile→CompileAllRound order: Compile halves numVars first so that
-	// CompileAllRound only expands within the halved space, avoiding the
-	// O(2^nmax × numCols) memory explosion that would occur if CompileAllRound
-	// ran first on heterogeneous-size columns.
+	// ML path: Compile halves numVars first so that CompileAllRound only
+	// expands within the halved space. Seven pairs cover any numVars ≤ 128.
+	// dummy.Compile is a no-op terminator (all queries resolved after 7 rounds).
 	compiledML := wizard.Compile(
 		define,
 		multilinvortex.InsertBootstrapperOpenings,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
+		multilinvortex.CommitOriginalMLColumns, // binds round-0 cols to FS before α
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		multilinvortex.Compile,
+		multilinvortex.CommitMLColumns,
 		multilineareval.CompileAllRound,
 		dummy.Compile,
 	)
 
-	// Univariate path: Arcane stitches/splits heterogeneous columns to a
-	// uniform 1M-row size, then insertUnivariateBootstrapperQuery adds the
-	// single UnivariateEval query vortex needs, and finally vortex.Compile
-	// commits and opens. Parameters match the first stage of full.go
-	// (blowUp=2, 256 opened columns, SIS).
+	// Univariate path: mirrors the four-round full.go bootstrapper pipeline.
+	// insertUnivariateBootstrapperQuery adds the single UnivariateEval query
+	// that vortex requires; it must come after Arcane so the columns are
+	// already normalised to a uniform size.
 	compiledUnivariate := wizard.Compile(
 		define,
+		// Round 1 — stitch/split heterogeneous columns to 1M rows, commit.
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<20),
 			compiler.WithStitcherMinSize(16),
@@ -161,7 +177,51 @@ func BenchmarkMLBootstrapperProver(b *testing.B) {
 		vortex.Compile(
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&ringsis.StdParams),
+			vortex.WithSISParams(&benchSISParams),
+			vortex.WithOptionalSISHashingThreshold(1),
+		),
+		// Round 2
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(16),
+		),
+		vortex.Compile(
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
+			vortex.WithSISParams(&benchSISParams),
+			vortex.WithOptionalSISHashingThreshold(1),
+		),
+		// Round 3
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+			compiler.WithStitcherMinSize(16),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&benchSISParams),
+			vortex.WithOptionalSISHashingThreshold(1),
+		),
+		// Round 4 — final: mark as self-recursed so the gnark verifier can
+		// consume the proof without another self-recursion pass.
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(16),
+		),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
 		),
 	)
 
