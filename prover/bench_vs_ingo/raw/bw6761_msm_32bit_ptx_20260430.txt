@@ -1,0 +1,108 @@
+BW6-761 MSM 32-bit Montgomery multiply optimization, 2026-04-30.
+
+All commands run from:
+/home/ubuntu/dev/go/src/github.com/consensys/linea-monorepo/prover
+
+Change under test:
+- Specialized gpu/cuda/src/plonk2/field.cuh mul<BW6761FpParams>.
+- The specialization uses 24 32-bit limbs and explicit PTX carry-chain
+  multiply-adds instead of the generic 12-limb unsigned __int128 CIOS path.
+
+CUDA rebuild:
+
+cmake --build gpu/cuda/build --target gnark_gpu -j
+
+Result:
+[1/6] Building CUDA object CMakeFiles/gnark_gpu.dir/src/plonk/api.cu.o
+[2/6] Building CUDA object CMakeFiles/gnark_gpu.dir/src/plonk2/kernels.cu.o
+[3/6] Building CUDA object CMakeFiles/gnark_gpu.dir/src/plonk2/msm.cu.o
+[4/6] Building CUDA object CMakeFiles/gnark_gpu.dir/src/plonk2/g1.cu.o
+[5/6] Linking CUDA static library CMakeFiles/gnark_gpu.dir/cmake_device_link.o
+[6/6] Linking CUDA static library libgnark_gpu.a
+
+Correctness:
+
+go test ./gpu/plonk2 -tags cuda,nocorset \
+  -run 'Test(CommitRaw_CUDA|CommitRawMatchesKZGCommit_CUDA|G1MSMCommitRaw_CUDA|G1MSMPippengerRaw_CUDA|CommitRawMSMEdgeCases_CUDA|ShouldUseCPUFallback_Cutoffs_CUDA)$' \
+  -count=1 -timeout=30m
+
+Result:
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.396s
+
+Optimized plonk2 benchmark:
+
+PLONK2_BW6_MSM_SCALAR_MODE=full \
+PLONK2_BW6_MSM_BENCH_SIZES=1Mi,16Mi \
+go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+  -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+  -benchtime=1x -count=1 -timeout=90m
+
+Result:
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Mi-32   156681458 ns/op  accum_seq_us=100906  h2d_us=5030   d2h_us=16519
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Mi-32 1205966761 ns/op accum_seq_us=1037638 h2d_us=76807  d2h_us=16523
+
+Additional optimized plonk2 large-size points:
+
+PLONK2_BW6_MSM_SCALAR_MODE=full \
+PLONK2_BW6_MSM_BENCH_SIZES=8Mi \
+go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+  -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+  -benchtime=1x -count=1 -timeout=60m
+
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=8Mi-32 689444593 ns/op accum_seq_us=579365
+
+PLONK2_BW6_MSM_SCALAR_MODE=full \
+PLONK2_BW6_MSM_BENCH_SIZES=32Mi \
+go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+  -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+  -benchtime=1x -count=1 -timeout=120m
+
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=32Mi-32 2254230042 ns/op accum_seq_us=1964879
+
+Window check after optimization:
+
+for W in 19 20; do
+  PLONK2_BW6_MSM_SCALAR_MODE=full \
+  PLONK2_BW6_MSM_BENCH_SIZES=16Mi \
+  PLONK2_BW6_MSM_WINDOW_BITS=$W \
+  go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+    -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+    -benchtime=1x -count=1 -timeout=90m
+done
+
+Results:
+W=19: 1281391851 ns/op accum_seq_us=1091699 reduce_partial_us=49424
+W=20: 1376449291 ns/op accum_seq_us=1142630 reduce_partial_us=93746
+
+Default W=18 remains best for this implementation at 16Mi.
+
+ICICLE comparison for large sizes:
+
+LIBRARY_PATH=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build \
+LD_LIBRARY_PATH=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build:/home/ubuntu/dev/cpp/icicle-gnark/icicle/build/backend/cuda:$LD_LIBRARY_PATH \
+ICICLE_BACKEND_INSTALL_DIR=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build/backend \
+ICICLE_BW6_MSM_BENCH_SIZES=16Mi \
+go test ./gpu/plonk2 -tags cuda,iciclebench,nocorset -run '^$' \
+  -bench '^BenchmarkICICLEBW6761MSMSizesCUDA$' \
+  -benchtime=1x -count=1 -timeout=60m
+
+BenchmarkICICLEBW6761MSMSizesCUDA/n=16Mi-32 525383819 ns/op
+
+LIBRARY_PATH=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build \
+LD_LIBRARY_PATH=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build:/home/ubuntu/dev/cpp/icicle-gnark/icicle/build/backend/cuda:$LD_LIBRARY_PATH \
+ICICLE_BACKEND_INSTALL_DIR=/home/ubuntu/dev/cpp/icicle-gnark/icicle/build/backend \
+ICICLE_BW6_MSM_BENCH_SIZES=32Mi \
+go test ./gpu/plonk2 -tags cuda,iciclebench,nocorset -run '^$' \
+  -bench '^BenchmarkICICLEBW6761MSMSizesCUDA$' \
+  -benchtime=1x -count=1 -timeout=120m
+
+BenchmarkICICLEBW6761MSMSizesCUDA/n=32Mi-32 879211203 ns/op
+
+Summary:
+- 8Mi improved from about 2.78s to 0.689s, about 4.0x faster.
+- 16Mi improved from about 4.89s to 1.206s, about 4.1x faster.
+- 32Mi now runs in 2.254s.
+- The optimized plonk2 path is still slower than ICICLE:
+  - 8Mi: 0.689s vs ICICLE saved median about 0.355s, about 1.9x slower.
+  - 16Mi: 1.206s vs ICICLE 0.525s, about 2.3x slower.
+  - 32Mi: 2.254s vs ICICLE 0.879s, about 2.6x slower.

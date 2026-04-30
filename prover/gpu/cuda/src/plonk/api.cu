@@ -321,12 +321,16 @@ cudaError_t msm_pippenger_device_points_prealloc_run(
     uint32_t *d_vals_out,
     uint32_t *d_bucket_offsets,
     uint32_t *d_bucket_ends,
+    uint32_t *d_overflow_buckets,
+    uint32_t *d_overflow_count,
     void *d_buckets,
     void *d_window_results,
     void *d_partial_totals,
     void *d_partial_sums,
     void *d_sort_temp,
     size_t sort_temp_bytes,
+    cudaEvent_t *phase_events,
+    float *phase_timings_ms,
     cudaStream_t stream);
 
 } // namespace gnark_gpu::plonk2
@@ -1012,11 +1016,16 @@ struct GnarkGPUPlonk2MSM {
     uint32_t *d_vals_out;
     uint32_t *d_bucket_offsets;
     uint32_t *d_bucket_ends;
+    uint32_t *d_overflow_buckets;
+    uint32_t *d_overflow_count;
     void *d_buckets;
     void *d_window_results;
     void *d_partial_totals;
     void *d_partial_sums;
     void *d_sort_temp;
+    cudaEvent_t phase_event[10];
+    float phase_timings_ms[9];
+    bool phase_events_valid;
 };
 
 static int plonk2_limbs(gnark_gpu_plonk2_curve_id_t curve) {
@@ -1064,11 +1073,16 @@ static int plonk2_reduce_blocks_per_window(int num_windows, int num_buckets) {
 }
 
 static bool plonk2_msm_has_work_buffers(const GnarkGPUPlonk2MSM *msm) {
-    return msm && msm->d_scalars && msm->d_out && msm->d_keys_in &&
-           msm->d_keys_out && msm->d_vals_in && msm->d_vals_out &&
-           msm->d_bucket_offsets && msm->d_bucket_ends && msm->d_buckets &&
-           msm->d_window_results && msm->d_partial_totals &&
-           msm->d_partial_sums && msm->d_sort_temp;
+    if (!(msm && msm->d_scalars && msm->d_out && msm->d_keys_in &&
+          msm->d_keys_out && msm->d_vals_in && msm->d_vals_out &&
+          msm->d_bucket_offsets && msm->d_bucket_ends &&
+          msm->d_overflow_buckets && msm->d_overflow_count &&
+          msm->d_buckets && msm->d_window_results &&
+          msm->d_partial_totals && msm->d_partial_sums &&
+          msm->d_sort_temp)) {
+        return false;
+    }
+    return true;
 }
 
 static void plonk2_msm_free_work_buffers(GnarkGPUPlonk2MSM *msm) {
@@ -1081,6 +1095,8 @@ static void plonk2_msm_free_work_buffers(GnarkGPUPlonk2MSM *msm) {
     if (msm->d_vals_out) cudaFree(msm->d_vals_out);
     if (msm->d_bucket_offsets) cudaFree(msm->d_bucket_offsets);
     if (msm->d_bucket_ends) cudaFree(msm->d_bucket_ends);
+    if (msm->d_overflow_buckets) cudaFree(msm->d_overflow_buckets);
+    if (msm->d_overflow_count) cudaFree(msm->d_overflow_count);
     if (msm->d_buckets) cudaFree(msm->d_buckets);
     if (msm->d_window_results) cudaFree(msm->d_window_results);
     if (msm->d_partial_totals) cudaFree(msm->d_partial_totals);
@@ -1094,6 +1110,8 @@ static void plonk2_msm_free_work_buffers(GnarkGPUPlonk2MSM *msm) {
     msm->d_vals_out = nullptr;
     msm->d_bucket_offsets = nullptr;
     msm->d_bucket_ends = nullptr;
+    msm->d_overflow_buckets = nullptr;
+    msm->d_overflow_count = nullptr;
     msm->d_buckets = nullptr;
     msm->d_window_results = nullptr;
     msm->d_partial_totals = nullptr;
@@ -1106,6 +1124,39 @@ static void plonk2_msm_free_all(GnarkGPUPlonk2MSM *msm) {
     plonk2_msm_free_work_buffers(msm);
     if (msm->d_points) cudaFree(msm->d_points);
     msm->d_points = nullptr;
+}
+
+static void plonk2_msm_init_phase_events(GnarkGPUPlonk2MSM *msm) {
+    if (!msm) return;
+    msm->phase_events_valid = true;
+    for (int i = 0; i < 10; i++) {
+        msm->phase_event[i] = nullptr;
+        if (cudaEventCreate(&msm->phase_event[i]) != cudaSuccess) {
+            msm->phase_events_valid = false;
+            cudaGetLastError();
+            break;
+        }
+    }
+    if (!msm->phase_events_valid) {
+        for (int i = 0; i < 10; i++) {
+            if (msm->phase_event[i]) {
+                cudaEventDestroy(msm->phase_event[i]);
+                msm->phase_event[i] = nullptr;
+            }
+        }
+    }
+    for (int i = 0; i < 9; i++) msm->phase_timings_ms[i] = 0.0f;
+}
+
+static void plonk2_msm_destroy_phase_events(GnarkGPUPlonk2MSM *msm) {
+    if (!msm) return;
+    for (int i = 0; i < 10; i++) {
+        if (msm->phase_event[i]) {
+            cudaEventDestroy(msm->phase_event[i]);
+            msm->phase_event[i] = nullptr;
+        }
+    }
+    msm->phase_events_valid = false;
 }
 
 static cudaError_t plonk2_msm_alloc_work_buffers(GnarkGPUPlonk2MSM *m) {
@@ -1140,6 +1191,11 @@ static cudaError_t plonk2_msm_alloc_work_buffers(GnarkGPUPlonk2MSM *m) {
     if (err != cudaSuccess) goto fail;
     err = cudaMalloc(&m->d_bucket_ends,
                      (size_t)m->total_buckets * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_overflow_buckets,
+                     (size_t)m->total_buckets * sizeof(uint32_t));
+    if (err != cudaSuccess) goto fail;
+    err = cudaMalloc(&m->d_overflow_count, sizeof(uint32_t));
     if (err != cudaSuccess) goto fail;
     err = cudaMalloc(&m->d_buckets, bucket_words * sizeof(uint64_t));
     if (err != cudaSuccess) goto fail;
@@ -1910,23 +1966,24 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_create(
     m->total_buckets = total_buckets;
     m->reduce_bpw = plonk2_reduce_blocks_per_window(num_windows, num_buckets);
     m->assignments_capacity = assignments_capacity;
+    plonk2_msm_init_phase_events(m);
 
     size_t point_words = point_count * (size_t)(2 * base_limbs);
     cudaError_t err = gnark_gpu::plonk2::msm_pippenger_sort_temp_bytes(
         curve_id, point_count, window_bits, &m->sort_temp_bytes);
     if (err != cudaSuccess) {
+        plonk2_msm_destroy_phase_events(m);
         delete m;
         return check_cuda(err);
     }
 
     err = cudaMalloc(&m->d_points, point_words * sizeof(uint64_t));
     if (err != cudaSuccess) {
+        plonk2_msm_destroy_phase_events(m);
         delete m;
         cudaGetLastError();
         return check_cuda(err);
     }
-    err = plonk2_msm_alloc_work_buffers(m);
-    if (err != cudaSuccess) goto fail;
 
     err = cudaMemcpyAsync(m->d_points, points, point_words * sizeof(uint64_t),
                           cudaMemcpyHostToDevice, ctx->stream);
@@ -1940,6 +1997,7 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_create(
 
 fail:
     plonk2_msm_free_all(m);
+    plonk2_msm_destroy_phase_events(m);
     delete m;
     return check_cuda(err);
 }
@@ -1947,6 +2005,7 @@ fail:
 extern "C" void gnark_gpu_plonk2_msm_destroy(gnark_gpu_plonk2_msm_t msm) {
     if (!msm) return;
     plonk2_msm_free_all(msm);
+    plonk2_msm_destroy_phase_events(msm);
     delete msm;
 }
 
@@ -1981,10 +2040,21 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
         msm->curve, msm->d_points, scalars, count, msm->window_bits, out,
         msm->d_scalars, msm->d_out, msm->d_keys_in, msm->d_keys_out,
         msm->d_vals_in, msm->d_vals_out, msm->d_bucket_offsets,
-        msm->d_bucket_ends, msm->d_buckets, msm->d_window_results,
-        msm->d_partial_totals, msm->d_partial_sums, msm->d_sort_temp,
-        msm->sort_temp_bytes, msm->ctx->stream);
+        msm->d_bucket_ends, msm->d_overflow_buckets, msm->d_overflow_count,
+        msm->d_buckets, msm->d_window_results, msm->d_partial_totals,
+        msm->d_partial_sums, msm->d_sort_temp, msm->sort_temp_bytes,
+        msm->phase_events_valid ? msm->phase_event : nullptr,
+        msm->phase_events_valid ? msm->phase_timings_ms : nullptr,
+        msm->ctx->stream);
     return check_cuda(err);
+}
+
+extern "C" int gnark_gpu_plonk2_msm_get_phase_timings(
+    gnark_gpu_plonk2_msm_t msm,
+    float *out) {
+    if (!msm || !out) return 0;
+    for (int i = 0; i < 9; i++) out[i] = msm->phase_timings_ms[i];
+    return 9;
 }
 
 // =============================================================================

@@ -7,6 +7,7 @@ type proverConfig struct {
 	enabled         bool
 	cpuFallback     bool
 	strict          bool
+	legacyBLSGPU    bool
 	memoryLimit     uint64
 	pinnedHostLimit uint64
 	tracePath       string
@@ -25,8 +26,8 @@ func WithEnabled(enabled bool) Option {
 	}
 }
 
-// WithCPUFallback controls whether Prove delegates to gnark's CPU prover while
-// the curve-generic GPU prover is still being wired.
+// WithCPUFallback controls whether Prove delegates to gnark's CPU prover when
+// the GPU path is disabled or returns an error.
 func WithCPUFallback(enabled bool) Option {
 	return func(c *proverConfig) {
 		c.cpuFallback = enabled
@@ -40,21 +41,31 @@ func WithStrictMode(strict bool) Option {
 	}
 }
 
-// WithMemoryLimit records a future hard VRAM budget in bytes.
+// WithLegacyBLS12377Backend enables the historical gpu/plonk BLS12-377 bridge.
+//
+// This is kept only as an explicit comparison path; the default enabled backend
+// is the curve-generic GPU prover.
+func WithLegacyBLS12377Backend(enabled bool) Option {
+	return func(c *proverConfig) {
+		c.legacyBLSGPU = enabled
+	}
+}
+
+// WithMemoryLimit records a hard VRAM budget in bytes.
 func WithMemoryLimit(bytes uint64) Option {
 	return func(c *proverConfig) {
 		c.memoryLimit = bytes
 	}
 }
 
-// WithPinnedHostLimit records a future pinned host memory budget in bytes.
+// WithPinnedHostLimit records a pinned host memory budget in bytes.
 func WithPinnedHostLimit(bytes uint64) Option {
 	return func(c *proverConfig) {
 		c.pinnedHostLimit = bytes
 	}
 }
 
-// WithTrace records a future phase trace output path.
+// WithTrace records a phase trace output path.
 func WithTrace(path string) Option {
 	return func(c *proverConfig) {
 		c.tracePath = path

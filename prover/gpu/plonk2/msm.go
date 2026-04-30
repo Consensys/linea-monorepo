@@ -24,6 +24,48 @@ type G1MSM struct {
 	points     int
 	windowBits int
 	runPlan    MSMRunPlan
+	hostPoints []uint64
+}
+
+// MSMPhase identifies a phase of the resident CUDA MSM pipeline.
+type MSMPhase int
+
+const (
+	MSMPhaseH2D MSMPhase = iota
+	MSMPhaseBuildPairs
+	MSMPhaseSort
+	MSMPhaseBoundaries
+	MSMPhaseAccumSeq
+	MSMPhaseAccumPar
+	MSMPhaseReducePartial
+	MSMPhaseReduceFinalize
+	MSMPhaseD2H
+	MSMPhaseCount
+)
+
+func (p MSMPhase) String() string {
+	switch p {
+	case MSMPhaseH2D:
+		return "h2d"
+	case MSMPhaseBuildPairs:
+		return "build_pairs"
+	case MSMPhaseSort:
+		return "sort"
+	case MSMPhaseBoundaries:
+		return "boundaries"
+	case MSMPhaseAccumSeq:
+		return "accum_seq"
+	case MSMPhaseAccumPar:
+		return "accum_par"
+	case MSMPhaseReducePartial:
+		return "reduce_partial"
+	case MSMPhaseReduceFinalize:
+		return "reduce_finalize"
+	case MSMPhaseD2H:
+		return "d2h"
+	default:
+		return "unknown"
+	}
 }
 
 // NewG1MSM uploads affine short-Weierstrass points and returns a reusable MSM.
@@ -88,6 +130,9 @@ func newG1MSMWithWindowBits(dev *gpu.Device, curve Curve, points []uint64, windo
 		windowBits: windowBits,
 		runPlan:    runPlan,
 	}
+	if shouldUseCPUFallback(curve, count) {
+		msm.hostPoints = append([]uint64(nil), points...)
+	}
 	runtime.SetFinalizer(msm, (*G1MSM).Close)
 	return msm, nil
 }
@@ -127,6 +172,24 @@ func (m *G1MSM) ReleaseWorkBuffers() error {
 	return toError(C.gnark_gpu_plonk2_msm_release_work_buffers(m.handle))
 }
 
+// LastPhaseTimings returns per-phase timings in milliseconds from the most
+// recent CommitRaw call on this MSM handle.
+func (m *G1MSM) LastPhaseTimings() [MSMPhaseCount]float32 {
+	var out [MSMPhaseCount]C.float
+	if m == nil || m.handle == nil {
+		return [MSMPhaseCount]float32{}
+	}
+	C.gnark_gpu_plonk2_msm_get_phase_timings(
+		m.handle,
+		(*C.float)(unsafe.Pointer(&out[0])),
+	)
+	var result [MSMPhaseCount]float32
+	for i := 0; i < int(MSMPhaseCount); i++ {
+		result[i] = float32(out[i])
+	}
+	return result
+}
+
 // CommitRaw computes a KZG-style commitment using the resident base points.
 func (m *G1MSM) CommitRaw(scalars []uint64) ([]uint64, error) {
 	if m == nil || m.handle == nil || m.dev == nil || m.dev.Handle() == nil {
@@ -139,9 +202,18 @@ func (m *G1MSM) CommitRaw(scalars []uint64) ([]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(m.hostPoints) > 0 && shouldUseCPUFallback(m.curve, count) {
+		pointWords := 2 * m.info.BaseFieldLimbs
+		return commitRawCPUFallback(
+			m.curve,
+			m.hostPoints[:count*pointWords],
+			scalars,
+			count,
+		)
+	}
 
 	raw := make([]uint64, 3*m.info.BaseFieldLimbs)
-	err := toError(C.gnark_gpu_plonk2_msm_run(
+	err = toError(C.gnark_gpu_plonk2_msm_run(
 		m.handle,
 		(*C.uint64_t)(unsafe.Pointer(&scalars[0])),
 		C.size_t(count),

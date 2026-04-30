@@ -57,8 +57,8 @@ func benchBW6761MSMCommitRawSize(b *testing.B, dev *gpu.Device, n int) {
 	b.ReportMetric(float64(plan.Windows), "windows")
 	b.ReportMetric(bytesToGiB(plan.EstimatedTotalBytes), "estimated_GiB")
 
-	points := repeatedBW6761PointRaw(n)
-	scalars := deterministicBW6761ScalarRaw(n)
+	points := rawBW6761G1Slice(testSRSAssets(b).loadBW6761(b, n, true).Pk.G1)
+	scalars := deterministicBW6761ScalarRaw(n, bw6761MSMScalarMode(b))
 	b.Cleanup(func() {
 		points = nil
 		scalars = nil
@@ -80,6 +80,10 @@ func benchBW6761MSMCommitRawSize(b *testing.B, dev *gpu.Device, n int) {
 	for i := 0; i < b.N; i++ {
 		_, err := msm.CommitRaw(scalars)
 		require.NoError(b, err, "BW6-761 MSM should succeed")
+	}
+	timings := msm.LastPhaseTimings()
+	for phase := MSMPhase(0); phase < MSMPhaseCount; phase++ {
+		b.ReportMetric(float64(timings[phase]*1000), phase.String()+"_us")
 	}
 }
 
@@ -119,6 +123,18 @@ func parseBenchSize(s string) (int, error) {
 		return 0, fmt.Errorf("empty size")
 	}
 	multiplier := 1
+	lower := strings.ToLower(s)
+	switch {
+	case strings.HasSuffix(lower, "ki"):
+		multiplier = 1 << 10
+		s = s[:len(s)-2]
+	case strings.HasSuffix(lower, "mi"):
+		multiplier = 1 << 20
+		s = s[:len(s)-2]
+	}
+	if s == "" {
+		return 0, fmt.Errorf("empty size")
+	}
 	last := s[len(s)-1]
 	switch last {
 	case 'k', 'K':
@@ -138,31 +154,8 @@ func parseBenchSize(s string) (int, error) {
 	return base * multiplier, nil
 }
 
-func repeatedBW6761PointRaw(n int) []uint64 {
-	p := bw6761Point(1)
-	point := rawBW6761G1(&p)
-	wordsPerPoint := len(point)
-	out := make([]uint64, n*wordsPerPoint)
-	for i := 0; i < n; i++ {
-		copy(out[i*wordsPerPoint:], point)
-	}
-	return out
-}
-
-func deterministicBW6761ScalarRaw(n int) []uint64 {
-	const limbs = 6
-	out := make([]uint64, n*limbs)
-	x := uint64(0x9e3779b97f4a7c15)
-	for i := range out {
-		x += 0x9e3779b97f4a7c15
-		x ^= x >> 30
-		x *= 0xbf58476d1ce4e5b9
-		x ^= x >> 27
-		x *= 0x94d049bb133111eb
-		x ^= x >> 31
-		out[i] = x
-	}
-	return out
+func deterministicBW6761ScalarRaw(n int, mode string) []uint64 {
+	return rawBW6761(deterministicBW6761Scalars(n, mode))
 }
 
 func bytesToGiB(v uint64) float64 {

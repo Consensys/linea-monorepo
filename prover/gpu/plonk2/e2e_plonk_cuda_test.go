@@ -24,7 +24,6 @@ import (
 	bwcs "github.com/consensys/gnark/constraint/bw6-761"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/linea-monorepo/prover/gpu"
@@ -41,15 +40,14 @@ func TestPlonkE2EGPUSetupCommitments_AllTargetCurves_CUDA(t *testing.T) {
 }
 
 func testPlonkE2EGPUSetupBN254(t *testing.T, dev *gpu.Device) {
-	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &e2eMulCircuit{})
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, newBenchChainCircuit(128))
 	require.NoError(t, err, "compiling BN254 circuit should succeed")
 
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(t, err, "creating BN254 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(t).loadForCCS(t, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(t, err, "BN254 PlonK setup should succeed")
 
-	fullWitness, err := frontend.NewWitness(&e2eMulCircuit{X: 3, Y: 11, Z: 33}, ecc.BN254.ScalarField())
+	fullWitness, err := frontend.NewWitness(newBenchChainAssignment(ecc.BN254, 128), ecc.BN254.ScalarField())
 	require.NoError(t, err, "creating BN254 witness should succeed")
 	publicWitness, err := fullWitness.Public()
 	require.NoError(t, err, "extracting BN254 public witness should succeed")
@@ -81,15 +79,14 @@ func testPlonkE2EGPUSetupBN254(t *testing.T, dev *gpu.Device) {
 }
 
 func testPlonkE2EGPUSetupBLS12377(t *testing.T, dev *gpu.Device) {
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &e2eMulCircuit{})
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, newBenchChainCircuit(128))
 	require.NoError(t, err, "compiling BLS12-377 circuit should succeed")
 
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(t, err, "creating BLS12-377 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(t).loadForCCS(t, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(t, err, "BLS12-377 PlonK setup should succeed")
 
-	fullWitness, err := frontend.NewWitness(&e2eMulCircuit{X: 3, Y: 11, Z: 33}, ecc.BLS12_377.ScalarField())
+	fullWitness, err := frontend.NewWitness(newBenchChainAssignment(ecc.BLS12_377, 128), ecc.BLS12_377.ScalarField())
 	require.NoError(t, err, "creating BLS12-377 witness should succeed")
 	publicWitness, err := fullWitness.Public()
 	require.NoError(t, err, "extracting BLS12-377 public witness should succeed")
@@ -121,15 +118,14 @@ func testPlonkE2EGPUSetupBLS12377(t *testing.T, dev *gpu.Device) {
 }
 
 func testPlonkE2EGPUSetupBW6761(t *testing.T, dev *gpu.Device) {
-	ccs, err := frontend.Compile(ecc.BW6_761.ScalarField(), scs.NewBuilder, &e2eMulCircuit{})
+	ccs, err := frontend.Compile(ecc.BW6_761.ScalarField(), scs.NewBuilder, newBenchChainCircuit(128))
 	require.NoError(t, err, "compiling BW6-761 circuit should succeed")
 
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(t, err, "creating BW6-761 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(t).loadForCCS(t, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(t, err, "BW6-761 PlonK setup should succeed")
 
-	fullWitness, err := frontend.NewWitness(&e2eMulCircuit{X: 3, Y: 11, Z: 33}, ecc.BW6_761.ScalarField())
+	fullWitness, err := frontend.NewWitness(newBenchChainAssignment(ecc.BW6_761, 128), ecc.BW6_761.ScalarField())
 	require.NoError(t, err, "creating BW6-761 witness should succeed")
 	publicWitness, err := fullWitness.Public()
 	require.NoError(t, err, "extracting BW6-761 public witness should succeed")

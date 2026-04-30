@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	goRuntime "runtime"
+	"strings"
 	"sync"
 	"testing"
 	"unsafe"
@@ -19,6 +20,7 @@ import (
 	icicleBN254 "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/curves/bn254"
 	icicleBN254NTT "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/curves/bn254/ntt"
 	icicleBW6761 "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/curves/bw6761"
+	icicleBW6761MSM "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/curves/bw6761/msm"
 	icicleBW6761NTT "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/curves/bw6761/ntt"
 	icicleRuntime "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/runtime"
 	icicleConfig "github.com/ingonyama-zk/icicle-gnark/v3/wrappers/golang/runtime/config_extension"
@@ -150,6 +152,20 @@ func BenchmarkCompareMSMBLS12377SRS(b *testing.B) {
 	}
 }
 
+func BenchmarkICICLEBW6761MSMSizesCUDA(b *testing.B) {
+	for _, n := range icicleBW6761MSMBenchSizes(b) {
+		b.Run(fmt.Sprintf("n=%s", benchFormatCount(n)), func(b *testing.B) {
+			goRuntime.LockOSThread()
+			defer goRuntime.UnlockOSThread()
+
+			initICICLEBench(b)
+			scalars := icicleBW6761.GenerateScalars(n)
+			points := icicleBW6761.GenerateAffinePoints(n)
+			benchICICLEBW6761MSM(b, scalars, points)
+		})
+	}
+}
+
 func benchPlonk2FFT(
 	b *testing.B,
 	dev *gpu.Device,
@@ -260,6 +276,67 @@ func benchICICLEBLS12377MSM(
 		requireICICLESuccess(b, icicleBLS12377MSM.Msm(deviceScalars, devicePoints, &cfg, deviceOutput), "ICICLE MSM")
 		requireICICLESuccess(b, icicleRuntime.DeviceSynchronize(), "ICICLE MSM sync")
 	}
+}
+
+func benchICICLEBW6761MSM(
+	b *testing.B,
+	scalars icicleCore.HostSlice[icicleBW6761.ScalarField],
+	points icicleCore.HostSlice[icicleBW6761.Affine],
+) {
+	b.Helper()
+	var deviceScalars icicleCore.DeviceSlice
+	scalars.CopyToDevice(&deviceScalars, true)
+	defer func() {
+		activateICICLECUDA(b)
+		requireICICLESuccess(b, deviceScalars.Free(), "freeing ICICLE BW6-761 MSM scalars")
+	}()
+
+	var devicePoints icicleCore.DeviceSlice
+	points.CopyToDevice(&devicePoints, true)
+	defer func() {
+		activateICICLECUDA(b)
+		requireICICLESuccess(b, devicePoints.Free(), "freeing ICICLE BW6-761 MSM points")
+	}()
+
+	var projective icicleBW6761.Projective
+	var deviceOutput icicleCore.DeviceSlice
+	_, err := deviceOutput.Malloc(projective.Size(), 1)
+	requireICICLESuccess(b, err, "allocating ICICLE BW6-761 MSM output")
+	defer func() {
+		activateICICLECUDA(b)
+		requireICICLESuccess(b, deviceOutput.Free(), "freeing ICICLE BW6-761 MSM output")
+	}()
+
+	cfg := icicleBW6761MSM.GetDefaultMSMConfig()
+	cfg.StreamHandle = nil
+	cfg.IsAsync = false
+	requireICICLESuccess(b, icicleRuntime.DeviceSynchronize(), "ICICLE BW6-761 MSM setup sync")
+
+	b.SetBytes(int64(scalars.Len() * scalars.SizeOfElement()))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		activateICICLECUDA(b)
+		requireICICLESuccess(b, icicleBW6761MSM.Msm(deviceScalars, devicePoints, &cfg, deviceOutput), "ICICLE BW6-761 MSM")
+		requireICICLESuccess(b, icicleRuntime.DeviceSynchronize(), "ICICLE BW6-761 MSM sync")
+	}
+}
+
+func icicleBW6761MSMBenchSizes(tb testing.TB) []int {
+	tb.Helper()
+	raw := strings.TrimSpace(os.Getenv("ICICLE_BW6_MSM_BENCH_SIZES"))
+	if raw == "" {
+		return []int{1 << 23, 1 << 24}
+	}
+
+	parts := strings.Split(raw, ",")
+	sizes := make([]int, 0, len(parts))
+	for _, part := range parts {
+		n, err := parseBenchSize(strings.TrimSpace(part))
+		require.NoError(tb, err, "parsing ICICLE_BW6_MSM_BENCH_SIZES should succeed")
+		require.Positive(tb, n, "benchmark size should be positive")
+		sizes = append(sizes, n)
+	}
+	return sizes
 }
 
 func initICICLEBench(tb testing.TB) {

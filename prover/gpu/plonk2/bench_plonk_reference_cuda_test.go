@@ -25,7 +25,6 @@ import (
 	bwcs "github.com/consensys/gnark/constraint/bw6-761"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/linea-monorepo/prover/gpu"
@@ -36,7 +35,7 @@ func BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA(b *testing.B) {
 	require.NoError(b, err, "creating CUDA device should succeed")
 	defer dev.Close()
 
-	for _, constraints := range benchPlonkConstraintCounts {
+	for _, constraints := range plonkBenchConstraintCounts(b) {
 		b.Run(benchPlonkCaseName("bn254", constraints), func(b *testing.B) {
 			benchSetupCommitmentsBN254(b, dev, constraints)
 		})
@@ -173,8 +172,7 @@ func newSetupCommitmentsBN254(tb testing.TB, constraints int) setupCommitmentsBN
 	tb.Helper()
 	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, newBenchChainCircuit(constraints))
 	require.NoError(tb, err, "compiling BN254 benchmark circuit should succeed")
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(tb, err, "creating BN254 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(tb).loadForCCS(tb, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(tb, err, "BN254 PlonK setup should succeed")
 
@@ -213,8 +211,7 @@ func newSetupCommitmentsBLS12377(tb testing.TB, constraints int) setupCommitment
 	tb.Helper()
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, newBenchChainCircuit(constraints))
 	require.NoError(tb, err, "compiling BLS12-377 benchmark circuit should succeed")
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(tb, err, "creating BLS12-377 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(tb).loadForCCS(tb, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(tb, err, "BLS12-377 PlonK setup should succeed")
 
@@ -253,8 +250,7 @@ func newSetupCommitmentsBW6761(tb testing.TB, constraints int) setupCommitmentsB
 	tb.Helper()
 	ccs, err := frontend.Compile(ecc.BW6_761.ScalarField(), scs.NewBuilder, newBenchChainCircuit(constraints))
 	require.NoError(tb, err, "compiling BW6-761 benchmark circuit should succeed")
-	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
-	require.NoError(tb, err, "creating BW6-761 unsafe test SRS should succeed")
+	srs, srsLagrange := testSRSAssets(tb).loadForCCS(tb, ccs)
 	pkI, vkI, err := gnarkplonk.Setup(ccs, srs, srsLagrange)
 	require.NoError(tb, err, "BW6-761 PlonK setup should succeed")
 

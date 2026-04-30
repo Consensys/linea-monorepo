@@ -156,7 +156,7 @@ func TestProverTrace(t *testing.T) {
 	contents, err := os.ReadFile(tracePath)
 	require.NoError(t, err, "trace file should be written")
 	require.Contains(t, string(contents), `"phase":"prepare"`, "trace should include prepare event")
-	require.Contains(t, string(contents), `"phase":"fallback"`, "trace should include fallback event")
+	require.Contains(t, string(contents), `"phase":"cpu_fallback"`, "trace should include CPU fallback event")
 
 	var event map[string]any
 	require.NoError(t, json.Unmarshal(contents[:jsonLineEnd(contents)], &event), "first trace event should be JSON")

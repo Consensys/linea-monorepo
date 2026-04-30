@@ -7,7 +7,9 @@ namespace gnark_gpu::plonk2 {
 namespace {
 
 constexpr unsigned THREADS = 256;
+constexpr unsigned NTT_THREADS = 256;
 constexpr size_t Z_PREFIX_CHUNK_SIZE = 1024;
+constexpr uint32_t NTT_FUSED_TAIL_MIN_N = 1u << 22;
 
 struct ScalarArg {
 	uint64_t limbs[MAX_FR_LIMBS];
@@ -635,7 +637,490 @@ __global__ void ntt_dit_stage_kernel(
 }
 
 template <typename Params>
-__global__ void scale_kernel(FrView data, const uint64_t scalar[Params::LIMBS], size_t n) {
+__global__ void scale_kernel(FrView data, const uint64_t *scalar, size_t n);
+
+template <typename Params>
+__global__ void ntt_dit_stage_scale_kernel(
+	FrView data, ConstFrView twiddles, const uint64_t *scale,
+	size_t num_butterflies, size_t half, size_t half_mask, size_t tw_stride) {
+
+	size_t tid = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+	if(tid >= num_butterflies) return;
+
+	size_t j = tid & half_mask;
+	size_t group_base = tid & ~half_mask;
+	size_t idx_a = (group_base << 1) | j;
+	size_t idx_b = idx_a + half;
+	size_t tw_idx = j * tw_stride;
+
+	uint64_t a[Params::LIMBS], b[Params::LIMBS], w[Params::LIMBS];
+	uint64_t wb[Params::LIMBS], sum[Params::LIMBS], diff[Params::LIMBS];
+	uint64_t scaled[Params::LIMBS], scale_value[Params::LIMBS];
+	ConstFrView data_const = make_const(data);
+	load<Params>(a, data_const, idx_a);
+	load<Params>(b, data_const, idx_b);
+	load<Params>(w, twiddles, tw_idx);
+#pragma unroll
+	for(int i = 0; i < Params::LIMBS; i++) {
+		scale_value[i] = __ldg(scale + i);
+	}
+
+	mul<Params>(wb, b, w);
+	add<Params>(sum, a, wb);
+	sub<Params>(diff, a, wb);
+	mul<Params>(scaled, sum, scale_value);
+	store<Params>(data, idx_a, scaled);
+	mul<Params>(scaled, diff, scale_value);
+	store<Params>(data, idx_b, scaled);
+}
+
+template <typename Params>
+__global__ void ntt_dif_radix8_kernel(
+	FrView data, ConstFrView twiddles, uint32_t n, int stage_s) {
+
+	uint32_t tid = (uint32_t)blockIdx.x * blockDim.x + threadIdx.x;
+	uint32_t num_r8 = n >> 3;
+	if(tid >= num_r8) return;
+
+	uint32_t half_s = n >> (stage_s + 1);
+	uint32_t half_s1 = half_s >> 1;
+	uint32_t half_s2 = half_s >> 2;
+
+	uint32_t j = tid & (half_s2 - 1);
+	uint32_t group = tid >> (__ffs(half_s2) - 1);
+
+	uint32_t base = group * (2 * half_s);
+	uint32_t p0 = base + j;
+	uint32_t p1 = p0 + half_s2;
+	uint32_t p2 = p0 + half_s1;
+	uint32_t p3 = p2 + half_s2;
+	uint32_t p4 = p0 + half_s;
+	uint32_t p5 = p4 + half_s2;
+	uint32_t p6 = p4 + half_s1;
+	uint32_t p7 = p6 + half_s2;
+
+	uint64_t a0[Params::LIMBS], a1[Params::LIMBS], a2[Params::LIMBS], a3[Params::LIMBS];
+	uint64_t a4[Params::LIMBS], a5[Params::LIMBS], a6[Params::LIMBS], a7[Params::LIMBS];
+	ConstFrView data_const = make_const(data);
+	load<Params>(a0, data_const, p0);
+	load<Params>(a1, data_const, p1);
+	load<Params>(a2, data_const, p2);
+	load<Params>(a3, data_const, p3);
+	load<Params>(a4, data_const, p4);
+	load<Params>(a5, data_const, p5);
+	load<Params>(a6, data_const, p6);
+	load<Params>(a7, data_const, p7);
+
+	uint32_t tw_stride_s = 1u << stage_s;
+	uint32_t tw_stride_s1 = tw_stride_s << 1;
+	uint32_t tw_stride_s2 = tw_stride_s << 2;
+
+	uint64_t w[Params::LIMBS], sum[Params::LIMBS], diff[Params::LIMBS];
+	uint32_t twi;
+
+	twi = j * tw_stride_s;
+	load<Params>(w, twiddles, twi);
+	add<Params>(sum, a0, a4);
+	sub<Params>(diff, a0, a4);
+	mul<Params>(a4, diff, w);
+	set<Params>(a0, sum);
+
+	twi = (j + half_s2) * tw_stride_s;
+	load<Params>(w, twiddles, twi);
+	add<Params>(sum, a1, a5);
+	sub<Params>(diff, a1, a5);
+	mul<Params>(a5, diff, w);
+	set<Params>(a1, sum);
+
+	twi = (j + half_s1) * tw_stride_s;
+	load<Params>(w, twiddles, twi);
+	add<Params>(sum, a2, a6);
+	sub<Params>(diff, a2, a6);
+	mul<Params>(a6, diff, w);
+	set<Params>(a2, sum);
+
+	twi = (j + half_s1 + half_s2) * tw_stride_s;
+	load<Params>(w, twiddles, twi);
+	add<Params>(sum, a3, a7);
+	sub<Params>(diff, a3, a7);
+	mul<Params>(a7, diff, w);
+	set<Params>(a3, sum);
+
+	uint64_t ws1_0[Params::LIMBS], ws1_1[Params::LIMBS];
+	twi = j * tw_stride_s1;
+	load<Params>(ws1_0, twiddles, twi);
+	twi = (j + half_s2) * tw_stride_s1;
+	load<Params>(ws1_1, twiddles, twi);
+
+	add<Params>(sum, a0, a2);
+	sub<Params>(diff, a0, a2);
+	mul<Params>(a2, diff, ws1_0);
+	set<Params>(a0, sum);
+
+	add<Params>(sum, a1, a3);
+	sub<Params>(diff, a1, a3);
+	mul<Params>(a3, diff, ws1_1);
+	set<Params>(a1, sum);
+
+	add<Params>(sum, a4, a6);
+	sub<Params>(diff, a4, a6);
+	mul<Params>(a6, diff, ws1_0);
+	set<Params>(a4, sum);
+
+	add<Params>(sum, a5, a7);
+	sub<Params>(diff, a5, a7);
+	mul<Params>(a7, diff, ws1_1);
+	set<Params>(a5, sum);
+
+	twi = j * tw_stride_s2;
+	load<Params>(w, twiddles, twi);
+
+	add<Params>(sum, a0, a1);
+	sub<Params>(diff, a0, a1);
+	mul<Params>(a1, diff, w);
+	set<Params>(a0, sum);
+
+	add<Params>(sum, a2, a3);
+	sub<Params>(diff, a2, a3);
+	mul<Params>(a3, diff, w);
+	set<Params>(a2, sum);
+
+	add<Params>(sum, a4, a5);
+	sub<Params>(diff, a4, a5);
+	mul<Params>(a5, diff, w);
+	set<Params>(a4, sum);
+
+	add<Params>(sum, a6, a7);
+	sub<Params>(diff, a6, a7);
+	mul<Params>(a7, diff, w);
+	set<Params>(a6, sum);
+
+	store<Params>(data, p0, a0);
+	store<Params>(data, p1, a1);
+	store<Params>(data, p2, a2);
+	store<Params>(data, p3, a3);
+	store<Params>(data, p4, a4);
+	store<Params>(data, p5, a5);
+	store<Params>(data, p6, a6);
+	store<Params>(data, p7, a7);
+}
+
+template <typename Params, bool FUSE_SCALE>
+__global__ void ntt_dit_radix8_kernel(
+	FrView data, ConstFrView twiddles, const uint64_t *scale, uint32_t n, int stage_s) {
+
+	uint32_t tid = (uint32_t)blockIdx.x * blockDim.x + threadIdx.x;
+	uint32_t num_r8 = n >> 3;
+	if(tid >= num_r8) return;
+
+	uint32_t half_s = n >> (stage_s + 1);
+	uint32_t half_s1 = half_s << 1;
+	uint32_t half_s2 = half_s << 2;
+
+	uint32_t j = tid & (half_s - 1);
+	uint32_t group = tid >> (__ffs(half_s) - 1);
+
+	uint32_t base = group * (8 * half_s);
+	uint32_t p0 = base + j;
+	uint32_t p1 = p0 + half_s;
+	uint32_t p2 = p0 + half_s1;
+	uint32_t p3 = p1 + half_s1;
+	uint32_t p4 = p0 + half_s2;
+	uint32_t p5 = p1 + half_s2;
+	uint32_t p6 = p2 + half_s2;
+	uint32_t p7 = p3 + half_s2;
+
+	uint64_t a0[Params::LIMBS], a1[Params::LIMBS], a2[Params::LIMBS], a3[Params::LIMBS];
+	uint64_t a4[Params::LIMBS], a5[Params::LIMBS], a6[Params::LIMBS], a7[Params::LIMBS];
+	ConstFrView data_const = make_const(data);
+	load<Params>(a0, data_const, p0);
+	load<Params>(a1, data_const, p1);
+	load<Params>(a2, data_const, p2);
+	load<Params>(a3, data_const, p3);
+	load<Params>(a4, data_const, p4);
+	load<Params>(a5, data_const, p5);
+	load<Params>(a6, data_const, p6);
+	load<Params>(a7, data_const, p7);
+
+	uint32_t tw_stride_s = 1u << stage_s;
+	uint32_t tw_stride_s1 = tw_stride_s >> 1;
+	uint32_t tw_stride_s2 = tw_stride_s >> 2;
+
+	uint64_t w[Params::LIMBS], t[Params::LIMBS], sum[Params::LIMBS], diff[Params::LIMBS];
+	uint32_t twi;
+
+	twi = j * tw_stride_s;
+	load<Params>(w, twiddles, twi);
+	mul<Params>(t, a1, w);
+	add<Params>(sum, a0, t);
+	sub<Params>(diff, a0, t);
+	set<Params>(a0, sum);
+	set<Params>(a1, diff);
+
+	mul<Params>(t, a3, w);
+	add<Params>(sum, a2, t);
+	sub<Params>(diff, a2, t);
+	set<Params>(a2, sum);
+	set<Params>(a3, diff);
+
+	mul<Params>(t, a5, w);
+	add<Params>(sum, a4, t);
+	sub<Params>(diff, a4, t);
+	set<Params>(a4, sum);
+	set<Params>(a5, diff);
+
+	mul<Params>(t, a7, w);
+	add<Params>(sum, a6, t);
+	sub<Params>(diff, a6, t);
+	set<Params>(a6, sum);
+	set<Params>(a7, diff);
+
+	uint64_t ws1_a[Params::LIMBS], ws1_b[Params::LIMBS];
+	twi = j * tw_stride_s1;
+	load<Params>(ws1_a, twiddles, twi);
+	twi = (j + half_s) * tw_stride_s1;
+	load<Params>(ws1_b, twiddles, twi);
+
+	mul<Params>(t, a2, ws1_a);
+	add<Params>(sum, a0, t);
+	sub<Params>(diff, a0, t);
+	set<Params>(a0, sum);
+	set<Params>(a2, diff);
+
+	mul<Params>(t, a3, ws1_b);
+	add<Params>(sum, a1, t);
+	sub<Params>(diff, a1, t);
+	set<Params>(a1, sum);
+	set<Params>(a3, diff);
+
+	mul<Params>(t, a6, ws1_a);
+	add<Params>(sum, a4, t);
+	sub<Params>(diff, a4, t);
+	set<Params>(a4, sum);
+	set<Params>(a6, diff);
+
+	mul<Params>(t, a7, ws1_b);
+	add<Params>(sum, a5, t);
+	sub<Params>(diff, a5, t);
+	set<Params>(a5, sum);
+	set<Params>(a7, diff);
+
+	twi = j * tw_stride_s2;
+	load<Params>(w, twiddles, twi);
+	mul<Params>(t, a4, w);
+	add<Params>(sum, a0, t);
+	sub<Params>(diff, a0, t);
+	set<Params>(a0, sum);
+	set<Params>(a4, diff);
+
+	twi = (j + half_s) * tw_stride_s2;
+	load<Params>(w, twiddles, twi);
+	mul<Params>(t, a5, w);
+	add<Params>(sum, a1, t);
+	sub<Params>(diff, a1, t);
+	set<Params>(a1, sum);
+	set<Params>(a5, diff);
+
+	twi = (j + half_s1) * tw_stride_s2;
+	load<Params>(w, twiddles, twi);
+	mul<Params>(t, a6, w);
+	add<Params>(sum, a2, t);
+	sub<Params>(diff, a2, t);
+	set<Params>(a2, sum);
+	set<Params>(a6, diff);
+
+	twi = (j + half_s1 + half_s) * tw_stride_s2;
+	load<Params>(w, twiddles, twi);
+	mul<Params>(t, a7, w);
+	add<Params>(sum, a3, t);
+	sub<Params>(diff, a3, t);
+	set<Params>(a3, sum);
+	set<Params>(a7, diff);
+
+	if constexpr(FUSE_SCALE) {
+		uint64_t scale_value[Params::LIMBS], scaled[Params::LIMBS];
+#pragma unroll
+		for(int i = 0; i < Params::LIMBS; i++) {
+			scale_value[i] = __ldg(scale + i);
+		}
+		mul<Params>(scaled, a0, scale_value); set<Params>(a0, scaled);
+		mul<Params>(scaled, a1, scale_value); set<Params>(a1, scaled);
+		mul<Params>(scaled, a2, scale_value); set<Params>(a2, scaled);
+		mul<Params>(scaled, a3, scale_value); set<Params>(a3, scaled);
+		mul<Params>(scaled, a4, scale_value); set<Params>(a4, scaled);
+		mul<Params>(scaled, a5, scale_value); set<Params>(a5, scaled);
+		mul<Params>(scaled, a6, scale_value); set<Params>(a6, scaled);
+		mul<Params>(scaled, a7, scale_value); set<Params>(a7, scaled);
+	}
+
+	store<Params>(data, p0, a0);
+	store<Params>(data, p1, a1);
+	store<Params>(data, p2, a2);
+	store<Params>(data, p3, a3);
+	store<Params>(data, p4, a4);
+	store<Params>(data, p5, a5);
+	store<Params>(data, p6, a6);
+	store<Params>(data, p7, a7);
+}
+
+template <typename Params, int TAIL_LOG>
+__global__ void __launch_bounds__(1024, 1) ntt_dif_tail_fused_kernel(
+	FrView data, ConstFrView twiddles, uint32_t n, int stage_start) {
+
+	constexpr uint32_t span = 1u << TAIL_LOG;
+	constexpr uint32_t butterflies_per_chunk = span >> 1;
+
+	uint32_t chunk = (uint32_t)blockIdx.x;
+	uint32_t base = chunk * span;
+	uint32_t t = threadIdx.x;
+	uint32_t p = blockDim.x;
+
+	extern __shared__ uint64_t shmem[];
+	uint64_t *s[MAX_FR_LIMBS];
+	s[0] = shmem;
+#pragma unroll
+	for(int limb = 1; limb < Params::LIMBS; limb++) {
+		s[limb] = s[limb - 1] + span;
+	}
+
+	for(uint32_t i = t; i < span; i += p) {
+		uint32_t global_idx = base + i;
+		if(global_idx < n) {
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				s[limb][i] = data.limbs[limb][global_idx];
+			}
+		}
+	}
+	__syncthreads();
+
+#pragma unroll
+	for(int st = 0; st < TAIL_LOG; st++) {
+		int stage = stage_start + st;
+		uint32_t half = n >> (stage + 1);
+		uint32_t half_mask = half - 1;
+		uint32_t tw_stride = 1u << stage;
+
+		for(uint32_t bt = t; bt < butterflies_per_chunk; bt += p) {
+			uint32_t j = bt & half_mask;
+			uint32_t group_base = bt & ~half_mask;
+			uint32_t idx_a = (group_base << 1) | j;
+			uint32_t idx_b = idx_a + half;
+			uint32_t tw_idx = j * tw_stride;
+
+			uint64_t a[Params::LIMBS], b[Params::LIMBS], w[Params::LIMBS];
+			uint64_t sum[Params::LIMBS], diff[Params::LIMBS], prod[Params::LIMBS];
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				a[limb] = s[limb][idx_a];
+				b[limb] = s[limb][idx_b];
+			}
+			load<Params>(w, twiddles, tw_idx);
+
+			add<Params>(sum, a, b);
+			sub<Params>(diff, a, b);
+			mul<Params>(prod, diff, w);
+
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				s[limb][idx_a] = sum[limb];
+				s[limb][idx_b] = prod[limb];
+			}
+		}
+		__syncthreads();
+	}
+
+	for(uint32_t i = t; i < span; i += p) {
+		uint32_t global_idx = base + i;
+		if(global_idx < n) {
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				data.limbs[limb][global_idx] = s[limb][i];
+			}
+		}
+	}
+}
+
+template <typename Params, int TAIL_LOG>
+__global__ void __launch_bounds__(1024, 1) ntt_dit_tail_fused_kernel(
+	FrView data, ConstFrView twiddles, uint32_t n, int stage_start) {
+
+	constexpr uint32_t span = 1u << TAIL_LOG;
+	constexpr uint32_t butterflies_per_chunk = span >> 1;
+
+	uint32_t chunk = (uint32_t)blockIdx.x;
+	uint32_t base = chunk * span;
+	uint32_t t = threadIdx.x;
+	uint32_t p = blockDim.x;
+
+	extern __shared__ uint64_t shmem[];
+	uint64_t *s[MAX_FR_LIMBS];
+	s[0] = shmem;
+#pragma unroll
+	for(int limb = 1; limb < Params::LIMBS; limb++) {
+		s[limb] = s[limb - 1] + span;
+	}
+
+	for(uint32_t i = t; i < span; i += p) {
+		uint32_t global_idx = base + i;
+		if(global_idx < n) {
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				s[limb][i] = data.limbs[limb][global_idx];
+			}
+		}
+	}
+	__syncthreads();
+
+#pragma unroll
+	for(int st = 0; st < TAIL_LOG; st++) {
+		int stage = stage_start - st;
+		uint32_t half = n >> (stage + 1);
+		uint32_t half_mask = half - 1;
+		uint32_t tw_stride = 1u << stage;
+
+		for(uint32_t bt = t; bt < butterflies_per_chunk; bt += p) {
+			uint32_t j = bt & half_mask;
+			uint32_t group_base = bt & ~half_mask;
+			uint32_t idx_a = (group_base << 1) | j;
+			uint32_t idx_b = idx_a + half;
+			uint32_t tw_idx = j * tw_stride;
+
+			uint64_t a[Params::LIMBS], b[Params::LIMBS], w[Params::LIMBS];
+			uint64_t wb[Params::LIMBS], sum[Params::LIMBS], diff[Params::LIMBS];
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				a[limb] = s[limb][idx_a];
+				b[limb] = s[limb][idx_b];
+			}
+			load<Params>(w, twiddles, tw_idx);
+
+			mul<Params>(wb, b, w);
+			add<Params>(sum, a, wb);
+			sub<Params>(diff, a, wb);
+
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				s[limb][idx_a] = sum[limb];
+				s[limb][idx_b] = diff[limb];
+			}
+		}
+		__syncthreads();
+	}
+
+	for(uint32_t i = t; i < span; i += p) {
+		uint32_t global_idx = base + i;
+		if(global_idx < n) {
+#pragma unroll
+			for(int limb = 0; limb < Params::LIMBS; limb++) {
+				data.limbs[limb][global_idx] = s[limb][i];
+			}
+		}
+	}
+}
+
+template <typename Params>
+__global__ void scale_kernel(FrView data, const uint64_t *scalar, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
 	uint64_t a[Params::LIMBS], out[Params::LIMBS];
@@ -713,12 +1198,8 @@ __global__ void local_power_table_kernel(ScalarArg generator_arg, uint64_t *loca
 }
 
 __device__ __forceinline__ size_t bit_reverse(size_t x, int log_n) {
-	size_t y = 0;
-	for(int i = 0; i < log_n; i++) {
-		y = (y << 1) | (x & 1);
-		x >>= 1;
-	}
-	return y;
+	uint32_t y = __brev((uint32_t)x);
+	return (size_t)(y >> (32 - log_n));
 }
 
 template <typename Params>
@@ -745,6 +1226,179 @@ int log2_exact(size_t n) {
 		log++;
 	}
 	return log;
+}
+
+template <typename Params>
+int select_tail_log(int log_n) {
+	if(log_n < 10) return 0;
+
+	int max_shmem = 0;
+	cudaDeviceGetAttribute(&max_shmem, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0);
+	for(int candidate = 12; candidate >= 10; candidate--) {
+		size_t required = (size_t)Params::LIMBS * ((size_t)1 << candidate) * sizeof(uint64_t);
+		if(log_n > candidate && required <= (size_t)max_shmem) {
+			return candidate;
+		}
+	}
+	return 0;
+}
+
+template <typename Params>
+uint32_t radix8_min_n() {
+	return 1u << 18;
+}
+
+template <>
+uint32_t radix8_min_n<BW6761FrParams>() {
+	return 1u << 21;
+}
+
+template <typename Kernel>
+void set_dynamic_shared_memory(Kernel kernel, size_t shmem_bytes) {
+	cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, (int)shmem_bytes);
+}
+
+template <typename Params, int TAIL_LOG>
+void launch_dif_tail_fixed(FrView data, ConstFrView twiddles, uint32_t n,
+                           int stage_start, cudaStream_t stream) {
+	constexpr uint32_t span = 1u << TAIL_LOG;
+	unsigned threads = span > 1024 ? 1024 : span;
+	unsigned blocks = (n + span - 1) / span;
+	size_t shmem_bytes = (size_t)Params::LIMBS * span * sizeof(uint64_t);
+	set_dynamic_shared_memory(ntt_dif_tail_fused_kernel<Params, TAIL_LOG>, shmem_bytes);
+	ntt_dif_tail_fused_kernel<Params, TAIL_LOG><<<blocks, threads, shmem_bytes, stream>>>(
+		data, twiddles, n, stage_start);
+}
+
+template <typename Params>
+void launch_dif_tail(FrView data, ConstFrView twiddles, uint32_t n,
+                     int stage_start, int tail_log, cudaStream_t stream) {
+	switch(tail_log) {
+	case 12:
+		launch_dif_tail_fixed<Params, 12>(data, twiddles, n, stage_start, stream);
+		break;
+	case 11:
+		launch_dif_tail_fixed<Params, 11>(data, twiddles, n, stage_start, stream);
+		break;
+	case 10:
+		launch_dif_tail_fixed<Params, 10>(data, twiddles, n, stage_start, stream);
+		break;
+	default:
+		break;
+	}
+}
+
+template <typename Params, int TAIL_LOG>
+void launch_dit_tail_fixed(FrView data, ConstFrView twiddles, uint32_t n,
+                           int stage_start, cudaStream_t stream) {
+	constexpr uint32_t span = 1u << TAIL_LOG;
+	unsigned threads = span > 1024 ? 1024 : span;
+	unsigned blocks = (n + span - 1) / span;
+	size_t shmem_bytes = (size_t)Params::LIMBS * span * sizeof(uint64_t);
+	set_dynamic_shared_memory(ntt_dit_tail_fused_kernel<Params, TAIL_LOG>, shmem_bytes);
+	ntt_dit_tail_fused_kernel<Params, TAIL_LOG><<<blocks, threads, shmem_bytes, stream>>>(
+		data, twiddles, n, stage_start);
+}
+
+template <typename Params>
+void launch_dit_tail(FrView data, ConstFrView twiddles, uint32_t n,
+                     int stage_start, int tail_log, cudaStream_t stream) {
+	switch(tail_log) {
+	case 12:
+		launch_dit_tail_fixed<Params, 12>(data, twiddles, n, stage_start, stream);
+		break;
+	case 11:
+		launch_dit_tail_fixed<Params, 11>(data, twiddles, n, stage_start, stream);
+		break;
+	case 10:
+		launch_dit_tail_fixed<Params, 10>(data, twiddles, n, stage_start, stream);
+		break;
+	default:
+		break;
+	}
+}
+
+template <typename Params>
+void launch_ntt_forward_typed(FrView data, ConstFrView twiddles, size_t n,
+                              cudaStream_t stream) {
+	const int log_n = log2_exact(n);
+	const size_t butterflies = n >> 1;
+	unsigned blocks_r2 = (unsigned)((butterflies + NTT_THREADS - 1) / NTT_THREADS);
+	uint32_t n32 = (uint32_t)n;
+	uint32_t radix8_count = n32 >> 3;
+	unsigned blocks_r8 = (radix8_count + NTT_THREADS - 1) / NTT_THREADS;
+
+	int tail_log = select_tail_log<Params>(log_n);
+	bool use_tail = tail_log > 0 && n >= NTT_FUSED_TAIL_MIN_N;
+	int regular_stages = use_tail ? log_n - tail_log : log_n;
+
+	int stage = 0;
+	if(n >= radix8_min_n<Params>()) {
+		for(; stage + 2 < regular_stages; stage += 3) {
+			ntt_dif_radix8_kernel<Params><<<blocks_r8, NTT_THREADS, 0, stream>>>(
+				data, twiddles, n32, stage);
+		}
+	}
+	for(; stage < regular_stages; stage++) {
+		size_t half = n >> (stage + 1);
+		size_t tw_stride = (size_t)1 << stage;
+		ntt_dif_stage_kernel<Params><<<blocks_r2, NTT_THREADS, 0, stream>>>(
+			data, twiddles, butterflies, half, half - 1, tw_stride);
+	}
+
+	if(use_tail) {
+		launch_dif_tail<Params>(data, twiddles, n32, regular_stages, tail_log, stream);
+	}
+}
+
+template <typename Params>
+void launch_ntt_inverse_typed(FrView data, ConstFrView twiddles, const uint64_t *inv_n,
+                              size_t n, cudaStream_t stream) {
+	const int log_n = log2_exact(n);
+	const size_t butterflies = n >> 1;
+	unsigned blocks_r2 = (unsigned)((butterflies + NTT_THREADS - 1) / NTT_THREADS);
+	uint32_t n32 = (uint32_t)n;
+	uint32_t radix8_count = n32 >> 3;
+	unsigned blocks_r8 = (radix8_count + NTT_THREADS - 1) / NTT_THREADS;
+
+	int tail_log = select_tail_log<Params>(log_n);
+	bool use_tail = tail_log > 0 && n >= NTT_FUSED_TAIL_MIN_N;
+	int stage = log_n - 1;
+	if(use_tail) {
+		launch_dit_tail<Params>(data, twiddles, n32, stage, tail_log, stream);
+		stage -= tail_log;
+	}
+
+	bool scaled = false;
+	if(n >= radix8_min_n<Params>()) {
+		for(; stage - 2 >= 0; stage -= 3) {
+			if(stage < 3) {
+				ntt_dit_radix8_kernel<Params, true><<<blocks_r8, NTT_THREADS, 0, stream>>>(
+					data, twiddles, inv_n, n32, stage);
+				scaled = true;
+			} else {
+				ntt_dit_radix8_kernel<Params, false><<<blocks_r8, NTT_THREADS, 0, stream>>>(
+					data, twiddles, inv_n, n32, stage);
+			}
+		}
+	}
+	for(; stage >= 0; stage--) {
+		size_t half = n >> (stage + 1);
+		size_t tw_stride = (size_t)1 << stage;
+		if(stage == 0) {
+			ntt_dit_stage_scale_kernel<Params><<<blocks_r2, NTT_THREADS, 0, stream>>>(
+				data, twiddles, inv_n, butterflies, half, half - 1, tw_stride);
+			scaled = true;
+		} else {
+			ntt_dit_stage_kernel<Params><<<blocks_r2, NTT_THREADS, 0, stream>>>(
+				data, twiddles, butterflies, half, half - 1, tw_stride);
+		}
+	}
+
+	if(!scaled) {
+		unsigned scale_blocks = (unsigned)((n + NTT_THREADS - 1) / NTT_THREADS);
+		scale_kernel<Params><<<scale_blocks, NTT_THREADS, 0, stream>>>(data, inv_n, n);
+	}
 }
 
 } // namespace
@@ -1197,28 +1851,18 @@ void launch_ntt_forward(
 	gnark_gpu_plonk2_curve_id_t curve, FrView data, ConstFrView twiddles,
 	size_t n, cudaStream_t stream) {
 
-	const int log_n = log2_exact(n);
-	const size_t butterflies = n >> 1;
-	unsigned blocks = (unsigned)((butterflies + THREADS - 1) / THREADS);
-	for(int stage = 0; stage < log_n; stage++) {
-		size_t half = n >> (stage + 1);
-		size_t tw_stride = (size_t)1 << stage;
-		switch(curve) {
-		case GNARK_GPU_PLONK2_CURVE_BN254:
-			ntt_dif_stage_kernel<BN254FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		case GNARK_GPU_PLONK2_CURVE_BLS12_377:
-			ntt_dif_stage_kernel<BLS12377FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		case GNARK_GPU_PLONK2_CURVE_BW6_761:
-			ntt_dif_stage_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		default:
-			break;
-		}
+	switch(curve) {
+	case GNARK_GPU_PLONK2_CURVE_BN254:
+		launch_ntt_forward_typed<BN254FrParams>(data, twiddles, n, stream);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
+		launch_ntt_forward_typed<BLS12377FrParams>(data, twiddles, n, stream);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BW6_761:
+		launch_ntt_forward_typed<BW6761FrParams>(data, twiddles, n, stream);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1226,40 +1870,15 @@ void launch_ntt_inverse(
 	gnark_gpu_plonk2_curve_id_t curve, FrView data, ConstFrView twiddles,
 	const uint64_t *inv_n, size_t n, cudaStream_t stream) {
 
-	const int log_n = log2_exact(n);
-	const size_t butterflies = n >> 1;
-	unsigned blocks = (unsigned)((butterflies + THREADS - 1) / THREADS);
-	for(int stage = log_n - 1; stage >= 0; stage--) {
-		size_t half = n >> (stage + 1);
-		size_t tw_stride = (size_t)1 << stage;
-		switch(curve) {
-		case GNARK_GPU_PLONK2_CURVE_BN254:
-			ntt_dit_stage_kernel<BN254FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		case GNARK_GPU_PLONK2_CURVE_BLS12_377:
-			ntt_dit_stage_kernel<BLS12377FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		case GNARK_GPU_PLONK2_CURVE_BW6_761:
-			ntt_dit_stage_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
-				data, twiddles, butterflies, half, half - 1, tw_stride);
-			break;
-		default:
-			break;
-		}
-	}
-
-	unsigned scale_blocks = (unsigned)((n + THREADS - 1) / THREADS);
 	switch(curve) {
 	case GNARK_GPU_PLONK2_CURVE_BN254:
-		scale_kernel<BN254FrParams><<<scale_blocks, THREADS, 0, stream>>>(data, inv_n, n);
+		launch_ntt_inverse_typed<BN254FrParams>(data, twiddles, inv_n, n, stream);
 		break;
 	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
-		scale_kernel<BLS12377FrParams><<<scale_blocks, THREADS, 0, stream>>>(data, inv_n, n);
+		launch_ntt_inverse_typed<BLS12377FrParams>(data, twiddles, inv_n, n, stream);
 		break;
 	case GNARK_GPU_PLONK2_CURVE_BW6_761:
-		scale_kernel<BW6761FrParams><<<scale_blocks, THREADS, 0, stream>>>(data, inv_n, n);
+		launch_ntt_inverse_typed<BW6761FrParams>(data, twiddles, inv_n, n, stream);
 		break;
 	default:
 		break;

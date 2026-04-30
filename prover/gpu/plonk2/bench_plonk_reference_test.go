@@ -3,6 +3,9 @@ package plonk2
 import (
 	"fmt"
 	"math/big"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -39,11 +42,11 @@ var benchPlonkCurves = []benchPlonkCurve{
 	{name: "bw6-761", id: ecc.BW6_761},
 }
 
-var benchPlonkConstraintCounts = []int{16, 1024}
+var benchPlonkConstraintCounts = []int{128, 1024}
 
 func BenchmarkPlonkReferenceCPUSetup(b *testing.B) {
 	for _, curve := range benchPlonkCurves {
-		for _, constraints := range benchPlonkConstraintCounts {
+		for _, constraints := range plonkBenchConstraintCounts(b) {
 			b.Run(benchPlonkCaseName(curve.name, constraints), func(b *testing.B) {
 				benchPlonkReferenceCPUSetup(b, curve.id, constraints)
 			})
@@ -53,7 +56,7 @@ func BenchmarkPlonkReferenceCPUSetup(b *testing.B) {
 
 func BenchmarkPlonkReferenceCPUProve(b *testing.B) {
 	for _, curve := range benchPlonkCurves {
-		for _, constraints := range benchPlonkConstraintCounts {
+		for _, constraints := range plonkBenchConstraintCounts(b) {
 			b.Run(benchPlonkCaseName(curve.name, constraints), func(b *testing.B) {
 				benchPlonkReferenceCPUProve(b, curve.id, constraints)
 			})
@@ -160,6 +163,25 @@ func benchPlonkCaseName(curve string, constraints int) string {
 	return fmt.Sprintf("%s/constraints=%s", curve, benchPlonkSizeLabel(constraints))
 }
 
+func TestParsePlonkBenchConstraintCount(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want int
+	}{
+		{in: "17M", want: 17_000_000},
+		{in: "17Mi", want: 17 << 20},
+		{in: "1024", want: 1024},
+		{in: "1K", want: 1_000},
+		{in: "1Ki", want: 1 << 10},
+	} {
+		t.Run(tc.in, func(t *testing.T) {
+			got, err := parsePlonkBenchConstraintCount(tc.in)
+			require.NoError(t, err, "valid count should parse")
+			require.Equal(t, tc.want, got, "parsed count should match")
+		})
+	}
+}
+
 func benchPlonkSizeLabel(n int) string {
 	if n >= 1<<20 && n%(1<<20) == 0 {
 		return fmt.Sprintf("%dM", n>>20)
@@ -168,4 +190,55 @@ func benchPlonkSizeLabel(n int) string {
 		return fmt.Sprintf("%dK", n>>10)
 	}
 	return fmt.Sprintf("%d", n)
+}
+
+func plonkBenchConstraintCounts(tb testing.TB) []int {
+	tb.Helper()
+	raw := strings.TrimSpace(os.Getenv("PLONK2_PLONK_BENCH_CONSTRAINTS"))
+	if raw == "" {
+		return benchPlonkConstraintCounts
+	}
+
+	parts := strings.Split(raw, ",")
+	counts := make([]int, 0, len(parts))
+	for _, part := range parts {
+		n, err := parsePlonkBenchConstraintCount(strings.TrimSpace(part))
+		require.NoError(tb, err, "parsing benchmark constraint count %q should succeed", part)
+		require.Positive(tb, n, "benchmark constraint count should be positive")
+		counts = append(counts, n)
+	}
+	return counts
+}
+
+func parsePlonkBenchConstraintCount(s string) (int, error) {
+	if s == "" {
+		return 0, fmt.Errorf("empty constraint count")
+	}
+	multiplier := 1
+	lower := strings.ToLower(s)
+	switch {
+	case strings.HasSuffix(lower, "ki"):
+		multiplier = 1 << 10
+		s = s[:len(s)-2]
+	case strings.HasSuffix(lower, "mi"):
+		multiplier = 1 << 20
+		s = s[:len(s)-2]
+	case strings.HasSuffix(lower, "k"):
+		multiplier = 1_000
+		s = s[:len(s)-1]
+	case strings.HasSuffix(lower, "m"):
+		multiplier = 1_000_000
+		s = s[:len(s)-1]
+	}
+	if s == "" {
+		return 0, fmt.Errorf("empty constraint count")
+	}
+	base, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	if base > int(^uint(0)>>1)/multiplier {
+		return 0, fmt.Errorf("constraint count overflows int")
+	}
+	return base * multiplier, nil
 }

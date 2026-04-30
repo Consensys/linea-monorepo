@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/gpu/plonk2
+cpu: Intel(R) Xeon(R) Platinum 8559C
+BenchmarkPlonk2EnabledFullProverAllCurves_CUDA/bn254/constraints=128/generic-gpu-32         	       1	  32732068 ns/op
+BenchmarkPlonk2EnabledFullProverAllCurves_CUDA/bls12-377/constraints=128/generic-gpu-32     	       1	  78385793 ns/op
+BenchmarkPlonk2EnabledFullProverAllCurves_CUDA/bw6-761/constraints=128/generic-gpu-32       	       1	  78633874 ns/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/gpu/plonk2	2.738s

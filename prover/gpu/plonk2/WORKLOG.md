@@ -76,9 +76,12 @@ ABI on top of it.
 | Production curve-generic Pippenger MSM              | correctness-first |
 | MSM memory planner                                  | done     |
 | KZG commit/open quotient validation (3 curves)      | done     |
+| Generic prover prepared state (3 curves)            | done     |
+| Fixed selector/permutation GPU preparation          | done     |
+| Solved wire Lagrange commitment phase (3 curves)    | done     |
 | Multi-GPU sanity test                               | planned  |
 | Comprehensive benchmarks                            | partial  |
-| Full GPU PlonK proof generation on all curves       | not wired |
+| Full GPU PlonK proof generation on all curves       | partial: BLS12-377 legacy bridge + generic prep |
 
 ## MSM design (Pippenger, signed digits, CUB-sort)
 
@@ -254,6 +257,51 @@ CosetFFTInverse = BitReverse             → FFTInverse → ScaleByPowersRaw(g�
 This matches `gpu/plonk`'s natural-order coset API and validates against
 gnark-crypto on BN254, BLS12-377, and BW6-761. Scale-by-powers now uses a
 per-call 256-entry device power table rather than per-element exponentiation.
+
+## 2026-04-30 — Generic Prover Orchestration and Large-Bucket MSM
+
+The generic prepared prover now has a clearer memory lifecycle:
+
+1. resident proving-key state: canonical SRS, Lagrange SRS, FFT domain,
+   permutation table, and fixed polynomials
+2. explicit MSM scratch pinning for commitment waves
+3. scratch release before later quotient/permutation phases
+
+`NewProver` and `Prove` bind the current OS thread to the selected CUDA device
+before CUDA work. This preserves correctness on multi-GPU hosts, where CUDA's
+current device is thread-local.
+
+The generic `gnark_gpu_plonk2_msm_create` C API now uploads points only; it no
+longer allocates sort/key/bucket work buffers eagerly. Work buffers are
+allocated by `PinWorkBuffers` or lazily by the first commitment. The memory
+planner now counts both canonical and Lagrange SRS residency and includes the
+overflow-bucket metadata used by the large-bucket path.
+
+The major performance fix is a bounded two-phase accumulator in
+`gpu/cuda/src/plonk2/msm.cu`:
+
+- serial phase processes at most a dynamic cap per bucket
+- overflow buckets are recorded in a compact device list
+- a block-parallel tree reduction accumulates each large bucket tail
+
+This fixes the solved-wire pathology where random MSM benchmarks were fast but
+real PlonK L/R/O commitments could spend seconds in one-thread-per-bucket
+serial accumulation.
+
+Large solved-wire L/R/O wave benchmarks on RTX PRO 6000 Blackwell:
+
+| Curve | Domain | Wave Time | Planned Peak |
+|---|---:|---:|---:|
+| BN254 | `1<<23` | 447.968 ms | 10.740 GiB |
+| BN254 | `1<<24` | 871.679 ms | 21.428 GiB |
+| BLS12-377 | `1<<23` | 1140.263 ms | 11.264 GiB |
+| BLS12-377 | `1<<24` | 2144.233 ms | 22.451 GiB |
+| BW6-761 | `1<<23` | 4872.834 ms | 17.457 GiB |
+| BW6-761 | `1<<24` | 9131.384 ms | 34.144 GiB |
+
+Raw data and analysis are preserved in
+`bench_vs_ingo/GENERIC_PLONK_ORCHESTRATOR_WORKLOG.md` and
+`bench_vs_ingo/generic_plonk_orchestrator_summary.csv`.
 
 ## 2026-04-28 — Direction Correction
 
@@ -1086,6 +1134,290 @@ ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.053s
 
 CUDA validation was not run on this host in this pass.
 
+## 2026-04-29 — Generic Three-Curve Prover Preparation
+
+Started the actual curve-generic prover port behind `plonk2.Prover` rather
+than the temporary BLS12-377 bridge.
+
+Implemented:
+
+- CUDA `genericProverState` for BN254, BLS12-377, and BW6-761.
+- Typed gnark constraint-system trace extraction into raw plonk2 field words.
+- Resident canonical and Lagrange SRS MSMs for each curve.
+- Resident FFT domain twiddles and permutation table.
+- GPU preparation of fixed selector/permutation polynomials by uploading their
+  Lagrange evaluations and converting them to canonical form with the generic
+  FFT path.
+- Direct solved-wire Lagrange commitment through the resident generic Lagrange
+  SRS MSM.
+- Constructor cleanup on strict-mode backend-preparation errors.
+
+This is not yet full proof generation: quotient construction, Z construction,
+linearized polynomial commitment, KZG openings, Fiat-Shamir phase ordering, and
+typed proof assembly are still on the remaining integration path. For
+BLS12-377, `WithEnabled(true)` can still use the older `gpu/plonk` bridge for
+full-proof benchmarks; BN254 and BW6-761 currently prepare generic GPU state
+and then use the configured CPU fallback for full proof generation.
+
+Tests added:
+
+- `TestGenericProverStatePreparesFixedCommitments_AllTargetCurves_CUDA`
+- `TestGenericProverStateCommitsSolvedWireLagrangePolynomials_CUDA`
+- `BenchmarkGenericSolvedWireCommitment_CUDA`
+
+Commands:
+
+```
+gofmt -w gpu/plonk2/prove.go \
+  gpu/plonk2/generic_prepare_cuda.go \
+  gpu/plonk2/generic_prepare_cuda_test.go \
+  gpu/plonk2/generic_prepare_stub.go \
+  gpu/plonk2/bench_generic_prover_cuda_test.go
+
+go test -tags cuda ./gpu/plonk2 -run 'TestGenericProverState' -count=1
+go test ./gpu/plonk2 -count=1
+go test -tags cuda ./gpu/plonk2 -count=1
+golangci-lint run ./gpu/plonk2
+golangci-lint run --build-tags cuda ./gpu/plonk2
+
+PLONK2_PLONK_BENCH_CONSTRAINTS=1Ki go test -tags cuda ./gpu/plonk2 \
+  -run '^$' -bench '^BenchmarkGenericSolvedWireCommitment_CUDA$' \
+  -benchtime=1x -count=1
+```
+
+Results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.564s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.140s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 3.410s
+0 issues.
+0 issues.
+```
+
+Generic solved L-wire commitment benchmark, 1Ki constraints:
+
+| Curve | Time/op |
+|-------|--------:|
+| BN254 | 2.964 ms |
+| BLS12-377 | 73.509 ms |
+| BW6-761 | 18.455 ms |
+
+The BLS12-377 number is from the correctness-first generic affine MSM, not the
+older specialized twisted-Edwards `gpu/plonk` MSM. The next implementation
+step is to make the generic prover use the resident state for the full L/R/O
+commitment phase with blinding and reduced-range MSMs, then wire Z and quotient
+construction phase by phase.
+
+## 2026-04-29 — Plonk2 Prover GPU Bridge and 17M BLS12-377 Benchmark
+
+Added a temporary CUDA GPU backend hook behind `plonk2.Prover`:
+
+- `WithEnabled(true)` on BLS12-377 prepares and proves through the existing
+  `gpu/plonk` BLS12-377 GPU prover, using the public `plonk2.Prover` API.
+- The bridge is intentionally labelled `legacy_bls12_377` in trace output. It
+  is not the curve-generic prover port through `plonk2` primitives.
+- BN254 and BW6-761 still return `plonk2: GPU prover not wired yet` in strict
+  mode. With CPU fallback enabled, they continue through gnark CPU fallback.
+
+Added:
+
+- `BenchmarkPlonk2EnabledFullProverBLS12377_CUDA`
+- `PLONK2_PLONK_BENCH_CONSTRAINTS`, accepted by CPU setup/prove, setup
+  commitment, current GPU, and `plonk2` enabled full-prover benchmarks.
+  Supported suffixes: decimal `K`/`M` and binary `Ki`/`Mi`.
+- CUDA test coverage that verifies `WithEnabled(true)` produces and verifies a
+  BLS12-377 proof and records the `gpu` trace phase.
+
+Plan for the actual three-curve generic prover:
+
+1. Port BLS12-377 from the legacy `gpu/plonk` orchestration to `plonk2`
+   resident Fr/FFT/MSM/quotient primitives while preserving gnark verifier
+   compatibility.
+2. Isolate proof assembly and type conversions behind small curve adapters.
+3. Enable BN254 on the same orchestration after BLS12-377 verifies.
+4. Enable BW6-761 with the memory planner enforcing conservative chunking and
+   per-phase buffer release.
+5. Add large-size correctness/benchmark runs for all three curves once the
+   generic path, not the legacy bridge, is wired.
+
+Validation commands:
+
+```
+gofmt -w gpu/plonk2/prove.go gpu/plonk2/prove_gpu_cuda.go \
+  gpu/plonk2/prove_gpu_stub.go gpu/plonk2/prover_cuda_test.go \
+  gpu/plonk2/bench_plonk_reference_test.go \
+  gpu/plonk2/bench_plonk_reference_cuda_test.go \
+  gpu/plonk2/bench_full_prover_cuda_test.go
+
+go test ./gpu/plonk2 \
+  -run 'TestParsePlonkBenchConstraintCount|TestProver' -count=1
+
+go test -tags cuda ./gpu/plonk2 \
+  -run 'TestParsePlonkBenchConstraintCount|TestFullProverEnabledBLS12377GPUBackend_CUDA|TestFullProverDisabledFallbackTargetCurves_CUDA' \
+  -count=1
+```
+
+Validation results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.095s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.377s
+```
+
+Small BLS12-377 enabled-prover benchmark:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^BenchmarkPlonk2EnabledFullProverBLS12377_CUDA/bls12-377/constraints=16/plonk2-enabled$' \
+  -benchtime=1x -count=1
+
+BenchmarkPlonk2EnabledFullProverBLS12377_CUDA/bls12-377/constraints=16/plonk2-enabled-32  18622732 ns/op
+
+PLONK2_PLONK_BENCH_CONSTRAINTS=1K go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^BenchmarkPlonk2EnabledFullProverBLS12377_CUDA' \
+  -benchtime=1x -count=1
+
+BenchmarkPlonk2EnabledFullProverBLS12377_CUDA/bls12-377/constraints=1000/plonk2-enabled-32  35913431 ns/op
+```
+
+Large BLS12-377 enabled-prover benchmark:
+
+```
+PLONK2_PLONK_BENCH_CONSTRAINTS=17M go test -tags cuda ./gpu/plonk2 \
+  -run '^$' \
+  -bench '^BenchmarkPlonk2EnabledFullProverBLS12377_CUDA$' \
+  -benchtime=1x -count=1 -timeout 60m
+```
+
+Result:
+
+```
+BenchmarkPlonk2EnabledFullProverBLS12377_CUDA/bls12-377/constraints=17000000/plonk2-enabled-32  21904620308 ns/op
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2  767.869s
+```
+
+The 17M run used a PlonK domain of 67,108,864 points. The timed proof phase was
+about 21.9 seconds. The overall `go test` runtime was about 12m48s because
+the benchmark builds the large circuit fixture and unsafe test SRS before the
+timed proof iteration. Phase log excerpt from the timed iteration:
+
+```
+solve: 4.601s
+iFFT L,R,O,Qk + blind: 6.241s
+MSM commit L,R,O: 7.951s
+build Z: 8.856s
+iFFT+commit Z: 10.069s
+quotient GPU: 14.807s
+MSM commit h1,h2,h3: 16.601s
+eval+linearize+open Z: 18.177s
+MSM commit linPol: 18.763s
+batch opening (GPU): 20.295s
+```
+
+Observed resource shape during setup: host RSS peaked above 50 GiB while the
+GPU remained mostly idle until proof execution. Future 17M+ benchmark work
+should reuse prebuilt fixtures/SRS or add a separate fixture-generation step so
+repeated prover measurements are not dominated by setup.
+
+## 2026-04-29 — Asset-backed CUDA Prover and MSM Tests
+
+Narrowed SRS asset loading to the CUDA GPU prover and GPU MSM paths in
+`gpu/plonk2`. Added a plonk2-local test SRS asset indexer for
+`prover-assets/kzgsrs` that supports BN254, BLS12-377, and BW6-761
+`kzg_srs_{canonical,lagrange}_*.memdump` files. It uses the same selection
+policy as the existing `gpu/plonk` SRS store: canonical requests use the
+smallest file with size at least the request, and lagrange requests require an
+exact domain-size match.
+
+Updated:
+
+- CUDA setup-commitment E2E tests to use asset-backed PlonK setup.
+- CUDA setup-commitment benchmarks to use asset-backed PlonK setup.
+- BLS12-377 full GPU prover benchmarks/tests to use asset-backed setup and
+  pinned TE SRS assets for the legacy `gpu/plonk` proving key.
+- CUDA KZG/MSM correctness tests that previously generated small KZG SRS values
+  with `kzg.NewSRS`.
+- BN254 and BW6-761 CUDA MSM size benchmarks to use real canonical SRS points
+  from assets instead of repeated synthetic base points.
+
+Because the available lagrange assets start at domain 256, tiny CUDA prover
+fixtures were moved from the old 4/64-point domains to benchmark-chain circuits
+with at least a 256-point PlonK domain. CPU-only API tests remain unchanged
+except for shared benchmark-size helpers.
+
+Validation:
+
+```
+go test ./gpu/plonk2 \
+  -run 'TestParsePlonkBenchConstraintCount' \
+  -count=1
+
+go test -tags cuda ./gpu/plonk2 \
+  -run 'TestSRSAssetsContainTargetCurves|TestCommitRawMatchesKZGCommit_CUDA|TestG1MSMCommitRaw_CUDA|TestG1MSMCommitRawBatchRejectsMalformedInputs_CUDA' \
+  -count=1
+
+go test -tags cuda ./gpu/plonk2 \
+  -run 'TestPlonkE2EGPUSetupCommitments_AllTargetCurves_CUDA|TestFullProverEnabledBLS12377GPUBackend_CUDA' \
+  -count=1
+```
+
+Results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.004s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 1.682s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.643s
+```
+
+Full package checks after the asset-loader change:
+
+```
+go test ./gpu/plonk2 -count=1
+go test -tags cuda ./gpu/plonk2 -count=1
+```
+
+Results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.142s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 3.193s
+```
+
+Benchmark smoke checks:
+
+```
+PLONK2_BN254_MSM_BENCH_SIZES=1Ki PLONK2_BW6_MSM_BENCH_SIZES=1Ki \
+  go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench 'BenchmarkBN254MSMCommitRawSizes_CUDA|BenchmarkBW6761MSMCommitRawSizes_CUDA' \
+  -benchtime=1x -count=1
+
+PLONK2_BN254_MSM_DISABLE_CPU_FALLBACK=1 PLONK2_BW6_MSM_DISABLE_CPU_FALLBACK=1 \
+  PLONK2_BN254_MSM_BENCH_SIZES=16Ki PLONK2_BW6_MSM_BENCH_SIZES=16Ki \
+  go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench 'BenchmarkBN254MSMCommitRawSizes_CUDA|BenchmarkBW6761MSMCommitRawSizes_CUDA' \
+  -benchtime=1x -count=1
+
+PLONK2_PLONK_BENCH_CONSTRAINTS=128 go test -tags cuda ./gpu/plonk2 \
+  -run '^$' \
+  -bench '^BenchmarkPlonk2EnabledFullProverBLS12377_CUDA|^BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254' \
+  -benchtime=1x -count=1
+```
+
+Results:
+
+```
+BenchmarkBN254MSMCommitRawSizes_CUDA/n=1Ki-32   1367329 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Ki-32  6140770 ns/op
+
+BenchmarkBN254MSMCommitRawSizes_CUDA/n=16Ki-32   3538781 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Ki-32 50428345 ns/op
+
+BenchmarkPlonk2EnabledFullProverBLS12377_CUDA/bls12-377/constraints=128/plonk2-enabled-32 50515283 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=128/cpu-32          2617299 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=128/gpu-32          2575851 ns/op
+```
+
 ## 2026-04-29 — Prompt 03 MSM Correctness Hardening
 
 Centralized raw gnark-crypto layout assumptions in `raw.go`:
@@ -1304,6 +1636,693 @@ ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 cached
 ```
 
 CUDA rollout tests were not run on this host in this pass.
+
+## 2026-04-29 — CUDA Validation and Benchmark Baseline
+
+Validated the pending CUDA follow-up checklist from
+`gpu/plonk2/prompts/README.md` on a CUDA host. The first `gpu/plonk2` CUDA
+test run exposed a compile error in `gpu/plonk2/msm.go` where an existing
+`err` variable was redeclared with `:=`; fixed it with a minimal assignment
+change and reran the suite.
+
+Hardware and toolchain:
+
+```
+GPU: NVIDIA RTX PRO 6000 Blackwell, 97887 MiB VRAM
+Driver: 590.48.01
+CUDA runtime: 13.1
+CUDA compiler: nvcc 13.1.115
+CPU: Intel(R) Xeon(R) Platinum 8559C, 32 vCPUs
+Go: go1.26.0 linux/amd64
+```
+
+Correctness commands:
+
+```
+go test -tags cuda ./gpu/plonk2 -count=1
+go test -tags cuda ./gpu/plonk -count=1
+go test -tags cuda ./gpu/plonk2 -run 'TestCommitRaw|TestG1MSM|TestG1Affine|Test.*MSM.*CUDA' -count=1
+go test -tags cuda ./gpu/plonk2 -run 'TestFrVectorOps_CUDA|TestFFT|TestCoset|Test.*NTT' -count=1
+go test -tags cuda ./gpu/plonk2 -run 'TestG1MSMCommitRaw_CUDA|TestCommitRawMatchesKZG|TestPlonkE2EGPUSetupCommitments' -count=1
+go test -tags cuda ./gpu/plonk2 -run 'Test.*Trace|Test.*Fallback|Test.*FullProver' -count=1
+```
+
+Correctness results:
+
+```
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 4.658s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk  214.364s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.928s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.362s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.865s
+ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.467s
+```
+
+Benchmark commands:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' -bench 'BenchmarkG1MSMCommitRaw|BenchmarkBW6761MSMCommitRawSizes' -benchtime=3x -count=1
+go test -tags cuda ./gpu/plonk2 -run '^$' -bench 'BenchmarkFFTForward_CUDA|BenchmarkCosetFFTForward_CUDA' -benchtime=5x -count=1
+go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA' -benchtime=3x -count=1
+go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkPlonkReferenceFullProverCPUvsCurrentGPU_CUDA|Benchmark.*Plonk2.*Full' -benchtime=3x -count=1
+go test -tags cuda ./gpu/plonk -run '^$' -bench 'BenchmarkBLSFFT' -benchtime=5x -count=1
+```
+
+Selected benchmark results:
+
+```
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Ki-32          64709428 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=64Ki-32         138101111 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=256Ki-32        201089041 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Mi-32          613584503 ns/op
+BenchmarkG1MSMCommitRawBLS12377/n=16K-32                  6866653 ns/op
+BenchmarkG1MSMCommitRawBLS12377/n=64K-32                  8112939 ns/op
+
+BenchmarkFFTForward_CUDA/bn254-32                          547598 ns/op
+BenchmarkFFTForward_CUDA/bls12-377-32                      528553 ns/op
+BenchmarkFFTForward_CUDA/bw6-761-32                        845423 ns/op
+BenchmarkCosetFFTForward_CUDA/bn254-32                     786581 ns/op
+BenchmarkCosetFFTForward_CUDA/bls12-377-32                 794276 ns/op
+BenchmarkCosetFFTForward_CUDA/bw6-761-32                  1532884 ns/op
+
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=16/cpu-32        2068663 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=16/gpu-32       18019160 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bls12-377/constraints=16/cpu-32    3158458 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bls12-377/constraints=16/gpu-32   40338685 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bw6-761/constraints=16/cpu-32      9364079 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bw6-761/constraints=16/gpu-32    243241314 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=1K/cpu-32       12762162 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=1K/gpu-32       49255774 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bls12-377/constraints=1K/cpu-32   17980537 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bls12-377/constraints=1K/gpu-32  147508097 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bw6-761/constraints=1K/cpu-32     62931272 ns/op
+BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bw6-761/constraints=1K/gpu-32   1182232508 ns/op
+
+BenchmarkPlonkReferenceFullProverCPUvsCurrentGPU_CUDA/bls12-377/constraints=16/cpu-32           8117481 ns/op
+BenchmarkPlonkReferenceFullProverCPUvsCurrentGPU_CUDA/bls12-377/constraints=16/current-gpu-32  17929198 ns/op
+BenchmarkPlonkReferenceFullProverCPUvsCurrentGPU_CUDA/bls12-377/constraints=1024/cpu-32        52526646 ns/op
+BenchmarkPlonkReferenceFullProverCPUvsCurrentGPU_CUDA/bls12-377/constraints=1024/current-gpu-32 40631478 ns/op
+
+BenchmarkBLSFFTForward/n=16K-32    72439 ns/op
+BenchmarkBLSFFTForward/n=64K-32   105601 ns/op
+BenchmarkBLSFFTForward/n=256K-32  160821 ns/op
+BenchmarkBLSFFTForward/n=1M-32    416954 ns/op
+BenchmarkBLSFFTForward/n=4M-32   1757202 ns/op
+BenchmarkBLSFFTvsCPU/GPU/n=1M-32  395423 ns/op
+BenchmarkBLSFFTvsCPU/CPU/n=1M-32 9352127 ns/op
+```
+
+Observations:
+
+- Setup-commitment GPU benchmarks are slower than CPU at the measured 16 and
+  1K constraint sizes, so the current private Go-loop batch commitment path is
+  still visible in same-host results.
+- The current BLS12-377 full-prover GPU path is slower than CPU at 16
+  constraints but faster at 1024 constraints in this run.
+- The legacy `gpu/plonk` BLS FFT path continues to show strong GPU speedups
+  versus CPU at the measured sizes.
+
+## 2026-04-29 — BLS12-377 MSM Plonk vs Plonk2 Comparison
+
+Added a focused CUDA benchmark comparing the existing `gpu/plonk` BLS12-377 MSM
+backend against the generic `gpu/plonk2` BLS12-377 MSM backend on the same
+canonical SRS and scalar dump. The benchmark excludes SRS/scalar loading and
+MSM handle construction from timed regions; both paths pin reusable MSM work
+buffers before timing.
+
+Command:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA$' -benchtime=10x -count=1
+```
+
+Results:
+
+```
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=1K-32     1783733 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=1K-32    6007765 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=4K-32     2786905 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=4K-32    6367651 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=16K-32    4527971 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=16K-32   6745269 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=64K-32    2856659 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=64K-32   7940113 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=256K-32   5888187 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=256K-32 11619956 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk/n=1M-32    14157304 ns/op
+BenchmarkCompareBLS12377MSMPlonkVsPlonk2_CUDA/gpu-plonk2/n=1M-32   26154869 ns/op
+```
+
+Observed `plonk2` slowdown versus `gpu/plonk`: 3.37x at 1K, 2.28x at 4K,
+1.49x at 16K, 2.78x at 64K, 1.97x at 256K, and 1.85x at 1M.
+
+## 2026-04-29 — BW6-761 MSM Extended Size Sweep
+
+Extended the BW6-761 MSM benchmark sweep down to 1Ki and up to 4Mi. While
+running the sweep, fixed the benchmark-size parser to accept the same `Ki` and
+`Mi` suffixes printed by the benchmark names.
+
+Command:
+
+```
+PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,1Mi,2Mi,4Mi go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=5x -count=1
+```
+
+Results:
+
+```
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Ki-32     41331261 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Ki-32     42416654 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Ki-32    62452214 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=64Ki-32   140092574 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=256Ki-32  200820709 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Mi-32    611811846 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=2Mi-32   1149738812 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Mi-32   2004696371 ns/op
+```
+
+Observed shape: BW6-761 MSM has a roughly 41 ms floor at tiny sizes, is about
+63 ms at 16Ki, crosses 600 ms at 1Mi, and reaches about 2.0 s at 4Mi on this
+host.
+
+## 2026-04-29 — BW6-761 CPU MSM Baseline
+
+Added a CPU benchmark for the same BW6-761 MSM size sweep. The CPU benchmark
+uses the same repeated base-point shape and deterministic scalar elements as
+the GPU benchmark, then calls gnark-crypto `G1Jac.MultiExp` directly. It
+accepts the same `PLONK2_BW6_MSM_BENCH_SIZES` environment variable as the GPU
+benchmark.
+
+Command:
+
+```
+PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,1Mi,2Mi,4Mi go test ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizesCPU$' -benchtime=5x -count=1
+```
+
+Results:
+
+```
+BenchmarkBW6761MSMCommitRawSizesCPU/n=1Ki-32      1298380 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=4Ki-32      3723124 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=16Ki-32    14294844 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=64Ki-32    46172283 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=256Ki-32  184118900 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=1Mi-32    323333228 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=2Mi-32    496894365 ns/op
+BenchmarkBW6761MSMCommitRawSizesCPU/n=4Mi-32    859800627 ns/op
+```
+
+After adding this benchmark, the GPU benchmark was aligned to use raw words
+from the same deterministic field elements instead of arbitrary raw scalar
+limbs.
+
+Aligned GPU command:
+
+```
+PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,1Mi,2Mi,4Mi go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=5x -count=1
+```
+
+Aligned GPU results:
+
+```
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Ki-32      72497434 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Ki-32     193168454 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Ki-32    669701889 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=64Ki-32   2613069011 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=256Ki-32   279810700 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Mi-32     926451718 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=2Mi-32    1756388579 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Mi-32    1988564551 ns/op
+```
+
+Compared with the aligned same-host GPU sweep, CPU is faster at every measured
+size: 55.8x at 1Ki, 51.9x at 4Ki, 46.8x at 16Ki, 56.6x at 64Ki, 1.5x at
+256Ki, 2.9x at 1Mi, 3.5x at 2Mi, and 2.3x at 4Mi.
+
+The aligned GPU sweep showed a large cliff below 256Ki. Rerunning small sizes
+with the window override set to 16 reduced that cliff:
+
+```
+PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki PLONK2_BW6_MSM_WINDOW_BITS=16 go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=5x -count=1
+
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Ki-32    46205046 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Ki-32    50753700 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Ki-32   58433841 ns/op
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=64Ki-32  106224768 ns/op
+```
+
+This points at the current BW6-761 default window policy as a major source of
+the small-size slowdown.
+
+## 2026-04-29 — BW6-761 MSM Slowness Investigation and Window Policy Fix
+
+Investigated why BW6-761 MSM on `gpu/plonk2` was slow relative to CPU and to
+BLS12-377 MSM. The main finding is that the previous BW6-761 window policy
+(`13` below 256Ki points and `16` until 4Mi points) was a poor fit for the
+generic short-Weierstrass bucket pipeline.
+
+Important context from the implementation:
+
+- `build_pairs_kernel` emits one key/value assignment per point per signed
+  scalar window, including sentinel keys for zero digits.
+- The pipeline sorts all `count * num_windows` assignments with CUB, detects
+  bucket boundaries, then launches one sequential accumulator thread per
+  bucket.
+- BW6-761 uses 12-limb base-field Jacobian points, so each bucket addition is
+  much more expensive than the 6-limb BLS12-377 path. Too few buckets creates
+  long per-bucket sequential addition chains and poor GPU occupancy.
+
+Hypotheses tried:
+
+1. **Scalar distribution.** The earlier GPU benchmark used arbitrary raw scalar
+   limbs. Added canonical scalar modes and made full-width field elements the
+   default; the low64 sparse mode remains available through
+   `PLONK2_BW6_MSM_SCALAR_MODE=low64`.
+2. **CPU baseline.** Added `BenchmarkBW6761MSMCommitRawSizesCPU`, using the
+   same repeated base points and deterministic scalar modes, to keep CPU/GPU
+   comparisons local and reproducible.
+3. **Window policy.** Swept BW6-761 CUDA window sizes. Windows `15` and `17`
+   were pathological on this kernel. Window `14` was best through roughly
+   256Ki points; window `18` was best from about 512Ki upward.
+
+Window sweep excerpts, full-width canonical scalars:
+
+```
+# w=14
+n=1Ki     40444065 ns/op
+n=4Ki     39424997 ns/op
+n=16Ki    51135779 ns/op
+n=64Ki    81523920 ns/op
+n=256Ki  196779398 ns/op
+n=512Ki  346144814 ns/op
+n=1Mi    661636960 ns/op
+n=2Mi   1297117298 ns/op
+n=4Mi   2521362340 ns/op
+
+# w=15, aborted after confirming the cliff
+n=16Ki    511757777 ns/op
+n=64Ki   1798143388 ns/op
+n=256Ki  7739387935 ns/op
+n=1Mi   30042274549 ns/op
+
+# w=16
+n=16Ki    61714125 ns/op
+n=64Ki   105619819 ns/op
+n=256Ki  281536002 ns/op
+n=1Mi    925790932 ns/op
+n=2Mi   1750103644 ns/op
+n=4Mi   3569846089 ns/op
+
+# w=17, aborted after confirming the cliff
+n=16Ki    287623728 ns/op
+n=64Ki   1019102219 ns/op
+n=256Ki  3846462173 ns/op
+
+# w=18
+n=1Ki     54350937 ns/op
+n=4Ki     87163100 ns/op
+n=16Ki    93140250 ns/op
+n=64Ki    98678097 ns/op
+n=256Ki  209173515 ns/op
+n=512Ki  335921504 ns/op
+n=1Mi    597421054 ns/op
+n=2Mi   1080716396 ns/op
+n=4Mi   1999371832 ns/op
+```
+
+Implemented policy:
+
+```
+BW6-761: window=14 below 512Ki points, window=18 at/above 512Ki points.
+Other curves: unchanged at window=16.
+```
+
+Post-change default GPU command:
+
+```
+PLONK2_BW6_MSM_SCALAR_MODE=full PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,512Ki,1Mi,2Mi,4Mi go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=3x -count=1
+```
+
+Post-change default GPU results:
+
+```
+n=1Ki     40383768 ns/op
+n=4Ki     39093925 ns/op
+n=16Ki    48016935 ns/op
+n=64Ki    81888780 ns/op
+n=256Ki  197213107 ns/op
+n=512Ki  338048106 ns/op
+n=1Mi    595628642 ns/op
+n=2Mi   1079930507 ns/op
+n=4Mi   1995584600 ns/op
+```
+
+Matching CPU command:
+
+```
+PLONK2_BW6_MSM_SCALAR_MODE=full PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,512Ki,1Mi,2Mi,4Mi go test ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizesCPU$' -benchtime=3x -count=1
+```
+
+Matching CPU results:
+
+```
+n=1Ki       4640555 ns/op
+n=4Ki      13541662 ns/op
+n=16Ki     29095165 ns/op
+n=64Ki    101418801 ns/op
+n=256Ki   415989542 ns/op
+n=512Ki   625815386 ns/op
+n=1Mi    1098905515 ns/op
+n=2Mi    2088183583 ns/op
+n=4Mi    4072872291 ns/op
+```
+
+Outcome:
+
+- GPU is still slower than CPU at 1Ki, 4Ki, and 16Ki, where fixed kernel/sort
+  overhead dominates.
+- GPU overtakes CPU by 64Ki and is about 2x faster from 256Ki through 4Mi on
+  this host.
+- The main remaining optimization ideas are to compact non-zero window
+  assignments before sorting, add a parallel large-bucket accumulator, and
+  avoid short-Weierstrass bucket accumulation for BLS12-377-style specialized
+  curves where a cheaper coordinate system exists.
+
+## 2026-04-29 — BW6-761 MSM Phase Timing and Small-Size Hybrid Cutoff
+
+Added per-phase timing for resident `plonk2` MSM handles, matching the older
+`gpu/plonk` phase order:
+
+```
+h2d, build_pairs, sort, boundaries, accum_seq, accum_par,
+reduce_partial, reduce_finalize, d2h
+```
+
+The CUDA library rebuild completed `libgnark_gpu.a`; the full CMake build then
+failed while linking the existing sandbox executable due to a pre-existing
+duplicate `fp_inv` symbol. Go CUDA tests linked against the rebuilt library
+successfully.
+
+Pure-GPU BW6-761 phase timing, full-width canonical scalars:
+
+```
+PLONK2_BW6_MSM_DISABLE_CPU_FALLBACK=1 PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=3x -count=1
+
+n=1Ki   40414020 ns/op  accum_seq=553us    reduce_partial=11672us d2h=24321us
+n=4Ki   39105680 ns/op  accum_seq=2491us   reduce_partial=10769us d2h=22544us
+n=16Ki  47855549 ns/op  accum_seq=11322us  reduce_partial=10563us d2h=22166us
+n=64Ki  81656481 ns/op  accum_seq=45091us  reduce_partial=10741us d2h=22121us
+```
+
+At 1Mi with the measured window policy, the dominant phase is bucket
+accumulation:
+
+```
+n=1Mi 595147417 ns/op accum_seq=516269us reduce_partial=47638us d2h=21242us
+```
+
+Implemented a conservative hybrid cutoff for BW6-761 resident and one-shot
+commitments: below 64Ki points, use gnark-crypto CPU `MultiExp` instead of the
+full GPU sort/bucket/finalize pipeline. This is controlled by
+`PLONK2_BW6_MSM_DISABLE_CPU_FALLBACK=1` for pure-GPU benchmarking.
+
+Hybrid default results:
+
+```
+PLONK2_BW6_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki go test -tags cuda ./gpu/plonk2 -run '^$' -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' -benchtime=3x -count=1
+
+n=1Ki   4650069 ns/op
+n=4Ki   13087958 ns/op
+n=16Ki  29360300 ns/op
+n=64Ki  81663335 ns/op
+```
+
+This gives more than 10x improvement against the original aligned default
+GPU path at 1Ki, 4Ki, 16Ki, and 64Ki. Against the post-window-policy pure GPU
+path, the hybrid cutoff is 8.7x faster at 1Ki, 3.0x faster at 4Ki, and 1.6x
+faster at 16Ki; 64Ki remains on GPU because the GPU path is faster there.
+
+Next pure-GPU ideas from the timing:
+
+- Move the final Horner combination out of the one-thread GPU kernel or make it
+  block-parallel; this is the ~22ms `d2h` floor at small sizes.
+- Add a parallel bucket-accumulation path for BW6-761. At 1Mi, `accum_seq`
+  is ~516ms of ~595ms, so a 10x pure-GPU large-size speedup requires replacing
+  the current one-thread-per-bucket sequential accumulator.
+- Explore precomputed per-base multiples or a distinct BW6 SRS benchmark. The
+  current repeated-base benchmark is useful for phase isolation but is not a
+  production SRS shape.
+
+## 2026-04-29 — BN254 MSM Baseline, Phase Timing, and Small-Size Fast Paths
+
+Added BN254-specific MSM size benchmarks matching the BW6-761 harness:
+
+- `BenchmarkBN254MSMCommitRawSizes_CUDA`
+- `BenchmarkBN254MSMCommitRawSizesCPU`
+- `PLONK2_BN254_MSM_BENCH_SIZES`
+- `PLONK2_BN254_MSM_WINDOW_BITS`
+- `PLONK2_BN254_MSM_SCALAR_MODE`
+- `PLONK2_BN254_MSM_DISABLE_CPU_FALLBACK=1`
+
+Initial full-width scalar baseline with repeated base point:
+
+```
+PLONK2_BN254_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,512Ki,1Mi,2Mi,4Mi go test ./gpu/plonk2 \
+  -run '^$' -bench '^BenchmarkBN254MSMCommitRawSizesCPU$' -benchtime=3x -count=1
+
+n=1Ki      717600 ns/op
+n=4Ki     1843313 ns/op
+n=16Ki    4685088 ns/op
+n=64Ki   15248746 ns/op
+n=256Ki  47552970 ns/op
+n=512Ki  94081270 ns/op
+n=1Mi   165987251 ns/op
+n=2Mi   269578113 ns/op
+n=4Mi   503170340 ns/op
+```
+
+The initial pure-GPU BN254 path was already much faster than BW6-761:
+
+```
+PLONK2_BN254_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,512Ki,1Mi,2Mi,4Mi go test -tags cuda ./gpu/plonk2 \
+  -run '^$' -bench '^BenchmarkBN254MSMCommitRawSizes_CUDA$' -benchtime=3x -count=1
+
+n=1Ki      3156476 ns/op
+n=4Ki      3393128 ns/op
+n=16Ki     3622837 ns/op
+n=64Ki     4292215 ns/op
+n=256Ki    6549385 ns/op
+n=512Ki    8364792 ns/op
+n=1Mi     13114819 ns/op
+n=2Mi     22581461 ns/op
+n=4Mi     41966162 ns/op
+```
+
+Phase timing showed a small fixed GPU floor: roughly 1.2-1.4 ms in final
+GPU combination / D2H reporting and roughly 1.3-1.5 ms in partial reduction
+for the 16-bit window. At 1Mi, `accum_seq` was the largest phase at ~7.1 ms,
+with H2D at ~1.8-1.9 ms.
+
+Window sweep results:
+
+- 8-bit windows improve the tiny pure-GPU repeated-base case
+  (`1Ki` ~2.50 ms, `4Ki` ~3.24 ms), mostly by shrinking partial reduction.
+- 8-bit windows are already worse by `8Ki` and much worse by `16Ki`.
+- 10/12/14/18-bit windows were worse than 16-bit for representative medium
+  and large sizes.
+
+Implemented:
+
+- BN254 CPU fallback below 8Ki points, disabled with
+  `PLONK2_BN254_MSM_DISABLE_CPU_FALLBACK=1`.
+- BN254 pure-GPU 8-bit window below 8Ki points for disabled-fallback runs.
+- A repeated-base fast path inside the tiny BN254 CPU fallback:
+  if all bases are equal, compute `base * sum(scalars)` instead of a full
+  `MultiExp`. This is mathematically valid but mainly helps the current
+  repeated-base diagnostic benchmark; real SRS-shaped inputs should not depend
+  on it.
+
+Default repeated-base benchmark after the fast paths:
+
+```
+PLONK2_BN254_MSM_BENCH_SIZES=1Ki,4Ki,16Ki,64Ki,256Ki,512Ki,1Mi,2Mi,4Mi go test -tags cuda ./gpu/plonk2 \
+  -run '^$' -bench '^BenchmarkBN254MSMCommitRawSizes_CUDA$' -benchtime=3x -count=1
+
+n=1Ki       69128 ns/op
+n=4Ki      117644 ns/op
+n=16Ki    3608380 ns/op
+n=64Ki    4236136 ns/op
+n=256Ki   6576333 ns/op
+n=512Ki   8378526 ns/op
+n=1Mi    13195801 ns/op
+n=2Mi    22440327 ns/op
+n=4Mi    42038666 ns/op
+```
+
+This is a 45.7x improvement at 1Ki and 28.8x at 4Ki versus the initial
+BN254 GPU repeated-base baseline. Sizes at and above 16Ki stay on the GPU and
+are essentially unchanged.
+
+Forced pure-GPU after the size-aware window policy:
+
+```
+PLONK2_BN254_MSM_DISABLE_CPU_FALLBACK=1 PLONK2_BN254_MSM_BENCH_SIZES=1Ki,4Ki,8Ki,16Ki,64Ki,1Mi go test -tags cuda ./gpu/plonk2 \
+  -run '^$' -bench '^BenchmarkBN254MSMCommitRawSizes_CUDA$' -benchtime=5x -count=1
+
+n=1Ki    2470228 ns/op
+n=4Ki    3205833 ns/op
+n=8Ki    3474916 ns/op
+n=16Ki   3516655 ns/op
+n=64Ki   4187162 ns/op
+n=1Mi   12972233 ns/op
+```
+
+The >10x result is therefore a default-path repeated-base result, not a
+general pure-GPU algorithmic speedup.
+
+Checked an SRS-shaped BN254 setup-commitment benchmark after the fallback:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=16$' \
+  -benchtime=3x -count=1
+
+constraints=16/cpu   1761762 ns/op
+constraints=16/gpu   2562612 ns/op
+
+go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^BenchmarkPlonkReferenceSetupCommitmentsCPUvsGPU_CUDA/bn254/constraints=1K' \
+  -benchtime=3x -count=1
+
+constraints=1K/cpu  13564761 ns/op
+constraints=1K/gpu  13242599 ns/op
+```
+
+Compared with the earlier setup-commitment baseline in this worklog, the
+default BN254 setup path improved from ~16.05 ms to ~2.56 ms at 16 constraints
+and from ~50.45 ms to ~13.24 ms at 1K constraints. That is useful, but it is
+not yet 10x on SRS-shaped setup commitments.
+
+Validation:
+
+```
+gofmt -w gpu/plonk2/commit.go gpu/plonk2/msm.go gpu/plonk2/msm_window.go gpu/plonk2/msm_plan_test.go \
+  gpu/plonk2/bench_bn254_msm_cpu_test.go gpu/plonk2/bench_bn254_msm_cuda_test.go
+go test ./gpu/plonk2 -count=1
+go test -tags cuda ./gpu/plonk2 -run 'TestCommitRaw|TestG1MSM|TestPlanMSM|TestMSMRunPlan' -count=1
+go test -tags cuda ./gpu/plonk2 -count=1
+golangci-lint run
+```
+
+Results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.143s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.688s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 3.019s
+0 issues.
+```
+
+Remaining BN254 optimization ideas:
+
+- Add an actual BN254 SRS raw-size MSM benchmark, not just repeated-base and
+  setup-commitment proxies.
+- For SRS-shaped small commitments, consider a CPU batch path that computes
+  the setup commitment wave in parallel instead of one `MultiExp` per
+  commitment.
+- For pure GPU, reduce the fixed small-size floor by specializing the partial
+  reduction/finalization path for low point counts; the 16-bit path spends
+  most tiny-input time reducing empty buckets.
+- For large pure GPU, `accum_seq` is still the dominant phase. A parallel
+  large-bucket accumulator remains the main algorithmic route to another
+  large-size speedup.
+
+## 2026-04-29 — FFT Size Sweep to 32Mi and BLS12-377 Plonk Comparison
+
+Added CUDA FFT size-sweep benchmarks:
+
+- `BenchmarkFFTForwardSizes_CUDA`
+- `BenchmarkCosetFFTForwardSizes_CUDA`
+- `BenchmarkCompareBLS12377FFTForwardPlonkVsPlonk2_CUDA`
+- `BenchmarkCompareBLS12377CosetFFTPlonkVsPlonk2_CUDA`
+- `PLONK2_FFT_BENCH_SIZES`
+- `PLONK2_BLS_FFT_COMPARE_SIZES`
+
+The default size ladder is now `1Mi,4Mi,16Mi,32Mi`. FFT domains require a
+power-of-two size; `32Mi` is 33,554,432 points.
+
+BN254 and BW6-761 forward/coset FFT sweep:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^Benchmark(FFTForwardSizes|CosetFFTForwardSizes)_CUDA$' \
+  -benchtime=3x -count=1
+```
+
+Results:
+
+| Operation | Curve | 1Mi | 4Mi | 16Mi | 32Mi |
+|-----------|-------|-----|-----|------|------|
+| FFT | BN254 | 613.9 us | 3.814 ms | 22.414 ms | 47.324 ms |
+| FFT | BW6-761 | 1.010 ms | 7.346 ms | 34.120 ms | 72.508 ms |
+| CosetFFT | BN254 | 860.8 us | 4.855 ms | 30.596 ms | 63.880 ms |
+| CosetFFT | BW6-761 | 1.630 ms | 10.790 ms | 50.781 ms | 106.387 ms |
+
+BLS12-377 direct comparison against the specialized `gpu/plonk` FFT:
+
+```
+go test -tags cuda ./gpu/plonk2 -run '^$' \
+  -bench '^BenchmarkCompareBLS12377(FFTForward|CosetFFT)PlonkVsPlonk2_CUDA$' \
+  -benchtime=3x -count=1
+```
+
+Results:
+
+| Operation | Backend | 1Mi | 4Mi | 16Mi | 32Mi |
+|-----------|---------|-----|-----|------|------|
+| FFT | `gpu/plonk` | 486.3 us | 1.838 ms | 8.557 ms | 20.374 ms |
+| FFT | `gpu/plonk2` | 607.8 us | 4.035 ms | 22.259 ms | 47.360 ms |
+| CosetFFT | `gpu/plonk` | 581.6 us | 2.448 ms | 14.765 ms | 32.067 ms |
+| CosetFFT | `gpu/plonk2` | 856.0 us | 5.125 ms | 30.358 ms | 63.979 ms |
+
+At 32Mi, the specialized BLS12-377 `gpu/plonk` path is 2.3x faster for forward
+FFT and 2.0x faster for coset FFT. This matches the implementation shape:
+`gpu/plonk2` currently launches one generic radix-2 kernel per stage, while
+`gpu/plonk` uses a BLS12-377-specific radix-8 path, fused shared-memory tail,
+and fused scale-plus-first-stage coset FFT.
+
+Optimization ideas:
+
+- Port the radix-8 stage grouping to the templated plonk2 field layer. This is
+  the main forward FFT gap and should help BN254, BLS12-377, and BW6-761.
+- Port the fused tail kernels generically. Large FFTs currently pay one global
+  memory round trip per remaining stage in `plonk2`; the specialized path keeps
+  the tail in shared memory.
+- Add a plonk2 fused coset-forward launcher that combines
+  `ScaleByPowersRaw(generator)` with the first DIF stage, then bit-reverses at
+  the end. This should reduce the coset overhead visible at 32Mi.
+- Add per-phase FFT timing to separate domain upload, scale, stages, bit
+  reverse, and synchronization. Current benchmarks time only steady-state
+  transform calls after setup.
+
+Validation:
+
+```
+gofmt -l gpu/plonk2/bench_fft_sizes_cuda_test.go
+go test ./gpu/plonk2 -count=1
+go test -tags cuda ./gpu/plonk2 -run 'TestFFT|TestCosetFFT|Test.*NTTPlan' -count=1
+go test -tags cuda ./gpu/plonk2 -count=1
+golangci-lint run
+```
+
+Results:
+
+```
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.141s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.314s
+ok  github.com/consensys/linea-monorepo/prover/gpu/plonk2 3.025s
+0 issues.
+```
 
 ## 2026-04-29 — Prompt 10 Optional Specialization Evaluation
 

@@ -1,0 +1,35 @@
+2026/04/30 22:25:31   [GPUProve n=16777216] setupGPU: 331.293µs
+2026/04/30 22:25:35   [GPUProve n=16777216] solve: 4.826022883s
+2026/04/30 22:25:36   [GPUProve n=16777216] completeQk: 4.892365165s
+2026/04/30 22:25:36   [GPUProve n=16777216] iFFT L,R,O,Qk + blind: 5.237929625s
+2026/04/30 22:25:36   [GPUProve n=16777216] MSM commit L,R,O: 5.644778966s
+2026/04/30 22:25:36   [GPUProve n=16777216] derive gamma,beta: 5.644805518s
+2026/04/30 22:25:37   [GPUProve n=16777216] build Z: 5.856215884s
+2026/04/30 22:25:37   [GPUProve n=16777216] iFFT+commit Z: 6.149127719s
+2026/04/30 22:25:37   [GPUProve n=16777216] derive alpha: 6.149142832s
+2026/04/30 22:25:38   [GPUProve n=16777216] quotient GPU: 7.296223873s
+2026/04/30 22:25:38   [GPUProve n=16777216] MSM commit h1,h2,h3: 7.725712969s
+2026/04/30 22:25:39   [GPUProve n=16777216] eval+linearize+open Z: 8.378016793s
+2026/04/30 22:25:39   [GPUProve n=16777216] MSM commit linPol: 8.519670173s
+2026/04/30 22:25:40   [GPUProve n=16777216] batch opening (GPU): 8.931958305s
+2026/04/30 22:25:40   [GPUProve n=16777216] setupGPU: 381.207µs
+2026/04/30 22:25:44   [GPUProve n=16777216] solve: 4.199940713s
+2026/04/30 22:25:44   [GPUProve n=16777216] completeQk: 4.26515001s
+2026/04/30 22:25:44   [GPUProve n=16777216] iFFT L,R,O,Qk + blind: 4.611560995s
+2026/04/30 22:25:45   [GPUProve n=16777216] MSM commit L,R,O: 5.018570086s
+2026/04/30 22:25:45   [GPUProve n=16777216] derive gamma,beta: 5.018597153s
+2026/04/30 22:25:45   [GPUProve n=16777216] build Z: 5.231986913s
+2026/04/30 22:25:45   [GPUProve n=16777216] iFFT+commit Z: 5.526582384s
+2026/04/30 22:25:45   [GPUProve n=16777216] derive alpha: 5.526604823s
+2026/04/30 22:25:46   [GPUProve n=16777216] quotient GPU: 6.670548066s
+2026/04/30 22:25:47   [GPUProve n=16777216] MSM commit h1,h2,h3: 7.099439296s
+2026/04/30 22:25:47   [GPUProve n=16777216] eval+linearize+open Z: 7.549391389s
+2026/04/30 22:25:47   [GPUProve n=16777216] MSM commit linPol: 7.690140311s
+2026/04/30 22:25:48   [GPUProve n=16777216] batch opening (GPU): 8.053014309s
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/gpu/plonk
+cpu: Intel(R) Xeon(R) Platinum 8559C
+BenchmarkPlonkECMul121-32    	       1	8070762058 ns/op	        14.62 compile_s	  16764640 constraints	  16777216 domain	         8.932 first_prove_s	         7.043 gpu_pk_s	8053042777 prove_ns/op	        25.04 setup_s	5149318496 B/op	19841037 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/gpu/plonk	78.094s

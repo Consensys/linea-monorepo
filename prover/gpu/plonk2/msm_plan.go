@@ -86,6 +86,7 @@ type MSMMemoryPlan struct {
 	PairBufferBytes        uint64
 	SortBytes              uint64
 	BucketMetadataBytes    uint64
+	OverflowBucketBytes    uint64
 	BucketAccumulatorBytes uint64
 	WindowResultBytes      uint64
 	PartialReductionBytes  uint64
@@ -166,6 +167,7 @@ func PlanMSMMemory(cfg MSMPlanConfig) (MSMMemoryPlan, error) {
 	reduceBPW := uint64(reduceBlocksPerWindow(windows, int(buckets)))
 	totalPartials := uint64(windows) * reduceBPW
 	bucketMetadataBytes := totalBuckets * 2 * 4
+	overflowBucketBytes := totalBuckets*4 + 4
 	bucketAccumulatorBytes := buckets * uint64(windows) * uint64(bucketBytes)
 	windowResultBytes := uint64(windows) * uint64(bucketBytes)
 	partialReductionBytes := totalPartials * uint64(bucketBytes) * 2
@@ -176,6 +178,7 @@ func PlanMSMMemory(cfg MSMPlanConfig) (MSMMemoryPlan, error) {
 		pairBufferBytes +
 		sortBytes +
 		bucketMetadataBytes +
+		overflowBucketBytes +
 		bucketAccumulatorBytes +
 		windowResultBytes +
 		partialReductionBytes
@@ -197,6 +200,7 @@ func PlanMSMMemory(cfg MSMPlanConfig) (MSMMemoryPlan, error) {
 		PairBufferBytes:        pairBufferBytes,
 		SortBytes:              sortBytes,
 		BucketMetadataBytes:    bucketMetadataBytes,
+		OverflowBucketBytes:    overflowBucketBytes,
 		BucketAccumulatorBytes: bucketAccumulatorBytes,
 		WindowResultBytes:      windowResultBytes,
 		PartialReductionBytes:  partialReductionBytes,

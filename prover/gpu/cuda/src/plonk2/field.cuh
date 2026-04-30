@@ -527,6 +527,153 @@ __device__ __forceinline__ void mul(uint64_t r[Params::LIMBS],
 	}
 }
 
+__device__ __forceinline__ uint32_t limb32_from64(const uint64_t *a, int i) {
+	const uint64_t word = a[i >> 1];
+	return static_cast<uint32_t>((word >> ((i & 1) * 32)) & 0xffffffffULL);
+}
+
+__device__ __forceinline__ uint32_t bw6761_fp_modulus32_limb(int i) {
+	switch(i) {
+	case 0:
+		return 0x0000008bU;
+	case 1:
+		return 0xf49d0000U;
+	case 2:
+		return 0x70000082U;
+	case 3:
+		return 0xe6913e68U;
+	case 4:
+		return 0xeaf0a437U;
+	case 5:
+		return 0x160cf8aeU;
+	case 6:
+		return 0x5667a8f8U;
+	case 7:
+		return 0x98a116c2U;
+	case 8:
+		return 0x73ebff2eU;
+	case 9:
+		return 0x71dcd3dcU;
+	case 10:
+		return 0x12f9fd90U;
+	case 11:
+		return 0x8689c8edU;
+	case 12:
+		return 0x25b42304U;
+	case 13:
+		return 0x03cebaffU;
+	case 14:
+		return 0xe584e919U;
+	case 15:
+		return 0x707ba638U;
+	case 16:
+		return 0x8087be41U;
+	case 17:
+		return 0x528275efU;
+	case 18:
+		return 0x81d14688U;
+	case 19:
+		return 0xb926186aU;
+	case 20:
+		return 0x04faff3eU;
+	case 21:
+		return 0xd187c940U;
+	case 22:
+		return 0xfb83ce0aU;
+	case 23:
+		return 0x0122e824U;
+	default:
+		return 0;
+	}
+}
+
+__device__ __forceinline__ uint32_t bw6761_fp_sub_modulus32(
+	uint32_t reduced[24], const uint32_t in[24]) {
+	uint32_t borrow = 0;
+#pragma unroll
+	for(int i = 0; i < 24; i++) {
+		const uint32_t mod = bw6761_fp_modulus32_limb(i);
+		const uint32_t bb = mod + borrow;
+		const uint32_t bcarry = bb < mod;
+		reduced[i] = in[i] - bb;
+		borrow = (in[i] < bb) || bcarry;
+	}
+	return borrow;
+}
+
+__device__ __forceinline__ uint32_t bw6761_fp_mad_wide32(
+	uint32_t &lo,
+	uint32_t a,
+	uint32_t b,
+	uint32_t addend,
+	uint32_t carry_in) {
+	uint32_t hi;
+	asm volatile(
+		"{\n\t"
+		"mad.lo.cc.u32 %0, %2, %3, %4;\n\t"
+		"madc.hi.u32 %1, %2, %3, 0;\n\t"
+		"add.cc.u32 %0, %0, %5;\n\t"
+		"addc.u32 %1, %1, 0;\n\t"
+		"}"
+		: "=&r"(lo), "=&r"(hi)
+		: "r"(a), "r"(b), "r"(addend), "r"(carry_in));
+	return hi;
+}
+
+__device__ __forceinline__ void bw6761_fp_pack32(
+	uint64_t r[12], const uint32_t in[24]) {
+#pragma unroll
+	for(int i = 0; i < 12; i++) {
+		r[i] = static_cast<uint64_t>(in[2 * i]) |
+		       (static_cast<uint64_t>(in[2 * i + 1]) << 32);
+	}
+}
+
+template <>
+__device__ __forceinline__ void mul<BW6761FpParams>(
+	uint64_t r[BW6761FpParams::LIMBS],
+	const uint64_t a[BW6761FpParams::LIMBS],
+	const uint64_t b[BW6761FpParams::LIMBS]) {
+	static constexpr int LIMBS32 = 24;
+	static constexpr uint32_t INV32 = 0x8fa798ddU;
+
+	uint32_t t[LIMBS32 + 1];
+	for(int i = 0; i <= LIMBS32; i++) t[i] = 0;
+
+	for(int i = 0; i < LIMBS32; i++) {
+		const uint32_t bi = limb32_from64(b, i);
+		uint32_t carry = 0;
+		for(int j = 0; j < LIMBS32; j++) {
+			uint32_t lo;
+			carry = bw6761_fp_mad_wide32(
+				lo, limb32_from64(a, j), bi, t[j], carry);
+			t[j] = lo;
+		}
+		uint64_t top = static_cast<uint64_t>(t[LIMBS32]) + carry;
+		t[LIMBS32] = static_cast<uint32_t>(top);
+
+		const uint32_t m = t[0] * INV32;
+		carry = 0;
+		for(int j = 0; j < LIMBS32; j++) {
+			uint32_t word;
+			carry = bw6761_fp_mad_wide32(
+				word, m, bw6761_fp_modulus32_limb(j), t[j], carry);
+			if(j > 0) t[j - 1] = word;
+		}
+		top = static_cast<uint64_t>(t[LIMBS32]) + carry;
+		t[LIMBS32 - 1] = static_cast<uint32_t>(top);
+		t[LIMBS32] = static_cast<uint32_t>(top >> 32);
+	}
+
+	uint32_t candidate[LIMBS32];
+	for(int i = 0; i < LIMBS32; i++) candidate[i] = t[i];
+
+	uint32_t reduced[LIMBS32];
+	const uint32_t borrow = bw6761_fp_sub_modulus32(reduced, candidate);
+	const bool use_reduced = t[LIMBS32] != 0 || borrow == 0;
+	bw6761_fp_pack32(r, use_reduced ? reduced : candidate);
+}
+
 template <typename Params>
 __device__ __forceinline__ void zero(uint64_t r[Params::LIMBS]) {
 #pragma unroll

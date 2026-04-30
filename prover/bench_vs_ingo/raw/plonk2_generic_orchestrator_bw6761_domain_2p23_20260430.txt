@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/gpu/plonk2
+cpu: Intel(R) Xeon(R) Platinum 8559C
+BenchmarkGenericSolvedWireCommitmentWave_CUDA/bw6-761/constraints=4194302-32         	       3	4872833842 ns/op	 247.90 MB/s	   8388604 constraints	   8388608 domain_size	        24.35 l_accum_par_us	    566286 l_accum_seq_us	       608.3 l_boundaries_us	      6806 l_build_pairs_us	     15889 l_d2h_us	     38462 l_h2d_us	      1725 l_reduce_finalize_us	     25803 l_reduce_partial_us	      6824 l_sort_us	        19.30 o_accum_par_us	    571052 o_accum_seq_us	       606.2 o_boundaries_us	      6806 o_build_pairs_us	     16513 o_d2h_us	     38521 o_h2d_us	      1789 o_reduce_finalize_us	     26226 o_reduce_partial_us	      6825 o_sort_us	18744022948 peak_bytes	6865753396 per_wave_bytes	7046431344 persistent_bytes	   3263504 r_accum_par_us	     38443 r_accum_seq_us	       565.2 r_boundaries_us	      6765 r_build_pairs_us	     16446 r_d2h_us	     38518 r_h2d_us	      1828 r_reduce_finalize_us	      8686 r_reduce_partial_us	      6460 r_sort_us	    4224 B/op	      57 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/gpu/plonk2	170.733s

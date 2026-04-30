@@ -10,12 +10,13 @@ import (
 // ProverMemoryPlanConfig describes the high-level dimensions of a prepared
 // plonk2 prover instance.
 type ProverMemoryPlanConfig struct {
-	Curve           Curve
-	DomainSize      int
-	Commitments     int
-	PointCount      int
-	MemoryLimit     uint64
-	PinnedHostLimit uint64
+	Curve              Curve
+	DomainSize         int
+	Commitments        int
+	PointCount         int
+	LagrangePointCount int
+	MemoryLimit        uint64
+	PinnedHostLimit    uint64
 }
 
 // PreparedKeyMemoryPlan estimates persistent GPU memory owned by a prepared
@@ -33,6 +34,17 @@ type NTTDomainMemoryPlan struct {
 	CardinalityInv    uint64
 	TotalBytes        uint64
 	ScalarElementSize uint64
+}
+
+// SRSResidencyMemoryPlan estimates persistent GPU memory for resident
+// canonical and Lagrange SRS point tables.
+type SRSResidencyMemoryPlan struct {
+	CanonicalPointCount int
+	LagrangePointCount  int
+	PointBytes          int
+	CanonicalBytes      uint64
+	LagrangeBytes       uint64
+	TotalBytes          uint64
 }
 
 // QuotientMemoryPlan estimates per-proof GPU working vectors used by the
@@ -62,6 +74,7 @@ type ProverMemoryPlan struct {
 	DeviceTotalBytes uint64
 
 	PreparedKey PreparedKeyMemoryPlan
+	SRS         SRSResidencyMemoryPlan
 	NTTDomain   NTTDomainMemoryPlan
 	Quotient    QuotientMemoryPlan
 	MSM         MSMMemoryPlan
@@ -92,6 +105,13 @@ func PlanProverMemory(dev *gpu.Device, cfg ProverMemoryPlanConfig) (ProverMemory
 	if err != nil {
 		return ProverMemoryPlan{}, err
 	}
+	lagrangePointCount := cfg.LagrangePointCount
+	if lagrangePointCount == 0 {
+		lagrangePointCount = cfg.DomainSize
+	}
+	if lagrangePointCount < 0 {
+		return ProverMemoryPlan{}, fmt.Errorf("plonk2: lagrange point count must be non-negative")
+	}
 
 	scalarBytes := uint64(info.ScalarLimbs * 8)
 	fixedPolynomialBytes := uint64(cfg.Commitments) * uint64(cfg.DomainSize) * scalarBytes
@@ -101,6 +121,14 @@ func PlanProverMemory(dev *gpu.Device, cfg ProverMemoryPlanConfig) (ProverMemory
 		PermutationBytes:     permutationBytes,
 		TotalBytes:           fixedPolynomialBytes + permutationBytes,
 	}
+	srs := SRSResidencyMemoryPlan{
+		CanonicalPointCount: cfg.PointCount,
+		LagrangePointCount:  lagrangePointCount,
+		PointBytes:          msmPlan.PointBytes,
+		CanonicalBytes:      uint64(cfg.PointCount) * uint64(msmPlan.PointBytes),
+		LagrangeBytes:       uint64(lagrangePointCount) * uint64(msmPlan.PointBytes),
+	}
+	srs.TotalBytes = srs.CanonicalBytes + srs.LagrangeBytes
 
 	ntt := NTTDomainMemoryPlan{
 		TwiddleBytes:      uint64(cfg.DomainSize) * scalarBytes,
@@ -128,6 +156,7 @@ func PlanProverMemory(dev *gpu.Device, cfg ProverMemoryPlanConfig) (ProverMemory
 		MemoryLimit:     cfg.MemoryLimit,
 		PinnedHostLimit: cfg.PinnedHostLimit,
 		PreparedKey:     prepared,
+		SRS:             srs,
 		NTTDomain:       ntt,
 		Quotient:        quotient,
 		MSM:             msmPlan,
@@ -163,7 +192,7 @@ func PlanProverMemory(dev *gpu.Device, cfg ProverMemoryPlanConfig) (ProverMemory
 
 // PersistentBytes returns memory expected to remain resident for the prepared key.
 func (p ProverMemoryPlan) PersistentBytes() uint64 {
-	return p.PreparedKey.TotalBytes + p.NTTDomain.TotalBytes + p.MSM.ResidentBytes
+	return p.PreparedKey.TotalBytes + p.SRS.TotalBytes + p.NTTDomain.TotalBytes
 }
 
 // ScratchBytes returns non-MSM per-proof GPU working memory.
@@ -190,6 +219,11 @@ func (p ProverMemoryPlan) EstimatedPeakBytes() uint64 {
 func (p ProverMemoryPlan) Summary() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "curve=%s domain=%d commitments=%d points=%d\n", p.Curve, p.DomainSize, p.Commitments, p.PointCount)
+	fmt.Fprintf(&b, "srs canonical=%d lagrange=%d bytes=%d\n",
+		p.SRS.CanonicalPointCount,
+		p.SRS.LagrangePointCount,
+		p.SRS.TotalBytes,
+	)
 	fmt.Fprintf(&b, "persistent=%d scratch=%d per_wave=%d peak=%d host_pinned=%d\n",
 		p.PersistentBytes(),
 		p.ScratchBytes(),

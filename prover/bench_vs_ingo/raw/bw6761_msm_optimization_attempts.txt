@@ -1,0 +1,45 @@
+BW6-761 MSM optimization attempts, 2026-04-30.
+
+All commands run from:
+/home/ubuntu/dev/go/src/github.com/consensys/linea-monorepo/prover
+
+Correctness after segmented implementation:
+
+go test ./gpu/plonk2 -tags cuda,nocorset \
+  -run '^TestG1MSMPippengerRaw_CUDA$/^bw6-761$' -count=1 -timeout=30m -v
+
+Result:
+PASS
+
+go test ./gpu/plonk2 -tags cuda,nocorset \
+  -run 'Test(CommitRaw|G1MSM).*CUDA|TestPlanMSMMemory_BW6761|TestShouldUseCPUFallback_Cutoffs_CUDA' \
+  -count=1 -timeout=30m
+
+Result:
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2 2.700s
+
+Segmented populated-bucket path, enabled during experiment:
+
+PLONK2_BW6_MSM_SCALAR_MODE=full \
+PLONK2_BW6_MSM_BENCH_SIZES=1Mi,4Mi,8Mi,16Mi \
+go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+  -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+  -benchtime=1x -count=1 -timeout=90m
+
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=1Mi-32   563131634 ns/op   498752 accum_seq_us
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=4Mi-32  1984699406 ns/op  1895874 accum_seq_us
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=8Mi-32  3448788254 ns/op  3332357 accum_seq_us
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Mi-32 6604275620 ns/op  6427309 accum_seq_us
+
+The segmented path was then disabled because it regressed wall time.
+
+Post-disable sanity benchmark:
+
+PLONK2_BW6_MSM_SCALAR_MODE=full \
+PLONK2_BW6_MSM_BENCH_SIZES=8Mi,16Mi \
+go test ./gpu/plonk2 -tags cuda,nocorset -run '^$' \
+  -bench '^BenchmarkBW6761MSMCommitRawSizes_CUDA$' \
+  -benchtime=1x -count=1 -timeout=60m
+
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=8Mi-32  2781925690 ns/op  2667840 accum_seq_us
+BenchmarkBW6761MSMCommitRawSizes_CUDA/n=16Mi-32 4888147576 ns/op  4715562 accum_seq_us

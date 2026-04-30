@@ -355,6 +355,7 @@ func TestPlonkECMulConcurrentProofsSameKey(t *testing.T) {
 
 func BenchmarkPlonkECMul10(b *testing.B)  { benchmarkPlonkECMul(b, 10) }
 func BenchmarkPlonkECMul30(b *testing.B)  { benchmarkPlonkECMul(b, 30) }
+func BenchmarkPlonkECMul121(b *testing.B) { benchmarkPlonkECMul(b, 121) }
 func BenchmarkPlonkECMul353(b *testing.B) { benchmarkPlonkECMul(b, 353) }
 func BenchmarkPlonkECMul750(b *testing.B) { benchmarkPlonkECMul(b, 750) }
 

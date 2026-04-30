@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/gpu/plonk2
+cpu: Intel(R) Xeon(R) Platinum 8559C
+BenchmarkPlonk2ECMulTargetDomainAllCurves_CUDA/bls12-377/domain=16M/instances=121/generic-gpu-32         	       1	37016077158 ns/op	         2.000 bsb22_commitments	         0 ccs_cache_hit	        14.76 compile_s	  16764643 constraints	  16777216 domain	       121.0 ecmul_instances	         9.018 gpu_prepare_s	        25.24 setup_s	         0.01423 witness_s	45069788968 B/op	26868393 allocs/op
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/gpu/plonk2	89.444s

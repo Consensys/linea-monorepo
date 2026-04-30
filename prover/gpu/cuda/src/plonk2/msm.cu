@@ -24,6 +24,8 @@ namespace gnark_gpu::plonk2 {
 namespace {
 
 static constexpr int MSM_THREADS = 256;
+static constexpr int ACCUM_PARALLEL_THREADS = 128;
+static constexpr int ACCUM_SEQ_CAP = 256;
 static constexpr int REDUCE_THREADS_PER_WINDOW = 128;
 static constexpr int FINALIZE_THREADS = 32;
 
@@ -141,16 +143,33 @@ __global__ void __launch_bounds__(MSM_THREADS, 2) accumulate_buckets_kernel(
 	const uint32_t *__restrict__ bucket_offsets,
 	const uint32_t *__restrict__ bucket_ends,
 	JacobianPoint<Fp> *__restrict__ buckets,
-	int total_buckets) {
+	int total_buckets,
+	bool add_to_existing,
+	int cap,
+	uint32_t *__restrict__ overflow_buckets,
+	uint32_t *__restrict__ overflow_count) {
 
 	const int bucket_flat = blockIdx.x * blockDim.x + threadIdx.x;
 	if(bucket_flat >= total_buckets) return;
 
 	JacobianPoint<Fp> acc, tmp;
-	jacobian_set_infinity<Fp>(acc);
+	if(add_to_existing) {
+		acc = buckets[bucket_flat];
+	} else {
+		jacobian_set_infinity<Fp>(acc);
+	}
 
 	const uint32_t start = bucket_offsets[bucket_flat];
-	const uint32_t end = bucket_ends[bucket_flat];
+	const uint32_t full_end = bucket_ends[bucket_flat];
+	uint32_t end = full_end;
+	if(cap > 0 && full_end > start + static_cast<uint32_t>(cap)) {
+		end = start + static_cast<uint32_t>(cap);
+		if(overflow_buckets && overflow_count) {
+			const uint32_t slot = atomicAdd(overflow_count, 1u);
+			overflow_buckets[slot] = static_cast<uint32_t>(bucket_flat);
+		}
+	}
+
 	for(uint32_t i = start; i < end; i++) {
 		const uint32_t packed = point_indices[i];
 		AffinePoint<Fp> p;
@@ -178,6 +197,64 @@ template <typename Fp>
 __device__ __noinline__ void jacobian_double_value(JacobianPoint<Fp> &out,
                                                    const JacobianPoint<Fp> &a) {
 	jacobian_double<Fp>(out, a);
+}
+
+template <typename Fp>
+__global__ void __launch_bounds__(ACCUM_PARALLEL_THREADS, 2)
+accumulate_buckets_parallel_kernel(
+	const uint64_t *__restrict__ points,
+	const uint32_t *__restrict__ point_indices,
+	const uint32_t *__restrict__ bucket_offsets,
+	const uint32_t *__restrict__ bucket_ends,
+	const uint32_t *__restrict__ overflow_buckets,
+	JacobianPoint<Fp> *__restrict__ buckets,
+	bool add_to_existing,
+	uint32_t start_offset) {
+
+	const int bucket_flat = overflow_buckets
+		                        ? static_cast<int>(overflow_buckets[blockIdx.x])
+		                        : static_cast<int>(blockIdx.x);
+	const int tid = threadIdx.x;
+	const uint32_t start = bucket_offsets[bucket_flat] + start_offset;
+	const uint32_t end = bucket_ends[bucket_flat];
+	if(start >= end) return;
+
+	JacobianPoint<Fp> acc, tmp;
+	jacobian_set_infinity<Fp>(acc);
+	for(uint32_t i = start + static_cast<uint32_t>(tid); i < end;
+	    i += ACCUM_PARALLEL_THREADS) {
+		const uint32_t packed = point_indices[i];
+		AffinePoint<Fp> p;
+		load_affine_at<Fp>(p, points, packed & 0x7fffffffu);
+		if((packed >> 31) != 0) {
+			neg<Fp>(p.y, p.y);
+		}
+		jacobian_add_jacobian_affine<Fp>(tmp, acc, p);
+		acc = tmp;
+	}
+
+	extern __shared__ unsigned char shared_raw[];
+	JacobianPoint<Fp> *shared =
+		reinterpret_cast<JacobianPoint<Fp> *>(shared_raw);
+	shared[tid] = acc;
+	__syncthreads();
+
+	for(int stride = ACCUM_PARALLEL_THREADS / 2; stride > 0; stride >>= 1) {
+		if(tid < stride) {
+			jacobian_add_value<Fp>(tmp, shared[tid], shared[tid + stride]);
+			shared[tid] = tmp;
+		}
+		__syncthreads();
+	}
+
+	if(tid == 0) {
+		if(add_to_existing) {
+			jacobian_add_value<Fp>(tmp, buckets[bucket_flat], shared[0]);
+			buckets[bucket_flat] = tmp;
+		} else {
+			buckets[bucket_flat] = shared[0];
+		}
+	}
 }
 
 template <typename Fp>
@@ -438,6 +515,14 @@ static int sort_key_bits(int total_buckets) {
 	return bits;
 }
 
+static int accumulation_seq_cap(size_t assignments, int total_buckets) {
+	size_t avg = assignments / static_cast<size_t>(total_buckets);
+	size_t cap = 2 * avg + 64;
+	if(cap < static_cast<size_t>(ACCUM_SEQ_CAP)) cap = ACCUM_SEQ_CAP;
+	if(cap > 4096) cap = 4096;
+	return static_cast<int>(cap);
+}
+
 template <typename Fp, typename Fr>
 cudaError_t run_msm_pippenger_core(
 	const uint64_t *points,
@@ -473,6 +558,8 @@ cudaError_t run_msm_pippenger_core(
 	uint32_t *d_vals_out = nullptr;
 	uint32_t *d_bucket_offsets = nullptr;
 	uint32_t *d_bucket_ends = nullptr;
+	uint32_t *d_overflow_buckets = nullptr;
+	uint32_t *d_overflow_count = nullptr;
 	JacobianPoint<Fp> *d_buckets = nullptr;
 	JacobianPoint<Fp> *d_window_results = nullptr;
 	JacobianPoint<Fp> *d_partial_totals = nullptr;
@@ -507,6 +594,10 @@ cudaError_t run_msm_pippenger_core(
 	err = cudaMalloc(&d_bucket_offsets, total_buckets * sizeof(uint32_t));
 	if(err != cudaSuccess) goto done;
 	err = cudaMalloc(&d_bucket_ends, total_buckets * sizeof(uint32_t));
+	if(err != cudaSuccess) goto done;
+	err = cudaMalloc(&d_overflow_buckets, total_buckets * sizeof(uint32_t));
+	if(err != cudaSuccess) goto done;
+	err = cudaMalloc(&d_overflow_count, sizeof(uint32_t));
 	if(err != cudaSuccess) goto done;
 	err = cudaMalloc(&d_buckets,
 	                 total_buckets * sizeof(JacobianPoint<Fp>));
@@ -572,14 +663,36 @@ cudaError_t run_msm_pippenger_core(
 	}
 
 	{
+		const int cap = accumulation_seq_cap(assignments, total_buckets);
 		const unsigned blocks =
 			static_cast<unsigned>((total_buckets + MSM_THREADS - 1) /
 			                      MSM_THREADS);
+		err = cudaMemsetAsync(d_overflow_count, 0, sizeof(uint32_t), stream);
+		if(err != cudaSuccess) goto done;
 		accumulate_buckets_kernel<Fp><<<blocks, MSM_THREADS, 0, stream>>>(
 			d_points, d_vals_out, d_bucket_offsets, d_bucket_ends, d_buckets,
-			total_buckets);
+			total_buckets, false, cap, d_overflow_buckets, d_overflow_count);
 		err = cudaGetLastError();
 		if(err != cudaSuccess) goto done;
+
+		uint32_t overflow_count = 0;
+		err = cudaMemcpyAsync(&overflow_count, d_overflow_count,
+		                      sizeof(uint32_t), cudaMemcpyDeviceToHost,
+		                      stream);
+		if(err != cudaSuccess) goto done;
+		err = cudaStreamSynchronize(stream);
+		if(err != cudaSuccess) goto done;
+		if(overflow_count > 0) {
+			const size_t smem =
+				ACCUM_PARALLEL_THREADS * sizeof(JacobianPoint<Fp>);
+			accumulate_buckets_parallel_kernel<Fp>
+				<<<overflow_count, ACCUM_PARALLEL_THREADS, smem, stream>>>(
+					d_points, d_vals_out, d_bucket_offsets, d_bucket_ends,
+					d_overflow_buckets, d_buckets, true,
+					static_cast<uint32_t>(cap));
+			err = cudaGetLastError();
+			if(err != cudaSuccess) goto done;
+		}
 	}
 
 	reduce_windows_partial_kernel<Fp>
@@ -617,6 +730,8 @@ done:
 	if(d_vals_out) cudaFree(d_vals_out);
 	if(d_bucket_offsets) cudaFree(d_bucket_offsets);
 	if(d_bucket_ends) cudaFree(d_bucket_ends);
+	if(d_overflow_buckets) cudaFree(d_overflow_buckets);
+	if(d_overflow_count) cudaFree(d_overflow_count);
 	if(d_buckets) cudaFree(d_buckets);
 	if(d_window_results) cudaFree(d_window_results);
 	if(d_partial_totals) cudaFree(d_partial_totals);
@@ -689,12 +804,16 @@ cudaError_t run_msm_pippenger_prealloc_core(
 	uint32_t *d_vals_out,
 	uint32_t *d_bucket_offsets,
 	uint32_t *d_bucket_ends,
+	uint32_t *d_overflow_buckets,
+	uint32_t *d_overflow_count,
 	void *d_buckets_raw,
 	void *d_window_results_raw,
 	void *d_partial_totals_raw,
 	void *d_partial_sums_raw,
 	void *d_sort_temp,
 	size_t sort_temp_bytes,
+	cudaEvent_t *phase_events,
+	float *phase_timings_ms,
 	cudaStream_t stream) {
 
 	if(window_bits <= 1 || window_bits > 24) return cudaErrorInvalidValue;
@@ -714,11 +833,11 @@ cudaError_t run_msm_pippenger_prealloc_core(
 
 	if(!d_points || !scalars || !out || !d_scalars || !d_out || !d_keys_in ||
 	   !d_keys_out || !d_vals_in || !d_vals_out || !d_bucket_offsets ||
-	   !d_bucket_ends || !d_buckets_raw || !d_window_results_raw ||
-	   !d_partial_totals_raw || !d_partial_sums_raw || !d_sort_temp) {
+	   !d_bucket_ends || !d_overflow_buckets || !d_overflow_count ||
+	   !d_buckets_raw || !d_window_results_raw || !d_partial_totals_raw ||
+	   !d_partial_sums_raw || !d_sort_temp) {
 		return cudaErrorInvalidValue;
 	}
-
 	if(sort_temp_bytes == 0) return cudaErrorInvalidValue;
 
 	JacobianPoint<Fp> *d_buckets =
@@ -733,10 +852,16 @@ cudaError_t run_msm_pippenger_prealloc_core(
 	const size_t scalar_words = count * Fr::LIMBS;
 	constexpr size_t output_words = 3 * Fp::LIMBS;
 
+	auto record_phase = [&](int idx) {
+		if(phase_events) cudaEventRecord(phase_events[idx], stream);
+	};
+	record_phase(0);
+
 	cudaError_t err = cudaMemcpyAsync(
 		d_scalars, scalars, scalar_words * sizeof(uint64_t),
 		cudaMemcpyHostToDevice, stream);
 	if(err != cudaSuccess) return err;
+	record_phase(1);
 
 	{
 		const unsigned blocks =
@@ -747,11 +872,13 @@ cudaError_t run_msm_pippenger_prealloc_core(
 		err = cudaGetLastError();
 		if(err != cudaSuccess) return err;
 	}
+	record_phase(2);
 
 	err = cub::DeviceRadixSort::SortPairs(
 		d_sort_temp, sort_temp_bytes, d_keys_in, d_keys_out, d_vals_in,
 		d_vals_out, assignments, 0, sort_key_bits(total_buckets), stream);
 	if(err != cudaSuccess) return err;
+	record_phase(3);
 
 	err = cudaMemsetAsync(d_bucket_offsets, 0,
 	                      total_buckets * sizeof(uint32_t), stream);
@@ -769,17 +896,45 @@ cudaError_t run_msm_pippenger_prealloc_core(
 		err = cudaGetLastError();
 		if(err != cudaSuccess) return err;
 	}
+	record_phase(4);
 
 	{
+		const int cap = accumulation_seq_cap(assignments, total_buckets);
 		const unsigned blocks =
 			static_cast<unsigned>((total_buckets + MSM_THREADS - 1) /
 			                      MSM_THREADS);
+		err = cudaMemsetAsync(d_overflow_count, 0, sizeof(uint32_t), stream);
+		if(err != cudaSuccess) return err;
 		accumulate_buckets_kernel<Fp><<<blocks, MSM_THREADS, 0, stream>>>(
 			d_points, d_vals_out, d_bucket_offsets, d_bucket_ends, d_buckets,
-			total_buckets);
+			total_buckets, false, cap, d_overflow_buckets, d_overflow_count);
 		err = cudaGetLastError();
 		if(err != cudaSuccess) return err;
 	}
+	record_phase(5);
+
+	{
+		uint32_t overflow_count = 0;
+		err = cudaMemcpyAsync(&overflow_count, d_overflow_count,
+		                      sizeof(uint32_t), cudaMemcpyDeviceToHost,
+		                      stream);
+		if(err != cudaSuccess) return err;
+		err = cudaStreamSynchronize(stream);
+		if(err != cudaSuccess) return err;
+		if(overflow_count > 0) {
+			const int cap = accumulation_seq_cap(assignments, total_buckets);
+			const size_t smem =
+				ACCUM_PARALLEL_THREADS * sizeof(JacobianPoint<Fp>);
+			accumulate_buckets_parallel_kernel<Fp>
+				<<<overflow_count, ACCUM_PARALLEL_THREADS, smem, stream>>>(
+					d_points, d_vals_out, d_bucket_offsets, d_bucket_ends,
+					d_overflow_buckets, d_buckets, true,
+					static_cast<uint32_t>(cap));
+			err = cudaGetLastError();
+			if(err != cudaSuccess) return err;
+		}
+	}
+	record_phase(6);
 
 	reduce_windows_partial_kernel<Fp>
 		<<<total_partials, REDUCE_THREADS_PER_WINDOW, 0, stream>>>(
@@ -787,6 +942,7 @@ cudaError_t run_msm_pippenger_prealloc_core(
 			num_buckets, reduce_bpw);
 	err = cudaGetLastError();
 	if(err != cudaSuccess) return err;
+	record_phase(7);
 
 	reduce_windows_finalize_kernel<Fp>
 		<<<num_windows, FINALIZE_THREADS,
@@ -795,6 +951,7 @@ cudaError_t run_msm_pippenger_prealloc_core(
 			num_buckets, reduce_bpw);
 	err = cudaGetLastError();
 	if(err != cudaSuccess) return err;
+	record_phase(8);
 
 	finalize_msm_kernel<Fp><<<1, 1, 0, stream>>>(
 		d_window_results, num_windows, window_bits, d_out);
@@ -804,7 +961,32 @@ cudaError_t run_msm_pippenger_prealloc_core(
 	err = cudaMemcpyAsync(out, d_out, output_words * sizeof(uint64_t),
 	                      cudaMemcpyDeviceToHost, stream);
 	if(err != cudaSuccess) return err;
-	return cudaStreamSynchronize(stream);
+	record_phase(9);
+
+	err = cudaStreamSynchronize(stream);
+	if(err != cudaSuccess) return err;
+
+	if(phase_events && phase_timings_ms) {
+		auto elapsed = [&](int from, int to) -> float {
+			float ms = 0.0f;
+			if(cudaEventElapsedTime(&ms, phase_events[from], phase_events[to])
+			   != cudaSuccess) {
+				cudaGetLastError();
+				ms = 0.0f;
+			}
+			return ms;
+		};
+		phase_timings_ms[0] = elapsed(0, 1);
+		phase_timings_ms[1] = elapsed(1, 2);
+		phase_timings_ms[2] = elapsed(2, 3);
+		phase_timings_ms[3] = elapsed(3, 4);
+		phase_timings_ms[4] = elapsed(4, 5);
+		phase_timings_ms[5] = elapsed(5, 6);
+		phase_timings_ms[6] = elapsed(6, 7);
+		phase_timings_ms[7] = elapsed(7, 8);
+		phase_timings_ms[8] = elapsed(8, 9);
+	}
+	return cudaSuccess;
 }
 
 } // namespace
@@ -893,12 +1075,16 @@ cudaError_t msm_pippenger_device_points_prealloc_run(
 	uint32_t *d_vals_out,
 	uint32_t *d_bucket_offsets,
 	uint32_t *d_bucket_ends,
+	uint32_t *d_overflow_buckets,
+	uint32_t *d_overflow_count,
 	void *d_buckets,
 	void *d_window_results,
 	void *d_partial_totals,
 	void *d_partial_sums,
 	void *d_sort_temp,
 	size_t sort_temp_bytes,
+	cudaEvent_t *phase_events,
+	float *phase_timings_ms,
 	cudaStream_t stream) {
 
 	switch(curve) {
@@ -906,20 +1092,23 @@ cudaError_t msm_pippenger_device_points_prealloc_run(
 		return run_msm_pippenger_prealloc_core<BN254FpParams, BN254FrParams>(
 			d_points, scalars, count, window_bits, out, d_scalars, d_out,
 			d_keys_in, d_keys_out, d_vals_in, d_vals_out, d_bucket_offsets,
-			d_bucket_ends, d_buckets, d_window_results, d_partial_totals,
-			d_partial_sums, d_sort_temp, sort_temp_bytes, stream);
+			d_bucket_ends, d_overflow_buckets, d_overflow_count, d_buckets,
+			d_window_results, d_partial_totals, d_partial_sums, d_sort_temp,
+			sort_temp_bytes, phase_events, phase_timings_ms, stream);
 	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
 		return run_msm_pippenger_prealloc_core<BLS12377FpParams, BLS12377FrParams>(
 			d_points, scalars, count, window_bits, out, d_scalars, d_out,
 			d_keys_in, d_keys_out, d_vals_in, d_vals_out, d_bucket_offsets,
-			d_bucket_ends, d_buckets, d_window_results, d_partial_totals,
-			d_partial_sums, d_sort_temp, sort_temp_bytes, stream);
+			d_bucket_ends, d_overflow_buckets, d_overflow_count, d_buckets,
+			d_window_results, d_partial_totals, d_partial_sums, d_sort_temp,
+			sort_temp_bytes, phase_events, phase_timings_ms, stream);
 	case GNARK_GPU_PLONK2_CURVE_BW6_761:
 		return run_msm_pippenger_prealloc_core<BW6761FpParams, BW6761FrParams>(
 			d_points, scalars, count, window_bits, out, d_scalars, d_out,
 			d_keys_in, d_keys_out, d_vals_in, d_vals_out, d_bucket_offsets,
-			d_bucket_ends, d_buckets, d_window_results, d_partial_totals,
-			d_partial_sums, d_sort_temp, sort_temp_bytes, stream);
+			d_bucket_ends, d_overflow_buckets, d_overflow_count, d_buckets,
+			d_window_results, d_partial_totals, d_partial_sums, d_sort_temp,
+			sort_temp_bytes, phase_events, phase_timings_ms, stream);
 	default:
 		return cudaErrorInvalidValue;
 	}

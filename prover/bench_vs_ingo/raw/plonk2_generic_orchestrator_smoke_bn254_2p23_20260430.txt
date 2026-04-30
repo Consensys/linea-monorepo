@@ -1,0 +1,3 @@
+signal: interrupt
+FAIL	github.com/consensys/linea-monorepo/prover/gpu/plonk2	560.160s
+FAIL

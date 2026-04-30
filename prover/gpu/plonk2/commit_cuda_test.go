@@ -76,8 +76,7 @@ func TestG1MSMCommitRawBatchRejectsMalformedInputs_CUDA(t *testing.T) {
 	require.NoError(t, err, "creating CUDA device should succeed")
 	defer dev.Close()
 
-	srs, err := bnkzg.NewSRS(4, big.NewInt(7))
-	require.NoError(t, err, "creating BN254 SRS should succeed")
+	srs := testSRSAssets(t).loadBN254(t, 4, true)
 	msm, err := NewG1MSM(dev, CurveBN254, rawBN254G1Slice(srs.Pk.G1))
 	require.NoError(t, err, "creating resident BN254 MSM should succeed")
 	defer msm.Close()
@@ -151,8 +150,7 @@ func testCommitRawMatchesKZGBN254(t *testing.T, dev *gpu.Device) {
 		bnfr.NewElement(7), bnfr.NewElement(11), bnfr.NewElement(13),
 		bnfr.NewElement(17), bnfr.NewElement(19),
 	}
-	srs, err := bnkzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BN254 SRS should succeed")
+	srs := testSRSAssets(t).loadBN254(t, len(poly), true)
 	expected, err := bnkzg.Commit(poly, srs.Pk)
 	require.NoError(t, err, "BN254 KZG commit should succeed")
 	out, err := CommitRaw(dev, CurveBN254, rawBN254G1Slice(srs.Pk.G1), cloneRaw(rawBN254(poly)))
@@ -166,8 +164,7 @@ func testCommitRawMatchesKZGBLS12377(t *testing.T, dev *gpu.Device) {
 		blsfr.NewElement(7), blsfr.NewElement(11), blsfr.NewElement(13),
 		blsfr.NewElement(17), blsfr.NewElement(19),
 	}
-	srs, err := blskzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BLS12-377 SRS should succeed")
+	srs := testSRSAssets(t).loadBLS12377(t, len(poly), true)
 	expected, err := blskzg.Commit(poly, srs.Pk)
 	require.NoError(t, err, "BLS12-377 KZG commit should succeed")
 	out, err := CommitRaw(dev, CurveBLS12377, rawBLS12377G1Slice(srs.Pk.G1), cloneRaw(rawBLS12377(poly)))
@@ -181,8 +178,7 @@ func testCommitRawMatchesKZGBW6761(t *testing.T, dev *gpu.Device) {
 		bwfr.NewElement(7), bwfr.NewElement(11), bwfr.NewElement(13),
 		bwfr.NewElement(17), bwfr.NewElement(19),
 	}
-	srs, err := bwkzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BW6-761 SRS should succeed")
+	srs := testSRSAssets(t).loadBW6761(t, len(poly), true)
 	expected, err := bwkzg.Commit(poly, srs.Pk)
 	require.NoError(t, err, "BW6-761 KZG commit should succeed")
 	out, err := CommitRaw(dev, CurveBW6761, rawBW6761G1Slice(srs.Pk.G1), cloneRaw(rawBW6761(poly)))
@@ -197,8 +193,7 @@ func testCommitRawMatchesKZGOpenBN254(t *testing.T, dev *gpu.Device) {
 		bnfr.NewElement(42), bnfr.NewElement(108),
 	}
 	point := bnfr.NewElement(9)
-	srs, err := bnkzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BN254 SRS should succeed")
+	srs := testSRSAssets(t).loadBN254(t, len(poly), true)
 	proof, err := bnkzg.Open(poly, point, srs.Pk)
 	require.NoError(t, err, "BN254 KZG open should succeed")
 	h := quotientBN254(poly, proof.ClaimedValue, point)
@@ -214,8 +209,7 @@ func testCommitRawMatchesKZGOpenBLS12377(t *testing.T, dev *gpu.Device) {
 		blsfr.NewElement(42), blsfr.NewElement(108),
 	}
 	point := blsfr.NewElement(9)
-	srs, err := blskzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BLS12-377 SRS should succeed")
+	srs := testSRSAssets(t).loadBLS12377(t, len(poly), true)
 	proof, err := blskzg.Open(poly, point, srs.Pk)
 	require.NoError(t, err, "BLS12-377 KZG open should succeed")
 	h := quotientBLS12377(poly, proof.ClaimedValue, point)
@@ -231,8 +225,7 @@ func testCommitRawMatchesKZGOpenBW6761(t *testing.T, dev *gpu.Device) {
 		bwfr.NewElement(42), bwfr.NewElement(108),
 	}
 	point := bwfr.NewElement(9)
-	srs, err := bwkzg.NewSRS(uint64(len(poly)), big.NewInt(7))
-	require.NoError(t, err, "creating BW6-761 SRS should succeed")
+	srs := testSRSAssets(t).loadBW6761(t, len(poly), true)
 	proof, err := bwkzg.Open(poly, point, srs.Pk)
 	require.NoError(t, err, "BW6-761 KZG open should succeed")
 	h := quotientBW6761(poly, proof.ClaimedValue, point)
@@ -242,8 +235,7 @@ func testCommitRawMatchesKZGOpenBW6761(t *testing.T, dev *gpu.Device) {
 }
 
 func testG1MSMCommitRawBN254(t *testing.T, dev *gpu.Device) {
-	srs, err := bnkzg.NewSRS(8, big.NewInt(7))
-	require.NoError(t, err, "creating BN254 SRS should succeed")
+	srs := testSRSAssets(t).loadBN254(t, 8, true)
 	msm, err := NewG1MSM(dev, CurveBN254, rawBN254G1Slice(srs.Pk.G1))
 	require.NoError(t, err, "creating resident BN254 MSM should succeed")
 	defer msm.Close()
@@ -276,8 +268,7 @@ func testG1MSMCommitRawBN254(t *testing.T, dev *gpu.Device) {
 }
 
 func testG1MSMCommitRawBLS12377(t *testing.T, dev *gpu.Device) {
-	srs, err := blskzg.NewSRS(8, big.NewInt(7))
-	require.NoError(t, err, "creating BLS12-377 SRS should succeed")
+	srs := testSRSAssets(t).loadBLS12377(t, 8, true)
 	msm, err := NewG1MSM(dev, CurveBLS12377, rawBLS12377G1Slice(srs.Pk.G1))
 	require.NoError(t, err, "creating resident BLS12-377 MSM should succeed")
 	defer msm.Close()
@@ -303,8 +294,7 @@ func testG1MSMCommitRawBLS12377(t *testing.T, dev *gpu.Device) {
 }
 
 func testG1MSMCommitRawBW6761(t *testing.T, dev *gpu.Device) {
-	srs, err := bwkzg.NewSRS(8, big.NewInt(7))
-	require.NoError(t, err, "creating BW6-761 SRS should succeed")
+	srs := testSRSAssets(t).loadBW6761(t, 8, true)
 	msm, err := NewG1MSM(dev, CurveBW6761, rawBW6761G1Slice(srs.Pk.G1))
 	require.NoError(t, err, "creating resident BW6-761 MSM should succeed")
 	defer msm.Close()

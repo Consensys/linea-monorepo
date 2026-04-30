@@ -14,13 +14,14 @@ func TestPlanMSMMemory_BW6761DefaultsAvoidLargeBuckets(t *testing.T) {
 	plan, err := PlanMSMMemory(cfg)
 	require.NoError(t, err)
 
-	require.Equal(t, 16, plan.WindowBits, "BW6-761 default window should balance sort and bucket memory at 1M points")
-	require.Equal(t, 24, plan.Windows, "BW6-761 signed window count should include carry room")
+	require.Equal(t, 18, plan.WindowBits, "BW6-761 default window should follow measured CUDA benchmark policy at 1M points")
+	require.Equal(t, 21, plan.Windows, "BW6-761 signed window count should include carry room")
 	require.Equal(t, 192, plan.PointBytes, "BW6-761 affine points should be 2*12 limbs")
 	require.Equal(t, 48, plan.ScalarBytes, "BW6-761 scalar should be 6 limbs")
 	require.Equal(t, uint64(1<<20)*48, plan.ScalarStagingBytes, "scalar staging should match CUDA d_scalars")
 	require.Greater(t, plan.PairBufferBytes, plan.AssignmentBytes, "key/value pair buffers should include in/out arrays")
 	require.Greater(t, plan.PartialReductionBytes, uint64(0), "partial reduction buffers should be accounted")
+	require.Greater(t, plan.OverflowBucketBytes, uint64(0), "large-bucket overflow metadata should be accounted")
 	require.Greater(t, plan.BucketAccumulatorBytes, uint64(0), "bucket memory should be accounted")
 	require.Greater(t, plan.EstimatedTotalBytes, plan.ResidentBytes, "scratch memory should be included")
 }
@@ -119,10 +120,8 @@ func TestPlanMSMMemory_BW6761WindowBoundaries(t *testing.T) {
 		points     int
 		windowBits int
 	}{
-		{points: (1 << 18) - 1, windowBits: 13},
-		{points: 1 << 18, windowBits: 16},
-		{points: (1 << 22) - 1, windowBits: 16},
-		{points: 1 << 22, windowBits: 18},
+		{points: (1 << 19) - 1, windowBits: 14},
+		{points: 1 << 19, windowBits: 18},
 	} {
 		cfg, err := DefaultMSMPlanConfig(CurveBW6761, tc.points)
 		require.NoError(t, err)
@@ -137,9 +136,10 @@ func TestMSMRunPlan_TargetCurves(t *testing.T) {
 		scalarBits int
 		windowBits int
 	}{
+		{curve: CurveBN254, points: 1 << 10, scalarBits: 254, windowBits: 8},
 		{curve: CurveBN254, points: 1 << 16, scalarBits: 254, windowBits: 16},
 		{curve: CurveBLS12377, points: 1 << 16, scalarBits: 253, windowBits: 16},
-		{curve: CurveBW6761, points: 1 << 16, scalarBits: 377, windowBits: 13},
+		{curve: CurveBW6761, points: 1 << 16, scalarBits: 377, windowBits: 14},
 	} {
 		t.Run(tc.curve.String(), func(t *testing.T) {
 			plan, err := defaultMSMRunPlan(MSMRunPlanConfig{
@@ -156,6 +156,20 @@ func TestMSMRunPlan_TargetCurves(t *testing.T) {
 			require.Equal(t, tc.points, plan.ChunkPoints, "unlimited plans should not chunk")
 			require.Greater(t, plan.MemoryPlan.EstimatedTotalBytes, uint64(0), "memory plan should be attached")
 		})
+	}
+}
+
+func TestPlanMSMMemory_BN254WindowBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		points     int
+		windowBits int
+	}{
+		{points: (1 << 13) - 1, windowBits: 8},
+		{points: 1 << 13, windowBits: 16},
+	} {
+		cfg, err := DefaultMSMPlanConfig(CurveBN254, tc.points)
+		require.NoError(t, err)
+		require.Equal(t, tc.windowBits, cfg.WindowBits, "BN254 window policy should be size-aware")
 	}
 }
 

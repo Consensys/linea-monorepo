@@ -108,9 +108,45 @@ Record hardware, driver/CUDA versions, exact commands, and results in
   ABI only if setup-commitment benchmarks show the loop remains a bottleneck.
 - Add a real batched NTT CUDA ABI only if bit-reversal/launch/transfer
   measurements justify it.
-- Wire the actual generic full prover for BLS12-377, then extend it to BN254
-  and BW6-761. Current `plonk2.Prover` still proves through gnark CPU fallback
-  unless fallback is disabled or strict mode is enabled.
+- Port the actual generic full prover phase by phase:
+  1. Prepared-key state is now resident for BN254, BLS12-377, and BW6-761:
+     canonical/Lagrange SRS MSMs, FFT domain, permutation table, and fixed
+     selector/permutation polynomials.
+  2. The solved L-wire Lagrange commitment phase now has a direct generic GPU
+     benchmark, `BenchmarkGenericSolvedWireCommitment_CUDA`.
+  3. Next wire the full L/R/O commitment phase with PlonK blinding and
+     gnark's reduced-range MSM correction.
+  4. Then wire Z construction/commitment, quotient construction/commitment,
+     linearized polynomial commitment, KZG openings, Fiat-Shamir ordering, and
+     typed proof assembly.
+  5. A temporary `WithEnabled(true)` CUDA bridge exists through the older
+     `gpu/plonk` BLS12-377 prover so large full-prover benchmarks can run
+     through the `plonk2.Prover` API, but this is not the generic prover port.
 - Re-evaluate optional specialization, especially BLS12-377 twisted-Edwards
   MSM, only after the generic full prover passes CUDA correctness and has
   same-hardware benchmark baselines.
+
+### Large Full-Prover Benchmarks
+
+The PlonK setup/prove benchmark sizes default to small CI-friendly circuits.
+Use `PLONK2_PLONK_BENCH_CONSTRAINTS` for large runs:
+
+```bash
+PLONK2_PLONK_BENCH_CONSTRAINTS=17M go test -tags cuda ./gpu/plonk2 \
+  -run '^$' \
+  -bench '^BenchmarkPlonk2EnabledFullProverBLS12377_CUDA$' \
+  -benchtime=1x -count=1 -timeout 60m
+```
+
+Accepted suffixes are decimal `K`/`M` and binary `Ki`/`Mi`; for example,
+`17M` means 17,000,000 constraints and `17Mi` means 17*2^20 constraints.
+
+For the generic three-curve prover path currently under construction, use the
+same size environment variable with the solved-wire commitment benchmark:
+
+```bash
+PLONK2_PLONK_BENCH_CONSTRAINTS=1Ki,16Ki go test -tags cuda ./gpu/plonk2 \
+  -run '^$' \
+  -bench '^BenchmarkGenericSolvedWireCommitment_CUDA$' \
+  -benchtime=1x -count=1 -timeout 60m
+```

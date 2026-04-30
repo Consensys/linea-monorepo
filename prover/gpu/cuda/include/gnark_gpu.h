@@ -770,6 +770,13 @@ gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
     size_t count,
     uint64_t *out);
 
+// Per-phase timings of the last gnark_gpu_plonk2_msm_run call. Phase order
+// matches gnark_gpu_msm_get_phase_timings.
+// Returns the number of phases written (9 on success, 0 if msm/out is null).
+int gnark_gpu_plonk2_msm_get_phase_timings(
+    gnark_gpu_plonk2_msm_t msm,
+    float *out);
+
 // =============================================================================
 // GPU Z prefix product (two-level parallel scan)
 // =============================================================================
