@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -34,9 +35,19 @@ func main() {
 	defer f.Close()
 	// extract text section
 	var text = extractTextBytes(f.Sections)
-	// input (dummy values)
-	var input = []byte(os.Args[2])
-	// offsets (dummy values)
+	// input
+	var input []byte
+	inputStr := os.Args[2]
+	if strings.HasPrefix(inputStr, "0x") || strings.HasPrefix(inputStr, "0X") {
+		input, err = hex.DecodeString(inputStr[2:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error decoding hex input: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		input = []byte(inputStr)
+	}
+	// offsets
 	var programOffset uint64
 	var inputsOffset uint64
 	var entryPoint uint64
