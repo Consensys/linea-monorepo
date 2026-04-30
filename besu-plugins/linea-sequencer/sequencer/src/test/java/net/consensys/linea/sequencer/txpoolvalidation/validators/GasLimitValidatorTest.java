@@ -9,44 +9,69 @@
 
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
+import static net.consensys.linea.config.TransactionGasLimitCap.EIP_7825_MAX_TRANSACTION_GAS_LIMIT;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-@Slf4j
-@RequiredArgsConstructor
 public class GasLimitValidatorTest {
-  public static final int MAX_TX_GAS_LIMIT = 9_000_000;
-  private GasLimitValidator gasLimitValidator;
 
-  @BeforeEach
-  public void initialize() {
-    gasLimitValidator = new GasLimitValidator(MAX_TX_GAS_LIMIT);
+  @Test
+  public void acceptsTransactionAtEip7825MaxTransactionGasLimit() {
+    final GasLimitValidator validator = new GasLimitValidator(EIP_7825_MAX_TRANSACTION_GAS_LIMIT);
+    final Transaction transaction = transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT);
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isEmpty();
   }
 
   @Test
-  public void validatedWithValidGasLimit() {
-    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
-        org.hyperledger.besu.ethereum.core.Transaction.builder();
-    final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.gasLimit(MAX_TX_GAS_LIMIT).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
-    Assertions.assertEquals(
-        gasLimitValidator.validateTransaction(transaction, false, false), Optional.empty());
+  public void rejectsTransactionAboveEip7825MaxWhenConfiguredAtEip7825Max() {
+    final GasLimitValidator validator = new GasLimitValidator(EIP_7825_MAX_TRANSACTION_GAS_LIMIT);
+    final Transaction transaction =
+        transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result)
+        .contains("Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
   }
 
   @Test
-  public void rejectedWithMaxGasLimitPlusOne() {
-    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
-        org.hyperledger.besu.ethereum.core.Transaction.builder();
-    final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.gasLimit(MAX_TX_GAS_LIMIT + 1).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
-    Assertions.assertEquals(
-        gasLimitValidator.validateTransaction(transaction, false, false).orElseThrow(),
-        "Gas limit of transaction is greater than the allowed max of " + MAX_TX_GAS_LIMIT);
+  public void rejectsTransactionAboveEip7825MaxWhenConfiguredAboveEip7825Max() {
+    final GasLimitValidator validator = new GasLimitValidator(24_000_000);
+    final Transaction transaction =
+        transactionWithGasLimit(EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L);
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result)
+        .contains("Gas limit 16777217 exceeds EIP-7825 maximum transaction gas limit of 16777216");
+  }
+
+  @Test
+  public void rejectsTransactionAboveConfiguredMaxWhenConfiguredBelowEip7825Max() {
+    final GasLimitValidator validator = new GasLimitValidator(9_000_000);
+    final Transaction transaction = transactionWithGasLimit(9_000_001L);
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result)
+        .contains(
+            "Gas limit 9000001 exceeds configured maximum transaction gas limit of 9000000 "
+                + "(EIP-7825 maximum transaction gas limit is 16777216)");
+  }
+
+  private static Transaction transactionWithGasLimit(final long gasLimit) {
+    return org.hyperledger.besu.ethereum.core.Transaction.builder()
+        .gasLimit(gasLimit)
+        .gasPrice(Wei.ZERO)
+        .payload(Bytes.EMPTY)
+        .build();
   }
 }

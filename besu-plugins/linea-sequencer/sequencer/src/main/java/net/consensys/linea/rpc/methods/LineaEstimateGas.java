@@ -9,6 +9,8 @@
 
 package net.consensys.linea.rpc.methods;
 
+import static net.consensys.linea.config.TransactionGasLimitCap.effectiveMaxTxGasLimit;
+import static net.consensys.linea.config.TransactionGasLimitCap.gasLimitExceededMessage;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
@@ -162,6 +164,7 @@ public class LineaEstimateGas {
 
       log.debug("[{}] Parsed call parameters: {}", logId, callParameters);
       final long gasEstimation = getGasEstimation(callParameters, maybeStateOverrides, logId);
+      validateEstimatedGasLimit(gasEstimation);
       log.atDebug()
           .setMessage("[{}] Gas estimation {}")
           .addArgument(logId)
@@ -339,9 +342,22 @@ public class LineaEstimateGas {
     }
 
     final var gasLimit = callParameters.getGas().orElse(0L);
-    if (gasLimit > txValidatorConf.maxTxGasLimit()) {
+    validateCallerProvidedGasLimit(gasLimit);
+  }
+
+  private void validateCallerProvidedGasLimit(final long gasLimit) {
+    if (gasLimit > effectiveMaxTxGasLimit(txValidatorConf.maxTxGasLimit())) {
       throw new InvalidJsonRpcParameters(
-          "gasLimit above maximum of: " + txValidatorConf.maxTxGasLimit());
+          gasLimitExceededMessage(gasLimit, txValidatorConf.maxTxGasLimit()));
+    }
+  }
+
+  @VisibleForTesting
+  void validateEstimatedGasLimit(final long gasEstimation) {
+    if (gasEstimation > effectiveMaxTxGasLimit(txValidatorConf.maxTxGasLimit())) {
+      throw new PluginRpcEndpointException(
+          new EstimateGasError(
+              gasLimitExceededMessage(gasEstimation, txValidatorConf.maxTxGasLimit())));
     }
   }
 

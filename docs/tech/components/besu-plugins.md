@@ -394,12 +394,15 @@ abstract class AbstractLineaSharedPrivateOptionsPlugin : BesuPlugin {
 ### Sequencer Plugin Options
 
 ```bash
---plugin-linea-max-tx-gas-limit=30000000
+--plugin-linea-max-tx-gas-limit=16777216
 --plugin-linea-max-call-data-size=30720
 --plugin-linea-denied-addresses=0x...
 --plugin-linea-profitability-min-margin=0.01
 --plugin-linea-trace-limits-file=/config/traces-limits-v2.toml
 ```
+
+Linea caps the effective transaction gas limit at `16_777_216`. Higher configured values are tolerated for compatibility
+with existing profiles, but they do not increase the enforced limit.
 
 ### State Recovery Plugin Options
 

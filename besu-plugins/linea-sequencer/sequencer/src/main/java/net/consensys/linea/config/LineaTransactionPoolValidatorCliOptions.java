@@ -9,6 +9,8 @@
 
 package net.consensys.linea.config;
 
+import static net.consensys.linea.config.TransactionGasLimitCap.EIP_7825_MAX_TRANSACTION_GAS_LIMIT;
+
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
 import java.io.File;
@@ -33,7 +35,7 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       "--plugin-linea-bundle-overriding-deny-list-path";
 
   public static final String MAX_TX_GAS_LIMIT_OPTION = "--plugin-linea-max-tx-gas-limit";
-  public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
+  public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = EIP_7825_MAX_TRANSACTION_GAS_LIMIT;
 
   public static final String MAX_TX_CALLDATA_SIZE = "--plugin-linea-max-tx-calldata-size";
 

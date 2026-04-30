@@ -23,6 +23,7 @@ import linea.plugin.acc.test.LineaPluginPoSTestBase
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder
 import net.consensys.linea.bl.TransactionProfitabilityCalculator
 import net.consensys.linea.config.LineaProfitabilityCliOptions
+import net.consensys.linea.config.TransactionGasLimitCap.EIP_7825_MAX_TRANSACTION_GAS_LIMIT
 import net.consensys.linea.rpc.methods.LineaEstimateGas
 import net.consensys.linea.utils.CachingTransactionCompressor
 import org.apache.tuweni.bytes.Bytes
@@ -374,6 +375,29 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
     )
     val reqLinea = BadLineaEstimateGasRequest(callParams)
     val respLinea = reqLinea.execute(minerNode.nodeRequests())
+    assertThat(respLinea.code).isEqualTo(RpcErrorType.INVALID_PARAMS.code)
+    assertThat(respLinea.message).isEqualTo(RpcErrorType.INVALID_PARAMS.message)
+  }
+
+  @Test
+  fun explicitGasAboveEip7825CapReturnsInvalidParams() {
+    val sender = accounts.secondaryBenefactor
+    val callParams = CallParams(
+      chainId = null,
+      from = sender.address,
+      nonce = null,
+      to = sender.address,
+      value = null,
+      data = Bytes.EMPTY.toHexString(),
+      gas = (EIP_7825_MAX_TRANSACTION_GAS_LIMIT + 1L).toString(),
+      gasPrice = null,
+      maxFeePerGas = null,
+      maxPriorityFeePerGas = null,
+    )
+
+    val reqLinea = BadLineaEstimateGasRequest(callParams)
+    val respLinea = reqLinea.execute(minerNode.nodeRequests())
+
     assertThat(respLinea.code).isEqualTo(RpcErrorType.INVALID_PARAMS.code)
     assertThat(respLinea.message).isEqualTo(RpcErrorType.INVALID_PARAMS.message)
   }
