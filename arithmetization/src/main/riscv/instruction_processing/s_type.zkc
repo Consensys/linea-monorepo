@@ -44,9 +44,9 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
 
     imm_sign::uimm6::rs2::rs1::funct3::uimm5 = instruction_parameters
 
+    // TODO: do we just want to use a mask instead?
     var signext_imm12_64:DoubleWord = sgn_extension_u12_u64(imm_sign::uimm6::uimm5)
 
-    // TODO: do we just want to use a mask instead?
     // var signext_imm12_64:DoubleWord
     // if imm_sign == 1 {
     //    signext_imm12_64 = DWORD_SIGN_EXT_PREFIX_52_ONES::imm_sign::uimm6::uimm5
@@ -72,12 +72,6 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
     }
 
     if funct3 == FUNCT3_SD {
-        printf "#########"
-        printf "mem_address: %x\n", mem_address
-        printf "rs2: %d\n", rs2
-        printf "registers[rs2]: %d\n", registers[rs2]
-        printf "#########"
-
         // Store doubleword (u64)
         write_64(mem_address, registers[rs2])
     }
