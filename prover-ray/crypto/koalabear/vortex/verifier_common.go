@@ -48,6 +48,50 @@ func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) e
 	return nil
 }
 
+// VerifierInputMultilinear holds the public inputs for multilinear-evaluation
+// variant of the Vortex verifier. It replaces the univariate point X with a
+// multilinear evaluation point H.
+type VerifierInputMultilinear struct {
+	// Alpha is the random coin used for the linear combination.
+	Alpha field.Ext
+
+	// H is the multilinear evaluation point (len(H) = log2(NbColumns)).
+	H []field.Ext
+
+	// Ys[i][j] is the claimed multilinear evaluation of the j-th polynomial of
+	// the i-th commitment at point H.
+	Ys [][]field.Ext
+
+	// EntryList is the random coin representing the columns to open.
+	EntryList []int
+}
+
+// CheckStatementMultilinear verifies that the linear combination is consistent
+// with the claimed multilinear evaluations ys at the point h.
+//
+// It decodes the N systematic Lagrange values from the encoded linComb, then
+// checks EvalMultilin(decoded, h) == EvalFextPolyHorner(ys_joined, alpha).
+func CheckStatementMultilinear(rsParams *reedsolomon.RsParams,
+	linComb []field.Ext, ys [][]field.Ext, h []field.Ext, alpha field.Ext,
+) error {
+	decoded := rsParams.SystematicExt(linComb)
+
+	coords := make([]field.Gen, len(h))
+	for i, hi := range h {
+		coords[i] = field.ElemFromExt(hi)
+	}
+
+	lhs := polynomials.EvalMultilin(field.VecFromExt(decoded), coords).AsExt()
+
+	yJoined := slices.Concat(ys...)
+	rhs := vortex.EvalFextPolyHorner(yJoined, alpha)
+
+	if !lhs.Equal(&rhs) {
+		return fmt.Errorf("multilinear statement check failed: EvalMultilin=%v != Horner=%v", lhs, rhs)
+	}
+	return nil
+}
+
 // CheckIsCodeWord returns nil iff v is a valid Reed-Solomon codeword.
 func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v []field.Ext) error {
 	return rsParams.IsCodewordExt(v)

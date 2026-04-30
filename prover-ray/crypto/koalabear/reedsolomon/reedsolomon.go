@@ -173,6 +173,32 @@ func (r *RsParams) rsEncodeExt(v []field.Ext) []field.Ext {
 	return expandedCoeffs
 }
 
+// SystematicExt extracts the N original Lagrange values from an RS-encoded
+// codeword of length N*rate. For rate=2 the original values sit at even
+// positions of the codeword; for other rates an inverse-then-forward FFT pair
+// is used to decode.
+func (r *RsParams) SystematicExt(encoded []field.Ext) []field.Ext {
+	n := r.NbColumns()
+	if r.Rate == 2 {
+		decoded := make([]field.Ext, n)
+		for i := range n {
+			decoded[i] = encoded[2*i]
+		}
+		return decoded
+	}
+	// General rate: large iNTT (DIF) → extract bit-reversed small coefficients
+	// at stride-rate positions → small FFT (DIT) to recover Lagrange values.
+	work := make([]field.Ext, r.NbEncodedColumns())
+	copy(work, encoded)
+	r.Domains[1].FFTInverseExt(work, fft.DIF, fft.WithNbTasks(1))
+	extracted := make([]field.Ext, n)
+	for j := range n {
+		extracted[j] = work[r.Rate*j]
+	}
+	r.Domains[0].FFTExt(extracted, fft.DIT, fft.WithNbTasks(1))
+	return extracted
+}
+
 // IsCodewordExt returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (r *RsParams) IsCodewordExt(v []field.Ext) error {

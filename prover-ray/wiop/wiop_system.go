@@ -30,6 +30,10 @@ type System struct {
 	// LogDerivativeSums holds all [LogDerivativeSum] queries registered with
 	// this system via [System.NewLogDerivativeSum], in declaration order.
 	LogDerivativeSums []*LogDerivativeSum
+	// MultilinearEvals holds all [MultilinearEval] queries registered with
+	// this system via [System.NewMultilinearEval] and
+	// [System.NewMultilinearEvalFrom], in declaration order.
+	MultilinearEvals []*MultilinearEval
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena
