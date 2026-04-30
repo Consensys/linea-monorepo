@@ -1,3 +1,20 @@
+## [3.0.2] - 2026-04-30
+
+### 🚜 Refactor
+
+- *(2958)* Reuse MicrometerMetricsFacade instance in CoordinatorApp (#2968)
+
+### 🧪 Testing
+
+- *(coordinator)* Trigger release
+- *(coordinator)* Trigger release
+- *(coordinator)* Trigger release
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Remove no-op .recover() calls in PostgresForcedTransactionsDao (#2963)
+- *(coordinator)* Drop no-op .recover() in FeeHistoriesPostgresDao (#2962)
+- *(coordinator)* Remove dead commented-out block in TracesToml.kt (#2961)
 ## [3.0.1] - 2026-04-29
 
 ### 🧪 Testing
