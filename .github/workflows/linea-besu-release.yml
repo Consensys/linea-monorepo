@@ -63,6 +63,7 @@ jobs:
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
       changelog: ${{ needs.release-linea-besu-metadata.outputs.changelog }}
       release_tag: ${{ needs.release-linea-besu-metadata.outputs.release_tag }}
+      release_version: ${{ needs.release-linea-besu-metadata.outputs.release_version }}
     secrets: inherit
 
   release-linea-besu-push-tag-changelog:
