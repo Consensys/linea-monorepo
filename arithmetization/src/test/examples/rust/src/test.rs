@@ -6,7 +6,7 @@
 #[no_mangle]
 pub unsafe extern "C" fn _start() -> ! {
     core::arch::naked_asm!(
-        "li sp, 0x7A12001", // set stack pointer to a known memory region
+        "li sp, 0x7FFFFFF", // set stack pointer to a known memory region
         "call main",
     );
 }

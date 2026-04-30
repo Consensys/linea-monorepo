@@ -186,8 +186,17 @@ pub fn blake2b_f_eip152(input: &[u8]) -> Result<[u8; 64], &'static str> {
 }
 
 // no_mangle so the linker can find this entry point by its exact name
+#[unsafe(naked)]
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub unsafe extern "C" fn _start() -> ! {
+    core::arch::naked_asm!(
+        "li sp, 0x7FFFFFF", // set stack pointer to a known memory region
+        "call main",
+    );
+}
+
+#[no_mangle]
+fn main() -> ! {
     // EIP-152 test vector as raw bytes — no heap allocation needed
     let input: [u8; 213] = [
         0x00, 0x00, 0x00, 0x0c, // rounds = 12

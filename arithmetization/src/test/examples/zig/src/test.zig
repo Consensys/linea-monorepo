@@ -1,6 +1,6 @@
 export fn _start() noreturn {
     asm volatile (
-        \\li sp, 0x7A12001  // set stack pointer to a known memory region
+        \\li sp, 0x7FFFFFF  // set stack pointer to a known memory region
         \\call main
     );
     unreachable;

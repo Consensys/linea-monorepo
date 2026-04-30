@@ -90,3 +90,16 @@ zkc-test TEST=test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
 All programs are compiled targeting `RV64IM` accordingly to the [Ethereum zkVM standards](https://github.com/eth-act/zkvm-standards/blob/main/standards/riscv-target/target.md).
 Note that `Zicclsm` extension does not affect the generated ELF so it is omitted.
 Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
+
+## Default memory layout
+
+```
+0x0000000  ──  program starts
+    ↓  program grows up (up to 128 MiB)
+0x7FFFFFF  ──  program ends at most
+    ↑  stack grows downward
+0x7FFFFFF  ──  sp starts here
+0x8000000  ──  input starts
+    ↓  input grows up (up to 1 GiB)
+0x48000000 ──  input ends at most
+```

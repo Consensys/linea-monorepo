@@ -40,8 +40,8 @@ ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
 
 # Inputs and offsets for the program
 INBYTES        ?= ""
-PROGRAM_OFFSET ?= 0         # (up to 128 MB)
-INBYTES_OFFSET ?= 0x8000000 # (up to 1 GB)
+PROGRAM_OFFSET ?= 0         # (up to 128 MiB)
+INBYTES_OFFSET ?= 0x8000000 # (up to 1 GiB)
 ENTRY_POINT    ?= 0
 
 # Default target (make)
