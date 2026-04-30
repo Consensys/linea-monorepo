@@ -1,0 +1,95 @@
+name: "Reusable: Component Release Metadata"
+
+on:
+  workflow_call:
+    inputs:
+      component-name:
+        description: "Component name — used to derive tag pattern, CHANGELOG path and commit scope (e.g. coordinator, postman)"
+        required: true
+        type: string
+      folder-name:
+        description: "Folder name — home folder name of the component (e.g. linea-besu's home folder is linea-besu-package)"
+        required: true
+        type: string
+      include-path:
+        description: "git-cliff --include-path filter — single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+        required: true
+        type: string
+      cliff-config:
+        description: "Path to the cliff.toml config file"
+        required: false
+        type: string
+        default: "cliff.toml"
+      image_tag_suffix:
+        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      runner:
+        description: "Runner label"
+        required: false
+        type: string
+        default: "gha-runner-scale-set-ubuntu-24-amd64-med"
+    outputs:
+      release_tag:
+        description: "Full release tag (e.g. releases/coordinator/v0.2.0)"
+        value: ${{ jobs.release-component.outputs.release_tag }}
+      release_version:
+        description: "Bare semver (e.g. 0.2.0)"
+        value: ${{ jobs.release-component.outputs.release_version }}
+      docker_tag:
+        description: "Docker image tag"
+        value: ${{ jobs.release-component.outputs.docker_tag }}
+      changelog:
+        description: "Latest changelog section content"
+        value: ${{ jobs.release-component.outputs.changelog }}
+
+jobs:
+  release-component:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: write
+    name: Release ${{ inputs.component-name }} (changelog + tag)
+    outputs:
+      release_tag: ${{ steps.changelog.outputs.next_tag }}
+      release_version: ${{ steps.changelog.outputs.next_version }}
+      docker_tag: ${{ steps.dockertag.outputs.dockertag }}
+      changelog: ${{ steps.changelog.outputs.changelog_content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
+      - name: Generate ${{ inputs.component-name }} latest changelog
+        id: changelog
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ inputs.component-name }}
+          include-path: ${{ inputs.include-path }}
+          generate-changelog-with-next-tag-version: "true"
+
+      - name: Compute version tags
+        if: steps.changelog.outputs.tag_changed == 'true'
+        id: compute_version_tags
+        uses: ./.github/actions/compute-version-tags
+
+      - name: Set timestamp
+        if: steps.changelog.outputs.tag_changed == 'true'
+        id: timestamp
+        run: echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Set docker tag
+        if: steps.changelog.outputs.tag_changed == 'true'
+        id: dockertag
+        run: |
+          base="${{ steps.changelog.outputs.next_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}"
+          suffix="${{ inputs.image_tag_suffix && format('-{0}', inputs.image_tag_suffix) || '' }}"
+          echo "dockertag=${base}${suffix}" >> "$GITHUB_OUTPUT"

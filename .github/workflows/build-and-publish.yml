@@ -71,7 +71,7 @@ jobs:
     uses: ./.github/workflows/coordinator-build-and-publish.yml
     if: ${{ always() && (inputs.coordinator_changed == 'true' || (inputs.push_image && inputs.coordinator_image_tagged != 'true')) }}
     with:
-      commit_tag: ${{ inputs.commit_tag }}
+      image_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
       image_name: consensys/linea-coordinator
       push_image: ${{ inputs.push_image }}

@@ -6,6 +6,10 @@ inputs:
   release_tag_prefix:
     description: "Release version tag prefix"
     required: true
+  image_tag_suffix:
+    description: 'Custom docker image tag suffix'
+    required: false
+    default: ''
 
 outputs:
   workflow_id:
@@ -92,7 +96,9 @@ runs:
       id: dockertag
       shell: bash
       run: |
-        echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
+        base="${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}"
+        suffix="${{ inputs.image_tag_suffix && format('-{0}', inputs.image_tag_suffix) || '' }}"
+        echo "dockertag=${base}${suffix}" >> "$GITHUB_OUTPUT"
     
     - name: set release tag
       id: releasetag

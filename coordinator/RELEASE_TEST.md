@@ -1,0 +1,1 @@
+# Test for auto coordinator changelog and tag 3
