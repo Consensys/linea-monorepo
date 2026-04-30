@@ -30,7 +30,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           JUNIT_TESTS_PARALLELISM: 24
-          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -v -b1024 --field=KOALABEAR_16 --ansi-escapes=false --report --mir
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 
       - name: Upload prc calls test report
