@@ -1,3 +1,8 @@
+## [1.1.1] - 2026-04-30
+
+### ⚙️ Miscellaneous Tasks
+
+- *(linea-besu)* Test
 ## [1.1.0] - 2026-04-30
 
 ### 🚀 Features
