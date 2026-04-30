@@ -94,12 +94,13 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 ## Default memory layout
 
 ```
-0x0000000  ──  program starts
+0x00000000  ──  program starts
     ↓  program grows up (up to 128 MiB)
-0x7FFFFFF  ──  program ends at most
+0x07FFFFFF  ──  program ends at most
+0x08000000  --  sp ends here
     ↑  stack grows downward
-0x7FFFFFF  ──  sp starts here
-0x8000000  ──  input starts
+0x087fffff  ──  sp starts here (up to 8 MiB)
+0x08800000  ──  input starts
     ↓  input grows up (up to 1 GiB)
-0x48000000 ──  input ends at most
+0x48800000 ──  input ends at most
 ```

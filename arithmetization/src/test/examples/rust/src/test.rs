@@ -6,7 +6,7 @@
 #[no_mangle]
 pub unsafe extern "C" fn _start() -> ! {
     core::arch::naked_asm!(
-        "li sp, 0x7FFFFFF", // set stack pointer to a known memory region
+        "li sp, 0x087fffff", // set stack pointer to a known memory region
         "call main",
     );
 }
@@ -18,7 +18,8 @@ fn main() -> ! {
 }
 
 fn add(op1: u8, op2: u8) -> u16 {
-    (op1 as u16).wrapping_add(op2 as u16)
+    let r = (op1 as u16).wrapping_add(op2 as u16);
+    r
 }
 
 fn exit() -> ! {

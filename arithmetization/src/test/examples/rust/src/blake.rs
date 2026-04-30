@@ -190,7 +190,7 @@ pub fn blake2b_f_eip152(input: &[u8]) -> Result<[u8; 64], &'static str> {
 #[no_mangle]
 pub unsafe extern "C" fn _start() -> ! {
     core::arch::naked_asm!(
-        "li sp, 0x7FFFFFF", // set stack pointer to a known memory region
+        "li sp, 0x087fffff", // set stack pointer to a known memory region
         "call main",
     );
 }

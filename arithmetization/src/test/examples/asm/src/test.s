@@ -5,8 +5,9 @@ value:
 .section .text
 .global _start
 _start:
-    # Set SP explicitly
-    li sp, 0x7FFFFFF
+    # Set SP explicitly (default is 0)
+    li sp, 0x087fffff
+    # sd      ra, -16(sp)
 
     # Load the address of value into t0
     la      t0, value
