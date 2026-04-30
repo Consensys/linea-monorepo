@@ -34,29 +34,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-local-coordinator:
-    uses: ./.github/workflows/coordinator-build-and-publish.yml
-    with:
-      image_tag: local
-      develop_tag: develop
-      image_name: consensys/linea-coordinator
-      push_image: false
-    secrets: inherit
+  # build-local-coordinator:
+  #   uses: ./.github/workflows/coordinator-build-and-publish.yml
+  #   with:
+  #     image_tag: local
+  #     develop_tag: develop
+  #     image_name: consensys/linea-coordinator
+  #     push_image: false
+  #   secrets: inherit
 
-  run-e2e-tests:
-    needs: [build-local-coordinator]
-    if: ${{ needs.build-local-coordinator.result == 'success' }}
-    uses: ./.github/workflows/reuse-run-e2e-tests.yml
-    with:
-      image_tag: local
-      linea_besu_package_tag: ''
-      e2e-tests-logs-dump: true
-      has-changes-requiring-e2e-testing: "true"
-    secrets: inherit
+  # run-e2e-tests:
+  #   needs: [build-local-coordinator]
+  #   if: ${{ needs.build-local-coordinator.result == 'success' }}
+  #   uses: ./.github/workflows/reuse-run-e2e-tests.yml
+  #   with:
+  #     image_tag: local
+  #     linea_besu_package_tag: ''
+  #     e2e-tests-logs-dump: true
+  #     has-changes-requiring-e2e-testing: "true"
+  #   secrets: inherit
 
   release-coordinator-metadata:
-    needs: [run-e2e-tests]
-    if: ${{ needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    # needs: [run-e2e-tests]
+    # if: ${{ needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: coordinator

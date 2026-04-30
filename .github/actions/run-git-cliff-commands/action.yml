@@ -103,7 +103,8 @@ runs:
       run: |
         set -euo pipefail
         mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-        cliff_args=(--config "${CLIFF_CONFIG}" "--unreleased${TAG_CONFIG}")
+        read -ra tag_config_args <<< "--unreleased${TAG_CONFIG}"
+        cliff_args=(--config "${CLIFF_CONFIG}" "${tag_config_args[@]}")
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
