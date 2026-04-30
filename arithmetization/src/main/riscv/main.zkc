@@ -21,6 +21,7 @@ fn main<ram, registers>() {
     var in_bytes_len:Length = in_bytes_length[0]
     var program_off:Offset = riscV_program_offset[0]
     var in_bytes_off:Offset = in_bytes_offset[0]
+    var clock_cycle:u32 = 0
 
     // copy public inputs and r5-program into the RAM
     for i:Address = 0; i<program_len; i = i + 1 {
@@ -36,6 +37,11 @@ fn main<ram, registers>() {
     while pc != MAX_UINT_64 {
         printf "PC=%x\n", pc
         instruction = read_32(pc) as Instruction
+
+        // clock cycle starts at 1
+        clock_cycle = clock_cycle + 1
+        printf "clock cycle: %d\n", clock_cycle
+
         pc = interpreter(instruction, pc)
     }
 }
