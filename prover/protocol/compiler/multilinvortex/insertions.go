@@ -54,7 +54,7 @@ func InsertBootstrapperOpenings(comp *wizard.CompiledIOP) {
 	for _, g := range groups {
 		qName := ifaces.QueryID(fmt.Sprintf("ML_OPEN_nv%d", g.numVars))
 		q := comp.InsertMultilinear(1, qName, g.cols)
-		comp.RegisterProverAction(1, &mlOpeningProverAction{
+		comp.RegisterProverAction(1, &MlOpeningProverAction{
 			q:         q,
 			cols:      g.cols,
 			coinNames: g.coinNames,
@@ -62,13 +62,13 @@ func InsertBootstrapperOpenings(comp *wizard.CompiledIOP) {
 	}
 }
 
-type mlOpeningProverAction struct {
+type MlOpeningProverAction struct {
 	q         query.MultilinearEval
 	cols      []ifaces.Column
 	coinNames []coin.Name
 }
 
-func (a *mlOpeningProverAction) Run(run *wizard.ProverRuntime) {
+func (a *MlOpeningProverAction) Run(run *wizard.ProverRuntime) {
 	nv := len(a.coinNames)
 	point := make([]fext.Element, nv)
 	for d, name := range a.coinNames {

@@ -32,6 +32,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/degreereduction"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilineareval"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilinvortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
@@ -147,6 +149,15 @@ func init() {
 	RegisterImplementation(query.InnerProductParams{})
 	RegisterImplementation(query.LogDerivSumParams{})
 	RegisterImplementation(query.Poseidon2{})
+	RegisterImplementation(query.MultilinearEval{})
+
+	// Multilinear Vortex compiler
+	RegisterImplementation(multilinvortex.MlOpeningProverAction{})
+	RegisterImplementation(multilinvortex.ProverAction{})
+	RegisterImplementation(multilinvortex.VerifierAction{})
+	RegisterImplementation(multilinvortex.TerminalVerifierAction{})
+	RegisterImplementation(multilineareval.CombinedProverAction{})
+	RegisterImplementation(multilineareval.CombinedVerifierAction{})
 
 	// Symbolic
 	RegisterImplementation(symbolic.Variable{})

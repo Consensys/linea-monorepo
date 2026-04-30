@@ -113,7 +113,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 			for _, pol := range q.Pols {
 				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
 			}
-			comp.RegisterVerifierAction(comp.NumRounds()-1, &terminalVerifierAction{q: q})
+			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{q: q})
 			idx++
 			continue
 		}
@@ -129,8 +129,8 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		}
 
 		ctx := buildContext(comp, r, q, nRow, idx)
-		comp.RegisterProverAction(r+1, &proverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &verifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &ProverAction{ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{ctx: ctx})
 		idx++
 	}
 }

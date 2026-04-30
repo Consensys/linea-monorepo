@@ -129,8 +129,8 @@ func CompileAllRound(comp *wizard.CompiledIOP) {
 	for _, r := range rounds {
 		g := grps[r]
 		ctx := buildCombinedContext(comp, r, g.nmax, g.queries)
-		comp.RegisterProverAction(r+1, &combinedProverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &combinedVerifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &CombinedProverAction{ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{ctx: ctx})
 	}
 }
 
@@ -176,17 +176,17 @@ func CompileAllRoundIgnored(comp *wizard.CompiledIOP) {
 	for _, r := range rounds {
 		g := grps[r]
 		ctx := buildCombinedContext(comp, r, g.nmax, g.queries)
-		comp.RegisterProverAction(r+1, &combinedProverAction{ctx: ctx})
-		comp.RegisterVerifierAction(comp.NumRounds()-1, &combinedVerifierAction{ctx: ctx})
+		comp.RegisterProverAction(r+1, &CombinedProverAction{ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &CombinedVerifierAction{ctx: ctx})
 	}
 }
 
 // combinedProverAction runs the prover side of the combined sumcheck.
-type combinedProverAction struct {
+type CombinedProverAction struct {
 	ctx *combinedContext
 }
 
-func (p *combinedProverAction) Run(run *wizard.ProverRuntime) {
+func (p *CombinedProverAction) Run(run *wizard.ProverRuntime) {
 	ctx := p.ctx
 	nmax := ctx.MaxNumVars
 
@@ -254,12 +254,12 @@ func (p *combinedProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 // combinedVerifierAction verifies the combined sumcheck.
-type combinedVerifierAction struct {
+type CombinedVerifierAction struct {
 	ctx     *combinedContext
 	skipped bool `serde:"omit"`
 }
 
-func (v *combinedVerifierAction) Run(run wizard.Runtime) error {
+func (v *CombinedVerifierAction) Run(run wizard.Runtime) error {
 	ctx := v.ctx
 	nmax := ctx.MaxNumVars
 
@@ -320,9 +320,9 @@ func (v *combinedVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (v *combinedVerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime) {
+func (v *CombinedVerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime) {
 	panic("multilineareval.combinedVerifierAction.RunGnark: not yet implemented")
 }
 
-func (v *combinedVerifierAction) Skip()           { v.skipped = true }
-func (v *combinedVerifierAction) IsSkipped() bool { return v.skipped }
+func (v *CombinedVerifierAction) Skip()           { v.skipped = true }
+func (v *CombinedVerifierAction) IsSkipped() bool { return v.skipped }

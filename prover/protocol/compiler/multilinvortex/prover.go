@@ -9,13 +9,13 @@ import (
 )
 
 // proverAction implements [wizard.ProverAction].
-type proverAction struct {
+type ProverAction struct {
 	ctx *context
 }
 
 // Run computes UAlpha and RowEvals for each input column, then assigns all
 // committed columns and MultilinearEval params.
-func (p *proverAction) Run(run *wizard.ProverRuntime) {
+func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 	ctx := p.ctx
 	nRow := ctx.NRow
 	nCol := ctx.NCol
