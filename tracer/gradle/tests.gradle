@@ -88,24 +88,22 @@ tasks.withType(Test).configureEach {
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
                    System.getenv().getOrDefault("JUNIT_TESTS_PARALLELISM", "4").toInteger())
   }
-  // Configure BESU-related paths
-  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/osaka")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
-  System.setProperty("besu.plugins.dir",
-          System.getenv().getOrDefault("besu.plugins.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
-          )
+  // Configure BESU-related paths — resolved once at configuration time, dirs created at execution
+  def pluginsDir = System.getenv().getOrDefault("besu.plugins.dir",
+          "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
   )
-  System.setProperty("besu.traces.dir",
-          System.getenv().getOrDefault("besu.traces.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
-          )
+  def tracesDir = System.getenv().getOrDefault("besu.traces.dir",
+          "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
   )
-  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
-  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
+  systemProperty("besu.traces.dir", tracesDir)
+  systemProperty("besu.plugins.dir", pluginsDir)
+  doFirst {
+    delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+    mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+    mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
+    mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/osaka")
+    mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
+  }
   //
   testlogger {
     // pick a theme - mocha, standard, plain, mocha-parallel, standard-parallel or plain-parallel

@@ -1,7 +1,7 @@
 
 buildscript {
   ext {
-    besuPluginDir = File.createTempDir("plugins")
+    besuPluginDir = new File(projectDir, "build/besu-plugins")
     releaseVersion = project.findProperty('releaseVersion') ?: 'SNAPSHOT'
     distributionIdentifier = "linea-tracer"
     distibutionBaseName = "linea-arithmetization"
