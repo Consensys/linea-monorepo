@@ -59,7 +59,7 @@ compile: $(SRC)
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=2 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
+		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=1 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -68,9 +68,11 @@ compile: $(SRC)
 		echo "\nStripping $(BIN)"; \
 		riscv64-unknown-elf-strip -S $(BIN); \
 	fi
+	@echo "\nDisassembling $(BIN)"
+	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) $(INBYTES) $(PROGRAM_OFFSET) $(INBYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
-	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
+
 
 zkc-exec:
 	zkc exec $(JSON) $(ZKC_MAIN)

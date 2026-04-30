@@ -13,8 +13,8 @@ pub unsafe extern "C" fn _start() -> ! {
 
 #[no_mangle]
 fn main() -> ! {
-    let _ = add(2, 3);
-    exit() // no OS to return to, signal halt via ecall
+    let r = add(2, 7);
+    exit(r) // no OS to return to, signal halt via ecall
 }
 
 fn add(op1: u8, op2: u8) -> u16 {
@@ -22,12 +22,13 @@ fn add(op1: u8, op2: u8) -> u16 {
     r
 }
 
-fn exit() -> ! {
+fn exit(r: u16) -> ! {
     unsafe {
         core::arch::asm!(
-            "li a0, 0",   // exit code 0
-            "li a7, 93",  // syscall number for exit
+            "mv a0, {0}",  // exit code
+            "li a7, 93",   // syscall number for exit
             "ecall",
+            in(reg) r,
             options(noreturn)
         );
     }
@@ -37,7 +38,7 @@ fn exit() -> ! {
 // Note: that core contains .c instructions that ends up in the ELF file even if we exluce that extension from the targer, so we use opt-level=2 to remove unused code. To actually completetely avoid .c instructions, we need to use a custom JSON configuration for the targer and a nightly compiler
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
-    exit();
+    exit(3);
 }
 
 
