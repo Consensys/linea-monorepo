@@ -207,6 +207,14 @@ func ToCrumbs(api frontend.API, v frontend.Variable, nbCrumbs int) []frontend.Va
 	for _, c := range res {
 		api.AssertIsCrumb(c)
 	}
+	reconstructed := frontend.Variable(0)
+	coeff := big.NewInt(1)
+	four := big.NewInt(4)
+	for _, c := range res {
+		reconstructed = api.Add(reconstructed, api.Mul(new(big.Int).Set(coeff), c))
+		coeff.Mul(coeff, four)
+	}
+	api.AssertIsEqual(v, reconstructed)
 	return res
 }
 
@@ -742,8 +750,13 @@ func DivEuclidean(api frontend.API, a, b frontend.Variable) (quotient, remainder
 		panic(err)
 	}
 	quotient, remainder = outs[0], outs[1]
+	// remainder <= b-1
 	api.AssertIsLessOrEqual(remainder, api.Sub(b, 1))
+	// quotient <= a
 	api.AssertIsLessOrEqual(quotient, a)
+	// a == quotient * b + remainder
+
+	api.AssertIsEqual(a, api.Add(api.Mul(b, quotient), remainder))
 
 	return
 }
@@ -758,7 +771,7 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 
 	quotient.Div(a, b)
 	remainder.Mod(a, b)
-
+	
 	return nil
 }
 
