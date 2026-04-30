@@ -23,8 +23,8 @@ EXT  := $(suffix $(TEST))
 
 # Paths below are determined by the extension
 SRC  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
-BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME)
-JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/bin/))$(NAME).json
+BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
+JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
 # Set STRIP to strip the ELF (remove debug symbols)
@@ -59,7 +59,13 @@ compile: $(SRC)
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=1 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
+		cargo +nightly rustc \
+			--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+			--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+			-Z build-std=core \
+			-Z json-target-spec \
+			--bin $(NAME) \
+			--release; \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -87,4 +93,4 @@ clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
-	rm -rf $(MAKEFILE_DIR)rust/bin/
+	rm -rf $(MAKEFILE_DIR)rust/target/

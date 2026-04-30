@@ -7,6 +7,7 @@ Specifically, it allows to compile programs written in assembly, Zig or Rust, co
 
 - `riscv64-unknown-elf-as` — for assembly programs
 - `zig` — for Zig programs
+- `cargo` — for Rust programs
 - `rustc` with `riscv64imac-unknown-none-elf` target — for Rust programs
 - `go` — to convert ELF to JSON
 - `zkc` — to execute/debug the JSON

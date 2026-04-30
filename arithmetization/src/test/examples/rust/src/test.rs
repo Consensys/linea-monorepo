@@ -2,14 +2,12 @@
 #![no_main]
 
 // no_mangle so the linker can find this entry point by its exact name
-#[unsafe(naked)]
-#[no_mangle]
-pub unsafe extern "C" fn _start() -> ! {
-    core::arch::naked_asm!(
-        "li sp, 0x087fffff", // set stack pointer to a known memory region
-        "call main",
-    );
-}
+core::arch::global_asm!(
+    ".global _start",
+    "_start:",
+    "li sp, 0x087fffff", // set stack pointer to a known memory region
+    "call main",
+);
 
 #[no_mangle]
 fn main() -> ! {
