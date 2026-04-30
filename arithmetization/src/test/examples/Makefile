@@ -59,7 +59,7 @@ compile: $(SRC)
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=0 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
+		mkdir -p $(MAKEFILE_DIR)rust/bin && rustc --target riscv64imac-unknown-none-elf -C opt-level=2 -C debuginfo=0 -C target-feature=-a,-c $(SRC) -o $(BIN); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \

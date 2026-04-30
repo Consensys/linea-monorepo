@@ -18,7 +18,7 @@ fn main() -> ! {
 }
 
 fn add(op1: u8, op2: u8) -> u16 {
-    (op1 as u16) + (op2 as u16)
+    (op1 as u16).wrapping_add(op2 as u16)
 }
 
 fn exit() -> ! {
@@ -33,6 +33,7 @@ fn exit() -> ! {
 }
 
 // required by the compiler even if unreachable — no std means no default panic handler
+// Note: that core contains .c instructions that ends up in the ELF file even if we exluce that extension from the targer, so we use opt-level=2 to remove unused code. To actually completetely avoid .c instructions, we need to use a custom JSON configuration for the targer and a nightly compiler
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
     exit();
