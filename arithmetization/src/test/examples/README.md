@@ -104,3 +104,11 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
     ↓  input grows up (up to 1 GiB)
 0x48800000 ──  input ends at most
 ```
+
+## Utils
+
+Run the following command to disassemble the generated ELF:
+
+```
+riscv64-unknown-elf-objdump -d --line-numbers -S test
+```
