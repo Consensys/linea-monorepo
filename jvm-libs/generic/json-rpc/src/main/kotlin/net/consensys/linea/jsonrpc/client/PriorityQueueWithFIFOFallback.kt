@@ -7,8 +7,6 @@ import java.util.Queue
 
 /**
  * only used  LoadBalancingJsonRpcClient
- * so not methods implemented yet due incident urgency
- *
  */
 internal class PriorityQueueWithFIFOFallback<T>(
   private val comparator: Comparator<T>,
