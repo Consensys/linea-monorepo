@@ -70,6 +70,7 @@ compile: $(SRC)
 	fi
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) $(INBYTES) $(PROGRAM_OFFSET) $(INBYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
+	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
 
 zkc-exec:
 	zkc exec $(JSON) $(ZKC_MAIN)
