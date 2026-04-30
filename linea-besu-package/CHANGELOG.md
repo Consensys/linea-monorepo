@@ -1,3 +1,12 @@
+## [1.1.0] - 2026-04-30
+
+### 🚀 Features
+
+- *(e2e)* Ftx e2e spec (#2895)
+
+### 🧪 Testing
+
+- *(linea-besu)* Trigger release
 ## [1.0.1] - 2026-04-29
 
 ### 🧪 Testing
