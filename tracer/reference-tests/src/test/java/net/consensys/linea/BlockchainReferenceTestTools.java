@@ -60,6 +60,8 @@ import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseS
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.rlp.RLPException;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.provider.WorldStateQueryParams;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.PathBasedWorldState;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.WorldStateConfig;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -491,6 +493,7 @@ public class BlockchainReferenceTestTools {
             .getWorldState(
                 WorldStateQueryParams.withBlockHeaderAndNoUpdateNodeHead(genesisBlockHeader))
             .orElseThrow();
+    disableParallelStateRootComputation(worldState);
     log.info(
         "checking roothash {} is {}", worldState.rootHash(), genesisBlockHeader.getStateRoot());
     assertThat(worldState.rootHash()).isEqualTo(genesisBlockHeader.getStateRoot());
@@ -587,5 +590,18 @@ public class BlockchainReferenceTestTools {
             BlockAccessListValidator.ALWAYS_REJECT_BAL);
 
     return new MainnetBlockImporter(blockValidator);
+  }
+
+  private static void disableParallelStateRootComputation(final MutableWorldState worldState) {
+    if (worldState instanceof PathBasedWorldState pathBasedWorldState) {
+      try {
+        var field = PathBasedWorldState.class.getDeclaredField("worldStateConfig");
+        field.setAccessible(true);
+        var config = (WorldStateConfig) field.get(pathBasedWorldState);
+        config.setParallelStateRootComputationEnabled(false);
+      } catch (ReflectiveOperationException e) {
+        throw new RuntimeException("Failed to disable parallel state root computation", e);
+      }
+    }
   }
 }
