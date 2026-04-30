@@ -60,6 +60,8 @@ import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseS
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.rlp.RLPException;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.provider.WorldStateQueryParams;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.PathBasedWorldState;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.WorldStateConfig;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -133,11 +135,6 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore(
         "eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over1-blockchain_test_from_state_test\\]");
     PARAMS.ignore("fork_Osaka-tx_type_3-evm_code_type_LEGACY");
-
-    // // type 4 (7702):
-    // PARAMS.ignore("tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
-    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
-    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
 
     // tests that timeout and pass locally
     // Log when launching locally
@@ -496,6 +493,7 @@ public class BlockchainReferenceTestTools {
             .getWorldState(
                 WorldStateQueryParams.withBlockHeaderAndNoUpdateNodeHead(genesisBlockHeader))
             .orElseThrow();
+    disableParallelStateRootComputation(worldState);
     log.info(
         "checking roothash {} is {}", worldState.rootHash(), genesisBlockHeader.getStateRoot());
     assertThat(worldState.rootHash()).isEqualTo(genesisBlockHeader.getStateRoot());
@@ -592,5 +590,18 @@ public class BlockchainReferenceTestTools {
             BlockAccessListValidator.ALWAYS_REJECT_BAL);
 
     return new MainnetBlockImporter(blockValidator);
+  }
+
+  private static void disableParallelStateRootComputation(final MutableWorldState worldState) {
+    if (worldState instanceof PathBasedWorldState pathBasedWorldState) {
+      try {
+        var field = PathBasedWorldState.class.getDeclaredField("worldStateConfig");
+        field.setAccessible(true);
+        var config = (WorldStateConfig) field.get(pathBasedWorldState);
+        config.setParallelStateRootComputationEnabled(false);
+      } catch (ReflectiveOperationException e) {
+        throw new RuntimeException("Failed to disable parallel state root computation", e);
+      }
+    }
   }
 }
