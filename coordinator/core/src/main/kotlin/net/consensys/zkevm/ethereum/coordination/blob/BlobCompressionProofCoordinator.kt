@@ -168,7 +168,7 @@ class BlobCompressionProofCoordinator(
             ?.acceptNewBlobCompressionProofRequest(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
         } finally {
           blobCompressionProofPoller
-            .addProofRequestsInProgressForPolling(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
+            .addProofRequestsInProgressForPolling(proofIndex, unProvenBlobRecord)
         }
       }
   }
