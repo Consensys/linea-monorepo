@@ -7,7 +7,7 @@ value:
 _start:
     # Set SP explicitly
     li sp, 0x7FFFFFF
-    
+
     # Load the address of value into t0
     la      t0, value
 
