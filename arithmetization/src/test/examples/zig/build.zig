@@ -37,6 +37,9 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    // Point to assembly overwriting default SP
+    exe.addAssemblyFile(b.path("src/start.s"));
+
     // Remove unused code sections
     exe.link_gc_sections = true;
 
