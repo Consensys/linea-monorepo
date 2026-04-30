@@ -34,8 +34,8 @@ func main() {
 	defer f.Close()
 	// extract text section
 	var text = extractTextBytes(f.Sections)
-	// inputs (dummy values)
-	var inputs []byte = []byte(os.Args[2])
+	// input (dummy values)
+	var input = []byte(os.Args[2])
 	// offsets (dummy values)
 	var programOffset uint64
 	var inputsOffset uint64
@@ -55,7 +55,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error reading entryPoint: %v\n", err)
 		os.Exit(1)
 	}
-	printJson(text, inputs, programOffset, inputsOffset, entryPoint)
+	printJson(text, input, programOffset, inputsOffset, entryPoint)
 }
 
 // Extract the bytes of the text section.

@@ -34,15 +34,33 @@ make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=
 
 ## Alias
 
-Useful shell alias:
+Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
 ```bash
-zkc-test() {
-    make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" TEST="$1"
+zkctest() {
+    case "$1" in
+        clean-all)
+            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" clean-all
+            ;;
+        exec|debug|compile|clean)
+            local target="$1"; shift
+            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" "$target" TEST="$1" "${@:2}"
+            ;;
+        *)
+            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" TEST="$1" "${@:2}"
+            ;;
+    esac
 }
 
 # Usage
-zkc-test <name>.<ext>
+zkctest <name>.<ext>
+zkctest <name>.<ext> INBYTES="0xAABB"
+zkctest <name>.<ext> INBYTES="0xAABB" INBYTES_OFFSET=0x8000000
+zkctest debug <name>.<ext>
+zkctest debug <name>.<ext> INBYTES="0xAABB"
+zkctest compile <name>.<ext>
+zkctest clean <name>.<ext>
+zkctest clean-all
 ```
 
 ## Targets

@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
         .default_target = .{
             .cpu_arch = .riscv64,
-            .cpu_model = .{ .explicit = &std.Target.riscv.cpu.baseline_rv64 },
+            .cpu_model = .{ .explicit = &std.Target.riscv.cpu.generic_rv64 },
             .cpu_features_add = std.Target.riscv.featureSet(&.{.m}), // Zicclsm extension does not affect the generated ELF so it is omitted
             .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zaamo, .zalrsc }),
             .os_tag = .freestanding,
@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     });
 
     // Point to assembly overwriting default SP
-    exe.addAssemblyFile(b.path("src/start.s"));
+    exe.root_module.addAssemblyFile(b.path("src/start.s"));
 
     // Remove unused code sections
     exe.link_gc_sections = true;
