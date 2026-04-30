@@ -754,8 +754,6 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 
 	quotient.Div(a, b)
 	remainder.Mod(a, b)
-
-	fmt.Println(quotient)
-	fmt.Println(remainder)
+	
 	return nil
 }
