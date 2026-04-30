@@ -2,6 +2,8 @@ package sumcheck
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
@@ -79,62 +81,94 @@ func proveBatchedCore(claims []Claim, polys []MultiLin, lambda fext.Element, t T
 	}
 
 	// Working tables: poly[i] starts as a clone, eq[i] is built from r_i.
-	// Both get folded in lock-step at every round challenge.
+	// Clone and EqTable construction are independent per i — parallelize.
 	polyTables := make([]MultiLin, N)
 	eqTables := make([]MultiLin, N)
-	for i := 0; i < N; i++ {
-		polyTables[i] = polys[i].Clone()
-		eqTables[i] = BuildEqTable(claims[i].Point)
+	nbWorkers := runtime.GOMAXPROCS(0)
+	if nbWorkers > N {
+		nbWorkers = N
 	}
+	chunk := (N + nbWorkers - 1) / nbWorkers
+	var wg sync.WaitGroup
+	wg.Add(nbWorkers)
+	for w := 0; w < nbWorkers; w++ {
+		start := w * chunk
+		stop := start + chunk
+		if stop > N {
+			stop = N
+		}
+		go func(start, stop int) {
+			defer wg.Done()
+			for i := start; i < stop; i++ {
+				polyTables[i] = polys[i].Clone()
+				eqTables[i] = BuildEqTable(claims[i].Point)
+			}
+		}(start, stop)
+	}
+	wg.Wait()
 
 	proof := BatchedProof{
 		RoundPolys: make([][3]fext.Element, n),
 	}
 
-	var (
-		g0, g1, g2 fext.Element
-		t1, e2, p2 fext.Element
-	)
-
+	// partials holds per-worker partial (g0,g1,g2) sums for the reduction step.
+	type triple = [3]fext.Element
+	partials := make([]triple, nbWorkers)
 	challenges := make([]fext.Element, n)
 
 	for k := 0; k < n; k++ {
-		g0.SetZero()
-		g1.SetZero()
-		g2.SetZero()
-
 		size := len(polyTables[0])
 		mid := size / 2
 
-		for i := 0; i < N; i++ {
-			lp := lambdaPows[i]
-			pt := polyTables[i]
-			et := eqTables[i]
-			for x := 0; x < mid; x++ {
-				p0 := pt[x]
-				p1 := pt[x+mid]
-				e0 := et[x]
-				e1 := et[x+mid]
-
-				// g0 += λ^i · e0 · p0
-				t1.Mul(&e0, &p0)
-				t1.Mul(&t1, &lp)
-				g0.Add(&g0, &t1)
-
-				// g1 += λ^i · e1 · p1
-				t1.Mul(&e1, &p1)
-				t1.Mul(&t1, &lp)
-				g1.Add(&g1, &t1)
-
-				// g2 += λ^i · (2e1 - e0) · (2p1 - p0)
-				e2.Double(&e1)
-				e2.Sub(&e2, &e0)
-				p2.Double(&p1)
-				p2.Sub(&p2, &p0)
-				t1.Mul(&e2, &p2)
-				t1.Mul(&t1, &lp)
-				g2.Add(&g2, &t1)
+		// Parallel accumulation of round-polynomial coefficients.
+		wg.Add(nbWorkers)
+		for w := 0; w < nbWorkers; w++ {
+			start := w * chunk
+			stop := start + chunk
+			if stop > N {
+				stop = N
 			}
+			go func(w, start, stop int) {
+				defer wg.Done()
+				var g0, g1, g2, t1, e2, p2 fext.Element
+				for i := start; i < stop; i++ {
+					lp := lambdaPows[i]
+					pt := polyTables[i]
+					et := eqTables[i]
+					for x := 0; x < mid; x++ {
+						p0 := pt[x]
+						p1 := pt[x+mid]
+						e0 := et[x]
+						e1 := et[x+mid]
+
+						t1.Mul(&e0, &p0)
+						t1.Mul(&t1, &lp)
+						g0.Add(&g0, &t1)
+
+						t1.Mul(&e1, &p1)
+						t1.Mul(&t1, &lp)
+						g1.Add(&g1, &t1)
+
+						e2.Double(&e1)
+						e2.Sub(&e2, &e0)
+						p2.Double(&p1)
+						p2.Sub(&p2, &p0)
+						t1.Mul(&e2, &p2)
+						t1.Mul(&t1, &lp)
+						g2.Add(&g2, &t1)
+					}
+				}
+				partials[w] = triple{g0, g1, g2}
+			}(w, start, stop)
+		}
+		wg.Wait()
+
+		// Serial reduction of worker partials.
+		var g0, g1, g2 fext.Element
+		for w := 0; w < nbWorkers; w++ {
+			g0.Add(&g0, &partials[w][0])
+			g1.Add(&g1, &partials[w][1])
+			g2.Add(&g2, &partials[w][2])
 		}
 
 		proof.RoundPolys[k] = [3]fext.Element{g0, g1, g2}
@@ -142,10 +176,23 @@ func proveBatchedCore(claims []Claim, polys []MultiLin, lambda fext.Element, t T
 		c := t.Challenge(labelRoundChallenge)
 		challenges[k] = c
 
-		for i := 0; i < N; i++ {
-			polyTables[i].Fold(c)
-			eqTables[i].Fold(c)
+		// Parallel fold.
+		wg.Add(nbWorkers)
+		for w := 0; w < nbWorkers; w++ {
+			start := w * chunk
+			stop := start + chunk
+			if stop > N {
+				stop = N
+			}
+			go func(start, stop int) {
+				defer wg.Done()
+				for i := start; i < stop; i++ {
+					polyTables[i].Fold(c)
+					eqTables[i].Fold(c)
+				}
+			}(start, stop)
 		}
+		wg.Wait()
 	}
 
 	proof.FinalEvals = make([]fext.Element, N)

@@ -13,6 +13,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilineareval"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/multilinvortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -460,6 +462,35 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 			Advices:      DiscoveryAdvices(zkevm),
 		}
 		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
+	)
+
+	// Wire the multilinear Vortex pipeline onto the bootstrapper. This inserts
+	// MultilinearEval queries for all round-0 committed columns, then folds
+	// them recursively down to numVars == 1.
+	//
+	// Order matters: Compile (balanced split) comes BEFORE CompileAllRound
+	// (cross-size sumcheck batch). This avoids materializing O(2^nmax) extended
+	// polynomials for every column in the initial pass (where nmax can be 28 for
+	// production). Instead, Compile first halves all numVars (to ≤14), then
+	// CompileAllRound only needs to expand within that smaller space.
+	// Seven pairs of (Compile + CompileAllRound) cover any numVars up to 128.
+	wizard.ContinueCompilation(
+		dw.Bootstrapper,
+		multilinvortex.InsertBootstrapperOpenings,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
+		multilinvortex.Compile,
+		multilineareval.CompileAllRound,
 	)
 
 	// These are the slow and expensive operations.
