@@ -1,7 +1,10 @@
 # Makefile
 
-The `Makefile` in the present folder allows to compile and run RISC-V test programs against the Linea zkVM.
-Specifically, it allows to compile programs written in assembly, Zig or Rust, convert the resulting ELF to JSON, and pass it to `zkc` as an input file that represents the program to be run.
+The `Makefile` in this folder has commands to compile and run RISC-V test programs written in assembly, Zig or Rust against the Linea zkVM.
+Programs are compiled for the  `riscv64im_zicclsm-unknown-none-elf` architecture. The resulting ELF is converted to JSON, and passed to `zkc` as an input.
+The output ELF is also disassembled, producing an explorable `<name>_disassembled.elf` file.
+
+The executable, the json and the disassembled elf file all live in the `<ext>/bin/` folder.
 
 ## Requirements
 
@@ -20,25 +23,27 @@ From the `Makefile` directory:
 make TEST=<name>.<ext>
 ```
 
-From anywhere using `-f`:
+and from anywhere using `-f`:
 
 ```bash
 make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=<name>.<ext>
 ```
 
-Or set up a shell alias to avoid repeating the path:
+**Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory. Alternatively one can provide full paths.
+
+
+## Alias
+
+Useful shell alias:
 
 ```bash
-alias zkc-test='make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile'
+zkc-test() {
+    make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" TEST="$1"
+}
+
+# Usage
+zkc-test <name>.<ext>
 ```
-
-Then simply:
-
-```bash
-zkc-test TEST=<name>.<ext>
-```
-
-Where `<ext>` is `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory.
 
 ## Targets
 
@@ -68,22 +73,22 @@ Where `<ext>` is `.s`, `.zig`, or `.rs`. Source files are by default expected in
 
 ```bash
 # Run an assembly test
-zkc-test TEST=test.s
+zkc-test test.s
 
 # Run a Zig test without stripping
-zkc-test TEST=test.zig ZIG_STRIP=false
+zkc-test test.zig ZIG_STRIP=false
 
 # Run a Rust test with input bytes
-zkc-test TEST=test.rs INBYTES="0xAABBCC"
+zkc-test test.rs INBYTES="0xAABBCC"
 
 # Compile only, don't execute
-zkc-test compile TEST=test.s
+zkc-test compile test.s
 
 # Debug a Zig program
-zkc-test debug TEST=test.zig
+zkc-test debug test.zig
 
 # Override source and binary paths
-zkc-test TEST=test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
+zkc-test test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
 ```
 
 ## Target ISA
@@ -106,8 +111,9 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 0x48800000 ──  input ends at most
 ```
 
-## Utils
+## Deprecated
 
+**Note.** The following command is done by default.
 Run the following command to disassemble the generated ELF:
 
 ```
