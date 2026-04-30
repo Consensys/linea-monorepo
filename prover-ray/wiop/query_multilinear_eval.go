@@ -144,7 +144,7 @@ func (me *MultilinearEval) evalPolynomials(rt Runtime) []field.Gen {
 // materializeTable builds the full-length field.Vec for a concrete column
 // assignment, expanding padding to produce a slice of exactly n elements.
 func materializeTable(cv *ConcreteVector, padding PaddingDirection, n int) field.Vec {
-	if cv.Plain[0].IsBase() {
+	if cv.Plain.IsBase() {
 		tbl := make([]field.Element, n)
 		for j := 0; j < n; j++ {
 			tbl[j] = cv.ElementAtN(padding, n, j).AsBase()

@@ -225,7 +225,7 @@ func (p *mptsProver) Run(rt wiop.Runtime) {
 		utils.BitReverse(table)
 		hatPs[j] = table
 		rt.AssignColumn(g.coeffCols[j], &wiop.ConcreteVector{
-			Plain: []field.Vec{field.VecFromBase(table)},
+			Plain: field.VecFromBase(table),
 		})
 	}
 

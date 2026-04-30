@@ -160,7 +160,7 @@ func TestMultilinearEval_SelfAssign_Check_Base(t *testing.T) {
 	}
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
 	rt.AdvanceRound() // derives coin values
 
 	assert.False(t, me.IsAlreadyAssigned(rt))
@@ -183,7 +183,7 @@ func TestMultilinearEval_AgainstEvalMultilin(t *testing.T) {
 	}
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
 	rt.AdvanceRound()
 
 	me.SelfAssign(rt)
@@ -232,8 +232,8 @@ func TestMultilinearEval_Batch(t *testing.T) {
 	}
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col0, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems0)}})
-	rt.AssignColumn(col1, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems1)}})
+	rt.AssignColumn(col0, &wiop.ConcreteVector{Plain: field.VecFromBase(elems0)})
+	rt.AssignColumn(col1, &wiop.ConcreteVector{Plain: field.VecFromBase(elems1)})
 	rt.AdvanceRound()
 
 	me.SelfAssign(rt)
@@ -261,7 +261,7 @@ func TestMultilinearEval_PaddingRight(t *testing.T) {
 	elems := []field.Element{v, v, v} // 3 elements; 4th will be padding zero
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
 	rt.AdvanceRound()
 
 	me.SelfAssign(rt)
@@ -287,7 +287,7 @@ func TestMultilinearEval_PaddingLeft(t *testing.T) {
 	elems := []field.Element{v, v, v}
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(elems)}})
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
 	rt.AdvanceRound()
 
 	me.SelfAssign(rt)

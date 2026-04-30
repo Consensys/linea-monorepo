@@ -52,7 +52,7 @@ func TestMPTSSinglePoly(t *testing.T) {
 	// Create runtime and execute round 0.
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, &wiop.ConcreteVector{
-		Plain: []field.Vec{field.VecFromBase(lagrange)},
+		Plain: field.VecFromBase(lagrange),
 	})
 
 	// Advance to round 1 (derives the eval coin).
@@ -119,7 +119,7 @@ func TestMPTSMultiPoly(t *testing.T) {
 	rt := wiop.NewRuntime(sys)
 	for j := range m {
 		rt.AssignColumn(cols[j], &wiop.ConcreteVector{
-			Plain: []field.Vec{field.VecFromBase(lagranges[j])},
+			Plain: field.VecFromBase(lagranges[j]),
 		})
 	}
 
@@ -169,8 +169,8 @@ func TestMPTSMultipleQueries(t *testing.T) {
 	lag1 := buildLagrangeTable(rng, n)
 
 	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(col0, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(lag0)}})
-	rt.AssignColumn(col1, &wiop.ConcreteVector{Plain: []field.Vec{field.VecFromBase(lag1)}})
+	rt.AssignColumn(col0, &wiop.ConcreteVector{Plain: field.VecFromBase(lag0)})
+	rt.AssignColumn(col1, &wiop.ConcreteVector{Plain: field.VecFromBase(lag1)})
 
 	rt.AdvanceRound()
 	for _, le := range sys.LagrangeEvals {
