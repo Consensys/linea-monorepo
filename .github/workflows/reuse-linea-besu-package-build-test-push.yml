@@ -11,6 +11,10 @@ on:
       release_tag_prefix:
         required: true
         type: string
+      image_tag_suffix:
+        required: false
+        type: string
+        default: ''
       draft_release:
         description: 'Draft Release'
         required: true
@@ -103,6 +107,7 @@ jobs:
         uses: ./.github/actions/linea-besu-package/build-plugins-and-assemble
         with:
           release_tag_prefix: ${{ inputs.release_tag_prefix }}
+          image_tag_suffix: ${{ inputs.image_tag_suffix }}
           with_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
           fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
           fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
@@ -261,7 +266,7 @@ jobs:
         id: release_publish
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          name: Linea Besu Package ${{ steps.build-plugins-and-assemble.outputs.releasetag }}
+          name: Linea Besu Package ${{ inputs.release_tag || steps.build-plugins-and-assemble.outputs.releasetag }}
           tag_name: ${{ inputs.release_tag || format('linea-besu-package-{0}', steps.build-plugins-and-assemble.outputs.releasetag) }}
           body_path: release/output.md
           draft: ${{ inputs.draft_release }}

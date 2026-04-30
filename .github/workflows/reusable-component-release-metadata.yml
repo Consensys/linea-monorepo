@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: "cliff.toml"
+      image_tag_suffix:
+        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
       runner:
         description: "Runner label"
         required: false
@@ -46,10 +51,10 @@ jobs:
       contents: write
     name: Release ${{ inputs.component-name }} (changelog + tag)
     outputs:
-      release_tag: ${{ steps.version.outputs.next_tag }}
-      release_version: ${{ steps.version.outputs.next_version }}
+      release_tag: ${{ steps.changelog.outputs.next_tag }}
+      release_version: ${{ steps.changelog.outputs.next_version }}
       docker_tag: ${{ steps.dockertag.outputs.dockertag }}
-      changelog: ${{ steps.latest-changelog.outputs.changelog_content }}
+      changelog: ${{ steps.changelog.outputs.changelog_content }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -58,95 +63,33 @@ jobs:
           fetch-tags: true
           submodules: false
 
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
       - name: Install git-cliff
         uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
         with:
           tool: git-cliff
 
-      # Compute the release version and tag up front, so the changelog entry
-      # prepended in the next step is stamped with the version (not [unreleased]).
-      - name: Compute next ${{ inputs.component-name }} version (semver)
-        id: version
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: ${{ inputs.component-name }}
-          include-path: ${{ inputs.include-path }}
-          compute-next-tag-version: "true"
-
-      # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
-      # via --tag, so the body template renders {{ version }} instead of [unreleased].
-      - name: Generate and prepend release changelog section
-        if: steps.version.outputs.tag_changed == 'true'
-        id: prepend-changelog
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: ${{ inputs.component-name }}
-          folder-name: ${{ inputs.folder-name }}
-          include-path: ${{ inputs.include-path }}
-          prepend-changelog: "true"
-
-      - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
-        if: steps.version.outputs.tag_changed == 'true'
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          FOLDER_NAME: ${{ inputs.folder-name }}
-          TAG: ${{ steps.version.outputs.next_tag }}
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
-            echo "No unreleased ${COMPONENT} changes; nothing to do."
-            exit 0
-          fi
-          git add "${FOLDER_NAME}/CHANGELOG.md"
-          git commit -m "chore(${COMPONENT}): CHANGELOG.md update for ${TAG} release"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push ${{ inputs.component-name }} release tag
-        if: steps.version.outputs.tag_changed == 'true'
-        env:
-          COMPONENT: ${{ inputs.component-name }}
-          TAG: ${{ steps.version.outputs.next_tag }}
-        run: |
-          set -euo pipefail
-          if [ -z "${TAG}" ]; then
-            echo "No tag computed; aborting."
-            exit 1
-          fi
-          if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
-            echo "Tag ${TAG} already exists; aborting."
-            exit 1
-          fi
-          git tag -a "${TAG}" -m "${COMPONENT^} release ${TAG}"
-          git push origin "${TAG}"
-          echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"
-
       - name: Generate ${{ inputs.component-name }} latest changelog
-        if: steps.version.outputs.tag_changed == 'true'
-        id: latest-changelog
+        id: changelog
         uses: ./.github/actions/run-git-cliff-commands
         with:
           component-name: ${{ inputs.component-name }}
           include-path: ${{ inputs.include-path }}
-          generate-changelog-mode: "latest"
+          generate-changelog-with-next-tag-version: "true"
 
       - name: Compute version tags
-        if: steps.version.outputs.tag_changed == 'true'
+        if: steps.changelog.outputs.tag_changed == 'true'
         id: compute_version_tags
         uses: ./.github/actions/compute-version-tags
 
       - name: Set timestamp
-        if: steps.version.outputs.tag_changed == 'true'
+        if: steps.changelog.outputs.tag_changed == 'true'
         id: timestamp
         run: echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
 
       - name: Set docker tag
-        if: steps.version.outputs.tag_changed == 'true'
+        if: steps.changelog.outputs.tag_changed == 'true'
         id: dockertag
         run: |
-          echo "dockertag=${{ steps.version.outputs.next_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> "$GITHUB_OUTPUT"
+          base="${{ steps.changelog.outputs.next_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}"
+          suffix="${{ inputs.image_tag_suffix && format('-{0}', inputs.image_tag_suffix) || '' }}"
+          echo "dockertag=${base}${suffix}" >> "$GITHUB_OUTPUT"

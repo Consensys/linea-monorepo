@@ -15,22 +15,18 @@ inputs:
     description: "Path to the cliff.toml config file"
     required: false
     default: "cliff.toml"
-  compute-next-tag-version:
-    description: "Compute next tag and Semver version of the component"
-    required: false
-    default: "true"
   prepend-changelog:
     description: "Prepend the unreleased changelogs to the CHANGELOG.md"
     required: false
     default: "false"
-  generate-changelog-mode:
-    description: "Generate 'unreleased' or 'latest' changelog"
+  generate-changelog-with-next-tag-version:
+    description: "Generate 'unreleased' changelog but replace the header with next-tag-version"
     required: false
-    default: ""
+    default: "false"
   
 outputs:
   changelog_content:
-    description: "The changelog content for generate-changelog-mode"
+    description: "The changelog content"
     value: ${{ steps.changelog.outputs.content }}
   next_version:
     description: "The next semver version of the component"
@@ -59,31 +55,8 @@ runs:
           echo '__PATHS_EOF__'
         } >> "$GITHUB_OUTPUT"
 
-    - name: Generate ${{ inputs.component-name }} unreleased or latest changelog
-      if: inputs.generate-changelog-mode == 'unreleased' || inputs.generate-changelog-mode == 'latest'
-      id: changelog
-      env:
-        COMPONENT: ${{ inputs.component-name }}
-        CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        CHANGELOG_MODE: ${{ inputs.generate-changelog-mode }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-        cliff_args=(--config "${CLIFF_CONFIG}" --"${CHANGELOG_MODE}")
-        for p in "${paths[@]}"; do
-          cliff_args+=(--include-path "${p}")
-        done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
-        {
-          echo 'content<<__CLIFF_EOF__'
-          git cliff "${cliff_args[@]}"
-          echo '__CLIFF_EOF__'
-        } >> "$GITHUB_OUTPUT"
-
     # Compute the next release version
     - name: Compute next ${{ inputs.component-name }} version (semver)
-      if: inputs.compute-next-tag-version == 'true'
       id: version
       shell: bash
       env:
@@ -119,11 +92,32 @@ runs:
           echo "version=${next_semver}"
           echo "changed=${changed}"
         } >> "$GITHUB_OUTPUT"
-
+    
+    - name: Generate ${{ inputs.component-name }} unreleased or latest changelog
+      id: changelog
+      env:
+        COMPONENT: ${{ inputs.component-name }}
+        CLIFF_CONFIG: ${{ inputs.cliff-config }}
+        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
+        cliff_args=(--config "${CLIFF_CONFIG}" "--unreleased${TAG_CONFIG}")
+        for p in "${paths[@]}"; do
+          cliff_args+=(--include-path "${p}")
+        done
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
+        {
+          echo 'content<<__CLIFF_EOF__'
+          git cliff "${cliff_args[@]}"
+          echo '__CLIFF_EOF__'
+        } >> "$GITHUB_OUTPUT"
+    
     # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
     # via --tag, so the body template renders {{ version }} instead of [unreleased].
     - name: Generate and prepend release changelog section
-      if: inputs.compute-next-tag-version == 'true' && steps.version.outputs.changed == 'true' && inputs.prepend-changelog == 'true'
+      if: steps.version.outputs.changed == 'true' && inputs.prepend-changelog == 'true'
       shell: bash
       env:
         COMPONENT: ${{ inputs.component-name }}

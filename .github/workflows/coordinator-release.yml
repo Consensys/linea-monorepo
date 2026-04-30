@@ -7,6 +7,22 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag_suffix:
+        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      draft_release:
+        description: 'Draft Release'
+        required: false
+        default: false
+        type: boolean
+      pre_release:
+        description: 'Pre Release'
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - feat/coordinator-automate-changelog-versioning-poc
@@ -18,19 +34,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-local-coordinator:
+    uses: ./.github/workflows/coordinator-build-and-publish.yml
+    with:
+      image_tag: local
+      develop_tag: develop
+      image_name: consensys/linea-coordinator
+      push_image: false
+    secrets: inherit
+
+  run-e2e-tests:
+    needs: [build-local-coordinator]
+    if: ${{ needs.build-local-coordinator.result == 'success' }}
+    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    with:
+      image_tag: local
+      linea_besu_package_tag: ''
+      e2e-tests-logs-dump: true
+      has-changes-requiring-e2e-testing: "true"
+    secrets: inherit
+
   release-coordinator-metadata:
+    needs: [run-e2e-tests]
+    if: ${{ needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: coordinator
       folder-name: coordinator
       include-path: '"coordinator/**"'
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
 
   build-docker-image-coordinator:
     needs: [release-coordinator-metadata]
     uses: ./.github/workflows/coordinator-build-and-publish.yml
-    if: needs.release-coordinator-metadata.outputs.docker_tag != ''
+    if: ${{ needs.release-coordinator-metadata.outputs.docker_tag != '' }}
     with:
-      commit_tag: ${{ needs.release-coordinator-metadata.outputs.docker_tag }}
+      image_tag: ${{ needs.release-coordinator-metadata.outputs.docker_tag }}
       develop_tag: "develop"
       image_name: consensys/linea-coordinator
       push_image: true
@@ -39,6 +78,7 @@ jobs:
   gh-release-coordinator:
     needs: [release-coordinator-metadata, build-docker-image-coordinator]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    if: ${{ needs.release-coordinator-metadata.outputs.docker_tag != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -62,8 +102,16 @@ jobs:
           name: Coordinator v${{ needs.release-coordinator-metadata.outputs.release_version }}
           tag_name: ${{ needs.release-coordinator-metadata.outputs.release_tag }}
           body_path: release/output.md
-          draft: true
-          prerelease: false
+          draft: ${{ inputs.draft_release || true }}
+          prerelease: ${{ inputs.pre_release || false }}
           generate_release_notes: false
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
+
+  release-coordinator-push-tag-changelog:
+    needs: [gh-release-coordinator]
+    uses: ./.github/workflows/reusable-component-release-push-tag-changelog.yml
+    with:
+      component-name: coordinator
+      folder-name: coordinator
+      include-path: '"coordinator/**"'

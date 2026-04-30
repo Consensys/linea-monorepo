@@ -1,0 +1,98 @@
+name: "Reusable: Component Release Push Tag and Changelog"
+
+on:
+  workflow_call:
+    inputs:
+      component-name:
+        description: "Component name — used to derive tag pattern, CHANGELOG path and commit scope (e.g. coordinator, postman)"
+        required: true
+        type: string
+      folder-name:
+        description: "Folder name — home folder name of the component (e.g. linea-besu's home folder is linea-besu-package)"
+        required: true
+        type: string
+      include-path:
+        description: "git-cliff --include-path filter — single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+        required: true
+        type: string
+      cliff-config:
+        description: "Path to the cliff.toml config file"
+        required: false
+        type: string
+        default: "cliff.toml"
+      runner:
+        description: "Runner label"
+        required: false
+        type: string
+        default: "gha-runner-scale-set-ubuntu-24-amd64-med"
+
+jobs:
+  release-component:
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: write
+    name: Release ${{ inputs.component-name }} (push changelog + tag)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
+      # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
+      # via --tag, so the body template renders {{ version }} instead of [unreleased].
+      - name: Generate and prepend release changelog section
+        id: prepend-changelog
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ inputs.component-name }}
+          folder-name: ${{ inputs.folder-name }}
+          include-path: ${{ inputs.include-path }}
+          prepend-changelog: "true"
+
+      - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
+        if: steps.prepend-changelog.outputs.tag_changed == 'true'
+        env:
+          COMPONENT: ${{ inputs.component-name }}
+          FOLDER_NAME: ${{ inputs.folder-name }}
+          TAG: ${{ steps.prepend-changelog.outputs.next_tag }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
+            echo "No unreleased ${COMPONENT} changes; nothing to do."
+            exit 0
+          fi
+          git add "${FOLDER_NAME}/CHANGELOG.md"
+          git commit -m "chore(${COMPONENT}): CHANGELOG.md update for ${TAG} release"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push ${{ inputs.component-name }} release tag
+        if: steps.prepend-changelog.outputs.tag_changed == 'true'
+        env:
+          COMPONENT: ${{ inputs.component-name }}
+          TAG: ${{ steps.prepend-changelog.outputs.next_tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAG}" ]; then
+            echo "No tag computed; aborting."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
+            echo "Tag ${TAG} already exists; aborting."
+            exit 1
+          fi
+          git tag -a "${TAG}" -m "${COMPONENT^} release ${TAG}"
+          git push origin "${TAG}"
+          echo "Pushed ${TAG} pointing at $(git rev-parse HEAD)"

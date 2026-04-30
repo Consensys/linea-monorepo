@@ -82,25 +82,16 @@ jobs:
         with:
           component-name: ${{ matrix.component }}
           include-path: ${{ toJSON(matrix.include-path) }}
-          generate-changelog-mode: "unreleased"
-
-      - name: Compute next ${{ matrix.component }} version (semver)
-        id: version
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: ${{ matrix.component }}
-          include-path: ${{ toJSON(matrix.include-path) }}
-          compute-next-tag-version: "true"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
-        if: steps.version.outputs.tag_changed == 'true'
+        if: steps.changelog.outputs.tag_changed == 'true'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: ${{ matrix.component }}-changelog-preview
           message: |
             ## ${{ matrix.component }} Changelog Preview (informational)
 
-            **Next proposed version:** `${{ steps.version.outputs.next_tag }}`
+            **Next proposed version:** `${{ steps.changelog.outputs.next_tag }}`
 
             <details>
             <summary><strong>[Unreleased] diff</strong> (commits touching <code>${{ matrix.component }}/**</code> since latest <code>releases/${{ matrix.component }}/v*</code> tag)</summary>
