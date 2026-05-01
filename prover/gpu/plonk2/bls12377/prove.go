@@ -644,7 +644,6 @@ func (p *gpuProver) openAndFinalize() error {
 		inst,
 		blzeta, brzeta, bozeta, p.alpha, p.beta, p.gamma, p.zeta, bzuzeta,
 		s1Zeta, s2Zeta, qcpzeta, p.zBlinded, p.pi2Canonical, p.h1, p.h2, p.h3,
-		p.qkCanonical, // per-proof Qk including public input patch
 	)
 	p.h1, p.h2, p.h3, p.pi2Canonical = nil, nil, nil, nil
 
@@ -1163,7 +1162,6 @@ func computeLinearizedPoly(
 	s1Zeta, s2Zeta fr.Element,
 	qcpZeta []fr.Element, blindedZCanonical []fr.Element, pi2Canonical [][]fr.Element,
 	h1, h2, h3 []fr.Element,
-	qkPerProof fr.Vector, // per-proof Qk canonical (includes public inputs)
 ) []fr.Element {
 	n := inst.n
 	domain0 := inst.domain0
@@ -1204,14 +1202,14 @@ func computeLinearizedPoly(
 	gpuResult, err := NewFrVector(dev, n)
 	if err != nil {
 		return innerComputeLinearizedPoly(inst, lZeta, rZeta, oZeta, alpha, beta, gamma, zeta, zu,
-			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3, qkPerProof)
+			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3)
 	}
 	defer gpuResult.Free()
 	gpuW, err := NewFrVector(dev, n)
 	if err != nil {
 		gpuResult.Free()
 		return innerComputeLinearizedPoly(inst, lZeta, rZeta, oZeta, alpha, beta, gamma, zeta, zu,
-			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3, qkPerProof)
+			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3)
 	}
 	defer gpuW.Free()
 
@@ -1230,8 +1228,7 @@ func computeLinearizedPoly(
 	gpuResult.AddScalarMul(gpuW, rl)
 	gpuW.CopyFromDevice(inst.dQo)
 	gpuResult.AddScalarMul(gpuW, oZeta)
-	// Use per-proof Qk (includes public input patch) for correct linearized polynomial.
-	gpuW.CopyFromHost(qkPerProof[:n])
+	gpuW.CopyFromDevice(inst.dQkFixed)
 	gpuResult.Add(gpuResult, gpuW)
 
 	for j := range qcpZeta {
@@ -1277,7 +1274,6 @@ func innerComputeLinearizedPoly(
 	s1Zeta, s2Zeta fr.Element,
 	qcpZeta []fr.Element, blindedZCanonical []fr.Element, pi2Canonical [][]fr.Element,
 	h1, h2, h3 []fr.Element,
-	qkPerProof fr.Vector,
 ) []fr.Element {
 	domain0 := inst.domain0
 	cosetShift := inst.vk.CosetShift
@@ -1314,7 +1310,7 @@ func innerComputeLinearizedPoly(
 	cqr := []fr.Element(inst.qrCanonical)
 	cqm := []fr.Element(inst.qmCanonical)
 	cqo := []fr.Element(inst.qoCanonical)
-	cqk := []fr.Element(qkPerProof) // per-proof Qk (includes public input patch)
+	cqk := []fr.Element(inst.qkFixedCanonical)
 
 	var combinedZCoeff fr.Element
 	combinedZCoeff.Add(&s2, &alphaSquareLagrangeZero)
