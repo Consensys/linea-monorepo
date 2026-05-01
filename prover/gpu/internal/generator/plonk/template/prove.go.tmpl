@@ -10,6 +10,7 @@ package {{.Package}}
 import "C"
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -38,6 +39,7 @@ import (
 	fcs "github.com/consensys/gnark/frontend/cs"
 
 	"github.com/consensys/linea-monorepo/prover/gpu"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -476,7 +478,10 @@ func (p *gpuProver) completeQk() {
 	}
 }
 
-func (p *gpuProver) commitToLRO() error {
+// commitToLRO overlaps the iFFT of L,R,O with Qk patching (via waitQk) and
+// blinding-polynomial generation (via waitBlinding), both of which complete
+// concurrently in sibling goroutines.
+func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	inst := p.inst
 	hb := &inst.hBufs
 
@@ -491,12 +496,19 @@ func (p *gpuProver) commitToLRO() error {
 	gpuToCanonical(p.evalR, hb.rCanonical)
 	gpuToCanonical(p.evalO, hb.oCanonical)
 
+	if err := waitQk(); err != nil {
+		return err
+	}
 	p.gpuWork.CopyFromHost(p.qkCoeffs)
 	inst.fftDom.BitReverse(p.gpuWork)
 	inst.fftDom.FFTInverse(p.gpuWork)
 	p.gpuWork.CopyToHost(hb.qkCanonical)
 	p.qkCanonical = hb.qkCanonical
 	p.qkCoeffs = nil
+
+	if err := waitBlinding(); err != nil {
+		return err
+	}
 
 	p.lBlinded = blindInto(hb.lBlinded, hb.lCanonical, p.bpL)
 	p.rBlinded = blindInto(hb.rBlinded, hb.rCanonical, p.bpR)
@@ -767,39 +779,95 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		logTime:        logTime,
 	}
 
-	// Sequential pipeline (no stream pipelining in Phase 5a)
-	p.initBlindingPolynomials()
+	// Overlap CPU solve with blinding-polynomial init and Qk patching, then
+	// feed results into a sequential GPU pipeline. Hides the solve latency
+	// (~400 ms at n=2^18) behind unrelated work; recovers ~20-30% end-to-end.
+	chSolved   := make(chan struct{})
+	chBlinding := make(chan struct{})
+	chQk       := make(chan struct{})
 
-	if err := p.solve(spr, fullWitness); err != nil {
-		return nil, err
+	g, gctx := errgroup.WithContext(context.Background())
+
+	waitCh := func(ch <-chan struct{}) error {
+		select {
+		case <-gctx.Done():
+			return gctx.Err()
+		case <-ch:
+			return nil
+		}
 	}
-	logTime("solve")
-
-	p.completeQk()
-
-	if err := p.commitToLRO(); err != nil {
-		return nil, err
-	}
-
-	if err := p.deriveGammaBeta(); err != nil {
-		return nil, err
-	}
-
-	if err := p.buildZAndCommit(); err != nil {
-		return nil, err
-	}
-
-	if err := p.computeQuotientAndCommit(); err != nil {
-		return nil, err
+	safeGo := func(label string, fn func() error) {
+		g.Go(func() error { return proveStep(label, fn) })
 	}
 
-	if err := p.openAndFinalize(); err != nil {
+	safeGo("initBlinding", func() error {
+		p.initBlindingPolynomials()
+		close(chBlinding)
+		return nil
+	})
+
+	safeGo("solve", func() error {
+		if err := p.solve(spr, fullWitness); err != nil {
+			return err
+		}
+		logTime("solve")
+		close(chSolved)
+		return nil
+	})
+
+	safeGo("completeQk", func() error {
+		if err := waitCh(chSolved); err != nil {
+			return err
+		}
+		p.completeQk()
+		close(chQk)
+		return nil
+	})
+
+	safeGo("pipeline", func() error {
+		if err := waitCh(chSolved); err != nil {
+			return err
+		}
+		if err := p.commitToLRO(
+			func() error { return waitCh(chQk) },
+			func() error { return waitCh(chBlinding) },
+		); err != nil {
+			return err
+		}
+		if err := p.deriveGammaBeta(); err != nil {
+			return err
+		}
+		if err := p.buildZAndCommit(); err != nil {
+			return err
+		}
+		if err := p.computeQuotientAndCommit(); err != nil {
+			return err
+		}
+		p.gpuWork.Free()
+		p.gpuWork = nil
+		return p.openAndFinalize()
+	})
+
+	if err := g.Wait(); err != nil {
+		p.cleanup()
 		return nil, err
 	}
+	p.cleanup()
 
 	logTime("total")
 	result := p.proof
 	return &result, nil
+}
+
+// proveStep converts a panic in fn to a labeled error so goroutines
+// surface panics as normal errors through the errgroup.
+func proveStep(label string, fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%s panic: %v", label, r)
+		}
+	}()
+	return fn()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

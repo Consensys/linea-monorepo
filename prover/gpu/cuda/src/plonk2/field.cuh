@@ -620,10 +620,12 @@ __device__ __forceinline__ uint32_t bw6761_fp_mad_wide32(
 	return hi;
 }
 
-__device__ __forceinline__ void bw6761_fp_pack32(
-	uint64_t r[12], const uint32_t in[24]) {
+// Pack LIMBS64 pairs of adjacent 32-bit words into LIMBS64 64-bit words.
+template <int LIMBS64>
+__device__ __forceinline__ void bw6761_pack32(
+	uint64_t r[LIMBS64], const uint32_t in[LIMBS64 * 2]) {
 #pragma unroll
-	for(int i = 0; i < 12; i++) {
+	for(int i = 0; i < LIMBS64; i++) {
 		r[i] = static_cast<uint64_t>(in[2 * i]) |
 		       (static_cast<uint64_t>(in[2 * i + 1]) << 32);
 	}
@@ -671,7 +673,111 @@ __device__ __forceinline__ void mul<BW6761FpParams>(
 	uint32_t reduced[LIMBS32];
 	const uint32_t borrow = bw6761_fp_sub_modulus32(reduced, candidate);
 	const bool use_reduced = t[LIMBS32] != 0 || borrow == 0;
-	bw6761_fp_pack32(r, use_reduced ? reduced : candidate);
+	bw6761_pack32<12>(r, use_reduced ? reduced : candidate);
+}
+
+// ─── BW6-761 Fr PTX CIOS (6 × 64-bit = 12 × 32-bit limbs) ──────────────────
+//
+// Fr modulus (377 bits):
+//   0x01ae3a4617c510ea_c63b05c06ca1493b_1a22d9f300f5138f
+//   _1ef3622fba094800_170b5d4430000000_8508c00000000001
+//
+// INV32 = -Fr[0]^{-1} mod 2^32 = 0xffffffff
+// (Fr modulus low 32-bit limb = 0x00000001, so -1^{-1} mod 2^32 = 0xffffffff)
+//
+// Reuses bw6761_fp_mad_wide32 and packs result to 6 × 64-bit via bw6761_pack32<6>.
+// ─────────────────────────────────────────────────────────────────────────────
+
+__device__ __forceinline__ uint32_t bw6761_fr_modulus32_limb(int i) {
+	// Fr = 0x8508c00000000001  0x170b5d4430000000
+	//      0x1ef3622fba094800  0x1a22d9f300f5138f
+	//      0xc63b05c06ca1493b  0x01ae3a4617c510ea
+	// In 32-bit little-endian (12 words):
+	switch(i) {
+	case 0:  return 0x00000001U;  // lo32(limb[0])
+	case 1:  return 0x8508c000U;  // hi32(limb[0])
+	case 2:  return 0x30000000U;  // lo32(limb[1])
+	case 3:  return 0x170b5d44U;  // hi32(limb[1])
+	case 4:  return 0xba094800U;  // lo32(limb[2])
+	case 5:  return 0x1ef3622fU;  // hi32(limb[2])
+	case 6:  return 0x00f5138fU;  // lo32(limb[3])
+	case 7:  return 0x1a22d9f3U;  // hi32(limb[3])
+	case 8:  return 0x6ca1493bU;  // lo32(limb[4])
+	case 9:  return 0xc63b05c0U;  // hi32(limb[4])
+	case 10: return 0x17c510eaU;  // lo32(limb[5])
+	case 11: return 0x01ae3a46U;  // hi32(limb[5])
+	default: return 0;
+	}
+}
+
+__device__ __forceinline__ uint32_t bw6761_fr_sub_modulus32(
+	uint32_t reduced[12], const uint32_t in[12]) {
+	uint32_t borrow = 0;
+#pragma unroll
+	for(int i = 0; i < 12; i++) {
+		const uint32_t mod    = bw6761_fr_modulus32_limb(i);
+		const uint32_t bb     = mod + borrow;
+		const uint32_t bcarry = bb < mod;
+		reduced[i] = in[i] - bb;
+		borrow = (in[i] < bb) || bcarry;
+	}
+	return borrow;
+}
+
+// PTX-optimized CIOS Montgomery multiply for BW6-761 Fr (12 × 32-bit limbs).
+// Uses the same bw6761_fp_mad_wide32 helper with INV32 = 0xffffffff.
+//
+// Outer loop uses #pragma unroll 1 (no unroll) to bound register pressure:
+// full 12-iter unroll of the outer loop with 12-iter inner loops would
+// spill t[0..12] to local memory on GPUs with <64 registers/thread.
+template <>
+__device__ __forceinline__ void mul<BW6761FrParams>(
+	uint64_t r[BW6761FrParams::LIMBS],
+	const uint64_t a[BW6761FrParams::LIMBS],
+	const uint64_t b[BW6761FrParams::LIMBS]) {
+	static constexpr int LIMBS32 = 12;
+	static constexpr uint32_t INV32 = 0xffffffffU;  // -Fr[0]^{-1} mod 2^32
+
+	uint32_t t[LIMBS32 + 1];
+#pragma unroll
+	for(int i = 0; i <= LIMBS32; i++) t[i] = 0;
+
+#pragma unroll 1
+	for(int i = 0; i < LIMBS32; i++) {
+		const uint32_t bi = limb32_from64(b, i);
+		uint32_t carry = 0;
+#pragma unroll
+		for(int j = 0; j < LIMBS32; j++) {
+			uint32_t lo;
+			carry = bw6761_fp_mad_wide32(
+				lo, limb32_from64(a, j), bi, t[j], carry);
+			t[j] = lo;
+		}
+		uint64_t top = static_cast<uint64_t>(t[LIMBS32]) + carry;
+		t[LIMBS32] = static_cast<uint32_t>(top);
+
+		const uint32_t m = t[0] * INV32;
+		carry = 0;
+#pragma unroll
+		for(int j = 0; j < LIMBS32; j++) {
+			uint32_t word;
+			carry = bw6761_fp_mad_wide32(
+				word, m, bw6761_fr_modulus32_limb(j), t[j], carry);
+			if(j > 0) t[j - 1] = word;
+		}
+		top = static_cast<uint64_t>(t[LIMBS32]) + carry;
+		t[LIMBS32 - 1] = static_cast<uint32_t>(top);
+		t[LIMBS32]     = static_cast<uint32_t>(top >> 32);
+	}
+
+	uint32_t candidate[LIMBS32];
+#pragma unroll
+	for(int i = 0; i < LIMBS32; i++) candidate[i] = t[i];
+
+	uint32_t reduced[LIMBS32];
+	const uint32_t borrow = bw6761_fr_sub_modulus32(reduced, candidate);
+	const bool use_reduced = t[LIMBS32] != 0 || borrow == 0;
+	bw6761_pack32<6>(r, use_reduced ? reduced : candidate);
 }
 
 template <typename Params>

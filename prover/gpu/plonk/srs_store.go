@@ -99,6 +99,10 @@ func NewSRSStore(rootDir string) (*SRSStore, error) {
 	}
 	store.entries[ecc.BLS12_377] = []fsEntry{}
 	store.teEntries[ecc.BLS12_377] = []fsEntry{}
+	store.entries[ecc.BN254] = []fsEntry{}
+	store.teEntries[ecc.BN254] = []fsEntry{}
+	store.entries[ecc.BW6_761] = []fsEntry{}
+	store.teEntries[ecc.BW6_761] = []fsEntry{}
 
 	for _, entry := range dir {
 		if entry.IsDir() {
@@ -151,6 +155,10 @@ func parseCurveID(s string) ecc.ID {
 	switch s {
 	case "bls12377":
 		return ecc.BLS12_377
+	case "bn254":
+		return ecc.BN254
+	case "bw6761":
+		return ecc.BW6_761
 	default:
 		return 0
 	}
@@ -207,27 +215,7 @@ func (store *SRSStore) loadSRS(ctx context.Context, curveID ecc.ID, entry *fsEnt
 // GetSRSCPU returns canonical + lagrange SRS for CPU-oriented tests/workflows.
 func (store *SRSStore) GetSRSCPU(ctx context.Context, ccs constraint.ConstraintSystem) (kzg.SRS, kzg.SRS, error) {
 	sizeCanonical, sizeLagrange := gnarkplonk.SRSSize(ccs)
-	curveID := ecc.BLS12_377
-
-	canonicalEntry := store.findEntry(curveID, sizeCanonical, true)
-	if canonicalEntry == nil {
-		return nil, nil, fmt.Errorf("canonical SRS not found for curve %s and size >= %d", curveID, sizeCanonical)
-	}
-	lagrangeEntry := store.findEntry(curveID, sizeLagrange, false)
-	if lagrangeEntry == nil {
-		return nil, nil, fmt.Errorf("lagrange SRS not found for curve %s and exact size %d", curveID, sizeLagrange)
-	}
-
-	canonicalSRS, err := store.loadSRS(ctx, curveID, canonicalEntry, sizeCanonical)
-	if err != nil {
-		return nil, nil, err
-	}
-	lagrangeSRS, err := store.loadSRS(ctx, curveID, lagrangeEntry, sizeLagrange)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return canonicalSRS, lagrangeSRS, nil
+	return store.GetSRSCPUForCurve(ctx, ecc.BLS12_377, sizeCanonical, sizeLagrange)
 }
 
 // GetSRSGPU returns canonical SRS as pre-converted TE points for GPU proving.
@@ -257,6 +245,31 @@ func (store *SRSStore) GetSRSGPUPinned(ctx context.Context, ccs constraint.Const
 // GetSRS keeps backward compatibility with existing call sites that expect both.
 func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSystem) (kzg.SRS, kzg.SRS, error) {
 	return store.GetSRSCPU(ctx, ccs)
+}
+
+// GetSRSCPUForCurve returns canonical + lagrange SRS for the given curve and
+// explicit sizes. Use this when the curve is known but no ConstraintSystem is
+// available; GetSRSCPU derives the same information from a ccs.
+func (store *SRSStore) GetSRSCPUForCurve(ctx context.Context, curveID ecc.ID, sizeCanonical, sizeLagrange int) (kzg.SRS, kzg.SRS, error) {
+	canonicalEntry := store.findEntry(curveID, sizeCanonical, true)
+	if canonicalEntry == nil {
+		return nil, nil, fmt.Errorf("canonical SRS not found for curve %s and size >= %d", curveID, sizeCanonical)
+	}
+	lagrangeEntry := store.findEntry(curveID, sizeLagrange, false)
+	if lagrangeEntry == nil {
+		return nil, nil, fmt.Errorf("lagrange SRS not found for curve %s and exact size %d", curveID, sizeLagrange)
+	}
+
+	canonicalSRS, err := store.loadSRS(ctx, curveID, canonicalEntry, sizeCanonical)
+	if err != nil {
+		return nil, nil, err
+	}
+	lagrangeSRS, err := store.loadSRS(ctx, curveID, lagrangeEntry, sizeLagrange)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return canonicalSRS, lagrangeSRS, nil
 }
 
 // ---------------------------------------------------------------------------
