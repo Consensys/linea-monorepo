@@ -13,7 +13,7 @@ The executable, the json and the disassembled elf file all live in the `<ext>/bi
 - `cargo (>= 1.88.0)` — for Rust programs
 - `rustc (>= rustc 1.88.0)` with `riscv64imac-unknown-none-elf` target — for Rust programs
 - `go (>= 1.26.1)` — to convert ELF to JSON
-- `go-corset and zkc (>= 1.2.12)` — to execute/debug the JSON
+- `go-corset, zkc (>= 1.2.12)` — to execute/debug the JSON
 
 ## Usage
 
