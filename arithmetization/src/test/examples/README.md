@@ -54,10 +54,10 @@ zkctest() {
 
 # Usage
 zkctest <name>.<ext>
-zkctest <name>.<ext> INBYTES="0xAABB"
-zkctest <name>.<ext> INBYTES="0xAABB" INBYTES_OFFSET=0x8000000
+zkctest <name>.<ext> IN_BYTES="0xAABB"
+zkctest <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
 zkctest debug <name>.<ext>
-zkctest debug <name>.<ext> INBYTES="0xAABB"
+zkctest debug <name>.<ext> IN_BYTES="0xAABB"
 zkctest compile <name>.<ext>
 zkctest clean <name>.<ext>
 zkctest clean-all
@@ -82,9 +82,9 @@ zkctest clean-all
 | `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                            |
 | `STRIP`          | `false`                                                                                 | Strip debug symbols from the ELF after compilation                         |
 | `ZIG_STRIP`      | `true`                                                                                  | Strip when compiling Zig (reduces binary size), ignored for `.s` and `.rs` |
-| `INBYTES`        | `""`                                                                                    | Input bytes written to memory at `INBYTES_OFFSET` before execution         |
+| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution         |
 | `PROGRAM_OFFSET` | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                   |
-| `INBYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
+| `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
 | `ENTRY_POINT`    | `0`                                                                                     | Entry point offset                                                         |
 
 ## Examples
@@ -97,7 +97,7 @@ zkctest test.s
 zkctest test.zig ZIG_STRIP=false
 
 # Run a Rust test with input bytes
-zkctest test.rs INBYTES="0xAABBCC"
+zkctest test.rs IN_BYTES="0xAABBCC"
 
 # Compile only, don't execute
 zkctest compile test.s
