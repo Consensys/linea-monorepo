@@ -41,7 +41,7 @@ fn process_U_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
     tmp = sgn_extension_u32_u64(((imm20 as u32) << 12) as u32)
 
     if opcode == AUIPC {
-        tmp = signed_sum(tmp, pc) as DoubleWord
+        tmp = signed_sum_of_double_word(tmp, pc) as DoubleWord
     }
 
     // Note: the definition of tmp already works for the LUI opcode

@@ -52,7 +52,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
     funct7::uimm5 = imm12
 
     var signext_imm12_64:DoubleWord = sgn_extension_u12_u64(imm12)
-    var mem_address:Address = signed_sum(registers[rs1], signext_imm12_64) as Address
+    var mem_address:Address = signed_sum_of_double_word(registers[rs1], signext_imm12_64) as Address
 
     new_pc = (pc + 4) as Address //TODO: this is the default case, we will overwrite it for JALR. 
     // We should handle this differently to avoid a potential second row just to overwrite the value of new_pc?
@@ -86,7 +86,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
      else if opcode == OP_IMM {
 
         if funct3 == FUNCT3_ADDI {
-            registers[rd] = signed_sum(registers[rs1], signext_imm12_64) as DoubleWord
+            registers[rd] = signed_sum_of_double_word(registers[rs1], signext_imm12_64) as DoubleWord
         } else if funct3 == FUNCT3_SLTI {
             var is_lt:Boolean = signed_LT(registers[rs1], signext_imm12_64)
             if is_lt == 1 {
@@ -122,7 +122,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
         if funct3 == FUNCT3_ADDIW {
             // TODO: double check this group of instructions
             // registers[rd] = sgn_extension_u32_u64((registers[rs1] as u32) + sgn_extension_u12_u32(imm12))
-            registers[rd] = sgn_extension_u32_u64((signed_sum(registers[rs1], signext_imm12_64) & 0xFFFFFFFF) as Word)
+            registers[rd] = sgn_extension_u32_u64((signed_sum_of_double_word(registers[rs1], signext_imm12_64) & 0xFFFFFFFF) as Word)
         } else if (funct3 == FUNCT3_SLLIW) && (funct7 == FUNCT7_SLLIW) {
             registers[rd] = sgn_extension_u32_u64((registers[rs1] as u32) << uimm5)
         } else if (funct3 == FUNCT3_SRLIW) && (funct7 == FUNCT7_SRLIW) {
@@ -134,7 +134,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
 
      else if opcode == JALR {
         // only instruction is JALR, no need to switch over funct3
-        new_pc = (signed_sum(registers[rs1], signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
+        new_pc = (signed_sum_of_double_word(registers[rs1], signext_imm12_64) & MASK_64_ERASE_LAST_BIT) as Address
         registers[rd] = (pc + 4) as DoubleWord
     }
 

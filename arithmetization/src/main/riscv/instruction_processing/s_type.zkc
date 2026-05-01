@@ -55,7 +55,7 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
     //    signext_imm12_64 = (imm_sign::uimm6::uimm5) as u64
     //}
 
-    var mem_address:Address = signed_sum(registers[rs1], signext_imm12_64) as Address
+    var mem_address:Address = signed_sum_of_double_word(registers[rs1], signext_imm12_64) as Address
 
     if funct3 == FUNCT3_SB {
         // Store byte (u8)
