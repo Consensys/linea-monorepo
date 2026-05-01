@@ -120,7 +120,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
      else if opcode == OP_IMM_32 {
 
         if funct3 == FUNCT3_ADDIW {
-            // TODO: double check these group of instructions
+            // TODO: double check this group of instructions
             // registers[rd] = sgn_extension_u32_u64((registers[rs1] as u32) + sgn_extension_u12_u32(imm12))
             registers[rd] = sgn_extension_u32_u64((signed_sum(registers[rs1], signext_imm12_64) & 0xFFFFFFFF) as Word)
         } else if (funct3 == FUNCT3_SLLIW) && (funct7 == FUNCT7_SLLIW) {
