@@ -1,6 +1,7 @@
 include "../memory.zkc"
 include "../utils/constants.zkc"
 include "../utils/signed_comparisons.zkc"
+include "../utils/signed_sum.zkc"
 
 // Process a RISC-V B-type (branch) instruction and return the next program counter.
 //
