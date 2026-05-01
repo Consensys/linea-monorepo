@@ -91,22 +91,22 @@ zkctest clean-all
 
 ```bash
 # Run an assembly test
-zkc-test test.s
+zkctest test.s
 
 # Run a Zig test without stripping
-zkc-test test.zig ZIG_STRIP=false
+zkctest test.zig ZIG_STRIP=false
 
 # Run a Rust test with input bytes
-zkc-test test.rs INBYTES="0xAABBCC"
+zkctest test.rs INBYTES="0xAABBCC"
 
 # Compile only, don't execute
-zkc-test compile test.s
+zkctest compile test.s
 
 # Debug a Zig program
-zkc-test debug test.zig
+zkctest debug test.zig
 
 # Override source and binary paths
-zkc-test test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
+zkctest test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
 ```
 
 ## Target ISA
