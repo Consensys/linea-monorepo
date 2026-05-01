@@ -1,0 +1,65 @@
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/gpu/plonk
+cpu: Intel(R) Xeon(R) Platinum 8559C
+BenchmarkFrVecAdd
+BenchmarkFrVecAdd/n=16K
+BenchmarkFrVecAdd/n=16K-48      	       2	     19826 ns/op	79331.40 MB/s
+BenchmarkFrVecAdd/n=64K
+BenchmarkFrVecAdd/n=64K-48      	       2	     94883 ns/op	66307.52 MB/s
+BenchmarkFrVecAdd/n=256K
+BenchmarkFrVecAdd/n=256K-48     	       2	    239742 ns/op	104970.44 MB/s
+BenchmarkFrVecAdd/n=1M
+BenchmarkFrVecAdd/n=1M-48       	       2	    289940 ns/op	347186.65 MB/s
+BenchmarkFrVecAdd/n=4M
+BenchmarkFrVecAdd/n=4M-48       	       2	    867836 ns/op	463973.55 MB/s
+BenchmarkFrVecBatchInvert
+BenchmarkFrVecBatchInvert/n=16K
+BenchmarkFrVecBatchInvert/n=16K-48         	       2	    878936 ns/op	 596.50 MB/s
+BenchmarkFrVecBatchInvert/n=64K
+BenchmarkFrVecBatchInvert/n=64K-48         	       2	   1769505 ns/op	1185.16 MB/s
+BenchmarkFrVecBatchInvert/n=256K
+BenchmarkFrVecBatchInvert/n=256K-48        	       2	   2582338 ns/op	3248.45 MB/s
+BenchmarkFrVecBatchInvert/n=1M
+BenchmarkFrVecBatchInvert/n=1M-48          	       2	   2699284 ns/op	12430.86 MB/s
+BenchmarkBLSFFTForward
+BenchmarkBLSFFTForward/n=16K
+BenchmarkBLSFFTForward/n=16K-48            	       2	     78256 ns/op	6699.65 MB/s
+BenchmarkBLSFFTForward/n=64K
+BenchmarkBLSFFTForward/n=64K-48            	       2	    153648 ns/op	13649.11 MB/s
+BenchmarkBLSFFTForward/n=256K
+BenchmarkBLSFFTForward/n=256K-48           	       2	    292595 ns/op	28669.69 MB/s
+BenchmarkBLSFFTForward/n=1M
+BenchmarkBLSFFTForward/n=1M-48             	       2	    557067 ns/op	60234.10 MB/s
+BenchmarkBLSFFTForward/n=4M
+BenchmarkBLSFFTForward/n=4M-48             	       2	   2012544 ns/op	66690.56 MB/s
+BenchmarkBLSFFTInverse
+BenchmarkBLSFFTInverse/n=16K
+BenchmarkBLSFFTInverse/n=16K-48            	       2	     90908 ns/op	5767.24 MB/s
+BenchmarkBLSFFTInverse/n=64K
+BenchmarkBLSFFTInverse/n=64K-48            	       2	    401103 ns/op	5228.46 MB/s
+BenchmarkBLSFFTInverse/n=256K
+BenchmarkBLSFFTInverse/n=256K-48           	       2	    270695 ns/op	30989.15 MB/s
+BenchmarkBLSFFTInverse/n=1M
+BenchmarkBLSFFTInverse/n=1M-48             	       2	    561090 ns/op	59802.17 MB/s
+BenchmarkBLSFFTInverse/n=4M
+BenchmarkBLSFFTInverse/n=4M-48             	       2	   2148421 ns/op	62472.73 MB/s
+BenchmarkMSMPinned
+BenchmarkMSMPinned/unpinned/n=64K
+BenchmarkMSMPinned/unpinned/n=64K-48       	       2	   3163928 ns/op	 662.83 MB/s
+BenchmarkMSMPinned/pinned/n=64K
+BenchmarkMSMPinned/pinned/n=64K-48         	       2	   2630068 ns/op	 797.38 MB/s
+BenchmarkMSMPinned/unpinned/n=256K
+BenchmarkMSMPinned/unpinned/n=256K-48      	       2	   6082897 ns/op	1379.05 MB/s
+BenchmarkMSMPinned/pinned/n=256K
+BenchmarkMSMPinned/pinned/n=256K-48        	       2	   5520312 ns/op	1519.59 MB/s
+BenchmarkMSMPinned/unpinned/n=1M
+BenchmarkMSMPinned/unpinned/n=1M-48        	       2	  15015473 ns/op	2234.66 MB/s
+BenchmarkMSMPinned/pinned/n=1M
+BenchmarkMSMPinned/pinned/n=1M-48          	       2	  12639380 ns/op	2654.75 MB/s
+BenchmarkMSMPinned/unpinned/n=4M
+BenchmarkMSMPinned/unpinned/n=4M-48        	       2	  48418232 ns/op	2772.05 MB/s
+BenchmarkMSMPinned/pinned/n=4M
+BenchmarkMSMPinned/pinned/n=4M-48          	       2	  40101238 ns/op	3346.97 MB/s
+PASS
+ok  	github.com/consensys/linea-monorepo/prover/gpu/plonk	39.592s
