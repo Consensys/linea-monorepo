@@ -22,8 +22,9 @@ import (
 // GPUFFTDomain holds GPU-resident twiddle factors for NTT operations over the
 // bw6761 scalar field.
 //
-// All NTT operations accept an optional StreamID; the plonk2 C API currently
-// runs on the default stream and stream IDs are accepted for API compatibility.
+// All NTT operations accept an optional StreamID. When provided, the operation
+// is dispatched on that CUDA stream (non-blocking). When omitted, the default
+// stream (stream 0) is used.
 type GPUFFTDomain struct {
 	handle C.gnark_gpu_plonk2_ntt_domain_t
 	dev    *gpu.Device
@@ -99,9 +100,15 @@ func (f *GPUFFTDomain) Close() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // FFT performs a forward NTT (DIF): natural-order input → bit-reversed output.
-func (f *GPUFFTDomain) FFT(v *FrVector, _ ...gpu.StreamID) {
+func (f *GPUFFTDomain) FFT(v *FrVector, streams ...gpu.StreamID) {
 	if v.n != f.size {
 		panic("gpu: FFT size mismatch")
+	}
+	if len(streams) > 0 {
+		if err := toError(C.gnark_gpu_plonk2_ntt_forward_stream(f.handle, v.handle, C.int(streams[0]))); err != nil {
+			panic("gpu: FFT failed: " + err.Error())
+		}
+		return
 	}
 	if err := toError(C.gnark_gpu_plonk2_ntt_forward(f.handle, v.handle)); err != nil {
 		panic("gpu: FFT failed: " + err.Error())
@@ -110,9 +117,15 @@ func (f *GPUFFTDomain) FFT(v *FrVector, _ ...gpu.StreamID) {
 
 // FFTInverse performs an inverse NTT (DIT): bit-reversed input → natural-order output.
 // The result is scaled by 1/n.
-func (f *GPUFFTDomain) FFTInverse(v *FrVector, _ ...gpu.StreamID) {
+func (f *GPUFFTDomain) FFTInverse(v *FrVector, streams ...gpu.StreamID) {
 	if v.n != f.size {
 		panic("gpu: FFTInverse size mismatch")
+	}
+	if len(streams) > 0 {
+		if err := toError(C.gnark_gpu_plonk2_ntt_inverse_stream(f.handle, v.handle, C.int(streams[0]))); err != nil {
+			panic("gpu: FFTInverse failed: " + err.Error())
+		}
+		return
 	}
 	if err := toError(C.gnark_gpu_plonk2_ntt_inverse(f.handle, v.handle)); err != nil {
 		panic("gpu: FFTInverse failed: " + err.Error())
@@ -120,9 +133,15 @@ func (f *GPUFFTDomain) FFTInverse(v *FrVector, _ ...gpu.StreamID) {
 }
 
 // BitReverse applies the bit-reversal permutation.
-func (f *GPUFFTDomain) BitReverse(v *FrVector, _ ...gpu.StreamID) {
+func (f *GPUFFTDomain) BitReverse(v *FrVector, streams ...gpu.StreamID) {
 	if v.n != f.size {
 		panic("gpu: BitReverse size mismatch")
+	}
+	if len(streams) > 0 {
+		if err := toError(C.gnark_gpu_plonk2_ntt_bit_reverse_stream(f.handle, v.handle, C.int(streams[0]))); err != nil {
+			panic("gpu: BitReverse failed: " + err.Error())
+		}
+		return
 	}
 	if err := toError(C.gnark_gpu_plonk2_ntt_bit_reverse(f.handle, v.handle)); err != nil {
 		panic("gpu: BitReverse failed: " + err.Error())

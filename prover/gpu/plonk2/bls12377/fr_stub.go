@@ -18,16 +18,17 @@ func NewFrVector(_ *gpu.Device, _ int) (*FrVector, error) {
 	return nil, errors.New("gpu: cuda required")
 }
 
-func (v *FrVector) Free()                                         {}
-func (v *FrVector) Len() int                                      { return 0 }
-func (v *FrVector) CopyFromHost(_ fr.Vector, _ ...gpu.StreamID)   { panic("gpu: cuda required") }
-func (v *FrVector) CopyToHost(_ fr.Vector, _ ...gpu.StreamID)     { panic("gpu: cuda required") }
-func (v *FrVector) CopyFromDevice(_ *FrVector, _ ...gpu.StreamID) { panic("gpu: cuda required") }
-func (v *FrVector) SetZero(_ ...gpu.StreamID)                     { panic("gpu: cuda required") }
-func (v *FrVector) Mul(_, _ *FrVector, _ ...gpu.StreamID)         { panic("gpu: cuda required") }
-func (v *FrVector) Add(_, _ *FrVector, _ ...gpu.StreamID)         { panic("gpu: cuda required") }
-func (v *FrVector) Sub(_, _ *FrVector, _ ...gpu.StreamID)         { panic("gpu: cuda required") }
-func (v *FrVector) AddMul(_, _ *FrVector, _ ...gpu.StreamID)      { panic("gpu: cuda required") }
+func (v *FrVector) Free()                                            {}
+func (v *FrVector) Len() int                                         { return 0 }
+func (v *FrVector) CopyFromHost(_ fr.Vector, _ ...gpu.StreamID)      { panic("gpu: cuda required") }
+func (v *FrVector) CopyToHost(_ fr.Vector, _ ...gpu.StreamID)        { panic("gpu: cuda required") }
+func (v *FrVector) CopyFromDevice(_ *FrVector, _ ...gpu.StreamID)    { panic("gpu: cuda required") }
+func (v *FrVector) CopyFromDeviceStream(_ *FrVector, _ gpu.StreamID) { panic("gpu: cuda required") }
+func (v *FrVector) SetZero(_ ...gpu.StreamID)                        { panic("gpu: cuda required") }
+func (v *FrVector) Mul(_, _ *FrVector, _ ...gpu.StreamID)            { panic("gpu: cuda required") }
+func (v *FrVector) Add(_, _ *FrVector, _ ...gpu.StreamID)            { panic("gpu: cuda required") }
+func (v *FrVector) Sub(_, _ *FrVector, _ ...gpu.StreamID)            { panic("gpu: cuda required") }
+func (v *FrVector) AddMul(_, _ *FrVector, _ ...gpu.StreamID)         { panic("gpu: cuda required") }
 func (v *FrVector) AddScalarMul(_ *FrVector, _ fr.Element, _ ...gpu.StreamID) {
 	panic("gpu: cuda required")
 }

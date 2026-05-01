@@ -116,6 +116,18 @@ func (gpk *GPUProvingKey) Close() {
 // gpuInstance — persistent GPU resources + circuit data
 // ─────────────────────────────────────────────────────────────────────────────
 
+// quotientWorkBufs holds pre-allocated GPU buffers for computeNumeratorGPU and
+// computeLinearizedPoly, avoiding per-proof cudaMalloc/Free overhead.
+type quotientWorkBufs struct {
+	L, R, O, Z             *FrVector    // wire poly working buffers (reused per coset)
+	S1, S2, S3             *FrVector    // perm selector buffers
+	Result                 *FrVector    // coset numerator accumulator
+	LCan, RCan, OCan, ZCan *FrVector    // canonical wire polys (uploaded once per proof)
+	QkSrc                  *FrVector    // Qk canonical source (D2D per coset, avoids H2D)
+	CosetBlock             [4]*FrVector // GPU-resident coset results (avoids D2H/H2D)
+	LinResult, LinW        *FrVector    // linearized poly GPU scratch
+}
+
 type gpuInstance struct {
 	dev   *gpu.Device
 	vk    *curplonk.VerifyingKey
@@ -141,6 +153,9 @@ type gpuInstance struct {
 	permutation                                        []int64
 	nbPublicVariables                                  int
 	commitmentInfo                                     []uint64
+
+	gpuWork *FrVector // shared scratch buffer (persists for prover lifetime)
+	qWb     quotientWorkBufs
 
 	hBufs hostBufs
 }
@@ -224,8 +239,46 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 		return fail("upload polynomials", err)
 	}
 
+	if err := inst.allocPersistentBufs(); err != nil {
+		return fail("alloc persistent GPU buffers", err)
+	}
+
 	inst.initHostBufs()
 	return inst, nil
+}
+
+// allocPersistentBufs allocates GPU work buffers that persist across proofs.
+// Avoids per-proof cudaMalloc/Free overhead (~3 ms per 64 MB alloc × 20 bufs).
+func (inst *gpuInstance) allocPersistentBufs() error {
+	n := inst.n
+	alloc := func() (*FrVector, error) {
+		return NewFrVector(inst.dev, n)
+	}
+	wb := &inst.qWb
+	// Flat list mirrors the free loop in close() — keep in sync.
+	named := []*(*FrVector){
+		&inst.gpuWork,
+		&wb.L, &wb.R, &wb.O, &wb.Z,
+		&wb.S1, &wb.S2, &wb.S3, &wb.Result,
+		&wb.LCan, &wb.RCan, &wb.OCan, &wb.ZCan,
+		&wb.QkSrc, &wb.LinResult, &wb.LinW,
+	}
+	for _, p := range named {
+		v, err := alloc()
+		if err != nil {
+			return fmt.Errorf("alloc persistent GPU buffer: %w", err)
+		}
+		*p = v
+	}
+	for k := range wb.CosetBlock {
+		v, err := alloc()
+		if err != nil {
+			return fmt.Errorf("alloc persistent GPU buffer: %w", err)
+		}
+		wb.CosetBlock[k] = v
+	}
+	// Create multi-stream upfront so the quotient pipeline can use it immediately.
+	return inst.dev.InitMultiStream()
 }
 
 func (inst *gpuInstance) initCircuitData(spr *cs.SparseR1CS) error {
@@ -359,6 +412,24 @@ func (inst *gpuInstance) close() {
 		}
 	}
 	inst.dQcp = nil
+	// Free persistent work buffers (mirrors the alloc list in allocPersistentBufs).
+	wb := &inst.qWb
+	for _, v := range []*FrVector{
+		inst.gpuWork,
+		wb.L, wb.R, wb.O, wb.Z, wb.S1, wb.S2, wb.S3, wb.Result,
+		wb.LCan, wb.RCan, wb.OCan, wb.ZCan, wb.QkSrc, wb.LinResult, wb.LinW,
+	} {
+		if v != nil {
+			v.Free()
+		}
+	}
+	for k := range wb.CosetBlock {
+		if wb.CosetBlock[k] != nil {
+			wb.CosetBlock[k].Free()
+		}
+	}
+	inst.gpuWork = nil
+	inst.qWb = quotientWorkBufs{}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -380,20 +451,12 @@ type gpuProver struct {
 	bpL, bpR, bpO, bpZ           *iop.Polynomial
 	qkCoeffs                     fr.Vector
 	qkCanonical                  fr.Vector
-	gpuWork                      *FrVector
 	lBlinded, rBlinded, oBlinded []fr.Element
 	zBlinded                     []fr.Element
 	h1, h2, h3                   []fr.Element
 	gamma, beta, alpha, zeta     fr.Element
 
 	logTime func(string)
-}
-
-func (p *gpuProver) cleanup() {
-	if p.gpuWork != nil {
-		p.gpuWork.Free()
-		p.gpuWork = nil
-	}
 }
 
 // ─── Prove phases ─────────────────────────────────────────────────────────────
@@ -425,11 +488,11 @@ func (p *gpuProver) solve(spr *cs.SparseR1CS, fullWitness witness.Witness) error
 			committedValues[offset+ci.CommitmentIndex].SetRandom()
 			committedValues[offset+spr.GetNbConstraints()-1].SetRandom()
 
-			p.gpuWork.CopyFromHost(fr.Vector(committedValues[:n]))
-			inst.fftDom.BitReverse(p.gpuWork)
-			inst.fftDom.FFTInverse(p.gpuWork)
+			inst.gpuWork.CopyFromHost(fr.Vector(committedValues[:n]))
+			inst.fftDom.BitReverse(inst.gpuWork)
+			inst.fftDom.FFTInverse(inst.gpuWork)
 			canonicalBuf := make(fr.Vector, n)
-			p.gpuWork.CopyToHost(canonicalBuf)
+			inst.gpuWork.CopyToHost(canonicalBuf)
 			p.pi2Canonical[commDepth] = canonicalBuf
 
 			jacs, err := inst.msm.MultiExp(canonicalBuf)
@@ -486,10 +549,10 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	hb := &inst.hBufs
 
 	gpuToCanonical := func(lagrange, dst fr.Vector) {
-		p.gpuWork.CopyFromHost(lagrange)
-		inst.fftDom.BitReverse(p.gpuWork)
-		inst.fftDom.FFTInverse(p.gpuWork)
-		p.gpuWork.CopyToHost(dst)
+		inst.gpuWork.CopyFromHost(lagrange)
+		inst.fftDom.BitReverse(inst.gpuWork)
+		inst.fftDom.FFTInverse(inst.gpuWork)
+		inst.gpuWork.CopyToHost(dst)
 	}
 
 	gpuToCanonical(p.evalL, hb.lCanonical)
@@ -499,10 +562,10 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	if err := waitQk(); err != nil {
 		return err
 	}
-	p.gpuWork.CopyFromHost(p.qkCoeffs)
-	inst.fftDom.BitReverse(p.gpuWork)
-	inst.fftDom.FFTInverse(p.gpuWork)
-	p.gpuWork.CopyToHost(hb.qkCanonical)
+	inst.gpuWork.CopyFromHost(p.qkCoeffs)
+	inst.fftDom.BitReverse(inst.gpuWork)
+	inst.fftDom.FFTInverse(inst.gpuWork)
+	inst.gpuWork.CopyToHost(hb.qkCanonical)
 	p.qkCanonical = hb.qkCanonical
 	p.qkCoeffs = nil
 
@@ -550,7 +613,7 @@ func (p *gpuProver) deriveGammaBeta() error {
 func (p *gpuProver) buildZAndCommit() error {
 	inst := p.inst
 
-	zLagrange, err := buildZGPU(inst, p.gpuWork, p.evalL, p.evalR, p.evalO, p.beta, p.gamma)
+	zLagrange, err := buildZGPU(inst, inst.gpuWork, p.evalL, p.evalR, p.evalO, p.beta, p.gamma)
 	if err != nil {
 		return fmt.Errorf("build Z: %w", err)
 	}
@@ -558,10 +621,10 @@ func (p *gpuProver) buildZAndCommit() error {
 	p.logTime("build Z")
 
 	hb := &inst.hBufs
-	p.gpuWork.CopyFromHost(zLagrange)
-	inst.fftDom.BitReverse(p.gpuWork)
-	inst.fftDom.FFTInverse(p.gpuWork)
-	p.gpuWork.CopyToHost(hb.zLagrange)
+	inst.gpuWork.CopyFromHost(zLagrange)
+	inst.fftDom.BitReverse(inst.gpuWork)
+	inst.fftDom.FFTInverse(inst.gpuWork)
+	inst.gpuWork.CopyToHost(hb.zLagrange)
 	p.zBlinded = blindInto(hb.zBlinded, hb.zLagrange, p.bpZ)
 
 	zCommit, err := gpuCommit(inst.msm, p.zBlinded)
@@ -592,7 +655,7 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 
 	var qErr error
 	p.h1, p.h2, p.h3, qErr = computeNumeratorGPU(
-		inst, p.gpuWork,
+		inst, inst.gpuWork,
 		p.lBlinded, p.rBlinded, p.oBlinded, p.zBlinded,
 		p.qkCanonical, p.pi2Canonical,
 		p.alpha, p.beta, p.gamma,
@@ -638,12 +701,18 @@ func (p *gpuProver) openAndFinalize() error {
 		bzuzetaCh <- openZPoly[0]
 	}()
 
-	// Evaluate polynomials at zeta
-	blzeta := polyEvalParallel(p.lBlinded, p.zeta)
-	brzeta := polyEvalParallel(p.rBlinded, p.zeta)
-	bozeta := polyEvalParallel(p.oBlinded, p.zeta)
-	s1Zeta := PolyEvalFromDevice(inst.dS1, p.zeta)
-	s2Zeta := PolyEvalFromDevice(inst.dS2, p.zeta)
+	// Evaluate L, R, O, S1, S2 concurrently to reduce goroutine contention with
+	// the bzuzetaCh goroutine. S1/S2 use host-resident canonical to avoid 256 MB D2H.
+	var blzeta, brzeta, bozeta, s1Zeta, s2Zeta fr.Element
+	var evalWG sync.WaitGroup
+	evalWG.Add(5)
+	go func() { defer evalWG.Done(); blzeta = polyEvalParallel(p.lBlinded, p.zeta) }()
+	go func() { defer evalWG.Done(); brzeta = polyEvalParallel(p.rBlinded, p.zeta) }()
+	go func() { defer evalWG.Done(); bozeta = polyEvalParallel(p.oBlinded, p.zeta) }()
+	go func() { defer evalWG.Done(); s1Zeta = polyEvalParallel(inst.s1Canonical, p.zeta) }()
+	go func() { defer evalWG.Done(); s2Zeta = polyEvalParallel(inst.s2Canonical, p.zeta) }()
+	evalWG.Wait()
+
 	qcpzeta := make([]fr.Element, len(p.commitmentInfo))
 	for i := range p.commitmentInfo {
 		qcpzeta[i] = PolyEvalFromDevice(inst.dQcp[i], p.zeta)
@@ -762,12 +831,6 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		Bsb22Commitments: make([]curve.G1Affine, nbCommitments),
 	}
 
-	gpuWork, err := NewFrVector(dev, inst.n)
-	if err != nil {
-		return nil, fmt.Errorf("alloc gpuWork: %w", err)
-	}
-	defer gpuWork.Free()
-
 	p := &gpuProver{
 		inst:           inst,
 		proof:          *newProof,
@@ -775,7 +838,6 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		commitmentInfo: commitmentInfo,
 		commitmentVal:  make([]fr.Element, nbCommitments),
 		pi2Canonical:   make([][]fr.Element, nbCommitments),
-		gpuWork:        gpuWork,
 		logTime:        logTime,
 	}
 
@@ -843,16 +905,12 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		if err := p.computeQuotientAndCommit(); err != nil {
 			return err
 		}
-		p.gpuWork.Free()
-		p.gpuWork = nil
-		return p.openAndFinalize()
+		return p.openAndFinalize() // inst.gpuWork persists (owned by gpuInstance)
 	})
 
 	if err := g.Wait(); err != nil {
-		p.cleanup()
 		return nil, err
 	}
-	p.cleanup()
 
 	logTime("total")
 	result := p.proof
@@ -915,38 +973,33 @@ func computeNumeratorGPU(
 	lBlinded, rBlinded, oBlinded, zBlinded []fr.Element,
 	qkCanonicalHost fr.Vector, pi2Canonical [][]fr.Element,
 	alpha, beta, gamma fr.Element,
-) (h1, h2, h3 []fr.Element, err error) {
+) (h1, h2, h3 []fr.Element, retErr error) {
 	n := inst.n
 	dev := inst.dev
 	fftDom := inst.fftDom
 	domain0 := inst.domain0
 	cosetShift := inst.vk.CosetShift
 
-	alloc := func() *FrVector {
-		r, e := NewFrVector(dev, n)
-		if e != nil && err == nil {
-			err = e
-		}
-		return r
-	}
-	gpuL, gpuR, gpuO, gpuZ := alloc(), alloc(), alloc(), alloc()
-	gpuS1, gpuS2, gpuS3 := alloc(), alloc(), alloc()
-	gpuResult := alloc()
-	if err != nil {
-		for _, v := range []*FrVector{gpuL, gpuR, gpuO, gpuZ, gpuS1, gpuS2, gpuS3, gpuResult} {
-			if v != nil {
-				v.Free()
-			}
-		}
-		return nil, nil, nil, fmt.Errorf("allocate gpu vectors: %w", err)
-	}
-	defer func() {
-		for _, v := range []*FrVector{gpuL, gpuR, gpuO, gpuZ, gpuS1, gpuS2, gpuS3, gpuResult} {
-			if v != nil {
-				v.Free()
-			}
-		}
-	}()
+	// Pre-allocated buffers from gpuInstance (avoids per-proof cudaMalloc/Free).
+	wb := &inst.qWb
+	gpuL, gpuR, gpuO, gpuZ := wb.L, wb.R, wb.O, wb.Z
+	gpuS1, gpuS2, gpuS3 := wb.S1, wb.S2, wb.S3
+	gpuResult := wb.Result
+	gpuLCan, gpuRCan, gpuOCan, gpuZCan := wb.LCan, wb.RCan, wb.OCan, wb.ZCan
+	gpuCosetBlocks := wb.CosetBlock
+
+	// Event IDs used for cross-stream synchronisation in the 4-coset loop.
+	const (
+		evS123Done  gpu.EventID = 0 // StreamTransfer → StreamCompute: S1/S2/S3 D2D done
+		evCosetDone gpu.EventID = 3 // StreamCompute → StreamTransfer: full coset k done
+	)
+
+	// Upload canonical data and Qk once per proof before the loop.
+	gpuLCan.CopyFromHost(fr.Vector(lBlinded[:n]))
+	gpuRCan.CopyFromHost(fr.Vector(rBlinded[:n]))
+	gpuOCan.CopyFromHost(fr.Vector(oBlinded[:n]))
+	gpuZCan.CopyFromHost(fr.Vector(zBlinded[:n]))
+	wb.QkSrc.CopyFromHost(qkCanonicalHost)
 
 	domain1 := fft.NewDomain(4*uint64(n), fft.WithoutPrecompute())
 	u := domain1.FrMultiplicativeGen
@@ -958,14 +1011,7 @@ func computeNumeratorGPU(
 	one.SetOne()
 
 	hFull := inst.hBufs.hFull
-	hostChunks := [4]fr.Vector{
-		fr.Vector(hFull[0:n]),
-		fr.Vector(hFull[n : 2*n]),
-		fr.Vector(hFull[2*n : 3*n]),
-		fr.Vector(hFull[3*n : 4*n]),
-	}
 
-	hostScratch := make(fr.Vector, n)
 	var cosetGen fr.Element
 	for k := 0; k < 4; k++ {
 		if k == 0 {
@@ -976,32 +1022,28 @@ func computeNumeratorGPU(
 		var cosetPowN fr.Element
 		cosetPowN.Exp(cosetGen, bn)
 
-		gpuS1.CopyFromDevice(inst.dS1)
-		gpuS2.CopyFromDevice(inst.dS2)
-		gpuS3.CopyFromDevice(inst.dS3)
+		// Stream 1 must finish before overwriting gpuS1/S2/S3 with the next coset's
+		// selectors. PermBoundary (end of previous coset) still holds reads on S1/S2/S3.
+		if k > 0 {
+			dev.WaitEvent(gpu.StreamTransfer, evCosetDone)
+		}
 
-		lTail := lBlinded[n:]
-		rTail := rBlinded[n:]
-		oTail := oBlinded[n:]
-		zTail := zBlinded[n:]
+		// Stream 1: D2D perm selectors concurrent with L/R/O/Z reduce+FFT on stream 0.
+		gpuS1.CopyFromDeviceStream(inst.dS1, gpu.StreamTransfer)
+		gpuS2.CopyFromDeviceStream(inst.dS2, gpu.StreamTransfer)
+		gpuS3.CopyFromDeviceStream(inst.dS3, gpu.StreamTransfer)
+		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
 
-		reduceBlindedForCoset(hostScratch, lBlinded, cosetPowN)
-		gpuL.CopyFromHost(hostScratch)
-		reduceBlindedForCoset(hostScratch, rBlinded, cosetPowN)
-		gpuR.CopyFromHost(hostScratch)
-		reduceBlindedForCoset(hostScratch, oBlinded, cosetPowN)
-		gpuO.CopyFromHost(hostScratch)
-		reduceBlindedForCoset(hostScratch, zBlinded, cosetPowN)
-		gpuZ.CopyFromHost(hostScratch)
-		_ = lTail
-		_ = rTail
-		_ = oTail
-		_ = zTail
-
+		// Stream 0: reduce blinded canonicals and FFT while D2D runs concurrently.
+		ReduceBlindedCoset(gpuL, gpuLCan, lBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuR, gpuRCan, rBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuO, gpuOCan, oBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuZ, gpuZCan, zBlinded[n:], cosetPowN)
 		fftDom.CosetFFT(gpuL, cosetGen)
 		fftDom.CosetFFT(gpuR, cosetGen)
 		fftDom.CosetFFT(gpuO, cosetGen)
 		fftDom.CosetFFT(gpuZ, cosetGen)
+		dev.WaitEvent(gpu.StreamCompute, evS123Done)
 		fftDom.CosetFFT(gpuS1, cosetGen)
 		fftDom.CosetFFT(gpuS2, cosetGen)
 		fftDom.CosetFFT(gpuS3, cosetGen)
@@ -1023,6 +1065,7 @@ func computeNumeratorGPU(
 			fftDom,
 		)
 
+		// Gate selectors: D2D on stream 0 (PermBoundary has already released S1/S2/S3).
 		gpuZ.CopyFromDevice(inst.dQl)
 		fftDom.CosetFFT(gpuZ, cosetGen)
 		gpuS1.CopyFromDevice(inst.dQr)
@@ -1031,8 +1074,7 @@ func computeNumeratorGPU(
 		fftDom.CosetFFT(gpuS2, cosetGen)
 		gpuS3.CopyFromDevice(inst.dQo)
 		fftDom.CosetFFT(gpuS3, cosetGen)
-
-		gpuWork.CopyFromHost(qkCanonicalHost)
+		gpuWork.CopyFromDevice(wb.QkSrc) // D2D: Qk uploaded once above
 		fftDom.CosetFFT(gpuWork, cosetGen)
 
 		var zhKInv fr.Element
@@ -1050,17 +1092,17 @@ func computeNumeratorGPU(
 			gpuResult.AddScalarMul(gpuZ, zhKInv)
 		}
 
-		gpuResult.CopyToHost(hostChunks[k])
+		// Store coset result on GPU via D2D; signal stream 1 the coset is fully done.
+		gpuCosetBlocks[k].CopyFromDevice(gpuResult)
+		dev.RecordEvent(gpu.StreamCompute, evCosetDone)
 	}
 
-	var blocks [4]*FrVector
-	blocks = [4]*FrVector{gpuL, gpuR, gpuO, gpuZ}
+	blocks := [4]*FrVector{gpuCosetBlocks[0], gpuCosetBlocks[1], gpuCosetBlocks[2], gpuCosetBlocks[3]}
 	cosetGen.Set(&u)
 	for k := 0; k < 4; k++ {
 		if k > 0 {
 			cosetGen.Mul(&cosetGen, &g1)
 		}
-		blocks[k].CopyFromHost(hostChunks[k])
 		var cosetGenInv fr.Element
 		cosetGenInv.Inverse(&cosetGen)
 		fftDom.CosetFFTInverse(blocks[k], cosetGenInv)
@@ -1266,20 +1308,9 @@ func computeLinearizedPoly(
 		Mul(&alphaSquareLagrangeZero, &alpha).
 		Mul(&alphaSquareLagrangeZero, &domain0.CardinalityInv)
 
-	dev := inst.dev
-	gpuResult, err := NewFrVector(dev, n)
-	if err != nil {
-		return innerComputeLinearizedPoly(inst, lZeta, rZeta, oZeta, alpha, beta, gamma, zeta, zu,
-			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3)
-	}
-	defer gpuResult.Free()
-	gpuW, err := NewFrVector(dev, n)
-	if err != nil {
-		gpuResult.Free()
-		return innerComputeLinearizedPoly(inst, lZeta, rZeta, oZeta, alpha, beta, gamma, zeta, zu,
-			s1Zeta, s2Zeta, qcpZeta, blindedZCanonical, pi2Canonical, h1, h2, h3)
-	}
-	defer gpuW.Free()
+	// Pre-allocated GPU buffers from gpuInstance (guaranteed non-nil after newGPUInstance).
+	gpuResult := inst.qWb.LinResult
+	gpuW := inst.qWb.LinW
 
 	var combinedZCoeff fr.Element
 	combinedZCoeff.Add(&s2, &alphaSquareLagrangeZero)
@@ -1456,16 +1487,6 @@ func getRandomPolynomial(degree int) *iop.Polynomial {
 		coeffs[i].SetRandom()
 	}
 	return iop.NewPolynomial(&coeffs, iop.Form{Basis: iop.Canonical, Layout: iop.Regular})
-}
-
-func reduceBlindedForCoset(dst fr.Vector, blinded []fr.Element, cosetPowN fr.Element) {
-	n := len(dst)
-	copy(dst, blinded[:n])
-	for j := n; j < len(blinded); j++ {
-		var tmp fr.Element
-		tmp.Mul(&blinded[j], &cosetPowN)
-		dst[j-n].Add(&dst[j-n], &tmp)
-	}
 }
 
 func parallelHornerQuotient(poly []fr.Element, z fr.Element) {

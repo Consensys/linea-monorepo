@@ -27,3 +27,7 @@ func (m *G1MSM) MultiExp(_ ...[]fr.Element) ([]curve.G1Jac, error) {
 	return nil, errors.New("gpu: cuda required")
 }
 func (m *G1MSM) LastPhaseTimings() [9]float32 { return [9]float32{} }
+
+func MultiExpSplit(_, _ *G1MSM, _ []fr.Element) (curve.G1Jac, error) {
+	return curve.G1Jac{}, errors.New("gpu: cuda required")
+}

@@ -904,6 +904,42 @@ gnark_gpu_error_t gnark_gpu_horner_quotient(
 gnark_gpu_error_t gnark_gpu_mem_get_info(gnark_gpu_context_t ctx,
                                           size_t *free_bytes, size_t *total_bytes);
 
+// =============================================================================
+// Stream-aware plonk2 primitives (plonk2 quotient pipeline)
+// =============================================================================
+
+// D2D copy on a specific stream.
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_d2d_stream(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src,
+    int stream_id);
+
+// Forward NTT on a specific stream.
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_forward_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id);
+
+// Inverse NTT on a specific stream.
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_inverse_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id);
+
+// Bit-reverse permutation on a specific stream.
+gnark_gpu_error_t gnark_gpu_plonk2_ntt_bit_reverse_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id);
+
+// Scale-by-powers on a specific stream (for CosetFFT).
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers_stream(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *generator,
+    int stream_id);
+
 #ifdef __cplusplus
 }
 #endif

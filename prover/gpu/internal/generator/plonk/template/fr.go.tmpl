@@ -112,6 +112,22 @@ func (v *FrVector) CopyFromDevice(src *FrVector, _ ...gpu.StreamID) {
 	}
 }
 
+// CopyFromDeviceStream copies src to v (GPU-to-GPU) on a specific stream.
+// Panics on size or device mismatch.
+func (v *FrVector) CopyFromDeviceStream(src *FrVector, streamID gpu.StreamID) {
+	if v.n != src.n {
+		panic("gpu: CopyFromDeviceStream size mismatch")
+	}
+	if v.dev != src.dev {
+		panic("gpu: CopyFromDeviceStream device mismatch")
+	}
+	if err := toError(C.gnark_gpu_plonk2_fr_vector_copy_d2d_stream(
+		devCtx(v.dev), v.handle, src.handle, C.int(streamID),
+	)); err != nil {
+		panic("gpu: CopyFromDeviceStream failed: " + err.Error())
+	}
+}
+
 // SetZero sets all elements to zero.
 func (v *FrVector) SetZero(_ ...gpu.StreamID) {
 	if err := toError(C.gnark_gpu_plonk2_fr_vector_set_zero(
@@ -202,7 +218,17 @@ func (v *FrVector) ScalarMul(c fr.Element, _ ...gpu.StreamID) {
 
 // ScaleByPowers computes v[i] *= g^i for i in [0, n).
 // Used for coset FFT shifting.
-func (v *FrVector) ScaleByPowers(g fr.Element, _ ...gpu.StreamID) {
+func (v *FrVector) ScaleByPowers(g fr.Element, streams ...gpu.StreamID) {
+	if len(streams) > 0 {
+		if err := toError(C.gnark_gpu_plonk2_fr_vector_scale_by_powers_stream(
+			devCtx(v.dev), v.handle,
+			(*C.uint64_t)(unsafe.Pointer(&g)),
+			C.int(streams[0]),
+		)); err != nil {
+			panic("gpu: ScaleByPowers failed: " + err.Error())
+		}
+		return
+	}
 	if err := toError(C.gnark_gpu_plonk2_fr_vector_scale_by_powers(
 		devCtx(v.dev), v.handle,
 		(*C.uint64_t)(unsafe.Pointer(&g)),

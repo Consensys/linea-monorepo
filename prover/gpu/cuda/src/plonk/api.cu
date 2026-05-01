@@ -1722,6 +1722,7 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers(
         return GNARK_GPU_ERROR_INVALID_ARG;
     }
 
+    // THREADS=256 powers stored by local_power_table_kernel in staging buffer.
     gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, 256ULL * (size_t)vec->limbs);
     if (gerr != GNARK_GPU_SUCCESS) return gerr;
 
@@ -2055,6 +2056,90 @@ extern "C" int gnark_gpu_plonk2_msm_get_phase_timings(
     if (!msm || !out) return 0;
     for (int i = 0; i < 9; i++) out[i] = msm->phase_timings_ms[i];
     return 9;
+}
+
+// =============================================================================
+// Stream-aware plonk2 primitives
+// =============================================================================
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_copy_d2d_stream(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t dst,
+    gnark_gpu_plonk2_fr_vector_t src,
+    int stream_id) {
+    if (!ctx || !dst || !src || dst->ctx != ctx || !plonk2_same_vector_shape(dst, src))
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    cudaStream_t s = get_stream(ctx, stream_id);
+    if (!s) return GNARK_GPU_ERROR_INVALID_ARG;
+    for (int i = 0; i < dst->limbs; i++) {
+        cudaError_t err = cudaMemcpyAsync(dst->limbs_dev[i], src->limbs_dev[i],
+                                          dst->count * sizeof(uint64_t),
+                                          cudaMemcpyDeviceToDevice, s);
+        if (err != cudaSuccess) return check_cuda(err);
+    }
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_forward_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    cudaStream_t s = get_stream(domain->ctx, stream_id);
+    if (!s) return GNARK_GPU_ERROR_INVALID_ARG;
+    gnark_gpu::plonk2::launch_ntt_forward(domain->curve, plonk2_view(data),
+                                          plonk2_const_view(domain->fwd),
+                                          domain->size, s);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_inverse_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    cudaStream_t s = get_stream(domain->ctx, stream_id);
+    if (!s) return GNARK_GPU_ERROR_INVALID_ARG;
+    gnark_gpu::plonk2::launch_ntt_inverse(domain->curve, plonk2_view(data),
+                                          plonk2_const_view(domain->inv),
+                                          domain->inv_n, domain->size, s);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_ntt_bit_reverse_stream(
+    gnark_gpu_plonk2_ntt_domain_t domain,
+    gnark_gpu_plonk2_fr_vector_t data,
+    int stream_id) {
+    gnark_gpu_error_t gerr = plonk2_check_domain_vector(domain, data);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+    cudaStream_t s = get_stream(domain->ctx, stream_id);
+    if (!s) return GNARK_GPU_ERROR_INVALID_ARG;
+    gnark_gpu::plonk2::launch_bit_reverse(domain->curve, plonk2_view(data),
+                                          domain->size, s);
+    return check_cuda(cudaGetLastError());
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers_stream(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *generator,
+    int stream_id) {
+    if (!ctx || !vec || !generator || vec->ctx != ctx) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    cudaStream_t s = get_stream(ctx, stream_id);
+    if (!s) return GNARK_GPU_ERROR_INVALID_ARG;
+
+    // THREADS=256 powers stored by local_power_table_kernel in staging buffer.
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, 256ULL * (size_t)vec->limbs);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    gnark_gpu::plonk2::launch_scale_by_powers(
+        vec->curve, plonk2_view(vec), generator, ctx->plonk2_staging_buffer,
+        vec->count, s);
+    return check_cuda(cudaGetLastError());
 }
 
 // =============================================================================

@@ -159,3 +159,50 @@ func (m *G1MSM) LastPhaseTimings() [9]float32 {
 	}
 	return result
 }
+
+// MultiExpSplit runs the MSM split across 2 devices for ~2x speedup.
+// msm0 must hold points[:n/2] and msm1 must hold points[n/2:].
+// This is an advanced API; use MultiExp for single-GPU operation.
+func MultiExpSplit(msm0, msm1 *G1MSM, scalars []fr.Element) (curve.G1Jac, error) {
+	if msm0 == nil || msm1 == nil || len(scalars) == 0 {
+		return curve.G1Jac{}, fmt.Errorf("gpu: MultiExpSplit: nil MSM or empty scalars")
+	}
+	n := len(scalars)
+	half := n / 2
+
+	type result struct {
+		jac curve.G1Jac
+		err error
+	}
+	ch0 := make(chan result, 1)
+	ch1 := make(chan result, 1)
+
+	go func() {
+		jacs, err := msm0.MultiExp(scalars[:half])
+		if err != nil {
+			ch0 <- result{err: err}
+			return
+		}
+		ch0 <- result{jac: jacs[0]}
+	}()
+
+	go func() {
+		jacs, err := msm1.MultiExp(scalars[half:])
+		if err != nil {
+			ch1 <- result{err: err}
+			return
+		}
+		ch1 <- result{jac: jacs[0]}
+	}()
+
+	r0 := <-ch0
+	r1 := <-ch1
+	if r0.err != nil {
+		return curve.G1Jac{}, r0.err
+	}
+	if r1.err != nil {
+		return curve.G1Jac{}, r1.err
+	}
+	r0.jac.AddAssign(&r1.jac)
+	return r0.jac, nil
+}
