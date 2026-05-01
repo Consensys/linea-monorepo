@@ -23,6 +23,10 @@ ScalarArg make_scalar_arg(gnark_gpu_plonk2_curve_id_t curve, const uint64_t *lim
 }
 
 template <typename Params>
+// copy_aos_to_soa_kernel: transpose field elements from AoS to SoA layout.
+// Input src: n×LIMBS uint64s in Array-of-Structs (gnark-crypto) order.
+// Output dst: LIMBS×n SoA layout for coalesced GPU access.
+// Thread layout: 1D, one thread per element.
 __global__ void copy_aos_to_soa_kernel(FrView dst, const uint64_t *__restrict__ src, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -34,6 +38,9 @@ __global__ void copy_aos_to_soa_kernel(FrView dst, const uint64_t *__restrict__ 
 }
 
 template <typename Params>
+// copy_soa_to_aos_kernel: transpose field elements from SoA to AoS layout.
+// Input src: LIMBS×n SoA (GPU-resident). Output dst: n×LIMBS AoS (host format).
+// Thread layout: 1D, one thread per element.
 __global__ void copy_soa_to_aos_kernel(uint64_t *__restrict__ dst, ConstFrView src, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -45,6 +52,9 @@ __global__ void copy_soa_to_aos_kernel(uint64_t *__restrict__ dst, ConstFrView s
 }
 
 template <typename Params>
+// set_zero_kernel: set all n field elements to zero (Montgomery form of 0).
+// Thread layout: 1D, one thread per element.
+// Precondition: v must have count >= n.
 __global__ void set_zero_kernel(FrView v, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -55,6 +65,9 @@ __global__ void set_zero_kernel(FrView v, size_t n) {
 }
 
 template <typename Params>
+// add_kernel: element-wise modular addition out[i] = a[i] + b[i] mod p.
+// All vectors must have the same length n and be in Montgomery form.
+// Thread layout: 1D, one thread per element.
 __global__ void add_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -66,6 +79,9 @@ __global__ void add_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 }
 
 template <typename Params>
+// sub_kernel: element-wise modular subtraction out[i] = a[i] - b[i] mod p.
+// All vectors must have the same length n and be in Montgomery form.
+// Thread layout: 1D, one thread per element.
 __global__ void sub_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -77,6 +93,9 @@ __global__ void sub_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 }
 
 template <typename Params>
+// mul_kernel: element-wise Montgomery multiplication out[i] = a[i] * b[i] mod p.
+// All vectors must have the same length n and be in Montgomery form.
+// Thread layout: 1D, one thread per element.
 __global__ void mul_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -88,6 +107,9 @@ __global__ void mul_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 }
 
 template <typename Params>
+// addmul_kernel: fused multiply-add out[i] = out[i] + a[i] * b[i] mod p.
+// All vectors must have the same length n and be in Montgomery form.
+// Thread layout: 1D, one thread per element.
 __global__ void addmul_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -102,6 +124,9 @@ __global__ void addmul_kernel(FrView out, ConstFrView a, ConstFrView b, size_t n
 }
 
 template <typename Params>
+// scalar_mul_kernel: broadcast scalar multiplication out[i] *= scalar mod p.
+// scalar is a single field element broadcast to all n elements.
+// Thread layout: 1D, one thread per element.
 __global__ void scalar_mul_kernel(FrView out, ScalarArg scalar_arg, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -114,6 +139,9 @@ __global__ void scalar_mul_kernel(FrView out, ScalarArg scalar_arg, size_t n) {
 }
 
 template <typename Params>
+// add_scalar_mul_kernel: fused scalar multiply-add out[i] += a[i] * scalar mod p.
+// Broadcasts scalar across all n elements of a.
+// Thread layout: 1D, one thread per element.
 __global__ void add_scalar_mul_kernel(
 	FrView out, ConstFrView a, ScalarArg scalar_arg, size_t n) {
 
@@ -156,6 +184,9 @@ __device__ __forceinline__ void inverse_pow(uint64_t out[Params::LIMBS],
 }
 
 template <typename Params>
+// invert_kernel: finalize batch inversion (phase 2 of Montgomery batch invert).
+// Applies pre-computed inverse products to recover individual inverses.
+// Called after the forward scan; thread layout: 1D, one thread per element.
 __global__ void invert_kernel(FrView data, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -166,6 +197,10 @@ __global__ void invert_kernel(FrView data, size_t n) {
 }
 
 template <typename Params>
+// butterfly4_inverse_kernel: size-4 inverse DFT butterfly across 4 FrVectors.
+// Implements the combined iDFT of 4 length-n blocks to recover h[0..n-1] from
+// 4 coset evaluations. Used in decomposed iFFT(4n) for PlonK quotient recovery.
+// omega4Inv: inverse of primitive 4th root of unity. quarter: 1/4 mod p.
 __global__ void butterfly4_inverse_kernel(
 	FrView b0, FrView b1, FrView b2, FrView b3,
 	ScalarArg omega4_inv_arg, ScalarArg quarter_arg, size_t n) {
@@ -211,6 +246,10 @@ __global__ void butterfly4_inverse_kernel(
 }
 
 template <typename Params>
+// reduce_blinded_coset_kernel: reduce a blinded polynomial for coset evaluation.
+// dst[i] = src[i] + tail[i] * cosetPowN  for i < tail_len
+// dst[i] = src[i]                          for i >= tail_len
+// Enables CosetFFT on n-element dst instead of the full (n+blinding) polynomial.
 __global__ void reduce_blinded_coset_kernel(
 	FrView dst, ConstFrView src, const uint64_t *tail,
 	ScalarArg coset_pow_n_arg, size_t n, size_t tail_len) {
@@ -234,6 +273,10 @@ __global__ void reduce_blinded_coset_kernel(
 }
 
 template <typename Params>
+// compute_l1_den_kernel: compute the first Lagrange polynomial denominator.
+// out[i] = coset_gen * omega^i - 1 for each domain point.
+// Used as denominator in L1(X) = (X^n-1) / (n*(X-1)) at coset points.
+// Thread layout: 1D, one thread per element.
 __global__ void compute_l1_den_kernel(
 	FrView out, ConstFrView twiddles, ScalarArg coset_gen_arg, size_t n) {
 
@@ -262,6 +305,11 @@ __global__ void compute_l1_den_kernel(
 }
 
 template <typename Params>
+// gate_accum_kernel: fused PlonK gate constraint accumulation.
+// Computes result[i] = (result[i] + Ql[i]*L + Qr[i]*R + Qm[i]*L*R
+//                       + Qo[i]*O + Qk[i]) * zhKInv  in a single pass.
+// result must already hold the permutation+boundary contribution from perm_boundary_kernel.
+// Thread layout: 1D, one thread per element. zhKInv = 1/(coset^n-1).
 __global__ void gate_accum_kernel(
 	FrView result,
 	ConstFrView ql, ConstFrView qr, ConstFrView qm, ConstFrView qo, ConstFrView qk,
@@ -325,6 +373,11 @@ __device__ __forceinline__ void omega_from_twiddles(
 }
 
 template <typename Params>
+// perm_boundary_kernel: fused PlonK permutation + boundary constraint.
+// Computes result[i] = alpha*(den-num) + alpha^2*(Z[i]-1)*L1[i]
+// where num = Z[i]*ID_product(x_i), den = Z_next*Sigma_product(x_i).
+// l1_den_inv[i] = 1/(coset_gen*omega^i-1); l1_scalar = (coset^n-1)/n.
+// Thread layout: 1D, one thread per element. Reads twiddles for omega^i.
 __global__ void perm_boundary_kernel(
 	FrView result,
 	ConstFrView l, ConstFrView r, ConstFrView o, ConstFrView z,
@@ -445,6 +498,11 @@ __device__ __forceinline__ void perm_identity_eval(
 }
 
 template <typename Params>
+// z_compute_factors_kernel: compute per-element Z polynomial ratio factors.
+// On return l_inout[i] = numerator = Z[i]*(L+beta*ID+gamma)*(R+beta*k1*ID+gamma)*(O+beta*k2*ID+gamma)
+//           r_inout[i] = denominator = (L+beta*S1+gamma)*(R+beta*S2+gamma)*(O+beta*S3+gamma)
+// ID = beta*omega^i is the domain identity. perm encodes the copy constraint mapping.
+// Thread layout: 1D, one thread per element.
 __global__ void z_compute_factors_kernel(
 	FrView l_inout, FrView r_inout, ConstFrView o,
 	const int64_t *perm, ConstFrView twiddles,
@@ -515,6 +573,10 @@ __global__ void z_compute_factors_kernel(
 }
 
 template <typename Params>
+// z_prefix_local_kernel: phase 1 of parallel Z prefix product scan.
+// Computes local prefix products within each chunk of Z_PREFIX_CHUNK_SIZE=1024.
+// Outputs per-chunk products to chunk_products for the CPU sequential scan.
+// Thread layout: 1D, one thread per chunk.
 __global__ void z_prefix_local_kernel(
 	FrView z, ConstFrView ratio, uint64_t *chunk_products, size_t n) {
 
@@ -542,6 +604,10 @@ __global__ void z_prefix_local_kernel(
 }
 
 template <typename Params>
+// z_prefix_fixup_kernel: phase 3a of Z prefix scan — apply chunk corrections.
+// Multiplies each element by its corresponding scanned chunk prefix.
+// Called after CPU sequential scan of chunk products from phase 1.
+// Thread layout: 1D, one thread per element.
 __global__ void z_prefix_fixup_kernel(FrView z, const uint64_t *scanned_prefixes, size_t n) {
 	size_t chunk_id = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	size_t num_chunks = (n + Z_PREFIX_CHUNK_SIZE - 1) / Z_PREFIX_CHUNK_SIZE;
@@ -564,6 +630,10 @@ __global__ void z_prefix_fixup_kernel(FrView z, const uint64_t *scanned_prefixes
 }
 
 template <typename Params>
+// z_prefix_shift_right_kernel: phase 3b of Z prefix scan — shift to get Z[0]=1.
+// Moves the exclusive prefix product result right by one position.
+// After this, z[0]=1 and z[i]=product(ratio[0..i-1]) for all i.
+// Thread layout: 1D, one thread per element.
 __global__ void z_prefix_shift_right_kernel(FrView z, ConstFrView src, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -579,6 +649,10 @@ __global__ void z_prefix_shift_right_kernel(FrView z, ConstFrView src, size_t n)
 }
 
 template <typename Params>
+// ntt_dif_stage_kernel: one stage of a Decimation-In-Frequency (DIF) NTT.
+// Implements one radix-2 butterfly pass: a'=a+b, b'=(a-b)*w_k.
+// Natural-order input; after all log2(n) stages output is bit-reversed.
+// Thread layout: 1D, ceil(n/2) threads total.
 __global__ void ntt_dif_stage_kernel(
 	FrView data, ConstFrView twiddles, size_t num_butterflies,
 	size_t half, size_t half_mask, size_t tw_stride) {
@@ -608,6 +682,10 @@ __global__ void ntt_dif_stage_kernel(
 }
 
 template <typename Params>
+// ntt_dit_stage_kernel: one stage of a Decimation-In-Time (DIT) inverse NTT.
+// Implements radix-2 butterfly: a'=a+w*b, b'=a-w*b. Bit-reversed input → natural output.
+// Includes optional 1/n scaling factor for the inverse NTT normalization.
+// Thread layout: 1D, ceil(n/2) threads.
 __global__ void ntt_dit_stage_kernel(
 	FrView data, ConstFrView twiddles, size_t num_butterflies,
 	size_t half, size_t half_mask, size_t tw_stride) {
@@ -637,9 +715,19 @@ __global__ void ntt_dit_stage_kernel(
 }
 
 template <typename Params>
+// scale_kernel: element-wise scalar multiplication v[i] *= scalar mod p.
+// Used after inverse NTT to apply the 1/n normalization factor.
+// Thread layout: 1D, one thread per element.
+// scale_kernel: element-wise scalar multiplication v[i] *= scalar mod p.
+// Used after inverse NTT to apply the 1/n normalization factor.
+// Thread layout: 1D, one thread per element.
 __global__ void scale_kernel(FrView data, const uint64_t *scalar, size_t n);
 
 template <typename Params>
+// ntt_dit_stage_scale_kernel: final DIT NTT stage combined with 1/n scaling.
+// Fuses the last butterfly pass with the normalization to save a kernel launch.
+// Output is the normalized canonical polynomial in natural order.
+// Thread layout: 1D, ceil(n/2) threads.
 __global__ void ntt_dit_stage_scale_kernel(
 	FrView data, ConstFrView twiddles, const uint64_t *scale,
 	size_t num_butterflies, size_t half, size_t half_mask, size_t tw_stride) {
@@ -675,6 +763,10 @@ __global__ void ntt_dit_stage_scale_kernel(
 }
 
 template <typename Params>
+// ntt_dif_radix8_kernel: radix-8 NTT butterfly for the Decimation-In-Frequency pass.
+// Processes 8 elements per thread group for better GPU occupancy vs radix-2.
+// Natural input → bit-reversed output after log8(n) passes.
+// Thread layout: 1D shared-memory tiled; 8×BLOCK_SIZE threads process 8 elements each.
 __global__ void ntt_dif_radix8_kernel(
 	FrView data, ConstFrView twiddles, uint32_t n, int stage_s) {
 
@@ -806,6 +898,10 @@ __global__ void ntt_dif_radix8_kernel(
 }
 
 template <typename Params, bool FUSE_SCALE>
+// ntt_dit_radix8_kernel: radix-8 inverse NTT butterfly for the Decimation-In-Time pass.
+// Processes 8 elements per thread group for better throughput.
+// Bit-reversed input → natural-order output after log8(n) passes.
+// Thread layout: 1D shared-memory tiled; 8×BLOCK_SIZE threads process 8 elements each.
 __global__ void ntt_dit_radix8_kernel(
 	FrView data, ConstFrView twiddles, const uint64_t *scale, uint32_t n, int stage_s) {
 
@@ -964,6 +1060,10 @@ __global__ void ntt_dit_radix8_kernel(
 }
 
 template <typename Params, int TAIL_LOG>
+// ntt_dif_tail_fused_kernel: fused DIF NTT tail stages in shared memory.
+// Combines the last TAIL_LOG radix-2 DIF stages into shared memory for
+// reduced global memory traffic. Processes a span of 2^TAIL_LOG elements.
+// Thread layout: 1024 threads per block, 1 block per span.
 __global__ void __launch_bounds__(1024, 1) ntt_dif_tail_fused_kernel(
 	FrView data, ConstFrView twiddles, uint32_t n, int stage_start) {
 
@@ -1042,6 +1142,10 @@ __global__ void __launch_bounds__(1024, 1) ntt_dif_tail_fused_kernel(
 }
 
 template <typename Params, int TAIL_LOG>
+// ntt_dit_tail_fused_kernel: fused DIT inverse NTT tail stages in shared memory.
+// Combines the last TAIL_LOG radix-2 DIT stages (with 1/n scaling on last stage).
+// Reduces global memory traffic for the most frequent butterfly stages.
+// Thread layout: 1024 threads per block, 1 block per span.
 __global__ void __launch_bounds__(1024, 1) ntt_dit_tail_fused_kernel(
 	FrView data, ConstFrView twiddles, uint32_t n, int stage_start) {
 
@@ -1120,6 +1224,12 @@ __global__ void __launch_bounds__(1024, 1) ntt_dit_tail_fused_kernel(
 }
 
 template <typename Params>
+// scale_kernel: element-wise scalar multiplication v[i] *= scalar mod p.
+// Used after inverse NTT to apply the 1/n normalization factor.
+// Thread layout: 1D, one thread per element.
+// scale_kernel: element-wise scalar multiplication v[i] *= scalar mod p.
+// Used after inverse NTT to apply the 1/n normalization factor.
+// Thread layout: 1D, one thread per element.
 __global__ void scale_kernel(FrView data, const uint64_t *scalar, size_t n) {
 	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(idx >= n) return;
@@ -1151,6 +1261,9 @@ __device__ __forceinline__ void pow_uint64(
 }
 
 template <typename Params>
+// scale_by_powers_kernel: multiply v[i] *= g^i for i in [0,n).
+// Used for coset FFT preparation: given poly p(X), computes p(g*X).
+// Thread layout: 1D, one thread per element. g is the coset generator.
 __global__ void scale_by_powers_kernel(
 	FrView data, ScalarArg generator_arg, const uint64_t *local_powers, size_t n) {
 
@@ -1182,6 +1295,9 @@ __global__ void scale_by_powers_kernel(
 }
 
 template <typename Params>
+// local_power_table_kernel: build a local table of g^{local_idx} values.
+// Used as a subproblem in scale_by_powers for large n (chunked approach).
+// Thread layout: 1D, one thread per chunk element.
 __global__ void local_power_table_kernel(ScalarArg generator_arg, uint64_t *local_powers) {
 	uint64_t generator[Params::LIMBS], power[Params::LIMBS];
 #pragma unroll
@@ -1203,6 +1319,10 @@ __device__ __forceinline__ size_t bit_reverse(size_t x, int log_n) {
 }
 
 template <typename Params>
+// bit_reverse_kernel: in-place bit-reversal permutation of n elements.
+// Swaps element i with element bit_reverse(i, log2(n)) for all i < bit_reverse(i).
+// Required to convert between natural and bit-reversed NTT orderings.
+// Thread layout: 1D, n/2 threads (each thread handles one swap pair).
 __global__ void bit_reverse_kernel(FrView data, size_t n, int log_n) {
 	size_t i = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
 	if(i >= n) return;
