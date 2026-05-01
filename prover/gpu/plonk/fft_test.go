@@ -263,7 +263,7 @@ func BenchmarkFFT(b *testing.B) {
 
 	// Large-size focus includes 1<<27 (4G elements in Fr AoS on host, 8G on device vector).
 	// For very large sizes, benchmark kernel iterations directly to avoid host reset dominating.
-	sizes := []int{1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 25, 1 << 26, 1 << 27}
+	sizes := []int{1 << 14, 1 << 18, 1 << 22} //, 1 << 20, 1 << 22, 1 << 24, 1 << 25, 1 << 26, 1 << 27}
 
 	for _, n := range sizes {
 		if testing.Short() && n > 1<<20 {

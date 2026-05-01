@@ -28,6 +28,9 @@ func DeviceAllocCopyInt64(_ *gpu.Device, _ []int64) (unsafe.Pointer, error) {
 	return nil, errors.New("gpu: cuda required")
 }
 func DeviceFreePtr(_ unsafe.Pointer) {}
+func PolyEvalGPU(_ *gpu.Device, _ *FrVector, _ fr.Element) fr.Element {
+	panic("gpu: cuda required")
+}
 func PolyEvalFromDevice(_ *FrVector, _ fr.Element) fr.Element {
 	panic("gpu: cuda required")
 }

@@ -11,7 +11,9 @@ import "C"
 
 import (
 	"fmt"
+	"log"
 	"math/big"
+	"os"
 	"runtime"
 	"unsafe"
 
@@ -52,10 +54,12 @@ func msmDefaultWindowBits(n int) int {
 // Points are uploaded once at construction. The context supports multiple
 // MultiExp calls sharing the same base points.
 type G1MSM struct {
-	handle     C.gnark_gpu_plonk2_msm_t
-	dev        *gpu.Device
-	n          int
-	windowBits int
+	handle        C.gnark_gpu_plonk2_msm_t
+	dev           *gpu.Device
+	n             int
+	windowBits    int
+	hostPoints    []curve.G1Affine
+	hostPointsPtr unsafe.Pointer
 }
 
 // NewG1MSM creates a G1MSM context by uploading affine points to the GPU.
@@ -75,19 +79,42 @@ func NewG1MSM(dev *gpu.Device, points []curve.G1Affine, windowBits int) (*G1MSM,
 		return nil, fmt.Errorf("gpu: window bits must be in [2,24], got %d", windowBits)
 	}
 
+	hostPoints := points
+	var hostPointsPtr unsafe.Pointer
+	if os.Getenv("GNARK_GPU_DISABLE_PINNED_MSM_POINTS") == "" {
+		nbytes := C.size_t(n) * C.size_t(unsafe.Sizeof(curve.G1Affine{}))
+		if err := toError(C.gnark_gpu_alloc_pinned(&hostPointsPtr, nbytes)); err == nil {
+			hostPoints = unsafe.Slice((*curve.G1Affine)(hostPointsPtr), n)
+			copy(hostPoints, points)
+		} else {
+			log.Printf("gpu: pinned MSM points unavailable (%v), using heap", err)
+			hostPointsPtr = nil
+		}
+	}
+
 	var handle C.gnark_gpu_plonk2_msm_t
 	if err := toError(C.gnark_gpu_plonk2_msm_create(
 		devCtx(dev),
 		curveID(),
-		(*C.uint64_t)(unsafe.Pointer(&points[0])),
+		(*C.uint64_t)(unsafe.Pointer(&hostPoints[0])),
 		C.size_t(n),
 		C.int(windowBits),
 		&handle,
 	)); err != nil {
+		if hostPointsPtr != nil {
+			C.gnark_gpu_free_pinned(hostPointsPtr)
+		}
 		return nil, err
 	}
 
-	m := &G1MSM{handle: handle, dev: dev, n: n, windowBits: windowBits}
+	m := &G1MSM{
+		handle:        handle,
+		dev:           dev,
+		n:             n,
+		windowBits:    windowBits,
+		hostPoints:    hostPoints,
+		hostPointsPtr: hostPointsPtr,
+	}
 	runtime.SetFinalizer(m, (*G1MSM).Close)
 	return m, nil
 }
@@ -97,6 +124,11 @@ func (m *G1MSM) Close() {
 	if m.handle != nil {
 		C.gnark_gpu_plonk2_msm_destroy(m.handle)
 		m.handle = nil
+		if m.hostPointsPtr != nil {
+			C.gnark_gpu_free_pinned(m.hostPointsPtr)
+			m.hostPointsPtr = nil
+		}
+		m.hostPoints = nil
 		runtime.SetFinalizer(m, nil)
 	}
 }
@@ -114,6 +146,24 @@ func (m *G1MSM) PinWorkBuffers() error {
 // re-allocate lazily.
 func (m *G1MSM) ReleaseWorkBuffers() error {
 	return toError(C.gnark_gpu_plonk2_msm_release_work_buffers(m.handle))
+}
+
+// OffloadPoints frees the GPU-resident base points. Call ReloadPoints before
+// the next MultiExp.
+func (m *G1MSM) OffloadPoints() error {
+	return toError(C.gnark_gpu_plonk2_msm_offload_points(m.handle))
+}
+
+// ReloadPoints uploads the retained host base points after OffloadPoints.
+func (m *G1MSM) ReloadPoints() error {
+	if len(m.hostPoints) < m.n {
+		return fmt.Errorf("gpu: MSM host points unavailable")
+	}
+	return toError(C.gnark_gpu_plonk2_msm_reload_points(
+		m.handle,
+		(*C.uint64_t)(unsafe.Pointer(&m.hostPoints[0])),
+		C.size_t(m.n),
+	))
 }
 
 // MultiExp computes Q[i] = Σⱼ scalars[i][j] · P[j] for each scalar set.

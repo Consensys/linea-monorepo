@@ -682,6 +682,13 @@ gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase3(
     const uint64_t *scanned_prefixes_host,
     size_t num_chunks);
 
+gnark_gpu_error_t gnark_gpu_plonk2_poly_eval_chunks(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t coeffs,
+    const uint64_t *z,
+    uint64_t *partials_host,
+    size_t *num_chunks_out);
+
 gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers(
     gnark_gpu_context_t ctx,
     gnark_gpu_plonk2_fr_vector_t vec,
@@ -763,6 +770,14 @@ gnark_gpu_error_t gnark_gpu_plonk2_msm_pin_work_buffers(
 
 gnark_gpu_error_t gnark_gpu_plonk2_msm_release_work_buffers(
     gnark_gpu_plonk2_msm_t msm);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_offload_points(
+    gnark_gpu_plonk2_msm_t msm);
+
+gnark_gpu_error_t gnark_gpu_plonk2_msm_reload_points(
+    gnark_gpu_plonk2_msm_t msm,
+    const uint64_t *points,
+    size_t point_count);
 
 gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
     gnark_gpu_plonk2_msm_t msm,

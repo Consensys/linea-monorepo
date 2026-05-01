@@ -9,6 +9,7 @@ namespace {
 constexpr unsigned THREADS = 256;
 constexpr unsigned NTT_THREADS = 256;
 constexpr size_t Z_PREFIX_CHUNK_SIZE = 1024;
+constexpr size_t POLY_EVAL_CHUNK_SIZE = 1024;
 constexpr uint32_t NTT_FUSED_TAIL_MIN_N = 1u << 22;
 
 struct ScalarArg {
@@ -646,6 +647,38 @@ __global__ void z_prefix_shift_right_kernel(FrView z, ConstFrView src, size_t n)
 	uint64_t prev[Params::LIMBS];
 	load<Params>(prev, src, idx - 1);
 	store<Params>(z, idx, prev);
+}
+
+template <typename Params>
+// poly_eval_chunks_kernel evaluates one coefficient chunk per thread using
+// Horner. The CPU combines returned chunk partials with z^1024.
+__global__ void poly_eval_chunks_kernel(
+	ConstFrView coeffs, ScalarArg z_arg, uint64_t *partials, size_t n) {
+
+	size_t chunk_id = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+	size_t num_chunks = (n + POLY_EVAL_CHUNK_SIZE - 1) / POLY_EVAL_CHUNK_SIZE;
+	if(chunk_id >= num_chunks) return;
+
+	size_t start = chunk_id * POLY_EVAL_CHUNK_SIZE;
+	size_t end = start + POLY_EVAL_CHUNK_SIZE;
+	if(end > n) end = n;
+
+	uint64_t z[Params::LIMBS], acc[Params::LIMBS], coeff[Params::LIMBS];
+#pragma unroll
+	for(int limb = 0; limb < Params::LIMBS; limb++) z[limb] = z_arg.limbs[limb];
+
+	load<Params>(acc, coeffs, end - 1);
+	for(size_t i = end - 1; i > start;) {
+		--i;
+		load<Params>(coeff, coeffs, i);
+		mul<Params>(acc, acc, z);
+		add<Params>(acc, acc, coeff);
+	}
+
+#pragma unroll
+	for(int limb = 0; limb < Params::LIMBS; limb++) {
+		partials[chunk_id * Params::LIMBS + limb] = acc[limb];
+	}
 }
 
 template <typename Params>
@@ -1961,6 +1994,31 @@ void launch_z_prefix_phase3(
 		}
 		z_prefix_shift_right_kernel<BW6761FrParams><<<n_blocks, THREADS, 0, stream>>>(
 			z, make_const(temp), n);
+		break;
+	default:
+		break;
+	}
+}
+
+void launch_poly_eval_chunks(
+	gnark_gpu_plonk2_curve_id_t curve, ConstFrView coeffs, const uint64_t *z,
+	uint64_t *partials, size_t n, cudaStream_t stream) {
+
+	size_t num_chunks = (n + POLY_EVAL_CHUNK_SIZE - 1) / POLY_EVAL_CHUNK_SIZE;
+	unsigned blocks = (unsigned)((num_chunks + THREADS - 1) / THREADS);
+	ScalarArg z_arg = make_scalar_arg(curve, z);
+	switch(curve) {
+	case GNARK_GPU_PLONK2_CURVE_BN254:
+		poly_eval_chunks_kernel<BN254FrParams><<<blocks, THREADS, 0, stream>>>(
+			coeffs, z_arg, partials, n);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
+		poly_eval_chunks_kernel<BLS12377FrParams><<<blocks, THREADS, 0, stream>>>(
+			coeffs, z_arg, partials, n);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BW6_761:
+		poly_eval_chunks_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
+			coeffs, z_arg, partials, n);
 		break;
 	default:
 		break;

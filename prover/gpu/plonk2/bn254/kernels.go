@@ -168,12 +168,61 @@ func DeviceFreePtr(ptr unsafe.Pointer) {
 	}
 }
 
+// PolyEvalGPU evaluates a GPU-resident polynomial at z using chunked Horner on
+// device and a small CPU combine over chunk partials.
+func PolyEvalGPU(dev *gpu.Device, v *FrVector, z fr.Element) fr.Element {
+	n := v.n
+	if n == 0 {
+		return fr.Element{}
+	}
+
+	maxChunks := (n + 1023) / 1024
+	partialsHost := make([]uint64, maxChunks*4)
+	var numChunks C.size_t
+
+	if err := toError(C.gnark_gpu_plonk2_poly_eval_chunks(
+		devCtx(dev), v.handle,
+		(*C.uint64_t)(unsafe.Pointer(&z)),
+		(*C.uint64_t)(unsafe.Pointer(&partialsHost[0])),
+		&numChunks,
+	)); err != nil {
+		panic("gpu: PolyEvalGPU failed: " + err.Error())
+	}
+
+	return combinePolyEvalPartials(partialsHost, int(numChunks), z)
+}
+
 // PolyEvalFromDevice downloads a GPU FrVector and evaluates at z using CPU Horner.
 func PolyEvalFromDevice(v *FrVector, z fr.Element) fr.Element {
 	n := v.n
 	coeffs := make(fr.Vector, n)
 	v.CopyToHost(coeffs)
 	return polyEvalParallel(coeffs, z)
+}
+
+func combinePolyEvalPartials(partialsHost []uint64, numChunks int, z fr.Element) fr.Element {
+	if numChunks == 0 {
+		return fr.Element{}
+	}
+	readPartial := func(chunk int) fr.Element {
+		var r fr.Element
+		for limb := range r {
+			r[limb] = partialsHost[chunk*4+limb]
+		}
+		return r
+	}
+	if numChunks == 1 {
+		return readPartial(0)
+	}
+
+	var zChunk fr.Element
+	zChunk.Exp(z, big.NewInt(1024))
+	result := readPartial(numChunks - 1)
+	for j := numChunks - 2; j >= 0; j-- {
+		p := readPartial(j)
+		result.Mul(&result, &zChunk).Add(&result, &p)
+	}
+	return result
 }
 
 // polyEvalParallel evaluates p(z) = Σ c[i]·z^i using multi-core Horner.

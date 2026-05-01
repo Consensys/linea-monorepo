@@ -41,6 +41,9 @@ var KernelsTemplate string
 //go:embed kernels_stub.go.tmpl
 var KernelsStubTemplate string
 
+//go:embed pinned_fr.go.tmpl
+var PinnedFrTemplate string
+
 //go:embed prove.go.tmpl
 var ProveTemplate string
 

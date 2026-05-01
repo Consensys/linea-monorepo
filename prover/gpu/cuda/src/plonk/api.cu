@@ -274,6 +274,10 @@ void launch_z_prefix_phase3(gnark_gpu_plonk2_curve_id_t curve, FrView z,
                             FrView temp, const uint64_t *scanned_prefixes,
                             size_t num_chunks, size_t n,
                             cudaStream_t stream);
+void launch_poly_eval_chunks(gnark_gpu_plonk2_curve_id_t curve,
+                             ConstFrView coeffs, const uint64_t *z,
+                             uint64_t *partials, size_t n,
+                             cudaStream_t stream);
 void launch_ntt_forward(gnark_gpu_plonk2_curve_id_t curve, FrView data,
                         ConstFrView twiddles, size_t n, cudaStream_t stream);
 void launch_ntt_inverse(gnark_gpu_plonk2_curve_id_t curve, FrView data,
@@ -1714,6 +1718,41 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_z_prefix_phase3(
     return check_cuda(cudaGetLastError());
 }
 
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_poly_eval_chunks(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t coeffs,
+    const uint64_t *z,
+    uint64_t *partials_host,
+    size_t *num_chunks_out) {
+    if (!ctx || !coeffs || !z || !partials_host || !num_chunks_out ||
+        coeffs->ctx != ctx) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+
+    size_t n = coeffs->count;
+    if (n == 0) {
+        *num_chunks_out = 0;
+        return GNARK_GPU_SUCCESS;
+    }
+    size_t num_chunks = (n + 1023) / 1024;
+    size_t words = num_chunks * (size_t)coeffs->limbs;
+    gnark_gpu_error_t gerr = ensure_plonk2_staging_words(ctx, words);
+    if (gerr != GNARK_GPU_SUCCESS) return gerr;
+
+    gnark_gpu::plonk2::launch_poly_eval_chunks(
+        coeffs->curve, plonk2_const_view(coeffs), z,
+        ctx->plonk2_staging_buffer, n, ctx->stream);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) return check_cuda(err);
+    err = cudaStreamSynchronize(ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    err = cudaMemcpy(partials_host, ctx->plonk2_staging_buffer,
+                     words * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) return check_cuda(err);
+    *num_chunks_out = num_chunks;
+    return GNARK_GPU_SUCCESS;
+}
+
 extern "C" gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_scale_by_powers(
     gnark_gpu_context_t ctx,
     gnark_gpu_plonk2_fr_vector_t vec,
@@ -2025,12 +2064,59 @@ extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_release_work_buffers(
     return GNARK_GPU_SUCCESS;
 }
 
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_offload_points(
+    gnark_gpu_plonk2_msm_t msm) {
+    if (!msm) return GNARK_GPU_ERROR_INVALID_ARG;
+    cudaError_t err = cudaStreamSynchronize(msm->ctx->stream);
+    if (err != cudaSuccess) return check_cuda(err);
+    if (msm->d_points) {
+        err = cudaFree(msm->d_points);
+        msm->d_points = nullptr;
+        if (err != cudaSuccess) return check_cuda(err);
+    }
+    return GNARK_GPU_SUCCESS;
+}
+
+extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_reload_points(
+    gnark_gpu_plonk2_msm_t msm,
+    const uint64_t *points,
+    size_t point_count) {
+    if (!msm || !points || point_count != msm->point_count) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    if (msm->d_points) return GNARK_GPU_SUCCESS;
+
+    if (plonk2_mul_overflows(point_count, (size_t)(2 * msm->base_limbs))) {
+        return GNARK_GPU_ERROR_INVALID_ARG;
+    }
+    size_t point_words = point_count * (size_t)(2 * msm->base_limbs);
+    cudaError_t err = cudaMalloc(&msm->d_points, point_words * sizeof(uint64_t));
+    if (err != cudaSuccess) {
+        msm->d_points = nullptr;
+        cudaGetLastError();
+        return check_cuda(err);
+    }
+
+    err = cudaMemcpyAsync(msm->d_points, points, point_words * sizeof(uint64_t),
+                          cudaMemcpyHostToDevice, msm->ctx->stream);
+    if (err == cudaSuccess) {
+        err = cudaStreamSynchronize(msm->ctx->stream);
+    }
+    if (err != cudaSuccess) {
+        cudaFree(msm->d_points);
+        msm->d_points = nullptr;
+        return check_cuda(err);
+    }
+    return GNARK_GPU_SUCCESS;
+}
+
 extern "C" gnark_gpu_error_t gnark_gpu_plonk2_msm_run(
     gnark_gpu_plonk2_msm_t msm,
     const uint64_t *scalars,
     size_t count,
     uint64_t *out) {
-    if (!msm || !scalars || !out || count == 0 || count > msm->point_count) {
+    if (!msm || !msm->d_points || !scalars || !out ||
+        count == 0 || count > msm->point_count) {
         return GNARK_GPU_ERROR_INVALID_ARG;
     }
     if (!plonk2_msm_has_work_buffers(msm)) {

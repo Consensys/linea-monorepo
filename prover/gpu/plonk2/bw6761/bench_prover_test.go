@@ -5,19 +5,19 @@ package bw6761_test
 import (
 	"context"
 	"encoding/binary"
-	"sync"
 	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	curve "github.com/consensys/gnark-crypto/ecc/bw6-761"
-	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/kzg"
 	bn254crypto "github.com/consensys/gnark-crypto/ecc/bn254"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	curve "github.com/consensys/gnark-crypto/ecc/bw6-761"
+	kzgbw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/kzg"
 	gnarkplonk "github.com/consensys/gnark/backend/plonk"
 	curplonk "github.com/consensys/gnark/backend/plonk/bw6-761"
 	"github.com/consensys/gnark/backend/witness"
@@ -115,8 +115,12 @@ func buildECMulWitnessBW(n int) (witness.Witness, error) {
 
 const plonk2BWCacheDir = "tmp/plonk2_ecmul_cache"
 
-func plonk2BWVKCachePath(n int) string { return filepath.Join(plonk2BWCacheDir, fmt.Sprintf("ecmul_bw6761_n%d.vk.bin", n)) }
+func plonk2BWVKCachePath(n int) string {
+	return filepath.Join(plonk2BWCacheDir, fmt.Sprintf("ecmul_bw6761_n%d.vk.bin", n))
+}
+
 var bwBenchSetupCache sync.Map
+
 func _unused_plonk2BWCachePaths(n int) (sprPath, vkPath string) {
 	base := fmt.Sprintf("ecmul_bw6761_n%d", n)
 	return filepath.Join(plonk2BWCacheDir, base+".spr.bin"),
@@ -236,6 +240,37 @@ func setupBWBench(b *testing.B, n int) *bwBenchSetup {
 	return setup
 }
 
+// ─── CPU setup helper ─────────────────────────────────────────────────────────
+
+// bwCPUBenchSetup extends bwBenchSetup with the PLONK proving key, which is
+// required for CPU-only proving but not for GPU proving.
+type bwCPUBenchSetup struct {
+	*bwBenchSetup
+	pk gnarkplonk.ProvingKey
+}
+
+var bwCPUBenchSetupCache sync.Map
+
+// setupBWCPUBench builds (and caches) the full PLONK setup including the
+// proving key. The SRS is loaded fresh; setup is run once per n value.
+func setupBWCPUBench(b *testing.B, n int) *bwCPUBenchSetup {
+	b.Helper()
+	if v, ok := bwCPUBenchSetupCache.Load(n); ok {
+		return v.(*bwCPUBenchSetup)
+	}
+	base := setupBWBench(b, n)
+	ctx := context.Background()
+	store := getBenchBWSRSStore(b)
+	sizeCanonical, sizeLagrange := gnarkplonk.SRSSize(base.spr)
+	srsCanon, srsLag, err := store.GetSRSCPUForCurve(ctx, ecc.BW6_761, sizeCanonical, sizeLagrange)
+	require.NoError(b, err, "load BW6-761 SRS for CPU bench n=%d", n)
+	pkIface, _, err := gnarkplonk.Setup(base.spr, srsCanon, srsLag)
+	require.NoError(b, err, "plonk setup (CPU) n=%d", n)
+	setup := &bwCPUBenchSetup{bwBenchSetup: base, pk: pkIface}
+	bwCPUBenchSetupCache.Store(n, setup)
+	return setup
+}
+
 // ─── Benchmarks ───────────────────────────────────────────────────────────────
 
 func BenchmarkNewProver_BW6761_N1(b *testing.B)   { benchmarkNewProverBW(b, 1) }
@@ -243,6 +278,12 @@ func BenchmarkNewProver_BW6761_N10(b *testing.B)  { benchmarkNewProverBW(b, 10) 
 func BenchmarkNewProver_BW6761_N30(b *testing.B)  { benchmarkNewProverBW(b, 30) }
 func BenchmarkNewProver_BW6761_N121(b *testing.B) { benchmarkNewProverBW(b, 121) }
 func BenchmarkNewProver_BW6761_N353(b *testing.B) { benchmarkNewProverBW(b, 353) }
+
+func BenchmarkCPUProver_BW6761_N1(b *testing.B)   { benchmarkCPUProverBW(b, 1) }
+func BenchmarkCPUProver_BW6761_N10(b *testing.B)  { benchmarkCPUProverBW(b, 10) }
+func BenchmarkCPUProver_BW6761_N30(b *testing.B)  { benchmarkCPUProverBW(b, 30) }
+func BenchmarkCPUProver_BW6761_N121(b *testing.B) { benchmarkCPUProverBW(b, 121) }
+func BenchmarkCPUProver_BW6761_N353(b *testing.B) { benchmarkCPUProverBW(b, 353) }
 
 func benchmarkNewProverBW(b *testing.B, n int) {
 	b.Helper()
@@ -268,6 +309,35 @@ func benchmarkNewProverBW(b *testing.B, n int) {
 		require.NoError(b, werr)
 		pStart := time.Now()
 		_, perr := bw6761.GPUProve(dev, gpk, setup.spr, w)
+		totalProve += time.Since(pStart)
+		require.NoError(b, perr, "prove")
+	}
+	b.StopTimer()
+
+	b.ReportMetric(float64(setup.constraints), "constraints")
+	b.ReportMetric(float64(setup.domainSize), "domain_size")
+	if b.N > 0 {
+		b.ReportMetric(float64(totalProve.Milliseconds())/float64(b.N), "prove_ms")
+	}
+}
+
+func benchmarkCPUProverBW(b *testing.B, n int) {
+	b.Helper()
+	setup := setupBWCPUBench(b, n)
+
+	// Warmup
+	fullW, err := buildECMulWitnessBW(n)
+	require.NoError(b, err)
+	_, err = gnarkplonk.Prove(setup.spr, setup.pk, fullW)
+	require.NoError(b, err, "warmup prove")
+
+	var totalProve time.Duration
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w, werr := buildECMulWitnessBW(n)
+		require.NoError(b, werr)
+		pStart := time.Now()
+		_, perr := gnarkplonk.Prove(setup.spr, setup.pk, w)
 		totalProve += time.Since(pStart)
 		require.NoError(b, perr, "prove")
 	}
