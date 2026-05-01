@@ -52,14 +52,23 @@ zkc-test() {
     esac
 }
 
-# Usage
+# Usage examples
+
+# Compile and execute
 zkc-test <name>.<ext>
+# Compile and execute with input bytes
 zkc-test <name>.<ext> IN_BYTES="0xAABB"
+# Compile and execute with input bytes at a custom offset
 zkc-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
+# Compile and debug
 zkc-test debug <name>.<ext>
+# Compile and debug with input bytes
 zkc-test debug <name>.<ext> IN_BYTES="0xAABB"
+# Compile only
 zkc-test compile <name>.<ext>
+# Clean build artifacts for a specific test
 zkc-test clean <name>.<ext>
+# Clean all build artifacts
 zkc-test clean-all
 ```
 
@@ -86,28 +95,6 @@ zkc-test clean-all
 | `PROGRAM_OFFSET` | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                   |
 | `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
 | `ENTRY_POINT`    | `0`                                                                                     | Entry point offset                                                         |
-
-## Examples
-
-```bash
-# Run an assembly test
-zkc-test test.s
-
-# Run a Zig test without stripping
-zkc-test test.zig ZIG_STRIP=false
-
-# Run a Rust test with input bytes
-zkc-test test.rs IN_BYTES="0xAABBCC"
-
-# Compile only, don't execute
-zkc-test compile test.s
-
-# Debug a Zig program
-zkc-test debug test.zig
-
-# Override source and binary paths
-zkc-test test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
-```
 
 ## Target ISA
 
