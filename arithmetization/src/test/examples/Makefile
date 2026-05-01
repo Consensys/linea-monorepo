@@ -1,10 +1,3 @@
-# Usage (from anywhere):
-#   make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=your_test(.s|.zig)
-# Or:
-#   cd arithmetization/src/test/examples && make TEST=your_test(.s|.zig|.rs)
-# Optional shell alias:
-#   alias zkc-test='make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile'
-#
 # For the target we refer to https://github.com/eth-act/zkvm-standards/blob/main/standards/riscv-target/target.md.
 # Note that Zicclsm extension does not affect the generated ELF so it is omitted.
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.

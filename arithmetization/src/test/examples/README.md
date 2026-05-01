@@ -37,7 +37,7 @@ make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=
 Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
 ```bash
-zkctest() {
+zkc-test() {
     case "$1" in
         clean-all)
             make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" clean-all
@@ -53,14 +53,14 @@ zkctest() {
 }
 
 # Usage
-zkctest <name>.<ext>
-zkctest <name>.<ext> IN_BYTES="0xAABB"
-zkctest <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
-zkctest debug <name>.<ext>
-zkctest debug <name>.<ext> IN_BYTES="0xAABB"
-zkctest compile <name>.<ext>
-zkctest clean <name>.<ext>
-zkctest clean-all
+zkc-test <name>.<ext>
+zkc-test <name>.<ext> IN_BYTES="0xAABB"
+zkc-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
+zkc-test debug <name>.<ext>
+zkc-test debug <name>.<ext> IN_BYTES="0xAABB"
+zkc-test compile <name>.<ext>
+zkc-test clean <name>.<ext>
+zkc-test clean-all
 ```
 
 ## Targets
@@ -91,22 +91,22 @@ zkctest clean-all
 
 ```bash
 # Run an assembly test
-zkctest test.s
+zkc-test test.s
 
 # Run a Zig test without stripping
-zkctest test.zig ZIG_STRIP=false
+zkc-test test.zig ZIG_STRIP=false
 
 # Run a Rust test with input bytes
-zkctest test.rs IN_BYTES="0xAABBCC"
+zkc-test test.rs IN_BYTES="0xAABBCC"
 
 # Compile only, don't execute
-zkctest compile test.s
+zkc-test compile test.s
 
 # Debug a Zig program
-zkctest debug test.zig
+zkc-test debug test.zig
 
 # Override source and binary paths
-zkctest test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
+zkc-test test.rs SRC=/path/to/test.rs BIN=/path/to/output/test
 ```
 
 ## Target ISA
