@@ -32,7 +32,7 @@ make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=
 **Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory. Alternatively one can provide full paths.
 
 
-## Alias
+## Alias and usage examples
 
 Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
@@ -70,6 +70,8 @@ zkc-test compile <name>.<ext>
 zkc-test clean <name>.<ext>
 # Clean all build artifacts
 zkc-test clean-all
+# Compile and execute a Zig program without stripping
+zkc-test <name>.zig ZIG_STRIP=false
 ```
 
 ## Targets
