@@ -77,7 +77,7 @@ compile: $(SRC)
 	@echo "\nDisassembling $(BIN)"
 	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
 	@echo "\nGenerating $(JSON) from $(BIN)"
-	@go run $(GO_MAIN) $(BIN) $(INBYTES) $(PROGRAM_OFFSET) $(INBYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
+	@go run $(GO_MAIN) $(BIN) "$(INBYTES)" $(PROGRAM_OFFSET) $(INBYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
 # Note: compiled Rust libraries may contain instructions from excluded extensions. For instance, the core library is compiled
 # for the IMAC extension, and contains COMPRESSED instructions. The output ELF may thus contain such instructions, too, even
