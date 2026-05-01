@@ -92,7 +92,7 @@ zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	rm -f $(BIN) $(JSON) $(BIN_STRIPPED)
+	rm -f $(BIN) $(JSON) $(BIN_STRIPPED) $(BIN)_disassembled.elf
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
