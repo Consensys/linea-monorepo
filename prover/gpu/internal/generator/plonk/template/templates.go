@@ -34,3 +34,18 @@ var MSMStubTemplate string
 
 //go:embed msm_test.go.tmpl
 var MSMTestTemplate string
+
+//go:embed kernels.go.tmpl
+var KernelsTemplate string
+
+//go:embed kernels_stub.go.tmpl
+var KernelsStubTemplate string
+
+//go:embed prove.go.tmpl
+var ProveTemplate string
+
+//go:embed prove_stub.go.tmpl
+var ProveStubTemplate string
+
+//go:embed plonk_test.go.tmpl
+var PlonkTestTemplate string

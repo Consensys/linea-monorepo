@@ -9,13 +9,18 @@ type Curve struct {
 	ScalarBits int    // scalar bit-width: 254, 253, 377
 
 	// gnark-crypto import paths
-	GnarkCryptoFr  string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	GnarkCryptoFFT string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
-	GnarkCryptoKZG string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/kzg"
-	GnarkCurve     string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254"
-	GnarkCS        string // e.g. "github.com/consensys/gnark/constraint/bn254"
-	GnarkPlonk     string // e.g. "github.com/consensys/gnark/backend/plonk/bn254"
+	GnarkCryptoFr        string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	GnarkCryptoFFT       string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
+	GnarkCryptoKZG       string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/kzg"
+	GnarkCryptoIOP       string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr/iop"
+	GnarkCryptoHTF       string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254/fr/hash_to_field"
+	GnarkCurve           string // e.g. "github.com/consensys/gnark-crypto/ecc/bn254"
+	GnarkCS              string // e.g. "github.com/consensys/gnark/constraint/bn254"
+	GnarkPlonk           string // e.g. "github.com/consensys/gnark/backend/plonk/bn254"
 
 	// CurveIndex is the integer passed to curve-indexed C API calls (curve ID).
 	CurveIndex int
+
+	// EccIDStr is the gnark-crypto ecc.ID string (e.g., "BN254", "BLS12_377", "BW6_761").
+	EccIDStr string
 }

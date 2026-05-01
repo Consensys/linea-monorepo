@@ -29,6 +29,12 @@ func Generate(c config.Curve, outputDir string, gen *common.Generator) error {
 		{filepath.Join(outputDir, "msm.go"), tmpl.MSMTemplate},
 		{filepath.Join(outputDir, "msm_stub.go"), tmpl.MSMStubTemplate},
 		{filepath.Join(outputDir, "msm_test.go"), tmpl.MSMTestTemplate},
+		// Phase 5a: GPU kernels + Prover
+		{filepath.Join(outputDir, "kernels.go"), tmpl.KernelsTemplate},
+		{filepath.Join(outputDir, "kernels_stub.go"), tmpl.KernelsStubTemplate},
+		{filepath.Join(outputDir, "prove.go"), tmpl.ProveTemplate},
+		{filepath.Join(outputDir, "prove_stub.go"), tmpl.ProveStubTemplate},
+		{filepath.Join(outputDir, "plonk_test.go"), tmpl.PlonkTestTemplate},
 	}
 
 	for _, e := range entries {

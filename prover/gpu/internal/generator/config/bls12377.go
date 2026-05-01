@@ -10,8 +10,11 @@ var BLS12377 = Curve{
 	GnarkCryptoFr:  "github.com/consensys/gnark-crypto/ecc/bls12-377/fr",
 	GnarkCryptoFFT: "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft",
 	GnarkCryptoKZG: "github.com/consensys/gnark-crypto/ecc/bls12-377/kzg",
+	GnarkCryptoIOP: "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop",
+	GnarkCryptoHTF: "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/hash_to_field",
 	GnarkCurve:     "github.com/consensys/gnark-crypto/ecc/bls12-377",
 	GnarkCS:        "github.com/consensys/gnark/constraint/bls12-377",
 	GnarkPlonk:     "github.com/consensys/gnark/backend/plonk/bls12-377",
 	CurveIndex:     2, // GNARK_GPU_PLONK2_CURVE_BLS12_377
+	EccIDStr:       "BLS12_377",
 }
