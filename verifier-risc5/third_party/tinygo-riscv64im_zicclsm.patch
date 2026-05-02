@@ -1,0 +1,388 @@
+diff --git a/builder/library.go b/builder/library.go
+index 73fa254..c1f75fd 100644
+--- a/builder/library.go
++++ b/builder/library.go
+@@ -167,9 +167,16 @@ func (l *Library) load(config *compileopts.Config, tmpdir string) (job *compileJ
+ 		// double.
+ 		args = append(args, "-mdouble=64")
+ 	case "riscv32":
+-		args = append(args, "-march="+riscvMarch(config, "rv32imac"), "-fforce-enable-int128")
++		args = append(args, "-march="+riscvMarch(config, "rv32imac"))
++		if codeModel := riscvCFlag(config, "-mcmodel="); codeModel != "" {
++			args = append(args, "-mcmodel="+codeModel)
++		}
++		args = append(args, "-fforce-enable-int128")
+ 	case "riscv64":
+ 		args = append(args, "-march="+riscvMarch(config, "rv64gc"))
++		if codeModel := riscvCFlag(config, "-mcmodel="); codeModel != "" {
++			args = append(args, "-mcmodel="+codeModel)
++		}
+ 	case "mips":
+ 		args = append(args, "-fno-pic")
+ 	}
+@@ -305,10 +312,17 @@ func (l *Library) load(config *compileopts.Config, tmpdir string) (job *compileJ
+ // with the correct ISA extensions for each target (e.g. rv32imc for
+ // ESP32-C3 which lacks the atomic extension).
+ func riscvMarch(config *compileopts.Config, defaultMarch string) string {
++	if march := riscvCFlag(config, "-march="); march != "" {
++		return march
++	}
++	return defaultMarch
++}
++
++func riscvCFlag(config *compileopts.Config, prefix string) string {
+ 	for _, flag := range config.Target.CFlags {
+-		if strings.HasPrefix(flag, "-march=") {
+-			return flag[len("-march="):]
++		if strings.HasPrefix(flag, prefix) {
++			return flag[len(prefix):]
+ 		}
+ 	}
+-	return defaultMarch
++	return ""
+ }
+diff --git a/compileopts/config.go b/compileopts/config.go
+index 1920d2b..3c88065 100644
+--- a/compileopts/config.go
++++ b/compileopts/config.go
+@@ -22,8 +22,9 @@ import (
+ // builder.Library struct but that's hard to do since we want to know the
+ // library path in advance in several places).
+ var libVersions = map[string]int{
+-	"musl":  3,
+-	"bdwgc": 2,
++	"musl":        3,
++	"bdwgc":       2,
++	"compiler-rt": 1,
+ }
+ 
+ // Config keeps all configuration affecting the build in a single struct.
+diff --git a/compiler/defer.go b/compiler/defer.go
+index 7c95f0a..56d3c79 100644
+--- a/compiler/defer.go
++++ b/compiler/defer.go
+@@ -212,6 +212,13 @@ sw $$ra, 4($$5)
+ la a2, 1f
+ sw a2, 4(a1)
+ li a0, 0
++1:`
++		constraints = "={a0},{a1},~{a1},~{a2},~{a3},~{a4},~{a5},~{a6},~{a7},~{s0},~{s1},~{s2},~{s3},~{s4},~{s5},~{s6},~{s7},~{s8},~{s9},~{s10},~{s11},~{t0},~{t1},~{t2},~{t3},~{t4},~{t5},~{t6},~{ra},~{f0},~{f1},~{f2},~{f3},~{f4},~{f5},~{f6},~{f7},~{f8},~{f9},~{f10},~{f11},~{f12},~{f13},~{f14},~{f15},~{f16},~{f17},~{f18},~{f19},~{f20},~{f21},~{f22},~{f23},~{f24},~{f25},~{f26},~{f27},~{f28},~{f29},~{f30},~{f31},~{memory}"
++	case "riscv64":
++		asmString = `
++la a2, 1f
++sd a2, 8(a1)
++li a0, 0
+ 1:`
+ 		constraints = "={a0},{a1},~{a1},~{a2},~{a3},~{a4},~{a5},~{a6},~{a7},~{s0},~{s1},~{s2},~{s3},~{s4},~{s5},~{s6},~{s7},~{s8},~{s9},~{s10},~{s11},~{t0},~{t1},~{t2},~{t3},~{t4},~{t5},~{t6},~{ra},~{f0},~{f1},~{f2},~{f3},~{f4},~{f5},~{f6},~{f7},~{f8},~{f9},~{f10},~{f11},~{f12},~{f13},~{f14},~{f15},~{f16},~{f17},~{f18},~{f19},~{f20},~{f21},~{f22},~{f23},~{f24},~{f25},~{f26},~{f27},~{f28},~{f29},~{f30},~{f31},~{memory}"
+ 	default:
+diff --git a/src/runtime/asm_riscv.S b/src/runtime/asm_riscv.S
+index 9cf6571..0c8f5a5 100644
+--- a/src/runtime/asm_riscv.S
++++ b/src/runtime/asm_riscv.S
+@@ -47,10 +47,18 @@ tinygo_scanCurrentStack:
+ tinygo_longjmp:
+     // Note: the code we jump to assumes a0 is non-zero, which is already the
+     // case because that's the defer frame pointer.
+-    lw sp, 0(a0)       // jumpSP
+-    lw a1, REGSIZE(a0) // jumpPC
++    LREG sp, 0(a0)       // jumpSP
++    LREG a1, REGSIZE(a0) // jumpPC
+     jr a1
+ 
++.section .text.tinygo_zkvmPrecompile
++.global tinygo_zkvmPrecompile
++.type   tinygo_zkvmPrecompile, %function
++tinygo_zkvmPrecompile:
++    li a7, 500
++    ecall
++    ret
++
+ .section .text.tinygo_checkpointJump
+ .global tinygo_checkpointJump
+ tinygo_checkpointJump:
+diff --git a/src/runtime/runtime_tinygoriscv_qemu.go b/src/runtime/runtime_tinygoriscv_qemu.go
+index 1ee0d22..db66b3d 100644
+--- a/src/runtime/runtime_tinygoriscv_qemu.go
++++ b/src/runtime/runtime_tinygoriscv_qemu.go
+@@ -1,10 +1,9 @@
+-//go:build tinygo.riscv && virt && qemu
++//go:build tinygo.riscv && virt && qemu && (!scheduler.none || gc.conservative || gc.precise || gc.boehm)
+ 
+ package runtime
+ 
+ import (
+ 	"device/riscv"
+-	"internal/task"
+ 	"math/bits"
+ 	"runtime/interrupt"
+ 	"runtime/volatile"
+@@ -99,10 +98,7 @@ func handleInterrupt() {
+ 			if exitCodePlusOne.Load() != 0 {
+ 				exitNow(exitCodePlusOne.Load() - 1)
+ 			}
+-			if gcScanState.Load() != 0 {
+-				// The GC needs to run.
+-				gcInterruptHandler(hartID)
+-			}
++			gcHandleInterrupt(hartID)
+ 			checkpoint := &schedulerWaitCheckpoints[hartID]
+ 			if checkpoint.Saved() {
+ 				aclintMSWI.MSIP[hartID].Set(0)
+@@ -132,49 +128,6 @@ func handleInterrupt() {
+ 	riscv.MCAUSE.Set(0)
+ }
+ 
+-// The GC interrupted this core for the stop-the-world phase.
+-// This function handles that, and only returns after the stop-the-world phase
+-// ended.
+-func gcInterruptHandler(hartID uint32) {
+-	// *only* enable the MSIE interrupt
+-	savedMIE := riscv.MIE.Get()
+-	riscv.MIE.Set(riscv.MIE_MSIE)
+-
+-	// Disable this interrupt (to be enabled again soon).
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Let the GC know we're ready.
+-	gcScanState.Add(1)
+-
+-	// Wait until we get a signal to start scanning.
+-	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
+-		riscv.Asm("wfi")
+-	}
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Scan the stack(s) of this core.
+-	scanCurrentStack()
+-	if !task.OnSystemStack() {
+-		// Mark system stack.
+-		markRoots(task.SystemStack(), coreStackTop(hartID))
+-	}
+-
+-	// Signal we've finished scanning.
+-	gcScanState.Store(1)
+-
+-	// Wait until we get a signal that the stop-the-world phase has ended.
+-	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
+-		riscv.Asm("wfi")
+-	}
+-	aclintMSWI.MSIP[hartID].Set(0)
+-
+-	// Restore MIE bits.
+-	riscv.MIE.Set(savedMIE)
+-
+-	// Signal we received the signal and are going to exit the interrupt.
+-	gcScanState.Add(1)
+-}
+-
+ //go:extern _stack_top
+ var stack0TopSymbol [0]byte
+ 
+@@ -377,9 +330,9 @@ func (l *spinLock) Unlock() {
+ // Hint to the CPU that this core is just waiting, and the core can go into a
+ // lower energy state.
+ func spinLoopWait() {
+-	// This is a no-op in QEMU TCG (but added here for completeness):
+-	// https://github.com/qemu/qemu/blob/v9.2.3/target/riscv/insn_trans/trans_rvi.c.inc#L856
+-	riscv.Asm("pause")
++	// Keep the local riscv64im_zicclsm experiment within the requested ISA set:
++	// `pause` would require Zihintpause, which this target intentionally omits.
++	riscv.Asm("nop")
+ }
+ 
+ func currentCPU() uint32 {
+@@ -517,8 +470,6 @@ func exitNow(code uint32) {
+ // Exceptions can be things like illegal instructions, invalid memory
+ // read/write, and similar issues.
+ func handleException(code uint) {
+-	// For a list of exception codes, see:
+-	// https://content.riscv.org/wp-content/uploads/2019/08/riscv-privileged-20190608-1.pdf#page=49
+-	print("fatal error: exception with mcause=", code, " pc=", riscv.MEPC.Get(), " hart=", uint(riscv.MHARTID.Get()), "\r\n")
++	_ = code
+ 	abort()
+ }
+diff --git a/src/runtime/runtime_tinygoriscv_qemu_gc_noop.go b/src/runtime/runtime_tinygoriscv_qemu_gc_noop.go
+new file mode 100644
+index 0000000..ee5808a
+--- /dev/null
++++ b/src/runtime/runtime_tinygoriscv_qemu_gc_noop.go
+@@ -0,0 +1,6 @@
++//go:build tinygo.riscv && virt && qemu && !(gc.conservative || gc.precise || gc.boehm)
++
++package runtime
++
++// Leaking/none-style allocators do not need stop-the-world stack scanning.
++func gcHandleInterrupt(uint32) {}
+diff --git a/src/runtime/runtime_tinygoriscv_qemu_gc_scanning.go b/src/runtime/runtime_tinygoriscv_qemu_gc_scanning.go
+new file mode 100644
+index 0000000..e5c54ac
+--- /dev/null
++++ b/src/runtime/runtime_tinygoriscv_qemu_gc_scanning.go
+@@ -0,0 +1,55 @@
++//go:build tinygo.riscv && virt && qemu && (gc.conservative || gc.precise || gc.boehm)
++
++package runtime
++
++import (
++	"device/riscv"
++	"internal/task"
++)
++
++// The GC interrupted this core for the stop-the-world phase.
++// This function handles that, and only returns after the stop-the-world phase
++// ended.
++func gcHandleInterrupt(hartID uint32) {
++	if gcScanState.Load() == 0 {
++		return
++	}
++
++	// *only* enable the MSIE interrupt
++	savedMIE := riscv.MIE.Get()
++	riscv.MIE.Set(riscv.MIE_MSIE)
++
++	// Disable this interrupt (to be enabled again soon).
++	aclintMSWI.MSIP[hartID].Set(0)
++
++	// Let the GC know we're ready.
++	gcScanState.Add(1)
++
++	// Wait until we get a signal to start scanning.
++	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
++		riscv.Asm("wfi")
++	}
++	aclintMSWI.MSIP[hartID].Set(0)
++
++	// Scan the stack(s) of this core.
++	scanCurrentStack()
++	if !task.OnSystemStack() {
++		// Mark system stack.
++		markRoots(task.SystemStack(), coreStackTop(hartID))
++	}
++
++	// Signal we've finished scanning.
++	gcScanState.Store(1)
++
++	// Wait until we get a signal that the stop-the-world phase has ended.
++	for riscv.MIP.Get()&riscv.MIP_MSIP == 0 {
++		riscv.Asm("wfi")
++	}
++	aclintMSWI.MSIP[hartID].Set(0)
++
++	// Restore MIE bits.
++	riscv.MIE.Set(savedMIE)
++
++	// Signal we received the signal and are going to exit the interrupt.
++	gcScanState.Add(1)
++}
+diff --git a/src/runtime/runtime_tinygoriscv_qemu_minimal.go b/src/runtime/runtime_tinygoriscv_qemu_minimal.go
+new file mode 100644
+index 0000000..753105d
+--- /dev/null
++++ b/src/runtime/runtime_tinygoriscv_qemu_minimal.go
+@@ -0,0 +1,106 @@
++//go:build tinygo.riscv && virt && qemu && scheduler.none && !(gc.conservative || gc.precise || gc.boehm)
++
++package runtime
++
++import (
++	"device/riscv"
++	"runtime/volatile"
++	"unsafe"
++)
++
++// This runtime variant is intentionally minimal for the local RISC-V guest
++// experiment: single hart, no scheduler, and a non-scanning allocator.
++
++//export main
++func main() {
++	run()
++	exit(0)
++}
++
++// Memory-mapped I/O as defined by QEMU.
++// Source: https://github.com/qemu/qemu/blob/master/hw/riscv/virt.c
++var (
++	// UART0 output register.
++	stdoutWrite = (*volatile.Register8)(unsafe.Pointer(uintptr(0x10000000)))
++	// SiFive test finisher.
++	testFinisher = (*volatile.Register32)(unsafe.Pointer(uintptr(0x100000)))
++	// RISC-V Advanced Core Local Interruptor timer.
++	aclintMTIME = (*struct {
++		low  volatile.Register32
++		high volatile.Register32
++	})(unsafe.Pointer(uintptr(0x0200_bff8)))
++)
++
++func putchar(c byte) {
++	stdoutWrite.Set(uint8(c))
++}
++
++func getchar() byte {
++	return 0
++}
++
++func buffered() int {
++	return 0
++}
++
++func ticksToNanoseconds(ticks timeUnit) int64 {
++	return int64(ticks) * 100 // one tick is 100ns
++}
++
++func nanosecondsToTicks(ns int64) timeUnit {
++	return timeUnit(ns / 100) // one tick is 100ns
++}
++
++func ticks() timeUnit {
++	highBits := aclintMTIME.high.Get()
++	for {
++		lowBits := aclintMTIME.low.Get()
++		newHighBits := aclintMTIME.high.Get()
++		if newHighBits == highBits {
++			return timeUnit(lowBits) | (timeUnit(highBits) << 32)
++		}
++		highBits = newHighBits
++	}
++}
++
++func sleepTicks(d timeUnit) {
++	if d <= 0 {
++		return
++	}
++
++	runtimePanic("time.Sleep unsupported on minimal qemu virt target")
++	abort()
++}
++
++func currentCPU() uint32 {
++	return 0
++}
++
++func abort() {
++	exit(1)
++}
++
++func exit(code int) {
++	if code < 0 {
++		code = 255
++	}
++
++	exitNow(uint32(code))
++}
++
++func exitNow(code uint32) {
++	if code == 0 {
++		testFinisher.Set(0x5555) // FINISHER_PASS
++	} else {
++		testFinisher.Set(code<<16 | 0x3333) // FINISHER_FAIL
++	}
++
++	for {
++		riscv.Asm("wfi")
++	}
++}
++
++func handleException(code uint) {
++	_ = code
++	abort()
++}
