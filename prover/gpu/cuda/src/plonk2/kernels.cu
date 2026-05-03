@@ -359,6 +359,83 @@ __global__ void gate_accum_kernel(
 }
 
 template <typename Params>
+// linearize_static_kernel computes the fixed-selector part of the PlonK
+// linearized polynomial in one pass.
+//
+// result[i] = z[i]*combinedZ + S3[i]*s1 + Ql[i]*l + Qr[i]*r
+//           + Qm[i]*rl + Qo[i]*o + Qk[i]
+__global__ void linearize_static_kernel(
+	FrView result,
+	ConstFrView z, ConstFrView s3,
+	ConstFrView ql, ConstFrView qr, ConstFrView qm, ConstFrView qo, ConstFrView qk,
+	ScalarArg combined_z_arg, ScalarArg s1_arg,
+	ScalarArg l_arg, ScalarArg r_arg, ScalarArg rl_arg, ScalarArg o_arg,
+	size_t n) {
+
+	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+	if(idx >= n) return;
+
+	uint64_t combined_z[Params::LIMBS], s1[Params::LIMBS];
+	uint64_t l[Params::LIMBS], r[Params::LIMBS], rl[Params::LIMBS], o[Params::LIMBS];
+#pragma unroll
+	for(int i = 0; i < Params::LIMBS; i++) {
+		combined_z[i] = combined_z_arg.limbs[i];
+		s1[i] = s1_arg.limbs[i];
+		l[i] = l_arg.limbs[i];
+		r[i] = r_arg.limbs[i];
+		rl[i] = rl_arg.limbs[i];
+		o[i] = o_arg.limbs[i];
+	}
+
+	uint64_t acc[Params::LIMBS], value[Params::LIMBS], tmp[Params::LIMBS];
+
+	load<Params>(value, z, idx);
+	mul<Params>(acc, value, combined_z);
+
+	load<Params>(value, s3, idx);
+	mul<Params>(tmp, value, s1);
+	add<Params>(acc, acc, tmp);
+
+	load<Params>(value, ql, idx);
+	mul<Params>(tmp, value, l);
+	add<Params>(acc, acc, tmp);
+
+	load<Params>(value, qr, idx);
+	mul<Params>(tmp, value, r);
+	add<Params>(acc, acc, tmp);
+
+	load<Params>(value, qm, idx);
+	mul<Params>(tmp, value, rl);
+	add<Params>(acc, acc, tmp);
+
+	load<Params>(value, qo, idx);
+	mul<Params>(tmp, value, o);
+	add<Params>(acc, acc, tmp);
+
+	load<Params>(value, qk, idx);
+	add<Params>(acc, acc, value);
+
+	store<Params>(result, idx, acc);
+}
+
+template <typename Params>
+// subtract_head_kernel applies PlonK blinding to the first coefficients of a
+// GPU-resident canonical polynomial. tail is tiny (2-3 elements) in AoS form.
+__global__ void subtract_head_kernel(FrView data, const uint64_t *tail, size_t tail_len) {
+	size_t idx = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
+	if(idx >= tail_len) return;
+
+	uint64_t value[Params::LIMBS], tail_value[Params::LIMBS], out[Params::LIMBS];
+	load<Params>(value, make_const(data), idx);
+#pragma unroll
+	for(int i = 0; i < Params::LIMBS; i++) {
+		tail_value[i] = __ldg(tail + idx * Params::LIMBS + i);
+	}
+	sub<Params>(out, value, tail_value);
+	store<Params>(data, idx, out);
+}
+
+template <typename Params>
 __device__ __forceinline__ void omega_from_twiddles(
 	uint64_t out[Params::LIMBS], ConstFrView twiddles, size_t idx, size_t half_n) {
 
@@ -1857,6 +1934,63 @@ void launch_gate_accum(
 	case GNARK_GPU_PLONK2_CURVE_BW6_761:
 		gate_accum_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
 			result, ql, qr, qm, qo, qk, l, r, o, zh_k_inv_arg, n);
+		break;
+	default:
+		break;
+	}
+}
+
+void launch_linearize_static(
+	gnark_gpu_plonk2_curve_id_t curve, FrView result,
+	ConstFrView z, ConstFrView s3,
+	ConstFrView ql, ConstFrView qr, ConstFrView qm, ConstFrView qo, ConstFrView qk,
+	const uint64_t *scalars, size_t n, cudaStream_t stream) {
+
+	unsigned blocks = (unsigned)((n + THREADS - 1) / THREADS);
+	int limbs = curve_limbs(curve);
+	ScalarArg combined_z = make_scalar_arg(curve, scalars);
+	ScalarArg s1 = make_scalar_arg(curve, scalars + limbs);
+	ScalarArg l = make_scalar_arg(curve, scalars + 2 * limbs);
+	ScalarArg r = make_scalar_arg(curve, scalars + 3 * limbs);
+	ScalarArg rl = make_scalar_arg(curve, scalars + 4 * limbs);
+	ScalarArg o = make_scalar_arg(curve, scalars + 5 * limbs);
+
+	switch(curve) {
+	case GNARK_GPU_PLONK2_CURVE_BN254:
+		linearize_static_kernel<BN254FrParams><<<blocks, THREADS, 0, stream>>>(
+			result, z, s3, ql, qr, qm, qo, qk, combined_z, s1, l, r, rl, o, n);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
+		linearize_static_kernel<BLS12377FrParams><<<blocks, THREADS, 0, stream>>>(
+			result, z, s3, ql, qr, qm, qo, qk, combined_z, s1, l, r, rl, o, n);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BW6_761:
+		linearize_static_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
+			result, z, s3, ql, qr, qm, qo, qk, combined_z, s1, l, r, rl, o, n);
+		break;
+	default:
+		break;
+	}
+}
+
+void launch_subtract_head(
+	gnark_gpu_plonk2_curve_id_t curve, FrView data, const uint64_t *tail,
+	size_t tail_len, cudaStream_t stream) {
+
+	if(tail_len == 0) return;
+	unsigned blocks = (unsigned)((tail_len + THREADS - 1) / THREADS);
+	switch(curve) {
+	case GNARK_GPU_PLONK2_CURVE_BN254:
+		subtract_head_kernel<BN254FrParams><<<blocks, THREADS, 0, stream>>>(
+			data, tail, tail_len);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BLS12_377:
+		subtract_head_kernel<BLS12377FrParams><<<blocks, THREADS, 0, stream>>>(
+			data, tail, tail_len);
+		break;
+	case GNARK_GPU_PLONK2_CURVE_BW6_761:
+		subtract_head_kernel<BW6761FrParams><<<blocks, THREADS, 0, stream>>>(
+			data, tail, tail_len);
 		break;
 	default:
 		break;

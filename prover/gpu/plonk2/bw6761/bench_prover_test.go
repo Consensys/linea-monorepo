@@ -277,12 +277,14 @@ func BenchmarkNewProver_BW6761_N1(b *testing.B)   { benchmarkNewProverBW(b, 1) }
 func BenchmarkNewProver_BW6761_N10(b *testing.B)  { benchmarkNewProverBW(b, 10) }
 func BenchmarkNewProver_BW6761_N30(b *testing.B)  { benchmarkNewProverBW(b, 30) }
 func BenchmarkNewProver_BW6761_N121(b *testing.B) { benchmarkNewProverBW(b, 121) }
+func BenchmarkNewProver_BW6761_N242(b *testing.B) { benchmarkNewProverBW(b, 242) }
 func BenchmarkNewProver_BW6761_N353(b *testing.B) { benchmarkNewProverBW(b, 353) }
 
 func BenchmarkCPUProver_BW6761_N1(b *testing.B)   { benchmarkCPUProverBW(b, 1) }
 func BenchmarkCPUProver_BW6761_N10(b *testing.B)  { benchmarkCPUProverBW(b, 10) }
 func BenchmarkCPUProver_BW6761_N30(b *testing.B)  { benchmarkCPUProverBW(b, 30) }
 func BenchmarkCPUProver_BW6761_N121(b *testing.B) { benchmarkCPUProverBW(b, 121) }
+func BenchmarkCPUProver_BW6761_N242(b *testing.B) { benchmarkCPUProverBW(b, 242) }
 func BenchmarkCPUProver_BW6761_N353(b *testing.B) { benchmarkCPUProverBW(b, 353) }
 
 func benchmarkNewProverBW(b *testing.B, n int) {

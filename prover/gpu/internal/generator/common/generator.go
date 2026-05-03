@@ -45,6 +45,8 @@ func (g *Generator) Execute(outputPath string, templateSrc string, data any) err
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
 		// Emit unformatted source for debugging.
+		// Generated source/debug files should have normal repository file permissions.
+		//nolint:gosec
 		_ = os.WriteFile(outputPath+".broken", buf.Bytes(), 0o644)
 		return fmt.Errorf("format source for %s: %w\n\nunformatted written to %s.broken", outputPath, err, outputPath)
 	}
@@ -53,5 +55,7 @@ func (g *Generator) Execute(outputPath string, templateSrc string, data any) err
 		return fmt.Errorf("mkdir %s: %w", filepath.Dir(outputPath), err)
 	}
 
+	// Generated source files should have normal repository file permissions.
+	//nolint:gosec
 	return os.WriteFile(outputPath, src, 0o644)
 }

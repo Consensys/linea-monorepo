@@ -94,6 +94,27 @@ func PlonkGateAccum(result, Ql, Qr, Qm, Qo, Qk, L, R, O *FrVector, zhKInv fr.Ele
 	}
 }
 
+// PlonkLinearizeStatic computes the fixed-selector part of the linearized polynomial.
+func PlonkLinearizeStatic(
+	result, Z, S3, Ql, Qr, Qm, Qo, Qk *FrVector,
+	combinedZCoeff, s1, lZeta, rZeta, rl, oZeta fr.Element,
+) {
+	n := result.n
+	if Z.n != n || S3.n != n || Ql.n != n || Qr.n != n || Qm.n != n ||
+		Qo.n != n || Qk.n != n {
+		panic("gpu: PlonkLinearizeStatic size mismatch")
+	}
+	scalars := [6]fr.Element{combinedZCoeff, s1, lZeta, rZeta, rl, oZeta}
+	if err := toError(C.gnark_gpu_plonk2_linearize_static(
+		devCtx(result.dev),
+		result.handle, Z.handle, S3.handle,
+		Ql.handle, Qr.handle, Qm.handle, Qo.handle, Qk.handle,
+		(*C.uint64_t)(unsafe.Pointer(&scalars[0])),
+	)); err != nil {
+		panic("gpu: PlonkLinearizeStatic failed: " + err.Error())
+	}
+}
+
 // PlonkPermBoundary computes the fused permutation + boundary constraint.
 func PlonkPermBoundary(
 	result, L, R, O, Z, S1, S2, S3, L1DenInv *FrVector,
@@ -144,6 +165,23 @@ func ReduceBlindedCoset(dst, src *FrVector, tail []fr.Element, cosetPowN fr.Elem
 		(*C.uint64_t)(unsafe.Pointer(&cosetPowN)),
 	)); err != nil {
 		panic("gpu: ReduceBlindedCoset failed: " + err.Error())
+	}
+}
+
+// SubtractBlindingHead subtracts tail[i] from v[i] for the blinding tail.
+func SubtractBlindingHead(v *FrVector, tail []fr.Element) {
+	if len(tail) == 0 {
+		return
+	}
+	if len(tail) > v.n {
+		panic("gpu: SubtractBlindingHead size mismatch")
+	}
+	if err := toError(C.gnark_gpu_plonk2_fr_vector_subtract_head(
+		devCtx(v.dev), v.handle,
+		(*C.uint64_t)(unsafe.Pointer(&tail[0])),
+		C.size_t(len(tail)),
+	)); err != nil {
+		panic("gpu: SubtractBlindingHead failed: " + err.Error())
 	}
 }
 

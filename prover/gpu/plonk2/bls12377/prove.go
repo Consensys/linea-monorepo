@@ -20,6 +20,7 @@ import (
 	"math/bits"
 	"os"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 	"unsafe"
@@ -130,6 +131,13 @@ type quotientWorkBufs struct {
 	LinResult, LinW        *FrVector    // linearized poly GPU scratch
 }
 
+type splitMSMBackend struct {
+	secondary *gpu.Device
+	msm0      *G1MSM
+	msm1      *G1MSM
+	split     int
+}
+
 type gpuInstance struct {
 	dev   *gpu.Device
 	vk    *curplonk.VerifyingKey
@@ -138,9 +146,10 @@ type gpuInstance struct {
 
 	domain0 *fft.Domain
 
-	msm    *G1MSM
-	fftDom *GPUFFTDomain
-	dPerm  unsafe.Pointer
+	msm      *G1MSM
+	splitMSM *splitMSMBackend
+	fftDom   *GPUFFTDomain
+	dPerm    unsafe.Pointer
 
 	dQl, dQr, dQm, dQo *FrVector
 	dS1, dS2, dS3      *FrVector
@@ -234,13 +243,35 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 	if msmSize > len(pts) {
 		msmSize = len(pts)
 	}
-	inst.msm, err = NewG1MSM(dev, pts[:msmSize], 0)
-	if err != nil {
-		return fail("create MSM", err)
+	if secondaryID, ok, cfgErr := secondaryMSMDeviceID(dev.DeviceID()); cfgErr != nil {
+		return fail("configure secondary MSM GPU", cfgErr)
+	} else if ok {
+		split := inst.n / 2
+		if split <= 0 || split >= msmSize {
+			return fail("configure secondary MSM GPU", fmt.Errorf("invalid split %d for MSM size %d", split, msmSize))
+		}
+		secondary, err := gpu.New(gpu.WithDeviceID(secondaryID))
+		if err != nil {
+			return fail("create secondary GPU device", err)
+		}
+		inst.splitMSM = &splitMSMBackend{secondary: secondary, split: split}
+		inst.splitMSM.msm0, err = NewG1MSM(dev, pts[:split], 0)
+		if err != nil {
+			return fail("create primary split MSM", err)
+		}
+		inst.splitMSM.msm1, err = NewG1MSM(secondary, pts[split:msmSize], 0)
+		if err != nil {
+			return fail("create secondary split MSM", err)
+		}
+	} else {
+		inst.msm, err = NewG1MSM(dev, pts[:msmSize], 0)
+		if err != nil {
+			return fail("create MSM", err)
+		}
 	}
 	gpk.srsPoints = nil // ownership transferred; free heap copy
 
-	if perr := inst.msm.PinWorkBuffers(); perr != nil {
+	if perr := inst.pinMSMWorkBuffers(); perr != nil {
 		return fail("pin MSM work buffers", perr)
 	}
 
@@ -268,6 +299,88 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 
 	inst.initHostBufs()
 	return inst, nil
+}
+
+func secondaryMSMDeviceID(primaryID int) (int, bool, error) {
+	raw := os.Getenv("GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID")
+	if raw == "" {
+		return 0, false, nil
+	}
+	id, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, false, fmt.Errorf("invalid GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID %q: %w", raw, err)
+	}
+	if id == primaryID {
+		return 0, false, fmt.Errorf("secondary device matches primary device %d", primaryID)
+	}
+	if id < 0 {
+		return 0, false, fmt.Errorf("secondary device id must be non-negative, got %d", id)
+	}
+	return id, true, nil
+}
+
+func (inst *gpuInstance) pinMSMWorkBuffers() error {
+	if inst.splitMSM != nil {
+		if err := inst.splitMSM.msm0.PinWorkBuffers(); err != nil {
+			return err
+		}
+		if err := inst.splitMSM.msm1.PinWorkBuffers(); err != nil {
+			return err
+		}
+		return nil
+	}
+	if inst.msm == nil {
+		return nil
+	}
+	return inst.msm.PinWorkBuffers()
+}
+
+func (inst *gpuInstance) releaseMSMWorkBuffers() error {
+	if inst.splitMSM != nil {
+		if err := inst.splitMSM.msm0.ReleaseWorkBuffers(); err != nil {
+			return err
+		}
+		if err := inst.splitMSM.msm1.ReleaseWorkBuffers(); err != nil {
+			return err
+		}
+		return nil
+	}
+	if inst.msm == nil {
+		return nil
+	}
+	return inst.msm.ReleaseWorkBuffers()
+}
+
+func (inst *gpuInstance) offloadMSMPoints() error {
+	if inst.splitMSM != nil {
+		if err := inst.splitMSM.msm0.OffloadPoints(); err != nil {
+			return err
+		}
+		if err := inst.splitMSM.msm1.OffloadPoints(); err != nil {
+			return err
+		}
+		return nil
+	}
+	if inst.msm == nil {
+		return nil
+	}
+	return inst.msm.OffloadPoints()
+}
+
+func (inst *gpuInstance) reloadMSMPoints() error {
+	if inst.splitMSM != nil {
+		if err := inst.splitMSM.msm0.ReloadPoints(); err != nil {
+			return err
+		}
+		if err := inst.splitMSM.msm1.ReloadPoints(); err != nil {
+			return err
+		}
+		return nil
+	}
+	if inst.msm == nil {
+		return nil
+	}
+	return inst.msm.ReloadPoints()
 }
 
 // allocPersistentBufs allocates GPU work buffers that persist across proofs.
@@ -423,6 +536,18 @@ func (inst *gpuInstance) close() {
 		inst.msm.Close()
 		inst.msm = nil
 	}
+	if inst.splitMSM != nil {
+		if inst.splitMSM.msm0 != nil {
+			inst.splitMSM.msm0.Close()
+		}
+		if inst.splitMSM.msm1 != nil {
+			inst.splitMSM.msm1.Close()
+		}
+		if inst.splitMSM.secondary != nil {
+			_ = inst.splitMSM.secondary.Close()
+		}
+		inst.splitMSM = nil
+	}
 	if inst.fftDom != nil {
 		inst.fftDom.Close()
 		inst.fftDom = nil
@@ -538,11 +663,11 @@ func (p *gpuProver) solve(spr *cs.SparseR1CS, fullWitness witness.Witness) error
 			inst.gpuWork.CopyToHost(canonicalBuf)
 			p.pi2Canonical[commDepth] = canonicalBuf
 
-			jacs, err := inst.msm.MultiExp(canonicalBuf)
+			commitment, err := inst.commit(canonicalBuf)
 			if err != nil {
 				return err
 			}
-			p.proof.Bsb22Commitments[commDepth].FromJacobian(&jacs[0])
+			p.proof.Bsb22Commitments[commDepth] = commitment
 
 			htfFunc.Write(p.proof.Bsb22Commitments[commDepth].Marshal())
 			hashBts := htfFunc.Sum(nil)
@@ -591,16 +716,17 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	inst := p.inst
 	hb := &inst.hBufs
 
-	gpuToCanonical := func(lagrange, dst fr.Vector) {
+	gpuToCanonical := func(lagrange, dst fr.Vector, dstDevice *FrVector) {
 		inst.gpuWork.CopyFromHost(lagrange)
 		inst.fftDom.BitReverse(inst.gpuWork)
 		inst.fftDom.FFTInverse(inst.gpuWork)
+		dstDevice.CopyFromDevice(inst.gpuWork)
 		inst.gpuWork.CopyToHost(dst)
 	}
 
-	gpuToCanonical(p.evalL, hb.lCanonical)
-	gpuToCanonical(p.evalR, hb.rCanonical)
-	gpuToCanonical(p.evalO, hb.oCanonical)
+	gpuToCanonical(p.evalL, hb.lCanonical, inst.qWb.LCan)
+	gpuToCanonical(p.evalR, hb.rCanonical, inst.qWb.RCan)
+	gpuToCanonical(p.evalO, hb.oCanonical, inst.qWb.OCan)
 
 	if err := waitQk(); err != nil {
 		return err
@@ -621,10 +747,13 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	go func() { defer blindWG.Done(); p.rBlinded = blindInto(hb.rBlinded, hb.rCanonical, p.bpR) }()
 	go func() { defer blindWG.Done(); p.oBlinded = blindInto(hb.oBlinded, hb.oCanonical, p.bpO) }()
 	blindWG.Wait()
+	SubtractBlindingHead(inst.qWb.LCan, p.bpL.Coefficients())
+	SubtractBlindingHead(inst.qWb.RCan, p.bpR.Coefficients())
+	SubtractBlindingHead(inst.qWb.OCan, p.bpO.Coefficients())
 
 	p.logTime("iFFT L,R,O,Qk + blind")
 
-	lroCommits, err := gpuCommitN(inst.msm, p.lBlinded, p.rBlinded, p.oBlinded)
+	lroCommits, err := inst.commitN(p.lBlinded, p.rBlinded, p.oBlinded)
 	if err != nil {
 		return err
 	}
@@ -669,10 +798,12 @@ func (p *gpuProver) buildZAndCommit() error {
 	inst.gpuWork.CopyFromHost(zLagrange)
 	inst.fftDom.BitReverse(inst.gpuWork)
 	inst.fftDom.FFTInverse(inst.gpuWork)
+	inst.qWb.ZCan.CopyFromDevice(inst.gpuWork)
 	inst.gpuWork.CopyToHost(hb.zLagrange)
 	p.zBlinded = blindInto(hb.zBlinded, hb.zLagrange, p.bpZ)
+	SubtractBlindingHead(inst.qWb.ZCan, p.bpZ.Coefficients())
 
-	zCommit, err := gpuCommit(inst.msm, p.zBlinded)
+	zCommit, err := inst.commit(p.zBlinded)
 	if err != nil {
 		return err
 	}
@@ -696,17 +827,20 @@ func (p *gpuProver) buildZAndCommit() error {
 func (p *gpuProver) computeQuotientAndCommit() error {
 	inst := p.inst
 
-	if err := inst.msm.OffloadPoints(); err != nil {
-		return fmt.Errorf("offload MSM points: %w", err)
+	pointsOffloaded := false
+	if inst.shouldOffloadMSMForQuotient() {
+		if err := inst.offloadMSMPoints(); err != nil {
+			return fmt.Errorf("offload MSM points: %w", err)
+		}
+		pointsOffloaded = true
+		if err := inst.releaseMSMWorkBuffers(); err != nil {
+			return fmt.Errorf("release MSM work buffers: %w", err)
+		}
 	}
-	if err := inst.msm.ReleaseWorkBuffers(); err != nil {
-		return fmt.Errorf("release MSM work buffers: %w", err)
-	}
-	pointsOffloaded := true
 	defer func() {
 		if pointsOffloaded {
-			_ = inst.msm.ReloadPoints()
-			_ = inst.msm.PinWorkBuffers()
+			_ = inst.reloadMSMPoints()
+			_ = inst.pinMSMWorkBuffers()
 		}
 	}()
 
@@ -723,14 +857,16 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 
 	p.logTime("quotient GPU")
 
-	if err := inst.msm.ReloadPoints(); err != nil {
-		return fmt.Errorf("reload MSM points: %w", err)
+	if pointsOffloaded {
+		if err := inst.reloadMSMPoints(); err != nil {
+			return fmt.Errorf("reload MSM points: %w", err)
+		}
+		if err := inst.pinMSMWorkBuffers(); err != nil {
+			return fmt.Errorf("re-pin MSM work buffers: %w", err)
+		}
+		pointsOffloaded = false
 	}
-	if err := inst.msm.PinWorkBuffers(); err != nil {
-		return fmt.Errorf("re-pin MSM work buffers: %w", err)
-	}
-	pointsOffloaded = false
-	hCommits, err := gpuCommitN(inst.msm, p.h1, p.h2, p.h3)
+	hCommits, err := inst.commitN(p.h1, p.h2, p.h3)
 	if err != nil {
 		return err
 	}
@@ -745,6 +881,25 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 		return zetaErr
 	}
 	return nil
+}
+
+func (inst *gpuInstance) shouldOffloadMSMForQuotient() bool {
+	if os.Getenv("GNARK_GPU_PLONK2_FORCE_MSM_OFFLOAD") != "" {
+		return true
+	}
+	if os.Getenv("GNARK_GPU_PLONK2_DISABLE_MSM_OFFLOAD") != "" {
+		return false
+	}
+	free, _, err := inst.dev.MemGetInfo()
+	if err != nil {
+		return true
+	}
+	reserve := uint64(inst.n) * uint64(fr.Bytes) * 8
+	const minReserve = 2 << 30
+	if reserve < minReserve {
+		reserve = minReserve
+	}
+	return free < reserve
 }
 
 func (p *gpuProver) openAndFinalize() error {
@@ -789,7 +944,7 @@ func (p *gpuProver) openAndFinalize() error {
 	)
 	p.h1, p.h2, p.h3, p.pi2Canonical, p.pi2DeviceReady = nil, nil, nil, nil, nil
 
-	zOpenCommit, err := gpuCommit(inst.msm, openZPoly[1:])
+	zOpenCommit, err := inst.commit(openZPoly[1:])
 	if err != nil {
 		return err
 	}
@@ -801,7 +956,7 @@ func (p *gpuProver) openAndFinalize() error {
 		linPolZetaCh <- polyEvalParallel(linPol, p.zeta)
 	}()
 
-	linPolDigest, err := gpuCommit(inst.msm, linPol)
+	linPolDigest, err := inst.commit(linPol)
 	if err != nil {
 		return err
 	}
@@ -840,7 +995,7 @@ func (p *gpuProver) openAndFinalize() error {
 	copy(digestsToOpen[6:], inst.vk.Qcp)
 
 	p.proof.BatchedProof, err = gpuBatchOpen(
-		inst.msm,
+		inst.commit,
 		polysToOpen, digestsToOpen, claimedValues,
 		p.zeta,
 		p.proof.ZShiftedOpening.ClaimedValue.Marshal(),
@@ -1048,11 +1203,8 @@ func computeNumeratorGPU(
 		evCosetDone gpu.EventID = 3 // StreamCompute → StreamTransfer: full coset k done
 	)
 
-	// Upload canonical wire data once per proof before the loop.
-	gpuLCan.CopyFromHost(fr.Vector(lBlinded[:n]))
-	gpuRCan.CopyFromHost(fr.Vector(rBlinded[:n]))
-	gpuOCan.CopyFromHost(fr.Vector(oBlinded[:n]))
-	gpuZCan.CopyFromHost(fr.Vector(zBlinded[:n]))
+	// L/R/O/Z canonical heads were produced on-device by the iFFT phases and
+	// adjusted for blinding there. Keep them resident for the quotient loop.
 	for j := range pi2Canonical {
 		if j >= len(pi2DeviceReady) || pi2DeviceReady[j] {
 			continue
@@ -1130,28 +1282,20 @@ func computeNumeratorGPU(
 		// Gate selectors: overlap transfer-stream D2D copies with compute-stream FFTs.
 		dev.RecordEvent(gpu.StreamCompute, evPermDone)
 
+		dev.WaitEvent(gpu.StreamTransfer, evPermDone)
+		gpuS1.CopyFromDeviceStream(inst.dQr, gpu.StreamTransfer)
+		gpuS2.CopyFromDeviceStream(inst.dQm, gpu.StreamTransfer)
+		gpuS3.CopyFromDeviceStream(inst.dQo, gpu.StreamTransfer)
+		gpuWork.CopyFromDeviceStream(wb.QkSrc, gpu.StreamTransfer)
+		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
+
 		gpuZ.CopyFromDevice(inst.dQl)
 		fftDom.CosetFFT(gpuZ, cosetGen)
 
-		dev.WaitEvent(gpu.StreamTransfer, evPermDone)
-		gpuS1.CopyFromDeviceStream(inst.dQr, gpu.StreamTransfer)
-		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
 		dev.WaitEvent(gpu.StreamCompute, evS123Done)
 		fftDom.CosetFFT(gpuS1, cosetGen)
-
-		gpuS2.CopyFromDeviceStream(inst.dQm, gpu.StreamTransfer)
-		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
-		dev.WaitEvent(gpu.StreamCompute, evS123Done)
 		fftDom.CosetFFT(gpuS2, cosetGen)
-
-		gpuS3.CopyFromDeviceStream(inst.dQo, gpu.StreamTransfer)
-		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
-		dev.WaitEvent(gpu.StreamCompute, evS123Done)
 		fftDom.CosetFFT(gpuS3, cosetGen)
-
-		gpuWork.CopyFromDeviceStream(wb.QkSrc, gpu.StreamTransfer)
-		dev.RecordEvent(gpu.StreamTransfer, evS123Done)
-		dev.WaitEvent(gpu.StreamCompute, evS123Done)
 		fftDom.CosetFFT(gpuWork, cosetGen)
 
 		var zhKInv fr.Element
@@ -1251,8 +1395,34 @@ func gpuCommitN(msm *G1MSM, coeffSets ...[]fr.Element) ([]curve.G1Affine, error)
 	return affs, nil
 }
 
+func (inst *gpuInstance) commit(coeffs []fr.Element) (curve.G1Affine, error) {
+	commits, err := inst.commitN(coeffs)
+	if err != nil {
+		return curve.G1Affine{}, err
+	}
+	return commits[0], nil
+}
+
+func (inst *gpuInstance) commitN(coeffSets ...[]fr.Element) ([]curve.G1Affine, error) {
+	var jacs []curve.G1Jac
+	var err error
+	if inst.splitMSM != nil {
+		jacs, err = MultiExpSplitBatchAt(inst.splitMSM.msm0, inst.splitMSM.msm1, inst.splitMSM.split, coeffSets...)
+	} else {
+		jacs, err = inst.msm.MultiExp(coeffSets...)
+	}
+	if err != nil {
+		return nil, err
+	}
+	affs := make([]curve.G1Affine, len(jacs))
+	for i := range jacs {
+		affs[i].FromJacobian(&jacs[i])
+	}
+	return affs, nil
+}
+
 func gpuBatchOpen(
-	msm *G1MSM,
+	commit func([]fr.Element) (curve.G1Affine, error),
 	polys [][]fr.Element,
 	digests []curve.G1Affine,
 	claimedValues []fr.Element,
@@ -1342,7 +1512,7 @@ func gpuBatchOpen(
 	parallelHornerQuotient(folded, point)
 	h := folded[1:]
 
-	res.H, err = gpuCommit(msm, h)
+	res.H, err = commit(h)
 	if err != nil {
 		return res, err
 	}
@@ -1397,21 +1567,11 @@ func computeLinearizedPoly(
 
 	var combinedZCoeff fr.Element
 	combinedZCoeff.Add(&s2, &alphaSquareLagrangeZero)
-	gpuResult.CopyFromHost(fr.Vector(blindedZCanonical[:n]))
-	gpuResult.ScalarMul(combinedZCoeff)
-
-	gpuW.CopyFromDevice(inst.dS3)
-	gpuResult.AddScalarMul(gpuW, s1)
-	gpuW.CopyFromDevice(inst.dQl)
-	gpuResult.AddScalarMul(gpuW, lZeta)
-	gpuW.CopyFromDevice(inst.dQr)
-	gpuResult.AddScalarMul(gpuW, rZeta)
-	gpuW.CopyFromDevice(inst.dQm)
-	gpuResult.AddScalarMul(gpuW, rl)
-	gpuW.CopyFromDevice(inst.dQo)
-	gpuResult.AddScalarMul(gpuW, oZeta)
-	gpuW.CopyFromDevice(inst.dQkFixed)
-	gpuResult.Add(gpuResult, gpuW)
+	PlonkLinearizeStatic(
+		gpuResult, inst.qWb.ZCan, inst.dS3,
+		inst.dQl, inst.dQr, inst.dQm, inst.dQo, inst.dQkFixed,
+		combinedZCoeff, s1, lZeta, rZeta, rl, oZeta,
+	)
 
 	for j := range qcpZeta {
 		if j < len(pi2DeviceReady) && pi2DeviceReady[j] && j < len(inst.qWb.Pi2Src) && inst.qWb.Pi2Src[j] != nil {

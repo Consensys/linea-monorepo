@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"os"
 	"runtime"
+	"strconv"
 	"unsafe"
 
 	curve "{{.GnarkCurve}}"
@@ -35,6 +36,18 @@ func init() {
 
 // msmDefaultWindowBits selects the Pippenger window size for n points.
 func msmDefaultWindowBits(n int) int {
+{{- if eq .Package "bw6761" }}
+	switch {
+	case n >= 1<<22:
+		return 18
+	case n > 1<<18:
+		return 15
+	case n > 1<<12:
+		return 13
+	default:
+		return 11
+	}
+{{- else }}
 	switch {
 	case n > 1<<26:
 		return 19
@@ -47,6 +60,7 @@ func msmDefaultWindowBits(n int) int {
 	default:
 		return 11
 	}
+{{- end }}
 }
 
 // G1MSM holds a GPU MSM context with uploaded affine base points.
@@ -68,12 +82,22 @@ func NewG1MSM(dev *gpu.Device, points []curve.G1Affine, windowBits int) (*G1MSM,
 	if dev.Handle() == nil {
 		return nil, gpu.ErrDeviceClosed
 	}
+	if err := dev.Bind(); err != nil {
+		return nil, err
+	}
 	n := len(points)
 	if n == 0 {
 		return nil, &gpu.Error{Code: -1, Message: "points must not be empty"}
 	}
 	if windowBits == 0 {
 		windowBits = msmDefaultWindowBits(n)
+	}
+	if override := os.Getenv("GNARK_GPU_PLONK2_MSM_WINDOW_BITS"); override != "" {
+		parsed, err := strconv.Atoi(override)
+		if err != nil {
+			return nil, fmt.Errorf("gpu: invalid GNARK_GPU_PLONK2_MSM_WINDOW_BITS %q: %w", override, err)
+		}
+		windowBits = parsed
 	}
 	if windowBits < 2 || windowBits > 24 {
 		return nil, fmt.Errorf("gpu: window bits must be in [2,24], got %d", windowBits)
@@ -139,18 +163,27 @@ func (m *G1MSM) Len() int { return m.n }
 // PinWorkBuffers keeps MSM scratch buffers resident across MultiExp calls,
 // amortizing cudaMalloc/Free overhead over a wave of MSMs.
 func (m *G1MSM) PinWorkBuffers() error {
+	if err := m.dev.Bind(); err != nil {
+		return err
+	}
 	return toError(C.gnark_gpu_plonk2_msm_pin_work_buffers(m.handle))
 }
 
 // ReleaseWorkBuffers frees pinned scratch buffers. Subsequent MultiExp calls
 // re-allocate lazily.
 func (m *G1MSM) ReleaseWorkBuffers() error {
+	if err := m.dev.Bind(); err != nil {
+		return err
+	}
 	return toError(C.gnark_gpu_plonk2_msm_release_work_buffers(m.handle))
 }
 
 // OffloadPoints frees the GPU-resident base points. Call ReloadPoints before
 // the next MultiExp.
 func (m *G1MSM) OffloadPoints() error {
+	if err := m.dev.Bind(); err != nil {
+		return err
+	}
 	return toError(C.gnark_gpu_plonk2_msm_offload_points(m.handle))
 }
 
@@ -158,6 +191,9 @@ func (m *G1MSM) OffloadPoints() error {
 func (m *G1MSM) ReloadPoints() error {
 	if len(m.hostPoints) < m.n {
 		return fmt.Errorf("gpu: MSM host points unavailable")
+	}
+	if err := m.dev.Bind(); err != nil {
+		return err
 	}
 	return toError(C.gnark_gpu_plonk2_msm_reload_points(
 		m.handle,
@@ -170,6 +206,9 @@ func (m *G1MSM) ReloadPoints() error {
 // Each scalars[i] must have length ≤ m.Len().
 // Returns Jacobian results.
 func (m *G1MSM) MultiExp(scalars ...[]fr.Element) ([]curve.G1Jac, error) {
+	if err := m.dev.Bind(); err != nil {
+		return nil, err
+	}
 	k := len(scalars)
 	if k == 0 {
 		return nil, nil
@@ -214,11 +253,22 @@ func (m *G1MSM) LastPhaseTimings() [9]float32 {
 // msm0 must hold points[:n/2] and msm1 must hold points[n/2:].
 // This is an advanced API; use MultiExp for single-GPU operation.
 func MultiExpSplit(msm0, msm1 *G1MSM, scalars []fr.Element) (curve.G1Jac, error) {
+	return MultiExpSplitAt(msm0, msm1, len(scalars)/2, scalars)
+}
+
+// MultiExpSplitAt runs one MSM split across 2 devices at a fixed scalar index.
+// msm0 must hold points[:split], and msm1 must hold points[split:].
+func MultiExpSplitAt(msm0, msm1 *G1MSM, split int, scalars []fr.Element) (curve.G1Jac, error) {
 	if msm0 == nil || msm1 == nil || len(scalars) == 0 {
 		return curve.G1Jac{}, fmt.Errorf("gpu: MultiExpSplit: nil MSM or empty scalars")
 	}
 	n := len(scalars)
-	half := n / 2
+	if split <= 0 || split >= n {
+		return curve.G1Jac{}, fmt.Errorf("gpu: MultiExpSplit: invalid split %d for %d scalars", split, n)
+	}
+	if split > msm0.Len() || n-split > msm1.Len() {
+		return curve.G1Jac{}, fmt.Errorf("gpu: MultiExpSplit: split exceeds MSM point capacity")
+	}
 
 	type result struct {
 		jac curve.G1Jac
@@ -228,7 +278,13 @@ func MultiExpSplit(msm0, msm1 *G1MSM, scalars []fr.Element) (curve.G1Jac, error)
 	ch1 := make(chan result, 1)
 
 	go func() {
-		jacs, err := msm0.MultiExp(scalars[:half])
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if err := msm0.dev.Bind(); err != nil {
+			ch0 <- result{err: err}
+			return
+		}
+		jacs, err := msm0.MultiExp(scalars[:split])
 		if err != nil {
 			ch0 <- result{err: err}
 			return
@@ -237,7 +293,13 @@ func MultiExpSplit(msm0, msm1 *G1MSM, scalars []fr.Element) (curve.G1Jac, error)
 	}()
 
 	go func() {
-		jacs, err := msm1.MultiExp(scalars[half:])
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if err := msm1.dev.Bind(); err != nil {
+			ch1 <- result{err: err}
+			return
+		}
+		jacs, err := msm1.MultiExp(scalars[split:])
 		if err != nil {
 			ch1 <- result{err: err}
 			return
@@ -255,4 +317,73 @@ func MultiExpSplit(msm0, msm1 *G1MSM, scalars []fr.Element) (curve.G1Jac, error)
 	}
 	r0.jac.AddAssign(&r1.jac)
 	return r0.jac, nil
+}
+
+// MultiExpSplitBatchAt runs several MSMs split across 2 devices. Each device
+// executes its half-batch sequentially on its own stream, and the host combines
+// matching partials.
+func MultiExpSplitBatchAt(msm0, msm1 *G1MSM, split int, scalars ...[]fr.Element) ([]curve.G1Jac, error) {
+	if len(scalars) == 0 {
+		return nil, nil
+	}
+	first := make([][]fr.Element, len(scalars))
+	second := make([][]fr.Element, len(scalars))
+	for i, s := range scalars {
+		if len(s) == 0 {
+			return nil, fmt.Errorf("gpu: split MSM scalar set %d is empty", i)
+		}
+		if split <= 0 || split >= len(s) {
+			return nil, fmt.Errorf("gpu: split MSM scalar set %d has invalid split %d for %d scalars", i, split, len(s))
+		}
+		if split > msm0.Len() || len(s)-split > msm1.Len() {
+			return nil, fmt.Errorf("gpu: split MSM scalar set %d exceeds MSM point capacity", i)
+		}
+		first[i] = s[:split]
+		second[i] = s[split:]
+	}
+
+	type result struct {
+		jacs []curve.G1Jac
+		err  error
+	}
+	ch0 := make(chan result, 1)
+	ch1 := make(chan result, 1)
+
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if err := msm0.dev.Bind(); err != nil {
+			ch0 <- result{err: err}
+			return
+		}
+		jacs, err := msm0.MultiExp(first...)
+		ch0 <- result{jacs: jacs, err: err}
+	}()
+
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if err := msm1.dev.Bind(); err != nil {
+			ch1 <- result{err: err}
+			return
+		}
+		jacs, err := msm1.MultiExp(second...)
+		ch1 <- result{jacs: jacs, err: err}
+	}()
+
+	r0 := <-ch0
+	r1 := <-ch1
+	if r0.err != nil {
+		return nil, r0.err
+	}
+	if r1.err != nil {
+		return nil, r1.err
+	}
+	if len(r0.jacs) != len(scalars) || len(r1.jacs) != len(scalars) {
+		return nil, fmt.Errorf("gpu: split MSM result length mismatch")
+	}
+	for i := range r0.jacs {
+		r0.jacs[i].AddAssign(&r1.jacs[i])
+	}
+	return r0.jacs, nil
 }

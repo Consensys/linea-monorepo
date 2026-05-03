@@ -2451,3 +2451,82 @@ ok   github.com/consensys/linea-monorepo/prover/gpu/plonk2 0.115s
 ```
 
 CUDA validation was not run on this host in this pass.
+
+## 2026-05-03 — BW6-761 Large-Prover MSM and 2-GPU Benchmark Pass
+
+Targeted the BW6-761 `gpu/plonk2/bw6761` prover at the ECMul benchmarks used
+for large domains. Existing artifacts mapped `N121` to `domain_size=16777216`
+(`1<<24`), so `N242` was added and validated as `domain_size=33554432`
+(`1<<25`).
+
+Changes:
+
+- Added a BW6-761 large-MSM window default of `18` for `n >= 1<<22`.
+- Added `GNARK_GPU_PLONK2_MSM_WINDOW_BITS` for local MSM window sweeps.
+- Added opt-in MSM splitting with
+  `GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=<gpu-id>`.
+- Bound every plonk2 MSM method to its owning CUDA device before C calls, which
+  is required because CUDA current-device state is OS-thread-local.
+- Added `BenchmarkNewProver_BW6761_N242` and
+  `BenchmarkCPUProver_BW6761_N242`.
+
+Benchmark commands, on two RTX PRO 6000 Blackwell Server Edition GPUs:
+
+```
+GNARK_GPU_PLONK2_DISABLE_MSM_OFFLOAD=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run '^$' -bench '^BenchmarkNewProver_BW6761_N121$' \
+  -benchtime=1x -count=1 -timeout 90m
+
+GNARK_GPU_PLONK2_DISABLE_MSM_OFFLOAD=1 GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 \
+  go test ./gpu/plonk2/bw6761 -tags cuda -run '^$' \
+  -bench '^BenchmarkNewProver_BW6761_N121$' -benchtime=1x -count=1 \
+  -timeout 90m
+
+go test ./gpu/plonk2/bw6761 -tags cuda -run '^$' \
+  -bench '^BenchmarkNewProver_BW6761_N242$' -benchtime=1x -count=1 \
+  -timeout 120m
+
+GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run '^$' -bench '^BenchmarkNewProver_BW6761_N242$' \
+  -benchtime=1x -count=1 -timeout 120m
+```
+
+Results:
+
+| Target | GPUs | Domain | `prove_ms` |
+|--------|-----:|-------:|-----------:|
+| N121 before BW6 MSM tuning | 1 | 16,777,216 | 43,428 |
+| N121 window=18 | 1 | 16,777,216 | 23,507 |
+| N121 window=18 + split MSM | 2 | 16,777,216 | 18,331 |
+| N242 window=18 | 1 | 33,554,432 | 43,835 |
+| N242 window=18 + split MSM | 2 | 33,554,432 | 33,279 |
+
+The `1<<25` target completed without GPU OOM. The measured speedup at `1<<24`
+is `43428 / 18331 = 2.37x`, short of the requested 4x target. The timed
+`1<<24` 2-GPU proof still spends ~5.7s in witness solve and ~3.8s in the
+single-GPU quotient phase. This gives a hard end-to-end limit: even ideal
+parallelization of the remaining MSM work cannot reach 4x from the 43.4s
+baseline without additional algorithmic changes to solve, quotient, or the MSM
+backend itself.
+
+Validation:
+
+```
+go run ./gpu/internal/generator
+cmake --build gpu/cuda/build --target gnark_gpu -j2
+go test ./gpu/plonk2/bn254 ./gpu/plonk2/bls12377 ./gpu/plonk2/bw6761 \
+  -tags cuda -run 'TestMSMMatchesCPU|TestMSMBatchScalarSets|TestMSMWorkBuffers' -count=1
+go test ./gpu/plonk2/bw6761 -tags cuda -run TestGPUProveVerify -count=1
+GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run TestGPUProveVerify -count=1
+golangci-lint run
+```
+
+Results:
+
+```
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bn254
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bls12377
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bw6761
+0 issues.
+```

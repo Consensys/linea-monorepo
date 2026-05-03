@@ -644,6 +644,24 @@ gnark_gpu_error_t gnark_gpu_plonk2_gate_accum(
     gnark_gpu_plonk2_fr_vector_t o,
     const uint64_t *zh_k_inv);
 
+gnark_gpu_error_t gnark_gpu_plonk2_linearize_static(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t result,
+    gnark_gpu_plonk2_fr_vector_t z,
+    gnark_gpu_plonk2_fr_vector_t s3,
+    gnark_gpu_plonk2_fr_vector_t ql,
+    gnark_gpu_plonk2_fr_vector_t qr,
+    gnark_gpu_plonk2_fr_vector_t qm,
+    gnark_gpu_plonk2_fr_vector_t qo,
+    gnark_gpu_plonk2_fr_vector_t qk,
+    const uint64_t *scalars);
+
+gnark_gpu_error_t gnark_gpu_plonk2_fr_vector_subtract_head(
+    gnark_gpu_context_t ctx,
+    gnark_gpu_plonk2_fr_vector_t vec,
+    const uint64_t *tail,
+    size_t tail_len);
+
 gnark_gpu_error_t gnark_gpu_plonk2_perm_boundary(
     gnark_gpu_context_t ctx,
     gnark_gpu_plonk2_fr_vector_t result,
