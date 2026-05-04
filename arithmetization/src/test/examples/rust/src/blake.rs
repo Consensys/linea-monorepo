@@ -1,16 +1,29 @@
+#![no_std]
+#![no_main]
+
 /// Blake2b‑F compression function (used in EIP‑152 precompile, zkVMs, etc.)
 ///
 /// Reference: RFC 7693, plus the Java gist:
 /// https://gist.github.com/DavePearce/fca4c7fcfac840dc362b1c907d672093
 /// 
-/// rustc src/blake_from_main.rs -o bin/blake_from_main && ./bin/blake_from_main; echo $?
+/// Note: this is a freestanding implementation
 
-use std::convert::TryInto;
-use std::process;
+use core::convert::TryInto;
+use core::result::Result;
+use core::result::Result::Err;
+use core::result::Result::Ok;
 
 include!("blake_core.rs");
 
-fn main() {
+core::arch::global_asm!(
+    ".global _start",
+    "_start:",
+    "li sp, 0x087fffff", // set stack pointer to a known memory region
+    "call main",
+);
+
+#[no_mangle]
+fn main() -> ! {
     let test_vector_4 = [
         "0000000048c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e511f6c3e2b8c68059b6bbd41fbabd9831f79217e1319cde05b61626300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000001",
         "08c9bcf367e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d282e6ad7f520e511f6c3e2b8c68059b9442be0454267ce079217e1319cde05b" ];
@@ -36,18 +49,36 @@ fn main() {
         let input = hex_to_input(test_vectors[i][0]);
         let expected = hex_to_expected(test_vectors[i][1]);
 
-        let code = match blake2b_f_eip152(&input) {
+        let _code = match blake2b_f_eip152(&input) {
             Ok(result) if result == expected.as_slice() => 0, // success
             Ok(_) => 1,                                       // wrong result
             Err(_) => 2,                                      // compression failed
         };
 
-        println!(
-            "Test vector {}: {}",
-            i + 4,
-            if code == 0 { "PASS" } else { "FAIL" }
-        );
+        // println!(
+        //     "Test vector {}: {}",
+        //     i + 4,
+        //     if code == 0 { "PASS" } else { "FAIL" }
+        // );
     }
 
-    process::exit(0)
+    exit(0)
+}
+
+fn exit(code: i32) -> ! {
+    unsafe {
+        core::arch::asm!(
+            "mv a0, {0}",  // exit code
+            "li a7, 93",   // syscall number for exit
+            "ecall",
+            in(reg) code,
+            options(noreturn)
+        );
+    }
+}
+
+// required by the compiler
+#[panic_handler]
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    exit(3);
 }
