@@ -5,15 +5,7 @@ permissions:
   pull-requests: write
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'coordinator/**'
-      - '!coordinator/CHANGELOG.md'
-      - 'cliff.toml'
-      - 'commitlint.config.mjs'
-      - '.github/workflows/coordinator-changelog.yml'
+  workflow_call:
 
 concurrency:
   group: component-changelog-${{ github.workflow }}-${{ github.ref }}
@@ -21,14 +13,14 @@ concurrency:
 
 jobs:
   lint-latest-commit-message:
-    if: github.event.pull_request.head.repo.fork == false
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Lint latest PR commit message
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Need enough history to resolve the latest PR commit and access commitlint.config.mjs
+          # Need enough history to resolve the latest PR commit
           fetch-depth: 0
           submodules: false
 
@@ -41,16 +33,18 @@ jobs:
           helpURL: https://www.conventionalcommits.org
 
   generate-component-changelog:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
     needs: lint-latest-commit-message
-    if: github.event.pull_request.head.repo.fork == false
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false
       matrix:
-        component: [ coordinator, postman, tx-exclusion-api, linea-besu ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
         include:
           - component: coordinator
             include-path: 'coordinator/**'
+          - component: prover
+            include-path: 'prover/**'
           - component: postman
             include-path: 'postman/**'
           - component: tx-exclusion-api

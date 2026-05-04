@@ -13,6 +13,12 @@ permissions:
   packages: write
 
 jobs:
+  code-analysis:
+    uses: ./.github/workflows/codeql.yml
+  
+  component-changelog-preview:
+    uses: ./.github/workflows/component-changelog.yml
+
   filter-commit-changes:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
@@ -170,9 +176,6 @@ jobs:
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       lido_governance_monitor_changed: ${{ needs.filter-commit-changes.outputs.lido-governance-monitor }}
     secrets: inherit
-
-  code-analysis:
-    uses: ./.github/workflows/codeql.yml
 
   testing:
     needs: [filter-commit-changes, check-and-tag-images]
