@@ -55,12 +55,13 @@ func msmDefaultWindowBits(n int) int {
 // Points are uploaded once at construction. The context supports multiple
 // MultiExp calls sharing the same base points.
 type G1MSM struct {
-	handle        C.gnark_gpu_plonk2_msm_t
-	dev           *gpu.Device
-	n             int
-	windowBits    int
-	hostPoints    []curve.G1Affine
-	hostPointsPtr unsafe.Pointer
+	handle                C.gnark_gpu_plonk2_msm_t
+	dev                   *gpu.Device
+	n                     int
+	windowBits            int
+	hostPoints            []curve.G1Affine
+	hostPointsPtr         unsafe.Pointer
+	lastBatchPhaseTimings [][9]float32
 }
 
 // NewG1MSM creates a G1MSM context by uploading affine points to the GPU.
@@ -210,6 +211,7 @@ func (m *G1MSM) MultiExp(scalars ...[]fr.Element) ([]curve.G1Jac, error) {
 	}
 
 	results := make([]curve.G1Jac, k)
+	m.lastBatchPhaseTimings = make([][9]float32, k)
 	for i, s := range scalars {
 		if err := toError(C.gnark_gpu_plonk2_msm_run(
 			m.handle,
@@ -219,6 +221,7 @@ func (m *G1MSM) MultiExp(scalars ...[]fr.Element) ([]curve.G1Jac, error) {
 		)); err != nil {
 			return nil, fmt.Errorf("gpu: MSM set %d failed: %w", i, err)
 		}
+		m.lastBatchPhaseTimings[i] = m.LastPhaseTimings()
 		// Montgomery correction: GPU skips fr_from_mont on scalars, so result = R * correct.
 		results[i].ScalarMultiplication(&results[i], &frRInv)
 	}
@@ -234,6 +237,17 @@ func (m *G1MSM) LastPhaseTimings() [9]float32 {
 		result[i] = float32(out[i])
 	}
 	return result
+}
+
+// LastBatchPhaseTimings returns per-set MSM phase timings from the most recent
+// MultiExp call.
+func (m *G1MSM) LastBatchPhaseTimings() [][9]float32 {
+	if len(m.lastBatchPhaseTimings) == 0 {
+		return nil
+	}
+	out := make([][9]float32, len(m.lastBatchPhaseTimings))
+	copy(out, m.lastBatchPhaseTimings)
+	return out
 }
 
 // MultiExpSplit runs the MSM split across 2 devices for ~2x speedup.

@@ -1414,11 +1414,61 @@ func (inst *gpuInstance) commitN(coeffSets ...[]fr.Element) ([]curve.G1Affine, e
 	if err != nil {
 		return nil, err
 	}
+	inst.logMSMPhaseTimings(coeffSets...)
 	affs := make([]curve.G1Affine, len(jacs))
 	for i := range jacs {
 		affs[i].FromJacobian(&jacs[i])
 	}
 	return affs, nil
+}
+
+func (inst *gpuInstance) logMSMPhaseTimings(coeffSets ...[]fr.Element) {
+	if os.Getenv("GNARK_GPU_PLONK2_LOG_MSM_PHASES") == "" {
+		return
+	}
+	counts := make([]int, len(coeffSets))
+	for i := range coeffSets {
+		counts[i] = len(coeffSets[i])
+	}
+	if inst.splitMSM != nil {
+		primaryCounts := make([]int, len(coeffSets))
+		secondaryCounts := make([]int, len(coeffSets))
+		for i, count := range counts {
+			primaryCounts[i] = inst.splitMSM.split
+			if count < primaryCounts[i] {
+				primaryCounts[i] = count
+			}
+			secondaryCounts[i] = count - primaryCounts[i]
+		}
+		logMSMPhaseTimings(inst.n, "primary", inst.splitMSM.msm0.LastBatchPhaseTimings(), primaryCounts)
+		logMSMPhaseTimings(inst.n, "secondary", inst.splitMSM.msm1.LastBatchPhaseTimings(), secondaryCounts)
+		return
+	}
+	logMSMPhaseTimings(inst.n, "single", inst.msm.LastBatchPhaseTimings(), counts)
+}
+
+func logMSMPhaseTimings(n int, device string, timings [][9]float32, scalarCounts []int) {
+	names := [...]string{
+		"h2d", "build_pairs", "sort", "boundaries", "accum_seq",
+		"accum_par", "reduce_partial", "reduce_finalize", "d2h",
+	}
+	for i, phase := range timings {
+		total := float32(0)
+		for _, ms := range phase {
+			total += ms
+		}
+		scalars := 0
+		if i < len(scalarCounts) {
+			scalars = scalarCounts[i]
+		}
+		log.Printf(
+			"  [GPUProve n=%d] MSM phases device=%s set=%d scalars=%d total=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms %s=%.3fms",
+			n, device, i, scalars, total,
+			names[0], phase[0], names[1], phase[1], names[2], phase[2],
+			names[3], phase[3], names[4], phase[4], names[5], phase[5],
+			names[6], phase[6], names[7], phase[7], names[8], phase[8],
+		)
+	}
 }
 
 func gpuBatchOpen(

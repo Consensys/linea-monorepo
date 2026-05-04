@@ -2530,3 +2530,259 @@ ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bls12377
 ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bw6761
 0 issues.
 ```
+
+## 2026-05-03 — `1<<25` MSM Phase Attribution
+
+Added an opt-in prover diagnostic hook,
+`GNARK_GPU_PLONK2_LOG_MSM_PHASES=1`, that logs the nine MSM CUDA phase timers
+already collected by the C backend for every commitment batch:
+
+```
+h2d, build_pairs, sort, boundaries, accum_seq, accum_par, reduce_partial,
+reduce_finalize, d2h
+```
+
+For split MSMs, the log records primary and secondary device timings
+separately and reports the actual scalar count assigned to each device. This
+does not change the CUDA ABI or the default prover path; it only copies the
+last per-set timings from `G1MSM.MultiExp`.
+
+Benchmark commands, on two RTX PRO 6000 Blackwell Server Edition GPUs:
+
+```
+GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run '^$' -bench '^BenchmarkNewProver_BW6761_N242$' \
+  -benchtime=1x -count=1 -timeout 120m
+
+GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 \
+  go test ./gpu/plonk2/bw6761 -tags cuda -run '^$' \
+  -bench '^BenchmarkNewProver_BW6761_N242$' -benchtime=1x -count=1 \
+  -timeout 120m
+```
+
+Timed results:
+
+| Target | GPUs | `prove_ms` | Post-solve | Representative MSM |
+|--------|-----:|-----------:|-----------:|--------------------|
+| N242 / `1<<25` | 1 | 44,472 | ~33.18s | ~2.04s to 2.16s |
+| N242 / `1<<25` | 2 | 35,317 | ~24.00s | ~1.12s to 1.18s per half |
+
+The 2-GPU split gives `44472 / 35317 = 1.26x` end-to-end and about
+`33.18 / 24.00 = 1.38x` after witness solving, which is outside the requested
+scope but still useful for attribution.
+
+The dominant per-MSM phase is still bucket accumulation:
+
+| Run | Scalars per device | Total | `h2d` | `sort` | `accum_seq` | `reduce_partial` |
+|-----|-------------------:|------:|------:|-------:|------------:|-----------------:|
+| 1 GPU | 33,554,432 | ~2,034-2,164ms | ~28-155ms | ~27ms | ~1,899-1,916ms | ~25.6ms |
+| 2 GPUs | 16,777,216 | ~1,122-1,185ms | ~15-80ms | ~13.5ms | ~1,026-1,035ms | ~25.6ms |
+
+The quotient phase remains single-GPU and took about 7.75s in both runs. This
+confirms that large-domain MSM splitting is balanced and correct, but the next
+useful kernel target is reducing BW6 bucket-add cost, not sort/build overhead
+or scheduling-only segmentation. This matches the earlier
+`bench_vs_ingo/BW6761_MSM_OPTIMIZATION_WORKLOG.md` conclusion that segmented
+large-bucket scheduling was correct but slower unless paired with lower
+per-add field arithmetic cost.
+
+A scalar-field arithmetic experiment was also tried and rejected. The
+BLS12-377 Fp / BW6-761 Fr even-odd 12x32-bit Montgomery multiply from the
+legacy CUDA prover was ported into `plonk2` and wired to `BW6761FrParams` and
+`BLS12377FpParams`. It built and passed the focused CUDA correctness suite, but
+it did not improve the BW6 FFT path used by quotient computation:
+
+| Path | Before | With experiment | Result |
+|------|-------:|----------------:|--------|
+| `BenchmarkFFTForward/n=2^22` | 3.920 ms | 4.535 ms | slower |
+| `BenchmarkCosetFFT/n=2^22` | 26.878 ms | 27.047 ms | flat/slower |
+
+The experiment was reverted. Do not reintroduce that helper without SASS or
+register-pressure evidence showing why it should beat the current
+`BW6761FrParams` 32-bit CIOS implementation in `plonk2`.
+
+Validation added for this diagnostic pass:
+
+```
+go run ./gpu/internal/generator
+cmake --build gpu/cuda/build --target gnark_gpu -j2
+go test ./gpu/plonk2/bn254 ./gpu/plonk2/bls12377 ./gpu/plonk2/bw6761 \
+  -run '^$' -count=1
+go test ./gpu/plonk2/bn254 ./gpu/plonk2/bls12377 ./gpu/plonk2/bw6761 \
+  -tags cuda \
+  -run 'TestMSMMatchesCPU|TestMSMBatchScalarSets|TestMSMWorkBuffers|TestGPUProveVerify' \
+  -count=1 -timeout 30m
+GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run TestGPUProveVerify -count=1 -timeout 30m
+golangci-lint run
+```
+
+Results:
+
+```
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bn254
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bls12377
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bw6761
+ok github.com/consensys/linea-monorepo/prover/gpu/plonk2/bw6761 4.840s
+0 issues.
+```
+
+## 2026-05-03 — `1<<25` GPU Utilization Pass
+
+Hardware:
+
+```
+GPU0: NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB, 600 W
+GPU1: NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB, 600 W
+Topology: GPU0 <-> GPU1 = PIX, same CPU affinity and NUMA node
+```
+
+Method:
+
+- Ran `BenchmarkNewProver_BW6761_N242` with `-benchtime=1x`.
+- Enabled MSM phase logging with `GNARK_GPU_PLONK2_LOG_MSM_PHASES=1`.
+- Sampled utilization with `nvidia-smi dmon -s pucvmt -d 1 -o TD`.
+- The Go benchmark performs one warmup proof and one timed proof. The metrics
+  below use only the timed proof window. `post-solve` starts at the prover's
+  `solve` log line, so CPU solving time does not hide GPU utilization.
+
+Commands:
+
+```
+GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 go test ./gpu/plonk2/bw6761 \
+  -tags cuda -run '^$' -bench '^BenchmarkNewProver_BW6761_N242$' \
+  -benchtime=1x -count=1 -timeout 120m
+
+GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 GNARK_GPU_PLONK2_SECONDARY_DEVICE_ID=1 \
+  go test ./gpu/plonk2/bw6761 -tags cuda -run '^$' \
+  -bench '^BenchmarkNewProver_BW6761_N242$' -benchtime=1x -count=1 \
+  -timeout 120m
+```
+
+Timed proof summary:
+
+| Mode | `prove_ms` | Solve log | Post-solve wall | Speedup vs 1 GPU |
+|------|-----------:|----------:|----------------:|-----------------:|
+| 1 GPU | 45,347 | 12.251s | 33.096s | 1.00x |
+| 2 GPU split MSM | 34,448 | 10.518s | 23.930s | 1.38x post-solve |
+
+`nvidia-smi dmon` utilization:
+
+| Mode | Window | GPU | Avg SM | Max SM | Avg mem util | Max mem util | Avg power | Max FB |
+|------|--------|----:|-------:|-------:|-------------:|-------------:|----------:|-------:|
+| 1 GPU | timed total | 0 | 74.5% | 100% | 42.9% | 81% | 397 W | 74,139 MB |
+| 1 GPU | timed total | 1 | 0.0% | 0% | 0.0% | 0% | 29 W | 3 MB |
+| 1 GPU | post-solve | 0 | 91.1% | 100% | 51.2% | 81% | 467 W | 74,139 MB |
+| 1 GPU | post-solve | 1 | 0.0% | 0% | 0.0% | 0% | 29 W | 3 MB |
+| 2 GPU | timed total | 0 | 67.8% | 100% | 31.0% | 68% | 350 W | 62,223 MB |
+| 2 GPU | timed total | 1 | 34.0% | 100% | 22.1% | 71% | 242 W | 13,851 MB |
+| 2 GPU | post-solve | 0 | 89.8% | 100% | 40.2% | 68% | 423 W | 62,223 MB |
+| 2 GPU | post-solve | 1 | 43.0% | 100% | 27.6% | 71% | 279 W | 13,851 MB |
+
+Interpretation:
+
+- The single-GPU post-solve path keeps GPU0 busy: ~91% average SM with 100%
+  peaks.
+- The 2-GPU path is balanced during MSM bursts, but GPU1 is idle during
+  quotient, FFT, linearization, host-side orchestration, and other primary-only
+  phases. Its post-solve average SM is therefore only ~43%.
+- Fleet-wide post-solve SM utilization is about `(89.8 + 43.0) / 2 = 66.4%`.
+  A second GPU buys real latency reduction, but it is not fully occupied for a
+  single proof.
+
+Post-solve MSM attribution:
+
+| Mode | MSM wall time | Non-MSM post-solve | Notes |
+|------|--------------:|-------------------:|-------|
+| 1 GPU | 20.622s | 12.474s | 10 post-solve MSMs on GPU0 |
+| 2 GPU | 11.465s | 12.465s | primary/secondary MSM sums are 11.465s / 11.444s |
+
+Summed post-solve MSM phase timers:
+
+| Device | Logs | Total | H2D | Build pairs | Sort | `accum_seq` | Reduce partial | D2H |
+|--------|-----:|------:|----:|------------:|-----:|------------:|---------------:|----:|
+| 1 GPU single | 10 | 20.622s | 0.536s | 0.258s | 0.271s | 19.102s | 0.257s | 0.159s |
+| 2 GPU primary | 10 | 11.465s | 0.421s | 0.132s | 0.137s | 10.331s | 0.257s | 0.159s |
+| 2 GPU secondary | 10 | 11.444s | 0.419s | 0.132s | 0.136s | 10.313s | 0.257s | 0.159s |
+
+The measured split is correct and well balanced for MSM. The underutilization
+comes from Amdahl's law at the prover-orchestration level: the non-MSM
+post-solve work remains about 12.46s and is not accelerated by the secondary
+GPU.
+
+### 4-GPU projection
+
+This is a model, not a measurement; the host only has 2 GPUs.
+
+If the current architecture were generalized naively so that only MSMs split
+across 4 GPUs:
+
+- A quarter-size MSM is estimated at ~0.67-0.70s from the measured full and
+  half-size MSM timings (`~2.04s` full, `~1.13s` half).
+- The 10 post-solve MSMs would drop from ~11.47s on 2 GPUs to roughly ~6.8s on
+  4 GPUs.
+- The non-MSM post-solve work would remain ~12.46s.
+- Expected post-solve latency would be about `12.46 + 6.8 = 19.3s`.
+- Speedup would be about `33.10 / 19.3 = 1.7x` vs 1 GPU and only
+  `23.93 / 19.3 = 1.24x` vs 2 GPUs.
+- GPUs 1-3 would only be active during ~6.8s of a ~19.3s post-solve proof. At
+  ~90% SM while active, each secondary would average only about
+  `6.8 / 19.3 * 90% = 32%` SM post-solve.
+- Fleet-wide post-solve utilization would be roughly
+  `(90% + 3*32%) / 4 = 46-47%`.
+
+Conclusion: buying 4 GPUs for a single proof is not cost-effective if the only
+additional parallelism is MSM splitting. To make 4 GPUs rational, the prover
+needs either:
+
+- multi-proof batching/pipelining so otherwise-idle GPUs process independent
+  proofs; or
+- a real multi-GPU quotient/FFT orchestration where the four coset numerator
+  passes and inverse-coset work are distributed across devices, with careful
+  data residency and only the final h-polynomial blocks gathered for MSM.
+
+The current memory numbers suggest the latter is feasible but expensive:
+single GPU peaks at ~74 GB; 2-GPU split reduces the primary to ~62 GB and uses
+~14 GB on the secondary. Replicating quotient working sets onto more devices
+would materially increase total memory use, but each 98 GB Blackwell card has
+enough headroom for an explicit multi-GPU quotient experiment.
+
+## 2026-05-03 — BLS12-377 `1<<24` Old-Prover Delta
+
+Ran the comparable legacy `gpu/plonk` BLS12-377 ECMul benchmark:
+
+```
+go test ./gpu/plonk -tags cuda -run '^$' \
+  -bench '^BenchmarkPlonkECMul121$' -benchtime=1x -count=1 -timeout 90m
+```
+
+Result:
+
+```
+BenchmarkPlonkECMul121-48  1  8761383047 ns/op  16764640 constraints  16777216 domain  8743498223 prove_ns/op
+```
+
+Comparison against the `gpu/plonk2/bls12377` runs from the same host:
+
+| Prover | GPUs | Domain | Constraints | Timed prove |
+|--------|-----:|-------:|------------:|------------:|
+| `gpu/plonk` | 1 | 16,777,216 | 16,764,640 | 8.743s |
+| `gpu/plonk2/bls12377` | 1 | 16,777,216 | 16,764,640 | 9.511s |
+| `gpu/plonk2/bls12377` | 2 | 16,777,216 | 16,764,640 | 8.709s |
+
+Delta:
+
+- `plonk2` 1-GPU is about `9.511 / 8.743 = 1.09x` slower than the legacy
+  prover end-to-end.
+- `plonk2` 2-GPU is about `8.743 / 8.709 = 1.004x` faster than the legacy
+  1-GPU prover, effectively tied.
+- Ignoring solve time from the timed logs:
+  - legacy `gpu/plonk`: `8.743s - 4.801s = 3.942s`
+  - `plonk2` 1-GPU: `9.512s - 4.692s = 4.820s`
+  - `plonk2` 2-GPU: `8.709s - 4.647s = 4.062s`
+
+Conclusion: for BLS12-377 at `1<<24`, `plonk2` has a post-solve regression
+relative to the legacy prover. Splitting MSM across two GPUs almost closes the
+gap, but it does not indicate a healthy multi-GPU scaling story because it only
+offsets a single-GPU regression. The next BLS-focused comparison should break
+down old-vs-new FFT, quotient, and MSM phases rather than adding more GPUs.
