@@ -15,7 +15,10 @@ import linea.domain.CompressionProofIndex
 import linea.domain.InvalidityProofIndex
 import linea.domain.ProofsToAggregate
 import linea.domain.createProofToFinalize
+import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.persistence.AggregationsRepository
+import linea.persistence.ftx.FakeForcedTransactionsDao
+import linea.persistence.ftx.ForcedTransactionRecordFactory.createForcedTransactionRecord
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.assertj.core.api.Assertions.assertThat
@@ -378,6 +381,119 @@ class ProofAggregationCoordinatorServiceTest {
             aggregationProof = null,
           ),
         )
+      }
+  }
+
+  @Test
+  fun `prover request includes invalidity proof for FTX at the aggregation end block`(
+    vertx: Vertx,
+  ) {
+    val blob = run {
+      val start = 20uL
+      val end = 27uL
+      val batches = BlockIntervals(start, listOf(start + 2UL, start + 6UL, end))
+      val blobCounters = BlobCounters(
+        numberOfBatches = 3u,
+        startBlockNumber = start,
+        endBlockNumber = end,
+        startBlockTimestamp = Instant.fromEpochMilliseconds(100),
+        endBlockTimestamp = Instant.fromEpochMilliseconds(5000),
+        expectedShnarf = Random.nextBytes(32),
+      )
+      BlobAndBatchCounters(blobCounters = blobCounters, executionProofs = batches)
+    }
+    val blobsToAggregate = BlobsToAggregate(blob.blobCounters.startBlockNumber, blob.blobCounters.endBlockNumber)
+
+    // Real provider wired to a fake DAO with FTX#4 sitting at the aggregation's end block (27).
+    val ftxDao = FakeForcedTransactionsDao()
+    ftxDao.save(
+      createForcedTransactionRecord(
+        ftxNumber = 4UL,
+        simulatedExecutionBlockNumber = blob.blobCounters.endBlockNumber,
+        simulatedExecutionBlockTimestamp = Instant.fromEpochSeconds(1234),
+        inclusionResult = ForcedTransactionInclusionResult.BadPrecompile,
+      ),
+    ).get()
+    val realInvalidityProofProvider = InvalidityProofProviderImpl(ftxDao)
+
+    val mockAggregationCalculator = mock<AggregationCalculator>()
+    val mockAggregationsRepository = mock<AggregationsRepository>()
+    val mockProofAggregationClient = mock<ProofAggregationProverClientV2>()
+    val mockAggregationL2StateProvider = mock<AggregationL2StateProvider>()
+    val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = SimpleMeterRegistry())
+
+    val proofAggregationCoordinatorService =
+      ProofAggregationCoordinatorService(
+        vertx = vertx,
+        config = ProofAggregationCoordinatorService.Config(
+          pollingInterval = 10.milliseconds,
+          proofGenerationRetryBackoffDelay = 5.milliseconds,
+        ),
+        nextBlockNumberToPoll = blob.blobCounters.startBlockNumber.toLong(),
+        aggregationCalculator = mockAggregationCalculator,
+        aggregationProofHandler = { _ -> SafeFuture.completedFuture(Unit) },
+        aggregationProofRequestHandler = null,
+        consecutiveProvenBlobsProvider = mockAggregationsRepository::findConsecutiveProvenBlobs,
+        proofAggregationClient = mockProofAggregationClient,
+        aggregationL2StateProvider = mockAggregationL2StateProvider,
+        metricsFacade = metricsFacade,
+        invalidityProofProvider = realInvalidityProofProvider,
+      )
+    proofAggregationCoordinatorService.aggregationProofPoller.start()
+
+    // Parent aggregation finalised through FTX#3, so the current aggregation should
+    // collect invalidity proofs for FTXs starting at #4.
+    whenever(mockAggregationL2StateProvider.getAggregationL2State(anyLong()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          AggregationL2State(
+            parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(123456),
+            parentAggregationLastL1RollingHashMessageNumber = 12UL,
+            parentAggregationLastL1RollingHash = ByteArray(32),
+            parentAggregationLastFtxNumber = 3UL,
+            parentAggregationLastFtxRollingHash = ByteArray(32),
+          ),
+        ),
+      )
+
+    whenever(mockAggregationsRepository.findConsecutiveProvenBlobs(anyLong()))
+      .thenReturn(SafeFuture.completedFuture(listOf(blob)))
+
+    whenever(mockAggregationCalculator.newBlob(any<BlobCounters>())).thenAnswer {
+      proofAggregationCoordinatorService.onAggregation(blobsToAggregate)
+    }
+
+    val capturedProofRequests = mutableListOf<ProofsToAggregate>()
+    whenever(mockProofAggregationClient.createProofRequest(any())).thenAnswer { invocation ->
+      capturedProofRequests.add(invocation.getArgument(0))
+      SafeFuture.completedFuture(
+        AggregationProofIndex(
+          startBlockNumber = blobsToAggregate.startBlockNumber,
+          endBlockNumber = blobsToAggregate.endBlockNumber,
+          hash = Random.nextBytes(32),
+          startBlockTimestamp = blob.blobCounters.startBlockTimestamp,
+        ),
+      )
+    }
+    whenever(mockProofAggregationClient.findProofResponse(any<AggregationProofIndex>()))
+      .thenReturn(SafeFuture.completedFuture(null))
+
+    proofAggregationCoordinatorService.action().get()
+
+    await()
+      .pollInterval(50.milliseconds.toJavaDuration())
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(capturedProofRequests).hasSize(1)
+        val request = capturedProofRequests.single()
+        assertThat(request.invalidityProofs.map { it.ftxNumber })
+          .describedAs(
+            "FTX whose simulatedExecutionBlockNumber equals the aggregation end block " +
+              "must be in the prover request",
+          )
+          .containsExactly(4UL)
+        assertThat(request.invalidityProofs.single().simulatedExecutionBlockNumber)
+          .isEqualTo(blob.blobCounters.endBlockNumber)
       }
   }
 }
