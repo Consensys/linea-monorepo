@@ -5,7 +5,6 @@ import (
 	"runtime"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
@@ -49,12 +48,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
 		leaves := p.hashSisHash(colHashes)
 
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
-			},
-		)
+		tree = smt.BuildCompleteMiMC(leaves)
 	})
 
 	logrus.Infof(
@@ -94,12 +88,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 			leaves[i] = colHashes[i].Bytes()
 		}
 
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
-			},
-		)
+		tree = smt.BuildCompleteMiMC(leaves)
 	})
 
 	logrus.Infof(

@@ -178,6 +178,27 @@ Average wall time: 10:19.26.
 Average GPU prover phase sum: 2:48.67.
 Average setup load sum: 2:42.42.
 
+Optimized single aggregation reference, after local aggregation prover changes:
+
+| Block range | Wall time | Setup load | GPU prover phases | Setup policy | Max RSS | CPU |
+| --- | ---: | --- | --- | --- | ---: | ---: |
+| `30391350-30394103` | 7:46.41 | PI 23.121s, BW6 32.729s, BN254 7.440s | PI 59.79s, BW6 55.65s, BN254 10.37s | strict GPU, canonical SRS only, BW6/BN254 setup prefetched under PI | 195.4 GiB | 2156% |
+
+The optimized run used `bin/prover` built with `GO_BUILD_TAGS=debug,cuda` and
+`LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_LOG_MSM_PHASES=1`. The log reports
+`loading canonical SRS only for strict gpu/plonk2 proving` for PI, BW6, and
+BN254. No Lagrange SRS was loaded in GPU mode.
+
+For the same request, the baseline GPU run was 9:02.14. Setup prefetch reduced
+that request by 1:15.73 by hiding BW6 and BN254 setup loading under the PI
+wizard/prover phase. The remaining critical path is the public-input wizard
+proof before PI Plonk: it is dominated by repeated Vortex commitments,
+especially SIS hashing and MiMC Merkleization. A specialized MiMC Merkle-tree
+builder reduced Merkle allocations and shaved a few percent off individual
+Merkleization calls, but it is not enough by itself to reach a 4 minute
+wall-clock target. The next high-leverage optimization is GPU or algorithmic
+acceleration of the PI Vortex/SIS commitment path.
+
 ### Cost Per Proof
 
 Pricing was refreshed for `us-east-2` Linux instances on 2026-05-04.
@@ -220,6 +241,7 @@ but they are too optimistic as standing benchmark costs.
 | Compression, optimized | `GPU g7e.8xlarge` | 2:35.68 | $5.26824 | $0.2278 | $1.2464 | $0.0539 |
 | Aggregation | `CPU r8a.24xlarge` | 6:46.75 | $7.66848 | $0.8664 | $3.3873 | $0.3827 |
 | Aggregation | `GPU g7e.8xlarge` | 10:19.26 | $5.26824 | $0.9062 | $1.2464 | $0.2144 |
+| Aggregation, optimized single reference | `GPU g7e.8xlarge` | 7:46.41 | $5.26824 | $0.6825 | $1.2464 | $0.1615 |
 
 The GPU aggregation Plonk phases are faster than the CPU Plonk phases, but the
 end-to-end aggregation benchmark is slower on `g7e.8xlarge` because the host
@@ -234,11 +256,13 @@ Generated responses:
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/compression/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/aggregation/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-optimize-bls12377-pass8-msm-window20-cuda/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-aggregation-setup-prefetch/`
 
 Raw prover logs and GNU `time -v` outputs:
 
 - `reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2-7.1.0/logs/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/logs/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-aggregation-setup-prefetch/logs/`
 
 The logs include one failed diagnostic aggregation attempt for run 4:
 `*.failed-runtime-fault-attempt1.*`. It hit a Go runtime SIGSEGV in
