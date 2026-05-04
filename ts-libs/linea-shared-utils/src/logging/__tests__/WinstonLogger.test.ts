@@ -1,26 +1,45 @@
-import { WinstonLogger } from "../WinstonLogger";
+import { Writable } from "node:stream";
+import { transports } from "winston";
+
+import { WinstonLogger, WinstonLoggerOptions } from "../WinstonLogger";
 
 // eslint-disable-next-line no-control-regex
 const stripAnsi = (str: string) => str.replace(/\x1B\[[0-9;]*m/g, "");
 
 describe("WinstonLogger", () => {
-  let consoleSpy: jest.SpyInstance;
+  let buffer: string;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+    buffer = "";
   });
 
-  afterEach(() => {
-    consoleSpy.mockRestore();
-  });
+  // Build a logger that writes into an in-memory `Writable` via `transports.Stream`.
+  // Avoids monkey-patching `process.stdout.write` (which is brittle across Node versions
+  // and bleeds across concurrent test files).
+  function makeLogger(name: string, opts: WinstonLoggerOptions = {}): WinstonLogger {
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        buffer += chunk.toString();
+        callback();
+      },
+    });
+    return new WinstonLogger(name, {
+      ...opts,
+      transports: [new transports.Stream({ stream })],
+    });
+  }
 
   function getLogOutput(): string {
-    return stripAnsi(consoleSpy.mock.calls.map((call) => String(call[0])).join(""));
+    return stripAnsi(buffer);
+  }
+
+  function getRawOutput(): string {
+    return buffer;
   }
 
   describe("log line structure", () => {
     it("contains time, level, logger, and msg fields", () => {
-      const logger = new WinstonLogger("MyService");
+      const logger = makeLogger("MyService");
       logger.info("hello world");
 
       const output = getLogOutput();
@@ -31,7 +50,7 @@ describe("WinstonLogger", () => {
     });
 
     it("is a single line even when metadata contains newlines", () => {
-      const logger = new WinstonLogger("Test");
+      const logger = makeLogger("Test");
       logger.info("msg", { reason: "line1\nline2" });
 
       const lines = getLogOutput()
@@ -42,13 +61,13 @@ describe("WinstonLogger", () => {
     });
 
     it("uppercases the level", () => {
-      new WinstonLogger("Test").warn("watch out");
+      makeLogger("Test").warn("watch out");
       expect(getLogOutput()).toContain("level=WARN");
     });
 
     it("only colorizes the level value, not the whole line", () => {
-      new WinstonLogger("Test").info("msg");
-      const raw = consoleSpy.mock.calls.map((call) => String(call[0])).join("");
+      makeLogger("Test").info("msg");
+      const raw = getRawOutput();
       // eslint-disable-next-line no-control-regex
       const ansiLevel = /level=\x1B\[\d+mINFO\x1B\[\d+m/;
       expect(raw).toMatch(ansiLevel);
@@ -59,61 +78,61 @@ describe("WinstonLogger", () => {
 
   describe("log levels", () => {
     it("logs at info level", () => {
-      new WinstonLogger("Test").info("info msg");
+      makeLogger("Test").info("info msg");
       expect(getLogOutput()).toContain("level=INFO");
     });
 
     it("logs at warn level", () => {
-      new WinstonLogger("Test").warn("warn msg");
+      makeLogger("Test").warn("warn msg");
       expect(getLogOutput()).toContain("level=WARN");
     });
 
     it("logs at error level", () => {
-      new WinstonLogger("Test").error("error msg");
+      makeLogger("Test").error("error msg");
       expect(getLogOutput()).toContain("level=ERROR");
     });
 
     it("does not log debug by default", () => {
-      new WinstonLogger("Test").debug("debug msg");
+      makeLogger("Test").debug("debug msg");
       expect(getLogOutput()).toBe("");
     });
 
     it("logs debug when level option is debug", () => {
-      new WinstonLogger("Test", { level: "debug" }).debug("debug msg");
+      makeLogger("Test", { level: "debug" }).debug("debug msg");
       expect(getLogOutput()).toContain("level=DEBUG");
     });
   });
 
   describe("logfmt value quoting", () => {
     it("quotes values that contain spaces", () => {
-      new WinstonLogger("Test").info("msg", { reason: "something went wrong" });
+      makeLogger("Test").info("msg", { reason: "something went wrong" });
       expect(getLogOutput()).toContain('reason="something went wrong"');
     });
 
     it("does not quote simple values", () => {
-      new WinstonLogger("Test").info("msg", { foo: "bar" });
+      makeLogger("Test").info("msg", { foo: "bar" });
       expect(getLogOutput()).toContain("foo=bar");
     });
 
     it("escapes newlines inside values to keep the entry on one line", () => {
-      new WinstonLogger("Test").info("msg", { reason: "line1\nline2" });
+      makeLogger("Test").info("msg", { reason: "line1\nline2" });
       expect(getLogOutput()).toContain('reason="line1\\nline2"');
     });
 
     it("escapes double-quotes inside values", () => {
-      new WinstonLogger("Test").info("msg", { note: 'say "hello"' });
+      makeLogger("Test").info("msg", { note: 'say "hello"' });
       expect(getLogOutput()).toContain('note="say \\"hello\\""');
     });
 
     it("escapes backslashes inside values", () => {
-      new WinstonLogger("Test").info("msg", { path: "C:\\Users\\foo" });
+      makeLogger("Test").info("msg", { path: "C:\\Users\\foo" });
       expect(getLogOutput()).toContain('path="C:\\\\Users\\\\foo"');
     });
   });
 
   describe("metadata — no metadata", () => {
     it("produces no extra fields when there is no metadata", () => {
-      new WinstonLogger("Test").info("plain");
+      makeLogger("Test").info("plain");
       const output = getLogOutput();
       expect(output.trim()).toMatch(/^time=\S+ level=\S+ logger=\S+ msg=plain$/);
     });
@@ -121,38 +140,70 @@ describe("WinstonLogger", () => {
 
   describe("metadata — scalar values", () => {
     it("includes multiple string fields", () => {
-      new WinstonLogger("Test").info("msg", { a: "1", b: "2" });
+      makeLogger("Test").info("msg", { a: "1", b: "2" });
       const output = getLogOutput();
       expect(output).toContain("a=1");
       expect(output).toContain("b=2");
     });
 
     it("serializes numbers directly", () => {
-      new WinstonLogger("Test").info("msg", { count: 42 });
+      makeLogger("Test").info("msg", { count: 42 });
       expect(getLogOutput()).toContain("count=42");
     });
 
     it("serializes booleans directly", () => {
-      new WinstonLogger("Test").info("msg", { active: false });
+      makeLogger("Test").info("msg", { active: false });
       expect(getLogOutput()).toContain("active=false");
     });
 
     it("serializes bigints without JSON quotes", () => {
-      new WinstonLogger("Test").info("msg", { value: BigInt("99999999999999999999") });
+      makeLogger("Test").info("msg", { value: BigInt("99999999999999999999") });
       expect(getLogOutput()).toContain("value=99999999999999999999");
     });
   });
 
   describe("metadata — object values", () => {
     it("serializes plain objects as quoted JSON", () => {
-      new WinstonLogger("Test").info("msg", { meta: { x: 1 } });
+      makeLogger("Test").info("msg", { meta: { x: 1 } });
       expect(getLogOutput()).toContain('meta="{\\"x\\":1}"');
+    });
+
+    it("coerces nested bigints to strings inside object metadata", () => {
+      // JSON.stringify would otherwise throw `TypeError: Do not know how to
+      // serialize a BigInt` when encountering nested bigints.
+      expect(() => makeLogger("Test").info("msg", { meta: { count: 100n } })).not.toThrow();
+      expect(getLogOutput()).toContain('count\\":\\"100\\"');
+    });
+
+    it("does not throw on self-referential metadata", () => {
+      const obj: Record<string, unknown> = { name: "node" };
+      obj.self = obj;
+
+      expect(() => makeLogger("Test").info("msg", { meta: obj })).not.toThrow();
+      const output = getLogOutput();
+      // First encounter still rendered; cyclic back-edge replaced.
+      expect(output).toContain("node");
+      expect(output).toContain("[Circular]");
+    });
+
+    it("does not throw on mutually-referential metadata", () => {
+      const a: Record<string, unknown> = { id: "a" };
+      const b: Record<string, unknown> = { id: "b" };
+      a.peer = b;
+      b.peer = a;
+
+      expect(() => makeLogger("Test").info("msg", { meta: a })).not.toThrow();
+      const output = getLogOutput();
+      // Both nodes appear (the back-edge from b to a is what gets replaced).
+      expect(output).toContain('id\\":\\"a');
+      expect(output).toContain('id\\":\\"b');
+      expect(output).toContain("[Circular]");
     });
   });
 
   describe("metadata — Error values", () => {
     it("outputs the error stack as an escaped single-line value", () => {
-      const logger = new WinstonLogger("Test");
+      const logger = makeLogger("Test");
       const error = new Error("something went wrong\nwith a newline");
 
       logger.error("oops", { error });
@@ -167,24 +218,233 @@ describe("WinstonLogger", () => {
       ).toHaveLength(1);
     });
 
-    it("falls back to message when stack is unavailable", () => {
+    it("falls back to name and message when stack is unavailable", () => {
       const error = new Error("no stack");
       delete error.stack;
 
-      new WinstonLogger("Test").error("oops", { error });
+      makeLogger("Test").error("oops", { error });
 
-      expect(getLogOutput()).toContain('error="no stack"');
+      // util.inspect renders a stackless Error as `[Error: <msg>]`.
+      expect(getLogOutput()).toContain('error="[Error: no stack]"');
     });
 
     it("does not produce an error.stack key", () => {
-      new WinstonLogger("Test").error("oops", { error: new Error("msg") });
+      makeLogger("Test").error("oops", { error: new Error("msg") });
       expect(getLogOutput()).not.toContain("error.stack=");
+    });
+
+    it("unwraps Error.cause chains in metadata", () => {
+      const root = new Error("root cause");
+      const middle = new Error("middle", { cause: root });
+      const top = new Error("top", { cause: middle });
+
+      makeLogger("Test").error("oops", { error: top });
+
+      const output = getLogOutput();
+      expect(output).toContain("Error: top");
+      // util.inspect renders nested causes via the `[cause]:` marker.
+      expect(output).toContain("[cause]:");
+      expect(output).toContain("Error: middle");
+      expect(output).toContain("Error: root cause");
+      // Single-line (newlines escaped to \\n by formatValue).
+      expect(
+        output
+          .trim()
+          .split("\n")
+          .filter((l) => l.includes("level=")),
+      ).toHaveLength(1);
+    });
+
+    it("renders non-Error causes inside the inspected output", () => {
+      const err = new Error("boom");
+      // Direct assignment makes `cause` enumerable, so util.inspect prints it
+      // as a regular property (`cause: 'value'`, no square brackets).
+      (err as Error & { cause?: unknown }).cause = "just a string";
+
+      makeLogger("Test").error("oops", { error: err });
+
+      const output = getLogOutput();
+      expect(output).toContain("Error: boom");
+      expect(output).toContain("cause: 'just a string'");
+    });
+
+    it("breaks self-referential cause cycles", () => {
+      const a = new Error("A");
+      const b = new Error("B");
+      (a as Error & { cause?: unknown }).cause = b;
+      (b as Error & { cause?: unknown }).cause = a;
+
+      // Must terminate; util.inspect uses `<ref *N>` markers for cycles.
+      makeLogger("Test").error("oops", { error: a });
+
+      const output = getLogOutput();
+      expect(output).toContain("Error: A");
+      expect(output).toContain("Error: B");
+    });
+
+    it("unwraps AggregateError siblings", () => {
+      const inner1 = new Error("first");
+      const inner2 = new TypeError("second");
+      const aggregate = new AggregateError([inner1, inner2], "all failed");
+
+      makeLogger("Test").error("oops", { error: aggregate });
+
+      const output = getLogOutput();
+      expect(output).toContain("AggregateError: all failed");
+      // util.inspect renders sibling errors under the `[errors]:` marker.
+      expect(output).toContain("[errors]:");
+      expect(output).toContain("Error: first");
+      expect(output).toContain("TypeError: second");
+    });
+  });
+
+  describe("bare Error as message argument", () => {
+    // Locks in the printf `if (stack)` branch (fed by winston's `errors({stack:true})`).
+    it("renders stack under the error key when called as logger.error(err)", () => {
+      const err = new Error("boom");
+      makeLogger("Test").error(err);
+
+      const output = getLogOutput();
+      expect(output).toContain("msg=boom");
+      expect(output).toContain("Error: boom");
+      // Stack token appears in the error= field, not as a separate metadata key.
+      expect(output).not.toContain("stack=");
+    });
+
+    it("surfaces Error.cause as a separate cause= metadata field", () => {
+      // Winston's `errors({cause:true})` promotes `info.cause` so it flows
+      // through formatMetadata. An Error cause is rendered via util.inspect.
+      const root = new Error("network down");
+      const top = new Error("request failed", { cause: root });
+
+      makeLogger("Test").error(top);
+
+      const output = getLogOutput();
+      expect(output).toContain("Error: request failed");
+      expect(output).toMatch(/cause="Error: network down/);
+    });
+
+    it("renders non-Error causes via formatMetadata", () => {
+      const err = new Error("rpc failure");
+      (err as Error & { cause?: unknown }).cause = "transport timeout";
+
+      makeLogger("Test").error(err);
+
+      const output = getLogOutput();
+      expect(output).toContain("Error: rpc failure");
+      // Non-Error cause is treated like any other string metadata value.
+      expect(output).toContain('cause="transport timeout"');
+    });
+  });
+
+  describe("child — static context merging", () => {
+    it("returns a new logger that inherits the parent name", () => {
+      const parent = makeLogger("Parent");
+      const child = parent.child({ direction: "L1_TO_L2" });
+      expect(child.name).toBe("Parent");
+      expect(child).not.toBe(parent);
+    });
+
+    it("merges the static context into every log entry", () => {
+      const parent = makeLogger("Parent");
+      const child = parent.child({ direction: "L1_TO_L2" });
+      child.info("hello");
+      expect(getLogOutput()).toContain("direction=L1_TO_L2");
+    });
+
+    it("call-site metadata wins over child context on key collisions", () => {
+      const parent = makeLogger("Parent");
+      const child = parent.child({ direction: "L1_TO_L2" });
+      child.info("hello", { direction: "L2_TO_L1" });
+      const output = getLogOutput();
+      expect(output).toContain("direction=L2_TO_L1");
+      expect(output).not.toContain("direction=L1_TO_L2");
+    });
+
+    it("does not leak the static context into the parent logger", () => {
+      const parent = makeLogger("Parent");
+      parent.child({ direction: "L1_TO_L2" });
+      parent.info("hello");
+      expect(getLogOutput()).not.toContain("direction=");
+    });
+
+    it("composes nested children", () => {
+      const parent = makeLogger("Parent");
+      const grand = parent.child({ direction: "L1_TO_L2" }).child({ signerAddress: "0xabc" });
+      grand.info("hello");
+      const output = getLogOutput();
+      expect(output).toContain("direction=L1_TO_L2");
+      expect(output).toContain("signerAddress=0xabc");
+    });
+  });
+
+  describe("redaction — sensitive keys", () => {
+    it("redacts default sensitive keys at the top level (case-insensitive)", () => {
+      const logger = makeLogger("Test");
+      logger.info("login", {
+        username: "alice",
+        password: "hunter2",
+        Authorization: "Bearer abcdef",
+        ApiKey: "k-1234",
+      });
+      const output = getLogOutput();
+      expect(output).toContain("username=alice");
+      expect(output).toContain("password=[REDACTED]");
+      expect(output).toContain("Authorization=[REDACTED]");
+      expect(output).toContain("ApiKey=[REDACTED]");
+      expect(output).not.toContain("hunter2");
+      expect(output).not.toContain("Bearer abcdef");
+      expect(output).not.toContain("k-1234");
+    });
+
+    it("redacts sensitive keys nested inside object metadata", () => {
+      const logger = makeLogger("Test");
+      logger.info("config loaded", {
+        cfg: {
+          host: "rpc.example.com",
+          credentials: { privateKey: "0xdeadbeef", token: "t-1" },
+        },
+      });
+      const output = getLogOutput();
+      expect(output).toContain("host"); // structural fields preserved
+      expect(output).toContain("[REDACTED]");
+      expect(output).not.toContain("0xdeadbeef");
+      expect(output).not.toContain("t-1");
+    });
+
+    it("redacts via additional caller-supplied keys merged with defaults", () => {
+      const logger = makeLogger("Test", { redact: ["customSecret"] });
+      logger.info("msg", { customSecret: "do-not-leak", password: "p", safe: "ok" });
+      const output = getLogOutput();
+      expect(output).toContain("customSecret=[REDACTED]");
+      expect(output).toContain("password=[REDACTED]");
+      expect(output).toContain("safe=ok");
+      expect(output).not.toContain("do-not-leak");
+    });
+
+    it("propagates redaction config to child loggers", () => {
+      const parent = makeLogger("Parent", { redact: ["customSecret"] });
+      const child = parent.child({ direction: "L1_TO_L2" });
+      child.info("hello", { customSecret: "leaked?", password: "x" });
+      const output = getLogOutput();
+      expect(output).toContain("customSecret=[REDACTED]");
+      expect(output).toContain("password=[REDACTED]");
+      expect(output).not.toContain("leaked?");
+    });
+
+    it("does not redact keys that merely contain a sensitive substring", () => {
+      const logger = makeLogger("Test");
+      // "passport" should NOT be redacted just because "pass" is a prefix.
+      logger.info("msg", { passport: "p-123", payload: "ok" });
+      const output = getLogOutput();
+      expect(output).toContain("passport=p-123");
+      expect(output).toContain("payload=ok");
     });
   });
 
   describe("normalizeParams — bare Error as second argument", () => {
     it("does not corrupt the msg field", () => {
-      const logger = new WinstonLogger("Test");
+      const logger = makeLogger("Test");
       logger.error("something failed", new Error("direct error"));
 
       const output = getLogOutput();
@@ -193,13 +453,13 @@ describe("WinstonLogger", () => {
     });
 
     it("outputs the stack under the error key", () => {
-      new WinstonLogger("Test").error("something failed", new Error("direct error"));
+      makeLogger("Test").error("something failed", new Error("direct error"));
       expect(getLogOutput()).toContain("Error: direct error");
     });
 
     it("does not scatter enumerable Error properties into metadata", () => {
       const error = Object.assign(new Error("conn refused"), { code: "ECONNREFUSED", errno: -61 });
-      new WinstonLogger("Test").error("startup failed", error);
+      makeLogger("Test").error("startup failed", error);
 
       const output = getLogOutput();
       expect(output).not.toContain("code=ECONNREFUSED");

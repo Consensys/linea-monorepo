@@ -72,7 +72,7 @@ export class L1ToL2App {
       loggerOptions,
     } = deps;
 
-    const log = (name: string) => new WinstonLogger(name, loggerOptions);
+    const log = (name: string) => new WinstonLogger(name, loggerOptions).child({ direction: Direction.L1_TO_L2 });
 
     const sentEventProcessor = new MessageSentEventProcessor(
       messageRepository,

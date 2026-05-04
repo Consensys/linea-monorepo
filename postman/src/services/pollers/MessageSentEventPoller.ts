@@ -49,7 +49,11 @@ export class MessageSentEventPoller implements IPoller {
       return;
     }
 
-    this.logger.info("Starting poller.", { direction: this.config.direction, name: this.logger.name });
+    this.logger.info("Starting poller.", {
+      direction: this.config.direction,
+      name: this.logger.name,
+      pollingInterval: this.config.pollingInterval,
+    });
 
     this.isPolling = true;
     this.startProcessingEvents();

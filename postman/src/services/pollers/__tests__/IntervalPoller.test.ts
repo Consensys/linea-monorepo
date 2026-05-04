@@ -51,6 +51,7 @@ describe("IntervalPoller", () => {
       expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
         direction: Direction.L1_TO_L2,
         name: loggerName,
+        pollingInterval: testL2NetworkConfig.listener.pollingInterval,
       });
     });
 
@@ -66,6 +67,7 @@ describe("IntervalPoller", () => {
 
       expect(loggerInfoSpy).toHaveBeenCalledWith("Starting poller.", {
         name: loggerName,
+        pollingInterval: testL2NetworkConfig.listener.pollingInterval,
       });
     });
 

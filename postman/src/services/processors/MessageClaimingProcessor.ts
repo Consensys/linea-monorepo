@@ -221,9 +221,9 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   }
 
   private async handleProcessingError(e: unknown, message: Message | null): Promise<void> {
-    const parsedError = this.errorParser.parse(e);
+    const { retryable } = this.errorParser.parse(e);
 
-    if (!parsedError.retryable && message) {
+    if (!retryable && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.messageRepository.updateMessage(message);
     }
@@ -231,8 +231,8 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     this.logger.error("Error processing message claim.", {
       direction: this.config.direction,
       ...(message ? { messageHash: message.messageHash } : {}),
+      retryable,
       error: e,
-      parsedError,
     });
   }
 }

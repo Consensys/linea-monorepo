@@ -427,8 +427,9 @@ describe("TestMessageClaimingProcessor", () => {
       expect(rollbackSpy).toHaveBeenCalledWith(101);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
+        direction: Direction.L2_TO_L1,
         error: actionRejectedError,
-        parsedError: errorParser.parse(actionRejectedError),
+        retryable: errorParser.parse(actionRejectedError).retryable,
         messageHash: expectedLoggingMessage.messageHash,
       });
     });
@@ -488,8 +489,9 @@ describe("TestMessageClaimingProcessor", () => {
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
+        direction: Direction.L2_TO_L1,
         error: fetchError,
-        parsedError: errorParser.parse(fetchError),
+        retryable: errorParser.parse(fetchError).retryable,
       });
     });
   });
