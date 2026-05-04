@@ -1,3 +1,13 @@
+## [3.1.0] - 2026-05-04
+
+### 🚀 Features
+
+- *(coordinator)* Testing release of coordinator v3.0.3
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Update coordinator to v3.0.3
+- *(coordinator)* Test release of coordinator v3.1.0
 ## [3.0.2] - 2026-04-30
 
 ### 🚜 Refactor
