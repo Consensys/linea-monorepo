@@ -28,4 +28,5 @@ jobs:
         with:
           configFile: commitlint.config.mjs
           failOnWarnings: true
+          commitDepth: 1
           helpURL: https://www.conventionalcommits.org

@@ -74,7 +74,7 @@ jobs:
             exit 0
           fi
           git add "${FOLDER_NAME}/CHANGELOG.md"
-          git commit -m "chore(${COMPONENT}): CHANGELOG.md update for ${TAG} release"
+          git commit -m "chore(${COMPONENT}): update CHANGELOG.md for ${TAG} release"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
