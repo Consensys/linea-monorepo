@@ -61,19 +61,19 @@ protect_breaking_commits = false
 commit_parsers = [
     { message = "^feat", group = "<!-- 0 -->🚀 Features" },
     { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
-    { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
+    { message = "^doc", group = "<!-- 3 -->📚 Documentation", skip = true },
     { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
     { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
     { message = "^style", group = "<!-- 5 -->🎨 Styling" },
-    { message = "^test", group = "<!-- 6 -->🧪 Testing" },
-    # Skip auto-generated CHANGELOG-update commits from the release workflows
-    # (any scope) so they don't contribute to future version bumps or show up
-    # in future changelogs. Scope is validated upstream by commitlint.
-    { message = "^chore\\([^)]+\\): CHANGELOG\\.md update", skip = true },
+    { message = "^test", group = "<!-- 6 -->🧪 Testing", skip = true },
     { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
     { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
     { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
     { message = ".*", group = "<!-- 10 -->💼 Other" },
+    # Skip auto-generated CHANGELOG-update commits from the release workflows
+    # (any scope) so they don't contribute to future version bumps or show up
+    # in future changelogs. Scope is validated upstream by commitlint.
+    { message = "^chore\\([^)]+\\): CHANGELOG\\.md update", skip = true },
 ]
 # Exclude commits that are not matched by any commit parser.
 filter_commits = true
