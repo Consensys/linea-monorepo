@@ -3,6 +3,7 @@ package plonk2
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	curve_bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377"
 	curve_bn254 "github.com/consensys/gnark-crypto/ecc/bn254"
@@ -90,8 +91,19 @@ func (p *Prover) Prove(w witness.Witness, opts ...backend.ProverOption) (gnarkpl
 	if p.closed {
 		return nil, errors.New("plonk2: prover is closed")
 	}
+	log.Printf(
+		"plonk2: Prove enabled=%t cpuFallback=%t bn254=%t bls12377=%t bw6761=%t ccs=%T pk=%T",
+		p.cfg.enabled,
+		p.cfg.cpuFallback,
+		p.bn254PK != nil,
+		p.bls12377PK != nil,
+		p.bw6761PK != nil,
+		p.ccs,
+		p.pk,
+	)
 	if p.cfg.enabled && (p.bn254PK != nil || p.bls12377PK != nil || p.bw6761PK != nil) {
 		proof, err := p.proveGPU(w)
+		log.Printf("plonk2: proveGPU returned proof=%T err=%v", proof, err)
 		if err == nil {
 			return proof, nil
 		}

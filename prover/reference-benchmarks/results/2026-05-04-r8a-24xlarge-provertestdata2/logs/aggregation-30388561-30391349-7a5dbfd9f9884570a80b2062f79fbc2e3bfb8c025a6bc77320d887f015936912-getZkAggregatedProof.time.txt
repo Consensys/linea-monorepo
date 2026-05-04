@@ -1,0 +1,24 @@
+Command exited with non-zero status 1
+	Command being timed: "bin/prover prove --config reference-benchmarks/config-mainnet-limitless-7.0.7-provertestdata2.toml --in /home/ubuntu/provertestdata2/prover-aggregation/requests/30388561-30391349-7a5dbfd9f9884570a80b2062f79fbc2e3bfb8c025a6bc77320d887f015936912-getZkAggregatedProof.json --out reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2/aggregation/30388561-30391349-7a5dbfd9f9884570a80b2062f79fbc2e3bfb8c025a6bc77320d887f015936912-getZkAggregatedProof.json"
+	User time (seconds): 13491.14
+	System time (seconds): 320.18
+	Percent of CPU this job got: 6093%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:46.65
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 207433984
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 62208499
+	Voluntary context switches: 1693553
+	Involuntary context switches: 149537
+	Swaps: 0
+	File system inputs: 12583040
+	File system outputs: 120
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1

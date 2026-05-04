@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/consensys/gnark"
 	"github.com/consensys/gnark-crypto/ecc"
@@ -151,6 +152,7 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 	gnarkutil.RegisterHintsAndGkrGates()
 
 	runtime.GC()
+	start := time.Now()
 
 	rootDir := cfg.PathForSetup(string(circuitID))
 	manifestPath := filepath.Join(rootDir, config.ManifestFileName)
@@ -225,6 +227,14 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 	if err = utils.WriterstoEqual(kzgVkFromSrs, kzgVkFromVk); err != nil {
 		return Setup{}, fmt.Errorf("verifying key <> SRS mismatch: %w", err)
 	}
+
+	logrus.Infof(
+		"loaded setup circuitID=%s curve=%s nbConstraints=%d duration=%s",
+		circuitID,
+		manifest.CurveID,
+		manifest.NbConstraints,
+		time.Since(start),
+	)
 
 	return Setup{
 		Manifest:     *manifest,

@@ -3,6 +3,7 @@ package circuits
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
@@ -13,7 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuplonk2 "github.com/consensys/linea-monorepo/prover/gpu/plonk2"
 )
+
+const envGPUPlonk2 = "LINEA_PROVER_GPU_PLONK2"
 
 // Generates a PlonkProof and sanity-checks it against the verifying key. Can
 // take a list of options which can of either backend.ProverOption of backend.
@@ -52,7 +57,38 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 	logrus.Infof("Generating the proof")
 	var proof plonk.Proof
 
-	proof, err = plonk.Prove(setup.Circuit, setup.ProvingKey, witness, proverOpts...)
+	if envFlag(envGPUPlonk2) {
+		if !gpu.Enabled {
+			return nil, fmt.Errorf("%s=1 requires a binary built with the cuda tag", envGPUPlonk2)
+		}
+		dev := gpu.GetDevice()
+		if dev == nil {
+			return nil, fmt.Errorf("%s=1 requested gpu/plonk2, but no GPU device is available", envGPUPlonk2)
+		}
+		logrus.Infof(
+			"Generating the proof with gpu/plonk2: circuit=%T provingKey=%T verifyingKey=%T",
+			setup.Circuit,
+			setup.ProvingKey,
+			setup.VerifyingKey,
+		)
+		var gpuProver *gpuplonk2.Prover
+		gpuProver, err = gpuplonk2.NewProver(
+			dev,
+			setup.Circuit,
+			setup.ProvingKey,
+			setup.VerifyingKey,
+			gpuplonk2.WithEnabled(true),
+			gpuplonk2.WithStrictMode(true),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("while creating the gpu/plonk2 prover: %w", err)
+		}
+		defer gpuProver.Close()
+		proof, err = gpuProver.Prove(witness, proverOpts...)
+	} else {
+		proof, err = plonk.Prove(setup.Circuit, setup.ProvingKey, witness, proverOpts...)
+	}
+	logrus.Infof("Generated proof type %T", proof)
 	if err != nil {
 		// The error returned by the Plonk prover is usually not helpful at
 		// all. So, in order to get more details, we run the "test" Solver.
@@ -83,6 +119,15 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 	}
 
 	return proof, nil
+}
+
+func envFlag(name string) bool {
+	switch os.Getenv(name) {
+	case "1", "true", "TRUE", "True", "yes", "YES", "on", "ON":
+		return true
+	default:
+		return false
+	}
 }
 
 // Serializes the proof in an 0x prefixed hexstring

@@ -1,0 +1,23 @@
+	Command being timed: "bin/prover prove --config reference-benchmarks/config-mainnet-limitless-7.0.7-provertestdata2.toml --in /home/ubuntu/provertestdata2/prover-compression/requests/30388561-30389025-bcv0.0-ccv0.0-b686e4f81a269c88420e67e8235e63faee8aab7b735520cd112737fd283bff4f-getZkBlobCompressionProof.json --out reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2/compression/30388561-30389025-b686e4f81a269c88420e67e8235e63faee8aab7b735520cd112737fd283bff4f-getZkBlobCompressionProof.json"
+	User time (seconds): 13098.71
+	System time (seconds): 240.30
+	Percent of CPU this job got: 2671%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:19.23
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 215794676
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 58024193
+	Voluntary context switches: 550093
+	Involuntary context switches: 138836
+	Swaps: 0
+	File system inputs: 57789640
+	File system outputs: 384
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
