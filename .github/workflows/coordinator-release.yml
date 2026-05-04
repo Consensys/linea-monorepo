@@ -55,8 +55,8 @@ jobs:
     secrets: inherit
 
   release-coordinator-metadata:
-    # needs: [run-e2e-tests]
-    # if: ${{ needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    needs: [run-e2e-tests]
+    if: ${{ needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: coordinator
