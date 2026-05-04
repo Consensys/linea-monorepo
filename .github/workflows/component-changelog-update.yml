@@ -1,7 +1,7 @@
 name: "Component Changelog (PR preview)"
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 on:
@@ -17,18 +17,26 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false
+      # Serialize so each job rebases on the previous job's CHANGELOG commit,
+      # avoiding non-fast-forward push conflicts on the PR branch.
+      # max-parallel: 1
       matrix:
         component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
         include:
           - component: coordinator
+            folder-name: coordinator
             include-path: 'coordinator/**'
           - component: prover
+            folder-name: prover
             include-path: 'prover/**'
           - component: postman
+            folder-name: postman
             include-path: 'postman/**'
           - component: tx-exclusion-api
+            folder-name: transaction-exclusion-api
             include-path: 'transaction-exclusion-api/**'
           - component: linea-besu
+            folder-name: linea-besu-package
             include-path: [ 'tracer/**', 'tracer-constraints/**', 'besu-plugins/linea-sequencer/**', 'linea-besu/**', 'linea-besu-package/**', 'gradle/libs.versions.toml' ]
 
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
@@ -37,24 +45,46 @@ jobs:
         uses: actions/checkout@v6
         with:
           # git-cliff needs full history + tags to compute changelog/version
+          # and also check out the PR branch so we can push back to it
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
           fetch-tags: true
           submodules: false
 
-      # Install git-cliff directly so we can call --bumped-version without the
-      # git-cliff-action post-processing that jq-parses stdout and breaks on
-      # prefixed tag output like `releases/coordinator/v0.2.0`.
       - name: Install git-cliff
         uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
         with:
           tool: git-cliff
 
-      - name: Generate ${{ matrix.component }} [Unreleased] changelog
+      - name: Update [Unreleased] section in ${{ matrix.folder-name }}/CHANGELOG.md
         id: changelog
         uses: ./.github/actions/run-git-cliff-commands
         with:
           component-name: ${{ matrix.component }}
+          folder-name: ${{ matrix.folder-name }}
           include-path: ${{ toJSON(matrix.include-path) }}
+          prepend-changelog: 'true'
+
+      - name: Configure git identity
+        if: steps.changelog.outputs.tag_changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push ${{ matrix.folder-name }}/CHANGELOG.md
+        if: steps.changelog.outputs.tag_changed == 'true'
+        env:
+          COMPONENT: ${{ matrix.component }}
+          FOLDER_NAME: ${{ matrix.folder-name }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
+            echo "No unreleased ${COMPONENT} changes; nothing to do."
+            exit 0
+          fi
+          git add "${FOLDER_NAME}/CHANGELOG.md"
+          git commit -m "chore(${COMPONENT}): update unreleased section in CHANGELOG.md"
+          git push origin "HEAD:${{ github.head_ref }}"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
         if: steps.changelog.outputs.tag_changed == 'true'

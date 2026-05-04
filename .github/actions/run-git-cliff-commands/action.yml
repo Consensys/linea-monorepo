@@ -124,13 +124,24 @@ runs:
         COMPONENT: ${{ inputs.component-name }}
         FOLDER_NAME: ${{ inputs.folder-name }}
         CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        VERSION: ${{ steps.version.outputs.version }}
+        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
       run: |
         set -euo pipefail
+        CHANGELOG_FILE="${FOLDER_NAME}/CHANGELOG.md"
+
+        # Drop existing [unreleased] block if any
+        awk '
+          /^## \[unreleased\]/ { skip=1; next }
+          /^## \[/ && skip       { skip=0 }
+          !skip                  { print }
+        ' "${CHANGELOG_FILE}" > "${CHANGELOG_FILE}.tmp" && mv "${CHANGELOG_FILE}.tmp" "${CHANGELOG_FILE}"
+
+        # Prepend a fresh [unreleased/tag-version] section
         mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
-        cliff_args=(--config "${CLIFF_CONFIG}" --unreleased --tag "${VERSION}")
+        read -ra tag_config_args <<< "--unreleased${TAG_CONFIG}"
+        cliff_args=(--config "${CLIFF_CONFIG}" "${tag_config_args[@]}")
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${FOLDER_NAME}/CHANGELOG.md")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${CHANGELOG_FILE}")
         git cliff "${cliff_args[@]}"

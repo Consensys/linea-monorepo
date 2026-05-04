@@ -70,7 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
-            echo "No unreleased ${COMPONENT} changes; nothing to do."
+            echo "No ${FOLDER_NAME}/CHANGELOG.md changes; nothing to do."
             exit 0
           fi
           git add "${FOLDER_NAME}/CHANGELOG.md"

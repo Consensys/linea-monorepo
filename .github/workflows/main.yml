@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   security-events: write
   packages: write
@@ -20,9 +20,9 @@ jobs:
   lint-latest-commit-messages:
     uses: ./.github/workflows/lint-commit-messages.yml
 
-  component-changelog-preview:
+  component-changelog-update:
     needs: [lint-latest-commit-messages]
-    uses: ./.github/workflows/component-changelog-preview.yml
+    uses: ./.github/workflows/component-changelog-update.yml
 
   filter-commit-changes:
     needs: [lint-latest-commit-messages]
