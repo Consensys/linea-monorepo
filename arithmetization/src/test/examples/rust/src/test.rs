@@ -37,4 +37,3 @@ fn exit(r: u16) -> ! {
 fn panic(_: &core::panic::PanicInfo) -> ! {
     exit(3);
 }
-
