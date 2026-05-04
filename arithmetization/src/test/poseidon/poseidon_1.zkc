@@ -1,0 +1,197 @@
+include "../../main/riscv/utils/types.zkc"
+
+// =============================================
+// zkc implementation of Poseidon_1 permutation
+// =============================================
+//
+// source: https://github.com/khovratovich/poseidon-tools/tree/main
+
+
+memory ram             (address :Address) -> (byte :u8)
+memory params          (index   :u8)      -> (pa   :u32)
+memory state           (index   :u8)      -> (st   :u32)
+memory state_copy      (index   :u8)      -> (st   :u32)
+
+// we require TOTAL_ROUNDS * STATE_WIDTH round constants
+input  round_constants (index   :u16)     -> (rc   :u32)
+input  mds_matrix      (index   :u16)     -> (mt   :u32)
+
+// this implementation does not use the native field element type yet
+
+const KOALABEAR_PRIME :u32 = 0x7F000001 // 2^31 - 2^24 + 1 or 2130706433
+const ALPHA           :u2  = 3
+const BYTES_PER_FELT  :u2  = 3
+
+const OUTPUT_LENGTH    :u8  = RATE // OUTPUT_LENGTH ≤ RATE is required
+
+const STATE_WIDTH      :u8  = RATE + CAPACITY
+const RATE             :u8  = 12
+const CAPACITY         :u8  = 4
+
+// we will do
+//  - FULL_ROUNDS_HALF full    rounds
+//  - PRTL_ROUNDS      partial rounds
+//  - FULL_ROUNDS_HALF full    rounds
+// whence
+const TOTAL_ROUNDS     :u8 = FULL_ROUNDS_HALF + PRTL_ROUNDS + FULL_ROUNDS_HALF
+const FULL_ROUNDS_HALF :u8 = 12
+const PRTL_ROUNDS      :u8 = 8
+
+fn poseidon<ram, state, params>(start :Address, size :u32) {
+  initialize_state(start, size)
+}
+
+// initialize_state initializes the state to contain
+//
+//       ┌   ┐
+//       │ a │
+//       │ b │
+//       │   │
+//       │ ⋮ │   r ≡ rate many felts
+//       │   │
+//       │ q │
+// σ  ≡  │ r │
+//       ├   ┤
+//       │ L │   ← peculiar to https://github.com/khovratovich/poseidon-tools/tree/main
+//       │ 0 │
+//       │ ⋮ │
+//       │ 0 │
+//       └   ┘
+//
+// where L ≡ length in bytes of the inputs
+fn initialize_state<ram, state, params>(input_offset :Address, input_size :u32) {
+
+  var input_felt :u32
+
+  for i :u8 = 0; i < RATE; i = i + 1 {
+    input_felt = (ram[i as Address] :: ram[(i + 1) as Address] :: ram[(i + 2) as Address]) as u32
+    write_to_state(i, input_felt)
+  }
+
+  // Note: technically one should record 'input_size mod KOALABEAR_PRIME' rather than 'input_size'
+  write_to_state(RATE, input_size)
+
+  for i :u8 = RATE; i < STATE_WIDTH; i = i + 1 {
+    write_to_state(i, 0)
+  }
+}
+
+// update_state updates the current state σ to σ' defined by
+// adding the next batch of data carrying felts (nxt) to the
+// rate many first coordinates of σ.
+//
+// σ'  ≡     σ    +   nxt
+//
+//          ←σ→      ←nxt→
+//         ┌   ┐     ┌   ┐
+//         │ A │     │ a │
+//         │ B │     │ b │
+//         │   │     │   │
+//         │ ⋮ │     │ ⋮ │
+//         │   │     │   │
+//         │ Q │     │ q │
+//     ≡   │ R │  +  │ r │
+//         ├   ┤     ├   ┤
+//         │ Λ │     │ 0 │
+//         │ μ │     │ 0 │
+//         │ ⋮ │     │ ⋮ │
+//         │ π │     │ 0 │
+//         └   ┘     └   ┘
+//
+fn update_state<ram, state>(input_offset :Address) {
+  var input_felt :u32
+  var curr_value :u32
+  var updt_value :u32
+  var overflow   :u1
+
+  for i :u8 = 0; i < RATE; i = i + 1 {
+    input_felt = (ram[i as Address] :: ram[(i + 1) as Address] :: ram[(i + 2) as Address]) as u32
+    curr_value = read_from_state(i)
+    overflow :: updt_value = (curr_value as u33) + (input_felt as u33)
+    write_to_state(i, updt_value)
+  }
+}
+
+fn permutation<ram, state, state_copy, params>(initial_round :Boolean) {
+
+  for r :u8 = 0; r < FULL_ROUNDS_HALF; r = r + 1 {
+    full_round(r)
+  }
+
+  for r :u8 = 0; r < PRTL_ROUNDS; r = r + 1 {
+    partial_round(r + FULL_ROUNDS_HALF)
+  }
+
+  for r :u8 = 0; r < FULL_ROUNDS_HALF; r = r + 1 {
+    full_round(r + FULL_ROUNDS_HALF + PRTL_ROUNDS)
+  }
+}
+
+// sbox computes the ALPHA-th power of its input
+fn sbox(x :u32) -> (res :u32) {
+  var aux :u64
+
+  // square
+  aux = (x as u64) * (x as u64)
+  res = (aux % (KOALABEAR_PRIME as u64)) as u32
+
+  // cube
+  aux = (res as u64) * (x as u64)
+  res = (aux % (KOALABEAR_PRIME as u64)) as u32
+
+  return
+}
+
+fn add_round_constants<state>(r :u8) {
+  var start_index :u16 = (r as u16) * (STATE_WIDTH as u16)
+  var round_constant :u32
+  var state_value :u32
+  var overflow :u1
+
+  for i :u8 = 0; i < STATE_WIDTH; i = i + 1 {
+    round_constant = round_constants[start_index]
+    state_value = state[i]
+    overflow :: state_value = (round_constant as u33) + (state_value as u33)
+    state[i] = state_value % KOALABEAR_PRIME
+    start_index = start_index + 1
+  }
+}
+
+fn full_round<state, state_copy>(r :u8) {
+  add_round_constants(r)
+  for i :u8 = 0; i < STATE_WIDTH; i = i + 1 {
+    state[i] = sbox(state[i])
+  }
+  apply_mds()
+}
+
+fn partial_round<state, state_copy>(r :u8) {
+  add_round_constants(r)
+  state[0] = sbox(state[0])
+  apply_mds()
+}
+
+// apply_mds applies the STATE_WIDTH x STATE_WIDTH mds matrix to the
+// state, viewed as a column vector w/ STATE_WIDTH many rows.
+fn apply_mds<state, state_copy>() {
+
+  // STATE_WIDTH < 2**8
+  // mds[i,j]    < 2**32
+  // state[j]    < 2**32
+  // sum_j mds[i,j] ∙ state[j] < 2**(32 + 32 + 8) = 2**72
+  var index :u16 = 0
+  for i :u8 = 0; i < STATE_WIDTH; i = i + 1 {
+    var unreduced_sum :u72 = 0
+    for j :u8 = 0; j < STATE_WIDTH; j = j + 1 {
+      unreduced_sum = unreduced_sum + ((mds_matrix[index] as u72) * (state[j] as u72))
+      index = index + 1
+    }
+    state_copy[i] = (unreduced_sum % (KOALABEAR_PRIME as u72)) as u32
+  }
+
+  // we copy the updated state over to the state
+  for i :u8 = 0; i < STATE_WIDTH; i = i + 1 {
+      state[i] = state_copy[i]
+  }
+}
+

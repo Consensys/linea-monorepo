@@ -1,0 +1,9 @@
+
+fn write_to_state<state>(address :u8, value:u32) -> () {
+  state[address] = value
+}
+
+fn read_from_state<state>(address :u8) -> (value :u32) {
+  value = state[address]
+  return
+}
