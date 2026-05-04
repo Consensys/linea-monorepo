@@ -63,6 +63,19 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("unsupported blob version: %v", version)
 	}
 
+	type setupResult struct {
+		setup circuits.Setup
+		err   error
+	}
+	var setupCh chan setupResult
+	if cfg.DataAvailability.ProverMode != config.ProverModeDev {
+		setupCh = make(chan setupResult, 1)
+		go func() {
+			setup, err := circuits.LoadSetup(cfg, circuitID)
+			setupCh <- setupResult{setup: setup, err: err}
+		}()
+	}
+
 	logrus.Info("reading dictionaries")
 
 	dictStore := cfg.BlobDecompressionDictStore(string(circuitID))
@@ -112,9 +125,12 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 		proofSerialized = dummy.MakeProof(&setup, pubInput, circuits.MockCircuitIDDecompression)
 	} else {
-		if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
+		setupRes := <-setupCh
+		if setupRes.err != nil {
+			err = setupRes.err
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
+		setup = setupRes.setup
 
 		maxUsableBytes, err := setup.Manifest.GetInt("maxUsableBytes")
 		if err != nil {

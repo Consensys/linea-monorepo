@@ -11,7 +11,6 @@ import "C"
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
@@ -33,6 +32,7 @@ import (
 	kzg "github.com/consensys/gnark-crypto/ecc/bls12-377/kzg"
 	fiatshamir "github.com/consensys/gnark-crypto/fiat-shamir"
 
+	"github.com/consensys/gnark/backend"
 	curplonk "github.com/consensys/gnark/backend/plonk/bls12-377"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint"
@@ -131,6 +131,12 @@ type quotientWorkBufs struct {
 	LinResult, LinW        *FrVector    // linearized poly GPU scratch
 }
 
+type lowMemorySelectorCache struct {
+	ql, qr, qm, qo *FrVector
+	s1, s2, s3     *FrVector
+	qcp            []*FrVector
+}
+
 type splitMSMBackend struct {
 	secondary *gpu.Device
 	msm0      *G1MSM
@@ -139,10 +145,14 @@ type splitMSMBackend struct {
 }
 
 type gpuInstance struct {
-	dev   *gpu.Device
-	vk    *curplonk.VerifyingKey
-	n     int
-	log2n uint
+	dev            *gpu.Device
+	vk             *curplonk.VerifyingKey
+	n              int
+	log2n          uint
+	lowMemory      bool
+	canonicalReady chan struct{}
+	canonicalErr   error
+	canonicalOnce  sync.Once
 
 	domain0 *fft.Domain
 
@@ -169,6 +179,12 @@ type gpuInstance struct {
 	qWb     quotientWorkBufs
 
 	hBufs hostBufs
+}
+
+type gpuInstanceReadyHooks struct {
+	msm    func(*gpuInstance)
+	commit func(*gpuInstance)
+	trace  func(*gpuInstance)
 }
 
 type hostBufs struct {
@@ -225,16 +241,63 @@ func (hb *hostBufs) free() {
 	*hb = hostBufs{}
 }
 
-func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*gpuInstance, error) {
-	inst := &gpuInstance{dev: dev, vk: gpk.Vk, n: gpk.n}
+func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, hooks ...gpuInstanceReadyHooks) (*gpuInstance, error) {
+	inst := &gpuInstance{dev: dev, vk: gpk.Vk, n: gpk.n, canonicalReady: make(chan struct{})}
+	var hook gpuInstanceReadyHooks
+	if len(hooks) > 0 {
+		hook = hooks[0]
+	}
+	commitPublished := false
+	msmPublished := false
+	tracePublished := false
+	publishMSMReady := func() {
+		if hook.msm != nil && !msmPublished {
+			msmPublished = true
+			hook.msm(inst)
+		}
+	}
+	publishCommitReady := func() {
+		if hook.commit != nil && !commitPublished {
+			commitPublished = true
+			hook.commit(inst)
+		}
+	}
+	publishTraceReady := func() {
+		if hook.trace != nil && !tracePublished {
+			tracePublished = true
+			hook.trace(inst)
+		}
+	}
+	var traceErrCh chan error
 
 	fail := func(msg string, err error) (*gpuInstance, error) {
-		inst.close()
-		return nil, fmt.Errorf("%s: %w", msg, err)
+		wrapped := fmt.Errorf("%s: %w", msg, err)
+		if traceErrCh != nil {
+			<-traceErrCh
+			traceErrCh = nil
+		}
+		inst.publishCanonicalReady(wrapped)
+		if !msmPublished && !commitPublished && !tracePublished {
+			inst.close()
+		}
+		return nil, wrapped
 	}
 
-	if err := inst.initCircuitData(spr); err != nil {
-		return fail("init circuit data", err)
+	if err := inst.initCircuitShape(spr); err != nil {
+		return fail("init circuit shape", err)
+	}
+	inst.lowMemory = selectLowMemoryMode(dev, inst.n)
+	traceErrCh = make(chan error, 1)
+	go func() {
+		traceErrCh <- inst.initTraceData(spr)
+	}()
+	waitTrace := func() error {
+		if traceErrCh == nil {
+			return nil
+		}
+		err := <-traceErrCh
+		traceErrCh = nil
+		return err
 	}
 
 	var err error
@@ -271,8 +334,16 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 	}
 	gpk.srsPoints = nil // ownership transferred; free heap copy
 
-	if perr := inst.pinMSMWorkBuffers(); perr != nil {
-		return fail("pin MSM work buffers", perr)
+	if !inst.lowMemory {
+		if perr := inst.pinMSMWorkBuffers(); perr != nil {
+			return fail("pin MSM work buffers", perr)
+		}
+	}
+
+	if inst.lowMemory {
+		if err := inst.offloadMSMPoints(); err != nil {
+			return fail("offload MSM points", err)
+		}
 	}
 
 	inst.fftDom, err = NewFFTDomain(dev, inst.n)
@@ -280,13 +351,39 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 		return fail("create FFT domain", err)
 	}
 
+	if inst.lowMemory {
+		inst.gpuWork, err = NewFrVector(dev, inst.n)
+		if err != nil {
+			return fail("alloc low-memory GPU work buffer", err)
+		}
+		if err := dev.InitMultiStream(); err != nil {
+			return fail("init multi-stream", err)
+		}
+		publishMSMReady()
+		inst.initHostBufs()
+		publishCommitReady()
+	}
+
+	if err := waitTrace(); err != nil {
+		return fail("init circuit data", err)
+	}
+
 	inst.dPerm, err = DeviceAllocCopyInt64(dev, inst.permutation)
 	if err != nil {
 		return fail("upload permutation", err)
 	}
 
+	if inst.lowMemory {
+		publishTraceReady()
+	}
+
 	if err := inst.initCanonicalGPU(); err != nil {
 		return fail("init canonical", err)
+	}
+
+	if inst.lowMemory {
+		inst.publishCanonicalReady(nil)
+		return inst, nil
 	}
 
 	if err := inst.uploadPolynomials(); err != nil {
@@ -298,7 +395,51 @@ func newGPUInstance(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS) (*g
 	}
 
 	inst.initHostBufs()
+	publishMSMReady()
+	publishCommitReady()
+	publishTraceReady()
+	inst.publishCanonicalReady(nil)
 	return inst, nil
+}
+
+func (inst *gpuInstance) publishCanonicalReady(err error) {
+	inst.canonicalOnce.Do(func() {
+		inst.canonicalErr = err
+		close(inst.canonicalReady)
+	})
+}
+
+func (inst *gpuInstance) waitCanonicalReady() error {
+	if inst.canonicalReady == nil {
+		return nil
+	}
+	<-inst.canonicalReady
+	return inst.canonicalErr
+}
+
+func selectLowMemoryMode(dev *gpu.Device, n int) bool {
+	if os.Getenv("GNARK_GPU_PLONK2_FORCE_LOW_MEMORY") != "" {
+		log.Printf("plonk2: low-memory GPU mode forced for n=%d", n)
+		return true
+	}
+	if os.Getenv("GNARK_GPU_PLONK2_DISABLE_LOW_MEMORY") != "" {
+		log.Printf("plonk2: low-memory GPU mode disabled for n=%d", n)
+		return false
+	}
+	free, total, err := dev.MemGetInfo()
+	if err != nil {
+		low := n >= 1<<25
+		log.Printf("plonk2: low-memory GPU mode=%t for n=%d; mem query failed: %v", low, n, err)
+		return low
+	}
+	vecBytes := uint64(n) * uint64(fr.Bytes)
+	estimatedResident := vecBytes * 24
+	low := estimatedResident > total/2
+	log.Printf(
+		"plonk2: low-memory GPU mode=%t n=%d vecBytes=%d estimatedResident=%d freeVRAM=%d totalVRAM=%d",
+		low, n, vecBytes, estimatedResident, free, total,
+	)
+	return low
 }
 
 func secondaryMSMDeviceID(primaryID int) (int, bool, error) {
@@ -427,7 +568,7 @@ func (inst *gpuInstance) allocPersistentBufs() error {
 	return inst.dev.InitMultiStream()
 }
 
-func (inst *gpuInstance) initCircuitData(spr *cs.SparseR1CS) error {
+func (inst *gpuInstance) initCircuitShape(spr *cs.SparseR1CS) error {
 	nbConstraints := spr.GetNbConstraints()
 	sizeSystem := uint64(nbConstraints + len(spr.Public))
 	inst.domain0 = fft.NewDomain(sizeSystem, fft.WithoutPrecompute())
@@ -436,7 +577,12 @@ func (inst *gpuInstance) initCircuitData(spr *cs.SparseR1CS) error {
 		return fmt.Errorf("domain size mismatch: spr=%d SRS=%d", n, inst.n)
 	}
 	inst.log2n = uint(bits.TrailingZeros(uint(n)))
+	inst.nbPublicVariables = len(spr.Public)
+	inst.commitmentInfo = inst.vk.CommitmentConstraintIndexes
+	return nil
+}
 
+func (inst *gpuInstance) initTraceData(spr *cs.SparseR1CS) error {
 	trace := curplonk.NewTrace(spr, inst.domain0)
 	inst.qlCanonical = fr.Vector(trace.Ql.Coefficients())
 	inst.qrCanonical = fr.Vector(trace.Qr.Coefficients())
@@ -446,7 +592,7 @@ func (inst *gpuInstance) initCircuitData(spr *cs.SparseR1CS) error {
 	inst.s2Canonical = fr.Vector(trace.S2.Coefficients())
 	inst.s3Canonical = fr.Vector(trace.S3.Coefficients())
 
-	inst.qkLagrange = make(fr.Vector, n)
+	inst.qkLagrange = make(fr.Vector, inst.n)
 	copy(inst.qkLagrange, trace.Qk.Coefficients())
 	inst.qkFixedCanonical = fr.Vector(trace.Qk.Coefficients())
 
@@ -455,8 +601,6 @@ func (inst *gpuInstance) initCircuitData(spr *cs.SparseR1CS) error {
 		inst.qcpCanonical[i] = fr.Vector(p.Coefficients())
 	}
 	inst.permutation = trace.S
-	inst.nbPublicVariables = len(spr.Public)
-	inst.commitmentInfo = inst.vk.CommitmentConstraintIndexes
 	return nil
 }
 
@@ -601,7 +745,11 @@ func (inst *gpuInstance) close() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type gpuProver struct {
-	inst *gpuInstance
+	inst           *gpuInstance
+	instMu         sync.Mutex
+	waitInst       func() (*gpuInstance, error)
+	waitMSMInst    func() (*gpuInstance, error)
+	waitCommitInst func() (*gpuInstance, error)
 
 	proof curplonk.Proof
 	fs    *fiatshamir.Transcript
@@ -610,6 +758,9 @@ type gpuProver struct {
 	commitmentVal  []fr.Element
 	pi2Canonical   [][]fr.Element
 	pi2DeviceReady []bool
+	solverOpts     []solver.Option
+	kzgFoldingHash hash.Hash
+	htfFunc        hash.Hash
 
 	evalL, evalR, evalO          fr.Vector
 	wWitness                     fr.Vector
@@ -625,6 +776,31 @@ type gpuProver struct {
 
 // ─── Prove phases ─────────────────────────────────────────────────────────────
 
+func (p *gpuProver) ensureInst() (*gpuInstance, error) {
+	p.instMu.Lock()
+	if p.inst != nil {
+		inst := p.inst
+		p.instMu.Unlock()
+		return inst, nil
+	}
+	waitInst := p.waitInst
+	p.instMu.Unlock()
+	if waitInst == nil {
+		return nil, errors.New("gpu instance is not initialized")
+	}
+	inst, err := waitInst()
+	if err != nil {
+		return nil, err
+	}
+	p.instMu.Lock()
+	if p.inst == nil {
+		p.inst = inst
+	}
+	inst = p.inst
+	p.instMu.Unlock()
+	return inst, nil
+}
+
 func (p *gpuProver) initBlindingPolynomials() {
 	p.bpL = getRandomPolynomial(orderBlindingL)
 	p.bpR = getRandomPolynomial(orderBlindingR)
@@ -633,14 +809,22 @@ func (p *gpuProver) initBlindingPolynomials() {
 }
 
 func (p *gpuProver) solve(spr *cs.SparseR1CS, fullWitness witness.Witness) error {
-	inst := p.inst
-	n := inst.n
-
-	var solverOpts []solver.Option
+	solverOpts := append([]solver.Option(nil), p.solverOpts...)
 	if len(p.commitmentInfo) > 0 {
-		htfFunc := newHTF([]byte("BSB22-Plonk"))
 		bsb22ID := solver.GetHintID(fcs.Bsb22CommitmentComputePlaceholder)
-		solverOpts = []solver.Option{solver.OverrideHint(bsb22ID, func(_ *big.Int, ins, outs []*big.Int) error {
+		solverOpts = append(solverOpts, solver.OverrideHint(bsb22ID, func(_ *big.Int, ins, outs []*big.Int) error {
+			waitMSMInst := p.waitMSMInst
+			if waitMSMInst == nil {
+				waitMSMInst = p.waitCommitInst
+			}
+			if waitMSMInst == nil {
+				waitMSMInst = p.ensureInst
+			}
+			inst, err := waitMSMInst()
+			if err != nil {
+				return err
+			}
+			n := inst.n
 			commDepth := int(ins[0].Int64())
 			ins = ins[1:]
 			ci := p.commitmentInfo[commDepth]
@@ -669,17 +853,17 @@ func (p *gpuProver) solve(spr *cs.SparseR1CS, fullWitness witness.Witness) error
 			}
 			p.proof.Bsb22Commitments[commDepth] = commitment
 
-			htfFunc.Write(p.proof.Bsb22Commitments[commDepth].Marshal())
-			hashBts := htfFunc.Sum(nil)
-			htfFunc.Reset()
+			p.htfFunc.Write(p.proof.Bsb22Commitments[commDepth].Marshal())
+			hashBts := p.htfFunc.Sum(nil)
+			p.htfFunc.Reset()
 			nbBuf := fr.Bytes
-			if htfFunc.Size() < fr.Bytes {
-				nbBuf = htfFunc.Size()
+			if p.htfFunc.Size() < fr.Bytes {
+				nbBuf = p.htfFunc.Size()
 			}
 			p.commitmentVal[commDepth].SetBytes(hashBts[:nbBuf])
 			p.commitmentVal[commDepth].BigInt(outs[0])
 			return nil
-		})}
+		}))
 	}
 
 	solution_, err := spr.Solve(fullWitness, solverOpts...)
@@ -700,7 +884,10 @@ func (p *gpuProver) solve(spr *cs.SparseR1CS, fullWitness witness.Witness) error
 }
 
 func (p *gpuProver) completeQk() {
-	inst := p.inst
+	inst, err := p.ensureInst()
+	if err != nil {
+		panic(err)
+	}
 	p.qkCoeffs = inst.hBufs.qkCoeffs
 	copy(p.qkCoeffs, inst.qkLagrange)
 	copy(p.qkCoeffs, p.wWitness[:inst.nbPublicVariables])
@@ -712,21 +899,28 @@ func (p *gpuProver) completeQk() {
 // commitToLRO overlaps the iFFT of L,R,O with Qk patching (via waitQk) and
 // blinding-polynomial generation (via waitBlinding), both of which complete
 // concurrently in sibling goroutines.
-func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
-	inst := p.inst
+func (p *gpuProver) commitToLRO(inst *gpuInstance, waitQk, waitBlinding func() error) error {
 	hb := &inst.hBufs
 
 	gpuToCanonical := func(lagrange, dst fr.Vector, dstDevice *FrVector) {
 		inst.gpuWork.CopyFromHost(lagrange)
 		inst.fftDom.BitReverse(inst.gpuWork)
 		inst.fftDom.FFTInverse(inst.gpuWork)
-		dstDevice.CopyFromDevice(inst.gpuWork)
+		if dstDevice != nil {
+			dstDevice.CopyFromDevice(inst.gpuWork)
+		}
 		inst.gpuWork.CopyToHost(dst)
 	}
 
-	gpuToCanonical(p.evalL, hb.lCanonical, inst.qWb.LCan)
-	gpuToCanonical(p.evalR, hb.rCanonical, inst.qWb.RCan)
-	gpuToCanonical(p.evalO, hb.oCanonical, inst.qWb.OCan)
+	if inst.lowMemory {
+		gpuToCanonical(p.evalL, hb.lCanonical, nil)
+		gpuToCanonical(p.evalR, hb.rCanonical, nil)
+		gpuToCanonical(p.evalO, hb.oCanonical, nil)
+	} else {
+		gpuToCanonical(p.evalL, hb.lCanonical, inst.qWb.LCan)
+		gpuToCanonical(p.evalR, hb.rCanonical, inst.qWb.RCan)
+		gpuToCanonical(p.evalO, hb.oCanonical, inst.qWb.OCan)
+	}
 
 	if err := waitQk(); err != nil {
 		return err
@@ -734,8 +928,12 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	inst.gpuWork.CopyFromHost(p.qkCoeffs)
 	inst.fftDom.BitReverse(inst.gpuWork)
 	inst.fftDom.FFTInverse(inst.gpuWork)
-	inst.qWb.QkSrc.CopyFromDevice(inst.gpuWork)
-	p.qkCoeffs = nil
+	if inst.lowMemory {
+		inst.gpuWork.CopyToHost(p.qkCoeffs)
+	} else {
+		inst.qWb.QkSrc.CopyFromDevice(inst.gpuWork)
+		p.qkCoeffs = nil
+	}
 
 	if err := waitBlinding(); err != nil {
 		return err
@@ -747,9 +945,11 @@ func (p *gpuProver) commitToLRO(waitQk, waitBlinding func() error) error {
 	go func() { defer blindWG.Done(); p.rBlinded = blindInto(hb.rBlinded, hb.rCanonical, p.bpR) }()
 	go func() { defer blindWG.Done(); p.oBlinded = blindInto(hb.oBlinded, hb.oCanonical, p.bpO) }()
 	blindWG.Wait()
-	SubtractBlindingHead(inst.qWb.LCan, p.bpL.Coefficients())
-	SubtractBlindingHead(inst.qWb.RCan, p.bpR.Coefficients())
-	SubtractBlindingHead(inst.qWb.OCan, p.bpO.Coefficients())
+	if !inst.lowMemory {
+		SubtractBlindingHead(inst.qWb.LCan, p.bpL.Coefficients())
+		SubtractBlindingHead(inst.qWb.RCan, p.bpR.Coefficients())
+		SubtractBlindingHead(inst.qWb.OCan, p.bpO.Coefficients())
+	}
 
 	p.logTime("iFFT L,R,O,Qk + blind")
 
@@ -798,10 +998,12 @@ func (p *gpuProver) buildZAndCommit() error {
 	inst.gpuWork.CopyFromHost(zLagrange)
 	inst.fftDom.BitReverse(inst.gpuWork)
 	inst.fftDom.FFTInverse(inst.gpuWork)
-	inst.qWb.ZCan.CopyFromDevice(inst.gpuWork)
 	inst.gpuWork.CopyToHost(hb.zLagrange)
 	p.zBlinded = blindInto(hb.zBlinded, hb.zLagrange, p.bpZ)
-	SubtractBlindingHead(inst.qWb.ZCan, p.bpZ.Coefficients())
+	if !inst.lowMemory {
+		inst.qWb.ZCan.CopyFromDevice(inst.gpuWork)
+		SubtractBlindingHead(inst.qWb.ZCan, p.bpZ.Coefficients())
+	}
 
 	zCommit, err := inst.commit(p.zBlinded)
 	if err != nil {
@@ -826,6 +1028,9 @@ func (p *gpuProver) buildZAndCommit() error {
 
 func (p *gpuProver) computeQuotientAndCommit() error {
 	inst := p.inst
+	if err := inst.waitCanonicalReady(); err != nil {
+		return fmt.Errorf("initialize canonical selector data: %w", err)
+	}
 
 	pointsOffloaded := false
 	if inst.shouldOffloadMSMForQuotient() {
@@ -840,7 +1045,9 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 	defer func() {
 		if pointsOffloaded {
 			_ = inst.reloadMSMPoints()
-			_ = inst.pinMSMWorkBuffers()
+			if !inst.lowMemory {
+				_ = inst.pinMSMWorkBuffers()
+			}
 		}
 	}()
 
@@ -848,7 +1055,7 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 	p.h1, p.h2, p.h3, qErr = computeNumeratorGPU(
 		inst, inst.gpuWork,
 		p.lBlinded, p.rBlinded, p.oBlinded, p.zBlinded,
-		p.pi2Canonical, p.pi2DeviceReady,
+		p.qkCoeffs, p.pi2Canonical, p.pi2DeviceReady,
 		p.alpha, p.beta, p.gamma,
 	)
 	if qErr != nil {
@@ -861,8 +1068,10 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 		if err := inst.reloadMSMPoints(); err != nil {
 			return fmt.Errorf("reload MSM points: %w", err)
 		}
-		if err := inst.pinMSMWorkBuffers(); err != nil {
-			return fmt.Errorf("re-pin MSM work buffers: %w", err)
+		if !inst.lowMemory {
+			if err := inst.pinMSMWorkBuffers(); err != nil {
+				return fmt.Errorf("re-pin MSM work buffers: %w", err)
+			}
 		}
 		pointsOffloaded = false
 	}
@@ -884,6 +1093,9 @@ func (p *gpuProver) computeQuotientAndCommit() error {
 }
 
 func (inst *gpuInstance) shouldOffloadMSMForQuotient() bool {
+	if inst.lowMemory {
+		return true
+	}
 	if os.Getenv("GNARK_GPU_PLONK2_FORCE_MSM_OFFLOAD") != "" {
 		return true
 	}
@@ -925,23 +1137,41 @@ func (p *gpuProver) openAndFinalize() error {
 	go func() { defer evalWG.Done(); brzeta = polyEvalParallel(p.rBlinded, p.zeta) }()
 	go func() { defer evalWG.Done(); bozeta = polyEvalParallel(p.oBlinded, p.zeta) }()
 
-	s1Zeta = PolyEvalGPU(inst.dev, inst.dS1, p.zeta)
-	s2Zeta = PolyEvalGPU(inst.dev, inst.dS2, p.zeta)
+	if inst.lowMemory {
+		s1Zeta = polyEvalParallel(inst.s1Canonical, p.zeta)
+		s2Zeta = polyEvalParallel(inst.s2Canonical, p.zeta)
+	} else {
+		s1Zeta = PolyEvalGPU(inst.dev, inst.dS1, p.zeta)
+		s2Zeta = PolyEvalGPU(inst.dev, inst.dS2, p.zeta)
+	}
 
 	qcpzeta := make([]fr.Element, len(p.commitmentInfo))
 	for i := range p.commitmentInfo {
-		qcpzeta[i] = PolyEvalGPU(inst.dev, inst.dQcp[i], p.zeta)
+		if inst.lowMemory {
+			qcpzeta[i] = polyEvalParallel(inst.qcpCanonical[i], p.zeta)
+		} else {
+			qcpzeta[i] = PolyEvalGPU(inst.dev, inst.dQcp[i], p.zeta)
+		}
 	}
 	evalWG.Wait()
 
 	bzuzeta := <-bzuzetaCh
 	p.proof.ZShiftedOpening.ClaimedValue.Set(&bzuzeta)
 
-	linPol := computeLinearizedPoly(
-		inst,
-		blzeta, brzeta, bozeta, p.alpha, p.beta, p.gamma, p.zeta, bzuzeta,
-		s1Zeta, s2Zeta, qcpzeta, p.zBlinded, p.pi2Canonical, p.pi2DeviceReady, p.h1, p.h2, p.h3,
-	)
+	var linPol []fr.Element
+	if inst.lowMemory {
+		linPol = innerComputeLinearizedPoly(
+			inst,
+			blzeta, brzeta, bozeta, p.alpha, p.beta, p.gamma, p.zeta, bzuzeta,
+			s1Zeta, s2Zeta, qcpzeta, p.zBlinded, p.pi2Canonical, p.h1, p.h2, p.h3,
+		)
+	} else {
+		linPol = computeLinearizedPoly(
+			inst,
+			blzeta, brzeta, bozeta, p.alpha, p.beta, p.gamma, p.zeta, bzuzeta,
+			s1Zeta, s2Zeta, qcpzeta, p.zBlinded, p.pi2Canonical, p.pi2DeviceReady, p.h1, p.h2, p.h3,
+		)
+	}
 	p.h1, p.h2, p.h3, p.pi2Canonical, p.pi2DeviceReady = nil, nil, nil, nil, nil
 
 	zOpenCommit, err := inst.commit(openZPoly[1:])
@@ -998,6 +1228,7 @@ func (p *gpuProver) openAndFinalize() error {
 		inst.commit,
 		polysToOpen, digestsToOpen, claimedValues,
 		p.zeta,
+		p.kzgFoldingHash,
 		p.proof.ZShiftedOpening.ClaimedValue.Marshal(),
 	)
 	if err != nil {
@@ -1011,7 +1242,15 @@ func (p *gpuProver) openAndFinalize() error {
 // GPUProve — top-level prove API
 // ─────────────────────────────────────────────────────────────────────────────
 
-func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitness witness.Witness) (*curplonk.Proof, error) {
+func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitness witness.Witness, opts ...backend.ProverOption) (*curplonk.Proof, error) {
+	proverCfg, err := backend.NewProverConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("create prover config: %w", err)
+	}
+	if proverCfg.HashToFieldFn == nil {
+		proverCfg.HashToFieldFn = newHTF([]byte("BSB22-Plonk"))
+	}
+
 	gpk.mu.Lock()
 	defer gpk.mu.Unlock()
 
@@ -1024,19 +1263,6 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		log.Printf("  [GPUProve n=%d] %s: %v", gpk.n, label, time.Since(proveStart))
 	}
 
-	if gpk.inst == nil || gpk.inst.dev != dev {
-		if gpk.inst != nil {
-			gpk.inst.close()
-			gpk.inst = nil
-		}
-		inst, err := newGPUInstance(dev, gpk, spr)
-		if err != nil {
-			return nil, fmt.Errorf("init GPU instance: %w", err)
-		}
-		gpk.inst = inst
-	}
-	inst := gpk.inst
-
 	var commitmentInfo constraint.PlonkCommitments
 	if spr.CommitmentInfo != nil {
 		commitmentInfo = spr.CommitmentInfo.(constraint.PlonkCommitments)
@@ -1047,15 +1273,96 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		Bsb22Commitments: make([]curve.G1Affine, nbCommitments),
 	}
 
+	msmInstReady := make(chan struct{})
+	commitInstReady := make(chan struct{})
+	traceInstReady := make(chan struct{})
+	var (
+		msmInstPublishOnce    sync.Once
+		commitInstPublishOnce sync.Once
+		traceInstPublishOnce  sync.Once
+		msmInst               *gpuInstance
+		commitInst            *gpuInstance
+		traceInst             *gpuInstance
+		msmInstErr            error
+		commitInstErr         error
+		traceInstErr          error
+	)
+	publishMSMInst := func(inst *gpuInstance, err error) {
+		msmInstPublishOnce.Do(func() {
+			if err != nil {
+				msmInstErr = err
+			} else {
+				msmInst = inst
+			}
+			close(msmInstReady)
+		})
+	}
+	waitMSMInst := func() (*gpuInstance, error) {
+		<-msmInstReady
+		if msmInstErr != nil {
+			return nil, msmInstErr
+		}
+		if msmInst == nil {
+			return nil, errors.New("gpu instance initialization did not publish an MSM-ready instance")
+		}
+		return msmInst, nil
+	}
+	publishCommitInst := func(inst *gpuInstance, err error) {
+		commitInstPublishOnce.Do(func() {
+			if err != nil {
+				commitInstErr = err
+			} else {
+				commitInst = inst
+			}
+			close(commitInstReady)
+		})
+	}
+	waitCommitInst := func() (*gpuInstance, error) {
+		<-commitInstReady
+		if commitInstErr != nil {
+			return nil, commitInstErr
+		}
+		if commitInst == nil {
+			return nil, errors.New("gpu instance initialization did not publish a commitment-ready instance")
+		}
+		return commitInst, nil
+	}
+	publishTraceInst := func(inst *gpuInstance, err error) {
+		traceInstPublishOnce.Do(func() {
+			if err != nil {
+				traceInstErr = err
+			} else {
+				traceInst = inst
+				gpk.inst = inst
+			}
+			close(traceInstReady)
+		})
+	}
+	waitInst := func() (*gpuInstance, error) {
+		<-traceInstReady
+		if traceInstErr != nil {
+			return nil, traceInstErr
+		}
+		if traceInst == nil {
+			return nil, errors.New("gpu instance initialization did not publish a trace-ready instance")
+		}
+		return traceInst, nil
+	}
+
 	p := &gpuProver{
-		inst:           inst,
 		proof:          *newProof,
-		fs:             fiatshamir.NewTranscript(sha256.New(), "gamma", "beta", "alpha", "zeta"),
+		fs:             fiatshamir.NewTranscript(proverCfg.ChallengeHash, "gamma", "beta", "alpha", "zeta"),
 		commitmentInfo: commitmentInfo,
 		commitmentVal:  make([]fr.Element, nbCommitments),
 		pi2Canonical:   make([][]fr.Element, nbCommitments),
 		pi2DeviceReady: make([]bool, nbCommitments),
+		solverOpts:     proverCfg.SolverOpts,
+		kzgFoldingHash: proverCfg.KZGFoldingHash,
+		htfFunc:        proverCfg.HashToFieldFn,
 		logTime:        logTime,
+		waitInst:       waitInst,
+		waitMSMInst:    waitMSMInst,
+		waitCommitInst: waitCommitInst,
 	}
 
 	// Overlap CPU solve with blinding-polynomial init and Qk patching, then
@@ -1078,6 +1385,61 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 	safeGo := func(label string, fn func() error) {
 		g.Go(func() error { return proveStep(label, fn) })
 	}
+
+	safeGo("initGPUInstance", func() error {
+		if gpk.inst != nil && gpk.inst.dev == dev {
+			publishMSMInst(gpk.inst, nil)
+			publishCommitInst(gpk.inst, nil)
+			publishTraceInst(gpk.inst, nil)
+			return nil
+		}
+		if gpk.inst != nil {
+			gpk.inst.close()
+			gpk.inst = nil
+		}
+		msmPublished := false
+		commitPublished := false
+		tracePublished := false
+		inst, err := newGPUInstance(dev, gpk, spr, gpuInstanceReadyHooks{
+			msm: func(inst *gpuInstance) {
+				msmPublished = true
+				publishMSMInst(inst, nil)
+			},
+			commit: func(inst *gpuInstance) {
+				commitPublished = true
+				publishCommitInst(inst, nil)
+			},
+			trace: func(inst *gpuInstance) {
+				tracePublished = true
+				publishTraceInst(inst, nil)
+				logTime("trace-ready GPU instance")
+			},
+		})
+		if err != nil {
+			err = fmt.Errorf("init GPU instance: %w", err)
+			if !msmPublished {
+				publishMSMInst(nil, err)
+			}
+			if !commitPublished {
+				publishCommitInst(nil, err)
+			}
+			if !tracePublished {
+				publishTraceInst(nil, err)
+			}
+			return err
+		}
+		if !msmPublished {
+			publishMSMInst(inst, nil)
+		}
+		if !commitPublished {
+			publishCommitInst(inst, nil)
+		}
+		if !tracePublished {
+			publishTraceInst(inst, nil)
+		}
+		logTime("init GPU instance")
+		return nil
+	})
 
 	safeGo("initBlinding", func() error {
 		p.initBlindingPolynomials()
@@ -1107,10 +1469,18 @@ func GPUProve(dev *gpu.Device, gpk *GPUProvingKey, spr *cs.SparseR1CS, fullWitne
 		if err := waitCh(chSolved); err != nil {
 			return err
 		}
+		commitInst, err := waitCommitInst()
+		if err != nil {
+			return err
+		}
 		if err := p.commitToLRO(
+			commitInst,
 			func() error { return waitCh(chQk) },
 			func() error { return waitCh(chBlinding) },
 		); err != nil {
+			return err
+		}
+		if _, err := p.ensureInst(); err != nil {
 			return err
 		}
 		if err := p.deriveGammaBeta(); err != nil {
@@ -1158,6 +1528,19 @@ func buildZGPU(
 
 	gpuR := inst.qWb.R
 	gpuO := inst.qWb.O
+	if inst.lowMemory {
+		var err error
+		gpuR, err = NewFrVector(inst.dev, inst.n)
+		if err != nil {
+			return nil, fmt.Errorf("alloc Z R buffer: %w", err)
+		}
+		defer gpuR.Free()
+		gpuO, err = NewFrVector(inst.dev, inst.n)
+		if err != nil {
+			return nil, fmt.Errorf("alloc Z O buffer: %w", err)
+		}
+		defer gpuO.Free()
+	}
 
 	gpuWork.CopyFromHost(evalL)
 	gpuR.CopyFromHost(evalR)
@@ -1179,9 +1562,17 @@ func buildZGPU(
 func computeNumeratorGPU(
 	inst *gpuInstance, gpuWork *FrVector,
 	lBlinded, rBlinded, oBlinded, zBlinded []fr.Element,
-	pi2Canonical [][]fr.Element, pi2DeviceReady []bool,
+	qkCanonical []fr.Element, pi2Canonical [][]fr.Element, pi2DeviceReady []bool,
 	alpha, beta, gamma fr.Element,
 ) (h1, h2, h3 []fr.Element, retErr error) {
+	if inst.lowMemory {
+		return computeNumeratorGPULowMemory(
+			inst, gpuWork,
+			lBlinded, rBlinded, oBlinded, zBlinded,
+			qkCanonical, pi2Canonical,
+			alpha, beta, gamma,
+		)
+	}
 	n := inst.n
 	dev := inst.dev
 	fftDom := inst.fftDom
@@ -1373,6 +1764,295 @@ func computeNumeratorGPU(
 	return h1, h2, h3, nil
 }
 
+func newLowMemorySelectorCache(inst *gpuInstance, allocated *[]*FrVector) lowMemorySelectorCache {
+	if os.Getenv("GNARK_GPU_PLONK2_DISABLE_LOW_MEMORY_SELECTOR_CACHE") != "" {
+		return lowMemorySelectorCache{}
+	}
+
+	upload := func(name string, data fr.Vector) *FrVector {
+		v, err := NewFrVector(inst.dev, inst.n)
+		if err != nil {
+			log.Printf("plonk2: low-memory selector cache stopped at %s: %v", name, err)
+			return nil
+		}
+		*allocated = append(*allocated, v)
+		v.CopyFromHost(data)
+		return v
+	}
+
+	cache := lowMemorySelectorCache{
+		ql: upload("ql", inst.qlCanonical),
+		qr: upload("qr", inst.qrCanonical),
+		qm: upload("qm", inst.qmCanonical),
+		qo: upload("qo", inst.qoCanonical),
+		s1: upload("s1", inst.s1Canonical),
+		s2: upload("s2", inst.s2Canonical),
+		s3: upload("s3", inst.s3Canonical),
+	}
+	if len(inst.qcpCanonical) > 0 {
+		cache.qcp = make([]*FrVector, len(inst.qcpCanonical))
+		for i := range inst.qcpCanonical {
+			cache.qcp[i] = upload(fmt.Sprintf("qcp[%d]", i), inst.qcpCanonical[i])
+		}
+	}
+
+	qcpCached := 0
+	for i := range cache.qcp {
+		if cache.qcp[i] != nil {
+			qcpCached++
+		}
+	}
+	log.Printf(
+		"plonk2: low-memory selector cache ql=%t qr=%t qm=%t qo=%t s1=%t s2=%t s3=%t qcp=%d/%d",
+		cache.ql != nil, cache.qr != nil, cache.qm != nil, cache.qo != nil,
+		cache.s1 != nil, cache.s2 != nil, cache.s3 != nil,
+		qcpCached, len(inst.qcpCanonical),
+	)
+	return cache
+}
+
+func computeNumeratorGPULowMemory(
+	inst *gpuInstance, gpuWork *FrVector,
+	lBlinded, rBlinded, oBlinded, zBlinded []fr.Element,
+	qkCanonical []fr.Element, pi2Canonical [][]fr.Element,
+	alpha, beta, gamma fr.Element,
+) (h1, h2, h3 []fr.Element, retErr error) {
+	n := inst.n
+	dev := inst.dev
+	fftDom := inst.fftDom
+	domain0 := inst.domain0
+	cosetShift := inst.vk.CosetShift
+
+	if len(qkCanonical) < n {
+		return nil, nil, nil, fmt.Errorf("low-memory quotient: qk canonical length %d < %d", len(qkCanonical), n)
+	}
+
+	var allocated []*FrVector
+	alloc := func(name string) (*FrVector, error) {
+		v, err := NewFrVector(inst.dev, n)
+		if err != nil {
+			return nil, fmt.Errorf("alloc %s: %w", name, err)
+		}
+		allocated = append(allocated, v)
+		return v, nil
+	}
+	defer func() {
+		for _, v := range allocated {
+			v.Free()
+		}
+	}()
+
+	gpuL, err := alloc("L")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuR, err := alloc("R")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuO, err := alloc("O")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuZ, err := alloc("Z")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuS1, err := alloc("S1")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuS2, err := alloc("S2")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuS3, err := alloc("S3")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuResult, err := alloc("Result")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuLCan, err := alloc("LCan")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuRCan, err := alloc("RCan")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuOCan, err := alloc("OCan")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuZCan, err := alloc("ZCan")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	gpuQkSrc, err := alloc("QkSrc")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var gpuCosetBlocks [3]*FrVector
+	for k := range gpuCosetBlocks {
+		gpuCosetBlocks[k], err = alloc(fmt.Sprintf("CosetBlock%d", k))
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	selectorCache := newLowMemorySelectorCache(inst, &allocated)
+	copySelector := func(dst, device *FrVector, host fr.Vector) {
+		if device != nil {
+			dst.CopyFromDevice(device)
+			return
+		}
+		dst.CopyFromHost(host)
+	}
+
+	gpuLCan.CopyFromHost(fr.Vector(lBlinded[:n]))
+	gpuRCan.CopyFromHost(fr.Vector(rBlinded[:n]))
+	gpuOCan.CopyFromHost(fr.Vector(oBlinded[:n]))
+	gpuZCan.CopyFromHost(fr.Vector(zBlinded[:n]))
+	gpuQkSrc.CopyFromHost(fr.Vector(qkCanonical[:n]))
+
+	domain1 := fft.NewDomain(4*uint64(n), fft.WithoutPrecompute())
+	u := domain1.FrMultiplicativeGen
+	g1 := domain1.Generator
+	var cosetShiftSq fr.Element
+	cosetShiftSq.Square(&cosetShift)
+	bn := big.NewInt(int64(n))
+	var one fr.Element
+	one.SetOne()
+
+	hFull := inst.hBufs.hFull
+
+	var cosetGen fr.Element
+	for k := 0; k < 4; k++ {
+		if k == 0 {
+			cosetGen.Set(&u)
+		} else {
+			cosetGen.Mul(&cosetGen, &g1)
+		}
+		var cosetPowN fr.Element
+		cosetPowN.Exp(cosetGen, bn)
+
+		copySelector(gpuS1, selectorCache.s1, inst.s1Canonical)
+		copySelector(gpuS2, selectorCache.s2, inst.s2Canonical)
+		copySelector(gpuS3, selectorCache.s3, inst.s3Canonical)
+
+		ReduceBlindedCoset(gpuL, gpuLCan, lBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuR, gpuRCan, rBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuO, gpuOCan, oBlinded[n:], cosetPowN)
+		ReduceBlindedCoset(gpuZ, gpuZCan, zBlinded[n:], cosetPowN)
+		fftDom.CosetFFT(gpuL, cosetGen)
+		fftDom.CosetFFT(gpuR, cosetGen)
+		fftDom.CosetFFT(gpuO, cosetGen)
+		fftDom.CosetFFT(gpuZ, cosetGen)
+		fftDom.CosetFFT(gpuS1, cosetGen)
+		fftDom.CosetFFT(gpuS2, cosetGen)
+		fftDom.CosetFFT(gpuS3, cosetGen)
+
+		ComputeL1Den(gpuWork, cosetGen, fftDom)
+		gpuWork.BatchInvert(gpuResult)
+
+		var l1Scalar fr.Element
+		l1Scalar.Sub(&cosetPowN, &one)
+		l1Scalar.Mul(&l1Scalar, &domain0.CardinalityInv)
+
+		PlonkPermBoundary(
+			gpuResult, gpuL, gpuR, gpuO, gpuZ,
+			gpuS1, gpuS2, gpuS3, gpuWork,
+			alpha, beta, gamma, l1Scalar,
+			cosetShift, cosetShiftSq, cosetGen,
+			fftDom,
+		)
+
+		copySelector(gpuS1, selectorCache.qr, inst.qrCanonical)
+		copySelector(gpuS2, selectorCache.qm, inst.qmCanonical)
+		copySelector(gpuS3, selectorCache.qo, inst.qoCanonical)
+		gpuWork.CopyFromDevice(gpuQkSrc)
+		copySelector(gpuZ, selectorCache.ql, inst.qlCanonical)
+
+		fftDom.CosetFFT(gpuZ, cosetGen)
+		fftDom.CosetFFT(gpuS1, cosetGen)
+		fftDom.CosetFFT(gpuS2, cosetGen)
+		fftDom.CosetFFT(gpuS3, cosetGen)
+		fftDom.CosetFFT(gpuWork, cosetGen)
+
+		var zhKInv fr.Element
+		zhKInv.Sub(&cosetPowN, &one)
+		zhKInv.Inverse(&zhKInv)
+
+		PlonkGateAccum(gpuResult, gpuZ, gpuS1, gpuS2, gpuS3, gpuWork, gpuL, gpuR, gpuO, zhKInv)
+
+		for j := range pi2Canonical {
+			var qcpDevice *FrVector
+			if j < len(selectorCache.qcp) {
+				qcpDevice = selectorCache.qcp[j]
+			}
+			copySelector(gpuZ, qcpDevice, inst.qcpCanonical[j])
+			fftDom.CosetFFT(gpuZ, cosetGen)
+			gpuWork.CopyFromHost(fr.Vector(pi2Canonical[j]))
+			fftDom.CosetFFT(gpuWork, cosetGen)
+			gpuZ.Mul(gpuZ, gpuWork)
+			gpuResult.AddScalarMul(gpuZ, zhKInv)
+		}
+
+		if k < len(gpuCosetBlocks) {
+			gpuCosetBlocks[k].CopyFromDevice(gpuResult)
+		}
+	}
+
+	blocks := [4]*FrVector{gpuCosetBlocks[0], gpuCosetBlocks[1], gpuCosetBlocks[2], gpuResult}
+	cosetGen.Set(&u)
+	for k := 0; k < 4; k++ {
+		if k > 0 {
+			cosetGen.Mul(&cosetGen, &g1)
+		}
+		var cosetGenInv fr.Element
+		cosetGenInv.Inverse(&cosetGen)
+		fftDom.CosetFFTInverse(blocks[k], cosetGenInv)
+	}
+
+	var omega4Inv, quarter fr.Element
+	{
+		var omega4 fr.Element
+		omega4.Exp(g1, bn)
+		omega4Inv.Inverse(&omega4)
+	}
+	quarter.SetUint64(4)
+	quarter.Inverse(&quarter)
+	Butterfly4Inverse(blocks[0], blocks[1], blocks[2], blocks[3], omega4Inv, quarter)
+
+	var uInvN fr.Element
+	{
+		var uN fr.Element
+		uN.Exp(u, bn)
+		uInvN.Inverse(&uN)
+	}
+	blocks[1].ScalarMul(uInvN)
+	var uInv2N, uInv3N fr.Element
+	uInv2N.Mul(&uInvN, &uInvN)
+	blocks[2].ScalarMul(uInv2N)
+	uInv3N.Mul(&uInv2N, &uInvN)
+	blocks[3].ScalarMul(uInv3N)
+
+	if err := dev.Sync(); err != nil {
+		return nil, nil, nil, fmt.Errorf("low-memory quotient GPU sync: %w", err)
+	}
+
+	for k := 0; k < 4; k++ {
+		blocks[k].CopyToHost(fr.Vector(hFull[k*n : (k+1)*n]))
+	}
+
+	np2 := n + 2
+	h1 = hFull[:np2]
+	h2 = hFull[np2 : 2*np2]
+	h3 = hFull[2*np2 : 3*np2]
+	return h1, h2, h3, nil
+}
+
 func gpuCommit(msm *G1MSM, coeffs []fr.Element) (curve.G1Affine, error) {
 	jacs, err := msm.MultiExp(coeffs)
 	if err != nil {
@@ -1404,6 +2084,15 @@ func (inst *gpuInstance) commit(coeffs []fr.Element) (curve.G1Affine, error) {
 }
 
 func (inst *gpuInstance) commitN(coeffSets ...[]fr.Element) ([]curve.G1Affine, error) {
+	if inst.lowMemory {
+		if err := inst.reloadMSMPoints(); err != nil {
+			return nil, fmt.Errorf("reload MSM points: %w", err)
+		}
+		defer func() {
+			_ = inst.releaseMSMWorkBuffers()
+			_ = inst.offloadMSMPoints()
+		}()
+	}
 	var jacs []curve.G1Jac
 	var err error
 	if inst.splitMSM != nil {
@@ -1477,12 +2166,13 @@ func gpuBatchOpen(
 	digests []curve.G1Affine,
 	claimedValues []fr.Element,
 	point fr.Element,
+	kzgFoldingHash hash.Hash,
 	dataTranscript []byte,
 ) (kzg.BatchOpeningProof, error) {
 	var res kzg.BatchOpeningProof
 	res.ClaimedValues = claimedValues
 
-	fsGamma := fiatshamir.NewTranscript(sha256.New(), "gamma")
+	fsGamma := fiatshamir.NewTranscript(kzgFoldingHash, "gamma")
 	if err := fsGamma.Bind("gamma", point.Marshal()); err != nil {
 		return res, err
 	}

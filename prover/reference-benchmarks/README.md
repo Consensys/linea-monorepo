@@ -116,16 +116,129 @@ Solver phases were also stable:
 | BW6 | 27,009,624 | 4.7s-4.8s |
 | BN254 | 14,407,969 | 3.3s-3.6s |
 
+## GPU Plonk Benchmark Addendum
+
+The same first five sorted compression and aggregation requests were rerun on
+an AWS `g7e.8xlarge` host using the GPU Plonk prover.
+
+Environment:
+
+- Date: 2026-05-04
+- Host class: AWS `g7e.8xlarge`
+- CPU: 32 vCPU, Intel Xeon Platinum 8559C
+- Memory: 249 GiB
+- GPU: NVIDIA RTX PRO 6000 Blackwell Server Edition, 97,887 MiB VRAM
+- NVIDIA driver: 590.48.01
+- Git commit before local GPU changes: `091e487f5e4a27149c81f59aa0e90373b613402d`
+- Go: `go1.26.0 linux/amd64`
+- Build command: `make bin/prover`
+- GPU mode:
+  `LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_LOG_MSM_PHASES=1`
+
+All GPU runs used `gpu/plonk2` with strict fallback disabled. The logs show
+`cpuFallback=false` for every Plonk proof and no CPU MSM fallback was used.
+
+### GPU Compression Proofs
+
+Baseline GPU run, before local GPU prover optimizations:
+
+| Run | Block range | Wall time | Setup load | Solver | GPU prover | Peak VRAM | Max RSS | CPU |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | `30388561-30389025` | 5:31.18 | 2:29.38 | 33.565s | 2:47.25 | 79.6 GiB | 220.6 GiB | 150% |
+| 2 | `30389026-30389504` | 4:15.15 | 1:17.01 | 30.139s | 2:44.00 | 79.6 GiB | 211.1 GiB | 191% |
+| 3 | `30389505-30390023` | 3:34.82 | 30.284s | 33.023s | 2:49.58 | 79.6 GiB | 232.4 GiB | 229% |
+| 4 | `30390024-30390503` | 5:52.78 | 2:46.39 | 33.714s | 2:51.65 | 79.6 GiB | 215.0 GiB | 160% |
+| 5 | `30390504-30390918` | 3:46.26 | 35.203s | 35.952s | 2:55.78 | 79.6 GiB | 232.6 GiB | 251% |
+
+Average wall time: 4:36.04.
+Average GPU prover phase: 2:49.65.
+Average setup load: 1:31.65.
+
+Optimized single compression reference, after local GPU prover changes:
+
+| Block range | Wall time | Setup load | Solver | GPU prover | MSM policy | Max RSS | CPU |
+| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |
+| `30389505-30390023` | 2:35.68 | 23.315s | 54.341s | 2:02.51 | strict GPU, window 20, split/no CPU fallback | 204.5 GiB | 321% |
+
+The optimized run used `bin/prover-cuda` with
+`LINEA_PROVER_GPU_PLONK2=1` and a BLS12-377 MSM window of 20. Its log reports
+`cpuFallback=false`; no CPU MSM fallback was used.
+
+### GPU Aggregation Proofs
+
+| Run | Block range | Wall time | Setup load | GPU prover phases | Peak VRAM | Max RSS | CPU |
+| --- | --- | ---: | --- | --- | ---: | ---: | ---: |
+| 1 | `30388561-30391349` | 13:24.75 | PI 2:37.35, BW6 4:26.08, BN254 21.844s | PI 1:27.48, BW6 1:08.28, BN254 14.783s | 72.9 GiB | 189.8 GiB | 1291% |
+| 2 | `30391350-30394103` | 9:02.14 | PI 27.192s, BW6 25.899s, BN254 3.770s | PI 1:30.35, BW6 1:09.62, BN254 14.020s | 72.9 GiB | 172.2 GiB | 1886% |
+| 3 | `30394104-30396213` | 9:46.22 | PI 26.540s, BW6 1:17.56, BN254 3.748s | PI 1:29.78, BW6 1:03.40, BN254 13.918s | 72.9 GiB | 189.5 GiB | 1742% |
+| 4 | `30396214-30398752` | 9:31.63 | PI 28.312s, BW6 1:00.17, BN254 3.743s | PI 1:29.00, BW6 1:02.65, BN254 13.684s | 72.9 GiB | 190.9 GiB | 1803% |
+| 5 | `30398753-30401287` | 9:51.55 | PI 28.395s, BW6 1:17.65, BN254 3.858s | PI 1:29.07, BW6 1:03.65, BN254 13.668s | 72.9 GiB | 189.0 GiB | 1760% |
+
+Average wall time: 10:19.26.
+Average GPU prover phase sum: 2:48.67.
+Average setup load sum: 2:42.42.
+
+### Cost Per Proof
+
+Pricing was refreshed for `us-east-2` Linux instances on 2026-05-04.
+On-Demand prices came from the AWS Price List Bulk API current Amazon EC2 CSV
+for `us-east-2`.
+
+The previous GPU spot cost used `$0.7697/h`, which is a lowest-availability-zone
+current value, not a robust regional average. AWS documents the public Spot
+pricing table as the lowest price per instance type in a region, updated every
+5 minutes:
+<https://aws.amazon.com/ec2/spot/pricing/>. Cross-checks:
+
+| Source | Window / basis | `g7e.8xlarge` Linux spot price |
+| --- | --- | ---: |
+| [CloudPrice](https://cloudprice.net/aws/spot-history?instanceType=g7e.8xlarge&region=us-east-2&period=30days) 30-day table, `us-east-2`, time-weighted equal-AZ average derived from 231 table rows | 2026-04-04 to 2026-05-03 | $1.2464/h |
+| [CloudPrice](https://cloudprice.net/aws/spot-history?instanceType=g7e.8xlarge&region=us-east-2&period=30days) 7-day slice of the same table, time-weighted equal-AZ average | 2026-04-26 to 2026-05-03 | $1.1695/h |
+| [Holori](https://calculator.holori.com/aws/ec2/g7e.8xlarge?region=us-east-2) `us-east-2` page | 24h average | $1.1002/h |
+| [Holori](https://calculator.holori.com/aws/ec2/g7e.8xlarge?region=us-east-2) `us-east-2` page | current AZs | $0.8047/h in `us-east-2b`, $1.4271/h in `us-east-2a` |
+| [DoiT](https://compute.doit.com/spot/us-east-2/g7e.8xlarge) `us-east-2` page | current AZs | $0.7697/h in `us-east-2b`, $1.4094/h in `us-east-2a` |
+| [aws-pricing.com](https://aws-pricing.com/g7e.8xlarge.html) | current region listing, last updated 2026-05-02 | $0.8642/h |
+| [aws-pricing.com](https://aws-pricing.com/g7e.8xlarge.html) | all listed regions average | $1.1440/h |
+
+The CPU host spot rate was cross-checked the same way:
+
+| Source | Window / basis | `r8a.24xlarge` Linux spot price |
+| --- | --- | ---: |
+| [CloudPrice](https://cloudprice.net/aws/spot-history?instanceType=r8a.24xlarge&region=us-east-2&period=30days) 30-day table, `us-east-2`, time-weighted equal-AZ average derived from 335 table rows | 2026-04-04 to 2026-05-03 | $3.3873/h |
+| [Holori](https://calculator.holori.com/aws/ec2/r8a.24xlarge?region=us-east-2) `us-east-2` page | 24h average | $3.1700/h |
+| [Holori](https://calculator.holori.com/aws/ec2/r8a.24xlarge?region=us-east-2) `us-east-2` page | current AZs | $2.7274/h in `us-east-2b`, $2.9796/h in `us-east-2a`, $3.8883/h in `us-east-2c` |
+| [DoiT](https://compute.doit.com/spot/us-east-2/r8a.24xlarge) `us-east-2` page | current AZs | $2.7384/h in `us-east-2b`, $2.9822/h in `us-east-2a`, $3.8439/h in `us-east-2c` |
+
+Cost rows below use CloudPrice 30-day equal-AZ averages for spot rates on both
+hosts. Lowest-AZ current rates are still useful for short opportunistic runs,
+but they are too optimistic as standing benchmark costs.
+
+| Proof | Host | Avg wall | On-Demand $/h | On-Demand $/proof | Spot $/h | Spot $/proof |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Compression | `CPU r8a.24xlarge` | 4:40.31 | $7.66848 | $0.5971 | $3.3873 | $0.2637 |
+| Compression, baseline | `GPU g7e.8xlarge` | 4:36.04 | $5.26824 | $0.4040 | $1.2464 | $0.0956 |
+| Compression, optimized | `GPU g7e.8xlarge` | 2:35.68 | $5.26824 | $0.2278 | $1.2464 | $0.0539 |
+| Aggregation | `CPU r8a.24xlarge` | 6:46.75 | $7.66848 | $0.8664 | $3.3873 | $0.3827 |
+| Aggregation | `GPU g7e.8xlarge` | 10:19.26 | $5.26824 | $0.9062 | $1.2464 | $0.2144 |
+
+The GPU aggregation Plonk phases are faster than the CPU Plonk phases, but the
+end-to-end aggregation benchmark is slower on `g7e.8xlarge` because the host
+has fewer CPU cores and setup/public-input work dominates the wall clock.
+
 ## Raw Artifacts
 
 Generated responses:
 
 - `reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2-7.1.0/compression/`
 - `reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2-7.1.0/aggregation/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/compression/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/aggregation/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-optimize-bls12377-pass8-msm-window20-cuda/`
 
 Raw prover logs and GNU `time -v` outputs:
 
 - `reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2-7.1.0/logs/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/logs/`
 
 The logs include one failed diagnostic aggregation attempt for run 4:
 `*.failed-runtime-fault-attempt1.*`. It hit a Go runtime SIGSEGV in

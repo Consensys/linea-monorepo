@@ -16,6 +16,7 @@ import (
 
 	"github.com/consensys/gnark"
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/backend/plonk"
 	plonk_bls12377 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
@@ -192,9 +193,19 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 	if err != nil {
 		return Setup{}, fmt.Errorf("creating SRS provider: %w", err)
 	}
-	srsCanonical, srsLagrange, err := srsProvider.GetSRS(context.Background(), circuit)
-	if err != nil {
-		return Setup{}, fmt.Errorf("fetching SRS: %w", err)
+	var srsCanonical kzg.SRS
+	var srsLagrange kzg.SRS
+	if envFlag(envGPUPlonk2) {
+		logrus.Infof("loading canonical SRS only for strict gpu/plonk2 proving")
+		srsCanonical, err = srsProvider.GetCanonicalSRS(context.Background(), circuit)
+		if err != nil {
+			return Setup{}, fmt.Errorf("fetching canonical SRS: %w", err)
+		}
+	} else {
+		srsCanonical, srsLagrange, err = srsProvider.GetSRS(context.Background(), circuit)
+		if err != nil {
+			return Setup{}, fmt.Errorf("fetching SRS: %w", err)
+		}
 	}
 	pk := plonk.NewProvingKey(curveID)
 	var kzgVkFromVk, kzgVkFromSrs io.WriterTo
@@ -203,21 +214,27 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 		pk.Vk = vk.(*plonk_bn254.VerifyingKey)
 		srsC := srsCanonical.(*kzg254.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzg254.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzg254.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	case *plonk_bls12377.ProvingKey:
 		pk.Vk = vk.(*plonk_bls12377.VerifyingKey)
 		srsC := srsCanonical.(*kzg377.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzg377.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzg377.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	case *plonk_bw6761.ProvingKey:
 		pk.Vk = vk.(*plonk_bw6761.VerifyingKey)
 		srsC := srsCanonical.(*kzgbw6.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzgbw6.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzgbw6.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	default:

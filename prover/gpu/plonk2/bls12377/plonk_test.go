@@ -15,6 +15,7 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/gpu/plonk2/bls12377"
@@ -38,9 +39,33 @@ func (c *addCircuit) Define(api frontend.API) error {
 	return nil
 }
 
+type commitCircuit struct {
+	A, B, Out frontend.Variable
+}
+
+func (c *commitCircuit) Define(api frontend.API) error {
+	commitment, err := api.(frontend.Committer).Commit(c.A, c.B)
+	if err != nil {
+		return err
+	}
+	product := api.Mul(c.A, c.B)
+	api.AssertIsDifferent(commitment, product)
+	api.AssertIsEqual(api.Add(c.A, c.B), c.Out)
+	return nil
+}
+
 func setupAddCircuit(t testing.TB) (*cs.SparseR1CS, *curplonk.VerifyingKey, []curve.G1Affine) {
 	t.Helper()
-	circuit := &addCircuit{}
+	return setupCircuit(t, &addCircuit{})
+}
+
+func setupCommitCircuit(t testing.TB) (*cs.SparseR1CS, *curplonk.VerifyingKey, []curve.G1Affine) {
+	t.Helper()
+	return setupCircuit(t, &commitCircuit{})
+}
+
+func setupCircuit(t testing.TB, circuit frontend.Circuit) (*cs.SparseR1CS, *curplonk.VerifyingKey, []curve.G1Affine) {
+	t.Helper()
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 	require.NoError(t, err)
 
@@ -101,6 +126,61 @@ func TestGPUProveMultipleProofs(t *testing.T) {
 		require.NoError(t, err, "proof %d failed", i)
 		require.NoError(t, gnarkplonk.Verify(proof, vk, pubW), "proof %d verification failed", i)
 	}
+}
+
+func TestGPUProveVerify_BSB22Commitment(t *testing.T) {
+	dev := requireGPUDev(t)
+	spr, vk, srsPoints := setupCommitCircuit(t)
+
+	gpk := bls12377.NewGPUProvingKey(srsPoints, vk)
+	defer gpk.Close()
+
+	assignment := &commitCircuit{A: 3, B: 5, Out: 8}
+	fullW, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+	pubW, err := fullW.Public()
+	require.NoError(t, err)
+
+	proof, err := bls12377.GPUProve(dev, gpk, spr, fullW)
+	require.NoError(t, err)
+	require.NotNil(t, proof)
+
+	require.NoError(t, gnarkplonk.Verify(proof, vk, pubW), "GPU proof failed verification")
+}
+
+func TestGPUProveVerify_BSB22Commitment_NativeRecursionOptions(t *testing.T) {
+	dev := requireGPUDev(t)
+	spr, vk, srsPoints := setupCommitCircuit(t)
+
+	gpk := bls12377.NewGPUProvingKey(srsPoints, vk)
+	defer gpk.Close()
+
+	assignment := &commitCircuit{A: 3, B: 5, Out: 8}
+	fullW, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err)
+	pubW, err := fullW.Public()
+	require.NoError(t, err)
+
+	proof, err := bls12377.GPUProve(
+		dev,
+		gpk,
+		spr,
+		fullW,
+		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, proof)
+
+	require.NoError(
+		t,
+		gnarkplonk.Verify(
+			proof,
+			vk,
+			pubW,
+			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		),
+		"GPU proof failed verification with native recursion options",
+	)
 }
 
 // BenchmarkGPUProve benchmarks GPU proof generation.

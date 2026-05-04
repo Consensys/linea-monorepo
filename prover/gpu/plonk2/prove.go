@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	curve_bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377"
-	curve_bn254 "github.com/consensys/gnark-crypto/ecc/bn254"
-	curve_bw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761"
-
 	"github.com/consensys/gnark/backend"
 	gnarkplonk "github.com/consensys/gnark/backend/plonk"
 	plonk_bls12377 "github.com/consensys/gnark/backend/plonk/bls12-377"
@@ -69,17 +65,11 @@ func NewProver(dev *gpu.Device, ccs constraint.ConstraintSystem, pk gnarkplonk.P
 func (p *Prover) initGPU() error {
 	switch gpk := p.pk.(type) {
 	case *plonk_bn254.ProvingKey:
-		pts := make([]curve_bn254.G1Affine, len(gpk.Kzg.G1))
-		copy(pts, gpk.Kzg.G1)
-		p.bn254PK = bn254.NewGPUProvingKey(pts, p.vk.(*plonk_bn254.VerifyingKey))
+		p.bn254PK = bn254.NewGPUProvingKey(gpk.Kzg.G1, p.vk.(*plonk_bn254.VerifyingKey))
 	case *plonk_bls12377.ProvingKey:
-		pts := make([]curve_bls12377.G1Affine, len(gpk.Kzg.G1))
-		copy(pts, gpk.Kzg.G1)
-		p.bls12377PK = bls12377.NewGPUProvingKey(pts, p.vk.(*plonk_bls12377.VerifyingKey))
+		p.bls12377PK = bls12377.NewGPUProvingKey(gpk.Kzg.G1, p.vk.(*plonk_bls12377.VerifyingKey))
 	case *plonk_bw6761.ProvingKey:
-		pts := make([]curve_bw6761.G1Affine, len(gpk.Kzg.G1))
-		copy(pts, gpk.Kzg.G1)
-		p.bw6761PK = bw6761.NewGPUProvingKey(pts, p.vk.(*plonk_bw6761.VerifyingKey))
+		p.bw6761PK = bw6761.NewGPUProvingKey(gpk.Kzg.G1, p.vk.(*plonk_bw6761.VerifyingKey))
 	default:
 		return fmt.Errorf("plonk2: unsupported proving key type %T", p.pk)
 	}
@@ -102,7 +92,7 @@ func (p *Prover) Prove(w witness.Witness, opts ...backend.ProverOption) (gnarkpl
 		p.pk,
 	)
 	if p.cfg.enabled && (p.bn254PK != nil || p.bls12377PK != nil || p.bw6761PK != nil) {
-		proof, err := p.proveGPU(w)
+		proof, err := p.proveGPU(w, opts...)
 		log.Printf("plonk2: proveGPU returned proof=%T err=%v", proof, err)
 		if err == nil {
 			return proof, nil
@@ -117,26 +107,26 @@ func (p *Prover) Prove(w witness.Witness, opts ...backend.ProverOption) (gnarkpl
 	return gnarkplonk.Prove(p.ccs, p.pk, w, opts...)
 }
 
-func (p *Prover) proveGPU(w witness.Witness) (gnarkplonk.Proof, error) {
+func (p *Prover) proveGPU(w witness.Witness, opts ...backend.ProverOption) (gnarkplonk.Proof, error) {
 	switch {
 	case p.bn254PK != nil:
 		spr, ok := p.ccs.(*cs_bn254.SparseR1CS)
 		if !ok {
 			return nil, fmt.Errorf("plonk2: BN254 CCS type mismatch: got %T", p.ccs)
 		}
-		return bn254.GPUProve(p.dev, p.bn254PK, spr, w)
+		return bn254.GPUProve(p.dev, p.bn254PK, spr, w, opts...)
 	case p.bls12377PK != nil:
 		spr, ok := p.ccs.(*cs_bls12377.SparseR1CS)
 		if !ok {
 			return nil, fmt.Errorf("plonk2: BLS12-377 CCS type mismatch: got %T", p.ccs)
 		}
-		return bls12377.GPUProve(p.dev, p.bls12377PK, spr, w)
+		return bls12377.GPUProve(p.dev, p.bls12377PK, spr, w, opts...)
 	case p.bw6761PK != nil:
 		spr, ok := p.ccs.(*cs_bw6761.SparseR1CS)
 		if !ok {
 			return nil, fmt.Errorf("plonk2: BW6-761 CCS type mismatch: got %T", p.ccs)
 		}
-		return bw6761.GPUProve(p.dev, p.bw6761PK, spr, w)
+		return bw6761.GPUProve(p.dev, p.bw6761PK, spr, w, opts...)
 	default:
 		return nil, errors.New("plonk2: no GPU proving key initialized")
 	}

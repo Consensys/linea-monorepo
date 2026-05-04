@@ -1,0 +1,23 @@
+	Command being timed: "env LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_MSM_WINDOW_BITS=20 ./bin/prover prove --config reference-benchmarks/config-mainnet-limitless-7.1.0-provertestdata2.toml --in /home/ubuntu/provertestdata2/prover-compression/requests/30389505-30390023-bcv0.0-ccv0.0-2ce0de20aa961b4a7a63ddc74bbaf82a91a38cb771dbebc687e2673d137c71c2-getZkBlobCompressionProof.json --out reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-optimize-bls12377-pass8-msm-window20-cuda/compression/compression-30389505-30390023-2ce0de20aa961b4a7a63ddc74bbaf82a91a38cb771dbebc687e2673d137c71c2-getZkBlobCompressionProof.json"
+	User time (seconds): 394.56
+	System time (seconds): 105.40
+	Percent of CPU this job got: 321%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:35.68
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 214381328
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 57271298
+	Voluntary context switches: 286055
+	Involuntary context switches: 14710
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 392
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

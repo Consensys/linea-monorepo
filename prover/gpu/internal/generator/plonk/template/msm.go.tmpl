@@ -50,7 +50,11 @@ func msmDefaultWindowBits(n int) int {
 {{- else }}
 	switch {
 	case n > 1<<26:
+{{- if eq .Package "bls12377" }}
+		return 20
+{{- else }}
 		return 19
+{{- end }}
 	case n > 1<<22:
 		return 17
 	case n > 1<<18:

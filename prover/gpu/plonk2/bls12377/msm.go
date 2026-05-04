@@ -38,7 +38,7 @@ func init() {
 func msmDefaultWindowBits(n int) int {
 	switch {
 	case n > 1<<26:
-		return 19
+		return 20
 	case n > 1<<22:
 		return 17
 	case n > 1<<18:

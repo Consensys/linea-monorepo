@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	curve "github.com/consensys/gnark-crypto/ecc/bw6-761"
+	"github.com/consensys/gnark/backend"
 	curplonk "github.com/consensys/gnark/backend/plonk/bw6-761"
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/bw6-761"
@@ -28,6 +29,6 @@ func (gpk *GPUProvingKey) Prepare(_ *gpu.Device, _ *cs.SparseR1CS) error {
 }
 func (gpk *GPUProvingKey) Close() {}
 
-func GPUProve(_ *gpu.Device, _ *GPUProvingKey, _ *cs.SparseR1CS, _ witness.Witness) (*curplonk.Proof, error) {
+func GPUProve(_ *gpu.Device, _ *GPUProvingKey, _ *cs.SparseR1CS, _ witness.Witness, _ ...backend.ProverOption) (*curplonk.Proof, error) {
 	return nil, errors.New("gpu: cuda required")
 }
