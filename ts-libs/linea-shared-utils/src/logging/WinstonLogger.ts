@@ -74,7 +74,7 @@ export class WinstonLogger implements ILogger {
   private readonly redactKeys: ReadonlySet<string>;
 
   constructor(loggerName: string, options?: WinstonLoggerOptions) {
-    const { combine, colorize, timestamp, printf, errors, label } = format;
+    const { combine, colorize, timestamp, printf, errors, label, splat } = format;
     const colorizer = colorize();
 
     const { redact, ...winstonOptions } = options ?? {};
@@ -93,6 +93,7 @@ export class WinstonLogger implements ILogger {
         //    rendered through `util.inspect` in `formatMetadataValue`, which
         //    handles its own cause chain, `AggregateError`, and cycles.
         errors({ stack: true, cause: true }),
+        splat(),
         label({ label: loggerName }),
         printf(({ timestamp, level, label, message, stack, ...metadata }) => {
           const coloredLevel = colorizer.colorize(level, level.toUpperCase());

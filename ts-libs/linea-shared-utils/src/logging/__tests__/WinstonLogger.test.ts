@@ -442,6 +442,43 @@ describe("WinstonLogger", () => {
     });
   });
 
+  describe("printf-style interpolation (splat)", () => {
+    // The `ILogger` signature `info(message: any, ...params: any[])` advertises
+    // Node's `util.format`-style interpolation. Removing `splat()` from the
+    // format pipeline is a silent, backward-incompatible change for any consumer
+    // of this shared library that writes `logger.info("value is %s", val)`.
+    // These tests lock the pipeline so the token is interpolated instead of
+    // leaking into the output verbatim.
+    it("interpolates %s with a string argument", () => {
+      makeLogger("Test").info("value is %s", "hello");
+      const output = getLogOutput();
+      expect(output).toContain('msg="value is hello"');
+      expect(output).not.toContain("%s");
+    });
+
+    it("interpolates %d with a number argument", () => {
+      makeLogger("Test").info("count is %d", 42);
+      const output = getLogOutput();
+      expect(output).toContain('msg="count is 42"');
+      expect(output).not.toContain("%d");
+    });
+
+    it("interpolates multiple positional tokens in order", () => {
+      makeLogger("Test").info("%s took %d ms", "op", 123);
+      expect(getLogOutput()).toContain('msg="op took 123 ms"');
+    });
+
+    it("still merges trailing object metadata after interpolation", () => {
+      // `logger.info("msg %s", "x", { foo: "bar" })`: splat consumes the first
+      // positional arg for `%s`, Winston's core merges the trailing object as
+      // metadata.
+      makeLogger("Test").info("op %s", "start", { foo: "bar" });
+      const output = getLogOutput();
+      expect(output).toContain('msg="op start"');
+      expect(output).toContain("foo=bar");
+    });
+  });
+
   describe("normalizeParams — bare Error as second argument", () => {
     it("does not corrupt the msg field", () => {
       const logger = makeLogger("Test");
