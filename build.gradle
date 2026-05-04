@@ -323,6 +323,22 @@ dockerCompose {
   }
 }
 
+// Pull only the images required by `startedServices` of the `localStack` compose stack.
+// Useful in CI to retry the (sometimes flaky) Docker Hub pull in isolation, without
+// rerunning the integration test.
+tasks.register("composePullLocalStackStartedImages", Exec) {
+  group = 'docker'
+  description = "Pull only the startedServices images for the 'localStack' compose stack."
+  workingDir rootDir
+  doFirst {
+    def settings = dockerCompose.localStack
+    def fileArgs = settings.useComposeFiles.get().collectMany { ['-f', it.toString()] }
+    def additionalArgs = settings.composeAdditionalArgs.get()
+    def services = settings.startedServices.get()
+    commandLine(['docker', 'compose'] + fileArgs + additionalArgs + ['pull'] + services)
+  }
+}
+
 // Seed the gitignored runtime deny-list before any compose-up so the sequencer's
 // bind-mount finds a regular file (not an auto-created directory) on fresh checkouts.
 // Also drop any stale .lock file from a crashed previous run — otherwise every
