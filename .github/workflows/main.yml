@@ -11,6 +11,7 @@ permissions:
   actions: read
   security-events: write
   packages: write
+  pull-requests: write
 
 jobs:
   code-analysis:
