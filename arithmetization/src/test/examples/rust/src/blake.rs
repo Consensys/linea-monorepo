@@ -27,7 +27,7 @@ fn main() -> ! {
     // Note: test vector 8 is not included for now as number of rounds is 0xffffffff
     let test_vectors = [TEST_VECTOR_4, TEST_VECTOR_5, TEST_VECTOR_6, TEST_VECTOR_7];
 
-    let mut codes = [0, 0, 0, 0, 0];
+    let mut codes = [0, 0, 0, 0];
 
     for i in 0..test_vectors.len() {
         let input = hex_to_input(test_vectors[i][0]);
@@ -40,8 +40,8 @@ fn main() -> ! {
         };
     }
 
-    // Encode the 5 codes into a single exit code (e.g. 00000 for all pass, 10000 for 1st test failing, etc.)
-    exit(codes[0] * 10000 + codes[1] * 1000 + codes[2] * 100 + codes[3] * 10 + codes[4])
+    // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
+    process::exit(codes[0] * 1000 + codes[1] * 100 + codes[2] * 10 + codes[3]);
 }
 
 fn exit(code: i32) -> ! {
