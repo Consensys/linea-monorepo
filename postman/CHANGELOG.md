@@ -9,3 +9,4 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Replace npx with pnpm equivalents across monorepo (#2778)
+- *(postman)* Update unreleased section in CHANGELOG.md
