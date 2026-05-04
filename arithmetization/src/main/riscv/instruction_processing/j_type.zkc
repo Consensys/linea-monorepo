@@ -1,5 +1,6 @@
 include "../memory.zkc"
 include "../utils/sign_extend.zkc"
+include "../utils/signed_sum.zkc"
 
 // Process a RISC-V J-type instruction (JAL) and return the next program counter.
 //
