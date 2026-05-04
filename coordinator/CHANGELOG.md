@@ -7,6 +7,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(coordinator)* Test for version update
+- *(coordinator)* Update unreleased section in CHANGELOG.md
 ## [3.1.0] - 2026-05-04
 
 ### 🚀 Features
