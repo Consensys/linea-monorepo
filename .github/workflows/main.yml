@@ -17,7 +17,7 @@ jobs:
     uses: ./.github/workflows/codeql.yml
   
   component-changelog-preview:
-    uses: ./.github/workflows/component-changelog.yml
+    uses: ./.github/workflows/component-changelog-preview.yml
 
   filter-commit-changes:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
