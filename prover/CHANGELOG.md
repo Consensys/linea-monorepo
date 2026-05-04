@@ -7,3 +7,4 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(postman)* Test for version update
+- *(prover)* Update unreleased section in CHANGELOG.md
