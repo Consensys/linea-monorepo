@@ -29,6 +29,7 @@ export class IntervalPoller implements IPoller {
     this.logger.info("Starting poller.", {
       ...(this.config.direction ? { direction: this.config.direction } : {}),
       name: this.logger.name,
+      pollingInterval: this.config.pollingInterval,
     });
     this.isPolling = true;
 

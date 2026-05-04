@@ -73,7 +73,7 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
       axios.get<{ execution_optimistic: boolean; finalized: boolean; data: RawPendingPartialWithdrawal[] }>(url),
     );
     if (data === undefined || data?.data === undefined) {
-      this.logger.error("Failed GET request to", url);
+      this.logger.error(`Failed GET request to ${url}`);
       return undefined;
     }
     if (data.data === null) {
@@ -100,7 +100,7 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
       axios.get<{ execution_optimistic: boolean; finalized: boolean; data: RawPendingDeposit[] }>(url),
     );
     if (data === undefined || data?.data === undefined) {
-      this.logger.error("Failed GET request to", url);
+      this.logger.error(`Failed GET request to ${url}`);
       return undefined;
     }
     if (data.data === null) {
@@ -131,7 +131,7 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
     }
     const slot = parseInt(slotString, 10);
     if (isNaN(slot)) {
-      this.logger.error(`Invalid slot value: ${slotString} from`, url);
+      this.logger.error(`Invalid slot value: ${slotString} from ${url}`);
       return undefined;
     }
     const epoch = slotToEpoch(slot);

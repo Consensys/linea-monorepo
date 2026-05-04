@@ -72,7 +72,8 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
       fromBlockLogIndex,
     });
 
-    this.logger.info("Number of fetched MessageSent events.", { count: events.length });
+    const sentHashes: string[] = [];
+    let excludedCount = 0;
 
     for (const event of events) {
       const shouldBeProcessed = this.shouldProcessMessage(
@@ -81,6 +82,12 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
         this.config.eventFilters?.calldataFilter,
       );
       const messageStatusToInsert = shouldBeProcessed ? MessageStatus.SENT : MessageStatus.EXCLUDED;
+
+      if (shouldBeProcessed) {
+        sentHashes.push(event.messageHash);
+      } else {
+        excludedCount++;
+      }
 
       const message = new Message({
         ...event,
@@ -93,7 +100,13 @@ export class MessageSentEventProcessor implements IMessageSentEventProcessor {
 
       await this.messageRepository.insertMessage(message);
     }
-    this.logger.info("Messages hashes found.", { messageHashes: serialize(events.map((event) => event.messageHash)) });
+
+    this.logger.info("Fetched and stored MessageSent events.", {
+      total: events.length,
+      sentCount: sentHashes.length,
+      excludedCount,
+      sentMessageHashes: serialize(sentHashes),
+    });
 
     return { nextFromBlock: toBlock + 1, nextFromBlockLogIndex: 0 };
   }

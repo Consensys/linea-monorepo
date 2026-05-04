@@ -43,6 +43,11 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         messageBlockNumber: nextMessageToClaim.sentBlockNumber,
       });
 
+      this.logger.debug("On-chain message status checked.", {
+        messageHash: nextMessageToClaim.messageHash,
+        status: messageStatus,
+      });
+
       if (messageStatus === OnChainMessageStatus.CLAIMED) {
         this.logger.info("Found already claimed message.", { messageHash: nextMessageToClaim.messageHash });
 
@@ -66,6 +71,10 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         this.config.feeRecipientAddress,
         this.config.claimViaAddress,
       );
+
+      if (isForSponsorship) {
+        this.logger.info("Message will be claimed via sponsorship.", { messageHash: nextMessageToClaim.messageHash });
+      }
 
       // If isForSponsorship = true, then we ignore hasZeroFee and isUnderPriced
       if (!isForSponsorship && (await this.handleZeroFee(hasZeroFee, nextMessageToClaim))) return;
@@ -126,6 +135,15 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
       },
     );
+
+    this.logger.info("Claim transaction submitted.", {
+      messageHash: message.messageHash,
+      txHash: tx.hash,
+      nonce,
+      gasLimit: gasLimit.toString(),
+      maxFeePerGas: maxFeePerGas.toString(),
+      maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+    });
 
     // Single DB write: set PENDING with all tx details atomically
     message.edit({
@@ -211,9 +229,10 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     }
 
     this.logger.error("Error processing message claim.", {
+      direction: this.config.direction,
+      ...(message ? { messageHash: message.messageHash } : {}),
       error: e,
       parsedError,
-      ...(message ? { messageHash: message.messageHash } : {}),
     });
   }
 }
