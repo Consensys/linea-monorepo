@@ -12,29 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-latest-commit-message:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    name: Lint latest PR commit message
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          # Need enough history to resolve the latest PR commit
-          fetch-depth: 0
-          submodules: false
-
-      - name: Lint latest PR commit with commitlint
-        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed #(v6.2.1)
-        with:
-          configFile: commitlint.config.mjs
-          commitDepth: 1
-          failOnWarnings: true
-          helpURL: https://www.conventionalcommits.org
-
   generate-component-changelog:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
-    needs: lint-latest-commit-message
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false

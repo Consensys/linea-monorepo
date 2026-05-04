@@ -17,11 +17,15 @@ jobs:
   code-analysis:
     uses: ./.github/workflows/codeql.yml
   
+  lint-latest-commit-messages:
+    uses: ./.github/workflows/lint-latest-commit-messages.yml
+
   component-changelog-preview:
+    needs: [lint-latest-commit-messages]
     uses: ./.github/workflows/component-changelog-preview.yml
 
   filter-commit-changes:
-    needs: [component-changelog-preview]
+    needs: [lint-latest-commit-messages]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
