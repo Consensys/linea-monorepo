@@ -34,6 +34,7 @@ class BlobCompressionProofCoordinator(
 ) : BlobCreationHandler, LongRunningService {
   private val defaultQueueCapacity = 1000 // Should be more than blob submission limit
   private val blobsToHandle = LinkedBlockingDeque<Blob>(defaultQueueCapacity)
+
   @Volatile
   private var timerId: Long? = null
   private lateinit var blobPollingAction: Handler<Long>
