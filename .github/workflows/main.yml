@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/component-changelog-preview.yml
 
   filter-commit-changes:
+    needs: [component-changelog-preview]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
