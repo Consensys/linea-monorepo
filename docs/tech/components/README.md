@@ -111,7 +111,7 @@ root package.json
 
 ### Kotlin/Java (Gradle)
 
-- Java 21 required
+- Java 25 required
 - Gradle 8.5+ for building
 - Run tests: `./gradlew test`
 - Build all: `./gradlew build`

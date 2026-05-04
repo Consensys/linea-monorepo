@@ -11,7 +11,7 @@
 | Docker | v24+ | Container runtime |
 | Docker Compose | v2.19+ | Multi-container orchestration |
 | Make | v3.81+ | Build automation |
-| JDK | 21 | Kotlin/Java projects |
+| JDK | 25 | Kotlin/Java projects |
 | Gradle | 8.5+ | JVM build system |
 | Go | 1.21+ | Prover |
 
@@ -468,7 +468,7 @@ pnpm clean
 
 1. Open project root
 2. Import Gradle project
-3. Set JDK 21
+3. Set JDK 25
 4. Install Kotlin plugin
 
 ### VS Code (TypeScript)

@@ -12,7 +12,7 @@ Before you start, make sure you have the following installed:
 - Docker Compose version v2.19+
 - Make v3.81+
 - Pnpm >= 10.32.1 (https://pnpm.io/installation)
-- Java Development Kit (JDK) 21 (required for building the coordinator)
+- Java Development Kit (JDK) 25 (required for building the coordinator)
 - Gradle 8.5+ (for building Java-based services)
 
 ## Building the Coordinator Locally
