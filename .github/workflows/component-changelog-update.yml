@@ -83,7 +83,7 @@ jobs:
             exit 0
           fi
           git add "${FOLDER_NAME}/CHANGELOG.md"
-          git commit -m "chore(${COMPONENT}): update unreleased section in CHANGELOG.md"
+          git commit -m "chore(${COMPONENT}): update CHANGELOG.md unreleased section"
           git push origin "HEAD:${{ github.head_ref }}"
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
