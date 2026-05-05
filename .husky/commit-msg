@@ -5,17 +5,12 @@
 # POSIX-compatible (no bash arrays, no [[ ... ]], no =~, no process
 # substitution, no here-strings).
 #
-# Sources `scope-enum` from commitlint.config.mjs at runtime so commitlint
-# remains the single source of truth for the allowed scope list.
-#
 # Supports multi-scope syntax, e.g.:
 #   feat(coordinator, postman, contracts): add multi-component change
 
 set -eu
 
 MSG_FILE="$1"
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-CONFIG_FILE="${REPO_ROOT}/commitlint.config.mjs"
 
 # Subject = first non-empty, non-comment line of the commit message.
 SUBJECT=$(grep -v '^#' "${MSG_FILE}" | sed '/^$/d' | head -n 1)
@@ -25,31 +20,15 @@ case "${SUBJECT}" in
   "Merge "*|"fixup! "*|"squash! "*|"amend! "*|'Revert "'*) exit 0 ;;
 esac
 
-if [ ! -f "${CONFIG_FILE}" ]; then
-  echo "✗ commit-msg hook: cannot find ${CONFIG_FILE}" >&2
-  exit 1
-fi
-
-# Parse scope-enum from commitlint.config.mjs into a space-separated list.
-# Capture lines from `"scope-enum"` to the closing `]]`, pull every quoted
-# lowercase token, drop the rule name ("scope-enum") and severity ("always"),
-# and fold newlines into spaces.
-ALLOWED_SCOPES=$(
-  sed -n '/"scope-enum"/,/]]/p' "${CONFIG_FILE}" \
-    | grep -oE '"[a-z][a-z0-9-]*"' \
-    | sed 's/"//g' \
-    | tail -n +3 \
-    | tr '\n' ' '
-)
-ALLOWED_SCOPES=$(printf '%s' "${ALLOWED_SCOPES}" | sed 's/[[:space:]]*$//')
-
-if [ -z "${ALLOWED_SCOPES}" ]; then
-  echo "✗ commit-msg hook: failed to parse scope-enum from ${CONFIG_FILE}" >&2
-  exit 1
-fi
-
 # Conventional Commits default type set (from @commitlint/config-conventional).
 ALLOWED_TYPES='feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build'
+
+# Allowed scopes
+ALLOWED_SCOPES=\
+'coordinator prover prover-ray postman tx-exclusion-api '\
+'linea-besu contracts sdk-core sdk-ethers sdk-viem '\
+'tracer sequencer state-recovery jvm-libs blob-libs '\
+'e2e ci docker deps misc'
 
 # Match overall structure: <type>(<scope-group>)!?: <subject>
 HEADER_RE="^(${ALLOWED_TYPES})\\(([^)]+)\\)!?: .+"

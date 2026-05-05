@@ -130,7 +130,7 @@ git commit -m 'feat(coordinator)!: breaking changes'
 
 To write a multi-line commit from the terminal:
 ```bash
-git commit -m $'feat(coordinator): add retry logic\n\nRetries up to 3 times on transient network errors.\n\nCloses #456'
+git commit -m $'feat(coordinator): add retry logic\n\nRetries up to 3 times on transient network errors.\n\nCloses issue# 123'
 ```
 
 Before contributing, ensure you're familiar with:
