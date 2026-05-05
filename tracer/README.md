@@ -1,5 +1,4 @@
 # Linea tracer (zkEVM)
-# Added for testing besu-package release
 
 This folder hosts a Linea tracing implementation for
 [Besu](https://github.com/besu-eth/besu) based on an

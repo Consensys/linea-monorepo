@@ -1,5 +1,5 @@
 # linea-monorepo/prover
-# Test for versioning
+
 This directory contains the implementation of the prover of Linea. As part of it,
 it contains an implementation of the Vortex polynomial commitment, of the
 Arcane compiler, the instantiation of the zkEVM using the arithmetization and

@@ -1,5 +1,4 @@
 # Linea Postman Service
-# Testing for postman changelog
 
 The Linea Postman service is a component of the Linea blockchain infrastructure that facilitates cross-chain message delivery between Layer 1 (Ethereum) and Layer 2 (Linea).
 

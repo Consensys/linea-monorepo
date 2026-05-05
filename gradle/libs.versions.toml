@@ -1,4 +1,3 @@
-# Change for besu-package release testing
 [plugins]
 docker = { id = "com.avast.gradle.docker-compose", version = "0.17.21" }
 web3j = { id = "org.web3j", version.ref = "web3jPlugin" }

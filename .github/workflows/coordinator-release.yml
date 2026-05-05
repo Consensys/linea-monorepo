@@ -1,8 +1,8 @@
 name: "Coordinator Release (manual)"
 
 permissions:
-  contents: write
   actions: read
+  contents: write
   packages: write
 
 on:
@@ -23,11 +23,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches:
-      - feat/coordinator-automate-changelog-versioning-poc
-    paths:
-      - coordinator/RELEASE_TEST.md
 
 concurrency:
   group: coordinator-release-${{ github.ref }}

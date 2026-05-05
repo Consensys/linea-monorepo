@@ -29,11 +29,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches:
-      - feat/coordinator-automate-changelog-versioning-poc
-    paths:
-      - linea-besu-package/RELEASE_TEST.md
 
 concurrency:
   group: linea-besu-release-${{ github.ref }}

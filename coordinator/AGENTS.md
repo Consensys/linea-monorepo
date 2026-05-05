@@ -1,7 +1,5 @@
 # AGENTS.md — coordinator
 
-# test for version 2
-
 > Inherits all rules from [root AGENTS.md](../AGENTS.md). Only overrides and additions below.
 
 ## Package Overview
