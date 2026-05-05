@@ -37,6 +37,6 @@ jobs:
       - name: Install zkc
         run: make -C arithmetization install-zkc
 
-      - name: Run simple Zig guest program
+      - name: Run simple Zig guest program with Zkc interpreter
         run: make TEST=test.zig IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
         working-directory: arithmetization/src/test/examples
