@@ -1,3 +1,9 @@
+## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- *(E2E)* Filtered addresses FTX tests (#2984)
+- *(linea-besu)* Release test
 ## [1.1.1] - 2026-04-30
 
 ### ⚙️ Miscellaneous Tasks
