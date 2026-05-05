@@ -49,7 +49,6 @@ import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
 import org.hyperledger.besu.ethereum.core.Block;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.mainnet.BlockAccessListValidator;
 import org.hyperledger.besu.ethereum.mainnet.BlockImportResult;
 import org.hyperledger.besu.ethereum.mainnet.HeaderValidationMode;
@@ -60,6 +59,11 @@ import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseS
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.rlp.RLPException;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.provider.WorldStateQueryParams;
+import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutableDataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutablePathBasedExtraStorageConfiguration;
+import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
+import org.hyperledger.besu.plugin.services.worldstate.MutableWorldState;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -489,7 +493,9 @@ public class BlockchainReferenceTestTools {
 
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
     final MutableBlockchain blockchain = spec.buildBlockchain();
-    final ProtocolContext context = spec.buildProtocolContext(blockchain);
+    final DataStorageConfiguration storageConfiguration =  ImmutableDataStorageConfiguration.builder().dataStorageFormat(DataStorageFormat.BONSAI).pathBasedExtraStorageConfiguration(ImmutablePathBasedExtraStorageConfiguration.builder().parallelStateRootComputationEnabled(false).build()).build();
+    final ProtocolContext context = spec.buildProtocolContext(storageConfiguration, blockchain);
+    // final ProtocolContext context = spec.buildProtocolContext(blockchain);
     final MutableWorldState worldState =
         context
             .getWorldStateArchive()
