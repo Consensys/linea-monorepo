@@ -229,12 +229,11 @@ func compileGroup(
 	// When the B-side carries a selector we prepend it and prepend a
 	// constant-1 to every A side, mirroring the standard
 	// IsFilteredOnIncluding trick.
-	var bRLC wiop.Expression
+	var bHead wiop.Expression
 	if prependOnesToA {
-		bRLC = randomLinearCombination(alpha, g.including.selector, viewExprs(g.including.cols))
-	} else {
-		bRLC = randomLinearCombinationOfViews(alpha, g.including.cols)
+		bHead = g.including.selector
 	}
+	bRLC := rlcOfViews(alpha, bHead, g.including.cols)
 
 	// M lives on the same module as B, in the coin round (which is also the
 	// round where M is assigned by the prover).
@@ -254,13 +253,11 @@ func compileGroup(
 
 	// The A-side fractions: one per A fragment.
 	for _, inc := range g.included {
-		var sRLC wiop.Expression
+		var sHead wiop.Expression
 		if prependOnesToA {
-			oneOnA := wiop.NewConstantVector(inc.cols[0].Module(), field.One())
-			sRLC = randomLinearCombination(alpha, oneOnA, viewExprs(inc.cols))
-		} else {
-			sRLC = randomLinearCombinationOfViews(alpha, inc.cols)
+			sHead = wiop.NewConstantVector(inc.cols[0].Module(), field.One())
 		}
+		sRLC := rlcOfViews(alpha, sHead, inc.cols)
 		sDen := wiop.Add(gamma, sRLC)
 		// Numerator is the constant 1 broadcast over the A fragment's module
 		// so the fraction is vector-valued on the A side.
@@ -299,40 +296,37 @@ func ensureNextRound(sys *wiop.System, r *wiop.Round) *wiop.Round {
 	return sys.NewRound()
 }
 
-// randomLinearCombinationOfViews builds the symbolic expression
-// cols[0] + α·cols[1] + α²·cols[2] + … . When alpha is nil the slice must
-// have exactly one element (the single-column case); the function returns
-// that column directly.
-func randomLinearCombinationOfViews(alpha *wiop.CoinField, cols []*wiop.ColumnView) wiop.Expression {
+// rlcOfViews builds the symbolic random linear combination
+//
+//	head + α·cols[0] + α²·cols[1] + …
+//
+// when head != nil, and
+//
+//	cols[0] + α·cols[1] + α²·cols[2] + …
+//
+// when head == nil. The effective width is len(cols) plus one when a head is
+// provided; when that effective width is 1, alpha must be nil and the single
+// term is returned directly.
+func rlcOfViews(alpha *wiop.CoinField, head wiop.Expression, cols []*wiop.ColumnView) wiop.Expression {
 	exprs := viewExprs(cols)
+	if head != nil {
+		exprs = append([]wiop.Expression{head}, exprs...)
+	}
+	return rlcExpression(alpha, exprs)
+}
+
+// rlcExpression returns exprs[0] + α·exprs[1] + α²·exprs[2] + … . When alpha
+// is nil the slice must have exactly one element, in which case that element
+// is returned directly. Requires len(exprs) >= 1.
+func rlcExpression(alpha *wiop.CoinField, exprs []wiop.Expression) wiop.Expression {
+	if len(exprs) == 0 {
+		panic("wiop/compilers/lookuptologderivsum: rlcExpression requires at least one term")
+	}
 	if alpha == nil {
 		if len(exprs) != 1 {
 			panic("wiop/compilers/lookuptologderivsum: alpha is nil but width > 1")
 		}
 		return exprs[0]
-	}
-	return rlcExpression(alpha, exprs)
-}
-
-// randomLinearCombination is the same as [randomLinearCombinationOfViews]
-// except the first term is taken from `head` (used to fold the
-// IsFilteredOnIncluding prepended column into the same RLC).
-func randomLinearCombination(alpha *wiop.CoinField, head wiop.Expression, rest []wiop.Expression) wiop.Expression {
-	if alpha == nil {
-		if len(rest) != 0 {
-			panic("wiop/compilers/lookuptologderivsum: alpha is nil but a tail is present")
-		}
-		return head
-	}
-	exprs := append([]wiop.Expression{head}, rest...)
-	return rlcExpression(alpha, exprs)
-}
-
-// rlcExpression returns exprs[0] + α·exprs[1] + α²·exprs[2] + … . Requires
-// alpha != nil and len(exprs) >= 1.
-func rlcExpression(alpha *wiop.CoinField, exprs []wiop.Expression) wiop.Expression {
-	if len(exprs) == 0 {
-		panic("wiop/compilers/lookuptologderivsum: rlcExpression requires at least one term")
 	}
 	acc := exprs[0]
 	pow := wiop.Expression(alpha)
