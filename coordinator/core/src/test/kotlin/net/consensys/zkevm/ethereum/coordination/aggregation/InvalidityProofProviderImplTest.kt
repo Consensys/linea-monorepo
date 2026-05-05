@@ -34,71 +34,57 @@ class InvalidityProofProviderImplTest {
   }
 
   @Test
-  fun `returns FTX whose simulated execution block equals the aggregation end block`() {
-    // Aggregation [20..21] containing an FTX at block 21 (its end block).
-    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 21UL)
+  fun `returns the FTX that opens this aggregation`() {
+    // Aggregation starts at block 20, opened by FTX#4.
+    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 20UL)
 
     val proofs = provider.getInvalidityProofs(
       ftxStartingNumber = 4UL,
-      aggregationEndBlockNumber = 21UL,
+      aggregationStartingBlockNumber = 20UL,
     ).get()
 
     assertThat(proofs).hasSize(1)
     assertThat(proofs[0].ftxNumber).isEqualTo(4UL)
-    assertThat(proofs[0].simulatedExecutionBlockNumber).isEqualTo(21UL)
+    assertThat(proofs[0].simulatedExecutionBlockNumber).isEqualTo(20UL)
   }
 
   @Test
-  fun `returns every FTX whose simulated execution block falls inside the aggregation`() {
-    // Aggregation [20..23] covering FTXs #3 (block 20), #4 (block 21), #5 (block 23).
-    saveFtx(ftxNumber = 3UL, simulatedExecutionBlockNumber = 20UL)
-    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 21UL)
-    saveFtx(ftxNumber = 5UL, simulatedExecutionBlockNumber = 23UL)
-
-    val proofs = provider.getInvalidityProofs(
-      ftxStartingNumber = 3UL,
-      aggregationEndBlockNumber = 23UL,
-    ).get()
-
-    assertThat(proofs.map { it.ftxNumber }).containsExactlyInAnyOrder(3UL, 4UL, 5UL)
-  }
-
-  @Test
-  fun `excludes FTXs whose simulated execution block is past the aggregation end block`() {
-    // Aggregation [20..21] — FTX#5 at block 23 belongs to the next aggregation.
-    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 21UL)
+  fun `excludes FTXs whose simulated block is past the aggregation start`() {
+    // The current aggregation starts at block 20. FTX#5 at block 23 opens a later aggregation.
+    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 20UL)
     saveFtx(ftxNumber = 5UL, simulatedExecutionBlockNumber = 23UL)
 
     val proofs = provider.getInvalidityProofs(
       ftxStartingNumber = 4UL,
-      aggregationEndBlockNumber = 21UL,
+      aggregationStartingBlockNumber = 20UL,
     ).get()
 
     assertThat(proofs.map { it.ftxNumber }).containsExactly(4UL)
   }
 
   @Test
-  fun `excludes FTXs already accounted for by the parent aggregation`() {
-    // Parent aggregation finalised FTX#3 (block 20). The current aggregation [21..21]
-    // should only ask about FTX#4.
-    saveFtx(ftxNumber = 3UL, simulatedExecutionBlockNumber = 20UL)
-    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 21UL)
+  fun `excludes FTXs already covered by the parent aggregation`() {
+    // Parent aggregation already finalised FTX#3 at block 13. The current aggregation starts
+    // at block 20 with FTX#4 — only FTX#4 is in scope.
+    saveFtx(ftxNumber = 3UL, simulatedExecutionBlockNumber = 13UL)
+    saveFtx(ftxNumber = 4UL, simulatedExecutionBlockNumber = 20UL)
 
     val proofs = provider.getInvalidityProofs(
       ftxStartingNumber = 4UL,
-      aggregationEndBlockNumber = 21UL,
+      aggregationStartingBlockNumber = 20UL,
     ).get()
 
     assertThat(proofs.map { it.ftxNumber }).containsExactly(4UL)
   }
 
   @Test
-  fun `returns empty when no FTX falls inside the aggregation`() {
+  fun `returns empty when no FTX opens this aggregation`() {
+    // FTX#5 belongs to a later aggregation; nothing opens the one starting at block 20.
     saveFtx(ftxNumber = 5UL, simulatedExecutionBlockNumber = 23UL)
 
     val proofs = provider.getInvalidityProofs(
       ftxStartingNumber = 4UL,
-      aggregationEndBlockNumber = 22UL,
+      aggregationStartingBlockNumber = 20UL,
     ).get()
 
     assertThat(proofs).isEmpty()
