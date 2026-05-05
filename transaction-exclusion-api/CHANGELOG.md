@@ -7,3 +7,4 @@
 ### ⚙️ Miscellaneous Tasks
 
 - *(tx-exclusion-api)* Update unreleased section in CHANGELOG.md
+- *(ci)* Removed testing changes and files and update commitlint config
