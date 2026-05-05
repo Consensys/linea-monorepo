@@ -46,7 +46,7 @@ jobs:
       component-name: linea-besu
       folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
-      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      image-tag-suffix: ${{ inputs.image_tag_suffix }}
 
   build-linea-besu-docker-image-and-gh-release:
     needs: [release-linea-besu-metadata]

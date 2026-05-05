@@ -6,6 +6,7 @@ inputs:
   release_tag_prefix:
     description: "Release version tag prefix"
     required: true
+
   image_tag_suffix:
     description: 'Custom docker image tag suffix'
     required: false

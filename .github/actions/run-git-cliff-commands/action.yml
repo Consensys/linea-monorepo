@@ -3,13 +3,13 @@ name: 'Run git cliff commands'
 description: 'Run git cliff for bumping version, update/retrieve changelog, and prepend to existing changelog'
 inputs:
   component-name:
-    description: "Component name — used to derive tag pattern, CHANGELOG path and commit scope (e.g. coordinator, postman)"
+    description: "Component name — used to derive tag pattern (e.g. coordinator, postman)"
     required: true
   folder-name:
-    description: "Folder name — home folder name of the component which hosts CHANGELOG.md (e.g. linea-besu's home folder is linea-besu-package)"
+    description: "Folder name of the component which hosts CHANGELOG.md (e.g. linea-besu's home folder is linea-besu-package)"
     required: false
   include-path:
-    description: "git-cliff --include-path filter — single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+    description: "git-cliff --include-path filter, either single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
     required: true
   cliff-config:
     description: "Path to the cliff.toml config file"

@@ -62,7 +62,7 @@ jobs:
       component-name: coordinator
       folder-name: coordinator
       include-path: '"coordinator/**"'
-      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      image-tag-suffix: ${{ inputs.image_tag_suffix }}
 
   build-docker-image-coordinator:
     needs: [release-coordinator-metadata]

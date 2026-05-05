@@ -4,15 +4,15 @@ on:
   workflow_call:
     inputs:
       component-name:
-        description: "Component name — used to derive tag pattern, CHANGELOG path and commit scope (e.g. coordinator, postman)"
+        description: "Component name — used to derive tag pattern (e.g. coordinator, postman)"
         required: true
         type: string
       folder-name:
-        description: "Folder name — home folder name of the component (e.g. linea-besu's home folder is linea-besu-package)"
+        description: "Folder name of the component which hosts CHANGELOG.md (e.g. linea-besu's home folder is linea-besu-package)"
         required: true
         type: string
       include-path:
-        description: "git-cliff --include-path filter — single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+        description: "git-cliff --include-path filter, either single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
         required: true
         type: string
       cliff-config:
