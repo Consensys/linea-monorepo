@@ -12,6 +12,10 @@ path = "src/blake.rs"
 name = "test"
 path = "src/test.rs"
 
+[[bin]]
+name = "poseidon1"
+path = "src/poseidon1.rs"
+
 [profile.release]
 opt-level = 2
 debug = false
