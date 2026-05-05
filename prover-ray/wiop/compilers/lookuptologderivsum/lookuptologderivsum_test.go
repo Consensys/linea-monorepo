@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
-	logderivativesum2 "github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/lookuptologderivsum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,13 +52,13 @@ func checkAllVerifierActions(rt *wiop.Runtime) error {
 // Round structure assumed:
 //   - Round 0: user-witness columns (already assigned by the caller).
 //   - Round 1: M column + α/γ coins; one prover action assigns M.
-//   - Round 2: LogDerivativeSum2 result + Z columns; one prover action
+//   - Round 2: LogDerivativeSum result + Z columns; one prover action
 //     assigns Z and the result cell.
 func driveProtocol(rt *wiop.Runtime) {
 	rt.AdvanceRound() // → round 1, samples α/γ
 	runRound(rt)      // assigns M
 	rt.AdvanceRound() // → round 2
-	runRound(rt)      // assigns Z and the LogDerivativeSum2 result
+	runRound(rt)      // assigns Z and the LogDerivativeSum result
 }
 
 // ---- Single-column, no filters ----
@@ -80,7 +80,7 @@ func TestCompile_SingleColumn_NoFilters(t *testing.T) {
 	)
 
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// T = [10, 20, 30, 40], S = [10, 20, 10, 30] — every S value appears in T.
@@ -106,7 +106,7 @@ func TestCompile_SingleColumn_NoMatchPanics(t *testing.T) {
 		[]wiop.Table{wiop.NewTable(colT.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
@@ -137,7 +137,7 @@ func TestCompile_FilterOnIncluded(t *testing.T) {
 		[]wiop.Table{wiop.NewTable(colT.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// T = [10, 20]; S = [10, 99, 20, 99] — the 99s are masked by filterS.
@@ -168,7 +168,7 @@ func TestCompile_FilterOnIncluding(t *testing.T) {
 		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// T = [10, 999, 20, 999] with filterT = [1, 0, 1, 0] — only 10 and 20 are
@@ -202,7 +202,7 @@ func TestCompile_FilterOnIncluding_FilteredTRowCantMatch(t *testing.T) {
 		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// T = [10, 99, 20, 30]; filterT = [1, 0, 1, 1] — 99 is masked out.
@@ -235,7 +235,7 @@ func TestCompile_DoubleConditional(t *testing.T) {
 		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colT, makeVec(10, 999, 20, 999))
@@ -267,7 +267,7 @@ func TestCompile_MultiColumn(t *testing.T) {
 		[]wiop.Table{wiop.NewTable(tx.View(), ty.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// Two-column table: rows (1,10), (2,20), (3,30), (4,40).
@@ -301,7 +301,7 @@ func TestCompile_MultiColumn_PartialMatchFails(t *testing.T) {
 		[]wiop.Table{wiop.NewTable(tx.View(), ty.View())},
 	)
 	lookuptologderivsum.Compile(sys)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(tx, makeVec(1, 2, 3, 4))
@@ -345,12 +345,12 @@ func TestCompile_MultipleQueriesSameTable(t *testing.T) {
 		assert.True(t, q.IsReduced(),
 			"every consumed inclusion query must be marked reduced")
 	}
-	// Exactly one LogDerivativeSum2 query is registered, regardless of how
+	// Exactly one LogDerivativeSum query is registered, regardless of how
 	// many inclusion queries were merged.
-	assert.Len(t, sys.LogDerivativeSums2, 1,
-		"every inclusion query must be folded into a single aggregated LogDerivativeSum2")
+	assert.Len(t, sys.LogDerivativeSums, 1,
+		"every inclusion query must be folded into a single aggregated LogDerivativeSum")
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
@@ -389,7 +389,7 @@ func TestCompile_MultipleQueriesDistinctTables(t *testing.T) {
 		"modT1 must carry exactly one new M column")
 	assert.Equal(t, colsT2Before+1, len(modT2.Columns),
 		"modT2 must carry exactly one new M column")
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colT1, makeVec(10, 20, 30, 40))
@@ -407,8 +407,8 @@ func TestCompile_NoInclusions(t *testing.T) {
 	sys := wiop.NewSystemf("ll-empty")
 	sys.NewRound()
 	lookuptologderivsum.Compile(sys) // must not panic
-	assert.Empty(t, sys.LogDerivativeSums2,
-		"compile without inclusion queries must register no LogDerivativeSum2")
+	assert.Empty(t, sys.LogDerivativeSums,
+		"compile without inclusion queries must register no LogDerivativeSum")
 }
 
 func TestCompile_PermutationIgnored(t *testing.T) {
@@ -423,8 +423,8 @@ func TestCompile_PermutationIgnored(t *testing.T) {
 	lookuptologderivsum.Compile(sys) // must not panic
 	assert.False(t, perm.IsReduced(),
 		"permutation queries must be left untouched by this compiler")
-	assert.Empty(t, sys.LogDerivativeSums2,
-		"no LogDerivativeSum2 should be emitted when there are no inclusion queries")
+	assert.Empty(t, sys.LogDerivativeSums,
+		"no LogDerivativeSum should be emitted when there are no inclusion queries")
 }
 
 func TestCompile_MultiFragmentBPanics(t *testing.T) {

@@ -30,11 +30,6 @@ type System struct {
 	// LogDerivativeSums holds all [LogDerivativeSum] queries registered with
 	// this system via [System.NewLogDerivativeSum], in declaration order.
 	LogDerivativeSums []*LogDerivativeSum
-	// LogDerivativeSums2 holds all [LogDerivativeSum2] queries registered with
-	// this system via [System.NewLogDerivativeSum2], in declaration order.
-	// LogDerivativeSum2 is the filter-aware variant of LogDerivativeSum and is
-	// the natural target for conditional lookups.
-	LogDerivativeSums2 []*LogDerivativeSum
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena

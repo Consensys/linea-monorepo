@@ -1,9 +1,8 @@
-// Package logderivativesum2 implements the LogDerivativeSum2 compiler pass for
+// Package logderivativesum implements the LogDerivativeSum compiler pass for
 // the wiop protocol framework.
 //
-// It is the filter-aware analogue of [logderivativesum]: each [wiop.Fraction2]
-// carries an optional Filter expression on top of the (Numerator, Denominator)
-// pair, and the contribution of a fraction at row i is
+// Each [wiop.Fraction] carries an optional Filter expression on top of the
+// (Numerator, Denominator) pair, and the contribution of a fraction at row i is
 //
 //	Filter[i] · Numerator[i] / Denominator[i]
 //
@@ -12,7 +11,7 @@
 // the running sum even if Denominator[i] would not be invertible on those
 // rows.
 //
-// The compiler reduces every [wiop.LogDerivativeSum2] query into:
+// The compiler reduces every [wiop.LogDerivativeSum] query into:
 //
 //   - one or more "running-sum" extension columns Z, each absorbing up to
 //     packingArity fractions whose vector-valued sides live on the same module;
@@ -21,18 +20,16 @@
 //   - a verifier action that checks the initial condition for every Z column
 //     and that the sum of endpoints matches the query's claimed Result cell.
 //
-// The recurrence and packing identity are identical to the non-filter
-// compiler, with the filter folded symbolically into the numerator. The
-// prover-side computation, however, is filter-aware: rows with a zero filter
-// are skipped without inverting the corresponding denominator. This is what
+// The prover-side computation is filter-aware: rows with a zero filter are
+// skipped without inverting the corresponding denominator. This is what
 // allows the compiler to be used for conditional lookups where the
 // denominator may be ill-defined on filtered-out rows.
 //
-// As with [logderivativesum], the constraint system itself does not enforce
-// non-zero denominators; callers should ensure denominators are non-zero on
-// every row (typically by binding them to a randomness coin) so that the
-// recurrence uniquely pins down Z.
-package logderivativesum2
+// The constraint system itself does not enforce non-zero denominators;
+// callers should ensure denominators are non-zero on every row (typically by
+// binding them to a randomness coin) so that the recurrence uniquely pins
+// down Z.
+package logderivativesum
 
 import (
 	"fmt"
@@ -46,12 +43,12 @@ import (
 // column. The value matches the linea/logderivativesum compiler.
 const packingArity = 3
 
-// Compile reduces every [wiop.LogDerivativeSum2] query in sys to a Z-column
+// Compile reduces every [wiop.LogDerivativeSum] query in sys to a Z-column
 // recurrence plus endpoint LocalOpenings, and registers prover/verifier
 // actions that tie the resulting artefacts back to the query's Result cell.
 // Already-reduced queries are skipped.
 func Compile(sys *wiop.System) {
-	for _, ld := range sys.LogDerivativeSums2 {
+	for _, ld := range sys.LogDerivativeSums {
 		if ld.IsReduced() {
 			continue
 		}
@@ -60,10 +57,10 @@ func Compile(sys *wiop.System) {
 	}
 }
 
-// compileQuery reduces a single LogDerivativeSum2 query.
+// compileQuery reduces a single LogDerivativeSum query.
 func compileQuery(ld *wiop.LogDerivativeSum) {
 	resultRound := ld.Result.Round()
-	compCtx := ld.Context().Childf("logderiv2-compile")
+	compCtx := ld.Context().Childf("logderiv-compile")
 
 	buckets := bucketByModule(ld.Fractions)
 
@@ -120,7 +117,7 @@ func packFractions(fractions []wiop.Fraction) [][]wiop.Fraction {
 }
 
 // fractionModule returns the module that owns the vector-valued side of f.
-// The LogDerivativeSum2 constructor guarantees at least one of Numerator and
+// The LogDerivativeSum constructor guarantees at least one of Numerator and
 // Denominator is vector-valued, so the result is never nil.
 func fractionModule(f wiop.Fraction) *wiop.Module {
 	if m := f.Numerator.Module(); m != nil {
@@ -154,7 +151,7 @@ func buildZ(
 	n := m.Size()
 	if n <= 0 {
 		panic(fmt.Sprintf(
-			"wiop/compilers/logderivativesum2: module %q must be sized before Compile",
+			"wiop/compilers/logderivativesum: module %q must be sized before Compile",
 			m.Context.Path(),
 		))
 	}
@@ -302,7 +299,7 @@ func computeFilteredPrefixSum(rt wiop.Runtime, packed []wiop.Fraction, n int) []
 			}
 			if fracs[j].den[i].IsZero() {
 				panic(fmt.Sprintf(
-					"wiop/compilers/logderivativesum2: zero denominator at row %d for fraction %d "+
+					"wiop/compilers/logderivativesum: zero denominator at row %d for fraction %d "+
 						"with non-zero filter; the filter must mask this row",
 					i, j,
 				))
@@ -398,7 +395,7 @@ func (a *verifierAction) Check(rt wiop.Runtime) error {
 		lhs.Sub(&num0, &prod)
 		if !lhs.IsZero() {
 			return fmt.Errorf(
-				"wiop/compilers/logderivativesum2: initial-condition check failed for Z entry %d (%s)",
+				"wiop/compilers/logderivativesum: initial-condition check failed for Z entry %d (%s)",
 				i, e.zCol.Context.Path(),
 			)
 		}
@@ -411,7 +408,7 @@ func (a *verifierAction) Check(rt wiop.Runtime) error {
 	diff.Sub(&sum, &claimed)
 	if !diff.IsZero() {
 		return fmt.Errorf(
-			"wiop/compilers/logderivativesum2: final-sum check failed for query %q",
+			"wiop/compilers/logderivativesum: final-sum check failed for query %q",
 			a.ld.Context().Path(),
 		)
 	}

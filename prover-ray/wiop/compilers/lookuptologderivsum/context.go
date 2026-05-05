@@ -71,7 +71,7 @@ type lookupGroup struct {
 	included  []includedSpec
 	// witnessRound is the latest round across every column referenced by the
 	// group's including and included fragments. M, α, γ live in
-	// witnessRound + 1; the LogDerivativeSum2 result lives in
+	// witnessRound + 1; the LogDerivativeSum result lives in
 	// witnessRound + 2.
 	witnessRound *wiop.Round
 }

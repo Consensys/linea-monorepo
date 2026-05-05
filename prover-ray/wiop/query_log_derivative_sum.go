@@ -6,21 +6,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
-// Fraction is a filter-aware variant of [Fraction]. The semantic contribution
-// of a Fraction to its enclosing [LogDerivativeSum2] is
+// Fraction is a filter-aware fraction triple. The semantic contribution of a
+// Fraction to its enclosing [LogDerivativeSum] is
 //
 //	Σ_row Filter[row] · Numerator[row] / Denominator[row]
 //
-// Filter is optional: a nil Filter is treated as the constant 1, in which case
-// Fraction behaves identically to Fraction. When Filter is provided, the
-// caller is expected to use a {0, 1}-valued column so the contribution at
-// row i is either Numerator[i]/Denominator[i] (when Filter[i] = 1) or 0
-// (when Filter[i] = 0); other values yield a generalised weighted sum.
+// Filter is optional: a nil Filter is treated as the constant 1. When Filter
+// is provided, the caller is expected to use a {0, 1}-valued column so the
+// contribution at row i is either Numerator[i]/Denominator[i] (when
+// Filter[i] = 1) or 0 (when Filter[i] = 0); other values yield a generalised
+// weighted sum.
 //
-// As with [Fraction], at least one of Numerator or Denominator must be
-// vector-valued (IsMultiValued() == true). If Filter is non-nil and
-// vector-valued, it must share the same module as the vector-valued side.
-// These invariants are enforced by [System.NewLogDerivativeSum].
+// At least one of Numerator or Denominator must be vector-valued
+// (IsMultiValued() == true). If Filter is non-nil and vector-valued, it must
+// share the same module as the vector-valued side. These invariants are
+// enforced by [System.NewLogDerivativeSum].
 //
 // On rows where Filter[i] is zero, the prover side of the [logderivativesum]
 // compiler skips the inversion of Denominator[i]; that row therefore does not
@@ -184,7 +184,7 @@ func (rr *LogDerivativeSum) reduce(rt Runtime) field.Gen {
 	return acc
 }
 
-// NewLogDerivativeSum constructs and registers a [LogDerivativeSum2] query on
+// NewLogDerivativeSum constructs and registers a [LogDerivativeSum] query on
 // sys. A fresh [Cell] is allocated automatically for the result, placed in the
 // round immediately following the latest column round across all fraction
 // expressions (numerator, denominator, and filter).

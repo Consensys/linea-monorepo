@@ -1,5 +1,5 @@
 // Package lookuptologderivsum compiles every unreduced [wiop.TableRelation]
-// of kind [wiop.TableRelationInclusion] into a single [wiop.LogDerivativeSum2]
+// of kind [wiop.TableRelationInclusion] into a single [wiop.LogDerivativeSum]
 // query whose final result is asserted to be zero. It is the prover-ray
 // analogue of linea/prover/protocol/compiler/logderivativesum's
 // LookupIntoLogDerivativeSum pass.
@@ -23,23 +23,23 @@
 //     Σ_T  ( −M(row) ) / ( γ + RLC(T(row)) )       (one per T fragment)
 //     Σ_S  ( filter_S(row) ) / ( γ + RLC(S(row)) ) (one per A fragment)
 //
-//     into a single [wiop.LogDerivativeSum2] query. The α-randomised RLC
+//     into a single [wiop.LogDerivativeSum] query. The α-randomised RLC
 //     binds the multi-column case via Schwartz–Zippel; the γ-randomised
 //     denominator makes every Den non-zero with overwhelming probability,
 //     which is what closes the zero-denominator soundness gap that the
-//     LogDerivativeSum2 constraint system inherits.
+//     LogDerivativeSum constraint system inherits.
 //
-//   - Register a verifier action that asserts the LogDerivativeSum2's
+//   - Register a verifier action that asserts the LogDerivativeSum's
 //     Result cell is zero (the standard log-derivative identity).
 //
 // B-side filters (selectors on the including side) are folded into the RLC
 // itself by prepending the filter to the B-side and a constant 1 to the
-// A-side, mirroring linea/lookup2logderivsum's IsFilteredOnIncluding
+// A-side, mirroring linea/lookuptologderivsum's IsFilteredOnIncluding
 // handling.
 //
 // After Compile runs, every consumed [wiop.TableRelation] is marked reduced
-// and a single [wiop.LogDerivativeSum2] query is left in sys for the
-// downstream [logderivativesum2] compiler pass to consume.
+// and a single [wiop.LogDerivativeSum] query is left in sys for the
+// downstream [logderivativesum] compiler pass to consume.
 //
 // Scope (MVP): the compiler handles inclusion queries with len(B) == 1
 // (single-fragment lookup table). Multiple A fragments per query and
@@ -58,9 +58,9 @@ import (
 )
 
 // Compile reduces every unreduced inclusion [wiop.TableRelation] in sys to a
-// single [wiop.LogDerivativeSum2] query plus a multiplicity column per
+// single [wiop.LogDerivativeSum] query plus a multiplicity column per
 // lookup-table fragment, plus a verifier action that asserts the resulting
-// LogDerivativeSum2 result equals zero.
+// LogDerivativeSum result equals zero.
 //
 // All consumed inclusion queries are marked reduced. Permutation queries and
 // already-reduced queries are skipped. If sys contains no eligible queries
@@ -74,7 +74,7 @@ func Compile(sys *wiop.System) {
 		return
 	}
 
-	// Allocate the LogDerivativeSum2 in a deterministic group order. We sort
+	// Allocate the LogDerivativeSum in a deterministic group order. We sort
 	// by the witness-round ID then by canonical key so the registration order
 	// is independent of map iteration.
 	keys := make([]string, 0, len(groups))
@@ -95,12 +95,12 @@ func Compile(sys *wiop.System) {
 
 	// We need two more interactive rounds after latestWitness:
 	//   - latestWitness + 1: where M, α, γ live.
-	//   - latestWitness + 2: where the LogDerivativeSum2 result cell lives.
+	//   - latestWitness + 2: where the LogDerivativeSum result cell lives.
 	coinRound := ensureNextRound(sys, latestWitness)
 	resultRound := ensureNextRound(sys, coinRound)
-	_ = resultRound // returned for clarity; the LogDerivativeSum2 constructor finds it on its own.
+	_ = resultRound // returned for clarity; the LogDerivativeSum constructor finds it on its own.
 
-	compCtx := sys.Context.Childf("lookup2logderiv")
+	compCtx := sys.Context.Childf("lookuptologderiv")
 
 	// γ is shared across every group: a single random extension coin is
 	// enough to randomise every denominator in the aggregated query.
@@ -133,7 +133,7 @@ func Compile(sys *wiop.System) {
 	ld.Result.Round().RegisterVerifierAction(&resultIsZeroVerifierAction{ld: ld})
 
 	// Mark every consumed query as reduced so subsequent compiler passes skip
-	// them. We deliberately wait until the LogDerivativeSum2 has been
+	// them. We deliberately wait until the LogDerivativeSum has been
 	// registered so a panic during construction leaves the system unchanged.
 	for _, q := range consumedQs {
 		q.MarkAsReduced()
@@ -355,7 +355,7 @@ func viewExprs(cols []*wiop.ColumnView) []wiop.Expression {
 	return out
 }
 
-// resultIsZeroVerifierAction asserts that the aggregated [wiop.LogDerivativeSum2]
+// resultIsZeroVerifierAction asserts that the aggregated [wiop.LogDerivativeSum]
 // result cell holds the zero field element. This is the standard
 // log-derivative identity: the sum of A-side fractions cancels the sum of
 // T-side fractions exactly when every selected A row is in the union of

@@ -14,7 +14,7 @@ import (
 //
 // The task hashes each active B row and each active A row using an internal
 // random extension scalar (independent of the symbolic α used by the
-// LogDerivativeSum2 reduction), then for every active A row increments M at
+// LogDerivativeSum reduction), then for every active A row increments M at
 // the matching B row. If multiple B rows hash to the same value, the
 // highest-index row gets the count — matching the linea/logderivativesum
 // "preserve the latest occurrence" convention. Filtered-out B rows
@@ -22,7 +22,7 @@ import (
 //
 // Hash collisions in the internal hash function would only mis-direct
 // multiplicity counts within the prover; they cannot break soundness because
-// the verifier's check is the symbolic LogDerivativeSum2 identity, which is
+// the verifier's check is the symbolic LogDerivativeSum identity, which is
 // secured by the externally-sampled γ and α coins.
 type mAssignmentTask struct {
 	m         *wiop.Column

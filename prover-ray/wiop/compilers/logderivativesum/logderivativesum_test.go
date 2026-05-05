@@ -1,11 +1,11 @@
-package logderivativesum2_test
+package logderivativesum_test
 
 import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
-	logderivativesum2 "github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -107,7 +107,7 @@ func TestCompile_AddsZColumnAndVanishing(t *testing.T) {
 	colsBefore := len(mod.Columns)
 	openingsBefore := len(mod.LocalOpenings)
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	assert.Equal(t, colsBefore+1, len(mod.Columns),
 		"compile must add exactly one Z column for a single fraction")
@@ -115,15 +115,15 @@ func TestCompile_AddsZColumnAndVanishing(t *testing.T) {
 		"compile must add exactly one recurrence vanishing for a single fraction")
 	assert.Equal(t, openingsBefore+2, len(mod.LocalOpenings),
 		"compile must add Z[0] and Z[n-1] openings")
-	assert.True(t, sys.LogDerivativeSums2[0].IsReduced(),
-		"the LogDerivativeSum2 query must be marked reduced after compile")
+	assert.True(t, sys.LogDerivativeSums[0].IsReduced(),
+		"the LogDerivativeSum query must be marked reduced after compile")
 }
 
 func TestCompile_SkipsRecurrenceForSizeOne(t *testing.T) {
 	sys, _, _, _ := newSimpleFilteredSum(t, 1)
 	mod := sys.Modules[0]
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	assert.Empty(t, mod.Vanishings,
 		"a size-1 module needs no recurrence; everything is fixed by Z[0]")
@@ -133,14 +133,14 @@ func TestCompile_SkipsRecurrenceForSizeOne(t *testing.T) {
 
 func TestCompile_Idempotent(t *testing.T) {
 	sys, _, _, _ := newSimpleFilteredSum(t, 8)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	mod := sys.Modules[0]
 	colsAfterFirst := len(mod.Columns)
 	vansAfterFirst := len(mod.Vanishings)
 	openingsAfterFirst := len(mod.LocalOpenings)
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	assert.Equal(t, colsAfterFirst, len(mod.Columns),
 		"second compile must not add new Z columns")
@@ -155,7 +155,7 @@ func TestCompile_NoQueries(t *testing.T) {
 	sys.NewRound()
 	sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
 
-	logderivativesum2.Compile(sys) // must not panic
+	logderivativesum.Compile(sys) // must not panic
 
 	for _, m := range sys.Modules {
 		assert.Empty(t, m.Vanishings)
@@ -180,7 +180,7 @@ func TestCompile_PacksFractions(t *testing.T) {
 	sys.NewLogDerivativeSum(sys.Context.Childf("ld2"), fractions)
 
 	colsBefore := len(mod.Columns)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	assert.Equal(t, colsBefore+2, len(mod.Columns),
 		"4 fractions must be packed into ⌈4/3⌉ = 2 Z columns")
@@ -206,7 +206,7 @@ func TestCompile_Completeness_NoFilter(t *testing.T) {
 		{Numerator: col.View(), Denominator: one}, // Filter is nil
 	})
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(col, makeVec(2, 2, 2, 2))
@@ -221,7 +221,7 @@ func TestCompile_Completeness_NoFilter(t *testing.T) {
 // the same sum as having no filter at all.
 func TestCompile_Completeness_AllOnes(t *testing.T) {
 	sys, num, filter, ld := newSimpleFilteredSum(t, 4)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// values [3, 5, 7, 9], filter all ones → sum = 24.
@@ -241,7 +241,7 @@ func TestCompile_Completeness_AllOnes(t *testing.T) {
 // zero sum and that Z is uniformly zero (the constant prefix sum).
 func TestCompile_Completeness_AllZeros(t *testing.T) {
 	sys, num, filter, ld := newSimpleFilteredSum(t, 4)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(num, makeVec(3, 5, 7, 9))
@@ -260,7 +260,7 @@ func TestCompile_Completeness_AllZeros(t *testing.T) {
 // individual rows: only rows with filter[i] = 1 contribute.
 func TestCompile_Completeness_PartialFilter(t *testing.T) {
 	sys, num, filter, ld := newSimpleFilteredSum(t, 4)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// values [3, 5, 7, 9], filter [1, 0, 1, 0] → sum = 3 + 7 = 10.
@@ -294,7 +294,7 @@ func TestCompile_Completeness_FilterMasksZeroDenominator(t *testing.T) {
 		{Filter: filter.View(), Numerator: num.View(), Denominator: den.View()},
 	})
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	// num [4, 99, 8, 99], den [2, 0, 4, 0], filter [1, 0, 1, 0]
@@ -333,7 +333,7 @@ func TestCompile_Completeness_PackedMixedFilters(t *testing.T) {
 		{Numerator: num3.View(), Denominator: den.View()},                  // no filter, vector den
 	})
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(num1, makeVec(1, 2, 3, 4)) // sum = 10
@@ -371,7 +371,7 @@ func TestCompile_Completeness_BucketsByModule(t *testing.T) {
 		{Filter: fB.View(), Numerator: cB.View(), Denominator: oneB},
 	})
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 	assert.Len(t, mA.Vanishings, 1)
 	assert.Len(t, mB.Vanishings, 1)
 
@@ -395,7 +395,7 @@ func TestCompile_Completeness_BucketsByModule(t *testing.T) {
 // a manipulated Result cell.
 func TestCompile_Soundness_WrongResult(t *testing.T) {
 	sys, num, filter, ld := newSimpleFilteredSum(t, 4)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(num, makeVec(2, 2, 2, 2))
@@ -414,7 +414,7 @@ func TestCompile_Soundness_WrongZ(t *testing.T) {
 	sys, num, filter, _ := newSimpleFilteredSum(t, 4)
 	mod := sys.Modules[0]
 	witnessColumns := append([]*wiop.Column{}, mod.Columns...)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 	zCol := findZColumn(t, mod, witnessColumns)
 
 	rt := wiop.NewRuntime(sys)
@@ -442,7 +442,7 @@ func TestCompile_Soundness_WrongInitialZ(t *testing.T) {
 	sys, num, filter, ld := newSimpleFilteredSum(t, 4)
 	mod := sys.Modules[0]
 	witnessColumns := append([]*wiop.Column{}, mod.Columns...)
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 	zCol := findZColumn(t, mod, witnessColumns)
 
 	rt := wiop.NewRuntime(sys)
@@ -475,7 +475,7 @@ func TestCompile_Soundness_WrongInitialZ(t *testing.T) {
 
 // ---- Construction-time validation ----
 
-func TestNewLogDerivativeSum2_NilCtxPanic(t *testing.T) {
+func TestNewLogDerivativeSum_NilCtxPanic(t *testing.T) {
 	sys := wiop.NewSystemf("s")
 	sys.NewRound()
 	sys.NewRound()
@@ -571,7 +571,7 @@ func TestCompile_ConditionalLookupShape(t *testing.T) {
 		{Numerator: negM, Denominator: denT},
 	})
 
-	logderivativesum2.Compile(sys)
+	logderivativesum.Compile(sys)
 
 	rt := wiop.NewRuntime(sys)
 	rt.AssignColumn(colS, makeVec(10, 10, 20, 99))
