@@ -224,8 +224,8 @@ describe("WinstonLogger", () => {
 
       makeLogger("Test").error("oops", { error });
 
-      // util.inspect renders a stackless Error as `[Error: <msg>]`.
-      expect(getLogOutput()).toContain('error="[Error: no stack]"');
+      // Stackless Errors render as `${name}: ${message}` (no stack frames to append).
+      expect(getLogOutput()).toContain("error=\"Error: no stack\"");
     });
 
     it("does not produce an error.stack key", () => {
@@ -291,10 +291,84 @@ describe("WinstonLogger", () => {
 
       const output = getLogOutput();
       expect(output).toContain("AggregateError: all failed");
-      // util.inspect renders sibling errors under the `[errors]:` marker.
+      // Sibling errors are rendered under the `[errors]:` marker.
       expect(output).toContain("[errors]:");
       expect(output).toContain("Error: first");
       expect(output).toContain("TypeError: second");
+    });
+
+    it("redacts secret-named own-properties attached to an Error in metadata", () => {
+      // Regression: RPC/HTTP libraries sometimes attach credentials to thrown
+      // Error objects as own-properties. The Error renderer must route those
+      // values through the per-key redaction pipeline, not dump them verbatim.
+      const err = Object.assign(new Error("rpc failed"), {
+        privateKey: "0xLEAK_PK",
+        authorization: "Bearer LEAK_TOKEN",
+        clientSecret: "LEAK_CLIENT_SECRET",
+        code: "ECONNRESET",
+      });
+
+      makeLogger("Test").error("oops", { error: err });
+
+      const output = getLogOutput();
+      expect(output).not.toContain("0xLEAK_PK");
+      expect(output).not.toContain("LEAK_TOKEN");
+      expect(output).not.toContain("LEAK_CLIENT_SECRET");
+      // Non-secret own-properties are still surfaced for operability.
+      expect(output).toContain("ECONNRESET");
+      expect(output).toContain("[REDACTED]");
+    });
+
+    it("redacts secrets nested inside an Error own-property object", () => {
+      const err = Object.assign(new Error("config invalid"), {
+        config: { password: "tsp-secret", host: "db.example" },
+      });
+
+      makeLogger("Test").error("oops", { error: err });
+
+      const output = getLogOutput();
+      expect(output).not.toContain("tsp-secret");
+      expect(output).toContain("[REDACTED]");
+      expect(output).toContain("db.example");
+    });
+
+    it("redacts secret-named own-properties on a nested cause Error", () => {
+      const root = Object.assign(new Error("network down"), {
+        accessToken: "leaky-access-token",
+      });
+      const top = new Error("request failed", { cause: root });
+
+      makeLogger("Test").error("oops", { error: top });
+
+      const output = getLogOutput();
+      expect(output).not.toContain("leaky-access-token");
+      expect(output).toContain("Error: network down");
+    });
+
+    it("redacts secret-named own-properties on AggregateError siblings", () => {
+      const inner = Object.assign(new Error("inner"), {
+        bearerToken: "leaky-bearer",
+      });
+      const aggregate = new AggregateError([inner], "all failed");
+
+      makeLogger("Test").error("oops", { error: aggregate });
+
+      const output = getLogOutput();
+      expect(output).not.toContain("leaky-bearer");
+      expect(output).toContain("Error: inner");
+    });
+
+    it("respects caller-supplied custom redact keys for Error own-properties", () => {
+      const logger = makeLogger("Test", { redact: ["customSecret"] });
+      const err = Object.assign(new Error("boom"), {
+        customSecret: "should-not-leak-custom",
+      });
+
+      logger.error("oops", { error: err });
+
+      const output = getLogOutput();
+      expect(output).not.toContain("should-not-leak-custom");
+      expect(output).toContain("[REDACTED]");
     });
   });
 

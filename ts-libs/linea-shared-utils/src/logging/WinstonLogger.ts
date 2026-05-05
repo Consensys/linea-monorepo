@@ -19,13 +19,14 @@ const ESCAPE_MAP: Record<string, string> = {
 const REDACTED_PLACEHOLDER = "[REDACTED]";
 const URL_REPLACEMENT = "[REDACTED_URL]";
 
-// `inspect` depth bounds traversal of pathological structures (nested causes,
-// deeply nested objects). Cycle detection is handled internally by `inspect`.
-const ERROR_INSPECT_OPTIONS = {
-  depth: 5,
-  colors: false,
-  breakLength: Infinity,
-} as const;
+// Bounds traversal of pathological Error structures (deep `cause` chains,
+// large AggregateError sibling lists). Cycles are broken via `seen`.
+const ERROR_RENDER_MAX_DEPTH = 5;
+const ERROR_RENDER_MAX_AGGREGATE = 100;
+
+// Own-property names that the Error renderer handles structurally and must
+// NOT re-emit as part of the generic own-properties dump.
+const ERROR_STRUCTURAL_KEYS: ReadonlySet<string> = new Set(["name", "message", "stack", "cause", "errors"]);
 
 /**
  * Default keys whose values are masked in log output. Comparison is
@@ -196,15 +197,108 @@ export class WinstonLogger implements ILogger {
     if (typeof value === "number" || typeof value === "boolean") return String(value);
     if (typeof value === "bigint") return value.toString();
     if (value instanceof Error) {
-      // Render the Error via util.inspect (preserves `Error: <msg>\n at...`
-      // formatting, cause chains, AggregateError siblings) but strip URLs
-      // from the rendered text afterwards. Error own-properties (e.g.
-      // `error.code`) are dumped by inspect verbatim — they are not redacted
-      // here. If a caller attaches a secret to an Error, log it under a
-      // metadata key instead of as the Error itself.
-      return formatValue(stripUrlsFromText(inspect(value, ERROR_INSPECT_OPTIONS)));
+      // Render the Error structurally so own-properties (e.g. fields attached
+      // by RPC/HTTP libs like `privateKey`, `authorization`, `clientSecret`)
+      // pass through `redactValue` instead of leaking via `util.inspect`'s
+      // verbatim property dump. URL-strip is applied to the final text so
+      // URLs embedded in `message`/`stack` (viem/ethers RpcRequestError) are
+      // also scrubbed.
+      return formatValue(stripUrlsFromText(this.renderError(value, new WeakSet<object>(), 0)));
     }
     return formatValue(JSON.stringify(this.redactValue(value, "", new WeakSet<object>())));
+  }
+
+  /**
+   * Renders an `Error` into a single string that preserves the shape callers
+   * expect (`Name: message\n    at ...`, `[cause]:` markers for nested causes,
+   * `[errors]: [ ... ]` for AggregateError siblings) while ensuring every
+   * own-property value flows through the per-key redaction pipeline.
+   *
+   * Emits a leading `${name}: ${message}` only when `err.stack` does not
+   * already start with it — Node's default `Error.stack` begins with that
+   * line, but custom errors (e.g. from `Error.captureStackTrace` overrides)
+   * may not. `cause` and `errors` are pulled directly from the object
+   * regardless of enumerability so `new Error(msg, { cause })` still surfaces.
+   */
+  private renderError(err: Error, seen: WeakSet<object>, depth: number): string {
+    if (seen.has(err)) return "[Circular]";
+    seen.add(err);
+
+    const header = this.renderErrorHeader(err);
+    const lines: string[] = [header];
+
+    const ownProps = this.renderErrorOwnProps(err);
+    if (ownProps) lines.push(`  ${ownProps}`);
+
+    if (depth < ERROR_RENDER_MAX_DEPTH) {
+      const causeLine = this.renderCause(err, seen, depth);
+      if (causeLine) lines.push(`  ${causeLine}`);
+
+      const errorsLine = this.renderAggregateErrors(err, seen, depth);
+      if (errorsLine) lines.push(`  ${errorsLine}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  private renderErrorHeader(err: Error): string {
+    const name = err.name || "Error";
+    const message = String(err.message ?? "");
+    const headerLine = `${name}: ${message}`;
+    if (typeof err.stack === "string" && err.stack.length > 0) {
+      // Node's default stack already starts with `${name}: ${message}\n    at ...`.
+      // If a runtime supplies just the frames (no header), prepend ours.
+      return err.stack.startsWith(headerLine) ? err.stack : `${headerLine}\n${err.stack}`;
+    }
+    return headerLine;
+  }
+
+  private renderErrorOwnProps(err: Error): string {
+    // `cause`, `errors`, and the standard `name`/`message`/`stack` slots are
+    // handled structurally; everything else (e.g. `code`, `errno`, plus any
+    // secrets a library attached) is redacted per-key.
+    const ownPropEntries: Record<string, unknown> = {};
+    let hasOwnProps = false;
+    for (const key of Object.keys(err)) {
+      if (ERROR_STRUCTURAL_KEYS.has(key)) continue;
+      ownPropEntries[key] = (err as unknown as Record<string, unknown>)[key];
+      hasOwnProps = true;
+    }
+    if (!hasOwnProps) return "";
+    const redacted = this.redactValue(ownPropEntries, "", new WeakSet<object>()) as Record<string, unknown>;
+    return JSON.stringify(redacted);
+  }
+
+  private renderCause(err: Error, seen: WeakSet<object>, depth: number): string {
+    if (!("cause" in err)) return "";
+    const cause = (err as Error & { cause?: unknown }).cause;
+    if (cause === undefined) return "";
+    if (cause instanceof Error) {
+      return `[cause]: ${this.renderError(cause, seen, depth + 1)}`;
+    }
+    // Non-Error cause: redact then `inspect` the leaf so single-quoted strings
+    // ('value') match historical output. `customInspect: false` prevents a
+    // hostile object from injecting its own representation.
+    const redacted = this.redactValue(cause, "cause", new WeakSet<object>());
+    return `cause: ${inspect(redacted, { depth: 5, colors: false, breakLength: Infinity, customInspect: false })}`;
+  }
+
+  private renderAggregateErrors(err: Error, seen: WeakSet<object>, depth: number): string {
+    const siblings = (err as Error & { errors?: unknown }).errors;
+    if (!Array.isArray(siblings) || siblings.length === 0) return "";
+    const limit = Math.min(siblings.length, ERROR_RENDER_MAX_AGGREGATE);
+    const rendered: string[] = [];
+    for (let i = 0; i < limit; i++) {
+      const item = siblings[i];
+      if (item instanceof Error) {
+        rendered.push(this.renderError(item, seen, depth + 1));
+      } else {
+        const redacted = this.redactValue(item, "", new WeakSet<object>());
+        rendered.push(inspect(redacted, { depth: 5, colors: false, breakLength: Infinity, customInspect: false }));
+      }
+    }
+    if (siblings.length > limit) rendered.push(`... ${siblings.length - limit} more`);
+    return `[errors]: [ ${rendered.join(", ")} ]`;
   }
 
   private formatMetadata(metadata: Record<string, unknown>): string {
