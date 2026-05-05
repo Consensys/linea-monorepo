@@ -65,15 +65,30 @@ EOF
   exit 1
 fi
 
-# Split on commas, trim each, validate against the enum.
+# Split on commas, trim each, validate against the enum and detect duplicates.
 # `for x in $(...)` word-splits on whitespace; tr collapses commas to spaces
 # so each scope ends up as its own field.
 INVALID=""
+SEEN=""
+DUPLICATES=""
 for scope in $(printf '%s' "${SCOPES_RAW}" | tr ',' ' '); do
-  # Membership check via case on a space-padded haystack.
+  # Membership check against the enum.
   case " ${ALLOWED_SCOPES} " in
     *" ${scope} "*) ;;
     *) INVALID="${INVALID} ${scope}" ;;
+  esac
+
+  # Duplicate detection — record the first occurrence in SEEN, append to
+  # DUPLICATES on the second occurrence (and skip on subsequent ones so the
+  # message lists each duplicate only once).
+  case " ${SEEN} " in
+    *" ${scope} "*)
+      case " ${DUPLICATES} " in
+        *" ${scope} "*) ;;
+        *) DUPLICATES="${DUPLICATES} ${scope}" ;;
+      esac
+      ;;
+    *) SEEN="${SEEN} ${scope}" ;;
   esac
 done
 
@@ -82,6 +97,14 @@ if [ -n "${INVALID}" ]; then
 ✗ Scope(s) not in the allowed list:${INVALID}
 
   Allowed scopes: $(printf '%s' "${ALLOWED_SCOPES}" | sed 's/ /, /g')
+EOF
+  exit 1
+fi
+
+if [ -n "${DUPLICATES}" ]; then
+  cat >&2 <<EOF
+✗ Duplicate scope(s) in scope group:${DUPLICATES}
+  Each scope must appear at most once inside the parentheses.
 EOF
   exit 1
 fi
