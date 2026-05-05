@@ -1,2 +1,104 @@
-#!/bin/bash
-pnpm exec commitlint --edit "$1" --config commitlint.config.mjs
+#!/usr/bin/env sh
+# Conventional Commits + scope-enum validator (POSIX sh, no node/pnpm).
+#
+# Husky v9's runner invokes this hook with `sh -e`, so this script must be
+# POSIX-compatible (no bash arrays, no [[ ... ]], no =~, no process
+# substitution, no here-strings).
+#
+# Sources `scope-enum` from commitlint.config.mjs at runtime so commitlint
+# remains the single source of truth for the allowed scope list.
+#
+# Supports multi-scope syntax, e.g.:
+#   feat(coordinator, postman, contracts): add multi-component change
+
+set -eu
+
+MSG_FILE="$1"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+CONFIG_FILE="${REPO_ROOT}/commitlint.config.mjs"
+
+# Subject = first non-empty, non-comment line of the commit message.
+SUBJECT=$(grep -v '^#' "${MSG_FILE}" | sed '/^$/d' | head -n 1)
+
+# Let merge / fixup / squash / revert auto-commits through unchecked.
+case "${SUBJECT}" in
+  "Merge "*|"fixup! "*|"squash! "*|"amend! "*|'Revert "'*) exit 0 ;;
+esac
+
+if [ ! -f "${CONFIG_FILE}" ]; then
+  echo "✗ commit-msg hook: cannot find ${CONFIG_FILE}" >&2
+  exit 1
+fi
+
+# Parse scope-enum from commitlint.config.mjs into a space-separated list.
+# Capture lines from `"scope-enum"` to the closing `]]`, pull every quoted
+# lowercase token, drop the rule name ("scope-enum") and severity ("always"),
+# and fold newlines into spaces.
+ALLOWED_SCOPES=$(
+  sed -n '/"scope-enum"/,/]]/p' "${CONFIG_FILE}" \
+    | grep -oE '"[a-z][a-z0-9-]*"' \
+    | sed 's/"//g' \
+    | tail -n +3 \
+    | tr '\n' ' '
+)
+ALLOWED_SCOPES=$(printf '%s' "${ALLOWED_SCOPES}" | sed 's/[[:space:]]*$//')
+
+if [ -z "${ALLOWED_SCOPES}" ]; then
+  echo "✗ commit-msg hook: failed to parse scope-enum from ${CONFIG_FILE}" >&2
+  exit 1
+fi
+
+# Conventional Commits default type set (from @commitlint/config-conventional).
+ALLOWED_TYPES='feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build'
+
+# Match overall structure: <type>(<scope-group>)!?: <subject>
+HEADER_RE="^(${ALLOWED_TYPES})\\(([^)]+)\\)!?: .+"
+
+if ! printf '%s' "${SUBJECT}" | grep -qE "${HEADER_RE}"; then
+  cat >&2 <<EOF
+✗ Commit message does not match the Conventional Commits format.
+
+  Expected:  <type>(<scope>[, <scope>...]): <short description>
+  Got:       ${SUBJECT}
+
+  Allowed types:  $(printf '%s' "${ALLOWED_TYPES}" | tr '|' ',' | sed 's/,/, /g')
+  Allowed scopes: $(printf '%s' "${ALLOWED_SCOPES}" | sed 's/ /, /g')
+EOF
+  exit 1
+fi
+
+# Extract scope group (capture group 2) using sed.
+SCOPES_RAW=$(printf '%s' "${SUBJECT}" | sed -E "s/${HEADER_RE}.*/\\2/")
+
+# Split on commas, trim each, validate against the enum.
+# `for x in $(...)` word-splits on whitespace; tr collapses commas to spaces
+# so each scope ends up as its own field.
+INVALID=""
+EMPTY=0
+for scope in $(printf '%s' "${SCOPES_RAW}" | tr ',' ' '); do
+  if [ -z "${scope}" ]; then
+    EMPTY=1
+    continue
+  fi
+  # Membership check via case on a space-padded haystack.
+  case " ${ALLOWED_SCOPES} " in
+    *" ${scope} "*) ;;
+    *) INVALID="${INVALID} ${scope}" ;;
+  esac
+done
+
+if [ "${EMPTY}" -eq 1 ]; then
+  echo "✗ Empty scope is not allowed." >&2
+  exit 1
+fi
+
+if [ -n "${INVALID}" ]; then
+  cat >&2 <<EOF
+✗ Scope(s) not in the allowed list:${INVALID}
+
+  Allowed scopes: $(printf '%s' "${ALLOWED_SCOPES}" | sed 's/ /, /g')
+EOF
+  exit 1
+fi
+
+exit 0

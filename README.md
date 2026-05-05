@@ -75,7 +75,7 @@ Consider starting with a ["good first issue"](https://github.com/Consensys/linea
 
 ### Commit message format
 
-All commits must follow the [Conventional Commits](https://www.conventionalcommits.org) format, enforced locally by a `commit-msg` hook (installed via Husky when you run `pnpm install`):
+All commits must follow the [Conventional Commits](https://www.conventionalcommits.org) format, enforced locally by a Husky `commit-msg` hook:
 
 ```
 <type>(<scope>): <short description>
@@ -85,9 +85,9 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 [optional footer: Closes #<issue>, BREAKING CHANGE: ...]
 ```
 
-**Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `revert`
+**Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `revert`, `build`
 
-**Required scope** (one of):
+**Required scope** (one or multiple of):
 
 | Scope | Area |
 |---|---|
@@ -121,6 +121,11 @@ Closes #456
 
 ```
 chore(coordinator,sequencer,tracer,tx-exclusion-api): update to java 25
+```
+
+To write a single-line breaking change commit from the terminal:
+```bash
+git commit -m 'feat(coordinator)!: breaking changes'
 ```
 
 To write a multi-line commit from the terminal:
