@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linea GPU Prover Business Case</title>
+    <style>
+      :root {
+        --bg: #0f1412;
+        --panel: #18201d;
+        --panel-2: #202923;
+        --ink: #f3f7f0;
+        --muted: #aeb8ad;
+        --grid: #334039;
+        --green: #75d481;
+        --cyan: #64c6d2;
+        --gold: #f0bf5b;
+        --rose: #dd6f7a;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(100, 198, 210, 0.18), transparent 28rem),
+          linear-gradient(135deg, #0f1412 0%, #18201d 52%, #111713 100%);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        letter-spacing: 0;
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 40px 0 56px;
+      }
+
+      header {
+        min-height: 72vh;
+        display: grid;
+        align-content: center;
+        gap: 26px;
+      }
+
+      .eyebrow {
+        color: var(--green);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 900px;
+        margin: 0;
+        font-size: clamp(46px, 8vw, 96px);
+        line-height: 0.96;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 780px;
+        margin: 0;
+        color: var(--muted);
+        font-size: clamp(18px, 2.2vw, 24px);
+        line-height: 1.45;
+      }
+
+      .hero-metrics,
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .metric,
+      .section,
+      .table-panel {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        background: rgba(24, 32, 29, 0.86);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+      }
+
+      .metric {
+        min-height: 128px;
+        padding: 20px;
+      }
+
+      .metric .label {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.3;
+      }
+
+      .metric .value {
+        margin-top: 12px;
+        font-size: 34px;
+        font-weight: 800;
+      }
+
+      .metric .note {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      section {
+        margin-top: 34px;
+      }
+
+      .section {
+        padding: 26px;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        line-height: 1.15;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
+      }
+
+      .bars {
+        display: grid;
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: 180px minmax(0, 1fr) 78px;
+        gap: 12px;
+        align-items: center;
+        min-height: 30px;
+      }
+
+      .bar-label {
+        color: var(--ink);
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        height: 18px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #26312c;
+      }
+
+      .bar-fill {
+        height: 100%;
+        min-width: 2px;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+      }
+
+      .bar-fill.cpu {
+        background: linear-gradient(90deg, #808b84, #aeb8ad);
+      }
+
+      .bar-fill.warn {
+        background: linear-gradient(90deg, var(--gold), var(--rose));
+      }
+
+      .bar-value {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+      }
+
+      .table-panel {
+        overflow: hidden;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        color: var(--muted);
+        font-size: 14px;
+        text-align: left;
+      }
+
+      th {
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      td strong {
+        color: var(--ink);
+      }
+
+      .timeline {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 112px 1fr;
+        gap: 16px;
+        padding: 16px;
+        border-left: 4px solid var(--green);
+        border-radius: 8px;
+        background: var(--panel-2);
+      }
+
+      .step .tag {
+        color: var(--green);
+        font-weight: 800;
+      }
+
+      .step h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+      }
+
+      .step p {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .callout {
+        padding: 22px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(117, 212, 129, 0.18), rgba(100, 198, 210, 0.12));
+        border: 1px solid rgba(117, 212, 129, 0.32);
+      }
+
+      .callout strong {
+        color: var(--white);
+      }
+
+      .checks {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .check {
+        padding: 16px;
+        border-radius: 8px;
+        background: var(--panel-2);
+      }
+
+      .check strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      footer {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      code {
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 5px;
+        padding: 2px 5px;
+      }
+
+      @media (max-width: 900px) {
+        .hero-metrics,
+        .grid,
+        .split,
+        .checks {
+          grid-template-columns: 1fr;
+        }
+
+        .bar-row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+
+        .bar-value {
+          text-align: left;
+        }
+
+        header {
+          min-height: auto;
+          padding-top: 32px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">Linea prover GPU work - final benchmark batch</div>
+        <h1>Faster proofs, lower unit cost, no circuit changes.</h1>
+        <p class="lead">
+          The optimized GPU prover path now beats the CPU reference on both compression and
+          aggregation. The 2026-05-05 rerun uses three compression proofs and three aggregation
+          proofs from real mainnet request data.
+        </p>
+        <div class="hero-metrics">
+          <div class="metric">
+            <div class="label">Compression average</div>
+            <div class="value">2:53</div>
+            <div class="note">38.1% faster than CPU</div>
+          </div>
+          <div class="metric">
+            <div class="label">Aggregation average</div>
+            <div class="value">4:44</div>
+            <div class="note">30.2% faster than CPU</div>
+          </div>
+          <div class="metric">
+            <div class="label">On-Demand saving</div>
+            <div class="value">$0.79</div>
+            <div class="note">per compression + aggregation pair</div>
+          </div>
+          <div class="metric">
+            <div class="label">Projected monthly saving</div>
+            <div class="value">$7.9k</div>
+            <div class="note">10k pairs/month, On-Demand</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="split">
+        <div class="section">
+          <h2>Proof time moved down and right</h2>
+          <p>
+            Aggregation started as a regression on the GPU host because the public-input wizard
+            and setup loading dominated wall time. Moving setup off the critical path, then
+            accelerating BLS12-377 PI Vortex commitments, moved the full aggregation proof from
+            9:02 on baseline GPU to a final 3-proof average of 4:43.74.
+          </p>
+          <div class="bars" aria-label="Aggregation wall time bars">
+            <div class="bar-row">
+              <div class="bar-label">Baseline GPU</div>
+              <div class="bar-track"><div class="bar-fill warn" style="width: 100%"></div></div>
+              <div class="bar-value">9:02</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Setup prefetch</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 86%"></div></div>
+              <div class="bar-value">7:46</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">GPU MiMC</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 62%"></div></div>
+              <div class="bar-value">5:36</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">GPU SIS >=512</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 55%"></div></div>
+              <div class="bar-value">4:56</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Final 3x avg</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 52%"></div></div>
+              <div class="bar-value">4:44</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Tiled SIS spot</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 51%"></div></div>
+              <div class="bar-value">4:35</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Cost per proof</h2>
+          <p>
+            On the current `us-east-2` rates, the GPU host is cheaper per hour and now also
+            finishes sooner. The combined effect cuts unit cost by more than half on On-Demand
+            and roughly three quarters on the 30-day spot-rate basis.
+          </p>
+          <div class="bars" aria-label="On-Demand cost bars">
+            <div class="bar-row">
+              <div class="bar-label">CPU compression</div>
+              <div class="bar-track"><div class="bar-fill cpu" style="width: 69%"></div></div>
+              <div class="bar-value">$0.597</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">GPU compression</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 29%"></div></div>
+              <div class="bar-value">$0.254</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">CPU aggregation</div>
+              <div class="bar-track"><div class="bar-fill cpu" style="width: 100%"></div></div>
+              <div class="bar-value">$0.866</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">GPU aggregation</div>
+              <div class="bar-track"><div class="bar-fill" style="width: 48%"></div></div>
+              <div class="bar-value">$0.415</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="metric">
+          <div class="label">Compression time saved</div>
+          <div class="value">1:47</div>
+          <div class="note">per proof vs CPU average</div>
+        </div>
+        <div class="metric">
+          <div class="label">Aggregation time saved</div>
+          <div class="value">2:03</div>
+          <div class="note">per proof vs CPU average</div>
+        </div>
+        <div class="metric">
+          <div class="label">Compression cost saved</div>
+          <div class="value">57.5%</div>
+          <div class="note">On-Demand dollars per proof</div>
+        </div>
+        <div class="metric">
+          <div class="label">Aggregation cost saved</div>
+          <div class="value">52.1%</div>
+          <div class="note">On-Demand dollars per proof</div>
+        </div>
+      </section>
+
+      <section class="table-panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Monthly volume</th>
+              <th>On-Demand saving</th>
+              <th>On-Demand annualized</th>
+              <th>Spot saving</th>
+              <th>Spot annualized</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>10k compression + 10k aggregation</strong></td>
+              <td>$7,945/mo</td>
+              <td>$95,343/yr</td>
+              <td>$4,882/mo</td>
+              <td>$58,582/yr</td>
+            </tr>
+            <tr>
+              <td><strong>50k compression + 50k aggregation</strong></td>
+              <td>$39,726/mo</td>
+              <td>$476,713/yr</td>
+              <td>$24,409/mo</td>
+              <td>$292,912/yr</td>
+            </tr>
+            <tr>
+              <td><strong>100k compression + 100k aggregation</strong></td>
+              <td>$79,452/mo</td>
+              <td>$953,426/yr</td>
+              <td>$48,819/mo</td>
+              <td>$585,825/yr</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="split">
+        <div class="section">
+          <h2>What changed</h2>
+          <div class="timeline">
+            <div class="step">
+              <div class="tag">01</div>
+              <div>
+                <h3>Strict GPU Plonk path</h3>
+                <p>
+                  Compression and aggregation Plonk proofs run with `cpuFallback=false`. The GPU
+                  host is now useful end-to-end instead of only accelerating isolated MSMs.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="tag">02</div>
+              <div>
+                <h3>BLS12-377 PI Vortex MiMC</h3>
+                <p>
+                  CUDA builds the MiMC Merkle trees for SIS and no-SIS commitments. This removes
+                  the old Merkleization wall in the public-input wizard.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="tag">03</div>
+              <div>
+                <h3>Fused large SIS commitments</h3>
+                <p>
+                  The 1880-row and 812-row PI commitments use fused GPU SIS+MiMC. Smaller SIS
+                  commitments stay on CPU because the upload/setup overhead is not yet worth it;
+                  the faster two-column kernel still leaves 288 rows around break-even and 108
+                  rows slower than CPU.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="tag">04</div>
+              <div>
+                <h3>Quotient cache and map cleanup</h3>
+                <p>
+                  Quotient roots are cached in coefficient form, coset domains are reused, and hot
+                  `sync.Map` traffic is gone. The first large quotient now sits around 29 seconds.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="tag">05</div>
+              <div>
+                <h3>Two-column BLS SIS tile</h3>
+                <p>
+                  The fused BLS SIS leaf kernel now handles two encoded columns per CUDA block.
+                  On the representative aggregation request, wall time moved from the final
+                  4:44 average range to a 4:35 single-proof spot check.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Why this is safe to keep</h2>
+          <p>
+            The optimization does not modify circuit definitions, gnark `Define()` functions,
+            public input layouts, verification keys, or wizard constraint registration. It changes
+            how existing witness-side commitments and quotient evaluations are computed.
+          </p>
+          <div class="checks">
+            <div class="check">
+              <strong>CPU equivalence tests</strong>
+              GPU SIS hashes, no-SIS MiMC hashes, Merkle leaves, internal nodes, and roots are
+              compared against the CPU implementation.
+            </div>
+            <div class="check">
+              <strong>Proof sanity checks</strong>
+              The final batch produced 3 compression checks and 9 aggregation sub-proof checks
+              across BLS12-377, BW6-761, and BN254.
+            </div>
+            <div class="check">
+              <strong>Conservative fallback</strong>
+              Unsupported smartvector shapes, unsupported SIS parameters, allocation failure, or
+              CUDA errors fall back to the existing CPU path.
+            </div>
+            <div class="check">
+              <strong>Protocol boundary unchanged</strong>
+              No circuit structs, `Define()` methods, verification keys, transcript order, or
+              wizard constraint registrations changed. The GPU path only changes deterministic
+              witness-side BLS12-377 hashing and quotient computation.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Still on the table</h2>
+        <p>
+          The next big step is a BLS12-377 device-resident Vortex path, analogous to the existing
+          KoalaBear GPU Vortex architecture but implemented for this PI commitment scheme's
+          BLS12-377 MiMC/ring-SIS stack. The current retained path accelerates commitments after
+          the encoded rows are already on the host. A resident BLS Vortex state would keep the
+          encoded rows or a column-major snapshot on device, compute UAlpha after the `Alpha`
+          coin without another full transfer, and download only selected columns and selected
+          SIS digests after the `Q` coin. That is the design likely to move the wizard from a
+          2-minute critical path toward the original 10x target.
+        </p>
+        <p>
+          The remaining large hotspot is BLS12-377 coset reevaluation inside quotient computation:
+          2173 non-constant roots over a 262144 domain take about 17.7 seconds. A batched GPU
+          coset FFT API that avoids one cgo call and one host/device round trip per root is the
+          next high-leverage step; one-root-at-a-time GPU prototypes were intentionally discarded,
+          including a BLS12-377 version that worsened this sub-step to 20.6 seconds. A batched
+          transfer/API variant also matched the CPU transform but worsened the same sub-step to
+          27.5 seconds, so it was removed.
+          The SIS path can also improve if the key/twiddle buffers become resident and small
+          commitments stop paying fixed upload costs. The latest CUDA timing confirms that the
+          two big fused SIS commitments are dominated by the BLS SIS leaf kernel itself. The
+          retained two-column tile reduced that leaf kernel from 14.1s to 8.4s for the 1880-row
+          commitment, and from 12.7s to 7.2s for the 812-row commitment.
+        </p>
+        <div class="callout">
+          <strong>Bottom line:</strong> the GPU path is no longer a science project. It is a faster
+          and cheaper production direction with clear correctness guardrails and obvious next
+          optimizations.
+        </div>
+      </section>
+
+      <footer>
+        Data source: `reference-benchmarks/README.md` and
+        `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-final-3x/`.
+        Rates: AWS Price List On-Demand `us-east-2`, CloudPrice 30-day equal-AZ spot averages.
+      </footer>
+    </main>
+  </body>
+</html>

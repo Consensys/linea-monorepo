@@ -164,6 +164,19 @@ The optimized run used `bin/prover-cuda` with
 `LINEA_PROVER_GPU_PLONK2=1` and a BLS12-377 MSM window of 20. Its log reports
 `cpuFallback=false`; no CPU MSM fallback was used.
 
+Final optimized 3-proof compression batch, rerun on 2026-05-05:
+
+| Run | Block range | Wall time | Setup load | Solver | GPU prover | Max RSS | CPU |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | `30388561-30389025` | 2:59.45 | 51.409s | 48.52s | 1:57.50 | 208.5 GiB | 269% |
+| 2 | `30389026-30389504` | 3:02.01 | 51.947s | 49.99s | 1:58.65 | 208.6 GiB | 293% |
+| 3 | `30389505-30390023` | 2:38.80 | 31.978s | 47.89s | 1:56.61 | 208.4 GiB | 337% |
+
+Average wall time: 2:53.42.
+
+All three final compression proofs used strict GPU Plonk
+(`cpuFallback=false`) and passed the Plonk sanity check.
+
 ### GPU Aggregation Proofs
 
 | Run | Block range | Wall time | Setup load | GPU prover phases | Peak VRAM | Max RSS | CPU |
@@ -183,6 +196,25 @@ Optimized single aggregation reference, after local aggregation prover changes:
 | Block range | Wall time | Setup load | GPU prover phases | Setup policy | Max RSS | CPU |
 | --- | ---: | --- | --- | --- | ---: | ---: |
 | `30391350-30394103` | 7:46.41 | PI 23.121s, BW6 32.729s, BN254 7.440s | PI 59.79s, BW6 55.65s, BN254 10.37s | strict GPU, canonical SRS only, BW6/BN254 setup prefetched under PI | 195.4 GiB | 2156% |
+| `30391350-30394103` | 5:36.22 | PI 20.017s, BW6 30.541s, BN254 5.121s | PI 1:07.59, BW6 56.59s, BN254 10.49s | above, plus PI Vortex GPU MiMC for SIS-tree and no-SIS commitments, `GOMEMLIMIT=180GiB GOGC=75` | 199.2 GiB | 1669% |
+| `30391350-30394103` | 4:56.04 | PI 20.511s, BW6 31.017s, BN254 5.148s | PI 1:07.09, BW6 56.15s, BN254 11.55s | above, plus PI Vortex GPU ring-SIS for commitments with at least 512 rows | 199.9 GiB | 1226% |
+| `30391350-30394103` | 4:42.94 | PI 20.120s, BW6 30.737s, BN254 5.129s | PI 1:03.43, BW6 57.64s, BN254 10.32s | above, plus PI quotient coefficient cache across cosets | 203.5 GiB | 1155% |
+| `30391350-30394103` | 4:39.77 | PI 20.297s, BW6 31.029s, BN254 5.265s | PI 1:03.00, BW6 55.38s, BN254 10.47s | above, plus quotient metadata/domain/map cleanup and timing breakdown | 201.6 GiB | 1168% |
+| `30391350-30394103` | 4:41.91 | PI 20.217s, BW6 30.991s, BN254 5.321s | PI 1:03.60, BW6 55.49s, BN254 10.58s | above, plus cached BLS SIS FFT/MiMC static data and flattened SIS keys; single spot check, not included in the 3-proof average | 202.6 GiB | 1160% |
+| `30391350-30394103` | 4:34.66 | PI 20.656s, BW6 31.815s, BN254 5.372s | PI 1:07.76, BW6 56.91s, BN254 10.71s | above, plus a 2-column CUDA tile for the large BLS SIS leaf kernel; single spot check, not included in the 3-proof average | 201.9 GiB | 1167% |
+
+Final optimized 3-proof aggregation batch, rerun on 2026-05-05:
+
+| Run | Block range | Wall time | Setup load | GPU prover phases | Max RSS | CPU |
+| --- | --- | ---: | --- | --- | ---: | ---: |
+| 1 | `30388561-30391349` | 4:44.51 | PI 51.196s, BW6 1:22.82, BN254 37.402s | PI 1:00.98, BW6 57.13s, BN254 11.36s | 201.8 GiB | 1156% |
+| 2 | `30391350-30394103` | 4:44.21 | PI 20.733s, BW6 31.169s, BN254 5.336s | PI 1:03.53, BW6 58.14s, BN254 10.42s | 200.9 GiB | 1157% |
+| 3 | `30394104-30396213` | 4:42.49 | PI 20.445s, BW6 30.919s, BN254 5.500s | PI 1:03.71, BW6 56.52s, BN254 10.67s | 199.8 GiB | 1163% |
+
+Average wall time: 4:43.74.
+
+All nine final aggregation sub-proofs used strict GPU Plonk
+(`cpuFallback=false`) and passed their sanity checks.
 
 The optimized run used `bin/prover` built with `GO_BUILD_TAGS=debug,cuda` and
 `LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_LOG_MSM_PHASES=1`. The log reports
@@ -199,9 +231,173 @@ Merkleization calls, but it is not enough by itself to reach a 4 minute
 wall-clock target. The next high-leverage optimization is GPU or algorithmic
 acceleration of the PI Vortex/SIS commitment path.
 
+The PI Vortex GPU MiMC run used the same request with
+`LINEA_PROVER_GPU_PI_MIMC=1`. It adds CUDA kernels for BLS12-377 MiMC
+Merkleization in the PI Vortex path and reuses them for no-SIS column
+commitments. Against the optimized single reference, total wall time improved
+from 7:46.41 to 5:36.22. The strict wizard window, measured from
+`generating wizard proof for 6602 hashes from 7052 permutations` to the first
+PI `Creating the witness`, improved from 5:05 to 3:06.
+
+The PI Vortex GPU ring-SIS run additionally used `LINEA_PROVER_GPU_PI_SIS=1`.
+The SIS offload is gated to commitments with at least 512 rows by default
+(`LINEA_PROVER_GPU_PI_SIS_MIN_ROWS` overrides it). An unthresholded run was
+slower because small SIS commitments paid about 12s of fixed GPU setup/copy
+overhead. With the threshold, only the 1880-row and 812-row commitments used
+the fused GPU SIS+MiMC tree path, reducing total wall time to 4:56.04 and the
+strict wizard window to 2:26.
+
+The 512-row threshold remains the default. Before the tiled SIS kernel, the
+288-row SIS commitment was slower on GPU than CPU; after the tiled kernel it is
+only break-even once Go-side materialization is included.
+
+The quotient-cache run keeps the same BLS12-377 PI Vortex GPU SIS/MiMC path and
+caches each quotient root column in coefficient form before evaluating cosets.
+This avoids repeated inverse FFTs for the same roots across quotient actions.
+It reduced total wall time to 4:42.94 and the strict wizard window to 2:16. The
+first `quotient compute` timer dropped from 40.32s to 30.65s; the later quotient
+computes were 2.85s and 0.55s.
+
+The quotient metadata/domain/map cleanup removes hot `sync.Map` use during root
+reevaluation, reuses one coset domain per global coset, and logs quotient
+sub-timings. It reduced the best observed end-to-end wall time to 4:39.77 and
+kept the strict wizard window at 2:15. The first quotient breakdown was:
+coefficient cache 4.08s, coset reevaluation 17.71s, input prep 0.16s, and
+expression evaluation / scaling / assignment 7.09s.
+
+The cached-static-data spot check keeps the same retained algorithm and only
+avoids rebuilding BLS SIS FFT tables, MiMC constants, and flattened SIS keys
+inside repeated GPU commitment calls. It measured 4:41.91 on the same request,
+which is within normal run-to-run noise of the quotient-map cleanup run; it is
+kept as a small code cleanup rather than as a new benchmark headline.
+
+A timing-instrumented diagnostic run on the same request measured 4:44.64 with
+`LINEA_PROVER_GPU_PI_VORTEX_TIMINGS=1`. The extra instrumentation adds CUDA
+synchronizations around internal phases, so this is diagnostic rather than a
+headline benchmark. It showed the large fused BLS SIS commitments are now
+compute-bound in the leaf kernel:
+
+| Commitment | Total C time | H2D rows | SIS leaf kernel | MiMC tree | D2H |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1880 rows x 524288 encoded cols | 17.33s | 3.12s | 14.14s | 12.5ms | 56.7ms |
+| 812 rows x 524288 encoded cols | 14.16s | 0.91s | 12.71s | 12.5ms | 519.2ms |
+| Warm SIS-digest MiMC tree only, 524288 leaves | 0.30s-0.32s | 0.10s-0.12s | 0.18s-0.19s | 12ms-13ms | 1.8ms-16ms |
+
+The production-size GPU MiMC tree benchmark after Go-side tree materialization
+cleanup measured about 328ms/op for 524288 leaves, close to the warmed CUDA
+timing above. That confirms the next substantial win is not another static
+table cache; it is a faster or device-resident BLS SIS/Vortex commitment design.
+
+A follow-up 2-column CUDA tile for the fused BLS SIS leaf kernel keeps two
+encoded columns in one 128-thread block. It preserves the same host-visible SIS
+hashes and Merkle tree layout, but improves memory coalescing and reduces block
+scheduling overhead. Production-shaped microbenchmarks with regular rows showed:
+
+| Commitment | Before tile | 2-column tile | Leaf-kernel delta |
+| --- | ---: | ---: | ---: |
+| 1880 rows x 524288 encoded cols | 17.33s C total, 14.14s leaf | 12.09s C total, 8.44s leaf | 40.3% faster leaf |
+| 812 rows x 524288 encoded cols | 14.16s C total, 12.71s leaf | 9.08s C total, 7.21s leaf | 43.3% faster leaf |
+
+The same aggregation request then measured 4:34.66 wall clock without timing
+instrumentation, and the strict wizard window from `generating wizard proof...`
+to the PI `Creating the witness` log was about 2:03. A 4-column tile was also
+tested after fixing lane indexing, but it regressed the same microbenchmarks to
+14.40s and 17.62s C total for the 812-row and 1880-row cases respectively, so
+the retained tile width is 2.
+
+The faster kernel does not justify lowering the SIS GPU threshold globally. A
+288-row regular-row microbenchmark measured 7.60s C total but 9.16s including
+Go-side materialization, which is only break-even with the CPU SIS plus GPU
+MiMC-tree path observed in the full proof. A 108-row regular-row case measured
+6.17s C total and is slower than the CPU path. The default threshold therefore
+stays at 512 rows.
+
+### GPU Path Review
+
+The retained GPU work is witness-side only. It does not modify circuit structs,
+`Define()` methods, public-input layouts, verification keys, wizard constraint
+registration, compiled-IOP checks, Fiat-Shamir ordering, or verifier logic. The
+GPU kernels replace deterministic BLS12-377 field computations that already
+existed on the prover side:
+
+- BLS12-377 MiMC leaf and parent hashing for Vortex Merkle trees.
+- BLS12-377 ring-SIS column hashing for large PI Vortex commitments.
+- BLS12-377 quotient root coefficient caching and host-side coset
+  reevaluation cleanup.
+
+The cryptography-specific checks from the review were:
+
+- MiMC uses the same 62 BLS12-377 constants from gnark-crypto and the same
+  Miyaguchi-Preneel-style absorb relation as the CPU implementation.
+- SIS is gated to the reviewed `degree=64` and `logTwoBound=16` parameters.
+  Any different SIS shape falls back to CPU.
+- The CUDA SIS path converts Montgomery field elements to canonical raw limbs
+  only for the 16-bit limb decomposition, then stores SIS outputs back as
+  Montgomery field elements before MiMC hashing. CPU/GPU tests compare the full
+  SIS digest vector, Merkle leaves, internal nodes, and root.
+- The 2-column tile uses a separate lane index for each tile; the earlier
+  indexing bug found while testing 4-column tiling was fixed before retaining
+  the 2-column kernel.
+- Unsupported smartvector row shapes, non-power-of-two encoded widths, too many
+  rows for the SIS key, CUDA errors, and allocation failures all fall back to
+  the CPU path rather than producing a partial GPU commitment.
+
+No soundness issue was found in the retained path. The main remaining risk is
+engineering complexity rather than protocol semantics: the BLS PI Vortex path
+still materializes encoded matrices on the host and only offloads selected
+commitment work. The existing `gpu/vortex` package already demonstrates the
+right architecture for KoalaBear, with a device-resident commit state, GPU
+UAlpha computation, and selected-column extraction. That implementation cannot
+be reused directly here because this PI path is BLS12-377 with MiMC/ring-SIS,
+not KoalaBear with Poseidon2. The analogous next step is therefore a
+BLS12-377 device-resident Vortex state:
+
+- Commit stores encoded BLS rows or a column-major snapshot on the GPU.
+- After the `Alpha` coin, UAlpha is computed on device without another full
+  host/device transfer.
+- After the `Q` coin, only selected encoded columns and selected SIS digests
+  are downloaded for the opening and self-recursion assignments.
+- Device buffers are freed before PI/BW6/BN254 Plonk proving starts, keeping
+  the current strict GPU Plonk memory envelope intact.
+
+This is the likely path to a larger wizard speedup. More local threshold tuning
+or another static-data cache will not produce an order-of-magnitude gain.
+
+In the final 3-proof aggregation batch, the first large quotient computation
+was stable at 29.1s-29.6s. The dominant sub-step remained BLS12-377 coset
+reevaluation, at 17.66s-18.00s for 2173 non-constant roots over a 262144
+domain.
+
+Strict wizard Vortex timing on the same request:
+
+| Phase | Optimized reference | PI Vortex GPU MiMC | PI Vortex GPU SIS>=512 + MiMC | SIS>=512 + MiMC + quotient cache | Quotient map cleanup | Delta vs optimized reference |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| SIS Merkleization, 11 calls | 96.27s total, 8.75s avg | 3.64s total, 0.33s avg | 2.98s total, 0.27s avg | 2.96s total, 0.27s avg | 2.96s total, 0.27s avg | 32.5x faster |
+| No-SIS MiMC commitments, 7 calls | 27.85s total, 3.98s avg | 1.63s total, 0.23s avg | 1.61s total, 0.23s avg | 1.95s total, 0.28s avg | 1.42s total, 0.20s avg | 19.6x faster |
+| SIS hashing, 11 calls | 89.62s total | 89.99s total | 48.21s total | 48.12s total | 48.09s total | 1.9x faster |
+
+The remaining blocker for an order-of-magnitude whole-wizard speedup is the
+non-large SIS commitment work and residual quotient/coset evaluation. The fused
+GPU SIS path is worthwhile on large matrices, but needs resident buffers or a
+lower-overhead upload path before it should be applied to every SIS commitment.
+For quotient, the largest measured sub-step is BLS12-377 coset reevaluation
+FFT: 2173 non-constant roots over a 262144 domain took 17.71s. A useful GPU
+quotient path needs a batched BLS12-377 coset FFT API that avoids one cgo call
+and one H2D/D2H round trip per root. A one-root-at-a-time GPU quotient
+prototype was tested and discarded because it serialized thousands of
+host/device transfers and was slower than the parallel CPU path. A BLS12-377
+variant using the existing `gpu/plonk2/bls12377` FFTs had to bit-reverse the
+cached coefficients before `CosetFFT` to match the CPU `FFT(..., DIT,
+OnCoset())` ordering, but still worsened the first large quotient
+reevaluation from ~17.7s to 20.6s. A follow-up batched C API removed the
+per-root cgo overhead and validated against the CPU transform, but it still
+worsened the same quotient reevaluation to 27.5s because it loops over all
+roots on-device and pays a large packed transfer. That prototype was removed
+with the other unsuccessful experiments.
+
 ### Cost Per Proof
 
-Pricing was refreshed for `us-east-2` Linux instances on 2026-05-04.
+Pricing was refreshed for `us-east-2` Linux instances on 2026-05-05.
 On-Demand prices came from the AWS Price List Bulk API current Amazon EC2 CSV
 for `us-east-2`.
 
@@ -238,14 +434,35 @@ but they are too optimistic as standing benchmark costs.
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Compression | `CPU r8a.24xlarge` | 4:40.31 | $7.66848 | $0.5971 | $3.3873 | $0.2637 |
 | Compression, baseline | `GPU g7e.8xlarge` | 4:36.04 | $5.26824 | $0.4040 | $1.2464 | $0.0956 |
-| Compression, optimized | `GPU g7e.8xlarge` | 2:35.68 | $5.26824 | $0.2278 | $1.2464 | $0.0539 |
+| Compression, optimized single reference | `GPU g7e.8xlarge` | 2:35.68 | $5.26824 | $0.2278 | $1.2464 | $0.0539 |
+| Compression, final optimized 3-proof avg | `GPU g7e.8xlarge` | 2:53.42 | $5.26824 | $0.2538 | $1.2464 | $0.0600 |
 | Aggregation | `CPU r8a.24xlarge` | 6:46.75 | $7.66848 | $0.8664 | $3.3873 | $0.3827 |
 | Aggregation | `GPU g7e.8xlarge` | 10:19.26 | $5.26824 | $0.9062 | $1.2464 | $0.2144 |
 | Aggregation, optimized single reference | `GPU g7e.8xlarge` | 7:46.41 | $5.26824 | $0.6825 | $1.2464 | $0.1615 |
+| Aggregation, PI Vortex GPU MiMC | `GPU g7e.8xlarge` | 5:36.22 | $5.26824 | $0.4920 | $1.2464 | $0.1164 |
+| Aggregation, PI Vortex GPU SIS>=512 + MiMC | `GPU g7e.8xlarge` | 4:56.04 | $5.26824 | $0.4332 | $1.2464 | $0.1025 |
+| Aggregation, PI Vortex GPU SIS>=512 + MiMC + quotient cache | `GPU g7e.8xlarge` | 4:42.94 | $5.26824 | $0.4141 | $1.2464 | $0.0980 |
+| Aggregation, PI Vortex GPU SIS>=512 + MiMC + quotient map cleanup | `GPU g7e.8xlarge` | 4:39.77 | $5.26824 | $0.4094 | $1.2464 | $0.0969 |
+| Aggregation, PI Vortex 2-column SIS tile spot check | `GPU g7e.8xlarge` | 4:34.66 | $5.26824 | $0.4019 | $1.2464 | $0.0951 |
+| Aggregation, final optimized 3-proof avg | `GPU g7e.8xlarge` | 4:43.74 | $5.26824 | $0.4152 | $1.2464 | $0.0982 |
 
-The GPU aggregation Plonk phases are faster than the CPU Plonk phases, but the
-end-to-end aggregation benchmark is slower on `g7e.8xlarge` because the host
-has fewer CPU cores and setup/public-input work dominates the wall clock.
+Savings versus the CPU reference, using final optimized 3-proof GPU averages:
+
+| Proof | Time saved | Time saved % | On-Demand $ saved / proof | On-Demand saved % | Spot $ saved / proof | Spot saved % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Compression | 1:46.89 | 38.1% | $0.3433 | 57.5% | $0.2037 | 77.2% |
+| Aggregation | 2:03.01 | 30.2% | $0.4512 | 52.1% | $0.2845 | 74.3% |
+
+At 10,000 compression proofs plus 10,000 aggregation proofs per month, those
+per-proof deltas imply about $7,945/month on On-Demand or $4,882/month on Spot
+in compute savings, before considering scheduling and operational effects.
+
+The baseline GPU aggregation Plonk phases are faster than the CPU Plonk phases,
+but the initial end-to-end aggregation benchmark was slower on `g7e.8xlarge`
+because the host has fewer CPU cores and setup/public-input work dominates the
+wall clock. With setup prefetching and PI Vortex GPU MiMC enabled, the single
+reference aggregation request is faster than the CPU reference row, though
+small ring-SIS commitments and residual quotient work remain CPU-bound.
 
 ## Raw Artifacts
 
@@ -257,18 +474,29 @@ Generated responses:
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/aggregation/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-optimize-bls12377-pass8-msm-window20-cuda/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-aggregation-setup-prefetch/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-pi-mimc-all-gomem180/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-quotient-cache-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-quotient-map-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-static-cache-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-vortex-timing-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-tiled2-gomem180/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-final-3x/compression/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-final-3x/aggregation/`
 
 Raw prover logs and GNU `time -v` outputs:
 
 - `reference-benchmarks/results/2026-05-04-r8a-24xlarge-provertestdata2-7.1.0/logs/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-plonk2-provertestdata2-7.1.0/logs/`
 - `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-aggregation-setup-prefetch/logs/`
-
-The logs include one failed diagnostic aggregation attempt for run 4:
-`*.failed-runtime-fault-attempt1.*`. It hit a Go runtime SIGSEGV in
-`gnark-crypto` BLS12-377 vector assembly during PI proof interpolation. The
-same request succeeded on retry with the same benchmark settings, so the
-successful retry is the row reported above.
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-pi-mimc-all-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-04-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-quotient-cache-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-mimc-quotient-map-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-threshold512-static-cache-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-vortex-timing-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-sis-tiled2-gomem180/logs/`
+- `reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-final-3x/logs/`
 
 ## Diagnostic Notes
 

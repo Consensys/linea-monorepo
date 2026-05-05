@@ -27,6 +27,7 @@ add_library(gnark_gpu STATIC
     src/plonk/api.cu
     src/plonk2/g1.cu
     src/plonk2/kernels.cu
+    src/plonk2/mimc.cu
     src/plonk2/msm.cu
     src/vortex/kb.cu
 )

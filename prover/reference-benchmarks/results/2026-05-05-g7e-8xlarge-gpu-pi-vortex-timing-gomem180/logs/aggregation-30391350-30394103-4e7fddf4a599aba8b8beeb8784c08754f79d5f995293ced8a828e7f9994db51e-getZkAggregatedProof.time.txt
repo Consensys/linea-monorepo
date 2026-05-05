@@ -1,0 +1,228 @@
+time="2026-05-05T02:12:59Z" level=info msg="Registered the signal handler for user defined signal 1|user defined signal 2. If you send that signal to the process it will dump the stack traces"
+time="2026-05-05T02:13:00Z" level=info msg="public inputs components for range (30391350-30394103): {FinalShnarf:0xe25c8bce19e3d6c73b93d93c0eeabf0932bc017d82b3bad970322ba63e8c8715 ParentAggregationFinalShnarf:0x754f6a245fd6b758c1b4aebb2ef4f258340b602d0a0ad2697d741b1715e306d2 ParentStateRootHash:0x3a95faec56d6d2e2042863af104944f4158a792948e22ad53133d6076d949490 ParentAggregationLastBlockTimestamp:1777211994 FinalTimestamp:1777226569 LastFinalizedBlockNumber:30391349 FinalBlockNumber:30394103 LastFinalizedL1RollingHash:0x5575d92fff4271e7961dea7dfc376a09bf6694645b9877cf67c9ddb27603a942 L1RollingHash:0x403b6de70088367c6422e6084325edb39bc49d03b5d6b647d4b737f653998e85 LastFinalizedL1RollingHashMessageNumber:802063 L1RollingHashMessageNumber:802071 L2MsgRootHashes:[0x7639b3341ffe2f64b233aa3713d8f57246f82d8b85295cf1594358cece1b8304] L2MsgMerkleTreeDepth:5 ChainID:59144 BaseFee:7 CoinBase:[143 129 226 227 248 180 100 103 82 52 99 131 95 150 95 254 71 110 28 158] L2MessageServiceAddr:[80 140 168 45 245 102 220 209 176 222 130 150 231 10 150 51 44 214 68 236] IsAllowedCircuitID:60}"
+time="2026-05-05T02:13:00Z" level=info msg="Public-input interconnection requires 7052 keccak permutations"
+time="2026-05-05T02:13:00Z" level=info msg="prefetching the BW6 setup from disk..."
+time="2026-05-05T02:13:00Z" level=info msg="prefetching the BN254 setup from disk..."
+time="2026-05-05T02:13:00Z" level=info msg="[wizard.analytic] msg=after vortex cell-count=&{NumColumnsCommitted:2173 NumColumnsProof:7 NumColumnsPrecomputed:3 NumColumnsVerificationKeys:2 NumCellsCommitted:569638912 NumCellsProof:409664 NumCellsPrecomputed:786432 NumCellsVerificationKeys:64 NumResultsInnerProduct:2 NumResultUnivariate:8371 NumResultLocalOpening:344 NumResultLogDerivativeSum:1 NumResultGrandProduct:0 NumResultHorner:5 NumQueriesInnerProduct:2 NumQueriesUnivariate:67 NumQueriesLocalOpening:344 NumQueriesLogDerivativeSum:1 NumQueriesGrandProduct:0 NumQueriesHorner:1 Transcript:[{Round:0 NumFieldWritten:409637 NumFieldSampled:0 WeightColumns:409632 WeightUnivariate:0 WeightInnerProduct:2 WeightHorner:0 WeightLogDerivativeSum:0 WeightLocalOpenings:3 WeightGrandProduct:0} {Round:1 NumFieldWritten:379 NumFieldSampled:18 WeightColumns:32 WeightUnivariate:0 WeightInnerProduct:0 WeightHorner:5 WeightLogDerivativeSum:1 WeightLocalOpenings:341 WeightGrandProduct:0} {Round:2 NumFieldWritten:0 NumFieldSampled:1 WeightColumns:0 WeightUnivariate:0 WeightInnerProduct:0 WeightHorner:0 WeightLogDerivativeSum:0 WeightLocalOpenings:0 WeightGrandProduct:0} {Round:3 NumFieldWritten:3101 NumFieldSampled:1 WeightColumns:0 WeightUnivariate:3101 WeightInnerProduct:0 WeightHorner:0 WeightLogDerivativeSum:0 WeightLocalOpenings:0 WeightGrandProduct:0} {Round:4 NumFieldWritten:0 NumFieldSampled:2 WeightColumns:0 WeightUnivariate:0 WeightInnerProduct:0 WeightHorner:0 WeightLogDerivativeSum:0 WeightLocalOpenings:0 WeightGrandProduct:0} {Round:5 NumFieldWritten:2176 NumFieldSampled:1 WeightColumns:0 WeightUnivariate:2176 WeightInnerProduct:0 WeightHorner:0 WeightLogDerivativeSum:0 WeightLocalOpenings:0 WeightGrandProduct:0}]}"
+time="2026-05-05T02:13:00Z" level=info msg="processed the precomputed columns" nbPrecomputedRows=3 nbShadowRows=1 where isSISAppliedForCommitment=true
+time="2026-05-05T02:13:00Z" level=info msg="Compiled Vortex round" numComs=1879 numShadowRows=1 numUnconstrained=0 round=0 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:00Z" level=info msg="Compiled Vortex round" numComs=286 numShadowRows=2 numUnconstrained=0 round=1 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:00Z" level=info msg="Compiled Vortex round" numComs=7 numShadowRows=1 numUnconstrained=0 round=2 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:00Z" level=info msg="Compiled Vortex round" numComs=1 numShadowRows=3 numUnconstrained=0 round=4 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:00Z" level=info msg="committing to precomputed columns with SIS"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.320ms h2d=107.690ms static_h2d=0.024ms leaf=207.969ms tree=12.484ms d2h=17.693ms total=346.180ms
+time="2026-05-05T02:13:03Z" level=info msg="[vortex-commitment-with-sis] numCol=262144 numRow=4 numColEncoded=524288 timeEncoding=102.024605ms timeSisHashing=871.627347ms timeMerkleizing=1.924632074s"
+time="2026-05-05T02:13:03Z" level=info msg="processed the precomputed columns" nbPrecomputedRows=21 nbShadowRows=3 where isSISAppliedForCommitment=true
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=20 numShadowRows=0 numUnconstrained=0 round=6 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=810 numShadowRows=2 numUnconstrained=16 round=7 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=106 numShadowRows=2 numUnconstrained=0 round=8 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=3 numShadowRows=1 numUnconstrained=0 round=9 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=3 numShadowRows=1 numUnconstrained=0 round=10 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=15 numShadowRows=1 numUnconstrained=0 round=11 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="Compiled Vortex round" numComs=1 numShadowRows=3 numUnconstrained=0 round=13 using-only-MiMC=false where=compileRoundWithVortex
+time="2026-05-05T02:13:03Z" level=info msg="committing to precomputed columns with SIS"
+time="2026-05-05T02:13:04Z" level=info msg="loading canonical SRS only for strict gpu/plonk2 proving"
+time="2026-05-05T02:13:05Z" level=info msg="loaded setup circuitID=emulation curve=bn254 nbConstraints=14407969 duration=5.244944509s"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.359ms h2d=108.497ms static_h2d=0.026ms leaf=184.034ms tree=12.560ms d2h=16.846ms total=322.321ms
+time="2026-05-05T02:13:05Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=24 numColEncoded=524288 timeEncoding=183.492953ms timeSisHashing=1.106399159s timeMerkleizing=359.680969ms"
+time="2026-05-05T02:13:05Z" level=info msg="processed the precomputed columns" nbPrecomputedRows=91 nbShadowRows=0 where isSISAppliedForCommitment=false
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=136 numShadowRows=0 numUnconstrained=0 round=15 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=1349 numShadowRows=0 numUnconstrained=8 round=16 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=133 numShadowRows=0 numUnconstrained=0 round=17 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=5 numShadowRows=0 numUnconstrained=0 round=18 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=5 numShadowRows=0 numUnconstrained=0 round=19 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=7 numShadowRows=0 numUnconstrained=0 round=20 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="Compiled Vortex round" numComs=1 numShadowRows=0 numUnconstrained=0 round=22 using-only-MiMC=true where=compileRoundWithVortex
+time="2026-05-05T02:13:05Z" level=info msg="committing to precomputed columns without SIS"
+[gpu-pi-vortex] op=mimc_tree rows=91 cols=65536 elems=5963776 malloc=0.317ms h2d=18.413ms static_h2d=0.026ms leaf=47.389ms tree=6.641ms d2h=2.093ms total=74.880ms
+time="2026-05-05T02:13:05Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=91 numColEncoded=65536 timeEncoding=76.564417ms timeMerkleizing=88.124033ms"
+time="2026-05-05T02:13:06Z" level=info msg="generating wizard proof for 6602 hashes from 7052 permutations"
+time="2026-05-05T02:13:09Z" level=info msg="loading canonical SRS only for strict gpu/plonk2 proving"
+time="2026-05-05T02:13:13Z" level=info msg="loading canonical SRS only for strict gpu/plonk2 proving"
+time="2026-05-05T02:13:20Z" level=info msg="loaded setup circuitID=public-input-interconnection curve=bls12_377 nbConstraints=56396760 duration=20.645316671s"
+time="2026-05-05T02:13:27Z" level=info msg="[logtimer] operation=\"stitching compiler\" duration=17.05099ms"
+time="2026-05-05T02:13:38Z" level=info msg="loaded setup circuitID=aggregation-100 curve=bw6_761 nbConstraints=27009624 duration=38.207370435s"
+[gpu-pi-vortex] op=sis_mimc_tree rows=1880 cols=524288 elems=985661440 malloc=1.118ms h2d=3115.840ms static_h2d=0.204ms leaf=14143.222ms tree=12.474ms d2h=56.653ms total=17329.512ms
+time="2026-05-05T02:13:52Z" level=info msg="[vortex-commitment-with-sis] numCol=262144 numRow=1880 numColEncoded=524288 timeEncoding=7.121037078s timeSisHashing=18.085110378s timeMerkleizing=71ns"
+time="2026-05-05T02:13:56Z" level=info msg="[logtimer] operation=\"stitching compiler\" duration=7.456332ms"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=5.467ms h2d=102.475ms static_h2d=0.025ms leaf=184.305ms tree=12.625ms d2h=1.773ms total=306.670ms
+time="2026-05-05T02:14:06Z" level=info msg="[vortex-commitment-with-sis] numCol=262144 numRow=288 numColEncoded=524288 timeEncoding=1.078495043s timeSisHashing=8.937466476s timeMerkleizing=331.350416ms"
+time="2026-05-05T02:14:06Z" level=info msg="[logtimer] operation=\"refine context for quotient computation\" duration=35.546992ms"
+time="2026-05-05T02:14:36Z" level=info msg="[pi-quotient] domain=262144 maxRatio=4 roots=2173 nonConstRoots=2173 coeffCache=3.94723647s domainCosets=12.777958ms reeval=17.766533444s inputPrep=140.648136ms evalScaleAssign=7.183202702s"
+time="2026-05-05T02:14:36Z" level=info msg="[logtimer] operation=\"quotient compute\" duration=29.64829402s"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.436ms h2d=107.529ms static_h2d=0.026ms leaf=184.303ms tree=12.609ms d2h=1.787ms total=306.689ms
+time="2026-05-05T02:14:37Z" level=info msg="[vortex-commitment-with-sis] numCol=262144 numRow=8 numColEncoded=524288 timeEncoding=105.470918ms timeSisHashing=825.108293ms timeMerkleizing=361.382041ms"
+time="2026-05-05T02:14:38Z" level=info msg="[logtimer] operation=\"Evaluate the queries for the global constraints\" duration=1.096816513s"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.425ms h2d=106.576ms static_h2d=0.025ms leaf=184.078ms tree=12.585ms d2h=1.825ms total=305.514ms
+time="2026-05-05T02:14:40Z" level=info msg="[vortex-commitment-with-sis] numCol=262144 numRow=4 numColEncoded=524288 timeEncoding=71.411517ms timeSisHashing=643.582007ms timeMerkleizing=330.816987ms"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.367ms h2d=120.004ms static_h2d=0.023ms leaf=183.906ms tree=12.592ms d2h=1.842ms total=318.733ms
+time="2026-05-05T02:14:45Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=20 numColEncoded=524288 timeEncoding=143.251904ms timeSisHashing=994.128578ms timeMerkleizing=345.036014ms"
+time="2026-05-05T02:14:47Z" level=info msg="[logtimer] operation=\"stitching compiler\" duration=12.568986ms"
+[gpu-pi-vortex] op=sis_mimc_tree rows=812 cols=524288 elems=425721856 malloc=0.868ms h2d=912.895ms static_h2d=0.148ms leaf=12711.587ms tree=12.509ms d2h=519.206ms total=14157.212ms
+time="2026-05-05T02:15:04Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=812 numColEncoded=524288 timeEncoding=3.48275745s timeSisHashing=14.188074518s timeMerkleizing=210ns"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=2.714ms h2d=105.086ms static_h2d=0.025ms leaf=183.986ms tree=12.040ms d2h=1.832ms total=305.683ms
+time="2026-05-05T02:15:09Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=108 numColEncoded=524288 timeEncoding=509.784786ms timeSisHashing=3.52047236s timeMerkleizing=333.448148ms"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.388ms h2d=103.474ms static_h2d=0.024ms leaf=184.591ms tree=12.250ms d2h=1.810ms total=302.538ms
+time="2026-05-05T02:15:10Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=4 numColEncoded=524288 timeEncoding=78.23574ms timeSisHashing=413.514465ms timeMerkleizing=328.519271ms"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.385ms h2d=102.722ms static_h2d=0.025ms leaf=183.630ms tree=12.030ms d2h=1.786ms total=300.577ms
+time="2026-05-05T02:15:11Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=4 numColEncoded=524288 timeEncoding=116.366229ms timeSisHashing=405.295004ms timeMerkleizing=326.236241ms"
+time="2026-05-05T02:15:11Z" level=info msg="[logtimer] operation=\"refine context for quotient computation\" duration=7.192008ms"
+time="2026-05-05T02:15:13Z" level=info msg="[pi-quotient] domain=65536 maxRatio=8 roots=964 nonConstRoots=710 coeffCache=314.261689ms domainCosets=13.202795ms reeval=1.448133984s inputPrep=43.186649ms evalScaleAssign=858.460555ms"
+time="2026-05-05T02:15:13Z" level=info msg="[logtimer] operation=\"quotient compute\" duration=2.735949603s"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.373ms h2d=103.561ms static_h2d=0.022ms leaf=184.131ms tree=12.604ms d2h=1.802ms total=302.494ms
+time="2026-05-05T02:15:15Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=16 numColEncoded=524288 timeEncoding=120.332264ms timeSisHashing=792.006528ms timeMerkleizing=328.611459ms"
+time="2026-05-05T02:15:15Z" level=info msg="[logtimer] operation=\"Evaluate the queries for the global constraints\" duration=79.15892ms"
+[gpu-pi-vortex] op=mimc_tree rows=64 cols=524288 elems=33554432 malloc=0.383ms h2d=104.509ms static_h2d=0.025ms leaf=184.659ms tree=12.072ms d2h=1.884ms total=303.531ms
+time="2026-05-05T02:15:16Z" level=info msg="[vortex-commitment-with-sis] numCol=65536 numRow=4 numColEncoded=524288 timeEncoding=77.746056ms timeSisHashing=439.718429ms timeMerkleizing=328.74322ms"
+[gpu-pi-vortex] op=mimc_tree rows=136 cols=65536 elems=8912896 malloc=0.354ms h2d=26.817ms static_h2d=0.025ms leaf=71.014ms tree=6.683ms d2h=0.264ms total=105.156ms
+time="2026-05-05T02:15:16Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=136 numColEncoded=65536 timeEncoding=68.353677ms timeMerkleizing=130.011977ms"
+[gpu-pi-vortex] op=mimc_tree rows=1349 cols=65536 elems=88408064 malloc=0.413ms h2d=270.913ms static_h2d=0.024ms leaf=703.771ms tree=6.688ms d2h=0.261ms total=982.070ms
+time="2026-05-05T02:15:20Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=1349 numColEncoded=65536 timeEncoding=889.449557ms timeMerkleizing=2.174482571s"
+[gpu-pi-vortex] op=mimc_tree rows=133 cols=65536 elems=8716288 malloc=0.747ms h2d=27.271ms static_h2d=0.025ms leaf=69.466ms tree=6.693ms d2h=0.271ms total=104.471ms
+time="2026-05-05T02:15:20Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=133 numColEncoded=65536 timeEncoding=63.600695ms timeMerkleizing=131.076561ms"
+[gpu-pi-vortex] op=mimc_tree rows=5 cols=65536 elems=327680 malloc=0.247ms h2d=0.664ms static_h2d=0.027ms leaf=2.665ms tree=6.679ms d2h=0.283ms total=10.565ms
+time="2026-05-05T02:15:20Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=5 numColEncoded=65536 timeEncoding=13.706454ms timeMerkleizing=16.684502ms"
+[gpu-pi-vortex] op=mimc_tree rows=5 cols=65536 elems=327680 malloc=0.243ms h2d=0.620ms static_h2d=0.027ms leaf=2.679ms tree=6.686ms d2h=0.262ms total=10.518ms
+time="2026-05-05T02:15:20Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=5 numColEncoded=65536 timeEncoding=13.454276ms timeMerkleizing=17.261808ms"
+time="2026-05-05T02:15:20Z" level=info msg="[logtimer] operation=\"refine context for quotient computation\" duration=5.593795ms"
+time="2026-05-05T02:15:21Z" level=info msg="[pi-quotient] domain=8192 maxRatio=4 roots=1719 nonConstRoots=1592 coeffCache=73.540643ms domainCosets=1.4076ms reeval=271.955327ms inputPrep=5.89008ms evalScaleAssign=200.065721ms"
+time="2026-05-05T02:15:21Z" level=info msg="[logtimer] operation=\"quotient compute\" duration=623.619561ms"
+[gpu-pi-vortex] op=mimc_tree rows=7 cols=65536 elems=458752 malloc=0.275ms h2d=1.155ms static_h2d=0.026ms leaf=3.691ms tree=6.651ms d2h=0.263ms total=12.061ms
+time="2026-05-05T02:15:21Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=7 numColEncoded=65536 timeEncoding=15.463422ms timeMerkleizing=18.005276ms"
+time="2026-05-05T02:15:21Z" level=info msg="[logtimer] operation=\"Evaluate the queries for the global constraints\" duration=19.607425ms"
+[gpu-pi-vortex] op=mimc_tree rows=1 cols=65536 elems=65536 malloc=0.240ms h2d=0.150ms static_h2d=0.027ms leaf=0.553ms tree=6.656ms d2h=0.269ms total=7.895ms
+time="2026-05-05T02:15:21Z" level=info msg="[vortex-commitment-without-sis] numCol=8192 numRow=1 numColEncoded=65536 timeEncoding=9.405272ms timeMerkleizing=12.012849ms"
+time="2026-05-05T02:15:21Z" level=info msg="Creating the witness"
+time="2026-05-05T02:15:22Z" level=info msg="Generating the proof"
+time="2026-05-05T02:15:22Z" level=info msg="Generating the proof with gpu/plonk2: circuit=*cs.system provingKey=*plonk.ProvingKey verifyingKey=*plonk.VerifyingKey"
+2026/05/05 02:15:22 plonk2: Prove enabled=true cpuFallback=false bn254=false bls12377=true bw6761=false ccs=*cs.system pk=*plonk.ProvingKey
+2026/05/05 02:15:22 plonk2: low-memory GPU mode=true n=67108864 vecBytes=2147483648 estimatedResident=51539607552 freeVRAM=101391138816 totalVRAM=101976440832
+2026/05/05 02:15:35   [GPUProve n=67108864] trace-ready GPU instance: 13.00116756s
+2026/05/05 02:15:40   [GPUProve n=67108864] init GPU instance: 18.289415996s
+2026/05/05 02:15:41   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108864 total=776.755ms h2d=205.366ms build_pairs=14.734ms sort=33.487ms boundaries=2.720ms accum_seq=462.754ms accum_par=37.797ms reduce_partial=16.953ms reduce_finalize=0.539ms d2h=2.405ms
+2026/05/05 02:16:01   [GPUProve n=67108864] solve: 39.278899197s
+2026/05/05 02:16:03   [GPUProve n=67108864] iFFT L,R,O,Qk + blind: 41.099358307s
+2026/05/05 02:16:05   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108866 total=609.675ms h2d=38.678ms build_pairs=14.678ms sort=33.500ms boundaries=2.716ms accum_seq=462.238ms accum_par=37.534ms reduce_partial=17.325ms reduce_finalize=0.561ms d2h=2.446ms
+2026/05/05 02:16:05   [GPUProve n=67108864] MSM phases device=single set=1 scalars=67108866 total=608.993ms h2d=38.670ms build_pairs=14.710ms sort=33.551ms boundaries=2.729ms accum_seq=461.040ms accum_par=38.094ms reduce_partial=17.185ms reduce_finalize=0.561ms d2h=2.453ms
+2026/05/05 02:16:05   [GPUProve n=67108864] MSM phases device=single set=2 scalars=67108866 total=605.436ms h2d=38.671ms build_pairs=14.717ms sort=33.452ms boundaries=2.724ms accum_seq=459.103ms accum_par=37.272ms reduce_partial=16.519ms reduce_finalize=0.549ms d2h=2.430ms
+2026/05/05 02:16:05   [GPUProve n=67108864] MSM commit L,R,O: 43.068971883s
+2026/05/05 02:16:05   [GPUProve n=67108864] derive gamma,beta: 43.079316055s
+2026/05/05 02:16:06   [GPUProve n=67108864] build Z: 44.361550789s
+2026/05/05 02:16:07   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108867 total=607.580ms h2d=38.669ms build_pairs=14.678ms sort=33.410ms boundaries=2.724ms accum_seq=461.351ms accum_par=37.324ms reduce_partial=16.447ms reduce_finalize=0.549ms d2h=2.428ms
+2026/05/05 02:16:07   [GPUProve n=67108864] iFFT+commit Z: 45.7665467s
+2026/05/05 02:16:07   [GPUProve n=67108864] derive alpha: 45.766675965s
+2026/05/05 02:16:09 plonk2: low-memory selector cache ql=true qr=true qm=true qo=true s1=true s2=true s3=true qcp=1/1
+2026/05/05 02:16:17   [GPUProve n=67108864] quotient GPU: 55.476861665s
+2026/05/05 02:16:19   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108866 total=605.719ms h2d=38.670ms build_pairs=14.715ms sort=33.528ms boundaries=2.722ms accum_seq=458.903ms accum_par=37.272ms reduce_partial=16.933ms reduce_finalize=0.550ms d2h=2.427ms
+2026/05/05 02:16:19   [GPUProve n=67108864] MSM phases device=single set=1 scalars=67108866 total=605.582ms h2d=38.971ms build_pairs=14.723ms sort=33.527ms boundaries=2.726ms accum_seq=458.549ms accum_par=37.296ms reduce_partial=16.808ms reduce_finalize=0.548ms d2h=2.433ms
+2026/05/05 02:16:19   [GPUProve n=67108864] MSM phases device=single set=2 scalars=67108866 total=605.268ms h2d=38.703ms build_pairs=14.734ms sort=33.537ms boundaries=2.725ms accum_seq=458.758ms accum_par=37.280ms reduce_partial=16.548ms reduce_finalize=0.549ms d2h=2.435ms
+2026/05/05 02:16:19   [GPUProve n=67108864] MSM commit h1,h2,h3: 57.437411404s
+2026/05/05 02:16:22   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108866 total=771.918ms h2d=204.627ms build_pairs=14.722ms sort=33.502ms boundaries=2.726ms accum_seq=459.277ms accum_par=37.256ms reduce_partial=16.818ms reduce_finalize=0.548ms d2h=2.442ms
+2026/05/05 02:16:22   [GPUProve n=67108864] eval+linearize+open Z: 59.961219968s
+2026/05/05 02:16:22   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108867 total=605.558ms h2d=38.670ms build_pairs=14.729ms sort=33.547ms boundaries=2.723ms accum_seq=458.987ms accum_par=37.307ms reduce_partial=16.618ms reduce_finalize=0.549ms d2h=2.429ms
+2026/05/05 02:16:22   [GPUProve n=67108864] MSM commit linPol: 1m0.74504778s
+2026/05/05 02:16:24   [GPUProve n=67108864] MSM phases device=single set=0 scalars=67108866 total=774.612ms h2d=206.983ms build_pairs=14.721ms sort=33.550ms boundaries=2.723ms accum_seq=459.367ms accum_par=37.338ms reduce_partial=16.947ms reduce_finalize=0.548ms d2h=2.434ms
+2026/05/05 02:16:24   [GPUProve n=67108864] batch opening: 1m2.532434836s
+2026/05/05 02:16:24   [GPUProve n=67108864] total: 1m2.53245845s
+2026/05/05 02:16:24 plonk2: proveGPU returned proof=*plonk.Proof err=<nil>
+time="2026-05-05T02:16:24Z" level=info msg="Generated proof type *plonk.Proof"
+time="2026-05-05T02:16:24Z" level=info msg="Sanity-checking the proof"
+time="2026-05-05T02:16:26Z" level=info msg="reading the BW6 setup for 100 proofs"
+time="2026-05-05T02:16:26Z" level=info msg="waiting for prefetched BW6 setup..."
+time="2026-05-05T02:16:26Z" level=info msg="running the BW6 prover with aggregation setupPos=3 (aggregation-100)"
+time="2026-05-05T02:16:26Z" level=info msg="Creating the assignment"
+time="2026-05-05T02:16:26Z" level=info msg="Running the prove-check"
+time="2026-05-05T02:16:26Z" level=info msg="Creating the witness"
+time="2026-05-05T02:16:26Z" level=info msg="Generating the proof"
+time="2026-05-05T02:16:26Z" level=info msg="Generating the proof with gpu/plonk2: circuit=*cs.system provingKey=*plonk.ProvingKey verifyingKey=*plonk.VerifyingKey"
+2026/05/05 02:16:26 plonk2: Prove enabled=true cpuFallback=false bn254=false bls12377=false bw6761=true ccs=*cs.system pk=*plonk.ProvingKey
+2026/05/05 02:16:26 plonk2: low-memory GPU mode=false n=33554432 vecBytes=1610612736 estimatedResident=38654705664 freeVRAM=99228975104 totalVRAM=101976440832
+2026/05/05 02:16:43   [GPUProve n=33554432] trace-ready GPU instance: 17.213791128s
+2026/05/05 02:16:43   [GPUProve n=33554432] init GPU instance: 17.213824242s
+2026/05/05 02:16:46   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554432 total=2156.329ms h2d=155.516ms build_pairs=25.774ms sort=27.145ms boundaries=2.137ms accum_seq=1900.232ms accum_par=0.027ms reduce_partial=27.871ms reduce_finalize=1.734ms d2h=15.893ms
+2026/05/05 02:16:49   [GPUProve n=33554432] solve: 23.481884826s
+2026/05/05 02:16:53   [GPUProve n=33554432] iFFT L,R,O,Qk + blind: 26.843223972s
+2026/05/05 02:16:59   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554434 total=2042.957ms h2d=28.999ms build_pairs=25.725ms sort=27.122ms boundaries=2.143ms accum_seq=1914.698ms accum_par=0.018ms reduce_partial=26.311ms reduce_finalize=1.773ms d2h=16.169ms
+2026/05/05 02:16:59   [GPUProve n=33554432] MSM phases device=single set=1 scalars=33554434 total=2042.391ms h2d=29.000ms build_pairs=25.801ms sort=27.019ms boundaries=2.143ms accum_seq=1915.066ms accum_par=0.023ms reduce_partial=25.737ms reduce_finalize=1.723ms d2h=15.877ms
+2026/05/05 02:16:59   [GPUProve n=33554432] MSM phases device=single set=2 scalars=33554434 total=2041.315ms h2d=28.997ms build_pairs=25.529ms sort=27.093ms boundaries=2.143ms accum_seq=1914.272ms accum_par=0.022ms reduce_partial=25.632ms reduce_finalize=1.748ms d2h=15.879ms
+2026/05/05 02:16:59   [GPUProve n=33554432] MSM commit L,R,O: 32.971013499s
+2026/05/05 02:16:59   [GPUProve n=33554432] derive gamma,beta: 32.971601105s
+2026/05/05 02:17:01   [GPUProve n=33554432] build Z: 35.045564579s
+2026/05/05 02:17:03   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554435 total=2046.786ms h2d=29.001ms build_pairs=25.401ms sort=27.043ms boundaries=2.142ms accum_seq=1919.829ms accum_par=0.019ms reduce_partial=25.746ms reduce_finalize=1.727ms d2h=15.878ms
+2026/05/05 02:17:03   [GPUProve n=33554432] iFFT+commit Z: 37.59353702s
+2026/05/05 02:17:03   [GPUProve n=33554432] derive alpha: 37.593643974s
+2026/05/05 02:17:11   [GPUProve n=33554432] quotient GPU: 45.352453314s
+2026/05/05 02:17:17   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554434 total=2042.439ms h2d=29.000ms build_pairs=25.869ms sort=27.091ms boundaries=2.125ms accum_seq=1915.180ms accum_par=0.019ms reduce_partial=25.555ms reduce_finalize=1.722ms d2h=15.878ms
+2026/05/05 02:17:17   [GPUProve n=33554432] MSM phases device=single set=1 scalars=33554434 total=2039.538ms h2d=29.469ms build_pairs=25.466ms sort=27.122ms boundaries=2.094ms accum_seq=1912.165ms accum_par=0.015ms reduce_partial=25.612ms reduce_finalize=1.717ms d2h=15.878ms
+2026/05/05 02:17:17   [GPUProve n=33554432] MSM phases device=single set=2 scalars=33554434 total=2041.318ms h2d=29.489ms build_pairs=25.443ms sort=27.120ms boundaries=2.094ms accum_seq=1913.991ms accum_par=0.018ms reduce_partial=25.564ms reduce_finalize=1.721ms d2h=15.878ms
+2026/05/05 02:17:17   [GPUProve n=33554432] MSM commit h1,h2,h3: 51.476867916s
+2026/05/05 02:17:21   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554434 total=2166.090ms h2d=153.596ms build_pairs=25.585ms sort=27.104ms boundaries=2.123ms accum_seq=1914.438ms accum_par=0.017ms reduce_partial=25.612ms reduce_finalize=1.734ms d2h=15.882ms
+2026/05/05 02:17:21   [GPUProve n=33554432] eval+linearize+open Z: 54.968224882s
+2026/05/05 02:17:23   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554435 total=2044.361ms h2d=29.158ms build_pairs=25.610ms sort=27.142ms boundaries=2.094ms accum_seq=1917.261ms accum_par=0.023ms reduce_partial=25.471ms reduce_finalize=1.720ms d2h=15.881ms
+2026/05/05 02:17:23   [GPUProve n=33554432] MSM commit linPol: 57.012968652s
+2026/05/05 02:17:26   [GPUProve n=33554432] MSM phases device=single set=0 scalars=33554434 total=2164.018ms h2d=151.978ms build_pairs=25.492ms sort=27.104ms boundaries=2.094ms accum_seq=1914.051ms accum_par=0.027ms reduce_partial=25.660ms reduce_finalize=1.736ms d2h=15.876ms
+2026/05/05 02:17:26   [GPUProve n=33554432] batch opening: 1m0.272998636s
+2026/05/05 02:17:26   [GPUProve n=33554432] total: 1m0.273013513s
+2026/05/05 02:17:26 plonk2: proveGPU returned proof=*plonk.Proof err=<nil>
+time="2026-05-05T02:17:26Z" level=info msg="Generated proof type *plonk.Proof"
+time="2026-05-05T02:17:26Z" level=info msg="Sanity-checking the proof"
+time="2026-05-05T02:17:27Z" level=info msg="waiting for prefetched BN254 setup..."
+time="2026-05-05T02:17:27Z" level=info msg="running the prover for the BN254 circuit..."
+time="2026-05-05T02:17:27Z" level=info msg="running the BN254 emulation prover with aggregation setupPos=3"
+time="2026-05-05T02:17:27Z" level=info msg="Creating the witness"
+time="2026-05-05T02:17:27Z" level=info msg="Generating the proof"
+time="2026-05-05T02:17:27Z" level=info msg="Generating the proof with gpu/plonk2: circuit=*cs.system provingKey=*plonk.ProvingKey verifyingKey=*plonk.VerifyingKey"
+2026/05/05 02:17:27 plonk2: Prove enabled=true cpuFallback=false bn254=true bls12377=false bw6761=false ccs=*cs.system pk=*plonk.ProvingKey
+2026/05/05 02:17:27 plonk2: low-memory GPU mode=false n=16777216 vecBytes=536870912 estimatedResident=12884901888 freeVRAM=98700492800 totalVRAM=101976440832
+2026/05/05 02:17:32   [GPUProve n=16777216] trace-ready GPU instance: 5.041113979s
+2026/05/05 02:17:32   [GPUProve n=16777216] init GPU instance: 5.041143508s
+2026/05/05 02:17:33   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777216 total=134.689ms h2d=51.689ms build_pairs=4.554ms sort=9.671ms boundaries=0.796ms accum_seq=65.275ms accum_par=0.014ms reduce_partial=1.373ms reduce_finalize=0.190ms d2h=1.127ms
+2026/05/05 02:17:34   [GPUProve n=16777216] solve: 6.597501005s
+2026/05/05 02:17:34   [GPUProve n=16777216] iFFT L,R,O,Qk + blind: 6.999901581s
+2026/05/05 02:17:35   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777218 total=92.909ms h2d=9.675ms build_pairs=4.526ms sort=9.690ms boundaries=0.794ms accum_seq=65.596ms accum_par=0.015ms reduce_partial=1.276ms reduce_finalize=0.199ms d2h=1.138ms
+2026/05/05 02:17:35   [GPUProve n=16777216] MSM phases device=single set=1 scalars=16777218 total=91.684ms h2d=9.671ms build_pairs=4.317ms sort=9.721ms boundaries=0.779ms accum_seq=64.594ms accum_par=0.011ms reduce_partial=1.255ms reduce_finalize=0.199ms d2h=1.137ms
+2026/05/05 02:17:35   [GPUProve n=16777216] MSM phases device=single set=2 scalars=16777218 total=91.467ms h2d=9.669ms build_pairs=4.253ms sort=9.721ms boundaries=0.779ms accum_seq=64.455ms accum_par=0.012ms reduce_partial=1.241ms reduce_finalize=0.199ms d2h=1.138ms
+2026/05/05 02:17:35   [GPUProve n=16777216] MSM commit L,R,O: 7.276219326s
+2026/05/05 02:17:35   [GPUProve n=16777216] derive gamma,beta: 7.276244203s
+2026/05/05 02:17:35   [GPUProve n=16777216] build Z: 7.580280996s
+2026/05/05 02:17:35   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777219 total=92.866ms h2d=9.666ms build_pairs=4.479ms sort=9.694ms boundaries=0.794ms accum_seq=65.623ms accum_par=0.026ms reduce_partial=1.240ms reduce_finalize=0.199ms d2h=1.144ms
+2026/05/05 02:17:35   [GPUProve n=16777216] iFFT+commit Z: 7.830335688s
+2026/05/05 02:17:35   [GPUProve n=16777216] derive alpha: 7.830348066s
+2026/05/05 02:17:37   [GPUProve n=16777216] quotient GPU: 9.386038858s
+2026/05/05 02:17:37   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777218 total=91.669ms h2d=9.671ms build_pairs=4.326ms sort=9.707ms boundaries=0.777ms accum_seq=64.588ms accum_par=0.019ms reduce_partial=1.243ms reduce_finalize=0.199ms d2h=1.140ms
+2026/05/05 02:17:37   [GPUProve n=16777216] MSM phases device=single set=1 scalars=16777218 total=91.797ms h2d=9.889ms build_pairs=4.275ms sort=9.729ms boundaries=0.779ms accum_seq=64.508ms accum_par=0.014ms reduce_partial=1.269ms reduce_finalize=0.197ms d2h=1.138ms
+2026/05/05 02:17:37   [GPUProve n=16777216] MSM phases device=single set=2 scalars=16777218 total=91.481ms h2d=9.678ms build_pairs=4.241ms sort=9.700ms boundaries=0.779ms accum_seq=64.475ms accum_par=0.015ms reduce_partial=1.260ms reduce_finalize=0.199ms d2h=1.135ms
+2026/05/05 02:17:37   [GPUProve n=16777216] MSM commit h1,h2,h3: 9.661210305s
+2026/05/05 02:17:37   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777218 total=134.121ms h2d=51.122ms build_pairs=4.481ms sort=9.712ms boundaries=0.796ms accum_seq=65.383ms accum_par=0.022ms reduce_partial=1.271ms reduce_finalize=0.199ms d2h=1.137ms
+2026/05/05 02:17:37   [GPUProve n=16777216] eval+linearize+open Z: 10.01547286s
+2026/05/05 02:17:38   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777219 total=91.831ms h2d=9.866ms build_pairs=4.346ms sort=9.706ms boundaries=0.779ms accum_seq=64.535ms accum_par=0.019ms reduce_partial=1.244ms reduce_finalize=0.199ms d2h=1.137ms
+2026/05/05 02:17:38   [GPUProve n=16777216] MSM commit linPol: 10.107404047s
+2026/05/05 02:17:38   [GPUProve n=16777216] MSM phases device=single set=0 scalars=16777218 total=130.782ms h2d=47.782ms build_pairs=4.528ms sort=9.675ms boundaries=0.796ms accum_seq=65.412ms accum_par=0.016ms reduce_partial=1.238ms reduce_finalize=0.199ms d2h=1.137ms
+2026/05/05 02:17:38   [GPUProve n=16777216] batch opening: 10.458460494s
+2026/05/05 02:17:38   [GPUProve n=16777216] total: 10.458477613s
+2026/05/05 02:17:38 plonk2: proveGPU returned proof=*plonk.Proof err=<nil>
+time="2026-05-05T02:17:38Z" level=info msg="Generated proof type *plonk.Proof"
+time="2026-05-05T02:17:38Z" level=info msg="Sanity-checking the proof"
+	Command being timed: "env GOMEMLIMIT=180GiB GOGC=75 LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 LINEA_PROVER_GPU_PI_SIS=1 LINEA_PROVER_GPU_PI_MIMC=1 LINEA_PROVER_GPU_PI_VORTEX_TIMINGS=1 bin/prover prove --config reference-benchmarks/config-mainnet-limitless-7.1.0-provertestdata2.toml --in /home/ubuntu/provertestdata2/prover-aggregation/requests/30391350-30394103-4e7fddf4a599aba8b8beeb8784c08754f79d5f995293ced8a828e7f9994db51e-getZkAggregatedProof.json --out reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-pi-vortex-timing-gomem180/aggregation/30391350-30394103-4e7fddf4a599aba8b8beeb8784c08754f79d5f995293ced8a828e7f9994db51e-getZkAggregatedProof.json"
+	User time (seconds): 3044.06
+	System time (seconds): 194.88
+	Percent of CPU this job got: 1137%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:44.64
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 209921636
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 90546890
+	Voluntary context switches: 825853
+	Involuntary context switches: 124276
+	Swaps: 0
+	File system inputs: 2541896
+	File system outputs: 176
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

@@ -740,6 +740,48 @@ gnark_gpu_error_t gnark_gpu_plonk2_ntt_bit_reverse(
     gnark_gpu_plonk2_ntt_domain_t domain,
     gnark_gpu_plonk2_fr_vector_t data);
 
+// Build the BLS12-377 MiMC leaves and complete Merkle tree used by the
+// PI-interconnection Vortex commitment path.
+//
+// col_hashes is a num_leaves*chunk_size array of BLS12-377 scalar-field
+// elements in gnark-crypto AoS Montgomery layout. constants is the 62 MiMC
+// round constants in the same layout. out_nodes receives field elements in
+// bottom-up level order:
+//   leaves, parents, grandparents, ..., root
+// and must have room for (2*num_leaves-1) field elements.
+gnark_gpu_error_t gnark_gpu_bls12377_mimc_sis_tree(
+    gnark_gpu_context_t ctx,
+    const uint64_t *col_hashes,
+    size_t num_leaves,
+    size_t chunk_size,
+    const uint64_t *constants,
+    uint64_t *out_nodes);
+
+// Compute the PI-interconnection BLS12-377 ring-SIS transversal hash for
+// degree=64/logTwoBound=16, then build the MiMC leaves and complete Merkle
+// tree. row_ptrs contains host pointers to row-major Regular smartvector data
+// for row_kinds[i] == 0. row_constants contains one BLS12-377 field element per
+// row for row_kinds[i] == 1. out_col_hashes receives num_cols*64 field
+// elements; out_nodes receives (2*num_cols-1) field elements in bottom-up
+// level order.
+gnark_gpu_error_t gnark_gpu_bls12377_sis_mimc_tree(
+    gnark_gpu_context_t ctx,
+    const uintptr_t *row_ptrs,
+    const uint8_t *row_kinds,
+    const uint64_t *row_constants,
+    size_t num_rows,
+    size_t num_cols,
+    const uint64_t *ag,
+    size_t num_polys,
+    const uint64_t *twiddles,
+    const uint64_t *twiddles_inv,
+    const uint64_t *coset,
+    const uint64_t *coset_inv,
+    const uint64_t *cardinality_inv,
+    const uint64_t *mimc_constants,
+    uint64_t *out_col_hashes,
+    uint64_t *out_nodes);
+
 // Test/validation entrypoints for the curve-generic G1 foundation.
 // Inputs are gnark-crypto G1Affine raw memory: X limbs then Y limbs, both in
 // Montgomery form. Output is Jacobian/projective raw memory: X, Y, Z.

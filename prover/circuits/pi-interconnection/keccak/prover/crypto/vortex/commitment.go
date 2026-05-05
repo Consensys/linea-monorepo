@@ -39,15 +39,30 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
+	sisDoneOnGPU := false
 	timeSisHashing := profiling.TimeIt(func() {
+		if gpuTree, gpuColHashes, ok := tryCommitSISGPU(encodedMatrix, p.Key); ok {
+			tree = gpuTree
+			colHashes = gpuColHashes
+			sisDoneOnGPU = true
+			return
+		}
+
 		// colHashes stores concatenation of SIS hashes of the columns
 		colHashes = p.Key.TransversalHash(encodedMatrix)
 	})
 
 	timeTree := profiling.TimeIt(func() {
+		if sisDoneOnGPU {
+			return
+		}
+		if gpuTree, ok := tryBuildSISMiMCTreeGPU(colHashes, p.Key.OutputSize()); ok {
+			tree = gpuTree
+			return
+		}
+
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
 		leaves := p.hashSisHash(colHashes)
-
 		tree = smt.BuildCompleteMiMC(leaves)
 	})
 
@@ -80,6 +95,12 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	})
 
 	timeTree := profiling.TimeIt(func() {
+		if gpuTree, gpuColHashes, ok := tryCommitNoSISMiMCGPU(encodedMatrix); ok {
+			tree = gpuTree
+			colHashes = gpuColHashes
+			return
+		}
+
 		// colHashes stores the MiMC hashes
 		// of the columns.
 		colHashes = p.noSisTransversalHash(encodedMatrix)

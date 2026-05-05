@@ -1,0 +1,23 @@
+	Command being timed: "env GOMEMLIMIT=180GiB GOGC=75 LINEA_PROVER_GPU_PLONK2=1 GNARK_GPU_PLONK2_LOG_MSM_PHASES=1 LINEA_PROVER_GPU_PI_SIS=1 LINEA_PROVER_GPU_PI_MIMC=1 bin/prover prove --config reference-benchmarks/config-mainnet-limitless-7.1.0-provertestdata2.toml --in /home/ubuntu/provertestdata2/prover-aggregation/requests/30394104-30396213-0bbbed0ec50116d316f6661078a42dc7265e9f05cba6b16eb56ec91b44d71249-getZkAggregatedProof.json --out reference-benchmarks/results/2026-05-05-g7e-8xlarge-gpu-final-3x/aggregation/30394104-30396213-0bbbed0ec50116d316f6661078a42dc7265e9f05cba6b16eb56ec91b44d71249-getZkAggregatedProof.json"
+	User time (seconds): 3039.48
+	System time (seconds): 248.06
+	Percent of CPU this job got: 1163%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:42.49
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 209525252
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2
+	Minor (reclaiming a frame) page faults: 97008950
+	Voluntary context switches: 862969
+	Involuntary context switches: 62196
+	Swaps: 0
+	File system inputs: 15592
+	File system outputs: 136
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
