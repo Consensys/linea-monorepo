@@ -8,3 +8,4 @@
 
 - *(postman)* Test for version update
 - *(prover)* Update unreleased section in CHANGELOG.md
+- *(ci)* Removed testing changes and files and update commitlint config
