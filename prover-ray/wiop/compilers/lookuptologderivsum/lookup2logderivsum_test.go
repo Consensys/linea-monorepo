@@ -1,0 +1,449 @@
+package lookuptologderivsum_test
+
+import (
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop"
+	logderivativesum2 "github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/lookuptologderivsum"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// ---- Helpers ----
+
+// makeVec builds a base-field ConcreteVector from uint64 literals. Length is
+// inferred from the variadic arguments.
+func makeVec(vals ...uint64) *wiop.ConcreteVector {
+	elems := make([]field.Element, len(vals))
+	for i, v := range vals {
+		elems[i].SetUint64(v)
+	}
+	return &wiop.ConcreteVector{Plain: field.VecFromBase(elems)}
+}
+
+// runRound executes every prover action registered on the runtime's current
+// round.
+func runRound(rt *wiop.Runtime) {
+	for _, a := range rt.CurrentRound().ProverActions {
+		a.Run(*rt)
+	}
+}
+
+// checkAllVerifierActions evaluates every verifier action across every round
+// of the runtime. Returns the first non-nil error or nil if everything
+// passes.
+func checkAllVerifierActions(rt *wiop.Runtime) error {
+	for _, r := range rt.System.Rounds {
+		for _, va := range r.VerifierActions {
+			if err := va.Check(*rt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// driveProtocol mimics the canonical "assign-witness → run → advance" loop
+// for our two-stage compiled lookup. After this returns, every prover action
+// has run and the verifier actions are ready to be checked.
+//
+// Round structure assumed:
+//   - Round 0: user-witness columns (already assigned by the caller).
+//   - Round 1: M column + α/γ coins; one prover action assigns M.
+//   - Round 2: LogDerivativeSum2 result + Z columns; one prover action
+//     assigns Z and the result cell.
+func driveProtocol(rt *wiop.Runtime) {
+	rt.AdvanceRound() // → round 1, samples α/γ
+	runRound(rt)      // assigns M
+	rt.AdvanceRound() // → round 2
+	runRound(rt)      // assigns Z and the LogDerivativeSum2 result
+}
+
+// ---- Single-column, no filters ----
+
+func TestCompile_SingleColumn_NoFilters(t *testing.T) {
+	sys := wiop.NewSystemf("ll-simple")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())}, // included (A)
+		[]wiop.Table{wiop.NewTable(colT.View())}, // including (B)
+	)
+
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// T = [10, 20, 30, 40], S = [10, 20, 10, 30] — every S value appears in T.
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colS, makeVec(10, 20, 10, 30))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+func TestCompile_SingleColumn_NoMatchPanics(t *testing.T) {
+	sys := wiop.NewSystemf("ll-nomatch")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{wiop.NewTable(colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colS, makeVec(10, 99, 10, 30)) // 99 is not in T
+
+	rt.AdvanceRound() // round 1 — M assignment
+	assert.Panics(t, func() {
+		runRound(&rt)
+	}, "M assignment must panic when an active A row has no match in B")
+}
+
+// ---- Filter on the included side (A) ----
+
+func TestCompile_FilterOnIncluded(t *testing.T) {
+	sys := wiop.NewSystemf("ll-filterA")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 2, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+	filterS := modS.NewColumn(sys.Context.Childf("filterS"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewFilteredTable(filterS.View(), colS.View())},
+		[]wiop.Table{wiop.NewTable(colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// T = [10, 20]; S = [10, 99, 20, 99] — the 99s are masked by filterS.
+	rt.AssignColumn(colT, makeVec(10, 20))
+	rt.AssignColumn(colS, makeVec(10, 99, 20, 99))
+	rt.AssignColumn(filterS, makeVec(1, 0, 1, 0))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// ---- Filter on the including side (B) ----
+
+func TestCompile_FilterOnIncluding(t *testing.T) {
+	sys := wiop.NewSystemf("ll-filterT")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// T = [10, 999, 20, 999] with filterT = [1, 0, 1, 0] — only 10 and 20 are
+	// valid table entries. S references 10 and 20.
+	rt.AssignColumn(colT, makeVec(10, 999, 20, 999))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 0))
+	rt.AssignColumn(colS, makeVec(10, 20, 10, 20))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// TestCompile_FilterOnIncluding_FilteredTRowCantMatch verifies that an A row
+// whose value matches a *masked-out* B row is rejected at M-assignment time.
+// The IsFilteredOnIncluding trick prepends the filter to B (so the masked B
+// rows hash differently from any A row whose head is 1), so the M-assignment
+// task should report no match.
+func TestCompile_FilterOnIncluding_FilteredTRowCantMatch(t *testing.T) {
+	sys := wiop.NewSystemf("ll-filterT-mask")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 1, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// T = [10, 99, 20, 30]; filterT = [1, 0, 1, 1] — 99 is masked out.
+	// S = [99] tries to match the masked-out row.
+	rt.AssignColumn(colT, makeVec(10, 99, 20, 30))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
+	rt.AssignColumn(colS, makeVec(99))
+
+	rt.AdvanceRound()
+	assert.Panics(t, func() { runRound(&rt) },
+		"matching a filtered-out B row must be rejected by M assignment")
+}
+
+// ---- Filters on both sides ----
+
+func TestCompile_DoubleConditional(t *testing.T) {
+	sys := wiop.NewSystemf("ll-double")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+	filterS := modS.NewColumn(sys.Context.Childf("filterS"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewFilteredTable(filterS.View(), colS.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT, makeVec(10, 999, 20, 999))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 0))
+	rt.AssignColumn(colS, makeVec(10, 0, 20, 7))
+	rt.AssignColumn(filterS, makeVec(1, 0, 1, 0))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// ---- Multi-column lookup (uses α coin) ----
+
+func TestCompile_MultiColumn(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-col")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+
+	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
+	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
+	sx := modS.NewColumn(sys.Context.Childf("Sx"), wiop.VisibilityOracle, r0)
+	sy := modS.NewColumn(sys.Context.Childf("Sy"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(sx.View(), sy.View())},
+		[]wiop.Table{wiop.NewTable(tx.View(), ty.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// Two-column table: rows (1,10), (2,20), (3,30), (4,40).
+	// S takes (2,20) twice and (3,30), (1,10).
+	rt.AssignColumn(tx, makeVec(1, 2, 3, 4))
+	rt.AssignColumn(ty, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(sx, makeVec(2, 2, 3, 1))
+	rt.AssignColumn(sy, makeVec(20, 20, 30, 10))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// TestCompile_MultiColumn_PartialMatchFails sanity-checks the multi-column
+// path: a witness whose tuple matches column-wise but not pair-wise (e.g.
+// (1,20) is not a row of T) must be rejected at M-assignment time.
+func TestCompile_MultiColumn_PartialMatchFails(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-col-bad")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 1, wiop.PaddingDirectionNone)
+	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
+	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
+	sx := modS.NewColumn(sys.Context.Childf("Sx"), wiop.VisibilityOracle, r0)
+	sy := modS.NewColumn(sys.Context.Childf("Sy"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(sx.View(), sy.View())},
+		[]wiop.Table{wiop.NewTable(tx.View(), ty.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(tx, makeVec(1, 2, 3, 4))
+	rt.AssignColumn(ty, makeVec(10, 20, 30, 40))
+	// (1, 20) — never a row of T.
+	rt.AssignColumn(sx, makeVec(1))
+	rt.AssignColumn(sy, makeVec(20))
+
+	rt.AdvanceRound()
+	assert.Panics(t, func() { runRound(&rt) },
+		"multi-column lookup must reject a tuple that does not appear in T")
+}
+
+// ---- Multiple queries sharing the same B ----
+
+func TestCompile_MultipleQueriesSameTable(t *testing.T) {
+	sys := wiop.NewSystemf("ll-shared-T")
+	r0 := sys.NewRound()
+
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 4, wiop.PaddingDirectionNone)
+	modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
+
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS1 := modS1.NewColumn(sys.Context.Childf("S1"), wiop.VisibilityOracle, r0)
+	colS2 := modS2.NewColumn(sys.Context.Childf("S2"), wiop.VisibilityOracle, r0)
+
+	tabT := wiop.NewTable(colT.View())
+	sys.NewInclusion(sys.Context.Childf("inc1"),
+		[]wiop.Table{wiop.NewTable(colS1.View())}, []wiop.Table{tabT})
+	sys.NewInclusion(sys.Context.Childf("inc2"),
+		[]wiop.Table{wiop.NewTable(colS2.View())}, []wiop.Table{tabT})
+
+	colsBefore := len(modT.Columns)
+	lookuptologderivsum.Compile(sys)
+	// Exactly one M column should have been added to modT — both queries
+	// share the same lookup table and therefore the same multiplicity column.
+	assert.Equal(t, colsBefore+1, len(modT.Columns),
+		"a single shared lookup table must yield exactly one M column")
+	for _, q := range sys.TableRelations {
+		assert.True(t, q.IsReduced(),
+			"every consumed inclusion query must be marked reduced")
+	}
+	// Exactly one LogDerivativeSum2 query is registered, regardless of how
+	// many inclusion queries were merged.
+	assert.Len(t, sys.LogDerivativeSums2, 1,
+		"every inclusion query must be folded into a single aggregated LogDerivativeSum2")
+
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colS1, makeVec(10, 20, 10, 30))
+	rt.AssignColumn(colS2, makeVec(40, 30))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+func TestCompile_MultipleQueriesDistinctTables(t *testing.T) {
+	sys := wiop.NewSystemf("ll-distinct-T")
+	r0 := sys.NewRound()
+
+	modT1 := sys.NewSizedModule(sys.Context.Childf("modT1"), 4, wiop.PaddingDirectionNone)
+	modT2 := sys.NewSizedModule(sys.Context.Childf("modT2"), 2, wiop.PaddingDirectionNone)
+	modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 2, wiop.PaddingDirectionNone)
+	modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
+
+	colT1 := modT1.NewColumn(sys.Context.Childf("T1"), wiop.VisibilityOracle, r0)
+	colT2 := modT2.NewColumn(sys.Context.Childf("T2"), wiop.VisibilityOracle, r0)
+	colS1 := modS1.NewColumn(sys.Context.Childf("S1"), wiop.VisibilityOracle, r0)
+	colS2 := modS2.NewColumn(sys.Context.Childf("S2"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(sys.Context.Childf("inc1"),
+		[]wiop.Table{wiop.NewTable(colS1.View())},
+		[]wiop.Table{wiop.NewTable(colT1.View())})
+	sys.NewInclusion(sys.Context.Childf("inc2"),
+		[]wiop.Table{wiop.NewTable(colS2.View())},
+		[]wiop.Table{wiop.NewTable(colT2.View())})
+
+	colsT1Before := len(modT1.Columns)
+	colsT2Before := len(modT2.Columns)
+	lookuptologderivsum.Compile(sys)
+	assert.Equal(t, colsT1Before+1, len(modT1.Columns),
+		"modT1 must carry exactly one new M column")
+	assert.Equal(t, colsT2Before+1, len(modT2.Columns),
+		"modT2 must carry exactly one new M column")
+	logderivativesum2.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT1, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colT2, makeVec(100, 200))
+	rt.AssignColumn(colS1, makeVec(10, 30))
+	rt.AssignColumn(colS2, makeVec(100, 200))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// ---- Idempotence and edge cases ----
+
+func TestCompile_NoInclusions(t *testing.T) {
+	sys := wiop.NewSystemf("ll-empty")
+	sys.NewRound()
+	lookuptologderivsum.Compile(sys) // must not panic
+	assert.Empty(t, sys.LogDerivativeSums2,
+		"compile without inclusion queries must register no LogDerivativeSum2")
+}
+
+func TestCompile_PermutationIgnored(t *testing.T) {
+	sys := wiop.NewSystemf("ll-perm-ignored")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+	colA := mod.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	perm := sys.NewPermutation(sys.Context.Childf("perm"),
+		[]wiop.Table{wiop.NewTable(colA.View())},
+		[]wiop.Table{wiop.NewTable(colB.View())})
+	lookuptologderivsum.Compile(sys) // must not panic
+	assert.False(t, perm.IsReduced(),
+		"permutation queries must be left untouched by this compiler")
+	assert.Empty(t, sys.LogDerivativeSums2,
+		"no LogDerivativeSum2 should be emitted when there are no inclusion queries")
+}
+
+func TestCompile_MultiFragmentBPanics(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-frag-B")
+	r0 := sys.NewRound()
+	modT1 := sys.NewSizedModule(sys.Context.Childf("modT1"), 4, wiop.PaddingDirectionNone)
+	modT2 := sys.NewSizedModule(sys.Context.Childf("modT2"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 2, wiop.PaddingDirectionNone)
+	colT1 := modT1.NewColumn(sys.Context.Childf("T1"), wiop.VisibilityOracle, r0)
+	colT2 := modT2.NewColumn(sys.Context.Childf("T2"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{
+			wiop.NewTable(colT1.View()),
+			wiop.NewTable(colT2.View()),
+		})
+
+	assert.Panics(t, func() { lookuptologderivsum.Compile(sys) },
+		"multi-fragment lookup tables are out of scope for this MVP")
+}
