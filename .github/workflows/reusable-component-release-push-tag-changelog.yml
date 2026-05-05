@@ -28,6 +28,7 @@ on:
 
 jobs:
   release-component:
+    if: github.ref_name != 'main'
     runs-on: ${{ inputs.runner }}
     permissions:
       contents: write
@@ -75,8 +76,25 @@ jobs:
           fi
           git add "${FOLDER_NAME}/CHANGELOG.md"
           git commit -m "chore(${COMPONENT}): update CHANGELOG.md for ${TAG} release"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+          # Rebase on top of any commits that landed on the branch between
+          # checkout and now (e.g. a concurrent component-changelog-update push),
+          # then push. Retry a few times in case of repeated races.
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            if ! git rebase "origin/${GITHUB_REF_NAME}"; then
+              git rebase --abort
+              echo "Rebase conflict on attempt ${attempt}; aborting."
+              exit 1
+            fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Push rejected on attempt ${attempt}; refetching and retrying..."
+          done
+          echo "Failed to push ${FOLDER_NAME}/CHANGELOG.md after 3 attempts." >&2
+          exit 1
 
       - name: Create and push ${{ inputs.component-name }} release tag
         if: steps.prepend-changelog.outputs.tag_changed == 'true'
