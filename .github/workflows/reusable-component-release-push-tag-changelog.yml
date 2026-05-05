@@ -51,8 +51,7 @@ jobs:
         with:
           tool: git-cliff
 
-      # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27"),
-      # via --tag, so the body template renders {{ version }} instead of [unreleased].
+      # Stamp the prepended entry with the bare semver (e.g. "## [0.2.0] - 2026-04-27")
       - name: Generate and prepend release changelog section
         id: prepend-changelog
         uses: ./.github/actions/run-git-cliff-commands
@@ -60,7 +59,8 @@ jobs:
           component-name: ${{ inputs.component-name }}
           folder-name: ${{ inputs.folder-name }}
           include-path: ${{ inputs.include-path }}
-          prepend-changelog: "true"
+          prepend-changelog: 'true'
+          generate-changelog-with-next-tag-version: 'true'
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
         if: steps.prepend-changelog.outputs.tag_changed == 'true'
