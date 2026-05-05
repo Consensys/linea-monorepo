@@ -20,7 +20,7 @@ runs:
           cache-dependency-path: "**/*.sum"
 
       - name: Install Zig
-        uses: mlugg/setup-zig@a84a53e9109e76fdb6e68e0076e5e05b5a7fa977 # v2.1.0
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: '0.16.0'
 
