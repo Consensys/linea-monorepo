@@ -5,8 +5,8 @@ edition = "2021"
 
 # Add a [[bin]] entry for each new .rs test file added to src/
 [[bin]]
-name = "blake"
-path = "src/blake.rs"
+name = "blake_with_in_embedded"
+path = "src/blake_with_in_embedded.rs"
 
 [[bin]]
 name = "blake_with_in_bytes"

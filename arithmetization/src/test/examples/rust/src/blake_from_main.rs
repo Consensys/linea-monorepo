@@ -5,6 +5,8 @@
 ///
 /// To run:
 /// rustc src/blake_from_main.rs -o bin/blake_from_main && ./bin/blake_from_main; echo $?
+///
+/// Note: this is a standard Rust implementation that can be run from main(). It cannot be used in the zkVM as-is, but is useful for testing the core logic and as a reference.
 use std::convert::TryInto;
 use std::process;
 
@@ -12,28 +14,16 @@ include!("blake_core.rs");
 include!("blake_test_vectors.rs");
 
 fn main() {
-    // Note: test vector 8 is not included for now as number of rounds is 0xffffffff
-    let test_vectors = [TEST_VECTOR_4, TEST_VECTOR_5, TEST_VECTOR_6, TEST_VECTOR_7];
+    let input = hex_to_input(_TEST_VECTOR_4[0]);
+    let expected = hex_to_expected(_TEST_VECTOR_4[1]);
 
-    let mut codes = [0, 0, 0, 0];
+    let code = match blake2b_f_eip152(&input) {
+        Ok(result) if result == expected.as_slice() => 0, // success
+        Ok(_) => 1,                                       // wrong result
+        Err(_) => 2,                                      // compression failed
+    };
 
-    for i in 0..test_vectors.len() {
-        let input = hex_to_input(test_vectors[i][0]);
-        let expected = hex_to_expected(test_vectors[i][1]);
+    println!("{}", if code == 0 { "PASS" } else { "FAIL" });
 
-        codes[i] = match blake2b_f_eip152(&input) {
-            Ok(result) if result == expected.as_slice() => 0, // success
-            Ok(_) => 1,                                       // wrong result
-            Err(_) => 2,                                      // compression failed
-        };
-
-        println!(
-            "Test vector {}: {}",
-            i,
-            if codes[i] == 0 { "PASS" } else { "FAIL" }
-        );
-    }
-
-    // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
-    process::exit(codes[0] * 1000 + codes[1] * 100 + codes[2] * 10 + codes[3]);
+    process::exit(code);
 }
