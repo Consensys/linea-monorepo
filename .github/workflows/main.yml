@@ -22,10 +22,12 @@ jobs:
 
   component-changelog-update:
     needs: [lint-latest-commit-messages]
+    if: always()
     uses: ./.github/workflows/component-changelog-update.yml
 
   filter-commit-changes:
     needs: [lint-latest-commit-messages]
+    if: always()
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
