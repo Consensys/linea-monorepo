@@ -229,7 +229,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     }
 
     this.logger.error("Error processing message claim.", {
-      direction: this.config.direction,
       ...(message ? { messageHash: message.messageHash } : {}),
       retryable,
       error: e,

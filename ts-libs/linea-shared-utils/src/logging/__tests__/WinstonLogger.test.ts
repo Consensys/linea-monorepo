@@ -1,5 +1,5 @@
 import { Writable } from "node:stream";
-import { transports } from "winston";
+import { format, transports } from "winston";
 
 import { WinstonLogger, WinstonLoggerOptions } from "../WinstonLogger";
 
@@ -475,6 +475,141 @@ describe("WinstonLogger", () => {
       const output = getLogOutput();
       expect(output).toContain("passport=p-123");
       expect(output).toContain("payload=ok");
+    });
+
+    it("redacts OAuth-style client secret variants", () => {
+      const logger = makeLogger("Test");
+      logger.info("oauth", {
+        clientSecret: "cs-1",
+        client_secret: "cs-2",
+        secretKey: "sk-1",
+        secret_key: "sk-2",
+      });
+      const output = getLogOutput();
+      expect(output).toContain("clientSecret=[REDACTED]");
+      expect(output).toContain("client_secret=[REDACTED]");
+      expect(output).toContain("secretKey=[REDACTED]");
+      expect(output).toContain("secret_key=[REDACTED]");
+      expect(output).not.toContain("cs-1");
+      expect(output).not.toContain("cs-2");
+      expect(output).not.toContain("sk-1");
+      expect(output).not.toContain("sk-2");
+    });
+
+    it("redacts TLS keystore/truststore password variants", () => {
+      const logger = makeLogger("Test");
+      logger.info("tls", {
+        keyStorePassword: "ksp-1",
+        keystore_password: "ksp-2",
+        trustStorePassword: "tsp-1",
+        truststore_password: "tsp-2",
+      });
+      const output = getLogOutput();
+      expect(output).toContain("keyStorePassword=[REDACTED]");
+      expect(output).toContain("keystore_password=[REDACTED]");
+      expect(output).toContain("trustStorePassword=[REDACTED]");
+      expect(output).toContain("truststore_password=[REDACTED]");
+      expect(output).not.toContain("ksp-1");
+      expect(output).not.toContain("ksp-2");
+      expect(output).not.toContain("tsp-1");
+      expect(output).not.toContain("tsp-2");
+    });
+
+    it("redacts secrets when passed as a bare Error to logger.error()", () => {
+      // The bare-Error path runs the Error through winston's
+      // `errors({ stack: true })` which `Object.assign`s its enumerable own
+      // properties onto the `info` object. Each property then flows through
+      // `formatMetadata`, which masks redacted keys per-key.
+      const err = Object.assign(new Error("startup failed"), {
+        clientSecret: "should-not-leak",
+      });
+      makeLogger("Test").error(err);
+      const output = getLogOutput();
+      expect(output).toContain("clientSecret=[REDACTED]");
+      expect(output).not.toContain("should-not-leak");
+    });
+
+    it("ignores caller-supplied `format` so redaction cannot be bypassed", () => {
+      // Regression: a caller-supplied `format` must NOT replace the internal
+      // pipeline. If it did, every secret would print verbatim because the
+      // user's format wouldn't run our redaction printf. The constructor
+      // applies caller options first, then overrides `format` with our own.
+      const logger = makeLogger("Test", { format: format.json() });
+      logger.info("attempted bypass", { password: "should-not-leak" });
+      const output = getLogOutput();
+      expect(output).toContain("password=[REDACTED]");
+      expect(output).not.toContain("should-not-leak");
+      // Our logfmt pipeline ran (not the user's JSON format).
+      expect(output).toMatch(/level=INFO/);
+      expect(output).toMatch(/logger=Test/);
+    });
+
+    it("respects caller-supplied `level` (still overridable)", () => {
+      // Sanity check that the spread reorder didn't break the existing
+      // contract: callers set `level` to control verbosity.
+      const logger = makeLogger("Test", { level: "debug" });
+      logger.debug("visible at debug");
+      expect(getLogOutput()).toContain("visible at debug");
+    });
+  });
+
+  describe("URL stripping in Error text", () => {
+    // viem/ethers/HTTP libs bake the request URL into `error.message`, which
+    // also appears in the first line of `error.stack`. Per-key redaction
+    // can't reach those — the printf and metadata Error renderer strip URL
+    // substrings from the rendered text before it leaves the logger.
+    it("redacts URL inside RpcRequestError-style message when logged as bare Error", () => {
+      const err = new Error("RPC Request failed.\n\n    URL: https://rpc.devnet.linea.build");
+      err.name = "RpcRequestError";
+      makeLogger("Test").error(err);
+      const output = getLogOutput();
+      expect(output).toContain("[REDACTED_URL]");
+      expect(output).not.toContain("rpc.devnet.linea.build");
+    });
+
+    it("redacts URL inside Error message when logged as metadata", () => {
+      const err = new Error("RPC Request failed.\n\n    URL: https://rpc.devnet.linea.build");
+      makeLogger("Test").error("upstream", { error: err });
+      const output = getLogOutput();
+      expect(output).toContain("[REDACTED_URL]");
+      expect(output).not.toContain("rpc.devnet.linea.build");
+    });
+
+    it("redacts URL with userinfo and query params inside Error message", () => {
+      const err = new Error(
+        "request failed: GET https://user:secret@mainnet.infura.io/v3/abc?apiKey=k-123 returned 401",
+      );
+      makeLogger("Test").error("rpc", { error: err });
+      const output = getLogOutput();
+      expect(output).toContain("[REDACTED_URL]");
+      expect(output).not.toContain("user:secret");
+      expect(output).not.toContain("mainnet.infura.io");
+      expect(output).not.toContain("k-123");
+    });
+
+    it("redacts URLs inside the Error stack frames (not just the first line)", () => {
+      // Assemble a stack-like string by concatenation rather than relying on
+      // V8's stack capture, so the test doesn't depend on file paths.
+      const err = new Error("boom");
+      err.stack = [
+        "Error: boom",
+        "    at handler (https://internal.example.org/lib/handler.js:42:10)",
+        "    at Object.<anonymous> (/repo/src/main.ts:1:1)",
+      ].join("\n");
+      makeLogger("Test").error(err);
+      const output = getLogOutput();
+      expect(output).toContain("[REDACTED_URL]");
+      expect(output).not.toContain("internal.example.org");
+      // Local file paths in the stack are not URL-shaped and must survive.
+      expect(output).toContain("/repo/src/main.ts");
+    });
+
+    it("leaves non-URL text untouched", () => {
+      const err = new Error("simple validation error: field 'foo' missing");
+      makeLogger("Test").error("oops", { error: err });
+      const output = getLogOutput();
+      expect(output).not.toContain("[REDACTED_URL]");
+      expect(output).toContain("simple validation error");
     });
   });
 

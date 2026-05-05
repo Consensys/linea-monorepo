@@ -17,16 +17,10 @@ const ESCAPE_MAP: Record<string, string> = {
 };
 
 const REDACTED_PLACEHOLDER = "[REDACTED]";
+const URL_REPLACEMENT = "[REDACTED_URL]";
 
-// Use Node's `util.inspect` to render Errors. It already handles `Error.cause`
-// chains, `AggregateError.errors`, cycles (via `<ref *N>` markers), and any
-// custom enumerable properties — so we don't reimplement any of that.
-//
-// `depth: 5` bounds traversal of pathological structures (e.g. very deep
-// cause chains from libraries that re-wrap repeatedly). Real-world cause
-// chains are 2-3 deep and AggregateError siblings render at depth 2, so this
-// limit is well above what callers actually produce. Cycle detection works
-// independently of depth.
+// `inspect` depth bounds traversal of pathological structures (nested causes,
+// deeply nested objects). Cycle detection is handled internally by `inspect`.
 const ERROR_INSPECT_OPTIONS = {
   depth: 5,
   colors: false,
@@ -43,8 +37,16 @@ const DEFAULT_REDACT_KEYS: ReadonlyArray<string> = [
   "private_key",
   "signerkey",
   "signer_key",
+  "secretkey",
+  "secret_key",
+  "clientsecret",
+  "client_secret",
   "password",
   "passphrase",
+  "keystorepassword",
+  "keystore_password",
+  "truststorepassword",
+  "truststore_password",
   "apikey",
   "api_key",
   "mnemonic",
@@ -61,6 +63,19 @@ const DEFAULT_REDACT_KEYS: ReadonlyArray<string> = [
   "seed",
 ];
 
+/**
+ * Matches URL substrings inside free-form text. Used to scrub URLs from
+ * Error messages and stacks (e.g. viem's
+ * `RpcRequestError: RPC Request failed.\n\n  URL: https://rpc.example/path`),
+ * where per-key redaction can't reach.
+ *
+ * Limited to schemes actually used in this monorepo so it does not match
+ * `file:` paths or arbitrary `foo://bar` identifiers. Match stops at
+ * whitespace/quotes/angle-brackets so the surrounding text is preserved
+ * verbatim.
+ */
+const URL_PATTERN_RE = /\b(?:https?|wss?|postgres(?:ql)?|mysql|mongodb|redis):\/\/[^\s"'<>`\\]+/gi;
+
 export type WinstonLoggerOptions = LoggerOptions & {
   /**
    * Additional keys (case-insensitive) whose values must be replaced with
@@ -74,6 +89,17 @@ function formatValue(value: string): string {
   return `"${value.replace(ESCAPE_RE, (c) => ESCAPE_MAP[c])}"`;
 }
 
+/**
+ * Replaces every URL substring in `text` with `[REDACTED_URL]`. Used on
+ * Error `message` and `stack` strings, so URLs embedded by HTTP/RPC libraries
+ * (viem, ethers, etc.) — which often carry userinfo or `?apiKey=…` — never
+ * reach the log output. `String#replace` with a global regex returns the
+ * original string when there are no matches, so no fast-path needed.
+ */
+function stripUrlsFromText(text: string): string {
+  return text.replace(URL_PATTERN_RE, URL_REPLACEMENT);
+}
+
 export class WinstonLogger implements ILogger {
   private logger: LoggerClass;
   public readonly name: string;
@@ -84,10 +110,21 @@ export class WinstonLogger implements ILogger {
     const colorizer = colorize();
 
     const { redact, ...winstonOptions } = options ?? {};
-    this.redactKeys = WinstonLogger.buildRedactKeys(redact);
+    const keys = new Set<string>(DEFAULT_REDACT_KEYS);
+    if (redact) for (const k of redact) keys.add(k.toLowerCase());
+    this.redactKeys = keys;
 
+    // Spread caller options FIRST, then override with our defaults / required
+    // fields. `format` is non-overridable: it owns the redaction and URL-strip
+    // pipeline, so a caller-supplied format must never replace it (otherwise
+    // every secret leaks). `transports` IS overridable so tests can swap in a
+    // capturing stream — transports receive already-formatted strings and
+    // therefore cannot bypass redaction. `level` falls back to "info" only if
+    // the caller didn't set one.
     this.logger = createLogger({
+      ...winstonOptions,
       level: winstonOptions.level ?? "info",
+      transports: winstonOptions.transports ?? [new transports.Console()],
       format: combine(
         timestamp(),
         // For bare-Error calls (`logger.error(err)`):
@@ -95,36 +132,31 @@ export class WinstonLogger implements ILogger {
         //  - `cause: true` promotes `err.cause` so it surfaces as a separate
         //    `cause=…` metadata field. `cause` is non-enumerable when set
         //    via `new Error(msg, { cause })`, so without this flag winston's
-        //    `Object.assign` would silently drop it. An Error cause is then
-        //    rendered through `util.inspect` in `formatMetadataValue`, which
-        //    handles its own cause chain, `AggregateError`, and cycles.
+        //    `Object.assign` would silently drop it.
         errors({ stack: true, cause: true }),
         splat(),
         label({ label: loggerName }),
         printf(({ timestamp, level, label, message, stack, ...metadata }) => {
           const coloredLevel = colorizer.colorize(level, level.toUpperCase());
-          let str = `time=${timestamp} level=${coloredLevel} logger=${label} msg=${formatValue(String(message))}`;
+          // `message` is free-form text. Strip URLs so `RpcRequestError`-style
+          // errors (which embed the request URL into `error.message`, and
+          // therefore into the first line of `error.stack`) cannot leak them.
+          const safeMessage = stripUrlsFromText(String(message));
+          let str = `time=${timestamp} level=${coloredLevel} logger=${label} msg=${formatValue(safeMessage)}`;
 
           const meta = this.formatMetadata(metadata);
           if (meta) str += ` ${meta}`;
 
-          if (stack) str += ` error=${formatValue(String(stack))}`;
+          if (stack) {
+            const safeStack = stripUrlsFromText(String(stack));
+            str += ` error=${formatValue(safeStack)}`;
+          }
 
           return str;
         }),
       ),
-      transports: [new transports.Console()],
-      ...winstonOptions,
     });
     this.name = loggerName;
-  }
-
-  private static buildRedactKeys(extra?: string[]): ReadonlySet<string> {
-    const set = new Set<string>(DEFAULT_REDACT_KEYS);
-    if (extra) {
-      for (const key of extra) set.add(key.toLowerCase());
-    }
-    return set;
   }
 
   private isRedacted(key: string): boolean {
@@ -132,31 +164,30 @@ export class WinstonLogger implements ILogger {
   }
 
   /**
-   * JSON-serializes a metadata value while:
-   *  - masking any nested property whose key matches the redaction set
-   *    (case-insensitive),
-   *  - coercing bigints to strings so they survive `JSON.stringify`,
-   *  - replacing already-visited references with `"[Circular]"` so that
-   *    cyclic structures (e.g. viem/ethers provider objects) don't crash
-   *    the logger via `Converting circular structure to JSON`.
+   * Walks a plain object/array and returns a structurally equivalent copy
+   * with values under any redacted key replaced with `[REDACTED]`. Bigints
+   * are coerced to strings (so `JSON.stringify` doesn't throw); cycles are
+   * broken with `"[Circular]"`.
    *
-   * Note: the visited-set tracks every object, so a non-cyclic graph that
-   * shares a sub-object via two paths will render the second path as
-   * `"[Circular]"`. That's an acceptable trade-off for log output: the call
-   * site still completes without error and no data is lost from the first
-   * encounter.
+   * Scope is intentionally narrow: per-key redaction for caller-supplied
+   * config dumps. URLs embedded inside string values are NOT scrubbed here —
+   * those are caught at the Error-message/stack layer in the printf.
    */
-  private serializeWithRedaction(value: unknown): string {
-    const seen = new WeakSet<object>();
-    return JSON.stringify(value, (key: string, val: unknown) => {
-      if (key && this.isRedacted(key)) return REDACTED_PLACEHOLDER;
-      if (typeof val === "bigint") return val.toString();
-      if (val !== null && typeof val === "object") {
-        if (seen.has(val as object)) return "[Circular]";
-        seen.add(val as object);
-      }
-      return val;
-    });
+  private redactValue(value: unknown, key: string, seen: WeakSet<object>): unknown {
+    if (key && this.isRedacted(key)) return REDACTED_PLACEHOLDER;
+    if (typeof value === "bigint") return value.toString();
+    if (value === null || typeof value !== "object") return value;
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      return value.map((item, i) => this.redactValue(item, String(i), seen));
+    }
+    const out: Record<string, unknown> = {};
+    for (const propKey of Object.keys(value)) {
+      out[propKey] = this.redactValue((value as Record<string, unknown>)[propKey], propKey, seen);
+    }
+    return out;
   }
 
   private formatMetadataValue(value: unknown): string {
@@ -164,8 +195,16 @@ export class WinstonLogger implements ILogger {
     if (typeof value === "string") return formatValue(value);
     if (typeof value === "number" || typeof value === "boolean") return String(value);
     if (typeof value === "bigint") return value.toString();
-    if (value instanceof Error) return formatValue(inspect(value, ERROR_INSPECT_OPTIONS));
-    return formatValue(this.serializeWithRedaction(value));
+    if (value instanceof Error) {
+      // Render the Error via util.inspect (preserves `Error: <msg>\n at...`
+      // formatting, cause chains, AggregateError siblings) but strip URLs
+      // from the rendered text afterwards. Error own-properties (e.g.
+      // `error.code`) are dumped by inspect verbatim — they are not redacted
+      // here. If a caller attaches a secret to an Error, log it under a
+      // metadata key instead of as the Error itself.
+      return formatValue(stripUrlsFromText(inspect(value, ERROR_INSPECT_OPTIONS)));
+    }
+    return formatValue(JSON.stringify(this.redactValue(value, "", new WeakSet<object>())));
   }
 
   private formatMetadata(metadata: Record<string, unknown>): string {
@@ -203,14 +242,14 @@ export class WinstonLogger implements ILogger {
   }
 
   public child(context: Record<string, unknown>): WinstonLogger {
-    return WinstonLogger.fromInternal(this.name, this.logger.child(context), this.redactKeys);
-  }
-
-  private static fromInternal(name: string, internal: LoggerClass, redactKeys: ReadonlySet<string>): WinstonLogger {
-    const instance = Object.create(WinstonLogger.prototype) as WinstonLogger;
-    Object.defineProperty(instance, "name", { value: name, enumerable: true });
-    Object.defineProperty(instance, "logger", { value: internal, writable: true, enumerable: true });
-    Object.defineProperty(instance, "redactKeys", { value: redactKeys, enumerable: false });
-    return instance;
+    // Skip the constructor (which would build a fresh winston pipeline) and
+    // wrap the parent's already-configured `winston.Logger.child()` directly.
+    // Plain assignment matches the constructor's class-field semantics
+    // (enumerable + writable); TypeScript's `readonly` is compile-time only.
+    return Object.assign(Object.create(WinstonLogger.prototype) as WinstonLogger, {
+      name: this.name,
+      logger: this.logger.child(context),
+      redactKeys: this.redactKeys,
+    });
   }
 }

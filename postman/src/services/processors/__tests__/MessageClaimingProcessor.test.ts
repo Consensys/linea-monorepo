@@ -427,7 +427,6 @@ describe("TestMessageClaimingProcessor", () => {
       expect(rollbackSpy).toHaveBeenCalledWith(101);
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
-        direction: Direction.L2_TO_L1,
         error: actionRejectedError,
         retryable: errorParser.parse(actionRejectedError).retryable,
         messageHash: expectedLoggingMessage.messageHash,
@@ -489,7 +488,6 @@ describe("TestMessageClaimingProcessor", () => {
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error processing message claim.", {
-        direction: Direction.L2_TO_L1,
         error: fetchError,
         retryable: errorParser.parse(fetchError).retryable,
       });
