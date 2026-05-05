@@ -49,27 +49,33 @@ fi
 # Extract scope group (capture group 2) using sed.
 SCOPES_RAW=$(printf '%s' "${SUBJECT}" | sed -E "s/${HEADER_RE}.*/\\2/")
 
+# Reject malformed scope groups before splitting. Caught patterns:
+#   "( )"                    — only whitespace
+#   "(,coordinator)"         — leading comma
+#   "(coordinator,)"         — trailing comma
+#   "(coordinator,,postman)" — empty slot between commas
+# (The for-loop below word-splits on whitespace so it would silently swallow
+# these otherwise.)
+if printf '%s' "${SCOPES_RAW}" \
+     | grep -qE '(^[[:space:]]*$|^[[:space:]]*,|,[[:space:]]*$|,[[:space:]]*,)'; then
+  cat >&2 <<EOF
+✗ Malformed scope group: "(${SCOPES_RAW})"
+  Scope name must be present and each comma must be followed by a non-empty scope name.
+EOF
+  exit 1
+fi
+
 # Split on commas, trim each, validate against the enum.
 # `for x in $(...)` word-splits on whitespace; tr collapses commas to spaces
 # so each scope ends up as its own field.
 INVALID=""
-EMPTY=0
 for scope in $(printf '%s' "${SCOPES_RAW}" | tr ',' ' '); do
-  if [ -z "${scope}" ]; then
-    EMPTY=1
-    continue
-  fi
   # Membership check via case on a space-padded haystack.
   case " ${ALLOWED_SCOPES} " in
     *" ${scope} "*) ;;
     *) INVALID="${INVALID} ${scope}" ;;
   esac
 done
-
-if [ "${EMPTY}" -eq 1 ]; then
-  echo "✗ Empty scope is not allowed." >&2
-  exit 1
-fi
 
 if [ -n "${INVALID}" ]; then
   cat >&2 <<EOF
