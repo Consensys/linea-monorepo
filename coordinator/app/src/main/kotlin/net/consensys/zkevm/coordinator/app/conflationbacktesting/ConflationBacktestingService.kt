@@ -71,6 +71,34 @@ class ConflationBacktestingService(
     throw IllegalArgumentException("No conflation backtesting job found with id: $jobId")
   }
 
+  /**
+   * Stops an in-progress conflation backtesting job and releases its resources.
+   *
+   * The job is removed atomically before [ConflationBacktestingApp.stop] is invoked so that the
+   * background polling [action] cannot also try to stop the same app concurrently.
+   *
+   * @return a future that completes when the underlying app has fully stopped
+   * @throws IllegalArgumentException if no in-progress job with the given id exists
+   * (e.g. unknown id, or the job has already completed).
+   */
+  fun stopConflationBacktestingJob(jobId: String): SafeFuture<Unit> {
+    if (completedJobs.contains(jobId)) {
+      throw IllegalArgumentException("Conflation backtesting job with jobId=$jobId is already completed")
+    }
+    val app = conflationBackTestingApps.remove(jobId)
+      ?: throw IllegalArgumentException("No in-progress conflation backtesting job found with jobId=$jobId")
+    completedJobs.add(jobId)
+    log.info("Stopping conflation backtesting job: jobId={}", jobId)
+    return app.stop().whenException { error ->
+      log.error(
+        "Error while stopping conflation backtesting job: jobId={}, errorMessage={}",
+        jobId,
+        error.message,
+        error,
+      )
+    }
+  }
+
   override fun action(): SafeFuture<*> {
     val completedJobIds = mutableListOf<String>()
     val appsToStop = conflationBackTestingApps.map { (jobId, app) ->

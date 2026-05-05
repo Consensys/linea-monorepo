@@ -270,7 +270,10 @@ class ConflationBacktestingApp(
           "Backtesting execution proof request produced: batch={}",
           unProvenBatch.intervalString(),
         )
-        lastProcessedBatchEndBlockNumber.store(proofIndex.endBlockNumber.toLong())
+        // check to prvent out of order proof request from regressing teh last processed batch number.
+        if (lastProcessedBatchEndBlockNumber.load() < proofIndex.endBlockNumber.toLong()) {
+          lastProcessedBatchEndBlockNumber.store(proofIndex.endBlockNumber.toLong())
+        }
       },
       vertx = vertx,
       config = ProofGeneratingConflationHandlerImpl.Config(
