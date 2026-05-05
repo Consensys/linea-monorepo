@@ -14,6 +14,7 @@ The executable, the json and the disassembled elf file all live in the `<ext>/bi
 - `rustc (>= rustc 1.88.0)` with `riscv64imac-unknown-none-elf` target — for Rust programs
 - `go (>= 1.26.1)` — to convert ELF to JSON
 - `go-corset, zkc (>= 1.2.12)` — to execute/debug the JSON
+- one of `llvm-objdump`, `rust-objdump` (from `cargo-binutils`), or `riscv64-unknown-elf-objdump` to disassemble the ELF
 
 ## Usage
 
@@ -86,17 +87,18 @@ zkc-test <name>.zig ZIG_STRIP=false
 
 ## Options
 
-| Variable         | Default                                                                                 | Description                                                                |
-|------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                 |
-| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                           |
-| `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                            |
-| `STRIP`          | `false`                                                                                 | Strip debug symbols from the ELF after compilation                         |
-| `ZIG_STRIP`      | `true`                                                                                  | Strip when compiling Zig (reduces binary size), ignored for `.s` and `.rs` |
-| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution         |
-| `PROGRAM_OFFSET` | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                   |
-| `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
-| `ENTRY_POINT`    | `0`                                                                                     | Entry point offset                                                         |
+| Variable          | Default                                                                                 | Description                                                                                                          |
+|-------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| `SRC`             | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                                                           |
+| `BIN`             | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                                                                     |
+| `JSON`            | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                                                                      |
+| `OBJDUMP`         | auto-detected                                                                           | Disassembler; tried in order: `llvm-objdump`, `rust-objdump`, Homebrew `llvm-objdump`, `riscv64-unknown-elf-objdump` |
+| `STRIP`           | `false`                                                                                 | Strip debug symbols from the ELF after compilation                                                                   |
+| `ZIG_STRIP`       | `true`                                                                                  | Strip when compiling Zig (reduces binary size), ignored for `.s` and `.rs`                                           |
+| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution                                                  |
+| `PROGRAM_OFFSET`  | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                                                             |
+| `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                                                             |
+| `ENTRY_POINT`     | `0`                                                                                     | Entry point offset                                                                                                   |
 
 ## Target ISA
 
