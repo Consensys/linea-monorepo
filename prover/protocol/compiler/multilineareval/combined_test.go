@@ -15,10 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCompileAllRoundMixedSizes verifies that CompileAllRound correctly batches
+// TestBatchMixedSizes verifies that Batch correctly batches
 // queries of different numVars into a single combined sumcheck and that the
 // residuals are assigned at the correct point prefixes.
-func TestCompileAllRoundMixedSizes(t *testing.T) {
+func TestBatchMixedSizes(t *testing.T) {
 	cases := []struct {
 		name    string
 		nVars   []int // numVars for each query (mixed sizes)
@@ -93,7 +93,7 @@ func TestCompileAllRoundMixedSizes(t *testing.T) {
 			}
 
 			compiled := wizard.Compile(define,
-				multilineareval.CompileAllRound,
+				multilineareval.Batch,
 				dummy.Compile,
 			)
 			proof := wizard.Prove(compiled, prove)
@@ -102,11 +102,11 @@ func TestCompileAllRoundMixedSizes(t *testing.T) {
 	}
 }
 
-// TestCompileAllRoundWithVortex verifies the full pipeline:
-// CompileAllRound (cross-size batching) + multilinvortex.Compile (default fold)
-// + another round of CompileAllRound + multilinvortex.Compile, etc.
+// TestBatchWithVortex verifies the full pipeline:
+// Batch (cross-size batching) + multilinvortex.Compile (default fold)
+// + another round of Batch + multilinvortex.Compile, etc.
 // This is the symbolic-expansion + balanced-fold strategy end-to-end.
-func TestCompileAllRoundWithVortex(t *testing.T) {
+func TestBatchWithVortex(t *testing.T) {
 	rng := rand.New(rand.NewPCG(99, 3))
 
 	// Two polynomials: size 2^3=8 and size 2^5=32.
@@ -162,15 +162,15 @@ func TestCompileAllRoundWithVortex(t *testing.T) {
 	}
 
 	// Symbolic expansion + balanced Vortex fold: run enough rounds to fully
-	// reduce a 5-variable polynomial (needs ~3 CompileAllRound+Vortex pairs).
+	// reduce a 5-variable polynomial (needs ~3 Batch+Vortex pairs).
 	compiled := wizard.Compile(define,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		dummy.Compile,
 	)
 	proof := wizard.Prove(compiled, prove)
@@ -178,10 +178,10 @@ func TestCompileAllRoundWithVortex(t *testing.T) {
 }
 
 // TestCompileWithFold1MixedSizes tests the WHIR-style fold=1 strategy paired
-// with CompileAllRound. With fold=1 the RowClaims path is always terminal
+// with Batch. With fold=1 the RowClaims path is always terminal
 // (RowEvals has 2 elements), so ALL polynomials share that path after one
 // Vortex round. UCols of different sizes are re-batched by the next
-// CompileAllRound. This requires more rounds but maximises cross-size batching.
+// Batch. This requires more rounds but maximises cross-size batching.
 func TestCompileWithFold1MixedSizes(t *testing.T) {
 	rng := rand.New(rand.NewPCG(77, 13))
 
@@ -237,19 +237,19 @@ func TestCompileWithFold1MixedSizes(t *testing.T) {
 	}
 
 	// WHIR early exit: fold=1 means nRow=1 at every Vortex round.
-	// A 5-variable polynomial needs 4 rounds of (CompileAllRound + CompileWithFold(1))
+	// A 5-variable polynomial needs 4 rounds of (Batch + CompileWithFold(1))
 	// to reduce all UCols to terminal. RowClaims are terminal after round 1.
 	fold1 := multilinvortex.CompileWithFold(1)
 	compiled := wizard.Compile(define,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		fold1,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		fold1,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		fold1,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		fold1,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		dummy.Compile,
 	)
 	proof := wizard.Prove(compiled, prove)

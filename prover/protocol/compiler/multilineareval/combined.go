@@ -1,6 +1,6 @@
 package multilineareval
 
-// combined.go implements CompileAllRound — the cross-size symbolic-expansion
+// combined.go implements Batch — the cross-size symbolic-expansion
 // batcher. All MultilinearEval queries that share the same wizard round are
 // folded into ONE sumcheck regardless of their numVars. A polynomial with
 // numVars=nᵢ < nmax is embedded into the nmax-variable space by value
@@ -83,7 +83,7 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 	}
 }
 
-// CompileAllRound batches ALL unignored MultilinearEval queries sharing the
+// Batch batches ALL unignored MultilinearEval queries sharing the
 // same wizard round into a single combined sumcheck, regardless of numVars.
 // This is the "symbolic expansion" strategy: smaller polynomials are embedded
 // into the nmax-variable space so they participate in one shared sumcheck. The
@@ -91,7 +91,7 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 // polynomials have trivial contributions for the high variables (the EQ factor
 // (1−challenges[j]) makes those rounds cheap). After the combined sumcheck each
 // query's residual is at the first nᵢ coordinates of the shared challenge.
-func CompileAllRound(comp *wizard.CompiledIOP) {
+func Batch(comp *wizard.CompiledIOP) {
 	type grp struct {
 		queries []query.MultilinearEval
 		nmax    int
@@ -132,11 +132,11 @@ func CompileAllRound(comp *wizard.CompiledIOP) {
 	}
 }
 
-// CompileAllRoundIgnored is like [CompileAllRound] but processes currently-IGNORED
+// BatchIgnored is like [Batch] but processes currently-IGNORED
 // MultilinearEval queries instead of unignored ones. Call this in PostDistribute
 // (after DistributeWizard) to pick up queries that were pre-marked as ignored so
 // that FilterCompiledIOP did not see them.
-func CompileAllRoundIgnored(comp *wizard.CompiledIOP) {
+func BatchIgnored(comp *wizard.CompiledIOP) {
 	type grp struct {
 		queries []query.MultilinearEval
 		nmax    int

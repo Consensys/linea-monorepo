@@ -22,7 +22,7 @@ import (
 const (
 	mlCommitExtraKey        = "mlvortex_committed"
 	mlCommitEntriesKey      = "mlvortex_commit_entries"
-	mlDefaultNumOpen        = 128
+	mlDefaultNumOpen        = 256
 )
 
 // mlCommitEntry records the proof columns produced by CommitMLColumns for one
@@ -98,7 +98,7 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 	for key, cols := range groups {
 		K := len(cols)
 		nbRows := 4 * K // 4 base-field components per fext column
-		nbCodewordCols := key.size * 2   // RS rate = 2
+		nbCodewordCols := key.size * 2   // RS blowup = 2
 		t := min(numOpen, nbCodewordCols)
 		// depth = log2(nbCodewordCols); nbCodewordCols is always a power of 2
 		depth := bits.Len(uint(nbCodewordCols)) - 1

@@ -143,12 +143,9 @@ func TestCommitMLColumnsCheck2(t *testing.T) {
 
 			compiled := wizard.Compile(define,
 				multilineareval.Compile,
-				multilinvortex.Compile,
-				multilinvortex.CommitMLColumns,
-				multilinvortex.CommitOriginalMLColumns,
+				multilinvortex.CompileRound,
 				multilineareval.Compile,
-				multilinvortex.Compile,
-				multilinvortex.CommitMLColumns,
+				multilinvortex.CompileRound,
 				multilineareval.Compile,
 				dummy.Compile,
 			)

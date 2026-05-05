@@ -96,11 +96,10 @@ func (a *uniBootstrapProverAction) Run(run *wizard.ProverRuntime) {
 // same synthetic column distribution.
 //
 // Both endpoints are cryptographically equivalent:
-//   - ML path:         InsertBootstrapperOpenings + 7×(Compile+CompileAllRound)
-//     Seven rounds fully reduce any numVars ≤ 128; the final
-//     dummy.Compile is a no-op terminator.
-//   - Univariate path: Arcane(1M) + vortex(round 1, blowUp=2, 256 cols)
-//   - 3× [SelfRecurse + CleanUp + poseidon2 + Arcane + vortex]
+//   - ML path:         InsertBootstrapperOpenings + 5×(Compile+CommitMLColumns+Batch)
+//     dummy.Compile is a no-op terminator (all queries resolved after 5 rounds).
+//   - Univariate path: Arcane(1M) + vortex(round 1, blowUp=2, 256 cols) +
+//     3× [SelfRecurse + CleanUp + poseidon2 + Arcane + vortex]
 //     matching the four-round full.go production pipeline.
 //   - Baseline:        dummy compile — column-assign overhead only (lower bound).
 func BenchmarkMLBootstrapperProver(b *testing.B) {
@@ -131,34 +130,22 @@ func BenchmarkMLBootstrapperProver(b *testing.B) {
 		}
 	}
 
-	// ML path: Compile halves numVars first so that CompileAllRound only
-	// expands within the halved space. Seven pairs cover any numVars ≤ 128.
-	// dummy.Compile is a no-op terminator (all queries resolved after 7 rounds).
+	// ML path: Compile halves numVars each round. Five rounds cover any
+	// numVars ≤ 32 (largest benchmark column is 1<<24, numVars=24 ≤ 32).
+	// dummy.Compile is a no-op terminator (all queries resolved after 5 rounds).
 	compiledML := wizard.Compile(
 		define,
 		multilinvortex.InsertBootstrapperOpenings,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilinvortex.CommitOriginalMLColumns, // binds round-0 cols to FS before α
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
-		multilinvortex.Compile,
-		multilinvortex.CommitMLColumns,
-		multilineareval.CompileAllRound,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
 		dummy.Compile,
 	)
 

@@ -72,14 +72,24 @@ func Compile(comp *wizard.CompiledIOP) {
 // unless the Vortex commitment layer shares a single Merkle tree across
 // same-size UAlpha columns (future work).
 //
-// When paired with [multilineareval.CompileAllRound], nFoldRows=1 produces the
+// When paired with [multilineareval.Batch], nFoldRows=1 produces the
 // WHIR-style early-exit recursion: every round, ALL polynomials (regardless of
 // original size) share the same RowClaims terminal path, and UCols of different
-// sizes are naturally re-batched by the next CompileAllRound call.
+// sizes are naturally re-batched by the next Batch call.
 func CompileWithFold(nFoldRows int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		compileWithNRow(comp, nFoldRows)
 	}
+}
+
+// CompileRound is a convenience wrapper that runs one complete ML Vortex round:
+// Compile + CommitMLColumns + CommitOriginalMLColumns.
+// It is safe to call multiple times; CommitOriginalMLColumns is idempotent and
+// becomes a no-op after the first round.
+func CompileRound(comp *wizard.CompiledIOP) {
+	Compile(comp)
+	CommitMLColumns(comp)
+	CommitOriginalMLColumns(comp)
 }
 
 // mustAllSameNumVars returns the shared numVars for all polynomials in q.

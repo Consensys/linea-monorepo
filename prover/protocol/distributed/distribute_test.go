@@ -658,21 +658,21 @@ func (d *MultilinVortexTestCase) Define(comp *wizard.CompiledIOP) {
 // panic in FilterCompiledIOP while still providing a proper ML proof on the
 // Bootstrapper.
 func (d *MultilinVortexTestCase) PostDistribute(dw *distributed.DistributedWizard) {
-	// CompileAllRoundIgnored picks up the pre-ignored MLV_EVAL and batches all
+	// BatchIgnored picks up the pre-ignored MLV_EVAL and batches all
 	// same-round queries (mixed sizes) into one combined sumcheck per round.
-	// CompileAllRound then re-batches Vortex residuals at each subsequent round.
-	// 4 pairs of (CompileAllRound + Compile) are sufficient for numVars ≤ 8.
+	// Batch then re-batches Vortex residuals at each subsequent round.
+	// 4 pairs of (Batch + Compile) are sufficient for numVars ≤ 8.
 	wizard.ContinueCompilation(
 		dw.Bootstrapper,
-		multilineareval.CompileAllRoundIgnored,
+		multilineareval.BatchIgnored,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 	)
 }
 
@@ -726,7 +726,7 @@ func (d *MultilinVortexTestCase) Advices() []*distributed.ModuleDiscoveryAdvice 
 // the large module) and one small (numVarsSmall = numVarsBig - 2, i.e. quarter
 // the size). The two query pipelines under test are selected by useNewPipeline:
 //   - false: classic per-size pipeline (CompileIgnored + Compile per-size)
-//   - true:  cross-size pipeline (CompileAllRoundIgnored + CompileAllRound)
+//   - true:  cross-size pipeline (BatchIgnored + Batch)
 type MultilinVortexMixedTestCase struct {
 	numRowBig      int
 	numRowSmall    int
@@ -788,15 +788,15 @@ func (d *MultilinVortexMixedTestCase) PostDistribute(dw *distributed.Distributed
 	if d.useNewPipeline {
 		wizard.ContinueCompilation(
 			dw.Bootstrapper,
-			multilineareval.CompileAllRoundIgnored,
+			multilineareval.BatchIgnored,
 			multilinvortex.Compile,
-			multilineareval.CompileAllRound,
+			multilineareval.Batch,
 			multilinvortex.Compile,
-			multilineareval.CompileAllRound,
+			multilineareval.Batch,
 			multilinvortex.Compile,
-			multilineareval.CompileAllRound,
+			multilineareval.Batch,
 			multilinvortex.Compile,
-			multilineareval.CompileAllRound,
+			multilineareval.Batch,
 		)
 	} else {
 		wizard.ContinueCompilation(

@@ -468,29 +468,29 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	// MultilinearEval queries for all round-0 committed columns, then folds
 	// them recursively down to numVars == 1.
 	//
-	// Order matters: Compile (balanced split) comes BEFORE CompileAllRound
+	// Order matters: Compile (balanced split) comes BEFORE Batch
 	// (cross-size sumcheck batch). This avoids materializing O(2^nmax) extended
 	// polynomials for every column in the initial pass (where nmax can be 28 for
 	// production). Instead, Compile first halves all numVars (to ≤14), then
-	// CompileAllRound only needs to expand within that smaller space.
-	// Seven pairs of (Compile + CompileAllRound) cover any numVars up to 128.
+	// Batch only needs to expand within that smaller space.
+	// Seven pairs of (Compile + Batch) cover any numVars up to 128.
 	wizard.ContinueCompilation(
 		dw.Bootstrapper,
 		multilinvortex.InsertBootstrapperOpenings,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 		multilinvortex.Compile,
-		multilineareval.CompileAllRound,
+		multilineareval.Batch,
 	)
 
 	// These are the slow and expensive operations.
