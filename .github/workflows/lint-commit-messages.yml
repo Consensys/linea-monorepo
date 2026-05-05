@@ -11,22 +11,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-latest-commit-messages:
+  lint-commit-messages:
     if: github.event_name == 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    name: Lint latest PR commit messages
+    name: Lint PR commit messages
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Need enough history to resolve the latest PR commit
+          # Need both PR head and base so we can list commits in the PR.
           fetch-depth: 0
           submodules: false
 
-      - name: Lint latest PR commit messages with commitlint
-        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed #(v6.2.1)
-        with:
-          configFile: commitlint.config.mjs
-          failOnWarnings: true
-          commitDepth: 1
-          helpURL: https://www.conventionalcommits.org
+      - name: Lint each commit in the PR with .husky/commit-msg
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+
+          # All commits introduced by this PR (exclusive of base).
+          commits=$(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}")
+          if [ -z "${commits}" ]; then
+            echo "No commits to lint."
+            exit 0
+          fi
+
+          failed=0
+          tmpfile=$(mktemp)
+          trap 'rm -f "${tmpfile}"' EXIT
+
+          for sha in ${commits}; do
+            git log -1 --pretty=%B "${sha}" > "${tmpfile}"
+            subject=$(head -n 1 "${tmpfile}")
+            printf '── %s  %s\n' "$(echo "${sha}" | cut -c1-8)" "${subject}"
+
+            if ! .husky/commit-msg "${tmpfile}"; then
+              failed=$((failed + 1))
+            fi
+            echo
+          done
+
+          if [ "${failed}" -gt 0 ]; then
+            echo "✗ ${failed} commit message(s) failed validation." >&2
+            exit 1
+          fi
+          echo "✓ All commit messages OK."
