@@ -9,6 +9,10 @@ name = "blake"
 path = "src/blake.rs"
 
 [[bin]]
+name = "blake_with_in_bytes"
+path = "src/blake_with_in_bytes.rs"
+
+[[bin]]
 name = "test"
 path = "src/test.rs"
 

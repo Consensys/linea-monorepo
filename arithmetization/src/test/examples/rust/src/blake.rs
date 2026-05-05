@@ -7,6 +7,9 @@
 /// https://gist.github.com/DavePearce/fca4c7fcfac840dc362b1c907d672093
 ///
 /// Note: this is a freestanding implementation
+///
+/// To run:
+/// zkc-test blake.rs
 use core::convert::TryInto;
 use core::result::Result;
 use core::result::Result::Err;
@@ -41,7 +44,7 @@ fn main() -> ! {
     }
 
     // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
-    process::exit(codes[0] * 1000 + codes[1] * 100 + codes[2] * 10 + codes[3]);
+    exit(codes[0] * 1000 + codes[1] * 100 + codes[2] * 10 + codes[3]);
 }
 
 fn exit(code: i32) -> ! {
