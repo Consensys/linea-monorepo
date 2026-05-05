@@ -8,10 +8,8 @@ import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.concurrent.atomics.AtomicLong
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import java.util.concurrent.atomic.AtomicReference
 
-@OptIn(ExperimentalAtomicApi::class)
 class FeeHistoryFetcherImpl(
   private val ethApiClient: EthApiClient,
   private val config: Config,
@@ -33,14 +31,14 @@ class FeeHistoryFetcherImpl(
     }
   }
 
-  private var cacheIsValidForBlockNumber: AtomicLong = AtomicLong(0)
-  private lateinit var feesCache: FeeHistory
+  private val feeHistoryCache: AtomicReference<Pair<Long, FeeHistory>?> = AtomicReference(null)
 
   private fun getRecentFees(): SafeFuture<FeeHistory> {
     return ethApiClient.ethBlockNumber()
       .thenCompose { blockNumberResponse ->
         val currentBlockNumber = blockNumberResponse.toLong()
-        if (currentBlockNumber > cacheIsValidForBlockNumber.load()) {
+        val cached = feeHistoryCache.get()
+        if (cached == null || currentBlockNumber > cached.first) {
           ethApiClient
             .ethFeeHistory(
               blockCount = config.feeHistoryBlockCount.toInt(),
@@ -48,34 +46,25 @@ class FeeHistoryFetcherImpl(
               rewardPercentiles = listOf(config.feeHistoryRewardPercentile),
             )
             .thenApply { feeHistory ->
-              cacheIsValidForBlockNumber.store(currentBlockNumber)
-              if (feeHistory.baseFeePerBlobGas.isNotEmpty()) {
-                log.trace(
-                  "New Fee History: l1BlockNumber={} l1Blocks={} lastBaseFeePerGas={} reward={} gasUsedRatio={}" +
-                    "baseFeePerBlobGas={} blobGasUsedRatio={}",
-                  currentBlockNumber,
-                  feeHistory.blocksRange().toIntervalString(),
-                  feeHistory.baseFeePerGas[feeHistory.baseFeePerGas.lastIndex],
-                  feeHistory.reward.map { percentiles -> percentiles[0] },
-                  feeHistory.gasUsedRatio,
-                  feeHistory.baseFeePerBlobGas[feeHistory.baseFeePerBlobGas.lastIndex],
-                  feeHistory.blobGasUsedRatio,
-                )
-              } else {
-                log.trace(
-                  "New Fee History: l1BlockNumber={} l1Blocks={} lastBaseFeePerGas={} reward={} gasUsedRatio={}",
-                  currentBlockNumber,
-                  feeHistory.blocksRange().toIntervalString(),
-                  feeHistory.baseFeePerGas[feeHistory.baseFeePerGas.lastIndex],
-                  feeHistory.reward.map { percentiles -> percentiles[0] },
-                  feeHistory.gasUsedRatio,
-                )
-              }
-              feesCache = feeHistory
-              feesCache
+              log.trace(
+                "New Fee History: l1BlockNumber={} l1Blocks={} lastBaseFeePerGas={} reward={} gasUsedRatio={}{}",
+                currentBlockNumber,
+                feeHistory.blocksRange().toIntervalString(),
+                feeHistory.baseFeePerGas[feeHistory.baseFeePerGas.lastIndex],
+                feeHistory.reward.map { percentiles -> percentiles[0] },
+                feeHistory.gasUsedRatio,
+                if (feeHistory.baseFeePerBlobGas.isNotEmpty()) {
+                  " baseFeePerBlobGas=${feeHistory.baseFeePerBlobGas[feeHistory.baseFeePerBlobGas.lastIndex]}" +
+                    " blobGasUsedRatio=${feeHistory.blobGasUsedRatio}"
+                } else {
+                  ""
+                },
+              )
+              feeHistoryCache.set(currentBlockNumber to feeHistory)
+              feeHistory
             }
         } else {
-          SafeFuture.completedFuture(feesCache)
+          SafeFuture.completedFuture(cached.second)
         }
       }
   }

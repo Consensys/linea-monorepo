@@ -74,7 +74,7 @@ class FeeHistoryCachingService(
           th.message,
           th,
         )
-      }.alwaysRun {
+      }.handleComposed { _, ex ->
         feeHistoriesRepository.deleteFeeHistoriesUpToBlockNumber(
           maxL1BlockNumberToFetch.minus(config.feeHistoryStoragePeriodInBlocks.toLong())
             .coerceAtLeast(0L),
@@ -83,6 +83,8 @@ class FeeHistoryCachingService(
             rewardPercentile = config.gasFeePercentile,
             fromBlockNumber = minFromBlockNumberInclusive,
           )
+        }.thenCompose {
+          if (ex != null) SafeFuture.failedFuture(ex) else SafeFuture.completedFuture(Unit)
         }
       }
   }
