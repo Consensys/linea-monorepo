@@ -1,4 +1,4 @@
-# Multilinear Vortex: Protocol, Implementation, and Soundness
+# Sumcheck and Multilinear Vortex
 
 ## Overview
 
