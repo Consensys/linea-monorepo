@@ -49,9 +49,15 @@ const DEFAULT_REDACT_KEYS: ReadonlyArray<string> = [
   "api_key",
   "mnemonic",
   "secret",
-  "token",
+  "accesstoken",
+  "access_token",
+  "bearertoken",
+  "bearer_token",
+  "refreshtoken",
+  "refresh_token",
+  "idtoken",
+  "id_token",
   "authorization",
-  "auth",
   "seed",
 ];
 

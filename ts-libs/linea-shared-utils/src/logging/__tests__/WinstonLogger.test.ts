@@ -402,7 +402,7 @@ describe("WinstonLogger", () => {
       logger.info("config loaded", {
         cfg: {
           host: "rpc.example.com",
-          credentials: { privateKey: "0xdeadbeef", token: "t-1" },
+          credentials: { privateKey: "0xdeadbeef", accessToken: "t-1" },
         },
       });
       const output = getLogOutput();
@@ -410,6 +410,42 @@ describe("WinstonLogger", () => {
       expect(output).toContain("[REDACTED]");
       expect(output).not.toContain("0xdeadbeef");
       expect(output).not.toContain("t-1");
+    });
+
+    it("redacts OAuth-style token keys but not the bare domain term `token`", () => {
+      // `token` in this monorepo is a domain term (ERC-20 token addresses,
+      // TokenBridge, BridgedToken). Real bearer secrets live under more
+      // specific keys (`accessToken`, `bearerToken`, `refreshToken`, `idToken`)
+      // which must still be redacted.
+      const logger = makeLogger("Test");
+      logger.info("bridge transfer", {
+        token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // ERC-20 address — non-sensitive
+        accessToken: "secret-access",
+        bearerToken: "secret-bearer",
+        refresh_token: "secret-refresh",
+        idToken: "secret-id",
+      });
+      const output = getLogOutput();
+      expect(output).toContain("token=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+      expect(output).toContain("accessToken=[REDACTED]");
+      expect(output).toContain("bearerToken=[REDACTED]");
+      expect(output).toContain("refresh_token=[REDACTED]");
+      expect(output).toContain("idToken=[REDACTED]");
+      expect(output).not.toContain("secret-access");
+      expect(output).not.toContain("secret-bearer");
+      expect(output).not.toContain("secret-refresh");
+      expect(output).not.toContain("secret-id");
+    });
+
+    it("does not redact bare `auth` (domain term) but still redacts `authorization`", () => {
+      // `auth` commonly names a non-sensitive auth mode/strategy/provider.
+      // The actual HTTP header value is `authorization`.
+      const logger = makeLogger("Test");
+      logger.info("request", { auth: "oauth2", authorization: "Bearer secret-header" });
+      const output = getLogOutput();
+      expect(output).toContain("auth=oauth2");
+      expect(output).toContain("authorization=[REDACTED]");
+      expect(output).not.toContain("secret-header");
     });
 
     it("redacts via additional caller-supplied keys merged with defaults", () => {

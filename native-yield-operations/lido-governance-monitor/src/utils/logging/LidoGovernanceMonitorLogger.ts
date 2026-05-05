@@ -33,7 +33,7 @@ export class LidoGovernanceMonitorLogger implements ILidoGovernanceMonitorLogger
     this.baseLogger.debug(message, ...params);
   }
 
-  child(context: Record<string, unknown>): ILogger {
-    return this.baseLogger.child(context);
+  child(context: Record<string, unknown>): ILidoGovernanceMonitorLogger {
+    return new LidoGovernanceMonitorLogger(this.baseLogger.child(context));
   }
 }
