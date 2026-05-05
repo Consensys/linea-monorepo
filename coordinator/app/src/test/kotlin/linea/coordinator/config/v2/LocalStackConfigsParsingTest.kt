@@ -18,7 +18,9 @@ class LocalStackConfigsParsingTest {
       ),
       tracesLimitsFileV4 = Path.of("../../docker/config/common/traces-limits-v4.4.toml"),
       tracesLimitsFileV5 = Path.of("../../docker/config/common/traces-limits-v5.toml"),
-      gasPriceCapTimeOfDayMultipliersFile = Path.of("../../docker/config/common/gas-price-cap-time-of-day-multipliers.toml"),
+      gasPriceCapTimeOfDayMultipliersFile = Path.of(
+        "../../docker/config/common/gas-price-cap-time-of-day-multipliers.toml",
+      ),
       smartContractErrorsFile = Path.of("../../docker/config/common/smart-contract-errors.toml"),
       enforceStrict = true,
     ).also { configs ->
