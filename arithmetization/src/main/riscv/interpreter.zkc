@@ -17,8 +17,8 @@ fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) 
 
     printf "instruction %b\n", instruction
     printf "opcode:     %b\n", opcode
-    printf "parameters: %b\n", instruction_parameters
     printf "type:       %b\n", instruction_type
+    printf "parameters: %b\n", instruction_parameters
 
     // printf "[SP before execution] : %x\n", registers[2]
 
@@ -28,7 +28,7 @@ fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) 
     // TODO: switch
     if instruction_type == R_TYPE {
         printf "R-Type instruction\n"
-        process_R_type_instruction(instruction_parameters)
+        process_R_type_instruction(opcode, instruction_parameters)
         new_pc = pc + 4 as Address
     } else if instruction_type == I_TYPE {
         printf "I-Type instruction\n"
