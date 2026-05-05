@@ -24,3 +24,7 @@ runs:
         with:
           version: '0.16.0'
 
+      - name: Install riscv64-unknown-elf-as
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf
+
