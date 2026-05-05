@@ -1,3 +1,8 @@
+## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Removed testing changes and files and update commitlint config
 ## [1.1.3] - 2026-05-05
 
 ### ⚙️ Miscellaneous Tasks
