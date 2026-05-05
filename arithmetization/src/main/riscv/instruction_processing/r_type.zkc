@@ -363,10 +363,11 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
         }
 
         case CUSTOM_0: {
-
             // ==========================================
             // custom instructions (precompiles etc ...)
             // ==========================================
+
+            printf "custom-0 instruction\n"
 
             if (funct3 == FUNCT3_POSEIDON_1) && (funct7 == FUNCT7_POSEIDON_1) {
                 printf "POSEIDON precompile\n"
