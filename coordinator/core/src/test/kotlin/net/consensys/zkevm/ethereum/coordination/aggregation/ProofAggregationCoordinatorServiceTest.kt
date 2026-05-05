@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.clients.ProofAggregationProverClientV2
+import linea.conflation.calculators.AggregationCalculator
 import linea.domain.Aggregation
 import linea.domain.AggregationProofIndex
 import linea.domain.BlobAndBatchCounters
@@ -77,7 +78,6 @@ class ProofAggregationCoordinatorServiceTest {
     val config =
       ProofAggregationCoordinatorService.Config(
         pollingInterval = 10.milliseconds,
-        proofsLimit = blobsToPoll,
         proofGenerationRetryBackoffDelay = 5.milliseconds,
       )
 

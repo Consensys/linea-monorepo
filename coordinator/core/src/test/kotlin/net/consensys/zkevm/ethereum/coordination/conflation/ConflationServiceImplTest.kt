@@ -1,5 +1,9 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.conflation.AlwaysSafeBlockNumberProvider
+import linea.conflation.calculators.BlockConflationCalculator
+import linea.conflation.calculators.ConflationTriggerCalculatorByBlockLimit
+import linea.conflation.calculators.GlobalBlockConflationCalculator
 import linea.domain.BlockCounters
 import linea.domain.BlocksConflation
 import linea.domain.ConflationCalculationResult
@@ -7,7 +11,6 @@ import linea.domain.ConflationTrigger
 import linea.domain.createBlock
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.fakeTracesCountersV2
-import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility
@@ -25,7 +28,7 @@ import kotlin.time.Instant
 
 class ConflationServiceImplTest {
   private val conflationBlockLimit = 2u
-  private lateinit var conflationCalculator: TracesConflationCalculator
+  private lateinit var conflationCalculator: BlockConflationCalculator
   private lateinit var conflationService: ConflationServiceImpl
 
   @BeforeEach
@@ -35,7 +38,7 @@ class ConflationServiceImplTest {
         lastBlockNumber = 0u,
         syncCalculators =
         listOf(
-          ConflationCalculatorByBlockLimit(conflationBlockLimit),
+          ConflationTriggerCalculatorByBlockLimit(conflationBlockLimit),
         ),
         deferredTriggerConflationCalculators = emptyList(),
         emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
@@ -158,7 +161,7 @@ class ConflationServiceImplTest {
     val blockTime = Instant.parse("2021-01-01T00:00:00Z")
 
     val expectedException = RuntimeException("Calculator failed!")
-    val failingConflationCalculator: TracesConflationCalculator = mock()
+    val failingConflationCalculator: BlockConflationCalculator = mock()
     whenever(failingConflationCalculator.newBlock(any())).thenThrow(expectedException)
     conflationService = ConflationServiceImpl(
       calculator = failingConflationCalculator,

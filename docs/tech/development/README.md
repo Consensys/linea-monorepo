@@ -177,16 +177,16 @@ go build -o controller ./cmd/controller
 cd contracts
 
 # Compile
-npx hardhat compile
+pnpm exec hardhat compile
 
 # Test
-npx hardhat test
+pnpm exec hardhat test
 
 # Specific test file
-npx hardhat test test/hardhat/rollup/LineaRollup.ts
+pnpm exec hardhat test test/hardhat/rollup/LineaRollup.ts
 
 # Coverage
-npx hardhat coverage
+pnpm exec hardhat coverage
 ```
 
 ## Docker Images
@@ -407,7 +407,7 @@ cd prover && go test ./...
 ./gradlew integrationTest
 
 # Contract tests
-cd contracts && npx hardhat test
+cd contracts && pnpm exec hardhat test
 ```
 
 ### End-to-End Tests
@@ -468,7 +468,7 @@ pnpm clean
 
 1. Open project root
 2. Import Gradle project
-3. Set JDK 21
+3. Set JDK 25
 4. Install Kotlin plugin
 
 ### VS Code (TypeScript)
