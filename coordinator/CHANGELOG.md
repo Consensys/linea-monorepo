@@ -4,10 +4,15 @@
 
 - *(coordinator)* Test for version update 2
 
+### 🐛 Bug Fixes
+
+- *(coordinator)* Address dead code, duplication, and concurrency issues (issue #3009) (#3010)
+
 ### ⚙️ Miscellaneous Tasks
 
 - *(coordinator)* Test for version update
 - *(coordinator)* Update unreleased section in CHANGELOG.md
+- *(coordinator)* Release test
 ## [3.1.0] - 2026-05-04
 
 ### 🚀 Features
