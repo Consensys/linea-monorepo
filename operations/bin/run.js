@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
-import {execute} from '@oclif/core'
-
-await execute({dir: import.meta.url})
+void (async () => {
+  const oclif = await import("@oclif/core");
+  await oclif.execute({ dir: __dirname });
+})();

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
 import { fromZonedTime } from "date-fns-tz";
 
-import { computeInvoicePeriod } from "../time.js";
+import { computeInvoicePeriod } from "../time";
 
 describe("Time", () => {
   describe("computeInvoiceDatesWithDelay", () => {

@@ -28,12 +28,12 @@ export function buildHttpsAgent(
   trustedStorePath: string,
   trustedStorePassphrase: string,
 ): Agent {
-  const trustedStoreFile = readFileSync(path.resolve(import.meta.dirname, trustedStorePath), { encoding: "binary" });
+  const trustedStoreFile = readFileSync(path.resolve(trustedStorePath), { encoding: "binary" });
 
   const { pemCertificate } = convertToPem(trustedStoreFile, trustedStorePassphrase);
 
   return new Agent({
-    pfx: readFileSync(path.resolve(import.meta.dirname, keystorePath)),
+    pfx: readFileSync(path.resolve(keystorePath)),
     passphrase: keystorePassphrase,
     ca: pemCertificate,
   });
