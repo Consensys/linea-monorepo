@@ -11,3 +11,4 @@
 - Replace npx with pnpm equivalents across monorepo (#2778)
 - *(postman)* Update unreleased section in CHANGELOG.md
 - *(postman)* Update unreleased section in CHANGELOG.md
+- *(ci)* Removed testing changes and files and update commitlint config
