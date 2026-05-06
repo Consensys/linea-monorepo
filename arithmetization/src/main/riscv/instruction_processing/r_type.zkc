@@ -69,8 +69,6 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
 
     funct7::rs2::rs1::funct3::rd = instruction_parameters
 
-    printf "funct3 ≡ %b, funct7 ≡ %b\n", funct3, funct7
-
     v1 = registers[rs1]
     v2 = registers[rs2]
 
@@ -363,7 +361,10 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
         }
 
         default: {
-            printf "unsupported R-type instruction with opcode %x", opcode
+            printf "Unsupported R-type instruction with\n"
+            printf "\topcode ≡ %x ≡ %b\n", opcode, opcode
+            printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+            printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
             fail
         }
     }
