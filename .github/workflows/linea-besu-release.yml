@@ -1,4 +1,4 @@
-name: "Linea Besu Release (manual)"
+name: "Linea Besu Release (still in testing phase)"
 
 permissions:
   actions: read
@@ -68,3 +68,4 @@ jobs:
       component-name: linea-besu
       folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
+    secrets: inherit

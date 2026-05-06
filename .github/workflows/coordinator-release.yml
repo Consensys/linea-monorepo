@@ -1,4 +1,4 @@
-name: "Coordinator Release (manual)"
+name: "Coordinator Release (still in testing phase)"
 
 permissions:
   actions: read
@@ -110,3 +110,4 @@ jobs:
       component-name: coordinator
       folder-name: coordinator
       include-path: '"coordinator/**"'
+    secrets: inherit
