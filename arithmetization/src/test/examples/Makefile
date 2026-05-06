@@ -20,13 +20,6 @@ BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EX
 JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
-# Set STRIP to strip the ELF (remove debug symbols)
-STRIP ?= false
-
-# Set ZIG_STRIP to strip the ELF when compiling Zig (removing debug symbols and reducing size)
-# Ignored for .s and .rs files
-ZIG_STRIP ?= false
-
 # Paths to go main (to turn bin into json), zkc main (to execute/debug the json) and linker script
 GO_MAIN  := $(MAKEFILE_DIR)main.go
 ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
@@ -35,25 +28,33 @@ LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
-# Offsets and entry point are determined from the generated ELF
-# Note that we use =, that means lazy evaluation, so these variables will be evaluated only after the ELF is generated
-PROGRAM_OFFSET = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
-IN_BYTES_OFFSET = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}')
-ENTRY_POINT    = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
+# Values to generate the linker script
+PROGRAM_OFFSET  ?= 0x00000000 # 128 MiB (0x00000000 -> 0x07FFFFFF)
+IN_BYTES_OFFSET ?= 0x08800000 # 1 GiB   (0x08800000 -> 0x48FFFFFF)
+ENTRY_POINT     := 0x0        # Since program starts from _start, the entry point is the same as the program offset
+SP              ?= 0x087fffff # 8 MiB   (0x08000000 <- 0x087fffff)
+
+# Parsed values are just to verify that the generate ELF is correct
+PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
+IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
+ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
+SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
+VERIFY_ELF               ?= false             
 
 # Default target (make)
 exec: compile zkc-exec
 
 debug: compile zkc-debug
 
-compile: $(SRC)
+compile: $(SRC) $(LINKER_SCRIPT)
+# Generate ELF
 	@if [ "$(EXT)" = ".s" ]; then \
 		mkdir -p $(MAKEFILE_DIR)asm/bin; \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		riscv64-unknown-elf-gcc -march=rv64im -mabi=lp64 -nostdlib -T$(LINKER_SCRIPT) -o $(BIN) $^; \
+		riscv64-unknown-elf-gcc -march=rv64im -mabi=lp64 -nostdlib -T$(LINKER_SCRIPT) -o $(BIN) $(SRC); \
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
+		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		cargo +nightly rustc \
@@ -68,15 +69,12 @@ compile: $(SRC)
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
 	fi
-	@if [ "$(STRIP)" = "true" ]; then \
-		echo "\nStripping $(BIN)"; \
-		riscv64-unknown-elf-strip -S $(BIN); \
-	fi
+# Disassemble ELF
 	@echo "\nDisassembling $(BIN)"
 	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
-	@echo "Program offset: $(PROGRAM_OFFSET)"
-	@echo "Input bytes offset: $(IN_BYTES_OFFSET)"
-	@echo "Entry point: $(ENTRY_POINT)"
+# Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
+	@if [ "$(VERIFY_ELF)" = "true" ]; then $(MAKE) verify-elf; fi
+# Generate JSON from ELF
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
@@ -93,10 +91,62 @@ zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	rm -f $(BIN) $(JSON) $(BIN_STRIPPED) $(BIN)_disassembled.elf
+	rm -f $(BIN) $(JSON) $(BIN)_disassembled.txt
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/target/
+	rm -f $(LINKER_SCRIPT)
+
+$(LINKER_SCRIPT):
+	@echo "ENTRY(_start)" > $@
+	@echo "" >> $@
+	@echo "MEMORY {" >> $@
+	@echo "    PROGRAM (rx) : ORIGIN = $(PROGRAM_OFFSET), LENGTH = 0x8000000" >> $@
+	@echo "    STACK   (rw) : ORIGIN = $(shell printf '0x%08x' $$(($(SP) - 0x800000 + 1))), LENGTH = 0x800000" >> $@
+	@echo "    IN  (r)  : ORIGIN = $(IN_BYTES_OFFSET), LENGTH = 0x40000000" >> $@
+	@echo "}" >> $@
+	@echo "" >> $@
+	@echo "SECTIONS {" >> $@
+	@echo "    . = ORIGIN(PROGRAM);" >> $@
+	@echo "" >> $@
+	@echo "    .text : {" >> $@
+	@echo "        *(.text .text.*)" >> $@
+	@echo "    } > PROGRAM" >> $@
+	@echo "" >> $@
+	@echo "    .rodata : {" >> $@
+	@echo "        *(.rodata .rodata.*)" >> $@
+	@echo "    } > PROGRAM" >> $@
+	@echo "" >> $@
+	@echo "    .data : {" >> $@
+	@echo "        *(.data .data.*)" >> $@
+	@echo "    } > PROGRAM" >> $@
+	@echo "" >> $@
+	@echo "    .bss : {" >> $@
+	@echo "        *(.bss .bss.*)" >> $@
+	@echo "    } > PROGRAM" >> $@
+	@echo "" >> $@
+	@echo "    /* stack grows downward from the top of the stack region */" >> $@
+	@echo "    _stack_start = ORIGIN(STACK) + LENGTH(STACK) - 1;" >> $@
+	@echo "" >> $@
+	@echo "    /* symbol marking the start of the input region */" >> $@
+	@echo "    _input_start = ORIGIN(IN);" >> $@
+	@echo "}" >> $@
+
+verify-elf: $(BIN)
+	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
+	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
+		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
+	@echo "  PROGRAM_OFFSET:  $(PROGRAM_OFFSET) (expected) = $(PROGRAM_OFFSET_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(IN_BYTES_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(IN_BYTES_OFFSET))))" ] || \
+		(echo "ERROR: IN_BYTES_OFFSET mismatch: expected $(IN_BYTES_OFFSET), got $(IN_BYTES_OFFSET_FROM_ELF)" && exit 1)
+	@echo "  IN_BYTES_OFFSET: $(IN_BYTES_OFFSET) (expected) = $(IN_BYTES_OFFSET_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(ENTRY_POINT_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(ENTRY_POINT))))" ] || \
+		(echo "ERROR: ENTRY_POINT mismatch: expected $(ENTRY_POINT), got $(ENTRY_POINT_FROM_ELF)" && exit 1)
+	@echo "  ENTRY_POINT:     $(ENTRY_POINT) (expected) = $(ENTRY_POINT_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(SP_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(SP))))" ] || \
+		(echo "ERROR: SP mismatch: expected $(SP), got $(SP_FROM_ELF)" && exit 1)
+	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
+	@echo "All values match\n"

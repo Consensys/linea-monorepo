@@ -58,8 +58,6 @@ zkc-test() {
 zkc-test <name>.<ext>
 # Compile and execute with input bytes
 zkc-test <name>.<ext> IN_BYTES="0xAABB"
-# Compile and execute with input bytes at a custom offset
-zkc-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x8000000
 # Compile and debug
 zkc-test debug <name>.<ext>
 # Compile and debug with input bytes
@@ -70,8 +68,6 @@ zkc-test compile <name>.<ext>
 zkc-test clean <name>.<ext>
 # Clean all build artifacts
 zkc-test clean-all
-# Compile and execute a Zig program without stripping
-zkc-test <name>.zig ZIG_STRIP=false
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
 zkc-test blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs with IN_BYTES="0x<213_bytes_input_hex><64_bytes_expected_output_hex>"
@@ -95,12 +91,7 @@ zkc-test blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae
 | `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                 |
 | `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                           |
 | `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                            |
-| `STRIP`          | `false`                                                                                 | Strip debug symbols from the ELF after compilation                         |
-| `ZIG_STRIP`      | `true`                                                                                  | Strip when compiling Zig (reduces binary size), ignored for `.s` and `.rs` |
-| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution         |
-| `PROGRAM_OFFSET` | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                   |
-| `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
-| `ENTRY_POINT`    | `0`                                                                                     | Entry point offset                                                         |
+| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution       |
 
 ## Target ISA
 
