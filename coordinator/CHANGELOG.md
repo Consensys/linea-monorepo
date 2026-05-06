@@ -1,8 +1,12 @@
 ## [unreleased]
-### update for release test
+
 ### 🐛 Bug Fixes
 
 - *(coordinator)* Release test for v4.2.0
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* [**breaking**] Test for bumping to v5.0.0
 ## [4.0.1] - 2026-05-05
 
 ### ⚙️ Miscellaneous Tasks

@@ -1,6 +1,8 @@
 ## [unreleased]
-### update for release test
 
+### ⚙️ Miscellaneous Tasks
+
+- *(linea-besu)* Test for bumping to v1.3.1
 ## [1.1.4] - 2026-05-05
 
 ### ⚙️ Miscellaneous Tasks
