@@ -47,6 +47,7 @@ jobs:
       - name: Install zkc
         run: make -C arithmetization install-zkc
         env:
+          ## Override with a custom go-corset repo commit here in the event zkc on main is failing
           GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
 
       - name: Run simple Zig guest program with Zkc interpreter
