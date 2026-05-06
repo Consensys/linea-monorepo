@@ -1,3 +1,5 @@
+ENTRY(_start)
+
 MEMORY {
     /* program region: 128 MiB (0x00000000 -> 0x07FFFFFF) */
     PROGRAM (rx) : ORIGIN = 0x00000000, LENGTH = 0x8000000

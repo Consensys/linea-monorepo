@@ -25,7 +25,7 @@ STRIP ?= false
 
 # Set ZIG_STRIP to strip the ELF when compiling Zig (removing debug symbols and reducing size)
 # Ignored for .s and .rs files
-ZIG_STRIP ?= true
+ZIG_STRIP ?= false
 
 # Paths to go main (to turn bin into json), zkc main (to execute/debug the json) and linker script
 GO_MAIN  := $(MAKEFILE_DIR)main.go
@@ -34,9 +34,12 @@ LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
-PROGRAM_OFFSET ?= 0         # (up to 128 MiB)
-IN_BYTES_OFFSET ?= 0x8000000 # (up to 1 GiB)
-ENTRY_POINT    ?= 0
+
+# Offsets and entry point are determined from the generated ELF
+# Note that we use =, that means lazy evaluation, so these variables will be evaluated only after the ELF is generated
+PROGRAM_OFFSET = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
+IN_BYTES_OFFSET = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}')
+ENTRY_POINT    = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
 
 # Default target (make)
 exec: compile zkc-exec
@@ -70,7 +73,10 @@ compile: $(SRC)
 		riscv64-unknown-elf-strip -S $(BIN); \
 	fi
 	@echo "\nDisassembling $(BIN)"
-	@riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
+	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
+	@echo "Program offset: $(PROGRAM_OFFSET)"
+	@echo "Input bytes offset: $(IN_BYTES_OFFSET)"
+	@echo "Entry point: $(ENTRY_POINT)"
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
