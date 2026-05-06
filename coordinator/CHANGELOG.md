@@ -3,9 +3,6 @@
 ### 🐛 Bug Fixes
 
 - *(coordinator)* Release test for v4.2.0
-
-## Update for release testing
-
 ## [4.0.1] - 2026-05-05
 
 ### ⚙️ Miscellaneous Tasks
