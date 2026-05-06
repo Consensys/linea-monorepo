@@ -83,6 +83,89 @@ Outer proof milestones:
 | `30015036-30015073-getZkProof` | 20:07:17 | 20:07:18 | 20:07:22 | 20:11:24 |
 | `30016678-30016741-getZkProof` | 20:24:59 | 20:25:00 | 20:25:04 | 20:29:05 |
 
+## Gnark PR 1761 Attempt
+
+After the baseline run, the benchmark was repeated with
+[`Consensys/gnark#1761`](https://github.com/Consensys/gnark/pull/1761),
+`perf: generalize sparse solver optimizations`.
+
+- PR head: `3460cedcac438acd8bb16b255e0e335f9133895f`
+- Go module version: `github.com/consensys/gnark v0.14.1-0.20260505192735-3460cedcac43`
+- `github.com/consensys/gnark-crypto` remained `v0.20.2-0.20260402204920-39238e584b99`
+- GitHub reported merge commit `9ffdc029ee4143141c3f8b9f5ec6f9969602527a`, but that revision was not fetchable as a Go module revision, so the benchmark used the PR head.
+
+Built the prover with:
+
+```bash
+go get github.com/consensys/gnark@3460cedcac438acd8bb16b255e0e335f9133895f
+make bin/prover
+```
+
+### Setup compatibility
+
+A first attempt reused the baseline `execution-limitless` setup and failed at the outer Plonk proof stage:
+
+- Request: `30006397-30006404-getZkProof`
+- Wall time: `9:16.81`
+- Max RSS: `678,951,164 KB`
+- Exit status: `2`
+- Failure: `constraint #29427927 is not satisfied` in `execution.(*CircuitExecution).CheckLimitlessConglomerationCompletion`
+
+The diagnostic stack referenced the previous gnark setup code path:
+
+```text
+github.com/consensys/gnark@v0.14.1-0.20260219004710-bbfb2f70a565
+```
+
+That made the old setup incompatible with the PR binary, so the `execution-limitless` setup was regenerated.
+The regeneration used a temporary local setup-only bypass for the final limitless asset-store copy; that patch
+was reverted before building the prover used for proving.
+
+Regenerated PR-1761 setup:
+
+- Command:
+  `LINEA_SKIP_LIMITLESS_ASSET_STORE=1 GOGC=500 GOMEMLIMIT=700000000000 ./bin/prover setup --config config/config-mainnet-limitless.toml --circuits execution-limitless --force`
+- Wall time: `6:22.18`
+- Max RSS: `637,486,632 KB`
+- Exit status: `0`
+- Verifying key: `0x32679a695a51f57c1ec61e2a220ae55902f801f7ae4e47490e59c9946768a4d0`
+- Circuit checksum: `0x4e7a1450e1c327fa79b9eb91b9dc5bbdbccfbe26dd79e9b152c564db74d25c57`
+- Config checksum: `0xcf09b310e6c0147cd58d0956c2e2d9eafd35e793fa07a5bd899a5f4c36ecd6ac`
+- Constraints: `84,819,973`
+
+### Prove result
+
+After regenerating setup with PR 1761, the smallest reference request reached the outer proof stage but panicked
+inside gnark before writing a proof response:
+
+| Request | Blocks | Exit | Wall time | Max RSS | Proof file | Failure |
+|---|---:|---:|---:|---:|---:|---|
+| `30006397-30006404-getZkProof` | 8 | 2 | `8:30.83` | `674,750,608 KB` | none | `panic: level 142: unknown proving level type *constraint.GkrSkipLevel` |
+
+Outer proof milestones before the panic:
+
+| Request | Conglomeration done | Witness | Outer proof | Sanity check |
+|---|---|---|---|---|
+| `30006397-30006404-getZkProof` | 21:05:04 | 21:05:05 | 21:05:10 | not reached |
+
+Failure signature:
+
+```text
+panic: level 142: unknown proving level type *constraint.GkrSkipLevel
+github.com/consensys/gnark/internal/gkr/bls12-377.Prove
+    .../github.com/consensys/gnark@v0.14.1-0.20260505192735-3460cedcac43/internal/gkr/bls12-377/gkr.go:154
+```
+
+At that location, the PR code handles `constraint.GkrSkipLevel` values, while the loaded proving schedule
+contained `*constraint.GkrSkipLevel`. This is consistent with the PR's own note that full generated
+constraint-package tests still fail around a GKR blueprint serialization round-trip mismatch. The Linea
+execution benchmark depends on serialized setup assets and hits that failure in the end-to-end proving path.
+
+No comparable wall-time improvement table is available for PR 1761 because the smallest selected request does
+not complete. The 38-block and 64-block requests were not rerun after this failure because they share the same
+outer BLS12-377 Plonk/GKR proving path and would not produce comparable proof timings until the gnark failure is
+fixed.
+
 ## Issues Found And Fixed
 
 ### Stale outer setup
@@ -115,6 +198,9 @@ Added regression test: `TestEcDataAssignData_SkipsNonEcrecoverRows`.
 ```text
 benchmark_results/reference_execution_regenerated/
 benchmark_results/reference_execution_setup_skip/
+benchmark_results/reference_execution_gnark1761_setup/
+benchmark_results/reference_execution_gnark1761_old_setup_failed/
+benchmark_results/reference_execution_gnark1761/
 ```
 
 Earlier failed-attempt logs are also retained for comparison:
