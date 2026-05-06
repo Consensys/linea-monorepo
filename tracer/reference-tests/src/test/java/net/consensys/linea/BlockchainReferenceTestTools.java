@@ -63,7 +63,6 @@ import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
 import org.hyperledger.besu.ethereum.worldstate.ImmutableDataStorageConfiguration;
 import org.hyperledger.besu.ethereum.worldstate.ImmutablePathBasedExtraStorageConfiguration;
 import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
-import org.hyperledger.besu.plugin.services.worldstate.MutableWorldState;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -493,9 +492,7 @@ public class BlockchainReferenceTestTools {
 
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
     final MutableBlockchain blockchain = spec.buildBlockchain();
-    final DataStorageConfiguration storageConfiguration =  ImmutableDataStorageConfiguration.builder().dataStorageFormat(DataStorageFormat.BONSAI).pathBasedExtraStorageConfiguration(ImmutablePathBasedExtraStorageConfiguration.builder().parallelStateRootComputationEnabled(false).build()).build();
-    final ProtocolContext context = spec.buildProtocolContext(storageConfiguration, blockchain);
-    // final ProtocolContext context = spec.buildProtocolContext(blockchain);
+    final ProtocolContext context = spec.buildProtocolContext(blockchain);
     final MutableWorldState worldState =
         context
             .getWorldStateArchive()
