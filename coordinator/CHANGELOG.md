@@ -1,3 +1,12 @@
+## [unreleased]
+
+### 🚀 Features
+
+- *(coordinator)* Release test for v4.1.0
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Fixed merge conflicts
 ## Update for release testing
 
 ## [4.0.1] - 2026-05-05
