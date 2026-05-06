@@ -97,8 +97,8 @@ jobs:
           name: Coordinator v${{ needs.release-coordinator-metadata.outputs.release_version }}
           tag_name: ${{ needs.release-coordinator-metadata.outputs.release_tag }}
           body_path: release/output.md
-          draft: ${{ inputs.draft_release || true }}
-          prerelease: ${{ inputs.pre_release || false }}
+          draft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.pre_release }}
           generate_release_notes: false
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true

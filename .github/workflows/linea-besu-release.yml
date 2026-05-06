@@ -53,8 +53,8 @@ jobs:
       run_test: true
       run_e2e_test: true
       push_image: true
-      draft_release: ${{ inputs.draft_release || true }}
-      pre_release: ${{ inputs.pre_release || false }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
       changelog: ${{ needs.release-linea-besu-metadata.outputs.changelog }}
       release_tag: ${{ needs.release-linea-besu-metadata.outputs.release_tag }}
