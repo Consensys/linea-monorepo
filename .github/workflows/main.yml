@@ -19,10 +19,15 @@ jobs:
   lint-latest-commit-messages:
     uses: ./.github/workflows/lint-commit-messages.yml
 
-  component-changelog-update:
+  component-changelog-upload:
     needs: [lint-latest-commit-messages]
     if: always()
-    uses: ./.github/workflows/component-changelog-update.yml
+    uses: ./.github/workflows/component-changelog-upload.yml
+  
+  component-changelog-commit:
+    needs: [component-changelog-upload]
+    if: always()
+    uses: ./.github/workflows/component-changelog-commit.yml
 
   filter-commit-changes:
     needs: [lint-latest-commit-messages]

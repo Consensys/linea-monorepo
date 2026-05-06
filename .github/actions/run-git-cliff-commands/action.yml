@@ -125,6 +125,11 @@ runs:
         TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
       run: |
         set -euo pipefail
+        
+        # retrieve the latest changes of CHANGELOG.md first to avoid chances
+        # of rebase or merge conflicts later from other workflows 
+        git pull
+
         CHANGELOG_FILE="${FOLDER_NAME}/CHANGELOG.md"
 
         # Drop existing [unreleased] block if any

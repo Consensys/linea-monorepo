@@ -1,7 +1,4 @@
-name: "Component Changelog (PR preview)"
-
-permissions:
-  contents: write
+name: "Component Changelog Upload"
 
 on:
   workflow_call:
@@ -64,23 +61,8 @@ jobs:
           include-path: ${{ toJSON(matrix.include-path) }}
           prepend-changelog: 'true'
 
-      - name: Configure git identity
-        if: steps.changelog.outputs.tag_changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit and push ${{ matrix.folder-name }}/CHANGELOG.md
-        if: steps.changelog.outputs.tag_changed == 'true'
-        env:
-          COMPONENT: ${{ matrix.component }}
-          FOLDER_NAME: ${{ matrix.folder-name }}
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- "${FOLDER_NAME}/CHANGELOG.md"; then
-            echo "No unreleased ${COMPONENT} changes; nothing to do."
-            exit 0
-          fi
-          git add "${FOLDER_NAME}/CHANGELOG.md"
-          git commit -m "chore(${COMPONENT}): update CHANGELOG.md unreleased section"
-          git push origin "HEAD:${{ github.head_ref }}"
+      - name: Upload CHANGELOG.md artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unreleased-changelog-${{ matrix.folder-name }}
+          path: ${{ matrix.folder-name }}/CHANGELOG.md

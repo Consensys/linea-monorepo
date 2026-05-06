@@ -1,0 +1,89 @@
+name: "Component Changelog Commit"
+
+permissions:
+  contents: write
+
+on:
+  workflow_call:
+
+concurrency:
+  group: component-changelog-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-component-changelog:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # git-cliff needs full history + tags to compute changelog/version
+          # and also check out the PR branch so we can push back to it
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Download CHANGELOG.md artifact
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: unreleased-changelog-*
+          path: ${{ github.workspace }}/tmp/artifacts
+          # Keep each artifact in its own subdir so we can recover the
+          # destination folder name from the artifact name suffix.
+          merge-multiple: false
+
+      - name: Distribute CHANGELOG.md to component folders
+        env:
+          ARTIFACTS_DIR: ${{ github.workspace }}/tmp/artifacts
+          PREFIX: unreleased-changelog-
+        run: |
+          set -euo pipefail
+          if [ ! -d "${ARTIFACTS_DIR}" ]; then
+            echo "No artifacts directory at ${ARTIFACTS_DIR}; nothing to do."
+            exit 0
+          fi
+
+          shopt -s nullglob
+          applied=0
+          for dir in "${ARTIFACTS_DIR}/${PREFIX}"*/; do
+            artifact_name=$(basename "${dir}")
+            # Strip the "unreleased-changelog-" prefix → destination folder name.
+            dest_folder="${artifact_name#${PREFIX}}"
+            src="${dir}CHANGELOG.md"
+            dest="${GITHUB_WORKSPACE}/${dest_folder}/CHANGELOG.md"
+
+            if [ ! -f "${src}" ]; then
+              echo "✗ ${src} missing; skipping."
+              continue
+            fi
+
+            mkdir -p "$(dirname "${dest}")"
+            cp "${src}" "${dest}"
+            echo "✓ ${artifact_name} -> ${dest_folder}/CHANGELOG.md"
+            applied=$((applied + 1))
+          done
+
+          if [ "${applied}" -eq 0 ]; then
+            echo "No CHANGELOG.md artifacts were applied."
+          else
+            echo "Applied ${applied} CHANGELOG.md update(s)."
+          fi
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push all CHANGELOG.md
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No CHANGELOG.md changes to commit."
+            exit 0
+          fi
+          git add .
+          git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component"
+          git push origin "HEAD:${{ github.head_ref }}"
