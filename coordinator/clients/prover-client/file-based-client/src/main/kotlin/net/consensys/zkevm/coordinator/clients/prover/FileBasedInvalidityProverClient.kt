@@ -1,17 +1,16 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
-import build.linea.clients.LineaAccountProof
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.vertx.core.Vertx
+import linea.clients.InvalidityProofRequest
+import linea.clients.InvalidityProofResponse
+import linea.clients.InvalidityProverClientV1
+import linea.domain.InvalidityProofIndex
 import linea.kotlin.encodeHex
-import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
-import net.consensys.zkevm.coordinator.clients.InvalidityProofResponse
-import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
-import net.consensys.zkevm.domain.InvalidityProofIndex
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -25,12 +24,14 @@ data class InvalidityProofRequestDto(
   val invalidityType: String,
   val zkParentStateRootHash: String,
   val conflatedExecutionTracesFile: String?,
-  val accountMerkleProof: AccountProofDto?,
+  val accountMerkleProof: JsonNode?,
   val zkStateMerkleProof: ArrayNode?,
   val simulatedExecutionBlockNumber: Long,
   val simulatedExecutionBlockTimestamp: Long,
 ) {
   companion object {
+    private val objectMapper = jacksonObjectMapper()
+
     fun fromDomainObject(invalidityProofRequest: InvalidityProofRequest): InvalidityProofRequestDto {
       return InvalidityProofRequestDto(
         ftxRLP = invalidityProofRequest.ftxRlp.encodeHex(),
@@ -40,23 +41,13 @@ data class InvalidityProofRequestDto(
         invalidityType = invalidityProofRequest.invalidityReason.name,
         zkParentStateRootHash = invalidityProofRequest.zkParentStateRootHash.encodeHex(),
         conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse,
-        accountMerkleProof = AccountProofDto.fromDomainObject(invalidityProofRequest.accountProof),
+        accountMerkleProof = invalidityProofRequest.accountProof?.accountProof?.let {
+          objectMapper.readTree(it)
+        },
         zkStateMerkleProof = invalidityProofRequest.zkStateMerkleProof?.zkStateMerkleProof,
         simulatedExecutionBlockNumber = invalidityProofRequest.simulatedExecutionBlockNumber.toLong(),
         simulatedExecutionBlockTimestamp = invalidityProofRequest.simulatedExecutionBlockTimestamp.epochSeconds,
       )
-    }
-  }
-}
-
-data class AccountProofDto(val accountProof: JsonNode) {
-  companion object {
-    fun fromDomainObject(lineaAccountProof: LineaAccountProof?): AccountProofDto? {
-      return lineaAccountProof
-        ?.accountProof
-        ?.let {
-          AccountProofDto(accountProof = jacksonObjectMapper().readTree(it))
-        }
     }
   }
 }

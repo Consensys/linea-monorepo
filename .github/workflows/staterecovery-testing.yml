@@ -28,19 +28,13 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       # CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # ~2.5 mins saved vs large
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     name: Staterecovery tests
     steps:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
-
-      - name: Build besu from source
-        shell: bash
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
-        env:
-          JAVA_OPTS: -Xmx2g
       - name: Staterecovery - Build and Unit tests
         run: |
           ./gradlew besu-plugins:state-recovery:besu-plugin:buildNeeded

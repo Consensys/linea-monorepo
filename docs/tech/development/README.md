@@ -121,7 +121,7 @@ make start-env COMPOSE_PROFILES=l1,l2,debug
 pnpm run build
 
 # Build specific package
-cd sdk && pnpm run build
+pnpm -F "./ts-libs/sdk/*" run build
 cd contracts && pnpm run build
 cd postman && pnpm run build
 
@@ -177,16 +177,16 @@ go build -o controller ./cmd/controller
 cd contracts
 
 # Compile
-npx hardhat compile
+pnpm exec hardhat compile
 
 # Test
-npx hardhat test
+pnpm exec hardhat test
 
 # Specific test file
-npx hardhat test test/hardhat/rollup/LineaRollup.ts
+pnpm exec hardhat test test/hardhat/rollup/LineaRollup.ts
 
 # Coverage
-npx hardhat coverage
+pnpm exec hardhat coverage
 ```
 
 ## Docker Images
@@ -320,16 +320,16 @@ export L1_ROLLUP_CONTRACT_ADDRESS=0x...
 
 | File | Location | Purpose |
 |------|----------|---------|
-| Coordinator config | `config/coordinator/` | Main coordinator settings |
+| Coordinator config | `docker/config/coordinator/` | Main coordinator settings |
 | Prover config | `config/prover/` | Prover settings |
-| Traces limits | `config/common/traces-limits-v2.toml` | Conflation limits |
-| Gas multipliers | `config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
+| Traces limits | `docker/config/common/traces-limits-v2.toml` | Conflation limits |
+| Gas multipliers | `docker/config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
 | L1 node | `docker/config/l1-node/` | L1 Besu/Teku config |
 | L2 sequencer | `docker/config/linea-besu-sequencer/` | Sequencer config |
 
 ### Tuning Conflation
 
-Edit `config/coordinator/coordinator-docker.config.toml`:
+Edit `docker/config/coordinator/coordinator-docker.config.toml`:
 
 ```toml
 [conflation]
@@ -407,7 +407,7 @@ cd prover && go test ./...
 ./gradlew integrationTest
 
 # Contract tests
-cd contracts && npx hardhat test
+cd contracts && pnpm exec hardhat test
 ```
 
 ### End-to-End Tests
@@ -468,7 +468,7 @@ pnpm clean
 
 1. Open project root
 2. Import Gradle project
-3. Set JDK 21
+3. Set JDK 25
 4. Install Kotlin plugin
 
 ### VS Code (TypeScript)

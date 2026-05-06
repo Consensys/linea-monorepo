@@ -17,8 +17,13 @@ internal class ForcedTransactionsSafeBlockNumberManager(
   private val ftxInSequencerForProcessing: MutableList<ULong> = mutableListOf()
 
   private fun updateSafeBlockNumber(value: ULong?) {
-    safeBlockNumber = value
-    listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    if (safeBlockNumber != value) {
+      if (value == null) {
+        log.info("releasing safeBlockNumber lock: safeBlockNumber={} --> null", safeBlockNumber)
+      }
+      safeBlockNumber = value
+      listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    }
   }
 
   @Synchronized
@@ -53,8 +58,8 @@ internal class ForcedTransactionsSafeBlockNumberManager(
   fun ftxProcessedBySequencer(ftxNumber: ULong, simulatedExecutionBlockNumber: ULong) {
     if (safeBlockNumber != null && simulatedExecutionBlockNumber < safeBlockNumber!!) {
       throw IllegalStateException(
-        "simulatedExecutionBlockNumber must be greater than or equal to safeBlockNumber" +
-          "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",
+        "ftx=$ftxNumber simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber " +
+          "must be greater than or equal to safeBlockNumber=$safeBlockNumber",
       )
     }
 
@@ -85,7 +90,6 @@ internal class ForcedTransactionsSafeBlockNumberManager(
     if (!startUpScanFinished) {
       return
     }
-    log.info("releasing Safe Block Number lock")
     updateSafeBlockNumber(null)
   }
 

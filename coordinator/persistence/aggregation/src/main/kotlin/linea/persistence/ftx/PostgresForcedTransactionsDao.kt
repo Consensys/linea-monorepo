@@ -1,11 +1,11 @@
 package linea.persistence.ftx
 
-import io.vertx.core.Future
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
+import linea.persistence.ForcedTransactionRecord
+import linea.persistence.ForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.domain.ForcedTransactionRecord
 import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level
@@ -162,7 +162,6 @@ class PostgresForcedTransactionsDao(
     queryLog.log(Level.TRACE, upsertSql, params)
     return upsertQuery.execute(Tuple.tuple(params))
       .map { }
-      .recover { th -> Future.failedFuture(th) }
       .toSafeFuture()
   }
 
@@ -171,7 +170,6 @@ class PostgresForcedTransactionsDao(
     queryLog.log(Level.TRACE, selectByNumberSql, params)
     return selectByNumberQuery.execute(Tuple.tuple(params))
       .map { rowSet -> rowSet.firstOrNull()?.let(::parseRecord) }
-      .recover { th -> Future.failedFuture(th) }
       .toSafeFuture()
   }
 
@@ -179,7 +177,6 @@ class PostgresForcedTransactionsDao(
     queryLog.log(Level.TRACE, selectAllSql)
     return selectAllQuery.execute()
       .map { rowSet -> rowSet.map(::parseRecord) }
-      .recover { th -> Future.failedFuture(th) }
       .toSafeFuture()
   }
 
@@ -188,7 +185,6 @@ class PostgresForcedTransactionsDao(
     queryLog.log(Level.TRACE, deleteSql, params)
     return deleteQuery.execute(Tuple.tuple(params))
       .map { rowSet -> rowSet.rowCount() }
-      .recover { th -> Future.failedFuture(th) }
       .toSafeFuture()
   }
 }

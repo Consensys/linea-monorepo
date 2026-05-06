@@ -56,7 +56,7 @@ concurrency:
 
 jobs:
   build-and-publish:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Transaction exclusion api build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
@@ -78,12 +78,6 @@ jobs:
 
       - name: Set up Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
-
-      - name: Build besu from source
-        shell: bash
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
-        env:
-          JAVA_OPTS: -Xmx2g
 
       - name: Build dist
         run: ./gradlew transaction-exclusion-api:app:installDist

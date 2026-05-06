@@ -21,7 +21,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -52,9 +52,9 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 |------|---------|-------|
 | Node.js | >= 24.14.1 | See `.nvmrc` |
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
-| JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
+| JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
 | Gradle | 9.4+ | use ./gradlew <task> |
-| Go | 1.24.6 | Prover |
+| Go | 1.25.7 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
 | Make | 3.81+ | Environment management |
@@ -126,6 +126,46 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 ### Typecheck
 
 - TypeScript packages: typecheck is part of build (`tsc`)
+
+## Code Intelligence (LSP)
+
+LSP provides precise navigation (go-to-definition, find-references, diagnostics) and is far more reliable than text search. Use it as the primary navigation strategy when LSP tools are available.
+
+### Setup
+
+#### Step 1 — install language server binaries
+
+| Language | macOS | Linux/Windows |
+|----------|-------|---------------|
+| TypeScript / JS | `npm install -g typescript-language-server typescript` | same |
+| Go | `go install golang.org/x/tools/gopls@latest` (ensure `$GOPATH/bin` is in `$PATH`) | same |
+| Java | `brew install jdtls` | download from [eclipse-jdtls releases](https://github.com/eclipse-jdtls/eclipse.jdt.ls/releases), symlink `bin/jdtls` into `$PATH` |
+| Kotlin | `brew install JetBrains/utils/kotlin-lsp` | download from [kotlin-lsp releases](https://github.com/Kotlin/kotlin-lsp/releases), add `bin/` to `$PATH` |
+
+#### Step 2 — install plugins in Claude Code
+
+Run `/plugins` and install `typescript-lsp`, `gopls-lsp`, `jdtls-lsp`, and `kotlin-lsp` from the
+`claude-plugins-official` marketplace.  The project's `.claude/settings.json` already enables them
+and sets `ENABLE_LSP_TOOL=1`, so no changes to your personal settings are needed.
+
+Restart Claude Code after installing.
+
+### Usage
+
+Prefer LSP tools over Grep/Glob/Read for code navigation:
+
+- `goToDefinition` / `goToImplementation` — jump to source instead of grepping
+- `findReferences` — find all call sites before renaming or changing a signature
+- `workspaceSymbol` — locate where a type or function is defined
+- `documentSymbol` — list all symbols in the current file
+- `hover` — get type info without opening the file
+- `incomingCalls` / `outgoingCalls` — trace call hierarchy
+
+Use Grep/Glob only for text/pattern searches (comments, string literals, config values) where LSP doesn't apply.
+
+**Important:** Every LSP operation requires a `filePath` pointing to a **file**, never a directory.  The file routes the request to the correct language server — pass any relevant file in the project if you don't have a specific one in mind.
+
+After writing or editing code, check LSP diagnostics and fix any type errors or missing imports before moving on.
 
 ## Code Conventions
 
@@ -241,6 +281,9 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 - **Dependabot:** Configured for GitHub Actions dependencies (weekly, Monday 03:00 UTC)
 - **Engine strict:** `engine-strict=true` in `.npmrc`
 
+Additions to `pnpm.onlyBuiltDependencies` require a security review of the package's install script, including its
+network, filesystem, and process execution surface, publisher reputation, and recent npm publish history.
+
 ### Irreversible Operations
 
 These require human approval and follow the release process:
@@ -297,11 +340,11 @@ These require human approval and follow the release process:
 |------|------|-------|---------|
 | `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry | Core protocol contracts (rollup, messaging, bridge, tokens) |
 | `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
-| `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
+| `prover` | Backend service | Go 1.25.7 | ZK proof generation (gnark, gnark-crypto) |
 | `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
-| `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
-| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
-| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
+| `ts-libs/sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
+| `ts-libs/sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
+| `ts-libs/sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
 | `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
 | `operations` | CLI tool | TypeScript, oclif | Operations management CLI |
 | `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
@@ -323,7 +366,7 @@ coordinator/             Kotlin coordinator service
 prover/                  Go ZK prover
 corset/                  Rust constraint compiler
 postman/                 TypeScript bridge message executor
-sdk/                     TypeScript SDKs (core, ethers, viem)
+ts-libs/sdk/             TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
 operations/              Operations CLI tool
 ts-libs/                 Shared TypeScript libraries
@@ -332,7 +375,7 @@ besu-plugins/            Besu client plugins
 jvm-libs/                Shared Kotlin/Java libraries
 transaction-exclusion-api/ Transaction exclusion API
 tracer/                  EVM tracer
-config/                  Service configuration files (TOML, JSON, XML)
+docker/config/           Service configuration files (TOML, JSON, XML)
 docker/                  Docker Compose files for local stack
 docs/                    Project documentation
 .github/workflows/       CI/CD workflows

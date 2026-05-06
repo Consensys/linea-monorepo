@@ -2,9 +2,7 @@ package common
 
 import (
 	"encoding/binary"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"math/big"
 )
 
 // LimbBytes is the size of one limb in bytes
@@ -38,17 +36,12 @@ func SplitBigEndianUint64(input uint64) [][]byte {
 	return SplitBytes(inputBytes)
 }
 
-// SplitLittleEndianUint64 splits the uint64 input into little endian subarrays of the provided size.
-func SplitLittleEndianUint64(input uint64) [][]byte {
-	inputBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(inputBytes, input)
-	return SplitBytes(inputBytes)
-}
-
-func GetTableRow(j int, tab []ifaces.ColAssignment) []field.Element {
-	res := make([]field.Element, len(tab))
-	for i := 0; i < len(tab); i++ {
-		res[i] = tab[i].Get(j)
+// SplitBigEndianBigInt splits the big.Int input into big endian subarrays.
+// The input is padded to numBytes before splitting.
+func SplitBigEndianBigInt(input *big.Int, numBytes int) [][]byte {
+	if input == nil {
+		return SplitBytes(make([]byte, numBytes))
 	}
-	return res
+	inputBytes := input.FillBytes(make([]byte, numBytes))
+	return SplitBytes(inputBytes)
 }

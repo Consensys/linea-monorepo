@@ -40,7 +40,7 @@ jobs:
   # Blockchain ref Tests
   # ==================================================================
   blockchain-reference-tests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
     outputs:
       success: ${{ steps.metrics.outputs.success }}
       failed: ${{ steps.metrics.outputs.failed }}
@@ -60,7 +60,7 @@ jobs:
         run: ./gradlew :tracer:reference-tests:generateExecutionSpecBlockchainTests -Dorg.gradle.caching=true
 
       - name: Download artifact
-        uses: dawidd6/action-download-artifact@ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5 # v11
+        uses: dawidd6/action-download-artifact@8305c0f1062bb0d184d09ef4493ecb9288447732 # v20
         if: ${{ inputs.failed_module != '' }}
         with:
           name: failedBlockchainReferenceTests.json

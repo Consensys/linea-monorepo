@@ -39,6 +39,27 @@ describe("loadPostmanOptionsFromEnv", () => {
     });
   });
 
+  it("should prefix L1/L2 signer private keys with 0x when missing", async () => {
+    await withEnv(
+      {
+        ...TEST_ENV_VARS,
+        L1_SIGNER_PRIVATE_KEY: TEST_L1_SIGNER_PRIVATE_KEY.slice(2),
+        L2_SIGNER_PRIVATE_KEY: TEST_L2_SIGNER_PRIVATE_KEY.slice(2),
+      },
+      () => {
+        const options = loadPostmanOptionsFromEnv();
+        expect(options.l1Options.claiming.signer).toEqual({
+          type: "private-key",
+          privateKey: TEST_L1_SIGNER_PRIVATE_KEY,
+        });
+        expect(options.l2Options.claiming.signer).toEqual({
+          type: "private-key",
+          privateKey: TEST_L2_SIGNER_PRIVATE_KEY,
+        });
+      },
+    );
+  });
+
   it("should build web3signer config when L1_SIGNER_TYPE is web3signer", async () => {
     await withEnv(
       {
@@ -309,6 +330,64 @@ describe("loadPostmanOptionsFromEnv", () => {
 
         expect(options.l1Options.isCalldataEnabled).toBe(true);
         expect(options.l2Options.isCalldataEnabled).toBe(true);
+      },
+    );
+  });
+
+  it("should build aws-kms signer config when L1_SIGNER_TYPE is aws-kms", async () => {
+    await withEnv(
+      {
+        ...TEST_ENV_VARS,
+        L1_SIGNER_TYPE: "aws-kms",
+        L1_AWS_KMS_KEY_ID: "alias/linea-postman-l1",
+      },
+      () => {
+        const options = loadPostmanOptionsFromEnv();
+
+        expect(options.l1Options.claiming.signer).toEqual({
+          type: "aws-kms",
+          kmsKeyId: "alias/linea-postman-l1",
+        });
+      },
+    );
+  });
+
+  it("should include AWS region for aws-kms signer when L1_AWS_KMS_REGION is set", async () => {
+    await withEnv(
+      {
+        ...TEST_ENV_VARS,
+        L1_SIGNER_TYPE: "aws-kms",
+        L1_AWS_KMS_KEY_ID: "arn:aws:kms:eu-west-1:000000000000:key/abcd-1234",
+        L1_AWS_KMS_REGION: "eu-west-1",
+      },
+      () => {
+        const options = loadPostmanOptionsFromEnv();
+
+        expect(options.l1Options.claiming.signer).toEqual({
+          type: "aws-kms",
+          kmsKeyId: "arn:aws:kms:eu-west-1:000000000000:key/abcd-1234",
+          region: "eu-west-1",
+        });
+      },
+    );
+  });
+
+  it("should build aws-kms signer config for L2 when L2_SIGNER_TYPE is aws-kms", async () => {
+    await withEnv(
+      {
+        ...TEST_ENV_VARS,
+        L2_SIGNER_TYPE: "aws-kms",
+        L2_AWS_KMS_KEY_ID: "alias/linea-postman-l2",
+        L2_AWS_KMS_REGION: "us-east-1",
+      },
+      () => {
+        const options = loadPostmanOptionsFromEnv();
+
+        expect(options.l2Options.claiming.signer).toEqual({
+          type: "aws-kms",
+          kmsKeyId: "alias/linea-postman-l2",
+          region: "us-east-1",
+        });
       },
     );
   });

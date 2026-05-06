@@ -4,17 +4,26 @@ import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
 import linea.LongRunningService
 import linea.contract.l1.FinalizedStateDataProvider
+import linea.contract.l1.LineaSmartContractClient
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.Type2StateProofManagerConfig
 import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
+import linea.domain.BlobSubmittedEvent
 import linea.domain.BlockNumberAndHash
+import linea.domain.FinalizationSubmittedEvent
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
+import linea.finalization.FinalizationHandler
+import linea.finalization.FinalizationMonitor
 import linea.kotlin.toKWeiUInt
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.metrics.LineaMetricsCategory
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
 import linea.web3j.SmartContractErrors
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -38,14 +47,9 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1Calcula
 import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
 import net.consensys.zkevm.ethereum.coordination.LatestBlobSubmittedBlockNumberTracker
@@ -53,14 +57,9 @@ import net.consensys.zkevm.ethereum.coordination.LatestFinalizationSubmittedBloc
 import net.consensys.zkevm.ethereum.coordination.blockcreation.ForkChoiceUpdaterImpl
 import net.consensys.zkevm.ethereum.finalization.AggregationFinalizationCoordinator
 import net.consensys.zkevm.ethereum.finalization.AggregationSubmitterImpl
-import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
-import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesPostgresDao
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesRepositoryImpl
@@ -301,11 +300,6 @@ class L1DependentApp(
     }
 
   private val lastFinalizedBlock = lastFinalizedBlock().get()
-  private val lastProcessedBlockNumber = resumeConflationFrom(
-    aggregationsRepository,
-    lastFinalizedBlock,
-  ).get()
-
   private val lineaSmartContractClientForDataSubmission: LineaSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
     // dynamic gas pricing is disabled and will act as a fallback gas provider
@@ -343,7 +337,7 @@ class L1DependentApp(
     )
   }
 
-  private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "highest.accepted.block.number",
@@ -652,7 +646,7 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
-  val highestAcceptedFinalizationTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "highest.accepted.block.number",

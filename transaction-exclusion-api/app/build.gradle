@@ -5,6 +5,7 @@ plugins {
 dependencies {
   implementation project(':transaction-exclusion-api:core')
   implementation project(':transaction-exclusion-api:persistence:rejectedtransaction')
+  implementation project(':jvm-libs:generic:errors')
   implementation project(':jvm-libs:generic:extensions:futures')
   implementation project(':jvm-libs:generic:extensions:kotlin')
   implementation project(':jvm-libs:generic:json-rpc')
@@ -55,12 +56,15 @@ application {
 
 jar {
   archiveBaseName = 'transaction-exclusion-api'
-  manifest {
-    attributes(
-        'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
-        'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
-        'Multi-Release': 'true'
-        )
+  // Move Class-Path computation back to execution time and don’t resolve runtimeClasspath at configuration time
+  doFirst {
+    manifest {
+      attributes(
+          'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+          'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
+          'Multi-Release': 'true'
+          )
+    }
   }
 }
 
@@ -73,14 +77,14 @@ distributions {
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
-    "-Dvertx.configurationFile=config/transaction-exclusion-api/vertx.json",
-    "-Dlog4j2.configurationFile=config/transaction-exclusion-api/log4j2-dev.xml"
+    "-Dvertx.configurationFile=docker/config/transaction-exclusion-api/vertx-options.json",
+    "-Dlog4j2.configurationFile=docker/config/transaction-exclusion-api/log4j2-dev.xml"
   ] + System.properties.entrySet()
   .findAll { it.key.startsWith("config") }
   .collect { "-D${it.key}=${it.value}" }
   args = [
-    "config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml",
-    "config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"
+    "docker/config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml",
+    "docker/config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"
   ]
 }
 

@@ -5,21 +5,21 @@ import build.linea.clients.LineaAccountProof
 import build.linea.clients.StateManagerAccountProofClient
 import build.linea.clients.StateManagerClientV1
 import com.github.michaelbull.result.getOrThrow
+import linea.clients.GenerateTracesResponse
+import linea.clients.InvalidityProofRequest
+import linea.clients.InvalidityProofResponse
+import linea.clients.InvalidityProverClientV1
+import linea.clients.InvalidityReason
+import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
+import linea.domain.InvalidityProofIndex
 import linea.ethapi.EthLogsClient
 import linea.ethapi.EthLogsFilterOptions
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.kotlin.toHexStringUInt256
-import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
-import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
-import net.consensys.zkevm.coordinator.clients.InvalidityProofResponse
-import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
-import net.consensys.zkevm.coordinator.clients.InvalidityReason
-import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.domain.ForcedTransactionRecord
-import net.consensys.zkevm.domain.InvalidityProofIndex
+import linea.persistence.ForcedTransactionRecord
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -129,7 +129,31 @@ class InvalidityProofAssembler(
     val tracesFile: String? = null,
     val accountProof: LineaAccountProof? = null,
     val zkStateMerkleProof: GetZkEVMStateMerkleProofResponse? = null,
-  )
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as RequiredInvalidityProofData
+
+      if (!prevFtxRollingHash.contentEquals(other.prevFtxRollingHash)) return false
+      if (!zkParentStateRootHash.contentEquals(other.zkParentStateRootHash)) return false
+      if (tracesFile != other.tracesFile) return false
+      if (accountProof != other.accountProof) return false
+      if (zkStateMerkleProof != other.zkStateMerkleProof) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int {
+      var result = prevFtxRollingHash.contentHashCode()
+      result = 31 * result + zkParentStateRootHash.contentHashCode()
+      result = 31 * result + (tracesFile?.hashCode() ?: 0)
+      result = 31 * result + (accountProof?.hashCode() ?: 0)
+      result = 31 * result + (zkStateMerkleProof?.hashCode() ?: 0)
+      return result
+    }
+  }
 
   private fun fetchRequiredDataForInvalidityProof(
     invalidityReason: InvalidityReason,
@@ -147,7 +171,7 @@ class InvalidityProofAssembler(
         EncodingContext.POOLED_TRANSACTION,
       ).sender.bytes.toArray()
     if (invalidityReason == InvalidityReason.BadNonce || invalidityReason == InvalidityReason.BadBalance) {
-      accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber)
+      accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber - 1UL)
         .thenApply { it }
     }
     if (invalidityReason == InvalidityReason.BadPrecompile || invalidityReason == InvalidityReason.TooManyLogs) {
@@ -171,11 +195,11 @@ class InvalidityProofAssembler(
       )
       .thenApply {
         RequiredInvalidityProofData(
-          prevFtxRollingHash = prevFtxRollingHashFuture.get(),
-          zkParentStateRootHash = zkParentStateRootHashFuture.get().zkParentStateRootHash,
-          tracesFile = tracesFuture.get()?.tracesFileName,
-          accountProof = accountProofFuture.get(),
-          zkStateMerkleProof = stateProofFuture.get(),
+          prevFtxRollingHash = prevFtxRollingHashFuture.join(),
+          zkParentStateRootHash = zkParentStateRootHashFuture.join().zkParentStateRootHash,
+          tracesFile = tracesFuture.join()?.tracesFileName,
+          accountProof = accountProofFuture.join(),
+          zkStateMerkleProof = stateProofFuture.join(),
         )
       }
   }
