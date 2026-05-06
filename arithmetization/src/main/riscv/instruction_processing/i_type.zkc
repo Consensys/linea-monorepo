@@ -198,7 +198,6 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
             }
         }
 
-        // TODO: should never be reached
         default: {
             printf "Unsupported I-Type instruction with\n"
             printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
