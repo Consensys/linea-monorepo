@@ -35,13 +35,24 @@ func (v *VerifierAction) Run(run wizard.Runtime) error {
 	}
 
 	for k := range ctx.InputQuery.Pols {
-		// Compute Σ_b α^b · RowEvals[b] from the committed column.
+		// Compute Σ_b α^b · RowEvals_k[b] from the committed column.
+		// When Packed=true RowEvals is a single column with block k at
+		// [k·nRowSize:(k+1)·nRowSize]; otherwise it is the k-th individual column.
 		var computed fext.Element
-		for b := 0; b < nRowSize; b++ {
-			re := run.GetColumnAtExt(ctx.RowEvals[k].GetColID(), b)
-			var t fext.Element
-			t.Mul(&alphaPow[b], &re)
-			computed.Add(&computed, &t)
+		if ctx.Packed {
+			for b := 0; b < nRowSize; b++ {
+				re := run.GetColumnAtExt(ctx.RowEvals[0].GetColID(), k*nRowSize+b)
+				var t fext.Element
+				t.Mul(&alphaPow[b], &re)
+				computed.Add(&computed, &t)
+			}
+		} else {
+			for b := 0; b < nRowSize; b++ {
+				re := run.GetColumnAtExt(ctx.RowEvals[k].GetColID(), b)
+				var t fext.Element
+				t.Mul(&alphaPow[b], &re)
+				computed.Add(&computed, &t)
+			}
 		}
 
 		// Read the claimed v_k from the U_α MultilinearEval params.

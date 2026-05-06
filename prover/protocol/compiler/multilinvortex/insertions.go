@@ -8,9 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/sumcheck"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // InsertBootstrapperOpenings is a compiler pass that inserts MultilinearEval
@@ -134,22 +132,13 @@ func (a *MlOpeningProverAction) Run(run *wizard.ProverRuntime) {
 	for d, name := range a.CoinNames {
 		point[d] = run.GetRandomCoinFieldExt(name)
 	}
-
+	// Assign the evaluation point with zero y-values. The actual y for each
+	// column is computed as a byproduct of ProverAction's RowEvals fold
+	// (y = Σ_b eq_b(c_row) × RowEvals[b]), eliminating the O(n·2^n) fold here.
 	points := make([][]fext.Element, len(a.Cols))
 	ys := make([]fext.Element, len(a.Cols))
-
-	// Evaluate each column at point in parallel. IntoRegVecSaveAllocExt returns
-	// a freshly allocated slice, so we fold it in-place (no Clone needed).
-	parallel.Execute(len(a.Cols), func(start, stop int) {
-		for k := start; k < stop; k++ {
-			ml := sumcheck.MultiLin(run.GetColumn(a.Cols[k].GetColID()).IntoRegVecSaveAllocExt())
-			for _, r := range point {
-				ml.Fold(r)
-			}
-			ys[k] = ml[0]
-			points[k] = point
-		}
-	})
-
+	for k := range points {
+		points[k] = point
+	}
 	run.AssignMultilinearExt(a.Q.Name(), points, ys...)
 }

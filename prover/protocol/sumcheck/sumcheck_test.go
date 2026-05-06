@@ -241,6 +241,101 @@ func TestSumcheckRejectsBadRoundPoly(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestProveBatchedWithOwnedMixed checks that the compact mixed-size prover
+// produces valid proofs accepted by the standard verifier, and that its round
+// polynomials match those produced by the fully-expanded approach.
+func TestProveBatchedWithOwnedMixed(t *testing.T) {
+	rng := makeRng(0xBEEF_CAFE)
+	nmax := 8
+	cases := []struct {
+		name     string
+		polyVars []int
+	}{
+		{"all-full", []int{8, 8, 8}},
+		{"all-compact", []int{3, 5, 7}},
+		{"mixed", []int{3, 5, 7, 8, 3, 8}},
+		{"single-compact", []int{4}},
+		{"single-nq1", []int{1}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			N := len(tc.polyVars)
+			compactPolys := make([]MultiLin, N)
+			expandedPolys := make([]MultiLin, N)
+			claims := make([]Claim, N)
+			polyVars := make([]int, N)
+
+			for i, nq := range tc.polyVars {
+				polyVars[i] = nq
+				compactPolys[i] = randPoly(rng, nq)
+				// Build expanded version: E[ii] = compact[ii >> (nmax-nq)]
+				shift := nmax - nq
+				expanded := make(MultiLin, 1<<nmax)
+				for ii := range expanded {
+					expanded[ii] = compactPolys[i][ii>>shift]
+				}
+				expandedPolys[i] = expanded
+
+				// Claim at a random nmax-point with zeros for high coords.
+				fullPoint := make([]fext.Element, nmax)
+				for j := 0; j < nq; j++ {
+					fullPoint[j] = fext.PseudoRand(rng)
+				}
+				eval := compactPolys[i].Evaluate(fullPoint[:nq])
+				claims[i] = Claim{Point: fullPoint, Eval: eval}
+			}
+
+			// Prove with compact representation.
+			compactCopies := make([]MultiLin, N)
+			for i := range compactPolys {
+				compactCopies[i] = compactPolys[i].Clone()
+			}
+			ptrC := NewMockTranscript("mixed")
+			ptrC.Append("lambda", fext.One())
+			var dummyLambda fext.Element
+			dummyLambda.SetOne()
+			proofC, challengesC, err := ProveBatchedWithOwnedMixed(claims, compactCopies, dummyLambda, ptrC, polyVars)
+			require.NoError(t, err)
+
+			// Cross-check: round polynomials must be identical.
+			ptrE2 := NewMockTranscript("mixed")
+			ptrE2.Append("lambda", fext.One())
+			expandedCopies2 := make([]MultiLin, N)
+			for i := range expandedPolys {
+				expandedCopies2[i] = expandedPolys[i].Clone()
+			}
+			proofE2, challengesE2, err2 := ProveBatchedWithOwned(claims, expandedCopies2, dummyLambda, ptrE2)
+			require.NoError(t, err2)
+			require.Equal(t, len(proofC.RoundPolys), len(proofE2.RoundPolys))
+			for k := range proofC.RoundPolys {
+				for j := 0; j < 3; j++ {
+					require.True(t, proofC.RoundPolys[k][j].Equal(&proofE2.RoundPolys[k][j]),
+						"round %d coeff %d mismatch", k, j)
+				}
+			}
+			require.Equal(t, challengesC, challengesE2, "challenges must match")
+			for i := range proofC.FinalEvals {
+				require.True(t, proofC.FinalEvals[i].Equal(&proofE2.FinalEvals[i]),
+					"finalEval %d mismatch", i)
+			}
+
+			// Verify compact proof with the standard verifier.
+			vtr := NewMockTranscript("mixed")
+			vtr.Append("lambda", fext.One())
+			point, evals, err := VerifyBatchedWith(claims, proofC, dummyLambda, vtr)
+			require.NoError(t, err)
+			require.Len(t, point, nmax)
+
+			// Residual evals must match compact poly evaluated at the challenge prefix.
+			for i, nq := range tc.polyVars {
+				want := compactPolys[i].Evaluate(challengesC[:nq])
+				require.True(t, evals[i].Equal(&want), "residual eval %d mismatch", i)
+			}
+			_ = challengesC
+		})
+	}
+}
+
 // TestFoldEqualsEvaluate proves the obvious-but-load-bearing invariant that
 // repeatedly folding gives the same answer as Evaluate.
 func TestFoldEqualsEvaluate(t *testing.T) {

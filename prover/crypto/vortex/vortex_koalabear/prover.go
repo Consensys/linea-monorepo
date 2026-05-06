@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 func Prove(
@@ -43,32 +44,40 @@ func SelectColumnsAndMerkleProofs(
 	proof.Columns = make([][][]field.Element, len(committedMatrices))
 
 	for i := range committedMatrices {
+		nrows := len(committedMatrices[i])
 		proof.Columns[i] = make([][]field.Element, len(entryList))
 		for j := range entryList {
-			col := make([]field.Element, len(committedMatrices[i]))
-			for k := range committedMatrices[i] {
-				col[k] = committedMatrices[i][k].Get(entryList[j])
-			}
-			proof.Columns[i][j] = col
+			proof.Columns[i][j] = make([]field.Element, nrows)
 		}
+		// Row-major traversal: each row fits in L1 cache; scatter to all t column buffers.
+		parallel.Execute(nrows, func(start, stop int) {
+			for k := start; k < stop; k++ {
+				row := committedMatrices[i][k]
+				for j, colIdx := range entryList {
+					proof.Columns[i][j][k] = row.Get(colIdx)
+				}
+			}
+		})
 	}
 
 	numTrees := len(trees)
 	proofs := make([][]smt_koalabear.Proof, numTrees)
 
-	// Generate the proofs for each tree and each entry
+	// Generate the proofs for each tree and each entry (read-only on tree — safe to parallelize).
 	for treeID, tree := range trees {
 		if tree == nil {
 			utils.Panic("tree is nil")
 		}
 		proofs[treeID] = make([]smt_koalabear.Proof, len(entryList))
-		for k, entry := range entryList {
-			var err error
-			proofs[treeID][k], err = tree.Prove(entry)
-			if err != nil {
-				utils.Panic("invalid entry leaf: %v", err.Error())
+		parallel.Execute(len(entryList), func(start, stop int) {
+			for k := start; k < stop; k++ {
+				var err error
+				proofs[treeID][k], err = tree.Prove(entryList[k])
+				if err != nil {
+					utils.Panic("invalid entry leaf: %v", err.Error())
+				}
 			}
-		}
+		})
 	}
 
 	return proofs

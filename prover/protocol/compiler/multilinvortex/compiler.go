@@ -22,6 +22,7 @@ package multilinvortex
 
 import (
 	"fmt"
+	"math/bits"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -30,7 +31,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// context holds the compiled artifacts for one batch of MultilinearEval queries.
+// Context holds the compiled artifacts for one batch of MultilinearEval queries.
 type Context struct {
 	// InputQuery is the batched MultilinearEval at the shared point c.
 	// After multilineareval.Compile, there is one residual per numVars group.
@@ -46,13 +47,30 @@ type Context struct {
 	// AlphaCoin is the batching coin for the row combination.
 	AlphaCoin coin.Info
 	// UAlpha[k] is the committed column for the α-combination of column k's rows.
+	// When Packed=true the slice has length 1: a single column of size KPow2·2^NCol
+	// storing all K UAlpha vectors end-to-end (block k at [k·nColSize:(k+1)·nColSize]).
 	UAlpha []ifaces.Column
 	// RowEvals[k] is the committed column for the row evaluations of column k at c_col.
+	// When Packed=true the slice has length 1 (same layout as UAlpha).
 	RowEvals []ifaces.Column
-	// UCols[k] is the MultilinearEval query: UAlpha[k] evaluated at c_col.
+	// UCols[k] is the MultilinearEval query for UAlpha[k] evaluated at c_col.
+	// When Packed=true each UCols[k] references the single packed UAlpha column at
+	// the locator-extended point (l_k ‖ c_col) with L+NCol variables.
 	UCols []query.MultilinearEval
-	// RowClaims[k] is the MultilinearEval query: RowEvals[k] evaluated at c_row.
+	// RowClaims[k] is the MultilinearEval query for RowEvals[k] evaluated at c_row.
+	// When Packed=true each RowClaims[k] references the packed RowEvals column at
+	// (l_k ‖ c_row) with L+NRow variables.
 	RowClaims []query.MultilinearEval
+
+	// Packed indicates that all K UAlpha/RowEvals columns are packed into a single
+	// column per type using the locator-tuple embedding P(l_k, x) = f_k(x).
+	// CommitMLColumns builds ONE Merkle tree per packed column instead of K trees.
+	Packed bool
+	// L = ceil(log2(K)) when Packed; number of locator bits prepended to each
+	// evaluation point. 0 when Packed=false.
+	L int
+	// KPow2 = 2^L when Packed (K rounded up to the next power of two).
+	KPow2 int
 }
 
 // Compile applies one round of the multilinear Vortex opening protocol using
@@ -111,6 +129,10 @@ func mustAllSameNumVars(q query.MultilinearEval) int {
 
 // compileWithNRow is the shared implementation. nFoldRows < 1 means "use ⌈n/2⌉".
 func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
+	// Collect ProverActions per round so independent same-round actions can be
+	// batched into one parallel execution, reducing sequential overhead.
+	pendingProver := make(map[int][]*ProverAction)
+
 	idx := 0
 	for _, name := range comp.QueriesParams.AllUnignoredKeys() {
 		q, ok := comp.QueriesParams.Data(name).(query.MultilinearEval)
@@ -140,7 +162,7 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		}
 
 		ctx := buildContext(comp, r, q, nRow, idx)
-		comp.RegisterProverAction(r+1, &ProverAction{Ctx: ctx})
+		pendingProver[r+1] = append(pendingProver[r+1], &ProverAction{Ctx: ctx})
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
 
 		// Store context so later passes (e.g. CommitOriginalMLColumns) can read it.
@@ -151,6 +173,31 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		comp.ExtraData[mlvortexContextsKey] = append(ctxs, ctx)
 
 		idx++
+	}
+
+	for round, actions := range pendingProver {
+		if len(actions) == 1 {
+			comp.RegisterProverAction(round, actions[0])
+		} else {
+			comp.RegisterProverAction(round, &proverActionBatch{actions: actions})
+		}
+	}
+}
+
+// proverActionBatch runs multiple independent ProverAction instances concurrently.
+// Each action reads from different input columns and writes to different output
+// columns, so there is no shared mutable state beyond the mutex-protected runtime
+// calls (GetColumn, AssignColumn, GetRandomCoinFieldExt, etc.).
+type proverActionBatch struct {
+	actions []*ProverAction
+}
+
+func (b *proverActionBatch) Run(run *wizard.ProverRuntime) {
+	// Run sequentially: each ProverAction already saturates all cores via
+	// parallel.Execute, so concurrent execution only over-subscribes the CPU
+	// and hurts throughput.
+	for _, a := range b.actions {
+		a.Run(run)
 	}
 }
 
@@ -214,5 +261,149 @@ func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, 
 		RowEvals:   rowEvals,
 		UCols:      uCols,
 		RowClaims:  rowClaims,
+	}
+}
+
+// CompileRoundPacked is like CompileRound but uses the locator-tuple packing
+// strategy: instead of K separate UAlpha/RowEvals proof columns per query, it
+// creates ONE packed column of size KPow2·2^NCol (resp. KPow2·2^NRow) where
+// KPow2 = 2^ceil(log2(K)). CommitMLColumns then builds ONE Merkle tree for the
+// packed column instead of K trees, reducing both proof size and gnark circuit cost.
+//
+// Each downstream ML claim references the packed column at the locator-extended
+// point (l_k ‖ c_col) where l_k is the L-bit big-endian binary encoding of k.
+// These K claims are handled correctly by multilineareval.Batch.
+func CompileRoundPacked(comp *wizard.CompiledIOP) {
+	compileWithNRowPacked(comp, -1)
+	CommitMLColumns(comp)
+	CommitOriginalMLColumns(comp)
+}
+
+// compileWithNRowPacked is the packed variant of compileWithNRow.
+func compileWithNRowPacked(comp *wizard.CompiledIOP, nFoldRows int) {
+	pendingProver := make(map[int][]*ProverAction)
+
+	idx := 0
+	for _, name := range comp.QueriesParams.AllUnignoredKeys() {
+		q, ok := comp.QueriesParams.Data(name).(query.MultilinearEval)
+		if !ok {
+			continue
+		}
+		comp.QueriesParams.MarkAsIgnored(name)
+		r := comp.QueriesParams.Round(name)
+
+		if mustAllSameNumVars(q) == 1 {
+			for _, pol := range q.Pols {
+				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
+			}
+			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{Q: q})
+			idx++
+			continue
+		}
+
+		n := mustAllSameNumVars(q)
+		nRow := (n + 1) / 2
+		if nFoldRows >= 1 {
+			nRow = nFoldRows
+			if nRow >= n {
+				nRow = n - 1
+			}
+		}
+
+		ctx := buildContextPacked(comp, r, q, nRow, idx)
+		pendingProver[r+1] = append(pendingProver[r+1], &ProverAction{Ctx: ctx})
+		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
+
+		if comp.ExtraData == nil {
+			comp.ExtraData = make(map[string]any)
+		}
+		ctxs, _ := comp.ExtraData[mlvortexContextsKey].([]*Context)
+		comp.ExtraData[mlvortexContextsKey] = append(ctxs, ctx)
+
+		idx++
+	}
+
+	for round, actions := range pendingProver {
+		if len(actions) == 1 {
+			comp.RegisterProverAction(round, actions[0])
+		} else {
+			comp.RegisterProverAction(round, &proverActionBatch{actions: actions})
+		}
+	}
+}
+
+// buildContextPacked builds a Context using the locator-tuple packing strategy.
+// All K UAlpha/RowEvals vectors are packed into a single proof column each.
+//
+// Packed layout (UAlpha):  packed[k·nColSize:(k+1)·nColSize] = UAlpha_k  (k=0…K-1)
+//                          packed[k·nColSize:(k+1)·nColSize] = 0         (k=K…KPow2-1)
+//
+// UCols[k] claims packed UAlpha at point (l_k ‖ c_col) where l_k is the
+// L-bit big-endian binary encoding of k; MLE evaluation gives UAlpha_k(c_col).
+func buildContextPacked(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *Context {
+	n := mustAllSameNumVars(q)
+	nCol := n - nRow
+	K := len(q.Pols)
+
+	// L = ceil(log2(K)); KPow2 = 2^L.
+	L := bits.Len(uint(K - 1)) // bits.Len(0)=0 when K=1; ceil(log2(K)) otherwise
+	if K == 1 {
+		L = 0
+	}
+	KPow2 := 1 << L
+
+	suffix := fmt.Sprintf("n%d_r%d_%d_i%d", n, round, comp.SelfRecursionCount, idx)
+
+	alpha := comp.InsertCoin(
+		round+1,
+		coin.Name(fmt.Sprintf("MLVORTEX_ALPHA_%s", suffix)),
+		coin.FieldExt,
+	)
+
+	// ONE packed proof column for all K UAlpha vectors (KPow2 × 2^nCol elements).
+	packedUAlpha := comp.InsertProof(
+		round+1,
+		ifaces.ColID(fmt.Sprintf("MLVORTEX_UALPHA_packed_%s", suffix)),
+		KPow2*(1<<nCol),
+		false,
+	)
+	// ONE packed proof column for all K RowEvals vectors (KPow2 × 2^nRow elements).
+	packedRowEvals := comp.InsertProof(
+		round+1,
+		ifaces.ColID(fmt.Sprintf("MLVORTEX_ROWEVAL_packed_%s", suffix)),
+		KPow2*(1<<nRow),
+		false,
+	)
+
+	// K downstream ML claims; each at the locator-extended point (l_k ‖ c_col/c_row).
+	uCols := make([]query.MultilinearEval, K)
+	rowClaims := make([]query.MultilinearEval, K)
+	for k := range q.Pols {
+		uCols[k] = comp.InsertMultilinear(
+			round+1,
+			ifaces.QueryID(fmt.Sprintf("MLVORTEX_UCOL_%d_%s", k, suffix)),
+			[]ifaces.Column{packedUAlpha},
+		)
+		rowClaims[k] = comp.InsertMultilinear(
+			round+1,
+			ifaces.QueryID(fmt.Sprintf("MLVORTEX_ROW_%d_%s", k, suffix)),
+			[]ifaces.Column{packedRowEvals},
+		)
+	}
+
+	return &Context{
+		InputQuery: q,
+		NumVars:    n,
+		NRow:       nRow,
+		NCol:       nCol,
+		Round:      round,
+		AlphaCoin:  alpha,
+		UAlpha:     []ifaces.Column{packedUAlpha},
+		RowEvals:   []ifaces.Column{packedRowEvals},
+		UCols:      uCols,
+		RowClaims:  rowClaims,
+		Packed:     true,
+		L:          L,
+		KPow2:      KPow2,
 	}
 }

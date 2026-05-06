@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/bits"
 	"strings"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	smt_koalabear "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
@@ -95,6 +96,13 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 		seen[name] = true
 	}
 
+	// Collect actions per round so independent same-round groups can be batched.
+	type pendingItem struct {
+		action *mlCommitProverAction
+		entry  mlCommitEntry
+	}
+	pendingByRound := make(map[int][]pendingItem)
+
 	for key, cols := range groups {
 		K := len(cols)
 		nbRows := 4 * K // 4 base-field components per fext column
@@ -104,9 +112,12 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 		depth := bits.Len(uint(nbCodewordCols)) - 1
 		entryList := evenlySpacedIndices(nbCodewordCols, t)
 
+		// SIS is faster than raw Poseidon2 for large groups (ring NTT vs direct
+		// hash). Use it when there are enough rows for the ring degree (64).
+		useSIS := nbRows >= 64
+
 		// Each fext column (degree-4 over KoalaBear) decomposes into 4 base-field
 		// polynomials of length key.size.
-		// Rate=2, SIS params required by NewParams but unused by CommitMerkleWithoutSIS.
 		params := vortex_koalabear.NewParams(2, key.size, nbRows, 6, 16)
 
 		// Unique suffix for proof column IDs: round + fext size.
@@ -127,7 +138,7 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 		pathsCol := comp.InsertProof(key.round,
 			ifaces.ColID("MLVORTEX_PATHS_"+sfx), pathsSize, false)
 
-		comp.RegisterProverAction(key.round, &mlCommitProverAction{
+		action := &mlCommitProverAction{
 			cols:          cols,
 			params:        &params,
 			entryList:     entryList,
@@ -138,8 +149,13 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 			rootCol:       rootCol,
 			openedDataCol: openedDataCol,
 			pathsCol:      pathsCol,
-		})
+			useSIS:        useSIS,
+		}
 
+		var verifierParams *vortex_koalabear.Params
+		if useSIS {
+			verifierParams = &params
+		}
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &mlCheck2VerifierAction{
 			rootCol:       rootCol,
 			openedDataCol: openedDataCol,
@@ -147,6 +163,8 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 			nbRows:        nbRows,
 			entryList:     entryList,
 			depth:         depth,
+			params:        verifierParams,
+			useSIS:        useSIS,
 		})
 
 		entry := mlCommitEntry{
@@ -160,7 +178,41 @@ func commitMLColumnsImpl(comp *wizard.CompiledIOP, numOpen int) {
 		}
 		entries, _ := comp.ExtraData[mlCommitEntriesKey].([]mlCommitEntry)
 		comp.ExtraData[mlCommitEntriesKey] = append(entries, entry)
+
+		pendingByRound[key.round] = append(pendingByRound[key.round], pendingItem{action: action, entry: entry})
 	}
+
+	for round, items := range pendingByRound {
+		if len(items) == 1 {
+			comp.RegisterProverAction(round, items[0].action)
+		} else {
+			actions := make([]*mlCommitProverAction, len(items))
+			for i, it := range items {
+				actions[i] = it.action
+			}
+			comp.RegisterProverAction(round, &mlCommitBatch{actions: actions})
+		}
+	}
+}
+
+// mlCommitBatch runs multiple independent mlCommitProverAction instances
+// concurrently. Each action does CommitMerkleWithoutSIS (RS encode + Poseidon2
+// hash + Merkle tree) on a disjoint set of columns, so there is no shared
+// mutable state other than the mutex-protected run.AssignColumn calls.
+type mlCommitBatch struct {
+	actions []*mlCommitProverAction
+}
+
+func (b *mlCommitBatch) Run(run *wizard.ProverRuntime) {
+	var wg sync.WaitGroup
+	wg.Add(len(b.actions))
+	for _, a := range b.actions {
+		go func(a *mlCommitProverAction) {
+			defer wg.Done()
+			a.Run(run)
+		}(a)
+	}
+	wg.Wait()
 }
 
 // mlCommitProverAction performs the two phases of the ML Vortex prover for
@@ -180,6 +232,7 @@ type mlCommitProverAction struct {
 	rootCol       ifaces.Column
 	openedDataCol ifaces.Column
 	pathsCol      ifaces.Column
+	useSIS    bool
 }
 
 func (a *mlCommitProverAction) Run(run *wizard.ProverRuntime) {
@@ -208,8 +261,14 @@ func (a *mlCommitProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	// RS-encode all 4K rows, Poseidon2-hash each codeword column, build Merkle tree.
-	encodedMatrix, _, tree, _ := a.params.CommitMerkleWithoutSIS(pols)
+	// RS-encode all 4K rows, hash each codeword column, build Merkle tree.
+	var encodedMatrix vortex_koalabear.EncodedMatrix
+	var tree *smt_koalabear.Tree
+	if a.useSIS {
+		encodedMatrix, _, tree, _ = a.params.CommitMerkleWithSIS(pols)
+	} else {
+		encodedMatrix, _, tree, _ = a.params.CommitMerkleWithoutSIS(pols)
+	}
 
 	// ── Assign rootCol ────────────────────────────────────────────────────────
 	rootOct := tree.Root
@@ -263,6 +322,8 @@ type mlCheck2VerifierAction struct {
 	nbRows        int
 	entryList     []int
 	depth         int
+	params        *vortex_koalabear.Params // nil when useSIS == false
+	useSIS        bool
 }
 
 func (v *mlCheck2VerifierAction) Run(run wizard.Runtime) error {
@@ -275,17 +336,20 @@ func (v *mlCheck2VerifierAction) Run(run wizard.Runtime) error {
 	h := poseidon2.NewMDHasher()
 
 	for j, colIdx := range v.entryList {
-		// Re-derive the Poseidon2 leaf hash from the opened column data.
-		// The prover hashes the column using the same MDHasher fallback used by
-		// noSisTransversalHash when nbRows is not divisible by 8. For consistency,
-		// we always use MDHasher here; the hash is identical to the SIMD path.
 		colData := make([]field.Element, v.nbRows)
 		for row := range colData {
 			colData[row] = run.GetColumnAt(v.openedDataCol.GetColID(), j*v.nbRows+row)
 		}
-		h.WriteElements(colData...)
-		leaf := h.SumElement()
-		h.Reset()
+
+		// Re-derive the leaf hash using the same scheme the prover used.
+		var leaf field.Octuplet
+		if v.useSIS {
+			leaf = v.params.HashColumnWithSIS(colData)
+		} else {
+			h.WriteElements(colData...)
+			leaf = h.SumElement()
+			h.Reset()
+		}
 
 		// Reconstruct the Merkle proof from pathsCol.
 		siblings := make([]types.KoalaOctuplet, v.depth)

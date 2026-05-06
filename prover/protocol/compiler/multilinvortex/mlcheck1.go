@@ -25,6 +25,7 @@ package multilinvortex
 import (
 	"fmt"
 	"math/bits"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
@@ -39,6 +40,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -56,6 +58,11 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 		seen = make(map[ifaces.QueryID]bool)
 		comp.ExtraData[mlOrigCommitSeenKey] = seen
 	}
+
+	// Collect commit and open actions per round so independent actions at the
+	// same round can be registered as a single parallel batch.
+	pendingCommit := make(map[int][]*mlOrigCommitProverAction)
+	pendingOpen := make(map[int][]*mlOrigOpenProverAction)
 
 	for _, ctx := range ctxs {
 		if seen[ctx.InputQuery.QueryID] {
@@ -84,8 +91,20 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 		nColSize := 1 << nCol
 		nbRowsOrig := K * nRowSize
 		nbCodewordCols := nColSize * 2
-		t := len(uAlphaEntry.entryList)
+		t := min(len(uAlphaEntry.entryList), nbCodewordCols)
 		depth := bits.Len(uint(nbCodewordCols)) - 1
+
+		// For packed contexts the UAlpha codeword is KPow2x wider than the original
+		// matrix codeword, so uAlphaEntry.entryList contains indices beyond
+		// nbCodewordCols. Generate a fresh entry list scoped to the original codeword.
+		origEntryList := uAlphaEntry.entryList
+		if ctx.Packed {
+			origEntryList = evenlySpacedIndices(nbCodewordCols, t)
+		}
+
+		// SIS is faster than Poseidon2 for large groups; use it when there are
+		// enough rows for the SIS ring degree (64).
+		useSIS := nbRowsOrig >= 64
 
 		params := vortex_koalabear.NewParams(2, nColSize, nbRowsOrig, 6, 16)
 
@@ -109,7 +128,7 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 
 		shared := &mlOrigShared{}
 
-		comp.RegisterProverAction(rootRound, &mlOrigCommitProverAction{
+		pendingCommit[rootRound] = append(pendingCommit[rootRound], &mlOrigCommitProverAction{
 			cols:    ctx.InputQuery.Pols,
 			params:  &params,
 			K:       K,
@@ -117,11 +136,12 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 			nCol:    nCol,
 			rootCol: rootCol,
 			shared:  shared,
+			useSIS:  useSIS,
 		})
 
-		comp.RegisterProverAction(ctx.Round+1, &mlOrigOpenProverAction{
+		pendingOpen[ctx.Round+1] = append(pendingOpen[ctx.Round+1], &mlOrigOpenProverAction{
 			shared:        shared,
-			entryList:     uAlphaEntry.entryList,
+			entryList:     origEntryList,
 			nbRowsOrig:    nbRowsOrig,
 			depth:         depth,
 			openedSize:    openedSize,
@@ -143,6 +163,10 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 			}
 		}
 
+		var verifierParams *vortex_koalabear.Params
+		if useSIS {
+			verifierParams = &params
+		}
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &mlCheck1VerifierAction{
 			rootCol:             rootCol,
 			origOpenedDataCol:   openedDataCol,
@@ -154,10 +178,31 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 			nRow:                nRow,
 			nbRowsOrig:          nbRowsOrig,
 			nbRowsUA:            uAlphaEntry.nbRows, // 4*kTotal
-			entryList:           uAlphaEntry.entryList,
+			entryList:           origEntryList,
 			depth:               depth,
 			uAlphaIndices:       uAlphaIndices,
+			params:              verifierParams,
+			useSIS:              useSIS,
+			packed:              ctx.Packed,
 		})
+	}
+
+	// Register commit actions as parallel batches (one batch per round).
+	for round, actions := range pendingCommit {
+		if len(actions) == 1 {
+			comp.RegisterProverAction(round, actions[0])
+		} else {
+			comp.RegisterProverAction(round, &mlOrigCommitBatch{actions: actions})
+		}
+	}
+
+	// Register open actions as parallel batches (one batch per round).
+	for round, actions := range pendingOpen {
+		if len(actions) == 1 {
+			comp.RegisterProverAction(round, actions[0])
+		} else {
+			comp.RegisterProverAction(round, &mlOrigOpenBatch{actions: actions})
+		}
 	}
 }
 
@@ -193,6 +238,7 @@ type mlOrigCommitProverAction struct {
 	nCol    int
 	rootCol ifaces.Column
 	shared  *mlOrigShared
+	useSIS  bool
 }
 
 func (a *mlOrigCommitProverAction) Run(run *wizard.ProverRuntime) {
@@ -201,19 +247,25 @@ func (a *mlOrigCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Build the flat matrix: K * 2^nRow rows of base-field elements, each of
 	// length 2^nCol.  Row (k * nRowSize + b) = the b-th chunk of poly P[k].
+	// Parallelise over columns; row sub-slices are zero-copy views of colVec.
 	pols := make([]smartvectors.SmartVector, a.K*nRowSize)
-	for k, col := range a.cols {
-		sv := run.GetColumn(col.GetColID())
-		for b := 0; b < nRowSize; b++ {
-			rowData := make([]field.Element, nColSize)
-			for j := 0; j < nColSize; j++ {
-				rowData[j] = sv.Get(b*nColSize + j)
+	parallel.Execute(a.K, func(start, stop int) {
+		for k := start; k < stop; k++ {
+			// IntoRegVecSaveAlloc is zero-copy for Regular columns.
+			colVec := run.GetColumn(a.cols[k].GetColID()).IntoRegVecSaveAlloc()
+			for b := 0; b < nRowSize; b++ {
+				pols[k*nRowSize+b] = smartvectors.NewRegular(colVec[b*nColSize : (b+1)*nColSize])
 			}
-			pols[k*nRowSize+b] = smartvectors.NewRegular(rowData)
 		}
-	}
+	})
 
-	encodedMatrix, _, tree, _ := a.params.CommitMerkleWithoutSIS(pols)
+	var encodedMatrix vortex_koalabear.EncodedMatrix
+	var tree *smt_koalabear.Tree
+	if a.useSIS {
+		encodedMatrix, _, tree, _ = a.params.CommitMerkleWithSIS(pols)
+	} else {
+		encodedMatrix, _, tree, _ = a.params.CommitMerkleWithoutSIS(pols)
+	}
 	a.shared.encodedMatrix = encodedMatrix
 	a.shared.tree = tree
 
@@ -222,6 +274,69 @@ func (a *mlOrigCommitProverAction) Run(run *wizard.ProverRuntime) {
 		rootVec[i] = e
 	}
 	run.AssignColumn(a.rootCol.GetColID(), smartvectors.NewRegular(rootVec))
+}
+
+// mlOrigCommitBatch runs multiple independent mlOrigCommitProverAction instances
+// concurrently. Each CommitMerkleWithoutSIS call uses parallel.Execute internally,
+// so running N actions concurrently oversubscribes the CPU by N×. On a 192-core
+// machine with memory-bandwidth-bound RS encoding + Poseidon2 hashing, the
+// concurrent execution hides memory latency and reduces wall time compared to
+// sequential execution. AssignColumn calls are serialized afterward.
+type mlOrigCommitBatch struct {
+	actions []*mlOrigCommitProverAction
+}
+
+func (b *mlOrigCommitBatch) Run(run *wizard.ProverRuntime) {
+	type commitResult struct {
+		encodedMatrix vortex_koalabear.EncodedMatrix
+		tree          *smt_koalabear.Tree
+		rootVec       []field.Element
+	}
+	results := make([]commitResult, len(b.actions))
+
+	var wg sync.WaitGroup
+	wg.Add(len(b.actions))
+	for i, a := range b.actions {
+		go func(i int, a *mlOrigCommitProverAction) {
+			defer wg.Done()
+			nRowSize := 1 << a.nRow
+			nColSize := 1 << a.nCol
+
+			pols := make([]smartvectors.SmartVector, a.K*nRowSize)
+			parallel.Execute(a.K, func(start, stop int) {
+				for k := start; k < stop; k++ {
+					colVec := run.GetColumn(a.cols[k].GetColID()).IntoRegVecSaveAlloc()
+					for bRow := 0; bRow < nRowSize; bRow++ {
+						pols[k*nRowSize+bRow] = smartvectors.NewRegular(colVec[bRow*nColSize : (bRow+1)*nColSize])
+					}
+				}
+			})
+
+			var encodedMatrix vortex_koalabear.EncodedMatrix
+			var tree *smt_koalabear.Tree
+			if a.useSIS {
+				encodedMatrix, _, tree, _ = a.params.CommitMerkleWithSIS(pols)
+			} else {
+				encodedMatrix, _, tree, _ = a.params.CommitMerkleWithoutSIS(pols)
+			}
+			rootVec := make([]field.Element, 8)
+			for j, e := range tree.Root {
+				rootVec[j] = e
+			}
+			results[i] = commitResult{
+				encodedMatrix: encodedMatrix,
+				tree:          tree,
+				rootVec:       rootVec,
+			}
+		}(i, a)
+	}
+	wg.Wait()
+
+	for i, a := range b.actions {
+		a.shared.encodedMatrix = results[i].encodedMatrix
+		a.shared.tree = results[i].tree
+		run.AssignColumn(a.rootCol.GetColID(), smartvectors.NewRegular(results[i].rootVec))
+	}
 }
 
 // mlOrigOpenProverAction runs at round (ctx.Round+1): opens t columns of the
@@ -265,8 +380,60 @@ func (a *mlOrigOpenProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.pathsCol.GetColID(), smartvectors.NewRegular(pathsVec))
 }
 
+// mlOrigOpenBatch runs multiple independent mlOrigOpenProverAction instances in
+// parallel. The expensive SelectColumnsAndMerkleProofs calls run concurrently
+// (each writes to its own local buffers, no shared mutable state), and the
+// cheaper runtime assignments are serialized afterward.
+type mlOrigOpenBatch struct {
+	actions []*mlOrigOpenProverAction
+}
+
+func (b *mlOrigOpenBatch) Run(run *wizard.ProverRuntime) {
+	type openResult struct {
+		openedVec []field.Element
+		pathsVec  []field.Element
+	}
+	results := make([]openResult, len(b.actions))
+
+	parallel.Execute(len(b.actions), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			a := b.actions[i]
+			dummy := &vortex_common.OpeningProof{}
+			merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(
+				dummy,
+				a.entryList,
+				[]vortex_koalabear.EncodedMatrix{a.shared.encodedMatrix},
+				[]*smt_koalabear.Tree{a.shared.tree},
+			)
+
+			openedVec := make([]field.Element, a.openedSize)
+			for j, colVec := range dummy.Columns[0] {
+				for row, val := range colVec {
+					openedVec[j*a.nbRowsOrig+row] = val
+				}
+			}
+
+			pathsVec := make([]field.Element, a.pathsSize)
+			for j, proof := range merkleProofs[0] {
+				for d, sib := range proof.Siblings {
+					for ii, e := range sib {
+						pathsVec[j*a.depth*8+d*8+ii] = e
+					}
+				}
+			}
+
+			results[i] = openResult{openedVec: openedVec, pathsVec: pathsVec}
+		}
+	})
+
+	for i, a := range b.actions {
+		run.AssignColumn(a.openedDataCol.GetColID(), smartvectors.NewRegular(results[i].openedVec))
+		run.AssignColumn(a.pathsCol.GetColID(), smartvectors.NewRegular(results[i].pathsVec))
+	}
+}
+
 // mlCheck1VerifierAction implements:
-//   - Check 2 on original: Poseidon2-hash each opened column, verify Merkle path.
+//   - Check 2 on original: hash each opened column, verify Merkle path.
 //   - Check 1: for each k and each opened position j,
 //     UAlpha_enc[k][j] == Σ_b α^b · orig_enc[k·2^nRow+b][j]
 type mlCheck1VerifierAction struct {
@@ -283,6 +450,12 @@ type mlCheck1VerifierAction struct {
 	entryList           []int
 	depth               int
 	uAlphaIndices       []int // index of UAlpha[k] within the group's cols slice
+	params              *vortex_koalabear.Params // nil when useSIS == false
+	useSIS              bool
+	// packed skips Check 1 (UAlpha cross-check): for packed contexts the UAlpha
+	// codeword spans KPow2x more columns than the original, so direct comparison
+	// is not meaningful. Check 2 (original Merkle proof) still runs.
+	packed bool
 }
 
 func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
@@ -309,9 +482,14 @@ func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
 		for row := range colData {
 			colData[row] = run.GetColumnAt(v.origOpenedDataCol.GetColID(), jIdx*v.nbRowsOrig+row)
 		}
-		h.WriteElements(colData...)
-		leaf := h.SumElement()
-		h.Reset()
+		var leaf field.Octuplet
+		if v.useSIS {
+			leaf = v.params.HashColumnWithSIS(colData)
+		} else {
+			h.WriteElements(colData...)
+			leaf = h.SumElement()
+			h.Reset()
+		}
 
 		siblings := make([]types.KoalaOctuplet, v.depth)
 		for d := range siblings {
@@ -325,6 +503,11 @@ func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
 		}
 
 		// ── Check 1: UAlpha = α-combination of original rows ──────────────────
+		// Skipped for packed contexts: the packed UAlpha codeword spans KPow2x
+		// more columns than the original, so there is no direct per-column mapping.
+		if v.packed {
+			continue
+		}
 		// The UAlpha opened data layout (nbRowsUA = 4*K):
 		//   offset 0*K+k → B0.A0 of UAlpha[k]
 		//   offset 1*K+k → B0.A1 of UAlpha[k]

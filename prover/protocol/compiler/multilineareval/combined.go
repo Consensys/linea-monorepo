@@ -26,6 +26,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/sumcheck"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // CombinedContext holds the compiled artifacts for one cross-size combined
@@ -190,38 +191,56 @@ func (p *CombinedProverAction) Run(run *wizard.ProverRuntime) {
 
 	lambda := run.GetRandomCoinFieldExt(ctx.LambdaCoin.Name)
 
-	var claims []sumcheck.Claim
-	var polys []sumcheck.MultiLin
+	// Collect (col, nq, point, eval) tuples.
+	type colEntry struct {
+		col   ifaces.Column
+		nq    int
+		point []fext.Element // length nmax, zero-padded for nq < nmax
+		eval  fext.Element
+	}
+	var entries []colEntry
 
 	for _, q := range ctx.InputQueries {
 		params := run.GetMultilinearParams(q.Name())
 		for j, col := range q.Pols {
 			nq := q.NumVars[j]
-			shift := nmax - nq
-
-			// Extend evaluation point to nmax with zero coordinates.
 			extPoint := make([]fext.Element, nmax)
 			copy(extPoint, params.Points[j])
-
-			// Expand column to 2^nmax: E(f)[i] = f[i >> (nmax-nq)].
-			// In MSB-first convention this replicates each f entry across all
-			// combinations of the LOW (nmax-nq) variables, so
-			// E(f)_MLE(x₁,...,x_{nmax}) = f_MLE(x₁,...,x_{nq}) for any point.
-			// The claim transfers unchanged since extPoint high coords are zero.
-			origVec := run.GetColumn(col.GetColID()).IntoRegVecSaveAllocExt()
-			expanded := make([]fext.Element, 1<<nmax)
-			for i := range expanded {
-				expanded[i] = origVec[i>>shift]
-			}
-			claims = append(claims, sumcheck.Claim{Point: extPoint, Eval: params.Ys[j]})
-			polys = append(polys, sumcheck.MultiLin(expanded))
+			entries = append(entries, colEntry{
+				col:   col,
+				nq:    nq,
+				point: extPoint,
+				eval:  params.Ys[j],
+			})
 		}
 	}
+
+	// Build compact polynomial tables in parallel. Each poly is kept at its
+	// native size 2^nq instead of being expanded to 2^nmax. The sumcheck
+	// round polynomials are identical to the expanded form because the extra
+	// (high) variables all have r=0, so their eq factors sum to 1 over
+	// {0,1}^(nmax-nq) and cancel out.
+	claims := make([]sumcheck.Claim, len(entries))
+	polys := make([]sumcheck.MultiLin, len(entries))
+	polyVars := make([]int, len(entries))
+	parallel.Execute(len(entries), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			e := entries[i]
+			origVec := run.GetColumn(e.col.GetColID()).IntoRegVecSaveAllocExt()
+			// Copy to own the slice for in-place folding.
+			compact := make([]fext.Element, len(origVec))
+			copy(compact, origVec)
+			claims[i] = sumcheck.Claim{Point: e.point, Eval: e.eval}
+			polys[i] = sumcheck.MultiLin(compact)
+			polyVars[i] = e.nq
+		}
+	})
 
 	t := sumcheck.NewMockTranscript(transcriptSeed)
 	t.Append("lambda", lambda)
 
-	proof, challenges, err := sumcheck.ProveBatchedWith(claims, polys, lambda, t)
+	// Compact polys are owned — pass to mixed prover which folds in-place.
+	proof, challenges, err := sumcheck.ProveBatchedWithOwnedMixed(claims, polys, lambda, t, polyVars)
 	if err != nil {
 		panic(fmt.Sprintf("multilineareval combinedProver: %v", err))
 	}

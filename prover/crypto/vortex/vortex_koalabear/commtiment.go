@@ -191,10 +191,12 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 				matrix := make([]field.Element, 16*nbRows)
 				for batchID := start; batchID < stop; batchID++ {
 					colStart := batchID * 16
-					// Transpose: collect 16 columns into column-major layout
-					for col := 0; col < 16; col++ {
-						for row := 0; row < nbRows; row++ {
-							matrix[col*nbRows+row] = v[row].Get(colStart + col)
+					// Row-major read: each row's 16 elements are contiguous → L1 cache hit
+					// after the first access, cutting read cache misses ~8× vs col-major.
+					for row := 0; row < nbRows; row++ {
+						rowSV := v[row]
+						for col := 0; col < 16; col++ {
+							matrix[col*nbRows+row] = rowSV.Get(colStart + col)
 						}
 					}
 					vgnark.CompressPoseidon2x16(matrix, nbRows, res[colStart:colStart+16])
@@ -235,6 +237,44 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 	})
 
 	return res
+}
+
+// CommitMerkleRaw commits polysMatrix using Poseidon2 column hashing with NO
+// Reed-Solomon encoding.  The returned EncodedMatrix is the raw polysMatrix
+// itself (SmartVector.Get still works so SelectColumnsAndMerkleProofs can open
+// it directly), and the Merkle tree has polysMatrix[0].Len() leaves — one per
+// raw column.  Skipping RS encoding eliminates the dominant FFT cost of
+// CommitMerkleWith[out]SIS at the expense of only being able to verify values
+// at systematic (message) column positions.
+func CommitMerkleRaw(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, *smt_koalabear.Tree) {
+	var p Params // noSisTransversalHash reads column width from data, not from p
+	leaves := p.noSisTransversalHash(polysMatrix)
+	tree := smt_koalabear.NewTree(leaves)
+	return polysMatrix, tree
+}
+
+// HashColumnRaw hashes a raw (un-encoded) column vector with Poseidon2.
+// The resulting leaf matches what CommitMerkleRaw builds into its Merkle tree.
+func HashColumnRaw(col []field.Element) field.Octuplet {
+	h := poseidon2_koalabear.NewMDHasher()
+	h.WriteElements(col...)
+	return h.SumElement()
+}
+
+// HashColumnWithSIS computes the Merkle-leaf hash for one opened column using
+// the same SIS+Poseidon2 scheme as [CommitMerkleWithSIS]:
+//
+//	leaf = poseidon2(SIS(col))
+//
+// col must contain exactly MaxNbRows base-field elements (the column vector
+// from the RS-encoded matrix at one column position).  The result matches the
+// leaf that CommitMerkleWithSIS builds into its Merkle tree, so verifiers can
+// re-derive the leaf for any opened column position.
+func (p *Params) HashColumnWithSIS(col []field.Element) field.Octuplet {
+	sisOut := p.Key.Hash(col)
+	h := poseidon2_koalabear.NewMDHasher()
+	h.WriteElements(sisOut...)
+	return h.SumElement()
 }
 
 // EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as

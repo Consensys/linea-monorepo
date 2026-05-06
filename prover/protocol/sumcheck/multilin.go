@@ -3,7 +3,9 @@ package sumcheck
 import (
 	"math/bits"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // MultiLin is a dense multilinear polynomial in n = log2(len) variables,
@@ -50,6 +52,85 @@ func (m *MultiLin) Fold(r fext.Element) {
 		bottom[i].Add(&bottom[i], &t)
 	}
 	*m = (*m)[:mid]
+}
+
+// ParallelFold is like Fold but parallelises the inner loop using
+// parallel.Execute when mid >= 1<<13 (8192 elements). For smaller sizes it
+// falls through to the sequential Fold. Call it only from a context that owns
+// the full CPU budget (e.g. K == 1 in the outer parallel.Execute).
+func (m *MultiLin) ParallelFold(r fext.Element) {
+	mid := len(*m) / 2
+	if mid == 0 {
+		panic("Fold called on a constant multilinear")
+	}
+	const threshold = 1 << 13
+	if mid < threshold {
+		m.Fold(r)
+		return
+	}
+	bottom := (*m)[:mid]
+	top := (*m)[mid:]
+	parallel.Execute(mid, func(start, stop int) {
+		var t fext.Element
+		for i := start; i < stop; i++ {
+			t.Sub(&top[i], &bottom[i])
+			t.Mul(&t, &r)
+			bottom[i].Add(&bottom[i], &t)
+		}
+	})
+	*m = (*m)[:mid]
+}
+
+// FoldFromBase fuses the base-field→fext conversion with the first fold step.
+// It takes a base-field slice src (length 2^n) and an extension-field challenge
+// r, and returns a MultiLin of length 2^(n-1) whose i-th entry is
+//
+//	src[i] + r*(src[i+mid] - src[i])
+//
+// This avoids the full-size fext allocation that IntoRegVecSaveAllocExt would
+// produce, cutting peak memory in half for large polynomials.
+func FoldFromBase(src []field.Element, r fext.Element) MultiLin {
+	n := len(src)
+	if n < 2 || n&(n-1) != 0 {
+		panic("FoldFromBase: src length must be a power of two >= 2")
+	}
+	mid := n / 2
+	out := make(MultiLin, mid)
+	for i := 0; i < mid; i++ {
+		var diff field.Element
+		diff.Sub(&src[i+mid], &src[i])
+		var t fext.Element
+		t.MulByElement(&r, &diff)
+		fext.SetFromBase(&out[i], &src[i])
+		out[i].Add(&out[i], &t)
+	}
+	return out
+}
+
+// ParallelFoldFromBase is like [FoldFromBase] but parallelises the inner loop
+// when mid >= 1<<13. Call it from a context that owns the full CPU budget.
+func ParallelFoldFromBase(src []field.Element, r fext.Element) MultiLin {
+	n := len(src)
+	if n < 2 || n&(n-1) != 0 {
+		panic("ParallelFoldFromBase: src length must be a power of two >= 2")
+	}
+	mid := n / 2
+	out := make(MultiLin, mid)
+	const threshold = 1 << 13
+	if mid < threshold {
+		return FoldFromBase(src, r)
+	}
+	parallel.Execute(mid, func(start, stop int) {
+		for i := start; i < stop; i++ {
+			var diff field.Element
+			diff.Sub(&src[i+mid], &src[i])
+			var t fext.Element
+			t.MulByElement(&r, &diff)
+			fext.SetFromBase(&out[i], &src[i])
+			out[i].Add(&out[i], &t)
+		}
+	})
+	return out
 }
 
 // Evaluate computes m(point) where len(point) == m.NumVars(). It does not
