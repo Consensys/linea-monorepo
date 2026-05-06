@@ -83,8 +83,21 @@ func (t *mAssignmentTask) Run(rt wiop.Runtime) {
 		}
 
 		for j := 0; j < an; j++ {
-			if inc.selector != nil && aSelectorExt[j].IsZero() {
-				continue
+			if inc.selector != nil {
+				if aSelectorExt[j].IsZero() {
+					continue
+				}
+				// The included-side filter is treated as a 0/1 selector by the
+				// LogDerivativeSum reduction: M is incremented by one per
+				// active row, so any other value would silently break the
+				// honest-prover identity. Abort early with a clear error
+				// instead of letting the verifier reject a malformed proof.
+				if !aSelectorExt[j].IsOne() {
+					panic(fmt.Sprintf(
+						"wiop/compilers/lookuptologderivsum: included filter %q has a non-binary value at row %d: %v",
+						inc.selector.Column.Context.Path(), j, aSelectorExt[j].String(),
+					))
+				}
 			}
 			var head field.Ext
 			if t.prependOneOnAOk {
