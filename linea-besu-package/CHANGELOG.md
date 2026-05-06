@@ -1,3 +1,12 @@
+## [unreleased]
+
+### 🚀 Features
+
+- *(linea-besu)* Release test for v1.2.0
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Fixed merge conflicts
 ## Update for release testing
 
 ## [1.1.4] - 2026-05-05
