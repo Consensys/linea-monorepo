@@ -47,7 +47,7 @@ jobs:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DOCKER_ORG_NAME: ${{ secrets.DOCKER_ORG_NAME }}
       DOCKER_REPO_TOKEN: ${{ secrets.DOCKER_REPO_TOKEN }}
-    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-large ]
+    runs-on: [ gha-runner-scale-set-ubuntu-24-amd64-large ]
     name: chaos tests
     # useful for debugging flaky tests.
     #    strategy:

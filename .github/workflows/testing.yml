@@ -30,7 +30,7 @@ jobs:
     if: ${{ inputs.consensus-client-changed == 'true' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
-    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
+    runs-on: [ gha-runner-scale-set-ubuntu-24-amd64-med ]
     name: maru tests
     #   useful for debugging flaky tests. Comment out Jacoco and Codecov steps because they override the test results.
 #    strategy:

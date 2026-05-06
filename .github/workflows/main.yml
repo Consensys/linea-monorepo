@@ -17,7 +17,7 @@ jobs:
   filter-commit-changes:
     permissions:
       contents: read # for actions/checkout and dorny/paths-filter
-    runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
+    runs-on: [gha-runner-scale-set-ubuntu-24-amd64-small]
     name: Filter commit changes
     outputs:
       has-changes-requiring-build: ${{ steps.filter.outputs.has-changes-requiring-build }}
@@ -61,7 +61,7 @@ jobs:
     permissions: {} # no permissions needed
     name: Debug Filters outputs
     needs: [ filter-commit-changes ]
-    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-small ]
+    runs-on: [ gha-runner-scale-set-ubuntu-24-amd64-small ]
     steps:
       - name: Debug filter outputs
         run: |
