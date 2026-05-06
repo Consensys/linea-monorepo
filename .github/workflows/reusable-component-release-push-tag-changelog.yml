@@ -139,8 +139,8 @@ jobs:
             exit 1
           fi
           if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
-            echo "Tag ${TAG} already exists; aborting."
-            exit 1
+            echo "Tag ${TAG} already exists; exit now."
+            exit 0
           fi
           git tag -a "${TAG}" -m "${COMPONENT^} release ${TAG}"
           git push origin "${TAG}"
