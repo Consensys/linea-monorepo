@@ -1,15 +1,11 @@
+## [unreleased]
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Release test for v4.2.0
 
 ## Update for release testing
 
-## [unreleased]
-
-### 🚀 Features
-
-- *(coordinator)* Release test for v4.1.0
-
-### ⚙️ Miscellaneous Tasks
-
-- *(ci)* Fixed merge conflicts
 ## [4.0.1] - 2026-05-05
 
 ### ⚙️ Miscellaneous Tasks
