@@ -30,22 +30,22 @@ const FUNCT7_POSEIDON_1 :u8 = 0b1111111;
 
 
 core::arch::global_asm!(
-    ".global _start",
-    "_start:",
-    "li sp, 0x087fffff", // set stack pointer to a known memory region
-    "call main",
+  ".global _start",
+  "_start:",
+  "li sp, 0x087fffff", // set stack pointer to a known memory region
+  "call main",
 );
 
 
-fn some_crap(input_offset :usize, input_size :usize, output_offset :usize) {
+fn custom_riscv_inst_for_poseidon(input_offset :usize, input_size :usize, output_offset :usize) {
   unsafe {
     core::arch::asm!(
-      // interpretation of ":insn r 0x0b, 0x42, 0x69, {2}, {0}, {1}",
+      // interpretation of ".insn r 0x0b, 0b111, 0b1111111, {2}, {0}, {1}":
       //
       // instruction type: r
       // opcode: 0x0b ≡ custom-0
-      // funct3: 0x01
-      // funct7: 0x69
+      // funct3:    7 ≡ 0b111
+      // funct7:  127 ≡ 0b1111111
       //
       // {0} = register address holding io
       // {1} = register address holding is
@@ -62,38 +62,38 @@ fn some_crap(input_offset :usize, input_size :usize, output_offset :usize) {
 
 /// Parse a hex string into a [u8; INPUT_LENGTH], for input.
 pub fn hex_to_input(s: &str) -> [u8; INPUT_LENGTH] {
-    let mut out = [0u8; INPUT_LENGTH];
-    for i in 0..INPUT_LENGTH {
-        out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).unwrap();
-    }
-    out
+  let mut out = [0u8; INPUT_LENGTH];
+  for i in 0..INPUT_LENGTH {
+    out[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).unwrap();
+  }
+  out
 }
 
 #[no_mangle]
 fn main() -> ! {
 
-    let input = hex_to_input(INPUT_STRING);
+  let input = hex_to_input(INPUT_STRING);
 
-    some_crap(input.as_ptr() as usize, input.len(), 0);
+  custom_riscv_inst_for_poseidon(input.as_ptr() as usize, input.len(), 0);
 
-    // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
-    exit(0);
+  // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
+  exit(0);
 }
 
 fn exit(code: i32) -> ! {
-    unsafe {
-        core::arch::asm!(
-            "mv a0, {0}",  // exit code
-            "li a7, 93",   // syscall number for exit
-            "ecall",
-            in(reg) code,
-            options(noreturn)
-        );
-    }
+  unsafe {
+    core::arch::asm!(
+      "mv a0, {0}",  // exit code
+      "li a7, 93",   // syscall number for exit
+      "ecall",
+      in(reg) code,
+      options(noreturn)
+    );
+  }
 }
 
 // required by the compiler
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
-    exit(3);
+  exit(3);
 }
