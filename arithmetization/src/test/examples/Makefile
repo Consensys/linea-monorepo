@@ -27,9 +27,10 @@ STRIP ?= false
 # Ignored for .s and .rs files
 ZIG_STRIP ?= true
 
-# Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
+# Paths to go main (to turn bin into json), zkc main (to execute/debug the json) and linker script
 GO_MAIN  := $(MAKEFILE_DIR)main.go
 ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
+LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
@@ -46,7 +47,7 @@ compile: $(SRC)
 	@if [ "$(EXT)" = ".s" ]; then \
 		mkdir -p $(MAKEFILE_DIR)asm/bin; \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		riscv64-unknown-elf-as -march=rv64im -o $(BIN) $^; \
+		riscv64-unknown-elf-gcc -march=rv64im -mabi=lp64 -nostdlib -T$(LINKER_SCRIPT) -o $(BIN) $^; \
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
@@ -59,7 +60,7 @@ compile: $(SRC)
 			-Z json-target-spec \
 			--bin $(NAME) \
 			--release \
-			-- -C debuginfo=2; \
+			-- -C link-arg=-T$(LINKER_SCRIPT); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
