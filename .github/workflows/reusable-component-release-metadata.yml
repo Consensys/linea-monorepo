@@ -23,16 +23,16 @@ on:
     outputs:
       release_tag:
         description: "Full release tag (e.g. releases/coordinator/v0.2.0)"
-        value: ${{ jobs.release-component.outputs.release_tag }}
+        value: ${{ jobs.compute-release-metadata.outputs.release_tag }}
       release_version:
         description: "Bare semver (e.g. 0.2.0)"
-        value: ${{ jobs.release-component.outputs.release_version }}
+        value: ${{ jobs.compute-release-metadata.outputs.release_version }}
       tag_changed:
         description: "Whether the release tag has changed"
-        value: ${{ jobs.release-component.outputs.tag_changed }}
+        value: ${{ jobs.compute-release-metadata.outputs.tag_changed }}
       changelog:
         description: "Latest changelog section content"
-        value: ${{ jobs.release-component.outputs.changelog }}
+        value: ${{ jobs.compute-release-metadata.outputs.changelog }}
 
 jobs:
   compute-release-metadata:
