@@ -168,7 +168,7 @@ func ProveOnTheFly(cfg *config.Config, req *execution.Request) (*execution.Respo
 
 	// Launch conglomeration pipeline
 	go func() {
-		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs)
+		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs, nil)
 		resultCh <- congResult{proof: proof, err: err}
 	}()
 
@@ -390,6 +390,7 @@ func runBootstrapperInMemory(cfg *config.Config, bootstrapper *wizard.CompiledIO
 	)
 
 	for runtimeBoot == nil {
+		logrus.Infof("Trying to bootstrap with a scaling of %v", scalingFactor)
 
 		replayCh := make(chan arithmetization.PreReadResult, 1)
 		if scalingFactor == 1 {
