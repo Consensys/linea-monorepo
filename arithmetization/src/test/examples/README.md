@@ -62,6 +62,8 @@ zkc-test <name>.<ext> IN_BYTES="0xAABB"
 zkc-test debug <name>.<ext>
 # Compile and debug with input bytes
 zkc-test debug <name>.<ext> IN_BYTES="0xAABB"
+# Compile and execute with input bytes at a custom offset
+zkc-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
 # Compile only
 zkc-test compile <name>.<ext>
 # Clean build artifacts for a specific test
@@ -86,12 +88,16 @@ zkc-test blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae
 
 ## Options
 
-| Variable         | Default                                                                                 | Description                                                                |
-|------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                 |
-| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                           |
-| `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                            |
-| `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution       |
+| Variable         | Default                                                                                 | Description                                                                   |
+|------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                    |
+| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                              |
+| `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                               |
+| `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
+| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
+| `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
+| `SP`             | `0x087fffff`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
+| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp and mathch ELF ones       |
 
 ## Target ISA
 
