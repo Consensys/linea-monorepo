@@ -15,7 +15,7 @@ jobs:
   compute-version:
     permissions:
       contents: read # for actions/checkout with fetch-depth: 0
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Compute version
     outputs:
       tag_name: ${{ steps.version.outputs.tag_name }}
@@ -74,7 +74,7 @@ jobs:
     permissions:
       contents: write # for actions/checkout and softprops/action-gh-release
     needs: [compute-version, build-and-publish-docker]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     name: Create GitHub Release
     steps:
       - name: Checkout
