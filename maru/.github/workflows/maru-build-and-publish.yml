@@ -64,7 +64,7 @@ jobs:
   build-and-publish:
     permissions:
       contents: read # for actions/checkout
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     name: Maru build and publish
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
