@@ -7,9 +7,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Consensys/linea-monorepo.git",
-    "directory": "sdk/sdk-viem"
+    "directory": "ts-libs/sdk/sdk-viem"
   },
-  "homepage": "https://github.com/Consensys/linea-monorepo/tree/main/sdk/sdk-viem#readme",
+  "homepage": "https://github.com/Consensys/linea-monorepo/tree/main/ts-libs/sdk/sdk-viem#readme",
   "bugs": {
     "url": "https://github.com/Consensys/linea-monorepo/issues"
   },

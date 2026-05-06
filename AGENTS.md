@@ -21,7 +21,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -54,7 +54,7 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
 | JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
 | Gradle | 9.4+ | use ./gradlew <task> |
-| Go | 1.24.6 | Prover |
+| Go | 1.25.7 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
 | Make | 3.81+ | Environment management |
@@ -340,11 +340,11 @@ These require human approval and follow the release process:
 |------|------|-------|---------|
 | `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry | Core protocol contracts (rollup, messaging, bridge, tokens) |
 | `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
-| `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
+| `prover` | Backend service | Go 1.25.7 | ZK proof generation (gnark, gnark-crypto) |
 | `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
-| `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
-| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
-| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
+| `ts-libs/sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
+| `ts-libs/sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
+| `ts-libs/sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
 | `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
 | `operations` | CLI tool | TypeScript, oclif | Operations management CLI |
 | `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
@@ -366,7 +366,7 @@ coordinator/             Kotlin coordinator service
 prover/                  Go ZK prover
 corset/                  Rust constraint compiler
 postman/                 TypeScript bridge message executor
-sdk/                     TypeScript SDKs (core, ethers, viem)
+ts-libs/sdk/             TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
 operations/              Operations CLI tool
 ts-libs/                 Shared TypeScript libraries
@@ -375,7 +375,7 @@ besu-plugins/            Besu client plugins
 jvm-libs/                Shared Kotlin/Java libraries
 transaction-exclusion-api/ Transaction exclusion API
 tracer/                  EVM tracer
-config/                  Service configuration files (TOML, JSON, XML)
+docker/config/           Service configuration files (TOML, JSON, XML)
 docker/                  Docker Compose files for local stack
 docs/                    Project documentation
 .github/workflows/       CI/CD workflows
