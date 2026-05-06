@@ -58,7 +58,8 @@ compile: $(SRC)
 			-Z build-std=core \
 			-Z json-target-spec \
 			--bin $(NAME) \
-			--release; \
+			--release \
+			-- -C debuginfo=2; \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -68,7 +69,7 @@ compile: $(SRC)
 		riscv64-unknown-elf-strip -S $(BIN); \
 	fi
 	@echo "\nDisassembling $(BIN)"
-	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
+	@riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
