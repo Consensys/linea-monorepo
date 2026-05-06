@@ -13,9 +13,6 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false
-      # Serialize so each job rebases on the previous job's CHANGELOG commit,
-      # avoiding non-fast-forward push conflicts on the PR branch.
-      max-parallel: 1
       matrix:
         component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
         include:
