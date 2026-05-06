@@ -15,7 +15,7 @@ on:
     outputs:
       docker_tag:
         description: "Docker image tag"
-        value: ${{ jobs.release-component.outputs.docker_tag }}
+        value: ${{ jobs.compute-docker-image-tag.outputs.docker_tag }}
 
 jobs:
   compute-docker-image-tag:
