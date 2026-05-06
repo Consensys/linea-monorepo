@@ -94,11 +94,15 @@ func Compile(sys *wiop.System) {
 	}
 
 	// We need two more interactive rounds after latestWitness:
-	//   - latestWitness + 1: where M, α, γ live.
+	//   - latestWitness + 1: where α and γ are sampled. M is *not* placed here:
+	//     it must be committed before any coin it interacts with is drawn,
+	//     otherwise a malicious prover could pick M as a function of γ and
+	//     break log-derivative soundness. M therefore lives in each group's
+	//     own witness round (see compileGroup), matching the layout of
+	//     linea/prover/protocol/compiler/logderivativesum's lookup pass.
 	//   - latestWitness + 2: where the LogDerivativeSum result cell lives.
 	coinRound := ensureNextRound(sys, latestWitness)
-	resultRound := ensureNextRound(sys, coinRound)
-	_ = resultRound // returned for clarity; the LogDerivativeSum constructor finds it on its own.
+	ensureNextRound(sys, coinRound) // result round; the LogDerivativeSum constructor finds it on its own.
 
 	compCtx := sys.Context.Childf("lookuptologderiv")
 
@@ -108,23 +112,15 @@ func Compile(sys *wiop.System) {
 
 	var (
 		fractions  []wiop.Fraction
-		mTasks     []*mAssignmentTask
 		consumedQs []*wiop.TableRelation
 	)
 	for _, k := range keys {
 		g := groups[k]
-		gFractions, gTask := compileGroup(g, gamma, coinRound, compCtx)
+		gFractions := compileGroup(g, gamma, coinRound, compCtx)
 		fractions = append(fractions, gFractions...)
-		mTasks = append(mTasks, gTask)
 		for _, inc := range g.included {
 			consumedQs = append(consumedQs, inc.query)
 		}
-	}
-
-	// Register one prover action per group. They are all independent so we
-	// register them under the same coinRound.
-	for _, t := range mTasks {
-		coinRound.RegisterAction(t)
 	}
 
 	ld := sys.NewLogDerivativeSum(compCtx.Childf("aggregated"), fractions)
@@ -189,14 +185,16 @@ func collectGroups(sys *wiop.System) map[string]*lookupGroup {
 	return groups
 }
 
-// compileGroup builds the fraction list and the multiplicity-assignment
-// prover task for a single B-grouped collection of inclusion queries.
+// compileGroup builds the fraction list for a single B-grouped collection of
+// inclusion queries. It also allocates the group's multiplicity column M on
+// the group's witness round and registers the prover task that fills it
+// there, so M is committed before α and γ are sampled in coinRound.
 func compileGroup(
 	g *lookupGroup,
 	gamma *wiop.CoinField,
 	coinRound *wiop.Round,
 	compCtx *wiop.ContextFrame,
-) ([]wiop.Fraction, *mAssignmentTask) {
+) []wiop.Fraction {
 	gCtx := compCtx.Childf("group-%p", g)
 
 	// Consistency: every A fragment must have the same width as B.
@@ -235,12 +233,15 @@ func compileGroup(
 	}
 	bRLC := rlcOfViews(alpha, bHead, g.including.cols)
 
-	// M lives on the same module as B, in the coin round (which is also the
-	// round where M is assigned by the prover).
+	// M lives on the same module as B, in the group's witness round. This
+	// places M in the same round as the witness columns it depends on, and
+	// crucially *before* α and γ are sampled in coinRound — without that
+	// ordering a malicious prover could choose M as a function of γ and
+	// break log-derivative soundness.
 	mCol := g.including.module.NewColumn(
 		gCtx.Childf("M"),
 		wiop.VisibilityOracle,
-		coinRound,
+		g.witnessRound,
 	)
 
 	// The T-side fraction:  −M / (γ + bRLC).
@@ -273,18 +274,18 @@ func compileGroup(
 		})
 	}
 
-	// The prover task that will fill M with multiplicities once the witness
-	// is in place. M is referenced by both the symbolic recurrence and by
-	// the prover task, so we share the same *Column pointer.
-	task := &mAssignmentTask{
+	// The prover task that fills M with multiplicities once the witness is
+	// in place. Registered on the group's witness round so it runs before
+	// AdvanceRound samples coinRound's α and γ.
+	g.witnessRound.RegisterAction(&mAssignmentTask{
 		m:               mCol,
 		bCols:           g.including.cols,
 		bSelector:       g.including.selector,
 		included:        append([]includedSpec{}, g.included...),
 		prependOneOnAOk: prependOnesToA,
-	}
+	})
 
-	return fractions, task
+	return fractions
 }
 
 // ensureNextRound returns the round immediately following r, allocating one

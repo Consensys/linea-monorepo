@@ -50,13 +50,15 @@ func checkAllVerifierActions(rt *wiop.Runtime) error {
 // has run and the verifier actions are ready to be checked.
 //
 // Round structure assumed:
-//   - Round 0: user-witness columns (already assigned by the caller).
-//   - Round 1: M column + α/γ coins; one prover action assigns M.
+//   - Round 0: user-witness columns (already assigned by the caller) plus the
+//     M column. The M-assignment prover action runs here, before any coin is
+//     sampled, so M cannot be chosen as a function of γ.
+//   - Round 1: α and γ coins; no prover actions.
 //   - Round 2: LogDerivativeSum result + Z columns; one prover action
 //     assigns Z and the result cell.
 func driveProtocol(rt *wiop.Runtime) {
+	runRound(rt)      // round 0: assigns M
 	rt.AdvanceRound() // → round 1, samples α/γ
-	runRound(rt)      // assigns M
 	rt.AdvanceRound() // → round 2
 	runRound(rt)      // assigns Z and the LogDerivativeSum result
 }
@@ -112,9 +114,8 @@ func TestCompile_SingleColumn_NoMatchPanics(t *testing.T) {
 	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
 	rt.AssignColumn(colS, makeVec(10, 99, 10, 30)) // 99 is not in T
 
-	rt.AdvanceRound() // round 1 — M assignment
 	assert.Panics(t, func() {
-		runRound(&rt)
+		runRound(&rt) // round 0 — M assignment task
 	}, "M assignment must panic when an active A row has no match in B")
 }
 
@@ -211,7 +212,6 @@ func TestCompile_FilterOnIncluding_FilteredTRowCantMatch(t *testing.T) {
 	rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
 	rt.AssignColumn(colS, makeVec(99))
 
-	rt.AdvanceRound()
 	assert.Panics(t, func() { runRound(&rt) },
 		"matching a filtered-out B row must be rejected by M assignment")
 }
@@ -310,7 +310,6 @@ func TestCompile_MultiColumn_PartialMatchFails(t *testing.T) {
 	rt.AssignColumn(sx, makeVec(1))
 	rt.AssignColumn(sy, makeVec(20))
 
-	rt.AdvanceRound()
 	assert.Panics(t, func() { runRound(&rt) },
 		"multi-column lookup must reject a tuple that does not appear in T")
 }
