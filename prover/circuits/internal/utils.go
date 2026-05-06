@@ -191,11 +191,8 @@ func ToCrumbs(api frontend.API, v frontend.Variable, nbCrumbs int) []frontend.Va
 		api.AssertIsCrumb(c)
 	}
 	reconstructed := frontend.Variable(0)
-	coeff := big.NewInt(1)
-	four := big.NewInt(4)
-	for _, c := range res {
-		reconstructed = api.Add(reconstructed, api.Mul(new(big.Int).Set(coeff), c))
-		coeff.Mul(coeff, four)
+	for i := len(res) - 1; i >= 0; i-- {
+		reconstructed = api.Add(api.Mul(reconstructed, 4), res[i])
 	}
 	api.AssertIsEqual(v, reconstructed)
 	return res
