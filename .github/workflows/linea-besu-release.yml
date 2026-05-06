@@ -35,20 +35,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-linea-besu-metadata:
+  compute-linea-besu-release-metadata:
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: linea-besu
       folder-name: linea-besu-package
       include-path: '["tracer/**","tracer-constraints/**","besu-plugins/linea-sequencer/**","linea-besu/**","linea-besu-package/**","gradle/libs.versions.toml"]'
-      image-tag-suffix: ${{ inputs.image_tag_suffix }}
 
   build-and-upload-artifact:
-    needs: [release-linea-besu-metadata]
-    if: ${{ needs.release-linea-besu-metadata.outputs.docker_tag != '' }}
+    needs: [compute-linea-besu-release-metadata]
+    if: ${{ needs.compute-linea-besu-release-metadata.outputs.tag_changed == 'true' }}
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      release_tag_prefix: ${{ needs.release-linea-besu-metadata.outputs.release_version }}
+      release_tag_prefix: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 
@@ -83,10 +82,10 @@ jobs:
     secrets: inherit
 
   build-linea-besu-docker-image-and-gh-release:
-    needs: [release-linea-besu-metadata, release-linea-besu-push-tag-changelog]
+    needs: [compute-linea-besu-release-metadata, release-linea-besu-push-tag-changelog]
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      release_tag_prefix: ${{ needs.release-linea-besu-metadata.outputs.release_version }}
+      release_tag_prefix: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       run_test: false
       run_e2e_test: false
@@ -94,7 +93,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
-      changelog: ${{ needs.release-linea-besu-metadata.outputs.changelog }}
-      release_tag: ${{ needs.release-linea-besu-metadata.outputs.release_tag }}
-      release_version: ${{ needs.release-linea-besu-metadata.outputs.release_version }}
+      changelog: ${{ needs.compute-linea-besu-release-metadata.outputs.changelog }}
+      release_tag: ${{ needs.compute-linea-besu-release-metadata.outputs.release_tag }}
+      release_version: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
     secrets: inherit
