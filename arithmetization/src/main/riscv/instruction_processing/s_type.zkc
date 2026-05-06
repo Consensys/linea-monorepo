@@ -74,7 +74,7 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
             write_64(mem_address, registers[rs2])
         }
         default: {
-            printf "Unsupported S-type instruction with\n"
+            printf "[ERROR] Unsupported S-type instruction with\n"
             printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
             fail
         }

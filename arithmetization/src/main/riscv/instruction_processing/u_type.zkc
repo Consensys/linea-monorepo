@@ -49,7 +49,7 @@ fn process_U_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             printf "LUI\n"
         }
         default: {
-            printf "Unsupported instruction of U-Type\n"
+            printf "[ERROR] Unsupported instruction of U-Type\n"
             printf "\topcode ≡ %x ≡ %b\n", opcode, opcode
             fail
         }

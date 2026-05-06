@@ -110,7 +110,7 @@ fn process_B_type_instruction<registers>(instruction_parameters:u25, pc:Address)
             }
         }
         default: {
-            printf "Unsupported B-Type instruction with funct3 ≡ %x ≡ %b", funct3, funct3
+            printf "[ERROR] Unsupported B-Type instruction with funct3 ≡ %x ≡ %b", funct3, funct3
             fail
         }
     }
