@@ -14,8 +14,8 @@ include!("blake_core.rs");
 include!("blake_test_vectors.rs");
 
 fn main() {
-    let input = hex_to_input(_TEST_VECTOR_4[0]);
-    let expected = hex_to_expected(_TEST_VECTOR_4[1]);
+    let input = hex_to_input(_TEST_VECTOR_5[0]);
+    let expected = hex_to_expected(_TEST_VECTOR_5[1]);
 
     let code = match blake2b_f_eip152(&input) {
         Ok(result) if result == expected.as_slice() => 0, // success
