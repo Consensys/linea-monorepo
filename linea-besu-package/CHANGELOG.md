@@ -1,5 +1,8 @@
 ## [unreleased]
-### update for testing
+
+### 🚀 Features
+
+- *(linea-besu)* Release test for v1.4.0
 ## [1.3.1] - 2026-05-06
 ## [1.1.4] - 2026-05-05
 
