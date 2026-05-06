@@ -129,7 +129,7 @@ $(LINKER_SCRIPT):
 	@echo "    } > PROGRAM" >> $@
 	@echo "" >> $@
 	@echo "    /* stack grows downward from the top of the stack region */" >> $@
-	@echo "    _stack_start = ORIGIN(STACK) + LENGTH(STACK) - 1;" >> $@
+	@echo "    _stack_start = ORIGIN(STACK) + LENGTH(STACK);" >> $@
 	@echo "" >> $@
 	@echo "    /* symbol marking the start of the input region */" >> $@
 	@echo "    _input_start = ORIGIN(IN);" >> $@
