@@ -2,4 +2,4 @@
 
 ### 🚀 Features
 
-- *(coordinator)* Reset changelog.md to empty
+- *(coordinator)* Reset changelog.md to empty for testing
