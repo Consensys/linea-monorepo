@@ -1,0 +1,110 @@
+{
+    "_comment": "Execution-proof request — IDENTICAL under Option A and Option B. The execution proof statement (§2.1) and its 15-field PI tuple do not change between topologies; only what consumes the proof afterward (aggregation in A, compression-as-aggregator in B) is different. Therefore one shape lives here and is referenced from both option directories.",
+
+    "proverVersion": "4.0.0-riscv",
+    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
+    "blockRange": {
+        "startBlockNumber": 1000501,
+        "endBlockNumber":   1000503
+    },
+
+    "_comment_publicInputs": "The 15 fields from §2.1 + §6.4. Coordinator supplies prev_* values; the guest recomputes new_* from the witness and asserts equality. The L1 contract verifies prev_* against its stored anchors after aggregation+SNARK wrap.",
+    "publicInputs": {
+        "prevLastBlockHash":                       "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "newLastBlockHash":                        "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "newLastBlockNumber":                      1000503,
+        "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
+        "L2L1MessagesHash":                        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHashMessageNumber":  0,
+        "L1L2BridgeRollingHash":                   "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "L1L2BridgeRollingHashMessageNumber":      0,
+        "dynamicChainConfigHash":                  "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
+        "prevFtxRollingHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "newFtxRollingHash":                       "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "lastProcessedFtxNumber":                  0,
+        "filteredAddressesHash":                   "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "txFromsHash":                             "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+    },
+
+    "_comment_chainConfig": "Private input. The guest hashes (Keccak256 over RLP) and asserts the result equals publicInputs.dynamicChainConfigHash. Single value across the range — a config change is a finalization boundary, not a per-block event.",
+    "chainConfig": {
+        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
+        "coinbase":                  "0x0000000000000000000000000000000000000000",
+        "baseFee":                   1000000000,
+        "chainId":                   59144
+    },
+
+    "_comment_blocks": "Full Ethereum block headers (RLP) plus signature-stripped tx list. fromAddresses are stored explicitly so the guest can avoid in-circuit ECDSA recovery — keccak256(concat(fromAddresses across blocks)) is what binds publicInputs.txFromsHash. The parent block (immediately before startBlockNumber) is *not* a top-level field — its state root and any other anchoring data are part of the executionWitness payload below; the guest verifies that anchor against publicInputs.prevLastBlockHash. L2→L1 message hashing is derived from re-execution alone (filter MessageSent logs from chainConfig.l2MessageServiceContract, accumulate, assert keccak256 == publicInputs.L2L1MessagesHash). L1→L2 rolling hash is the asymmetric case — see l1L2Messages below.",
+    "blocks": [
+        {
+            "blockNumber": 1000501,
+            "headerRlp":   "0xf90215a0...",
+            "transactionsRlp": [
+                "0x02f873..."
+            ],
+            "fromAddresses": [
+                "0x0000000000000000000000000000000000000001"
+            ],
+            "forcedTransactions": []
+        },
+        {
+            "blockNumber": 1000502,
+            "headerRlp":   "0xf90215a0...",
+            "transactionsRlp": [],
+            "fromAddresses": [],
+            "forcedTransactions": [
+                {
+                    "_comment":           "Per §2.1 + §6.5, FTXs are processed *after* normal block execution and appear at the start of the block tx list; per-FTX state_witness is non-null ONLY when acceptance is ACCEPTED-but-invalid (§6.5 'Invalid' branch).",
+                    "ftxNumber":           17,
+                    "deadlineBlockNumber": 1000600,
+                    "fromAddress":         "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed",
+                    "transactionRlp":      "0x02f86b...",
+                    "acceptance":          "ACCEPTED",
+                    "stateWitness":        null
+                }
+            ]
+        },
+        {
+            "blockNumber": 1000503,
+            "headerRlp":   "0xf90215a0...",
+            "transactionsRlp": [],
+            "fromAddresses": [],
+            "forcedTransactions": []
+        }
+    ],
+
+    "_comment_l1L2Messages": "L1→L2 deposit messages consumed in this range. Each entry feeds one rolling-hash step; the guest chains them starting from publicInputs.prevL1L2BridgeRollingHash and asserts the final value equals publicInputs.L1L2BridgeRollingHash. messageNumber must be strictly increasing; the first entry's messageNumber must equal prevL1L2BridgeRollingHashMessageNumber + 1.",
+    "l1L2Messages": [
+        {
+            "messageNumber":     42,
+            "messageHash":       "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "rollingHashAfter":  "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+    ],
+
+    "_comment_forcedTransactionContext": "Witness data needed by the §6.5 deadline-sweep check. pendingFtxs lists every FTX with number > publicInputs.lastProcessedFtxNumber whose deadline ≤ some upper bound the coordinator picks (typically the last L1 block hash known at request time). The guest asserts: for every entry where deadlineBlockNumber ≤ publicInputs.newLastBlockNumber, ftxNumber must already be ≤ publicInputs.lastProcessedFtxNumber — i.e. nothing past-deadline was skipped. The L1 contract performs the symmetric check against its full stored ftxDeadline[] map at finalization time.",
+    "forcedTransactionContext": {
+        "pendingFtxs": [
+            {
+                "ftxNumber":           18,
+                "deadlineBlockNumber": 1010000,
+                "fromAddress":         "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed"
+            }
+        ]
+    },
+
+    "_comment_executionWitness": "Stateless witness from Besu `debug_executionWitness`. Format follows EIP-7864 (Verkle) post-Glamsterdam, falling back to MPT proofs in the transitional period. The witness envelope carries the parent state root that its account/storage proofs are anchored to; the guest asserts that anchor is consistent with publicInputs.prevLastBlockHash, then replays the EVM directly. One entry per block; the parent state root anchor lives at the top of the witness, not inside any per-block entry. No separate state-manager preprocessing step is needed (the Type-2 zkStateMerkleProof + conflatedExecutionTracesFile pair is gone). Treated as opaque-but-deterministic by the coordinator: the JSON is forwarded as-is, the guest is the only consumer.",
+    "executionWitness": {
+        "_comment_parentStateAnchor": "Top-level anchor; the guest checks it is consistent with publicInputs.prevLastBlockHash. Concrete shape (e.g. parent header RLP vs. parent state root + an inclusion proof against prevLastBlockHash) is pinned down by the prover team alongside the EIP-7864 witness format.",
+        "parentStateAnchor": "...",
+        "1000501": {
+            "stateProofs":   "...",
+            "storageProofs": "...",
+            "accounts":      "...",
+            "code":          "..."
+        },
+        "1000502": { "...": "..." },
+        "1000503": { "...": "..." }
+    }
+}

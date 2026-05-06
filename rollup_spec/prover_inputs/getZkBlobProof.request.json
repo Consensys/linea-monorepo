@@ -1,0 +1,116 @@
+{
+    "_comment": "Blob proof — generalised across K ≥ 1 EIP-4844 blobs in a single proof, fused with the recursive verification of the N execution proofs whose ranges tile the combined block range. Per §2.2 of the rollup_spec Readme. The 14-field public-input tuple matches §2.4 verbatim, so an aggregation proof can consume blob proofs as-is and (if hierarchy is added later, see §2.5) a higher-level aggregation proof can consume aggregation proofs the same way.",
+
+    "proverVersion":      "4.0.0-riscv",
+    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
+
+    "_comment_blockRange": "Combined block range across all K blobs in this proof. Must equal blobs[0].blockRange.startBlockNumber .. blobs[K-1].blockRange.endBlockNumber, with no gaps between consecutive blob ranges (continuity is enforced by the guest via the per-blob shnarf chain plus the execution-proof block-hash sequence — see §2.2 steps 3 and 4).",
+    "blockRange": {
+        "startBlockNumber": 1000501,
+        "endBlockNumber":   1000520
+    },
+
+    "_comment_blobs": "K = 2 blobs in this example. Order is the canonical on-chain shnarf-chain order. Each entry carries its own KZG binding, the blocks-it-decompresses-to (truncated form per blob.py::TruncatedEthereumBlock), and its block range. The guest performs §2.2 steps 1–3 once per blob: KZG check, decompress, parse, and chain the shnarf via Hash(shnarf_{b-1}, lastBlockHash_b, blobHash_b). K = 1 is also valid and degenerates to the single-blob case.",
+    "blobs": [
+        {
+            "blobInputs": {
+                "compressedData":      "AJT9wvov/MBB0/8SBFtzyG5P+V/...",
+                "blobHash":             "0x010a00a15d2e30654d134fd34d1f56e625978f5bc42c411df5df424fbb8a38d1",
+                "blobKzgCommitment":    "0xa2ecbd5af0b424ab703cf85637ef2e26251ee67aeedcb5ee39e03634b49060d44d61e22019ad77ac1bf7a74ef51a3593",
+                "blobKzgProof":         "0x943aa027b213c11cda3f734f165c3dbde5641dc0a78290bef8e7f2021d7dc112f72e267bff7c99d4d982171851924ba7"
+            },
+            "blockRange": {
+                "startBlockNumber": 1000501,
+                "endBlockNumber":   1000510
+            },
+            "blockData": [
+                {
+                    "blockNumber": 1000501,
+                    "timestamp":   1701159400,
+                    "blockHash":   "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "prevRandao":  "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "transactions": [
+                        { "from": "0x0000000000000000000000000000000000000001", "txRlpStripped": "0x02f873..." }
+                    ]
+                },
+                { "_comment": "blocks 1000502..1000509 omitted in the fixture — the guest receives all m_b = 10 entries", "...": "..." },
+                {
+                    "blockNumber": 1000510,
+                    "timestamp":   1701159450,
+                    "blockHash":   "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "prevRandao":  "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "transactions": []
+                }
+            ]
+        },
+        {
+            "blobInputs": {
+                "compressedData":      "Ki4HoRO0lIgABZUiOEoSDqEgYULZbAlTRApEEkR...",
+                "blobHash":             "0x015a3e6e75f2d24b1c3c7c2e8f9a4d6b5e0123456789abcdef0123456789abcd",
+                "blobKzgCommitment":    "0xb1d4a7c8e9f6b5a3d2e1f4c7b8a9d0e2c3f5b6a7d8e9f0c1b2a3d4e5f6c7b8a9d0e1f2c3b4a5d6e7f8c9b0a1d2e3f4c5",
+                "blobKzgProof":         "0xcafeb1d4a7c8e9f6b5a3d2e1f4c7b8a9d0e2c3f5b6a7d8e9f0c1b2a3d4e5f6c7b8a9d0e1f2c3b4a5d6e7f8c9b0a1d2e3"
+            },
+            "blockRange": {
+                "startBlockNumber": 1000511,
+                "endBlockNumber":   1000520
+            },
+            "blockData": [
+                {
+                    "blockNumber": 1000511,
+                    "timestamp":   1701159456,
+                    "blockHash":   "0x0ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "prevRandao":  "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "transactions": []
+                },
+                { "_comment": "blocks 1000512..1000519 omitted in the fixture — the guest receives all m_b = 10 entries", "...": "..." },
+                {
+                    "blockNumber": 1000520,
+                    "timestamp":   1701159510,
+                    "blockHash":   "0x0dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "prevRandao":  "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "transactions": []
+                }
+            ]
+        }
+    ],
+
+    "_comment_shnarfTransition": "Overall transition. prevShnarf is the inbound shnarf before blob[0]; newShnarf is the outbound shnarf after blob[K-1]. The guest replays Hash(shnarf_{b-1}, lastBlockHash_b, blobHash_b) for each b ∈ [0, K-1] and asserts the final value equals newShnarf (§2.2 step 3). Intermediate shnarfs are not exposed.",
+    "shnarfTransition": {
+        "prevShnarf":     "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
+        "newShnarf":      "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
+    },
+
+    "_comment_executionProofs": "The N execution proofs that tile the combined block range across all K blobs, in canonical (start..end) order. Each entry is a file path to a serialised execution prover-response JSON — same convention as today's prover/backend/aggregation Request.executionProofs []string. The guest decodes each file, reads proof bytes + 15-field PI tuple + per-block witness (L2ToL1MsgHashes, txFroms, filtered FTX addresses) directly from the response. Continuity (newLastBlockHash, L1L2BridgeRollingHash, dynamicChainConfigHash, newFtxRollingHash) is asserted across consecutive proofs by §2.2 step 9 — including across blob boundaries, which fall implicitly inside this list.",
+    "executionProofs": [
+        "execution/responses/1000501-1000503-getZkProof.json",
+        "execution/responses/1000504-1000510-getZkProof.json",
+        "execution/responses/1000511-1000515-getZkProof.json",
+        "execution/responses/1000516-1000520-getZkProof.json"
+    ],
+
+    "_comment_chainConfig": "Single value across the proof. Used to verify the dynamicChainConfigHash bound by every inner execution proof. A chain-config change is a finalisation boundary; consequently a blob proof never spans one.",
+    "chainConfig": {
+        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
+        "coinbase":                  "0x0000000000000000000000000000000000000000",
+        "baseFee":                   1000000000,
+        "chainId":                   59144
+    },
+
+    "_comment_publicInputs": "The 14-field tuple this blob proof will output. Identical shape to §2.4 (and to getZkAggregatedProof.request.json::expectedAggregatedPublicInputs). Provided here so the coordinator can fail-fast on a mismatch with the response before forwarding the proof to the aggregation step.",
+    "publicInputs": {
+        "newLastBlockNumber":                      1000520,
+        "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
+        "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHashMessageNumber":  0,
+        "L1L2BridgeRollingHash":                   "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "L1L2BridgeRollingHashMessageNumber":      0,
+        "dynamicChainConfigHash":                  "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
+        "prevFtxRollingHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "newFtxRollingHash":                       "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "lastProcessedFtxNumber":                  0,
+        "filteredAddressesHash":                   "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "prevShnarf":                              "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
+        "newShnarf":                               "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
+    }
+}

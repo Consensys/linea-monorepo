@@ -1,0 +1,55 @@
+{
+    "_comment": "Aggregation proof — flat aggregation of M blob proofs per §2.3 of the rollup_spec Readme. This is the final proof of the chain. The prover request bundles two operations: (1) the recursive STARK aggregation that verifies each blob proof, asserts pairwise continuity (newShnarf == prevShnarf, rolling hashes, dynamicChainConfigHash, FTX rolling hash), and concatenates per-blob-proof L2L1 root arrays and FTX filtered-address lists; (2) the STARK→SNARK emulation wrap (Groth16/Plonk) so the response is directly consumable by the L1 LineaRollup.finalize() verifier — no separate emulation prover request. Hierarchical aggregation is a future option (§2.5); when added, the same guest is re-used at higher tree levels because the PI shape it consumes is identical to the one it emits.",
+
+    "proverVersion":      "4.0.0-riscv",
+    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
+
+    "_comment_blockRange": "Combined block range across all M blob proofs. Equals blobProofs[0]'s startBlockNumber .. blobProofs[M-1]'s endBlockNumber.",
+    "blockRange": {
+        "startBlockNumber": 1000501,
+        "endBlockNumber":   1000567
+    },
+
+    "_comment_blobProofs": "Ordered by shnarf-chain order. Each entry is a file path to a serialised blob-proof prover-response JSON — same convention as today's prover/backend/aggregation Request.executionProofs / .compressionProofs []string. The aggregation guest decodes each file and reads proof bytes + 14-field PI tuple + per-blob-proof private witness (L2L1 root array, filtered-address list) directly from the response.",
+    "blobProofs": [
+        "blob/responses/1000501-1000520-blobs1to2-getZkBlobProof.json",
+        "blob/responses/1000521-1000545-blobs3to4-getZkBlobProof.json",
+        "blob/responses/1000546-1000567-blob5-getZkBlobProof.json"
+    ],
+
+    "_comment_l1Context": "Coordinator-supplied L1 anchors. The guest binds them into the public output so finalize() can assert continuity in storage. Mirrors the parentAggregation* fields on today's aggregation Request, extended for the new RISC-V design.",
+    "l1Context": {
+        "parentAggregationLastL1RollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentAggregationLastL1RollingHashMessageNumber": 0,
+        "parentAggregationFinalShnarf":                    "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
+        "parentStateRootHash":                             "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",
+        "parentFtxRollingHash":                            "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentLastProcessedFtxNumber":                    0
+    },
+
+    "_comment_chainConfig": "Used to verify the dynamicChainConfigHash that every inner blob proof must agree on. A chain-config change requires a finalisation boundary; consequently an aggregation proof never spans one.",
+    "chainConfig": {
+        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
+        "coinbase":                  "0x0000000000000000000000000000000000000000",
+        "baseFee":                   1000000000,
+        "chainId":                   59144
+    },
+
+    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple this proof will expose to L1 LineaRollup.finalize(). Block-hash continuity is folded into prev/newShnarf; chainID/coinbase/baseFee are folded into dynamicChainConfigHash. Provided so the coordinator can fail-fast on a mismatch with the response before submission.",
+    "expectedAggregatedPublicInputs": {
+        "newLastBlockNumber":                      1000567,
+        "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
+        "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "prevL1L2BridgeRollingHashMessageNumber":  0,
+        "L1L2BridgeRollingHash":                   "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "L1L2BridgeRollingHashMessageNumber":      0,
+        "dynamicChainConfigHash":                  "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
+        "prevFtxRollingHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "newFtxRollingHash":                       "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "lastProcessedFtxNumber":                  0,
+        "filteredAddressesHash":                   "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "prevShnarf":                              "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
+        "newShnarf":                               "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
+    }
+}
