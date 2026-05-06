@@ -25,7 +25,7 @@ static instruction_type_from_opcode(opcode:Opcode) -> (instruction_type:Type) {
     UNDEFINED_TYPE, // 0b0001000
     UNDEFINED_TYPE, // 0b0001001
     UNDEFINED_TYPE, // 0b0001010
-    R_TYPE, // 0b0001011 NOTE: this is the custom-0 instruction opcode (0x0b)
+    UNDEFINED_TYPE, // 0b0001011
     UNDEFINED_TYPE, // 0b0001100
     UNDEFINED_TYPE, // 0b0001101
     UNDEFINED_TYPE, // 0b0001110
@@ -147,7 +147,6 @@ static instruction_type_from_opcode(opcode:Opcode) -> (instruction_type:Type) {
 // R_type
 const OP:Opcode = 0b0110011 // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
 const OP_32:Opcode = 0b0111011 // ADDW, SUBW, SLLW, SRLW, SRAW (RV64 only)
-const CUSTOM_0:Opcode = 0b0001011 // for precompiles
 
 // I_type
 const LOAD:Opcode = 0b0000011 // LB, LH, LW, LBU, LHU, LWU, LD
