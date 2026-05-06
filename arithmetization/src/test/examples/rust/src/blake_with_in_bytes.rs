@@ -20,7 +20,7 @@ include!("blake_core.rs");
 core::arch::global_asm!(
     ".global _start",
     "_start:",
-    "la sp, _stack_start", // SP start address from linker script
+    "la sp, _stack_start", // SP from linker script
     "call main",
 );
 

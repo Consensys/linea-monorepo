@@ -37,8 +37,9 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    // Point to assembly overwriting default SP
+    // Point to assembly overwriting default SP with the one defined in the linker script
     exe.root_module.addAssemblyFile(b.path("src/start.s"));
+    exe.setLinkerScript(b.path("../linker_script.ld"));
 
     // Remove unused code sections
     exe.link_gc_sections = true;
