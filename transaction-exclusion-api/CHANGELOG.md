@@ -8,3 +8,4 @@
 
 - *(tx-exclusion-api)* Update unreleased section in CHANGELOG.md
 - *(ci)* Removed testing changes and files and update commitlint config
+- *(2954)* Move config folder into docker (#3015)
