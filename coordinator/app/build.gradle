@@ -1,7 +1,7 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
 }
-
+// JONES: update for release testing
 configurations.configureEach {
   exclude group: "org.rocksdb", module: "rocksdbjni"
   exclude group: "org.hyperledger.besu", module: "bls12-381"
