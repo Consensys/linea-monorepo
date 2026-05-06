@@ -116,7 +116,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
     
     - name: Generate and prepend release changelog section
-      if: steps.version.outputs.changed == 'true' && inputs.prepend-changelog == 'true'
+      if: inputs.prepend-changelog == 'true'
       shell: bash
       env:
         COMPONENT: ${{ inputs.component-name }}

@@ -96,7 +96,6 @@ jobs:
           generate-changelog-with-next-tag-version: 'true'
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
-        if: steps.prepend-changelog.outputs.tag_changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
           FOLDER_NAME: ${{ inputs.folder-name }}
@@ -130,7 +129,6 @@ jobs:
           exit 1
 
       - name: Create and push ${{ inputs.component-name }} release tag
-        if: steps.prepend-changelog.outputs.tag_changed == 'true'
         env:
           COMPONENT: ${{ inputs.component-name }}
           TAG: ${{ steps.prepend-changelog.outputs.next_tag }}
