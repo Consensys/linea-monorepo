@@ -26,6 +26,8 @@ import {
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
 const l2AccountManager = context.getL2AccountManager();
+const l1EventTimeOutMs = process.env.PARTIAL_PROVER != "true" ? 200_000 : 1200_000;
+const timeOutMs = process.env.PARTIAL_PROVER != "true" ? 300_000 : 1800_000;
 
 async function expectReceiptNotFound(
   client: { getTransactionReceipt: (args: { hash: Hash }) => Promise<unknown> },
@@ -147,7 +149,7 @@ describe("Forced transaction test suite", () => {
         toBlock: "latest",
         pollingIntervalMs: 2_000,
         strict: true,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
       });
@@ -156,7 +158,7 @@ describe("Forced transaction test suite", () => {
         `Finalization includes forced transaction. blockNumber=${finalizedEvent.args.blockNumber} forcedTransactionNumber=${finalizedEvent.args.forcedTransactionNumber}`,
       );
     },
-    200_000,
+    timeOutMs,
   );
 
   it.concurrent(
@@ -258,7 +260,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -273,7 +275,7 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("Checked for forced transaction receipt on L2; confirmed that receipt was not found as expected.");
     },
-    200_000,
+    timeOutMs,
   );
 
   it.concurrent(
@@ -409,7 +411,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -424,7 +426,7 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("BadPrecompile forced transaction confirmed: receipt not found on L2 as expected.");
     },
-    300_000,
+    timeOutMs,
   );
 
   it.concurrent(
@@ -570,7 +572,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -585,7 +587,7 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("TooManyLogs forced transaction confirmed: receipt not found on L2 as expected.");
     },
-    300_000,
+    timeOutMs,
   );
 
   it.concurrent(
@@ -705,7 +707,7 @@ describe("Forced transaction test suite", () => {
               fromBlock: receipt.blockNumber,
               toBlock: "latest",
               pollingIntervalMs: 2_000,
-              timeoutMs: 200_000,
+              timeoutMs: l1EventTimeOutMs,
               strict: true,
               criteria: async (events) =>
                 events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -725,7 +727,7 @@ describe("Forced transaction test suite", () => {
         );
       });
     },
-    300_000,
+    timeOutMs,
   );
 
   it.concurrent(
@@ -845,7 +847,7 @@ describe("Forced transaction test suite", () => {
               fromBlock: receipt.blockNumber,
               toBlock: "latest",
               pollingIntervalMs: 2_000,
-              timeoutMs: 200_000,
+              timeoutMs: l1EventTimeOutMs,
               strict: true,
               criteria: async (events) =>
                 events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -865,6 +867,6 @@ describe("Forced transaction test suite", () => {
         );
       });
     },
-    300_000,
+    timeOutMs,
   );
 });
