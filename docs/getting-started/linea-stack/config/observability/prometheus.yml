@@ -1,0 +1,70 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 4s
+
+scrape_configs:
+
+  # Prometheus self-scrape
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Coordinator (observability port = 9545)
+  - job_name: coordinator
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["coordinator:9545"]
+
+  # Sequencer (Linea Besu metrics)
+  - job_name: sequencer
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["sequencer:9545"]
+
+  # L2 RPC follower (Linea Besu metrics)
+  - job_name: l2-node-besu
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["l2-node-besu:9545"]
+
+  # Postman
+  - job_name: postman
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["postman:3000"]
+
+  # Prover (only present in `stack-partial-prover` profile; missing target
+  # is acceptable when running `stack-no-prover` — Prometheus will report
+  # the target as down and continue).
+  - job_name: prover
+    static_configs:
+      - targets: ["prover:9090"]
+
+  # Web3signer (Prometheus endpoint on its admin port)
+  - job_name: web3signer
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["web3signer:9001"]
+
+  # Maru (consensus)
+  - job_name: maru
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["maru:9090"]
+
+  # Shomei state manager
+  - job_name: shomei
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["shomei:9545"]
+
+  # Blockscout instances (Phoenix /metrics)
+  - job_name: l1-blockscout
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["l1-blockscout:4000"]
+
+  - job_name: l2-blockscout
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["l2-blockscout:4000"]

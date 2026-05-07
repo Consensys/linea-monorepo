@@ -1,0 +1,643 @@
+# =============================================================================
+# Linea Stack — v0 standalone public quickstart (Sepolia L1).
+#
+# L2 stack (Linea Besu sequencer + Maru consensus + l2-node-besu + coordinator
+# + postman + shomei + web3signer + prover) pointed at user-supplied Sepolia L1
+# RPC. Plus L2 Blockscout explorer and Prometheus/Grafana/Loki/Promtail.
+#
+# See README.md in this directory for the full operator guide.
+# Image tags are pinned in versions.env. User-supplied L1 secrets in .env.
+#
+# Profiles:
+#   - stack-no-prover       — full L2 stack, observability, L2 explorer
+#   - stack-partial-prover  — same + partial prover (~32 GB RAM extra)
+#
+# L2 keys are pre-baked DEV keys (public knowledge — never reuse). The L1
+# deployer key is supplied by you via .env and must be Sepolia-funded.
+# =============================================================================
+
+x-profiles: &default-profiles ["stack-no-prover", "stack-partial-prover"]
+
+networks:
+  linea:
+    driver: bridge
+    ipam:
+      config:
+        # Fixed subnet so we can pin a stable IP for the sequencer. Besu's enode
+        # URL parser rejects hostnames; the l2-node-besu bootnode reference
+        # therefore needs an IP literal. Only the sequencer is pinned — every
+        # other service uses Docker DNS via container hostnames.
+        - subnet: 11.11.11.0/24
+
+volumes:
+  linea-local-dev:
+    name: "linea-stack-local-dev"
+  linea-logs:
+    name: "linea-stack-logs"
+  linea-shared-config:
+    name: "linea-stack-shared-config"  # addresses.json handoff between deploy-contracts and consumers
+  coordinator-pg-data:
+  postman-pg-data:
+  blockscout-l2-pg-data:
+  grafana-data:
+  prometheus-data:
+  linea-rendered-config:
+    name: "linea-stack-rendered-config"  # coordinator + maru TOMLs rendered with $L1_RPC_URL
+
+services:
+
+  # ============================================================================
+  # L2 layer (L1 = user-supplied Sepolia RPC; no local L1 services)
+  # ============================================================================
+
+  l2-genesis-init:
+    image: busybox:${BUSYBOX_TAG}
+    container_name: l2-genesis-init
+    profiles: *default-profiles
+    environment:
+      L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}
+    # Idempotent: skips generation if the L2 genesis files have already been
+    # rendered. Re-running with mismatching fork-timestamp would diverge from
+    # any existing on-disk chaindata. Run `docker compose down -v` to force.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -f /initialization/genesis-besu.json ] && [ -f /initialization/genesis-maru.json ] && [ -f /initialization/fork-timestamp.txt ]; then
+          echo "[l2-genesis-init] L2 genesis already initialized — skipping."
+          exit 0
+        fi
+        echo "[l2-genesis-init] Rendering fresh L2 genesis."
+        sh /initialization/init.sh
+    volumes:
+      - ./config/l2/genesis-init/:/initialization:rw
+
+  config-render:
+    # One-shot init: substitutes runtime values into the coordinator + maru TOML
+    # templates and writes the rendered files to the linea-rendered-config
+    # volume. coordinator + maru mount the rendered output read-only.
+    #
+    # Two-phase substitution model:
+    #   1. config-render (this service) substitutes placeholders that are known
+    #      from .env: L1_RPC_URL.
+    #   2. Placeholders only knowable at deploy time (LINEA_ROLLUP_ADDRESS,
+    #      GENESIS_STATE_ROOT_HASH, GENESIS_SHNARF, LINEA_ROLLUP_DEPLOY_BLOCK,
+    #      L2_MESSAGE_SERVICE_ADDRESS) are seeded with safe defaults here so
+    #      maru can boot before deploy-contracts runs. deploy-contracts.sh then
+    #      re-patches the rendered files in /rendered at the end of its run; a
+    #      `post-deploy-restart` service then restarts maru to pick up the
+    #      patched config (coordinator + postman start AFTER deploy-contracts so
+    #      they read the patched values on first boot — no restart needed).
+    #
+    # NOT idempotent — re-renders every boot so .env changes always propagate.
+    image: busybox:${BUSYBOX_TAG}
+    container_name: config-render
+    profiles: *default-profiles
+    environment:
+      L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "[config-render] L1_RPC_URL=$$L1_RPC_URL"
+        # Defaults for deploy-time placeholders. These are placeholders the
+        # boot-time services tolerate (zero address polled = no events; zero
+        # hash compared = no proof submission) and that deploy-contracts.sh
+        # overwrites after step 1.
+        ZERO_ADDR="0x0000000000000000000000000000000000000000"
+        ZERO_HASH="0x0000000000000000000000000000000000000000000000000000000000000000"
+        # Deterministic — CREATE from pre-baked L2 deployer at nonce 0.
+        L2_MS_ADDR="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+        for src_dst in \
+            /templates/coordinator-config.toml.template:/rendered/coordinator-config.toml \
+            /templates/maru-config.toml.template:/rendered/maru-config.toml; do
+          src="$${src_dst%%:*}"
+          dst="$${src_dst##*:}"
+          sed \
+            -e "s|__L1_RPC_URL__|$$L1_RPC_URL|g" \
+            -e "s|__LINEA_ROLLUP_ADDRESS__|$$ZERO_ADDR|g" \
+            -e "s|__L2_MESSAGE_SERVICE_ADDRESS__|$$L2_MS_ADDR|g" \
+            -e "s|__GENESIS_STATE_ROOT_HASH__|$$ZERO_HASH|g" \
+            -e "s|__GENESIS_SHNARF__|$$ZERO_HASH|g" \
+            -e "s|__LINEA_ROLLUP_DEPLOY_BLOCK__|0|g" \
+            "$$src" > "$$dst"
+          echo "[config-render] rendered $$src -> $$dst (with deploy-time defaults)"
+        done
+    volumes:
+      - ./config/l2/coordinator/coordinator-config.toml.template:/templates/coordinator-config.toml.template:ro
+      - ./config/l2/maru/config.toml.template:/templates/maru-config.toml.template:ro
+      - linea-rendered-config:/rendered:rw
+
+  sequencer:
+    image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG}
+    container_name: sequencer
+    hostname: sequencer
+    profiles: *default-profiles
+    depends_on:
+      l2-genesis-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '[ -f /tmp/pid ]'"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/sequencer.config.toml
+      - --node-private-key-file=/var/lib/besu/key
+      - --plugin-linea-node-type=SEQUENCER
+      # NOTE: --plugin-linea-rejected-tx-endpoint intentionally omitted (v0 has no
+      # transaction-exclusion-api service; flag defaults to null and is optional —
+      # see besu-plugins/linea-sequencer/docs/plugins.md).
+    volumes:
+      - ./config/l2/sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
+      - ./config/l2/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2/sequencer/key:/var/lib/besu/key:ro
+      - ./config/l2/sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/l2/sequencer/tls-files:/var/lib/besu/tls-files:ro
+      - ./config/l2/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/l2/genesis-init:/initialization/:ro
+    ports:
+      # Sequencer RPC is internal-only by convention. Not user-facing.
+      # Use l2-node-besu (HOST_PORT_L2_RPC) for end-user RPC.
+      - "${HOST_PORT_L2_SEQUENCER_RPC:-8645}:8545"
+    networks:
+      linea:
+        # Pinned IP — the l2-node-besu bootnode enode URL references this.
+        # Must match the IP literal in the --bootnodes flag below.
+        ipv4_address: 11.11.11.101
+
+  maru:
+    image: consensys/maru:${MARU_TAG}
+    container_name: maru
+    hostname: maru
+    profiles: *default-profiles
+    depends_on:
+      sequencer:
+        condition: service_healthy
+      config-render:
+        condition: service_completed_successfully
+    command:
+      - java
+      - -Dlog4j2.configurationFile=/opt/consensys/maru/configs/log4j.xml
+      - -jar
+      - /opt/consensys/maru/maru.jar
+      - --genesis-file=/initialization/genesis-maru.json
+      - --config=/rendered/maru-config.toml
+    volumes:
+      # Rendered TOML from config-render: ${L1_RPC_URL} substituted at boot
+      # (Phase 2 will add ${LINEA_ROLLUP_ADDRESS}).
+      - linea-rendered-config:/rendered:ro
+      - ./config/l2/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
+      - ./config/l2/maru/private-key:/tmp/maru-db/private-key:ro
+      - ./config/l2/genesis-init:/initialization/:ro
+    ports:
+      - "${HOST_PORT_MARU:-8080}:8080"
+    networks: [linea]
+
+  l2-node-besu:
+    image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG}
+    container_name: l2-node-besu
+    hostname: l2-node-besu
+    profiles: *default-profiles
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    privileged: true   # required by shomei plugin in this image
+    user: root
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '[ -f /tmp/pid ]'"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    restart: "no"
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -Xmx1g
+    entrypoint: besu-untuned
+    command:
+      - --config-file=/var/lib/besu/l2-node-besu.config.toml
+      - --genesis-file=/initialization/genesis-besu.json
+      - --plugin-linea-node-type=RPC
+      # The enode pubkey below (14408801a444…) is the SECP256K1 public key
+      # corresponding to the sequencer node-private-key file at
+      # `config/l2/sequencer/key`. They are checked-in dev keys and must
+      # stay in sync — if you regenerate `config/l2/sequencer/key` you must
+      # also recompute this enode pubkey (e.g. with `besu public-key
+      # --to-address /var/lib/besu/key`) and update this line.
+      # The IP (11.11.11.101) must match the sequencer service's pinned IP
+      # in the `networks.linea.ipv4_address` block — Besu's enode URL parser
+      # rejects hostnames.
+      # See config/DEV-KEYS-INVENTORY.md for the regeneration checklist.
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+    volumes:
+      - ./config/l2/l2-node-besu/l2-node-besu.config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      - ./config/l2/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
+      - ./config/l2/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/l2/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/l2/genesis-init:/initialization/:ro
+      - linea-local-dev:/data
+    ports:
+      - "${HOST_PORT_L2_RPC:-8745}:8545"
+      - "${HOST_PORT_L2_WS:-8746}:8546"
+      - "${HOST_PORT_L2_ENGINE:-8748}:8550"
+    networks: [linea]
+
+  shomei:
+    image: consensys/linea-shomei:${LINEA_SHOMEI_TAG}
+    container_name: shomei
+    hostname: shomei
+    profiles: *default-profiles
+    depends_on:
+      l2-node-besu:
+        condition: service_started
+    privileged: true
+    user: root
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '[ -f /data/shomei/LOCK ]'"]
+      interval: 1s
+      timeout: 1s
+      retries: 120
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=l2-node-besu
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+      - --data-path=/data/shomei
+    volumes:
+      - ./config/l2/shomei/log4j.xml:/log4j.xml:ro
+    ports:
+      - "${HOST_PORT_SHOMEI:-8998}:8888"
+    networks: [linea]
+
+  # ============================================================================
+  # Signing
+  # ============================================================================
+
+  web3signer:
+    image: consensys/web3signer:${WEB3SIGNER_TAG}
+    container_name: web3signer
+    hostname: web3signer
+    profiles: *default-profiles
+    # Web3signer runs in mTLS mode (--tls-known-clients-file enables client
+    # cert verification). There is no plain healthcheck endpoint a healthcheck
+    # script can hit without a valid client cert. Dependents use
+    # `condition: service_started` instead — web3signer boots in ~2s and is
+    # reliable; the SSL/handshake error from a wrong-cert client is the
+    # confirmation the service is up.
+    command:
+      - --key-store-path=/key-files/
+      - --tls-keystore-file=/tls-files/web3signer-keystore.p12
+      - --tls-keystore-password-file=/tls-files/web3signer-keystore-password.txt
+      - --tls-known-clients-file=/tls-files/known-clients.txt
+      - --http-host-allowlist=*
+      - eth1
+      - --chain-id=1   # only used for proxying eth_sendTransaction; we don't proxy
+    volumes:
+      - ./config/web3signer/key-files/:/key-files/:ro
+      - ./config/web3signer/tls-files/:/tls-files/:ro
+    ports:
+      - "${HOST_PORT_WEB3SIGNER:-9000}:9000"
+    networks: [linea]
+
+  # ============================================================================
+  # Postgres — one isolated instance per consumer
+  # ============================================================================
+
+  coordinator-pg:
+    image: postgres:${POSTGRES_TAG}
+    container_name: coordinator-pg
+    profiles: *default-profiles
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Database name matches the coordinator config's [database].schema field
+      # (the coordinator app uses that field as the JDBC database name, not the
+      # PG schema). Internal stack relies on PG's default DB == username; we
+      # name it explicitly so the isolated PG instance still satisfies the app.
+      POSTGRES_DB: linea_coordinator
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    restart: unless-stopped
+    volumes:
+      - coordinator-pg-data:/var/lib/postgresql/data
+      - ./config/postgres/coordinator-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${HOST_PORT_COORDINATOR_PG:-5432}:5432"
+    networks: [linea]
+
+  postman-pg:
+    image: postgres:${POSTGRES_TAG}
+    container_name: postman-pg
+    profiles: *default-profiles
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postman
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    restart: unless-stopped
+    volumes:
+      - postman-pg-data:/var/lib/postgresql/data
+      - ./config/postgres/postman-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${HOST_PORT_POSTMAN_PG:-5433}:5432"
+    networks: [linea]
+
+  blockscout-l2-pg:
+    image: postgres:${POSTGRES_TAG}
+    container_name: blockscout-l2-pg
+    profiles: *default-profiles
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: l2_blockscout
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+    restart: unless-stopped
+    volumes:
+      - blockscout-l2-pg-data:/var/lib/postgresql/data
+      - ./config/postgres/blockscout-l2-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${HOST_PORT_BLOCKSCOUT_L2_PG:-5435}:5432"
+    networks: [linea]
+
+  # ============================================================================
+  # Init one-shots — contract deployment, fund seeding
+  # ============================================================================
+
+  deploy-contracts:
+    image: node:${NODE_IMAGE_TAG}
+    container_name: deploy-contracts
+    profiles: *default-profiles
+    depends_on:
+      sequencer:
+        condition: service_healthy
+      web3signer:
+        condition: service_started
+      config-render:
+        condition: service_completed_successfully
+    working_dir: /workspace/contracts
+    environment:
+      L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+      L1_DEPLOYER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:?L1_DEPLOYER_PRIVATE_KEY must be set in .env (Sepolia-funded)}
+      L2_RPC_URL: http://l2-node-besu:8545
+      ADDRESSES_OUTPUT_PATH: /shared/addresses.json
+      LINEA_COORDINATOR_DATA_AVAILABILITY: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+    volumes:
+      # Mount the whole linea-monorepo at /workspace because contracts/ is a
+      # pnpm workspace member that depends on pnpm-workspace.yaml + pnpm-lock.yaml
+      # at the repo root. Mounting just contracts/ breaks pnpm catalog resolution.
+      # Side effect: a full `pnpm install` will materialise node_modules at the
+      # repo root on the host. v0 is monorepo-internal by design.
+      - ../../..:/workspace
+      - ./scripts:/scripts:ro
+      - linea-shared-config:/shared
+      # RW mount of rendered config volume so this script can patch the
+      # coordinator + maru TOMLs after step 1 with discovered addresses.
+      - linea-rendered-config:/rendered:rw
+    entrypoint: ["bash", "/scripts/deploy-contracts.sh"]
+    command:
+      - "${L1_RPC_URL}"
+      - "http://l2-node-besu:8545"
+      - "/shared/addresses.json"
+    networks: [linea]
+
+  post-deploy-restart:
+    # Restarts maru after deploy-contracts patches /rendered/maru-config.toml
+    # with the real LINEA_ROLLUP_ADDRESS. Maru read its config at boot with the
+    # zero-address default seeded by config-render — this restart cycles it so
+    # it picks up the patched values.
+    #
+    # Coordinator + postman do NOT need restarting: they depend on
+    # `deploy-contracts:service_completed_successfully`, so they start *after*
+    # the patches land and read the patched values on first boot.
+    image: docker:cli
+    container_name: post-deploy-restart
+    profiles: *default-profiles
+    depends_on:
+      deploy-contracts:
+        condition: service_completed_successfully
+    volumes:
+      # Read-only socket access — we only issue `docker restart`, never run new
+      # containers via this socket.
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "[post-deploy-restart] restarting maru to pick up patched /rendered/maru-config.toml"
+        docker restart maru
+
+  # ============================================================================
+  # L2 services that need contract addresses (depend on deploy-contracts)
+  # ============================================================================
+
+  coordinator:
+    image: consensys/linea-coordinator:${LINEA_COORDINATOR_TAG}
+    container_name: coordinator
+    hostname: coordinator
+    profiles: *default-profiles
+    depends_on:
+      deploy-contracts:
+        condition: service_completed_successfully
+      coordinator-pg:
+        condition: service_healthy
+      sequencer:
+        condition: service_healthy
+      web3signer:
+        condition: service_started
+      shomei:
+        condition: service_started
+      config-render:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9545/health || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 120
+    restart: on-failure
+    environment:
+      config__override__type2_state_proof_provider__disabled: "true"
+      config__override__l1_submission__blob__signer__type: web3signer
+      config__override__l1_submission__aggregation__signer__type: web3signer
+      config__override__message_anchoring__signer__type: web3signer
+      config__override__l1_submission__data_availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+      ADDRESSES_PATH: /shared/addresses.json
+    command:
+      - sh
+      - -c
+      - |
+        exec java \
+          -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json \
+          -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml \
+          -jar libs/coordinator.jar \
+          --traces-limits-v5 /opt/consensys/linea/coordinator/config/traces-limits-v5.toml \
+          --smart-contract-errors /opt/consensys/linea/coordinator/config/smart-contract-errors.toml \
+          --gas-price-cap-time-of-day-multipliers /opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml \
+          /rendered/coordinator-config.toml
+    volumes:
+      # Rendered TOML from config-render: ${L1_RPC_URL} substituted at boot.
+      - linea-rendered-config:/rendered:ro
+      - ./config/l2/coordinator/traces-limits-v5.toml:/opt/consensys/linea/coordinator/config/traces-limits-v5.toml:ro
+      - ./config/l2/coordinator/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
+      - ./config/l2/coordinator/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
+      - ./config/l2/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
+      - ./config/l2/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
+      - ./config/l2/coordinator/tls-files/:/tls-files/:ro
+      - linea-shared-config:/shared:ro
+      - linea-local-dev:/data
+    ports:
+      - "${HOST_PORT_COORDINATOR:-9545}:9545"
+    networks: [linea]
+
+  postman:
+    image: consensys/linea-postman:${LINEA_POSTMAN_TAG}
+    container_name: postman
+    hostname: postman
+    profiles: *default-profiles
+    restart: on-failure
+    depends_on:
+      deploy-contracts:
+        condition: service_completed_successfully
+      l2-node-besu:
+        condition: service_healthy
+      postman-pg:
+        condition: service_healthy
+    env_file: ./config/l2/postman/env
+    environment:
+      # Compose `environment:` overrides env_file values on key collision.
+      # L1_RPC_URL is now user-supplied (Sepolia); the literal in postman/env
+      # is dead and will be cleaned up in Phase 4.
+      L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+      ADDRESSES_PATH: /shared/addresses.json
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postman-pg:5432/postman
+    volumes:
+      - linea-shared-config:/shared:ro
+    ports:
+      - "${HOST_PORT_POSTMAN:-9090}:3000"
+    networks: [linea]
+
+  prover:
+    image: consensys/linea-prover:${LINEA_PROVER_TAG}
+    container_name: prover
+    hostname: prover
+    platform: linux/amd64
+    profiles: ["stack-partial-prover"]   # NOTE: only the prover differs between profiles
+    depends_on:
+      coordinator:
+        condition: service_started
+    environment:
+      GOMAXPROCS: 16
+      CONFIG_FILE: "/opt/linea/prover/config.toml"
+      GOMEMLIMIT: "32GiB"   # partial prover; full prover requires >700GB RAM (out of scope for v0)
+      WORKER_ID: prover-i1
+    volumes:
+      - ./config/l2/prover/prover-config-partial.toml:/opt/linea/prover/config.toml:ro
+      - linea-local-dev:/data
+      - linea-logs:/logs
+      - linea-shared-config:/shared:ro
+    networks: [linea]
+
+  # ============================================================================
+  # Explorer — L2 only. For L1 (Sepolia), use https://sepolia.etherscan.io.
+  # ============================================================================
+
+  l2-blockscout:
+    image: blockscout/blockscout:${BLOCKSCOUT_TAG}
+    container_name: l2-blockscout
+    hostname: l2-blockscout
+    profiles: *default-profiles
+    depends_on:
+      blockscout-l2-pg:
+        condition: service_healthy
+      l2-node-besu:
+        condition: service_healthy
+    command: sh -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
+    env_file: ./config/explorer/l2-blockscout.env
+    environment:
+      ETHEREUM_JSONRPC_HTTP_URL: http://l2-node-besu:8545/
+      ETHEREUM_JSONRPC_TRACE_URL: http://l2-node-besu:8545/
+      ETHEREUM_JSONRPC_WS_URL: ws://l2-node-besu:8546/
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@blockscout-l2-pg:5432/l2_blockscout?ssl=false
+      ECTO_USE_SSL: "false"
+    volumes:
+      - ./config/l2/genesis-init/genesis-besu.json:/app/genesis.json:ro
+    ports:
+      - "${HOST_PORT_L2_BLOCKSCOUT:-4000}:4000"
+    networks: [linea]
+
+  # ============================================================================
+  # Observability (default ON, no opt-in profile)
+  # ============================================================================
+
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_TAG}
+    container_name: prometheus
+    hostname: prometheus
+    profiles: *default-profiles
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes:
+      - ./config/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${HOST_PORT_PROMETHEUS:-9091}:9090"
+    networks: [linea]
+
+  loki:
+    image: grafana/loki:${LOKI_TAG}
+    container_name: loki
+    hostname: loki
+    profiles: *default-profiles
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./config/observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    ports:
+      - "${HOST_PORT_LOKI:-3100}:3100"
+    networks: [linea]
+
+  promtail:
+    image: grafana/promtail:${PROMTAIL_TAG}
+    container_name: promtail
+    hostname: promtail
+    profiles: *default-profiles
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    volumes:
+      - ./config/observability/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - linea-logs:/var/log/
+    networks: [linea]
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_TAG}
+    container_name: grafana
+    hostname: grafana
+    profiles: *default-profiles
+    depends_on:
+      - prometheus
+      - loki
+    volumes:
+      - ./config/observability/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./config/observability/grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./config/observability/grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${HOST_PORT_GRAFANA:-3001}:3000"
+    networks: [linea]

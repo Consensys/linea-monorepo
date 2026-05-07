@@ -1,0 +1,195 @@
+# Deploy-contracts env-var contract
+
+_Reference for the rewrite of `deploy-contracts.sh`. Mirrors `contracts/makefile-contracts.mk` (the internal `make deploy-contracts` orchestration)._
+
+## Source of truth
+
+Every value below is taken **verbatim** from `contracts/makefile-contracts.mk` in this same monorepo. Do not modify defaults here — bump them at the source and resync. Public dev keys are flagged.
+
+The parent target `deploy-contracts:` in `makefile-contracts.mk:153-165` runs the six leaf targets in parallel via `make -j7`. Our wrapper runs them **serially** (clearer failure modes for v0) but preserves the same env contract per target.
+
+## Two-step prelude (parent target, before any leaf runs)
+
+Captured by `makefile-contracts.mk:158-159`:
+
+| Var | Value | Source |
+|-----|-------|--------|
+| `L1_NONCE` | output of `get-wallet-nonce.ts --wallet-priv-key 0xac09…ff80 --rpc-url http://l1-el-node:8545` | computed at runtime |
+| `L2_NONCE` | output of `get-wallet-nonce.ts --wallet-priv-key 0x1dd1…1aae --rpc-url http://l2-node-besu:8545` | computed at runtime |
+
+Both are exported to the env of every leaf target. Each leaf script computes its own offset from a fixed nonce-ordering convention (constants `ORDERED_NONCE_POST_LINEAROLLUP`, `ORDERED_NONCE_POST_TOKENBRIDGE`, `ORDERED_NONCE_POST_L2MESSAGESERVICE` baked into the deploy scripts).
+
+Note: in serial execution we could let the scripts read the wallet's live nonce instead, but `deployBridgedTokenAndTokenBridgeV1_1.ts:77-89` and `deployTestERC20.ts:28-39` **throw** if `L1_NONCE` / `L2_NONCE` are unset. So we must compute and pass them.
+
+## L1 leaf targets
+
+### 1. `deploy-linea-rollup-v8` → `deployPlonkVerifierAndLineaRollupV8.ts`
+
+Source: `makefile-contracts.mk:34-57` (V8 default).
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `DEPLOYER_PRIVATE_KEY` | `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80` (DEV key, account 0 of hardhat default mnemonic) | literal default; override via `DEPLOYMENT_PRIVATE_KEY` | required |
+| `RPC_URL` | `http://l1-el-node:8545` (was `http://localhost:8445/` in internal — port-flipped for container) | literal default | required |
+| `VERIFIER_CONTRACT_NAME` | `IntegrationTestTrueVerifier` | literal | required |
+| `INITIAL_L2_STATE_ROOT_HASH` | `0x01d9afcd495c870f3ae9d8362cd0257a7de2057055058183596719285cae6101` | literal | required |
+| `INITIAL_L2_BLOCK_NUMBER` | `0` | literal | required |
+| `L2_GENESIS_TIMESTAMP` | `$FORK_TIMESTAMP` (read from `/initialization/fork-timestamp.txt`, fallback `1683325137`) | dynamic; written by `l2-genesis-init` | required |
+| `L1_SECURITY_COUNCIL` | `0x90F79bf6EB2c4f870365E785982E1f101E93b906` (DEV — public dev address) | literal | required |
+| `LINEA_ROLLUP_OPERATORS` | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC` (DEV) | literal default; comma-separated | required |
+| `LINEA_ROLLUP_RATE_LIMIT_PERIOD` | `86400` (1 day in seconds) | literal | required |
+| `LINEA_ROLLUP_RATE_LIMIT_AMOUNT` | `1000000000000000000000` (1000 ETH wei) | literal | required |
+| `FORCED_TRANSACTION_GATEWAY_L2_CHAIN_ID` | `1337` | literal | required |
+| `FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER` | `2000` | literal | required |
+| `FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT` | `300000` | literal | required |
+| `FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER` | `1000` | literal | required |
+| `FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS` | `2` | literal | required |
+| `FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER` | `10` | literal | required |
+| `SECURITY_COUNCIL_PRIVATE_KEY` | `0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6` (DEV) | literal | required |
+| `YIELD_MANAGER_ADDRESS` | `0x000000000000000000000000000000000000dEaD` | literal | required |
+| `L1_NONCE` | from prelude | parent | required (script throws if absent) |
+
+**Outputs** (consumed by token-bridge-l1 + token-bridge-l2):
+
+- `dynamic-artifacts/31648428-LineaRollupV8.json` — proxy address. Internal stack expects this to land at `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` (deterministic from nonce 0 of deployer).
+- Plus side-deploys: `IntegrationTestTrueVerifier`, `LineaRollupV8Implementation`, `ProxyAdmin`, `AddressFilter`, `Mimc`, `ForcedTransactionGateway`.
+
+### 2. `deploy-l1-test-erc20` → `deployTestERC20.ts`
+
+Source: `makefile-contracts.mk:131-140`.
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `DEPLOYER_PRIVATE_KEY` | `0xac0974…ff80` (DEV — same L1 deployer as above) | literal | required |
+| `RPC_URL` | `http://l1-el-node:8545` | literal | required |
+| `TEST_ERC20_L1` | `true` | literal | required |
+| `TEST_ERC20_NAME` | `TestERC20` | literal | required |
+| `TEST_ERC20_SYMBOL` | `TERC20` | literal | required |
+| `TEST_ERC20_INITIAL_SUPPLY` | `100000` | literal | required |
+| `L1_NONCE` | from prelude | parent | required (script reads at line 28-31, throws if absent) |
+
+Output: `dynamic-artifacts/31648428-TestERC20.json` (or similar name).
+
+### 3. `deploy-token-bridge-l1` → `deployBridgedTokenAndTokenBridgeV1_1.ts`
+
+Source: `makefile-contracts.mk:105-116`.
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `DEPLOYER_PRIVATE_KEY` | `0xac0974…ff80` (DEV — L1 deployer) | literal | required |
+| `RPC_URL` | `http://l1-el-node:8545` | literal | required |
+| `TOKEN_BRIDGE_L1` | `true` | literal | required (script branches on this) |
+| `REMOTE_DEPLOYER_ADDRESS` | `0x1B9AbEeC3215D8AdE8a33607f2cF0f4F60e5F0D0` (DEV — L2 deployer's address; used to compute the L2 TokenBridge's deterministic address) | literal | required |
+| `REMOTE_CHAIN_ID` | `1337` (L2 chain ID) | literal | required |
+| `L1_SECURITY_COUNCIL` | `0x90F79bf6EB2c4f870365E785982E1f101E93b906` | literal | required |
+| `L2_MESSAGE_SERVICE_ADDRESS` | `0xe537D669CA013d86EBeF1D64e40fC74CADC91987` (deterministic) | **literal in internal** — but in the rewrite we **forward from `dynamic-artifacts/1337-L2MessageService.json`** | required |
+| `LINEA_ROLLUP_ADDRESS` | `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` (deterministic) | **literal in internal** — but in the rewrite we **forward from `dynamic-artifacts/31648428-LineaRollupV8.json`** | required |
+| `L1_NONCE` | from prelude | parent | required (script throws otherwise) |
+| `L1_RESERVED_TOKEN_ADDRESSES` | (none) | optional, comma-separated | optional |
+
+Output: L1 BridgedToken + L1 TokenBridge addresses written to dynamic-artifacts.
+
+## L2 leaf targets
+
+### 4. `deploy-l2messageservice` → `deployL2MessageServiceV1.ts`
+
+Source: `makefile-contracts.mk:93-103`.
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `L2_MESSAGE_SERVICE_CONTRACT_NAME` | `L2MessageService` | literal | required (this is what blocked our last run) |
+| `DEPLOYER_PRIVATE_KEY` | `0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae` (DEV — L2 deployer, account 1) | literal default; override via `DEPLOYMENT_PRIVATE_KEY` | required |
+| `RPC_URL` | `http://l2-node-besu:8545` (was `http://localhost:8545/` in internal — both L1 and L2 used `8545` on the host because of port mapping; in container we use distinct hostnames) | literal | required |
+| `L2_SECURITY_COUNCIL` | `0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266` (DEV — note differs from L1 security council) | literal | required |
+| `L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER` | `0xd42e308fc964b71e18126df469c21b0d7bcb86cc` (DEV — coordinator anchorer address; matches a key in `config/web3signer/key-files/anchoring-signer.yaml`) | literal default | required |
+| `L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD` | `86400` | literal | required |
+| `L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT` | `1000000000000000000000` | literal | required |
+| `L2_NONCE` | from prelude | parent | required (script reads at line 41-44, throws if absent) |
+
+**Output**: `dynamic-artifacts/1337-L2MessageService.json` — proxy address. Should land at `0xe537D669CA013d86EBeF1D64e40fC74CADC91987` deterministically.
+
+### 5. `deploy-l2-test-erc20` → `deployTestERC20.ts`
+
+Source: `makefile-contracts.mk:142-151`.
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `DEPLOYER_PRIVATE_KEY` | `0x1dd1…1aae` (DEV — L2 deployer) | literal | required |
+| `RPC_URL` | `http://l2-node-besu:8545` | literal | required |
+| `TEST_ERC20_L1` | `false` | literal | required |
+| `TEST_ERC20_NAME` | `TestERC20` | literal | required |
+| `TEST_ERC20_SYMBOL` | `TERC20` | literal | required |
+| `TEST_ERC20_INITIAL_SUPPLY` | `100000` | literal | required |
+| `L2_NONCE` | from prelude | parent | required |
+
+Output: L2 TestERC20 address.
+
+### 6. `deploy-token-bridge-l2` → `deployBridgedTokenAndTokenBridgeV1_1.ts`
+
+Source: `makefile-contracts.mk:118-129`.
+
+| Var | Value | Source | Required |
+|-----|-------|--------|----------|
+| `DEPLOYER_PRIVATE_KEY` | `0x1dd1…1aae` (DEV — L2 deployer) | literal | required |
+| `RPC_URL` | `http://l2-node-besu:8545` | literal | required |
+| `TOKEN_BRIDGE_L1` | `false` | literal | required (script branches on this) |
+| `REMOTE_DEPLOYER_ADDRESS` | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` (DEV — L1 deployer's address; used to compute L1 TokenBridge's deterministic address) | literal | required |
+| `REMOTE_CHAIN_ID` | `31648428` (local L1 chain ID) | literal | required |
+| `L2_SECURITY_COUNCIL` | `0xf17f52151EbEF6C7334FAD080c5704D77216b732` (DEV — note differs from `deploy-l2messageservice` L2_SECURITY_COUNCIL!) | literal | required |
+| `L2_MESSAGE_SERVICE_ADDRESS` | `0xe537D669CA013d86EBeF1D64e40fC74CADC91987` | **literal in internal** — **forward from `dynamic-artifacts/1337-L2MessageService.json`** | required |
+| `LINEA_ROLLUP_ADDRESS` | `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` | **literal in internal** — **forward from `dynamic-artifacts/31648428-LineaRollupV8.json`** | required |
+| `L2_NONCE` | from prelude | parent | required |
+| `L2_RESERVED_TOKEN_ADDRESSES` | (none) | optional, comma-separated | optional |
+
+Output: L2 BridgedToken + L2 TokenBridge addresses.
+
+## Execution order in our wrapper
+
+The internal `make -j7` parallel run is replaced by serial execution. Order matters because:
+
+1. **`deploy-linea-rollup-v8`** must run before `deploy-token-bridge-l1` so we can forward `LINEA_ROLLUP_ADDRESS`.
+2. **`deploy-l2messageservice`** must run before `deploy-token-bridge-l1` and `deploy-token-bridge-l2` so we can forward `L2_MESSAGE_SERVICE_ADDRESS`.
+3. **`deploy-token-bridge-l1`** and **`deploy-token-bridge-l2`** consume both forwarded addresses.
+4. The two **`deploy-*-test-erc20`** targets are independent of token bridges (in spec) but the script's nonce calculation (`ORDERED_NONCE_POST_LINEAROLLUP + ORDERED_NONCE_POST_TOKENBRIDGE`) hard-codes that they run **after** the token bridges. Order in our serial flow:
+
+```
+Prelude:  capture L1_NONCE, L2_NONCE
+Step 1:   deploy-linea-rollup-v8           [L1]   → emits LINEA_ROLLUP_ADDRESS
+Step 2:   deploy-l2messageservice          [L2]   → emits L2_MESSAGE_SERVICE_ADDRESS
+Step 3:   deploy-token-bridge-l1           [L1]   ← consumes both addresses
+Step 4:   deploy-token-bridge-l2           [L2]   ← consumes both addresses
+Step 5:   deploy-l1-test-erc20             [L1]   (independent of #3 in spec, but nonce-ordering means after)
+Step 6:   deploy-l2-test-erc20             [L2]   (independent of #4 in spec, but nonce-ordering means after)
+Aggregate: walk dynamic-artifacts/ → addresses.json
+Patch:    sed-replace L1/L2_CONTRACT_ADDRESS in config/l2/postman/env
+```
+
+`deploy-l2-evm-opcode-tester` (in the internal target list) is **excluded** from v0 — it's a test/diagnostic contract not needed by coordinator/postman/prover and adds another nonce-ordering coupling.
+
+## Address-forwarding mechanism
+
+After each L1/L2 step that emits an address we care about, the wrapper reads:
+
+| Filename written by deploy script | Field consumed | Forwarded as |
+|-----------------------------------|----------------|--------------|
+| `contracts/local-deployments-artifacts/dynamic-artifacts/31648428-LineaRollupV8.json` | `.address` (proxy) | `LINEA_ROLLUP_ADDRESS` env into steps 3 + 4 |
+| `contracts/local-deployments-artifacts/dynamic-artifacts/1337-L2MessageService.json` | `.address` (proxy) | `L2_MESSAGE_SERVICE_ADDRESS` env into steps 3 + 4 |
+
+If either file is missing after its parent step succeeds, the wrapper aborts (don't continue with stale literals — that's how we'd silently produce a broken deployment if a future contract version changes the deterministic address).
+
+## Validium variant
+
+`deploy-validium` (`makefile-contracts.mk:70-85`) is the alternate L1 contract for `LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM`. It uses a different ts script (`deployPlonkVerifierAndValidiumV2.ts`) and a slightly trimmed env contract:
+
+- Drops: all `FORCED_TRANSACTION_*` vars, `SECURITY_COUNCIL_PRIVATE_KEY`, `YIELD_MANAGER_ADDRESS`.
+- Renames: `LINEA_ROLLUP_OPERATORS` → `VALIDIUM_OPERATORS`, `LINEA_ROLLUP_RATE_LIMIT_*` → `VALIDIUM_RATE_LIMIT_*`.
+- Output filename: `31648428-ValidiumV2.json`.
+
+The wrapper branches at the start of step 1 based on `LINEA_COORDINATOR_DATA_AVAILABILITY` and uses the appropriate env set + output filename.
+
+## What we deliberately drop
+
+- `deploy-eip-system-contracts` (`makefile-contracts.mk:20-25`) — only relevant for forks that pre-deploy EIP system contracts. Default v0 L2 genesis doesn't need it.
+- `deploy-upgradeable-predeploys` (`makefile-contracts.mk:27-32`) — same.
+- `deploy-l2-evm-opcode-tester` — diagnostic, not part of the rollup contract surface.
+- `deploy-l2-scenario-testing-proxy`, `evm-opcode-tester-execute-all-opcodes`, `execute-scenario-testing-proxy-scenario` — test harness, not deployment.
