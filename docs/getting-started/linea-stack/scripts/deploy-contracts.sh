@@ -143,34 +143,87 @@ done
 : "${FORK_TIMESTAMP:=1683325137}"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Detect L1 / L2 genesis values  (uses cast — Foundry was installed above)
+# Read precomputed addresses + L1 chain ID + deployer from account-setup output
 # ─────────────────────────────────────────────────────────────────────────────
+#
+# Replaces the cast-based detection of Phase 2. account-setup wrote everything
+# to /shared/addresses-precomputed.json before any service booted; we now just
+# load those values. All extracted addresses become the source-of-truth for the
+# verify-or-die step after each contract deploy below.
 
-step "Detect L1 chain ID + L1 deployer address + L2 genesis state root + shnarf"
+step "Read precomputed addresses from /shared/addresses-precomputed.json"
 
-# L1 chain ID via eth_chainId. Sepolia = 11155111.
-L1_CHAIN_ID="$(cast chain-id --rpc-url "$L1_RPC_URL")" \
-  || die "Failed to query L1 chain ID from $L1_RPC_URL"
+PRECOMPUTED="${PRECOMPUTED:-/shared/addresses-precomputed.json}"
+[[ -f "$PRECOMPUTED" ]] || die "$PRECOMPUTED not found — account-setup must run first"
+
+# POSIX-y JSON extraction (account-setup writes a controlled shape).
+json_field()  { sed -nE "s/.*\"$1\":[[:space:]]*\"([^\"]+)\".*/\1/p" "$PRECOMPUTED" | head -1; }
+json_int()    { sed -nE "s/.*\"$1\":[[:space:]]*([0-9]+).*/\1/p" "$PRECOMPUTED" | head -1; }
+
+L1_CHAIN_ID="$(json_field l1ChainId)"
+L1_DEPLOYER_ADDRESS="$(json_field l1)"   # deployers.l1 is the first "l1": "0x..." in the file
+# Disambiguate: deployers.l1 vs l1.{...} — fall back to grepping deployers block
+# specifically if the order ever changes.
+if ! [[ "$L1_DEPLOYER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+  L1_DEPLOYER_ADDRESS="$(awk '/\"deployers\":/{f=1} f && /\"l1\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+fi
+
+PRECOMPUTED_LINEA_ROLLUP="$(awk '/\"l1\":[[:space:]]*\{/{f=1} f && /\"LineaRollupV8\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_FORCED_TX_GW="$(awk '/\"l1\":[[:space:]]*\{/{f=1} f && /\"ForcedTransactionGateway\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L1_TOKEN_BRIDGE="$(awk '/\"l1\":[[:space:]]*\{/{f=1} f && /\"TokenBridge\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L1_TEST_ERC20="$(awk '/\"l1\":[[:space:]]*\{/{f=1} f && /\"TestERC20\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L2_MS="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"L2MessageService\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L2_TOKEN_BRIDGE="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"TokenBridge\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L2_TEST_ERC20="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"TestERC20\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+
+[[ "$L1_CHAIN_ID" =~ ^[0-9]+$ ]] || die "Could not extract l1ChainId from $PRECOMPUTED"
+[[ "$L1_DEPLOYER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract deployers.l1 from $PRECOMPUTED"
+[[ "$PRECOMPUTED_LINEA_ROLLUP" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract l1.LineaRollupV8 from $PRECOMPUTED"
+[[ "$PRECOMPUTED_L2_MS" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract l2.L2MessageService from $PRECOMPUTED"
+
 log "L1_CHAIN_ID=$L1_CHAIN_ID"
-
-# L1 deployer address — Option A: single L1 key drives all roles
-# (security council, rollup operators, deployer). Phase-3 will also point
-# the web3signer keystore + postman L1 signer at this same key.
-L1_DEPLOYER_ADDRESS="$(cast wallet address --private-key "$L1_DEPLOYER_PRIVATE_KEY")" \
-  || die "Failed to derive L1 deployer address from L1_DEPLOYER_PRIVATE_KEY"
 log "L1_DEPLOYER_ADDRESS=$L1_DEPLOYER_ADDRESS"
+log "Precomputed LineaRollupV8: $PRECOMPUTED_LINEA_ROLLUP"
+log "Precomputed L2MessageService: $PRECOMPUTED_L2_MS"
 
-# L2 genesis state root — must match what gets baked into LineaRollup at
-# initialization and what the coordinator advertises in [protocol.genesis].
-L2_GENESIS_STATE_ROOT="$(cast block 0 --rpc-url "$L2_RPC_URL" --field stateRoot)" \
-  || die "Failed to read L2 genesis state root from $L2_RPC_URL"
+# ─────────────────────────────────────────────────────────────────────────────
+# Query Shomei for the L2 genesis ZK state root + compute genesis shnarf
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# `eth_getBlockByNumber(0).stateRoot` is the Merkle-Patricia root, which is
+# wrong for ZK proof verification — the L1 LineaRollup verifies against
+# Shomei's ZK state root, accessible via rollup_getZkEVMStateMerkleProofV0.
+# Shomei must be up; it depends on l2-node-besu so by the time this script
+# runs (after sequencer + l2-node-besu healthy) Shomei is reachable.
+
+step "Query Shomei for genesis state root + compute shnarf"
+
+SHOMEI_URL="${SHOMEI_URL:-http://shomei:8888}"
+
+# Wait for Shomei to be reachable + return data on block 0.
+log "Waiting for Shomei at $SHOMEI_URL"
+SHOMEI_RESP=""
+for _ in $(seq 1 60); do
+  SHOMEI_RESP=$(curl -fsS --max-time 5 -X POST -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"rollup_getZkEVMStateMerkleProofV0","params":[{"startBlockNumber":0,"endBlockNumber":0,"zkStateManagerVersion":"2.3.0"}]}' \
+    "$SHOMEI_URL" 2>/dev/null || true)
+  if [[ -n "$SHOMEI_RESP" ]] && echo "$SHOMEI_RESP" | grep -q "zkEndStateRootHash"; then
+    break
+  fi
+  sleep 2
+done
+echo "$SHOMEI_RESP" | grep -q "zkEndStateRootHash" \
+  || die "Shomei did not return zkEndStateRootHash within 120s. Response: $SHOMEI_RESP"
+
+# Extract zkEndStateRootHash. POSIX sed -E (no jq in node:24-bookworm by default).
+L2_GENESIS_STATE_ROOT=$(echo "$SHOMEI_RESP" | sed -nE 's/.*"zkEndStateRootHash":[[:space:]]*"(0x[0-9a-fA-F]{64})".*/\1/p' | head -1)
 [[ "$L2_GENESIS_STATE_ROOT" =~ ^0x[0-9a-fA-F]{64}$ ]] \
-  || die "L2 genesis state root malformed: $L2_GENESIS_STATE_ROOT"
-log "L2_GENESIS_STATE_ROOT=$L2_GENESIS_STATE_ROOT"
+  || die "Could not extract zkEndStateRootHash from Shomei response: $SHOMEI_RESP"
+log "L2_GENESIS_STATE_ROOT (from Shomei): $L2_GENESIS_STATE_ROOT"
 
-# Genesis shnarf: keccak256(parentShnarf || snarkHash || parentStateRootHash
-#                            || evalClaim || evalPoint), each 32 bytes.
-# Only parentStateRootHash is non-zero. Formula is the V6 shape per the
+# Genesis shnarf — keccak256(parentShnarf || snarkHash || parentStateRootHash
+#                              || evalClaim || evalPoint), each 32 bytes. Only
+# parentStateRootHash is non-zero. Formula is the V6 shape per the original
 # coordinator-config comment; verify against V8 at first-boot validation.
 ZERO_32_HEX="0000000000000000000000000000000000000000000000000000000000000000"
 STATE_ROOT_NO_PREFIX="${L2_GENESIS_STATE_ROOT#0x}"
@@ -239,21 +292,66 @@ require_address() {
   printf "%s" "$out"
 }
 
+# Verify-or-die: assert deployed address matches the precomputed one. Address
+# comparison is case-insensitive (cast outputs checksummed; some scripts emit
+# lowercase). Empty $expected (precomputed value missing) means the contract
+# isn't tracked in addresses-precomputed.json — that's intentional for
+# intermediate/library contracts (Mimc, AddressFilter, ProxyAdmin, etc).
+verify_address() {
+  local actual="$1" expected="$2" label="$3"
+  if [[ -z "$expected" ]]; then
+    log "verify $label: skipped (not tracked in precomputed JSON)"
+    return 0
+  fi
+  if [[ "$(echo "$actual" | tr 'A-F' 'a-f')" != "$(echo "$expected" | tr 'A-F' 'a-f')" ]]; then
+    die "ADDRESS MISMATCH: $label deployed=$actual  expected=$expected. \
+The deployer's nonce sequence may have drifted from the offsets baked into account-setup.sh. \
+Re-run with a clean Sepolia deployer or adjust scripts/account-setup.sh to match the current deploy script's nonce usage."
+  fi
+  log "verify $label: OK ($actual)"
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Step functions — one per Make target
 # ─────────────────────────────────────────────────────────────────────────────
+#
+# Idempotency: each step writes its log to /shared/deploy-logs/stepN-*.log on
+# the linea-shared-config volume. If this script is re-run after a partial
+# failure (e.g. step 5 failed mid-deploy), already-completed steps detect
+# their prior log and skip re-deploying — otherwise the wallet's advanced
+# nonce would deploy NEW contracts at NEW addresses, breaking the
+# precomputed-address verify chain. To force a full re-deploy, run with a
+# fresh shared volume (`down -v`).
+
+# Returns 0 if the step's log file shows a successfully-deployed contract,
+# 1 otherwise. Used by each step to decide whether to skip the deploy and
+# just re-extract the address from the existing log.
+step_already_done() {
+  local logfile="$1" contract_name="$2"
+  [[ -f "$logfile" ]] && grep -qE "^contract=${contract_name} deployed: " "$logfile"
+}
 
 # Step 1 — deploy-linea-rollup-v$L1_CONTRACT_VERSION (or deploy-validium-v2)
 step1_l1_rollup() {
   step "Step 1: deploy L1 Verifier + LineaRollup (or Validium)"
-  local script logfile
+  local script logfile primary_contract
 
   if [[ "$LINEA_COORDINATOR_DATA_AVAILABILITY" == "VALIDIUM" ]]; then
     script="$ART_DIR/deployPlonkVerifierAndValidiumV2.ts"
     logfile="$LOG_DIR/step1-validium.log"
+    primary_contract="ValidiumV2"
   else
     script="$ART_DIR/deployPlonkVerifierAndLineaRollupV${L1_CONTRACT_VERSION}.ts"
     logfile="$LOG_DIR/step1-linea-rollup.log"
+    primary_contract="LineaRollupV${L1_CONTRACT_VERSION}"
+  fi
+
+  if step_already_done "$logfile" "$primary_contract"; then
+    log "Step 1: $logfile present — skipping deploy, re-using prior addresses"
+    LINEA_ROLLUP_ADDRESS="$(require_address "$logfile" "$primary_contract")"
+    export LINEA_ROLLUP_ADDRESS
+    log "Forwarding LINEA_ROLLUP_ADDRESS=$LINEA_ROLLUP_ADDRESS"
+    return 0
   fi
 
   [[ -f "$script" ]] || die "missing deploy script: $script"
@@ -298,8 +396,17 @@ step1_l1_rollup() {
   # Forward the rollup address into the global env for steps 3 + 4.
   if [[ "$LINEA_COORDINATOR_DATA_AVAILABILITY" == "VALIDIUM" ]]; then
     LINEA_ROLLUP_ADDRESS="$(require_address "$logfile" "ValidiumV2")"
+    # Validium isn't tracked in addresses-precomputed.json (precomputed targets
+    # the ROLLUP variant); skip verify in validium mode.
+    log "verify ValidiumV2: skipped (validium variant not precomputed)"
   else
     LINEA_ROLLUP_ADDRESS="$(require_address "$logfile" "LineaRollupV${L1_CONTRACT_VERSION}")"
+    verify_address "$LINEA_ROLLUP_ADDRESS" "$PRECOMPUTED_LINEA_ROLLUP" "LineaRollupV${L1_CONTRACT_VERSION}"
+    # Also verify ForcedTransactionGateway — it's deployed in this same step.
+    FORCED_TX_GW_ADDRESS="$(extract_address "$logfile" "ForcedTransactionGateway")" || FORCED_TX_GW_ADDRESS=""
+    if [[ -n "$FORCED_TX_GW_ADDRESS" ]]; then
+      verify_address "$FORCED_TX_GW_ADDRESS" "$PRECOMPUTED_FORCED_TX_GW" "ForcedTransactionGateway"
+    fi
   fi
   export LINEA_ROLLUP_ADDRESS
   log "Forwarding LINEA_ROLLUP_ADDRESS=$LINEA_ROLLUP_ADDRESS"
@@ -309,6 +416,14 @@ step1_l1_rollup() {
 step2_l2_message_service() {
   step "Step 2: deploy L2 MessageService"
   local logfile="$LOG_DIR/step2-l2-message-service.log"
+
+  if step_already_done "$logfile" "L2MessageService"; then
+    log "Step 2: $logfile present — skipping deploy"
+    L2_MESSAGE_SERVICE_ADDRESS="$(require_address "$logfile" "L2MessageService")"
+    export L2_MESSAGE_SERVICE_ADDRESS
+    log "Forwarding L2_MESSAGE_SERVICE_ADDRESS=$L2_MESSAGE_SERVICE_ADDRESS"
+    return 0
+  fi
 
   L2_MESSAGE_SERVICE_CONTRACT_NAME="L2MessageService" \
   DEPLOYER_PRIVATE_KEY="$L2_DEPLOYER_PRIVATE_KEY" \
@@ -320,6 +435,7 @@ step2_l2_message_service() {
     pnpm -s exec ts-node "$ART_DIR/deployL2MessageServiceV1.ts" 2>&1 | tee "$logfile"
 
   L2_MESSAGE_SERVICE_ADDRESS="$(require_address "$logfile" "L2MessageService")"
+  verify_address "$L2_MESSAGE_SERVICE_ADDRESS" "$PRECOMPUTED_L2_MS" "L2MessageService"
   export L2_MESSAGE_SERVICE_ADDRESS
   log "Forwarding L2_MESSAGE_SERVICE_ADDRESS=$L2_MESSAGE_SERVICE_ADDRESS"
 }
@@ -329,14 +445,26 @@ step3_token_bridge_l1() {
   step "Step 3: deploy L1 TokenBridge + L1 BridgedToken"
   local logfile="$LOG_DIR/step3-token-bridge-l1.log"
 
+  if step_already_done "$logfile" "TokenBridge"; then
+    log "Step 3: $logfile present — skipping deploy"
+    L1_TOKEN_BRIDGE_ADDRESS="$(require_address "$logfile" "TokenBridge")"
+    export L1_TOKEN_BRIDGE_ADDRESS
+    return 0
+  fi
+
   : "${LINEA_ROLLUP_ADDRESS:?step1 must run first}"
   : "${L2_MESSAGE_SERVICE_ADDRESS:?step2 must run first}"
 
   # REMOTE_DEPLOYER_ADDRESS is the L2 deployer address (deterministic via CREATE
   # from the pre-baked L2 deployer at nonce 0). Stays hardcoded — we own L2.
   # L1_SECURITY_COUNCIL: Option A — same as L1 deployer.
+  # REMOTE_TOKEN_BRIDGE_ADDRESS is consumed by the FORKED deploy script
+  # (scaffold's deployBridgedTokenAndTokenBridgeV1_1.ts, bind-mounted over the
+  # upstream path). Replaces the upstream's stale-offset-based remoteSender
+  # derivation with the precomputed L2 TokenBridge from account-setup.sh.
   DEPLOYER_PRIVATE_KEY="$L1_DEPLOYER_PRIVATE_KEY" \
   REMOTE_DEPLOYER_ADDRESS="0x1B9AbEeC3215D8AdE8a33607f2cF0f4F60e5F0D0" \
+  REMOTE_TOKEN_BRIDGE_ADDRESS="$PRECOMPUTED_L2_TOKEN_BRIDGE" \
   RPC_URL="$L1_RPC_URL" \
   REMOTE_CHAIN_ID="$L2_CHAIN_ID" \
   TOKEN_BRIDGE_L1="true" \
@@ -344,6 +472,10 @@ step3_token_bridge_l1() {
   L2_MESSAGE_SERVICE_ADDRESS="$L2_MESSAGE_SERVICE_ADDRESS" \
   LINEA_ROLLUP_ADDRESS="$LINEA_ROLLUP_ADDRESS" \
     pnpm -s exec ts-node "$ART_DIR/deployBridgedTokenAndTokenBridgeV1_1.ts" 2>&1 | tee "$logfile"
+
+  L1_TOKEN_BRIDGE_ADDRESS="$(require_address "$logfile" "TokenBridge")"
+  verify_address "$L1_TOKEN_BRIDGE_ADDRESS" "$PRECOMPUTED_L1_TOKEN_BRIDGE" "L1 TokenBridge"
+  export L1_TOKEN_BRIDGE_ADDRESS
 }
 
 # Step 4 — deploy-token-bridge-l2
@@ -351,11 +483,21 @@ step4_token_bridge_l2() {
   step "Step 4: deploy L2 TokenBridge + L2 BridgedToken"
   local logfile="$LOG_DIR/step4-token-bridge-l2.log"
 
+  if step_already_done "$logfile" "TokenBridge"; then
+    log "Step 4: $logfile present — skipping deploy"
+    return 0
+  fi
+
   : "${LINEA_ROLLUP_ADDRESS:?step1 must run first}"
   : "${L2_MESSAGE_SERVICE_ADDRESS:?step2 must run first}"
 
+  : "${L1_TOKEN_BRIDGE_ADDRESS:?step3 must run first}"
+
+  # REMOTE_TOKEN_BRIDGE_ADDRESS = the L1 TokenBridge proxy we deployed in
+  # step 3 (forwarded as the L2 TokenBridge's remoteSender during init).
   DEPLOYER_PRIVATE_KEY="$L2_DEPLOYER_PRIVATE_KEY" \
   REMOTE_DEPLOYER_ADDRESS="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" \
+  REMOTE_TOKEN_BRIDGE_ADDRESS="$L1_TOKEN_BRIDGE_ADDRESS" \
   RPC_URL="$L2_RPC_URL" \
   REMOTE_CHAIN_ID="$L1_CHAIN_ID" \
   TOKEN_BRIDGE_L1="false" \
@@ -363,6 +505,9 @@ step4_token_bridge_l2() {
   L2_MESSAGE_SERVICE_ADDRESS="$L2_MESSAGE_SERVICE_ADDRESS" \
   LINEA_ROLLUP_ADDRESS="$LINEA_ROLLUP_ADDRESS" \
     pnpm -s exec ts-node "$ART_DIR/deployBridgedTokenAndTokenBridgeV1_1.ts" 2>&1 | tee "$logfile"
+
+  L2_TOKEN_BRIDGE_ADDRESS="$(require_address "$logfile" "TokenBridge")"
+  verify_address "$L2_TOKEN_BRIDGE_ADDRESS" "$PRECOMPUTED_L2_TOKEN_BRIDGE" "L2 TokenBridge"
 }
 
 # Step 5 — deploy-l1-test-erc20
@@ -370,6 +515,18 @@ step5_l1_test_erc20() {
   step "Step 5: deploy L1 TestERC20"
   local logfile="$LOG_DIR/step5-l1-test-erc20.log"
 
+  if step_already_done "$logfile" "TestERC20"; then
+    log "Step 5: $logfile present — skipping deploy"
+    L1_TEST_ERC20_ADDRESS="$(require_address "$logfile" "TestERC20")"
+    verify_address "$L1_TEST_ERC20_ADDRESS" "$PRECOMPUTED_L1_TEST_ERC20" "L1 TestERC20"
+    return 0
+  fi
+
+  # env -u L1_NONCE: deployTestERC20.ts has the same stale offset bug as the
+  # upstream token-bridge script (ORDERED_NONCE_POST_LINEAROLLUP=7 vs actual 8).
+  # With L1_NONCE unset, the script falls through to `await wallet.getNonce()`
+  # which queries Sepolia for the live nonce.
+  env -u L1_NONCE \
   DEPLOYER_PRIVATE_KEY="$L1_DEPLOYER_PRIVATE_KEY" \
   RPC_URL="$L1_RPC_URL" \
   TEST_ERC20_L1="true" \
@@ -377,6 +534,9 @@ step5_l1_test_erc20() {
   TEST_ERC20_SYMBOL="TERC20" \
   TEST_ERC20_INITIAL_SUPPLY="100000" \
     pnpm -s exec ts-node "$ART_DIR/deployTestERC20.ts" 2>&1 | tee "$logfile"
+
+  L1_TEST_ERC20_ADDRESS="$(require_address "$logfile" "TestERC20")"
+  verify_address "$L1_TEST_ERC20_ADDRESS" "$PRECOMPUTED_L1_TEST_ERC20" "L1 TestERC20"
 }
 
 # Step 6 — deploy-l2-test-erc20
@@ -384,6 +544,17 @@ step6_l2_test_erc20() {
   step "Step 6: deploy L2 TestERC20"
   local logfile="$LOG_DIR/step6-l2-test-erc20.log"
 
+  if step_already_done "$logfile" "TestERC20"; then
+    log "Step 6: $logfile present — skipping deploy"
+    L2_TEST_ERC20_ADDRESS="$(require_address "$logfile" "TestERC20")"
+    verify_address "$L2_TEST_ERC20_ADDRESS" "$PRECOMPUTED_L2_TEST_ERC20" "L2 TestERC20"
+    return 0
+  fi
+
+  # env -u L2_NONCE for the same reason as step 5 — defensive: even though
+  # ORDERED_NONCE_POST_L2MESSAGESERVICE=3 is correct upstream, ride the
+  # `wallet.getNonce()` fallback for parity with step 5.
+  env -u L2_NONCE \
   DEPLOYER_PRIVATE_KEY="$L2_DEPLOYER_PRIVATE_KEY" \
   RPC_URL="$L2_RPC_URL" \
   TEST_ERC20_L1="false" \
@@ -391,6 +562,9 @@ step6_l2_test_erc20() {
   TEST_ERC20_SYMBOL="TERC20" \
   TEST_ERC20_INITIAL_SUPPLY="100000" \
     pnpm -s exec ts-node "$ART_DIR/deployTestERC20.ts" 2>&1 | tee "$logfile"
+
+  L2_TEST_ERC20_ADDRESS="$(require_address "$logfile" "TestERC20")"
+  verify_address "$L2_TEST_ERC20_ADDRESS" "$PRECOMPUTED_L2_TEST_ERC20" "L2 TestERC20"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -464,10 +638,21 @@ POSTMAN_ENV="${POSTMAN_ENV:-/workspace/docs/getting-started/linea-stack/config/l
 if [[ -f "$POSTMAN_ENV" && -f "$OUT_PATH" ]]; then
   L1_ADDR="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l1.LineaRollupV8||j.l1.ValidiumV2||"")' "$OUT_PATH")"
   L2_ADDR="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l2.L2MessageService||"")' "$OUT_PATH")"
+
+  # L1 block where LineaRollupV8 was deployed — postman uses this as
+  # L1_LISTENER_INITIAL_FROM_BLOCK so it doesn't scan all of Sepolia from
+  # genesis. Extracted from step1's deploy log.
+  L1_DEPLOY_BLOCK=""
+  if [[ -f "$LOG_DIR/step1-linea-rollup.log" ]]; then
+    L1_DEPLOY_BLOCK="$(grep -E "^contract=LineaRollupV${L1_CONTRACT_VERSION} deployed: " "$LOG_DIR/step1-linea-rollup.log" | tail -1 | sed -nE 's/.*blockNumber=([0-9]+).*/\1/p')"
+  fi
+  : "${L1_DEPLOY_BLOCK:=0}"
+
   if [[ -n "$L1_ADDR" && -n "$L2_ADDR" ]]; then
-    log "Patching postman env: L1_CONTRACT_ADDRESS=$L1_ADDR L2_CONTRACT_ADDRESS=$L2_ADDR"
+    log "Patching postman env: L1_CONTRACT_ADDRESS=$L1_ADDR L2_CONTRACT_ADDRESS=$L2_ADDR L1_LISTENER_INITIAL_FROM_BLOCK=$L1_DEPLOY_BLOCK"
     sed -i "s|^L1_CONTRACT_ADDRESS=.*|L1_CONTRACT_ADDRESS=${L1_ADDR}|" "$POSTMAN_ENV"
     sed -i "s|^L2_CONTRACT_ADDRESS=.*|L2_CONTRACT_ADDRESS=${L2_ADDR}|" "$POSTMAN_ENV"
+    sed -i "s|^L1_LISTENER_INITIAL_FROM_BLOCK=.*|L1_LISTENER_INITIAL_FROM_BLOCK=${L1_DEPLOY_BLOCK}|" "$POSTMAN_ENV"
   else
     log "WARNING: could not extract L1 LineaRollupV8/L2 L2MessageService from $OUT_PATH; postman env not patched"
   fi
@@ -476,29 +661,30 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Patch rendered coordinator + maru configs with discovered values
+# Patch rendered coordinator-config with deploy-time-only values
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# config-render seeds these placeholders with safe defaults at boot
-# (zero-address / zero-hash) so maru can come up before deploy-contracts runs.
-# Now that we have the real values, we re-write the rendered files in place.
+# After Phase 2.3, config-render fills LINEA_ROLLUP_ADDRESS + L2_MESSAGE_SERVICE_ADDRESS
+# at boot from /shared/addresses-precomputed.json. Maru's contract-address line
+# is also already correct at boot. So we ONLY patch the values that genuinely
+# can't be known until deploy time:
 #
-# - coordinator + postman start AFTER this script (depends_on: completed_
-#   successfully), so they read the patched values on first boot.
-# - maru started before this script, so a `post-deploy-restart` compose service
-#   will restart it once we exit cleanly.
+#   - genesis-state-root-hash  ← from Shomei (queried above)
+#   - genesis-shnarf           ← computed from state root above
+#   - contract-deployment-block-number  ← step-2 log (L2 block where
+#                                          L2MessageService deployed)
+#
+# coordinator depends_on `deploy-contracts:service_completed_successfully`, so
+# coordinator starts AFTER these patches land — first-boot reads patched values
+# without needing a restart.
 
-step "Patch rendered coordinator + maru configs"
+step "Patch rendered coordinator-config.toml with deploy-time values"
 
 if [[ ! -d "$RENDERED_DIR" ]]; then
   log "WARNING: $RENDERED_DIR not mounted; skipping rendered-config patch"
-elif [[ ! -f "$RENDERED_DIR/coordinator-config.toml" || ! -f "$RENDERED_DIR/maru-config.toml" ]]; then
-  log "WARNING: rendered configs missing under $RENDERED_DIR; skipping patch"
+elif [[ ! -f "$RENDERED_DIR/coordinator-config.toml" ]]; then
+  log "WARNING: $RENDERED_DIR/coordinator-config.toml missing; skipping patch"
 else
-  # Pull the contracts from addresses.json (single source of truth).
-  LINEA_ROLLUP_ADDR_FROM_JSON="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l1.LineaRollupV8||j.l1.ValidiumV2||"")' "$OUT_PATH")"
-  L2_MS_ADDR_FROM_JSON="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l2.L2MessageService||"")' "$OUT_PATH")"
-
   # L2 block where L2MessageService deployed — extracted from step 2 log.
   L2_MS_DEPLOY_BLOCK=""
   if [[ -f "$LOG_DIR/step2-l2-message-service.log" ]]; then
@@ -506,39 +692,19 @@ else
   fi
   : "${L2_MS_DEPLOY_BLOCK:=0}"
 
-  if [[ -z "$LINEA_ROLLUP_ADDR_FROM_JSON" || -z "$L2_MS_ADDR_FROM_JSON" ]]; then
-    log "WARNING: addresses.json missing LineaRollup or L2MessageService; skipping rendered-config patch"
-  else
-    log "Patching $RENDERED_DIR/maru-config.toml with contract-address=$LINEA_ROLLUP_ADDR_FROM_JSON"
-    # Maru: only one `contract-address` line (under [linea]). Line-anchored sed safe.
-    sed -i 's|^contract-address = ".*"|contract-address = "'"$LINEA_ROLLUP_ADDR_FROM_JSON"'"|' \
-      "$RENDERED_DIR/maru-config.toml"
-
-    log "Patching $RENDERED_DIR/coordinator-config.toml: L1=$LINEA_ROLLUP_ADDR_FROM_JSON L2=$L2_MS_ADDR_FROM_JSON deploy_block=$L2_MS_DEPLOY_BLOCK"
-    # Coordinator: section-aware patch via awk. Two `contract-address` lines —
-    # one under [protocol.l1] and one under [protocol.l2] — must be discriminated.
-    awk \
-      -v l1_addr="$LINEA_ROLLUP_ADDR_FROM_JSON" \
-      -v l2_addr="$L2_MS_ADDR_FROM_JSON" \
-      -v state_root="$L2_GENESIS_STATE_ROOT" \
-      -v shnarf="$L2_GENESIS_SHNARF" \
-      -v deploy_block="$L2_MS_DEPLOY_BLOCK" \
-    '
-      /^\[protocol\.l1\]/      { section="l1"; print; next }
-      /^\[protocol\.l2\]/      { section="l2"; print; next }
-      /^\[/                    { section=""; print; next }
-      /^contract-address[[:space:]]*=/ {
-        if (section == "l1")      { sub(/".*"/, "\"" l1_addr "\""); }
-        else if (section == "l2") { sub(/".*"/, "\"" l2_addr "\""); }
-      }
-      /^genesis-state-root-hash[[:space:]]*=/ { sub(/".*"/, "\"" state_root "\""); }
-      /^genesis-shnarf[[:space:]]*=/          { sub(/".*"/, "\"" shnarf "\""); }
-      /^contract-deployment-block-number[[:space:]]*=/ { sub(/=.*/, "= " deploy_block); }
-      { print }
-    ' "$RENDERED_DIR/coordinator-config.toml" > "$RENDERED_DIR/coordinator-config.toml.new" \
-      && mv "$RENDERED_DIR/coordinator-config.toml.new" "$RENDERED_DIR/coordinator-config.toml"
-    log "Patched coordinator-config.toml"
-  fi
+  log "Patching $RENDERED_DIR/coordinator-config.toml: state_root=$L2_GENESIS_STATE_ROOT shnarf=$L2_GENESIS_SHNARF deploy_block=$L2_MS_DEPLOY_BLOCK"
+  awk \
+    -v state_root="$L2_GENESIS_STATE_ROOT" \
+    -v shnarf="$L2_GENESIS_SHNARF" \
+    -v deploy_block="$L2_MS_DEPLOY_BLOCK" \
+  '
+    /^genesis-state-root-hash[[:space:]]*=/ { sub(/".*"/, "\"" state_root "\""); }
+    /^genesis-shnarf[[:space:]]*=/          { sub(/".*"/, "\"" shnarf "\""); }
+    /^contract-deployment-block-number[[:space:]]*=/ { sub(/=.*/, "= " deploy_block); }
+    { print }
+  ' "$RENDERED_DIR/coordinator-config.toml" > "$RENDERED_DIR/coordinator-config.toml.new" \
+    && mv "$RENDERED_DIR/coordinator-config.toml.new" "$RENDERED_DIR/coordinator-config.toml"
+  log "Patched coordinator-config.toml"
 fi
 
 step "Done"

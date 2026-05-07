@@ -8,15 +8,17 @@
 # See README.md in this directory for the full operator guide.
 # Image tags are pinned in versions.env. User-supplied L1 secrets in .env.
 #
-# Profiles:
-#   - stack-no-prover       — full L2 stack, observability, L2 explorer
-#   - stack-partial-prover  — same + partial prover (~32 GB RAM extra)
+# Profile: `stack-partial-prover` — the only profile. Includes the partial
+# prover; minimum host requirement ~32 GB RAM (prover container has GOMEMLIMIT
+# 32GiB). Full proving + finalization cycle is the v0 deliverable; running
+# without the prover ("stack-no-prover", retired in Phase 2.6) is no longer
+# supported.
 #
 # L2 keys are pre-baked DEV keys (public knowledge — never reuse). The L1
 # deployer key is supplied by you via .env and must be Sepolia-funded.
 # =============================================================================
 
-x-profiles: &default-profiles ["stack-no-prover", "stack-partial-prover"]
+x-profiles: &default-profiles ["stack-partial-prover"]
 
 networks:
   linea:
@@ -47,8 +49,39 @@ volumes:
 services:
 
   # ============================================================================
-  # L2 layer (L1 = user-supplied Sepolia RPC; no local L1 services)
+  # Init layer — pre-boot account derivation, config rendering, L2 genesis
   # ============================================================================
+
+  account-setup:
+    # Phase 2.1: runs FIRST — derives L1+L2 deployer addresses, queries the L1
+    # deployer's nonce on Sepolia, and pre-computes every contract address
+    # that deploy-contracts.sh will end up creating. Also generates the four
+    # web3signer keystore YAMLs (3 from L1_DEPLOYER_PRIVATE_KEY per Option A,
+    # 1 from the pre-baked L2 liveness dev key).
+    #
+    # Outputs land on `linea-shared-config`:
+    #   /shared/addresses-precomputed.json   (consumed by Phases 2.2, 2.3, 2.4)
+    #   /shared/web3signer-keys/*.yaml       (consumed by web3signer below)
+    #
+    # NOT idempotent — re-runs every boot. If you re-deploy against the same
+    # Sepolia deployer, the nonce will have advanced and pre-computed
+    # addresses will differ from a previous run; that's expected.
+    image: ghcr.io/foundry-rs/foundry:${FOUNDRY_TAG}
+    container_name: account-setup
+    profiles: *default-profiles
+    # Foundry image's default user is `foundry` (uid 1000); the freshly-mounted
+    # linea-shared-config volume is root-owned, so the foundry user can't
+    # mkdir there. Run as root for the duration of this one-shot init.
+    user: root
+    environment:
+      L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+      L1_DEPLOYER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:?L1_DEPLOYER_PRIVATE_KEY must be set in .env (Sepolia-funded)}
+    volumes:
+      - ./scripts:/scripts:ro
+      - linea-shared-config:/shared:rw
+    # POSIX sh — foundry alpine image doesn't ship bash by default.
+    entrypoint: ["sh", "/scripts/account-setup.sh"]
+    networks: [linea]
 
   l2-genesis-init:
     image: busybox:${BUSYBOX_TAG}
@@ -56,9 +89,17 @@ services:
     profiles: *default-profiles
     environment:
       L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}
+    # init.sh now reads /shared/addresses-precomputed.json (written by
+    # account-setup) to substitute __L2_MESSAGE_SERVICE_ADDRESS__ into
+    # genesis-besu.json. account-setup must complete first.
+    depends_on:
+      account-setup:
+        condition: service_completed_successfully
     # Idempotent: skips generation if the L2 genesis files have already been
     # rendered. Re-running with mismatching fork-timestamp would diverge from
-    # any existing on-disk chaindata. Run `docker compose down -v` to force.
+    # any existing on-disk chaindata. Run `docker compose down -v` to force a
+    # re-render — also required if account-setup wrote a new precomputed JSON
+    # (e.g., L1 deployer nonce advanced between runs).
     entrypoint:
       - sh
       - -c
@@ -71,28 +112,36 @@ services:
         sh /initialization/init.sh
     volumes:
       - ./config/l2/genesis-init/:/initialization:rw
+      - linea-shared-config:/shared:ro
 
   config-render:
-    # One-shot init: substitutes runtime values into the coordinator + maru TOML
-    # templates and writes the rendered files to the linea-rendered-config
-    # volume. coordinator + maru mount the rendered output read-only.
+    # Renders 5 service config templates (coordinator, maru, sequencer,
+    # l2-node-besu, prover) by substituting:
     #
-    # Two-phase substitution model:
-    #   1. config-render (this service) substitutes placeholders that are known
-    #      from .env: L1_RPC_URL.
-    #   2. Placeholders only knowable at deploy time (LINEA_ROLLUP_ADDRESS,
-    #      GENESIS_STATE_ROOT_HASH, GENESIS_SHNARF, LINEA_ROLLUP_DEPLOY_BLOCK,
-    #      L2_MESSAGE_SERVICE_ADDRESS) are seeded with safe defaults here so
-    #      maru can boot before deploy-contracts runs. deploy-contracts.sh then
-    #      re-patches the rendered files in /rendered at the end of its run; a
-    #      `post-deploy-restart` service then restarts maru to pick up the
-    #      patched config (coordinator + postman start AFTER deploy-contracts so
-    #      they read the patched values on first boot — no restart needed).
+    #   - __L1_RPC_URL__              ← from .env (compose env)
+    #   - __LINEA_ROLLUP_ADDRESS__    ← /shared/addresses-precomputed.json.l1.LineaRollupV8
+    #   - __L2_MESSAGE_SERVICE_ADDRESS__ ← /shared/addresses-precomputed.json.l2.L2MessageService
+    #   - __GENESIS_STATE_ROOT_HASH__ ← seeded zero-default; Phase 2.5 fills it
+    #     after Shomei is up (post-L2-boot — coordinator depends on
+    #     deploy-contracts so it never sees the zero default in practice).
+    #   - __GENESIS_SHNARF__          ← seeded zero-default; same as above.
+    #   - __LINEA_ROLLUP_DEPLOY_BLOCK__ ← seeded 0; deploy-contracts patches it.
     #
-    # NOT idempotent — re-renders every boot so .env changes always propagate.
+    # Output lands on `linea-rendered-config`. Each consuming service mounts
+    # /rendered/ read-only and points its --config-file (or equivalent) at the
+    # rendered path. Postman is the exception — its env_file is read by compose
+    # from the host, not from a volume; deploy-contracts.sh sed-patches the
+    # static `config/l2/postman/env` and `post-deploy-restart` cycles postman
+    # so it re-reads on first restart.
+    #
+    # NOT idempotent — re-renders every boot so .env / precomputed JSON changes
+    # always propagate to /rendered/.
     image: busybox:${BUSYBOX_TAG}
     container_name: config-render
     profiles: *default-profiles
+    depends_on:
+      account-setup:
+        condition: service_completed_successfully
     environment:
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
     entrypoint:
@@ -100,33 +149,67 @@ services:
       - -c
       - |
         set -e
+        PRECOMPUTED=/shared/addresses-precomputed.json
+        if [ ! -f "$$PRECOMPUTED" ]; then
+          echo "[config-render] FATAL: $$PRECOMPUTED not found — account-setup must run first" >&2
+          exit 1
+        fi
+        # Extract addresses from the precomputed JSON. account-setup writes a
+        # controlled shape so POSIX sed -E is enough.
+        LINEA_ROLLUP_ADDR=$$(sed -nE 's/.*"LineaRollupV8":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        L2_MS_ADDR=$$(sed -nE 's/.*"L2MessageService":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        # Uncompressed secp256k1 pubkey (128 hex chars, NO 0x prefix) of the
+        # user's L1 deployer key. Substituted into all three web3signer
+        # public-key slots in coordinator-config.toml so coordinator's
+        # blob-submission, finalization, and message-anchoring all resolve to
+        # the same single keystore that account-setup wrote.
+        L1_SIGNER_PUBKEY=$$(sed -nE 's/.*"l1Pubkey":[[:space:]]*"0x([a-fA-F0-9]{128})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        echo "$$LINEA_ROLLUP_ADDR" | grep -qE '^0x[a-fA-F0-9]{40}$$' || { echo "[config-render] FATAL: LineaRollupV8 missing from $$PRECOMPUTED" >&2; exit 1; }
+        echo "$$L2_MS_ADDR"        | grep -qE '^0x[a-fA-F0-9]{40}$$' || { echo "[config-render] FATAL: L2MessageService missing from $$PRECOMPUTED" >&2; exit 1; }
+        echo "$$L1_SIGNER_PUBKEY"  | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l1Pubkey missing from $$PRECOMPUTED" >&2; exit 1; }
+
         echo "[config-render] L1_RPC_URL=$$L1_RPC_URL"
-        # Defaults for deploy-time placeholders. These are placeholders the
-        # boot-time services tolerate (zero address polled = no events; zero
-        # hash compared = no proof submission) and that deploy-contracts.sh
-        # overwrites after step 1.
-        ZERO_ADDR="0x0000000000000000000000000000000000000000"
-        ZERO_HASH="0x0000000000000000000000000000000000000000000000000000000000000000"
-        # Deterministic — CREATE from pre-baked L2 deployer at nonce 0.
-        L2_MS_ADDR="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+        echo "[config-render] LineaRollupV8 = $$LINEA_ROLLUP_ADDR"
+        echo "[config-render] L2MessageService = $$L2_MS_ADDR"
+        echo "[config-render] L1 signer pubkey = $${L1_SIGNER_PUBKEY%????????????????????????????????????????????????????????}…"
+
+        # Deferred placeholders — seeded with zero defaults; Phase 2.5 will
+        # fill GENESIS_STATE_ROOT_HASH + GENESIS_SHNARF after Shomei is up.
+        # LINEA_ROLLUP_DEPLOY_BLOCK gets patched by deploy-contracts.sh.
+        ZERO_HASH=0x0000000000000000000000000000000000000000000000000000000000000000
+
         for src_dst in \
             /templates/coordinator-config.toml.template:/rendered/coordinator-config.toml \
-            /templates/maru-config.toml.template:/rendered/maru-config.toml; do
+            /templates/maru-config.toml.template:/rendered/maru-config.toml \
+            /templates/sequencer.config.toml.template:/rendered/sequencer.config.toml \
+            /templates/l2-node-besu.config.toml.template:/rendered/l2-node-besu.config.toml \
+            /templates/prover-config-partial.toml.template:/rendered/prover-config-partial.toml; do
           src="$${src_dst%%:*}"
           dst="$${src_dst##*:}"
           sed \
             -e "s|__L1_RPC_URL__|$$L1_RPC_URL|g" \
-            -e "s|__LINEA_ROLLUP_ADDRESS__|$$ZERO_ADDR|g" \
+            -e "s|__LINEA_ROLLUP_ADDRESS__|$$LINEA_ROLLUP_ADDR|g" \
             -e "s|__L2_MESSAGE_SERVICE_ADDRESS__|$$L2_MS_ADDR|g" \
+            -e "s|__L1_SIGNER_PUBKEY_NO_PREFIX__|$$L1_SIGNER_PUBKEY|g" \
             -e "s|__GENESIS_STATE_ROOT_HASH__|$$ZERO_HASH|g" \
             -e "s|__GENESIS_SHNARF__|$$ZERO_HASH|g" \
             -e "s|__LINEA_ROLLUP_DEPLOY_BLOCK__|0|g" \
             "$$src" > "$$dst"
-          echo "[config-render] rendered $$src -> $$dst (with deploy-time defaults)"
+          # Sanity: any leftover __PLACEHOLDER__ in the rendered file is a bug.
+          if grep -qE '__[A-Z0-9_]+__' "$$dst"; then
+            echo "[config-render] FATAL: leftover placeholder in $$dst:" >&2
+            grep -nE '__[A-Z0-9_]+__' "$$dst" >&2
+            exit 1
+          fi
+          echo "[config-render] rendered $$src -> $$dst"
         done
     volumes:
       - ./config/l2/coordinator/coordinator-config.toml.template:/templates/coordinator-config.toml.template:ro
       - ./config/l2/maru/config.toml.template:/templates/maru-config.toml.template:ro
+      - ./config/l2/sequencer/sequencer.config.toml.template:/templates/sequencer.config.toml.template:ro
+      - ./config/l2/l2-node-besu/l2-node-besu.config.toml.template:/templates/l2-node-besu.config.toml.template:ro
+      - ./config/l2/prover/prover-config-partial.toml.template:/templates/prover-config-partial.toml.template:ro
+      - linea-shared-config:/shared:ro
       - linea-rendered-config:/rendered:rw
 
   sequencer:
@@ -136,6 +219,8 @@ services:
     profiles: *default-profiles
     depends_on:
       l2-genesis-init:
+        condition: service_completed_successfully
+      config-render:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "bash -c '[ -f /tmp/pid ]'"]
@@ -147,14 +232,16 @@ services:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint: besu-untuned
     command:
-      - --config-file=/var/lib/besu/sequencer.config.toml
+      - --config-file=/rendered/sequencer.config.toml
       - --node-private-key-file=/var/lib/besu/key
       - --plugin-linea-node-type=SEQUENCER
       # NOTE: --plugin-linea-rejected-tx-endpoint intentionally omitted (v0 has no
       # transaction-exclusion-api service; flag defaults to null and is optional —
       # see besu-plugins/linea-sequencer/docs/plugins.md).
     volumes:
-      - ./config/l2/sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
+      # Rendered TOML from config-render: __L2_MESSAGE_SERVICE_ADDRESS__ filled
+      # in from /shared/addresses-precomputed.json.
+      - linea-rendered-config:/rendered:ro
       - ./config/l2/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2/sequencer/key:/var/lib/besu/key:ro
       - ./config/l2/sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
@@ -207,6 +294,8 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
+      config-render:
+        condition: service_completed_successfully
     privileged: true   # required by shomei plugin in this image
     user: root
     healthcheck:
@@ -220,7 +309,7 @@ services:
       JAVA_OPTS: -Xmx1g
     entrypoint: besu-untuned
     command:
-      - --config-file=/var/lib/besu/l2-node-besu.config.toml
+      - --config-file=/rendered/l2-node-besu.config.toml
       - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-node-type=RPC
       # The enode pubkey below (14408801a444…) is the SECP256K1 public key
@@ -235,7 +324,9 @@ services:
       # See config/DEV-KEYS-INVENTORY.md for the regeneration checklist.
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
-      - ./config/l2/l2-node-besu/l2-node-besu.config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
+      # Rendered TOML from config-render: __L2_MESSAGE_SERVICE_ADDRESS__ filled
+      # in from /shared/addresses-precomputed.json.
+      - linea-rendered-config:/rendered:ro
       - ./config/l2/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/l2/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
@@ -294,8 +385,17 @@ services:
     # `condition: service_started` instead — web3signer boots in ~2s and is
     # reliable; the SSL/handshake error from a wrong-cert client is the
     # confirmation the service is up.
+    #
+    # Keystores are generated at boot by `account-setup` from the user's
+    # L1_DEPLOYER_PRIVATE_KEY (Option A — single L1 key drives the 3 L1
+    # signers: anchoring, data-submission, finalization) plus a pre-baked L2
+    # dev key for the liveness signer. The generated YAMLs land in
+    # /shared/web3signer-keys via the linea-shared-config volume.
+    depends_on:
+      account-setup:
+        condition: service_completed_successfully
     command:
-      - --key-store-path=/key-files/
+      - --key-store-path=/shared/web3signer-keys/
       - --tls-keystore-file=/tls-files/web3signer-keystore.p12
       - --tls-keystore-password-file=/tls-files/web3signer-keystore-password.txt
       - --tls-known-clients-file=/tls-files/known-clients.txt
@@ -303,7 +403,7 @@ services:
       - eth1
       - --chain-id=1   # only used for proxying eth_sendTransaction; we don't proxy
     volumes:
-      - ./config/web3signer/key-files/:/key-files/:ro
+      - linea-shared-config:/shared:ro
       - ./config/web3signer/tls-files/:/tls-files/:ro
     ports:
       - "${HOST_PORT_WEB3SIGNER:-9000}:9000"
@@ -395,6 +495,10 @@ services:
         condition: service_started
       config-render:
         condition: service_completed_successfully
+      # Phase 2.4: deploy-contracts queries Shomei for the L2 genesis ZK state
+      # root before deploying L1 contracts (rollup_getZkEVMStateMerkleProofV0).
+      shomei:
+        condition: service_healthy
     working_dir: /workspace/contracts
     environment:
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
@@ -410,6 +514,11 @@ services:
       # repo root on the host. v0 is monorepo-internal by design.
       - ../../..:/workspace
       - ./scripts:/scripts:ro
+      # Forked deploy script — bind-mounted OVER the upstream path. Fixes the
+      # stale ORDERED_NONCE_POST_LINEAROLLUP=7 offset (step 1 actually consumes
+      # 8 nonces) and serializes the 3 parallel deploys. See
+      # scripts/deployBridgedTokenAndTokenBridgeV1_1.ts header for details.
+      - ./scripts/deployBridgedTokenAndTokenBridgeV1_1.ts:/workspace/contracts/local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1_1.ts:ro
       - linea-shared-config:/shared
       # RW mount of rendered config volume so this script can patch the
       # coordinator + maru TOMLs after step 1 with discovered addresses.
@@ -422,14 +531,24 @@ services:
     networks: [linea]
 
   post-deploy-restart:
-    # Restarts maru after deploy-contracts patches /rendered/maru-config.toml
-    # with the real LINEA_ROLLUP_ADDRESS. Maru read its config at boot with the
-    # zero-address default seeded by config-render — this restart cycles it so
-    # it picks up the patched values.
+    # Cycles ONLY postman after deploy-contracts.sh sed-patches its env_file.
     #
-    # Coordinator + postman do NOT need restarting: they depend on
-    # `deploy-contracts:service_completed_successfully`, so they start *after*
-    # the patches land and read the patched values on first boot.
+    # Why postman: compose's env_file directive reads from the HOST filesystem
+    # at container-create, NOT from a docker volume. We can't render postman.env
+    # via config-render (which writes to /rendered/). So deploy-contracts.sh
+    # sed-patches the static config/l2/postman/env with the real L1/L2 contract
+    # addresses, and we restart postman to make sure it picks up those values
+    # in case compose cached the env_file at parse time (the spec is ambiguous).
+    #
+    # Why NOT maru: its config got the real LineaRollup address at boot from
+    # config-render (Phase 2.3 reads precomputed JSON). deploy-contracts.sh no
+    # longer patches /rendered/maru-config.toml — there's nothing for maru to
+    # re-read, so restarting it is wasted work. Phase 2.5 verification fix.
+    #
+    # Why NOT coordinator/sequencer/l2-node-besu/prover: they read from
+    # /rendered/. Coordinator + prover also depend on deploy-contracts:completed,
+    # so they start AFTER the coord-config patch (state root + shnarf + deploy-block)
+    # lands. They read patched values on first boot.
     image: docker:cli
     container_name: post-deploy-restart
     profiles: *default-profiles
@@ -437,15 +556,13 @@ services:
       deploy-contracts:
         condition: service_completed_successfully
     volumes:
-      # Read-only socket access — we only issue `docker restart`, never run new
-      # containers via this socket.
       - /var/run/docker.sock:/var/run/docker.sock
     entrypoint:
       - sh
       - -c
       - |
-        echo "[post-deploy-restart] restarting maru to pick up patched /rendered/maru-config.toml"
-        docker restart maru
+        echo "[post-deploy-restart] restarting postman to re-read patched env_file"
+        docker restart postman
 
   # ============================================================================
   # L2 services that need contract addresses (depend on deploy-contracts)
@@ -525,9 +642,13 @@ services:
     env_file: ./config/l2/postman/env
     environment:
       # Compose `environment:` overrides env_file values on key collision.
-      # L1_RPC_URL is now user-supplied (Sepolia); the literal in postman/env
-      # is dead and will be cleaned up in Phase 4.
+      # The corresponding lines in config/l2/postman/env are commented out
+      # (Phase 3 cleanup) so anyone reading the static env file can see what's
+      # supplied at runtime versus what's static.
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+      # Option A: postman's L1 signer is the user's L1 deployer key — same
+      # address that's funded the operations on Sepolia.
+      L1_SIGNER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:?L1_DEPLOYER_PRIVATE_KEY must be set in .env (Sepolia-funded)}
       ADDRESSES_PATH: /shared/addresses.json
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postman-pg:5432/postman
     volumes:
@@ -541,17 +662,25 @@ services:
     container_name: prover
     hostname: prover
     platform: linux/amd64
-    profiles: ["stack-partial-prover"]   # NOTE: only the prover differs between profiles
+    profiles: *default-profiles
     depends_on:
       coordinator:
         condition: service_started
+      config-render:
+        condition: service_completed_successfully
     environment:
       GOMAXPROCS: 16
-      CONFIG_FILE: "/opt/linea/prover/config.toml"
+      CONFIG_FILE: "/rendered/prover-config-partial.toml"
       GOMEMLIMIT: "32GiB"   # partial prover; full prover requires >700GB RAM (out of scope for v0)
       WORKER_ID: prover-i1
     volumes:
-      - ./config/l2/prover/prover-config-partial.toml:/opt/linea/prover/config.toml:ro
+      # Rendered TOML from config-render (replaces the static
+      # ./config/l2/prover/prover-config-partial.toml bind-mount).
+      - linea-rendered-config:/rendered:ro
+      # KZG SRS assets (required even in dev mode — the binary checks for
+      # the directory at startup). Sourced from the monorepo's prover/
+      # tree, same path the upstream compose-spec-l2-services.yml uses.
+      - ../../../prover/prover-assets:/opt/linea/prover/prover-assets:ro
       - linea-local-dev:/data
       - linea-logs:/logs
       - linea-shared-config:/shared:ro

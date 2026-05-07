@@ -40,7 +40,9 @@ force-stop-conflation-at-block-inclusive=100_000_000
 # This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
 # If state is updated meanwhile, it resets counter and restarts the polling.
-consistent-number-of-blocks-on-l1-to-wait = 1
+# Phase-4: bumped from 1 to 5 for Sepolia. Sepolia has occasional shallow reorgs;
+# 5 blocks (~60s) gives enough confidence the L1 head won't reorg under us.
+consistent-number-of-blocks-on-l1-to-wait = 5
 
 [conflation.l2-request-retries]
 backoff-delay = "PT1S"
@@ -187,7 +189,7 @@ private-key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "9d9031e97dd78ff8c15aa86939de9b1e791066a0224e331bc962a2099a7b1f0464b8bbafe1535f2301c72c2cb3535b172da30b02686ab0393d348614f157fbdb"
+public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
 [l1-submission.blob.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"
@@ -220,7 +222,7 @@ private-key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "ba5734d8f7091719471e7f7ed6b9df170dc70cc661ca05e688601ad984f068b0d67351e5f06073092499336ab0839ef8a521afd334e53807205fa2f08eec74f4"
+public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
 [l1-submission.aggregation.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"
@@ -254,7 +256,7 @@ private-key = "0x4d01ae6487860981699236a58b68f807ee5f17b12df5740b85cf4c4653be0f5
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023"
+public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
 [message-anchoring.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"
