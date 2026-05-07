@@ -25,7 +25,7 @@ jobs:
   build-images-and-run-e2e-tests-with-partial-prover:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
     concurrency:
-      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
+      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}-${{ matrix.test }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     strategy:
       fail-fast: false
