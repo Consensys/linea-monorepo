@@ -91,8 +91,12 @@ The workflow must keep the existing safety properties:
 - Stop if no GitHub `origin` remote exists.
 - Stop if `gh` is missing or unauthenticated.
 - Stop with a clear message if the PR is not found.
+- Run `git status --short --branch` before assessing comments or taking actions.
+- Fetch PR head metadata and require local `HEAD` to match `headRefOid` before applying fixes.
+- Stop and ask if unrelated staged changes or target-file local changes exist.
 - Skip fixes for referenced files that do not exist locally.
 - Stage only explicitly modified files for each fix.
+- Verify `git diff --cached --name-only` and `git diff --cached` before each fix commit.
 - Do not use `git add .`.
 - Do not undo unrelated local changes.
 - Do not log secrets, credentials, tokens, private keys, or sensitive RPC URLs.

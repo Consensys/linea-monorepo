@@ -108,6 +108,33 @@ If either command fails, stop with:
 Error: `gh` CLI is not available or not authenticated. Run `gh auth login` first.
 ```
 
+## Step 2.5: Check Local Git State and PR Head
+
+Check the local git state before assessing comments or taking actions:
+
+```bash
+git status --short --branch
+```
+
+If unrelated staged changes already exist, stop and ask the user before applying fixes. Use the status output to record files with local changes. Before editing an approved target file, if that file already contains unrelated local changes, stop and ask whether to preserve, include, or skip those changes.
+
+Fetch PR head metadata:
+
+```bash
+gh pr view {PR_NUMBER} --json headRefName,headRepositoryOwner,headRepository,headRefOid
+```
+
+Compare the PR head metadata with the current checkout using:
+
+```bash
+git branch --show-current
+git rev-parse HEAD
+git rev-parse --abbrev-ref --symbolic-full-name @{u}
+git rev-parse @{u}
+```
+
+Confirm the local branch matches `headRefName` and the upstream or matching remote branch belongs to `headRepositoryOwner` and `headRepository`. Require local `HEAD` to match `headRefOid` before applying fixes. Do not treat an upstream match alone as sufficient. If local `HEAD` differs from `headRefOid`, stop before applying fixes and ask whether to switch or update the checkout, or continue report-only.
+
 ## Step 3: Fetch Comments
 
 Fetch all three data sources. Run independent fetches in parallel when the agent environment supports parallel tool calls.
@@ -240,26 +267,36 @@ Do not edit files, commit, push, reply, or resolve threads without the user's an
 For each approved fix:
 
 1. Edit only the file or files required for that specific fix.
-2. Stage only those files:
+2. Before editing each target file, re-check whether it has unrelated local changes. If it does, stop and ask before continuing.
+3. Stage only the approved files for that fix:
 
 ```bash
 git add path/to/file1 path/to/file2
 ```
 
-3. Do not use `git add .`.
-4. Commit with:
+4. Do not use `git add .`.
+5. Verify the staged files:
+
+```bash
+git diff --cached --name-only
+git diff --cached
+```
+
+If any staged file is not approved for that fix, stop and ask the user to clear or handle unrelated staged changes. Review the cached diff contents before committing. If the cached diff contains anything outside the approved fix, even within approved files, stop and ask the user how to handle it.
+
+6. Commit with:
 
 ```bash
 git commit -m "fix(misc): address {bot-name} feedback in {file}"
 ```
 
-5. Capture the commit SHA:
+7. Capture the commit SHA:
 
 ```bash
 git rev-parse HEAD
 ```
 
-6. Build the commit URL:
+8. Build the commit URL:
 
 ```text
 https://github.com/{owner}/{repo}/commit/{sha}
@@ -503,7 +540,17 @@ git diff --exit-code -- README.md
 
 Expected: command exits 0 with no output.
 
-- [ ] **Step 4: Check for placeholders and disallowed em dashes in changed Markdown**
+- [ ] **Step 4: Verify safety hardening references**
+
+Run:
+
+```bash
+rg -n "gh pr view|headRefOid|git diff --cached|git status --short --branch" .agents/skills/squash-bugbot/SKILL.md docs/superpowers/specs/2026-05-07-squash-bugbot-local-tooling-design.md docs/superpowers/plans/2026-05-07-squash-bugbot-local-tooling.md
+```
+
+Expected: output includes references in the canonical skill, design spec, and implementation plan.
+
+- [ ] **Step 5: Check for placeholders and disallowed em dashes in changed Markdown**
 
 Run:
 
@@ -514,7 +561,7 @@ rg -n "T[B]D|T[O]DO|N[E]EDS VERIFICATION|${em_dash}" .agents/skills/squash-bugbo
 
 Expected: command exits 1 with no matches.
 
-- [ ] **Step 5: Review final status**
+- [ ] **Step 6: Review final status**
 
 Run:
 
@@ -524,6 +571,6 @@ git status --short --branch
 
 Expected: branch is ahead of `origin/main`; no unstaged or staged changes remain after all task commits.
 
-- [ ] **Step 6: Report validation**
+- [ ] **Step 7: Report validation**
 
 Report the validation commands and results to the user. State that no package build or test command was run because the implementation changes only Markdown agent configuration and documentation.
