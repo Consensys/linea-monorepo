@@ -2,6 +2,9 @@
 # Note that Zicclsm extension does not affect the generated ELF so it is omitted.
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
+# Declare all targets as phony to prevent conflicts with files of the same name
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf
+
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -46,7 +49,7 @@ exec: compile zkc-exec
 
 debug: compile zkc-debug
 
-compile: $(SRC) $(LINKER_SCRIPT)
+compile: $(SRC) linker-script
 # Generate ELF
 	@if [ "$(EXT)" = ".s" ]; then \
 		mkdir -p $(MAKEFILE_DIR)asm/bin; \
@@ -73,7 +76,9 @@ compile: $(SRC) $(LINKER_SCRIPT)
 	@echo "\nDisassembling $(BIN)"
 	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
-	@if [ "$(VERIFY_ELF)" = "true" ]; then $(MAKE) verify-elf; fi
+	@if [ "$(VERIFY_ELF)" = "true" ]; then \
+		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf; \
+	fi
 # Generate JSON from ELF
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
@@ -101,43 +106,45 @@ clean-all:
 	rm -f  $(LINKER_SCRIPT)
 
 # Generate the linker script with the specified memory layout
-$(LINKER_SCRIPT):
-	@echo "ENTRY(_start)" > $@
-	@echo "" >> $@
-	@echo "MEMORY {" >> $@
-	@echo "    PROGRAM (rx) : ORIGIN = $(PROGRAM_OFFSET), LENGTH = 0x8000000" >> $@
-	@echo "    STACK   (rw) : ORIGIN = $(shell printf '0x%08x' $$(($(SP) - 0x800000 + 1))), LENGTH = 0x800000" >> $@
-	@echo "    IN  (r)  : ORIGIN = $(IN_BYTES_OFFSET), LENGTH = 0x40000000" >> $@
-	@echo "}" >> $@
-	@echo "" >> $@
-	@echo "SECTIONS {" >> $@
-	@echo "    . = ORIGIN(PROGRAM);" >> $@
-	@echo "" >> $@
-	@echo "    .text : {" >> $@
-	@echo "        *(.text .text.*)" >> $@
-	@echo "    } > PROGRAM" >> $@
-	@echo "" >> $@
-	@echo "    .rodata : {" >> $@
-	@echo "        *(.rodata .rodata.*)" >> $@
-	@echo "    } > PROGRAM" >> $@
-	@echo "" >> $@
-	@echo "    .data : {" >> $@
-	@echo "        *(.data .data.*)" >> $@
-	@echo "    } > PROGRAM" >> $@
-	@echo "" >> $@
-	@echo "    .bss : {" >> $@
-	@echo "        *(.bss .bss.*)" >> $@
-	@echo "    } > PROGRAM" >> $@
-	@echo "" >> $@
-	@echo "    /* stack grows downward from the top of the stack region */" >> $@
-	@echo "    _stack_start = ORIGIN(STACK) + LENGTH(STACK) - 1;" >> $@
-	@echo "" >> $@
-	@echo "    /* symbol marking the start of the input region */" >> $@
-	@echo "    _input_start = ORIGIN(IN);" >> $@
-	@echo "}" >> $@
+linker-script:
+	@printf '%s\n' \
+		'ENTRY(_start)' \
+		'' \
+		'MEMORY {' \
+		'    PROGRAM (rx) : ORIGIN = $(PROGRAM_OFFSET), LENGTH = 0x8000000' \
+		'    STACK   (rw) : ORIGIN = $(shell printf "0x%08x" $$(($(SP) - 0x800000 + 1))), LENGTH = 0x800000' \
+		'    IN  (r)  : ORIGIN = $(IN_BYTES_OFFSET), LENGTH = 0x40000000' \
+		'}' \
+		'' \
+		'SECTIONS {' \
+		'    . = ORIGIN(PROGRAM);' \
+		'' \
+		'    .text : {' \
+		'        *(.text .text.*)' \
+		'    } > PROGRAM' \
+		'' \
+		'    .rodata : {' \
+		'        *(.rodata .rodata.*)' \
+		'    } > PROGRAM' \
+		'' \
+		'    .data : {' \
+		'        *(.data .data.*)' \
+		'    } > PROGRAM' \
+		'' \
+		'    .bss : {' \
+		'        *(.bss .bss.*)' \
+		'    } > PROGRAM' \
+		'' \
+		'    /* stack grows downward from the top of the stack region */' \
+		'    _stack_start = ORIGIN(STACK) + LENGTH(STACK) - 1;' \
+		'' \
+		'    /* symbol marking the start of the input region */' \
+		'    _input_start = ORIGIN(IN);' \
+		'}' \
+		> $(LINKER_SCRIPT)
 
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
-verify-elf: $(BIN)
+verify-elf:
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
 		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
