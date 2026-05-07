@@ -77,8 +77,10 @@ zkc-test blake_with_in_embedded.rs
 zkc-test blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e511f6c3e2b8c68059b6bbd41fbabd9831f79217e1319cde05b61626300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000001ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
 # Generate the linker script with custom input bytes offset
 zkc-test linker-script IN_BYTES_OFFSET=0x00000042
-# Verify ELF offsets, entry point and sp match the ones in the Makefile
+# Verify ELF offsets, entry point and sp match the default ones
 zkc-test verify-elf <name>.<ext>
+# Verify ELF offsets, entry point and sp match the custom ones
+zkc-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000 IN_BYTES_OFFSET=0x18800000 SP=0x187fffff 
 ```
 
 ## Targets
