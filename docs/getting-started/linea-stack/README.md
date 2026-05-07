@@ -3,9 +3,18 @@
 > v0 of the "Streamlined Linea Stack deployment" feature. Local L2 stack
 > pointed at user-supplied **Sepolia** as L1.
 
-> **Status:** Sepolia migration complete through Phase 4 (timing tunables +
-> this README). Phase 5 — first-boot validation against a real funded Sepolia
-> deployer key — has not yet run. If you boot this and hit something
+> **Status:** Sepolia migration validated end-to-end through Phase 5 against a
+> real funded deployer (2026-05-07). All 6 contract steps deploy and verify on
+> Sepolia; sequencer + maru + l2-node-besu + shomei + postman + prover all
+> healthy. **One open issue from Phase 6**: the coordinator boots cleanly with
+> the user's web3signer pubkey wired into all 3 signer slots, but its pipeline
+> goes silent after `Coordinator app instantiated` — no conflation, no blob
+> submissions to LineaRollup. Triage notes in
+> [`first-boot-fixes.md`](./first-boot-fixes.md) under "Phase 6 (open)". User
+> deploys (deployer-driven Sepolia txs) work; coordinator-driven L1 txs (blob
+> submission, finalization, message anchoring) don't yet.
+>
+> If you boot this and hit something
 > [`first-boot-fixes.md`](./first-boot-fixes.md) doesn't already cover, append
 > what you learn there so the next person doesn't.
 
@@ -154,7 +163,7 @@ Plan ~30 min for the first full cycle including a finalised proof.
 | L2 RPC (HTTP) | http://localhost:8745 | end-user RPC (l2-node-besu); use this from wallets/SDKs |
 | L2 RPC (WS)   | ws://localhost:8746  | |
 | L2 Blockscout API | http://localhost:4000/api/v2/blocks | Frontend `/` returns 404 — Blockscout 7.x splits the UI into a separate frontend container that this scaffold doesn't deploy. JSON API works. |
-| Coordinator   | http://localhost:9545 | observability + JSON-RPC; `/health` returns 200 once healthy |
+| Coordinator   | http://localhost:9545 | observability + JSON-RPC. NOTE: container's healthcheck shells `curl` which isn't installed in the linea-coordinator image, so `docker compose ps` always shows "unhealthy" — this is cosmetic. The port may also not bind reliably from host while the Phase-6 coordinator-stuck issue is open. |
 | Postman       | http://localhost:9090 | |
 | Web3signer    | http://localhost:9000 | mTLS only — won't respond to plain HTTP |
 | Maru          | http://localhost:8080 | observability/health |
@@ -167,15 +176,25 @@ convention** — connect dapps/wallets to `:8745`.
 
 ## 6. Verifying it works
 
+`deploy-contracts` exits cleanly when its 6 steps finish — `docker exec` won't
+work against an exited container. Use a throwaway busybox bound to the shared
+volume to read its outputs:
+
 ```bash
-# Service health
+# Service status (ignore "unhealthy" on coordinator — see endpoint table note)
 docker compose --profile stack-partial-prover ps
 
-# Contract addresses (post-deploy)
-docker exec deploy-contracts cat /shared/addresses.json | head -40
+# Final contract addresses (post-deploy)
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  cat /shared/addresses.json | head -40
 
-# Coordinator alive?
-curl -fsS http://localhost:9545/health && echo OK
+# Pre-computed addresses (account-setup output, written before any deploy)
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  cat /shared/addresses-precomputed.json
+
+# Per-step deploy logs (one file per step, persists across container restarts)
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  ls /shared/deploy-logs/
 
 # L2 producing blocks?
 curl -s -X POST -H "Content-Type: application/json" \
@@ -186,19 +205,20 @@ curl -s -X POST -H "Content-Type: application/json" \
 curl -s http://localhost:4000/api/v2/main-page/blocks | head -c 200
 
 # LineaRollup deployed on Sepolia?
-docker exec deploy-contracts node -e \
-  'const j=require("/shared/addresses.json");console.log(j.l1.LineaRollupV8)'
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  sh -c 'sed -nE "s/.*\"LineaRollupV8\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/\1/p" /shared/addresses.json | head -1'
 # Then open: https://sepolia.etherscan.io/address/<that-address>
 ```
 
 ### First L1→L2 message
 
 ```bash
-# 1. Read the LineaRollup address
-LINEA_ROLLUP=$(docker exec deploy-contracts node -e \
-  'console.log(require("/shared/addresses.json").l1.LineaRollupV8)')
+# 1. Read the LineaRollup address from the shared volume
+LINEA_ROLLUP=$(docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  sh -c 'sed -nE "s/.*\"LineaRollupV8\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/\1/p" /shared/addresses.json | head -1')
 
-# 2. Send a message via Sepolia (replace KEY + recipient)
+# 2. Send a message via Sepolia (replace recipient + load .env first)
+source .env
 cast send "$LINEA_ROLLUP" "sendMessage(address,uint256,bytes)" \
   0xRecipientOnL2 0 0x \
   --value 0.01ether \
@@ -209,9 +229,18 @@ cast send "$LINEA_ROLLUP" "sendMessage(address,uint256,bytes)" \
 docker logs -f postman | grep -i "MessageSent\|claimed"
 ```
 
-End-to-end finalisation (proof submitted to L1, message marked claimable on L2)
-takes one full coordinator conflation + proof cycle. Typical: 5–15 min steady
-state on x86_64; longer on Apple Silicon for the first proof.
+> ⚠ **Phase-6 caveat (2026-05-07).** End-to-end finalisation requires the
+> coordinator to conflate L2 blocks → submit blobs to LineaRollup → finalise.
+> The coordinator currently goes silent after startup (see status banner at
+> top); blob submission is **not** firing. Postman will still observe the L1
+> `MessageSent` event and attempt the L2-side anchor, but the corresponding
+> L1-side finalisation won't happen until Phase 6 is closed out. Until then
+> the L1→L2 walkthrough above succeeds at step 2 (the deployer-driven L1 tx
+> lands on Sepolia) but step 3 won't show a "claimed" log.
+>
+> When Phase 6 closes: end-to-end finalisation takes one full coordinator
+> conflation + dummy-proof cycle. Typical (target): 5–15 min steady state on
+> x86_64; longer on Apple Silicon for the first proof.
 
 ## 7. Tearing down
 
@@ -297,14 +326,22 @@ docker compose --profile stack-partial-prover ps
 # Logs (multi-tail)
 docker compose logs -f coordinator sequencer postman
 
-# Inspect addresses.json (the contract handoff)
-docker exec deploy-contracts cat /shared/addresses.json
+# Inspect addresses.json (the contract handoff). deploy-contracts is a one-shot
+# init container — `docker exec` won't work after it exits. Use a throwaway
+# busybox bound to the shared volume:
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  cat /shared/addresses.json
 
 # Inspect precomputed addresses (account-setup output)
-docker exec deploy-contracts cat /shared/addresses-precomputed.json
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  cat /shared/addresses-precomputed.json
 
-# Coordinator's rendered config (post-deploy patches)
+# Coordinator's rendered config (post-deploy patches). Coordinator IS long-running.
 docker exec coordinator cat /rendered/coordinator-config.toml | head -40
+
+# All deploy-step logs (one file per step)
+docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
+  sh -c 'for f in /shared/deploy-logs/*.log; do echo "=== $f ==="; cat "$f"; done' | less
 
 # Open a debug shell on the linea network
 docker run --rm -it --network linea-stack_linea \
@@ -314,8 +351,14 @@ docker run --rm -it --network linea-stack_linea \
 ### Known-issue catalog
 
 [`first-boot-fixes.md`](./first-boot-fixes.md) tracks every fix applied during
-scaffold development plus carry-overs into Phase 5 (real Sepolia validation).
-Read entries #19–#26 for the Sepolia migration phases.
+scaffold development plus carry-overs into Phase 5 (real Sepolia validation)
+and the open Phase 6 work. Entries #1–#15 cover the original local-L1 boot,
+#16–#27 the Sepolia migration phases (incl. prover all-dev pre-flight), #28–#34
+the Phase 5 first-boot fixes against real Sepolia (nonce-offset bugs in the
+upstream deploy scripts, idempotency for retry cycles, prover kzgsrs mount),
+and #35 the Phase 6 web3signer pubkey alignment. The "Phase 6 (open)" section
+documents the coordinator-stuck-after-startup symptom + hypotheses for next
+session.
 
 ## 10. What's NOT in v0
 
@@ -325,8 +368,12 @@ Read entries #19–#26 for the Sepolia migration phases.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
 - **No Blockscout L2 frontend.** API only on `:4000` until a `blockscout-frontend`
   container is added.
-- **No CI smoke test.** The validation has been compose-config + render-pipeline
-  level; first real-Sepolia validation is Phase 5 of the migration.
+- **No CI smoke test.** Validation today is compose-config + render-pipeline
+  level + manual first-boot-against-Sepolia (Phase 5, 2026-05-07). A scripted
+  end-to-end smoke test is Phase-7+ once the coordinator pipeline is closed out.
+- **No working coordinator-driven L1 finalisation yet.** See status banner.
+  Deploys land on Sepolia; coordinator-driven txs (blob submission, finalisation,
+  message anchoring) are blocked on the Phase-6 coordinator-stuck investigation.
 
 ## 11. Reference
 
