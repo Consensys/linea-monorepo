@@ -9,7 +9,7 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Name of the test to run (with extension), mandatory unless clean-all is the target
-ifeq ($(filter clean-all,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig|.rs))
 endif
@@ -77,7 +77,7 @@ compile: $(SRC) linker-script
 	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
 	@if [ "$(VERIFY_ELF)" = "true" ]; then \
-		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf; \
+		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf TEST=$(TEST); \
 	fi
 # Generate JSON from ELF
 	@echo "\nGenerating $(JSON) from $(BIN)"
@@ -107,6 +107,7 @@ clean-all:
 
 # Generate the linker script with the specified memory layout
 linker-script:
+	@echo "\nGenerating $(LINKER_SCRIPT)"
 	@printf '%s\n' \
 		'ENTRY(_start)' \
 		'' \
@@ -144,7 +145,7 @@ linker-script:
 		> $(LINKER_SCRIPT)
 
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
-verify-elf:
+verify-elf: $(BIN)
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
 		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
