@@ -41,13 +41,15 @@ zkc-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
         clean-all|linker-script)
+            # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
         exec|debug|compile|clean|verify-elf)
+            # targets that require TEST argument
             make -f "$makefile" "$1" TEST="$2" "${@:3}"
             ;;
         *)
-            # shorthand for exec: zkc-test <name>.<ext> is equivalent to zkc-test exec <name>.<ext>
+            # default target (zkc-test foo.<ext> is the same as zkc-test exec TEST=foo.<ext>)
             make -f "$makefile" TEST="$1" "${@:2}"
             ;;
     esac
