@@ -253,20 +253,28 @@ jobs:
         id: append_change_log
         if: ${{ inputs.changelog == '' }}
         shell: bash
+        env:
+          # Pass via env to avoid shell injection: changelog content is derived
+          # from commit messages and may contain backticks, $(...), etc.
+          CHANGELOG: ${{ steps.change_log.outputs.clean_changelog }}
         run: |
           cd release
           echo "## What's Changed" >> output.md
-          echo "${{ steps.change_log.outputs.clean_changelog }}" >> output.md
+          printf '%s\n' "$CHANGELOG" >> output.md
           echo "output.md=$(cat output.md)"
 
       - name: Append Changelog input to release note
         id: append_change_log_input
         if: ${{ inputs.changelog != '' }}
         shell: bash
+        env:
+          # Pass via env to avoid shell injection: changelog content is derived
+          # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
+          CHANGELOG: ${{ inputs.changelog }}
         run: |
           cd release
           echo "## What's Changed" >> output.md
-          echo "${{ inputs.changelog }}" >> output.md
+          printf '%s\n' "$CHANGELOG" >> output.md
           echo "output.md=$(cat output.md)"
 
       - name: release - publish artifacts and release notes

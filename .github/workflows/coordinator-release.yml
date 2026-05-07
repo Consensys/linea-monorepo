@@ -93,14 +93,19 @@ jobs:
       - name: Append Changelog Action to release note
         id: append_change_log
         shell: bash
+        env:
+          # Pass via env to avoid shell injection: changelog content is derived
+          # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
+          CHANGELOG: ${{ needs.compute-coordinator-release-metadata.outputs.changelog }}
+          DOCKER_TAG: ${{ needs.compute-coordinator-docker-tag.outputs.docker_tag }}
         run: |
           mkdir release && cd release
-          echo "${{ needs.compute-coordinator-release-metadata.outputs.changelog }}" >> output.md
+          printf '%s\n' "$CHANGELOG" >> output.md
           echo "### Docker Image Details" >> output.md
           echo "" >> output.md
           echo "To pull the image, use the following command:" >> output.md
           echo "\`\`\`" >> output.md
-          echo "docker pull consensys/linea-coordinator:${{ needs.compute-coordinator-docker-tag.outputs.docker_tag }}" >> output.md
+          printf 'docker pull consensys/linea-coordinator:%s\n' "$DOCKER_TAG" >> output.md
           echo "\`\`\`" >> output.md
 
       - name: gh-release
