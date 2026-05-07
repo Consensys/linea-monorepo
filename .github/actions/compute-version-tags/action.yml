@@ -25,10 +25,10 @@ runs:
         # For PR, GITHUB_SHA or HEAD is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "COMMIT_TAG=$(git rev-parse --short=7 ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
-          echo LAST_COMMIT_TAG=$(git rev-parse --short=7 "${{ github.event.before }}") >> $GITHUB_OUTPUT
+          echo "LAST_COMMIT_TAG=$(git rev-parse --short=7 ${{ github.event.before }})" >> $GITHUB_OUTPUT
         else
           # Use HEAD instead of GITHUB_SHA because we want the latest commit hash after potential CHANGELOG.md update commit
           echo "COMMIT_TAG=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
-          echo LAST_COMMIT_TAG=$(git rev-parse --short=7 HEAD~1) >> $GITHUB_OUTPUT
+          echo "LAST_COMMIT_TAG=$(git rev-parse --short=7 HEAD~1)" >> $GITHUB_OUTPUT
         fi
         echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT

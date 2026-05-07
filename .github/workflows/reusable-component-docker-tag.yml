@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 2   # need at least 2 commits so HEAD~1 resolves
 
       - name: Compute version tags
         id: compute_version_tags
