@@ -329,8 +329,8 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
                 }
             }
         }
-        case CUSTOM_0: {
 
+        case CUSTOM_0: {
             // ==========================================
             // custom instructions (precompiles etc ...)
             // ==========================================
@@ -343,14 +343,11 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             }
         }
         default: {
-            printf "unsupported R-type instruction with opcode %x", opcode
-            } else {
-                printf "[ERROR] Unsupported R-type instruction with\n"
-                printf "\topcode ≡ %x ≡ %b\n", opcode, opcode
-                printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
-                printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
-                fail
-            }
+            printf "[ERROR] Unsupported R-type instruction with\n"
+            printf "\topcode ≡ %x ≡ %b\n", opcode, opcode
+            printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+            printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
+            fail
         }
     }
 }
