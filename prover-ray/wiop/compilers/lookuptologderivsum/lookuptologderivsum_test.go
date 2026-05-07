@@ -446,3 +446,123 @@ func TestCompile_MultiFragmentBPanics(t *testing.T) {
 	assert.Panics(t, func() { lookuptologderivsum.Compile(sys) },
 		"multi-fragment lookup tables are out of scope for this MVP")
 }
+
+// ---- Soundness: verifier rejects an incorrect multiplicity column ----
+
+// TestCompile_VerifierFailsOnZeroM exercises the resultIsZeroVerifierAction by
+// bypassing the M-assignment prover task and pinning M to all zeros instead.
+// Every selected A row contributes 1/(γ + RLC(S_j)) to the LogDerivativeSum
+// while the B side contributes nothing, so the aggregated result is non-zero
+// with overwhelming probability over γ and the verifier must reject.
+func TestCompile_VerifierFailsOnZeroM(t *testing.T) {
+	sys := wiop.NewSystemf("ll-zero-M")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{wiop.NewTable(colT.View())},
+	)
+
+	colsBefore := len(modT.Columns)
+	lookuptologderivsum.Compile(sys)
+	require.Equal(t, colsBefore+1, len(modT.Columns),
+		"lookuptologderivsum.Compile must add exactly one M column to modT")
+	mCol := modT.Columns[colsBefore]
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	// Honest witness: every S row appears in T (correct M would be [2,1,1,0]).
+	rt.AssignColumn(colS, makeVec(10, 20, 10, 30))
+	// Cheat: assign M directly with the wrong value, skipping the prover task.
+	rt.AssignColumn(mCol, makeVec(0, 0, 0, 0))
+
+	rt.AdvanceRound() // → coin round, samples α/γ
+	rt.AdvanceRound() // → result round
+	runRound(&rt)     // assigns Z and the LogDerivativeSum result
+
+	err := checkAllVerifierActions(&rt)
+	assert.ErrorContains(t, err, "must be zero",
+		"verifier must reject when M is left at zero despite active A rows")
+}
+
+// TestCompile_VerifierFailsOnInflatedM is a sharper variant of the previous
+// test: M differs from the honest count by a single increment on one row.
+// The aggregated result is then exactly the extra fraction emitted on the
+// B side, which is non-zero with overwhelming probability. This pins down
+// that the verifier does not merely catch grossly-wrong M but any deviation
+// from the honest multiplicity.
+func TestCompile_VerifierFailsOnInflatedM(t *testing.T) {
+	sys := wiop.NewSystemf("ll-inflated-M")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(colS.View())},
+		[]wiop.Table{wiop.NewTable(colT.View())},
+	)
+
+	colsBefore := len(modT.Columns)
+	lookuptologderivsum.Compile(sys)
+	mCol := modT.Columns[colsBefore]
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colS, makeVec(10, 20, 10, 30))
+	// Honest M would be [2,1,1,0]; we inflate row 3 to claim T[3]=40 was
+	// looked up once even though no S row references it.
+	rt.AssignColumn(mCol, makeVec(2, 1, 1, 1))
+
+	rt.AdvanceRound()
+	rt.AdvanceRound()
+	runRound(&rt)
+
+	err := checkAllVerifierActions(&rt)
+	assert.ErrorContains(t, err, "must be zero",
+		"verifier must reject any deviation from the honest multiplicity, however small")
+}
+
+// ---- Non-binary filter rejection ----
+
+// TestCompile_NonBinaryIncludedFilterPanics covers the guard inside the
+// M-assignment task that rejects A-side selectors carrying values other than
+// 0 or 1. The reduction treats the filter as a 0/1 mask (M is incremented by
+// one per active row), so any other value would silently break the
+// honest-prover identity. The task aborts early instead.
+func TestCompile_NonBinaryIncludedFilterPanics(t *testing.T) {
+	sys := wiop.NewSystemf("ll-nonbin-filter")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
+	colT := modT.NewColumn(sys.Context.Childf("T"), wiop.VisibilityOracle, r0)
+	colS := modS.NewColumn(sys.Context.Childf("S"), wiop.VisibilityOracle, r0)
+	filterS := modS.NewColumn(sys.Context.Childf("filterS"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewFilteredTable(filterS.View(), colS.View())},
+		[]wiop.Table{wiop.NewTable(colT.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// Every S value is in T, so the only failure mode is the non-binary
+	// filter entry on row 1.
+	rt.AssignColumn(colT, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colS, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(filterS, makeVec(1, 7, 1, 1))
+
+	assert.Panics(t, func() { runRound(&rt) },
+		"non-binary included filter must be rejected by M assignment")
+}
