@@ -9,7 +9,7 @@ inputs:
     description: "Folder name of the component which hosts CHANGELOG.md (e.g. linea-besu's home folder is linea-besu-package)"
     required: false
   include-path:
-    description: "git-cliff --include-path filter, either single path (e.g. coordinator/**) or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+    description: "git-cliff --include-path filter, either single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
     required: true
   cliff-config:
     description: "Path to the cliff.toml config file"
@@ -41,17 +41,28 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    # Normalize inputs.include-path (plain string or JSON array string) into
-    # one path per line so downstream steps reconstruct a bash array safely.
+    # Normalize inputs.include-path into one path per line so downstream
+    # steps reconstruct a bash array safely. Accepts any of:
+    #   - bare path           e.g. coordinator/**
+    #   - JSON string scalar  e.g. "coordinator/**"
+    #   - JSON array string   e.g. ["tracer/**","linea-besu/**"]
+    # Bare paths are not valid JSON, so we probe with `jq -e .` first and
+    # fall back to emitting the input verbatim when JSON parsing fails.
     - name: Build include-path list
       id: paths
       shell: bash
+      env:
+        INCLUDE_PATH: ${{ inputs.include-path }}
       run: |
         set -euo pipefail
         {
           echo 'include_paths<<__PATHS_EOF__'
-          echo '${{ inputs.include-path }}' \
-            | jq -r 'if type == "array" then .[] else . end'
+          if printf '%s' "$INCLUDE_PATH" | jq -e . >/dev/null 2>&1; then
+            printf '%s' "$INCLUDE_PATH" \
+              | jq -r 'if type == "array" then .[] else . end'
+          else
+            printf '%s\n' "$INCLUDE_PATH"
+          fi
           echo '__PATHS_EOF__'
         } >> "$GITHUB_OUTPUT"
 
