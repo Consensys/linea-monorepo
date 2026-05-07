@@ -105,6 +105,9 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
+        with:
+          ref: ${{ github.ref_name }}
+          #fetch-depth: 2   # need at least 2 commits so HEAD~1 resolves later would not fail on compute-version-tags, not CI stopper so optional
 
       - name: Build plugins and assemble
         id: build-plugins-and-assemble
