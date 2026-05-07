@@ -4,7 +4,7 @@ The `Makefile` in this folder has commands to compile and run RISC-V test progra
 Programs are compiled for the  `riscv64im_zicclsm-unknown-none-elf` architecture. The resulting ELF is converted to JSON, and passed to `zkc` as an input.
 The output ELF is also disassembled, producing an explorable `<name>_disassembled.txt` file.
 
-The executable, the json and the disassembled elf file all live in the `<ext>/bin/` folder.
+The executable, the JSON and the disassembled file live in `asm/bin/` for assembly, `zig/zig-out/bin/` for Zig, and `rust/target/riscv64im-unknown-none-elf/release/` for Rust.
 
 ## Requirements
 
@@ -88,6 +88,8 @@ zkc-test verify-elf <name>.<ext>
 | `make TEST=foo.<ext>`            | Compile and execute (default)                                         |
 | `make debug TEST=foo.<ext>`      | Compile and debug                                                     |
 | `make compile TEST=foo.<ext>`    | Compile only                                                          |
+| `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                           |
+| `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                             |
 | `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                  |
 | `make clean-all`                 | Remove all build artifacts                                            |
 | `make linker-script`             | Generate the linker script with the memory layout                     |
@@ -98,7 +100,7 @@ zkc-test verify-elf <name>.<ext>
 | Variable         | Default                                                                                 | Description                                                                   |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
 | `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                    |
-| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, or `rust/bin/<NAME>` depending on extension | Path to the output ELF binary, can be overridden                              |
+| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, `rust/target/riscv64im-unknown-none-elf/release/<NAME>` depending on extension | Path to the output ELF binary, can be overridden |
 | `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                               |
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
