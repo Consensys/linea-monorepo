@@ -87,7 +87,7 @@ git rev-parse --abbrev-ref --symbolic-full-name @{u}
 git rev-parse @{u}
 ```
 
-Confirm the local branch matches `headRefName`, the upstream or matching remote branch belongs to `headRepositoryOwner` and `headRepository`, and local `HEAD` or upstream matches `headRefOid`. If the local checkout does not match the PR head, stop before applying fixes and ask whether to switch or update the checkout, or continue report-only.
+Confirm the local branch matches `headRefName` and the upstream or matching remote branch belongs to `headRepositoryOwner` and `headRepository`. Require local `HEAD` to match `headRefOid` before applying fixes. Do not treat an upstream match alone as sufficient. If local `HEAD` differs from `headRefOid`, stop before applying fixes and ask whether to switch or update the checkout, or continue report-only.
 
 ## Step 3: Fetch Comments
 
@@ -233,9 +233,10 @@ git add path/to/file1 path/to/file2
 
 ```bash
 git diff --cached --name-only
+git diff --cached
 ```
 
-If any staged file is not approved for that fix, stop and ask the user to clear or handle unrelated staged changes.
+If any staged file is not approved for that fix, stop and ask the user to clear or handle unrelated staged changes. Review the cached diff contents before committing. If the cached diff contains anything outside the approved fix, even within approved files, stop and ask the user how to handle it.
 
 6. Commit with:
 
