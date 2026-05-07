@@ -83,6 +83,8 @@ zkc-test linker-script IN_BYTES_OFFSET=0x00000042
 zkc-test verify-elf <name>.<ext>
 # Verify ELF offsets, entry point and sp match the custom ones
 zkc-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000 IN_BYTES_OFFSET=0x18800000 SP=0x187fffff 
+# Compile and verify generated ELF offsets, entry point and sp match the default ones
+zkc-test compile <name>.<ext> VERIFY_ELF=true
 ```
 
 ## Targets
