@@ -82,13 +82,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push all CHANGELOG.md
+        env:
+          TARGET_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
           if git diff --quiet; then
             echo "No CHANGELOG.md changes to commit."
             exit 0
           fi
-          git pull
+          git pull --ff-only origin "refs/heads/${TARGET_REF}"
           git add '*/CHANGELOG.md'
           git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component"
           git push origin "HEAD:${{ github.head_ref }}"

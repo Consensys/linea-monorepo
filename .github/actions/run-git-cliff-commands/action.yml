@@ -135,12 +135,13 @@ runs:
         FOLDER_NAME: ${{ inputs.folder-name }}
         CLIFF_CONFIG: ${{ inputs.cliff-config }}
         TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
+        TARGET_REF: ${{ github.head_ref || github.ref_name }}
       run: |
         set -euo pipefail
         
         # retrieve the latest changes of CHANGELOG.md first to avoid chances
         # of rebase or merge conflicts later from other workflows 
-        git pull
+        git pull --ff-only origin "refs/heads/${TARGET_REF}"
 
         CHANGELOG_FILE="${FOLDER_NAME}/CHANGELOG.md"
 
