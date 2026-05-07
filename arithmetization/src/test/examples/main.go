@@ -110,6 +110,11 @@ func extractProgramBytes(sections []*elf.Section, programOffset uint64) []byte {
 		}
 	}
 
+	// If needed pad buffer to multiple of 4 bytes (add at most 3 zero bytes)
+	for len(buf)%4 != 0 {
+		buf = append(buf, 0)
+	}
+
 	return buf
 }
 
