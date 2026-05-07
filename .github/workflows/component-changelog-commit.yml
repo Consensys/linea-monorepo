@@ -83,7 +83,7 @@ jobs:
 
       - name: Commit and push all CHANGELOG.md
         env:
-          TARGET_REF: ${{ github.head_ref || github.ref_name }}
+          TARGET_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
           if git diff --quiet; then
