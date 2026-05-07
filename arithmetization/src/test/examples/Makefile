@@ -8,7 +8,7 @@
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Name of the test to run (with extension), mandatory unless clean-all is the target
+# Name of the test to run (with extension), mandatory unless clean-all or linker-script are the targets
 ifeq ($(filter clean-all linker-script,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig|.rs))
@@ -17,13 +17,13 @@ endif
 NAME := $(basename $(TEST))
 EXT  := $(suffix $(TEST))
 
-# Paths below are determined by the extension
+# Default paths below are determined by the extension
 SRC  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
 BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
 JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
-# Paths to go main (to turn bin into json), zkc main (to execute/debug the json) and linker script
+# Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
 GO_MAIN  := $(MAKEFILE_DIR)main.go
 ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
 LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld

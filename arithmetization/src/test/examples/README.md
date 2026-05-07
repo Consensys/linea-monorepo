@@ -44,7 +44,7 @@ zkc-test() {
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
-        exec|debug|compile|clean|verify-elf)
+        exec|debug|compile|zkc-exec|zkc-debug|clean|verify-elf)
             # targets that require TEST argument
             make -f "$makefile" "$1" TEST="$2" "${@:3}"
             ;;
