@@ -1,3 +1,4 @@
+// Set stack pointer (SP) to the one defined in the linker script and call main
 core::arch::global_asm!(
     ".global _start",
     "_start:",
@@ -5,6 +6,7 @@ core::arch::global_asm!(
     "call main",
 );
 
+// Exit the program with the given code using ecall
 fn exit(code: i32) -> ! {
     unsafe {
         core::arch::asm!(
@@ -16,7 +18,24 @@ fn exit(code: i32) -> ! {
     }
 }
 
+// Panic handler that exits with a specific code to indicate a panic occurred
+// This is required for no_std environments
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
     exit(i32::MAX) // use max int to indicate panic
+}
+
+// Address where the zkVM writes input data before execution (from linker script)
+extern "C" {
+    static _input_start: u8;
+}
+
+// Read `len` bytes from `addr` of input region into the provided buffer
+pub fn read_memory(buf: *mut u8, addr: usize, len: usize) {
+    unsafe {
+        let base = addr as *const u8;
+        for i in 0..len {
+            *buf.add(i) = *base.add(i);
+        }
+    }
 }
