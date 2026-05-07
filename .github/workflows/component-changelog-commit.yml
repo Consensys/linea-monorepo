@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate-component-changelog:
+  push-component-changelog:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
@@ -84,6 +84,7 @@ jobs:
             echo "No CHANGELOG.md changes to commit."
             exit 0
           fi
+          git pull
           git add .
           git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component"
           git push origin "HEAD:${{ github.head_ref }}"
