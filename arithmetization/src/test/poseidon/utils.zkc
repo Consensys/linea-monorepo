@@ -1,3 +1,4 @@
+include "poseidon1.zkc"
 
 fn write_to_state<state>(address:u8, value:u32) -> () {
     state[address] = value
@@ -7,3 +8,13 @@ fn read_from_state<state>(address:u8) -> (value:u32) {
     value = state[address]
     return
 }
+
+fn write_to_tmp<state>(address:u8, value:u32) -> () {
+    state[address + STATE_WIDTH] = value
+}
+
+fn read_from_tmp<state>(address:u8) -> (value:u32) {
+    value = state[address + STATE_WIDTH]
+    return
+}
+

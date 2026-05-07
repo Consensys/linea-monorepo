@@ -15,8 +15,14 @@ include "../../main/riscv/ram/write.zkc"
 // One notable feature of this implementation is that the length
 // of the message is included in the state at initialization time.
 
+// we make state an array of felts (emulated as u32's)
+// of length STATE_WIDTH × 2 which looks like so:
+//
+//    [ σ₀, σ₁, ..., σₙ │ τ₀, τ₁, ..., τₙ]
+//
+// where the τ-part of the state is meant as temporary storage for
+// operations updating the full state and n ≡ STATE_WIDTH
 memory state(index:u8) -> (st:u32)
-memory state_copy(index:u8) -> (st:u32)
 
 // round_constants is a matrix with TOTAL_ROUNDS many rows and STATE_WIDTH many columns
 // mds_matrix is a square matrix of format STATE_WIDTH × STATE_WIDTH
@@ -28,6 +34,7 @@ input mds_matrix(index:u16) -> (md:u32)
 const KOALABEAR_PRIME:u32 = 0x7F000001 // 2^31 - 2^24 + 1 or 2130706433
 const ALPHA:u2 = 3
 const BYTES_PER_FELT:u8 = 3
+const BYTES_PER_BLOCK:u32 = (BYTES_PER_FELT * RATE) as u32
 
 const OUTPUT_LENGTH:u8 = RATE // OUTPUT_LENGTH ≤ RATE is required
 
@@ -44,20 +51,31 @@ const TOTAL_ROUNDS:u8 = FULL_ROUNDS_HALF + PRTL_ROUNDS + FULL_ROUNDS_HALF
 const FULL_ROUNDS_HALF:u8 = 4 // 8 full rounds
 const PRTL_ROUNDS:u8 = 20
 
-fn poseidon<ram, state>(start:Address, size:u32) {
-    initialize_state(start, size)
+fn poseidon<ram, state>(address:Address, size:u32) {
+    var n_rounds:u32 = (size + (BYTES_PER_BLOCK - 1)) / BYTES_PER_BLOCK
+    var final_size:u32 = size % BYTES_PER_BLOCK
+    var partial_round:u1 = 0
+
+    if final_size != 0 {
+        partial_round = 1
+    }
+
+    initialize_state(size)
+
+    for i:u32 = 0; i<n_rounds; i = i + 1 {
+    }
 }
 
-// initialize_state initializes the state to contain
+// initialize_state forces the state σ into the following configuration:
 //
 //       ┌   ┐
-//       │ a │
-//       │ b │
+//       │ 0 │
+//       │ 0 │
 //       │   │
 //       │ ⋮ │   r ≡ rate many felts
 //       │   │
-//       │ q │
-// σ  ≡  │ r │
+//       │ 0 │
+// σ  ≡  │ 0 │
 //       ├   ┤
 //       │ L │   ← peculiar to https://github.com/khovratovich/poseidon-tools/tree/main
 //       │ 0 │
@@ -65,31 +83,28 @@ fn poseidon<ram, state>(start:Address, size:u32) {
 //       │ 0 │
 //       └   ┘
 //
-// where L ≡ length in bytes of the inputs
-fn initialize_state<ram, state>(input_offset:Address, input_size:u32) {
+// where L ≡ size in bytes of the message.
+fn initialize_state<state>(size:u32) {
+    zero_out_state()
 
-    var input_felt:u32
+    // taking the modulus is unnecessary in any reasonable application of the Poseidon hash function
+    write_to_state(RATE, size % KOALABEAR_PRIME)
+}
 
-    for i:u8 = 0; i<RATE; i = i + 1 {
-        input_felt = (ram[i as Address]::ram[(i + 1) as Address]::ram[(i + 2) as Address]) as u32
-        write_to_state(i, input_felt)
-    }
-
-    // Note: technically one should record 'input_size mod KOALABEAR_PRIME' rather than 'input_size'
-    write_to_state(RATE, input_size)
-
-    for i:u8 = RATE; i<STATE_WIDTH; i = i + 1 {
+// zero_out_state sets the state σ to all zeros.
+fn zero_out_state<state>() {
+    for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
         write_to_state(i, 0)
     }
 }
 
 // update_state updates the current state σ to σ' defined by
-// adding the next batch of data carrying felts (nxt) to the
-// rate many first coordinates of σ.
+// adding the next block of data carrying felts (blk) to the
+// rate many first coordinates of σ:
 //
-// σ'  ≡     σ    +   nxt
+// σ'  ≡     σ    +   blk
 //
-//          ←σ→      ←nxt→
+//          ←σ→      ←blk→
 //         ┌   ┐     ┌   ┐
 //         │ A │     │ a │
 //         │ B │     │ b │
@@ -104,47 +119,67 @@ fn initialize_state<ram, state>(input_offset:Address, input_size:u32) {
 //         │ ⋮ │     │ ⋮ │
 //         │ π │     │ 0 │
 //         └   ┘     └   ┘
-//
-fn update_state<ram, state>(offset:Address, num_bytes:u8) {
+fn update_state<ram, state>(input_address:Address, block_size:u32) {
+
+    var quotient:u32
+    var remainder:u8
+
+    quotient = block_size / (BYTES_PER_FELT as u32)
+    remainder = (block_size % (BYTES_PER_FELT as u32)) as u8
+
+    var n_full_felts:u8 = RATE
+    var with_partl:u1 = 0
+
+    if quotient<(RATE as u32) {
+        n_full_felts = quotient as u8
+        if remainder != 0 {
+            with_partl = 1
+        }
+    }
+
     var input_felt:u32
-    var curr_value:u32
-    var updt_value:u32
+    var state_felt:u32
     var overflow:u1
+    var curr_address:Address = input_address
 
-    if num_bytes == 0 {
-        fail
-    }
-    if num_bytes>((BYTES_PER_FELT as u8) * (RATE as u8)) {
-        fail
+    for i:u8 = 0; i<n_full_felts; i = i + 1 {
+        input_felt = get_full_felt(curr_address)
+        state_felt = state[i]
+        overflow::state_felt = (state_felt as u33) + (input_felt as u33)
+        write_to_state(i, state_felt)
+        curr_address = curr_address + (BYTES_PER_FELT as Address)
     }
 
-    for i:u8 = 0; i<RATE; i = i + 1 {
-        input_felt = (ram[(i + 2) as Address]::ram[(i + 1) as Address]::ram[(i + 0) as Address]) as u32
-        curr_value = read_from_state(i)
-        overflow::updt_value = (curr_value as u33) + (input_felt as u33)
-        write_to_state(i, updt_value)
+    if with_partl == 1 {
+        input_felt = get_partial_felt(curr_address, remainder)
+        state_felt = state[n_full_felts]
+        overflow::state_felt = (state_felt as u33) + (input_felt as u33)
+        write_to_state(n_full_felts, state_felt)
     }
 }
 
+// get_full_felt extracts a full BYTES_PER_FELT = 3 byte field element from ram
 fn get_full_felt<ram>(offset:Address) -> (felt:u32) {
     felt = (ram[(offset + 2) as Address]::ram[(offset + 1) as Address]::ram[(offset + 0) as Address]) as u32
 }
 
 fn get_partial_felt<ram>(offset:Address, n_bytes:u8) -> (felt:u32) {
+    felt = 0
+
     if n_bytes == 0 {
-        fail
+        return
     }
+
     if n_bytes>BYTES_PER_FELT {
         fail
     }
 
-    felt = 0
     for i:u8 = n_bytes - 1; i >= 0; i = i - 1 {
         felt = (felt << 8) + (ram[offset + (i as u64)] as u32)
     }
 }
 
-fn permutation<ram, state, state_copy>(initial_round:Boolean) {
+fn permutation<ram, state>() {
 
     for r:u8 = 0; r<FULL_ROUNDS_HALF; r = r + 1 {
         full_round(r)
@@ -189,7 +224,7 @@ fn add_round_constants<state>(r:u8) {
     }
 }
 
-fn full_round<state, state_copy>(r:u8) {
+fn full_round<state>(r:u8) {
     add_round_constants(r)
     for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
         state[i] = sbox(state[i])
@@ -197,7 +232,7 @@ fn full_round<state, state_copy>(r:u8) {
     apply_mds()
 }
 
-fn partial_round<state, state_copy>(r:u8) {
+fn partial_round<state>(r:u8) {
     add_round_constants(r)
     state[0] = sbox(state[0])
     apply_mds()
@@ -205,7 +240,7 @@ fn partial_round<state, state_copy>(r:u8) {
 
 // apply_mds applies the STATE_WIDTH x STATE_WIDTH mds matrix to the
 // state, viewed as a column vector w/ STATE_WIDTH many rows.
-fn apply_mds<state, state_copy>() {
+fn apply_mds<state>() {
 
     // STATE_WIDTH < 2**8
     // mds[i,j]    < 2**32
@@ -218,12 +253,12 @@ fn apply_mds<state, state_copy>() {
             unreduced_sum = unreduced_sum + ((mds_matrix[index] as u72) * (state[j] as u72))
             index = index + 1
         }
-        state_copy[i] = (unreduced_sum % (KOALABEAR_PRIME as u72)) as u32
+        write_to_tmp(i, (unreduced_sum % (KOALABEAR_PRIME as u72)) as u32)
     }
 
     // we copy the updated state over to the state
     for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
-        state[i] = state_copy[i]
+        state[i] = read_from_tmp(i)
     }
 }
 
