@@ -15,7 +15,7 @@ _start:
     lw      t1, 0(t0)
 
     # Exit via ecall: a0 = exit code, a7 = 93 (syscall number for exit)
-    mv      a0, t1
+    li      a0, 0
     li      a7, 93
     ecall
     
