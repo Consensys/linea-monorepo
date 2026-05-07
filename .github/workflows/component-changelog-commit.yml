@@ -12,7 +12,11 @@ concurrency:
 
 jobs:
   push-component-changelog:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request &&
+      github.event.pull_request.head.repo.fork == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
