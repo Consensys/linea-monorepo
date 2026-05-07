@@ -2,9 +2,7 @@ packages:
   - contracts/**
   - contract-integrity-verifier/**
   - e2e/**
-  - sdk/**
   - postman/**
-  - native-yield-operations/**
   - operations/**
   - ts-libs/**
   - '!contracts/lib/**'

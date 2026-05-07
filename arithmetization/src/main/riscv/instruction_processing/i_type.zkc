@@ -94,6 +94,11 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
                     printf "LD\n"
                     registers[rd] = read_64(mem_address) as DoubleWord
                 }
+                default: {
+                    printf "[ERROR] Unsupported LOAD instruction of I-Type\n"
+                    printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+                    fail
+                }
             }
         }
 
@@ -180,11 +185,9 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
         case SYSTEM: {
             // note: same funct3 for ECALL and EBREAK
             if funct3 == FUNCT3_ECALL {
-                printf "ECALL\n"
                 // imm12 is interpreted as funct12 for SYSTEM opcode
                 if imm12 == FUNCT12_ECALL {
-                    // Note: as we don't fully support CSR, we use ECALL as generic STOP instruction for now
-                    new_pc = MAX_UINT_64 // set the stop signal to end the program execution
+                    new_pc = process_syscall(pc)
                 } else if imm12 == FUNCT12_EBREAK {
                     printf "[ERROR] EBREAK instruction triggered\n"
                 }
@@ -193,9 +196,30 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
             }
         }
 
-        // TODO: should never be reached
         default: {
+            printf "[ERROR] Unsupported I-Type instruction with\n"
+            printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+            printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
             fail
+        }
+    }
+}
+
+fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
+    var call_num:DoubleWord = registers[17]
+    //
+    switch call_num {
+        case 93: { // exit
+            var exit_code:DoubleWord = registers[10]
+            // check for non-zero exit code
+            if exit_code != 0 {
+                fail "exit with code %d", exit_code
+            }
+            // set stop signal to terminate execution
+            new_pc = MAX_UINT_64
+        }
+        default: {
+            fail "unsupported system call (%d)", call_num
         }
     }
 }
