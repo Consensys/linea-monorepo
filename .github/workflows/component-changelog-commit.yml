@@ -89,6 +89,6 @@ jobs:
             exit 0
           fi
           git pull
-          git add .
+          git add '*/CHANGELOG.md'
           git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component"
           git push origin "HEAD:${{ github.head_ref }}"
