@@ -97,6 +97,7 @@ jobs:
           retention-days: 1
   
   run-e2e-tests-with-partial-prover:
+    needs: [build-and-upload-images]
     uses: ./.github/workflows/partial-prover-run-e2e-tests-in-parallel.yml
     with:
       linea_besu_package_image_tag: ${{ inputs.linea_besu_package_image_tag }}
