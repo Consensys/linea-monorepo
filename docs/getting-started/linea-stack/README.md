@@ -52,10 +52,13 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-> **Apple Silicon note.** The Linea prover image is `linux/amd64` only. On
-> M-series Macs it runs under Rosetta and is 3–5× slower than native x86_64.
-> First proof: 30+ min on M-series, 5–10 min on native x86_64. Everything
-> else in the stack is multi-arch.
+> **Apple Silicon note.** The Linea prover image is `linux/amd64` only — runs
+> under Rosetta on M-series, 3–5× slower than native x86_64. **Mitigation for
+> day-to-day work**: keep `PROVER_DEV_OVERRIDE=true` in `.env` (see §8) so the
+> prover serves dummy proofs in seconds regardless of arch. The 3–5× penalty
+> only matters when you flip the override OFF for real partial-mode validation
+> — first proof there is ~30 min on M-series vs ~5–10 min on native x86_64.
+> Everything else in the stack is multi-arch.
 
 ## 1. What this is
 
@@ -167,8 +170,6 @@ Plan ~30 min for the first full cycle including a finalised proof.
 | Postman       | http://localhost:9090 | |
 | Web3signer    | http://localhost:9000 | mTLS only — won't respond to plain HTTP |
 | Maru          | http://localhost:8080 | observability/health |
-| Grafana       | http://localhost:3001 | dashboards: "Linea / L2 Health" |
-| Prometheus    | http://localhost:9091 | |
 | L1 explorer   | https://sepolia.etherscan.io | `https://sepolia.etherscan.io/address/<LineaRollupAddress>` |
 
 Sequencer also runs RPC on `:8645` but that port is **internal-only by
@@ -262,7 +263,6 @@ All host ports are env-driven. Set them in `.env`:
 ```bash
 HOST_PORT_L2_RPC=8745
 HOST_PORT_L2_BLOCKSCOUT=4000
-HOST_PORT_GRAFANA=3001
 # ... see .env.example for the full list
 ```
 
@@ -278,6 +278,48 @@ LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM \
 deploys a different rollup contract (`ValidiumV2`) with a separate constructor
 shape. The verify-or-die check in deploy-contracts skips for the validium
 variant (precomputed JSON tracks the rollup variant).
+
+### Switching prover mode (partial ↔ all-dev for fast iteration)
+
+The deliverable shape is **partial prover** — execution + invalidity in `partial`
+mode, data_availability + aggregation in `dev` mode, aggregation gate at
+`is_allowed_circuit_id = 483`. That's what `config/l2/prover/prover-config-partial.toml.template`
+ships and what gets rendered into the live volume on a fresh `up -d` after
+`down -v`.
+
+For fast iteration (dummy proofs everywhere, ~minutes per cycle vs ~tens-of-minutes
+for partial proving), set one env var in `.env`:
+
+```bash
+PROVER_DEV_OVERRIDE=true
+```
+
+Then recreate the rendered config and bounce the prover:
+
+```bash
+docker compose --env-file versions.env --env-file .env \
+  --profile stack-partial-prover up -d --force-recreate config-render prover
+```
+
+`config-render` post-patches the rendered prover config in the volume — flips
+the 4 prover_mode lines to `dev` and the aggregation bitmask to `963`. The
+**template on disk stays partial** (deliverable correct), only the rendered
+file in the volume is patched. Verify:
+
+```bash
+docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
+  grep -E "^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
+# Expected with PROVER_DEV_OVERRIDE=true:
+#   prover_mode = "dev" × 4
+#   is_allowed_circuit_id = 963
+```
+
+To go back to partial, unset `PROVER_DEV_OVERRIDE` (or set `=false`) in `.env`
+and re-run the same `up -d --force-recreate config-render prover` command.
+
+> ⚠ Don't commit `PROVER_DEV_OVERRIDE=true` to your `.env.example` or any
+> shared config. The profile is named `stack-partial-prover` because the
+> deliverable is partial — the dev override is a local-iteration knob only.
 
 ### Pointing at a different L1
 
@@ -360,14 +402,12 @@ and #35 the Phase 6 web3signer pubkey alignment. The "Phase 6 (open)" section
 documents the coordinator-stuck-after-startup symptom + hypotheses for next
 session.
 
-## 10. What's NOT in v0
+## 10. What's NOT yet in v0
 
 - **No Timelock, no Security Council.** L1 contracts are owned by your
   deployer EOA. Governance/upgrade flows = v1.
 - **No full prover.** >700 GB RAM is out of scope.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
-- **No Blockscout L2 frontend.** API only on `:4000` until a `blockscout-frontend`
-  container is added.
 - **No CI smoke test.** Validation today is compose-config + render-pipeline
   level + manual first-boot-against-Sepolia (Phase 5, 2026-05-07). A scripted
   end-to-end smoke test is Phase-7+ once the coordinator pipeline is closed out.
@@ -377,7 +417,7 @@ session.
 
 ## 11. Reference
 
-### Service list (21 services on `stack-partial-prover`)
+### Service list (17 services on `stack-partial-prover`)
 
 ```
 account-setup            (init, foundry, runs first)
@@ -397,11 +437,11 @@ coordinator-pg           (postgres)
 postman-pg               (postgres)
 blockscout-l2-pg         (postgres)
 l2-blockscout            (blockscout/blockscout, API only)
-prometheus               (prom/prometheus)
-loki                     (grafana/loki)
-promtail                 (grafana/promtail)
-grafana                  (grafana/grafana)
 ```
+
+> Observability stack (prometheus / loki / promtail / grafana) was dropped in
+> Phase-7 — out of scope for v0 deliverable. Use `docker logs <service>` for
+> per-container output.
 
 ### File structure
 
@@ -444,5 +484,6 @@ docs/getting-started/linea-stack/
   templates) and `deploy-contracts` (in-place patch of coord-config); read by
   sequencer, maru, l2-node-besu, coordinator, prover
 - `linea-local-dev` — chaindata + prover state
-- `linea-logs` — promtail tails this for Loki ingestion
+- `linea-logs` — kept as a shared log-output volume; was previously tailed
+  by promtail (dropped Phase-7 with the rest of the observability stack).
 - per-service postgres volumes

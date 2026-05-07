@@ -258,20 +258,19 @@ Likely first-boot surprises (in priority order — see prior fix entries for con
 - Sepolia gas-price spikes blowing through 0.5 ETH on the deployer
 - Apple Silicon prover OOM on first proof if Docker Desktop memory cap < 48 GB
 
-### Phase 5 pre-flight: prover all-dev mode for IntegrationTestTrueVerifier flow, 2026-05-07
+### Phase 5 pre-flight: prover all-dev mode for IntegrationTestTrueVerifier flow, 2026-05-07 (PARTIALLY REVERTED 2026-05-07 — see #36)
 
 | # | Change | Why |
 |---|---|---|
-| 27 | `config/l2/prover/prover-config-partial.toml.template`: contents replaced verbatim with the canonical `docker/config/prover/v3/prover-config.toml` (all four `prover_mode` set to `"dev"`; `is_allowed_circuit_id` 483 → 963; partial-mode tuning fields `conflated_traces_dir`, `ignore_compatibility_check`, `serialization` dropped). The `__L2_MESSAGE_SERVICE_ADDRESS__` placeholder is preserved (config-render still substitutes from precomputed JSON). Filename retains `-partial` to avoid churn through the compose mount + CONFIG_FILE env + first-boot-fixes refs; a header comment explains the discrepancy. | The integration-test verifier on L1 (`IntegrationTestTrueVerifier`, what `deploy-contracts.sh` step 1 deploys) accepts dummy proofs. Real proofs aren't necessary for Phase 5 — the goal is to exercise the FULL pipeline (conflation → compression → execution → aggregation → on-chain submission → on-chain verify) end-to-end without burning hours of real ZK math per proof. The previous "partial" config was a hybrid (compression+aggregation in dev, execution+invalidity in partial); per Victorien's earlier guidance, you can't mix dev and real prover modes — the integration verifier expects all-dev or all-real. |
+| 27 | `config/l2/prover/prover-config-partial.toml.template`: contents replaced verbatim with the canonical `docker/config/prover/v3/prover-config.toml` (all four `prover_mode` set to `"dev"`; `is_allowed_circuit_id` 483 → 963; partial-mode tuning fields `conflated_traces_dir`, `ignore_compatibility_check`, `serialization` dropped). The `__L2_MESSAGE_SERVICE_ADDRESS__` placeholder is preserved. | At the time, the goal was to exercise the FULL pipeline (conflation → compression → execution → aggregation → on-chain submission → on-chain verify) end-to-end without burning hours of real ZK math per proof. The intent was correct (use dev for fast iteration); the implementation was wrong (silently overwrote the partial template, leaving the `--profile stack-partial-prover` name lying about what it does). |
 
-**Schema correction surfaced before applying**: the user's instruction named TOML fields (`[prover] type = "development"`, `dev_mode = true`) that don't exist in the prover schema. A grep across the entire monorepo's `*.toml`/`*.yaml`/`*.json` returned **zero** matches for those exact names. The actual schema uses `prover_mode = "<value>"` per section, with valid values `bench | dev | full | limitless | partial`. Verified by reading both canonical configs (`docker/config/prover/v3/prover-config.toml` for full-dev and `prover-config-partial.toml` for the mixed shape). Got user sign-off before overwriting.
+**Schema correction surfaced before applying**: the user's instruction named TOML fields (`[prover] type = "development"`, `dev_mode = true`) that don't exist in the prover schema. A grep across the entire monorepo's `*.toml`/`*.yaml`/`*.json` returned **zero** matches for those exact names. The actual schema uses `prover_mode = "<value>"` per section, with valid values `bench | dev | full | limitless | partial`.
 
-**Validation**:
-- `diff` of our template vs canonical full-dev: only the 9-line header note + the 3-line `__L2_MESSAGE_SERVICE_ADDRESS__` placeholder swap. Otherwise byte-identical.
-- `docker compose config -q --profile stack-partial-prover` → no errors.
-- All four sections (`[execution]`, `[data_availability]`, `[invalidity]`, `[aggregation]`) confirmed at `prover_mode = "dev"`.
+**What was wrong with #27** (caught 2026-05-07 evening when the user asked what prover version was running and noticed the dev mode under a "partial" profile name):
+- The justification "Victorien said you can't mix dev and real prover modes" was **wrong as stated**. Upstream's `docker/config/prover/v3/prover-config-partial.toml` literally ships with execution+invalidity in `partial` and data_availability+aggregation in `dev`, and the L1 `IntegrationTestTrueVerifier` accepts those proofs. The "no mixing" rule was either misremembered or applied out of context.
+- The deliverable for v0 is **partial-prover** behaviour — that's why the profile is named `stack-partial-prover`. Replacing the template with all-dev as the *default* shipped a config that contradicts the profile name.
 
-**Carried forward to Phase 5 boot**: the `--profile stack-partial-prover` name still says "partial" but the prover behaviour inside it is now all-dev. Renaming the profile is a Phase-6+ cleanup if it ever surfaces as a confusion source.
+**Correction applied in #36** (Phase 6 add-on, see below): template restored to upstream partial verbatim. The all-dev config is documented as a *fast-iterate override* in the template's header + the README "Switching prover mode" section, not the default.
 
 **Boot sequence (final shape, post-Phase-2.5)**
 
@@ -368,3 +367,16 @@ For session resumption: leave the stack running, log file persists, can re-check
 - ❌ Zero L1↔L2 user txs (no LineaRollup blob submissions, no message anchoring, no L1↔L2 message-passing demos).
 - ❌ Coordinator pipeline silent after startup — root cause TBD, see hypotheses above.
 - ⏸  L2->L1 / L1->L2 message round-trip: blocked on coordinator pipeline working.
+
+**Issue C — fixed: prover template lied about being partial** (#36)
+
+| # | Change | Why |
+|---|---|---|
+| 36 | `config/l2/prover/prover-config-partial.toml.template`: contents restored to the upstream `docker/config/prover/v3/prover-config-partial.toml` verbatim — execution + invalidity in `prover_mode = "partial"` (with `conflated_traces_dir = "/"` + `ignore_compatibility_check = true` + `serialization = false` re-added), data_availability + aggregation in `prover_mode = "dev"`, `is_allowed_circuit_id = 483`. The `__L2_MESSAGE_SERVICE_ADDRESS__` placeholder is preserved. The all-dev variant from #27 is now documented as a *fast-iterate override* in the template's header comment + the README "Switching prover mode" section. | The `--profile stack-partial-prover` name says "partial prover" but #27 silently swapped the contents to all-dev. Caught when the user noticed the dev mode running under a partial-named profile. The correct shape: deliverable = partial (matches profile name), dev mode = clearly-documented local override only. |
+
+**Live runtime impact (intentional)**: the live `/rendered/prover-config-partial.toml` in the docker volume was NOT updated — it stays on the all-dev rendering from #27 because the user is still iterating on the Phase-6 coordinator-stuck issue and wants the faster cycle. A future `down -v` (or `up -d --force-recreate config-render` after editing nothing) will render the partial-mode template into `/rendered/`. To stay on dev after such a re-render, apply the override per the README.
+
+**Verification**:
+- Template now has 4 prover_mode lines: `partial`, `dev`, `partial`, `dev` (matching upstream partial).
+- Live rendered file in volume still has 4× `dev` + `is_allowed_circuit_id = 963` (untouched).
+- Prover container kept running through this change with no restart.
