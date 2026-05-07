@@ -217,6 +217,7 @@ fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
             if exit_code != 0 {
                 fail "exit with code %d", exit_code
             }
+            printf "Program exited successfully (exit with code 0).\n"
             // set stop signal to terminate execution
             new_pc = MAX_UINT_64
         }

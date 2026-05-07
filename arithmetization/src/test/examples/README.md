@@ -38,16 +38,17 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
 ```bash
 zkc-test() {
+    local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
         clean-all)
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" clean-all
+            make -f "$makefile" clean-all
             ;;
         exec|debug|compile|clean)
             local target="$1"; shift
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" "$target" TEST="$1" "${@:2}"
+            make -f "$makefile" "$target" TEST="$1" "${@:2}"
             ;;
         *)
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" TEST="$1" "${@:2}"
+            make -f "$makefile" TEST="$1" "${@:2}"
             ;;
     esac
 }
@@ -97,7 +98,7 @@ zkc-test blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
 | `SP`             | `0x087fffff`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
-| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp and mathch ELF ones       |
+| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones        |
 
 ## Target ISA
 

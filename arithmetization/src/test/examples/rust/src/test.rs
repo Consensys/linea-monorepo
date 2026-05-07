@@ -11,8 +11,11 @@ core::arch::global_asm!(
 
 #[no_mangle]
 fn main() -> ! {
-    let r = add(2, 7);
-    exit(r) // no OS to return to, signal halt via ecall
+    let r = add(1, 1);
+    if r != 2 {
+        exit(1); // test failed
+    }
+    exit(0) // test passed
 }
 
 fn add(op1: u8, op2: u8) -> u16 {
@@ -20,13 +23,12 @@ fn add(op1: u8, op2: u8) -> u16 {
     r
 }
 
-fn exit(r: u16) -> ! {
+fn exit(code: i32) -> ! {
     unsafe {
         core::arch::asm!(
-            "mv a0, {0}",  // exit code
-            "li a7, 93",   // syscall number for exit
             "ecall",
-            in(reg) r,
+            in("a0") code, // exit code
+            in("a7") 93i32, // syscall number for exit (93)
             options(noreturn)
         );
     }

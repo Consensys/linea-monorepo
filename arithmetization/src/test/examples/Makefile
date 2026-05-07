@@ -91,15 +91,16 @@ zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	rm -f $(BIN) $(JSON) $(BIN)_disassembled.txt
+	rm -f $(BIN) $(JSON) $(BIN)_disassembled.txt $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/target/
-	rm -f $(LINKER_SCRIPT)
+	rm -f  $(LINKER_SCRIPT)
 
+# Generate the linker script with the specified memory layout
 $(LINKER_SCRIPT):
 	@echo "ENTRY(_start)" > $@
 	@echo "" >> $@
@@ -135,6 +136,7 @@ $(LINKER_SCRIPT):
 	@echo "    _input_start = ORIGIN(IN);" >> $@
 	@echo "}" >> $@
 
+# Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
 verify-elf: $(BIN)
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
