@@ -556,10 +556,10 @@ Run:
 
 ```bash
 em_dash="$(printf '\342\200\224')"
-rg -n "T[B]D|T[O]DO|N[E]EDS VERIFICATION|${em_dash}" .agents/skills/squash-bugbot/SKILL.md AGENTS.md CLAUDE.md .cursor/rules/documentation.mdc docs/superpowers/specs/2026-05-07-squash-bugbot-local-tooling-design.md docs/superpowers/plans/2026-05-07-squash-bugbot-local-tooling.md
+git diff --unified=0 origin/main -- .agents/skills/squash-bugbot/SKILL.md AGENTS.md CLAUDE.md .cursor/rules/documentation.mdc docs/superpowers/specs/2026-05-07-squash-bugbot-local-tooling-design.md docs/superpowers/plans/2026-05-07-squash-bugbot-local-tooling.md | rg -n "^\+.*(T[B]D|T[O]DO|N[E]EDS VERIFICATION|${em_dash})"
 ```
 
-Expected: command exits 1 with no matches.
+Expected: command exits 1 with no matches. This checks newly added lines only, so pre-existing text in touched files does not fail validation.
 
 - [ ] **Step 6: Review final status**
 
