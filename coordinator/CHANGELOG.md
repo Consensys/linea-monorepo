@@ -1,3 +1,8 @@
+## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Bumping coordinator version to v0.2.1
 ## [0.2.0] - 2026-05-06
 
 ### 🚀 Features

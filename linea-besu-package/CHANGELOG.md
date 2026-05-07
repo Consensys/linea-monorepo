@@ -1,4 +1,8 @@
 ## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- *(linea-besu)* Bumping version to v1.4.1
 ## [1.4.0] - 2026-05-06
 ### Testing comments
 
