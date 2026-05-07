@@ -2,7 +2,7 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(coordinator)* Bumping coordinator version to v0.2.1
+- *(coordinator)* Bumping coordinator version to v0.2.1 for testing
 ## [0.2.0] - 2026-05-06
 
 ### 🚀 Features
