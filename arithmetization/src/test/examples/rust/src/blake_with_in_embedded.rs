@@ -15,15 +15,9 @@ use core::result::Result;
 use core::result::Result::Err;
 use core::result::Result::Ok;
 
+include!("custom_std.rs");
 include!("blake_core.rs");
 include!("blake_test_vectors.rs");
-
-core::arch::global_asm!(
-    ".global _start",
-    "_start:",
-    "la sp, _stack_start", // SP start address from linker script
-    "call main",
-);
 
 #[no_mangle]
 fn main() -> ! {
@@ -37,21 +31,4 @@ fn main() -> ! {
     };
 
     exit(code);
-}
-
-fn exit(code: i32) -> ! {
-    unsafe {
-        core::arch::asm!(
-            "ecall",
-            in("a0") code, // exit code
-            in("a7") 93i32, // syscall number for exit (93)
-            options(noreturn)
-        );
-    }
-}
-
-// required by the compiler
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    exit(3);
 }
