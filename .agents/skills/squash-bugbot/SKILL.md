@@ -62,6 +62,33 @@ If either command fails, stop with:
 Error: `gh` CLI is not available or not authenticated. Run `gh auth login` first.
 ```
 
+## Step 2.5: Check Local Git State and PR Head
+
+Check the local git state before assessing comments or taking actions:
+
+```bash
+git status --short --branch
+```
+
+If unrelated staged changes already exist, stop and ask the user before applying fixes. Use the status output to record files with local changes. Before editing an approved target file, if that file already contains unrelated local changes, stop and ask whether to preserve, include, or skip those changes.
+
+Fetch PR head metadata:
+
+```bash
+gh pr view {PR_NUMBER} --json headRefName,headRepositoryOwner,headRepository,headRefOid
+```
+
+Compare the PR head metadata with the current checkout using:
+
+```bash
+git branch --show-current
+git rev-parse HEAD
+git rev-parse --abbrev-ref --symbolic-full-name @{u}
+git rev-parse @{u}
+```
+
+Confirm the local branch matches `headRefName`, the upstream or matching remote branch belongs to `headRepositoryOwner` and `headRepository`, and local `HEAD` or upstream matches `headRefOid`. If the local checkout does not match the PR head, stop before applying fixes and ask whether to switch or update the checkout, or continue report-only.
+
 ## Step 3: Fetch Comments
 
 Fetch all three data sources. Run independent fetches in parallel when the agent environment supports parallel tool calls.
@@ -194,26 +221,35 @@ Do not edit files, commit, push, reply, or resolve threads without the user's an
 For each approved fix:
 
 1. Edit only the file or files required for that specific fix.
-2. Stage only those files:
+2. Before editing each target file, re-check whether it has unrelated local changes. If it does, stop and ask before continuing.
+3. Stage only the approved files for that fix:
 
 ```bash
 git add path/to/file1 path/to/file2
 ```
 
-3. Do not use `git add .`.
-4. Commit with:
+4. Do not use `git add .`.
+5. Verify the staged files:
+
+```bash
+git diff --cached --name-only
+```
+
+If any staged file is not approved for that fix, stop and ask the user to clear or handle unrelated staged changes.
+
+6. Commit with:
 
 ```bash
 git commit -m "fix(misc): address {bot-name} feedback in {file}"
 ```
 
-5. Capture the commit SHA:
+7. Capture the commit SHA:
 
 ```bash
 git rev-parse HEAD
 ```
 
-6. Build the commit URL:
+8. Build the commit URL:
 
 ```text
 https://github.com/{owner}/{repo}/commit/{sha}
