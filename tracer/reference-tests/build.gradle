@@ -33,6 +33,23 @@ configurations.configureEach {
   exclude module: 'log4j-slf4j2-impl'
 }
 
+// This mimics the JVM args used in the linea-tracer plugin's test task, to exclude // on besu side "'-Xss4m',"
+tasks.withType(Test).configureEach {
+  minHeapSize = "256m"
+  maxHeapSize = System.getenv().containsKey("CI") ? "32g" : "8g"
+  jvmArgs = [
+    //    '-XX:-UseGCOverheadLimit',
+    //    '-Xlog:gc',
+    // Mockito and jackson-databind do some strange reflection during tests.
+    // This suppresses an illegal access warning.
+    '-Xss4m',
+    '--add-opens',
+    'java.base/java.util=ALL-UNNAMED',
+    '--add-opens',
+    'java.base/java.util.concurrent=ALL-UNNAMED'
+  ]
+}
+
 tasks.register("downloadExecutionSpecFixtures", Download) {
   src "https://github.com/ethereum/execution-spec-tests/releases/download/v5.3.0/fixtures_develop.tar.gz"
   dest "./build/fixtures_develop.tar.gz"
