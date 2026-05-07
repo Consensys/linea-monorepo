@@ -75,7 +75,7 @@ The workflow:
 9. Presents a consolidated report with file, line, comment link, concern, verdict, reasoning, and proposed fix.
 10. Asks before applying a valid fix, dismissing an invalid comment, or deciding an uncertain comment.
 11. For each applied fix, edits only the required file or files, stages only those files, and creates one scoped commit.
-   Use a repository-compatible Conventional Commit message: `fix(squash-bugbot): address {bot-name} feedback in {file}`.
+   Use a repository-compatible Conventional Commit message: `fix(misc): address {bot-name} feedback in {file}`.
 12. Replies to the relevant PR thread or issue comment with the decision and commit link when applicable.
 13. Resolves review threads through the GraphQL `resolveReviewThread` mutation when applicable.
 14. Pushes once after all selected actions.
