@@ -42,10 +42,9 @@ fn main() -> ! {
 fn exit(code: i32) -> ! {
     unsafe {
         core::arch::asm!(
-            "mv a0, {0}",  // exit code
-            "li a7, 93",   // syscall number for exit
             "ecall",
-            in(reg) code,
+            in("a0") code, // exit code
+            in("a7") 93i32, // syscall number for exit (93)
             options(noreturn)
         );
     }
