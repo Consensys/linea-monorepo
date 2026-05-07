@@ -37,7 +37,7 @@ IN_BYTES_OFFSET ?= 0x08800000        # 1 GiB   (0x08800000 -> 0x48FFFFFF)
 ENTRY_POINT     := $(PROGRAM_OFFSET) # Since program starts from _start, the entry point is the same as the program offset
 SP              ?= 0x087fffff        # 8 MiB   (0x08000000 <- 0x087fffff)
 
-# Parsed values are just to verify that the generate ELF is correct
+# Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
 IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
