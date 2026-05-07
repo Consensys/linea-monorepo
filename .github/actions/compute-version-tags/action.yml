@@ -29,6 +29,6 @@ runs:
         else
           # Use HEAD instead of GITHUB_SHA because we want the latest commit hash after potential CHANGELOG.md update commit
           echo "COMMIT_TAG=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
-          echo LAST_COMMIT_TAG=$(git rev-parse --short=7 HEAD~1") >> $GITHUB_OUTPUT
+          echo LAST_COMMIT_TAG=$(git rev-parse --short=7 HEAD~1) >> $GITHUB_OUTPUT
         fi
         echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT
