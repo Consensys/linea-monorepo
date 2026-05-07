@@ -9,7 +9,11 @@ concurrency:
 
 jobs:
   upload-component-changelog:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request &&
+      github.event.pull_request.head.repo.fork == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false
@@ -38,7 +42,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           # git-cliff needs full history + tags to compute changelog/version
-          # and also check out the PR branch so we can push back to it
           ref: ${{ github.head_ref }}
           fetch-depth: 0
           fetch-tags: true

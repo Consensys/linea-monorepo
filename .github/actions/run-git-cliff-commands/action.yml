@@ -95,6 +95,7 @@ runs:
     
     - name: Generate ${{ inputs.component-name }} unreleased or latest changelog
       id: changelog
+      if: steps.version.outputs.changed == 'true'
       env:
         COMPONENT: ${{ inputs.component-name }}
         CLIFF_CONFIG: ${{ inputs.cliff-config }}

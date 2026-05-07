@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
   actions: read
   security-events: write
   packages: write
@@ -26,6 +26,8 @@ jobs:
   
   component-changelog-commit:
     needs: [component-changelog-upload]
+    permissions:
+      contents: write
     uses: ./.github/workflows/component-changelog-commit.yml
 
   filter-commit-changes:

@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.ref_name }}
-          #fetch-depth: 2   # need at least 2 commits so HEAD~1 resolves later would not fail on compute-version-tags, not CI stopper so optional
+          fetch-depth: 2   # need at least 2 commits so HEAD~1 resolves later would not fail on compute-version-tags
 
       - name: Compute version tags
         id: compute_version_tags
