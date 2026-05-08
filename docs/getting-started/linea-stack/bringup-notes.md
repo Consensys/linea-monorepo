@@ -16,10 +16,9 @@ This is **not** final success yet. Current caveats:
 
 - coordinator still logs `address already reserved` during L1 submissions, likely because v0 uses one L1 account for concurrent blob/data-submission and aggregation/finalization roles;
 - aggregation/finalization can temporarily revert with starting-root mismatches while the stack catches up, so progress must be judged by `lastFinalizedBlockNumber` advancing, not by a single revert;
-- L2 Blockscout is API-only in this scaffold. `localhost:4000/api/v2/...` works, but `localhost:4000/` returns `404` because the Blockscout frontend container is not deployed;
 - a documented L1-to-L2 bridge/message smoke test is still needed before this can be called finished.
 
-Next work should focus on separating or serializing L1 signer roles, adding the Blockscout frontend, and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
+Next work should focus on separating or serializing L1 signer roles and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
 
 ## Historical fix log
 
@@ -39,7 +38,7 @@ Issues hit during the first `docker compose up -d` passes and what we did about 
 | 10 | deploy-contracts bind-mounts whole monorepo | pnpm workspace catalog resolution needs the full tree |
 | 11 | --frozen-lockfile → --no-frozen-lockfile | Lockfile mismatch in container env |
 | 12 | Foundry auto-installs in deploy-contracts container | Hardhat config requires `forge` |
-| 16 | L2 Blockscout: dropped `BLOCK_TRANSFORMER=clique` from `config/explorer/l2-blockscout.env`; removed dead `clique` config block from L2 genesis; replaced clique-format extraData with `0x`; added `"ethash": {}` (Besu won't accept a chain config with no consensus mechanism — TTD=0 makes the merge happen at block 0, exactly as L1 does); commented out PoA-only `poa-block-txs-selection-max-time` in `sequencer.config.toml`; flipped `INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER` to `true` (Linea Besu doesn't expose `txpool_content`). | The `BLOCK_TRANSFORMER=clique` env caused `Indexer.Transform.Blocks.Clique.recover_pub_key/2` to crash on every block: `LineaExtraDataPlugin` writes custom gas-pricing bytes, not a 65-byte clique seal. After fix: zero `recover_pub_key`/MatchError occurrences in logs; L2 Blockscout indexes blocks/txs/logs cleanly. **Note:** `localhost:4000/` returns 404 — Blockscout 7.x splits the UI into a separate frontend container that this scaffold does not deploy (same on L1 at `:4001`). API at `/api/v2/blocks` returns 200 and is queryable. Frontend container is a separate scaffold gap, not part of this fix. |
+| 16 | L2 Blockscout: dropped `BLOCK_TRANSFORMER=clique` from `config/explorer/l2-blockscout.env`; removed dead `clique` config block from L2 genesis; replaced clique-format extraData with `0x`; added `"ethash": {}` (Besu won't accept a chain config with no consensus mechanism — TTD=0 makes the merge happen at block 0, exactly as L1 does); commented out PoA-only `poa-block-txs-selection-max-time` in `sequencer.config.toml`; flipped `INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER` to `true` (Linea Besu doesn't expose `txpool_content`). | The `BLOCK_TRANSFORMER=clique` env caused `Indexer.Transform.Blocks.Clique.recover_pub_key/2` to crash on every block: `LineaExtraDataPlugin` writes custom gas-pricing bytes, not a 65-byte clique seal. After fix: zero `recover_pub_key`/MatchError occurrences in logs; L2 Blockscout indexes blocks/txs/logs cleanly. At this point only the API was wired; the frontend was added later in #47. |
 
 ## Sepolia migration — Phase 1 (mechanical surgery), 2026-05-07
 
@@ -469,6 +468,10 @@ The current quickstart intentionally uses one Sepolia-funded key for every L1 ro
 
 Before calling v0 stable, either split those roles across distinct funded L1 accounts or serialize the relevant coordinator submissions so a single-key quickstart does not rely on noisy retries.
 
-**Open caveat — L2 Blockscout UI is missing** (#47)
+**L2 Blockscout frontend — fixed** (#47)
 
-The `l2-blockscout` service indexes and serves the API, but it is not a full explorer UI. `http://localhost:4000/api/v2/blocks` is queryable, while `http://localhost:4000/` returns `404`. Blockscout 7.x separates the backend/API from the frontend; the quickstart needs a frontend container wired to the existing backend before users can browse the L2 chain visually.
+Added `l2-blockscout-frontend` using the official Blockscout frontend image, pinned by digest in `versions.env`, and exposed it on `http://localhost:4001`.
+
+The frontend uses `NEXT_PUBLIC_USE_NEXT_JS_PROXY=true` and points `NEXT_PUBLIC_API_HOST` at the Docker service name `l2-blockscout:4000`, so server-side startup work and browser API traffic both reach the existing backend. Optional marketplace/ad/gas/web3 widgets are disabled to keep the local explorer minimal.
+
+Verification on the live stack: frontend env validation passed, sitemap generation fetched `/api/v2/{addresses,transactions,blocks,tokens,smart-contracts}` successfully from `l2-blockscout:4000`, `curl -I http://127.0.0.1:4001` returned `200 OK`, and the backend returned current indexed L2 blocks.

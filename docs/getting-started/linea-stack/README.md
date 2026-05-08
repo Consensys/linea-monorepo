@@ -10,7 +10,7 @@
 >
 > This is a bring-up checkpoint, not a final "done" stamp: L1 submissions still
 > show a nonce/contention caveat (`address already reserved`) and the bundled
-> Blockscout service exposes the L2 API only, not the explorer UI.
+> Blockscout now exposes both an L2 API backend and a frontend explorer UI.
 >
 > If you boot this and hit something
 > [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
@@ -62,7 +62,7 @@
 
 A Docker Compose stack with Linea Besu sequencer, Maru consensus, L2 RPC
 follower, Shomei state manager, coordinator, postman, web3signer, prover, and an
-L2 Blockscout API backend. All L1 traffic goes through **your Sepolia RPC**.
+L2 Blockscout API backend and frontend explorer UI. All L1 traffic goes through **your Sepolia RPC**.
 
 What you get from `docker compose up`: a live local L2 chain, fresh Linea
 contracts deployed to Sepolia from your address, and a coordinator/prover path
@@ -75,8 +75,6 @@ What this is **NOT**:
   to dev proofs; partial proving is opt-in for validation runs.
 - No L1 explorer — use [sepolia.etherscan.io](https://sepolia.etherscan.io)
   with the LineaRollup address from `addresses.json`.
-- No L2 Blockscout UI yet — the API backend runs, but `/` returns `404` until a
-  separate Blockscout frontend container is added.
 - No Timelock, no Security Council. The L1 deployer key owns everything.
   Governance/upgrade flows are out of scope.
 
@@ -167,7 +165,8 @@ submission logs.
 |---------|-----|------|
 | L2 RPC (HTTP) | http://localhost:8745 | end-user RPC (l2-node-besu); use this from wallets/SDKs |
 | L2 RPC (WS)   | ws://localhost:8746  | |
-| L2 Blockscout API | http://localhost:4000/api/v2/blocks | API works. Explorer UI is a known gap: `/` returns `404` because Blockscout 7.x needs a separate frontend container. |
+| L2 Blockscout UI | http://localhost:4001 | Frontend explorer for the local L2 chain. |
+| L2 Blockscout API | http://localhost:4000/api/v2/blocks | Backend API used by the frontend. |
 | Coordinator   | http://localhost:9545 | observability + JSON-RPC; use `./scripts/status.sh` to check whether `9545`/`9546` are listening. |
 | Postman       | http://localhost:9090 | |
 | Web3signer    | http://localhost:9000 | mTLS only — won't respond to plain HTTP |
@@ -209,6 +208,9 @@ curl -s -X POST -H "Content-Type: application/json" \
 
 # L2 Blockscout indexing?
 curl -s http://localhost:4000/api/v2/main-page/blocks | head -c 200
+
+# L2 Blockscout frontend responding?
+curl -fsS http://localhost:4001 >/dev/null
 
 # LineaRollup deployed on Sepolia?
 docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
@@ -268,6 +270,7 @@ All host ports are env-driven. Set them in `.env`:
 ```bash
 HOST_PORT_L2_RPC=8745
 HOST_PORT_L2_BLOCKSCOUT=4000
+HOST_PORT_L2_BLOCKSCOUT_FRONTEND=4001
 # ... see .env.example for the full list
 ```
 
@@ -361,7 +364,7 @@ nonce has advanced.
 | Coordinator restarts on first boot | usually a race against shomei's first-block trace; self-heals within ~30s | If it persists past 1 min, check `docker logs coordinator`; see fix log entries on web3signer mTLS |
 | Web3signer mTLS handshake errors | known-clients fingerprint out of sync (only after regenerating one side) | Regenerate both sides or restore from git |
 | Prover execution proofs exit `137` or files get `.large.failure.code_137` | partial prover ran under too little Docker memory | Use default `PROVER_DEV_OVERRIDE=true`, or raise Docker memory substantially before partial-mode validation |
-| Port collision (5432, 8745, 4000, 9000, 3001, 9091) | Another service uses the port | Override via `HOST_PORT_*` in `.env` |
+| Port collision (5432, 8745, 4000, 4001, 9000, 3001, 9091) | Another service uses the port | Override via `HOST_PORT_*` in `.env` |
 
 ### Inspecting
 
@@ -408,8 +411,6 @@ notes.
   EOA. Governance/upgrade flows = v1.
 - **No full prover.** >700 GB RAM is out of scope.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
-- **No L2 Blockscout UI yet.** The API container indexes blocks, but the explorer
-  frontend is not wired into the stack.
 - **No stable L1-submission story yet.** The observed run submits L1 blob and
   aggregation transactions, but the single-key setup still produces
   `address already reserved` retries.
@@ -441,7 +442,8 @@ deploy-contracts         (init, node:24, runs Hardhat)
 coordinator-pg           (postgres)
 postman-pg               (postgres)
 blockscout-l2-pg         (postgres)
-l2-blockscout            (blockscout/blockscout, API only)
+l2-blockscout            (blockscout/blockscout, API backend)
+l2-blockscout-frontend   (ghcr.io/blockscout/frontend, explorer UI)
 ```
 
 > Observability stack (prometheus / loki / promtail / grafana) was dropped in

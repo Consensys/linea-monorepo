@@ -51,6 +51,8 @@
 .cursor/*
 !.cursor/BUGBOT.md
 !.cursor/rules/
+# Ignore .codex config but commit shared team skills/rules etc.
+.codex/config.toml
 
 atlassian-ide-plugin.xml
 circuit.bin

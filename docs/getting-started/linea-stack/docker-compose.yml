@@ -3,7 +3,7 @@
 #
 # L2 stack (Linea Besu sequencer + Maru consensus + l2-node-besu + coordinator
 # + postman + shomei + web3signer + prover) pointed at user-supplied Sepolia L1
-# RPC. Plus an L2 Blockscout API backend; the explorer UI is not wired yet.
+# RPC. Plus an L2 Blockscout API backend and frontend explorer UI.
 #
 # See README.md in this directory for the full operator guide.
 # Image tags are pinned in versions.env. User-supplied L1 secrets in .env.
@@ -720,5 +720,48 @@ services:
       - ./config/l2/genesis-init/genesis-besu.json:/app/genesis.json:ro
     ports:
       - "${HOST_PORT_L2_BLOCKSCOUT:-4000}:4000"
+    networks: [linea]
+
+  l2-blockscout-frontend:
+    image: ${BLOCKSCOUT_FRONTEND_IMAGE}
+    container_name: l2-blockscout-frontend
+    hostname: l2-blockscout-frontend
+    profiles: *default-profiles
+    depends_on:
+      l2-blockscout:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_APP_PROTOCOL: http
+      FAVICON_MASTER_URL: "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%23121422%22/%3E%3Cpath d=%22M18 16h28v9H28v8h15v8H28v7H18z%22 fill=%22%2361DFFF%22/%3E%3C/svg%3E"
+      NEXT_PUBLIC_APP_HOST: localhost
+      NEXT_PUBLIC_APP_PORT: ${HOST_PORT_L2_BLOCKSCOUT_FRONTEND:-4001}
+      NEXT_PUBLIC_APP_ENV: development
+      NEXT_PUBLIC_APP_INSTANCE: linea-stack-local
+      NEXT_PUBLIC_NETWORK_NAME: "Local Linea"
+      NEXT_PUBLIC_NETWORK_SHORT_NAME: Linea
+      NEXT_PUBLIC_NETWORK_ID: "1337"
+      NEXT_PUBLIC_NETWORK_RPC_URL: http://localhost:${HOST_PORT_L2_RPC:-8745}
+      NEXT_PUBLIC_NETWORK_CURRENCY_NAME: Ether
+      NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL: ETH
+      NEXT_PUBLIC_NETWORK_CURRENCY_DECIMALS: "18"
+      NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: validation
+      NEXT_PUBLIC_IS_TESTNET: "true"
+      NEXT_PUBLIC_API_PROTOCOL: http
+      NEXT_PUBLIC_API_HOST: l2-blockscout
+      NEXT_PUBLIC_API_PORT: "4000"
+      NEXT_PUBLIC_API_BASE_PATH: /
+      NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: ws
+      NEXT_PUBLIC_USE_NEXT_JS_PROXY: "true"
+      NEXT_PUBLIC_HOMEPAGE_STATS: '["total_blocks","total_txs","wallet_addresses"]'
+      NEXT_PUBLIC_HOMEPAGE_CHARTS: '[]'
+      NEXT_PUBLIC_ADVANCED_FILTER_ENABLED: "false"
+      NEXT_PUBLIC_MARKETPLACE_ENABLED: "false"
+      NEXT_PUBLIC_AD_BANNER_PROVIDER: none
+      NEXT_PUBLIC_AD_TEXT_PROVIDER: none
+      NEXT_PUBLIC_GAS_TRACKER_ENABLED: "false"
+      NEXT_PUBLIC_HIDE_INDEXING_ALERT_INT_TXS: "true"
+      NEXT_PUBLIC_WEB3_WALLETS: none
+    ports:
+      - "${HOST_PORT_L2_BLOCKSCOUT_FRONTEND:-4001}:3000"
     networks: [linea]
 
