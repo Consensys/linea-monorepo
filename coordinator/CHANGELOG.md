@@ -11,7 +11,7 @@
 
 ### 🐛 Bug Fixes
 
-- *(coordinator)* Bumping coordinator version to v0.2.5
+- *(coordinator)* Bumping coordinator version to v0.2.5 for testing
 ## [0.2.4] - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks
