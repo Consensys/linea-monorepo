@@ -1,0 +1,54 @@
+package template
+
+import _ "embed"
+
+//go:embed doc.go.tmpl
+var DocTemplate string
+
+//go:embed cgo.go.tmpl
+var CgoTemplate string
+
+//go:embed fr.go.tmpl
+var FrTemplate string
+
+//go:embed fr_stub.go.tmpl
+var FrStubTemplate string
+
+//go:embed fr_test.go.tmpl
+var FrTestTemplate string
+
+//go:embed fft.go.tmpl
+var FFTTemplate string
+
+//go:embed fft_stub.go.tmpl
+var FFTStubTemplate string
+
+//go:embed fft_test.go.tmpl
+var FFTTestTemplate string
+
+//go:embed msm.go.tmpl
+var MSMTemplate string
+
+//go:embed msm_stub.go.tmpl
+var MSMStubTemplate string
+
+//go:embed msm_test.go.tmpl
+var MSMTestTemplate string
+
+//go:embed kernels.go.tmpl
+var KernelsTemplate string
+
+//go:embed kernels_stub.go.tmpl
+var KernelsStubTemplate string
+
+//go:embed pinned_fr.go.tmpl
+var PinnedFrTemplate string
+
+//go:embed prove.go.tmpl
+var ProveTemplate string
+
+//go:embed prove_stub.go.tmpl
+var ProveStubTemplate string
+
+//go:embed plonk_test.go.tmpl
+var PlonkTestTemplate string

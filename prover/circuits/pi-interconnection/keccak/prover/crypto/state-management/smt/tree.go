@@ -5,7 +5,9 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 )
@@ -366,4 +368,129 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 	hasher := config.HashFunc()
 	tree.Root = hashLR(hasher, currLevels[0], currLevels[1])
 	return tree
+}
+
+// BuildCompleteMiMC builds a complete Merkle tree using the BLS12-377 MiMC
+// field hasher. It is equivalent to BuildComplete(leaves, hashtypes.MiMC), but
+// avoids the generic hash.Hash byte interface on the Vortex prover hot path.
+func BuildCompleteMiMC(leaves []types.Bytes32) *Tree {
+	numLeaves := len(leaves)
+
+	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
+		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
+	}
+
+	depth := utils.Log2Ceil(numLeaves)
+	config := &Config{HashFunc: hashtypes.MiMC, Depth: depth}
+	tree := newEmptyTreeMiMC(config)
+	tree.OccupiedLeaves = leaves
+
+	nbTotalNodes := 0
+	for d := 1; d < depth; d++ {
+		nbTotalNodes += 1 << (depth - d)
+	}
+	arena := make([]types.Bytes32, nbTotalNodes)
+	offset := 0
+
+	type workerTask struct {
+		curr  []types.Bytes32
+		next  []types.Bytes32
+		start int
+		stop  int
+		wg    *sync.WaitGroup
+	}
+
+	workerCount := runtime.GOMAXPROCS(0)
+	if workerCount < 1 {
+		workerCount = 1
+	}
+
+	tasks := make(chan workerTask)
+	var workersWG sync.WaitGroup
+	workersWG.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			hasher := mimc.NewFieldHasher()
+			for task := range tasks {
+				for k := task.start; k < task.stop; k++ {
+					task.next[k] = hashLRMiMC(hasher, task.curr[2*k], task.curr[2*k+1])
+				}
+				task.wg.Done()
+			}
+			workersWG.Done()
+		}()
+	}
+
+	currLevels := leaves
+	for d := 1; d < depth; d++ {
+		levelSize := 1 << (depth - d)
+		nextLevel := arena[offset : offset+levelSize]
+
+		activeWorkers := workerCount
+		if levelSize < activeWorkers {
+			activeWorkers = levelSize
+		}
+
+		var levelWG sync.WaitGroup
+		levelWG.Add(activeWorkers)
+		for i := 0; i < activeWorkers; i++ {
+			start := i * levelSize / activeWorkers
+			stop := (i + 1) * levelSize / activeWorkers
+			tasks <- workerTask{
+				curr:  currLevels,
+				next:  nextLevel,
+				start: start,
+				stop:  stop,
+				wg:    &levelWG,
+			}
+		}
+		levelWG.Wait()
+
+		tree.OccupiedNodes[d-1] = nextLevel
+		currLevels = nextLevel
+		offset += levelSize
+	}
+
+	close(tasks)
+	workersWG.Wait()
+
+	if len(currLevels) != 2 {
+		utils.Panic("broken invariant : len(currLevels) != 2, =%v", len(currLevels))
+	}
+
+	hasher := mimc.NewFieldHasher()
+	tree.Root = hashLRMiMC(hasher, currLevels[0], currLevels[1])
+	return tree
+}
+
+func newEmptyTreeMiMC(conf *Config) *Tree {
+	emptyNodes := make([]types.Bytes32, conf.Depth-1)
+	prevNode := EmptyLeaf()
+	hasher := mimc.NewFieldHasher()
+
+	for i := range emptyNodes {
+		newNode := hashLRMiMC(hasher, prevNode, prevNode)
+		emptyNodes[i] = newNode
+		prevNode = newNode
+	}
+
+	root := hashLRMiMC(hasher, prevNode, prevNode)
+
+	return &Tree{
+		Config:         conf,
+		Root:           root,
+		OccupiedLeaves: make([]types.Bytes32, 0),
+		OccupiedNodes:  make([][]types.Bytes32, conf.Depth-1),
+		EmptyNodes:     emptyNodes,
+	}
+}
+
+func hashLRMiMC(hasher mimc.FieldHasher, nodeL, nodeR types.Bytes32) types.Bytes32 {
+	var elems [2]field.Element
+	elems[0].SetBytes(nodeL[:])
+	elems[1].SetBytes(nodeR[:])
+
+	hasher.Reset()
+	digest := hasher.SumElements(elems[:])
+	return digest.Bytes()
 }

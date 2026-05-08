@@ -19,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -29,6 +30,18 @@ import (
 
 	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
+
+type setupLoadResult struct {
+	setup circuits.Setup
+	err   error
+}
+
+type bw6SetupSelection struct {
+	circuitID                   circuits.CircuitID
+	setupPos                    int
+	bestSize                    int
+	bestAllowedVkForAggregation []string
+}
 
 func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	cf, err := collectFields(cfg, req)
@@ -52,17 +65,36 @@ func makeProof(
 		return makeDummyProof(cfg, publicInput, circuits.MockCircuitIDEmulation), nil
 	}
 
+	useGPU := gpu.IsAggregationEnabled()
+
+	bw6Selection, err := selectBw6Setup(cfg, cf)
+	if err != nil {
+		return "", fmt.Errorf("could not select the BW6 setup: %w", err)
+	}
+
+	bw6Setup := prefetchSetup(cfg, bw6Selection.circuitID, "BW6", useGPU)
+	bn254Setup := prefetchSetup(cfg, circuits.EmulationCircuitID, "BN254", useGPU)
+
 	piProof, piPublicWitness, err := makePiProof(cfg, cf)
 	if err != nil {
 		return "", fmt.Errorf("could not create the public input proof: %w", err)
 	}
 
-	proofBW6, setupPos, err := makeBw6Proof(cfg, cf, piProof, piPublicWitness, publicInput)
+	proofBW6, setupPos, err := makeBw6ProofWithSetup(
+		cfg,
+		cf,
+		piProof,
+		piPublicWitness,
+		publicInput,
+		&bw6Selection,
+		bw6Setup,
+		useGPU,
+	)
 	if err != nil {
 		return "", fmt.Errorf("error when running the BW6 proof: %w", err)
 	}
 
-	proofBn254, err := makeBn254Proof(cfg, setupPos, proofBW6, publicInput)
+	proofBn254, err := makeBn254Proof(cfg, setupPos, proofBW6, publicInput, bn254Setup, useGPU)
 	if err != nil {
 		return "", fmt.Errorf("error when running the Bn254 proof (aggregation setupPos=%v): %w", setupPos, err)
 	}
@@ -97,14 +129,26 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 	}
 }
 
-func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
+func makePiProof(
+	cfg *config.Config,
+	cf *CollectedFields,
+) (plonk.Proof, witness.Witness, error) {
+
+	// Aggregation phases (PI, BW6, BN254) only use the GPU prover when both a
+	// device is reachable and the operator opted in via $LINEA_PROVER_GPU_AGGREGATION.
+	// Compression is the only path GPU-on-by-default in this branch.
+	useGPU := gpu.IsAggregationEnabled()
 
 	var setup circuits.Setup
 	setupErr := make(chan error, 1)
 
 	go func() {
 		var err error
-		setup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+		var setupOpts []circuits.LoadSetupOption
+		if useGPU {
+			setupOpts = append(setupOpts, circuits.WithoutLagrangeSRS())
+		}
+		setup, err = circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID, setupOpts...)
 		setupErr <- err
 		close(setupErr)
 	}()
@@ -136,7 +180,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	proverOpts := emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 	verifierOpts := emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field())
 
-	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts)
+	proof, err := circuits.ProveCheck(&setup, &assignment, proverOpts, verifierOpts, circuits.WithGPU(useGPU))
 
 	return proof, w, err
 }
@@ -168,20 +212,12 @@ func makeDummyProof(cfg *config.Config, input string, circID circuits.MockCircui
 	return dummy.MakeProof(&setup, x, circID)
 }
 
-func makeBw6Proof(
-	cfg *config.Config,
-	cf *CollectedFields,
-	piProof plonk.Proof,
-	piPublicWitness witness.Witness,
-	publicInput string,
-) (proof plonk.Proof, setupPos int, err error) {
-
-	// This determines which is the best circuit to use for aggregation, we
-	// take the smallest circuit that has enough capacity.
+func selectBw6Setup(cfg *config.Config, cf *CollectedFields) (bw6SetupSelection, error) {
 
 	var (
 		numProofClaims              = len(cf.ProofClaims)
 		biggestAvailable            = 0
+		setupPos                    = 0
 		bestSize                    = math.MaxInt
 		bestAllowedVkForAggregation []string
 		errs                        []error
@@ -217,11 +253,11 @@ func makeBw6Proof(
 		setupPath := cfg.PathForSetup(string(circuitIDStr))
 		manifest, err := circuits.ReadSetupManifest(filepath.Join(setupPath, config.ManifestFileName))
 		if err != nil {
-			return nil, 0, fmt.Errorf("could not read the manifest for circuit %v: %w", circuitIDStr, err)
+			return bw6SetupSelection{}, fmt.Errorf("could not read the manifest for circuit %v: %w", circuitIDStr, err)
 		}
 		allowedVkForAggregation, err := manifest.GetStringArray("allowedVkForAggregationDigests")
 		if err != nil {
-			return nil, 0, fmt.Errorf("could not read the allowedVkForAggregationDigests: %w", err)
+			return bw6SetupSelection{}, fmt.Errorf("could not read the allowedVkForAggregationDigests: %w", err)
 		}
 		// Try to read circuit names (may not exist in older manifests)
 		allowedVkCircuitNames, _ := manifest.GetStringArray("allowedVkForAggregationCircuitNames")
@@ -255,14 +291,40 @@ func makeBw6Proof(
 		)
 
 		errs = append(errs, err)
-		return nil, 0, errors.Join(errs...)
+		return bw6SetupSelection{}, errors.Join(errs...)
 	}
 
-	logrus.Infof("reading the BW6 setup for %v proofs", bestSize)
 	c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), bestSize))
-	setup, err := circuits.LoadSetup(cfg, c)
+	return bw6SetupSelection{
+		circuitID:                   c,
+		setupPos:                    setupPos,
+		bestSize:                    bestSize,
+		bestAllowedVkForAggregation: bestAllowedVkForAggregation,
+	}, nil
+}
+
+func makeBw6ProofWithSetup(
+	cfg *config.Config,
+	cf *CollectedFields,
+	piProof plonk.Proof,
+	piPublicWitness witness.Witness,
+	publicInput string,
+	selection *bw6SetupSelection,
+	setupResult <-chan setupLoadResult,
+	useGPU bool,
+) (proof plonk.Proof, setupPos int, err error) {
+	if selection == nil {
+		s, err := selectBw6Setup(cfg, cf)
+		if err != nil {
+			return nil, 0, err
+		}
+		selection = &s
+	}
+
+	logrus.Infof("reading the BW6 setup for %v proofs", selection.bestSize)
+	setup, err := loadOrAwaitSetup(cfg, selection.circuitID, setupResult, "BW6")
 	if err != nil {
-		return nil, 0, fmt.Errorf("could not load the setup for circuit %v: %w", c, err)
+		return nil, 0, err
 	}
 
 	// Now, that we have selected "the best" setup to use to aggregate all the
@@ -270,13 +332,13 @@ func makeBw6Proof(
 	// not do it before because the "ordering" of the verifying keys can be
 	// circuit dependent. So, we needed to pick the circuit first.
 
-	AssignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
+	AssignCircuitIDToProofClaims(selection.bestAllowedVkForAggregation, cf.ProofClaims)
 
 	// Pre-flight check: validate that all assigned circuit IDs are allowed by
 	// the IsAllowedCircuitID bitmask BEFORE running the expensive BW6 prover.
 	// Without this check, disallowed circuits would only be caught inside the
 	// circuit constraints, producing a cryptic "assertIsEqual 0==1" error.
-	if err := validateCircuitIDsAllowed(cfg.Aggregation.IsAllowedCircuitID, cf.ProofClaims, cf.ProofClaimSources, bestAllowedVkForAggregation); err != nil {
+	if err := validateCircuitIDsAllowed(cfg.Aggregation.IsAllowedCircuitID, cf.ProofClaims, cf.ProofClaimSources, selection.bestAllowedVkForAggregation); err != nil {
 		return nil, 0, err
 	}
 
@@ -298,12 +360,12 @@ func makeBw6Proof(
 		ActualIndexes: pi_interconnection.InnerCircuitTypesToIndexes(&cfg.PublicInputInterconnection, cf.InnerCircuitTypes),
 	}
 
-	logrus.Infof("running the BW6 prover with aggregation setupPos=%v (aggregation-%v)", setupPos, bestSize)
-	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piInfo, piBW6)
+	logrus.Infof("running the BW6 prover with aggregation setupPos=%v (aggregation-%v)", selection.setupPos, selection.bestSize)
+	proofBW6, err := aggregation.MakeProof(&setup, selection.bestSize, cf.ProofClaims, piInfo, piBW6, useGPU)
 	if err != nil {
 		return nil, 0, fmt.Errorf("could not create BW6 proof: %w", err)
 	}
-	return proofBW6, setupPos, nil
+	return proofBW6, selection.setupPos, nil
 }
 
 func makeBn254Proof(
@@ -311,13 +373,13 @@ func makeBn254Proof(
 	setupPos int,
 	proofBw6 plonk.Proof,
 	publicInput string,
+	setupResult <-chan setupLoadResult,
+	useGPU bool,
 ) (proof plonk.Proof, err error) {
 
-	logrus.Infof("reading the BN254 setup from disk...")
-
-	setup, err := circuits.LoadSetup(cfg, circuits.EmulationCircuitID)
+	setup, err := loadOrAwaitSetup(cfg, circuits.EmulationCircuitID, setupResult, "BN254")
 	if err != nil {
-		return nil, fmt.Errorf("could not read the BN254 setup: %w", err)
+		return nil, err
 	}
 
 	logrus.Infof("running the prover for the BN254 circuit...")
@@ -330,12 +392,50 @@ func makeBn254Proof(
 
 	logrus.Infof("running the BN254 emulation prover with aggregation setupPos=%v", setupPos)
 
-	proofBn254, err := emulation.MakeProof(&setup, setupPos, proofBw6, piBn254)
+	proofBn254, err := emulation.MakeProof(&setup, setupPos, proofBw6, piBn254, useGPU)
 	if err != nil {
 		return nil, fmt.Errorf("(for Bn254) gnark's plonk Prover failed with error: %w", err)
 	}
 	return proofBn254, nil
 
+}
+
+func prefetchSetup(cfg *config.Config, circuitID circuits.CircuitID, label string, useGPU bool) <-chan setupLoadResult {
+	setupResult := make(chan setupLoadResult, 1)
+	go func() {
+		logrus.Infof("prefetching the %s setup from disk...", label)
+		var setupOpts []circuits.LoadSetupOption
+		if useGPU {
+			setupOpts = append(setupOpts, circuits.WithoutLagrangeSRS())
+		}
+		setup, err := circuits.LoadSetup(cfg, circuitID, setupOpts...)
+		setupResult <- setupLoadResult{setup: setup, err: err}
+		close(setupResult)
+	}()
+	return setupResult
+}
+
+func loadOrAwaitSetup(
+	cfg *config.Config,
+	circuitID circuits.CircuitID,
+	setupResult <-chan setupLoadResult,
+	label string,
+) (circuits.Setup, error) {
+	if setupResult == nil {
+		logrus.Infof("reading the %s setup from disk...", label)
+		setup, err := circuits.LoadSetup(cfg, circuitID)
+		if err != nil {
+			return circuits.Setup{}, fmt.Errorf("could not read the %s setup: %w", label, err)
+		}
+		return setup, nil
+	}
+
+	logrus.Infof("waiting for prefetched %s setup...", label)
+	result := <-setupResult
+	if result.err != nil {
+		return circuits.Setup{}, fmt.Errorf("could not read the prefetched %s setup: %w", label, result.err)
+	}
+	return result.setup, nil
 }
 
 // logAllowedVKs logs the allowed VKs for a given aggregation setup, with

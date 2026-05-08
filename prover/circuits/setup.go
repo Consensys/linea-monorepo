@@ -12,9 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/consensys/gnark"
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/backend/plonk"
 	plonk_bls12377 "github.com/consensys/gnark/backend/plonk/bls12-377"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
@@ -146,11 +148,35 @@ func (s *Setup) WriteTo(rootDir string) error {
 	return nil
 }
 
-func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
+// LoadSetupOption tweaks how LoadSetup reads the setup directory from disk.
+type LoadSetupOption func(*loadSetupConfig)
+
+type loadSetupConfig struct {
+	canonicalSRSOnly bool
+}
+
+// WithoutLagrangeSRS skips reading the Lagrange-form SRS from disk and only
+// loads the canonical SRS. The gpu/plonk2 prover does not need the Lagrange
+// SRS, so callers that have already chosen the GPU path can pass this option
+// to shave the Lagrange-SRS read (~17s for the 126M-constraint compression
+// circuit) off setup-load time.
+func WithoutLagrangeSRS() LoadSetupOption {
+	return func(c *loadSetupConfig) {
+		c.canonicalSRSOnly = true
+	}
+}
+
+func LoadSetup(cfg *config.Config, circuitID CircuitID, opts ...LoadSetupOption) (Setup, error) {
+
+	var setupCfg loadSetupConfig
+	for _, o := range opts {
+		o(&setupCfg)
+	}
 
 	gnarkutil.RegisterHintsAndGkrGates()
 
 	runtime.GC()
+	start := time.Now()
 
 	rootDir := cfg.PathForSetup(string(circuitID))
 	manifestPath := filepath.Join(rootDir, config.ManifestFileName)
@@ -190,9 +216,19 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 	if err != nil {
 		return Setup{}, fmt.Errorf("creating SRS provider: %w", err)
 	}
-	srsCanonical, srsLagrange, err := srsProvider.GetSRS(context.Background(), circuit)
-	if err != nil {
-		return Setup{}, fmt.Errorf("fetching SRS: %w", err)
+	var srsCanonical kzg.SRS
+	var srsLagrange kzg.SRS
+	if setupCfg.canonicalSRSOnly {
+		logrus.Infof("loading canonical SRS only (Lagrange SRS skipped — caller is using the GPU plonk2 prover)")
+		srsCanonical, err = srsProvider.GetCanonicalSRS(context.Background(), circuit)
+		if err != nil {
+			return Setup{}, fmt.Errorf("fetching canonical SRS: %w", err)
+		}
+	} else {
+		srsCanonical, srsLagrange, err = srsProvider.GetSRS(context.Background(), circuit)
+		if err != nil {
+			return Setup{}, fmt.Errorf("fetching SRS: %w", err)
+		}
 	}
 	pk := plonk.NewProvingKey(curveID)
 	var kzgVkFromVk, kzgVkFromSrs io.WriterTo
@@ -201,21 +237,27 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 		pk.Vk = vk.(*plonk_bn254.VerifyingKey)
 		srsC := srsCanonical.(*kzg254.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzg254.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzg254.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	case *plonk_bls12377.ProvingKey:
 		pk.Vk = vk.(*plonk_bls12377.VerifyingKey)
 		srsC := srsCanonical.(*kzg377.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzg377.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzg377.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	case *plonk_bw6761.ProvingKey:
 		pk.Vk = vk.(*plonk_bw6761.VerifyingKey)
 		srsC := srsCanonical.(*kzgbw6.SRS)
 		pk.Kzg = srsC.Pk
-		pk.KzgLagrange = srsLagrange.(*kzgbw6.SRS).Pk
+		if srsLagrange != nil {
+			pk.KzgLagrange = srsLagrange.(*kzgbw6.SRS).Pk
+		}
 		kzgVkFromVk = &pk.Vk.Kzg
 		kzgVkFromSrs = &srsC.Vk
 	default:
@@ -225,6 +267,14 @@ func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
 	if err = utils.WriterstoEqual(kzgVkFromSrs, kzgVkFromVk); err != nil {
 		return Setup{}, fmt.Errorf("verifying key <> SRS mismatch: %w", err)
 	}
+
+	logrus.Infof(
+		"loaded setup circuitID=%s curve=%s nbConstraints=%d duration=%s",
+		circuitID,
+		manifest.CurveID,
+		manifest.NbConstraints,
+		time.Since(start),
+	)
 
 	return Setup{
 		Manifest:     *manifest,

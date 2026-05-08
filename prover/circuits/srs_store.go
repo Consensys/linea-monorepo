@@ -102,40 +102,14 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 	sizeCanonical, sizeLagrange := plonk.SRSSize(ccs)
 	curveID := fieldToCurve(ccs.Field())
 
-	// find the canonical srs
-	var canonicalSRS kzg.SRS
-	for _, entry := range store.entries[curveID] {
-		if entry.isCanonical && entry.size >= sizeCanonical {
-			canonicalSRS = kzg.NewSRS(curveID)
-			data, err := os.ReadFile(entry.path)
-			if err != nil {
-				return nil, nil, err
-			}
-			if err := canonicalSRS.ReadDump(bytes.NewReader(data), sizeCanonical); err != nil {
-				return nil, nil, err
-			}
-			break
-		}
+	canonicalSRS, err := store.getCanonicalSRS(ctx, curveID, sizeCanonical)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if canonicalSRS == nil {
-		return nil, nil, fmt.Errorf("could not find canonical SRS for curve %s and size %d", curveID, sizeCanonical)
-	}
-
-	// find the lagrange srs
-	var lagrangeSRS kzg.SRS
-	for _, entry := range store.entries[curveID] {
-		if !entry.isCanonical && entry.size == sizeLagrange {
-			lagrangeSRS = kzg.NewSRS(curveID)
-			data, err := os.ReadFile(entry.path)
-			if err != nil {
-				return nil, nil, err
-			}
-			if err := lagrangeSRS.ReadDump(bytes.NewReader(data)); err != nil {
-				return nil, nil, err
-			}
-			break
-		}
+	lagrangeSRS, err := store.getLagrangeSRS(ctx, curveID, sizeLagrange)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if lagrangeSRS == nil {
@@ -144,7 +118,6 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 			panic("canonical SRS is smaller than lagrange SRS")
 		}
 		logrus.Debugf("computing lagrange SRS from canonical SRS %d -> %d\n", sizeCanonical, sizeLagrange)
-		var err error
 		lagrangeSRS, err = toLagrange(canonicalSRS, sizeLagrange)
 		if err != nil {
 			return nil, nil, err
@@ -152,6 +125,60 @@ func (store *SRSStore) GetSRS(ctx context.Context, ccs constraint.ConstraintSyst
 	}
 
 	return canonicalSRS, lagrangeSRS, nil
+}
+
+func (store *SRSStore) GetCanonicalSRS(ctx context.Context, ccs constraint.ConstraintSystem) (kzg.SRS, error) {
+	sizeCanonical, _ := plonk.SRSSize(ccs)
+	curveID := fieldToCurve(ccs.Field())
+	return store.getCanonicalSRS(ctx, curveID, sizeCanonical)
+}
+
+func (store *SRSStore) getCanonicalSRS(ctx context.Context, curveID ecc.ID, sizeCanonical int) (kzg.SRS, error) {
+	_ = ctx
+
+	// find the canonical srs
+	var canonicalSRS kzg.SRS
+	for _, entry := range store.entries[curveID] {
+		if entry.isCanonical && entry.size >= sizeCanonical {
+			canonicalSRS = kzg.NewSRS(curveID)
+			data, err := os.ReadFile(entry.path)
+			if err != nil {
+				return nil, err
+			}
+			if err := canonicalSRS.ReadDump(bytes.NewReader(data), sizeCanonical); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+
+	if canonicalSRS == nil {
+		return nil, fmt.Errorf("could not find canonical SRS for curve %s and size %d", curveID, sizeCanonical)
+	}
+
+	return canonicalSRS, nil
+}
+
+func (store *SRSStore) getLagrangeSRS(ctx context.Context, curveID ecc.ID, sizeLagrange int) (kzg.SRS, error) {
+	_ = ctx
+
+	// find the lagrange srs
+	var lagrangeSRS kzg.SRS
+	for _, entry := range store.entries[curveID] {
+		if !entry.isCanonical && entry.size == sizeLagrange {
+			lagrangeSRS = kzg.NewSRS(curveID)
+			data, err := os.ReadFile(entry.path)
+			if err != nil {
+				return nil, err
+			}
+			if err := lagrangeSRS.ReadDump(bytes.NewReader(data)); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+
+	return lagrangeSRS, nil
 }
 
 func toLagrange(srs kzg.SRS, sizeLagrange int) (kzg.SRS, error) {

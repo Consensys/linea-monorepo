@@ -1,0 +1,8 @@
+# CUDA build artifacts
+cuda/build/
+cuda/build-release/
+
+# Sandbox binary
+cuda/sandbox/sandbox
+
+plonk/tmp/plonk_cache
