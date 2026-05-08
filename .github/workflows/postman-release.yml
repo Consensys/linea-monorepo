@@ -39,5 +39,5 @@ jobs:
       folder-name: postman
       include-path: '"postman/**"'
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      draft_release: ${{ inputs.draft_release }}
-      pre_release: ${{ inputs.pre_release }}
+      draft_release: ${{ inputs.draft_release || false }}
+      pre_release: ${{ inputs.pre_release || true }}
