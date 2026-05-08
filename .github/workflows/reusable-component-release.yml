@@ -111,6 +111,7 @@ jobs:
 
   compute-docker-tag:
     needs: [compute-release-metadata, release-push-tag-changelog]
+    if: always() && needs.release-push-tag-changelog.result == 'success'
     uses: ./.github/workflows/reusable-component-docker-tag.yml
     with:
       version-prefix: ${{ needs.compute-release-metadata.outputs.release_version }}
@@ -118,7 +119,10 @@ jobs:
 
   build-and-publish-image-coordinator:
     needs: [compute-docker-tag]
-    if: ${{ inputs.component-name == 'coordinator' }}
+    if: |
+      always() && 
+      needs.compute-docker-tag.result == 'success' &&
+      inputs.component-name == 'coordinator'
     uses: ./.github/workflows/coordinator-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
@@ -129,7 +133,10 @@ jobs:
 
   build-and-publish-image-postman:
     needs: [compute-docker-tag]
-    if: ${{ inputs.component-name == 'postman' }}
+    if: |
+      always() && 
+      needs.compute-docker-tag.result == 'success' &&
+      inputs.component-name == 'postman'
     uses: ./.github/workflows/postman-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
@@ -140,7 +147,10 @@ jobs:
 
   build-and-publish-image-prover:
     needs: [compute-docker-tag]
-    if: ${{ inputs.component-name == 'prover' }}
+    if: |
+      always() && 
+      needs.compute-docker-tag.result == 'success' &&
+      inputs.component-name == 'prover'
     uses: ./.github/workflows/prover-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
@@ -151,7 +161,10 @@ jobs:
   
   build-and-publish-image-tx-exclusion-api:
     needs: [compute-docker-tag]
-    if: ${{ inputs.component-name == 'tx-exclusion-api' }}
+    if: |
+      always() && 
+      needs.compute-docker-tag.result == 'success' &&
+      inputs.component-name == 'tx-exclusion-api'
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
@@ -172,7 +185,7 @@ jobs:
 
   gh-release:
     needs: [compute-release-metadata, compute-docker-tag, check-builds]
-    if: needs.check-builds.outputs.any-success == 'true'
+    if: always() && needs.check-builds.outputs.any-success == 'true'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
