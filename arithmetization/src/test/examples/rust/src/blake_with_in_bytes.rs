@@ -20,28 +20,30 @@ include!("blake_core.rs");
 
 #[no_mangle]
 fn main() -> ! {
-    let (input_hex, expected_hex) = get_test_vector();
-    let input = hex_to_input(input_hex);
-    let expected = hex_to_expected(expected_hex);
+    let (input, expected) = get_test_vector();
 
-    let code = match blake2b_f_eip152(&input) {
-        Ok(result) if result == expected.as_slice() => 0, // success
-        Ok(_) => 1,                                       // wrong result
-        Err(_) => 2,                                      // compression failed
+    let code = match blake2b_f_eip152(input) {
+        Ok(result) if result == expected => 0, // success
+        Ok(_) => 1,                            // wrong result
+        Err(_) => 2,                           // compression failed
     };
 
     exit(code);
 }
 
-fn get_test_vector() -> (&'static str, &'static str) {
-    const INPUT_LEN: usize = 426; // 213 bytes as hex
-    const OUTPUT_LEN: usize = 128; // 64 bytes as hex
+fn get_test_vector() -> (&'static [u8], &'static [u8]) {
+    // NOTE: `main.go` already hex-decodes `IN_BYTES`, so RAM contains *raw*
+    // bytes — not ASCII hex. The lengths below count raw bytes,
+    // and we return byte slices straight from the buffer instead
+    // of running them back through `hex_to_input` / `hex_to_expected`.
+    const INPUT_LEN: usize = 213;
+    const OUTPUT_LEN: usize = 64;
     const TOTAL_LEN: usize = INPUT_LEN + OUTPUT_LEN;
     static mut BUF: [u8; TOTAL_LEN] = [0u8; TOTAL_LEN];
     unsafe {
         read_memory(&raw mut BUF as *mut u8, TOTAL_LEN);
-        let input = core::str::from_utf8_unchecked(&BUF[..INPUT_LEN]);
-        let expected = core::str::from_utf8_unchecked(&BUF[INPUT_LEN..INPUT_LEN + OUTPUT_LEN]);
+        let input = &BUF[..INPUT_LEN];
+        let expected = &BUF[INPUT_LEN..INPUT_LEN + OUTPUT_LEN];
         (input, expected)
     }
 }
