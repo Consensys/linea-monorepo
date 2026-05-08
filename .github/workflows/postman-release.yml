@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  compute-release-metadata:
+  component-release:
     uses: ./.github/workflows/reusable-component-release.yml
     with:
       component-name: postman
@@ -41,3 +41,4 @@ jobs:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       draft_release: ${{ inputs.draft_release || false }}
       pre_release: ${{ inputs.pre_release || true }}
+    secrets: inherit
