@@ -11,6 +11,7 @@ package maru.p2p
 import maru.crypto.SecpCrypto.privateKeyBytesWithoutPrefix
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1
+import org.ethereum.beacon.discovery.crypto.DefaultSigner
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
@@ -30,9 +31,9 @@ object ENR {
     return NodeRecordBuilder()
       .nodeRecordFactory(factory)
       .seq(seq)
-      .secretKey(secretKey)
+      .signer(DefaultSigner(secretKey))
       .address(ipv4, ipv4UdpPort, ipv4TcpPort)
       .build()
-      .apply { sign(secretKey) }
+      .apply { sign(DefaultSigner(secretKey)) }
   }
 }

@@ -30,6 +30,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.ethereum.beacon.discovery.crypto.DefaultSigner
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
@@ -82,7 +83,7 @@ class MaruDiscoveryServiceTest {
       NodeRecordBuilder()
         .nodeRecordFactory(NodeRecordFactory(IdentitySchemaInterpreter.V4))
         .seq(1)
-        .secretKey(keyPair.secretKey())
+        .signer(DefaultSigner(keyPair.secretKey()))
     if (forkIdHash != null) {
       nrBuilder.customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHash))
     }

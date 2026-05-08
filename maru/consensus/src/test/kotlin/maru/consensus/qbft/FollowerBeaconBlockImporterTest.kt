@@ -19,6 +19,7 @@ import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.executionlayer.manager.LatestBlockMetadata
 import maru.executionlayer.manager.PayloadStatus
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -227,7 +228,8 @@ class FollowerBeaconBlockImporterTest {
     override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> =
       SafeFuture.completedFuture(DataGenerators.randomExecutionPayload())
 
-    override fun getLatestBlockHash(): SafeFuture<ByteArray> = SafeFuture.completedFuture(Random.nextBytes(32))
+    override fun getLatestBlockMetadata(): SafeFuture<LatestBlockMetadata> =
+      SafeFuture.completedFuture(LatestBlockMetadata(blockHash = Random.nextBytes(32), timestamp = 0UL))
 
     override fun isOnline(): SafeFuture<Boolean> = SafeFuture.completedFuture(true)
 

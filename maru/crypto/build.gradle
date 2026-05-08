@@ -10,12 +10,12 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-crypto-services")
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
-  implementation "io.tmio:tuweni-bytes"
+  implementation "io.consensys.tuweni:tuweni-bytes"
 
   testFixturesImplementation "io.libp2p:jvm-libp2p"
   testFixturesImplementation "tech.pegasys.teku.internal:p2p"
   testFixturesImplementation "build.linea.internal:kotlin"
-  testFixturesImplementation "io.tmio:tuweni-bytes"
+  testFixturesImplementation "io.consensys.tuweni:tuweni-bytes"
   testFixturesImplementation "org.hyperledger.besu.internal:besu-crypto-algorithms"
   testFixturesImplementation "org.hyperledger.besu.internal:besu-crypto-services"
 

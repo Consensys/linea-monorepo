@@ -21,6 +21,8 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-consensus-merge")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-consensus-clique")
+  implementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
+  implementation("org.hyperledger.besu.internal:besu-consensus-qbft")
   implementation("org.hyperledger.besu.internal:besu-plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

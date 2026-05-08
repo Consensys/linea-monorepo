@@ -124,7 +124,7 @@ class Libp2pNetworkFactory(
 
     val rpcHandlers =
       rpcMethods.map { rpcMethod ->
-        RpcHandler(asyncRunner, rpcMethod)
+        RpcHandler(asyncRunner, rpcMethod, metricsSystem)
       }
 
     val peerManager =
