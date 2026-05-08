@@ -13,11 +13,13 @@ import java.util.Optional
 import kotlin.jvm.optionals.getOrDefault
 import kotlin.random.Random
 import linea.kotlin.encodeHex
+import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
 import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
+import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.ethereum.eth.sync.SynchronizerConfiguration
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
@@ -31,6 +33,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
+
   const val MIN_BLOCK_TIME = 1L
   const val BLOCK_REBUILD_TIME = 15L
 
@@ -40,6 +43,7 @@ object BesuFactory {
     engineRpcPort: Optional<Int> = Optional.empty(),
     jsonRpcPort: Optional<Int> = Optional.empty(),
     nodeName: String = "miner-${Random.nextBytes(4).encodeHex(false)}",
+    syncMinimumPeerCount: Int = 1,
   ): BesuNode =
     BesuNodeFactory().createNode(nodeName) { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
@@ -64,17 +68,21 @@ object BesuFactory {
       builder
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
+          val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+          val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)
+          val extraDataHex = QbftExtraDataCodec.createGenesisExtraDataString(listOf(validatorAddress))
           Optional.of(
-            genesisFile,
+            genesisFile.replace("%extraData%", extraDataHex),
           )
         }.devMode(false)
         .discoveryEnabled(true)
+        .discoveryV5Enabled(false)
         .engineJsonRpcConfiguration(engineRpcConfig)
         .jsonRpcConfiguration(jsonRpcConfig)
         .synchronizerConfiguration(
           SynchronizerConfiguration
             .builder()
-            .syncMinimumPeerCount(1)
+            .syncMinimumPeerCount(syncMinimumPeerCount)
             .build(),
         )
 
@@ -109,7 +117,7 @@ object BesuFactory {
       }
     }
 
-  fun buildSwitchableBesu(
+  fun buildSwitchableBesuQbft(
     pragueTimestamp: ULong = 0UL,
     cancunTimestamp: ULong = pragueTimestamp,
     shanghaiTimestamp: ULong = cancunTimestamp,
@@ -117,18 +125,24 @@ object BesuFactory {
     validator: Boolean,
   ): BesuNode {
     val genesisContent =
-      BesuFactory::class.java
-        .getResourceAsStream(PRAGUE_GENESIS)
-        ?.bufferedReader()
-        ?.use { it.readText() }
-        ?: throw IllegalStateException("Could not read genesis file: $PRAGUE_GENESIS")
+      GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS)
 
-    val genesisFile =
+    val genesisWithForks =
       genesisContent
         .replace("\"shanghaiTime\": 0", "\"shanghaiTime\": $shanghaiTimestamp")
         .replace("\"cancunTime\": 0", "\"cancunTime\": $cancunTimestamp")
         .replace("\"pragueTime\": 0", "\"pragueTime\": $pragueTimestamp")
         .replace("\"terminalTotalDifficulty\": 0", "\"terminalTotalDifficulty\": $ttd")
-    return buildTestBesu(genesisFile = genesisFile, validator = validator)
+
+    val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+    val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)
+    val extraDataHex = QbftExtraDataCodec.createGenesisExtraDataString(listOf(validatorAddress))
+    val genesisFile = genesisWithForks.replace("%extraData%", extraDataHex)
+
+    return buildTestBesu(
+      genesisFile = genesisFile,
+      validator = validator,
+      syncMinimumPeerCount = 0,
+    )
   }
 }

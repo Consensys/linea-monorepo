@@ -39,12 +39,13 @@ object SecpCrypto : Crypto {
     // CRITICAL: Cache the singleton so Besu's internal code (BftMessage.readPayload,
     // Util.signatureToAddress, CommitPayload.readFrom) returns the cached instance
     // instead of creating a new SECP256K1 + BouncyCastleProvider on every call.
-    // Without this, each SignatureAlgorithmFactory.getInstance() call inside Besu
-    // triggers BouncyCastleProvider.setup() which registers hundreds of algorithms
-    // into a ConcurrentHashMap — consuming ~75% of event loop CPU time.
-    if (!SignatureAlgorithmFactory.isInstanceSet()) {
-      SignatureAlgorithmFactory.setDefaultInstance()
-    }
+    // Without pinning the curve, Besu may repeatedly initialize crypto providers
+    // on the hot path, which is expensive for the event loop.
+    //
+    // Besu 26.3 removed SignatureAlgorithmFactory.isInstanceSet() and setDefaultInstance().
+    // Use switchInstance(DEFAULT_EC_CURVE_NAME) to select secp256k1 once, then getInstance()
+    // returns that configured singleton (replacing the old "set default if not set" pattern).
+    SignatureAlgorithmFactory.switchInstance(SignatureAlgorithmFactory.DEFAULT_EC_CURVE_NAME)
     signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
   }
 

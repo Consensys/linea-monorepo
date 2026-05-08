@@ -31,6 +31,7 @@ import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.units.bigints.UInt64
 import org.ethereum.beacon.discovery.DiscoverySystem
 import org.ethereum.beacon.discovery.DiscoverySystemBuilder
+import org.ethereum.beacon.discovery.crypto.DefaultSigner
 import org.ethereum.beacon.discovery.schema.EnrField
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.ethereum.beacon.discovery.schema.NodeRecordBuilder
@@ -121,6 +122,8 @@ class MaruDiscoveryService(
 
   private val privateKey = SecretKeyParser.fromLibP2pPrivKey(Bytes.wrap(privateKeyBytes))
 
+  private val signer = DefaultSigner(privateKey)
+
   private val bootnodes =
     p2pConfig.discovery!!
       .bootnodes
@@ -130,7 +133,7 @@ class MaruDiscoveryService(
   private val discoverySystem: DiscoverySystem =
     DiscoverySystemBuilder()
       .listen(p2pConfig.ipAddress, p2pConfig.discovery!!.port.toInt())
-      .secretKey(privateKey)
+      .signer(signer)
       .localNodeRecord(createLocalNodeRecord())
       .localNodeRecordListener { _, newRecord -> localNodeRecordUpdated(newRecord) }
       .build()
@@ -214,7 +217,7 @@ class MaruDiscoveryService(
       .commit()
     val nodeRecordBuilder: NodeRecordBuilder =
       NodeRecordBuilder()
-        .secretKey(privateKey)
+        .signer(signer)
         .seq(UInt64.valueOf(sequenceNumber.toBigInteger()))
         .address(
           /* ipAddress = */ p2pConfig.discovery!!.advertisedIp ?: p2pConfig.ipAddress,

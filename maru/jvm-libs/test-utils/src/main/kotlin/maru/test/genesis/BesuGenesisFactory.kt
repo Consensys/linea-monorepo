@@ -16,24 +16,20 @@ import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
+import org.hyperledger.besu.crypto.KeyPairUtil
+import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 
 class BesuGenesisFactory(
   val genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
-  val cliqueBlockTimeSeconds: UInt = 1u,
-  val cliqueEmptyBlocks: Boolean = true,
+  val blockPeriodSeconds: UInt = 1u,
+  val createEmptyBlocks: Boolean = true,
 ) {
   private var forkSchedule: ForksSchedule? = null
 
-  // we can cache the genesis if for the same fork schedule
-  // which does not change per cluster (for now at least)
-  // building the genesis for many nodes repeatedly is wasteful
-  private var cachedGenesis: String? = null
-
   fun setForkSchedule(value: ForksSchedule) {
     this.forkSchedule = value
-    // invalidate cached genesis when fork schedule changes
-    cachedGenesis = null
   }
 
   fun create(): String {
@@ -41,18 +37,12 @@ class BesuGenesisFactory(
       throw IllegalStateException("forkSchedule must be initialized before calling creating genesis")
     }
 
-    return if (cachedGenesis != null) {
-      return cachedGenesis!!
-    } else {
-      cachedGenesis =
-        createGenesisWithClique(
-          genesisTemplate,
-          cliqueBlockTimeSeconds,
-          cliqueEmptyBlocks,
-          forkSchedule!!,
-        )
-      cachedGenesis!!
-    }
+    return createGenesisWithQBFT(
+      genesisTemplate,
+      blockPeriodSeconds,
+      createEmptyBlocks,
+      forkSchedule!!,
+    )
   }
 
   companion object {
@@ -60,23 +50,47 @@ class BesuGenesisFactory(
       GenesisConfigurationFactory.readGenesisFile("/besu-genesis-template.json")
     private val jsonObjectMapper: ObjectMapper = jacksonObjectMapper()
 
-    fun createGenesisWithClique(
+    fun createGenesisWithQBFT(
       genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
       chainId: ULong,
-      cliqueBlockTimeSeconds: UInt,
-      cliqueEmptyBlocks: Boolean = true,
+      blockPeriodSeconds: UInt,
+      terminalTotalDifficulty: ULong? = null,
+      createEmptyBlocks: Boolean = true,
+      shanghaiTimestamp: ULong? = null,
+      cancunTimestamp: ULong? = null,
+      pragueTimestamp: ULong? = null,
+      osakaTimestamp: ULong? = null,
     ): String {
-      require(cliqueBlockTimeSeconds in 1u..60u) { "cliqueBlockTimeSeconds must be between 1 and 60 seconds" }
+      require(blockPeriodSeconds in 1u..60u) { "blockPeriodSeconds must be between 1 and 60 seconds" }
       var updatedGenesis = genesisTemplate
       updatedGenesis = setGenesisConfigProperty(updatedGenesis, "chainId", chainId)
-      updatedGenesis = setGenesisCliqueOptions(updatedGenesis, cliqueBlockTimeSeconds, cliqueEmptyBlocks)
+      updatedGenesis = applyQbftConsensusToGenesisJson(updatedGenesis, blockPeriodSeconds, createEmptyBlocks)
+
+      if (terminalTotalDifficulty != null) {
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "terminalTotalDifficulty", terminalTotalDifficulty)
+      }
+      if (shanghaiTimestamp != null) {
+        require(
+          terminalTotalDifficulty != null,
+        ) { "terminalTotalDifficulty must be defined when shanghaiTimestamp is defined" }
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "shanghaiTime", shanghaiTimestamp)
+      }
+      if (cancunTimestamp != null) {
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "cancunTime", cancunTimestamp)
+      }
+      if (pragueTimestamp != null) {
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "pragueTime", pragueTimestamp)
+      }
+      if (osakaTimestamp != null) {
+        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "osakaTime", osakaTimestamp)
+      }
       return updatedGenesis
     }
 
-    fun createGenesisWithClique(
+    fun createGenesisWithQBFT(
       genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
-      cliqueBlockTimeSeconds: UInt,
-      cliqueEmptyBlocks: Boolean = true,
+      blockPeriodSeconds: UInt,
+      createEmptyBlocks: Boolean = true,
       forks: ForksSchedule,
     ): String {
       val terminalTotalDifficulty: ULong =
@@ -121,13 +135,12 @@ class BesuGenesisFactory(
           }
         }
 
-      // Additional fork-specific genesis updates can be added here
-      return createGenesisWithClique(
+      return createGenesisWithQBFT(
         genesisTemplate,
         forks.chainId.toULong(),
-        cliqueBlockTimeSeconds,
-        cliqueEmptyBlocks,
+        blockPeriodSeconds,
         terminalTotalDifficulty,
+        createEmptyBlocks,
         shanghaiTimestamp,
         cancunTimestamp,
         pragueTimestamp,
@@ -164,56 +177,25 @@ class BesuGenesisFactory(
       return null
     }
 
-    fun createGenesisWithClique(
-      genesisTemplate: String = genesisTemplateLondonWithoutConsensus,
-      chainId: ULong,
-      cliqueBlockTimeSeconds: UInt,
-      cliqueEmptyBlocks: Boolean = true,
-      terminalTotalDifficulty: ULong? = null,
-      shanghaiTimestamp: ULong? = null,
-      cancunTimestamp: ULong? = null,
-      pragueTimestamp: ULong? = null,
-      osakaTimestamp: ULong? = null,
-    ): String {
-      var updatedGenesis = createGenesisWithClique(genesisTemplate, chainId, cliqueBlockTimeSeconds, cliqueEmptyBlocks)
-
-      if (terminalTotalDifficulty != null) {
-        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "terminalTotalDifficulty", terminalTotalDifficulty)
-      }
-      if (shanghaiTimestamp != null) {
-        require(
-          terminalTotalDifficulty != null,
-        ) { "terminalTotalDifficulty must be defined when shanghaiTimestamp is defined" }
-        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "shanghaiTime", shanghaiTimestamp)
-      }
-      if (cancunTimestamp != null) {
-        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "cancunTime", cancunTimestamp)
-      }
-      if (pragueTimestamp != null) {
-        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "pragueTime", pragueTimestamp)
-      }
-      if (osakaTimestamp != null) {
-        updatedGenesis = setGenesisConfigProperty(updatedGenesis, "osakaTime", osakaTimestamp)
-      }
-      return updatedGenesis
-    }
-
-    private fun setGenesisCliqueOptions(
+    private fun applyQbftConsensusToGenesisJson(
       genesis: String,
-      blockTimeSeconds: UInt,
+      blockPeriodSeconds: UInt,
       createEmptyBlocks: Boolean,
     ): String {
       val rootNode = jsonObjectMapper.readTree(genesis) as ObjectNode
       val configNode = rootNode.get("config") as ObjectNode
-
-      // Create or replace the clique configuration
-      val cliqueNode = jsonObjectMapper.createObjectNode()
-      cliqueNode.put("blockperiodseconds", blockTimeSeconds.toLong())
-      cliqueNode.put("epochlength", blockTimeSeconds.toLong())
-      cliqueNode.put("createemptyblocks", createEmptyBlocks)
-
-      configNode.set<ObjectNode>("clique", cliqueNode)
-
+      configNode.remove("clique")
+      val qbftNode = jsonObjectMapper.createObjectNode()
+      qbftNode.put("blockperiodseconds", blockPeriodSeconds.toLong())
+      qbftNode.put("epochlength", 30000L)
+      qbftNode.put("requesttimeoutseconds", 5L)
+      qbftNode.put("blockreward", "5000000000000000000")
+      qbftNode.put("xemptyblockperiodseconds", if (createEmptyBlocks) 0 else Int.MAX_VALUE)
+      configNode.set<ObjectNode>("qbft", qbftNode)
+      val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+      val validatorAddress = Util.publicKeyToAddress(defaultSigner.publicKey)
+      val extraData = QbftExtraDataCodec.createGenesisExtraDataString(listOf(validatorAddress))
+      rootNode.put("extraData", extraData)
       return jsonObjectMapper.writeValueAsString(rootNode)
     }
 

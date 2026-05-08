@@ -10,6 +10,7 @@ package maru.executionlayer.client
 
 import maru.consensus.ElFork
 import maru.core.ExecutionPayload
+import maru.executionlayer.manager.LatestBlockMetadata
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -28,7 +29,9 @@ interface ExecutionLayerEngineApiClient {
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>>
 
-  fun getLatestBlockHash(): SafeFuture<ByteArray>
+  fun getLatestBlockHash(): SafeFuture<ByteArray> = getLatestBlockMetadata().thenApply { it.blockHash }
+
+  fun getLatestBlockMetadata(): SafeFuture<LatestBlockMetadata>
 
   fun isOnline(): SafeFuture<Boolean>
 

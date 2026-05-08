@@ -29,8 +29,17 @@ class BesuCluster(
   internal val nodes: MutableMap<String, BesuNode> = HashMap()
   internal val bootnodes: MutableList<URI> = ArrayList()
 
+  /**
+   * QBFT genesis must stay identical to the one the network was first started with. The provider is
+   * invoked from the current [nodes] map, which can change after [stopNode] or when adding
+   * non-validators, so the first resolved JSON for a startup is retained for that run. Parallel
+   * starters also reuse it instead of invoking the provider concurrently.
+   */
+  private var clusterGenesisJson: String? = null
+
   private fun startCluster(awaitPeerDiscovery: Boolean) {
     require(nodes.isNotEmpty()) { "Can't start a cluster with no nodes" }
+    clusterGenesisJson = null
     val nodesList = nodes.values.toList()
     val bootnode = selectAndStartBootnode(nodesList)
 
@@ -110,9 +119,15 @@ class BesuCluster(
     node.configuration.bootnodes = if (isBootNode) emptyList() else bootnodes
 
     if (node.configuration.genesisConfig.isEmpty) {
-      node.configuration.genesisConfigProvider
-        .create(nodes.values)
-        .ifPresent { node.configuration.setGenesisConfig(it) }
+      val genesisJson =
+        synchronized(this) {
+          clusterGenesisJson
+            ?: node.configuration.genesisConfigProvider
+              .create(nodes.values)
+              .orElseThrow()
+              .also { clusterGenesisJson = it }
+        }
+      node.configuration.setGenesisConfig(genesisJson)
     }
     runNodeStart(node)
   }
@@ -133,8 +148,12 @@ class BesuCluster(
   }
 
   private fun stopNode(node: BesuNode) {
-    besuNodeRunner.stopNode(node)
-    node.stop()
+    try {
+      besuNodeRunner.stopNode(node)
+      node.stop()
+    } catch (e: Throwable) {
+      log.warn("Besu stop failed for {}, continuing cleanup", node.name, e)
+    }
     nodes.remove(node.name)
   }
 

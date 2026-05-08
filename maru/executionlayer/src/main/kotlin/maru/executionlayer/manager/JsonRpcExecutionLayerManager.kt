@@ -176,7 +176,8 @@ class JsonRpcExecutionLayerManager(
         blockBuildingFuture.set(null)
       }
 
-  override fun getLatestBlockHash(): SafeFuture<ByteArray> = executionLayerEngineApiClient.getLatestBlockHash()
+  override fun getLatestBlockMetadata(): SafeFuture<LatestBlockMetadata> =
+    executionLayerEngineApiClient.getLatestBlockMetadata()
 
   override fun isOnline(): SafeFuture<Boolean> = executionLayerEngineApiClient.isOnline()
 }

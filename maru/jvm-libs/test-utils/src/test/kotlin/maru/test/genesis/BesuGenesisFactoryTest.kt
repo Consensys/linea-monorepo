@@ -28,24 +28,22 @@ class BesuGenesisFactoryTest {
   val objectMapper = jacksonObjectMapper()
 
   @Nested
-  inner class CreateGenesisWithCliqueBasic {
+  inner class CreateGenesisWithQBFTBasic {
     @Test
-    fun `should create genesis with just clique configuration - empty blocks true`() {
+    fun `should create genesis with qbft block period 4`() {
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 13UL,
-          cliqueBlockTimeSeconds = 4U,
-          cliqueEmptyBlocks = true,
+          blockPeriodSeconds = 4U,
         )
 
       val jsonNode = objectMapper.readTree(result)
       val config = jsonNode.get("config")
 
       assertIsNumberWithValue(config.get("chainId"), 13UL)
-      assertIsNumberWithValue(config.get("clique").get("blockperiodseconds"), 4UL)
-      assertIsNumberWithValue(config.get("clique").get("epochlength"), 4UL)
-      Assertions.assertThat(config.get("clique").get("createemptyblocks").isBoolean).isTrue()
-      Assertions.assertThat(config.get("clique").get("createemptyblocks").asBoolean()).isEqualTo(true)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 4UL)
+      assertIsNumberWithValue(config.get("qbft").get("epochlength"), 30000UL)
+      Assertions.assertThat(config.get("clique")).isNull()
       Assertions.assertThat(config.get("terminalTotalDifficulty")).isNull()
 
       Assertions.assertThat(config.get("shanghaiTime")).isNull()
@@ -54,32 +52,31 @@ class BesuGenesisFactoryTest {
     }
 
     @Test
-    fun `should handle empty blocks false`() {
+    fun `should create genesis with qbft block period 2`() {
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 1337UL,
-          cliqueBlockTimeSeconds = 2U,
-          cliqueEmptyBlocks = false,
+          blockPeriodSeconds = 2U,
         )
 
       val jsonNode = objectMapper.readTree(result)
       val config = jsonNode.get("config")
 
-      Assertions.assertThat(config.get("clique").get("createemptyblocks").asBoolean()).isEqualTo(false)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 2UL)
+      Assertions.assertThat(config.get("clique")).isNull()
     }
   }
 
   @Nested
-  inner class CreateGenesisWithCliqueAndForks {
+  inner class CreateGenesisWithQBFTAndForks {
     val validators = setOf(Validator(address = Random.nextBytes(20)))
 
     @Test
     fun `should create genesis with all fork timestamps`() {
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 13UL,
-          cliqueBlockTimeSeconds = 2U,
-          cliqueEmptyBlocks = true,
+          blockPeriodSeconds = 2U,
           terminalTotalDifficulty = 500UL,
           shanghaiTimestamp = 1000UL,
           cancunTimestamp = 2000UL,
@@ -91,10 +88,8 @@ class BesuGenesisFactoryTest {
       val config = jsonNode.get("config")
 
       assertIsNumberWithValue(config.get("chainId"), 13UL)
-      assertIsNumberWithValue(config.get("clique").get("blockperiodseconds"), 2UL)
-      assertIsNumberWithValue(config.get("clique").get("epochlength"), 2UL)
-      Assertions.assertThat(config.get("clique").get("createemptyblocks").isBoolean).isTrue()
-      Assertions.assertThat(config.get("clique").get("createemptyblocks").asBoolean()).isEqualTo(true)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 2UL)
+      assertIsNumberWithValue(config.get("qbft").get("epochlength"), 30000UL)
       assertIsNumberWithValue(config.get("terminalTotalDifficulty"), 500UL)
       assertIsNumberWithValue(config.get("shanghaiTime"), 1000UL)
       assertIsNumberWithValue(config.get("cancunTime"), 2000UL)
@@ -180,9 +175,8 @@ class BesuGenesisFactoryTest {
         ForksSchedule(13U, listOf(ttdForkSpec, shanghaiForkSpec, cancunForkSpec, pragueForkSpec, osakaForkSpec))
 
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
-          cliqueBlockTimeSeconds = 4U,
-          cliqueEmptyBlocks = true,
+        BesuGenesisFactory.createGenesisWithQBFT(
+          blockPeriodSeconds = 4U,
           forks = forksSchedule,
         )
 
@@ -190,9 +184,8 @@ class BesuGenesisFactoryTest {
       val config = jsonNode.get("config")
 
       assertIsNumberWithValue(config.get("chainId"), 13UL)
-      assertIsNumberWithValue(config.get("clique").get("blockperiodseconds"), 4UL)
-      assertIsNumberWithValue(config.get("clique").get("epochlength"), 4UL)
-      assertIsBooleanWithValue(config.get("clique").get("createemptyblocks"), true)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 4UL)
+      assertIsNumberWithValue(config.get("qbft").get("epochlength"), 30000UL)
       assertIsNumberWithValue(
         config.get("terminalTotalDifficulty"),
         (ttdForkSpec.configuration as DifficultyAwareQbftConfig).terminalTotalDifficulty,
@@ -227,9 +220,8 @@ class BesuGenesisFactoryTest {
         )
       val forksSchedule = ForksSchedule(13U, listOf(pragueForkSpec, osakaForkSpec))
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
-          cliqueBlockTimeSeconds = 4U,
-          cliqueEmptyBlocks = true,
+        BesuGenesisFactory.createGenesisWithQBFT(
+          blockPeriodSeconds = 4U,
           forks = forksSchedule,
         )
 
@@ -237,9 +229,8 @@ class BesuGenesisFactoryTest {
       val config = jsonNode.get("config")
 
       assertIsNumberWithValue(config.get("chainId"), 13UL)
-      assertIsNumberWithValue(config.get("clique").get("blockperiodseconds"), 4UL)
-      assertIsNumberWithValue(config.get("clique").get("epochlength"), 4UL)
-      assertIsBooleanWithValue(config.get("clique").get("createemptyblocks"), true)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 4UL)
+      assertIsNumberWithValue(config.get("qbft").get("epochlength"), 30000UL)
       assertIsNumberWithValue(config.get("terminalTotalDifficulty"), 0UL)
       assertIsNumberWithValue(config.get("shanghaiTime"), 0UL)
       assertIsNumberWithValue(config.get("cancunTime"), 0UL)
@@ -271,9 +262,8 @@ class BesuGenesisFactoryTest {
         )
       val forksSchedule = ForksSchedule(13U, listOf(cancunForkSpec, osakaForkSpec))
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
-          cliqueBlockTimeSeconds = 4U,
-          cliqueEmptyBlocks = true,
+        BesuGenesisFactory.createGenesisWithQBFT(
+          blockPeriodSeconds = 4U,
           forks = forksSchedule,
         )
 
@@ -281,9 +271,8 @@ class BesuGenesisFactoryTest {
       val config = jsonNode.get("config")
 
       assertIsNumberWithValue(config.get("chainId"), 13UL)
-      assertIsNumberWithValue(config.get("clique").get("blockperiodseconds"), 4UL)
-      assertIsNumberWithValue(config.get("clique").get("epochlength"), 4UL)
-      assertIsBooleanWithValue(config.get("clique").get("createemptyblocks"), true)
+      assertIsNumberWithValue(config.get("qbft").get("blockperiodseconds"), 4UL)
+      assertIsNumberWithValue(config.get("qbft").get("epochlength"), 30000UL)
       assertIsNumberWithValue(config.get("terminalTotalDifficulty"), 0UL)
       assertIsNumberWithValue(config.get("shanghaiTime"), 0UL)
       assertIsNumberWithValue(config.get("cancunTime"), 0UL)
@@ -297,9 +286,9 @@ class BesuGenesisFactoryTest {
     @Test
     fun `should require terminalTotalDifficulty when shanghaiTimestamp is provided`() {
       assertThatThrownBy {
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 1337UL,
-          cliqueBlockTimeSeconds = 1U,
+          blockPeriodSeconds = 1U,
           shanghaiTimestamp = 500UL,
         )
       }.isInstanceOf(IllegalArgumentException::class.java)
@@ -309,20 +298,20 @@ class BesuGenesisFactoryTest {
     @Test
     fun `should fail on zero block time`() {
       assertThatThrownBy {
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 1337UL,
-          cliqueBlockTimeSeconds = 0U,
+          blockPeriodSeconds = 0U,
         )
       }.isInstanceOf(IllegalArgumentException::class.java)
-        .hasMessageContaining("cliqueBlockTimeSeconds")
+        .hasMessageContaining("blockPeriodSeconds")
     }
 
     @Test
     fun `should preserve other config properties`() {
       val result =
-        BesuGenesisFactory.createGenesisWithClique(
+        BesuGenesisFactory.createGenesisWithQBFT(
           chainId = 5555UL,
-          cliqueBlockTimeSeconds = 7U,
+          blockPeriodSeconds = 7U,
         )
 
       val jsonNode = objectMapper.readTree(result)
@@ -333,7 +322,8 @@ class BesuGenesisFactoryTest {
       Assertions.assertThat(config.get("eip150Block").asInt()).isEqualTo(0)
       // Check that new properties are added
       Assertions.assertThat(config.get("chainId").asText()).isEqualTo("5555")
-      Assertions.assertThat(config.get("clique")).isNotNull
+      Assertions.assertThat(config.get("qbft")).isNotNull
+      Assertions.assertThat(config.get("clique")).isNull()
     }
   }
 }
