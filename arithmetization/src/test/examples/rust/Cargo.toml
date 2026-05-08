@@ -16,6 +16,10 @@ path = "src/blake_with_in_embedded.rs"
 name = "blake_with_in_bytes"
 path = "src/blake_with_in_bytes.rs"
 
+[[bin]]
+name = "stack_load_test"
+path = "src/stack_load_test.rs"
+
 [profile.release]
 opt-level = 2
 debug = false
