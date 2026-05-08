@@ -193,7 +193,7 @@ jobs:
           echo "" >> output.md
           echo "To pull the image, use the following command:" >> output.md
           echo "\`\`\`" >> output.md
-          printf 'docker pull consensys/linea-$s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG" >> output.md
+          printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG" >> output.md
           echo "\`\`\`" >> output.md
 
       - name: Set capitalized component name
