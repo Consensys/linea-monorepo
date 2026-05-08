@@ -7,7 +7,7 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(linea-besu)* Bumping version to v1.4.2
+- *(linea-besu)* Bumping version to v1.4.2 for testing
 ## [1.4.1] - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks
