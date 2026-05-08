@@ -1,4 +1,4 @@
-name: "Coordinator Release (still in testing phase)"
+name: "Tx Exclusion API Release (still in testing phase)"
 
 permissions:
   actions: read
@@ -23,18 +23,21 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches:
+      - feat/coordinator-automate-changelog-versioning-poc
 
 concurrency:
-  group: coordinator-release-${{ github.ref }}
+  group: tx-exclusion-api-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   compute-release-metadata:
     uses: ./.github/workflows/reusable-component-release.yml
     with:
-      component-name: coordinator
-      folder-name: coordinator
-      include-path: '"coordinator/**"'
+      component-name: tx-exclusion-api
+      folder-name: transaction-exclusion-api
+      include-path: '"transaction-exclusion-api/**"'
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
