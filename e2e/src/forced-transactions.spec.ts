@@ -468,7 +468,7 @@ describe("Forced transaction test suite", () => {
 
       logger.debug(`L2MessageService — address=${l2MessageServiceAddress} minimumFeeInWei=${minimumFeeInWei}`);
 
-      // Encode calldata: send 11 messages to exceed the BLOCK_L2_L1_LOGS limit of 16
+      // Encode calldata: send 17 messages to exceed the BLOCK_L2_L1_LOGS limit of 16
       const messageCount = 17n;
       const callData = encodeFunctionData({
         abi: MultiMessageSenderAbi,
