@@ -91,6 +91,7 @@ jobs:
   run-e2e-tests:
     needs: [compute-release-metadata, build-local-coordinator, build-local-postman, build-local-prover, build-local-tx-exclusion-api]
     if: >
+      always() &&
       needs.compute-release-metadata.outputs.tag_changed == 'true' &&
       (needs.build-local-coordinator.result   == 'success' ||
        needs.build-local-postman.result       == 'success' ||
@@ -124,7 +125,7 @@ jobs:
 
   build-and-publish-image-coordinator:
     needs: [compute-docker-tag]
-    if: |
+    if: | 
       needs.compute-docker-tag.result == 'success' &&
       inputs.component-name == 'coordinator'
     uses: ./.github/workflows/coordinator-build-and-publish.yml
@@ -176,7 +177,7 @@ jobs:
 
   check-builds:
     needs: [compute-release-metadata, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
-    if: needs.compute-release-metadata.outputs.tag_changed == 'true'
+    if: always() && needs.compute-release-metadata.outputs.tag_changed == 'true'
     outputs:
       any-success: ${{ contains(needs.*.result, 'success') }}
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
