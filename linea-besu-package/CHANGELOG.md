@@ -1,3 +1,8 @@
+## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- *(misc)* Udpate besu commit hash (#3024)
 ## [1.4.2] - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks

@@ -1,3 +1,12 @@
+## [unreleased]
+
+### 🚀 Features
+
+- *(coordinator)* Add conflation_stopReconflationJob JSON-RPC for backtesting (#3012)
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Require all three proof flows to reach target before marking conflation backtesting complete (#3032)
 ## [0.2.5] - 2026-05-07
 
 ### 🐛 Bug Fixes
