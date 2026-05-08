@@ -32,10 +32,18 @@ LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 IN_BYTES        ?= ""
 
 # Values to generate the linker script
-PROGRAM_OFFSET  ?= 0x00000000        # 128 MiB (0x00000000 -> 0x07FFFFFF)
-IN_BYTES_OFFSET ?= 0x08800000        # 1 GiB   (0x08800000 -> 0x48FFFFFF)
-ENTRY_POINT     := $(PROGRAM_OFFSET) # Since program starts from _start, the entry point is the same as the program offset
-SP              ?= 0x08800000        # 8 MiB   (0x08000000 <- 0x087fffff)
+
+# 128 MiB (0x00000000 -> 0x07FFFFFF)
+PROGRAM_OFFSET  ?= 0x00000000
+
+# 1 GiB   (0x08800000 -> 0x48FFFFFF)
+IN_BYTES_OFFSET ?= 0x08800000
+
+# Since program starts from _start, the entry point is the same as the program offset
+ENTRY_POINT     := $(PROGRAM_OFFSET)
+
+# 8 MiB   (0x08000000 <- 0x087fffff)
+SP              ?= 0x08800000
 
 # Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
