@@ -189,7 +189,7 @@ private-key = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
+public-key = "__L1_BLOB_SUBMITTER_PUBKEY_NO_PREFIX__"
 [l1-submission.blob.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"
@@ -222,7 +222,7 @@ private-key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
+public-key = "__L1_FINALIZATION_SUBMITTER_PUBKEY_NO_PREFIX__"
 [l1-submission.aggregation.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"
@@ -256,7 +256,7 @@ private-key = "0x4d01ae6487860981699236a58b68f807ee5f17b12df5740b85cf4c4653be0f5
 endpoint = "https://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
-public-key = "__L1_SIGNER_PUBKEY_NO_PREFIX__"
+public-key = "__L2_MESSAGE_ANCHORING_PUBKEY_NO_PREFIX__"
 [message-anchoring.signer.web3signer.tls]
 key-store-path = "/tls-files/coordinator-client-keystore.p12"
 key-store-password = "changeit"

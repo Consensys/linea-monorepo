@@ -14,11 +14,11 @@ Fresh Sepolia boot now gets past the earlier blockers:
 
 This is **not** final success yet. Current caveats:
 
-- coordinator still logs `address already reserved` during L1 submissions, likely because v0 uses one L1 account for concurrent blob/data-submission and aggregation/finalization roles;
+- the signer-role split that should remove coordinator `address already reserved` retries is now wired for fresh boots, but still needs a clean `down -v` validation run;
 - aggregation/finalization can temporarily revert with starting-root mismatches while the stack catches up, so progress must be judged by `lastFinalizedBlockNumber` advancing, not by a single revert;
 - a documented L1-to-L2 bridge/message smoke test is still needed before this can be called finished.
 
-Next work should focus on separating or serializing L1 signer roles and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
+Next work should focus on validating the fresh-boot signer split and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
 
 ## Historical fix log
 
@@ -462,11 +462,19 @@ Fresh Sepolia boot on 2026-05-08 reached the first real bring-up milestone: all 
 
 This should be documented as progress, not final success. The acceptance bar is now higher: a repeatable run should show non-zero prover responses, L1 submissions without persistent nonce contention, and a documented user-facing bridge/message smoke test.
 
-**Open caveat — single L1 key causes noisy coordinator submission retries** (#46)
+**Historical caveat — single L1 key caused noisy coordinator submission retries** (#46)
 
-The current quickstart intentionally uses one Sepolia-funded key for every L1 role. That keeps setup simple, but coordinator can attempt blob/data-submission and aggregation/finalization work concurrently through the same account. The live run still progressed, but logs showed repeated `address already reserved` errors during L1 submission.
+The first working Sepolia boot used one funded key for every L1 role. That kept setup simple, but coordinator could attempt blob/data-submission and aggregation/finalization work concurrently through the same account. The live run still progressed, but logs showed repeated `address already reserved` errors during L1 submission.
 
-Before calling v0 stable, either split those roles across distinct funded L1 accounts or serialize the relevant coordinator submissions so a single-key quickstart does not rely on noisy retries.
+This is superseded by #46b, which splits coordinator's L1 submitter roles while keeping the user-facing setup to one Sepolia-funded deployer key.
+
+**Signer role split — wired for fresh first boots, pending live validation** (#46b)
+
+The upstream e2e flow does not run coordinator L1 submissions through one account. It grants rollup operator roles to separate relayer/operator accounts: one for blob/data-submission and one for aggregation/finalization. Message anchoring is also distinct and uses the L2 message anchorer role, not the user's Sepolia deployer.
+
+The quickstart now mirrors that shape while preserving the one-secret UX. During first boot, `account-setup.sh` derives two deterministic L1 submitter keys from `L1_DEPLOYER_PRIVATE_KEY`, keeps the pre-baked L2 message-anchoring key for the L2 role, writes all four web3signer keystores, and records the signer addresses/pubkeys in `/shared/addresses-precomputed.json`. `config-render` then injects the matching pubkeys into coordinator config. `deploy-contracts.sh` grants rollup operator roles to the deployer plus both derived L1 submitters, grants the L2 message setter role to the L2 anchorer, and funds the two derived L1 submitters before coordinator starts.
+
+This is designed to fit the first-time boot sequence without asking users to manage three Sepolia keys. Existing Docker volumes from the single-key era will not contain the new signer metadata; run `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v` before validating this change on an old checkout.
 
 **L2 Blockscout frontend — fixed** (#47)
 

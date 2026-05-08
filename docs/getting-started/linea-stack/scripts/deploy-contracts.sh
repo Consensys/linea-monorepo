@@ -28,9 +28,9 @@
 #
 # Required env (compose injects from .env):
 #   L1_RPC_URL                            — Sepolia HTTPS RPC, REQUIRED, no default.
-#   L1_DEPLOYER_PRIVATE_KEY               — Sepolia-funded; used for ALL L1 roles
-#                                           (Option A: single key for security
-#                                           council, rollup operators, deployer).
+#   L1_DEPLOYER_PRIVATE_KEY               — Sepolia-funded deployer key. account-setup
+#                                           derives separate L1 submitter keys for
+#                                           coordinator blob/finalization roles.
 #
 # Optional env:
 #   LINEA_COORDINATOR_DATA_AVAILABILITY   — ROLLUP (default) | VALIDIUM
@@ -168,14 +168,24 @@ PRECOMPUTED_L1_TEST_ERC20="$(awk '/\"l1\":[[:space:]]*\{/{f=1} f && /\"TestERC20
 PRECOMPUTED_L2_MS="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"L2MessageService\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
 PRECOMPUTED_L2_TOKEN_BRIDGE="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"TokenBridge\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
 PRECOMPUTED_L2_TEST_ERC20="$(awk '/\"l2\":[[:space:]]*\{/{f=1} f && /\"TestERC20\":/{gsub(/[\",]/,""); print $2; exit}' "$PRECOMPUTED")"
+PRECOMPUTED_L1_BLOB_SUBMITTER="$(json_field l1BlobSubmitterAddress)"
+PRECOMPUTED_L1_FINALIZATION_SUBMITTER="$(json_field l1FinalizationSubmitterAddress)"
+PRECOMPUTED_L2_MESSAGE_ANCHORING="$(json_field l2MessageAnchoringAddress)"
+
 
 [[ "$L1_CHAIN_ID" =~ ^[0-9]+$ ]] || die "Could not extract l1ChainId from $PRECOMPUTED"
 [[ "$L1_DEPLOYER_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract deployers.l1 from $PRECOMPUTED"
 [[ "$PRECOMPUTED_LINEA_ROLLUP" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract l1.LineaRollupV8 from $PRECOMPUTED"
 [[ "$PRECOMPUTED_L2_MS" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract l2.L2MessageService from $PRECOMPUTED"
+[[ "$PRECOMPUTED_L1_BLOB_SUBMITTER" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract signers.l1BlobSubmitterAddress from $PRECOMPUTED"
+[[ "$PRECOMPUTED_L1_FINALIZATION_SUBMITTER" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract signers.l1FinalizationSubmitterAddress from $PRECOMPUTED"
+[[ "$PRECOMPUTED_L2_MESSAGE_ANCHORING" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "Could not extract signers.l2MessageAnchoringAddress from $PRECOMPUTED"
 
 log "L1_CHAIN_ID=$L1_CHAIN_ID"
 log "L1_DEPLOYER_ADDRESS=$L1_DEPLOYER_ADDRESS"
+log "L1 blob submitter=$PRECOMPUTED_L1_BLOB_SUBMITTER"
+log "L1 finalization submitter=$PRECOMPUTED_L1_FINALIZATION_SUBMITTER"
+log "L2 message anchorer=$PRECOMPUTED_L2_MESSAGE_ANCHORING"
 log "Precomputed LineaRollupV8: $PRECOMPUTED_LINEA_ROLLUP"
 log "Precomputed L2MessageService: $PRECOMPUTED_L2_MS"
 
@@ -242,6 +252,10 @@ if [[ ! -d artifacts ]]; then
   log "Compiling contracts (pnpm exec hardhat compile)"
   pnpm exec hardhat compile
 fi
+
+DEFAULT_L1_OPERATOR_ADDRESSES="$L1_DEPLOYER_ADDRESS,$PRECOMPUTED_L1_BLOB_SUBMITTER,$PRECOMPUTED_L1_FINALIZATION_SUBMITTER"
+L1_ROLE_MIN_BALANCE_WEI="${L1_ROLE_MIN_BALANCE_WEI:-10000000000000000}"      # 0.01 ETH
+L1_ROLE_TOP_UP_WEI="${L1_ROLE_TOP_UP_WEI:-30000000000000000}"                # 0.03 ETH
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Capture pre-deploy nonces (the parent prelude in makefile-contracts.mk:158)
@@ -349,9 +363,9 @@ step1_l1_rollup() {
 
   [[ -f "$script" ]] || die "missing deploy script: $script"
 
-  # Option A: L1 deployer key drives every L1 role (security council, operators,
-  # security-council-private-key). On Sepolia the user only needs to fund a
-  # single address. Phase-3 will align the web3signer keystore the same way.
+  # The L1 deployer remains the admin/security-council account. Coordinator's
+  # blob and finalization senders are separate derived operator addresses so
+  # their independent nonce managers do not contend for one L1 account.
   if [[ "$LINEA_COORDINATOR_DATA_AVAILABILITY" == "VALIDIUM" ]]; then
     DEPLOYER_PRIVATE_KEY="$L1_DEPLOYER_PRIVATE_KEY" \
     RPC_URL="$L1_RPC_URL" \
@@ -360,7 +374,7 @@ step1_l1_rollup() {
     INITIAL_L2_BLOCK_NUMBER="0" \
     L2_GENESIS_TIMESTAMP="$FORK_TIMESTAMP" \
     L1_SECURITY_COUNCIL="$L1_DEPLOYER_ADDRESS" \
-    VALIDIUM_OPERATORS="${VALIDIUM_OPERATORS:-$L1_DEPLOYER_ADDRESS}" \
+    VALIDIUM_OPERATORS="${VALIDIUM_OPERATORS:-$DEFAULT_L1_OPERATOR_ADDRESSES}" \
     VALIDIUM_RATE_LIMIT_PERIOD="86400" \
     VALIDIUM_RATE_LIMIT_AMOUNT="1000000000000000000000" \
       pnpm -s exec ts-node "$script" 2>&1 | tee "$logfile"
@@ -372,7 +386,7 @@ step1_l1_rollup() {
     INITIAL_L2_BLOCK_NUMBER="0" \
     L2_GENESIS_TIMESTAMP="$FORK_TIMESTAMP" \
     L1_SECURITY_COUNCIL="$L1_DEPLOYER_ADDRESS" \
-    LINEA_ROLLUP_OPERATORS="${LINEA_ROLLUP_OPERATORS:-$L1_DEPLOYER_ADDRESS}" \
+    LINEA_ROLLUP_OPERATORS="${LINEA_ROLLUP_OPERATORS:-$DEFAULT_L1_OPERATOR_ADDRESSES}" \
     LINEA_ROLLUP_RATE_LIMIT_PERIOD="86400" \
     LINEA_ROLLUP_RATE_LIMIT_AMOUNT="1000000000000000000000" \
     FORCED_TRANSACTION_GATEWAY_L2_CHAIN_ID="$L2_CHAIN_ID" \
@@ -422,7 +436,7 @@ step2_l2_message_service() {
   DEPLOYER_PRIVATE_KEY="$L2_DEPLOYER_PRIVATE_KEY" \
   RPC_URL="$L2_RPC_URL" \
   L2_SECURITY_COUNCIL="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" \
-  L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER="${L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc}" \
+  L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER="${L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER:-$PRECOMPUTED_L2_MESSAGE_ANCHORING}" \
   L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD="86400" \
   L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT="1000000000000000000000" \
     pnpm -s exec ts-node "$ART_DIR/deployL2MessageServiceV1.ts" 2>&1 | tee "$logfile"
@@ -450,7 +464,7 @@ step3_token_bridge_l1() {
 
   # REMOTE_DEPLOYER_ADDRESS is the L2 deployer address (deterministic via CREATE
   # from the pre-baked L2 deployer at nonce 0). Stays hardcoded — we own L2.
-  # L1_SECURITY_COUNCIL: Option A — same as L1 deployer.
+  # L1_SECURITY_COUNCIL stays the deployer/admin account.
   # REMOTE_TOKEN_BRIDGE_ADDRESS is consumed by the FORKED deploy script
   # (scaffold's deployBridgedTokenAndTokenBridgeV1_1.ts, bind-mounted over the
   # upstream path). Replaces the upstream's stale-offset-based remoteSender
@@ -570,6 +584,39 @@ step3_token_bridge_l1
 step4_token_bridge_l2
 step5_l1_test_erc20
 step6_l2_test_erc20
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fund derived L1 submitter accounts
+# ─────────────────────────────────────────────────────────────────────────────
+
+wei_lt() {
+  node -e 'process.exit(BigInt(process.argv[1]) < BigInt(process.argv[2]) ? 0 : 1)' "$1" "$2"
+}
+
+fund_l1_submitter() {
+  local name="$1" addr="$2" balance
+  if [[ "${addr,,}" == "${L1_DEPLOYER_ADDRESS,,}" ]]; then
+    log "Funding $name skipped: address is the L1 deployer"
+    return 0
+  fi
+
+  balance="$(cast balance "$addr" --rpc-url "$L1_RPC_URL" | awk '{print $NF}')"
+  [[ "$balance" =~ ^[0-9]+$ ]] || die "Could not read $name balance for $addr: $balance"
+  log "$name balance: $balance wei at $addr"
+
+  if wei_lt "$balance" "$L1_ROLE_MIN_BALANCE_WEI"; then
+    log "Funding $name with $L1_ROLE_TOP_UP_WEI wei from L1 deployer"
+    cast send "$addr" --value "$L1_ROLE_TOP_UP_WEI" --private-key "$L1_DEPLOYER_PRIVATE_KEY" --rpc-url "$L1_RPC_URL" >/dev/null
+    balance="$(cast balance "$addr" --rpc-url "$L1_RPC_URL" | awk '{print $NF}')"
+    log "$name balance after funding: $balance wei"
+  else
+    log "Funding $name skipped: balance already >= $L1_ROLE_MIN_BALANCE_WEI wei"
+  fi
+}
+
+step "Fund derived L1 submitter accounts"
+fund_l1_submitter "L1 blob submitter" "$PRECOMPUTED_L1_BLOB_SUBMITTER"
+fund_l1_submitter "L1 finalization submitter" "$PRECOMPUTED_L1_FINALIZATION_SUBMITTER"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Aggregate addresses → addresses.json

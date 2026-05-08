@@ -53,8 +53,8 @@ services:
     # Phase 2.1: runs FIRST — derives L1+L2 deployer addresses, queries the L1
     # deployer's nonce on Sepolia, and pre-computes every contract address
     # that deploy-contracts.sh will end up creating. Also generates the four
-    # web3signer keystore YAMLs (3 from L1_DEPLOYER_PRIVATE_KEY per Option A,
-    # 1 from the pre-baked L2 liveness dev key).
+    # web3signer keystore YAMLs (2 derived L1 submitters + 2 pre-baked L2 dev
+    # keys for message anchoring and liveness).
     #
     # Outputs land on `linea-shared-config`:
     #   /shared/addresses-precomputed.json   (consumed by Phases 2.2, 2.3, 2.4)
@@ -157,20 +157,24 @@ services:
         # controlled shape so POSIX sed -E is enough.
         LINEA_ROLLUP_ADDR=$$(sed -nE 's/.*"LineaRollupV8":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
         L2_MS_ADDR=$$(sed -nE 's/.*"L2MessageService":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
-        # Uncompressed secp256k1 pubkey (128 hex chars, NO 0x prefix) of the
-        # user's L1 deployer key. Substituted into all three web3signer
-        # public-key slots in coordinator-config.toml so coordinator's
-        # blob-submission, finalization, and message-anchoring all resolve to
-        # the same single keystore that account-setup wrote.
-        L1_SIGNER_PUBKEY=$$(sed -nE 's/.*"l1Pubkey":[[:space:]]*"0x([a-fA-F0-9]{128})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        # Uncompressed secp256k1 pubkeys (128 hex chars, NO 0x prefix). The
+        # L1 blob and finalization signers are deliberately separate senders;
+        # message anchoring signs L2 transactions, so it uses the L2 anchorer.
+        L1_BLOB_SUBMITTER_PUBKEY=$$(sed -nE 's/.*"l1BlobSubmitterPubkey":[[:space:]]*"0x([a-fA-F0-9]{128})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        L1_FINALIZATION_SUBMITTER_PUBKEY=$$(sed -nE 's/.*"l1FinalizationSubmitterPubkey":[[:space:]]*"0x([a-fA-F0-9]{128})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        L2_MESSAGE_ANCHORING_PUBKEY=$$(sed -nE 's/.*"l2MessageAnchoringPubkey":[[:space:]]*"0x([a-fA-F0-9]{128})".*/\1/p' "$$PRECOMPUTED" | head -1)
         echo "$$LINEA_ROLLUP_ADDR" | grep -qE '^0x[a-fA-F0-9]{40}$$' || { echo "[config-render] FATAL: LineaRollupV8 missing from $$PRECOMPUTED" >&2; exit 1; }
         echo "$$L2_MS_ADDR"        | grep -qE '^0x[a-fA-F0-9]{40}$$' || { echo "[config-render] FATAL: L2MessageService missing from $$PRECOMPUTED" >&2; exit 1; }
-        echo "$$L1_SIGNER_PUBKEY"  | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l1Pubkey missing from $$PRECOMPUTED" >&2; exit 1; }
+        echo "$$L1_BLOB_SUBMITTER_PUBKEY"         | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l1BlobSubmitterPubkey missing from $$PRECOMPUTED" >&2; exit 1; }
+        echo "$$L1_FINALIZATION_SUBMITTER_PUBKEY" | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l1FinalizationSubmitterPubkey missing from $$PRECOMPUTED" >&2; exit 1; }
+        echo "$$L2_MESSAGE_ANCHORING_PUBKEY"      | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l2MessageAnchoringPubkey missing from $$PRECOMPUTED" >&2; exit 1; }
 
         echo "[config-render] L1_RPC_URL is set (redacted)"
         echo "[config-render] LineaRollupV8 = $$LINEA_ROLLUP_ADDR"
         echo "[config-render] L2MessageService = $$L2_MS_ADDR"
-        echo "[config-render] L1 signer pubkey = $${L1_SIGNER_PUBKEY%????????????????????????????????????????????????????????}…"
+        echo "[config-render] L1 blob signer pubkey = $${L1_BLOB_SUBMITTER_PUBKEY%????????????????????????????????????????????????????????}…"
+        echo "[config-render] L1 finalization signer pubkey = $${L1_FINALIZATION_SUBMITTER_PUBKEY%????????????????????????????????????????????????????????}…"
+        echo "[config-render] L2 anchoring signer pubkey = $${L2_MESSAGE_ANCHORING_PUBKEY%????????????????????????????????????????????????????????}…"
 
         # Deferred placeholders — seeded with zero defaults; Phase 2.5 will
         # fill GENESIS_STATE_ROOT_HASH + GENESIS_SHNARF after Shomei is up.
@@ -189,7 +193,9 @@ services:
             -e "s|__L1_RPC_URL__|$$L1_RPC_URL|g" \
             -e "s|__LINEA_ROLLUP_ADDRESS__|$$LINEA_ROLLUP_ADDR|g" \
             -e "s|__L2_MESSAGE_SERVICE_ADDRESS__|$$L2_MS_ADDR|g" \
-            -e "s|__L1_SIGNER_PUBKEY_NO_PREFIX__|$$L1_SIGNER_PUBKEY|g" \
+            -e "s|__L1_BLOB_SUBMITTER_PUBKEY_NO_PREFIX__|$$L1_BLOB_SUBMITTER_PUBKEY|g" \
+            -e "s|__L1_FINALIZATION_SUBMITTER_PUBKEY_NO_PREFIX__|$$L1_FINALIZATION_SUBMITTER_PUBKEY|g" \
+            -e "s|__L2_MESSAGE_ANCHORING_PUBKEY_NO_PREFIX__|$$L2_MESSAGE_ANCHORING_PUBKEY|g" \
             -e "s|__GENESIS_STATE_ROOT_HASH__|$$ZERO_HASH|g" \
             -e "s|__GENESIS_SHNARF__|$$ZERO_HASH|g" \
             -e "s|__LINEA_ROLLUP_DEPLOY_BLOCK__|0|g" \
@@ -417,10 +423,9 @@ services:
     # reliable; the SSL/handshake error from a wrong-cert client is the
     # confirmation the service is up.
     #
-    # Keystores are generated at boot by `account-setup` from the user's
-    # L1_DEPLOYER_PRIVATE_KEY (Option A — single L1 key drives the 3 L1
-    # signers: anchoring, data-submission, finalization) plus a pre-baked L2
-    # dev key for the liveness signer. The generated YAMLs land in
+    # Keystores are generated at boot by `account-setup`: 2 derived L1 runtime
+    # submitters (blob/data-submission, finalization) plus pre-baked L2 dev
+    # keys for message anchoring and liveness. The generated YAMLs land in
     # /shared/web3signer-keys via the linea-shared-config volume.
     depends_on:
       account-setup:
@@ -651,8 +656,8 @@ services:
       # (Phase 3 cleanup) so anyone reading the static env file can see what's
       # supplied at runtime versus what's static.
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
-      # Option A: postman's L1 signer is the user's L1 deployer key — same
-      # address that's funded the operations on Sepolia.
+      # Postman keeps using the user's L1 deployer key for user-facing L1
+      # message transactions; coordinator L1 submitter roles are split above.
       L1_SIGNER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:?L1_DEPLOYER_PRIVATE_KEY must be set in .env (Sepolia-funded)}
       ADDRESSES_PATH: /shared/addresses.json
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postman-pg:5432/postman

@@ -8,9 +8,10 @@
 > `9546`, the dev-prover pipeline writes requests and responses, and coordinator
 > L1 blob/aggregation submissions have been observed on Sepolia.
 >
-> This is a bring-up checkpoint, not a final "done" stamp: L1 submissions still
-> show a nonce/contention caveat (`address already reserved`) and the bundled
-> Blockscout now exposes both an L2 API backend and a frontend explorer UI.
+> This is a bring-up checkpoint, not a final "done" stamp: the quickstart now
+> splits coordinator L1 blob/finalization submitters to avoid same-account nonce
+> contention, and the bundled Blockscout exposes both an L2 API backend and a
+> frontend explorer UI. A real bridge/message smoke test is still the next gate.
 >
 > If you boot this and hit something
 > [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
@@ -36,14 +37,14 @@
 ║   What's user-supplied (your responsibility):                                ║
 ║     • L1_RPC_URL                — your Sepolia HTTPS RPC                     ║
 ║     • L1_DEPLOYER_PRIVATE_KEY   — your Sepolia-funded deployer key.          ║
-║       This single key is used for ALL L1 roles (Option A): contract          ║
-║       deployer, security council, rollup operators, blob/data submitter,     ║
-║       aggregation/finalization submitter, message anchorer, postman L1       ║
-║       signer. Address derived from this key MUST be Sepolia-funded.          ║
+║       It deploys/contracts-admins the L1 side. account-setup derives         ║
+║       separate L1 blob and finalization submitter keys from it, grants       ║
+║       those addresses operator rights, and deploy-contracts funds them.      ║
+║       The deployer address MUST be Sepolia-funded.                           ║
 ║                                                                              ║
-║   At boot, account-setup writes web3signer keystores into a docker volume    ║
-║   from your L1 key. They live in `/shared/web3signer-keys/` inside the       ║
-║   stack and are wiped by `docker compose down -v`.                           ║
+║   At boot, account-setup writes web3signer keystores into a docker volume:   ║
+║   derived L1 submitter keys plus pre-baked L2 message/liveness keys. They    ║
+║   live in `/shared/web3signer-keys/` and are wiped by `docker compose down -v`.║
 ║                                                                              ║
 ║   Full inventory: see config/DEV-KEYS-INVENTORY.md.                          ║
 ║                                                                              ║
@@ -89,7 +90,7 @@ What this is **NOT**:
 | Docker          | v24+                                                     |
 | Compose         | v2.19+                                                   |
 | Sepolia RPC     | HTTPS endpoint (Infura / Alchemy / your own node)        |
-| Sepolia ETH     | ~0.5 ETH on the deployer for the L1 deploys + first batch submissions |
+| Sepolia ETH     | ~0.5 ETH on the deployer for the L1 deploys + first batch submissions; quickstart tops up derived submitter roles from this balance |
 
 Faucets: [sepoliafaucet.com](https://sepoliafaucet.com) ·
 [Alchemy Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia).
@@ -107,6 +108,8 @@ Required values in `.env`:
 ```bash
 L1_RPC_URL=https://sepolia.infura.io/v3/<your-project-id>
 L1_DEPLOYER_PRIVATE_KEY=0x<your-sepolia-funded-key>
+# optional: tune submitter top-ups if Sepolia gas spikes
+# L1_ROLE_TOP_UP_WEI=30000000000000000
 ```
 
 Everything else has sensible defaults. Optional knobs (port collisions, DA
@@ -359,7 +362,7 @@ nonce has advanced.
 | deploy-contracts step 1 fails with "insufficient funds" | deployer's Sepolia balance too low | Top up via faucet; Sepolia gas spikes can blow through 0.5 ETH |
 | deploy-contracts dies with `ADDRESS MISMATCH` | deploy script's contract sequence drifted from `account-setup.sh`'s nonce offsets | See fix log #22; usually means the deploy script changed and `account-setup.sh` needs a corresponding update |
 | Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose down -v --remove-orphans`; this scaffold keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
-| Coordinator logs `address already reserved` during L1 blob/finalization submission | v0 uses one L1 key for every L1 role, so concurrent coordinator submissions can contend on the same account | Known caveat; the observed run still progressed, but stable v0 should split signer roles or serialize L1 submissions |
+| Coordinator logs `address already reserved` during L1 blob/finalization submission | stale boot volume or old image/config still has blob and finalization mapped to the same L1 key | Fresh boot after 2026-05-08 signer split should use distinct submitter addresses; run `docker compose down -v` before retesting this fix |
 | Aggregation/finalization occasionally reverts with a starting-root mismatch while catching up | coordinator is retrying aggregation windows while the local L2 catches up to the L1 contract state | Known caveat; watch whether `lastFinalizedBlockNumber` advances before calling it stuck |
 | Coordinator restarts on first boot | usually a race against shomei's first-block trace; self-heals within ~30s | If it persists past 1 min, check `docker logs coordinator`; see fix log entries on web3signer mTLS |
 | Web3signer mTLS handshake errors | known-clients fingerprint out of sync (only after regenerating one side) | Regenerate both sides or restore from git |
@@ -411,9 +414,9 @@ notes.
   EOA. Governance/upgrade flows = v1.
 - **No full prover.** >700 GB RAM is out of scope.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
-- **No stable L1-submission story yet.** The observed run submits L1 blob and
-  aggregation transactions, but the single-key setup still produces
-  `address already reserved` retries.
+- **Fresh signer-role split still needs live validation.** The first-boot path
+  now gives coordinator separate L1 submitter accounts, but this specific change
+  still needs a clean Sepolia `down -v` boot before calling it stable.
 - **No scripted bridge smoke test yet.** Manual message tests are still needed
   before calling the quickstart final.
 - **No CI smoke test.** Validation today is compose-config + manual

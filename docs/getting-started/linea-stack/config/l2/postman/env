@@ -2,8 +2,8 @@
 # L1_CONTRACT_ADDRESS — overridden at postman startup from /shared/addresses.json;
 #   the literal here is just a placeholder.
 # L1_SIGNER_PRIVATE_KEY — overridden at boot by docker-compose's environment
-#   block from .env's L1_DEPLOYER_PRIVATE_KEY (Option A: single L1 key for all
-#   roles).
+#   block from .env's L1_DEPLOYER_PRIVATE_KEY. This is postman's user-facing
+#   L1 transaction signer; coordinator L1 submitters use separate derived keys.
 # Phase-3 cleanup: the literals on these three lines are dead but kept commented
 # so anyone reading the file understands what each variable controls.
 # L1_RPC_URL=<set via compose env from .env L1_RPC_URL>
