@@ -101,7 +101,7 @@ Source: `makefile-contracts.mk:93-103`.
 | `DEPLOYER_PRIVATE_KEY` | `0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae` (DEV — L2 deployer, account 1) | literal default; override via `DEPLOYMENT_PRIVATE_KEY` | required |
 | `RPC_URL` | `http://l2-node-besu:8545` (was `http://localhost:8545/` in internal — both L1 and L2 used `8545` on the host because of port mapping; in container we use distinct hostnames) | literal | required |
 | `L2_SECURITY_COUNCIL` | `0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266` (DEV — note differs from L1 security council) | literal | required |
-| `L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER` | `0xd42e308fc964b71e18126df469c21b0d7bcb86cc` (DEV — coordinator anchorer address; matches a key in `config/web3signer/key-files/anchoring-signer.yaml`) | literal default | required |
+| `L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER` | `0xd42e308fc964b71e18126df469c21b0d7bcb86cc` (DEV — L2 message setter carried from the local dev genesis setup) | literal default | required |
 | `L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD` | `86400` | literal | required |
 | `L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT` | `1000000000000000000000` | literal | required |
 | `L2_NONCE` | from prelude | parent | required (script reads at line 41-44, throws if absent) |

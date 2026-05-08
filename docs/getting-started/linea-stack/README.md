@@ -3,20 +3,18 @@
 > v0 of the "Streamlined Linea Stack deployment" feature. Local L2 stack
 > pointed at user-supplied **Sepolia** as L1.
 
-> **Status:** Sepolia migration validated end-to-end through Phase 5 against a
-> real funded deployer (2026-05-07). All 6 contract steps deploy and verify on
-> Sepolia; sequencer + maru + l2-node-besu + shomei + postman + prover all
-> healthy. **One open issue from Phase 6**: the coordinator boots cleanly with
-> the user's web3signer pubkey wired into all 3 signer slots, but its pipeline
-> goes silent after `Coordinator app instantiated` — no conflation, no blob
-> submissions to LineaRollup. Triage notes in
-> [`first-boot-fixes.md`](./first-boot-fixes.md) under "Phase 6 (open)". User
-> deploys (deployer-driven Sepolia txs) work; coordinator-driven L1 txs (blob
-> submission, finalization, message anchoring) don't yet.
+> **Status:** Fresh Sepolia boot validated on 2026-05-08 with a funded deployer.
+> All 6 contract steps deploy and verify on Sepolia, coordinator binds `9545` /
+> `9546`, the dev-prover pipeline writes requests and responses, and coordinator
+> L1 blob/aggregation submissions have been observed on Sepolia.
+>
+> This is a bring-up checkpoint, not a final "done" stamp: L1 submissions still
+> show a nonce/contention caveat (`address already reserved`) and the bundled
+> Blockscout service exposes the L2 API only, not the explorer UI.
 >
 > If you boot this and hit something
-> [`first-boot-fixes.md`](./first-boot-fixes.md) doesn't already cover, append
-> what you learn there so the next person doesn't.
+> [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
+> learn there so the next person doesn't have to rediscover it from logs.
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -62,23 +60,23 @@
 
 ## 1. What this is
 
-A self-contained Docker Compose stack: full Linea L2 (Linea Besu sequencer +
-Maru consensus + L2 RPC follower + Shomei state manager), the coordinator,
-postman, web3signer, the partial prover, an L2 Blockscout explorer, and a
-Prometheus / Grafana / Loki observability bundle. All wired to use **your
-Sepolia RPC** as L1.
+A Docker Compose stack with Linea Besu sequencer, Maru consensus, L2 RPC
+follower, Shomei state manager, coordinator, postman, web3signer, prover, and an
+L2 Blockscout API backend. All L1 traffic goes through **your Sepolia RPC**.
 
-What you get from `docker compose up`: a live L2 chain, fresh Linea contracts
-deployed to Sepolia from your address, and a working L1↔L2 message round-trip
-including the proving cycle.
+What you get from `docker compose up`: a live local L2 chain, fresh Linea
+contracts deployed to Sepolia from your address, and a coordinator/prover path
+that can create dev proofs and submit L1 blob/aggregation transactions.
 
 What this is **NOT**:
 - Not portable — bind-mounts `../../../contracts` from the linea-monorepo so
   Hardhat tasks run against the real contracts. v1 will package this.
-- Not the full prover — partial prover only (full prover requires >700 GB
-  RAM). Real proofs, but on a partial trace set.
+- Not the full prover — full proving requires >700 GB RAM. Quickstart defaults
+  to dev proofs; partial proving is opt-in for validation runs.
 - No L1 explorer — use [sepolia.etherscan.io](https://sepolia.etherscan.io)
   with the LineaRollup address from `addresses.json`.
+- No L2 Blockscout UI yet — the API backend runs, but `/` returns `404` until a
+  separate Blockscout frontend container is added.
 - No Timelock, no Security Council. The L1 deployer key owns everything.
   Governance/upgrade flows are out of scope.
 
@@ -86,9 +84,9 @@ What this is **NOT**:
 
 | Requirement     | Minimum                                                  |
 |-----------------|----------------------------------------------------------|
-| RAM             | 32 GB (prover container has `GOMEMLIMIT=32GiB`)          |
+| RAM             | 8 GB Docker Desktop works for default dev proofs; partial mode needs much more |
 | RAM (recommended) | 48 GB                                                  |
-| Disk            | ~80 GB free (image pulls + chaindata + observability)    |
+| Disk            | ~80 GB free (image pulls + chaindata + service DBs)      |
 | CPU             | 8 cores                                                  |
 | Docker          | v24+                                                     |
 | Compose         | v2.19+                                                   |
@@ -145,11 +143,12 @@ T+2:00  deploy-contracts begins
         ├─ Step 3-4: deploy TokenBridge L1 + L2
         ├─ Step 5-6: deploy TestERC20 L1 + L2
         ├─ verify-or-die: each deployed addr must equal precomputed
-        ├─ patch /rendered/coordinator-config (state root + shnarf + deploy block)
-        └─ patch postman/env (contract addresses + L1 deploy block)
+        └─ patch /rendered/coordinator-config (state root + shnarf + deploy block)
 T+5-8m  coordinator + postman + prover start
-        post-deploy-restart cycles postman (re-reads patched env)
-T+15m+  first proof submitted to Sepolia (varies; longer on Apple Silicon)
+        postman reads deployed addresses from /shared/addresses.json at startup
+T+8m+   coordinator writes prover requests; dev prover writes responses
+T+10m+  coordinator starts L1 blob/aggregation submissions once enough L2
+        blocks have been conflated/proven
 ```
 
 The dominating variables on real Sepolia are:
@@ -157,7 +156,10 @@ The dominating variables on real Sepolia are:
 - Sepolia gas-price spikes (deploys can take much longer when basefee is high)
 - Image pull on first boot (~6 GB total)
 
-Plan ~30 min for the first full cycle including a finalised proof.
+Plan ~20-30 min for first-boot evidence on a cold Docker host. Do not call a
+run successful just because containers are up: wait for `./scripts/status.sh` to
+show deployed addresses, coordinator ports, prover responses, and coordinator L1
+submission logs.
 
 ## 5. Endpoints
 
@@ -165,8 +167,8 @@ Plan ~30 min for the first full cycle including a finalised proof.
 |---------|-----|------|
 | L2 RPC (HTTP) | http://localhost:8745 | end-user RPC (l2-node-besu); use this from wallets/SDKs |
 | L2 RPC (WS)   | ws://localhost:8746  | |
-| L2 Blockscout API | http://localhost:4000/api/v2/blocks | Frontend `/` returns 404 — Blockscout 7.x splits the UI into a separate frontend container that this scaffold doesn't deploy. JSON API works. |
-| Coordinator   | http://localhost:9545 | observability + JSON-RPC. NOTE: container's healthcheck shells `curl` which isn't installed in the linea-coordinator image, so `docker compose ps` always shows "unhealthy" — this is cosmetic. The port may also not bind reliably from host while the Phase-6 coordinator-stuck issue is open. |
+| L2 Blockscout API | http://localhost:4000/api/v2/blocks | API works. Explorer UI is a known gap: `/` returns `404` because Blockscout 7.x needs a separate frontend container. |
+| Coordinator   | http://localhost:9545 | observability + JSON-RPC; use `./scripts/status.sh` to check whether `9545`/`9546` are listening. |
 | Postman       | http://localhost:9090 | |
 | Web3signer    | http://localhost:9000 | mTLS only — won't respond to plain HTTP |
 | Maru          | http://localhost:8080 | observability/health |
@@ -182,7 +184,10 @@ work against an exited container. Use a throwaway busybox bound to the shared
 volume to read its outputs:
 
 ```bash
-# Service status (ignore "unhealthy" on coordinator — see endpoint table note)
+# Redacted milestone view across Docker, deploy logs, coordinator, and prover
+./scripts/status.sh
+
+# Service status
 docker compose --profile stack-partial-prover ps
 
 # Final contract addresses (post-deploy)
@@ -211,7 +216,14 @@ docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
 # Then open: https://sepolia.etherscan.io/address/<that-address>
 ```
 
-### First L1→L2 message
+The important first-boot signals are: deployed addresses, coordinator ports
+listening, prover request/response counts increasing, and coordinator L1
+submission logs. `./scripts/status.sh` puts those in one redacted view.
+
+### Manual L1→L2 message smoke test
+
+This remains a final acceptance check, not something the 2026-05-08 bring-up
+checkpoint proves by itself.
 
 ```bash
 # 1. Read the LineaRollup address from the shared volume
@@ -230,18 +242,11 @@ cast send "$LINEA_ROLLUP" "sendMessage(address,uint256,bytes)" \
 docker logs -f postman | grep -i "MessageSent\|claimed"
 ```
 
-> ⚠ **Phase-6 caveat (2026-05-07).** End-to-end finalisation requires the
-> coordinator to conflate L2 blocks → submit blobs to LineaRollup → finalise.
-> The coordinator currently goes silent after startup (see status banner at
-> top); blob submission is **not** firing. Postman will still observe the L1
-> `MessageSent` event and attempt the L2-side anchor, but the corresponding
-> L1-side finalisation won't happen until Phase 6 is closed out. Until then
-> the L1→L2 walkthrough above succeeds at step 2 (the deployer-driven L1 tx
-> lands on Sepolia) but step 3 won't show a "claimed" log.
->
-> When Phase 6 closes: end-to-end finalisation takes one full coordinator
-> conflation + dummy-proof cycle. Typical (target): 5–15 min steady state on
-> x86_64; longer on Apple Silicon for the first proof.
+> End-to-end finalisation depends on the coordinator/prover pipeline. On a
+> healthy first boot, `./scripts/status.sh` should show coordinator ports bound
+> and prover responses appearing. If those counts stay at zero after coordinator
+> starts, inspect `docker logs coordinator` before sending bridge test messages.
+
 
 ## 7. Tearing down
 
@@ -309,17 +314,14 @@ file in the volume is patched. Verify:
 ```bash
 docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
   grep -E "^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
-# Expected with PROVER_DEV_OVERRIDE=true:
+# Expected in default quickstart mode:
 #   prover_mode = "dev" × 4
 #   is_allowed_circuit_id = 963
 ```
 
-To go back to partial, unset `PROVER_DEV_OVERRIDE` (or set `=false`) in `.env`
-and re-run the same `up -d --force-recreate config-render prover` command.
-
-> ⚠ Don't commit `PROVER_DEV_OVERRIDE=true` to your `.env.example` or any
-> shared config. The profile is named `stack-partial-prover` because the
-> deliverable is partial — the dev override is a local-iteration knob only.
+To run partial mode, set `PROVER_DEV_OVERRIDE=false`, raise Docker Desktop
+memory substantially, optionally set `PROVER_GOMEMLIMIT`, and re-run the same
+`up -d --force-recreate config-render prover` command.
 
 ### Pointing at a different L1
 
@@ -338,7 +340,6 @@ This scaffold is intentionally Sepolia-shaped. To target a different L1
 
 ```bash
 docker compose down -v --remove-orphans
-docker volume prune -f
 docker compose --env-file versions.env --env-file .env --profile stack-partial-prover up -d
 ```
 
@@ -351,12 +352,15 @@ nonce has advanced.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `account-setup` exits with "L1 RPC not reachable" | `L1_RPC_URL` rate-limited or wrong | Try a different Sepolia RPC; check the URL with `cast chain-id --rpc-url $L1_RPC_URL` |
-| `account-setup` exits with "could not extract deployers.l1" | malformed JSON output (Foundry version mismatch?) | See [first-boot-fixes.md](./first-boot-fixes.md) — `cast wallet address` flag drift is one possibility |
+| `account-setup` exits with "could not extract deployers.l1" | malformed JSON output (Foundry version mismatch?) | See [bringup-notes.md](./bringup-notes.md) — `cast wallet address` flag drift is one possibility |
 | deploy-contracts step 1 fails with "insufficient funds" | deployer's Sepolia balance too low | Top up via faucet; Sepolia gas spikes can blow through 0.5 ETH |
 | deploy-contracts dies with `ADDRESS MISMATCH` | deploy script's contract sequence drifted from `account-setup.sh`'s nonce offsets | See fix log #22; usually means the deploy script changed and `account-setup.sh` needs a corresponding update |
+| Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose down -v --remove-orphans`; this scaffold keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
+| Coordinator logs `address already reserved` during L1 blob/finalization submission | v0 uses one L1 key for every L1 role, so concurrent coordinator submissions can contend on the same account | Known caveat; the observed run still progressed, but stable v0 should split signer roles or serialize L1 submissions |
+| Aggregation/finalization occasionally reverts with a starting-root mismatch while catching up | coordinator is retrying aggregation windows while the local L2 catches up to the L1 contract state | Known caveat; watch whether `lastFinalizedBlockNumber` advances before calling it stuck |
 | Coordinator restarts on first boot | usually a race against shomei's first-block trace; self-heals within ~30s | If it persists past 1 min, check `docker logs coordinator`; see fix log entries on web3signer mTLS |
 | Web3signer mTLS handshake errors | known-clients fingerprint out of sync (only after regenerating one side) | Regenerate both sides or restore from git |
-| Apple Silicon prover OOM | Docker Desktop memory cap < 48 GB | Raise the cap in Docker Desktop settings |
+| Prover execution proofs exit `137` or files get `.large.failure.code_137` | partial prover ran under too little Docker memory | Use default `PROVER_DEV_OVERRIDE=true`, or raise Docker memory substantially before partial-mode validation |
 | Port collision (5432, 8745, 4000, 9000, 3001, 9091) | Another service uses the port | Override via `HOST_PORT_*` in `.env` |
 
 ### Inspecting
@@ -392,32 +396,34 @@ docker run --rm -it --network linea-stack_linea \
 
 ### Known-issue catalog
 
-[`first-boot-fixes.md`](./first-boot-fixes.md) tracks every fix applied during
-scaffold development plus carry-overs into Phase 5 (real Sepolia validation)
-and the open Phase 6 work. Entries #1–#15 cover the original local-L1 boot,
-#16–#27 the Sepolia migration phases (incl. prover all-dev pre-flight), #28–#34
-the Phase 5 first-boot fixes against real Sepolia (nonce-offset bugs in the
-upstream deploy scripts, idempotency for retry cycles, prover kzgsrs mount),
-and #35 the Phase 6 web3signer pubkey alignment. The "Phase 6 (open)" section
-documents the coordinator-stuck-after-startup symptom + hypotheses for next
-session.
+[`bringup-notes.md`](./bringup-notes.md) tracks the fix history plus the
+current caveats. Entries #1-#15 cover the original local-L1 boot, #16-#27 the
+Sepolia migration phases, #28-#34 the first real-Sepolia boot fixes, and #35+
+the coordinator/prover bring-up, security cleanups, and remaining validation
+notes.
 
 ## 10. What's NOT yet in v0
 
-- **No Timelock, no Security Council.** L1 contracts are owned by your
-  deployer EOA. Governance/upgrade flows = v1.
+- **No Timelock, no Security Council.** L1 contracts are owned by your deployer
+  EOA. Governance/upgrade flows = v1.
 - **No full prover.** >700 GB RAM is out of scope.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
-- **No CI smoke test.** Validation today is compose-config + render-pipeline
-  level + manual first-boot-against-Sepolia (Phase 5, 2026-05-07). A scripted
-  end-to-end smoke test is Phase-7+ once the coordinator pipeline is closed out.
-- **No working coordinator-driven L1 finalisation yet.** See status banner.
-  Deploys land on Sepolia; coordinator-driven txs (blob submission, finalisation,
-  message anchoring) are blocked on the Phase-6 coordinator-stuck investigation.
+- **No L2 Blockscout UI yet.** The API container indexes blocks, but the explorer
+  frontend is not wired into the stack.
+- **No stable L1-submission story yet.** The observed run submits L1 blob and
+  aggregation transactions, but the single-key setup still produces
+  `address already reserved` retries.
+- **No scripted bridge smoke test yet.** Manual message tests are still needed
+  before calling the quickstart final.
+- **No CI smoke test.** Validation today is compose-config + manual
+  first-boot-against-Sepolia. A scripted end-to-end smoke test remains follow-up
+  work.
+- **Partial proving is not the default.** The default is dev proofs for
+  quickstart usability; partial proving remains opt-in and resource-heavy.
 
 ## 11. Reference
 
-### Service list (17 services on `stack-partial-prover`)
+### Service list (`stack-partial-prover`)
 
 ```
 account-setup            (init, foundry, runs first)
@@ -430,9 +436,8 @@ l2-node-besu             (consensys/linea-besu-package, role=RPC)
 shomei                   (consensys/linea-shomei, ZK state manager)
 coordinator              (consensys/linea-coordinator)
 postman                  (consensys/linea-postman, L1↔L2 message relay)
-prover                   (consensys/linea-prover, partial mode)
+prover                   (consensys/linea-prover, dev mode by default)
 deploy-contracts         (init, node:24, runs Hardhat)
-post-deploy-restart      (init, docker:cli, restarts postman)
 coordinator-pg           (postgres)
 postman-pg               (postgres)
 blockscout-l2-pg         (postgres)
@@ -449,7 +454,7 @@ l2-blockscout            (blockscout/blockscout, API only)
 docs/getting-started/linea-stack/
 ├── README.md                    ← you are here
 ├── SCAFFOLD-PLAN.md             ← historical planning doc (pre-Sepolia)
-├── first-boot-fixes.md          ← every fix + Phase carry-overs
+├── bringup-notes.md            ← fix history, current caveats, validation notes
 ├── docker-compose.yml
 ├── versions.env                 ← pinned image tags
 ├── .env.example                 ← copy to .env, fill in L1 RPC + key

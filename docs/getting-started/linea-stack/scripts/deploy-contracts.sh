@@ -17,25 +17,17 @@
 #
 # After all 6 steps, this script:
 #   - aggregates addresses into /shared/addresses.json
-#   - patches /rendered/coordinator-config.toml + /rendered/maru-config.toml
-#     with the discovered LINEA_ROLLUP_ADDRESS, L2_MESSAGE_SERVICE_ADDRESS,
-#     L2 genesis state root, computed shnarf, and L2 deploy block
-#   - patches the postman env file with L1+L2 contract addresses
+#   - patches /rendered/coordinator-config.toml with deploy-time-only values:
+#     L2 genesis state root, computed shnarf, and L2 deploy block.
 #
-# A `post-deploy-restart` compose service then restarts maru (which booted with
-# zero-default placeholders) so it picks up the patched config. Coordinator and
-# postman start *after* this script, so they read the patched values on first
-# boot — no restart needed.
+# Coordinator and postman start *after* this script. Coordinator reads the
+# patched rendered TOML. Postman reads /shared/addresses.json at startup and
+# exports the deployed contract addresses into its process environment.
 #
 # See scripts/DEPLOY-ENV-CONTRACT.md for the full env-var contract per step.
 #
-# Args:
-#   $1 — L1 RPC endpoint (Sepolia HTTPS RPC; e.g. https://sepolia.infura.io/v3/...)
-#   $2 — L2 RPC endpoint (internal: http://l2-node-besu:8545)
-#   $3 — output path for addresses.json (e.g. /shared/addresses.json)
-#
 # Required env (compose injects from .env):
-#   L1_RPC_URL                            — same as $1, REQUIRED, no default.
+#   L1_RPC_URL                            — Sepolia HTTPS RPC, REQUIRED, no default.
 #   L1_DEPLOYER_PRIVATE_KEY               — Sepolia-funded; used for ALL L1 roles
 #                                           (Option A: single key for security
 #                                           council, rollup operators, deployer).
@@ -110,18 +102,19 @@ cd "$CONTRACTS_DIR"
 step "Pre-flight"
 
 wait_rpc() {
-  local url="$1" name="$2"
-  for _ in $(seq 1 60); do
-    if curl -fsS --max-time 2 \
+  local url="$1" name="$2" resp
+  for _ in $(seq 1 120); do
+    resp="$(curl -sS --max-time 10 \
          -H "Content-Type: application/json" \
          -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-         "$url" >/dev/null 2>&1; then
-      log "$name reachable: $url"
+         "$url" 2>/dev/null || true)"
+    if echo "$resp" | grep -qE '"result"[[:space:]]*:[[:space:]]*"0x[0-9a-fA-F]+"'; then
+      log "$name RPC reachable"
       return 0
     fi
     sleep 2
   done
-  die "$name not reachable after 120s: $url"
+  die "$name RPC did not return eth_blockNumber after 240s"
 }
 wait_rpc "$L1_RPC_URL" L1
 wait_rpc "$L2_RPC_URL" L2
@@ -584,10 +577,10 @@ step6_l2_test_erc20
 
 step "Aggregate addresses → $OUT_PATH"
 
-node - <<'NODE_EOF' "$LOG_DIR" "$OUT_PATH" "$L1_CHAIN_ID" "$L2_CHAIN_ID" "$L1_RPC_URL" "$L2_RPC_URL"
+node - <<'NODE_EOF' "$LOG_DIR" "$OUT_PATH" "$L1_CHAIN_ID" "$L2_CHAIN_ID" "$L2_RPC_URL"
 const fs = require("fs");
 const path = require("path");
-const [, , logDir, outPath, l1ChainId, l2ChainId, l1Url, l2Url] = process.argv;
+const [, , logDir, outPath, l1ChainId, l2ChainId, l2Url] = process.argv;
 
 // Format emitted by every deploy script (see contracts/scripts/hardhat/utils.ts:146):
 //   contract=NAME deployed: address=0xADDR blockNumber=N chainId=Z
@@ -597,7 +590,7 @@ const result = {
   _meta: {
     l1ChainId,
     l2ChainId,
-    l1RpcUrl: l1Url,
+    l1RpcUrl: "<redacted>",
     l2RpcUrl: l2Url,
     generatedAt: new Date().toISOString(),
   },
@@ -623,42 +616,6 @@ console.log("[deploy-contracts] wrote", outPath);
 console.log("[deploy-contracts] L1 contracts:", Object.keys(result.l1).join(", ") || "(none)");
 console.log("[deploy-contracts] L2 contracts:", Object.keys(result.l2).join(", ") || "(none)");
 NODE_EOF
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Patch postman env file with deployed addresses
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# Postman reads its env_file at container start. depends_on:
-# `deploy-contracts (service_completed_successfully)` gates postman until
-# this patch lands.
-
-step "Patch postman env"
-
-POSTMAN_ENV="${POSTMAN_ENV:-/workspace/docs/getting-started/linea-stack/config/l2/postman/env}"
-if [[ -f "$POSTMAN_ENV" && -f "$OUT_PATH" ]]; then
-  L1_ADDR="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l1.LineaRollupV8||j.l1.ValidiumV2||"")' "$OUT_PATH")"
-  L2_ADDR="$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(j.l2.L2MessageService||"")' "$OUT_PATH")"
-
-  # L1 block where LineaRollupV8 was deployed — postman uses this as
-  # L1_LISTENER_INITIAL_FROM_BLOCK so it doesn't scan all of Sepolia from
-  # genesis. Extracted from step1's deploy log.
-  L1_DEPLOY_BLOCK=""
-  if [[ -f "$LOG_DIR/step1-linea-rollup.log" ]]; then
-    L1_DEPLOY_BLOCK="$(grep -E "^contract=LineaRollupV${L1_CONTRACT_VERSION} deployed: " "$LOG_DIR/step1-linea-rollup.log" | tail -1 | sed -nE 's/.*blockNumber=([0-9]+).*/\1/p')"
-  fi
-  : "${L1_DEPLOY_BLOCK:=0}"
-
-  if [[ -n "$L1_ADDR" && -n "$L2_ADDR" ]]; then
-    log "Patching postman env: L1_CONTRACT_ADDRESS=$L1_ADDR L2_CONTRACT_ADDRESS=$L2_ADDR L1_LISTENER_INITIAL_FROM_BLOCK=$L1_DEPLOY_BLOCK"
-    sed -i "s|^L1_CONTRACT_ADDRESS=.*|L1_CONTRACT_ADDRESS=${L1_ADDR}|" "$POSTMAN_ENV"
-    sed -i "s|^L2_CONTRACT_ADDRESS=.*|L2_CONTRACT_ADDRESS=${L2_ADDR}|" "$POSTMAN_ENV"
-    sed -i "s|^L1_LISTENER_INITIAL_FROM_BLOCK=.*|L1_LISTENER_INITIAL_FROM_BLOCK=${L1_DEPLOY_BLOCK}|" "$POSTMAN_ENV"
-  else
-    log "WARNING: could not extract L1 LineaRollupV8/L2 L2MessageService from $OUT_PATH; postman env not patched"
-  fi
-else
-  log "skipping postman env patch (POSTMAN_ENV=$POSTMAN_ENV exists=$(test -f "$POSTMAN_ENV" && echo yes || echo no))"
-fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Patch rendered coordinator-config with deploy-time-only values

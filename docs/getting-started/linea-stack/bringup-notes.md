@@ -1,6 +1,29 @@
-# First-boot fixes — 2026-05-06
+# Linea Stack bring-up notes
 
-Issues hit during the first `docker compose up -d` pass and what we did about them.
+Running log for the Sepolia quickstart: fixes applied, current status, and caveats that still block calling the project finished.
+
+## Current snapshot — 2026-05-08
+
+Fresh Sepolia boot now gets past the earlier blockers:
+
+- all 6 contract deployment steps complete and verify against the precomputed addresses;
+- `addresses.json` is written to the shared volume and the contracts are visible on Sepolia;
+- coordinator binds `9545` and `9546`;
+- the dev-prover file pipeline writes execution/compression/aggregation responses;
+- coordinator has submitted L1 blob and aggregation transactions.
+
+This is **not** final success yet. Current caveats:
+
+- coordinator still logs `address already reserved` during L1 submissions, likely because v0 uses one L1 account for concurrent blob/data-submission and aggregation/finalization roles;
+- aggregation/finalization can temporarily revert with starting-root mismatches while the stack catches up, so progress must be judged by `lastFinalizedBlockNumber` advancing, not by a single revert;
+- L2 Blockscout is API-only in this scaffold. `localhost:4000/api/v2/...` works, but `localhost:4000/` returns `404` because the Blockscout frontend container is not deployed;
+- a documented L1-to-L2 bridge/message smoke test is still needed before this can be called finished.
+
+Next work should focus on separating or serializing L1 signer roles, adding the Blockscout frontend, and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
+
+## Historical fix log
+
+Issues hit during the first `docker compose up -d` passes and what we did about them.
 
 | # | Fix | Why |
 |---|---|---|
@@ -344,7 +367,9 @@ Verified via the coordinator's `App configs` dump at startup — all three signe
 
 The fix landed against the existing volume without needing a `down -v`: manually patched `signers.l1Pubkey` into the persisted `addresses-precomputed.json`, then `up -d --force-recreate config-render` re-rendered with the new substitution, then `up -d --force-recreate --no-deps deploy-contracts` re-applied the deploy-time patches (state_root, shnarf, deploy_block) that re-render zeroed out, then `up -d --force-recreate --no-deps coordinator postman prover` to pick up the new TOML. Saved another ~0.10 ETH that a full re-deploy would have burned.
 
-**Issue B — open: coordinator silent after startup**
+**Issue B — historical open item: coordinator silent after startup**
+
+> Historical note: this was the live state on 2026-05-07 and is fixed later by #37.
 
 After the pubkey fix landed and coordinator restarted cleanly, it logged `Coordinator app instantiated` and then went **completely silent**. 7+ min of zero output. JVM alive (PID 1, ~11s CPU, idle). Symptoms:
 - L2 chain advancing (sequencer at block 398; multiple test txs sent via `cast send` to generate traffic).
@@ -380,3 +405,70 @@ For session resumption: leave the stack running, log file persists, can re-check
 - Template now has 4 prover_mode lines: `partial`, `dev`, `partial`, `dev` (matching upstream partial).
 - Live rendered file in volume still has 4× `dev` + `is_allowed_circuit_id = 963` (untouched).
 - Prover container kept running through this change with no restart.
+
+**Issue B follow-up — fixed: coordinator startup blocked by L1 RPC `eth_getLogs` limits** (#37)
+
+The "silent after startup" symptom was not log4j. A thread dump showed the app blocked in `CoordinatorApp.start()` before the API ports were opened. The blocking call was the L1 finalization monitor's startup read: for a V8 rollup it calls `CONTRACT_VERSION`, `currentL2BlockNumber`, then a broad `eth_getLogs` from `earliest` to `latest` for `FinalizedStateUpdated(0)`.
+
+The original free-tier L1 RPC rejected that broad log query with a 10-block-range limit. Coordinator retries this path indefinitely, so it never reaches `Conflation started` or binds the observability/API ports. Replacing the L1 RPC with a provider that supports the required `eth_getLogs` call unblocked startup.
+
+**Issue D — fixed for fresh boots: coordinator catch-up can outrun Besu history** (#38)
+
+After the RPC fix, coordinator started polling and requested `linea_generateConflatedTracesToFileV2` from block `1..2` upward. Because the stack had been left running while coordinator was blocked, L2 had advanced thousands of blocks. `l2-node-besu` was configured with `bonsai-historical-block-limit=1024`, so old block ranges could no longer be traced and Besu returned `Plugin internal error: Conflation not finished`.
+
+Direct probes confirmed recent ranges traced successfully while old ranges failed. The quickstart now raises `bonsai-historical-block-limit` to `100000`, giving first-boot recovery and coordinator catch-up far more room before old Bonsai state is unavailable.
+
+**Security cleanup — fixed: config-render leaked RPC URLs** (#39)
+
+`config-render` used to print the full `L1_RPC_URL`, which can include provider API keys. It now logs only that the URL is set.
+
+**Security/retry cleanup — fixed: deploy preflight leaked RPC URLs and timed out too aggressively** (#40)
+
+The deploy-contracts service used to pass `L1_RPC_URL` as a positional command argument, making provider URLs visible in container process listings. Its pre-flight RPC loop also logged the full URL on failure and used a 2s timeout. The service now reads all deploy inputs from environment variables, and `wait_rpc` logs only the logical RPC name while requiring a valid `eth_blockNumber` JSON-RPC result with a longer timeout window.
+
+
+**Observability/security cleanup — fixed: deploy/runtime logs expose key milestones without secrets** (#41)
+
+Fresh boot retry on 2026-05-08 confirmed Sepolia contracts were created and coordinator progressed past the prior silent startup point: `deploy-contracts` exited `0`, `/shared/addresses.json` was written, coordinator bound `9545`/`9546`, and prover request files appeared for L2 block ranges starting at `1-2`.
+
+The quickstart now includes `scripts/status.sh`, a redacted milestone view over container status, deploy markers, final contract addresses, coordinator ports, and prover request counts. This gives users a single command for the critical boot boundary instead of requiring manual Docker-volume inspection.
+
+Security cleanup in the same pass:
+
+- `contracts/common/helpers/environment.ts` now redacts required env var values whose names look secret-bearing (`PRIVATE_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `RPC_URL`) before logging.
+- `account-setup.sh` no longer logs the full L1 RPC URL and writes `<redacted>` in `addresses-precomputed.json` metadata.
+- `deploy-contracts.sh` no longer passes the L1 RPC URL into the address-aggregation Node process and writes `<redacted>` in `addresses.json` metadata.
+
+
+**Issue E — fixed for quickstart defaults: partial execution prover OOM under laptop Docker limits** (#42)
+
+The 2026-05-08 fresh boot proved coordinator was no longer stuck: it bound `9545`/`9546`, generated execution/compression requests, and compression proofs completed. The next blocker was prover execution requests exiting `137`, leaving files with `.large.failure.code_137` and zero execution responses. Docker Desktop was capped around 8 GiB, while partial execution proving needs substantially more memory.
+
+For quickstart usability, `PROVER_DEV_OVERRIDE` now defaults to `true`, making config-render patch the rendered prover config to all-dev mode. The partial template remains on disk and can be selected with `PROVER_DEV_OVERRIDE=false` plus a larger Docker memory cap. `scripts/status.sh` now reports failed/in-progress prover request counts so this failure mode is visible immediately.
+
+
+**Runtime state cleanup — fixed: postman env no longer gets sed-patched in the repo** (#43)
+
+`deploy-contracts.sh` previously patched `config/l2/postman/env` on the host with live contract addresses and the L1 deploy block. That made every boot dirty the git worktree with run-specific Sepolia addresses. Postman now reads `/shared/addresses.json` and the step-1 deploy log at container startup, exports `L1_CONTRACT_ADDRESS`, `L2_CONTRACT_ADDRESS`, and `L1_LISTENER_INITIAL_FROM_BLOCK`, then starts the Node app. The `post-deploy-restart` docker-socket helper is no longer needed and was removed.
+
+
+**Healthcheck cleanup — fixed: coordinator no longer reports false unhealthy** (#44)
+
+The coordinator image does not include `curl`, so the compose healthcheck reported `unhealthy` even when ports `9545` and `9546` were listening and the prover pipeline was active. No service depended on `coordinator:service_healthy`, so the quickstart now removes that healthcheck and relies on `scripts/status.sh` for the meaningful coordinator readiness checks.
+
+
+**Current checkpoint — coordinator/prover active, L1 submissions observed** (#45)
+
+Fresh Sepolia boot on 2026-05-08 reached the first real bring-up milestone: all contract steps completed, `addresses.json` was written, coordinator opened its observability/JSON-RPC ports, the dev prover produced responses, and coordinator emitted L1 submission transaction hashes for blob and aggregation paths.
+
+This should be documented as progress, not final success. The acceptance bar is now higher: a repeatable run should show non-zero prover responses, L1 submissions without persistent nonce contention, and a documented user-facing bridge/message smoke test.
+
+**Open caveat — single L1 key causes noisy coordinator submission retries** (#46)
+
+The current quickstart intentionally uses one Sepolia-funded key for every L1 role. That keeps setup simple, but coordinator can attempt blob/data-submission and aggregation/finalization work concurrently through the same account. The live run still progressed, but logs showed repeated `address already reserved` errors during L1 submission.
+
+Before calling v0 stable, either split those roles across distinct funded L1 accounts or serialize the relevant coordinator submissions so a single-key quickstart does not rely on noisy retries.
+
+**Open caveat — L2 Blockscout UI is missing** (#47)
+
+The `l2-blockscout` service indexes and serves the API, but it is not a full explorer UI. `http://localhost:4000/api/v2/blocks` is queryable, while `http://localhost:4000/` returns `404`. Blockscout 7.x separates the backend/API from the frontend; the quickstart needs a frontend container wired to the existing backend before users can browse the L2 chain visually.

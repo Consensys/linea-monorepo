@@ -108,7 +108,7 @@ log "L1 signer pubkey: $L1_DEPLOYER_PUBKEY"
 # pre-computed addresses will differ from the previous run. That's expected.
 
 # Wait for Sepolia RPC to be reachable. Public RPCs sometimes 503 under load.
-log "Waiting for L1 RPC at $L1_RPC_URL"
+log "Waiting for L1 RPC (redacted)"
 for _ in $(seq 1 30); do
   if cast chain-id --rpc-url "$L1_RPC_URL" >/dev/null 2>&1; then
     break
@@ -139,7 +139,7 @@ printf '%s\n' "$L1_DEPLOYER_NONCE" | grep -qE '^[0-9]+$' \
 #   AddressFilter, Mimc, LineaRollupV8 proxy, ForcedTransactionGateway) plus
 #   1 role-grant tx for FORCED_TRANSACTION_SENDER_ROLE. Verified empirically
 #   against Sepolia at 2026-05-07: with offset +7 the next deploy hits
-#   "nonce too low: next nonce N+8, tx nonce N+7" (first-boot-fixes #29).
+#   "nonce too low: next nonce N+8, tx nonce N+7" (bringup-notes #29).
 #
 #   The on-chain nonce order ALSO differs from the script's emission order —
 #   the proxy lands at nonce N+4 and the Mimc library at nonce N+5 (the deploy
@@ -210,7 +210,7 @@ cat > "$OUT_JSON" <<EOF
 {
   "_meta": {
     "generatedAt": "$(date -u +%FT%TZ)",
-    "l1RpcUrl": "$L1_RPC_URL",
+    "l1RpcUrl": "<redacted>",
     "l1ChainId": "$L1_CHAIN_ID",
     "l1DeployerStartNonce": $L1_DEPLOYER_NONCE,
     "l2DeployerStartNonce": $L2_DEPLOYER_NONCE,

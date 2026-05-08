@@ -3,8 +3,20 @@ export function getRequiredEnvVar(name: string): string {
   if (!envValue) {
     throw new Error(`Required environment variable "${name}" is missing or empty.`);
   }
-  console.log(`Using environment variable ${name}=${envValue}`);
+  console.log(`Using environment variable ${name}=${redactEnvValue(name, envValue)}`);
   return envValue;
+}
+
+function redactEnvValue(name: string, value: string): string {
+  if (!value) {
+    return "<empty>";
+  }
+
+  if (/(PRIVATE_KEY|SECRET|TOKEN|PASSWORD|RPC_URL)$/i.test(name)) {
+    return "<set:redacted>";
+  }
+
+  return value;
 }
 
 export function getEnvVarOrDefault(envVar: string, defaultValue: unknown) {

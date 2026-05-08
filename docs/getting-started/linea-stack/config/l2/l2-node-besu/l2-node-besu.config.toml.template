@@ -97,5 +97,8 @@ cache-last-block-headers-preload-enabled=true
 cache-last-block-headers=50
 
 bonsai-limit-trie-logs-enabled=false
-bonsai-historical-block-limit=1024
+# Coordinator may be delayed on first boot by Sepolia RPC/provider issues while
+# L2 keeps producing blocks. Keep enough historical Bonsai state for coordinator
+# to trace from genesis during recovery/catch-up.
+bonsai-historical-block-limit=100000
 bonsai-parallel-tx-processing-enabled=false
