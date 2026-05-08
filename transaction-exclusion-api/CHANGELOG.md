@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.3.1] - 2026-05-08
 
 ### ⚙️ Miscellaneous Tasks
 
