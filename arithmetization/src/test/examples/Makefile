@@ -35,7 +35,7 @@ IN_BYTES        ?= ""
 PROGRAM_OFFSET  ?= 0x00000000        # 128 MiB (0x00000000 -> 0x07FFFFFF)
 IN_BYTES_OFFSET ?= 0x08800000        # 1 GiB   (0x08800000 -> 0x48FFFFFF)
 ENTRY_POINT     := $(PROGRAM_OFFSET) # Since program starts from _start, the entry point is the same as the program offset
-SP              ?= 0x087fffff        # 8 MiB   (0x08000000 <- 0x087fffff)
+SP              ?= 0x08800000        # 8 MiB   (0x08000000 <- 0x087fffff)
 
 # Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
@@ -137,7 +137,7 @@ linker-script:
 		'    } > PROGRAM' \
 		'' \
 		'    /* stack grows downward from the top of the stack region */' \
-		'    _stack_start = ORIGIN(STACK) + LENGTH(STACK) - 1;' \
+		'    _stack_start = ORIGIN(STACK) + LENGTH(STACK);' \
 		'' \
 		'    /* symbol marking the start of the input region */' \
 		'    _input_start = ORIGIN(IN);' \
