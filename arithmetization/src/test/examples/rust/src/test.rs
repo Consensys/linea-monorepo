@@ -41,11 +41,7 @@ fn main() -> ! {
 fn read_input() -> u8 {
     static mut BUF: [u8; 1] = [0u8; 1];
     unsafe {
-        read_memory(
-            (&raw mut BUF) as *mut u8,
-            &raw const _input_start as usize,
-            1,
-        );
+        read_memory(&raw mut BUF as *mut u8, 1);
         BUF[0]
     }
 }

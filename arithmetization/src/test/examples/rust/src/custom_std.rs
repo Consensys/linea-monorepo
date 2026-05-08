@@ -31,9 +31,9 @@ extern "C" {
 }
 
 // Read `len` bytes from `addr` of input region into the provided buffer
-pub fn read_memory(buf: *mut u8, addr: usize, len: usize) {
+pub fn read_memory(buf: *mut u8, len: usize) {
     unsafe {
-        let base = addr as *const u8;
+        let base = &raw const _input_start;
         for i in 0..len {
             *buf.add(i) = *base.add(i);
         }
