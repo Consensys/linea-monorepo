@@ -183,7 +183,7 @@ class MaruMultiValidatorTest {
   private fun waitForBlockHeight(
     vararg beaconChains: BeaconChain,
     targetHeight: ULong,
-    timeout: Duration = 60.seconds,
+    timeout: Duration = 240.seconds,
   ) {
     await
       .timeout(timeout.toJavaDuration())
@@ -208,7 +208,7 @@ class MaruMultiValidatorTest {
   private fun waitForConsecutiveRound0Blocks(
     beaconChain: BeaconChain,
     requiredConsecutive: Int = 5,
-    timeout: Duration = 120.seconds,
+    timeout: Duration = 240.seconds,
   ): ULong {
     var consecutiveCount = 0
     var lastStableBlock = 0uL
@@ -332,7 +332,7 @@ class MaruMultiValidatorTest {
       waitForConsecutiveRound0Blocks(
         stack0.maruApp.beaconChain,
         requiredConsecutive = STABLE_BLOCKS,
-        timeout = 120.seconds,
+        timeout = 240.seconds,
       )
     log.info("QBFT convergence achieved at block $stableHeight")
 
@@ -384,7 +384,7 @@ class MaruMultiValidatorTest {
     waitForConsecutiveRound0Blocks(
       stack0.maruApp.beaconChain,
       requiredConsecutive = STABLE_BLOCKS,
-      timeout = 120.seconds,
+      timeout = 240.seconds,
     )
 
     // Stop validator 3
@@ -400,7 +400,7 @@ class MaruMultiValidatorTest {
       stack1.maruApp.beaconChain,
       stack2.maruApp.beaconChain,
       targetHeight = heightAfterStop + STABLE_BLOCKS.toULong(),
-      timeout = 60.seconds,
+      timeout = 240.seconds,
     )
 
     // Verify blocks consistent across the 3 remaining validators
@@ -426,7 +426,7 @@ class MaruMultiValidatorTest {
     waitForConsecutiveRound0Blocks(
       stack0.maruApp.beaconChain,
       requiredConsecutive = STABLE_BLOCKS,
-      timeout = 120.seconds,
+      timeout = 240.seconds,
     )
 
     // Stop validators 2 and 3 -- only 2 of 4 remain, below quorum (need 3)

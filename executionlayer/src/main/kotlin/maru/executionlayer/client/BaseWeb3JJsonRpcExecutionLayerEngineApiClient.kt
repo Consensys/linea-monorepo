@@ -8,6 +8,7 @@
  */
 package maru.executionlayer.client
 
+import maru.executionlayer.manager.LatestBlockMetadata
 import maru.extensions.getEndpoint
 import maru.metrics.MaruMetricsCategory
 import net.consensys.linea.metrics.DynamicTagTimer
@@ -44,12 +45,17 @@ abstract class BaseWeb3JJsonRpcExecutionLayerEngineApiClient(
       tagValueExtractorOnError = { listOf(Tag("status", "failure")) },
     )
 
-  override fun getLatestBlockHash(): SafeFuture<ByteArray> =
-    web3jEngineClient.powChainHead.thenApply { powBlock -> powBlock.blockHash.toArray() }
+  override fun getLatestBlockMetadata(): SafeFuture<LatestBlockMetadata> =
+    web3jEngineClient.powChainHead.thenApply { powBlock ->
+      LatestBlockMetadata(
+        blockHash = powBlock.blockHash.toArray(),
+        timestamp = powBlock.blockTimestamp.longValue().toULong(),
+      )
+    }
 
   override fun isOnline(): SafeFuture<Boolean> =
     this
-      .getLatestBlockHash()
+      .getLatestBlockMetadata()
       .thenApply { true }
       .exceptionally { false }
 }

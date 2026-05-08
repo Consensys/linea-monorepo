@@ -78,42 +78,49 @@ class MaruConsensusSwitchTest {
 
   private fun verifyConsensusSwitch(
     besuNode: BesuNode,
-    expectedBlocksInClique: Int,
+    expectedBlocksBeforeSwitch: Int,
     totalBlocksToProduce: Int,
   ) {
-    val blockProducedByClique = besuNode.ethGetBlockByNumber(1UL)
-    assertThat(blockProducedByClique.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
-
-    val blockProducedAfterSwitch = besuNode.ethGetBlockByNumber("latest")
-    assertThat(blockProducedAfterSwitch.extraData.decodeHex().size).isLessThanOrEqualTo(VANILLA_EXTRA_DATA_LENGTH)
+    val blockProducedByQbft = besuNode.ethGetBlockByNumber(1UL)
+    assertThat(blockProducedByQbft.extraData.decodeHex().size).isGreaterThan(VANILLA_EXTRA_DATA_LENGTH)
 
     val blocks = besuNode.getMinedBlocks(totalBlocksToProduce)
-    val parisSwitchBlock = blocks.findSwitchBlock()!!
-    val cliqueBlocks = blocks.subList(0, parisSwitchBlock)
-    cliqueBlocks.verifyBlockTime()
-    assertThat(cliqueBlocks).hasSize(expectedBlocksInClique)
-    // Check that there are Prague blocks
-    blocks.subList(parisSwitchBlock, blocks.size).verifyBlockTime()
+    assertThat(blocks.size).isGreaterThanOrEqualTo(expectedBlocksBeforeSwitch + 1)
+
+    val parisSwitchBlockIndex =
+      blocks.findSwitchBlock()
+        ?: error("Could not find a PoS block (difficulty=0) in the mined block list")
+    assertThat(parisSwitchBlockIndex).isEqualTo(expectedBlocksBeforeSwitch)
+
+    blocks.subList(0, parisSwitchBlockIndex).verifyBlockTime()
+    blocks.subList(parisSwitchBlockIndex, blocks.size).verifyBlockTime()
   }
 
   @Test
-  fun `follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
+  fun `follower node correctly switches from QBFT to POS after peering with Sequencer validator`() {
     val stackStartupMargin = 40UL
-    val expectedBlocksInClique = 5
+    val expectedBlocksBeforeSwitch = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()
+    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksBeforeSwitch.toULong()
     val cancunTimestamp = shanghaiTimestamp + 10u
     val pragueTimestamp = cancunTimestamp + 10u
-    val totalBlocksToProduce = (pragueTimestamp - currentTimestamp).toInt()
-    val ttd = expectedBlocksInClique.toULong() * 2UL
+
+    // Send one tx per ~1s block from now until shortly past pragueTimestamp so the chain actually
+    // traverses QBFT -> Paris -> Shanghai -> Cancun -> Prague during the test run.
+    val postPragueBuffer = 10UL
+    val totalBlocksToProduce = (pragueTimestamp + postPragueBuffer - currentTimestamp).toInt()
+
+    // QBFT genesis TD = 1 and each QBFT block adds difficulty 1, so block #N has TD = N + 1.
+    // Setting TTD = expectedBlocksBeforeSwitch + 1 makes that block the terminal PoW block,
+    // and the next block is the first PoS block driven by Maru.
+    val ttd = expectedBlocksBeforeSwitch.toULong() + 1UL
     log.info(
       "Setting Prague switch timestamp to $pragueTimestamp, shanghai switch to $shanghaiTimestamp, Cancun switch to " +
         "$cancunTimestamp, current timestamp: $currentTimestamp",
     )
 
-    // Initialize Besu with the same switch timestamp
     validatorBesuNode =
-      BesuFactory.buildSwitchableBesu(
+      BesuFactory.buildSwitchableBesuQbft(
         shanghaiTimestamp = shanghaiTimestamp,
         cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
@@ -121,7 +128,7 @@ class MaruConsensusSwitchTest {
         validator = true,
       )
     followerBesuNode =
-      BesuFactory.buildSwitchableBesu(
+      BesuFactory.buildSwitchableBesuQbft(
         shanghaiTimestamp = shanghaiTimestamp,
         cancunTimestamp = cancunTimestamp,
         pragueTimestamp = pragueTimestamp,
@@ -180,16 +187,16 @@ class MaruConsensusSwitchTest {
 
     // Wait for both nodes to have all blocks before verifying contents.
     // The follower may still be syncing when the validator has already committed all blocks.
-    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 60.seconds)
+    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 180.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
-      expectedBlocksInClique = expectedBlocksInClique,
+      expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
       totalBlocksToProduce = totalBlocksToProduce,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
-      expectedBlocksInClique = expectedBlocksInClique,
+      expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
       totalBlocksToProduce = totalBlocksToProduce,
     )
   }

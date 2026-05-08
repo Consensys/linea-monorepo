@@ -111,6 +111,8 @@ allprojects {
 
   test {
     jvmArgs += [
+      // JDK 22+: Netty (Vert.x 5) loads native libs from the unnamed module; this opts in so tests do not fail on restricted native access.
+      '--enable-native-access=ALL-UNNAMED',
       '-Xmx4g',
       '-XX:-UseGCOverheadLimit',
       // Mockito and jackson-databind do some strange reflection during tests.
@@ -160,6 +162,8 @@ allprojects {
   }
 
   tasks.withType(Test).configureEach {
+    // Same as test.jvmArgs above: Vert.x / Netty native access on modern JDKs (also applies to other Test task types).
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
     // Java 25: Byte Buddy (pulled in by Mockito inline mocks) may not list 25 as supported yet;
     // this flag opts in so tests run until Byte Buddy catches up.
     jvmArgs("-Dnet.bytebuddy.experimental=true")

@@ -17,20 +17,20 @@ dependencyManagement {
   dependencies {
     applyMavenExclusions = false
 
-    dependencySet(group: 'com.fasterxml.jackson.core', version: '2.21.1') {
+    dependencySet(group: 'com.fasterxml.jackson.core', version: '2.19.4') {
       entry 'jackson-databind'
       entry 'jackson-datatype'
       entry 'jackson-datatype-jdk8'
     }
 
-    dependency 'com.fasterxml.jackson.module:jackson-module-kotlin:2.21.1'
+    dependency 'com.fasterxml.jackson.module:jackson-module-kotlin:2.19.4'
 
 //    dependency 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
     // For java code only
     dependency 'com.google.errorprone:error_prone_core:2.29.2'
 
-    dependency 'com.google.guava:guava:33.4.0-jre'
+    dependency 'com.google.guava:guava:33.5.0-jre'
 
     dependency 'com.squareup.okhttp3:okhttp:4.12.0'
 
@@ -49,8 +49,8 @@ dependencyManagement {
 
 //    dependency 'io.netty:netty-all:4.1.110.Final'
 //    dependency 'io.netty:netty-tcnative-boringssl-static:2.0.62.Final'
-    dependency group: 'io.netty', name: 'netty-transport-native-epoll', version: '4.1.110.Final', classifier: 'linux-x86_64'
-    dependency group: 'io.netty', name: 'netty-transport-native-kqueue', version: '4.1.110.Final', classifier: 'osx-x86_64'
+    dependency group: 'io.netty', name: 'netty-transport-native-epoll', version: '4.2.12.Final', classifier: 'linux-x86_64'
+    dependency group: 'io.netty', name: 'netty-transport-native-kqueue', version: '4.2.12.Final', classifier: 'osx-x86_64'
 //    dependency 'io.netty:netty-transport-native-unix-common:4.1.110.Final'
 
 //    dependency 'io.opentelemetry:opentelemetry-api:1.33.0'
@@ -70,7 +70,7 @@ dependencyManagement {
 
     dependency 'io.pkts:pkts-core:3.0.10'
 
-    dependencySet(group: 'io.tmio', version: '2.4.2') {
+    dependencySet(group: 'io.consensys.tuweni', version: '2.7.1') {
       entry 'tuweni-bytes'
       entry 'tuweni-config'
       entry 'tuweni-concurrent'
@@ -91,7 +91,7 @@ dependencyManagement {
     }
 
     imports {
-      mavenBom("io.vertx:vertx-stack-depchain:4.5.11")
+      mavenBom("io.vertx:vertx-stack-depchain:5.0.10")
     }
 
 //    dependency 'net.java.dev.jna:jna:5.14.0'
@@ -100,16 +100,16 @@ dependencyManagement {
 
 //    dependency 'commons-net:commons-net:3.11.0'
 
-    dependency 'org.assertj:assertj-core:3.26.3'
+    dependency 'org.assertj:assertj-core:3.27.3'
 
-    dependency 'org.awaitility:awaitility-kotlin:4.2.2'
+    dependency 'org.awaitility:awaitility-kotlin:4.3.0'
 
-    dependencySet(group: 'org.bouncycastle', version: '1.80') {
+    dependencySet(group: 'org.bouncycastle', version: '1.83') {
       entry 'bcpkix-jdk18on'
       entry 'bcprov-jdk18on'
     }
 
-    dependencySet(group: 'org.mockito', version: '5.14.2') {
+    dependencySet(group: 'org.mockito', version: '5.23.0') {
       entry 'mockito-core'
       entry 'mockito-junit-jupiter'
     }
@@ -120,6 +120,8 @@ dependencyManagement {
 
     dependency 'org.rocksdb:rocksdbjni:9.7.3'
 
+    dependency 'org.web3j:core:5.0.2'
+
     dependencySet(group: 'com.palantir.docker.compose', version: '2.3.0') {
       entry 'docker-compose-rule-junit4'
       entry 'docker-compose-junit-jupiter'
@@ -129,17 +131,24 @@ dependencyManagement {
 
 //    dependency 'org.testcontainers:testcontainers:1.19.3'
 
-    dependencySet(group: 'org.wiremock', version: '3.10.0') {
+    dependencySet(group: 'org.wiremock', version: '3.13.2') {
       entry 'wiremock'
     }
 
-    dependency 'tech.pegasys.discovery:discovery:22.12.0'
+    dependency('io.consensys.protocols:discovery:26.3.0') {
+      exclude group: 'io.consensys.tuweni', name: 'tuweni-bytes'
+      exclude group: 'io.consensys.tuweni', name: 'tuweni-crypto'
+      exclude group: 'io.consensys.tuweni', name: 'tuweni-units'
+      exclude group: 'io.consensys.tuweni', name: 'tuweni-rlp'
 
-    dependencySet(group: 'tech.pegasys.teku.internal', version: '25.9.3') {
+    }
+
+    dependencySet(group: 'tech.pegasys.teku.internal', version: '25.12.0') {
       entry 'async'
       entry 'time'
       entry 'bytes'
       entry 'ethereum-events'
+      entry 'infrastructure-events'
       entry 'spec'
       entry 'executionclient'
       entry 'unsigned'
@@ -150,22 +159,14 @@ dependencyManagement {
       entry 'logging'
     }
 
-    // discovery includes tuweni libraries under a different name so version resolution doesn't work
-    // exclude them here and leave them to be included on the classpath by the version we use
-    dependency('tech.pegasys.discovery:discovery:25.4.0') {
-      exclude 'io.consensys.tuweni:bytes'
-      exclude 'io.consensys.tuweni:crypto'
-      exclude 'io.consensys.tuweni:units'
-    }
-
-    dependencySet(group: 'org.apache.logging.log4j', version: '2.24.3') {
+    dependencySet(group: 'org.apache.logging.log4j', version: '2.25.3') {
       entry 'log4j-api'
       entry 'log4j-core'
       entry 'log4j-slf4j-impl'
       entry 'log4j-slf4j2-impl'
     }
 
-    def besuVersion = "26.2.0"
+    def besuVersion = "26.5.0-36cda4f"
 
     imports {
       mavenBom "org.hyperledger.besu:bom:$besuVersion"
@@ -195,7 +196,12 @@ dependencyManagement {
     dependency "build.linea.internal:linea-contract-clients:$lineaPackagesVersion"
     dependency "build.linea.internal:web3j-extensions:$lineaPackagesVersion"
     dependency "build.linea.internal:file-system:$lineaPackagesVersion"
-    dependency "build.linea.internal:linea-contract-clients$lineaPackagesVersion:test-fixtures"
+    dependency(
+      group: 'build.linea.internal',
+      name: 'linea-contract-clients',
+      version: lineaPackagesVersion,
+      classifier: 'test-fixtures',
+    )
     dependency "build.linea.internal:logging:$lineaPackagesVersion"
     dependency "build.linea.internal:long-running-service:$lineaPackagesVersion"
   }

@@ -74,6 +74,31 @@ data class PayloadAttributes(
       "suggestedFeeRecipient=${suggestedFeeRecipient.encodeHex()})"
 }
 
+data class LatestBlockMetadata(
+  val blockHash: ByteArray,
+  val timestamp: ULong,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as LatestBlockMetadata
+
+    if (timestamp != other.timestamp) return false
+    if (!blockHash.contentEquals(other.blockHash)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = blockHash.contentHashCode()
+    result = 31 * result + timestamp.hashCode()
+    return result
+  }
+
+  override fun toString(): String = "LatestBlockMetadata(blockHash=${blockHash.encodeHex()}, timestamp=$timestamp)"
+}
+
 interface ExecutionLayerManager {
   fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,
@@ -94,7 +119,9 @@ interface ExecutionLayerManager {
 
   fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus>
 
-  fun getLatestBlockHash(): SafeFuture<ByteArray>
+  fun getLatestBlockHash(): SafeFuture<ByteArray> = getLatestBlockMetadata().thenApply { it.blockHash }
+
+  fun getLatestBlockMetadata(): SafeFuture<LatestBlockMetadata>
 
   fun isOnline(): SafeFuture<Boolean>
 }
