@@ -2,7 +2,7 @@
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(coordinator,postman,prover,tx-exclusion-api)* Bumping coordinator versions
+- *(coordinator,postman,prover,tx-exclusion-api)* Bumping coordinator versions for testing
 ## [0.3.1] - 2026-05-08
 
 ### ⚙️ Miscellaneous Tasks
