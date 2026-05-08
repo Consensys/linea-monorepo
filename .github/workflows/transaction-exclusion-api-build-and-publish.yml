@@ -8,7 +8,7 @@ permissions:
 on:
   workflow_call:
     inputs:
-      commit_tag:
+      image_tag:
         required: true
         type: string
       develop_tag:
@@ -28,7 +28,7 @@ on:
         required: false
   workflow_dispatch:
     inputs:
-      commit_tag:
+      image_tag:
         description: 'Image tag'
         required: true
         type: string
@@ -59,7 +59,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Transaction exclusion api build
     env:
-      COMMIT_TAG: ${{ inputs.commit_tag }}
+      COMMIT_TAG: ${{ inputs.image_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
       IMAGE_NAME: ${{ inputs.image_name }}
       PUSH_IMAGE: ${{ inputs.push_image }}
