@@ -159,9 +159,19 @@ jobs:
       push_image: true
     secrets: inherit
 
+  check-builds:
+    needs: [build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exlusion-api]
+    if: always()
+    outputs:
+      any-success: ${{ contains(needs.*.result, 'success') }}
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - run: |
+          echo "any-success: ${{ contains(needs.*.result, 'success') }}"
+
   gh-release:
-    needs: [compute-release-metadata, compute-docker-tag, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exlusion-api]
-    if: always() && contains(needs.*.result, 'success')
+    needs: [compute-release-metadata, compute-docker-tag, check-builds]
+    if: needs.check-builds.outputs.any-success == 'true'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
