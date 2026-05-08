@@ -175,8 +175,8 @@ jobs:
     secrets: inherit
 
   check-builds:
-    needs: [build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
-    if: always()
+    needs: [compute-release-metadata, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
+    if: needs.compute-release-metadata.outputs.tag_changed == 'true'
     outputs:
       any-success: ${{ contains(needs.*.result, 'success') }}
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
