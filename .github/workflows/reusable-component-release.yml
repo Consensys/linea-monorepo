@@ -89,8 +89,13 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [build-local-coordinator, build-local-postman, build-local-prover, build-local-tx-exclusion-api]
-    if: always() && contains(needs.*.result, 'success')
+    needs: [compute-release-metadata, build-local-coordinator, build-local-postman, build-local-prover, build-local-tx-exclusion-api]
+    if: >
+      needs.compute-release-metadata.outputs.tag_changed == 'true' &&
+      (needs.build-local-coordinator.result   == 'success' ||
+       needs.build-local-postman.result       == 'success' ||
+       needs.build-local-prover.result        == 'success' ||
+       needs.build-local-tx-exclusion-api.result == 'success')
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
@@ -101,7 +106,7 @@ jobs:
 
   release-push-tag-changelog:
     needs: [run-e2e-tests]
-    if: always() && needs.run-e2e-tests.result == 'success'
+    if: needs.run-e2e-tests.result == 'success'
     uses: ./.github/workflows/reusable-component-release-push-tag-changelog.yml
     with:
       component-name: ${{ inputs.component-name }}
@@ -111,7 +116,7 @@ jobs:
 
   compute-docker-tag:
     needs: [compute-release-metadata, release-push-tag-changelog]
-    if: always() && needs.release-push-tag-changelog.result == 'success'
+    if: needs.release-push-tag-changelog.result == 'success'
     uses: ./.github/workflows/reusable-component-docker-tag.yml
     with:
       version-prefix: ${{ needs.compute-release-metadata.outputs.release_version }}
@@ -120,7 +125,6 @@ jobs:
   build-and-publish-image-coordinator:
     needs: [compute-docker-tag]
     if: |
-      always() && 
       needs.compute-docker-tag.result == 'success' &&
       inputs.component-name == 'coordinator'
     uses: ./.github/workflows/coordinator-build-and-publish.yml
@@ -134,7 +138,6 @@ jobs:
   build-and-publish-image-postman:
     needs: [compute-docker-tag]
     if: |
-      always() && 
       needs.compute-docker-tag.result == 'success' &&
       inputs.component-name == 'postman'
     uses: ./.github/workflows/postman-build-and-publish.yml
@@ -148,7 +151,6 @@ jobs:
   build-and-publish-image-prover:
     needs: [compute-docker-tag]
     if: |
-      always() && 
       needs.compute-docker-tag.result == 'success' &&
       inputs.component-name == 'prover'
     uses: ./.github/workflows/prover-build-and-publish.yml
@@ -162,7 +164,6 @@ jobs:
   build-and-publish-image-tx-exclusion-api:
     needs: [compute-docker-tag]
     if: |
-      always() && 
       needs.compute-docker-tag.result == 'success' &&
       inputs.component-name == 'tx-exclusion-api'
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
@@ -185,7 +186,7 @@ jobs:
 
   gh-release:
     needs: [compute-release-metadata, compute-docker-tag, check-builds]
-    if: always() && needs.check-builds.outputs.any-success == 'true'
+    if: needs.check-builds.outputs.any-success == 'true'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
