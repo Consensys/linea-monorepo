@@ -24,10 +24,10 @@ include "../../main/riscv/ram/write.zkc"
 // operations updating the full state and n ≡ STATE_WIDTH
 memory state(index:u8) -> (st:u32)
 
-// round_constants is a matrix with TOTAL_ROUNDS many rows and STATE_WIDTH many columns
-// mds_matrix is a square matrix of format STATE_WIDTH × STATE_WIDTH
-input round_constants(index:u16) -> (rc:u32)
-input mds_matrix(index:u16) -> (md:u32)
+// // round_constants is a matrix with TOTAL_ROUNDS many rows and STATE_WIDTH many columns
+// // mds_matrix is a square matrix of format STATE_WIDTH × STATE_WIDTH
+// input round_constants(index:u16) -> (rc:u32)
+// input mds_matrix(index:u16) -> (md:u32)
 
 // this implementation does not use the native field element type yet
 
@@ -43,26 +43,55 @@ const RATE:u8 = 15
 const CAPACITY:u8 = 1
 
 // we will do
-//  - FULL_ROUNDS_HALF full    rounds
-//  - PRTL_ROUNDS      partial rounds
-//  - FULL_ROUNDS_HALF full    rounds
+//  - FULL_ROUNDS_HALF full rounds
+//  - PRTL_ROUNDS      prtl rounds
+//  - FULL_ROUNDS_HALF full rounds
 // whence
 const TOTAL_ROUNDS:u8 = FULL_ROUNDS_HALF + PRTL_ROUNDS + FULL_ROUNDS_HALF
-const FULL_ROUNDS_HALF:u8 = 4 // 8 full rounds
+const FULL_ROUNDS_HALF:u8 = 4 // 8 = 4 + 4 full rounds
 const PRTL_ROUNDS:u8 = 20
 
-fn poseidon<ram, state>(address:Address, size:u32) {
+// poseidon performs the Poseidon1 hash of the nonempty byte range
+//
+//    sa..ea
+//
+// with sa := address, ea := address + size and copies the results over to
+// destination
+fn poseidon<ram, state>(address:Address, size:u32, destination:Address) {
+
+    if size == 0 {
+        printf "poseidon called with empty inputs"
+        fail
+    }
+
     var n_rounds:u32 = (size + (BYTES_PER_BLOCK - 1)) / BYTES_PER_BLOCK
     var final_size:u32 = size % BYTES_PER_BLOCK
-    var partial_round:u1 = 0
+    var final_partial_round:u1 = 0
 
     if final_size != 0 {
-        partial_round = 1
+        final_partial_round = 1
     }
 
     initialize_state(size)
 
+    var curr_address:Address = address
+    var curr_size:u32 = BYTES_PER_BLOCK
+
     for i:u32 = 0; i<n_rounds; i = i + 1 {
+        if i == (n_rounds - 1) && final_partial_round == 1 {
+            curr_size = final_size
+        }
+        update_state(curr_address, curr_size)
+        permutation()
+        curr_address = curr_address + (BYTES_PER_BLOCK as u64)
+    }
+
+    // for cleaner tests
+    wipe_tmp()
+
+    var curr_destination:Address = destination
+    for i:u8 = 0; i<OUTPUT_LENGTH; i = i + 1 {
+        curr_destination = state_to_ram(curr_destination, i)
     }
 }
 
@@ -91,9 +120,10 @@ fn initialize_state<state>(size:u32) {
     write_to_state(RATE, size % KOALABEAR_PRIME)
 }
 
-// zero_out_state sets the state σ to all zeros.
+// zero_out_state sets the state (σ, τ) to all zeros,
+// which includes the "tmp" portion τ of the state
 fn zero_out_state<state>() {
-    for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
+    for i:u8 = 0; i<(2 * STATE_WIDTH); i = i + 1 {
         write_to_state(i, 0)
     }
 }
@@ -209,6 +239,7 @@ fn sbox(x:u32) -> (res:u32) {
     return
 }
 
+// add_round_constants adds round constants to the state
 fn add_round_constants<state>(r:u8) {
     var start_index:u16 = (r as u16) * (STATE_WIDTH as u16)
     var round_constant:u32
@@ -224,6 +255,7 @@ fn add_round_constants<state>(r:u8) {
     }
 }
 
+// full_round processes a full round: the s_box is applied to every entry of the state
 fn full_round<state>(r:u8) {
     add_round_constants(r)
     for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
@@ -246,7 +278,7 @@ fn apply_mds<state>() {
     // mds[i,j]    < 2**32
     // state[j]    < 2**32
     // sum_j mds[i,j] ∙ state[j] < 2**(32 + 32 + 8) = 2**72
-    var index:u16 = 0
+    var index:u8 = 0
     for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
         var unreduced_sum:u72 = 0
         for j:u8 = 0; j<STATE_WIDTH; j = j + 1 {
@@ -258,7 +290,7 @@ fn apply_mds<state>() {
 
     // we copy the updated state over to the state
     for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
-        state[i] = read_from_tmp(i)
+        write_to_state(i, read_from_tmp(i))
     }
 }
 

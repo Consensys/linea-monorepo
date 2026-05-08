@@ -18,3 +18,22 @@ fn read_from_tmp<state>(address:u8) -> (value:u32) {
     return
 }
 
+fn wipe_tmp<state>() {
+    for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
+        state[i + STATE_WIDTH] = 0
+    }
+}
+
+fn state_to_ram<ram, state>(address:Address, index:u8) -> (address_updt:Address) {
+    var b3:u8
+    var b2:u8
+    var b1:u8
+    var b0:u8
+    b3::b2::b1::b0 = state[index]
+    ram[address + 3] = b3
+    ram[address + 2] = b2
+    ram[address + 1] = b1
+    ram[address + 0] = b0
+    address_updt = address + 4
+}
+
