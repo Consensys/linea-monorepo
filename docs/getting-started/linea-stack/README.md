@@ -90,7 +90,7 @@ What this is **NOT**:
 | Docker          | v24+                                                     |
 | Compose         | v2.19+                                                   |
 | Sepolia RPC     | HTTPS endpoint (Infura / Alchemy / your own node)        |
-| Sepolia ETH     | ~0.5 ETH on the deployer for the L1 deploys + first batch submissions; quickstart tops up derived submitter roles from this balance |
+| Sepolia ETH     | ~0.8 ETH recommended on the deployer; quickstart reserves 0.25 ETH for each derived L1 submitter and uses the rest for L1 deploy gas |
 
 Faucets: [sepoliafaucet.com](https://sepoliafaucet.com) ·
 [Alchemy Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia).
@@ -109,7 +109,8 @@ Required values in `.env`:
 L1_RPC_URL=https://sepolia.infura.io/v3/<your-project-id>
 L1_DEPLOYER_PRIVATE_KEY=0x<your-sepolia-funded-key>
 # optional: tune submitter top-ups if Sepolia gas spikes
-# L1_ROLE_TOP_UP_WEI=30000000000000000
+# L1_ROLE_MIN_BALANCE_WEI=100000000000000000
+# L1_ROLE_TOP_UP_WEI=250000000000000000
 ```
 
 Everything else has sensible defaults. Optional knobs (port collisions, DA

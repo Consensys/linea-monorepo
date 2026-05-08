@@ -102,13 +102,34 @@ cd "$CONTRACTS_DIR"
 step "Pre-flight"
 
 wait_rpc() {
-  local url="$1" name="$2" resp
+  local url="$1" name="$2"
   for _ in $(seq 1 120); do
-    resp="$(curl -sS --max-time 10 \
-         -H "Content-Type: application/json" \
-         -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-         "$url" 2>/dev/null || true)"
-    if echo "$resp" | grep -qE '"result"[[:space:]]*:[[:space:]]*"0x[0-9a-fA-F]+"'; then
+    if RPC_URL_TO_CHECK="$url" node --input-type=module >/dev/null 2>&1 <<'NODE'; then
+const url = process.env.RPC_URL_TO_CHECK;
+const payload = JSON.stringify({ jsonrpc: "2.0", method: "eth_blockNumber", params: [], id: 1 });
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), 10000);
+
+(async () => {
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: payload,
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const json = await response.json();
+    if (!/^0x[0-9a-fA-F]+$/.test(json.result || "")) {
+      throw new Error("eth_blockNumber missing from response");
+    }
+  } catch (_) {
+    process.exitCode = 1;
+  } finally {
+    clearTimeout(timeout);
+  }
+})();
+NODE
       log "$name RPC reachable"
       return 0
     fi
@@ -254,8 +275,8 @@ if [[ ! -d artifacts ]]; then
 fi
 
 DEFAULT_L1_OPERATOR_ADDRESSES="$L1_DEPLOYER_ADDRESS,$PRECOMPUTED_L1_BLOB_SUBMITTER,$PRECOMPUTED_L1_FINALIZATION_SUBMITTER"
-L1_ROLE_MIN_BALANCE_WEI="${L1_ROLE_MIN_BALANCE_WEI:-10000000000000000}"      # 0.01 ETH
-L1_ROLE_TOP_UP_WEI="${L1_ROLE_TOP_UP_WEI:-30000000000000000}"                # 0.03 ETH
+L1_ROLE_MIN_BALANCE_WEI="${L1_ROLE_MIN_BALANCE_WEI:-100000000000000000}"     # 0.10 ETH
+L1_ROLE_TOP_UP_WEI="${L1_ROLE_TOP_UP_WEI:-250000000000000000}"               # 0.25 ETH
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Capture pre-deploy nonces (the parent prelude in makefile-contracts.mk:158)

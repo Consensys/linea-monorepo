@@ -4,21 +4,25 @@ Running log for the Sepolia quickstart: fixes applied, current status, and cavea
 
 ## Current snapshot — 2026-05-08
 
-Fresh Sepolia boot now gets past the earlier blockers:
+Fresh Sepolia boot now gets past the earlier blockers and validates the signer-role split:
 
 - all 6 contract deployment steps complete and verify against the precomputed addresses;
 - `addresses.json` is written to the shared volume and the contracts are visible on Sepolia;
+- coordinator config gets distinct pubkeys for blob submission, finalization/aggregation, and L2 message anchoring;
 - coordinator binds `9545` and `9546`;
+- L2 Blockscout backend and frontend run locally (`http://localhost:4000` and `http://localhost:4001`);
 - the dev-prover file pipeline writes execution/compression/aggregation responses;
 - coordinator has submitted L1 blob and aggregation transactions.
 
 This is **not** final success yet. Current caveats:
 
-- the signer-role split that should remove coordinator `address already reserved` retries is now wired for fresh boots, but still needs a clean `down -v` validation run;
+- derived L1 submitters need real Sepolia ETH headroom; 0.03 ETH was too low for current blob-submission max-fee checks, so defaults now top up each derived L1 submitter with 0.25 ETH;
 - aggregation/finalization can temporarily revert with starting-root mismatches while the stack catches up, so progress must be judged by `lastFinalizedBlockNumber` advancing, not by a single revert;
+- coordinator may still log transient `nonce too low`, `nonce too high`, or `replacement transaction underpriced` retries during catch-up; treat them as a blocker only if `lastFinalizedBlockNumber` stops advancing;
+- raw coordinator startup config dumps include rendered endpoints; the quickstart log4j config now drops that noisy `App configs` line, but avoid sharing old raw startup logs;
 - a documented L1-to-L2 bridge/message smoke test is still needed before this can be called finished.
 
-Next work should focus on validating the fresh-boot signer split and writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
+Next work should focus on writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
 
 ## Historical fix log
 
@@ -483,3 +487,14 @@ Added `l2-blockscout-frontend` using the official Blockscout frontend image, pin
 The frontend uses `NEXT_PUBLIC_USE_NEXT_JS_PROXY=true` and points `NEXT_PUBLIC_API_HOST` at the Docker service name `l2-blockscout:4000`, so server-side startup work and browser API traffic both reach the existing backend. Optional marketplace/ad/gas/web3 widgets are disabled to keep the local explorer minimal.
 
 Verification on the live stack: frontend env validation passed, sitemap generation fetched `/api/v2/{addresses,transactions,blocks,tokens,smart-contracts}` successfully from `l2-blockscout:4000`, `curl -I http://127.0.0.1:4001` returned `200 OK`, and the backend returned current indexed L2 blocks.
+
+**Fresh signer-split validation + funding correction — fixed for quickstart defaults** (#48)
+
+A clean `down -v` Sepolia boot on 2026-05-08 validated the first-time boot sequence with split coordinator signers. `account-setup` derived separate L1 blob and finalization submitter accounts from the user's deployer key, kept the pre-baked L2 message anchorer, and `config-render` injected three distinct coordinator pubkeys. Contract deployment completed, L2 Blockscout indexed blocks, coordinator opened `9545`/`9546`, the dev prover produced responses, and coordinator submitted L1 blob plus aggregation transactions.
+
+The signer split itself was not the remaining blocker. The live run showed the previous funding default was too low: submitters were topped up to 0.03 ETH, but the first blob-submission path needed slightly more than 0.033 ETH of upfront max-fee headroom. Manually adding 0.2 ETH to each derived L1 submitter unblocked blob and aggregation submissions. Defaults now top up each derived L1 submitter with 0.25 ETH when its balance is below 0.10 ETH. Live logs still show transient nonce/underpriced retries during catch-up, but blob and aggregation submissions continue and finalization advances; that is a retry-noise caveat, not the earlier single-key `address already reserved` failure.
+
+Follow-up cleanup in the same pass:
+
+- `deploy-contracts.sh` now checks RPC reachability through Node `fetch` with the URL held in the process environment, instead of passing the provider URL as a `curl` argv value.
+- `log4j2-dev.xml` drops the coordinator `App configs` startup dump so rendered provider endpoints are not printed in normal quickstart logs.

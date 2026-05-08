@@ -11,6 +11,7 @@
   </Properties>
   <Appenders>
     <Console name="console" target="SYSTEM_OUT">
+      <RegexFilter regex="^App configs:.*" onMatch="DENY" onMismatch="NEUTRAL"/>
       <PatternLayout pattern="${logPattern}"/>
     </Console>
     <Rewrite name="rewrite">
@@ -41,6 +42,7 @@
 
     <RollingFile name="RollingLogFile" fileName="${logPath}/${logFileName}.log"
       filePattern="${logPath}/${logFileName}-%d{yyyy-MM-dd-HH-mm-ss}-%i.log">
+      <RegexFilter regex="^App configs:.*" onMatch="DENY" onMismatch="NEUTRAL"/>
       <PatternLayout pattern="${logPattern}"/>
       <Policies>
         <OnStartupTriggeringPolicy/>
