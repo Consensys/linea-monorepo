@@ -30,7 +30,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [ 'local', 'forced-transactions:local' ]
+        include:
+          - test: local
+            archive-name: local
+          - test: forced-transactions:local
+            archive-name: forced-transactions-local
+
     name: Run test:partial-prover:${{ matrix.test }} e2e tests
     steps:
       - name: Checkout
@@ -127,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: end-2-end-debug-logs-${{ matrix.test }}
+          name: end-2-end-debug-logs-${{ matrix.archive-name }}
           if-no-files-found: error
           path: |
             docker_logs/**/*
@@ -136,6 +141,6 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: end-2-end-shared-folder-${{ matrix.test }}
+          name: end-2-end-shared-folder-${{ matrix.archive-name }}
           path: |
             tmp/local/**/*
