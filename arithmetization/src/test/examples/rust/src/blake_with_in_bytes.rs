@@ -39,7 +39,11 @@ fn get_test_vector() -> (&'static str, &'static str) {
     const TOTAL_LEN: usize = INPUT_LEN + OUTPUT_LEN;
     static mut BUF: [u8; TOTAL_LEN] = [0u8; TOTAL_LEN];
     unsafe {
-        read_memory((&raw mut BUF) as *mut u8, &raw const _input_start as usize, TOTAL_LEN);
+        read_memory(
+            (&raw mut BUF) as *mut u8,
+            &raw const _input_start as usize,
+            TOTAL_LEN,
+        );
         let input = core::str::from_utf8_unchecked(&BUF[..INPUT_LEN]);
         let expected = core::str::from_utf8_unchecked(&BUF[INPUT_LEN..INPUT_LEN + OUTPUT_LEN]);
         (input, expected)
