@@ -1,6 +1,7 @@
 ## [unreleased]
 
 ### ⚙️ Miscellaneous Tasks
+## Testing
 
 - *(coordinator,postman,prover,tx-exclusion-api,linea-besu)* Bumping component versions all-in-one
 ## [2.0.1] - 2026-05-08
