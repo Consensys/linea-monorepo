@@ -598,6 +598,11 @@ describe("Forced transaction test suite", () => {
   it.concurrent(
     "Should reject a forced transaction from a denylisted sender (FilteredAddressFrom)",
     async () => {
+      if (process.env.PARTIAL_PROVER == "true") {
+        logger.warn('Skipped the forced transaction "FilteredAddressFrom" test with partial prover');
+        return;
+      }
+
       const [l1Account, l2DeniedSender, l2Recipient] = await Promise.all([
         l1AccountManager.generateAccount(),
         l2AccountManager.generateAccount(),
