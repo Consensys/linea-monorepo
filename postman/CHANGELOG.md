@@ -1,9 +1,8 @@
 ## [unreleased]
 
-### ⚙️ Miscellaneous Tasks
-## Testing
+### 🚀 Features
 
-- *(coordinator,postman,prover,tx-exclusion-api,linea-besu)* Bumping component versions all-in-one
+- *(postman)* Bump version to v2.1.0
 ## [2.0.1] - 2026-05-08
 
 ### ⚙️ Miscellaneous Tasks
