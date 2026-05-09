@@ -5,12 +5,11 @@ generate and run them.
 
 ## Files
 
-| Path | Purpose | Committed? |
-|---|---|---|
-| `gen_op_tests.py`   | Regenerates every `../src/op_*.s` from a single Python source. | yes |
-| `run_op_tests.sh`   | Compiles every `../src/op_*.s`, runs it through `zkc exec --ir`, and writes a summary. | yes |
-| `../src/op_*.s`     | The generated test programs. One opcode per file. | yes |
-| `../bin/`           | Build artefacts (ELF, JSON, logs, results.txt). | no — gitignored |
+| Path | Purpose | 
+|---|---|
+| `gen_op_tests.py`   | Regenerates every `../src/op_*.s` from a single Python source. |
+| `run_op_tests.sh`   | Compiles every `../src/op_*.s`, runs it through `zkc exec --ir`, and writes a summary. |
+| `../src/op_*.s`     | The generated test programs. One opcode per file. |
 
 Both scripts resolve all paths relative to their own location, so they
 work regardless of the current working directory.
