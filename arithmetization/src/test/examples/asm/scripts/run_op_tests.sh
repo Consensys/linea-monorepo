@@ -23,6 +23,14 @@ LOGS="$BIN_DIR/logs"
 RESULTS="$BIN_DIR/results.txt"
 ELF2JSON="$BIN_DIR/elf2json"
 
+# Memory layout — same defaults as ../../Makefile. Override via env, e.g.
+# `IN_BYTES_OFFSET=0x10000000 ./run_op_tests.sh`. Keep these in sync with
+# the Makefile if you change them there.
+IN_BYTES="${IN_BYTES:-}"
+PROGRAM_OFFSET="${PROGRAM_OFFSET:-0x00000000}"
+IN_BYTES_OFFSET="${IN_BYTES_OFFSET:-0x08800000}"
+ENTRY_POINT="${ENTRY_POINT:-$PROGRAM_OFFSET}"
+
 # Pick GNU make. macOS ships BSD make as `make`; Homebrew installs GNU as `gmake`.
 if command -v gmake >/dev/null 2>&1; then
     MAKE_CMD=gmake
@@ -47,8 +55,13 @@ mkdir -p "$BIN_DIR" "$LOGS"
 # Build the ELF→JSON helper once (instead of `go run main.go` per test).
 ( cd "$EXAMPLES_DIR" && go build -o "$ELF2JSON" main.go )
 
-# Generate the linker script (idempotent, fast).
-"$MAKE_CMD" -C "$EXAMPLES_DIR" linker-script > /dev/null 2>&1
+# Generate the linker script. Pass the same memory-layout overrides through
+# so the linker and the JSON agree.
+"$MAKE_CMD" -C "$EXAMPLES_DIR" \
+    PROGRAM_OFFSET="$PROGRAM_OFFSET" \
+    IN_BYTES_OFFSET="$IN_BYTES_OFFSET" \
+    ${SP:+SP="$SP"} \
+    linker-script > /dev/null 2>&1
 
 count=0
 pass=0
@@ -66,7 +79,7 @@ for f in "$ASM_DIR/src"/op_*.s; do
         continue
     fi
 
-    "$ELF2JSON" "$bin" "" 0x00000000 0x08800000 0x00000000 \
+    "$ELF2JSON" "$bin" "$IN_BYTES" "$PROGRAM_OFFSET" "$IN_BYTES_OFFSET" "$ENTRY_POINT" \
         > "$json" 2> "$LOGS/${name}.json.err"
 
     zkc exec --ir "$json" "$ZKC_MAIN" > "$LOGS/${name}.out" 2>&1
