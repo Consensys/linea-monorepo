@@ -93,4 +93,4 @@ jobs:
           git pull --ff-only origin "refs/heads/${TARGET_REF}"
           git add '*/CHANGELOG.md'
           git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component"
-          git push origin "HEAD:${{ github.head_ref }}"
+          git push origin "HEAD:${TARGET_REF}"

@@ -179,19 +179,16 @@ jobs:
       push_image: true
     secrets: inherit
 
-  check-builds:
-    needs: [compute-release-metadata, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
-    if: always() && needs.compute-release-metadata.outputs.tag_changed == 'true'
-    outputs:
-      any-success: ${{ contains(needs.*.result, 'success') }}
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    steps:
-      - run: |
-          echo "any-success: ${{ contains(needs.*.result, 'success') }}"
-
   gh-release:
-    needs: [compute-release-metadata, compute-docker-tag, check-builds]
-    if: always() && needs.check-builds.outputs.any-success == 'true'
+    needs: [compute-release-metadata, compute-docker-tag, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
+    if: >
+      always() &&
+      needs.compute-release-metadata.outputs.tag_changed == 'true' &&
+      needs.compute-docker-tag.result == 'success' &&
+      (needs.build-and-publish-image-coordinator.result   == 'success' ||
+       needs.build-and-publish-image-postman.result       == 'success' ||
+       needs.build-and-publish-image-prover.result        == 'success' ||
+       needs.build-and-publish-image-tx-exclusion-api.result == 'success')
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout
