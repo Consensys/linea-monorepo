@@ -16,7 +16,7 @@ import textwrap
 
 # Resolve ../src/ relative to this script — no absolute paths.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "src"))
+OUT = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "src/op"))
 
 
 def emit(name, body):

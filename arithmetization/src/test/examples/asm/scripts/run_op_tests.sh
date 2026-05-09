@@ -66,7 +66,7 @@ mkdir -p "$BIN_DIR" "$LOGS"
 count=0
 pass=0
 fail=0
-for f in "$ASM_DIR/src"/op_*.s; do
+for f in "$ASM_DIR/src/op"/op_*.s; do
     name=$(basename "$f" .s)
     count=$((count+1))
     bin="$BIN_DIR/${name}"
