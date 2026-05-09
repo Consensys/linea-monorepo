@@ -20,17 +20,16 @@ The executable, the JSON and the disassembled file live in `asm/bin/` for assemb
 From the `Makefile` directory:
 
 ```bash
-make TEST=<name>.<ext>
+make TEST=<src_optional_subfolder>/<name>.<ext>
 ```
 
 and from anywhere using `-f`:
 
 ```bash
-make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=<name>.<ext>
+make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=<src_optional_subfolder>/<name>.<ext>
 ```
 
-**Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory. Alternatively one can provide full paths.
-
+**Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory or in subfolders.
 
 ## Alias and usage examples
 
@@ -57,7 +56,7 @@ zkc-test() {
 
 # Usage examples
 
-# Compile and execute
+# Compile and execute (note that <name>.<ext> can be replaced by <src_optional_subfolder>/<name>.<ext>)
 zkc-test <name>.<ext>
 # Compile and execute with input bytes
 zkc-test <name>.<ext> IN_BYTES="0xAABB"
@@ -74,9 +73,9 @@ zkc-test clean <name>.<ext>
 # Clean all build artifacts
 zkc-test clean-all
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
-zkc-test blake_with_in_embedded.rs
+zkc-test blake/blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs with IN_BYTES="0x<213_bytes_input_hex><64_bytes_expected_output_hex>"
-zkc-test blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e511f6c3e2b8c68059b6bbd41fbabd9831f79217e1319cde05b61626300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000001ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
+zkc-test blake/blake_with_in_bytes.rs IN_BYTES="0x0000000c48c9bdf267e6096a3ba7ca8485ae67bb2bf894fe72f36e3cf1361d5f3af54fa5d182e6ad7f520e511f6c3e2b8c68059b6bbd41fbabd9831f79217e1319cde05b61626300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000001ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"
 # Generate the linker script with custom input bytes offset
 zkc-test linker-script IN_BYTES_OFFSET=0x00000042
 # Verify ELF offsets, entry point and sp match the default ones
@@ -105,9 +104,6 @@ zkc-test compile <name>.<ext> VERIFY_ELF=true
 
 | Variable         | Default                                                                                 | Description                                                                   |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `SRC`            | `asm/src/<TEST>`, `zig/src/<TEST>`, or `rust/src/<TEST>` depending on extension         | Path to the source file, can be overridden                                    |
-| `BIN`            | `asm/bin/<NAME>`, `zig/zig-out/bin/<NAME>`, `rust/target/riscv64im-unknown-none-elf/release/<NAME>` depending on extension | Path to the output ELF binary, can be overridden |
-| `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                               |
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |

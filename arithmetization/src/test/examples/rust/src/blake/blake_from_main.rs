@@ -4,7 +4,7 @@
 /// https://gist.github.com/DavePearce/fca4c7fcfac840dc362b1c907d672093
 ///
 /// To run:
-/// mkdir -p bin && rustc src/blake_from_main.rs -o bin/blake_from_main && ./bin/blake_from_main; echo $?; rm -rf bin
+/// mkdir -p bin && rustc src/blake/blake_from_main.rs -o bin/blake/blake_from_main && ./bin/blake/blake_from_main; echo $?; rm -rf bin
 ///
 /// Note: this is a standard Rust implementation that can be run from main(). It cannot be used in the zkVM as-is, but is useful for testing the core logic and as a reference.
 use std::convert::TryInto;

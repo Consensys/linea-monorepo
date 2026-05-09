@@ -9,13 +9,13 @@
 /// Note: this is a freestanding implementation
 ///
 /// To run:
-/// zkc-test blake_with_in_embedded.rs
+/// zkc-test blake/blake_with_in_embedded.rs
 use core::convert::TryInto;
 use core::result::Result;
 use core::result::Result::Err;
 use core::result::Result::Ok;
 
-include!("custom_std.rs");
+include!("../custom_std.rs");
 include!("blake_core.rs");
 include!("blake_test_vectors.rs");
 

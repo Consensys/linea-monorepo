@@ -8,24 +8,38 @@
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Name of the test to run (with extension), mandatory unless clean-all or linker-script are the targets
+# Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
+# src_optional_subfolder/your_test(.s|.zig|.rs)
 ifeq ($(filter clean-all linker-script,$(MAKECMDGOALS)),)
 ifndef TEST
-$(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig|.rs))
+$(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
 endif
-NAME := $(basename $(TEST))
-EXT  := $(suffix $(TEST))
 
-# Default paths below are determined by the extension
-SRC  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
-BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
-JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
+# src_optionaL_subfolder/your_test
+BASENAME     := $(basename $(TEST))
+
+# your_test
+NAME 		 := $(notdir $(BASENAME))
+
+# src_optional_subfolder/
+SUBDIR       := $(dir $(TEST))
+
+# your_test(.s|.zig|.rs)
+NOTSUBDIR    := $(notdir $(TEST))
+
+# (.s|.zig|.rs)
+EXT          := $(suffix $(TEST))
+
+# Paths below are determined by the extension
+SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
+BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
+JSON := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
-GO_MAIN  := $(MAKEFILE_DIR)main.go
-ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
+GO_MAIN       := $(MAKEFILE_DIR)main.go
+ZKC_MAIN      := $(MAKEFILE_DIR)../../main/riscv/main.zkc
 LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 
 # Inputs and offsets for the program
@@ -58,6 +72,16 @@ exec: compile zkc-exec
 debug: compile zkc-debug
 
 compile: $(SRC) linker-script
+# Print all variables for debugging purposes
+	@echo "TEST:      $(TEST)"
+	@echo "BASENAME:  $(BASENAME)"
+	@echo "NAME:      $(NAME)"
+	@echo "SUBDIR:    $(SUBDIR)"
+	@echo "NOTSUBDIR: $(NOTSUBDIR)"
+	@echo "EXT:       $(EXT)"
+	@echo "SRC:       $(SRC)"
+	@echo "BIN:       $(BIN)"
+	@echo "JSON:      $(JSON)"
 # Generate ELF
 	@if [ "$(EXT)" = ".s" ]; then \
 		mkdir -p $(MAKEFILE_DIR)asm/bin; \
@@ -65,7 +89,7 @@ compile: $(SRC) linker-script
 		riscv64-unknown-elf-gcc -march=rv64im -mabi=lp64 -nostdlib -T$(LINKER_SCRIPT) -o $(BIN) $(SRC); \
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME); \
+		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dpath=$(BASENAME); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		cargo +nightly rustc \

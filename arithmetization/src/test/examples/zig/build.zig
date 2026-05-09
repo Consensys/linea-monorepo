@@ -22,12 +22,17 @@ pub fn build(b: *std.Build) void {
         .preferred_optimize_mode = .ReleaseSmall,
     });
 
-    const name = b.option([]const u8, "name", "Name of the program (source: src/<name>.zig, binary: <name>)") orelse @panic("'-Dname=<name>' is required");
+    const path = b.option([]const u8, "path", "Source path under src/, without .zig")
+    orelse @panic("'-Dpath=<path>' is required");
 
-    const source = b.fmt("src/{s}.zig", .{name});
+    // e.g. path = "src_optional_subfolder/your_test"
+    const source = b.fmt("src/{s}.zig", .{path});
+
+    // binary name = "your_test", not "src_optional_subfolder/your_test"
+    const exe_name = std.fs.path.stem(std.fs.path.basename(path));
 
     const exe = b.addExecutable(.{
-        .name = name,
+        .name = exe_name,
         .root_module = b.createModule(.{
             .root_source_file = b.path(source),
             .target = target,
