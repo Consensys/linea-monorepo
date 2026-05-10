@@ -35,8 +35,8 @@
 ║     • web3signer mTLS material (TLS only — not Sepolia-funds-controlling)    ║
 ║                                                                              ║
 ║   What's user-supplied (your responsibility):                                ║
-║     • L1_RPC_URL                — your Sepolia HTTPS RPC                     ║
-║     • L1_DEPLOYER_PRIVATE_KEY   — your Sepolia-funded deployer key.          ║
+║     • L1_RPC_URL: a Sepolia HTTPS RPC (locale node or paid-tier RPC provider)║
+║     • L1_DEPLOYER_PRIVATE_KEY: your Sepolia-funded deployer key (~0.03 ETH)  ║
 ║       It deploys/contracts-admins the L1 side. account-setup derives         ║
 ║       separate L1 blob and finalization submitter keys from it, grants       ║
 ║       those addresses operator rights, and deploy-contracts funds them.      ║
