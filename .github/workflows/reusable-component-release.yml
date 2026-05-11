@@ -214,9 +214,10 @@ jobs:
           echo "\`\`\`" >> output.md
 
       - name: Set capitalized component name
+        env:
+          COMPONENT_NAME: ${{ inputs.component-name }}
         run: |
-          INPUT="${{ inputs.component-name }}"
-          echo "COMPONENT_CAP=${INPUT^}" >> $GITHUB_ENV
+          echo "COMPONENT_CAP=${COMPONENT_NAME^}" >> $GITHUB_ENV
 
       - name: gh-release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
