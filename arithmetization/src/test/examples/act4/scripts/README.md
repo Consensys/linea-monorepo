@@ -20,10 +20,22 @@ sibling-clone layout described below.
 
    ```
    <some-parent>/
-   ├── linea-monorepo/       # this repo — zkc + the test pipeline
-   ├── riscv-arch-test/      # upstream ACT4 sources           (branch: act4)
-   └── zkevm-test-monitor/   # owns act4-configs/linea/        (our config)
+   ├── linea-monorepo/       # this repo  (script defaults resolve relative to here)
+   ├── zkevm-test-monitor/   # REQUIRED — provides act4-configs/linea/
+   └── riscv-arch-test/      # OPTIONAL — only needed once, to `docker build` the image
    ```
+
+   - **`zkevm-test-monitor`** must be present at build time and at run time;
+     `build_linea_elfs.sh` mounts `act4-configs/linea/` into the container,
+     and the resulting ELFs are signed against the schemas in there. Place
+     the clone anywhere and point `ACT4_CONFIG_DIR` at it if the sibling
+     layout above isn't convenient.
+   - **`riscv-arch-test`** is only consulted by step 2 below — once you've
+     built the docker image, the scripts never touch this clone again
+     (everything they need is baked into the image). You can delete the
+     clone afterwards if disk space matters; it's also the easiest way to
+     read the upstream `.S` test sources during debugging
+     (e.g. `tests/rv64i/I/I-add-00.S`).
 
 2. **Build the ACT4 docker image** (one-shot; can take ~30 min the first time):
 
@@ -33,7 +45,7 @@ sibling-clone layout described below.
    ```
 
 3. **Linea ACT4 config** lives in `zkevm-test-monitor/act4-configs/linea/`.
-   It must contain `linea/linea-rv64im-zicclsm/` with `link.ld`, `sail.json`,
+   It must contain `linea-rv64im-zicclsm/` with `link.ld`, `sail.json`,
    `linea-rv64im-zicclsm.yaml`, `rvmodel_macros.h`, `rvtest_config.h`,
    `test_config.yaml`. See `zkevm-test-monitor`'s own README for provenance.
 
@@ -89,3 +101,45 @@ their default positions. Output:
 ACT4_EXTENSIONS=M ./build_linea_elfs.sh
 ELF_DIR="../bin/work/linea-rv64im-zicclsm/elfs/rv64i/M" ./run_linea_elfs.sh
 ```
+
+## Inspecting the generated tests
+
+The docker image generates the tests, but the work directory it writes to
+is the host's `../bin/work/`, so every artefact is visible on the host
+once the build finishes. Per test you get two stages of output:
+
+```
+../bin/work/linea-rv64im-zicclsm/
+├── build/<arch>/<ext>/<test>.sig.elf      first-pass ELF with placeholder signatures
+├── build/<arch>/<ext>/<test>.sig          binary signature blob from the Sail run
+├── build/<arch>/<ext>/<test>.sig.log      Sail's stdout for this test
+├── build/<arch>/<ext>/<test>.results      unpacked signature (`.quad` lines)
+└── elfs/<arch>/<ext>/<test>.elf           the final self-checking ELF (what zkc runs)
+```
+
+`<arch>` is the **base ISA** (e.g. `rv64i` = the 64-bit integer base),
+not a march string. The per-extension subdirectories — `<ext>` —
+contain tests for the extension on top of that base. So `rv64i/M/`
+holds the M-extension tests for the RV64I base, even though the
+parent directory name doesn't mention M. This mirrors the upstream
+`riscv-arch-test/tests/` layout exactly; renaming our copy would
+diverge from every other zkVM's ACT4 setup.
+
+Useful inspection commands:
+
+```bash
+# disassemble a final ELF
+riscv64-unknown-elf-objdump -d ../bin/work/linea-rv64im-zicclsm/elfs/rv64i/I/I-add-00.elf | less
+
+# section layout & symbols
+riscv64-unknown-elf-readelf -SW ../bin/work/linea-rv64im-zicclsm/elfs/rv64i/I/I-add-00.elf
+riscv64-unknown-elf-nm        ../bin/work/linea-rv64im-zicclsm/elfs/rv64i/I/I-add-00.elf | head
+
+# what Sail expected, vs. the raw signature bytes
+head -5 ../bin/work/linea-rv64im-zicclsm/build/rv64i/I/I-add-00.results
+xxd        ../bin/work/linea-rv64im-zicclsm/build/rv64i/I/I-add-00.sig | head
+```
+
+The upstream `.S` test sources are not in `bin/work/` — they live in
+your `riscv-arch-test` clone (e.g. `tests/rv64i/I/I-add-00.S`), and the
+docker image picks them up from its own copy at build time.
