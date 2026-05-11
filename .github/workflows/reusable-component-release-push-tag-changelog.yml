@@ -120,7 +120,6 @@ jobs:
               exit 1
             fi
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then
-              echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Push rejected on attempt ${attempt}; refetching and retrying..."
