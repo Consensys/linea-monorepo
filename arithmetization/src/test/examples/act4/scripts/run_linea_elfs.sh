@@ -67,6 +67,20 @@ if ! command -v zkc >/dev/null 2>&1; then
     exit 2
 fi
 
+# Portable per-test timeout. GNU coreutils' `timeout` is on Linux PATH by
+# default but on macOS only after `brew install coreutils`, where it lands
+# as `gtimeout`. Fall back to running without a deadline if neither is
+# available (a stuck test will then hang the sweep — visible at least).
+if command -v gtimeout >/dev/null 2>&1; then
+    TIMEOUT_CMD=(gtimeout "$PER_TEST_TIMEOUT")
+elif command -v timeout >/dev/null 2>&1; then
+    TIMEOUT_CMD=(timeout "$PER_TEST_TIMEOUT")
+else
+    echo "warning: neither 'timeout' nor 'gtimeout' on PATH; running without a per-test deadline" >&2
+    echo "         (on macOS: 'brew install coreutils')" >&2
+    TIMEOUT_CMD=()
+fi
+
 count=0
 pass=0
 fail=0
@@ -79,8 +93,8 @@ for elf in $(find "$ELF_DIR" -name '*.elf' | sort); do
     "$ELF2JSON" "$elf" "$IN_BYTES" "$PROGRAM_OFFSET" "$IN_BYTES_OFFSET" "$ENTRY_POINT" \
         > "$json" 2> "$LOGS/${name}.json.err"
 
-    timeout "$PER_TEST_TIMEOUT" zkc exec --ir "$json" "$ZKC_MAIN" 2>&1 \
-        | grep --line-buffered -E "Program exited successfully|machine panic|exit with code|fail|ERROR" \
+    "${TIMEOUT_CMD[@]}" zkc exec --ir "$json" "$ZKC_MAIN" 2>&1 \
+        | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" \
         | head -3 > "$out"
 
     if grep -q "Program exited successfully" "$out"; then

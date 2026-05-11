@@ -77,7 +77,7 @@ their default positions. Output:
 | `ACT4_JOBS`       | `4` | `build` | Parallel `make` jobs inside the container. |
 | `ELF2JSON`        | `../bin/elf2json` (auto-built) | `run` | Path to the Go helper that converts ELF → zkc JSON. |
 | `ZKC_MAIN`        | `../../../../main/riscv/main.zkc` (relative to scripts dir) | `run` | The zkc program that interprets the ELF. |
-| `PER_TEST_TIMEOUT`| `300` (s) | `run` | Bail out on a stuck test. |
+| `PER_TEST_TIMEOUT`| `300` (s) | `run` | Bail out on a stuck test. Requires GNU coreutils `timeout` (Linux: default; macOS: `brew install coreutils`, picked up as `gtimeout`). If neither is on `PATH` the script falls back to running without a deadline and prints a warning. |
 | `IN_BYTES`        | `""` (empty — ACT4 tests are self-contained) | `run` | Forwarded to `elf2json`; same meaning as in `../../Makefile`. |
 | `PROGRAM_OFFSET`  | `0x00000000` | `run` | Forwarded to `elf2json`. |
 | `IN_BYTES_OFFSET` | `0x08800000` | `run` | Forwarded to `elf2json` (unused by ACT4 but kept consistent with the Makefile). |
