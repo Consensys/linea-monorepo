@@ -566,3 +566,82 @@ func TestCompile_NonBinaryIncludedFilterPanics(t *testing.T) {
 	assert.Panics(t, func() { runRound(&rt) },
 		"non-binary included filter must be rejected by M assignment")
 }
+
+// ---- Multi-column with B-side filter (prepend trick × α-RLC) ----
+
+// TestCompile_MultiColumn_FilterOnIncluding covers the cross between the
+// IsFilteredOnIncluding prepend trick and the α-RLC needed for multi-column
+// lookups. With width-2 columns plus a prepended selector, the effective
+// row width is 3, so α is sampled and both the prepend and the RLC must
+// agree between prover (rowHash) and verifier (symbolic LogDerivativeSum)
+// for the identity to close.
+func TestCompile_MultiColumn_FilterOnIncluding(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-filterT")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 3, wiop.PaddingDirectionNone)
+
+	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
+	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	sx := modS.NewColumn(sys.Context.Childf("Sx"), wiop.VisibilityOracle, r0)
+	sy := modS.NewColumn(sys.Context.Childf("Sy"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(sx.View(), sy.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), tx.View(), ty.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// Table rows: (1,10) selected, (99,99) masked, (2,20) selected, (3,30) selected.
+	// S references only the three selected rows.
+	rt.AssignColumn(tx, makeVec(1, 99, 2, 3))
+	rt.AssignColumn(ty, makeVec(10, 99, 20, 30))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
+	rt.AssignColumn(sx, makeVec(1, 2, 3))
+	rt.AssignColumn(sy, makeVec(10, 20, 30))
+
+	driveProtocol(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
+// TestCompile_MultiColumn_FilterOnIncluding_MaskedRowFails pairs the
+// happy-path test above with the soundness case: an S tuple that matches a
+// *masked-out* B tuple column-wise must be rejected. The B selector
+// prepended into the hash makes the masked B row's hash carry a 0 head,
+// while every A row carries a 1 head — so the M-assignment task reports
+// no match instead of silently incrementing M on the filtered-out row.
+func TestCompile_MultiColumn_FilterOnIncluding_MaskedRowFails(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-filterT-mask")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 1, wiop.PaddingDirectionNone)
+
+	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
+	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	sx := modS.NewColumn(sys.Context.Childf("Sx"), wiop.VisibilityOracle, r0)
+	sy := modS.NewColumn(sys.Context.Childf("Sy"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(sx.View(), sy.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), tx.View(), ty.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(tx, makeVec(1, 99, 2, 3))
+	rt.AssignColumn(ty, makeVec(10, 99, 20, 30))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
+	// S = (99, 99) tries to match the masked-out B tuple.
+	rt.AssignColumn(sx, makeVec(99))
+	rt.AssignColumn(sy, makeVec(99))
+
+	assert.Panics(t, func() { runRound(&rt) },
+		"masked-out multi-column B row must not be reachable from an active A row")
+}
