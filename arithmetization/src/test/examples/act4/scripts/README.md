@@ -15,27 +15,27 @@ sibling-clone layout described below.
 
 ## One-time setup
 
-1. **Clone the supporting repos alongside `linea-monorepo`** (the
-   defaults assume this exact layout):
+1. **Clone `riscv-arch-test` alongside `linea-monorepo`** (the script
+   for the docker build assumes this exact layout — used once):
 
    ```
    <some-parent>/
    ├── linea-monorepo/       # this repo  (script defaults resolve relative to here)
-   ├── zkevm-test-monitor/   # REQUIRED — provides act4-configs/linea/
    └── riscv-arch-test/      # OPTIONAL — only needed once, to `docker build` the image
    ```
 
-   - **`zkevm-test-monitor`** must be present at build time and at run time;
-     `build_linea_elfs.sh` mounts `act4-configs/linea/` into the container,
-     and the resulting ELFs are signed against the schemas in there. Place
-     the clone anywhere and point `ACT4_CONFIG_DIR` at it if the sibling
-     layout above isn't convenient.
-   - **`riscv-arch-test`** is only consulted by step 2 below — once you've
-     built the docker image, the scripts never touch this clone again
-     (everything they need is baked into the image). You can delete the
-     clone afterwards if disk space matters; it's also the easiest way to
-     read the upstream `.S` test sources during debugging
-     (e.g. `tests/rv64i/I/I-add-00.S`).
+   **`riscv-arch-test`** is only consulted by step 2 below — once
+   you've built the docker image, the scripts never touch this clone
+   again (everything they need is baked into the image). You can
+   delete the clone afterwards if disk space matters; it's also the
+   easiest way to read the upstream `.S` test sources during
+   debugging (e.g. `tests/rv64i/I/I-add-00.S`).
+
+   No other peer repo is needed at run time: the Linea ACT4 config
+   (`link.ld`, `sail.json`, `linea-rv64im-zicclsm.yaml`,
+   `rvmodel_macros.h`, `rvtest_config.h`, `test_config.yaml`) lives in
+   this repo under `../config/linea-rv64im-zicclsm/` and is what the
+   build script mounts into the container.
 
 2. **Build the ACT4 docker image** (one-shot; can take ~30 min the first time):
 
@@ -44,12 +44,7 @@ sibling-clone layout described below.
    docker build -t riscv-act4 .
    ```
 
-3. **Linea ACT4 config** lives in `zkevm-test-monitor/act4-configs/linea/`.
-   It must contain `linea-rv64im-zicclsm/` with `link.ld`, `sail.json`,
-   `linea-rv64im-zicclsm.yaml`, `rvmodel_macros.h`, `rvtest_config.h`,
-   `test_config.yaml`. See `zkevm-test-monitor`'s own README for provenance.
-
-4. **zkc** must be on `PATH`. The simplest install path is
+3. **zkc** must be on `PATH`. The simplest install path is
    `go install github.com/consensys/go-corset/cmd/zkc@v1.2.14`.
 
 ## Reproduce the run
@@ -74,7 +69,7 @@ their default positions. Output:
 
 | Variable | Default | Used by | Notes |
 |---|---|---|---|
-| `ACT4_CONFIG_DIR` | `../../../../../../zkevm-test-monitor/act4-configs/linea` | `build` | Directory that contains `linea-rv64im-zicclsm/`. |
+| `ACT4_CONFIG_DIR` | `../config` | `build` | Directory that contains `linea-rv64im-zicclsm/`. Defaults to the in-repo copy under `act4/config/`. |
 | `ACT4_WORK_DIR`   | `../bin/work` | both | Receives the build output. `run_linea_elfs.sh` derives `ELF_DIR` from it. |
 | `ELF_DIR`         | derived from `ACT4_WORK_DIR` | `run` | Point at a different ELF tree. |
 | `ACT4_IMAGE`      | `riscv-act4:latest` | `build` | Docker image tag. |

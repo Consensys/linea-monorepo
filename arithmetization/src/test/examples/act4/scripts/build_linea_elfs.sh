@@ -7,7 +7,7 @@
 #
 # Inputs:
 #   ACT4_CONFIG_DIR     directory containing `linea-rv64im-zicclsm/...`
-#                       (i.e. `<...>/zkevm-test-monitor/act4-configs/linea`)
+#                       (defaults to ../config inside this repo)
 #   ACT4_WORK_DIR       output directory (writable; ELFs land in `linea-rv64im-zicclsm/elfs`)
 #   ACT4_IMAGE          docker image tag    (default: riscv-act4:latest)
 #   ACT4_EXTENSIONS     comma-list of extensions to build (default: I,M)
@@ -20,12 +20,11 @@ set -u
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 ACT4_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
-# Default ACT4_WORK_DIR lives inside this script's tree, so reproducing
-# the run doesn't depend on the user's filesystem layout. Default
-# ACT4_CONFIG_DIR walks up to a peer `zkevm-test-monitor/act4-configs/`
-# checkout next to `linea-monorepo` (the layout described in README.md).
+# Both defaults live inside this script's tree, so reproducing the run
+# doesn't depend on the user's filesystem layout: the work directory
+# under `../bin/work/` and the config under `../config/`.
 DEFAULT_WORK_DIR="$ACT4_DIR/bin/work"
-DEFAULT_CONFIG_DIR="$ACT4_DIR/../../../../../../zkevm-test-monitor/act4-configs/linea"
+DEFAULT_CONFIG_DIR="$ACT4_DIR/config"
 
 ACT4_WORK_DIR="${ACT4_WORK_DIR:-$DEFAULT_WORK_DIR}"
 ACT4_CONFIG_DIR="${ACT4_CONFIG_DIR:-$DEFAULT_CONFIG_DIR}"
