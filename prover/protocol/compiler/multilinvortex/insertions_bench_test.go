@@ -225,3 +225,185 @@ func BenchmarkScalingByPolySize(b *testing.B) {
 		})
 	}
 }
+
+// paddedColSpec is colSpec extended with an actualSize: count columns are
+// declared at declaredSize but only the first actualSize entries hold random
+// data; the rest is zero-padded via smartvectors.RightZeroPadded.
+type paddedColSpec struct {
+	count, declaredSize, actualSize int
+}
+
+// benchPaddedMixedProver is the mixed-size analog of benchBootstrapperProver.
+// Each spec contributes count columns of declared size declaredSize, with the
+// first actualSize entries filled with random data and the remainder zero.
+// Both ML and UniNR pipelines are compiled and benchmarked. b.Logf reports
+// the total Σ declared_i and Σ actual_i so callers can read prove-time-vs-
+// actual-cells from the log.
+func benchPaddedMixedProver(b *testing.B, specs []paddedColSpec) {
+	b.Helper()
+	rng := rand.New(rand.NewPCG(42, 0))
+
+	type colEntry struct {
+		id           ifaces.ColID
+		declaredSize int
+		data         []field.Element // size = actualSize, zero-padded at assign time
+	}
+	var entries []colEntry
+	totalActual, totalDeclared := 0, 0
+	colIdx := 0
+	for _, sp := range specs {
+		if sp.actualSize > sp.declaredSize {
+			b.Fatalf("actualSize=%d > declaredSize=%d", sp.actualSize, sp.declaredSize)
+		}
+		for k := 0; k < sp.count; k++ {
+			data := make([]field.Element, sp.actualSize)
+			for i := range data {
+				data[i] = field.PseudoRand(rng)
+			}
+			entries = append(entries, colEntry{
+				id:           ifaces.ColIDf("COL_%d", colIdx),
+				declaredSize: sp.declaredSize,
+				data:         data,
+			})
+			colIdx++
+			totalActual += sp.actualSize
+			totalDeclared += sp.declaredSize
+		}
+	}
+	b.Logf("Σ actual = %d cells, Σ declared = %d cells, fill = %.2f%%",
+		totalActual, totalDeclared, 100*float64(totalActual)/float64(totalDeclared))
+
+	define := func(b *wizard.Builder) {
+		for _, e := range entries {
+			b.RegisterCommit(e.id, e.declaredSize)
+		}
+	}
+
+	compiledML := wizard.Compile(
+		define,
+		multilinvortex.InsertBootstrapperOpenings,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		multilinvortex.CompileRound,
+		multilineareval.Batch,
+		dummy.Compile,
+	)
+
+	compiledUniNR := wizard.Compile(
+		define,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<20),
+			compiler.WithStitcherMinSize(16),
+		),
+		insertUnivariateBootstrapperQuery,
+		vortex.Compile(
+			2, false,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&benchSISParams),
+			vortex.WithOptionalSISHashingThreshold(1),
+		),
+		dummy.Compile,
+	)
+
+	prove := func(run *wizard.ProverRuntime) {
+		for _, e := range entries {
+			if len(e.data) == e.declaredSize {
+				run.AssignColumn(e.id, smartvectors.NewRegular(e.data))
+			} else {
+				run.AssignColumn(e.id, smartvectors.RightZeroPadded(e.data, e.declaredSize))
+			}
+		}
+	}
+
+	b.Run("ML", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			wizard.Prove(compiledML, prove)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
+
+	b.Run("UniNR", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			wizard.Prove(compiledUniNR, prove)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
+}
+
+// mixedScaledDist is a scaled-down version of productionFull preserving the
+// shape (sizes from 2^14 to 2^21, heavier weight on the larger sizes) at
+// ~6.3 M cells / 24 columns at 100% fill. Sized so each prove call runs in
+// well under a minute on a 192-core machine.
+var mixedScaledDist = []colSpec{
+	{count: 4, size: 1 << 14}, // 16K  →   64K cells
+	{count: 4, size: 1 << 16}, // 64K  →  256K cells
+	{count: 8, size: 1 << 17}, // 128K → 1024K cells
+	{count: 4, size: 1 << 18}, // 256K → 1024K cells
+	{count: 2, size: 1 << 19}, // 512K → 1024K cells
+	{count: 1, size: 1 << 20}, // 1M   → 1024K cells
+	{count: 1, size: 1 << 21}, // 2M   → 2048K cells
+	// Total: ~6.3 M cells, 24 cols
+}
+
+// mixedFillCases sweep a uniform fill ratio across all sizes in mixedScaledDist.
+// The ratio is applied per-column: actualSize_i = max(1, ⌊ratio · declaredSize_i⌋).
+var mixedFillCases = []struct {
+	name      string
+	fillRatio float64
+}{
+	{"fill_06pct", 0.0625},
+	{"fill_25pct", 0.25},
+	{"fill_50pct", 0.50},
+	{"fill_100pct", 1.0},
+}
+
+// BenchmarkMixedSizeDynamic measures ML and UniNR prove time on a fixed
+// mixed-size column distribution (mixedScaledDist) as the per-column fill
+// ratio varies. The hypothesis under test:
+//
+//   - UniNR is O(Σ declared_i) — Arcane normalises to a uniform target and the
+//     bootstrapper Lagrange-evaluates each padded vector at full declared size,
+//     so prove time should be ~constant across fill ratios.
+//   - ML "should" be O(Σ actual_i) — zero-padded rows contribute nothing to
+//     row-evaluations or to the UAlpha linear combination, so prove time should
+//     scale roughly linearly with the actual cell count.
+//
+// In current code (no zero-row skip) the empirical ML scaling is mild
+// (cache/parallelism effects); a true O(Σ actual_i) curve only appears once
+// the ProverAction skips zero rows.
+//
+// Run with:
+//
+//	go test -bench BenchmarkMixedSizeDynamic -run '^$' -benchtime=1x \
+//	    -timeout=15m -v ./protocol/compiler/multilinvortex/
+func BenchmarkMixedSizeDynamic(b *testing.B) {
+	for _, fc := range mixedFillCases {
+		fc := fc
+		b.Run(fc.name, func(b *testing.B) {
+			specs := make([]paddedColSpec, len(mixedScaledDist))
+			for i, cs := range mixedScaledDist {
+				actual := int(float64(cs.size) * fc.fillRatio)
+				if actual < 1 {
+					actual = 1
+				}
+				if actual > cs.size {
+					actual = cs.size
+				}
+				specs[i] = paddedColSpec{
+					count:        cs.count,
+					declaredSize: cs.size,
+					actualSize:   actual,
+				}
+			}
+			benchPaddedMixedProver(b, specs)
+		})
+	}
+}

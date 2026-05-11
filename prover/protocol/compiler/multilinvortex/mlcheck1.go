@@ -167,6 +167,9 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 		if useSIS {
 			verifierParams = &params
 		}
+		if ctx.Packed {
+			panic(fmt.Sprintf("multilinvortex: packed context %v reached original-column check", ctx.InputQuery.QueryID))
+		}
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &mlCheck1VerifierAction{
 			rootCol:             rootCol,
 			origOpenedDataCol:   openedDataCol,
@@ -183,7 +186,6 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 			uAlphaIndices:       uAlphaIndices,
 			params:              verifierParams,
 			useSIS:              useSIS,
-			packed:              ctx.Packed,
 		})
 	}
 
@@ -452,10 +454,6 @@ type mlCheck1VerifierAction struct {
 	uAlphaIndices       []int // index of UAlpha[k] within the group's cols slice
 	params              *vortex_koalabear.Params // nil when useSIS == false
 	useSIS              bool
-	// packed skips Check 1 (UAlpha cross-check): for packed contexts the UAlpha
-	// codeword spans KPow2x more columns than the original, so direct comparison
-	// is not meaningful. Check 2 (original Merkle proof) still runs.
-	packed bool
 }
 
 func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
@@ -503,11 +501,6 @@ func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
 		}
 
 		// ── Check 1: UAlpha = α-combination of original rows ──────────────────
-		// Skipped for packed contexts: the packed UAlpha codeword spans KPow2x
-		// more columns than the original, so there is no direct per-column mapping.
-		if v.packed {
-			continue
-		}
 		// The UAlpha opened data layout (nbRowsUA = 4*K):
 		//   offset 0*K+k → B0.A0 of UAlpha[k]
 		//   offset 1*K+k → B0.A1 of UAlpha[k]

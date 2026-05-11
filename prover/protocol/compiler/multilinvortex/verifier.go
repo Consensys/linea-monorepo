@@ -79,8 +79,9 @@ func (v *VerifierAction) RunGnark(_ frontend.API, _ wizard.GnarkRuntime) {
 func (v *VerifierAction) Skip()           { v.Skipped = true }
 func (v *VerifierAction) IsSkipped() bool { return v.Skipped }
 
-// TerminalVerifierAction handles 1-variable MultilinearEval queries directly:
-// it checks P(r) = (1-r)*col[0] + r*col[1] for each polynomial in the query.
+// TerminalVerifierAction handles proof-side terminal MultilinearEval queries:
+// for n=0 it checks P() = col[0], and for n=1 it checks
+// P(r) = (1-r)*col[0] + r*col[1].
 type TerminalVerifierAction struct {
 	Q       query.MultilinearEval
 	Skipped bool `serde:"omit"`
@@ -90,23 +91,35 @@ func (v *TerminalVerifierAction) Run(run wizard.Runtime) error {
 	params := run.GetMultilinearParams(v.Q.QueryID)
 
 	for k, pol := range v.Q.Pols {
-		r := params.Points[k][0]
-		var oneMinusR fext.Element
-		oneMinusR.SetOne()
-		oneMinusR.Sub(&oneMinusR, &r)
+		switch v.Q.NumVars[k] {
+		case 0:
+			actual := run.GetColumnAtExt(pol.GetColID(), 0)
+			if !actual.Equal(&params.Ys[k]) {
+				return fmt.Errorf("multilinvortex: terminal constant check failed for column %d: "+
+					"col[0] = %v, claimed y = %v", k, actual.String(), params.Ys[k].String())
+			}
+		case 1:
+			r := params.Points[k][0]
+			var oneMinusR fext.Element
+			oneMinusR.SetOne()
+			oneMinusR.Sub(&oneMinusR, &r)
 
-		val0 := run.GetColumnAtExt(pol.GetColID(), 0)
-		val1 := run.GetColumnAtExt(pol.GetColID(), 1)
+			val0 := run.GetColumnAtExt(pol.GetColID(), 0)
+			val1 := run.GetColumnAtExt(pol.GetColID(), 1)
 
-		var t0, t1, computed fext.Element
-		t0.Mul(&oneMinusR, &val0)
-		t1.Mul(&r, &val1)
-		computed.Add(&t0, &t1)
+			var t0, t1, computed fext.Element
+			t0.Mul(&oneMinusR, &val0)
+			t1.Mul(&r, &val1)
+			computed.Add(&t0, &t1)
 
-		if !computed.Equal(&params.Ys[k]) {
-			return fmt.Errorf("multilinvortex: terminal check failed for column %d: "+
-				"(1-r)*col[0]+r*col[1] = %v, claimed y = %v",
-				k, computed.String(), params.Ys[k].String())
+			if !computed.Equal(&params.Ys[k]) {
+				return fmt.Errorf("multilinvortex: terminal check failed for column %d: "+
+					"(1-r)*col[0]+r*col[1] = %v, claimed y = %v",
+					k, computed.String(), params.Ys[k].String())
+			}
+		default:
+			return fmt.Errorf("multilinvortex: terminal verifier only supports numVars <= 1, got %d for column %d",
+				v.Q.NumVars[k], k)
 		}
 	}
 	return nil

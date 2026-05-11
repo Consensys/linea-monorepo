@@ -2,6 +2,7 @@ package multilinvortex_test
 
 import (
 	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -169,6 +170,90 @@ func TestMultilinVortexPackedRoundtrip(t *testing.T) {
 	}
 }
 
+// TestMultilinVortexPaddedRoundtrip exercises the padded fast path in
+// ProverAction.Run by assigning each input column as a right-zero-padded
+// smartvector with len(window) < declaredSize. The non-zero portion must agree
+// with the y values fed into the MultilinearEval claim. A correct prove→verify
+// proves that skipping rows entirely in the zero suffix produces the same
+// commitments and openings as the full-iteration path.
+func TestMultilinVortexPaddedRoundtrip(t *testing.T) {
+	cases := []struct {
+		name       string
+		numCols    int
+		numVars    int
+		actualVars int // log2 of non-zero prefix length; must satisfy 0 < 2^actualVars < 2^numVars
+	}{
+		{"1col_n6_actual_n3", 1, 6, 3}, // 8-of-64
+		{"2col_n6_actual_n4", 2, 6, 4}, // 16-of-64
+		{"3col_n8_actual_n5", 3, 8, 5}, // 32-of-256
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rng := rand.New(rand.NewPCG(uint64(tc.numCols*300+tc.actualVars), uint64(tc.numVars)))
+			size := 1 << tc.numVars
+			actualSize := 1 << tc.actualVars
+
+			// padded[k] is the full size-N vector: first actualSize entries random,
+			// rest zero. window[k] is the non-zero prefix.
+			window := make([][]field.Element, tc.numCols)
+			padded := make([][]field.Element, tc.numCols)
+			for k := 0; k < tc.numCols; k++ {
+				window[k] = make([]field.Element, actualSize)
+				for j := range window[k] {
+					window[k][j] = field.PseudoRand(rng)
+				}
+				padded[k] = make([]field.Element, size)
+				copy(padded[k], window[k])
+			}
+
+			point := make([]fext.Element, tc.numVars)
+			for i := range point {
+				point[i] = fext.PseudoRand(rng)
+			}
+
+			ys := make([]fext.Element, tc.numCols)
+			for k := 0; k < tc.numCols; k++ {
+				vals := make([]fext.Element, size)
+				for j, v := range padded[k] {
+					vals[j].B0.A0 = v
+				}
+				ys[k] = evalMultilin(vals, point)
+			}
+
+			define := func(b *wizard.Builder) {
+				cols := make([]ifaces.Column, tc.numCols)
+				for k := 0; k < tc.numCols; k++ {
+					cols[k] = b.RegisterCommit(ifaces.ColIDf("COL_%d", k), size)
+				}
+				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
+			}
+
+			prove := func(run *wizard.ProverRuntime) {
+				for k := 0; k < tc.numCols; k++ {
+					run.AssignColumn(ifaces.ColIDf("COL_%d", k),
+						smartvectors.RightZeroPadded(window[k], size))
+				}
+				run.AssignMultilinearExtShared("MLEVAL", point, ys...)
+			}
+
+			compiled := wizard.Compile(define,
+				multilineareval.Compile,
+				multilinvortex.CompileRound,
+				multilineareval.Batch,
+				multilinvortex.CompileRound,
+				multilineareval.Batch,
+				multilinvortex.CompileRound,
+				multilineareval.Batch,
+				dummy.Compile,
+			)
+			proof := wizard.Prove(compiled, prove)
+			require.NoError(t, wizard.Verify(compiled, proof))
+		})
+	}
+}
+
 // TestCommitMLColumnsCheck2 verifies that CommitMLColumns produces a prover
 // action that fills the Merkle root/opened/paths proof columns, and a verifier
 // action that successfully re-hashes and checks the Merkle paths (Check 2).
@@ -236,6 +321,94 @@ func TestCommitMLColumnsCheck2(t *testing.T) {
 			require.NoError(t, wizard.Verify(compiled, proof))
 		})
 	}
+}
+
+func TestTerminalCommittedQueriesRoundtrip(t *testing.T) {
+	cases := []struct {
+		name       string
+		compile0   func(*wizard.CompiledIOP)
+	}{
+		{name: "unpacked", compile0: multilinvortex.CompileRound},
+		{name: "packed-fallback", compile0: multilinvortex.CompileRoundPacked},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rng := rand.New(rand.NewPCG(11, 19))
+			const numCols = 2
+			const numVars = 1
+			size := 1 << numVars
+
+			colData := make([][]field.Element, numCols)
+			for k := 0; k < numCols; k++ {
+				colData[k] = make([]field.Element, size)
+				for j := range colData[k] {
+					colData[k][j] = field.PseudoRand(rng)
+				}
+			}
+
+			point := []fext.Element{fext.PseudoRand(rng)}
+			ys := make([]fext.Element, numCols)
+			for k := 0; k < numCols; k++ {
+				vals := make([]fext.Element, size)
+				for j, v := range colData[k] {
+					vals[j].B0.A0 = v
+				}
+				ys[k] = evalMultilin(vals, point)
+			}
+
+			define := func(b *wizard.Builder) {
+				cols := make([]ifaces.Column, numCols)
+				for k := 0; k < numCols; k++ {
+					cols[k] = b.RegisterCommit(ifaces.ColIDf("COL_%d", k), size)
+				}
+				b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
+			}
+			prove := func(run *wizard.ProverRuntime) {
+				for k := 0; k < numCols; k++ {
+					run.AssignColumn(ifaces.ColIDf("COL_%d", k), smartvectors.NewRegular(colData[k]))
+				}
+				run.AssignMultilinearExtShared("MLEVAL", point, ys...)
+			}
+
+			compiled := wizard.Compile(
+				define,
+				tc.compile0,
+				multilineareval.Batch,
+				multilinvortex.CompileRound,
+				dummy.Compile,
+			)
+			proof := wizard.Prove(compiled, prove)
+			require.NoError(t, wizard.Verify(compiled, proof))
+		})
+	}
+}
+
+func TestCompileRoundPackedFallsBackToUnpackedForCommittedInputs(t *testing.T) {
+	define := func(b *wizard.Builder) {
+		cols := []ifaces.Column{
+			b.RegisterCommit("COL_0", 16),
+			b.RegisterCommit("COL_1", 16),
+		}
+		b.CompiledIOP.InsertMultilinear(0, "MLEVAL", cols)
+	}
+
+	compiled := wizard.Compile(define, multilinvortex.CompileRoundPacked)
+
+	var hasPackedUAlpha bool
+	var hasUnpackedUAlpha bool
+	for _, name := range compiled.Columns.AllKeysProof() {
+		switch {
+		case strings.HasPrefix(string(name), "MLVORTEX_UALPHA_packed_"):
+			hasPackedUAlpha = true
+		case strings.HasPrefix(string(name), "MLVORTEX_UALPHA_0_"):
+			hasUnpackedUAlpha = true
+		}
+	}
+
+	require.False(t, hasPackedUAlpha, "committed inputs must not use packed UAlpha columns")
+	require.True(t, hasUnpackedUAlpha, "committed inputs should fall back to unpacked UAlpha columns")
 }
 
 // TestDynamicColumnSizes places three commit-and-prove pipelines side-by-side

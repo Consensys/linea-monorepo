@@ -101,6 +101,85 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 			// by reference and must not be overwritten by a future iteration's clear.
 			rowEvalsVec := make([]fext.Element, nRowSize)
 
+			// Padded fast path (base-field): only iterate rows that touch
+			// the non-zero window. Rows entirely in the zero suffix contribute
+			// 0 to both rowEvalsVec and uAlpha, so they can be skipped.
+			if window, ok := rightZeroPaddedBase(sv); ok {
+				activeRows := (len(window) + nColSize - 1) / nColSize
+				activeBase := materializeActiveBase(window, activeRows, nColSize)
+				parallel.Execute(nthreads, func(start, stop int) {
+					tmpVec := make(field.Vector, nColSize)
+					for t := start; t < stop; t++ {
+						bStart := t * rowsPerThread
+						bStop := bStart + rowsPerThread
+						if bStop > activeRows {
+							bStop = activeRows
+						}
+						if bStart >= bStop {
+							continue
+						}
+						ua := &partialUASoA[t]
+						for b := bStart; b < bStop; b++ {
+							rowBase := field.Vector(activeBase[b*nColSize : (b+1)*nColSize])
+							rowEvalsVec[b] = simdRowEvalBase(eqColSoA, rowBase)
+							simdUAlphaAccumBase(ua, rowBase, &alphaPow[b], tmpVec)
+						}
+					}
+				})
+				uAlphaVec := mergeSoA(partialUASoA, nColSize)
+				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, activeRows)
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, activeRows, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
+				continue
+			}
+			// Padded fast path (fext): same logic for already-fext columns
+			// (e.g. RowEvals from a prior round whose first round was padded).
+			if windowExt, ok := rightZeroPaddedExt(sv); ok {
+				activeRows := (len(windowExt) + nColSize - 1) / nColSize
+				activeExt := materializeActiveExt(windowExt, activeRows, nColSize)
+				partialUA := make([][]fext.Element, nthreads)
+				for t := range partialUA {
+					partialUA[t] = make([]fext.Element, nColSize)
+				}
+				parallel.Execute(nthreads, func(start, stop int) {
+					for t := start; t < stop; t++ {
+						bStart := t * rowsPerThread
+						bStop := bStart + rowsPerThread
+						if bStop > activeRows {
+							bStop = activeRows
+						}
+						if bStart >= bStop {
+							continue
+						}
+						loc := partialUA[t]
+						for b := bStart; b < bStop; b++ {
+							rowExt := activeExt[b*nColSize : (b+1)*nColSize]
+							ap := alphaPow[b]
+							var rowEval fext.Element
+							for col := 0; col < nColSize; col++ {
+								v := &rowExt[col]
+								eq := &eqColTable[col]
+								var r fext.Element
+								r.Mul(eq, v)
+								rowEval.Add(&rowEval, &r)
+								var tmp fext.Element
+								tmp.Mul(&ap, v)
+								loc[col].Add(&loc[col], &tmp)
+							}
+							rowEvalsVec[b] = rowEval
+						}
+					}
+				})
+				uAlphaVec := make([]fext.Element, nColSize)
+				for t := 0; t < nthreads; t++ {
+					for col := 0; col < nColSize; col++ {
+						uAlphaVec[col].Add(&uAlphaVec[col], &partialUA[t][col])
+					}
+				}
+				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, activeRows)
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, activeRows, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
+				continue
+			}
+
 			colBase, isBase := sv.IntoRegVecSaveAllocBase()
 			if isBase == nil {
 				// Base-field path: SIMD inner product for rowEval + SIMD ScalarMul for uAlpha.
@@ -123,18 +202,7 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 
 				uAlphaVec := mergeSoA(partialUASoA, nColSize)
 				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, nRowSize)
-
-				if ctx.Packed {
-					copy(packedUAlpha[k*nColSize:(k+1)*nColSize], uAlphaVec)
-					copy(packedRowEvals[k*nRowSize:(k+1)*nRowSize], rowEvalsVec)
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cCol)}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cRow)}, actualY)
-				} else {
-					run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
-					run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
-				}
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, nRowSize, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
 			} else {
 				// Fext path: columns are already fext (e.g. UAlpha/RowEvals from prior round).
 				colDataExt := sv.IntoRegVecSaveAllocExt()
@@ -178,18 +246,7 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 				}
 
 				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, nRowSize)
-
-				if ctx.Packed {
-					copy(packedUAlpha[k*nColSize:(k+1)*nColSize], uAlphaVec)
-					copy(packedRowEvals[k*nRowSize:(k+1)*nRowSize], rowEvalsVec)
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cCol)}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cRow)}, actualY)
-				} else {
-					run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
-					run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
-				}
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, nRowSize, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
 			}
 		}
 
@@ -216,6 +273,52 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 
 			rowEvalsVec := make([]fext.Element, nRowSize)
 
+			// Padded fast path (base-field): only iterate active rows.
+			if window, ok := rightZeroPaddedBase(sv); ok {
+				activeRows := (len(window) + nColSize - 1) / nColSize
+				activeBase := materializeActiveBase(window, activeRows, nColSize)
+				uAlphaSoA := [4]field.Vector{
+					make(field.Vector, nColSize),
+					make(field.Vector, nColSize),
+					make(field.Vector, nColSize),
+					make(field.Vector, nColSize),
+				}
+				for b := 0; b < activeRows; b++ {
+					rowBase := field.Vector(activeBase[b*nColSize : (b+1)*nColSize])
+					rowEvalsVec[b] = simdRowEvalBase(eqColSoA, rowBase)
+					simdUAlphaAccumBase(&uAlphaSoA, rowBase, &alphaPow[b], tmpVec)
+				}
+				uAlphaVec := soaToAoS(&uAlphaSoA, nColSize)
+				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, activeRows)
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, activeRows, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
+				continue
+			}
+			// Padded fast path (fext).
+			if windowExt, ok := rightZeroPaddedExt(sv); ok {
+				activeRows := (len(windowExt) + nColSize - 1) / nColSize
+				activeExt := materializeActiveExt(windowExt, activeRows, nColSize)
+				uAlphaVec := make([]fext.Element, nColSize)
+				for b := 0; b < activeRows; b++ {
+					rowExt := activeExt[b*nColSize : (b+1)*nColSize]
+					ap := alphaPow[b]
+					var rowEval fext.Element
+					for col := 0; col < nColSize; col++ {
+						v := &rowExt[col]
+						eq := &eqColTable[col]
+						var r fext.Element
+						r.Mul(eq, v)
+						rowEval.Add(&rowEval, &r)
+						var tmp fext.Element
+						tmp.Mul(&ap, v)
+						uAlphaVec[col].Add(&uAlphaVec[col], &tmp)
+					}
+					rowEvalsVec[b] = rowEval
+				}
+				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, activeRows)
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, activeRows, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
+				continue
+			}
+
 			colBase, isBase := sv.IntoRegVecSaveAllocBase()
 			if isBase == nil {
 				// Base-field path: SoA uAlpha, SIMD inner products per row.
@@ -232,18 +335,7 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 				}
 				uAlphaVec := soaToAoS(&uAlphaSoA, nColSize)
 				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, nRowSize)
-
-				if ctx.Packed {
-					copy(packedUAlpha[k*nColSize:(k+1)*nColSize], uAlphaVec)
-					copy(packedRowEvals[k*nRowSize:(k+1)*nRowSize], rowEvalsVec)
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cCol)}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cRow)}, actualY)
-				} else {
-					run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
-					run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
-				}
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, nRowSize, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
 			} else {
 				// Fext path: columns are already fext.
 				colDataExt := sv.IntoRegVecSaveAllocExt()
@@ -265,18 +357,7 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 					rowEvalsVec[b] = rowEval
 				}
 				vk, actualY := computeVkAndActualY(alphaPow, eqRowTable, rowEvalsVec, nRowSize)
-
-				if ctx.Packed {
-					copy(packedUAlpha[k*nColSize:(k+1)*nColSize], uAlphaVec)
-					copy(packedRowEvals[k*nRowSize:(k+1)*nRowSize], rowEvalsVec)
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cCol)}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cRow)}, actualY)
-				} else {
-					run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
-					run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
-					run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
-					run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
-				}
+				p.assignProverResults(run, k, uAlphaVec, rowEvalsVec, nRowSize, nRowSize, nColSize, vk, actualY, cCol, cRow, packedUAlpha, packedRowEvals)
 			}
 		}
 	})
@@ -379,4 +460,83 @@ func locatorPoint(k, L int, rest []fext.Element) []fext.Element {
 	}
 	copy(pt[L:], rest)
 	return pt
+}
+
+// rightZeroPaddedBase returns (window, true) iff sv is a base-field
+// PaddedCircularWindow with offset 0 and a zero padding value — i.e. the
+// non-zero data lies entirely in [0, len(window)) and everything from
+// len(window) up to sv.Len() is zero.
+func rightZeroPaddedBase(sv smartvectors.SmartVector) ([]field.Element, bool) {
+	w, ok := sv.(*smartvectors.PaddedCircularWindow)
+	if !ok || w.Offset_ != 0 || !w.PaddingVal_.IsZero() {
+		return nil, false
+	}
+	return w.Window_, true
+}
+
+// rightZeroPaddedExt is the fext analogue of rightZeroPaddedBase.
+func rightZeroPaddedExt(sv smartvectors.SmartVector) ([]fext.Element, bool) {
+	w, ok := sv.(*smartvectors.PaddedCircularWindowExt)
+	if !ok || w.Offset != 0 || !w.PaddingVal_.IsZero() {
+		return nil, false
+	}
+	return w.Window_, true
+}
+
+// materializeActiveBase returns a contiguous base-field slice of length
+// activeRows*nColSize whose first len(window) entries are window and the rest
+// are zero. When window already aligns with activeRows*nColSize the slice is
+// aliased to window directly (no copy).
+func materializeActiveBase(window []field.Element, activeRows, nColSize int) []field.Element {
+	if len(window) == activeRows*nColSize {
+		return window
+	}
+	out := make([]field.Element, activeRows*nColSize)
+	copy(out, window)
+	return out
+}
+
+// materializeActiveExt is the fext analogue of materializeActiveBase.
+func materializeActiveExt(window []fext.Element, activeRows, nColSize int) []fext.Element {
+	if len(window) == activeRows*nColSize {
+		return window
+	}
+	out := make([]fext.Element, activeRows*nColSize)
+	copy(out, window)
+	return out
+}
+
+// assignProverResults wraps the AssignColumn / AssignMultilinearExt calls that
+// emit one column's worth of UAlpha / RowEvals / UCols / RowClaims results.
+// When activeRows < nRowSize the RowEvals output is wrapped in a
+// PaddedCircularWindowExt so the next round's ProverAction can detect the
+// sparsity and skip the zero suffix again — propagating the O(actual) saving
+// across recursion levels.
+func (p *ProverAction) assignProverResults(
+	run *wizard.ProverRuntime,
+	k int,
+	uAlphaVec, rowEvalsVec []fext.Element,
+	activeRows, nRowSize, nColSize int,
+	vk, actualY fext.Element,
+	cCol, cRow []fext.Element,
+	packedUAlpha, packedRowEvals []fext.Element,
+) {
+	ctx := p.Ctx
+	if ctx.Packed {
+		copy(packedUAlpha[k*nColSize:(k+1)*nColSize], uAlphaVec)
+		copy(packedRowEvals[k*nRowSize:(k+1)*nRowSize], rowEvalsVec)
+		run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cCol)}, vk)
+		run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{locatorPoint(k, ctx.L, cRow)}, actualY)
+		return
+	}
+	run.AssignColumn(ctx.UAlpha[k].GetColID(), smartvectors.NewRegularExt(uAlphaVec))
+	if activeRows > 0 && activeRows < nRowSize {
+		var zero fext.Element
+		run.AssignColumn(ctx.RowEvals[k].GetColID(),
+			smartvectors.NewPaddedCircularWindowExt(rowEvalsVec[:activeRows], zero, 0, nRowSize))
+	} else {
+		run.AssignColumn(ctx.RowEvals[k].GetColID(), smartvectors.NewRegularExt(rowEvalsVec))
+	}
+	run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
+	run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
 }

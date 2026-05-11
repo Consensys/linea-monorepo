@@ -127,6 +127,46 @@ func mustAllSameNumVars(q query.MultilinearEval) int {
 	return n
 }
 
+func hasCommittedInputs(comp *wizard.CompiledIOP, q query.MultilinearEval) bool {
+	if len(q.Pols) == 0 {
+		return false
+	}
+	hasCommitted := comp.Columns.Status(q.Pols[0].GetColID()) == column.Committed
+	for _, pol := range q.Pols[1:] {
+		if (comp.Columns.Status(pol.GetColID()) == column.Committed) != hasCommitted {
+			panic(fmt.Sprintf("multilinvortex: mixed committed/non-committed inputs in query %v", q.QueryID))
+		}
+	}
+	return hasCommitted
+}
+
+func terminalShortcutAllowed(comp *wizard.CompiledIOP, q query.MultilinearEval, numVars int) bool {
+	if numVars > 1 {
+		return false
+	}
+	if !hasCommittedInputs(comp, q) {
+		return true
+	}
+	if numVars == 0 {
+		panic(fmt.Sprintf("multilinvortex: committed constant query %v requires an explicit opening path", q.QueryID))
+	}
+	return false
+}
+
+func chooseNRow(numVars, nFoldRows int) int {
+	if numVars <= 1 {
+		return 1
+	}
+	nRow := (numVars + 1) / 2
+	if nFoldRows >= 1 {
+		nRow = nFoldRows
+		if nRow >= numVars {
+			nRow = numVars - 1
+		}
+	}
+	return nRow
+}
+
 // compileWithNRow is the shared implementation. nFoldRows < 1 means "use ⌈n/2⌉".
 func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 	// Collect ProverActions per round so independent same-round actions can be
@@ -142,25 +182,14 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		comp.QueriesParams.MarkAsIgnored(name)
 		r := comp.QueriesParams.Round(name)
 
-		if mustAllSameNumVars(q) == 1 {
-			for _, pol := range q.Pols {
-				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
-			}
+		n := mustAllSameNumVars(q)
+		if terminalShortcutAllowed(comp, q, n) {
 			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{Q: q})
 			idx++
 			continue
 		}
 
-		// Determine nRow: clamp nFoldRows to [1, n-1].
-		n := mustAllSameNumVars(q)
-		nRow := (n + 1) / 2 // default balanced
-		if nFoldRows >= 1 {
-			nRow = nFoldRows
-			if nRow >= n {
-				nRow = n - 1
-			}
-		}
-
+		nRow := chooseNRow(n, nFoldRows)
 		ctx := buildContext(comp, r, q, nRow, idx)
 		pendingProver[r+1] = append(pendingProver[r+1], &ProverAction{Ctx: ctx})
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
@@ -292,25 +321,20 @@ func compileWithNRowPacked(comp *wizard.CompiledIOP, nFoldRows int) {
 		comp.QueriesParams.MarkAsIgnored(name)
 		r := comp.QueriesParams.Round(name)
 
-		if mustAllSameNumVars(q) == 1 {
-			for _, pol := range q.Pols {
-				comp.Columns.SetStatus(pol.GetColID(), column.Proof)
-			}
+		n := mustAllSameNumVars(q)
+		if terminalShortcutAllowed(comp, q, n) {
 			comp.RegisterVerifierAction(comp.NumRounds()-1, &TerminalVerifierAction{Q: q})
 			idx++
 			continue
 		}
 
-		n := mustAllSameNumVars(q)
-		nRow := (n + 1) / 2
-		if nFoldRows >= 1 {
-			nRow = nFoldRows
-			if nRow >= n {
-				nRow = n - 1
-			}
+		nRow := chooseNRow(n, nFoldRows)
+		var ctx *Context
+		if hasCommittedInputs(comp, q) {
+			ctx = buildContext(comp, r, q, nRow, idx)
+		} else {
+			ctx = buildContextPacked(comp, r, q, nRow, idx)
 		}
-
-		ctx := buildContextPacked(comp, r, q, nRow, idx)
 		pendingProver[r+1] = append(pendingProver[r+1], &ProverAction{Ctx: ctx})
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
 
