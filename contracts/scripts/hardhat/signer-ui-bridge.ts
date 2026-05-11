@@ -768,12 +768,18 @@ async function getTransactionWithRetry(
   intervalMs: number,
 ): Promise<TransactionResponse | null> {
   const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const tx = await getTransactionWithTimeout(provider, hash, Math.min(TX_LOOKUP_RPC_ATTEMPT_TIMEOUT_MS, timeoutMs));
+  let remainingMs = timeoutMs;
+  while (remainingMs > 0) {
+    const tx = await getTransactionWithTimeout(provider, hash, Math.min(TX_LOOKUP_RPC_ATTEMPT_TIMEOUT_MS, remainingMs));
     if (tx) {
       return tx;
     }
-    await new Promise((resolveSleep) => setTimeout(resolveSleep, intervalMs));
+    remainingMs = timeoutMs - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      break;
+    }
+    await new Promise((resolveSleep) => setTimeout(resolveSleep, Math.min(intervalMs, remainingMs)));
+    remainingMs = timeoutMs - (Date.now() - startedAt);
   }
   return null;
 }
