@@ -1,3 +1,9 @@
+## [1.4.6] - 2026-05-11
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator,postman,prover,tx-exclusion-api,linea-besu)* Bumping component versions all-in-one
+- *(deps)* Bump slf4j version catalog to 2.0.16 (#3042)
 ## [1.4.5] - 2026-05-11
 
 ### ⚙️ Miscellaneous Tasks
