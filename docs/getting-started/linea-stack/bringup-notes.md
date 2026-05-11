@@ -15,7 +15,8 @@ Fresh Sepolia boot validates the cleaned key model and the current dev-prover pa
 - `deploy-contracts` writes `addresses.json`, funds generated runtime signers, and is retry-safe from persisted deploy logs;
 - Web3Signer loads 3 generated signer key files, postman starts with generated L1/L2 postman keys, and coordinator ports bind;
 - coordinator submitted L1 blob transactions and aggregations on Sepolia, and finalization advanced to L2 block 10;
-- L2 Blockscout frontend works locally at `http://localhost:4001`.
+- L2 Blockscout frontend works locally at `http://localhost:4001`;
+- `scripts/send-l2-test-tx.sh` and `scripts/send-l2-erc20-transfer.sh` generate local L2 ETH/token traffic for Blockscout demos;
 
 Fixes found during this clean boot:
 
@@ -26,11 +27,11 @@ Fixes found during this clean boot:
 Current caveats:
 
 - default proving is still dev/dummy proof mode; partial-prover validation remains a separate gate;
-- a documented bridge/message smoke test is still needed;
+- full bridge/message smoke verification is still needed; `scripts/smoke-bridge-message.sh` only preflights addresses and gates experimental L1 message submission;
 - transient nonce/replacement retries can appear during catch-up; judge progress by blob/aggregation txs and finalized block advancing;
-- the local L2 does not necessarily keep producing visible user blocks when idle. Send an L2 transaction to create fresh blocks for Blockscout demos.
+- the local L2 does not necessarily keep producing visible user blocks when idle. Use `./scripts/send-l2-test-tx.sh` to create fresh blocks for Blockscout demos.
 
-Next work should focus on a repeatable L2 traffic command, bridge/message smoke test, and partial-prover validation.
+Next work should focus on full bridge/message smoke verification and partial-prover validation.
 
 ## Historical fix log
 

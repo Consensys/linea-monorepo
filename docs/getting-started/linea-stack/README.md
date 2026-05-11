@@ -237,14 +237,39 @@ curl -fsS http://localhost:4001 >/dev/null
 ```
 
 The local L2 can look idle in Blockscout after deployment if nobody sends L2
-transactions. Seeing only the first deployment/funding blocks is not, by itself,
-a failure; send any L2 transaction when you want the explorer UI to visibly move.
+transactions. Use the traffic helpers when you want the explorer UI to visibly
+move:
+
+```bash
+# Send one tiny L2 ETH transfer from the generated L2 deployer.
+./scripts/send-l2-test-tx.sh
+
+# Send five tiny L2 ETH transfers.
+COUNT=5 ./scripts/send-l2-test-tx.sh
+
+# Transfer one base unit of the deployed L2 ERC20Example token.
+./scripts/send-l2-erc20-transfer.sh
+```
 
 ### Bridge/message smoke test
 
-A scripted bridge/message smoke test is still a follow-up gate. Do not treat the
-quickstart as final until that test proves the user-facing message path, not only
-contract deployment and coordinator L1 submissions.
+`scripts/smoke-bridge-message.sh` currently preflights the deployed bridge and
+message-service addresses, then exits non-zero on purpose so it cannot be
+mistaken for a full pass/fail bridge test:
+
+```bash
+./scripts/smoke-bridge-message.sh
+```
+
+It also has an explicitly gated experimental send path:
+
+```bash
+BRIDGE_SMOKE_SEND=1 L1_MESSAGE_VALUE_WEI=<wei> ./scripts/smoke-bridge-message.sh
+```
+
+That mode submits an L1 message transaction, but still does not verify L2 claim
+or final delivery. Do not treat the quickstart as final until the script proves
+the user-facing message path end to end.
 
 ## 7. Tearing down
 
@@ -462,6 +487,9 @@ docs/getting-started/linea-stack/
 │   ├── aggregate-addresses.ts   ← writes addresses.json from deploy logs
 │   ├── links.sh                 ← prints useful Sepolia + local explorer links
 │   ├── status.sh                ← redacted boot status summary
+│   ├── send-l2-test-tx.sh       ← sends tiny L2 ETH txs for Blockscout demos
+│   ├── send-l2-erc20-transfer.sh ← sends a tiny L2 ERC20Example transfer
+│   ├── smoke-bridge-message.sh  ← guarded bridge/message smoke scaffold
 │   └── DEPLOY-ENV-CONTRACT.md   ← env vars per deploy step
 └── config/
     ├── DEV-KEYS-INVENTORY.md    ← what's checked in vs runtime

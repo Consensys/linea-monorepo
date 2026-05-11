@@ -193,11 +193,47 @@ check_incremental_typescript_helpers() {
   fi
 }
 
+check_smoke_and_traffic_scripts() {
+  for script in send-l2-test-tx.sh send-l2-erc20-transfer.sh smoke-bridge-message.sh; do
+    script_path="$STACK/scripts/$script"
+    if [ -x "$script_path" ]; then
+      pass "$script is executable"
+    else
+      fail "$script must exist and be executable"
+    fi
+
+    if [ -f "$script_path" ] && sh -n "$script_path"; then
+      pass "$script has valid shell syntax"
+    elif [ -f "$script_path" ]; then
+      fail "$script has invalid shell syntax"
+    fi
+  done
+
+  if [ -f "$STACK/scripts/send-l2-test-tx.sh" ] && grep -q 'L2_DEPLOYER_PRIVATE_KEY' "$STACK/scripts/send-l2-test-tx.sh" && grep -q 'cast send' "$STACK/scripts/send-l2-test-tx.sh"; then
+    pass "send-l2-test-tx.sh sends a simple L2 transaction from the generated L2 deployer"
+  else
+    fail "send-l2-test-tx.sh must send a simple L2 transaction from the generated L2 deployer"
+  fi
+
+  if [ -f "$STACK/scripts/send-l2-erc20-transfer.sh" ] && grep -q 'ERC20Example' "$STACK/scripts/send-l2-erc20-transfer.sh" && grep -q 'transfer(address,uint256)' "$STACK/scripts/send-l2-erc20-transfer.sh"; then
+    pass "send-l2-erc20-transfer.sh transfers ERC20Example on L2"
+  else
+    fail "send-l2-erc20-transfer.sh must transfer ERC20Example on L2"
+  fi
+
+  if [ -f "$STACK/scripts/smoke-bridge-message.sh" ] && grep -q 'BRIDGE_SMOKE_SEND' "$STACK/scripts/smoke-bridge-message.sh" && grep -q 'not a pass/fail bridge smoke test yet' "$STACK/scripts/smoke-bridge-message.sh"; then
+    pass "smoke-bridge-message.sh is guarded against fake bridge success"
+  else
+    fail "smoke-bridge-message.sh must be guarded against fake bridge success"
+  fi
+}
+
 check_no_tracked_generated_genesis
 check_generated_l2_deployer_genesis
 check_account_setup_key_model
 check_postman_key_model
 check_incremental_typescript_helpers
+check_smoke_and_traffic_scripts
 
 if [ "$FAILURES" -ne 0 ]; then
   printf '[quickstart-static] %s failure(s)\n' "$FAILURES" >&2
