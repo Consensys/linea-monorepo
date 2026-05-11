@@ -139,6 +139,20 @@ func Compile(sys *wiop.System) {
 // collectGroups walks sys.TableRelations once, picks out every unreduced
 // inclusion query, and groups them by the canonical identity of their
 // (single) B-side fragment.
+//
+// Two invariants are established here and relied on by [compileGroup]:
+//
+//   - one multiplicity column M per shared B fragment, not per query — this
+//     is what lets the B-side sum cancel the union of A-side sums in the
+//     final log-derivative identity;
+//
+//   - each group's witnessRound is the latest round across every column the
+//     group touches (B and every A fragment of every query in the group), so
+//     M can be allocated on a round where all its inputs are already
+//     committed and *before* the α/γ coin round.
+//
+// The returned map is unordered; callers that need a deterministic emission
+// order sort the keys (see [Compile]).
 func collectGroups(sys *wiop.System) map[string]*lookupGroup {
 	groups := make(map[string]*lookupGroup)
 	for _, q := range sys.TableRelations {
@@ -155,9 +169,24 @@ func collectGroups(sys *wiop.System) map[string]*lookupGroup {
 				q.Context().Path(), len(q.B),
 			))
 		}
+		// Grouping key: queries that target the same lookup-table fragment
+		// fold into the same lookupGroup and therefore share a single M
+		// column. Two queries with distinct B descriptors that happen to
+		// reference the same underlying columns *with the same shifts and
+		// selector* are intentionally collapsed; canonicalIncludingKey
+		// encodes exactly the (column pointer, shift, selector) tuple so
+		// equality of key ⇔ equality of fragment as seen by the prover.
+		// Without this collapse, the same lookup table referenced by N
+		// queries would yield N independent multiplicity columns and the
+		// B-side terms would no longer cancel the union of A-side terms.
 		key := canonicalIncludingKey(q.B[0])
 		g, ok := groups[key]
 		if !ok {
+			// First query to hit this key supplies the canonical
+			// includingTable descriptor. Subsequent queries with the same
+			// key reuse it as-is — they are guaranteed by the key to
+			// describe an identical fragment, so we deliberately skip
+			// re-validating cols/selector/module on later hits.
 			g = &lookupGroup{
 				including: includingTable{
 					cols:     q.B[0].Columns,
@@ -174,8 +203,13 @@ func collectGroups(sys *wiop.System) map[string]*lookupGroup {
 			}
 			groups[key] = g
 		}
-		// Update the witness round from B and from every A fragment of this
-		// query.
+		// Witness round must dominate every column referenced by the group.
+		// Including both B and every A fragment of *this* query keeps the
+		// invariant under incremental merging: when a later query reuses the
+		// same B but supplies an A on a later round, witnessRound advances
+		// accordingly so M (allocated on witnessRound by [compileGroup]) is
+		// still committed before α/γ are sampled in witnessRound + 1 —
+		// the soundness ordering of the log-derivative argument.
 		g.updateWitnessRound(q.B[0].Round())
 		for _, tabA := range q.A {
 			g.updateWitnessRound(tabA.Round())
