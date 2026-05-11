@@ -9,8 +9,6 @@
 package maru.test.genesis
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import kotlin.random.Random
-import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
@@ -23,6 +21,8 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.time.Instant
 
 class BesuGenesisFactoryTest {
   val objectMapper = jacksonObjectMapper()
@@ -103,72 +103,62 @@ class BesuGenesisFactoryTest {
         ForkSpec(
           timestampSeconds = 0UL,
           blockTimeSeconds = 2U,
-          configuration =
-            DifficultyAwareQbftConfig(
-              terminalTotalDifficulty = 2000UL,
-              postTtdConfig =
-                QbftConsensusConfig(
-                  validatorSet = validators,
-                  fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Paris),
-                ),
+          configuration = DifficultyAwareQbftConfig(
+            terminalTotalDifficulty = 2000UL,
+            postTtdConfig = QbftConsensusConfig(
+              validatorSet = validators,
+              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Paris),
             ),
+          ),
         )
       val shanghaiForkSpec =
         ForkSpec(
-          timestampSeconds =
-            Instant.Companion
-              .parse("2025-10-20T00:00:00Z")
-              .epochSeconds
-              .toULong(),
+          timestampSeconds = Instant.Companion
+            .parse("2025-10-20T00:00:00Z")
+            .epochSeconds
+            .toULong(),
           blockTimeSeconds = 2U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Shanghai),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Shanghai),
+          ),
         )
       val cancunForkSpec =
         ForkSpec(
-          timestampSeconds =
-            Instant.Companion
-              .parse("2025-10-21T00:00:00Z")
-              .epochSeconds
-              .toULong(),
+          timestampSeconds = Instant.Companion
+            .parse("2025-10-21T00:00:00Z")
+            .epochSeconds
+            .toULong(),
           blockTimeSeconds = 2U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Cancun),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Cancun),
+          ),
         )
       val pragueForkSpec =
         ForkSpec(
-          timestampSeconds =
-            Instant.Companion
-              .parse("2025-10-22T00:00:00Z")
-              .epochSeconds
-              .toULong(),
+          timestampSeconds = Instant.Companion
+            .parse("2025-10-22T00:00:00Z")
+            .epochSeconds
+            .toULong(),
           blockTimeSeconds = 2U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
+          ),
         )
 
       val osakaForkSpec =
         ForkSpec(
-          timestampSeconds =
-            Instant.Companion
-              .parse("2025-10-23T00:00:00Z")
-              .epochSeconds
-              .toULong(),
+          timestampSeconds = Instant.Companion
+            .parse("2025-10-23T00:00:00Z")
+            .epochSeconds
+            .toULong(),
           blockTimeSeconds = 2U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
+          ),
         )
 
       val forksSchedule =
@@ -202,21 +192,19 @@ class BesuGenesisFactoryTest {
         ForkSpec(
           timestampSeconds = 1000UL,
           blockTimeSeconds = 5U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
+          ),
         )
       val osakaForkSpec =
         ForkSpec(
           timestampSeconds = 2000UL,
           blockTimeSeconds = 5U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
+          ),
         )
       val forksSchedule = ForksSchedule(13U, listOf(pragueForkSpec, osakaForkSpec))
       val result =
@@ -244,21 +232,19 @@ class BesuGenesisFactoryTest {
         ForkSpec(
           timestampSeconds = 0UL,
           blockTimeSeconds = 5U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Cancun),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Cancun),
+          ),
         )
       val osakaForkSpec =
         ForkSpec(
           timestampSeconds = 2000UL,
           blockTimeSeconds = 5U,
-          configuration =
-            QbftConsensusConfig(
-              validatorSet = validators,
-              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
-            ),
+          configuration = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
+          ),
         )
       val forksSchedule = ForksSchedule(13U, listOf(cancunForkSpec, osakaForkSpec))
       val result =

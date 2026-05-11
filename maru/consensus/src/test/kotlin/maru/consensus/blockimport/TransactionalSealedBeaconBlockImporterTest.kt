@@ -42,17 +42,16 @@ class TransactionalSealedBeaconBlockImporterTest {
   fun setUp() {
     initialBeaconState = DataGenerators.randomBeaconState(2UL)
     beaconChain = InMemoryBeaconChain(initialBeaconState)
-    qbftBlockImporter =
-      TransactionalSealedBeaconBlockImporter(
-        beaconChain = beaconChain,
-        stateTransition = stateTransition,
-        beaconBlockImporter = {
+    qbftBlockImporter = TransactionalSealedBeaconBlockImporter(
+      beaconChain = beaconChain,
+      stateTransition = stateTransition,
+      beaconBlockImporter = {
           _: BeaconState,
           _: BeaconBlock,
-          ->
-          beaconBlockImporterResponse
-        },
-      )
+        ->
+        beaconBlockImporterResponse
+      },
+    )
   }
 
   @AfterEach

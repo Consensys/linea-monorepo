@@ -8,10 +8,10 @@
  */
 package maru.test.cluster
 
-import java.nio.file.Path
 import maru.config.MaruConfig
 import maru.crypto.PrivateKeyGenerator
 import testutils.besu.BesuFactory
+import java.nio.file.Path
 
 class NodeBuilder(
   maruConfigTemplate: MaruConfig,
@@ -49,11 +49,10 @@ class NodeBuilder(
     prevConfig: MaruConfig,
   ): MaruConfig =
     prevConfig.copy(
-      persistence =
-        prevConfig.persistence.copy(
-          dataPath = clusterDataDir.resolve("$label-data"),
-          privateKeyPath = clusterDataDir.resolve("$label-private-key"),
-        ),
+      persistence = prevConfig.persistence.copy(
+        dataPath = clusterDataDir.resolve("$label-data"),
+        privateKeyPath = clusterDataDir.resolve("$label-private-key"),
+      ),
     )
 
   // fun withElBesu(besuBuilder: () -> BesuNode): NodeBuilder {

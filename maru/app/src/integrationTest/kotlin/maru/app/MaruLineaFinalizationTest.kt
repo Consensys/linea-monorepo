@@ -8,9 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.web3j.ethapi.createEthApiClient
@@ -33,6 +30,9 @@ import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruLineaFinalizationTest {
   private lateinit var cluster: Cluster
@@ -49,18 +49,16 @@ class MaruLineaFinalizationTest {
   fun setUp() {
     fakeL1 = FakeL1JsonRpcServer().start()
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     validatorStack = PeeringNodeNetworkStack()
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
 
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
 
@@ -94,20 +92,18 @@ class MaruLineaFinalizationTest {
 
     assertThat(validatorGenesis).isEqualTo(followerGenesis)
 
-    validatorEthApiClient =
-      createEthApiClient(
-        rpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
-        log = LogManager.getLogger("clients.l2.test.validator"),
-        requestRetryConfig = null,
-        vertx = null,
-      )
-    followerEthApiClient =
-      createEthApiClient(
-        rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
-        log = LogManager.getLogger("clients.l2.test.follower"),
-        requestRetryConfig = null,
-        vertx = null,
-      )
+    validatorEthApiClient = createEthApiClient(
+      rpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+      log = LogManager.getLogger("clients.l2.test.validator"),
+      requestRetryConfig = null,
+      vertx = null,
+    )
+    followerEthApiClient = createEthApiClient(
+      rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+      log = LogManager.getLogger("clients.l2.test.follower"),
+      requestRetryConfig = null,
+      vertx = null,
+    )
     // wait for Besu to be fully started and synced,
     // to avoid CI flakiness due low resources sometimes
     await

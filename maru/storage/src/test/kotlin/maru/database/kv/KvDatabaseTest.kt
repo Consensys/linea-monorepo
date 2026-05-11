@@ -8,8 +8,6 @@
  */
 package maru.database.kv
 
-import java.nio.file.Path
-import kotlin.random.Random
 import maru.core.BeaconState
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
@@ -19,6 +17,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
+import kotlin.random.Random
 
 class KvDatabaseTest {
   private fun createDatabase(databasePath: Path): KvDatabase =

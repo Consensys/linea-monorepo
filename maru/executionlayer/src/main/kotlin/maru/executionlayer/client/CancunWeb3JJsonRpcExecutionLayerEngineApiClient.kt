@@ -8,7 +8,6 @@
  */
 package maru.executionlayer.client
 
-import java.util.Optional
 import maru.consensus.ElFork
 import maru.core.ExecutionPayload
 import maru.extensions.captureTimeSafeFuture
@@ -25,6 +24,7 @@ import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
+import java.util.Optional
 
 // https://github.com/ethereum/execution-apis/blob/main/src/engine/cancun.md
 class CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
@@ -53,9 +53,12 @@ class CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
     createRequestTimer<PayloadStatusV1>(method = "newPayload").captureTimeSafeFuture(
       web3jEngineClient
         .newPayloadV3(
-          /* executionPayload = */ executionPayload.toExecutionPayloadV3(),
-          /* blobVersionedHashes = */ emptyList(),
-          /* parentBeaconBlockRoot = */ Bytes32.ZERO,
+          /* executionPayload = */
+          executionPayload.toExecutionPayloadV3(),
+          /* blobVersionedHashes = */
+          emptyList(),
+          /* parentBeaconBlockRoot = */
+          Bytes32.ZERO,
         ).thenApply {
           if (it.payload != null) {
             Response.fromPayloadReceivedAsJson(it.payload)
@@ -77,10 +80,15 @@ class CancunWeb3JJsonRpcExecutionLayerEngineApiClient(
 
   private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
     PayloadAttributesV3(
-      /* timestamp = */ this.timestamp,
-      /* prevRandao = */ this.prevRandao,
-      /* suggestedFeeRecipient = */ this.suggestedFeeRecipient,
-      /* withdrawals = */ emptyList(),
-      /* parentBeaconBlockRoot = */ Bytes32.ZERO,
+      /* timestamp = */
+      this.timestamp,
+      /* prevRandao = */
+      this.prevRandao,
+      /* suggestedFeeRecipient = */
+      this.suggestedFeeRecipient,
+      /* withdrawals = */
+      emptyList(),
+      /* parentBeaconBlockRoot = */
+      Bytes32.ZERO,
     )
 }

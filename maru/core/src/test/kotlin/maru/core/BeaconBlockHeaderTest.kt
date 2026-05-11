@@ -8,7 +8,6 @@
  */
 package maru.core
 
-import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -16,6 +15,7 @@ import org.mockito.Mockito
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import kotlin.random.Random
 
 class BeaconBlockHeaderTest {
   @Test

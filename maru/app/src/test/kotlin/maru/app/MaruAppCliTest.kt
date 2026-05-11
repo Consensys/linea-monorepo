@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import java.io.File
-import java.time.Clock
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.timer.TimerFactory
 import maru.api.ApiServer
@@ -36,6 +34,8 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import picocli.CommandLine
+import java.io.File
+import java.time.Clock
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MaruAppCliTest {
@@ -121,18 +121,15 @@ class MaruAppCliTest {
     @BeforeAll
     @JvmStatic
     fun beforeAll() {
-      tempMaruConfigFile =
-        File.createTempFile("MaruAppCliTest", ".toml").also {
-          it.writeText(maruConfigDtoToml)
-        }
-      tempMaruConfigOverridesFile =
-        File.createTempFile("MaruAppCliTest", ".toml").also {
-          it.writeText(maruConfigOverridesDtoToml)
-        }
-      tempMaruGenesisFile =
-        File.createTempFile("MaruAppCliTest", ".json").also {
-          it.writeText(maruGenesisJson)
-        }
+      tempMaruConfigFile = File.createTempFile("MaruAppCliTest", ".toml").also {
+        it.writeText(maruConfigDtoToml)
+      }
+      tempMaruConfigOverridesFile = File.createTempFile("MaruAppCliTest", ".toml").also {
+        it.writeText(maruConfigOverridesDtoToml)
+      }
+      tempMaruGenesisFile = File.createTempFile("MaruAppCliTest", ".json").also {
+        it.writeText(maruGenesisJson)
+      }
     }
 
     @AfterAll

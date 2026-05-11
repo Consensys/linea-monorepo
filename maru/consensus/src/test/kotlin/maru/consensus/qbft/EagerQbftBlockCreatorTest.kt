@@ -8,12 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import java.time.Duration
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -66,6 +60,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 class EagerQbftBlockCreatorTest {
   private lateinit var cluster: Cluster
@@ -83,23 +83,20 @@ class EagerQbftBlockCreatorTest {
 
   @BeforeEach
   fun beforeEach() {
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
-    besuInstance =
-      BesuFactory.buildTestBesu().also {
-        cluster.start(it)
-      }
-    ethApiClient =
-      Web3jClientBuilder()
-        .endpoint(besuInstance.engineRpcUrl().get())
-        .timeout(Duration.ofMinutes(1))
-        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher { }
-        .build()
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
+    besuInstance = BesuFactory.buildTestBesu().also {
+      cluster.start(it)
+    }
+    ethApiClient = Web3jClientBuilder()
+      .endpoint(besuInstance.engineRpcUrl().get())
+      .timeout(Duration.ofMinutes(1))
+      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+      .executionClientEventsPublisher { }
+      .build()
     reset(
       proposerSelector,
       validatorProvider,
@@ -148,10 +145,9 @@ class EagerQbftBlockCreatorTest {
         },
         prevRandaoProvider = prevRandaoProvider,
         feeRecipient = feeRecipient,
-        config =
-          EagerQbftBlockCreator.Config(
-            minBlockBuildTime = 500.milliseconds,
-          ),
+        config = EagerQbftBlockCreator.Config(
+          minBlockBuildTime = 500.milliseconds,
+        ),
         beaconChain = beaconChain,
       )
     return eagerQbftBlockCreator
@@ -170,10 +166,9 @@ class EagerQbftBlockCreatorTest {
     val parentBlock =
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U),
-        beaconBlockBody =
-          DataGenerators
-            .randomBeaconBlockBody()
-            .copy(executionPayload = genesisExecutionPayload),
+        beaconBlockBody = DataGenerators
+          .randomBeaconBlockBody()
+          .copy(executionPayload = genesisExecutionPayload),
       )
     val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
@@ -244,10 +239,9 @@ class EagerQbftBlockCreatorTest {
     val genesisBeaconBlock =
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U),
-        beaconBlockBody =
-          DataGenerators
-            .randomBeaconBlockBody()
-            .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
+        beaconBlockBody = DataGenerators
+          .randomBeaconBlockBody()
+          .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
       )
     val sealedGenesisBeaconBlock = SealedBeaconBlock(genesisBeaconBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
@@ -298,10 +292,9 @@ class EagerQbftBlockCreatorTest {
     val genesisBeaconBlock =
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U), // Genesis block has number 0
-        beaconBlockBody =
-          DataGenerators
-            .randomBeaconBlockBody()
-            .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
+        beaconBlockBody = DataGenerators
+          .randomBeaconBlockBody()
+          .copy(executionPayload = GENESIS_EXECUTION_PAYLOAD),
       )
     val sealedGenesisBeaconBlock = SealedBeaconBlock(genesisBeaconBlock, emptySet())
     val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)

@@ -8,11 +8,11 @@
  */
 package maru.p2p.messages
 
-import kotlin.random.Random
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
+import kotlin.random.Random
 
 class RpcExceptionSerDeTest {
   private val serDe = RpcExceptionSerDe()

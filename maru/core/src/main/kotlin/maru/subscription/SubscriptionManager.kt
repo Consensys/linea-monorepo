@@ -8,13 +8,13 @@
  */
 package maru.subscription
 
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.internal.CallableReference
 import kotlin.reflect.jvm.ExperimentalReflectionOnLambdas
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * Return the receiver object for a CallableReference.

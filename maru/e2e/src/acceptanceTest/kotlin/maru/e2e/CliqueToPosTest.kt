@@ -13,17 +13,6 @@ import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.DockerComposeFiles
 import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
-import java.io.File
-import java.math.BigInteger
-import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.util.UUID
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.kotlin.toULong
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
@@ -53,6 +42,17 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.Web3jTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import java.io.File
+import java.math.BigInteger
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 @Disabled("flaky and we don't need it anymore")
 class CliqueToPosTest {
@@ -120,14 +120,13 @@ class CliqueToPosTest {
       cancunTimestamp = forksTimestamps["cancunTime"]!!
       pragueTimestamp = forksTimestamps["pragueTime"]!!
       ttd = forksTimestamps["terminalTotalDifficulty"]!!
-      maruFactory =
-        MaruFactory(
-          validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
-          shanghaiTimestamp = shanghaiTimestamp,
-          cancunTimestamp = cancunTimestamp,
-          pragueTimestamp = pragueTimestamp,
-          ttd = ttd,
-        )
+      maruFactory = MaruFactory(
+        validatorPrivateKey = VALIDATOR_PRIVATE_KEY_WITH_PREFIX.fromHexToByteArray(),
+        shanghaiTimestamp = shanghaiTimestamp,
+        cancunTimestamp = cancunTimestamp,
+        pragueTimestamp = pragueTimestamp,
+        ttd = ttd,
+      )
     }
 
     @AfterAll
@@ -168,27 +167,26 @@ class CliqueToPosTest {
         ethereumJsonRpcUrl = "http://localhost:8545",
         engineApiRpc = "http://localhost:8550",
         dataDir = sequencerMaruTmpDir.toPath(),
-        followers =
-          FollowersConfig(
-            mapOf(
-              "follower-besu" to ApiEndpointConfig(URI.create("http://localhost:9550").toURL()),
-              "follower-erigon" to
-                ApiEndpointConfig(
-                  URI.create("http://localhost:11551").toURL(),
-                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
-                ),
-              "follower-nethermind" to
-                ApiEndpointConfig(
-                  URI.create("http://localhost:10550").toURL(),
-                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
-                ),
-              "follower-geth" to
-                ApiEndpointConfig(
-                  URI.create("http://localhost:8561").toURL(),
-                  jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
-                ),
-            ),
+        followers = FollowersConfig(
+          mapOf(
+            "follower-besu" to ApiEndpointConfig(URI.create("http://localhost:9550").toURL()),
+            "follower-erigon" to
+              ApiEndpointConfig(
+                URI.create("http://localhost:11551").toURL(),
+                jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+              ),
+            "follower-nethermind" to
+              ApiEndpointConfig(
+                URI.create("http://localhost:10550").toURL(),
+                jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+              ),
+            "follower-geth" to
+              ApiEndpointConfig(
+                URI.create("http://localhost:8561").toURL(),
+                jwtSecretPath = TestEnvironment.JWT_CONFIG_PATH,
+              ),
           ),
+        ),
       )
 
     private var runCounter = 0u
@@ -314,14 +312,13 @@ class CliqueToPosTest {
 
     val followerDataDir = Files.createTempDirectory("maru-$nodeName")
     followerDataDir.toFile().deleteOnExit()
-    maruFollower =
-      maruFactory.buildTestMaruFollowerWithConsensusSwitch(
-        engineApiConfig = engineApiConfig,
-        ethereumApiConfig = engineApiConfig,
-        dataDir = followerDataDir,
-        validatorPortForStaticPeering = maruSequencer.p2pPort(),
-        desyncTolerance = 0UL,
-      )
+    maruFollower = maruFactory.buildTestMaruFollowerWithConsensusSwitch(
+      engineApiConfig = engineApiConfig,
+      ethereumApiConfig = engineApiConfig,
+      dataDir = followerDataDir,
+      validatorPortForStaticPeering = maruSequencer.p2pPort(),
+      desyncTolerance = 0UL,
+    )
 
     maruFollower!!.start()
 

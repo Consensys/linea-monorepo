@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft.adapters
 
-import kotlin.test.Test
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
@@ -16,6 +15,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
+import kotlin.test.Test
 
 class QbftValidatorProviderAdapterTest {
   @Test

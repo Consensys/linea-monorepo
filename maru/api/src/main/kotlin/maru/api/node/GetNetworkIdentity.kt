@@ -48,12 +48,11 @@ class GetNetworkIdentity(
         enr = networkDataProvider.getEnr() ?: "",
         p2pAddresses = networkDataProvider.getNodeAddresses(),
         discoveryAddresses = networkDataProvider.getDiscoveryAddresses(),
-        metadata =
-          Metadata(
-            seqNumber = "0",
-            attnets = "0x",
-            syncnets = "0x",
-          ),
+        metadata = Metadata(
+          seqNumber = "0",
+          attnets = "0x",
+          syncnets = "0x",
+        ),
       )
     ctx.status(HttpStatus.OK).json(GetNetworkIdentityResponse(networkIdentity))
   }

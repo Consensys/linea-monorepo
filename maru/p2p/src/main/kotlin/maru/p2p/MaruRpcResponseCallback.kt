@@ -8,7 +8,6 @@
  */
 package maru.p2p
 
-import java.nio.channels.ClosedChannelException
 import maru.p2p.messages.RpcExceptionSerDe
 import maru.serialization.Serializer
 import org.apache.logging.log4j.LogManager
@@ -21,6 +20,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus.SUCCESS_RESP
 import tech.pegasys.teku.networking.p2p.peer.PeerDisconnectedException
 import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 import tech.pegasys.teku.networking.p2p.rpc.StreamClosedException
+import java.nio.channels.ClosedChannelException
 
 class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   private val rpcStream: RpcStream,

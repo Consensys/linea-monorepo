@@ -38,7 +38,7 @@ class ConsensusMetricsBenchmarkTest {
   private val log = LogManager.getLogger(this.javaClass)
   private val httpClient = OkHttp()
 
-  // ── metric definitions ─────────────────────────────────────────────────────
+  // Metric definitions.
 
   private data class MetricDef(
     val promName: String,
@@ -59,7 +59,7 @@ class ConsensusMetricsBenchmarkTest {
       ),
     )
 
-  // ── histogram data model ───────────────────────────────────────────────────
+  // Histogram data model.
 
   private data class HistogramData(
     val count: Long,
@@ -95,10 +95,9 @@ class ConsensusMetricsBenchmarkTest {
 
       if (braceStart >= 0 && braceEnd > braceStart) {
         metricName = line.substring(0, braceStart).trim()
-        labels =
-          labelRegex
-            .findAll(line.substring(braceStart + 1, braceEnd))
-            .associate { it.groupValues[1] to it.groupValues[2] }
+        labels = labelRegex
+          .findAll(line.substring(braceStart + 1, braceEnd))
+          .associate { it.groupValues[1] to it.groupValues[2] }
         valueStr = line.substring(braceEnd + 1).trim()
       } else {
         val spaceIdx = line.lastIndexOf(' ')
@@ -153,7 +152,7 @@ class ConsensusMetricsBenchmarkTest {
     return HistogramData(count = count, sum = sum, max = max, quantiles = quantiles)
   }
 
-  // ── cross-pod aggregation ──────────────────────────────────────────────────
+  // Cross-pod aggregation.
 
   /**
    * Merges per-pod [HistogramData] into a single aggregate.
@@ -181,7 +180,7 @@ class ConsensusMetricsBenchmarkTest {
     return HistogramData(count = totalCount, sum = totalSum, max = totalMax, quantiles = mergedQuantiles)
   }
 
-  // ── test entry point ───────────────────────────────────────────────────────
+  // Test entry point.
 
   @Test
   fun `collect and print QBFT consensus metrics from all chaos pods`() {
@@ -230,7 +229,7 @@ class ConsensusMetricsBenchmarkTest {
     printReport(podSamples, experimentLatency)
   }
 
-  // ── report printer ─────────────────────────────────────────────────────────
+  // Report printer.
 
   private fun printReport(
     podSamples: Map<String, Map<Pair<String, Map<String, String>>, Double>>,

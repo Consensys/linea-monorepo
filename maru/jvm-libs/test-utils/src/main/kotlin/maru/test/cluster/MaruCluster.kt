@@ -8,10 +8,6 @@
  */
 package maru.test.cluster
 
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.random.Random
-import kotlin.time.Instant
 import maru.app.MaruApp
 import maru.config.MaruConfig
 import maru.consensus.ChainFork
@@ -23,6 +19,10 @@ import maru.test.genesis.GenesisFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.random.Random
+import kotlin.time.Instant
 
 enum class NodeRole {
   Sequencer,
@@ -258,10 +258,9 @@ class MaruCluster(
       createMaru(
         elNode = nodeStartingConfig.elNode,
         config = nodeStartingConfig.maruConfig,
-        bootnodes =
-          nodeStartingConfig.overridingBootnodesNodesLables
-            ?.let { nodesEnrs(it) }
-            ?: bootNodesEnrs,
+        bootnodes = nodeStartingConfig.overridingBootnodesNodesLables
+          ?.let { nodesEnrs(it) }
+          ?: bootNodesEnrs,
         staticpeers = nodesAddr(nodeStartingConfig.staticPeersNodesLables ?: emptyList()),
         nodeKeyData = nodeStartingConfig.nodeKey,
         nodeRole = nodeStartingConfig.nodeRole,

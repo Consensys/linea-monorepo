@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import java.io.File
-import kotlin.time.Duration.Companion.seconds
 import linea.kotlin.decodeHex
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -34,6 +32,8 @@ import testutils.besu.ethGetBlockByNumber
 import testutils.besu.startWithRetry
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import java.io.File
+import kotlin.time.Duration.Companion.seconds
 
 class MaruConsensusSwitchTest {
   companion object {
@@ -59,12 +59,11 @@ class MaruConsensusSwitchTest {
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
     // We'll set the switchTimestamp in the test method
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        net,
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      net,
+      ThreadBesuNodeRunner(),
+    )
   }
 
   @AfterEach
@@ -119,22 +118,20 @@ class MaruConsensusSwitchTest {
         "$cancunTimestamp, current timestamp: $currentTimestamp",
     )
 
-    validatorBesuNode =
-      BesuFactory.buildSwitchableBesuQbft(
-        shanghaiTimestamp = shanghaiTimestamp,
-        cancunTimestamp = cancunTimestamp,
-        pragueTimestamp = pragueTimestamp,
-        ttd = ttd,
-        validator = true,
-      )
-    followerBesuNode =
-      BesuFactory.buildSwitchableBesuQbft(
-        shanghaiTimestamp = shanghaiTimestamp,
-        cancunTimestamp = cancunTimestamp,
-        pragueTimestamp = pragueTimestamp,
-        ttd = ttd,
-        validator = false,
-      )
+    validatorBesuNode = BesuFactory.buildSwitchableBesuQbft(
+      shanghaiTimestamp = shanghaiTimestamp,
+      cancunTimestamp = cancunTimestamp,
+      pragueTimestamp = pragueTimestamp,
+      ttd = ttd,
+      validator = true,
+    )
+    followerBesuNode = BesuFactory.buildSwitchableBesuQbft(
+      shanghaiTimestamp = shanghaiTimestamp,
+      cancunTimestamp = cancunTimestamp,
+      pragueTimestamp = pragueTimestamp,
+      ttd = ttd,
+      validator = false,
+    )
     cluster.startWithRetry(validatorBesuNode, followerBesuNode)
 
     // Create a new Maru node with consensus switch configuration
@@ -148,24 +145,22 @@ class MaruConsensusSwitchTest {
         shanghaiTimestamp = shanghaiTimestamp,
         ttd = ttd,
       )
-    validatorMaruNode =
-      maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
-        ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
-        engineApiRpc = validatorEngineRpcUrl,
-        dataDir = validatorMaruTmpDir.toPath(),
-      )
+    validatorMaruNode = maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
+      ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
+      engineApiRpc = validatorEngineRpcUrl,
+      dataDir = validatorMaruTmpDir.toPath(),
+    )
     validatorMaruNode.start().get()
 
     val followerEthereumJsonRpcBaseUrl = followerBesuNode.jsonRpcBaseUrl().get()
     val followerEngineRpcUrl = followerBesuNode.engineRpcUrl().get()
 
-    followerMaruNode =
-      maruFactory.buildTestMaruFollowerWithConsensusSwitch(
-        ethereumJsonRpcUrl = followerEthereumJsonRpcBaseUrl,
-        engineApiRpc = followerEngineRpcUrl,
-        dataDir = followerMaruTmpDir.toPath(),
-        validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
-      )
+    followerMaruNode = maruFactory.buildTestMaruFollowerWithConsensusSwitch(
+      ethereumJsonRpcUrl = followerEthereumJsonRpcBaseUrl,
+      engineApiRpc = followerEngineRpcUrl,
+      dataDir = followerMaruTmpDir.toPath(),
+      validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
+    )
     followerMaruNode.start().get()
 
     followerMaruNode.awaitTillMaruHasPeers(1u)

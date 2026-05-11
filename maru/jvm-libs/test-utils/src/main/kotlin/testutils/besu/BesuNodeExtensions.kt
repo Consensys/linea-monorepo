@@ -8,11 +8,11 @@
  */
 package testutils.besu
 
-import java.math.BigInteger
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
+import java.math.BigInteger
 
 fun BesuNode.ethGetBlockByNumber(
   blockParameter: DefaultBlockParameter,

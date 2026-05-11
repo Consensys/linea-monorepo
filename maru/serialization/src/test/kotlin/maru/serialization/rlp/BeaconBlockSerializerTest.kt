@@ -8,8 +8,6 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.HashUtil
@@ -19,6 +17,8 @@ import maru.core.ext.DataGenerators.randomExecutionPayload
 import maru.crypto.Hashing
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.random.nextULong
 
 class BeaconBlockSerializerTest {
   private val blockHeaderSerializer =
@@ -29,13 +29,11 @@ class BeaconBlockSerializerTest {
     )
   private val blockBodySerializer =
     BeaconBlockSerDe(
-      beaconBlockHeaderSerializer =
-      blockHeaderSerializer,
-      beaconBlockBodySerializer =
-        BeaconBlockBodySerDe(
-          sealSerializer = SealSerDe(),
-          executionPayloadSerializer = ExecutionPayloadSerDe(),
-        ),
+      beaconBlockHeaderSerializer = blockHeaderSerializer,
+      beaconBlockBodySerializer = BeaconBlockBodySerDe(
+        sealSerializer = SealSerDe(),
+        executionPayloadSerializer = ExecutionPayloadSerDe(),
+      ),
     )
 
   @Test

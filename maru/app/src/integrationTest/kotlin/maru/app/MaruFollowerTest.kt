@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import kotlin.collections.map
-import kotlin.time.Duration.Companion.seconds
 import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -33,6 +31,8 @@ import testutils.besu.ethGetBlockByNumber
 import testutils.besu.startWithRetry
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import kotlin.collections.map
+import kotlin.time.Duration.Companion.seconds
 
 class MaruFollowerTest {
   companion object {
@@ -90,19 +90,17 @@ class MaruFollowerTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     validatorStack = PeeringNodeNetworkStack()
 
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
 
     // Start all Besu nodes together for proper peering
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)

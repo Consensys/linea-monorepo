@@ -8,11 +8,6 @@
  */
 package maru.p2p
 
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.time.toJavaDuration
 import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
@@ -23,6 +18,11 @@ import tech.pegasys.teku.networking.p2p.libp2p.PeerAlreadyConnectedException
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.toJavaDuration
 
 class PeerDiscoveryTask(
   private val discoveryService: MaruDiscoveryService,
@@ -46,13 +46,12 @@ class PeerDiscoveryTask(
       log.warn("Trying to start already started PeerDiscoveryTask")
       return
     }
-    discoveryTaskFuture =
-      scheduler.scheduleWithFixedDelay(
-        { runSearchTask(discoveryService) },
-        0,
-        discoveryConfig.searchInterval.inWholeMilliseconds,
-        TimeUnit.MILLISECONDS,
-      )
+    discoveryTaskFuture = scheduler.scheduleWithFixedDelay(
+      { runSearchTask(discoveryService) },
+      0,
+      discoveryConfig.searchInterval.inWholeMilliseconds,
+      TimeUnit.MILLISECONDS,
+    )
   }
 
   fun stop() {

@@ -8,10 +8,10 @@
  */
 package maru.compression
 
-import kotlin.random.Random
 import maru.serialization.compression.MaruNoOpCompressor
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class MaruNoOpCompressorTest {
   private val compressor = MaruNoOpCompressor()

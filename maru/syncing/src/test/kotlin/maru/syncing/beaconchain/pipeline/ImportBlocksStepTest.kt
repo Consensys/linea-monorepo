@@ -8,7 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import java.util.concurrent.CompletionException
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
@@ -28,6 +27,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.CompletionException
 
 class ImportBlocksStepTest {
   private lateinit var blockImporter: SealedBeaconBlockImporter<ValidationResult>

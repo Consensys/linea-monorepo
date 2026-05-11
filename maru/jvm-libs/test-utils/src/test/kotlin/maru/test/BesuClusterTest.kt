@@ -8,11 +8,6 @@
  */
 package maru.test
 
-import java.net.ConnectException
-import java.util.Optional
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
@@ -34,37 +29,38 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import testutils.besu.BesuFactory
+import java.net.ConnectException
+import java.util.Optional
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class BesuClusterTest {
   private lateinit var genesis: String
 
   @BeforeEach
   fun beforeEach() {
-    genesis =
-      BesuGenesisFactory()
-        .apply {
-          setForkSchedule(
-            ForksSchedule(
-              chainId = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
-              forks =
-                listOf(
-                  ForkSpec(
-                    timestampSeconds = 0UL,
-                    blockTimeSeconds = 1U,
-                    configuration =
-                      DifficultyAwareQbftConfig(
-                        terminalTotalDifficulty = UInt.MAX_VALUE.toULong(),
-                        postTtdConfig =
-                          QbftConsensusConfig(
-                            validatorSet = setOf(Validator(Random.nextBytes(20))),
-                            fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-                          ),
-                      ),
+    genesis = BesuGenesisFactory()
+      .apply {
+        setForkSchedule(
+          ForksSchedule(
+            chainId = Random.nextInt(1, Int.MAX_VALUE).toUInt(),
+            forks = listOf(
+              ForkSpec(
+                timestampSeconds = 0UL,
+                blockTimeSeconds = 1U,
+                configuration = DifficultyAwareQbftConfig(
+                  terminalTotalDifficulty = UInt.MAX_VALUE.toULong(),
+                  postTtdConfig = QbftConsensusConfig(
+                    validatorSet = setOf(Validator(Random.nextBytes(20))),
+                    fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
                   ),
                 ),
+              ),
             ),
-          )
-        }.create()
+          ),
+        )
+      }.create()
   }
 
   fun createBesu(
@@ -90,14 +86,13 @@ class BesuClusterTest {
 
   @Test
   fun `should allow to add nodes to existing cluster and sync`() {
-    cluster =
-      BesuCluster()
-        .apply {
-          addNode(createBesu("besu-0"))
-          addNode(createBesu("besu-1", validator = true))
-          addNode(createBesu("besu-2"))
-          start(false)
-        }
+    cluster = BesuCluster()
+      .apply {
+        addNode(createBesu("besu-0"))
+        addNode(createBesu("besu-1", validator = true))
+        addNode(createBesu("besu-2"))
+        start(false)
+      }
 
     await
       .atMost(30.seconds.toJavaDuration())
@@ -121,13 +116,12 @@ class BesuClusterTest {
 
   @Test
   fun `should allow to start nodes 1 by 1 and sync`() {
-    cluster =
-      BesuCluster()
-        .apply {
-          addNodeAndStart(createBesu("besu-0"))
-          addNodeAndStart(createBesu("besu-1", validator = true))
-          addNodeAndStart(createBesu("besu-2"))
-        }
+    cluster = BesuCluster()
+      .apply {
+        addNodeAndStart(createBesu("besu-0"))
+        addNodeAndStart(createBesu("besu-1", validator = true))
+        addNodeAndStart(createBesu("besu-2"))
+      }
 
     await
       .atMost(120.seconds.toJavaDuration())
@@ -146,12 +140,11 @@ class BesuClusterTest {
 
   @Test
   fun `should remove,stop and add back nodes to the cluster`() {
-    cluster =
-      BesuCluster().apply {
-        addNode(createBesu("sequencer", validator = true))
-        addNode(createBesu("follower-1"))
-        start(false)
-      }
+    cluster = BesuCluster().apply {
+      addNode(createBesu("sequencer", validator = true))
+      addNode(createBesu("follower-1"))
+      start(false)
+    }
 
     await
       .atMost(120.seconds.toJavaDuration())

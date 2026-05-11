@@ -8,10 +8,6 @@
  */
 package maru.syncing
 
-import kotlin.concurrent.atomics.AtomicInt
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.incrementAndFetch
-import kotlin.time.Duration.Companion.seconds
 import maru.consensus.NewBlockHandler
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
@@ -21,6 +17,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import testutils.maru.TestablePeriodicTimerFactory
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {
@@ -85,8 +85,7 @@ class ELSyncServiceTest {
       }
     var forkChoiceResultToReturn =
       DataGenerators.randomValidForkChoiceUpdatedResult().copy(
-        payloadStatus =
-          DataGenerators.randomValidPayloadStatus().copy(status = ExecutionPayloadStatus.SYNCING),
+        payloadStatus = DataGenerators.randomValidPayloadStatus().copy(status = ExecutionPayloadStatus.SYNCING),
       )
     val blockImportHandler =
       NewBlockHandler<Unit> { SafeFuture.completedFuture(Unit) }

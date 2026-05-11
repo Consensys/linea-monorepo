@@ -8,11 +8,6 @@
  */
 package maru.test
 
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
-import kotlin.time.times
-import kotlin.time.toJavaDuration
 import linea.kotlin.toULong
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
@@ -30,6 +25,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlin.time.times
+import kotlin.time.toJavaDuration
 
 class MaruClusterTest {
   private lateinit var cluster: MaruCluster
@@ -38,11 +38,10 @@ class MaruClusterTest {
   fun beforeEach() {
     configureLoggers(
       rootLevel = Level.WARN,
-      logLevels =
-        listOf(
-          "maru" to Level.INFO,
-          "maru.clients" to Level.DEBUG,
-        ),
+      logLevels = listOf(
+        "maru" to Level.INFO,
+        "maru.clients" to Level.DEBUG,
+      ),
     )
   }
 
@@ -55,12 +54,11 @@ class MaruClusterTest {
 
   @Test
   fun `should allow to retrieve nodes by label`() {
-    cluster =
-      MaruCluster()
-        .addNode(NodeRole.Follower)
-        .addNode(NodeRole.Sequencer, withBesuEl = true)
-        .addNode("follower-special")
-        .start()
+    cluster = MaruCluster()
+      .addNode(NodeRole.Follower)
+      .addNode(NodeRole.Sequencer, withBesuEl = true)
+      .addNode("follower-special")
+      .start()
 
     assertThat(cluster.node("follower").nodeRole).isEqualTo(NodeRole.Follower)
     assertThat(cluster.node("follower-special").nodeRole).isEqualTo(NodeRole.Follower)
@@ -70,20 +68,18 @@ class MaruClusterTest {
   @Test
   @Order(2)
   fun `should create network starting at prague`() {
-    cluster =
-      MaruCluster(
-        chainForks =
-          mapOf(
-            // Genesis at Prague
-            Instant.fromEpochSeconds(0L) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Prague,
-              ),
+    cluster = MaruCluster(
+      chainForks = mapOf(
+        // Genesis at Prague
+        Instant.fromEpochSeconds(0L) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Prague,
           ),
-      ).addNode(NodeRole.Sequencer, withBesuEl = true) { nodeBuilder ->
-        nodeBuilder.withLabel("sequencer")
-      }.start()
+      ),
+    ).addNode(NodeRole.Sequencer, withBesuEl = true) { nodeBuilder ->
+      nodeBuilder.withLabel("sequencer")
+    }.start()
 
     await()
       .pollInterval(1.seconds.toJavaDuration())
@@ -99,34 +95,32 @@ class MaruClusterTest {
     val now = Clock.System.now()
     val terminalTotalDifficulty = 20UL
     val forkTimeGap = 10.seconds
-    cluster =
-      MaruCluster(
-        terminalTotalDifficulty = terminalTotalDifficulty,
-        chainForks =
-          mapOf(
-            Instant.fromEpochSeconds(0) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Paris,
-              ),
-            now.plus(30.seconds) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Shanghai,
-              ),
-            now.plus(30.seconds + forkTimeGap) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Cancun,
-              ),
-            now.plus(30.seconds + 2 * forkTimeGap) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Prague,
-              ),
+    cluster = MaruCluster(
+      terminalTotalDifficulty = terminalTotalDifficulty,
+      chainForks = mapOf(
+        Instant.fromEpochSeconds(0) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Paris,
           ),
-      ).addNode("sequencer", addBesu = true)
-        .start()
+        now.plus(30.seconds) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Shanghai,
+          ),
+        now.plus(30.seconds + forkTimeGap) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Cancun,
+          ),
+        now.plus(30.seconds + 2 * forkTimeGap) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Prague,
+          ),
+      ),
+    ).addNode("sequencer", addBesu = true)
+      .start()
 
     await()
       .atMost(120.seconds.toJavaDuration())
@@ -144,16 +138,15 @@ class MaruClusterTest {
   @Test
   @Order(4)
   fun `should instantiate multiple nodes in the cluster with static peering and sync`() {
-    cluster =
-      MaruCluster()
-        .addNode("sequencer", addBesu = true)
-        .addNode("follower-internal-0") { nodeBuilder ->
-          nodeBuilder
-            .staticPeers(listOf("sequencer"))
-        }.addNode("follower-internal-1") { nodeBuilder ->
-          nodeBuilder
-            .staticPeers(listOf("sequencer"))
-        }.start()
+    cluster = MaruCluster()
+      .addNode("sequencer", addBesu = true)
+      .addNode("follower-internal-0") { nodeBuilder ->
+        nodeBuilder
+          .staticPeers(listOf("sequencer"))
+      }.addNode("follower-internal-1") { nodeBuilder ->
+        nodeBuilder
+          .staticPeers(listOf("sequencer"))
+      }.start()
 
     await()
       .apply { }
@@ -167,12 +160,11 @@ class MaruClusterTest {
   @Test
   @Order(5)
   fun `should instantiate multiple nodes in the cluster with discovery`() {
-    cluster =
-      MaruCluster()
-        .addNode("bootnode-1")
-        .addNode("sequencer", addBesu = true)
-        .addNode("follower-internal-0")
-        .start()
+    cluster = MaruCluster()
+      .addNode("bootnode-1")
+      .addNode("sequencer", addBesu = true)
+      .addNode("follower-internal-0")
+      .start()
     val followers = cluster.nodes(NodeRole.Follower)
 
     await()
@@ -194,12 +186,11 @@ class MaruClusterTest {
   @Test
   @Order(6)
   fun `should allow to add nodes after cluster is has started`() {
-    cluster =
-      MaruCluster()
-        .addNode("bootnode-0")
-        .addNode("sequencer", addBesu = true)
-        .addNode("follower-internal-0")
-        .start()
+    cluster = MaruCluster()
+      .addNode("bootnode-0")
+      .addNode("sequencer", addBesu = true)
+      .addNode("follower-internal-0")
+      .start()
 
     await()
       .pollInterval(1.seconds.toJavaDuration())
@@ -223,10 +214,9 @@ class MaruClusterTest {
   @Test
   @Order(7)
   fun `should fail when nodes with duplicated labels are added`() {
-    cluster =
-      MaruCluster()
-        .addNode("node-1")
-        .addNode("node-2")
+    cluster = MaruCluster()
+      .addNode("node-1")
+      .addNode("node-2")
 
     try {
       cluster.addNode("node-1")

@@ -8,8 +8,8 @@
  */
 package maru.metrics
 
-import java.util.Optional
 import org.apache.logging.log4j.LogManager
+import java.util.Optional
 import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory as BesuMetricsCategory
 

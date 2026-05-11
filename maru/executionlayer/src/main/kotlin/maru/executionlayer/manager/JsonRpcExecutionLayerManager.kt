@@ -8,7 +8,6 @@
  */
 package maru.executionlayer.manager
 
-import java.util.concurrent.atomic.AtomicReference
 import maru.core.ExecutionPayload
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.mappers.Mappers.toDomain
@@ -19,6 +18,7 @@ import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
+import java.util.concurrent.atomic.AtomicReference
 
 class JsonRpcExecutionLayerManager(
   private val executionLayerEngineApiClient: ExecutionLayerEngineApiClient,

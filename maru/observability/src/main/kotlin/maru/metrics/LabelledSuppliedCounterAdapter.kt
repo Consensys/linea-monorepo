@@ -9,11 +9,11 @@
 package maru.metrics
 
 import io.vertx.core.Vertx
-import java.util.function.DoubleSupplier
-import kotlin.time.DurationUnit
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.hyperledger.besu.plugin.services.metrics.LabelledSuppliedMetric
+import java.util.function.DoubleSupplier
+import kotlin.time.DurationUnit
 import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
 
 class LabelledSuppliedCounterAdapter(

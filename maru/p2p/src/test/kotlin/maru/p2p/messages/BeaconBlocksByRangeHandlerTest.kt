@@ -135,11 +135,10 @@ class BeaconBlocksByRangeHandlerTest {
 
   @Test
   fun `handles and returns subset of requested blocks for request with blocks that would exceed the size limit`() {
-    handler =
-      BeaconBlocksByRangeHandler(
-        beaconChain = beaconChain,
-        blockRetrievalStrategy = SizeLimitBlockRetrievalStrategy(sizeLimit = 9000),
-      )
+    handler = BeaconBlocksByRangeHandler(
+      beaconChain = beaconChain,
+      blockRetrievalStrategy = SizeLimitBlockRetrievalStrategy(sizeLimit = 9000),
+    )
 
     val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 10UL)
     val message =

@@ -40,22 +40,20 @@ fun MaruSealedBeaconBlock.toBeaconBlock(): BeaconBlock {
   val blockBody =
     MaruApiBeaconBlockBody(
       randaoReveal = "0x",
-      eth1Data =
-        Eth1Data(
-          depositCount = "0",
-          depositRoot = "0x",
-          blockHash = "0x",
-        ),
+      eth1Data = Eth1Data(
+        depositCount = "0",
+        depositRoot = "0x",
+        blockHash = "0x",
+      ),
       graffiti = "0x",
       proposerSlashings = emptyList(),
       attesterSlashings = emptyList(),
       attestations = currentBlockAttestations + prevBlockAttestations,
       deposits = emptyList(),
-      syncAggregate =
-        SyncAggregate(
-          syncCommitteeBits = "0x",
-          syncCommitteeSignature = "0x",
-        ),
+      syncAggregate = SyncAggregate(
+        syncCommitteeBits = "0x",
+        syncCommitteeSignature = "0x",
+      ),
       executionPayload = maruBody.executionPayload.toExecutionPayload(),
     )
 

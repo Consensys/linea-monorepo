@@ -47,17 +47,15 @@ open class RpcMethods(
 
   val beaconBlocksByRangeRequestMessageSerDe =
     BeaconBlocksByRangeRequestMessageSerDe(
-      beaconBlocksByRangeRequestSerDe =
-        MaruCompressorRLPSerDe(
-          serDe = BeaconBlocksByRangeRequestSerDe(),
-        ),
+      beaconBlocksByRangeRequestSerDe = MaruCompressorRLPSerDe(
+        serDe = BeaconBlocksByRangeRequestSerDe(),
+      ),
     )
   val beaconBlocksByRangeResponseMessageSerDe =
     BeaconBlocksByRangeResponseMessageSerDe(
-      beaconBlocksByRangeResponseSerDe =
-        MaruCompressorRLPSerDe(
-          serDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
-        ),
+      beaconBlocksByRangeResponseSerDe = MaruCompressorRLPSerDe(
+        serDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
+      ),
     )
 
   val beaconBlocksByRangeRpcMethod =

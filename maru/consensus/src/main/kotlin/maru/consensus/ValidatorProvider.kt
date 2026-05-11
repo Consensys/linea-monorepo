@@ -8,9 +8,9 @@
  */
 package maru.consensus
 
-import java.util.SequencedSet
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.SequencedSet
 
 /**
  * Provides access to the set of validators for a given block.
@@ -25,7 +25,8 @@ interface ValidatorProvider {
 }
 
 /**
- * A [ValidatorProvider] that always returns the same [Validator] instance. This is useful for the single validator case.
+ * A [ValidatorProvider] that always returns the same [Validator] instance.
+ * This is useful for the single validator case.
  */
 class StaticValidatorProvider(
   validators: Set<Validator>,

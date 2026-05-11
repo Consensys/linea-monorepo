@@ -8,13 +8,13 @@
  */
 package maru.consensus.qbft.adapters
 
-import java.util.Optional
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
 import org.hyperledger.besu.ethereum.mainnet.block.access.list.BlockAccessList
+import java.util.Optional
 
 /**
  * Responsible for: transactional  and El node

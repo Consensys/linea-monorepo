@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import kotlin.time.Duration
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationProvider
@@ -20,6 +19,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.crypto.SECPSignature
+import kotlin.time.Duration
 
 /**
  * Responsible for QBFT block creation. As opposed to DelayedQbftBlockCreator, Eager one will send the FCU request to
@@ -89,13 +89,11 @@ class EagerQbftBlockCreator(
           finalizedHash = finalizedState.finalizedBlockHash,
           nextBlockTimestamp = safeTimestampSeconds.toULong(),
           feeRecipient = feeRecipient,
-          prevRandao =
-            prevRandaoProvider.calculateNextPrevRandao(
-              signee =
-                parentBeaconBlock.beaconBlockBody.executionPayload.blockNumber
-                  .inc(),
-              prevRandao = parentBeaconBlock.beaconBlockBody.executionPayload.prevRandao,
-            ),
+          prevRandao = prevRandaoProvider.calculateNextPrevRandao(
+            signee = parentBeaconBlock.beaconBlockBody.executionPayload.blockNumber
+              .inc(),
+            prevRandao = parentBeaconBlock.beaconBlockBody.executionPayload.prevRandao,
+          ),
         ).get()
     log.debug(
       "Building new block, FCU result={}",

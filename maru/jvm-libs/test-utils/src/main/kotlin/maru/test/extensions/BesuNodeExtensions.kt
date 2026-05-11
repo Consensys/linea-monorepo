@@ -22,13 +22,12 @@ fun BesuNode.latestBlock(includeTransactions: Boolean = false): EthBlock.Block {
   var block: EthBlock.Block? = null
   while (retries > 0 && block == null) {
     try {
-      block =
-        this
-          .nodeRequests()
-          .eth()
-          .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), includeTransactions)
-          .send()
-          .block
+      block = this
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), includeTransactions)
+        .send()
+        .block
     } catch (e: Exception) {
       // ignore and retry
     }

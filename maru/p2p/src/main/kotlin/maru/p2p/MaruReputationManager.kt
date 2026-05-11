@@ -9,13 +9,6 @@
 package maru.p2p
 
 import com.google.common.base.MoreObjects
-import java.util.EnumSet
-import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.concurrent.Volatile
-import kotlin.jvm.optionals.getOrNull
-import kotlin.math.min
-import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import maru.config.P2PConfig
@@ -33,6 +26,13 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
+import java.util.EnumSet
+import java.util.Optional
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.Volatile
+import kotlin.jvm.optionals.getOrNull
+import kotlin.math.min
+import kotlin.time.Instant
 
 class MaruReputationManager(
   metricsSystem: MetricsSystem,

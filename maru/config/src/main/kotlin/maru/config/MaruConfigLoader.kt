@@ -12,12 +12,12 @@ import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.json.JsonPropertySource
 import com.sksamuel.hoplite.toml.TomlPropertySource
-import java.io.File
-import kotlin.io.path.Path
 import maru.config.MaruConfigLoader.appTomlConfigLoaderBuilder
 import maru.config.consensus.ForkConfigDecoder
 import maru.config.consensus.JsonFriendlyForksSchedule
 import maru.config.decoders.TomlByteArrayHexDecoder
+import java.io.File
+import kotlin.io.path.Path
 
 object MaruConfigLoader {
   @OptIn(ExperimentalHoplite::class)

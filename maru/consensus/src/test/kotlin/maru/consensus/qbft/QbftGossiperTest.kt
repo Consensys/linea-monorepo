@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import kotlin.test.Test
 import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.mockito.Mockito.mock
@@ -16,6 +15,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import kotlin.test.Test
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 class QbftGossiperTest {

@@ -14,10 +14,9 @@ fun MaruPeer.toPeerInfo(): PeerInfo =
     enr = null,
     address = address.toExternalForm(),
     status = if (isConnected) PeerInfo.PeerStatus.CONNECTED else PeerInfo.PeerStatus.DISCONNECTED,
-    direction =
-      if (connectionInitiatedLocally()) {
-        PeerInfo.PeerDirection.OUTBOUND
-      } else {
-        PeerInfo.PeerDirection.INBOUND
-      },
+    direction = if (connectionInitiatedLocally()) {
+      PeerInfo.PeerDirection.OUTBOUND
+    } else {
+      PeerInfo.PeerDirection.INBOUND
+    },
   )

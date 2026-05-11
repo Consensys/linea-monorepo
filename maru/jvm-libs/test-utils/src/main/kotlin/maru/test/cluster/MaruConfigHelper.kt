@@ -8,11 +8,6 @@
  */
 package maru.test.cluster
 
-import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
@@ -28,6 +23,11 @@ import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
 import maru.crypto.PrivateKeyGenerator
 import maru.extensions.encodeHex
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 val configTemplate: MaruConfig =
   MaruConfig(
@@ -37,30 +37,26 @@ val configTemplate: MaruConfig =
     validatorElNode = null,
     api = ApiConfig(port = 0u),
     qbft = null, // Followers by default
-    p2p =
-      P2PConfig(
-        port = 0u, // find a free port
-        discovery =
-          Discovery(
-            refreshInterval = 10.seconds,
-            port = 0u,
-            bootnodes = emptyList(),
-          ),
-      ),
-    followers = FollowersConfig(emptyMap()),
-    syncing =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.seconds,
-        syncTargetSelection = SyncTargetSelection.Highest,
-        elSyncStatusRefreshInterval = 500.milliseconds,
-        desyncTolerance = 0UL,
-      ),
-    observability =
-      ObservabilityConfig(
+    p2p = P2PConfig(
+      port = 0u, // find a free port
+      discovery = Discovery(
+        refreshInterval = 10.seconds,
         port = 0u,
-        prometheusMetricsEnabled = false,
-        jvmMetricsEnabled = false,
+        bootnodes = emptyList(),
       ),
+    ),
+    followers = FollowersConfig(emptyMap()),
+    syncing = SyncingConfig(
+      peerChainHeightPollingInterval = 1.seconds,
+      syncTargetSelection = SyncTargetSelection.Highest,
+      elSyncStatusRefreshInterval = 500.milliseconds,
+      desyncTolerance = 0UL,
+    ),
+    observability = ObservabilityConfig(
+      port = 0u,
+      prometheusMetricsEnabled = false,
+      jvmMetricsEnabled = false,
+    ),
   )
 
 fun initPersistence(
@@ -78,13 +74,11 @@ internal fun setQbftConfigIfSequencer(
 ): MaruConfig {
   var newConfig = config
   if (isSequencer) {
-    newConfig =
-      config.copy(
-        qbft =
-          config.qbft
-            ?.copy(feeRecipient = nodeKeyData.address)
-            ?: QbftConfig(feeRecipient = nodeKeyData.address),
-      )
+    newConfig = config.copy(
+      qbft = config.qbft
+        ?.copy(feeRecipient = nodeKeyData.address)
+        ?: QbftConfig(feeRecipient = nodeKeyData.address),
+    )
   }
   return newConfig
 }
@@ -110,10 +104,9 @@ internal fun setP2pConfig(
     p2pConfig = p2pConfig.copy(discovery = updatedDiscovery)
   }
   if (staticpeers.isNotEmpty()) {
-    p2pConfig =
-      p2pConfig?.copy(
-        staticPeers = staticpeers,
-      )
+    p2pConfig = p2pConfig?.copy(
+      staticPeers = staticpeers,
+    )
   }
   return config.copy(p2p = p2pConfig)
 }
@@ -132,10 +125,9 @@ internal fun setValidatorConfig(
     )
   val updatedForkTransition =
     config.forkTransition.copy(
-      l2EthApiEndpoint =
-        config.forkTransition.l2EthApiEndpoint?.copy(
-          endpoint = URI.create(elNode.ethApiUrl()).toURL(),
-        ) ?: ApiEndpointConfig(URI.create(elNode.ethApiUrl()).toURL()),
+      l2EthApiEndpoint = config.forkTransition.l2EthApiEndpoint?.copy(
+        endpoint = URI.create(elNode.ethApiUrl()).toURL(),
+      ) ?: ApiEndpointConfig(URI.create(elNode.ethApiUrl()).toURL()),
     )
   return config.copy(validatorElNode = updatedValidatorConfig, forkTransition = updatedForkTransition)
 }

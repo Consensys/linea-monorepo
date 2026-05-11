@@ -8,13 +8,13 @@
  */
 package maru.consensus.qbft
 
-import java.util.SequencedSet
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.Test
+import java.util.SequencedSet
 
 class ProposerSelectorImplTest {
   private val totalValidators = 5

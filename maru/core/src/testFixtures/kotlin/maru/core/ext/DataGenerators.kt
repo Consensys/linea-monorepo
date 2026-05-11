@@ -8,11 +8,6 @@
  */
 package maru.core.ext
 
-import java.math.BigInteger
-import java.util.SequencedSet
-import kotlin.random.Random
-import kotlin.random.nextUInt
-import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
@@ -37,6 +32,11 @@ import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.TransactionType
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
+import java.math.BigInteger
+import java.util.SequencedSet
+import kotlin.random.Random
+import kotlin.random.nextUInt
+import kotlin.random.nextULong
 
 object DataGenerators {
   val defaultValidatorSet: Set<Validator> =
@@ -127,11 +127,10 @@ object DataGenerators {
   fun randomSealedBeaconBlock(number: ULong): SealedBeaconBlock =
     SealedBeaconBlock(
       beaconBlock = randomBeaconBlock(number),
-      commitSeals =
-        (1..3)
-          .map {
-            Seal(Random.nextBytes(96))
-          }.toSet(),
+      commitSeals = (1..3)
+        .map {
+          Seal(Random.nextBytes(96))
+        }.toSet(),
     )
 
   fun randomBeaconBlockBody(numSeals: Int = 3): BeaconBlockBody =
@@ -208,6 +207,6 @@ object DataGenerators {
   fun randomValidPayloadStatus(): PayloadStatus =
     PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
 
-  // Generates a random timestamp restricted to range of 0 to Long.MAX_VALUE as value is converted to a Java long for the ForkSpec
+  // Generates a random timestamp restricted to 0..Long.MAX_VALUE because ForkSpec converts it to a Java long.
   fun randomTimestamp(): ULong = Random.nextLong(0, Long.MAX_VALUE).toULong()
 }

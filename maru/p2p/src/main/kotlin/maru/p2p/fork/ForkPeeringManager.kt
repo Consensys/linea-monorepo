@@ -8,17 +8,17 @@
  */
 package maru.p2p.fork
 
-import java.time.Clock
-import kotlin.time.Duration
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
-import kotlin.time.toKotlinInstant
 import linea.kotlin.encodeHex
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.database.BeaconChain
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.time.Clock
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+import kotlin.time.toKotlinInstant
 
 data class ForkInfo(
   val forkSpec: ForkSpec,

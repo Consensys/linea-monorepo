@@ -8,9 +8,9 @@
  */
 package maru.p2p
 
-import java.util.Optional
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
+import java.util.Optional
 
 class MaruRpcResponseHandler<TResponse> : RpcResponseHandler<TResponse> {
   val future = SafeFuture<TResponse>()

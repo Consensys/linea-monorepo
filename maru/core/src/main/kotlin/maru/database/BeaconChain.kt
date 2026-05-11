@@ -8,10 +8,10 @@
  */
 package maru.database
 
-import kotlin.math.min
 import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
+import kotlin.math.min
 
 interface BeaconChain : AutoCloseable {
   fun isInitialized(): Boolean

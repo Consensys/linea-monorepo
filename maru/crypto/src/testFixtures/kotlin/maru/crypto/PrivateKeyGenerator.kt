@@ -59,7 +59,12 @@ object PrivateKeyGenerator {
     }
 
     override fun toString(): String =
-      "KeyData(privateKey=${privateKey.contentToString()}, prefixedPrivateKey=${prefixedPrivateKey.contentToString()}, address=${address.contentToString()}, peerId=$peerId, nodeKey=$nodeKey)"
+      "KeyData(" +
+        "privateKey=${privateKey.contentToString()}, " +
+        "prefixedPrivateKey=${prefixedPrivateKey.contentToString()}, " +
+        "address=${address.contentToString()}, " +
+        "peerId=$peerId, " +
+        "nodeKey=$nodeKey)"
   }
 
   fun logKeyData(keyData: KeyData) {

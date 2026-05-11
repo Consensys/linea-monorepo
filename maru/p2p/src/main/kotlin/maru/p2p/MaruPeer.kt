@@ -8,13 +8,6 @@
  */
 package maru.p2p
 
-import java.util.Optional
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.time.Duration
 import maru.config.P2PConfig
 import maru.p2p.messages.BeaconBlocksByRangeRequest
 import maru.p2p.messages.BeaconBlocksByRangeResponse
@@ -36,6 +29,13 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
 import tech.pegasys.teku.spec.datastructures.networking.libp2p.rpc.RpcRequest
 import tech.pegasys.teku.spec.datastructures.networking.libp2p.rpc.bodyselector.RpcRequestBodySelector
+import java.util.Optional
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration
 
 interface MaruPeer : Peer {
   fun getStatus(): Status?
@@ -155,17 +155,16 @@ class DefaultMaruPeer(
     scheduledDisconnect.ifPresent { it.cancel(false) }
     if (!scheduler.isShutdown) {
       try {
-        scheduledDisconnect =
-          Optional.of(
-            scheduler.schedule(
-              {
-                log.debug("Disconnecting from peerId={} by timeout", this.id)
-                disconnectCleanly(DisconnectReason.UNRESPONSIVE)
-              },
-              delay.inWholeMilliseconds,
-              TimeUnit.MILLISECONDS,
-            ),
-          )
+        scheduledDisconnect = Optional.of(
+          scheduler.schedule(
+            {
+              log.debug("Disconnecting from peerId={} by timeout", this.id)
+              disconnectCleanly(DisconnectReason.UNRESPONSIVE)
+            },
+            delay.inWholeMilliseconds,
+            TimeUnit.MILLISECONDS,
+          ),
+        )
       } catch (e: Exception) {
         log.trace("Failed to schedule disconnect for peerId={}", this.id, e)
       }
@@ -231,7 +230,7 @@ class DefaultMaruPeer(
     TOutgoingHandler : RpcRequestHandler,
     TRequest : RpcRequest,
     RespHandler : RpcResponseHandler<*>,
-  > sendRequest(
+    > sendRequest(
     rpcMethod: RpcMethod<TOutgoingHandler, TRequest, RespHandler>,
     request: TRequest,
     responseHandler: RespHandler,
@@ -241,7 +240,7 @@ class DefaultMaruPeer(
     TOutgoingHandler : RpcRequestHandler,
     TRequest : RpcRequest,
     RespHandler : RpcResponseHandler<*>,
-  > sendRequest(
+    > sendRequest(
     rpcMethod: RpcMethod<TOutgoingHandler, TRequest, RespHandler>,
     rpcRequestBodySelector: RpcRequestBodySelector<TRequest>,
     responseHandler: RespHandler,

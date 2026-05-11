@@ -8,7 +8,6 @@
  */
 package maru.syncing
 
-import kotlin.time.Duration
 import linea.timer.PeriodicPollingService
 import linea.timer.TimerFactory
 import linea.timer.TimerSchedule
@@ -17,6 +16,7 @@ import maru.p2p.PeersHeadBlockProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration
 
 /**
  * polls periodically peers chain head
@@ -35,12 +35,12 @@ class PeerChainTracker(
   private val beaconChain: BeaconChain,
   private val log: Logger = LogManager.getLogger(PeerChainTracker::class.java),
 ) : PeriodicPollingService(
-    name = "peer-chain-tracker",
-    timerFactory = timerFactory,
-    timerSchedule = TimerSchedule.FIXED_RATE,
-    pollingInterval = config.pollingUpdateInterval,
-    log = log,
-  ) {
+  name = "peer-chain-tracker",
+  timerFactory = timerFactory,
+  timerSchedule = TimerSchedule.FIXED_RATE,
+  pollingInterval = config.pollingUpdateInterval,
+  log = log,
+) {
   data class Config(
     val pollingUpdateInterval: Duration,
   )

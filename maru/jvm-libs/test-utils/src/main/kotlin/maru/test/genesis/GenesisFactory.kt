@@ -8,11 +8,11 @@
  */
 package maru.test.genesis
 
-import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import kotlin.time.Instant
 
 class GenesisFactory(
   val chainId: UInt,
@@ -28,15 +28,14 @@ class GenesisFactory(
     terminalTotalDifficulty: ULong? = null,
     chainForks: Map<Instant, ChainFork> = emptyMap(),
   ) {
-    forkSchedule =
-      beaconGenesisFactory
-        .create(
-          blockTimeSeconds = blockTimeSeconds,
-          chainId = chainId,
-          validators = sequencersAddresses,
-          terminalTotalDifficulty = terminalTotalDifficulty,
-          forks = chainForks,
-        )
+    forkSchedule = beaconGenesisFactory
+      .create(
+        blockTimeSeconds = blockTimeSeconds,
+        chainId = chainId,
+        validators = sequencersAddresses,
+        terminalTotalDifficulty = terminalTotalDifficulty,
+        forks = chainForks,
+      )
     besuGenesisFactory.setForkSchedule(forkSchedule)
     log.info("initialized fork schedule: $forkSchedule")
   }

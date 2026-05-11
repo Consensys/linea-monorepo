@@ -10,13 +10,6 @@ package maru.app
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.io.File
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -34,6 +27,13 @@ import testutils.SingleNodeNetworkStack
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import java.io.File
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruFollowerNoElTest {
   private lateinit var cluster: Cluster
@@ -52,25 +52,23 @@ class MaruFollowerNoElTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
-    validatorStack =
-      SingleNodeNetworkStack(
-        cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithP2pPeering(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
-          dataDir = tmpDir,
-          apiPort = 0u,
-          startApiServer = true,
-        )
-      }
+    validatorStack = SingleNodeNetworkStack(
+      cluster = cluster,
+    ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      maruFactory.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+        engineApiRpc = engineRpcUrl,
+        dataDir = tmpDir,
+        apiPort = 0u,
+        startApiServer = true,
+      )
+    }
 
     // Start all Besu nodes together for proper peering
     validatorStack.maruApp.start().get()
@@ -81,17 +79,16 @@ class MaruFollowerNoElTest {
     // Get the validator's p2p port after it's started
     val validatorP2pPort = validatorStack.p2pPort
 
-    maruFollower =
-      maruFactory.buildTestMaruFollowerWithP2pPeering(
-        ethereumJsonRpcUrl = null,
-        engineApiRpc = null,
-        dataDir = maruFollowerDataDir.toPath(),
-        validatorPortForStaticPeering = validatorP2pPort,
-        syncingConfig = MaruFactory.defaultSyncingConfig,
-        enablePayloadValidation = false,
-        apiPort = 0u,
-        startApiServer = true,
-      )
+    maruFollower = maruFactory.buildTestMaruFollowerWithP2pPeering(
+      ethereumJsonRpcUrl = null,
+      engineApiRpc = null,
+      dataDir = maruFollowerDataDir.toPath(),
+      validatorPortForStaticPeering = validatorP2pPort,
+      syncingConfig = MaruFactory.defaultSyncingConfig,
+      enablePayloadValidation = false,
+      apiPort = 0u,
+      startApiServer = true,
+    )
 
     maruFollower.start().get()
 

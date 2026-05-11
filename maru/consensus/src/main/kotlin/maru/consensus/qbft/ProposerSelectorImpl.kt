@@ -8,13 +8,13 @@
  */
 package maru.consensus.qbft
 
-import kotlin.collections.map
 import maru.core.BeaconState
 import maru.core.Validator
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.collections.map
 
 fun interface ProposerSelector {
   fun getProposerForBlock(
@@ -36,10 +36,14 @@ object ProposerSelectorImpl : ProposerSelector {
       parentBeaconState.validators.map { it.toAddress() }
     val proposer =
       BftProposerSelector.selectProposerForRound(
-        /* roundIdentifier = */ roundIdentifier,
-        /* prevBlockProposer = */ prevBlockProposerAddress,
-        /* validatorsForRound = */ validatorsForRound,
-        /* changeEachBlock = */ true,
+        /* roundIdentifier = */
+        roundIdentifier,
+        /* prevBlockProposer = */
+        prevBlockProposerAddress,
+        /* validatorsForRound = */
+        validatorsForRound,
+        /* changeEachBlock = */
+        true,
       )
     return SafeFuture.completedFuture(Validator(proposer.bytes.toArray()))
   }

@@ -8,13 +8,13 @@
  */
 package maru.consensus
 
-import java.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.fork.LenientForkPeeringManager
+import java.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 object ForkIdManagerFactory {
   fun createForkIdHashManager(
@@ -23,11 +23,10 @@ object ForkIdManagerFactory {
     elFork: ElFork = ElFork.Prague,
     consensusConfig: ConsensusConfig =
       QbftConsensusConfig(
-        validatorSet =
-          setOf(
-            DataGenerators.randomValidator(),
-            DataGenerators.randomValidator(),
-          ),
+        validatorSet = setOf(
+          DataGenerators.randomValidator(),
+          DataGenerators.randomValidator(),
+        ),
         fork = ChainFork(ClFork.QBFT_PHASE0, elFork = elFork),
       ),
     forks: List<ForkSpec> = listOf(ForkSpec(0UL, 1u, consensusConfig)),

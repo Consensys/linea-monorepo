@@ -8,12 +8,12 @@
  */
 package maru.p2p.fork
 
-import java.nio.ByteBuffer
 import linea.kotlin.encodeHex
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
 import maru.serialization.Serializer
+import java.nio.ByteBuffer
 
 object QbftConsensusConfigDigester : Serializer<QbftConsensusConfig> {
   override fun serialize(value: QbftConsensusConfig): ByteArray {

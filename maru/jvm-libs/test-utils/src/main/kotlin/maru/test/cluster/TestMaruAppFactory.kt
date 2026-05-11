@@ -25,18 +25,16 @@ fun createMaru(
 ): MaruApp {
   initPersistence(config.persistence, nodeKeyData)
   var effectiveConfig = config
-  effectiveConfig =
-    setValidatorConfig(
-      config = effectiveConfig,
-      payloadValidationEnabled = nodeRole == NodeRole.Sequencer,
-      elNode = elNode,
-    )
-  effectiveConfig =
-    setQbftConfigIfSequencer(
-      config = effectiveConfig,
-      isSequencer = nodeRole == NodeRole.Sequencer,
-      nodeKeyData = nodeKeyData,
-    )
+  effectiveConfig = setValidatorConfig(
+    config = effectiveConfig,
+    payloadValidationEnabled = nodeRole == NodeRole.Sequencer,
+    elNode = elNode,
+  )
+  effectiveConfig = setQbftConfigIfSequencer(
+    config = effectiveConfig,
+    isSequencer = nodeRole == NodeRole.Sequencer,
+    nodeKeyData = nodeKeyData,
+  )
   effectiveConfig = setP2pConfig(config = effectiveConfig, bootnodes = bootnodes, staticpeers = staticpeers)
 
   return MaruAppFactory().create(

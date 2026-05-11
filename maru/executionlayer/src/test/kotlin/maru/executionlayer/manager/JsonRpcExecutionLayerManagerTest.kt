@@ -8,9 +8,6 @@
  */
 package maru.executionlayer.manager
 
-import java.util.concurrent.ExecutionException
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
@@ -41,6 +38,9 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import java.util.concurrent.ExecutionException
+import kotlin.random.Random
+import kotlin.random.nextULong
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
 import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus as TekuExecutionPayloadStatus
 
@@ -126,12 +126,11 @@ class JsonRpcExecutionLayerManagerTest {
     val expectedPayloadStatus =
       PayloadStatus(
         ExecutionPayloadStatus.VALID,
-        latestValidHash =
-          payloadStatus
-            .asInternalExecutionPayload()
-            .latestValidHash
-            .get()
-            .toArray(),
+        latestValidHash = payloadStatus
+          .asInternalExecutionPayload()
+          .latestValidHash
+          .get()
+          .toArray(),
         validationError = null,
       )
     val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())
@@ -168,12 +167,11 @@ class JsonRpcExecutionLayerManagerTest {
     val expectedPayloadStatus =
       PayloadStatus(
         ExecutionPayloadStatus.VALID,
-        latestValidHash =
-          payloadStatus
-            .asInternalExecutionPayload()
-            .latestValidHash
-            .get()
-            .toArray(),
+        latestValidHash = payloadStatus
+          .asInternalExecutionPayload()
+          .latestValidHash
+          .get()
+          .toArray(),
         validationError = null,
       )
     val expectedResult = ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId.wrappedBytes.toArray())

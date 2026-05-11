@@ -9,7 +9,6 @@
 package maru.api
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import java.util.concurrent.TimeUnit
 import maru.VersionProvider
 import maru.api.beacon.GetBlock
 import maru.api.beacon.GetBlockHeader
@@ -60,6 +59,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 
 class ApiServerTest {
   private val defaultObjectMapper = jacksonObjectMapper()
@@ -142,15 +142,14 @@ class ApiServerTest {
 
   @BeforeEach
   fun beforeEach() {
-    apiServer =
-      ApiServerImpl(
-        config = ApiServerImpl.Config(port = 0u),
-        networkDataProvider = fakeNetworkDataProvider,
-        versionProvider = fakeVersionProvider,
-        chainDataProvider = fakeChainDataProvider,
-        syncStatusProvider = AlwaysSyncedController(beaconChain = fakeBeaconChain),
-        isElOnlineProvider = fakeElOnlineProvider,
-      )
+    apiServer = ApiServerImpl(
+      config = ApiServerImpl.Config(port = 0u),
+      networkDataProvider = fakeNetworkDataProvider,
+      versionProvider = fakeVersionProvider,
+      chainDataProvider = fakeChainDataProvider,
+      syncStatusProvider = AlwaysSyncedController(beaconChain = fakeBeaconChain),
+      isElOnlineProvider = fakeElOnlineProvider,
+    )
     apiServer.start()
     apiServerUrl = "http://localhost:${apiServer.port()}"
     client = OkHttpClient.Builder().readTimeout(0, TimeUnit.SECONDS).build()
@@ -204,12 +203,11 @@ class ApiServerTest {
         enr = fakeNetworkDataProvider.getEnr(),
         p2pAddresses = fakeNetworkDataProvider.getNodeAddresses(),
         discoveryAddresses = fakeNetworkDataProvider.getDiscoveryAddresses(),
-        metadata =
-          Metadata(
-            seqNumber = "0",
-            attnets = "0x",
-            syncnets = "0x",
-          ),
+        metadata = Metadata(
+          seqNumber = "0",
+          attnets = "0x",
+          syncnets = "0x",
+        ),
       )
 
     assert200okResponse(GetNetworkIdentity.ROUTE, GetNetworkIdentityResponse(networkIdentity))
@@ -286,14 +284,13 @@ class ApiServerTest {
     assert200okResponse(
       GetSyncingStatus.ROUTE,
       GetSyncingStatusResponse(
-        data =
-          SyncingStatusData(
-            headSlot = "100",
-            syncDistance = "0",
-            isSyncing = false,
-            isOptimistic = true,
-            elOffline = false,
-          ),
+        data = SyncingStatusData(
+          headSlot = "100",
+          syncDistance = "0",
+          isSyncing = false,
+          isOptimistic = true,
+          elOffline = false,
+        ),
       ),
     )
 
@@ -306,14 +303,13 @@ class ApiServerTest {
     assert200okResponse(
       GetSyncingStatus.ROUTE,
       GetSyncingStatusResponse(
-        data =
-          SyncingStatusData(
-            headSlot = "200",
-            syncDistance = "0",
-            isSyncing = false,
-            isOptimistic = true,
-            elOffline = true,
-          ),
+        data = SyncingStatusData(
+          headSlot = "200",
+          syncDistance = "0",
+          isSyncing = false,
+          isOptimistic = true,
+          elOffline = true,
+        ),
       ),
     )
   }
@@ -336,13 +332,11 @@ class ApiServerTest {
       GetBlockHeaderResponse(
         executionOptimistic = false,
         finalized = false,
-        data =
-          SignedBeaconBlockHeader(
-            message =
-              fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader
-                .toBeaconBlockHeader(),
-            signature = "0x",
-          ),
+        data = SignedBeaconBlockHeader(
+          message = fakeChainDataProvider.SEALED_BEACON_BLOCK.beaconBlock.beaconBlockHeader
+            .toBeaconBlockHeader(),
+          signature = "0x",
+        ),
       )
 
     assert200okResponse(
@@ -361,11 +355,10 @@ class ApiServerTest {
       GetBlockResponse(
         executionOptimistic = false,
         finalized = false,
-        data =
-          SignedBeaconBlock(
-            message = fakeChainDataProvider.SEALED_BEACON_BLOCK.toBeaconBlock(),
-            signature = "0x",
-          ),
+        data = SignedBeaconBlock(
+          message = fakeChainDataProvider.SEALED_BEACON_BLOCK.toBeaconBlock(),
+          signature = "0x",
+        ),
         version = "maru",
       )
     assert200okResponse(
@@ -384,23 +377,21 @@ class ApiServerTest {
       GetStateValidatorResponse(
         executionOptimistic = false,
         finalized = false,
-        data =
-          ValidatorResponse(
-            index = "0",
-            balance = "",
-            status = "active_ongoing",
-            validator =
-              Validator(
-                pubkey = validator.address.encodeHex(),
-                withdrawalCredentials = "0x",
-                effectiveBalance = "",
-                slashed = false,
-                activationEligibilityEpoch = "",
-                activationEpoch = "",
-                exitEpoch = "",
-                withdrawableEpoch = "",
-              ),
+        data = ValidatorResponse(
+          index = "0",
+          balance = "",
+          status = "active_ongoing",
+          validator = Validator(
+            pubkey = validator.address.encodeHex(),
+            withdrawalCredentials = "0x",
+            effectiveBalance = "",
+            slashed = false,
+            activationEligibilityEpoch = "",
+            activationEpoch = "",
+            exitEpoch = "",
+            withdrawableEpoch = "",
           ),
+        ),
       )
 
     val path =
@@ -418,17 +409,16 @@ class ApiServerTest {
           index = index.toString(),
           balance = "",
           status = "active_ongoing",
-          validator =
-            Validator(
-              pubkey = validator.address.encodeHex(),
-              withdrawalCredentials = "0x",
-              effectiveBalance = "",
-              slashed = false,
-              activationEligibilityEpoch = "",
-              activationEpoch = "",
-              exitEpoch = "",
-              withdrawableEpoch = "",
-            ),
+          validator = Validator(
+            pubkey = validator.address.encodeHex(),
+            withdrawalCredentials = "0x",
+            effectiveBalance = "",
+            slashed = false,
+            activationEligibilityEpoch = "",
+            activationEpoch = "",
+            exitEpoch = "",
+            withdrawableEpoch = "",
+          ),
         )
       }
     val expectedResponse =

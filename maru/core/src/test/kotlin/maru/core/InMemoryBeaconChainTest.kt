@@ -8,13 +8,13 @@
  */
 package maru.core
 
-import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class InMemoryBeaconChainTest {
   private lateinit var initialBeaconState: BeaconState

@@ -12,7 +12,6 @@ import io.libp2p.etc.types.readUvarint
 import io.libp2p.etc.types.toByteArray
 import io.libp2p.etc.types.toByteBuf
 import io.netty.buffer.ByteBuf
-import java.util.Optional
 import maru.compression.MaruCompressor
 import maru.serialization.MAX_MESSAGE_SIZE
 import org.apache.tuweni.bytes.Bytes
@@ -26,6 +25,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.encodings.compression.exceptio
 import tech.pegasys.teku.networking.eth2.rpc.core.encodings.compression.exceptions.PayloadLargerThanExpectedException
 import tech.pegasys.teku.networking.eth2.rpc.core.encodings.compression.exceptions.PayloadSmallerThanExpectedException
 import tech.pegasys.teku.networking.eth2.rpc.core.encodings.compression.snappy.SnappyFramedCompressor
+import java.util.Optional
 
 class MaruSnappyFramedCompressor : MaruCompressor {
   private val compressor: Compressor = SnappyFramedCompressor()
@@ -93,8 +93,7 @@ class MaruSnappyFramedCompressor : MaruCompressor {
     val compressedByteBuf = payload.toByteBuf()
     var decompressedByteBuf: ByteBuf? = null
     try {
-      decompressedByteBuf =
-        decompress(compressedByteBuf)
+      decompressedByteBuf = decompress(compressedByteBuf)
 
       if (decompressedByteBuf == null) {
         throw DecompressFailedException()

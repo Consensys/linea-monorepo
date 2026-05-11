@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft.adapters
 
-import java.time.Clock
 import maru.consensus.qbft.toAddress
 import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
@@ -21,6 +20,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftFinalState
 import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.datatypes.Address
+import java.time.Clock
 
 class QbftFinalStateAdapter(
   private val localAddress: Address,
