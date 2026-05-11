@@ -316,9 +316,18 @@ func rlcOfViews(alpha *wiop.CoinField, head wiop.Expression, cols []*wiop.Column
 	return rlcExpression(alpha, exprs)
 }
 
-// rlcExpression returns exprs[0] + α·exprs[1] + α²·exprs[2] + … . When alpha
-// is nil the slice must have exactly one element, in which case that element
-// is returned directly. Requires len(exprs) >= 1.
+// rlcExpression returns exprs[0] + α·exprs[1] + α²·exprs[2] + … built as a
+// Horner-form chain
+//
+//	((…((exprs[n-1]·α + exprs[n-2])·α + exprs[n-3])·α + …)·α + exprs[0])
+//
+// so the resulting symbolic tree contains no explicit α² / α³ / … sub-trees
+// and uses n-1 multiplications instead of 2n-3. Matches the convention of
+// linea/prover/protocol/wizardutils.RandLinCombColSymbolic
+// (symbolic.NewPolyEval).
+//
+// When alpha is nil the slice must have exactly one element, in which case
+// that element is returned directly. Requires len(exprs) >= 1.
 func rlcExpression(alpha *wiop.CoinField, exprs []wiop.Expression) wiop.Expression {
 	if len(exprs) == 0 {
 		panic("wiop/compilers/lookuptologderivsum: rlcExpression requires at least one term")
@@ -329,13 +338,10 @@ func rlcExpression(alpha *wiop.CoinField, exprs []wiop.Expression) wiop.Expressi
 		}
 		return exprs[0]
 	}
-	acc := exprs[0]
-	pow := wiop.Expression(alpha)
-	for i := 1; i < len(exprs); i++ {
-		acc = wiop.Add(acc, wiop.Mul(pow, exprs[i]))
-		if i+1 < len(exprs) {
-			pow = wiop.Mul(pow, alpha)
-		}
+	alphaExpr := wiop.Expression(alpha)
+	acc := exprs[len(exprs)-1]
+	for i := len(exprs) - 2; i >= 0; i-- {
+		acc = wiop.Add(wiop.Mul(alphaExpr, acc), exprs[i])
 	}
 	return acc
 }
