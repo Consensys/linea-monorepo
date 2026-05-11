@@ -80,7 +80,7 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*")
         next_tag=$(git cliff "${cliff_args[@]}")
         if [ -z "${next_tag}" ]; then
           echo "git-cliff returned no version; nothing to release."
@@ -120,7 +120,7 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*")
         {
           echo 'content<<__CLIFF_EOF__'
           git cliff "${cliff_args[@]}"
@@ -159,5 +159,5 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v*" --prepend "${CHANGELOG_FILE}")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*" --prepend "${CHANGELOG_FILE}")
         git cliff "${cliff_args[@]}"

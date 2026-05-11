@@ -23,9 +23,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches:
-      - feat/coordinator-automate-changelog-versioning-poc
 
 concurrency:
   group: tx-exclusion-api-release-${{ github.ref }}
@@ -39,6 +36,6 @@ jobs:
       folder-name: transaction-exclusion-api
       include-path: '"transaction-exclusion-api/**"'
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
     secrets: inherit
