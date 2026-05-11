@@ -71,6 +71,10 @@ their default positions. Output:
 | `ELF2JSON`        | `../bin/elf2json` (auto-built) | `run` | Path to the Go helper that converts ELF → zkc JSON. |
 | `ZKC_MAIN`        | `../../../../main/riscv/main.zkc` (relative to scripts dir) | `run` | The zkc program that interprets the ELF. |
 | `PER_TEST_TIMEOUT`| `300` (s) | `run` | Bail out on a stuck test. |
+| `IN_BYTES`        | `""` (empty — ACT4 tests are self-contained) | `run` | Forwarded to `elf2json`; same meaning as in `../../Makefile`. |
+| `PROGRAM_OFFSET`  | `0x00000000` | `run` | Forwarded to `elf2json`. |
+| `IN_BYTES_OFFSET` | `0x08800000` | `run` | Forwarded to `elf2json` (unused by ACT4 but kept consistent with the Makefile). |
+| `ENTRY_POINT`     | `$PROGRAM_OFFSET` | `run` | Forwarded to `elf2json` — ACT4 places `rvtest_entry_point` at the origin. |
 
 ## Required tools
 
