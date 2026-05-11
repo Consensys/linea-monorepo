@@ -21,6 +21,8 @@ jobs:
 
   component-changelog-upload:
     needs: [lint-latest-commit-messages]
+    permissions:
+      pull-requests: write
     if: always()
     uses: ./.github/workflows/component-changelog-upload.yml
   
