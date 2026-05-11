@@ -29,7 +29,7 @@ else
       echo "addresses.json: present"
       sed -nE "s/.*\"LineaRollupV8\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/L1 LineaRollupV8: \1/p" /shared/addresses.json | head -1
       sed -nE "s/.*\"TokenBridge\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/TokenBridge: \1/p" /shared/addresses.json | head -2
-      sed -nE "s/.*\"TestERC20\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/TestERC20: \1/p" /shared/addresses.json | head -2
+      sed -nE "s/.*\"ERC20Example\":[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/ERC20Example: \1/p" /shared/addresses.json | head -2
     else
       echo "addresses.json: missing"
     fi

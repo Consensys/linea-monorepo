@@ -2,27 +2,35 @@
 
 Running log for the Sepolia quickstart: fixes applied, current status, and caveats that still block calling the project finished.
 
-## Current snapshot — 2026-05-08
+## Current snapshot - 2026-05-11
 
-Fresh Sepolia boot now gets past the earlier blockers and validates the signer-role split:
+Fresh Sepolia boot validates the cleaned key model and the current dev-prover path:
 
-- all 6 contract deployment steps complete and verify against the precomputed addresses;
-- `addresses.json` is written to the shared volume and the contracts are visible on Sepolia;
-- coordinator config gets distinct pubkeys for blob submission, finalization/aggregation, and L2 message anchoring;
-- coordinator binds `9545` and `9546`;
-- L2 Blockscout backend and frontend run locally (`http://localhost:4000` and `http://localhost:4001`);
-- the dev-prover file pipeline writes execution/compression/aggregation responses;
-- coordinator has submitted L1 blob and aggregation transactions.
+- user still supplies one funded `L1_DEPLOYER_PRIVATE_KEY`;
+- `account-setup` generates fresh runtime keys for L1 blob submission, L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman;
+- L2 genesis only funds the generated L2 deployer plus the precomputed `L2MessageService` address;
+- only `LineaRollupV8` and `L2MessageService` are precomputed before boot;
+- generated genesis/rendered artifacts are ignored, while templates stay committed;
+- liveness is disabled for the v0 quickstart;
+- `deploy-contracts` writes `addresses.json`, funds generated runtime signers, and is retry-safe from persisted deploy logs;
+- Web3Signer loads 3 generated signer key files, postman starts with generated L1/L2 postman keys, and coordinator ports bind;
+- coordinator submitted L1 blob transactions and aggregations on Sepolia, and finalization advanced to L2 block 10;
+- L2 Blockscout frontend works locally at `http://localhost:4001`.
 
-This is **not** final success yet. Current caveats:
+Fixes found during this clean boot:
 
-- derived L1 submitters need real Sepolia ETH headroom; 0.03 ETH was too low for current blob-submission max-fee checks, so defaults now top up each derived L1 submitter with 0.25 ETH;
-- aggregation/finalization can temporarily revert with starting-root mismatches while the stack catches up, so progress must be judged by `lastFinalizedBlockNumber` advancing, not by a single revert;
-- coordinator may still log transient `nonce too low`, `nonce too high`, or `replacement transaction underpriced` retries during catch-up; treat them as a blocker only if `lastFinalizedBlockNumber` stops advancing;
-- raw coordinator startup config dumps include rendered endpoints; the quickstart log4j config now drops that noisy `App configs` line, but avoid sharing old raw startup logs;
-- a documented L1-to-L2 bridge/message smoke test is still needed before this can be called finished.
+- L1 blob/finalization signer top-up default reduced from 0.25 ETH to 0.15 ETH each;
+- `/shared/runtime-keys.env` must be readable by non-root service containers, otherwise postman cannot start;
+- `/shared/web3signer-keys/*.yaml` must be readable by the Web3Signer container, otherwise Web3Signer starts with zero signers and coordinator gets signer `404 Not Found` errors.
 
-Next work should focus on writing a repeatable smoke test that proves contract deployment, prover responses, L1 submissions, and a user-facing bridge/message path.
+Current caveats:
+
+- default proving is still dev/dummy proof mode; partial-prover validation remains a separate gate;
+- a documented bridge/message smoke test is still needed;
+- transient nonce/replacement retries can appear during catch-up; judge progress by blob/aggregation txs and finalized block advancing;
+- the local L2 does not necessarily keep producing visible user blocks when idle. Send an L2 transaction to create fresh blocks for Blockscout demos.
+
+Next work should focus on a repeatable L2 traffic command, bridge/message smoke test, and partial-prover validation.
 
 ## Historical fix log
 

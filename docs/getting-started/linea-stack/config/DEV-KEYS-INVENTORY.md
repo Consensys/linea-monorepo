@@ -1,69 +1,64 @@
 # Dev keys inventory — DO NOT REUSE
 
-> Every file listed below is a private key checked into a public repository.
-> Anyone in the world can spend funds these keys control. They exist solely
-> to make `docker compose up` work on a fresh laptop. Never reuse, copy, or
+> Every private key listed in the committed section is public knowledge. These
+> keys exist only to make the local quickstart convenient. Never reuse, copy, or
 > derive from them for any non-loopback or non-Sepolia network.
 
-The Sepolia migration (Phases 1–3) split keys into two groups:
+The quickstart now has three key classes:
 
-- **L2 dev keys (still committed)** — we own the L2 genesis; these are
-  intentionally checked in. Listed below.
-- **L1 keys (user-supplied/derived at boot)** — your `L1_DEPLOYER_PRIVATE_KEY`
-  from `.env` deploys and admins the L1 contracts. `account-setup` derives
-  separate L1 blob and finalisation submitter keys from it, records their
-  addresses/pubkeys, and renders web3signer YAMLs at boot. deploy-contracts
-  grants/funds those derived addresses. Nothing about your L1 key is committed.
+- **User-supplied L1 deployer** — `L1_DEPLOYER_PRIVATE_KEY` in `.env`. It must
+  be funded on Sepolia and is the only user input secret.
+- **Generated runtime keys** — `account-setup` creates L1 blob/data-submission,
+  L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman keys at
+  first boot, then persists them in the Docker shared volume for retries.
+- **Committed local-dev keys** — static node identity and consensus keys that
+  remain in the repo and are listed below.
 
-## L2 dev keys (committed)
+## Committed local-dev keys
 
 | Path | Format | Used by | Public knowledge? |
 |------|--------|---------|-------------------|
-| `config/l2/sequencer/key`                                  | raw hex SECP256K1 | Linea Besu sequencer node identity | yes |
-| `config/l2/maru/private-key`                               | raw hex SECP256K1 | Maru consensus signer | yes |
-| `config/l2/postman/env` (`L2_SIGNER_PRIVATE_KEY`)          | hex string inline | Postman L2 EOA | yes |
-| `genesis-besu.json.template` (multiple `privateKey` keys)  | hex strings inline | L2 genesis pre-funded EOAs (deployer, accounts 2-21, security council, message anchorer, etc.) | yes |
-| `scripts/deploy-contracts.sh` (`L2_DEPLOYER_PRIVATE_KEY` default) | hex string inline | L2 contract deployer | yes |
-| `scripts/account-setup.sh` (`L2_LIVENESS_SIGNER_PRIVATE_KEY` default) | hex string inline | L2 sequencer-liveness signer | yes |
+| `config/l2/sequencer/key` | raw hex SECP256K1 | Linea Besu sequencer node identity | yes |
+| `config/l2/maru/private-key` | raw hex SECP256K1 | Maru consensus signer | yes |
 
 ## TLS material (committed; mTLS only — not Sepolia-funds-controlling)
 
 | Path | Format | Used by |
 |------|--------|---------|
-| `config/web3signer/tls-files/web3signer-keystore.p12`           | PKCS#12 keystore       | Web3signer mTLS server cert |
-| `config/web3signer/tls-files/web3signer-keystore-password.txt`  | plaintext password     | Web3signer keystore password |
-| `config/web3signer/tls-files/known-clients.txt`                 | client cert fingerprint list | Web3signer mTLS client allow-list |
-| `config/l2/coordinator/tls-files/coordinator-client-keystore.p12` | PKCS#12 keystore       | Coordinator mTLS client cert (talks to web3signer) |
-| `config/l2/sequencer/tls-files/sequencer_client_keystore.p12`   | PKCS#12 keystore       | Sequencer mTLS client cert |
+| `config/web3signer/tls-files/web3signer-keystore.p12` | PKCS#12 keystore | Web3signer mTLS server cert |
+| `config/web3signer/tls-files/web3signer-keystore-password.txt` | plaintext password | Web3signer keystore password |
+| `config/web3signer/tls-files/known-clients.txt` | client cert fingerprint list | Web3signer mTLS client allow-list |
+| `config/l2/coordinator/tls-files/coordinator-client-keystore.p12` | PKCS#12 keystore | Coordinator mTLS client cert |
+| `config/l2/sequencer/tls-files/sequencer_client_keystore.p12` | PKCS#12 keystore | Sequencer mTLS client cert |
 
-## Runtime-rendered keys (NOT committed)
+## Runtime-generated keys (not committed)
 
-`account-setup` writes these to a docker volume at boot from your `.env`:
+`account-setup` writes these into the `linea-shared-config` Docker volume:
 
-- `/shared/web3signer-keys/anchoring-signer.yaml`        — L2 message anchoring (the `L2_MESSAGE_ANCHORING_PRIVATE_KEY` dev key)
-- `/shared/web3signer-keys/data-submission-signer.yaml`  — L1 blob/data submission (derived from your L1 deployer key)
-- `/shared/web3signer-keys/finalization-signer.yaml`     — L1 aggregation finalization (derived from your L1 deployer key)
-- `/shared/web3signer-keys/liveness-signer.yaml`         — L2 sequencer liveness (the `L2_LIVENESS_SIGNER_PRIVATE_KEY` dev key)
+- `/shared/runtime-keys.env`
+  - `L1_BLOB_SUBMITTER_PRIVATE_KEY`
+  - `L1_FINALIZATION_SUBMITTER_PRIVATE_KEY`
+  - `L1_POSTMAN_PRIVATE_KEY`
+  - `L2_DEPLOYER_PRIVATE_KEY`
+  - `L2_MESSAGE_ANCHORING_PRIVATE_KEY`
+  - `L2_POSTMAN_PRIVATE_KEY`
+- `/shared/web3signer-keys/anchoring-signer.yaml` — generated L2 message anchoring key
+- `/shared/web3signer-keys/data-submission-signer.yaml` — generated L1 blob/data-submission key
+- `/shared/web3signer-keys/finalization-signer.yaml` — generated L1 aggregation/finalization key
 
-`docker compose down -v` wipes them; the next `up` re-renders.
+`docker compose down -v` wipes these volume files; the next boot generates a
+fresh runtime key set.
 
 ## Replacing keys for any non-loopback / non-Sepolia deployment
 
-Before running this stack on a host that targets anything other than Sepolia
-testnet (e.g., a real testnet you control, or — emphatically NOT recommended
-without a full audit — mainnet):
+Before running this stack against anything other than Sepolia testnet:
 
-1. **L2 keys**: regenerate `config/l2/sequencer/key` (the sequencer P2P identity
-   — and update the bootnode `enode://…` in `docker-compose.yml`'s l2-node-besu
-   service to match the new pubkey), `config/l2/maru/private-key`, and every
-   pre-funded address in `genesis-besu.json.template`. Update `L2_SIGNER_PRIVATE_KEY`
-   in `config/l2/postman/env`. Update `L2_DEPLOYER_PRIVATE_KEY` and
-   `L2_MESSAGE_ANCHORING_PRIVATE_KEY`, and `L2_LIVENESS_SIGNER_PRIVATE_KEY`
-   defaults in the scripts.
-2. **TLS material**: regenerate the four `*.p12` keystores and the
-   `known-clients.txt` fingerprint list. Update the keystore password.
-3. **L1 keys**: already user-supplied via `.env` — just use a fresh deployer key.
-4. Re-run `account-setup` so derived addresses + rendered web3signer YAMLs
-   match the new keys.
+1. Use a fresh, funded `L1_DEPLOYER_PRIVATE_KEY`.
+2. Regenerate `config/l2/sequencer/key` and update the l2-node-besu bootnode
+   `enode://...` in `docker-compose.yml` to match the new pubkey.
+3. Regenerate `config/l2/maru/private-key`.
+4. Regenerate the committed TLS material if the deployment is not purely local.
+5. Start from an empty Docker volume so `account-setup` generates fresh runtime
+   keys and derived addresses.
 
-If you can't tick all four, keep this stack on Sepolia.
+If you cannot tick these off, keep this stack on Sepolia.

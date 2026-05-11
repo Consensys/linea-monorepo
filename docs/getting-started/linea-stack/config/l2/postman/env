@@ -1,20 +1,18 @@
 # L1_RPC_URL — overridden at boot by docker-compose's environment block from .env.
-# L1_CONTRACT_ADDRESS — overridden at postman startup from /shared/addresses.json;
-#   the literal here is just a placeholder.
-# L1_SIGNER_PRIVATE_KEY — overridden at boot by docker-compose's environment
-#   block from .env's L1_DEPLOYER_PRIVATE_KEY. This is postman's user-facing
-#   L1 transaction signer; coordinator L1 submitters use separate derived keys.
-# Phase-3 cleanup: the literals on these three lines are dead but kept commented
-# so anyone reading the file understands what each variable controls.
+# L1_CONTRACT_ADDRESS — overridden at postman startup from /shared/addresses.json.
+# L1_SIGNER_PRIVATE_KEY — set at postman startup from /shared/runtime-keys.env
+#   (generated L1 postman key; not the funded deployer key).
+# L2_SIGNER_PRIVATE_KEY — set at postman startup from /shared/runtime-keys.env
+#   (generated L2 postman key).
 # L1_RPC_URL=<set via compose env from .env L1_RPC_URL>
 L1_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
-# L1_SIGNER_PRIVATE_KEY=<set via compose env from .env L1_DEPLOYER_PRIVATE_KEY>
-# Phase-4: 500 → 5000 ms for Sepolia (12s blocks; 500ms polling burns RPC quota
+# L1_SIGNER_PRIVATE_KEY=<set at startup from /shared/runtime-keys.env>
+# Phase-4: 500 -> 5000 ms for Sepolia (12s blocks; 500ms polling burns RPC quota
 # and gives no benefit when L1 only produces a block every ~12 seconds).
 L1_LISTENER_INTERVAL=5000
 # Starting block for L1 event fetching. Controls from which block the Postman service starts fetching events.
 # Options: -1 = current latest block (default), 0 = from genesis (all historical events),
-# specific number = custom starting block (e.g., 18500000)
+# specific number = custom starting block (e.g. 18500000)
 # Note: This value is always prioritized when set, even if database contains previously processed messages
 L1_LISTENER_INITIAL_FROM_BLOCK=0
 L1_LISTENER_BLOCK_CONFIRMATION=1
@@ -22,12 +20,11 @@ L1_MAX_BLOCKS_TO_FETCH_LOGS=1000
 L1_MAX_GAS_FEE_ENFORCED=true
 L2_RPC_URL=http://l2-node-besu:8545
 L2_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
-# WARNING=FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-L2_SIGNER_PRIVATE_KEY=0xfcf854e0a0bc6fd7e97d7050e61a362c915cecd6767a32267b22e8b7af572e58
+# L2_SIGNER_PRIVATE_KEY=<set at startup from /shared/runtime-keys.env>
 L2_LISTENER_INTERVAL=500
 # Starting block for L2 event fetching. Controls from which block the Postman service starts fetching events.
 # Options: -1 = current latest block (default), 0 = from genesis (all historical events),
-# specific number = custom starting block (e.g., 1000000)
+# specific number = custom starting block (e.g. 1000000)
 # Note: This value is always prioritized when set, even if database contains previously processed messages
 L2_LISTENER_INITIAL_FROM_BLOCK=0
 L2_LISTENER_BLOCK_CONFIRMATION=0 # set confirmation as zero since L2 block won't auto increase

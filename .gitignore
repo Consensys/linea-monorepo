@@ -144,6 +144,14 @@ __pycache__/
 /docker/config/l2-genesis-initialization/*.toml
 /docker/config/l2-genesis-initialization/fork-timestamp.txt
 
+# Linea Stack quickstart local render artifacts. Templates stay committed;
+# rendered genesis/config files are created during first boot.
+/docs/getting-started/linea-stack/config/l2/genesis-init/genesis-besu.json
+/docs/getting-started/linea-stack/config/l2/genesis-init/genesis-maru.json
+/docs/getting-started/linea-stack/config/l2/genesis-init/fork-timestamp.txt
+/docs/getting-started/linea-stack/.rendered/
+/docs/getting-started/linea-stack/rendered/
+
 !.gitkeep
 !operations/bin/
 # Authorize the kzg srs folder
