@@ -645,3 +645,45 @@ func TestCompile_MultiColumn_FilterOnIncluding_MaskedRowFails(t *testing.T) {
 	assert.Panics(t, func() { runRound(&rt) },
 		"masked-out multi-column B row must not be reachable from an active A row")
 }
+
+// TestCompile_MultiColumn_FilterOnIncluding_InvalidColumnsFails is the third
+// counterpart to TestCompile_MultiColumn_FilterOnIncluding: where the
+// masked-row variant exercises the prepend trick by trying to hit a
+// filtered-out B row, this variant exercises baseline correctness — the S
+// tuple simply does not appear in T at all (not even as a masked row).
+// M-assignment must reject; if it did not, the lookup would silently
+// validate witnesses outside the table.
+func TestCompile_MultiColumn_FilterOnIncluding_InvalidColumnsFails(t *testing.T) {
+	sys := wiop.NewSystemf("ll-multi-filterT-invalid")
+	r0 := sys.NewRound()
+	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 3, wiop.PaddingDirectionNone)
+
+	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
+	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
+	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
+	sx := modS.NewColumn(sys.Context.Childf("Sx"), wiop.VisibilityOracle, r0)
+	sy := modS.NewColumn(sys.Context.Childf("Sy"), wiop.VisibilityOracle, r0)
+
+	sys.NewInclusion(
+		sys.Context.Childf("inc"),
+		[]wiop.Table{wiop.NewTable(sx.View(), sy.View())},
+		[]wiop.Table{wiop.NewFilteredTable(filterT.View(), tx.View(), ty.View())},
+	)
+	lookuptologderivsum.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// Same table as the happy path: selected rows are (1,10), (2,20), (3,30);
+	// (99,99) is masked.
+	rt.AssignColumn(tx, makeVec(1, 99, 2, 3))
+	rt.AssignColumn(ty, makeVec(10, 99, 20, 30))
+	rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
+	// First two S tuples are valid; row 2 = (7, 70) is not in T (neither
+	// selected nor masked) so no B-row hash can match it.
+	rt.AssignColumn(sx, makeVec(1, 2, 7))
+	rt.AssignColumn(sy, makeVec(10, 20, 70))
+
+	assert.Panics(t, func() { runRound(&rt) },
+		"multi-column lookup with B-filter must reject an S tuple absent from T")
+}
