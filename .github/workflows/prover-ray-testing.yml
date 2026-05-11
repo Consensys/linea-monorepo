@@ -59,7 +59,7 @@ jobs:
       matrix:
         go-version: [1.25.7]
     # ~1 min saved vs large
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
     name: Prover testing
     needs:
       - staticcheck
