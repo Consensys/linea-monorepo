@@ -16,7 +16,6 @@
     <Logger name="io.opentelemetry" level="WARN" />
     <Logger name="net.consensys.linea.bl.TransactionProfitabilityCalculator" level="DEBUG" />
     <Logger name="net.consensys.linea.sequencer.txselection" level="DEBUG" />
-    <Logger name="net.consensys.linea.sequencer.liveness" level="DEBUG" />
     <Logger name="net.consensys.linea.sequencer.txselection.selectors" level="DEBUG" />
     <Logger name="net.consensys.zkevm.ethereum.finalization" level="DEBUG" />
     <Logger name="org.hyperledger.besu.ethereum.eth.transactions.TransactionPool" level="TRACE" />

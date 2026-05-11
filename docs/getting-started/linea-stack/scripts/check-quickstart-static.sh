@@ -167,6 +167,19 @@ check_postman_key_model() {
   else
     fail "sequencer liveness must be disabled for quickstart"
   fi
+
+  extra_liveness_config="$(grep '^plugin-linea-liveness-' "$sequencer_template" | grep -v '^plugin-linea-liveness-enabled=false$' || true)"
+  if [ -n "$extra_liveness_config" ]; then
+    fail "sequencer template must not carry inactive liveness signer/contract settings"
+  else
+    pass "sequencer liveness config contains only enabled=false"
+  fi
+
+  if grep -q 'net.consensys.linea.sequencer.liveness' "$STACK/config/l2/sequencer/log4j.xml"; then
+    fail "sequencer log4j should not enable liveness-specific logging when liveness is disabled"
+  else
+    pass "sequencer log4j has no liveness-specific logger"
+  fi
 }
 
 check_incremental_typescript_helpers() {
