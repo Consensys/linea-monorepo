@@ -27,14 +27,31 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Number of most-recent PR commits to lint, if unset, defaults to "all".
+          LINT_COMMIT_COUNT: 1
         run: |
           set -eu
 
-          # All commits introduced by this PR (exclusive of base).
+          lint_count="${LINT_COMMIT_COUNT:-all}"
+
+          # All commits introduced by this PR (exclusive of base), newest first.
           commits=$(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}")
           if [ -z "${commits}" ]; then
             echo "No commits to lint."
             exit 0
+          fi
+
+          if [ "${lint_count}" != "all" ]; then
+            case "${lint_count}" in
+              ''|*[!0-9]*)
+                echo "LINT_COMMIT_COUNT must be a positive integer or 'all' (got: '${lint_count}')." >&2
+                exit 1
+                ;;
+            esac
+            commits=$(printf '%s\n' "${commits}" | head -n "${lint_count}")
+            echo "Linting the ${lint_count} most recent commit(s)."
+          else
+            echo "Linting all commits in the PR."
           fi
 
           failed=0
