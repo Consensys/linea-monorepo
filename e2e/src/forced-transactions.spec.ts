@@ -598,6 +598,14 @@ describe("Forced transaction test suite", () => {
   it.concurrent(
     "Should reject a forced transaction from a denylisted sender (FilteredAddressFrom)",
     async () => {
+      // For partial prover test, if we run both denylisted tests, one of them would have
+      // the FTX event simulated at a high number block number compared to those in other
+      // FTX tests, so here we disabled one of them
+      if (process.env.PARTIAL_PROVER == "true") {
+        logger.warn('Skipped the forced transaction "FilteredAddressFrom" test with partial prover');
+        return;
+      }
+
       const [l1Account, l2DeniedSender, l2Recipient] = await Promise.all([
         l1AccountManager.generateAccount(),
         l2AccountManager.generateAccount(),
