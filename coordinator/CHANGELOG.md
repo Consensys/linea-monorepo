@@ -68,3 +68,4 @@
 
 - *(coordinator)* Reset changelog.md to empty for testing
 ## Testing version
+## Testing version
