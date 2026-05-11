@@ -27,12 +27,11 @@ object ExecutionLayerFactory {
     metricsFacade: MetricsFacade,
   ): ExecutionLayerManager =
     JsonRpcExecutionLayerManager(
-      executionLayerEngineApiClient =
-        buildExecutionEngineClient(
-          web3JEngineApiClient = web3JEngineApiClient,
-          elFork = elFork,
-          metricsFacade = metricsFacade,
-        ),
+      executionLayerEngineApiClient = buildExecutionEngineClient(
+        web3JEngineApiClient = web3JEngineApiClient,
+        elFork = elFork,
+        metricsFacade = metricsFacade,
+      ),
     )
 
   fun buildExecutionEngineClient(

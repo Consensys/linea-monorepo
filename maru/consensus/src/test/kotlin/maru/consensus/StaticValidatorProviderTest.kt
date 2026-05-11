@@ -8,11 +8,11 @@
  */
 package maru.consensus
 
-import kotlin.test.Test
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
+import kotlin.test.Test
 
 class StaticValidatorProviderTest {
   private val validators = DataGenerators.randomValidators()

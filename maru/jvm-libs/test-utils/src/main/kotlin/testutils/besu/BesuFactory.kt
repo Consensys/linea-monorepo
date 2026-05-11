@@ -8,10 +8,6 @@
  */
 package testutils.besu
 
-import java.util.Collections.singletonList
-import java.util.Optional
-import kotlin.jvm.optionals.getOrDefault
-import kotlin.random.Random
 import linea.kotlin.encodeHex
 import org.hyperledger.besu.consensus.qbft.QbftExtraDataCodec
 import org.hyperledger.besu.crypto.KeyPairUtil
@@ -30,6 +26,10 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
+import java.util.Collections.singletonList
+import java.util.Optional
+import kotlin.jvm.optionals.getOrDefault
+import kotlin.random.Random
 
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"

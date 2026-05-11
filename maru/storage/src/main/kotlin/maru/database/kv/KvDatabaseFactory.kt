@@ -8,12 +8,12 @@
  */
 package maru.database.kv
 
-import java.nio.file.Path
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
 import tech.pegasys.teku.storage.server.kvstore.KvStoreConfiguration
 import tech.pegasys.teku.storage.server.rocksdb.RocksDbInstanceFactory
+import java.nio.file.Path
 
 object KvDatabaseFactory {
   fun createRocksDbDatabase(

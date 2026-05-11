@@ -8,13 +8,6 @@
  */
 package maru.p2p.discovery
 
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.util.Optional
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import linea.kotlin.toULong
 import linea.timer.JvmTimerFactory
@@ -40,6 +33,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.util.Optional
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruDiscoveryServiceTest {
   companion object {
@@ -100,22 +100,20 @@ class MaruDiscoveryServiceTest {
       P2PConfig(
         ipAddress = "127.0.0.1",
         port = 9001u,
-        discovery =
-          P2PConfig.Discovery(
-            port = 9000u,
-            bootnodes = listOf(),
-            refreshInterval = 10.seconds,
-          ),
+        discovery = P2PConfig.Discovery(
+          port = 9000u,
+          bootnodes = listOf(),
+          refreshInterval = 10.seconds,
+        ),
       )
     p2PState = InMemoryP2PState()
-    service =
-      MaruDiscoveryService(
-        privateKeyBytes = keyPair.secretKey().bytesArray(),
-        p2pConfig = p2pConfig,
-        forkIdHashManager = forkIdHashProvider,
-        p2PState = p2PState,
-        timerFactory = JvmTimerFactory(),
-      )
+    service = MaruDiscoveryService(
+      privateKeyBytes = keyPair.secretKey().bytesArray(),
+      p2pConfig = p2pConfig,
+      forkIdHashManager = forkIdHashProvider,
+      p2PState = p2PState,
+      timerFactory = JvmTimerFactory(),
+    )
   }
 
   @Test
@@ -168,17 +166,15 @@ class MaruDiscoveryServiceTest {
     val bootnode =
       MaruDiscoveryService(
         privateKeyBytes = key1,
-        p2pConfig =
-          P2PConfig(
-            ipAddress = IPV4,
-            port = PORT1,
-            discovery =
-              P2PConfig.Discovery(
-                port = PORT2,
-                bootnodes = emptyList(),
-                refreshInterval = 5.seconds,
-              ),
+        p2pConfig = P2PConfig(
+          ipAddress = IPV4,
+          port = PORT1,
+          discovery = P2PConfig.Discovery(
+            port = PORT2,
+            bootnodes = emptyList(),
+            refreshInterval = 5.seconds,
           ),
+        ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
         timerFactory = JvmTimerFactory(),
@@ -187,17 +183,15 @@ class MaruDiscoveryServiceTest {
     val discoveryService2 =
       MaruDiscoveryService(
         privateKeyBytes = key2,
-        p2pConfig =
-          P2PConfig(
-            ipAddress = IPV4,
-            port = PORT3,
-            discovery =
-              P2PConfig.Discovery(
-                port = PORT4,
-                bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
-                refreshInterval = 500.milliseconds,
-              ),
+        p2pConfig = P2PConfig(
+          ipAddress = IPV4,
+          port = PORT3,
+          discovery = P2PConfig.Discovery(
+            port = PORT4,
+            bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
+            refreshInterval = 500.milliseconds,
           ),
+        ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
         timerFactory = JvmTimerFactory(),
@@ -206,17 +200,15 @@ class MaruDiscoveryServiceTest {
     val discoveryService3 =
       MaruDiscoveryService(
         privateKeyBytes = key3,
-        p2pConfig =
-          P2PConfig(
-            ipAddress = IPV4,
-            port = PORT5,
-            discovery =
-              P2PConfig.Discovery(
-                port = PORT6,
-                bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
-                refreshInterval = 500.milliseconds,
-              ),
+        p2pConfig = P2PConfig(
+          ipAddress = IPV4,
+          port = PORT5,
+          discovery = P2PConfig.Discovery(
+            port = PORT6,
+            bootnodes = listOf(bootnode.getLocalNodeRecord().asEnr()),
+            refreshInterval = 500.milliseconds,
           ),
+        ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
         timerFactory = JvmTimerFactory(),
@@ -299,13 +291,12 @@ class MaruDiscoveryServiceTest {
       P2PConfig(
         ipAddress = ipAddress,
         port = port,
-        discovery =
-          P2PConfig.Discovery(
-            port = discoveryPort,
-            bootnodes = listOf(),
-            refreshInterval = 10.seconds,
-            advertisedIp = advertisedIp,
-          ),
+        discovery = P2PConfig.Discovery(
+          port = discoveryPort,
+          bootnodes = listOf(),
+          refreshInterval = 10.seconds,
+          advertisedIp = advertisedIp,
+        ),
       )
 
     val discoveryService =

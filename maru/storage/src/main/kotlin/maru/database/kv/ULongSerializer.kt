@@ -8,8 +8,8 @@
  */
 package maru.database.kv
 
-import java.math.BigInteger
 import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
+import java.math.BigInteger
 
 class ULongSerializer : KvStoreSerializer<ULong> {
   override fun serialize(value: ULong): ByteArray = BigInteger.valueOf(value.toLong()).toByteArray()

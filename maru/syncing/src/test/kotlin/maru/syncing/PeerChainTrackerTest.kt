@@ -8,8 +8,6 @@
  */
 package maru.syncing
 
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
@@ -19,6 +17,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.maru.TestablePeriodicTimerFactory
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class PeerChainTrackerTest {
   // Dummy implementation of PeersHeadBlockProvider for testing
@@ -67,21 +67,19 @@ class PeerChainTrackerTest {
     targetChainHeadCalculator = TestSyncTargetSelector()
     timerFactory = TestablePeriodicTimerFactory()
 
-    config =
-      PeerChainTracker.Config(
-        pollingUpdateInterval = 1.seconds,
-      )
+    config = PeerChainTracker.Config(
+      pollingUpdateInterval = 1.seconds,
+    )
 
     // Use the lambda to inject our testable timer
-    peerChainTracker =
-      PeerChainTracker(
-        peersHeadsProvider,
-        syncTargetUpdateHandler,
-        targetChainHeadCalculator,
-        config,
-        timerFactory = timerFactory,
-        beaconChain = beaconChain,
-      )
+    peerChainTracker = PeerChainTracker(
+      peersHeadsProvider,
+      syncTargetUpdateHandler,
+      targetChainHeadCalculator,
+      config,
+      timerFactory = timerFactory,
+      beaconChain = beaconChain,
+    )
   }
 
   @AfterEach

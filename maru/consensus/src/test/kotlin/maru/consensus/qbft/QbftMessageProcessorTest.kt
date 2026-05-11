@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.util.concurrent.TimeUnit
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
@@ -38,6 +37,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import java.util.concurrent.TimeUnit
 
 class QbftMessageProcessorTest {
   private val keyData = PrivateKeyGenerator.generatePrivateKey()

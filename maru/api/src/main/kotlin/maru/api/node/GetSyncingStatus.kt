@@ -32,14 +32,13 @@ class GetSyncingStatus(
   override fun handle(ctx: Context) {
     ctx.status(200).json(
       GetSyncingStatusResponse(
-        data =
-          SyncingStatusData(
-            headSlot = syncStatusProvider.getCLSyncTarget().toString(),
-            syncDistance = syncStatusProvider.getBeaconSyncDistance().toString(),
-            isSyncing = !syncStatusProvider.isBeaconChainSynced(),
-            isOptimistic = true, // we only support optimistic mode for now
-            elOffline = !isElOnlineProvider.invoke(),
-          ),
+        data = SyncingStatusData(
+          headSlot = syncStatusProvider.getCLSyncTarget().toString(),
+          syncDistance = syncStatusProvider.getBeaconSyncDistance().toString(),
+          isSyncing = !syncStatusProvider.isBeaconChainSynced(),
+          isOptimistic = true, // we only support optimistic mode for now
+          elOffline = !isElOnlineProvider.invoke(),
+        ),
       ),
     )
   }

@@ -35,12 +35,11 @@ class MaruFollowerDelayedStartTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
   }
 
   @AfterEach
@@ -79,10 +78,9 @@ class MaruFollowerDelayedStartTest {
 
     validatorStack.besuNode.assertMinedBlocks(blocksToProduce)
 
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
     cluster.addNode(followerStack.besuNode)
 
     val followerMaruApp =

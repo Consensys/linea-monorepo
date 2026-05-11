@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import java.net.URI
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
 import org.apache.logging.log4j.LogManager
@@ -31,6 +30,7 @@ import testutils.besu.ethGetBlockByNumber
 import testutils.besu.startWithRetry
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import java.net.URI
 
 /**
  * Integration tests for Maru with multiple follower execution layer nodes configured via FollowersConfig.
@@ -68,19 +68,17 @@ class MaruManyFollowerElsTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     validatorStack = PeeringNodeNetworkStack()
 
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
 
     followerBesu = BesuFactory.buildTestBesu(validator = false)
 

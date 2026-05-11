@@ -11,7 +11,6 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
-import java.util.SequencedSet
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
@@ -39,6 +38,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.SequencedSet
 
 class BlockValidatorTest {
   private val validators = (1..3).map { DataGenerators.randomValidator() }
@@ -64,10 +64,9 @@ class BlockValidatorTest {
   private val validNewBlockBody =
     DataGenerators.randomBeaconBlockBody(numSeals = validators.size).let { body ->
       body.copy(
-        executionPayload =
-          body.executionPayload.copy(
-            blockNumber = validCurrBlockBody.executionPayload.blockNumber + 1u,
-          ),
+        executionPayload = body.executionPayload.copy(
+          blockNumber = validCurrBlockBody.executionPayload.blockNumber + 1u,
+        ),
       )
     }
   private val validNewBlockStateRootHeader =
@@ -302,11 +301,10 @@ class BlockValidatorTest {
 
     val blockBodyWithEnoughSeals =
       validNewBlockBody.copy(
-        prevCommitSeals =
-          setOf(
-            validNewBlockBody.prevCommitSeals.elementAt(0),
-            validNewBlockBody.prevCommitSeals.elementAt(1),
-          ),
+        prevCommitSeals = setOf(
+          validNewBlockBody.prevCommitSeals.elementAt(0),
+          validNewBlockBody.prevCommitSeals.elementAt(1),
+        ),
       )
     val expectedError = "Seal verification error!"
     val sealsVerifier =
@@ -383,10 +381,9 @@ class BlockValidatorTest {
   fun `test invalid execution payload`() {
     val blockBody =
       validNewBlockBody.copy(
-        executionPayload =
-          validNewBlockBody.executionPayload.copy(
-            timestamp = validNewBlockBody.executionPayload.timestamp + 1u,
-          ),
+        executionPayload = validNewBlockBody.executionPayload.copy(
+          timestamp = validNewBlockBody.executionPayload.timestamp + 1u,
+        ),
       )
     val invalidExecutionClient =
       mock<ExecutionLayerManager> {
@@ -420,10 +417,9 @@ class BlockValidatorTest {
   fun `test empty block`() {
     val blockBody =
       validNewBlockBody.copy(
-        executionPayload =
-          validNewBlockBody.executionPayload.copy(
-            transactions = emptyList(),
-          ),
+        executionPayload = validNewBlockBody.executionPayload.copy(
+          transactions = emptyList(),
+        ),
       )
     val result =
       EmptyBlockValidator
@@ -444,10 +440,9 @@ class BlockValidatorTest {
     val parentExecutionPayload = validCurrBlockBody.executionPayload
     val validBlockBody =
       validNewBlockBody.copy(
-        executionPayload =
-          validNewBlockBody.executionPayload.copy(
-            blockNumber = parentExecutionPayload.blockNumber + 1u,
-          ),
+        executionPayload = validNewBlockBody.executionPayload.copy(
+          blockNumber = parentExecutionPayload.blockNumber + 1u,
+        ),
       )
     val validBlock = validNewBlock.copy(beaconBlockBody = validBlockBody)
 
@@ -462,10 +457,9 @@ class BlockValidatorTest {
     val parentExecutionPayload = validCurrBlockBody.executionPayload
     val invalidBlockBody =
       validNewBlockBody.copy(
-        executionPayload =
-          validNewBlockBody.executionPayload.copy(
-            blockNumber = parentExecutionPayload.blockNumber,
-          ),
+        executionPayload = validNewBlockBody.executionPayload.copy(
+          blockNumber = parentExecutionPayload.blockNumber,
+        ),
       )
     val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
 
@@ -486,10 +480,9 @@ class BlockValidatorTest {
     val parentExecutionPayload = validCurrBlockBody.executionPayload
     val invalidBlockBody =
       validNewBlockBody.copy(
-        executionPayload =
-          validNewBlockBody.executionPayload.copy(
-            blockNumber = parentExecutionPayload.blockNumber + 2UL,
-          ),
+        executionPayload = validNewBlockBody.executionPayload.copy(
+          blockNumber = parentExecutionPayload.blockNumber + 2UL,
+        ),
       )
     val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
 

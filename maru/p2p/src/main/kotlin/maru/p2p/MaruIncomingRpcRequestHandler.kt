@@ -19,7 +19,7 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcStream
 class MaruIncomingRpcRequestHandler<
   TRequest : RequestMessageAdapter<*, RpcMessageType>,
   TResponse : Message<*, RpcMessageType>,
->(
+  >(
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
   private val requestMessageSerDe: SerDe<TRequest>,
   private val responseMessageSerDe: SerDe<TResponse>,
@@ -45,11 +45,10 @@ class MaruIncomingRpcRequestHandler<
       rpcMessageHandler.handleIncomingMessage(
         peer = peer,
         message = message,
-        callback =
-          MaruRpcResponseCallback(
-            rpcStream = rpcStream,
-            messageSerializer = responseMessageSerDe,
-          ),
+        callback = MaruRpcResponseCallback(
+          rpcStream = rpcStream,
+          messageSerializer = responseMessageSerDe,
+        ),
       )
     } ?: { log.trace("Ignoring message of type {} because peer has been disconnected", message.type) }
   }

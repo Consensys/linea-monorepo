@@ -10,13 +10,13 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import java.util.Optional
 import maru.consensus.validation.BlockValidator
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.hyperledger.besu.ethereum.mainnet.block.access.list.BlockAccessList
+import java.util.Optional
 
 class QbftBlockValidatorAdapter(
   private val blockValidator: BlockValidator,

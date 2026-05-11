@@ -8,13 +8,13 @@
  */
 package maru.consensus.qbft.adapters
 
-import java.math.BigInteger
-import java.util.Optional
 import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.config.BftConfigOptions
 import org.hyperledger.besu.datatypes.Address
+import java.math.BigInteger
+import java.util.Optional
 import org.hyperledger.besu.consensus.common.ForkSpec as BesuForkSpec
 import org.hyperledger.besu.consensus.common.ForksSchedule as BesuForksSchedule
 

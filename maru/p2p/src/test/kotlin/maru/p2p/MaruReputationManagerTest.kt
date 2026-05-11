@@ -8,7 +8,6 @@
  */
 package maru.p2p
 
-import java.util.Optional
 import maru.config.P2PConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -21,6 +20,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
+import java.util.Optional
 
 class MaruReputationManagerTest {
   private val nodeId = mock<NodeId>()

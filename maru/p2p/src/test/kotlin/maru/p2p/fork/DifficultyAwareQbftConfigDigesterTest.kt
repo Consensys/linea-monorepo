@@ -23,11 +23,10 @@ class DifficultyAwareQbftConfigDigesterTest {
     DifficultyAwareQbftConfig(
       QbftConsensusConfig(
         validatorSet = setOf(Validator("0x0000000000000000000000000000000000000001".decodeHex())),
-        fork =
-          ChainFork(
-            clFork = ClFork.QBFT_PHASE0,
-            elFork = ElFork.Paris,
-          ),
+        fork = ChainFork(
+          clFork = ClFork.QBFT_PHASE0,
+          elFork = ElFork.Paris,
+        ),
       ),
       terminalTotalDifficulty = 1000uL,
     )

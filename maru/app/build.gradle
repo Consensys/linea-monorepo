@@ -87,17 +87,17 @@ jar {
   archiveBaseName = 'maru'
   manifest {
     attributes(
-      'Class-Path': project.configurations.runtimeClasspath
-      .collect {
-        it.getName()
-      }
-      .findAll {
-        it.endsWith('jar')
-      }
-      .join(' '),
-      'Main-Class': 'maru.app.CliEntrypoint',
-      'Multi-Release': 'true'
-      )
+        'Class-Path': project.configurations.runtimeClasspath
+        .collect {
+          it.getName()
+        }
+        .findAll {
+          it.endsWith('jar')
+        }
+        .join(' '),
+        'Main-Class': 'maru.app.CliEntrypoint',
+        'Multi-Release': 'true'
+        )
   }
 }
 
@@ -112,15 +112,13 @@ task integrationTest(type: Test) {
   // To make room for Besu threads
   systemProperties["junit.jupiter.execution.parallel.config.strategy"] = "fixed"
   int maxThreads = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"]
-  = maxThreads
-  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"]
-  = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.max-pool-size"] = maxThreads
+  systemProperties["junit.jupiter.execution.parallel.config.fixed.parallelism"] = maxThreads
 
   testLogging {
     events TestLogEvent.FAILED,
-    TestLogEvent.SKIPPED,
-    TestLogEvent.STANDARD_ERROR
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR
     // TestLogEvent.STARTED,
     // TestLogEvent.PASSED
     exceptionFormat TestExceptionFormat.FULL

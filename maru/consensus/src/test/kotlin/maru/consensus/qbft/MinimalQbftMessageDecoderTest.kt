@@ -8,8 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.util.Optional
-import kotlin.random.Random
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.ext.DataGenerators
@@ -39,6 +37,8 @@ import org.hyperledger.besu.datatypes.Hash
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import java.util.Optional
+import kotlin.random.Random
 
 class MinimalQbftMessageDecoderTest {
   private val keyData = PrivateKeyGenerator.generatePrivateKey()

@@ -50,17 +50,16 @@ class GetStateValidator(
         index = indexedValidator.index.toString(),
         balance = "",
         status = "active_ongoing",
-        validator =
-          Validator(
-            pubkey = indexedValidator.value.address.encodeHex(),
-            withdrawalCredentials = "0x",
-            effectiveBalance = "",
-            slashed = false,
-            activationEligibilityEpoch = "",
-            activationEpoch = "",
-            exitEpoch = "",
-            withdrawableEpoch = "",
-          ),
+        validator = Validator(
+          pubkey = indexedValidator.value.address.encodeHex(),
+          withdrawalCredentials = "0x",
+          effectiveBalance = "",
+          slashed = false,
+          activationEligibilityEpoch = "",
+          activationEpoch = "",
+          exitEpoch = "",
+          withdrawableEpoch = "",
+        ),
       )
 
     val response =

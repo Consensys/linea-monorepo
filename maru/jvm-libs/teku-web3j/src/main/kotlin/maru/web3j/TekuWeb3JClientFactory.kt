@@ -8,13 +8,6 @@
  */
 package maru.web3j
 
-import java.net.URL
-import java.util.Optional
-import java.util.UUID
-import kotlin.io.path.Path
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -25,13 +18,21 @@ import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.infrastructure.logging.EventLogger
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import java.net.URL
+import java.util.Optional
+import java.util.UUID
+import kotlin.io.path.Path
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 object JwtHelper {
   fun loadOrGenerate(jwtPath: String): JwtConfig {
     val jwtConfigPath = Optional.ofNullable(jwtPath)
     return JwtConfig
       .createIfNeeded(
-        /* needed = */ true,
+        /* needed = */
+        true,
         jwtConfigPath,
         Optional.of(UUID.randomUUID().toString()),
         Path("/dev/null"), // Teku's API limitation. Would be good to clean it
@@ -64,8 +65,10 @@ object TekuWeb3JClientFactory {
           jwtPath?.let {
             addInterceptor(
               JwtAuthHttpInterceptor(
-                /* jwtConfig = */ JwtHelper.loadOrGenerate(jwtPath),
-                /* timeProvider = */ SystemTimeProvider.SYSTEM_TIME_PROVIDER,
+                /* jwtConfig = */
+                JwtHelper.loadOrGenerate(jwtPath),
+                /* timeProvider = */
+                SystemTimeProvider.SYSTEM_TIME_PROVIDER,
               ),
             )
           }

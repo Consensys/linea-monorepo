@@ -8,15 +8,15 @@
  */
 package maru.consensus
 
-import java.time.Clock
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.time.Duration
 import linea.timer.Timer
 import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.SubscriptionNotifier
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.time.Clock
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration
 
 class ProtocolStarter(
   private val forksSchedule: ForksSchedule,

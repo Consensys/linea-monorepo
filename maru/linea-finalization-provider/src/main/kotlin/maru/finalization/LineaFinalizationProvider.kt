@@ -8,8 +8,6 @@
  */
 package maru.finalization
 
-import java.util.concurrent.atomic.AtomicReference
-import kotlin.time.Duration
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockData
 import linea.domain.BlockParameter
@@ -25,6 +23,8 @@ import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration
 
 class LineaFinalizationProvider(
   private val lineaContract: LineaRollupSmartContractClientReadOnly,
@@ -34,12 +34,12 @@ class LineaFinalizationProvider(
   timerFactory: TimerFactory,
   private val log: Logger = LogManager.getLogger(LineaFinalizationProvider::class.java),
 ) : PeriodicPollingService(
-    name = "l1-finalization-poller",
-    timerFactory = timerFactory,
-    timerSchedule = TimerSchedule.FIXED_RATE,
-    pollingInterval = pollingUpdateInterval,
-    log = log,
-  ),
+  name = "l1-finalization-poller",
+  timerFactory = timerFactory,
+  timerSchedule = TimerSchedule.FIXED_RATE,
+  pollingInterval = pollingUpdateInterval,
+  log = log,
+),
   FinalizationProvider {
   private data class BlockHeader(
     val blockNumber: ULong,
@@ -75,13 +75,12 @@ class LineaFinalizationProvider(
         l2EthApi.ethGetBlockByNumberTxHashes(BlockParameter.Tag.EARLIEST)
       }.get()
       .also { block ->
-        lastFinalizedBlock =
-          AtomicReference(
-            BlockHeader(
-              blockNumber = block.number,
-              hash = block.hash,
-            ),
-          )
+        lastFinalizedBlock = AtomicReference(
+          BlockHeader(
+            blockNumber = block.number,
+            hash = block.hash,
+          ),
+        )
       }
   }
 

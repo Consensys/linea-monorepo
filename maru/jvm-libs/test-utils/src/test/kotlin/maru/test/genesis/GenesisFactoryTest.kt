@@ -9,8 +9,6 @@
 package maru.test.genesis
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import kotlin.random.Random
-import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ElFork
@@ -21,6 +19,8 @@ import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.time.Instant
 
 class GenesisFactoryTest {
   val objectMapper = jacksonObjectMapper()
@@ -29,11 +29,10 @@ class GenesisFactoryTest {
 
   @BeforeEach
   fun setup() {
-    genesisFactory =
-      GenesisFactory(
-        chainId = 13U,
-        blockTimeSeconds = 1U,
-      )
+    genesisFactory = GenesisFactory(
+      chainId = 13U,
+      blockTimeSeconds = 1U,
+    )
   }
 
   @Test
@@ -102,27 +101,24 @@ class GenesisFactoryTest {
       val expected =
         ForksSchedule(
           chainId = 13U,
-          forks =
-            listOf(
-              ForkSpec(
-                timestampSeconds = epochTimestamp.epochSeconds.toULong(),
-                blockTimeSeconds = 1U,
-                configuration =
-                  QbftConsensusConfig(
-                    validatorSet = validators.map { Validator(it) }.toSet(),
-                    fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-                  ),
-              ),
-              ForkSpec(
-                timestampSeconds = osakaTimestamp.epochSeconds.toULong(),
-                blockTimeSeconds = 1U,
-                configuration =
-                  QbftConsensusConfig(
-                    validatorSet = validators.map { Validator(it) }.toSet(),
-                    fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
-                  ),
+          forks = listOf(
+            ForkSpec(
+              timestampSeconds = epochTimestamp.epochSeconds.toULong(),
+              blockTimeSeconds = 1U,
+              configuration = QbftConsensusConfig(
+                validatorSet = validators.map { Validator(it) }.toSet(),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
             ),
+            ForkSpec(
+              timestampSeconds = osakaTimestamp.epochSeconds.toULong(),
+              blockTimeSeconds = 1U,
+              configuration = QbftConsensusConfig(
+                validatorSet = validators.map { Validator(it) }.toSet(),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
+              ),
+            ),
+          ),
         )
 
       assertThat(forksSchedule).isEqualTo(expected)

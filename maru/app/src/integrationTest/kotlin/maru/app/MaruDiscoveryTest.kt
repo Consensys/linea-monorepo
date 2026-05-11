@@ -8,9 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -26,6 +23,9 @@ import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 /**
  * Test suite for Maru peer discovery with multiple nodes.
@@ -84,12 +84,11 @@ class MaruDiscoveryTest {
 
     // Initialize test infrastructure
     transactionsHelper = BesuTransactionsHelper()
-    besuCluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    besuCluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     // Create and start all network stacks (Besu + Maru)
     repeat(numberOfNodes) { index ->

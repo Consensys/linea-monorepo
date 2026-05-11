@@ -8,8 +8,6 @@
  */
 package maru.p2p.topics
 
-import java.util.Optional
-import java.util.concurrent.TimeUnit
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
 import maru.p2p.ValidationResult
@@ -20,6 +18,8 @@ import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
+import java.util.Optional
+import java.util.concurrent.TimeUnit
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 class TopicHanlderWithInOrderDeliveringTest {

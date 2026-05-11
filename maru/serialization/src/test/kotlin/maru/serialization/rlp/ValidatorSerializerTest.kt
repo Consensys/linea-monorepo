@@ -8,10 +8,10 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
 import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class ValidatorSerializerTest {
   private val serializer = ValidatorSerDe()

@@ -8,7 +8,6 @@
  */
 package maru.test.genesis
 
-import kotlin.time.Instant
 import linea.kotlin.decodeHex
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
@@ -23,6 +22,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlin.time.Instant
 
 class BeaconGenesisFactoryTest {
   private val validatorAddresses =
@@ -50,18 +50,16 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = chainId,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
             ),
           ),
+        ),
       ),
     )
   }
@@ -92,18 +90,16 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = 1337U,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
             ),
           ),
+        ),
       ),
     )
   }
@@ -123,22 +119,19 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = 1337U,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                DifficultyAwareQbftConfig(
-                  terminalTotalDifficulty = 50UL,
-                  postTtdConfig =
-                    QbftConsensusConfig(
-                      validatorSet = validators.toSet(),
-                      fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
-                    ),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = DifficultyAwareQbftConfig(
+              terminalTotalDifficulty = 50UL,
+              postTtdConfig = QbftConsensusConfig(
+                validatorSet = validators.toSet(),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
+              ),
             ),
           ),
+        ),
       ),
     )
   }
@@ -167,67 +160,59 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = 1337U,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                DifficultyAwareQbftConfig(
-                  terminalTotalDifficulty = 50UL,
-                  postTtdConfig =
-                    QbftConsensusConfig(
-                      validatorSet = validators.toSet(),
-                      fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-                    ),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 1000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 2000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 3000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 4000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 5000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = DifficultyAwareQbftConfig(
+              terminalTotalDifficulty = 50UL,
+              postTtdConfig = QbftConsensusConfig(
+                validatorSet = validators.toSet(),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
+              ),
             ),
           ),
+          ForkSpec(
+            timestampSeconds = 1000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
+            ),
+          ),
+          ForkSpec(
+            timestampSeconds = 2000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+            ),
+          ),
+          ForkSpec(
+            timestampSeconds = 3000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+            ),
+          ),
+          ForkSpec(
+            timestampSeconds = 4000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Osaka),
+            ),
+          ),
+          ForkSpec(
+            timestampSeconds = 5000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Osaka),
+            ),
+          ),
+        ),
       ),
     )
   }
@@ -252,31 +237,27 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = 1337U,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                DifficultyAwareQbftConfig(
-                  terminalTotalDifficulty = 50UL,
-                  postTtdConfig =
-                    QbftConsensusConfig(
-                      validatorSet = validators.toSet(),
-                      fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-                    ),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 100_000_000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = DifficultyAwareQbftConfig(
+              terminalTotalDifficulty = 50UL,
+              postTtdConfig = QbftConsensusConfig(
+                validatorSet = validators.toSet(),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
+              ),
             ),
           ),
+          ForkSpec(
+            timestampSeconds = 100_000_000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+            ),
+          ),
+        ),
       ),
     )
   }
@@ -300,27 +281,24 @@ class BeaconGenesisFactoryTest {
     assertThat(result).isEqualTo(
       ForksSchedule(
         chainId = 1337U,
-        forks =
-          listOf(
-            ForkSpec(
-              timestampSeconds = 0UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-                ),
-            ),
-            ForkSpec(
-              timestampSeconds = 100_000_000UL,
-              blockTimeSeconds = 1U,
-              configuration =
-                QbftConsensusConfig(
-                  validatorSet = validators.toSet(),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-                ),
+        forks = listOf(
+          ForkSpec(
+            timestampSeconds = 0UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
             ),
           ),
+          ForkSpec(
+            timestampSeconds = 100_000_000UL,
+            blockTimeSeconds = 1U,
+            configuration = QbftConsensusConfig(
+              validatorSet = validators.toSet(),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+            ),
+          ),
+        ),
       ),
     )
   }
@@ -346,7 +324,8 @@ class BeaconGenesisFactoryTest {
         )
       }.isInstanceOf(java.lang.IllegalArgumentException::class.java)
         .hasMessageContaining(
-          "EL forks don't follow the correct order: found [Shanghai, Paris, Cancun, Prague], expected [Paris, Shanghai, Cancun, Prague]",
+          "EL forks don't follow the correct order: found [Shanghai, Paris, Cancun, Prague], " +
+            "expected [Paris, Shanghai, Cancun, Prague]",
         )
     }
 

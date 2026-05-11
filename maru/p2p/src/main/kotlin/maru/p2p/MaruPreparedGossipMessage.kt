@@ -8,12 +8,12 @@
  */
 package maru.p2p
 
-import java.util.Optional
 import maru.crypto.Hashing
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import tech.pegasys.teku.spec.logic.common.helpers.MathHelpers
+import java.util.Optional
 
 class MaruPreparedGossipMessage(
   private val origMessage: Bytes,

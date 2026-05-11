@@ -8,8 +8,6 @@
  */
 package maru.p2p
 
-import java.util.Optional
-import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
@@ -30,6 +28,8 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
+import java.util.Optional
+import kotlin.time.Duration.Companion.seconds
 
 class DefaultMaruPeerTest {
   private val delegatePeer = mock<Peer>()

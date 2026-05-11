@@ -8,10 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
-import kotlin.time.toJavaDuration
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ElFork
@@ -26,6 +22,10 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlin.time.toJavaDuration
 
 class MaruSupportsOsakaTest {
   private lateinit var cluster: MaruCluster
@@ -34,11 +34,10 @@ class MaruSupportsOsakaTest {
   fun beforeEach() {
     configureLoggers(
       rootLevel = Level.WARN,
-      logLevels =
-        listOf(
-          "maru" to Level.INFO,
-          "maru.clients" to Level.DEBUG,
-        ),
+      logLevels = listOf(
+        "maru" to Level.INFO,
+        "maru.clients" to Level.DEBUG,
+      ),
     )
   }
 
@@ -51,17 +50,15 @@ class MaruSupportsOsakaTest {
 
   @Test
   fun `should run network starting from Osaka`() {
-    cluster =
-      MaruCluster(
-        blockTimeSeconds = 1u,
-        chainForks =
-          mapOf(
-            Instant.fromEpochSeconds(0) to ChainFork(clFork = ClFork.QBFT_PHASE0, elFork = ElFork.Osaka),
-          ),
-      ).addNode(NodeRole.Sequencer, withBesuEl = true)
-        .addNode(NodeRole.Follower, withBesuEl = true) {
-          it.staticPeers(listOf("sequencer"))
-        }.start()
+    cluster = MaruCluster(
+      blockTimeSeconds = 1u,
+      chainForks = mapOf(
+        Instant.fromEpochSeconds(0) to ChainFork(clFork = ClFork.QBFT_PHASE0, elFork = ElFork.Osaka),
+      ),
+    ).addNode(NodeRole.Sequencer, withBesuEl = true)
+      .addNode(NodeRole.Follower, withBesuEl = true) {
+        it.staticPeers(listOf("sequencer"))
+      }.start()
 
     // Assert Maru is creating Blocks and Synced
     await().atMost(60.seconds.toJavaDuration()).untilAsserted {
@@ -75,25 +72,23 @@ class MaruSupportsOsakaTest {
   @Test
   fun `should switch from Prague to Osaka`() {
     val osakaTimestamp = Clock.System.now().plus(30.seconds)
-    cluster =
-      MaruCluster(
-        chainForks =
-          mapOf(
-            Instant.fromEpochSeconds(0) to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Prague,
-              ),
-            osakaTimestamp to
-              ChainFork(
-                ClFork.QBFT_PHASE0,
-                ElFork.Osaka,
-              ),
+    cluster = MaruCluster(
+      chainForks = mapOf(
+        Instant.fromEpochSeconds(0) to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Prague,
           ),
-      ).addNode("sequencer", addBesu = true)
-        .addNode(NodeRole.Follower, withBesuEl = true) {
-          it.staticPeers(listOf("sequencer"))
-        }.start()
+        osakaTimestamp to
+          ChainFork(
+            ClFork.QBFT_PHASE0,
+            ElFork.Osaka,
+          ),
+      ),
+    ).addNode("sequencer", addBesu = true)
+      .addNode(NodeRole.Follower, withBesuEl = true) {
+        it.staticPeers(listOf("sequencer"))
+      }.start()
     // Assert Maru is creating Blocks and Synced
     await().atMost(60.seconds.toJavaDuration()).untilAsserted {
       assertThat(

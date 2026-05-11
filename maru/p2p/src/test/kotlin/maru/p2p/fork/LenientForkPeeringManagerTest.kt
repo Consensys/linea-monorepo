@@ -8,15 +8,6 @@
  */
 package maru.p2p.fork
 
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
-import kotlin.random.Random
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.toJavaInstant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ElFork
@@ -28,6 +19,15 @@ import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
+import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.toJavaInstant
 
 class LenientForkPeeringManagerTest {
   private lateinit var clock: MutableClock
@@ -58,15 +58,14 @@ class LenientForkPeeringManagerTest {
   @BeforeEach
   fun setup() {
     beaconChain = InMemoryBeaconChain.Companion.fromGenesis(genesisTimestampSeconds = 100u)
-    forks =
-      listOf(
-        forkSpec(0UL, ElFork.Paris),
-        forkSpec(1_000UL, ElFork.Shanghai),
-        forkSpec(2_000UL, ElFork.Cancun),
-        forkSpec(3_000UL, ElFork.Prague),
-      ).mapIndexed { index, forkSpec ->
-        ForkInfo(forkSpec, forkIdDigest = ByteArray(1) { index.toByte() })
-      }.associateBy { (it.forkSpec.configuration as QbftConsensusConfig).elFork }
+    forks = listOf(
+      forkSpec(0UL, ElFork.Paris),
+      forkSpec(1_000UL, ElFork.Shanghai),
+      forkSpec(2_000UL, ElFork.Cancun),
+      forkSpec(3_000UL, ElFork.Prague),
+    ).mapIndexed { index, forkSpec ->
+      ForkInfo(forkSpec, forkIdDigest = ByteArray(1) { index.toByte() })
+    }.associateBy { (it.forkSpec.configuration as QbftConsensusConfig).elFork }
     clock = MutableClock(Instant.ofEpochSecond((forks[ElFork.Paris]!!.forkSpec.timestampSeconds + 100UL).toLong()))
   }
 

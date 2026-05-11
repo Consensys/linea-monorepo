@@ -8,10 +8,10 @@
  */
 package maru.consensus.qbft
 
-import java.util.concurrent.Executor
 import maru.core.Protocol
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
+import java.util.concurrent.Executor
 
 class QbftConsensusValidator(
   private val qbftController: QbftController,

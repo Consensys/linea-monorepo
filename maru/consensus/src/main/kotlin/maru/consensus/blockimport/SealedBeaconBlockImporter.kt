@@ -13,7 +13,6 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.mapError
-import java.util.concurrent.atomic.AtomicBoolean
 import maru.consensus.AsyncFunction
 import maru.consensus.CallAndForgetFutureMultiplexer
 import maru.consensus.state.StateTransition
@@ -28,6 +27,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.atomic.AtomicBoolean
 
 // This is basically Chain of Responsibility design pattern, except it doesn't allow multiple children
 // Multiplexer class was created to address that
@@ -39,9 +39,9 @@ class NewSealedBeaconBlockHandlerMultiplexer<T>(
   handlersMap: Map<String, SealedBeaconBlockHandler<*>>,
   log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*>::javaClass)!!,
 ) : CallAndForgetFutureMultiplexer<SealedBeaconBlock>(
-    handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
-    log = log,
-  ),
+  handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
+  log = log,
+),
   SealedBeaconBlockHandler<Unit> {
   companion object {
     fun sealedBlockHandlersToGenericHandlers(
@@ -172,7 +172,9 @@ class ValidatingSealedBeaconBlockImporter(
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
       LogUtil.throttledLog(
         log::info,
-        "block received: clBlockNumber=${beaconBlockHeader.number} elBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber} clBlockHash=${beaconBlockHeader.hash.encodeHex()}",
+        "block received: clBlockNumber=${beaconBlockHeader.number} " +
+          "elBlockNumber=${beaconBlock.beaconBlockBody.executionPayload.blockNumber} " +
+          "clBlockHash=${beaconBlockHeader.hash.encodeHex()}",
         shouldLog,
         30,
       )

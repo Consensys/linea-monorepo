@@ -10,10 +10,6 @@ package maru.config
 
 import com.sksamuel.hoplite.ConfigException
 import com.sksamuel.hoplite.ExperimentalHoplite
-import java.net.URI
-import kotlin.io.path.Path
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.kotlin.decodeHex
@@ -22,10 +18,21 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.net.URI
+import kotlin.io.path.Path
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
   private val protocolTransitionPollingInterval = 2.seconds
+  private val staticPeer =
+    "/dns4/bootnode.linea.build/tcp/3322/p2p/" +
+      "16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"
+  private val discoveryBootnode =
+    "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2y" +
+      "FBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toY" +
+      "DrgUyOhV4N0Y3CCJBKDdWRwgiQT"
 
   private val baseConfigWithoutQbftAndPayloadToml =
     """
@@ -36,13 +43,13 @@ class HopliteFriendlinessTest {
     [p2p]
     port = 3322
     ip-address = "10.11.12.13"
-    static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
+    static-peers = ["$staticPeer"]
     reconnect-delay = "500 ms"
     peering-fork-mismatch-leeway-time = "10 seconds"
 
     [p2p.discovery]
     port = 3324
-    bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
+    bootnodes = ["$discoveryBootnode"]
     refresh-interval = "30 seconds"
     search-timeout = "10 seconds"
     search-interval = "2 seconds"
@@ -135,63 +142,55 @@ class HopliteFriendlinessTest {
     P2PConfig(
       ipAddress = "10.11.12.13",
       port = 3322u,
-      staticPeers =
-        listOf(
-          "/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg",
-        ),
+      staticPeers = listOf(
+        staticPeer,
+      ),
       reconnectDelay = 500.milliseconds,
       peeringForkMismatchLeewayTime = 10.seconds,
-      discovery =
-        P2PConfig.Discovery(
-          port = 3324u,
-          bootnodes =
-            listOf(
-              "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
-            ),
-          refreshInterval = 30.seconds,
-          searchTimeout = 10.seconds,
-          searchInterval = 2.seconds,
-          advertisedIp = "13.12.11.10",
+      discovery = P2PConfig.Discovery(
+        port = 3324u,
+        bootnodes = listOf(
+          discoveryBootnode,
         ),
-      reputation =
-        P2PConfig.Reputation(
-          smallChange = 1,
-          largeChange = 5,
-          disconnectScoreThreshold = -20,
-          capacity = 100,
-          cooldownPeriod = 2.seconds,
-          banPeriod = 30.seconds,
-        ),
-      statusUpdate =
-        P2PConfig.StatusUpdate(
-          refreshInterval = 30.seconds,
-          refreshIntervalLeeway = 10.seconds,
-          timeout = 3.seconds,
-        ),
+        refreshInterval = 30.seconds,
+        searchTimeout = 10.seconds,
+        searchInterval = 2.seconds,
+        advertisedIp = "13.12.11.10",
+      ),
+      reputation = P2PConfig.Reputation(
+        smallChange = 1,
+        largeChange = 5,
+        disconnectScoreThreshold = -20,
+        capacity = 100,
+        cooldownPeriod = 2.seconds,
+        banPeriod = 30.seconds,
+      ),
+      statusUpdate = P2PConfig.StatusUpdate(
+        refreshInterval = 30.seconds,
+        refreshIntervalLeeway = 10.seconds,
+        timeout = 3.seconds,
+      ),
     )
   private val defaultEthApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8545").toURL(),
-      requestRetries =
-        RetryConfig.noRetries,
+      requestRetries = RetryConfig.noRetries,
     )
   private val engineApiEndpoint =
     ApiEndpointConfig(
       endpoint = URI.create("http://localhost:8555").toURL(),
       jwtSecretPath = "/secret/path",
-      requestRetries =
-        RetryConfig.endlessRetry(
-          backoffDelay = 1.seconds,
-          failuresWarningThreshold = 3u,
-        ),
+      requestRetries = RetryConfig.endlessRetry(
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u,
+      ),
     )
   private val payloadValidator =
     PayloadValidatorDto(
-      engineApiEndpoint =
-        ApiEndpointDto(
-          endpoint = URI.create("http://localhost:8555").toURL(),
-          jwtSecretPath = "/secret/path",
-        ),
+      engineApiEndpoint = ApiEndpointDto(
+        endpoint = URI.create("http://localhost:8555").toURL(),
+        jwtSecretPath = "/secret/path",
+      ),
       payloadValidationEnabled = true,
     )
   private val follower1 =
@@ -233,21 +232,19 @@ class HopliteFriendlinessTest {
   private val syncingConfig =
     SyncingConfig(
       peerChainHeightPollingInterval = 5.seconds,
-      syncTargetSelection =
-        SyncingConfig.SyncTargetSelection.MostFrequent(
-          peerChainHeightGranularity = 10U,
-        ),
+      syncTargetSelection = SyncingConfig.SyncTargetSelection.MostFrequent(
+        peerChainHeightGranularity = 10U,
+      ),
       elSyncStatusRefreshInterval = 6.seconds,
       desyncTolerance = 10UL,
-      download =
-        SyncingConfig.Download(
-          blockRangeRequestTimeout = 10.seconds,
-          blocksBatchSize = 64u,
-          blocksParallelism = 10u,
-          maxRetries = 5u,
-          backoffDelay = 10.seconds,
-          useUnconditionalRandomDownloadPeer = true,
-        ),
+      download = SyncingConfig.Download(
+        blockRangeRequestTimeout = 10.seconds,
+        blocksBatchSize = 64u,
+        blocksParallelism = 10u,
+        maxRetries = 5u,
+        backoffDelay = 10.seconds,
+        useUnconditionalRandomDownloadPeer = true,
+      ),
     )
   private val defaultsDto = DefaultsDtoToml(l2EthEndpoint = ApiEndpointDto(URI.create("http://localhost:8545").toURL()))
   private val forkTransitionOverrideEndpoint =
@@ -273,11 +270,10 @@ class HopliteFriendlinessTest {
       observability = ObservabilityConfig(port = 9090u),
       api = ApiConfig(port = 8080u),
       syncing = syncingConfig,
-      forkTransition =
-        ForkTransitionDtoToml(
-          l2EthApiEndpoint = ApiEndpointDto(URI.create("http://localhost:8595").toURL()),
-          protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        ),
+      forkTransition = ForkTransitionDtoToml(
+        l2EthApiEndpoint = ApiEndpointDto(URI.create("http://localhost:8595").toURL()),
+        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+      ),
     )
 
   @Test
@@ -324,11 +320,10 @@ class HopliteFriendlinessTest {
         persistence = persistence,
         qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
-        validatorElNode =
-          ValidatorElNode(
-            engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = true,
-          ),
+        validatorElNode = ValidatorElNode(
+          engineApiEndpoint = engineApiEndpoint,
+          payloadValidationEnabled = true,
+        ),
         followers = followersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
@@ -346,11 +341,10 @@ class HopliteFriendlinessTest {
         persistence = persistence,
         qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
-        validatorElNode =
-          ValidatorElNode(
-            engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = true,
-          ),
+        validatorElNode = ValidatorElNode(
+          engineApiEndpoint = engineApiEndpoint,
+          payloadValidationEnabled = true,
+        ),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
@@ -531,11 +525,10 @@ class HopliteFriendlinessTest {
       MaruConfig(
         allowEmptyBlocks = true,
         persistence = persistence,
-        validatorElNode =
-          ValidatorElNode(
-            engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = true,
-          ),
+        validatorElNode = ValidatorElNode(
+          engineApiEndpoint = engineApiEndpoint,
+          payloadValidationEnabled = true,
+        ),
         qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
         followers = emptyFollowersConfig,
@@ -594,11 +587,10 @@ class HopliteFriendlinessTest {
         linea = expectedLineaConfig,
         persistence = persistence,
         p2p = p2pConfig,
-        validatorElNode =
-          ValidatorElNode(
-            engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = true,
-          ),
+        validatorElNode = ValidatorElNode(
+          engineApiEndpoint = engineApiEndpoint,
+          payloadValidationEnabled = true,
+        ),
         qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
@@ -868,11 +860,10 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
-        forkTransition =
-          ForkTransition(
-            l2EthApiEndpoint = defaultEthApiEndpoint,
-            protocolTransitionPollingInterval = 1.seconds,
-          ),
+        forkTransition = ForkTransition(
+          l2EthApiEndpoint = defaultEthApiEndpoint,
+          protocolTransitionPollingInterval = 1.seconds,
+        ),
       ),
     )
   }

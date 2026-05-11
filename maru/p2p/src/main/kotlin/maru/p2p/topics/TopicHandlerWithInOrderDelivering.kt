@@ -8,8 +8,6 @@
  */
 package maru.p2p.topics
 
-import java.util.Optional
-import java.util.PriorityQueue
 import maru.p2p.LINEA_DOMAIN
 import maru.p2p.MaruPreparedGossipMessage
 import maru.p2p.SubscriptionManager
@@ -23,6 +21,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 import tech.pegasys.teku.networking.p2p.gossip.PreparedGossipMessage
 import tech.pegasys.teku.networking.p2p.gossip.TopicHandler
+import java.util.Optional
+import java.util.PriorityQueue
 import io.libp2p.core.pubsub.ValidationResult as Libp2pValidationResult
 
 fun interface SequenceNumberExtractor<T> {

@@ -8,11 +8,6 @@
  */
 package maru.p2p
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryService
 import org.apache.logging.log4j.LogManager
@@ -22,6 +17,11 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
@@ -61,15 +61,14 @@ class MaruPeerManager(
       logConnectedPeers()
     }, 20000, 20000, TimeUnit.MILLISECONDS)
     if (discoveryService != null) {
-      discoveryTask =
-        PeerDiscoveryTask(
-          discoveryService = discoveryService,
-          p2pNetwork = p2pNetwork,
-          reputationManager = reputationManager,
-          maxPeers = maxPeers,
-          getPeerCount = { peerCount },
-          discoveryConfig = p2pConfig.discovery!!,
-        )
+      discoveryTask = PeerDiscoveryTask(
+        discoveryService = discoveryService,
+        p2pNetwork = p2pNetwork,
+        reputationManager = reputationManager,
+        maxPeers = maxPeers,
+        getPeerCount = { peerCount },
+        discoveryConfig = p2pConfig.discovery!!,
+      )
       discoveryTask!!.start()
     }
   }

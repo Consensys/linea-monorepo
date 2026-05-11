@@ -19,11 +19,6 @@ import com.sksamuel.hoplite.fp.NonEmptyList
 import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
 import com.sksamuel.hoplite.valueOrNull
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.map
-import kotlin.collections.toSet
-import kotlin.reflect.KType
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
@@ -34,6 +29,11 @@ import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.map
+import kotlin.collections.toSet
+import kotlin.reflect.KType
 
 object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
   override fun decode(
@@ -85,19 +85,17 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
 
       "qbft" ->
         QbftConsensusConfig(
-          validatorSet =
-            (obj["validatorset"] as ArrayNode)
-              .elements
-              .map {
-                Validator(
-                  it.valueOrNull()!!.fromHexToByteArray(),
-                )
-              }.toSet(),
-          fork =
-            ChainFork(
-              clFork = ClFork.QBFT_PHASE0,
-              elFork = ElFork.valueOf(obj.getString("elfork")),
-            ),
+          validatorSet = (obj["validatorset"] as ArrayNode)
+            .elements
+            .map {
+              Validator(
+                it.valueOrNull()!!.fromHexToByteArray(),
+              )
+            }.toSet(),
+          fork = ChainFork(
+            clFork = ClFork.QBFT_PHASE0,
+            elFork = ElFork.valueOf(obj.getString("elfork")),
+          ),
         ).valid()
 
       else -> (ConfigFailure.UnsupportedCollectionType(obj, "Unsupported fork type $type!") as ConfigFailure).invalid()

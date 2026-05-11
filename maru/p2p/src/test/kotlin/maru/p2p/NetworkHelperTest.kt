@@ -8,11 +8,11 @@
  */
 package maru.p2p
 
-import java.net.Inet4Address
-import java.net.InetAddress
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import java.net.Inet4Address
+import java.net.InetAddress
 
 class NetworkHelperTest {
   @Test

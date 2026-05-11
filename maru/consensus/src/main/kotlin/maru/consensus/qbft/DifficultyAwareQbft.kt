@@ -8,10 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.lang.Exception
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import linea.timer.Timer
 import linea.timer.TimerFactory
 import linea.timer.VertxTimerFactory
@@ -23,6 +19,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
+import java.lang.Exception
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class DifficultyAwareQbftFactory(
   private val ethereumJsonRpcClient: Web3j?,
@@ -120,15 +120,14 @@ class DifficultyAwareQbft(
         return
       }
       log.debug("Starting DifficultyAwareQbft with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
-      poller =
-        timerFactory.createTimer(
-          name = "DifficultyAwareQbft",
-          period = forkSpec.blockTimeSeconds.toInt().seconds,
-          initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
-          timerSchedule = linea.timer.TimerSchedule.FIXED_RATE,
-          errorHandler = { e -> log.warn("DifficultyAwareQbft poll task exception", e) },
-          task = Runnable { pollTask() },
-        )
+      poller = timerFactory.createTimer(
+        name = "DifficultyAwareQbft",
+        period = forkSpec.blockTimeSeconds.toInt().seconds,
+        initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
+        timerSchedule = linea.timer.TimerSchedule.FIXED_RATE,
+        errorHandler = { e -> log.warn("DifficultyAwareQbft poll task exception", e) },
+        task = Runnable { pollTask() },
+      )
       poller?.start()
       postTtdProtocol?.start()
     }

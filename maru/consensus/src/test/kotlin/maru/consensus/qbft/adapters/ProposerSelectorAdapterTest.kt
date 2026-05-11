@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft.adapters
 
-import kotlin.test.Test
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
@@ -18,6 +17,7 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
+import kotlin.test.Test
 
 class ProposerSelectorAdapterTest {
   @Test

@@ -41,18 +41,17 @@ class BeaconBlockValidatorFactoryImpl(
     } else {
       val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
       return CompositeBlockValidator(
-        blockValidators =
-          listOfNotNull(
-            stateRootValidator,
-            BlockNumberValidator(parentHeader),
-            ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
-            TimestampValidator(parentHeader),
-            proposerValidator,
-            ParentRootValidator(parentHeader),
-            bodyRootValidator,
-            executionPayloadValidator,
-            emptyBlockValidator,
-          ),
+        blockValidators = listOfNotNull(
+          stateRootValidator,
+          BlockNumberValidator(parentHeader),
+          ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
+          TimestampValidator(parentHeader),
+          proposerValidator,
+          ParentRootValidator(parentHeader),
+          bodyRootValidator,
+          executionPayloadValidator,
+          emptyBlockValidator,
+        ),
       )
     }
   }

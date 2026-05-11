@@ -8,7 +8,6 @@
  */
 package testutils
 
-import kotlin.time.Duration
 import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
@@ -22,6 +21,7 @@ import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import net.consensys.linea.metrics.MetricsFacade
+import kotlin.time.Duration
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class MisbehavingP2PNetwork(

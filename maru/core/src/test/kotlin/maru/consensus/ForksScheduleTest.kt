@@ -8,12 +8,12 @@
  */
 package maru.consensus
 
-import kotlin.random.Random
 import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.random.Random
 
 class ForksScheduleTest {
   private val consensusConfig =
@@ -239,25 +239,22 @@ class ForksScheduleTest {
       ForkSpec(
         timestampSeconds = 1000UL,
         blockTimeSeconds = 10u,
-        configuration =
-          DifficultyAwareQbftConfig(
-            postTtdConfig =
-              QbftConsensusConfig(
-                validatorSet = validators,
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
-            terminalTotalDifficulty = 1000UL,
+        configuration = DifficultyAwareQbftConfig(
+          postTtdConfig = QbftConsensusConfig(
+            validatorSet = validators,
+            fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
           ),
+          terminalTotalDifficulty = 1000UL,
+        ),
       )
     val qbftFork =
       ForkSpec(
         timestampSeconds = 2000UL,
         blockTimeSeconds = 10u,
-        configuration =
-          QbftConsensusConfig(
-            validatorSet = validators,
-            fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-          ),
+        configuration = QbftConsensusConfig(
+          validatorSet = validators,
+          fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+        ),
       )
 
     @Test
@@ -288,11 +285,10 @@ class ForksScheduleTest {
           difficultyAwareQbftFork,
           qbftFork.copy(
             timestampSeconds = difficultyAwareQbftFork.timestampSeconds + 1000UL,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = validators,
-                fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = validators,
+              fork = ChainFork(ClFork.QBFT_PHASE1, ElFork.Prague),
+            ),
           ),
         )
 

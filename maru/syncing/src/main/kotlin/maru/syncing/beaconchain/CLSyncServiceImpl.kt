@@ -8,11 +8,6 @@
  */
 package maru.syncing.beaconchain
 
-import java.util.concurrent.CancellationException
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import linea.kotlin.minusCoercingUnderflow
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
@@ -28,6 +23,11 @@ import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import java.util.concurrent.CancellationException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class CLSyncServiceImpl(
   private val beaconChain: BeaconChain,

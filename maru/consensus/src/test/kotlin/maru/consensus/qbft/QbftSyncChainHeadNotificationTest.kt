@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.util.concurrent.TimeUnit
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
@@ -17,6 +16,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 
 /**
  * Verifies that the sync-completion → QbftNewChainHead wiring works with real objects.

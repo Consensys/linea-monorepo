@@ -8,12 +8,12 @@
  */
 package maru.p2p
 
-import java.util.UUID
 import maru.consensus.ForkSpec
 import org.apache.logging.log4j.LogManager
 import org.ethereum.beacon.discovery.schema.NodeRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
+import java.util.UUID
 
 object NoOpP2PNetwork : P2PNetwork {
   private val log = LogManager.getLogger(this.javaClass)

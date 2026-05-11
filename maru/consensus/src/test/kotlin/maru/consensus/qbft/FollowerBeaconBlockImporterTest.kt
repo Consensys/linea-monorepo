@@ -8,9 +8,6 @@
  */
 package maru.consensus.qbft
 
-import kotlin.random.Random
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
@@ -26,6 +23,9 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.random.Random
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class FollowerBeaconBlockImporterTest {
   private lateinit var executionLayerManagerDouble: FakeExecutionLayerManager
@@ -41,17 +41,16 @@ class FollowerBeaconBlockImporterTest {
     executionLayerManagerDouble = FakeExecutionLayerManager()
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
 
-    beaconBlockImporter =
-      BlockBuildingBeaconBlockImporter(
-        executionLayerManager = executionLayerManagerDouble,
-        finalizationStateProvider = { finalizationState },
-        nextBlockTimestampProvider = { nextBlockTimestamp },
-        prevRandaoProvider = prevRandaoProvider,
-        shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier, _: ULong ->
-          shouldBuildNextBlock
-        },
-        feeRecipient = feeRecipient,
-      )
+    beaconBlockImporter = BlockBuildingBeaconBlockImporter(
+      executionLayerManager = executionLayerManagerDouble,
+      finalizationStateProvider = { finalizationState },
+      nextBlockTimestampProvider = { nextBlockTimestamp },
+      prevRandaoProvider = prevRandaoProvider,
+      shouldBuildNextBlock = { _: BeaconState, _: ConsensusRoundIdentifier, _: ULong ->
+        shouldBuildNextBlock
+      },
+      feeRecipient = feeRecipient,
+    )
   }
 
   @Test
@@ -102,15 +101,14 @@ class FollowerBeaconBlockImporterTest {
     val nextBlockTimestampProviderDouble = FakeNextBlockTimestampProvider(nextBlockTimestamp)
     val expectedParentTimestamp = randomBeaconState.beaconBlockHeader.timestamp
 
-    beaconBlockImporter =
-      BlockBuildingBeaconBlockImporter(
-        executionLayerManager = executionLayerManagerDouble,
-        finalizationStateProvider = { finalizationState },
-        nextBlockTimestampProvider = nextBlockTimestampProviderDouble,
-        prevRandaoProvider = prevRandaoProvider,
-        shouldBuildNextBlock = shouldBuildNextBlockDouble,
-        feeRecipient = feeRecipient,
-      )
+    beaconBlockImporter = BlockBuildingBeaconBlockImporter(
+      executionLayerManager = executionLayerManagerDouble,
+      finalizationStateProvider = { finalizationState },
+      nextBlockTimestampProvider = nextBlockTimestampProviderDouble,
+      prevRandaoProvider = prevRandaoProvider,
+      shouldBuildNextBlock = shouldBuildNextBlockDouble,
+      feeRecipient = feeRecipient,
+    )
 
     beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
 

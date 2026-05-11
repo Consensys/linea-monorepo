@@ -14,11 +14,6 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.micrometer.backends.BackendRegistries
-import java.nio.file.Files
-import java.nio.file.Path
-import java.time.Clock
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
@@ -83,6 +78,11 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
+import java.nio.file.Files
+import java.nio.file.Path
+import java.time.Clock
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 interface MaruAppFactoryCreator {
@@ -236,74 +236,72 @@ class MaruAppFactory : MaruAppFactoryCreator {
     val finalizationProvider =
       overridingFinalizationProvider
         ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx, timerFactory)
-    syncControllerImpl =
-      if (config.p2p != null) {
-        val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
-          config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
-            Helpers.createWeb3jClient(
-              apiEndpointConfig = apiEndpointConfig,
-              log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
-            )
-          }
-        val elSyncBlockImportHandlers =
-          Helpers.createForkAwareBlockImportHandlers(
-            forksSchedule = beaconGenesisConfig,
-            metricsFacade = metricsFacade,
-            followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
-            finalizationProvider = finalizationProvider,
+    syncControllerImpl = if (config.p2p != null) {
+      val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
+        config.followers.followers.mapValues { (followerLabel, apiEndpointConfig) ->
+          Helpers.createWeb3jClient(
+            apiEndpointConfig = apiEndpointConfig,
+            log = LogManager.getLogger("maru.clients.follower.$followerLabel"),
           )
-        // Validators manage EL sync through QBFT consensus itself.
-        // Followers only use ELSyncService when an explicit polling interval is configured.
-        val elSyncEnabled = config.qbft == null && config.syncing.elSyncStatusRefreshInterval != null
-        val elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService = { onStatusChange ->
-          val refreshInterval = config.syncing.elSyncStatusRefreshInterval
-          if (elSyncEnabled && engineApiWeb3jClient != null) {
-            val validatorImportHandler =
-              ElForkAwareBlockImporter(
-                forksSchedule = beaconGenesisConfig,
-                elManagerMap = elManagerMap,
-                importerName = "El sync payload validator",
-                finalizationProvider = finalizationProvider,
-              )
-            ELSyncService(
-              config = ELSyncService.Config(refreshInterval!!),
-              beaconChain = kvDatabase,
-              eLValidatorBlockImportHandler = validatorImportHandler,
-              followerELBLockImportHandler = elSyncBlockImportHandlers,
-              onStatusChange = onStatusChange,
-              timerFactory = timerFactory,
-            )
-          } else {
-            NoOpLongRunningService
-          }
         }
-        BeaconSyncControllerImpl.create(
-          beaconChain = kvDatabase,
-          peersHeadsProvider = peersHeadBlockProvider,
-          targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
-          validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
-          peerLookup = p2pNetwork.getPeerLookup(),
-          besuMetrics = besuMetricsSystemAdapter,
+      val elSyncBlockImportHandlers =
+        Helpers.createForkAwareBlockImportHandlers(
+          forksSchedule = beaconGenesisConfig,
           metricsFacade = metricsFacade,
-          peerChainTrackerConfig = PeerChainTracker.Config(config.syncing.peerChainHeightPollingInterval),
-          elSyncServiceFactory = elSyncServiceFactory,
-          elSyncEnabled = elSyncEnabled,
-          desyncTolerance = config.syncing.desyncTolerance,
-          pipelineConfig =
-            BeaconChainDownloadPipelineFactory.Config(
-              blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
-              backoffDelay = config.syncing.download.backoffDelay,
-              blocksBatchSize = config.syncing.download.blocksBatchSize,
-              blocksParallelism = config.syncing.download.blocksParallelism,
-              maxRetries = config.syncing.download.maxRetries,
-              useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
-            ),
-          allowEmptyBlocks = config.allowEmptyBlocks,
-          timerFactory = timerFactory,
+          followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+          finalizationProvider = finalizationProvider,
         )
-      } else {
-        AlwaysSyncedController(kvDatabase)
+      // Validators manage EL sync through QBFT consensus itself.
+      // Followers only use ELSyncService when an explicit polling interval is configured.
+      val elSyncEnabled = config.qbft == null && config.syncing.elSyncStatusRefreshInterval != null
+      val elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService = { onStatusChange ->
+        val refreshInterval = config.syncing.elSyncStatusRefreshInterval
+        if (elSyncEnabled && engineApiWeb3jClient != null) {
+          val validatorImportHandler =
+            ElForkAwareBlockImporter(
+              forksSchedule = beaconGenesisConfig,
+              elManagerMap = elManagerMap,
+              importerName = "El sync payload validator",
+              finalizationProvider = finalizationProvider,
+            )
+          ELSyncService(
+            config = ELSyncService.Config(refreshInterval!!),
+            beaconChain = kvDatabase,
+            eLValidatorBlockImportHandler = validatorImportHandler,
+            followerELBLockImportHandler = elSyncBlockImportHandlers,
+            onStatusChange = onStatusChange,
+            timerFactory = timerFactory,
+          )
+        } else {
+          NoOpLongRunningService
+        }
       }
+      BeaconSyncControllerImpl.create(
+        beaconChain = kvDatabase,
+        peersHeadsProvider = peersHeadBlockProvider,
+        targetChainHeadCalculator = createSyncTargetSelector(config.syncing.syncTargetSelection),
+        validatorProvider = StaticValidatorProvider(qbftConfig.validatorSet),
+        peerLookup = p2pNetwork.getPeerLookup(),
+        besuMetrics = besuMetricsSystemAdapter,
+        metricsFacade = metricsFacade,
+        peerChainTrackerConfig = PeerChainTracker.Config(config.syncing.peerChainHeightPollingInterval),
+        elSyncServiceFactory = elSyncServiceFactory,
+        elSyncEnabled = elSyncEnabled,
+        desyncTolerance = config.syncing.desyncTolerance,
+        pipelineConfig = BeaconChainDownloadPipelineFactory.Config(
+          blockRangeRequestTimeout = config.syncing.download.blockRangeRequestTimeout,
+          backoffDelay = config.syncing.download.backoffDelay,
+          blocksBatchSize = config.syncing.download.blocksBatchSize,
+          blocksParallelism = config.syncing.download.blocksParallelism,
+          maxRetries = config.syncing.download.maxRetries,
+          useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
+        ),
+        allowEmptyBlocks = config.allowEmptyBlocks,
+        timerFactory = timerFactory,
+      )
+    } else {
+      AlwaysSyncedController(kvDatabase)
+    }
 
     val apiServer =
       overridingApiServer
@@ -373,26 +371,23 @@ class MaruAppFactory : MaruAppFactoryCreator {
               ?: Web3JLineaRollupSmartContractClientReadOnly(
                 web3j = web3jClient,
                 contractAddress = lineaConfig.contractAddress.encodeHex(),
-                ethLogsClient =
-                  createEthApiClient(
-                    web3jClient = web3jClient,
-                    vertx = vertx,
-                  ),
+                ethLogsClient = createEthApiClient(
+                  web3jClient = web3jClient,
+                  vertx = vertx,
+                ),
                 log = LogManager.getLogger("maru.clients.l1.linea"),
               )
           val l2Endpoint = lineaConfig.l2EthApiEndpoint
           LineaFinalizationProvider(
             lineaContract = contractClient,
-            l2EthApi =
-              createEthApiClient(
-                rpcUrl =
-                  l2Endpoint.endpoint
-                    .toString(),
-                log = LogManager.getLogger("maru.clients.l2.eth.el"),
-                requestRetryConfig = l2Endpoint.requestRetries,
-                vertx = vertx,
-                stopRetriesOnErrorPredicate = { true },
-              ),
+            l2EthApi = createEthApiClient(
+              rpcUrl = l2Endpoint.endpoint
+                .toString(),
+              log = LogManager.getLogger("maru.clients.l2.eth.el"),
+              requestRetryConfig = l2Endpoint.requestRetries,
+              vertx = vertx,
+              stopRetriesOnErrorPredicate = { true },
+            ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
             timerFactory = timerFactory,

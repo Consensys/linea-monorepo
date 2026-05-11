@@ -8,9 +8,6 @@
  */
 package testutils
 
-import java.math.BigInteger
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -18,6 +15,9 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.besu.BesuFactory
+import java.math.BigInteger
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 /**
  * Metadata for block comparison containing essential block identity.
@@ -124,7 +124,8 @@ object Checks {
       Assertions
         .assertThat(actualBlockTime)
         .withFailMessage(
-          "invalid block time: expected=${BesuFactory.MIN_BLOCK_TIME} actual=$actualBlockTime blocks timestamps=$timestampsSeconds",
+          "invalid block time: expected=${BesuFactory.MIN_BLOCK_TIME} actual=$actualBlockTime " +
+            "blocks timestamps=$timestampsSeconds",
         ).isEqualTo(BesuFactory.MIN_BLOCK_TIME)
       timestamp
     }

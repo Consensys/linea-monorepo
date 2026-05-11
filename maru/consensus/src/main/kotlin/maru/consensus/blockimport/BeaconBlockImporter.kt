@@ -50,12 +50,11 @@ class FollowerBeaconBlockImporter(
     ): NewBlockHandler<ValidationResult> =
       FollowerBeaconBlockImporter(
         executionLayerManager = executionLayerManager,
-        delegate =
-          SetHeadOnlyBlockImporter(
-            executionLayerManager = executionLayerManager,
-            finalizationStateProvider = finalizationStateProvider,
-            importerName = importerName,
-          ),
+        delegate = SetHeadOnlyBlockImporter(
+          executionLayerManager = executionLayerManager,
+          finalizationStateProvider = finalizationStateProvider,
+          importerName = importerName,
+        ),
         importerName = importerName,
       )
   }
@@ -142,13 +141,11 @@ class BlockBuildingBeaconBlockImporter(
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = nextBlockTimestamp,
         feeRecipient = feeRecipient,
-        prevRandao =
-          prevRandaoProvider.calculateNextPrevRandao(
-            signee =
-              beaconBlock.beaconBlockBody.executionPayload.blockNumber
-                .inc(),
-            prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,
-          ),
+        prevRandao = prevRandaoProvider.calculateNextPrevRandao(
+          signee = beaconBlock.beaconBlockBody.executionPayload.blockNumber
+            .inc(),
+          prevRandao = beaconBlock.beaconBlockBody.executionPayload.prevRandao,
+        ),
       )
     } else {
       log.info(

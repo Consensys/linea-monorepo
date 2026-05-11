@@ -8,9 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import java.util.concurrent.Executors
-import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -73,6 +70,9 @@ import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
+import java.time.Clock
+import java.util.concurrent.Executors
+import kotlin.time.Duration.Companion.seconds
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
@@ -90,7 +90,10 @@ class QbftValidatorFactory(
   private val payloadValidationEnabled: Boolean,
   /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
-  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  /**
+   * Optional: called when a QBFT message arrives from P2P, before queue insertion.
+   * See [QbftMessageProcessor.onMessageReceived].
+   */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
   /** Optional: called when a block is committed by the QBFT consensus (mined). */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,
@@ -156,9 +159,12 @@ class QbftValidatorFactory(
       }
     val roundTimer =
       RoundTimer(
-        /* queue = */ bftEventQueue,
-        /* roundExpiryTimeCalculator = */ roundTimeExpiryCalculator,
-        /* bftExecutors = */ bftExecutors,
+        /* queue = */
+        bftEventQueue,
+        /* roundExpiryTimeCalculator = */
+        roundTimeExpiryCalculator,
+        /* bftExecutors = */
+        bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
     val validatorMulticaster = P2PValidatorMulticaster(p2PNetwork)
@@ -203,31 +209,47 @@ class QbftValidatorFactory(
       )
     val messageValidatorFactory =
       MessageValidatorFactory(
-        /* proposerSelector = */ qbftProposerSelector,
-        /* protocolSchedule = */ protocolSchedule,
-        /* validatorProvider = */ besuValidatorProvider,
-        /* blockInterface = */ blockInterface,
+        /* proposerSelector = */
+        qbftProposerSelector,
+        /* protocolSchedule = */
+        protocolSchedule,
+        /* validatorProvider = */
+        besuValidatorProvider,
+        /* blockInterface = */
+        blockInterface,
       )
     val messageFactory = MessageFactory(nodeKey, blockCodec)
     val qbftRoundFactory =
       QbftRoundFactory(
-        /* finalState = */ finalState,
-        /* blockInterface = */ blockInterface,
-        /* protocolSchedule = */ protocolSchedule,
-        /* minedBlockObservers = */ minedBlockObservers,
-        /* messageValidatorFactory = */ messageValidatorFactory,
-        /* messageFactory = */ messageFactory,
+        /* finalState = */
+        finalState,
+        /* blockInterface = */
+        blockInterface,
+        /* protocolSchedule = */
+        protocolSchedule,
+        /* minedBlockObservers = */
+        minedBlockObservers,
+        /* messageValidatorFactory = */
+        messageValidatorFactory,
+        /* messageFactory = */
+        messageFactory,
       )
 
     val transitionLogger = QbftValidatorModeTransitionLoggerAdapter()
     val qbftBlockHeightManagerFactory =
       QbftBlockHeightManagerFactory(
-        /* finalState = */ finalState,
-        /* roundFactory = */ qbftRoundFactory,
-        /* messageValidatorFactory = */ messageValidatorFactory,
-        /* messageFactory = */ messageFactory,
-        /* validatorProvider = */ besuValidatorProvider,
-        /* validatorModeTransitionLogger = */ transitionLogger,
+        /* finalState = */
+        finalState,
+        /* roundFactory = */
+        qbftRoundFactory,
+        /* messageValidatorFactory = */
+        messageValidatorFactory,
+        /* messageFactory = */
+        messageFactory,
+        /* validatorProvider = */
+        besuValidatorProvider,
+        /* validatorModeTransitionLogger = */
+        transitionLogger,
       )
     val duplicateMessageTracker = MessageTracker(qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
@@ -238,20 +260,30 @@ class QbftValidatorFactory(
         .toLong()
     val futureMessageBuffer =
       FutureMessageBuffer<QbftMessage>(
-        /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
-        /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
-        /* chainHeight = */ chainHeaderNumber,
+        /* futureMessagesMaxDistance = */
+        qbftOptions.futureMessageMaxDistance,
+        /* futureMessagesLimit = */
+        qbftOptions.futureMessagesLimit,
+        /* chainHeight = */
+        chainHeaderNumber,
       )
     val gossiper = QbftGossiper(validatorMulticaster)
     val qbftController =
       QbftController(
-        /* blockchain = */ blockChain,
-        /* finalState = */ finalState,
-        /* qbftBlockHeightManagerFactory = */ qbftBlockHeightManagerFactory,
-        /* gossiper = */ gossiper,
-        /* duplicateMessageTracker = */ duplicateMessageTracker,
-        /* futureMessageBuffer = */ futureMessageBuffer,
-        /* blockEncoder = */ blockCodec,
+        /* blockchain = */
+        blockChain,
+        /* finalState = */
+        finalState,
+        /* qbftBlockHeightManagerFactory = */
+        qbftBlockHeightManagerFactory,
+        /* gossiper = */
+        gossiper,
+        /* duplicateMessageTracker = */
+        duplicateMessageTracker,
+        /* futureMessageBuffer = */
+        futureMessageBuffer,
+        /* blockEncoder = */
+        blockCodec,
       )
 
     val eventMultiplexer =

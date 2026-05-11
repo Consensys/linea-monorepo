@@ -8,7 +8,6 @@
  */
 package maru.p2p.fork
 
-import kotlin.random.Random
 import linea.kotlin.decodeHex
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
@@ -19,16 +18,16 @@ import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class ForkSpecDigesterTest {
   private val qbftConfig =
     QbftConsensusConfig(
       validatorSet = setOf(Validator("0x0000000000000000000000000000000000000001".decodeHex())),
-      fork =
-        ChainFork(
-          clFork = ClFork.QBFT_PHASE0,
-          elFork = ElFork.Paris,
-        ),
+      fork = ChainFork(
+        clFork = ClFork.QBFT_PHASE0,
+        elFork = ElFork.Paris,
+      ),
     )
   private val qbftTtdAwareConfig =
     DifficultyAwareQbftConfig(
@@ -80,11 +79,9 @@ class ForkSpecDigesterTest {
     val forkSpecQbftA = forkSpec.copy(configuration = qbftTtdAwareConfig)
     val forkSpecQbftB =
       forkSpec.copy(
-        configuration =
-          qbftTtdAwareConfig.copy(
-            terminalTotalDifficulty =
-              qbftTtdAwareConfig.terminalTotalDifficulty + 1uL,
-          ),
+        configuration = qbftTtdAwareConfig.copy(
+          terminalTotalDifficulty = qbftTtdAwareConfig.terminalTotalDifficulty + 1uL,
+        ),
       )
     assertThat(digest(forkSpecQbftA))
       .isNotEqualTo(digest(forkSpecQbftB))

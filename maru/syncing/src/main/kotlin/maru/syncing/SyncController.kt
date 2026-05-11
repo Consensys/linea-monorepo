@@ -8,11 +8,6 @@
  */
 package maru.syncing
 
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
 import linea.timer.TimerFactory
 import maru.consensus.ValidatorProvider
@@ -26,6 +21,11 @@ import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.plugin.services.MetricsSystem
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 internal data class SyncState(
   val clStatus: CLSyncStatus,
@@ -94,12 +94,11 @@ class BeaconSyncControllerImpl(
 
         if (previousState.clStatus == newStatus) return@write emptyList()
 
-        currentState =
-          if (newStatus == CLSyncStatus.SYNCING && elSyncEnabled) {
-            previousState.copy(clStatus = newStatus, elStatus = ELSyncStatus.SYNCING)
-          } else {
-            previousState.copy(clStatus = newStatus)
-          }
+        currentState = if (newStatus == CLSyncStatus.SYNCING && elSyncEnabled) {
+          previousState.copy(clStatus = newStatus, elStatus = ELSyncStatus.SYNCING)
+        } else {
+          previousState.copy(clStatus = newStatus)
+        }
 
         buildList {
           if (previousState.elStatus == ELSyncStatus.SYNCED && currentState.elStatus == ELSyncStatus.SYNCING) {
@@ -135,12 +134,11 @@ class BeaconSyncControllerImpl(
         }
 
         // Enforce invariant: EL cannot be SYNCED when CL is SYNCING
-        currentState =
-          if (previousState.clStatus == CLSyncStatus.SYNCING) {
-            previousState
-          } else {
-            previousState.copy(elStatus = newStatus)
-          }
+        currentState = if (previousState.clStatus == CLSyncStatus.SYNCING) {
+          previousState
+        } else {
+          previousState.copy(elStatus = newStatus)
+        }
 
         buildList {
           add { elSyncHandlers.notifySubscribers(currentState.elStatus) }
@@ -216,8 +214,7 @@ class BeaconSyncControllerImpl(
           beaconChain = beaconChain,
           validatorProvider = validatorProvider,
           allowEmptyBlocks = allowEmptyBlocks,
-          executorService =
-            Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
+          executorService = Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory()),
           pipelineConfig = pipelineConfig,
           peerLookup = peerLookup,
           besuMetrics = besuMetrics,

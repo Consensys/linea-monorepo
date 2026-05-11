@@ -8,9 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.core.Seal
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
@@ -32,6 +29,9 @@ import testutils.SpyingP2PNetwork
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruFollowerNegativeTest {
   private val cluster: Cluster =

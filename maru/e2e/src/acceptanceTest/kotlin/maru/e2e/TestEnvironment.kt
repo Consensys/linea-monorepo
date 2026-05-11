@@ -9,12 +9,6 @@
 package maru.e2e
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import java.net.URI
-import java.util.Optional
-import java.util.UUID
-import kotlin.io.path.Path
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import org.web3j.protocol.Web3j
@@ -22,6 +16,12 @@ import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
+import java.net.URI
+import java.util.Optional
+import java.util.UUID
+import kotlin.io.path.Path
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 object TestEnvironment {
   const val JWT_CONFIG_PATH = "../docker/jwt"
@@ -85,7 +85,7 @@ object TestEnvironment {
     (
       mapOf("follower-geth" to geth1ExecutionEngineClient) +
         (followerExecutionEngineClients - "follower-geth-2" - "follower-nethermind")
-    )
+      )
 
   private fun buildWeb3Client(
     rpcUrl: String,

@@ -8,13 +8,13 @@
  */
 package linea.maru
 
-import kotlin.system.exitProcess
 import linea.kotlin.decodeHex
 import maru.crypto.PrivateKeyGenerator
 import maru.crypto.PrivateKeyGenerator.getKeyData
 import maru.crypto.PrivateKeyGenerator.getKeyDataByPrefixedKey
 import maru.crypto.PrivateKeyGenerator.logKeyData
 import picocli.CommandLine
+import kotlin.system.exitProcess
 
 @CommandLine.Command(
   name = "keytool",

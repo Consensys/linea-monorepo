@@ -8,13 +8,14 @@
  */
 package maru.consensus.qbft
 
-import java.time.Duration
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.RoundExpiryTimeCalculator
+import java.time.Duration
 
 /**
  * A [RoundExpiryTimeCalculator] that uses a linear algorithm for increasing the round expiry time.
- * This implementation calculates the round expiry time for a round as: `baseExpiryPeriod  + (round * baseExpiryPeriod * coefficient)`.
+ * This implementation calculates the round expiry time for a round as:
+ * `baseExpiryPeriod + (round * baseExpiryPeriod * coefficient)`.
  *
  * @param baseExpiryPeriod the duration used as the base to be returned for all rounds.
  */

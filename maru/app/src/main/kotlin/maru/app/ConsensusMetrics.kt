@@ -8,12 +8,12 @@
  */
 package maru.app
 
-import java.util.concurrent.ConcurrentHashMap
 import maru.core.SealedBeaconBlock
 import maru.metrics.MaruMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.hyperledger.besu.consensus.qbft.core.messagedata.QbftV1
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Micrometer-based consensus metrics that record QBFT phase latencies as histograms,
@@ -54,7 +54,7 @@ class ConsensusMetrics(
   private val firstCommitTimes = ConcurrentHashMap<Long, Long>()
   private val lastCommitTimes = ConcurrentHashMap<Long, Long>()
 
-  // ── Micrometer histograms (one per role) ────────────────────────────────────
+  // Micrometer histograms (one per role).
 
   private fun histogram(
     metricsFacade: MetricsFacade,
@@ -110,7 +110,7 @@ class ConsensusMetrics(
   private val phaseImportNonProposer =
     histogram(metricsFacade, "phase.import", "Last COMMIT to block committed (ms)", ROLE_NON_PROPOSER)
 
-  // ── recording methods ──────────────────────────────────────────────────────
+  // Recording methods.
 
   /** Called when BLOCK_TIMER_EXPIRY fires on this validator. */
   fun recordTimerFire(blockNumber: Long) {

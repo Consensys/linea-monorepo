@@ -8,7 +8,6 @@
  */
 package maru.consensus.blockimport
 
-import kotlin.text.contains
 import maru.core.ext.DataGenerators
 import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.Logger
@@ -22,6 +21,7 @@ import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.text.contains
 
 class NewSealedBeaconBlockHandlerMultiplexerTest {
   @Test

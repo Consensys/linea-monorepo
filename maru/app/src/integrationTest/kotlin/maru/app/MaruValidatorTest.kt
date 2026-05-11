@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -31,6 +29,8 @@ import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruValidatorTest {
   private lateinit var cluster: Cluster
@@ -79,19 +79,17 @@ class MaruValidatorTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().awaitPeerDiscovery(false).build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().awaitPeerDiscovery(false).build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     validatorStack = PeeringNodeNetworkStack()
 
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
 
     // FollowerStack's besu node should be the first to start to ensure that it becomes the cluster's Bootnode
     // This way in the test where ValidatorStack's besu node is restarted, it can still peer within the cluster.

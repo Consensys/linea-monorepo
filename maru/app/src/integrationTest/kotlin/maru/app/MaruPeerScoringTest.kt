@@ -8,12 +8,6 @@
  */
 package maru.app
 
-import java.lang.Thread.sleep
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
 import linea.timer.JvmTimerFactory
@@ -48,6 +42,12 @@ import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
+import java.lang.Thread.sleep
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruPeerScoringTest {
   private lateinit var besuCluster: Cluster
@@ -153,18 +153,16 @@ class MaruPeerScoringTest {
     timerFactory: TimerFactory,
   ): MaruNodeSetup {
     transactionsHelper = BesuTransactionsHelper()
-    besuCluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    besuCluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     validatorStack = PeeringNodeNetworkStack()
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
 
     PeeringNodeNetworkStack.startBesuNodes(besuCluster, validatorStack, followerStack)
 
@@ -178,18 +176,18 @@ class MaruPeerScoringTest {
         discoveryPort = 0u,
         cooldownPeriod = validatorCooldownPeriod,
         p2pNetworkFactory = {
-          privateKeyBytes: ByteArray,
-          p2pConfig: P2PConfig,
-          chainId: UInt,
-          serDe: SerDe<SealedBeaconBlock>,
-          metricsFacade: MetricsFacade,
-          metricsSystem: MetricsSystem,
-          statusManager: StatusManager,
-          chain: BeaconChain,
-          forkIdHashManager: ForkPeeringManager,
-          isBlockImportEnabledProvider: () -> Boolean,
-          p2pState: P2PState,
-          timerFactory: TimerFactory,
+            privateKeyBytes: ByteArray,
+            p2pConfig: P2PConfig,
+            chainId: UInt,
+            serDe: SerDe<SealedBeaconBlock>,
+            metricsFacade: MetricsFacade,
+            metricsSystem: MetricsSystem,
+            statusManager: StatusManager,
+            chain: BeaconChain,
+            forkIdHashManager: ForkPeeringManager,
+            isBlockImportEnabledProvider: () -> Boolean,
+            p2pState: P2PState,
+            timerFactory: TimerFactory,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -217,13 +215,12 @@ class MaruPeerScoringTest {
         ?.asEnr()
     log.info("Validator ENR: $bootnodeEnr")
 
-    validatorEthApiClient =
-      createEthApiClient(
-        rpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
-        log = LogManager.getLogger("clients.l2.test.validator"),
-        requestRetryConfig = null,
-        vertx = null,
-      )
+    validatorEthApiClient = createEthApiClient(
+      rpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+      log = LogManager.getLogger("clients.l2.test.validator"),
+      requestRetryConfig = null,
+      vertx = null,
+    )
 
     await
       .atMost(20.seconds.toJavaDuration())
@@ -266,13 +263,12 @@ class MaruPeerScoringTest {
 
     followerStack.maruApp.start().get()
 
-    followerEthApiClient =
-      createEthApiClient(
-        rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
-        log = LogManager.getLogger("clients.l2.test.follower"),
-        requestRetryConfig = null,
-        vertx = null,
-      )
+    followerEthApiClient = createEthApiClient(
+      rpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+      log = LogManager.getLogger("clients.l2.test.follower"),
+      requestRetryConfig = null,
+      vertx = null,
+    )
     // wait for Besu to be fully started,
     // to avoid CI flakiness due to low resources sometimes
     await

@@ -10,13 +10,6 @@ package maru.p2p
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
-import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
-import kotlin.jvm.optionals.getOrElse
-import kotlin.jvm.optionals.getOrNull
 import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ForkSpec
@@ -53,6 +46,13 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import kotlin.jvm.optionals.getOrElse
+import kotlin.jvm.optionals.getOrNull
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 class P2PNetworkImpl(
@@ -131,18 +131,16 @@ class P2PNetworkImpl(
       MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputation)
 
     val rpcMethods = rpcMethodsFactory(statusManager, rpcIdGenerator, { maruPeerManager }, beaconChain)
-    maruPeerManager =
-      MaruPeerManager(
-        maruPeerFactory =
-          DefaultMaruPeerFactory(
-            rpcMethods = rpcMethods,
-            statusManager = statusManager,
-            p2pConfig = p2pConfig,
-          ),
+    maruPeerManager = MaruPeerManager(
+      maruPeerFactory = DefaultMaruPeerFactory(
+        rpcMethods = rpcMethods,
+        statusManager = statusManager,
         p2pConfig = p2pConfig,
-        reputationManager = reputationManager,
-        isStaticPeer = this::isStaticPeer,
-      )
+      ),
+      p2pConfig = p2pConfig,
+      reputationManager = reputationManager,
+      isStaticPeer = this::isStaticPeer,
+    )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
       privateKey = privateKey,
@@ -208,20 +206,18 @@ class P2PNetworkImpl(
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
-        discoveryService =
-          p2pConfig.discovery?.let { discoveryConfig ->
-            MaruDiscoveryService(
-              privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
-              p2pConfig =
-                p2pConfig.copy(
-                  port = port, // use actual listening port
-                  discovery = if (discoveryConfig.port == 0u) discoveryConfig.copy(port = port) else discoveryConfig,
-                ),
-              forkIdHashManager = forkIdHashManager,
-              p2PState = p2PState,
-              timerFactory = timerFactory,
-            )
-          }
+        discoveryService = p2pConfig.discovery?.let { discoveryConfig ->
+          MaruDiscoveryService(
+            privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
+            p2pConfig = p2pConfig.copy(
+              port = port, // use actual listening port
+              discovery = if (discoveryConfig.port == 0u) discoveryConfig.copy(port = port) else discoveryConfig,
+            ),
+            forkIdHashManager = forkIdHashManager,
+            p2PState = p2PState,
+            timerFactory = timerFactory,
+          )
+        }
         discoveryService?.start()
         maruPeerManager.start(discoveryService, p2pNetwork)
         metricsFacade.createGauge(

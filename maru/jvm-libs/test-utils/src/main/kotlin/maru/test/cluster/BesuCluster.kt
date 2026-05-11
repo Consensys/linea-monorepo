@@ -8,7 +8,6 @@
  */
 package maru.test.cluster
 
-import java.net.URI
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.tests.acceptance.dsl.condition.Condition
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
@@ -19,6 +18,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfiguration
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
+import java.net.URI
 
 class BesuCluster(
   private val clusterConfiguration: ClusterConfiguration = ClusterConfigurationBuilder().build(),

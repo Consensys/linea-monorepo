@@ -8,7 +8,6 @@
  */
 package maru.p2p
 
-import java.util.concurrent.ConcurrentHashMap
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.syncing.CLSyncStatus
@@ -30,6 +29,7 @@ import tech.pegasys.teku.networking.p2p.network.PeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.peer.Peer
+import java.util.concurrent.ConcurrentHashMap
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork as TekuP2PNetwork
 
 class MaruPeerManagerTest {
