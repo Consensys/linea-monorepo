@@ -8,13 +8,13 @@
  */
 package maru.p2p.messages
 
-import java.nio.charset.StandardCharsets
 import maru.serialization.SerDe
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
+import java.nio.charset.StandardCharsets
 
 class RpcExceptionSerDe : SerDe<RpcException> {
   override fun serialize(value: RpcException): ByteArray =

@@ -8,12 +8,12 @@
  */
 package testutils.maru
 
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.app.MaruApp
 import org.awaitility.Awaitility.await
 import org.awaitility.core.ConditionFactory
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 fun MaruApp.awaitTillMaruHasPeers(
   numberOfPeers: UInt,

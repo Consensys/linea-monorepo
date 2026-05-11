@@ -8,7 +8,6 @@
  */
 package maru.syncing
 
-import kotlin.time.Duration
 import linea.timer.PeriodicPollingService
 import linea.timer.TimerFactory
 import linea.timer.TimerSchedule
@@ -21,6 +20,7 @@ import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration
 
 data class ElBlockInfo(
   val blockNumber: ULong,
@@ -62,12 +62,12 @@ class ELSyncService(
   timerFactory: TimerFactory,
   private val log: Logger = LogManager.getLogger(ELSyncService::class.java),
 ) : PeriodicPollingService(
-    name = "ELSyncPoller",
-    timerFactory = timerFactory,
-    timerSchedule = TimerSchedule.FIXED_RATE,
-    pollingInterval = config.pollingInterval,
-    log = log,
-  ) {
+  name = "ELSyncPoller",
+  timerFactory = timerFactory,
+  timerSchedule = TimerSchedule.FIXED_RATE,
+  pollingInterval = config.pollingInterval,
+  log = log,
+) {
   data class Config(
     val pollingInterval: Duration,
   )

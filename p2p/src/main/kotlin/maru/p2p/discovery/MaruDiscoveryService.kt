@@ -8,11 +8,6 @@
  */
 package maru.p2p.discovery
 
-import java.util.Optional
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
@@ -39,6 +34,11 @@ import org.ethereum.beacon.discovery.schema.NodeRecordFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 import tech.pegasys.teku.networking.p2p.discovery.discv5.SecretKeyParser
+import java.util.Optional
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
@@ -152,15 +152,14 @@ class MaruDiscoveryService(
     return discoverySystem
       .start()
       .thenRun {
-        poller =
-          timerFactory.createTimer(
-            name = "boot-node-refresher",
-            initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
-            period = p2pConfig.discovery!!.refreshInterval,
-            timerSchedule = TimerSchedule.FIXED_RATE,
-            errorHandler = { e -> log.warn("Failed to ping bootnodes", e) },
-            task = Runnable { pingBootnodes() },
-          )
+        poller = timerFactory.createTimer(
+          name = "boot-node-refresher",
+          initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
+          period = p2pConfig.discovery!!.refreshInterval,
+          timerSchedule = TimerSchedule.FIXED_RATE,
+          errorHandler = { e -> log.warn("Failed to ping bootnodes", e) },
+          task = Runnable { pingBootnodes() },
+        )
         poller!!.start()
       }.thenApply {}
   }
@@ -220,9 +219,12 @@ class MaruDiscoveryService(
         .signer(signer)
         .seq(UInt64.valueOf(sequenceNumber.toBigInteger()))
         .address(
-          /* ipAddress = */ p2pConfig.discovery!!.advertisedIp ?: p2pConfig.ipAddress,
-          /* udpPort = */ p2pConfig.discovery!!.port.toInt(),
-          /* tcpPort = */ p2pConfig.port.toInt(),
+          /* ipAddress = */
+          p2pConfig.discovery!!.advertisedIp ?: p2pConfig.ipAddress,
+          /* udpPort = */
+          p2pConfig.discovery!!.port.toInt(),
+          /* tcpPort = */
+          p2pConfig.port.toInt(),
         ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashManager.currentForkHash()))
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 

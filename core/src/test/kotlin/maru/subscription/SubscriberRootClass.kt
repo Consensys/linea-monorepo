@@ -8,8 +8,8 @@
  */
 package maru.subscription
 
-import java.util.concurrent.CopyOnWriteArrayList
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.CopyOnWriteArrayList
 
 open class SubscriberRootClass(
   val subscriptionManager: SubscriptionManager<String>,

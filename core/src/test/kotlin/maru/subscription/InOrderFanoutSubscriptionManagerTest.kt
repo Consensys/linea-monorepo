@@ -8,12 +8,12 @@
  */
 package maru.subscription
 
-import java.util.concurrent.CopyOnWriteArrayList
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.CopyOnWriteArrayList
 
 class InOrderFanoutSubscriptionManagerTest {
   private lateinit var subscriptionManager: InOrderFanoutSubscriptionManager<String>
@@ -58,10 +58,10 @@ class InOrderFanoutSubscriptionManagerTest {
     notifications: MutableList<String> = CopyOnWriteArrayList(),
     subscriberLabel: String = "SubscriberInnerClass",
   ) : SubscriberRootClass(
-      subscriptionManager = subscriptionManager,
-      notifications = notifications,
-      subscriberLabel = subscriberLabel,
-    )
+    subscriptionManager = subscriptionManager,
+    notifications = notifications,
+    subscriberLabel = subscriberLabel,
+  )
 
   @Test
   fun `should assign id when not provided and remove them`() {
@@ -98,7 +98,8 @@ class InOrderFanoutSubscriptionManagerTest {
       }
 
     val lambdaSubscriberIdPrefix =
-      "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them(InOrderFanoutSubscriptionManagerTest.kt"
+      "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided " +
+        "and remove them(InOrderFanoutSubscriptionManagerTest.kt"
     SubscriberRootClass(subscriptionManager, notifications, "subscriberRootClass3")
       .also { subscriber ->
         val id1 =
@@ -132,7 +133,8 @@ class InOrderFanoutSubscriptionManagerTest {
       .also { subscribersIds.add(it) }
 
     val lambdaSubscriberIdPrefix2 =
-      "maru.subscription.InOrderFanoutSubscriptionManagerTest.should_assign_id_when_not_provided_and_remove_them\$addSubscriber(InOrderFanoutSubscriptionManagerTest.kt"
+      "maru.subscription.InOrderFanoutSubscriptionManagerTest." +
+        "should_assign_id_when_not_provided_and_remove_them\$addSubscriber(InOrderFanoutSubscriptionManagerTest.kt"
 
     fun addSubscriber(handlerName: String) {
       val subsId =
@@ -155,10 +157,14 @@ class InOrderFanoutSubscriptionManagerTest {
      "maru.subscription.SubscriberRootClass.syncHandler133845838",
      "maru.subscription.SubscriberRootClass.asyncHandler133845838",
      lambdas:
-     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:88)",
-     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:89)",
-     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:92)"
-     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:108)"
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them
+     by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:88)",
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them
+     by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:89)",
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them
+     by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:92)"
+     "maru.subscription.InOrderFanoutSubscriptionManagerTest.should assign id when not provided and remove them
+     by reference - root class(InOrderFanoutSubscriptionManagerTest.kt:108)"
      */
 
     subscriptionManager.notifySubscribers("d1")

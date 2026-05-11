@@ -8,8 +8,6 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.HashUtil
@@ -20,6 +18,8 @@ import maru.core.ext.DataGenerators.randomExecutionPayload
 import maru.crypto.Hashing
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.random.nextULong
 
 class SealedBeaconBlockSerializerTest {
   private val blockHeaderSerializer =
@@ -31,13 +31,11 @@ class SealedBeaconBlockSerializerTest {
   private val sealSerializer = SealSerDe()
   private val blockSerializer =
     BeaconBlockSerDe(
-      beaconBlockHeaderSerializer =
-      blockHeaderSerializer,
-      beaconBlockBodySerializer =
-        BeaconBlockBodySerDe(
-          sealSerializer = sealSerializer,
-          executionPayloadSerializer = ExecutionPayloadSerDe(),
-        ),
+      beaconBlockHeaderSerializer = blockHeaderSerializer,
+      beaconBlockBodySerializer = BeaconBlockBodySerDe(
+        sealSerializer = sealSerializer,
+        executionPayloadSerializer = ExecutionPayloadSerDe(),
+      ),
     )
   private val sealedBlockSerializer =
     SealedBeaconBlockSerDe(
@@ -55,11 +53,10 @@ class SealedBeaconBlockSerializerTest {
       )
     val sealedBlock =
       SealedBeaconBlock(
-        beaconBlock =
-          BeaconBlock(
-            beaconBlockHeader = beaconBlockHeader,
-            beaconBlockBody = beaconBlockBody,
-          ),
+        beaconBlock = BeaconBlock(
+          beaconBlockHeader = beaconBlockHeader,
+          beaconBlockBody = beaconBlockBody,
+        ),
         commitSeals = buildSet(3) { add(Seal(Random.nextBytes(96))) },
       )
     val serializedData = sealedBlockSerializer.serialize(sealedBlock)

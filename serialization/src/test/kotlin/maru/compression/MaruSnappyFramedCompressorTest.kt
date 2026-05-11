@@ -8,13 +8,13 @@
  */
 package maru.compression
 
-import kotlin.random.Random
 import maru.serialization.MAX_MESSAGE_SIZE
 import maru.serialization.compression.MaruSnappyFramedCompressor
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException.ChunkTooLongException
+import kotlin.random.Random
 
 class MaruSnappyFramedCompressorTest {
   private val compressor = MaruSnappyFramedCompressor()

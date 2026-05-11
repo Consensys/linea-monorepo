@@ -8,7 +8,6 @@
  */
 package maru.app
 
-import java.time.Clock
 import maru.config.QbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -30,6 +29,7 @@ import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import java.time.Clock
 
 class QbftProtocolValidatorFactory(
   private val qbftOptions: QbftConfig,
@@ -48,7 +48,10 @@ class QbftProtocolValidatorFactory(
   private val payloadValidationEnabled: Boolean,
   /** Optional: called when BLOCK_TIMER_EXPIRY fires. See [QbftEventMultiplexer.onBlockTimerFired]. */
   private val onBlockTimerFired: ((blockNumber: Long) -> Unit)? = null,
-  /** Optional: called when a QBFT message arrives from P2P, before queue insertion. See [QbftMessageProcessor.onMessageReceived]. */
+  /**
+   * Optional: called when a QBFT message arrives from P2P, before queue insertion.
+   * See [QbftMessageProcessor.onMessageReceived].
+   */
   private val onMessageReceived: ((msgCode: Int, sequenceNumber: Long) -> Unit)? = null,
   /** Optional: called when a block is committed by QBFT consensus. */
   private val onBlockMined: ((SealedBeaconBlock) -> Unit)? = null,

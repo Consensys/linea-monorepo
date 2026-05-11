@@ -8,14 +8,14 @@
  */
 package maru.config
 
+import linea.domain.BlockParameter
+import linea.domain.RetryConfig
+import linea.kotlin.assertIs20Bytes
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import linea.domain.BlockParameter
-import linea.domain.RetryConfig
-import linea.kotlin.assertIs20Bytes
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
@@ -200,10 +200,9 @@ data class MaruConfigDtoToml(
       qbft = qbft?.toDomain(),
       p2p = p2p,
       validatorElNode = payloadValidator?.domainFriendly(),
-      followers =
-        FollowersConfig(
-          followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
-        ),
+      followers = FollowersConfig(
+        followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
+      ),
       observability = observability,
       api = api,
       syncing = syncing,

@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider
@@ -20,6 +19,7 @@ import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
+import kotlin.time.Duration.Companion.milliseconds
 
 class QbftBlockCreatorFactoryTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)

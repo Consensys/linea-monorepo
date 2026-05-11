@@ -78,17 +78,16 @@ class SyncSealedBlockImporterFactory {
       val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
 
       CompositeBlockValidator(
-        blockValidators =
-          listOfNotNull(
-            StateRootValidator(StateTransitionImpl(validatorProvider)),
-            BlockNumberValidator(parentHeader),
-            TimestampValidator(parentHeader),
-            ProposerValidator(ProposerSelectorImpl, beaconChain),
-            ParentRootValidator(parentHeader),
-            BodyRootValidator(),
-            ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
-            if (!allowEmptyBlocks) EmptyBlockValidator else null,
-          ),
+        blockValidators = listOfNotNull(
+          StateRootValidator(StateTransitionImpl(validatorProvider)),
+          BlockNumberValidator(parentHeader),
+          TimestampValidator(parentHeader),
+          ProposerValidator(ProposerSelectorImpl, beaconChain),
+          ParentRootValidator(parentHeader),
+          BodyRootValidator(),
+          ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
+          if (!allowEmptyBlocks) EmptyBlockValidator else null,
+        ),
       )
     }
   }

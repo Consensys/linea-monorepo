@@ -8,7 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import kotlin.time.Duration
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.clampedAdd
 import maru.p2p.PeerLookup
@@ -18,6 +17,7 @@ import org.hyperledger.besu.metrics.BesuMetricCategory
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.services.pipeline.Pipeline
 import org.hyperledger.besu.services.pipeline.PipelineBuilder
+import kotlin.time.Duration
 
 data class BeaconChainPipeline(
   val pipeline: Pipeline<SyncTargetRange>,
@@ -71,17 +71,15 @@ class BeaconChainDownloadPipelineFactory(
 
     val downloadBlocksStep =
       DownloadBlocksStep(
-        downloadPeerProvider =
-          DownloadPeerProviderImpl(
-            peerLookup = peerLookup,
-            useUnconditionalRandomSelection = config.useUnconditionalRandomDownloadPeer,
-          ),
-        config =
-          DownloadBlocksStep.Config(
-            maxRetries = config.maxRetries,
-            blockRangeRequestTimeout = config.blockRangeRequestTimeout,
-            backoffDelay = config.backoffDelay,
-          ),
+        downloadPeerProvider = DownloadPeerProviderImpl(
+          peerLookup = peerLookup,
+          useUnconditionalRandomSelection = config.useUnconditionalRandomDownloadPeer,
+        ),
+        config = DownloadBlocksStep.Config(
+          maxRetries = config.maxRetries,
+          blockRangeRequestTimeout = config.blockRangeRequestTimeout,
+          backoffDelay = config.backoffDelay,
+        ),
       )
     val importBlocksStep = ImportBlocksStep(blockImporter)
 

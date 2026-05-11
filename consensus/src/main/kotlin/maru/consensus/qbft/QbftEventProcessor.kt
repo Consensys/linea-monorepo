@@ -8,12 +8,12 @@
  */
 package maru.consensus.qbft
 
-import java.util.Optional
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.events.BftEvent
+import java.util.Optional
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class QbftEventProcessor(
   private val incomingQueue: BftEventQueue,

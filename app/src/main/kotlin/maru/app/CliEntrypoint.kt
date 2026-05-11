@@ -8,9 +8,9 @@
  */
 package maru.app
 
-import kotlin.system.exitProcess
 import org.apache.logging.log4j.LogManager
 import picocli.CommandLine
+import kotlin.system.exitProcess
 
 object CliEntrypoint {
   private val log = LogManager.getLogger(this.javaClass)

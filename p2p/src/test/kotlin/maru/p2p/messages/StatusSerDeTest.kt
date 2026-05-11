@@ -8,10 +8,10 @@
  */
 package maru.p2p.messages
 
-import kotlin.random.Random
-import kotlin.random.nextULong
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.random.nextULong
 
 class StatusSerDeTest {
   private val serDe = StatusSerDe()

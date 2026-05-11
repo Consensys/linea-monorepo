@@ -8,14 +8,14 @@
  */
 package testutils
 
-import java.math.BigInteger
-import java.util.concurrent.TimeUnit
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.response.EthSendTransaction
 import org.web3j.tx.RawTransactionManager
+import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 
 class Web3jTransactionsHelper(
   private val web3j: Web3j,

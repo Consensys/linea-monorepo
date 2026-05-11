@@ -9,8 +9,6 @@
 package chaos
 
 import chaos.SetupHelper.getNodesUrlsFromFile
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import linea.kotlin.toULong
 import linea.log4j.configureLoggers
 import linea.web3j.createWeb3jHttpClient
@@ -26,6 +24,8 @@ import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class NodesSyncTest {
   private val log = LogManager.getLogger("maru.chaos.NodesSyncTest")
@@ -175,7 +175,8 @@ class NodesSyncTest {
       .untilAsserted {
         assertThat(getClBeaconChainHeadBlockNumber(maruSequencer.value).get())
           .withFailMessage {
-            "Maru sequencer stopped producing beacon blocks at height ${highestMaruBlock.message.body.executionPayload.blockNumber}"
+            "Maru sequencer stopped producing beacon blocks at height " +
+              highestMaruBlock.message.body.executionPayload.blockNumber
           }.isGreaterThan(highestMaruBlock.message.slot.toULong())
       }
 

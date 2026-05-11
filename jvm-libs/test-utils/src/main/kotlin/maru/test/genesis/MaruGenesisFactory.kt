@@ -8,8 +8,6 @@
  */
 package maru.test.genesis
 
-import kotlin.time.Clock
-import kotlin.time.Instant
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
@@ -18,6 +16,8 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.Validator
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class MaruGenesisFactory(
   private val clock: Clock = Clock.System,
@@ -43,11 +43,10 @@ class MaruGenesisFactory(
       val initialForkConfig =
         if (terminalTotalDifficulty != null) {
           DifficultyAwareQbftConfig(
-            postTtdConfig =
-              QbftConsensusConfig(
-                validatorSet = validatorsSet,
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
+            postTtdConfig = QbftConsensusConfig(
+              validatorSet = validatorsSet,
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+            ),
             terminalTotalDifficulty = terminalTotalDifficulty,
           )
         } else {
@@ -89,11 +88,10 @@ class MaruGenesisFactory(
           val forkConsensusConfig =
             if (index == 0 && terminalTotalDifficulty != null) {
               DifficultyAwareQbftConfig(
-                postTtdConfig =
-                  QbftConsensusConfig(
-                    validatorSet = validatorsSet,
-                    fork = chainFork,
-                  ),
+                postTtdConfig = QbftConsensusConfig(
+                  validatorSet = validatorsSet,
+                  fork = chainFork,
+                ),
                 terminalTotalDifficulty = terminalTotalDifficulty,
               )
             } else {

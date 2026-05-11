@@ -8,13 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import java.lang.Thread.sleep
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.function.Function
-import kotlin.time.Duration
 import maru.core.SealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
@@ -24,6 +17,13 @@ import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
+import java.lang.Thread.sleep
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.function.Function
+import kotlin.time.Duration
 
 interface DownloadPeerProvider {
   fun getDownloadingPeer(downloadRangeEndBlockNumber: ULong): MaruPeer?
@@ -40,7 +40,7 @@ class DownloadPeerProviderImpl(
           peers
         } else {
           peers.filter { peer ->
-            // TODO: consider to reduce the downloadRangeEndBlockNumber, because the status of the peers is up to "time between status updates" old
+            // TODO: consider reducing the downloadRangeEndBlockNumber because peer status is only periodically updated.
             peer.getStatus()?.latestBlockNumber?.let { it >= downloadRangeEndBlockNumber } == true
           }
         }
@@ -94,15 +94,14 @@ class DownloadBlocksStep(
     )
 
     while (state.downloadedBlocks.size.toULong() < totalCount) {
-      state =
-        when (val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)) {
-          null -> {
-            sleep(config.backoffDelay.inWholeMilliseconds)
-            state.copy(retries = state.retries + 1u)
-          }
-
-          else -> downloadFromPeer(peer, state)
+      state = when (val peer = downloadPeerProvider.getDownloadingPeer(targetRange.endBlock)) {
+        null -> {
+          sleep(config.backoffDelay.inWholeMilliseconds)
+          state.copy(retries = state.retries + 1u)
         }
+
+        else -> downloadFromPeer(peer, state)
+      }
       checkMaxRetries(state.retries)
     }
 

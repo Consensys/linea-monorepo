@@ -13,9 +13,6 @@ import io.micrometer.core.instrument.DistributionSummary
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.distribution.HistogramSnapshot
 import io.vertx.micrometer.backends.BackendRegistries
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.milliseconds
 import maru.crypto.SecpCrypto
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -32,6 +29,9 @@ import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Benchmark measuring QBFT consensus latency with 4 validators on the local JVM — no containers.
@@ -68,12 +68,11 @@ class QbftConsensus4ValidatorBenchmarkTest {
 
   @BeforeEach
   fun setUp() {
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
     val besuBuilder = { BesuFactory.buildTestBesu(validator = false) }
     stack0 = PeeringNodeNetworkStack(besuBuilder)
     stack1 = PeeringNodeNetworkStack(besuBuilder)
@@ -301,7 +300,11 @@ class QbftConsensus4ValidatorBenchmarkTest {
     log.info("  ── Phase breakdown ──")
     printHistogram("phase.proposal", "phase.proposal", "timer → PROPOSAL received (non-proposer only)")
     printHistogram("phase.prepare.first", "phase.prepare.first", "start → first PREPARE received")
-    printHistogram("phase.prepare.spread", "phase.prepare.spread", "first → last PREPARE (parallel validation spread)")
+    printHistogram(
+      "phase.prepare.spread",
+      "phase.prepare.spread",
+      "first → last PREPARE (parallel validation spread)",
+    )
     printHistogram("phase.commit.first", "phase.commit.first", "last PREPARE → first COMMIT")
     printHistogram("phase.commit.spread", "phase.commit.spread", "first → last COMMIT (gossip jitter)")
     printHistogram(

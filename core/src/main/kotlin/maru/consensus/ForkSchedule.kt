@@ -8,10 +8,10 @@
  */
 package maru.consensus
 
+import org.apache.logging.log4j.LogManager
 import java.util.NavigableSet
 import java.util.TreeSet
 import kotlin.reflect.KClass
-import org.apache.logging.log4j.LogManager
 
 enum class ClFork(
   val version: Byte,

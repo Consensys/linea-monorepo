@@ -8,7 +8,6 @@
  */
 package maru.p2p.fork
 
-import kotlin.random.Random
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ElFork
@@ -19,6 +18,7 @@ import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class RollingForwardForkIdDigestCalculatorTest {
   private fun createCalculator(

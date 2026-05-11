@@ -8,8 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.function.Consumer
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.extensions.encodeHex
 import maru.p2p.ValidationResult
@@ -20,6 +18,8 @@ import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.util.log.LogUtil
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.function.Consumer
 
 class ImportBlocksStep(
   private val blockImporter: SealedBeaconBlockImporter<ValidationResult>,

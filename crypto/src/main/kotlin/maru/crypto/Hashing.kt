@@ -8,10 +8,10 @@
  */
 package maru.crypto
 
-import java.security.MessageDigest
 import maru.core.Hasher
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.datatypes.Hash
+import java.security.MessageDigest
 
 object Hashing {
   fun shortShaHash(inputData: ByteArray): ByteArray = sha256(inputData).slice(0 until 20).toByteArray()

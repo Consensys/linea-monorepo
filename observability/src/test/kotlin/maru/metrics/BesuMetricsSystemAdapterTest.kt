@@ -12,10 +12,6 @@ import io.micrometer.core.instrument.ImmutableTag
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
-import java.util.Optional
-import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -25,6 +21,10 @@ import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.Optional
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory as BesuMetricsCategory
 
@@ -50,17 +50,15 @@ class BesuMetricsSystemAdapterTest {
   fun beforeEach() {
     vertx = Vertx.vertx()
     meterRegistry = SimpleMeterRegistry()
-    metricsFacade =
-      MicrometerMetricsFacade(
-        meterRegistry,
-        metricsPrefix = "linea.test",
-        allMetricsCommonTags = listOf(Tag("version", "1.0.1")),
-      )
-    besuMetricsSystemAdapter =
-      BesuMetricsSystemAdapter(
-        vertx = vertx,
-        metricsFacade = metricsFacade,
-      )
+    metricsFacade = MicrometerMetricsFacade(
+      meterRegistry,
+      metricsPrefix = "linea.test",
+      allMetricsCommonTags = listOf(Tag("version", "1.0.1")),
+    )
+    besuMetricsSystemAdapter = BesuMetricsSystemAdapter(
+      vertx = vertx,
+      metricsFacade = metricsFacade,
+    )
   }
 
   @Test

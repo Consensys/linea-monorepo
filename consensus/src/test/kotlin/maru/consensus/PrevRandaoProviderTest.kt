@@ -8,12 +8,12 @@
  */
 package maru.consensus
 
-import kotlin.random.Random
-import kotlin.test.Test
 import maru.crypto.Hashing
 import maru.extensions.encodeHex
 import maru.extensions.xor
 import org.assertj.core.api.Assertions.assertThat
+import kotlin.random.Random
+import kotlin.test.Test
 
 class PrevRandaoProviderTest {
   @Test

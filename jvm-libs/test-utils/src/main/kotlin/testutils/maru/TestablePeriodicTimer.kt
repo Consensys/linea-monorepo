@@ -8,11 +8,11 @@
  */
 package testutils.maru
 
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.time.Duration
 import linea.timer.Timer
 import linea.timer.TimerFactory
 import linea.timer.TimerSchedule
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration
 
 // Test implementation that allows controlling the timer execution. Supports only scheduleAtFixedRate
 class TestablePeriodicTimer(

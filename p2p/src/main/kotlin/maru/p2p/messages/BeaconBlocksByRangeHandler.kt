@@ -28,8 +28,8 @@ class BeaconBlocksByRangeHandler(
   private val beaconChain: BeaconChain,
   private val blockRetrievalStrategy: BlockRetrievalStrategy = DefaultBlockRetrievalStrategy(),
 ) : RpcMessageHandler<
-    RequestMessageAdapter<BeaconBlocksByRangeRequest, RpcMessageType>,
-    Message<BeaconBlocksByRangeResponse, RpcMessageType>,
+  RequestMessageAdapter<BeaconBlocksByRangeRequest, RpcMessageType>,
+  Message<BeaconBlocksByRangeResponse, RpcMessageType>,
   > {
   private val log = LogManager.getLogger(this.javaClass)
 

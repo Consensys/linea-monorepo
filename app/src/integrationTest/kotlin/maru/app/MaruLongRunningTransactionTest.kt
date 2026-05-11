@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -27,6 +25,8 @@ import testutils.RecordingEngineProxy
 import testutils.SingleNodeNetworkStack
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class MaruLongRunningTransactionTest {
   private lateinit var cluster: Cluster
@@ -41,35 +41,33 @@ class MaruLongRunningTransactionTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
+
+    networkParticipantStack = SingleNodeNetworkStack(
+      cluster = cluster,
+    ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      proxy = RecordingEngineProxy(engineRpcUrl)
+      proxy.start()
+
+      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
+        ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+        engineApiRpc = proxy.url(),
+        dataDir = tmpDir,
+        allowEmptyBlocks = false,
+        syncingConfig = MaruFactory.defaultSyncingConfig.copy(
+          elSyncStatusRefreshInterval = 1000.seconds,
+        ),
+        qbftOptions = QbftConfig(
+          feeRecipient = maruFactory.qbftValidator.address.reversedArray(),
+          minBlockBuildTime = expectedMinBuildTime.milliseconds,
+          roundExpiry = 2.seconds,
+        ),
       )
-
-    networkParticipantStack =
-      SingleNodeNetworkStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        proxy = RecordingEngineProxy(engineRpcUrl)
-        proxy.start()
-
-        maruFactory.buildTestMaruValidatorWithoutP2pPeering(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = proxy.url(),
-          dataDir = tmpDir,
-          allowEmptyBlocks = false,
-          syncingConfig =
-            MaruFactory.defaultSyncingConfig.copy(
-              elSyncStatusRefreshInterval = 1000.seconds,
-            ),
-          qbftOptions =
-            QbftConfig(
-              feeRecipient = maruFactory.qbftValidator.address.reversedArray(),
-              minBlockBuildTime = expectedMinBuildTime.milliseconds,
-              roundExpiry = 2.seconds,
-            ),
-        )
-      }
+    }
     networkParticipantStack.maruApp.start().get()
   }
 

@@ -16,8 +16,8 @@ import com.sksamuel.hoplite.StringNode
 import com.sksamuel.hoplite.decoder.Decoder
 import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
-import kotlin.reflect.KType
 import linea.kotlin.decodeHex
+import kotlin.reflect.KType
 
 class TomlByteArrayHexDecoder : Decoder<ByteArray> {
   override fun decode(

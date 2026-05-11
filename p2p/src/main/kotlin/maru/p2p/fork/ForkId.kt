@@ -8,12 +8,12 @@
  */
 package maru.p2p.fork
 
-import java.nio.ByteBuffer
 import linea.kotlin.encodeHex
 import maru.core.Hasher
 import maru.core.ObjHasher
 import maru.crypto.Keccak256Hasher
 import maru.serialization.Serializer
+import java.nio.ByteBuffer
 
 data class ForkId(
   val prevForkIdDigest: ByteArray,

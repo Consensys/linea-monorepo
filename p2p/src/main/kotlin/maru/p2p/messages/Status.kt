@@ -34,5 +34,8 @@ data class Status(
   }
 
   override fun toString(): String =
-    "Status(latestBlockNumber=$latestBlockNumber, forkIdHash=${forkIdHash.encodeHex()}, latestStateRoot=${latestStateRoot.encodeHex()})"
+    "Status(" +
+      "latestBlockNumber=$latestBlockNumber, " +
+      "forkIdHash=${forkIdHash.encodeHex()}, " +
+      "latestStateRoot=${latestStateRoot.encodeHex()})"
 }

@@ -8,11 +8,11 @@
  */
 package maru.consensus
 
+import org.assertj.core.api.Assertions.assertThat
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.test.Test
-import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {
   private val chainId = 1337u

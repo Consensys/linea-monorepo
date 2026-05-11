@@ -8,10 +8,10 @@
  */
 package maru.consensus.qbft
 
-import java.time.Duration
-import kotlin.time.toJavaDuration
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.RoundExpiryTimeCalculator
+import java.time.Duration
+import kotlin.time.toJavaDuration
 
 /**
  * A [RoundExpiryTimeCalculator] that always returns a constant round expiry time.

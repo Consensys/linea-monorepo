@@ -9,12 +9,12 @@
 package maru.metrics
 
 import io.vertx.core.Vertx
-import java.util.function.Supplier
-import kotlin.time.DurationUnit
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.hyperledger.besu.plugin.services.metrics.ExternalSummary
 import org.hyperledger.besu.plugin.services.metrics.LabelledSuppliedSummary
+import java.util.function.Supplier
+import kotlin.time.DurationUnit
 import net.consensys.linea.metrics.MetricsCategory as LineaMetricsCategory
 
 class LabelledSuppliedSummaryAdapter(

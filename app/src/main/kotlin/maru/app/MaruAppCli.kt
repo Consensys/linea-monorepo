@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import java.io.File
-import java.util.concurrent.Callable
 import maru.config.MaruConfigLoader
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
@@ -18,6 +16,8 @@ import picocli.CommandLine.ArgGroup
 import picocli.CommandLine.Command
 import picocli.CommandLine.ITypeConverter
 import picocli.CommandLine.Option
+import java.io.File
+import java.util.concurrent.Callable
 
 internal class KebabToEnumConverter<T : Enum<T>>(
   private val enumClass: Class<T>,
@@ -84,7 +84,8 @@ class MaruAppCli(
       names = ["--maru-genesis-file", "--genesis-file"],
       paramLabel = "BEACON_GENESIS.json",
       description = [
-        "Beacon chain genesis file (\"--maru-genesis-file\" will be deprecated soon and replaced by \"--genesis-file\")",
+        "Beacon chain genesis file (\"--maru-genesis-file\" will be deprecated soon " +
+          "and replaced by \"--genesis-file\")",
       ],
       required = false,
     )

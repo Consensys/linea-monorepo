@@ -8,7 +8,6 @@
  */
 package maru.p2p.messages
 
-import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import maru.p2p.MaruPeer
 import maru.p2p.Message
@@ -25,6 +24,7 @@ import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
+import kotlin.random.Random
 
 class StatusHandlerTest {
   @Test

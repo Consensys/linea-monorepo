@@ -8,9 +8,6 @@
  */
 package maru.app
 
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneOffset
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
@@ -22,6 +19,9 @@ import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 class MaruAppFactoryCheckEthApiTest {
   private fun baseQbftConfig() =

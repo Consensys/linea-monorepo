@@ -53,23 +53,23 @@ class MaruQbftValidatorTest {
   @BeforeEach
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
 
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
-    networkParticipantStack =
-      SingleNodeNetworkStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
-        maruFactory.buildTestMaruValidatorWithoutP2pPeering(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
-          dataDir = tmpDir,
-          overridingP2PNetwork = spyingP2pNetwork,
-        )
-      }
+    networkParticipantStack = SingleNodeNetworkStack(
+      cluster = cluster,
+    ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
+        ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+        engineApiRpc = engineRpcUrl,
+        dataDir = tmpDir,
+        overridingP2PNetwork = spyingP2pNetwork,
+      )
+    }
     networkParticipantStack.maruApp.start().get()
   }
 

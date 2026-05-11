@@ -9,10 +9,6 @@
 package maru.app
 
 import io.libp2p.etc.types.fromHex
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -35,6 +31,10 @@ import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruMultiValidatorTest {
   companion object {
@@ -73,12 +73,11 @@ class MaruMultiValidatorTest {
 
   @BeforeEach
   fun setUp() {
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
     val besuBuilder = { BesuFactory.buildTestBesu(validator = false) }
     stack0 = PeeringNodeNetworkStack(besuBuilder)
     stack1 = PeeringNodeNetworkStack(besuBuilder)
@@ -358,13 +357,12 @@ class MaruMultiValidatorTest {
 
     // Verify blocks consistent across all 4 validators
     checkAllValidatorBlocksAreTheSame(
-      validatorBlocks =
-        listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
-          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
-        ),
+      validatorBlocks = listOf(
+        { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+        { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+        { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+        { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, verifyCount) },
+      ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
 
@@ -407,12 +405,11 @@ class MaruMultiValidatorTest {
     val verifyStart = heightAfterStop + 1uL
     val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
-      validatorBlocks =
-        listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-        ),
+      validatorBlocks = listOf(
+        { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+      ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
     log.info("Block production continued successfully with 3 of 4 validators")
@@ -463,12 +460,11 @@ class MaruMultiValidatorTest {
     val verifyStart = heightAfterStop + 1uL
     val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
-      validatorBlocks =
-        listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-        ),
+      validatorBlocks = listOf(
+        { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+      ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
     log.info("Block production recovered after quorum was restored")
@@ -510,13 +506,12 @@ class MaruMultiValidatorTest {
     val verifyStart = heightBeforeRestart + 1uL
     val count = STABLE_BLOCKS.toULong()
     checkAllValidatorBlocksAreTheSame(
-      validatorBlocks =
-        listOf(
-          { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-          { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
-        ),
+      validatorBlocks = listOf(
+        { stack0.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack1.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack2.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+        { stack3.maruApp.beaconChain.getSealedBeaconBlocks(verifyStart, count) },
+      ),
       blocksToMetadata = ::clBlocksToMetadata,
     )
     log.info("Block production resumed successfully after full restart")

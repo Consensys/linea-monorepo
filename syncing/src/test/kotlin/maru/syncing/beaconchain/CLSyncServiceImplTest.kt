@@ -8,12 +8,6 @@
  */
 package maru.syncing.beaconchain
 
-import java.util.SequencedSet
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.time.Duration.Companion.seconds
 import linea.timer.JvmTimerFactory
 import linea.timer.TimerFactory
 import maru.config.P2PConfig
@@ -66,6 +60,12 @@ import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
+import java.util.SequencedSet
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.seconds
 
 class CLSyncServiceImplTest {
   companion object {
@@ -84,11 +84,10 @@ class CLSyncServiceImplTest {
     fun createForkIdHashProvider(beaconChain: BeaconChain): ForkPeeringManager {
       val consensusConfig: ConsensusConfig =
         QbftConsensusConfig(
-          validatorSet =
-            setOf(
-              Validator(ByteArray(20) { 0 }),
-              Validator(ByteArray(20) { 1 }),
-            ),
+          validatorSet = setOf(
+            Validator(ByteArray(20) { 0 }),
+            Validator(ByteArray(20) { 1 }),
+          ),
           fork = ChainFork(ClFork.QBFT_PHASE0, elFork = ElFork.Prague),
         )
 
@@ -126,30 +125,27 @@ class CLSyncServiceImplTest {
   fun setUp() {
     signatureAlgorithm = SecpCrypto.signatureAlgorithm
     keypair = signatureAlgorithm.generateKeyPair()
-    validators =
-      sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).bytes.toArray()))
+    validators = sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).bytes.toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
     val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)
     targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
     sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
-    targetP2pNetwork =
-      createNetwork(
-        targetBeaconChain,
-        targetNodeKey,
-        0u,
-        InMemoryP2PState(),
-        JvmTimerFactory(),
-      )
-    sourceP2pNetwork =
-      createNetwork(
-        sourceBeaconChain,
-        sourceNodeKey,
-        0u,
-        InMemoryP2PState(),
-        JvmTimerFactory(),
-      )
+    targetP2pNetwork = createNetwork(
+      targetBeaconChain,
+      targetNodeKey,
+      0u,
+      InMemoryP2PState(),
+      JvmTimerFactory(),
+    )
+    sourceP2pNetwork = createNetwork(
+      sourceBeaconChain,
+      sourceNodeKey,
+      0u,
+      InMemoryP2PState(),
+      JvmTimerFactory(),
+    )
 
     createBlocks(
       beaconChain = sourceBeaconChain,
@@ -161,17 +157,16 @@ class CLSyncServiceImplTest {
     )
     peerLookup = spy(targetP2pNetwork.getPeerLookup())
     executorService = Executors.newCachedThreadPool()
-    clSyncService =
-      CLSyncServiceImpl(
-        beaconChain = targetBeaconChain,
-        executorService = executorService,
-        validatorProvider = StaticValidatorProvider(validators),
-        allowEmptyBlocks = true,
-        peerLookup = peerLookup,
-        besuMetrics = TestMetricsSystemAdapter,
-        metricsFacade = TestMetricsFacade,
-        pipelineConfig = defaultPipelineConfig,
-      )
+    clSyncService = CLSyncServiceImpl(
+      beaconChain = targetBeaconChain,
+      executorService = executorService,
+      validatorProvider = StaticValidatorProvider(validators),
+      allowEmptyBlocks = true,
+      peerLookup = peerLookup,
+      besuMetrics = TestMetricsSystemAdapter,
+      metricsFacade = TestMetricsFacade,
+      pipelineConfig = defaultPipelineConfig,
+    )
 
     try {
       targetP2pNetwork.start().get()
@@ -419,12 +414,11 @@ class CLSyncServiceImplTest {
     val p2pNetworkImpl =
       P2PNetworkImpl(
         privateKeyBytes = key,
-        p2pConfig =
-          P2PConfig(
-            ipAddress = IPV4,
-            port = port,
-            staticPeers = emptyList(),
-          ),
+        p2pConfig = P2PConfig(
+          ipAddress = IPV4,
+          port = port,
+          staticPeers = emptyList(),
+        ),
         chainId = CHAIN_ID,
         serDe = RLPSerializers.SealedBeaconBlockSerializer,
         metricsFacade = TestMetricsFacade,

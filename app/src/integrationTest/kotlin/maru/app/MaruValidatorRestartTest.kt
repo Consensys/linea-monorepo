@@ -8,8 +8,6 @@
  */
 package maru.app
 
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.test.util.NetworkUtil.findFreePorts
 import org.apache.logging.log4j.LogManager
 import org.awaitility.kotlin.await
@@ -28,6 +26,8 @@ import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
 import testutils.maru.awaitTillMaruHasPeers
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class MaruValidatorRestartTest {
   private lateinit var cluster: Cluster
@@ -39,18 +39,16 @@ class MaruValidatorRestartTest {
 
   @BeforeEach
   fun setup() {
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
     transactionsHelper = BesuTransactionsHelper()
     validatorStack = PeeringNodeNetworkStack()
-    followerStack =
-      PeeringNodeNetworkStack(
-        besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
-      )
+    followerStack = PeeringNodeNetworkStack(
+      besuBuilder = { BesuFactory.buildTestBesu(validator = false) },
+    )
   }
 
   @AfterEach

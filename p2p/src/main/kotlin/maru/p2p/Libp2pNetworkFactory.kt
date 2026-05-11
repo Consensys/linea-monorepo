@@ -24,9 +24,6 @@ import io.libp2p.pubsub.gossip.builders.GossipParamsBuilder
 import io.libp2p.pubsub.gossip.builders.GossipRouterBuilder
 import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
-import java.util.Optional
-import kotlin.random.Random
-import kotlin.time.toJavaDuration
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
 import maru.p2p.topics.ImmediateTopicHandler
@@ -48,6 +45,9 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
+import java.util.Optional
+import kotlin.random.Random
+import kotlin.time.toJavaDuration
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 data class TekuLibP2PNetwork(
@@ -105,11 +105,10 @@ class Libp2pNetworkFactory(
       GossipRouterBuilder()
         .apply {
           params = gossipParams
-          scoreParams =
-            GossipScoreParams(
-              GossipPeerScoreParams(isDirect = { _ -> gossipingConfig.considerPeersAsDirect }),
-              GossipTopicsScoreParams(),
-            )
+          scoreParams = GossipScoreParams(
+            GossipPeerScoreParams(isDirect = { _ -> gossipingConfig.considerPeersAsDirect }),
+            GossipTopicsScoreParams(),
+          )
           messageFactory = { getMessageFactory(it, gossipTopicHandlers) }
         }
     val gossipRouter = gossipRouterBuilder.build()
@@ -149,13 +148,20 @@ class Libp2pNetworkFactory(
 
     val p2pNetwork =
       LibP2PNetwork(
-        /* privKey = */ privateKey,
-        /* nodeId = */ libP2PNodeId,
-        /* host = */ host,
-        /* peerManager = */ peerManager,
-        /* advertisedAddresses = */ advertisedAddresses,
-        /* gossipNetwork = */ gossipNetwork,
-        /* listenPorts = */ listOf(port.toInt()),
+        /* privKey = */
+        privateKey,
+        /* nodeId = */
+        libP2PNodeId,
+        /* host = */
+        host,
+        /* peerManager = */
+        peerManager,
+        /* advertisedAddresses = */
+        advertisedAddresses,
+        /* gossipNetwork = */
+        gossipNetwork,
+        /* listenPorts = */
+        listOf(port.toInt()),
       )
     return TekuLibP2PNetwork(p2pNetwork, host, maruPeerManager)
   }

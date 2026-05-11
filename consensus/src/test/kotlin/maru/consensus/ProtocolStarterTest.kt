@@ -8,11 +8,6 @@
  */
 package maru.consensus
 
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.seconds
 import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.InOrderFanoutSubscriptionManager
@@ -21,6 +16,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.maru.TestablePeriodicTimerFactory
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.seconds
 
 class ProtocolStarterTest {
   private class StubProtocol : Protocol {
@@ -316,11 +316,10 @@ class ProtocolStarterTest {
     return ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
-      nextBlockTimestampProvider =
-        NextBlockTimestampProviderImpl(
-          clock = clock,
-          forksSchedule = forksSchedule,
-        ),
+      nextBlockTimestampProvider = NextBlockTimestampProviderImpl(
+        clock = clock,
+        forksSchedule = forksSchedule,
+      ),
       forkTransitionCheckInterval = 1.seconds,
       clock = clock,
       timerFactory = timerFactory,

@@ -8,10 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.TimeoutException
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.core.ext.DataGenerators.randomStatus
@@ -32,6 +28,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 import tech.pegasys.teku.networking.p2p.reputation.ReputationAdjustment
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeoutException
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class DownloadBlocksTest {
   private val defaultEndBlock = 11UL

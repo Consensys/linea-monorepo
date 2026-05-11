@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.util.Optional
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftSealedBlockAdapter
@@ -35,6 +34,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.crypto.SECPSignature
+import java.util.Optional
 
 /**
  * Responsible for QBFT block creation. As opposed to EagerBlockCreator, Delayed one relies on the fact that FCU was

@@ -9,8 +9,6 @@
 package maru.app
 
 import io.vertx.core.Vertx
-import java.time.Clock
-import java.util.concurrent.CompletableFuture
 import linea.timer.TimerFactory
 import maru.api.ApiServer
 import maru.config.MaruConfig
@@ -43,6 +41,8 @@ import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
+import java.time.Clock
+import java.util.concurrent.CompletableFuture
 
 interface LongRunningCloseable :
   LongRunningService,
@@ -288,11 +288,10 @@ class MaruApp(
     val protocolStarter =
       ProtocolStarter(
         forksSchedule = beaconGenesisConfig,
-        protocolFactory =
-          OmniProtocolFactory(
-            qbftConsensusFactory = qbftFactory,
-            difficultyAwareQbftFactory = difficultyAwareQbftFactory,
-          ),
+        protocolFactory = OmniProtocolFactory(
+          qbftConsensusFactory = qbftFactory,
+          difficultyAwareQbftFactory = difficultyAwareQbftFactory,
+        ),
         nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
         forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,

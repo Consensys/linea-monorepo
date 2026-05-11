@@ -8,10 +8,6 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.seconds
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
@@ -34,6 +30,10 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
 class BeaconChainDownloadPipelineFactoryTest {
   private lateinit var blockImporter: SealedBeaconBlockImporter<ValidationResult>
@@ -58,14 +58,13 @@ class BeaconChainDownloadPipelineFactoryTest {
     peerLookup = mock()
     executorService = Executors.newCachedThreadPool()
     syncTargetProvider = mock()
-    factory =
-      BeaconChainDownloadPipelineFactory(
-        blockImporter = blockImporter,
-        metricsSystem = NoOpMetricsSystem(),
-        peerLookup = peerLookup,
-        config = defaultPipelineConfig,
-        syncTargetProvider = syncTargetProvider,
-      )
+    factory = BeaconChainDownloadPipelineFactory(
+      blockImporter = blockImporter,
+      metricsSystem = NoOpMetricsSystem(),
+      peerLookup = peerLookup,
+      config = defaultPipelineConfig,
+      syncTargetProvider = syncTargetProvider,
+    )
   }
 
   @AfterEach

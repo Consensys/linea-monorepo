@@ -11,7 +11,6 @@ package maru.p2p
 import io.libp2p.core.pubsub.ValidationResult.Ignore
 import io.libp2p.core.pubsub.ValidationResult.Invalid
 import io.libp2p.core.pubsub.ValidationResult.Valid
-import java.io.Closeable
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
@@ -20,6 +19,7 @@ import org.ethereum.beacon.discovery.schema.NodeRecord
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
+import java.io.Closeable
 
 const val LINEA_DOMAIN = "linea"
 

@@ -11,7 +11,6 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import java.util.SequencedSet
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconBlockHeader
 import maru.core.Seal
@@ -20,6 +19,7 @@ import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.SequencedSet
 
 class SealsVerifierTest {
   private val validators =

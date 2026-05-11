@@ -9,7 +9,6 @@
 package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Ok
-import java.util.SequencedSet
 import maru.consensus.qbft.toAddress
 import maru.consensus.state.StateTransition
 import maru.consensus.validation.StateRootValidator
@@ -20,6 +19,7 @@ import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.SequencedSet
 
 class QbftBlockInterfaceAdapterTest {
   private fun createStateTransition(
@@ -58,11 +58,10 @@ class QbftBlockInterfaceAdapterTest {
     val newProposer = DataGenerators.randomValidator()
     val beaconBlock =
       BeaconBlock(
-        beaconBlockHeader =
-          DataGenerators.randomBeaconBlockHeader(1UL).copy(
-            round = 10u,
-            proposer = originalProposer,
-          ),
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(
+          round = 10u,
+          proposer = originalProposer,
+        ),
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
@@ -101,11 +100,10 @@ class QbftBlockInterfaceAdapterTest {
     val validators = DataGenerators.randomValidators().toSortedSet()
     val beaconBlock =
       BeaconBlock(
-        beaconBlockHeader =
-          DataGenerators.randomBeaconBlockHeader(1UL).copy(
-            round = 10u,
-            proposer = originalProposer,
-          ),
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(
+          round = 10u,
+          proposer = originalProposer,
+        ),
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)

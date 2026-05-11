@@ -8,10 +8,10 @@
  */
 package maru.p2p
 
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Supplier
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
 
 class SubscriptionManager<E> {
   private val log = LogManager.getLogger(this.javaClass)

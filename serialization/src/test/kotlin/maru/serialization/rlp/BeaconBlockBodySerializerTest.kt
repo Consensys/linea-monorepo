@@ -8,12 +8,12 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
 import maru.core.BeaconBlockBody
 import maru.core.Seal
 import maru.core.ext.DataGenerators.randomExecutionPayload
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 
 class BeaconBlockBodySerializerTest {
   private val serializer =
@@ -26,12 +26,10 @@ class BeaconBlockBodySerializerTest {
   fun `can serialize and deserialize same value`() {
     val testValue =
       BeaconBlockBody(
-        prevCommitSeals =
-          buildSet(3) {
-            add(Seal(Random.nextBytes(96)))
-          },
-        executionPayload =
-          randomExecutionPayload(),
+        prevCommitSeals = buildSet(3) {
+          add(Seal(Random.nextBytes(96)))
+        },
+        executionPayload = randomExecutionPayload(),
       )
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)

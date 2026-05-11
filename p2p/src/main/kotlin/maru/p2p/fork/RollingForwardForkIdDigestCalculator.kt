@@ -8,12 +8,12 @@
  */
 package maru.p2p.fork
 
-import java.nio.ByteBuffer
 import maru.consensus.ForkSpec
 import maru.core.Hasher
 import maru.core.ObjHasher
 import maru.crypto.Keccak256Hasher
 import maru.database.BeaconChain
+import java.nio.ByteBuffer
 
 internal fun interface ForkDigestCalculator {
   fun calculateForkDigests(forks: List<ForkSpec>): List<ForkInfo>

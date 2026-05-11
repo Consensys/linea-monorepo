@@ -8,11 +8,11 @@
  */
 package maru.serialization.rlp
 
-import java.math.BigInteger
 import maru.core.ExecutionPayload
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
+import java.math.BigInteger
 
 class ExecutionPayloadSerDe : RLPSerDe<ExecutionPayload> {
   override fun writeTo(

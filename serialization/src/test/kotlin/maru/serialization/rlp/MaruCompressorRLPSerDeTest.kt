@@ -8,8 +8,6 @@
  */
 package maru.serialization.rlp
 
-import kotlin.random.Random
-import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.Seal
@@ -18,6 +16,8 @@ import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomExecutionPayload
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
+import kotlin.random.nextULong
 
 class MaruCompressorRLPSerDeTest {
   private val compressorRLPSerDe =
@@ -35,11 +35,10 @@ class MaruCompressorRLPSerDeTest {
       )
     val sealedBlock =
       SealedBeaconBlock(
-        beaconBlock =
-          BeaconBlock(
-            beaconBlockHeader = beaconBlockHeader,
-            beaconBlockBody = beaconBlockBody,
-          ),
+        beaconBlock = BeaconBlock(
+          beaconBlockHeader = beaconBlockHeader,
+          beaconBlockBody = beaconBlockBody,
+        ),
         commitSeals = buildSet(3) { add(Seal(Random.nextBytes(96))) },
       )
     val serializedData = compressorRLPSerDe.serialize(sealedBlock)

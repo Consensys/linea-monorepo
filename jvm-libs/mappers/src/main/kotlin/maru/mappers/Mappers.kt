@@ -8,8 +8,6 @@
  */
 package maru.mappers
 
-import java.math.BigInteger
-import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
@@ -34,6 +32,8 @@ import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import java.math.BigInteger
+import kotlin.jvm.optionals.getOrNull
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
 import tech.pegasys.teku.spec.executionlayer.PayloadStatus as TekuPayloadStatus
 
@@ -48,8 +48,7 @@ object Mappers {
       recId = v.subtract(Transaction.REPLAY_UNPROTECTED_V_BASE).byteValueExact()
     } else if (v > Transaction.REPLAY_PROTECTED_V_MIN) {
       chainId = v.subtract(Transaction.REPLAY_PROTECTED_V_BASE).divide(Transaction.TWO)
-      recId =
-        v.subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE)).byteValueExact()
+      recId = v.subtract(Transaction.TWO.multiply(chainId).add(Transaction.REPLAY_PROTECTED_V_BASE)).byteValueExact()
     } else {
       throw RuntimeException("An unsupported encoded `v` value of $v was found")
     }
@@ -148,8 +147,7 @@ object Mappers {
       gasUsed = this.gasUsed.longValue().toULong(),
       timestamp = this.timestamp.longValue().toULong(),
       extraData = this.extraData.toArray(),
-      baseFeePerGas =
-        this.baseFeePerGas.toBigInteger(),
+      baseFeePerGas = this.baseFeePerGas.toBigInteger(),
       blockHash = this.blockHash.toArray(),
       transactions = this.transactions.map { it.toArray() },
     )
@@ -174,60 +172,106 @@ object Mappers {
 
   fun ExecutionPayload.toExecutionPayloadV3() =
     ExecutionPayloadV3(
-      /* parentHash */ Bytes32.wrap(this.parentHash),
-      /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
-      /* stateRoot */ Bytes32.wrap(this.stateRoot),
-      /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
-      /* logsBloom */ Bytes.wrap(this.logsBloom),
-      /* prevRandao */ Bytes32.wrap(this.prevRandao),
-      /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
-      /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
-      /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
-      /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
-      /* extraData */ Bytes.wrap(this.extraData),
-      /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
-      /* blockHash */ Bytes32.wrap(this.blockHash),
-      /* transactions */ this.transactions.map { Bytes.wrap(it) },
-      /* withdrawals */ emptyList(),
-      /* blobGasUsed */ UInt64.ZERO,
-      /* excessBlobGas */ UInt64.ZERO,
+      /* parentHash */
+      Bytes32.wrap(this.parentHash),
+      /* feeRecipient */
+      Bytes20(Bytes.wrap(this.feeRecipient)),
+      /* stateRoot */
+      Bytes32.wrap(this.stateRoot),
+      /* receiptsRoot */
+      Bytes32.wrap(this.receiptsRoot),
+      /* logsBloom */
+      Bytes.wrap(this.logsBloom),
+      /* prevRandao */
+      Bytes32.wrap(this.prevRandao),
+      /* blockNumber */
+      UInt64.valueOf(this.blockNumber.toString()),
+      /* gasLimit */
+      UInt64.valueOf(this.gasLimit.toString()),
+      /* gasUsed */
+      UInt64.valueOf(this.gasUsed.toString()),
+      /* timestamp */
+      UInt64.valueOf(this.timestamp.toString()),
+      /* extraData */
+      Bytes.wrap(this.extraData),
+      /* baseFeePerGas */
+      UInt256.valueOf(this.baseFeePerGas),
+      /* blockHash */
+      Bytes32.wrap(this.blockHash),
+      /* transactions */
+      this.transactions.map { Bytes.wrap(it) },
+      /* withdrawals */
+      emptyList(),
+      /* blobGasUsed */
+      UInt64.ZERO,
+      /* excessBlobGas */
+      UInt64.ZERO,
     )
 
   fun ExecutionPayload.toExecutionPayloadV2() =
     ExecutionPayloadV2(
-      /* parentHash */ Bytes32.wrap(this.parentHash),
-      /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
-      /* stateRoot */ Bytes32.wrap(this.stateRoot),
-      /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
-      /* logsBloom */ Bytes.wrap(this.logsBloom),
-      /* prevRandao */ Bytes32.wrap(this.prevRandao),
-      /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
-      /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
-      /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
-      /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
-      /* extraData */ Bytes.wrap(this.extraData),
-      /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
-      /* blockHash */ Bytes32.wrap(this.blockHash),
-      /* transactions */ this.transactions.map { Bytes.wrap(it) },
-      /* withdrawals */ emptyList(),
+      /* parentHash */
+      Bytes32.wrap(this.parentHash),
+      /* feeRecipient */
+      Bytes20(Bytes.wrap(this.feeRecipient)),
+      /* stateRoot */
+      Bytes32.wrap(this.stateRoot),
+      /* receiptsRoot */
+      Bytes32.wrap(this.receiptsRoot),
+      /* logsBloom */
+      Bytes.wrap(this.logsBloom),
+      /* prevRandao */
+      Bytes32.wrap(this.prevRandao),
+      /* blockNumber */
+      UInt64.valueOf(this.blockNumber.toString()),
+      /* gasLimit */
+      UInt64.valueOf(this.gasLimit.toString()),
+      /* gasUsed */
+      UInt64.valueOf(this.gasUsed.toString()),
+      /* timestamp */
+      UInt64.valueOf(this.timestamp.toString()),
+      /* extraData */
+      Bytes.wrap(this.extraData),
+      /* baseFeePerGas */
+      UInt256.valueOf(this.baseFeePerGas),
+      /* blockHash */
+      Bytes32.wrap(this.blockHash),
+      /* transactions */
+      this.transactions.map { Bytes.wrap(it) },
+      /* withdrawals */
+      emptyList(),
     )
 
   fun ExecutionPayload.toExecutionPayloadV1() =
     ExecutionPayloadV1(
-      /* parentHash */ Bytes32.wrap(this.parentHash),
-      /* feeRecipient */ Bytes20(Bytes.wrap(this.feeRecipient)),
-      /* stateRoot */ Bytes32.wrap(this.stateRoot),
-      /* receiptsRoot */ Bytes32.wrap(this.receiptsRoot),
-      /* logsBloom */ Bytes.wrap(this.logsBloom),
-      /* prevRandao */ Bytes32.wrap(this.prevRandao),
-      /* blockNumber */ UInt64.valueOf(this.blockNumber.toString()),
-      /* gasLimit */ UInt64.valueOf(this.gasLimit.toString()),
-      /* gasUsed */ UInt64.valueOf(this.gasUsed.toString()),
-      /* timestamp */ UInt64.valueOf(this.timestamp.toString()),
-      /* extraData */ Bytes.wrap(this.extraData),
-      /* baseFeePerGas */ UInt256.valueOf(this.baseFeePerGas),
-      /* blockHash */ Bytes32.wrap(this.blockHash),
-      /* transactions */ this.transactions.map { Bytes.wrap(it) },
+      /* parentHash */
+      Bytes32.wrap(this.parentHash),
+      /* feeRecipient */
+      Bytes20(Bytes.wrap(this.feeRecipient)),
+      /* stateRoot */
+      Bytes32.wrap(this.stateRoot),
+      /* receiptsRoot */
+      Bytes32.wrap(this.receiptsRoot),
+      /* logsBloom */
+      Bytes.wrap(this.logsBloom),
+      /* prevRandao */
+      Bytes32.wrap(this.prevRandao),
+      /* blockNumber */
+      UInt64.valueOf(this.blockNumber.toString()),
+      /* gasLimit */
+      UInt64.valueOf(this.gasLimit.toString()),
+      /* gasUsed */
+      UInt64.valueOf(this.gasUsed.toString()),
+      /* timestamp */
+      UInt64.valueOf(this.timestamp.toString()),
+      /* extraData */
+      Bytes.wrap(this.extraData),
+      /* baseFeePerGas */
+      UInt256.valueOf(this.baseFeePerGas),
+      /* blockHash */
+      Bytes32.wrap(this.blockHash),
+      /* transactions */
+      this.transactions.map { Bytes.wrap(it) },
     )
 
   fun PayloadAttributes.toPayloadAttributesV1(): PayloadAttributesV1 =

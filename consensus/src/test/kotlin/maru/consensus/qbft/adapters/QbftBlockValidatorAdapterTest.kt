@@ -10,7 +10,6 @@ package maru.consensus.qbft.adapters
 
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
-import java.util.Optional
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
@@ -18,6 +17,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.Optional
 
 class QbftBlockValidatorAdapterTest {
   private val newBlock = DataGenerators.randomBeaconBlock(10u)
@@ -26,11 +26,10 @@ class QbftBlockValidatorAdapterTest {
   @Test
   fun `validateBlock should return false when block validation error`() {
     val blockValidatorError = BlockValidator.error("Error")
-    blockValidator =
-      object : BlockValidator {
-        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
-          SafeFuture.completedFuture(blockValidatorError)
-      }
+    blockValidator = object : BlockValidator {
+      override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        SafeFuture.completedFuture(blockValidatorError)
+    }
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(
         blockValidator = blockValidator,
@@ -47,11 +46,10 @@ class QbftBlockValidatorAdapterTest {
 
   @Test
   fun `validateBlock should return true when valid block`() {
-    blockValidator =
-      object : BlockValidator {
-        override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
-          SafeFuture.completedFuture(BlockValidator.ok())
-      }
+    blockValidator = object : BlockValidator {
+      override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidator.BlockValidationError>> =
+        SafeFuture.completedFuture(BlockValidator.ok())
+    }
 
     val qbftBlockValidatorAdapter =
       QbftBlockValidatorAdapter(

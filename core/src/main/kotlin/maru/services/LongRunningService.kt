@@ -7,8 +7,8 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.services
-import java.util.concurrent.CompletableFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.CompletableFuture
 import linea.LongRunningService as LineaLongRunningService
 
 typealias LongRunningService = LineaLongRunningService

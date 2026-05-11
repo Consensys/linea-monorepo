@@ -8,12 +8,12 @@
  */
 package maru.consensus.qbft
 
-import java.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class ConstantRoundTimeExpiryCalculatorTest {
   @Test

@@ -30,12 +30,11 @@ abstract class BaseWeb3JJsonRpcExecutionLayerEngineApiClient(
       category = MaruMetricsCategory.ENGINE_API,
       name = "request.latency",
       description = "Execution Engine API request latency",
-      commonTags =
-        listOf(
-          Tag("fork", getFork().name),
-          Tag("endpoint", web3jClient.getEndpoint()),
-          Tag("method", method),
-        ),
+      commonTags = listOf(
+        Tag("fork", getFork().name),
+        Tag("endpoint", web3jClient.getEndpoint()),
+        Tag("method", method),
+      ),
       tagValueExtractor = {
         when {
           it.payload != null -> listOf(Tag("status", "success"))

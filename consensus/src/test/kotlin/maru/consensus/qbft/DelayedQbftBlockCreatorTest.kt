@@ -8,7 +8,6 @@
  */
 package maru.consensus.qbft
 
-import java.math.BigInteger
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
@@ -37,6 +36,7 @@ import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
+import java.math.BigInteger
 
 class DelayedQbftBlockCreatorTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)

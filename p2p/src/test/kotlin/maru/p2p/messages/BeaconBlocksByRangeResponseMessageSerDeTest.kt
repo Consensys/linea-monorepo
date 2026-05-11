@@ -21,8 +21,7 @@ class BeaconBlocksByRangeResponseMessageSerDeTest {
   fun `response message serDe serializes and deserializes correctly`() {
     val messageSerDe =
       BeaconBlocksByRangeResponseMessageSerDe(
-        beaconBlocksByRangeResponseSerDe =
-          BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
+        beaconBlocksByRangeResponseSerDe = BeaconBlocksByRangeResponseSerDe(RLPSerializers.SealedBeaconBlockSerializer),
       )
 
     val response =

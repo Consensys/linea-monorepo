@@ -8,7 +8,6 @@
  */
 package maru.consensus
 
-import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
 import maru.extensions.encodeHex
@@ -16,6 +15,7 @@ import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.ConcurrentHashMap
 
 class SealedBeaconBlockHandlerAdapter<T>(
   val adaptee: NewBlockHandler<T>,
@@ -77,9 +77,9 @@ class NewBlockHandlerMultiplexer(
   handlersMap: Map<String, NewBlockHandler<*>>,
   log: Logger = LogManager.getLogger(NewBlockHandlerMultiplexer::class.java),
 ) : CallAndForgetFutureMultiplexer<BeaconBlock>(
-    handlersMap = blockHandlersToGenericHandlers(handlersMap),
-    log = log,
-  ),
+  handlersMap = blockHandlersToGenericHandlers(handlersMap),
+  log = log,
+),
   NewBlockHandler<Unit> {
   companion object {
     fun blockHandlersToGenericHandlers(

@@ -8,7 +8,6 @@
  */
 package testutils
 
-import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.core.SealedBeaconBlock
 import maru.p2p.GossipMessageType
@@ -24,6 +23,7 @@ import org.hyperledger.besu.consensus.qbft.core.messagedata.ProposalMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.RoundChangeMessageData
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 class SpyingP2PNetwork(

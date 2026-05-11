@@ -71,11 +71,10 @@ class JsonFriendlyForksScheduleTest {
           ForkSpec(
             timestampSeconds = 4UL,
             blockTimeSeconds = 6U,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+            ),
           ),
         ),
       ),

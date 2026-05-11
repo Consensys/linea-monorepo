@@ -13,13 +13,6 @@ import io.libp2p.core.crypto.KeyType
 import io.libp2p.core.crypto.generateKeyPair
 import io.libp2p.core.crypto.marshalPrivateKey
 import io.libp2p.core.crypto.unmarshalPrivateKey
-import java.net.URI
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
@@ -62,6 +55,13 @@ import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.services.NoOpLongRunningService
 import net.consensys.linea.metrics.MetricsFacade
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
 /**
@@ -159,41 +159,37 @@ class MaruFactory(
           ForkSpec(
             timestampSeconds = 0UL,
             blockTimeSeconds = 1u,
-            configuration =
-              DifficultyAwareQbftConfig(
-                QbftConsensusConfig(
-                  validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-                ),
-                terminalTotalDifficulty = ttd!!,
+            configuration = DifficultyAwareQbftConfig(
+              QbftConsensusConfig(
+                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
               ),
+              terminalTotalDifficulty = ttd!!,
+            ),
           ),
           ForkSpec(
             timestampSeconds = shanghaiTimestamp,
             blockTimeSeconds = 1u,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
+            ),
           ),
           ForkSpec(
             timestampSeconds = cancunTimestamp,
             blockTimeSeconds = 1u,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+            ),
           ),
           ForkSpec(
             timestampSeconds = pragueTimestamp,
             blockTimeSeconds = 1u,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = validatorSet,
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = validatorSet,
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+            ),
           ),
         ),
       )
@@ -204,11 +200,10 @@ class MaruFactory(
           ForkSpec(
             timestampSeconds = 0UL,
             blockTimeSeconds = 1u,
-            configuration =
-              QbftConsensusConfig(
-                validatorSet = validatorSet,
-                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
-              ),
+            configuration = QbftConsensusConfig(
+              validatorSet = validatorSet,
+              fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+            ),
           ),
         ),
       )
@@ -343,11 +338,10 @@ class MaruFactory(
       persistence = Persistence(dataPath = dataDir),
       qbft = qbftOptions,
       p2p = p2pConfig,
-      validatorElNode =
-        ValidatorElNode(
-          engineApiEndpoint = engineApiEndpointConfig,
-          payloadValidationEnabled = enablePayloadValidation,
-        ),
+      validatorElNode = ValidatorElNode(
+        engineApiEndpoint = engineApiEndpointConfig,
+        payloadValidationEnabled = enablePayloadValidation,
+      ),
       followers = followers,
       observability = observabilityOptions,
       linea = lineaConfig,
@@ -388,29 +382,27 @@ class MaruFactory(
   ): MaruApp =
     MaruAppFactory().create(
       config = config,
-      beaconGenesisConfig =
-        buildForkSchedule(
-          pragueTimestamp,
-          cancunTimestamp,
-          shanghaiTimestamp,
-          ttd,
-          initialValidators,
-        ),
+      beaconGenesisConfig = buildForkSchedule(
+        pragueTimestamp,
+        cancunTimestamp,
+        shanghaiTimestamp,
+        ttd,
+        initialValidators,
+      ),
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
-      overridingApiServer =
-        if (startApiServer) {
-          null
-        } else {
-          object : ApiServer {
-            override fun start(): CompletableFuture<Unit> = NoOpLongRunningService.start()
+      overridingApiServer = if (startApiServer) {
+        null
+      } else {
+        object : ApiServer {
+          override fun start(): CompletableFuture<Unit> = NoOpLongRunningService.start()
 
-            override fun stop(): CompletableFuture<Unit> = NoOpLongRunningService.stop()
+          override fun stop(): CompletableFuture<Unit> = NoOpLongRunningService.stop()
 
-            override fun port(): Int = 0
-          }
-        },
+          override fun port(): Int = 0
+        }
+      },
       p2pNetworkFactory = p2pNetworkFactory,
     )
 

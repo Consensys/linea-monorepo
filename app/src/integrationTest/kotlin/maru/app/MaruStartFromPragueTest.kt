@@ -8,10 +8,6 @@
  */
 package maru.app
 
-import java.io.File
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -30,6 +26,10 @@ import testutils.besu.BesuTransactionsHelper
 import testutils.besu.latestBlock
 import testutils.besu.startWithRetry
 import testutils.maru.MaruFactory
+import java.io.File
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.toJavaDuration
 
 class MaruStartFromPragueTest {
   private lateinit var cluster: Cluster
@@ -46,12 +46,11 @@ class MaruStartFromPragueTest {
   fun setUp() {
     transactionsHelper = BesuTransactionsHelper()
     // We'll set the switchTimestamp in the test method
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        net,
-        ThreadBesuNodeRunner(),
-      )
+    cluster = Cluster(
+      ClusterConfigurationBuilder().build(),
+      net,
+      ThreadBesuNodeRunner(),
+    )
   }
 
   @AfterEach
@@ -66,13 +65,12 @@ class MaruStartFromPragueTest {
   fun `should start QBFT consensus from prague fork allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
     cluster.startWithRetry(besuNode)
-    maruNode =
-      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
-        ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = besuNode.engineRpcUrl().get(),
-        dataDir = tmpDir.toPath(),
-        allowEmptyBlocks = true,
-      )
+    maruNode = maruFactory.buildTestMaruValidatorWithoutP2pPeering(
+      ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
+      engineApiRpc = besuNode.engineRpcUrl().get(),
+      dataDir = tmpDir.toPath(),
+      allowEmptyBlocks = true,
+    )
     maruNode.start().get()
 
     await
@@ -88,13 +86,12 @@ class MaruStartFromPragueTest {
   fun `should start QBFT consensus from prague fork not allowing empty blocks`() {
     val besuNode = BesuFactory.buildTestBesu()
     cluster.startWithRetry(besuNode)
-    maruNode =
-      maruFactory.buildTestMaruValidatorWithP2pPeering(
-        ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = besuNode.engineRpcUrl().get(),
-        dataDir = tmpDir.toPath(),
-        allowEmptyBlocks = false,
-      )
+    maruNode = maruFactory.buildTestMaruValidatorWithP2pPeering(
+      ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
+      engineApiRpc = besuNode.engineRpcUrl().get(),
+      dataDir = tmpDir.toPath(),
+      allowEmptyBlocks = false,
+    )
     maruNode.start().get()
     val totalBlocksToProduce = 5
     repeat(totalBlocksToProduce) {
