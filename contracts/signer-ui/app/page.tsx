@@ -18,7 +18,6 @@ import {
   signerTxFragmentId,
   signerUiHistoryStorageKey,
   signerUiLastSessionIdStorageKey,
-  signerUiSessionSecretStorageKey,
   transactionExplorerUrl,
   transactionKindBadgeLabels,
   type TransactionDetails,
@@ -310,11 +309,6 @@ function ContractsDeployUiPage() {
 
     if (sessionSecretFromUrl) {
       setSessionSecret(sessionSecretFromUrl);
-      try {
-        sessionStorage.setItem(signerUiSessionSecretStorageKey(apiBaseUrl), sessionSecretFromUrl);
-      } catch {
-        /* storage full or disabled */
-      }
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("sessionToken");
       window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
@@ -324,26 +318,11 @@ function ContractsDeployUiPage() {
       };
     }
 
-    const storageKey = signerUiSessionSecretStorageKey(apiBaseUrl);
     const loadSessionSecret = async () => {
-      const cachedSessionSecret = sessionStorage.getItem(storageKey);
-      if (cachedSessionSecret) {
-        if (!cancelled) {
-          setSessionSecret(cachedSessionSecret);
-          setSessionAuthReady(true);
-        }
-        return;
-      }
-
       try {
         const bootstrappedSessionSecret = await bootstrapSession(apiBaseUrl);
         if (cancelled) {
           return;
-        }
-        try {
-          sessionStorage.setItem(storageKey, bootstrappedSessionSecret);
-        } catch {
-          /* storage full or disabled */
         }
         setSessionSecret(bootstrappedSessionSecret);
         setSessionAuthReady(true);

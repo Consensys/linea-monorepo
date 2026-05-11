@@ -1775,6 +1775,7 @@ class SignerUiSession {
       writeJson(response, 400, { error: "No matching pending transaction request was found." });
       return;
     }
+    const pendingRequest = this.pendingRequest;
 
     this.setTransactionProgress(
       payload.requestId,
@@ -1789,6 +1790,11 @@ class SignerUiSession {
       TX_LOOKUP_INTERVAL_MS,
     );
 
+    if (!this.pendingRequest || this.pendingRequest !== pendingRequest) {
+      writeJson(response, 409, { error: "Pending transaction request was cancelled before validation completed." });
+      return;
+    }
+
     if (!onChain) {
       const message =
         `Transaction ${payload.hash} was returned by the browser wallet, but Hardhat could not find it on ` +
@@ -1796,7 +1802,7 @@ class SignerUiSession {
         "Check the wallet activity against this exact RPC/chain, or increase HARDHAT_SIGNER_UI_TX_LOOKUP_TIMEOUT_MS.";
       this.setTransactionProgress(payload.requestId, "failed", message);
       console.warn(`HARDHAT_SIGNER_UI: ${message}`);
-      const rejectOutcome = this.pendingRequest.reject;
+      const rejectOutcome = pendingRequest.reject;
       this.pendingRequest = undefined;
       writeJson(response, 400, { error: message }, () => {
         queueMicrotask(() => rejectOutcome(new Error(message)));
@@ -1812,7 +1818,7 @@ class SignerUiSession {
 
     const mismatch = getOnChainTransactionPromptMismatch(
       onChain,
-      this.pendingRequest.prompt.request,
+      pendingRequest.prompt.request,
       this.walletState.address,
     );
     if (mismatch) {
@@ -1820,7 +1826,7 @@ class SignerUiSession {
         txHash: payload.hash,
         mismatch,
         tx: onChain,
-        promptRequest: this.pendingRequest.prompt.request,
+        promptRequest: pendingRequest.prompt.request,
       });
       this.setTransactionProgress(
         payload.requestId,
@@ -1840,7 +1846,7 @@ class SignerUiSession {
       chainId: payload.chainId,
     };
 
-    const { resolve: resolveOutcome } = this.pendingRequest;
+    const { resolve: resolveOutcome } = pendingRequest;
     this.pendingRequest = undefined;
     this.setTransactionProgress(
       payload.requestId,
