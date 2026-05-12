@@ -65,6 +65,17 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 		false,
 	)
 
+	// "mlvortex_shared_safe_queries" is the multilinvortex ExtraData key for
+	// queries whose per-pol points all share the same cCol suffix at prover
+	// time. After the combined sumcheck, every residual point is challenges[:nq],
+	// which is IDENTICAL across all polys of a single query — so if the input
+	// query was shared-safe, the residual is trivially shared-safe too (with
+	// the stronger property that ALL per-pol points are equal). Propagate the
+	// flag so downstream multilinvortex.CompileRound keeps using the
+	// SharedRowEvals fast path.
+	const sharedSafeKey = "mlvortex_shared_safe_queries"
+	safe, _ := comp.ExtraData[sharedSafeKey].(map[ifaces.QueryID]bool)
+
 	residuals := make([]query.MultilinearEval, len(queries))
 	for qIdx, q := range queries {
 		residuals[qIdx] = comp.InsertMultilinear(
@@ -72,6 +83,16 @@ func buildCombinedContext(comp *wizard.CompiledIOP, round, nmax int, queries []q
 			ifaces.QueryID(fmt.Sprintf("MLEVAL_CMB_RESIDUAL_q%d_%s", qIdx, suffix)),
 			q.Pols,
 		)
+		if safe[q.Name()] {
+			if comp.ExtraData == nil {
+				comp.ExtraData = make(map[string]any)
+			}
+			if safe == nil {
+				safe = make(map[ifaces.QueryID]bool)
+				comp.ExtraData[sharedSafeKey] = safe
+			}
+			safe[residuals[qIdx].Name()] = true
+		}
 	}
 
 	return &CombinedContext{

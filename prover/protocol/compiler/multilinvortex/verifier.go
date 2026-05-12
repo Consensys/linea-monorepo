@@ -34,6 +34,28 @@ func (v *VerifierAction) Run(run wizard.Runtime) error {
 		alphaPow[b].Mul(&alphaPow[b-1], &alpha)
 	}
 
+	// SharedRowEvals: single Check 3. UCols has length 1 (a single claim at
+	// the shared cCol) and RowEvals has length 1.
+	if ctx.SharedRowEvals {
+		var computed fext.Element
+		for b := 0; b < nRowSize; b++ {
+			re := run.GetColumnAtExt(ctx.RowEvals[0].GetColID(), b)
+			var t fext.Element
+			t.Mul(&alphaPow[b], &re)
+			computed.Add(&computed, &t)
+		}
+		uColParams := run.GetMultilinearParams(ctx.UCols[0].Name())
+		if len(uColParams.Ys) == 0 {
+			return fmt.Errorf("multilinvortex: UCols has no Ys")
+		}
+		if !computed.Equal(&uColParams.Ys[0]) {
+			return fmt.Errorf("multilinvortex: Check 3 (SharedRowEvals) failed: "+
+				"Σ_b α^b·RowEvals[b] = %v, claimed UCols.Y = %v",
+				computed.String(), uColParams.Ys[0].String())
+		}
+		return nil
+	}
+
 	for k := range ctx.InputQuery.Pols {
 		// Compute Σ_b α^b · RowEvals_k[b] from the committed column.
 		// When Packed=true RowEvals is a single column with block k at

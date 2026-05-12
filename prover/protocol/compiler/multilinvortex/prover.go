@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/sumcheck"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -50,6 +51,20 @@ func (p *ProverAction) Run(run *wizard.ProverRuntime) {
 
 	nColSize := 1 << nCol
 	K := len(ctx.InputQuery.Pols)
+
+	// Detect a shared-input batch: all K polys reference the same column AND
+	// all K per-pol points share the same cCol suffix. This pattern is emitted
+	// by InsertBootstrapperOpeningsPacked, which inserts K duplicate Q polys
+	// each at (b_k ‖ master[L_k:]) — since the locator length L_k is always
+	// ≤ nv_k ≤ nRow in the prefix-exclusive scheme, cCol = master[nRow:] is
+	// shared. When the pattern matches we run ONE matrix pass parallelised
+	// across all cores and fan out cheap per-k assignments.
+	if K > 1 {
+		if shared, sharedV, sharedY := p.tryRunSharedInput(run, inputParams, alphaPow, cCol, nRow, nCol, nRowSize, nColSize); shared {
+			_, _ = sharedV, sharedY
+			return
+		}
+	}
 
 	eqColTable := sumcheck.BuildEqTable(cCol)
 	eqRowTable := sumcheck.BuildEqTable(cRow)
@@ -539,4 +554,266 @@ func (p *ProverAction) assignProverResults(
 	}
 	run.AssignMultilinearExt(ctx.UCols[k].Name(), [][]fext.Element{cCol}, vk)
 	run.AssignMultilinearExt(ctx.RowClaims[k].Name(), [][]fext.Element{cRow}, actualY)
+}
+
+// tryRunSharedInput implements the shared-input fast path: when every input
+// poly is the SAME column and every per-pol cCol slice is equal, UAlpha and
+// RowEvals depend only on (Q, α) and (Q, cCol) respectively, so they are the
+// same vector for every k. We compute each ONCE — using a single full-machine
+// parallel matrix pass over Q — and fan out cheap O(nRowSize) per-k work for
+// the K downstream y_k and the (shared) v_k. Returns (false, _, _) if the
+// pattern doesn't match; the caller falls back to the general K-loop.
+//
+// Outputs (when matched):
+//   - K UAlpha proof columns assigned identical content (uAlphaVec_shared)
+//   - K RowEvals proof columns assigned identical content (rowEvalsVec_shared)
+//   - K UCols query params at (cCol_shared, vk_shared)
+//   - K RowClaims query params at (cRow_k, y_k)
+func (p *ProverAction) tryRunSharedInput(
+	run *wizard.ProverRuntime,
+	inputParams query.MultilinearEvalParams,
+	alphaPow []fext.Element,
+	cCol []fext.Element,
+	nRow, nCol, nRowSize, nColSize int,
+) (bool, fext.Element, fext.Element) {
+	ctx := p.Ctx
+	K := len(ctx.InputQuery.Pols)
+	if K < 2 || ctx.Packed {
+		return false, fext.Element{}, fext.Element{}
+	}
+
+	// Require uniform input column. SharedInput contexts always satisfy
+	// this; legacy contexts may benefit when callers happen to point K
+	// queries at the same column.
+	col0ID := ctx.InputQuery.Pols[0].GetColID()
+	for k := 1; k < K; k++ {
+		if ctx.InputQuery.Pols[k].GetColID() != col0ID {
+			return false, fext.Element{}, fext.Element{}
+		}
+	}
+
+	// Group polys by cCol. For each unique cCol_g we'll do one matrix pass.
+	// UAlpha is independent of cCol and so is computed exactly once.
+	cColEqual := func(a, b []fext.Element) bool {
+		for j := 0; j < nCol; j++ {
+			if !a[j].Equal(&b[j]) {
+				return false
+			}
+		}
+		return true
+	}
+	uniqueIdx := make([]int, K)             // cCol-group of poly k
+	uniqueCCol := [][]fext.Element{cCol}     // representative cCol per group
+	for k := 1; k < K; k++ {
+		pt := inputParams.Points[k]
+		if len(pt) != nRow+nCol {
+			return false, fext.Element{}, fext.Element{}
+		}
+		cColK := pt[nRow:]
+		found := -1
+		for g, c := range uniqueCCol {
+			if cColEqual(c, cColK) {
+				found = g
+				break
+			}
+		}
+		if found < 0 {
+			found = len(uniqueCCol)
+			uniqueCCol = append(uniqueCCol, cColK)
+		}
+		uniqueIdx[k] = found
+	}
+	// Legacy (non-SharedInput) contexts have K UAlpha/RowEvals columns;
+	// the fast path only helps when cCol is uniform — otherwise its K-pass
+	// would emit duplicate UAlpha to K cols, but we have no compile-time
+	// guarantee about K_RowEvals layout. Bail out unless we can claim the
+	// full optimisation OR the context already declares SharedInput.
+	if !ctx.SharedInput && len(uniqueCCol) > 1 {
+		return false, fext.Element{}, fext.Element{}
+	}
+
+	nthreads := runtime.GOMAXPROCS(0)
+	if nthreads > nRowSize {
+		nthreads = nRowSize
+	}
+	rowsPerThread := (nRowSize + nthreads - 1) / nthreads
+
+	sv := run.GetColumn(col0ID)
+	rowEvalsByGroup := make([][]fext.Element, len(uniqueCCol))
+	for g := range rowEvalsByGroup {
+		rowEvalsByGroup[g] = make([]fext.Element, nRowSize)
+	}
+
+	colBase, isBase := sv.IntoRegVecSaveAllocBase()
+	var uAlphaVec []fext.Element
+
+	// Per-group eqColSoA tables. The first group also drives UAlpha
+	// accumulation (UAlpha is independent of cCol — compute it once).
+	eqSoAs := make([][4]field.Vector, len(uniqueCCol))
+	for g, c := range uniqueCCol {
+		eqSoAs[g] = buildSoA(sumcheck.BuildEqTable(c), nColSize)
+	}
+
+	partialUASoA := make([][4]field.Vector, nthreads)
+	for t := range partialUASoA {
+		for c := range 4 {
+			partialUASoA[t][c] = make(field.Vector, nColSize)
+		}
+	}
+
+	if isBase == nil {
+		parallel.Execute(nthreads, func(start, stop int) {
+			tmpVec := make(field.Vector, nColSize)
+			for t := start; t < stop; t++ {
+				bStart := t * rowsPerThread
+				bStop := bStart + rowsPerThread
+				if bStop > nRowSize {
+					bStop = nRowSize
+				}
+				ua := &partialUASoA[t]
+				for b := bStart; b < bStop; b++ {
+					rowBase := field.Vector(colBase[b*nColSize : (b+1)*nColSize])
+					for g := range uniqueCCol {
+						rowEvalsByGroup[g][b] = simdRowEvalBase(eqSoAs[g], rowBase)
+					}
+					simdUAlphaAccumBase(ua, rowBase, &alphaPow[b], tmpVec)
+				}
+			}
+		})
+		uAlphaVec = mergeSoA(partialUASoA, nColSize)
+	} else {
+		// Fext fallback (rare for the bootstrapper).
+		colDataExt := sv.IntoRegVecSaveAllocExt()
+		partialUA := make([][]fext.Element, nthreads)
+		for t := range partialUA {
+			partialUA[t] = make([]fext.Element, nColSize)
+		}
+		// Per-group raw eq tables (we need the fext eq vector here, not SoA).
+		eqColTables := make([]sumcheck.MultiLin, len(uniqueCCol))
+		for g, c := range uniqueCCol {
+			eqColTables[g] = sumcheck.BuildEqTable(c)
+		}
+		parallel.Execute(nthreads, func(start, stop int) {
+			for t := start; t < stop; t++ {
+				bStart := t * rowsPerThread
+				bStop := bStart + rowsPerThread
+				if bStop > nRowSize {
+					bStop = nRowSize
+				}
+				loc := partialUA[t]
+				for b := bStart; b < bStop; b++ {
+					rowExt := colDataExt[b*nColSize : (b+1)*nColSize]
+					ap := alphaPow[b]
+					rowEvalsG := make([]fext.Element, len(uniqueCCol))
+					for col := 0; col < nColSize; col++ {
+						v := &rowExt[col]
+						for g := range uniqueCCol {
+							var r fext.Element
+							r.Mul(&eqColTables[g][col], v)
+							rowEvalsG[g].Add(&rowEvalsG[g], &r)
+						}
+						var tmp fext.Element
+						tmp.Mul(&ap, v)
+						loc[col].Add(&loc[col], &tmp)
+					}
+					for g := range uniqueCCol {
+						rowEvalsByGroup[g][b] = rowEvalsG[g]
+					}
+				}
+			}
+		})
+		uAlphaVec = make([]fext.Element, nColSize)
+		for t := 0; t < nthreads; t++ {
+			for col := 0; col < nColSize; col++ {
+				uAlphaVec[col].Add(&uAlphaVec[col], &partialUA[t][col])
+			}
+		}
+	}
+
+	uAlphaSV := smartvectors.NewRegularExt(uAlphaVec)
+
+	// Assign UAlpha: ONE col when SharedInput, K identical cols when legacy.
+	if ctx.SharedInput {
+		run.AssignColumn(ctx.UAlpha[0].GetColID(), uAlphaSV)
+	} else {
+		for k := 0; k < K; k++ {
+			run.AssignColumn(ctx.UAlpha[k].GetColID(), uAlphaSV)
+		}
+	}
+
+	// Pre-build smartvectors for each unique RowEvals group.
+	rowEvalsSVs := make([]smartvectors.SmartVector, len(rowEvalsByGroup))
+	for g, vec := range rowEvalsByGroup {
+		rowEvalsSVs[g] = smartvectors.NewRegularExt(vec)
+	}
+
+	// SharedRowEvals: single RowEvals column, single UCols claim, single
+	// RowClaims query holding K (point, y) pairs. Possible only when
+	// len(uniqueCCol) == 1 (which the build path guarantees by contract).
+	if ctx.SharedRowEvals {
+		if len(uniqueCCol) != 1 {
+			panic("multilinvortex: SharedRowEvals context received non-uniform cCol at runtime")
+		}
+		run.AssignColumn(ctx.RowEvals[0].GetColID(), rowEvalsSVs[0])
+
+		// vk_shared = Σ_b α^b · RowEvals[b] — identical for every k.
+		var vkShared fext.Element
+		for b := 0; b < nRowSize; b++ {
+			var t fext.Element
+			t.Mul(&alphaPow[b], &rowEvalsByGroup[0][b])
+			vkShared.Add(&vkShared, &t)
+		}
+		run.AssignMultilinearExt(ctx.UCols[0].Name(),
+			[][]fext.Element{uniqueCCol[0]}, vkShared)
+
+		// Single RowClaims query with K (point, y) pairs.
+		rowPoints := make([][]fext.Element, K)
+		rowYs := make([]fext.Element, K)
+		for k := 0; k < K; k++ {
+			cRowK := inputParams.Points[k][:nRow]
+			eqRowK := sumcheck.BuildEqTable(cRowK)
+			var yk fext.Element
+			for b := 0; b < nRowSize; b++ {
+				var t fext.Element
+				t.Mul(&eqRowK[b], &rowEvalsByGroup[0][b])
+				yk.Add(&yk, &t)
+			}
+			rowPoints[k] = cRowK
+			rowYs[k] = yk
+		}
+		run.AssignMultilinearExt(ctx.RowClaims[0].Name(), rowPoints, rowYs...)
+		return true, fext.Element{}, fext.Element{}
+	}
+
+	// SharedInput (no RowEvals collapse) / legacy fast-path fan-out: K
+	// UCols + K RowClaims, each assigned per-k.
+	for k := 0; k < K; k++ {
+		g := uniqueIdx[k]
+		run.AssignColumn(ctx.RowEvals[k].GetColID(), rowEvalsSVs[g])
+
+		// v_k = Σ_b α^b · RowEvals_k[b]. Same across k whenever cCol_k
+		// shares a group; recomputed here for clarity (cheap O(nRowSize)).
+		var vk fext.Element
+		for b := 0; b < nRowSize; b++ {
+			var t fext.Element
+			t.Mul(&alphaPow[b], &rowEvalsByGroup[g][b])
+			vk.Add(&vk, &t)
+		}
+
+		cRowK := inputParams.Points[k][:nRow]
+		eqRowK := sumcheck.BuildEqTable(cRowK)
+		var yk fext.Element
+		for b := 0; b < nRowSize; b++ {
+			var t fext.Element
+			t.Mul(&eqRowK[b], &rowEvalsByGroup[g][b])
+			yk.Add(&yk, &t)
+		}
+
+		run.AssignMultilinearExt(ctx.UCols[k].Name(),
+			[][]fext.Element{uniqueCCol[g]}, vk)
+		run.AssignMultilinearExt(ctx.RowClaims[k].Name(),
+			[][]fext.Element{cRowK}, yk)
+	}
+
+	return true, fext.Element{}, fext.Element{}
 }

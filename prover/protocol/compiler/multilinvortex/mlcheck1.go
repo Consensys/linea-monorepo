@@ -64,6 +64,30 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 	pendingCommit := make(map[int][]*mlOrigCommitProverAction)
 	pendingOpen := make(map[int][]*mlOrigOpenProverAction)
 
+	// origColArtifacts is shared by all contexts whose input polys are the
+	// same column set (in the same order). This deduplicates the original
+	// Vortex commit when multiple ML queries are registered on the SAME
+	// committed column(s) (e.g. K queries on packed Q from
+	// InsertBootstrapperOpeningsPacked).
+	type origColArtifacts struct {
+		rootCol       ifaces.Column
+		openedDataCol ifaces.Column
+		pathsCol      ifaces.Column
+		depth         int
+		nbRowsOrig    int
+		origEntryList []int
+		params        vortex_koalabear.Params
+		useSIS        bool
+	}
+	colKey := func(pols []ifaces.Column) string {
+		var s string
+		for _, c := range pols {
+			s += string(c.GetColID()) + "|"
+		}
+		return s
+	}
+	commitsByCol := map[string]*origColArtifacts{}
+
 	for _, ctx := range ctxs {
 		if seen[ctx.InputQuery.QueryID] {
 			continue
@@ -89,7 +113,27 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 		nCol := ctx.NCol
 		nRowSize := 1 << nRow
 		nColSize := 1 << nCol
-		nbRowsOrig := K * nRowSize
+
+		// Deduplicate input pols by ColID: when a single committed column
+		// appears K times (e.g. InsertBootstrapperOpeningsPacked merges K
+		// claims into one query with [Q,…,Q]), the original Vortex matrix
+		// only needs ONE copy of its rows, not K. origColIndices[k] gives the
+		// row-block index in the unique-col orig matrix for input poly k.
+		uniqueCols := make([]ifaces.Column, 0, K)
+		origColIndices := make([]int, K)
+		colIDToIdx := map[ifaces.ColID]int{}
+		for k, c := range ctx.InputQuery.Pols {
+			id := c.GetColID()
+			idx, ok := colIDToIdx[id]
+			if !ok {
+				idx = len(uniqueCols)
+				colIDToIdx[id] = idx
+				uniqueCols = append(uniqueCols, c)
+			}
+			origColIndices[k] = idx
+		}
+		Korig := len(uniqueCols)
+		nbRowsOrig := Korig * nRowSize
 		nbCodewordCols := nColSize * 2
 		t := min(len(uAlphaEntry.entryList), nbCodewordCols)
 		depth := bits.Len(uint(nbCodewordCols)) - 1
@@ -102,63 +146,108 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 			origEntryList = evenlySpacedIndices(nbCodewordCols, t)
 		}
 
-		// SIS is faster than Poseidon2 for large groups; use it when there are
-		// enough rows for the SIS ring degree (64).
-		useSIS := nbRowsOrig >= 64
+		// Look up or create the shared original-commit artifacts for this column set.
+		key := colKey(ctx.InputQuery.Pols)
+		art, exists := commitsByCol[key]
+		if !exists {
+			// SIS is faster than Poseidon2 for large groups; use it when there are
+			// enough rows for the SIS ring degree (64).
+			useSIS := nbRowsOrig >= 64
 
-		params := vortex_koalabear.NewParams(2, nColSize, nbRowsOrig, 6, 16)
+			params := vortex_koalabear.NewParams(2, nColSize, nbRowsOrig, 6, 16)
 
-		sfx := fmt.Sprintf("q%s", string(ctx.InputQuery.QueryID))
+			// Use first col's ID + count for a unique-yet-stable suffix.
+			sfx := fmt.Sprintf("col_%s_k%d_n%d",
+				string(ctx.InputQuery.Pols[0].GetColID()), K, nRow)
 
-		// Root at round (ctx.Round-1) so it enters the FS transcript before α.
-		rootRound := ctx.Round - 1
-		if rootRound < 0 {
-			rootRound = 0
+			// Root at round (ctx.Round-1) so it enters the FS transcript before α.
+			rootRound := ctx.Round - 1
+			if rootRound < 0 {
+				rootRound = 0
+			}
+			rootCol := comp.InsertProof(rootRound,
+				ifaces.ColID("MLVORTEX_ORIG_ROOT_"+sfx), 8, false)
+
+			// Opened data and paths at round (ctx.Round+1) — same round as UAlpha.
+			openedSize := utils.NextPowerOfTwo(t * nbRowsOrig)
+			openedDataCol := comp.InsertProof(ctx.Round+1,
+				ifaces.ColID("MLVORTEX_ORIG_OPENED_"+sfx), openedSize, false)
+			pathsSize := utils.NextPowerOfTwo(t * depth * 8)
+			pathsCol := comp.InsertProof(ctx.Round+1,
+				ifaces.ColID("MLVORTEX_ORIG_PATHS_"+sfx), pathsSize, false)
+
+			shared := &mlOrigShared{}
+
+			pendingCommit[rootRound] = append(pendingCommit[rootRound], &mlOrigCommitProverAction{
+				cols:    uniqueCols,
+				params:  &params,
+				K:       Korig,
+				nRow:    nRow,
+				nCol:    nCol,
+				rootCol: rootCol,
+				shared:  shared,
+				useSIS:  useSIS,
+			})
+
+			pendingOpen[ctx.Round+1] = append(pendingOpen[ctx.Round+1], &mlOrigOpenProverAction{
+				shared:        shared,
+				entryList:     origEntryList,
+				nbRowsOrig:    nbRowsOrig,
+				depth:         depth,
+				openedSize:    openedSize,
+				pathsSize:     pathsSize,
+				openedDataCol: openedDataCol,
+				pathsCol:      pathsCol,
+			})
+
+			art = &origColArtifacts{
+				rootCol:       rootCol,
+				openedDataCol: openedDataCol,
+				pathsCol:      pathsCol,
+				depth:         depth,
+				nbRowsOrig:    nbRowsOrig,
+				origEntryList: origEntryList,
+				params:        params,
+				useSIS:        useSIS,
+			}
+			commitsByCol[key] = art
 		}
-		rootCol := comp.InsertProof(rootRound,
-			ifaces.ColID("MLVORTEX_ORIG_ROOT_"+sfx), 8, false)
-
-		// Opened data and paths at round (ctx.Round+1) — same round as UAlpha.
-		openedSize := utils.NextPowerOfTwo(t * nbRowsOrig)
-		openedDataCol := comp.InsertProof(ctx.Round+1,
-			ifaces.ColID("MLVORTEX_ORIG_OPENED_"+sfx), openedSize, false)
-		pathsSize := utils.NextPowerOfTwo(t * depth * 8)
-		pathsCol := comp.InsertProof(ctx.Round+1,
-			ifaces.ColID("MLVORTEX_ORIG_PATHS_"+sfx), pathsSize, false)
-
-		shared := &mlOrigShared{}
-
-		pendingCommit[rootRound] = append(pendingCommit[rootRound], &mlOrigCommitProverAction{
-			cols:    ctx.InputQuery.Pols,
-			params:  &params,
-			K:       K,
-			nRow:    nRow,
-			nCol:    nCol,
-			rootCol: rootCol,
-			shared:  shared,
-			useSIS:  useSIS,
-		})
-
-		pendingOpen[ctx.Round+1] = append(pendingOpen[ctx.Round+1], &mlOrigOpenProverAction{
-			shared:        shared,
-			entryList:     origEntryList,
-			nbRowsOrig:    nbRowsOrig,
-			depth:         depth,
-			openedSize:    openedSize,
-			pathsSize:     pathsSize,
-			openedDataCol: openedDataCol,
-			pathsCol:      pathsCol,
-		})
+		// All subsequent verifier-action registrations below reuse art's
+		// rootCol/openedDataCol/pathsCol — only the UAlpha references differ.
+		rootCol := art.rootCol
+		openedDataCol := art.openedDataCol
+		pathsCol := art.pathsCol
+		depth = art.depth
+		_ = nbRowsOrig
+		origEntryList = art.origEntryList
+		useSIS := art.useSIS
+		params := art.params
 
 		// Find the index of each UAlpha column within the mixed group so the
 		// verifier can read the correct row offsets from the opened UAlpha data.
+		// SharedInput contexts have ONE UAlpha col that serves all K input
+		// claims; uAlphaIndices then points every k to that single col.
 		kTotal := len(uAlphaEntry.cols) // may include RowEvals if nRow == nCol
 		uAlphaIndices := make([]int, K)
-		for k, ua := range ctx.UAlpha {
+		if ctx.SharedInput {
+			var sharedIdx int
+			ua := ctx.UAlpha[0]
 			for idx, c := range uAlphaEntry.cols {
 				if c.GetColID() == ua.GetColID() {
-					uAlphaIndices[k] = idx
+					sharedIdx = idx
 					break
+				}
+			}
+			for k := range uAlphaIndices {
+				uAlphaIndices[k] = sharedIdx
+			}
+		} else {
+			for k, ua := range ctx.UAlpha {
+				for idx, c := range uAlphaEntry.cols {
+					if c.GetColID() == ua.GetColID() {
+						uAlphaIndices[k] = idx
+						break
+					}
 				}
 			}
 		}
@@ -170,20 +259,32 @@ func CommitOriginalMLColumns(comp *wizard.CompiledIOP) {
 		if ctx.Packed {
 			panic(fmt.Sprintf("multilinvortex: packed context %v reached original-column check", ctx.InputQuery.QueryID))
 		}
+		// SharedRowEvals collapses the K Check 1's into ONE: every input
+		// claim k maps to the same UAlpha column AND the same orig column,
+		// so a single (uAlphaIdx, origIdx) tuple covers them all.
+		checkK := K
+		checkUAlphaIdx := uAlphaIndices
+		checkOrigIdx := origColIndices
+		if ctx.SharedRowEvals {
+			checkK = 1
+			checkUAlphaIdx = uAlphaIndices[:1]
+			checkOrigIdx = origColIndices[:1]
+		}
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &mlCheck1VerifierAction{
 			rootCol:             rootCol,
 			origOpenedDataCol:   openedDataCol,
 			origPathsCol:        pathsCol,
 			uAlphaOpenedDataCol: uAlphaEntry.openedDataCol,
 			alphaCoin:           ctx.AlphaCoin,
-			K:                   K,
+			K:                   checkK,
 			kTotal:              kTotal,
 			nRow:                nRow,
 			nbRowsOrig:          nbRowsOrig,
 			nbRowsUA:            uAlphaEntry.nbRows, // 4*kTotal
 			entryList:           origEntryList,
 			depth:               depth,
-			uAlphaIndices:       uAlphaIndices,
+			uAlphaIndices:       checkUAlphaIdx,
+			origColIndices:      checkOrigIdx,
 			params:              verifierParams,
 			useSIS:              useSIS,
 		})
@@ -447,11 +548,12 @@ type mlCheck1VerifierAction struct {
 	K                   int
 	kTotal              int // total cols in UAlpha CommitMLColumns group (may include RowEvals)
 	nRow                int
-	nbRowsOrig          int   // K * 2^nRow
-	nbRowsUA            int   // 4*kTotal
+	nbRowsOrig          int // Korig * 2^nRow, where Korig is the unique-pol count
+	nbRowsUA            int // 4*kTotal
 	entryList           []int
 	depth               int
-	uAlphaIndices       []int // index of UAlpha[k] within the group's cols slice
+	uAlphaIndices       []int                    // index of UAlpha[k] within the group's cols slice
+	origColIndices      []int                    // index of input poly k within the unique-col orig matrix
 	params              *vortex_koalabear.Params // nil when useSIS == false
 	useSIS              bool
 }
@@ -507,10 +609,14 @@ func (v *mlCheck1VerifierAction) Run(run wizard.Runtime) error {
 		//   offset 2*K+k → B1.A0 of UAlpha[k]
 		//   offset 3*K+k → B1.A1 of UAlpha[k]
 		for k := 0; k < v.K; k++ {
+			origK := k
+			if v.origColIndices != nil {
+				origK = v.origColIndices[k]
+			}
 			var expected fext.Element
 			for b := 0; b < nRowSize; b++ {
 				origVal := run.GetColumnAt(v.origOpenedDataCol.GetColID(),
-					jIdx*v.nbRowsOrig+k*nRowSize+b)
+					jIdx*v.nbRowsOrig+origK*nRowSize+b)
 				// α^b * origVal (base-field scalar → scale each fext component).
 				var t fext.Element
 				t.B0.A0.Mul(&alphaPow[b].B0.A0, &origVal)

@@ -1,11 +1,13 @@
 package multilinvortex_test
 
 import (
+	"math/bits"
 	"math/rand/v2"
 	"testing"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	vortex_koalabear "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -406,4 +408,230 @@ func BenchmarkMixedSizeDynamic(b *testing.B) {
 			benchPaddedMixedProver(b, specs)
 		})
 	}
+}
+
+// bootstrapperPackedDists defines the column distributions for
+// BenchmarkBootstrapperOpeningsPacked.
+var bootstrapperPackedDists = []struct {
+	name string
+	dist []colSpec
+}{
+	{"mixed_scaled", mixedScaledDist}, // ~6.6M cells, 24 cols, 7 sizes
+	{"uniform_500_nv14", []colSpec{{count: 500, size: 1 << 14}}}, // 8M, 1 size
+	{"uniform_4_nv20", []colSpec{{count: 4, size: 1 << 20}}}, // 4M, 1 size
+}
+
+// BenchmarkBootstrapperOpeningsPacked compares end-to-end prove time of two
+// bootstrapper variants on the same column distribution:
+//
+//   - "Unpacked": multilinvortex.InsertBootstrapperOpenings (per-size-group
+//     ML queries; one Vortex commit per size group)
+//
+//   - "Packed":   multilinvortex.InsertBootstrapperOpeningsPacked (single
+//     packed Q across all sizes; one Vortex commit total)
+//
+// Both pipelines feed into the same downstream ML rounds:
+//
+//	(Bootstrapper) → CompileRound + Batch ×5 → dummy.Compile
+//
+// The packed variant should be faster on distributions with many size groups
+// (one commit vs many) and roughly equivalent on single-size distributions
+// (only the locator overhead).
+//
+// Run with:
+//
+//	go test -bench BenchmarkBootstrapperOpeningsPacked -run '^$' \
+//	  -benchtime=1x -v -timeout=15m ./protocol/compiler/multilinvortex/
+func BenchmarkBootstrapperOpeningsPacked(b *testing.B) {
+	for _, dist := range bootstrapperPackedDists {
+		dist := dist
+		b.Run(dist.name, func(b *testing.B) {
+			benchBootstrapperPackedDist(b, dist.dist)
+		})
+	}
+}
+
+func benchBootstrapperPackedDist(b *testing.B, dist []colSpec) {
+	b.Helper()
+	rng := rand.New(rand.NewPCG(123, 0))
+
+	type colEntry struct {
+		id   ifaces.ColID
+		data []field.Element
+	}
+	var entries []colEntry
+	var totalCells int
+	colIdx := 0
+	for _, spec := range dist {
+		for k := 0; k < spec.count; k++ {
+			data := make([]field.Element, spec.size)
+			for i := range data {
+				data[i] = field.PseudoRand(rng)
+			}
+			entries = append(entries, colEntry{
+				id:   ifaces.ColIDf("COL_%d", colIdx),
+				data: data,
+			})
+			colIdx++
+			totalCells += spec.size
+		}
+	}
+	b.Logf("%d cols, total %d cells across %d distinct sizes", len(entries), totalCells, distinctSizes(dist))
+
+	define := func(b *wizard.Builder) {
+		for _, e := range entries {
+			b.RegisterCommit(e.id, len(e.data))
+		}
+	}
+
+	prove := func(run *wizard.ProverRuntime) {
+		for _, e := range entries {
+			run.AssignColumn(e.id, smartvectors.NewRegular(e.data))
+		}
+	}
+
+	compiledUnpacked := wizard.Compile(
+		define,
+		multilinvortex.InsertBootstrapperOpenings,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		dummy.Compile,
+	)
+	compiledPacked := wizard.Compile(
+		define,
+		multilinvortex.InsertBootstrapperOpeningsPacked,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		multilinvortex.CompileRound, multilineareval.Batch,
+		dummy.Compile,
+	)
+
+	b.Run("Unpacked", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			wizard.Prove(compiledUnpacked, prove)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
+	b.Run("Packed", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			wizard.Prove(compiledPacked, prove)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
+}
+
+func distinctSizes(dist []colSpec) int {
+	seen := make(map[int]struct{})
+	for _, s := range dist {
+		seen[s.size] = struct{}{}
+	}
+	return len(seen)
+}
+
+// BenchmarkSingleMatrixPacking compares two Vortex commitment strategies on the
+// same total data:
+//
+//   - "Multi": one Vortex commit per (round-0) size group, mirroring the current
+//     mlOrigCommitProverAction layout. Each group's matrix has K_g·2^nRow_g rows
+//     of size 2^nCol_g.
+//
+//   - "Single": pack all polys into ONE polynomial Q (prefix-exclusive locator
+//     packing) and commit Q's reshaped matrix in a single Vortex call. This
+//     trades many small commits for one bigger one + padding overhead.
+//
+// Measured: commit-only CPU time. Does NOT include opening, sumcheck, or
+// recursion — purely the SIS Merkle commit step, which dominates ML CPU time.
+//
+// Run with:
+//
+//	go test -bench BenchmarkSingleMatrixPacking -run '^$' -benchtime=1x -v \
+//	  -timeout=15m ./protocol/compiler/multilinvortex/
+func BenchmarkSingleMatrixPacking(b *testing.B) {
+	rng := rand.New(rand.NewPCG(99, 0))
+
+	// Build all poly data (one slice per poly).
+	var allPolys [][]field.Element
+	type sizeGroup struct {
+		nv   int
+		rows []smartvectors.SmartVector
+	}
+	groups := map[int]*sizeGroup{}
+	for _, spec := range mixedScaledDist {
+		nv := bits.TrailingZeros(uint(spec.size))
+		nRow := nv / 2
+		nCol := nv - nRow
+		nColSize := 1 << nCol
+		g, ok := groups[nv]
+		if !ok {
+			g = &sizeGroup{nv: nv}
+			groups[nv] = g
+		}
+		_ = nRow
+		for k := 0; k < spec.count; k++ {
+			data := make([]field.Element, spec.size)
+			for i := range data {
+				data[i] = field.PseudoRand(rng)
+			}
+			allPolys = append(allPolys, data)
+			// Split into nRowSize chunks for ML matrix layout.
+			for r := 0; r < (1 << nRow); r++ {
+				g.rows = append(g.rows, smartvectors.NewRegular(data[r*nColSize:(r+1)*nColSize]))
+			}
+		}
+	}
+
+	// Pre-pack Q for the Single benchmark.
+	packed := multilinvortex.PackPolys(allPolys)
+	singleNRow := packed.N / 2
+	singleNCol := packed.N - singleNRow
+	singleNColSize := 1 << singleNCol
+	singleRows := make([]smartvectors.SmartVector, 1<<singleNRow)
+	for r := 0; r < (1 << singleNRow); r++ {
+		singleRows[r] = smartvectors.NewRegular(packed.Q[r*singleNColSize : (r+1)*singleNColSize])
+	}
+	N := packed.N
+
+	var totalRowsMulti, totalCellsMulti int
+	for nv, g := range groups {
+		totalRowsMulti += len(g.rows)
+		totalCellsMulti += len(g.rows) * (1 << (nv - nv/2))
+	}
+	totalQCells := 1 << N
+	padPct := 100.0 * float64(totalQCells-totalCellsMulti) / float64(totalQCells)
+	b.Logf("Multi: %d size groups, total rows=%d, cells=%d",
+		len(groups), totalRowsMulti, totalCellsMulti)
+	b.Logf("Single: N=%d, matrix %d rows × %d cols = %d cells (%.1f%% padding)",
+		N, 1<<singleNRow, singleNColSize, totalQCells, padPct)
+
+	b.Run("Multi", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			// One Vortex commit per size group, sequentially.
+			// Production code uses parallel batch; sequential here for fair comparison
+			// against single-matrix which is naturally one call.
+			for nv, g := range groups {
+				nCol := nv - nv/2
+				nColSize := 1 << nCol
+				params := vortex_koalabear.NewParams(2, nColSize, len(g.rows), 6, 16)
+				_, _, _, _ = params.CommitMerkleWithSIS(g.rows)
+			}
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
+
+	b.Run("Single", func(b *testing.B) {
+		for range b.N {
+			start := time.Now()
+			params := vortex_koalabear.NewParams(2, singleNColSize, len(singleRows), 6, 16)
+			_, _, _, _ = params.CommitMerkleWithSIS(singleRows)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "ms/op")
+		}
+	})
 }

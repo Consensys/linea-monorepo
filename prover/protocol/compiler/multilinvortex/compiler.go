@@ -71,6 +71,22 @@ type Context struct {
 	L int
 	// KPow2 = 2^L when Packed (K rounded up to the next power of two).
 	KPow2 int
+
+	// SharedInput indicates that all K input polynomials reference the SAME
+	// committed column (e.g. K duplicate Q polys from
+	// InsertBootstrapperOpeningsPacked). In this mode UAlpha has length 1
+	// (UAlpha is independent of the per-pol cCol), while RowEvals may still
+	// have length K when per-pol cCol slices can differ.
+	SharedInput bool
+
+	// SharedRowEvals strengthens SharedInput with a per-pol cCol-shared
+	// guarantee: cCol_k is identical for every k, so RowEvals also collapses
+	// to a single column. In this mode the Context has UAlpha=[1], RowEvals=[1],
+	// UCols=[1] (single claim at the shared cCol), and RowClaims=[1] holding
+	// a SINGLE MultilinearEval query with K duplicate-RowEvals polys at K
+	// different cRow_k points. Downstream Batch sees one input query, emits
+	// one residual query, and the propagated structure remains shared.
+	SharedRowEvals bool
 }
 
 // Compile applies one round of the multilinear Vortex opening protocol using
@@ -190,7 +206,16 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 		}
 
 		nRow := chooseNRow(n, nFoldRows)
-		ctx := buildContext(comp, r, q, nRow, idx)
+		var ctx *Context
+		if allSameInput(q.Pols) {
+			if isSharedSafeQuery(comp, q.Name()) {
+				ctx = buildContextSharedRowEvals(comp, r, q, nRow, idx)
+			} else {
+				ctx = buildContextSharedInput(comp, r, q, nRow, idx)
+			}
+		} else {
+			ctx = buildContext(comp, r, q, nRow, idx)
+		}
 		pendingProver[r+1] = append(pendingProver[r+1], &ProverAction{Ctx: ctx})
 		comp.RegisterVerifierAction(comp.NumRounds()-1, &VerifierAction{Ctx: ctx})
 
@@ -233,6 +258,12 @@ func (b *proverActionBatch) Run(run *wizard.ProverRuntime) {
 // mlvortexContextsKey indexes the slice of *Context values stored in ExtraData
 // by compileWithNRow, for use by CommitOriginalMLColumns.
 const mlvortexContextsKey = "mlvortex_contexts"
+
+// sharedSafeQueriesKey indexes a map[ifaces.QueryID]bool stored in ExtraData.
+// A query in the set is guaranteed (by its producer) to have ALL per-pol
+// evaluation points sharing the same cCol suffix at prover time. This lets
+// buildContextSharedRowEvals collapse RowEvals to ONE proof column instead of K.
+const sharedSafeQueriesKey = "mlvortex_shared_safe_queries"
 
 func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *Context {
 	n := mustAllSameNumVars(q)
@@ -290,6 +321,201 @@ func buildContext(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, 
 		RowEvals:   rowEvals,
 		UCols:      uCols,
 		RowClaims:  rowClaims,
+	}
+}
+
+// isSharedSafeQuery reports whether the producer of q has marked it as
+// guaranteed-shared-cCol via sharedSafeQueriesKey. This is the contract that
+// lets buildContextSharedRowEvals emit a single RowEvals proof column.
+func isSharedSafeQuery(comp *wizard.CompiledIOP, name ifaces.QueryID) bool {
+	if comp.ExtraData == nil {
+		return false
+	}
+	set, _ := comp.ExtraData[sharedSafeQueriesKey].(map[ifaces.QueryID]bool)
+	return set[name]
+}
+
+// markSharedSafeQuery records that q's per-pol points all share the same
+// cCol suffix at prover time. Used by buildContextSharedRowEvals to propagate
+// the guarantee onto the downstream queries it emits (so subsequent
+// CompileRound passes can keep using the SharedRowEvals fast path).
+func markSharedSafeQuery(comp *wizard.CompiledIOP, name ifaces.QueryID) {
+	if comp.ExtraData == nil {
+		comp.ExtraData = make(map[string]any)
+	}
+	set, _ := comp.ExtraData[sharedSafeQueriesKey].(map[ifaces.QueryID]bool)
+	if set == nil {
+		set = make(map[ifaces.QueryID]bool)
+		comp.ExtraData[sharedSafeQueriesKey] = set
+	}
+	set[name] = true
+}
+
+// buildContextSharedRowEvals is the strongest shared-input mode. It assumes
+// the caller guarantees that every per-pol point shares the same cCol suffix,
+// so both UAlpha AND RowEvals collapse to a SINGLE proof column. The K
+// downstream claims are encoded as exactly TWO queries:
+//
+//   - One UCols query on the shared UAlpha at the shared cCol (single claim).
+//   - One RowClaims query on the shared RowEvals with K duplicate polys at
+//     K different cRow_k points (the per-pol claim that still varies with k).
+//
+// Both are marked SharedSafe so the next CompileRound (after Batch) finds
+// the same structure: 1 residual on UAlpha, 1 residual on RowEvals with K
+// duplicate polys at K identical points (Batch puts every poly at
+// challenges[:nq]).
+func buildContextSharedRowEvals(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *Context {
+	n := mustAllSameNumVars(q)
+	nCol := n - nRow
+	K := len(q.Pols)
+
+	suffix := fmt.Sprintf("n%d_r%d_%d_i%d_share2", n, round, comp.SelfRecursionCount, idx)
+
+	alpha := comp.InsertCoin(
+		round+1,
+		coin.Name(fmt.Sprintf("MLVORTEX_ALPHA_%s", suffix)),
+		coin.FieldExt,
+	)
+
+	uAlphaCol := comp.InsertProof(
+		round+1,
+		ifaces.ColID(fmt.Sprintf("MLVORTEX_UALPHA_share2_%s", suffix)),
+		1<<nCol,
+		false,
+	)
+	rowEvalsCol := comp.InsertProof(
+		round+1,
+		ifaces.ColID(fmt.Sprintf("MLVORTEX_ROWEVAL_share2_%s", suffix)),
+		1<<nRow,
+		false,
+	)
+
+	// Single UCols query at the shared cCol.
+	uColsQuery := comp.InsertMultilinear(
+		round+1,
+		ifaces.QueryID(fmt.Sprintf("MLVORTEX_UCOL_share2_%s", suffix)),
+		[]ifaces.Column{uAlphaCol},
+	)
+	// Single RowClaims query with K duplicate polys at K different cRow_k.
+	rowClaimsPols := make([]ifaces.Column, K)
+	for k := range rowClaimsPols {
+		rowClaimsPols[k] = rowEvalsCol
+	}
+	rowClaimsQuery := comp.InsertMultilinear(
+		round+1,
+		ifaces.QueryID(fmt.Sprintf("MLVORTEX_ROW_share2_%s", suffix)),
+		rowClaimsPols,
+	)
+
+	// Propagate the cCol-shared guarantee. The RowClaims query has K
+	// duplicate polys at K distinct points; after Batch each residual point
+	// becomes challenges[:nq] — identical across all K, so the next round's
+	// query trivially satisfies the same shared-cCol property.
+	markSharedSafeQuery(comp, rowClaimsQuery.Name())
+	// The UCols query has only one pol; it isn't "shared-input" so the
+	// downstream compileWithNRow will take the standard buildContext path.
+
+	return &Context{
+		InputQuery:     q,
+		NumVars:        n,
+		NRow:           nRow,
+		NCol:           nCol,
+		Round:          round,
+		AlphaCoin:      alpha,
+		UAlpha:         []ifaces.Column{uAlphaCol},
+		RowEvals:       []ifaces.Column{rowEvalsCol},
+		UCols:          []query.MultilinearEval{uColsQuery},
+		RowClaims:      []query.MultilinearEval{rowClaimsQuery},
+		SharedInput:    true,
+		SharedRowEvals: true,
+	}
+}
+
+// allSameInput reports whether every column in pols has the same ColID. When
+// true, the K UAlpha vectors are all equal (they depend only on the shared
+// column and α), so we can commit a single UAlpha proof column instead of K
+// duplicates. RowEvals are equal when the per-pol cCol slices are also shared
+// (a stronger condition checked at runtime).
+func allSameInput(pols []ifaces.Column) bool {
+	if len(pols) < 2 {
+		return false
+	}
+	id := pols[0].GetColID()
+	for _, c := range pols[1:] {
+		if c.GetColID() != id {
+			return false
+		}
+	}
+	return true
+}
+
+// buildContextSharedInput builds a Context for the SharedInput regime: K input
+// claims on the SAME column. Emits exactly ONE UAlpha proof column and ONE
+// RowEvals proof column (the unique values shared by all k), and K
+// MultilinearEval queries (UCols and RowClaims) each referencing the single
+// UAlpha/RowEvals. This collapses the K-fold proof-column duplication that
+// arises whenever a packed bootstrapper merges K original claims onto a
+// single packed Q.
+func buildContextSharedInput(comp *wizard.CompiledIOP, round int, q query.MultilinearEval, nRow, idx int) *Context {
+	n := mustAllSameNumVars(q)
+	nCol := n - nRow
+	K := len(q.Pols)
+
+	suffix := fmt.Sprintf("n%d_r%d_%d_i%d_shared", n, round, comp.SelfRecursionCount, idx)
+
+	alpha := comp.InsertCoin(
+		round+1,
+		coin.Name(fmt.Sprintf("MLVORTEX_ALPHA_%s", suffix)),
+		coin.FieldExt,
+	)
+
+	// UAlpha is a function of (Q, α) only, so it is shared across all K
+	// claims regardless of the per-pol point. One proof column suffices.
+	uAlphaCol := comp.InsertProof(
+		round+1,
+		ifaces.ColID(fmt.Sprintf("MLVORTEX_UALPHA_shared_%s", suffix)),
+		1<<nCol,
+		false,
+	)
+	// RowEvals depends on cCol_k, which CAN differ per k whenever any
+	// original poly has nv < nCol (locator bits then spill into cCol). We
+	// keep K separate RowEvals columns to handle this general case; when
+	// cCol_k is shared (e.g. every original nv ≥ nCol), the prover fast
+	// path computes the value once and writes the same content K times.
+	rowEvals := make([]ifaces.Column, K)
+	uCols := make([]query.MultilinearEval, K)
+	rowClaims := make([]query.MultilinearEval, K)
+	for k := range q.Pols {
+		rowEvals[k] = comp.InsertProof(
+			round+1,
+			ifaces.ColID(fmt.Sprintf("MLVORTEX_ROWEVAL_%d_%s", k, suffix)),
+			1<<nRow,
+			false,
+		)
+		uCols[k] = comp.InsertMultilinear(
+			round+1,
+			ifaces.QueryID(fmt.Sprintf("MLVORTEX_UCOL_%d_%s", k, suffix)),
+			[]ifaces.Column{uAlphaCol},
+		)
+		rowClaims[k] = comp.InsertMultilinear(
+			round+1,
+			ifaces.QueryID(fmt.Sprintf("MLVORTEX_ROW_%d_%s", k, suffix)),
+			[]ifaces.Column{rowEvals[k]},
+		)
+	}
+
+	return &Context{
+		InputQuery:  q,
+		NumVars:     n,
+		NRow:        nRow,
+		NCol:        nCol,
+		Round:       round,
+		AlphaCoin:   alpha,
+		UAlpha:      []ifaces.Column{uAlphaCol},
+		RowEvals:    rowEvals,
+		UCols:       uCols,
+		RowClaims:   rowClaims,
+		SharedInput: true,
 	}
 }
 

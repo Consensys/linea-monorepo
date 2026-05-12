@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/google/uuid"
 )
 
@@ -41,7 +40,6 @@ func NewMultilinearEval(id ifaces.QueryID, pols ...ifaces.Column) MultilinearEva
 	if len(pols) == 0 {
 		utils.Panic("MultilinearEval %v declared with zero polynomials", id)
 	}
-	polsSet := collection.NewSet[ifaces.ColID]()
 	numVars := make([]int, len(pols))
 	for i, pol := range pols {
 		size := pol.Size()
@@ -50,9 +48,6 @@ func NewMultilinearEval(id ifaces.QueryID, pols ...ifaces.Column) MultilinearEva
 				id, pol.GetColID(), size)
 		}
 		numVars[i] = bits.TrailingZeros(uint(size))
-		if polsSet.Insert(pol.GetColID()) {
-			utils.Panic("MultilinearEval %v: duplicate polynomial %v", id, pol.GetColID())
-		}
 	}
 	return MultilinearEval{QueryID: id, Pols: pols, NumVars: numVars, uuid: uuid.New()}
 }
