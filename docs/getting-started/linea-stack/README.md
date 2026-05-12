@@ -182,6 +182,30 @@ coordinator ports, prover responses, L1 blob submission, and a separate
 `finalizeBlocks` tx that advances the rollup's `currentL2BlockNumber`. Use
 `./scripts/links.sh` to print the current Sepolia and local L2 explorer links.
 
+### Prover timing expectations
+
+Default mode is dev proving, so proofs are dummy/fast and the slow parts are
+mostly Docker image pulls, contract deploys, Sepolia RPC latency, and L1
+inclusion. Partial mode is different: execution proofs are real partial proofs,
+while compression and aggregation remain dev-mode proofs in this quickstart.
+
+Observed on 2026-05-12 with Docker Desktop set to 30 GiB and
+`PROVER_GOMEMLIMIT=24GiB`:
+
+| Milestone | Observed timing | What to watch |
+|-----------|-----------------|---------------|
+| First execution proof request | a few seconds after coordinator/prover start | `execution proof request generated` |
+| Each 2-block execution proof | about 11-16 min after the prover picks it up | prover log: `The executor is about to run ... execution ...`, then `processing of file ... took N seconds` |
+| Compression proof | usually sub-second to a few seconds after execution proof | `blob compression proof generated` |
+| Aggregation proof | usually sub-second to a few seconds, but can sit behind a running execution proof | `aggregation proof generated` |
+| First Sepolia blob tx | about 24 min after the first proof request in the observed run | `blobs submitted` |
+| First Sepolia finalization tx | about 25 min after the first proof request in the observed run | `submitted aggregation`, then `finalization update` |
+| Later finalized ranges | roughly one execution-proof duration per new 2-block range, plus Sepolia inclusion/polling | `rollup currentL2BlockNumber` in `./scripts/status.sh` |
+
+Do not use local L2 block height as proof of L1 finality. Blockscout may show
+new local L2 blocks immediately, while the rollup's Sepolia
+`currentL2BlockNumber` only advances after a successful `finalizeBlocks` tx.
+
 ## 5. Endpoints
 
 | Service | URL | Note |
@@ -311,6 +335,14 @@ COUNT=5 ./scripts/send-l2-test-tx.sh
 # Transfer one base unit of the deployed L2 ERC20Example token.
 ./scripts/send-l2-erc20-transfer.sh
 ```
+
+`COUNT=5` means five transactions, not five ETH. By default the L2 ETH traffic
+helper sends `1 wei` per transaction from the generated L2 deployer, which is
+pre-funded in the local L2 genesis. This ETH is local quickstart gas balance,
+not Sepolia ETH, and it has no value outside the local L2 chain. The bridge
+smoke spends real Sepolia gas and sends Sepolia value into the quickstart
+LineaRollup contract, then credits the local L2 recipient through Postman; that
+credited L2 balance is still only useful inside this local quickstart chain.
 
 ### L1-to-L2 bridge/message smoke test
 
