@@ -89,14 +89,11 @@ class AggregationTriggerCalculatorByDeadline(
         // inFlightAggregation can be updated while we were waiting for the latest safe block
         // trigger blob/proof limiting if criteria met
         if (deadlineTigger && this.inFlightAggregation == inFlightAggregationBeforeCheck) {
-          // inFlightAggregationBeforeCheck is non-null because deadlineTrigger is only true
-          // when checkDeadlineTriggerCriteria received a non-null argument
-          val snapshot = checkNotNull(inFlightAggregationBeforeCheck)
-          log.info("aggregation deadline reached at block={}", snapshot.blobsToAggregate.endBlockNumber)
+          log.info("aggregation deadline reached at block={}", inFlightAggregation!!.blobsToAggregate.endBlockNumber)
           aggregationTriggerHandler.onAggregationTrigger(
             AggregationTrigger(
               aggregationTriggerType = AggregationTriggerType.TIME_LIMIT,
-              aggregation = snapshot.blobsToAggregate,
+              aggregation = inFlightAggregation!!.blobsToAggregate,
             ),
           )
         }

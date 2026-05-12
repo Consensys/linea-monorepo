@@ -27,19 +27,18 @@ class AggregationTriggerCalculatorByProofLimit(private val maxProofsPerAggregati
     }
 
     return if (inFlightAggregation != null) {
-      val current = checkNotNull(inFlightAggregation)
-      val newProofsCount = current.proofsCount + blobProofCount
+      val newProofsCount = inFlightAggregation!!.proofsCount + blobProofCount
       if (newProofsCount > maxProofsPerAggregation) {
         AggregationTrigger(
           aggregationTriggerType = AggregationTriggerType.PROOF_LIMIT,
-          aggregation = current.blobsToAggregate,
+          aggregation = inFlightAggregation!!.blobsToAggregate,
         )
       } else if (newProofsCount == maxProofsPerAggregation) {
         AggregationTrigger(
           aggregationTriggerType = AggregationTriggerType.PROOF_LIMIT,
           aggregation =
           BlobsToAggregate(
-            current.blobsToAggregate.startBlockNumber,
+            inFlightAggregation!!.blobsToAggregate.startBlockNumber,
             blobCounters.endBlockNumber,
           ),
         )
