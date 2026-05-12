@@ -3,7 +3,7 @@ package linea.kotlin
 import java.math.BigInteger
 import java.util.HexFormat
 
-val ZERO_HASH_32: ByteArray get() = ByteArray(32)
+fun zeroHash32(): ByteArray = ByteArray(32)
 
 fun ByteArray.assertSize(expectedSize: UInt, fieldName: String = ""): ByteArray = apply {
   require(size == expectedSize.toInt()) { "$fieldName expected to have $expectedSize bytes, but got $size" }

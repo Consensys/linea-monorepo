@@ -10,7 +10,7 @@ import linea.domain.BlobShnarfCalculator
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
 import linea.domain.ShnarfResult
-import linea.kotlin.ZERO_HASH_32
+import linea.kotlin.zeroHash32
 import linea.kotlin.encodeHex
 import linea.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
@@ -88,7 +88,7 @@ class RollingBlobShnarfCalculator(
         BlobShnarfMetaData(
           startBlockNumber = 0UL,
           endBlockNumber = 0UL,
-          blobHash = ZERO_HASH_32,
+          blobHash = zeroHash32(),
           blobShnarf = genesisShnarf,
         ),
       )
