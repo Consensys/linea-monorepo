@@ -181,6 +181,7 @@ const config: HardhatUserConfig = {
       "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
       "tokens",
       "verifiers",
+      "yield/YieldManagerStorageLayout.sol",
     ],
     pages: "files",
     outputDir: "docs/api/",
