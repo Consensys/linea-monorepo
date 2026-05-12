@@ -52,7 +52,7 @@ def rootDirFile = rootProject.layout.projectDirectory.asFile
 // the :linea-besu:resolveBesuVersion task and by CI (linea-besu-build-and-publish
 // workflow). Gitignored — developers should not edit or commit this file; CI force-adds
 // updates on besuCommit bumps.
-def cachedResolvedFile = new File(rootDirFile, 'linea-besu/besu/.besu-resolved')
+def cachedResolvedFile = new File(projectDir, '.besu-resolved')
 
 // Capture providers at configuration time so task actions never touch Project/rootProject.
 def providers = rootProject.providers
