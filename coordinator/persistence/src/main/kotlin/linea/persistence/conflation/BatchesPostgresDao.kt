@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.batch.persistence
+package linea.persistence.conflation
 
 import io.vertx.core.Future
 import io.vertx.pgclient.PgException

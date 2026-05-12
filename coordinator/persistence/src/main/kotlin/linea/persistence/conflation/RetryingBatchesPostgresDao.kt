@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.batch.persistence
+package linea.persistence.conflation
 
 import linea.domain.Batch
 import net.consensys.zkevm.persistence.db.PersistenceRetryer

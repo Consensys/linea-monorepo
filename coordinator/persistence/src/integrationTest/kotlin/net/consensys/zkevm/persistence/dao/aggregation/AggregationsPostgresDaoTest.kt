@@ -16,9 +16,9 @@ import linea.domain.createBatch
 import linea.domain.createBlobRecordFromBatches
 import linea.domain.createProofToFinalize
 import linea.error.DuplicatedRecordException
+import linea.persistence.conflation.BatchesPostgresDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel

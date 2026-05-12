@@ -12,12 +12,12 @@ import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
 import linea.persistence.ForcedTransactionsDao
+import linea.persistence.conflation.BatchesPostgresDao
+import linea.persistence.conflation.PostgresBatchesRepository
 import linea.persistence.ftx.ForcedTransactionRecordFactory
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper

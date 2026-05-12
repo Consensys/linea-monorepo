@@ -8,6 +8,9 @@ import io.vertx.sqlclient.SqlClient
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.DatabaseConfig
 import linea.persistence.DisabledForcedTransactionsDao
+import linea.persistence.conflation.BatchesPostgresDao
+import linea.persistence.conflation.PostgresBatchesRepository
+import linea.persistence.conflation.RetryingBatchesPostgresDao
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -21,9 +24,6 @@ import net.consensys.zkevm.fileio.DirectoryCleaner
 import net.consensys.zkevm.persistence.dao.aggregation.AggregationsRepositoryImpl
 import net.consensys.zkevm.persistence.dao.aggregation.PostgresAggregationsDao
 import net.consensys.zkevm.persistence.dao.aggregation.RetryingPostgresAggregationsDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.RetryingBatchesPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.dao.blob.RetryingBlobsPostgresDao

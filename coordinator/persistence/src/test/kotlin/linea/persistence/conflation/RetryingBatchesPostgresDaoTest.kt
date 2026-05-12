@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.batch.persistence
+package linea.persistence.conflation
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
@@ -7,9 +7,9 @@ import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.times
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -18,7 +18,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @ExtendWith(VertxExtension::class)
 class RetryingBatchesPostgresDaoTest {
   private lateinit var retryingBatchesPostgresDao: RetryingBatchesPostgresDao
-  private val delegateBatchesDao = mock<BatchesPostgresDao>()
+  private lateinit var delegateBatchesDao: BatchesPostgresDao
   private val batch = createBatch(
     startBlockNumber = 0L,
     endBlockNumber = 10L,
@@ -26,6 +26,7 @@ class RetryingBatchesPostgresDaoTest {
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
+    delegateBatchesDao = mock<BatchesPostgresDao>()
     retryingBatchesPostgresDao = RetryingBatchesPostgresDao(
       delegate = delegateBatchesDao,
       PersistenceRetryer(
