@@ -28,7 +28,7 @@ import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility
+import org.awaitility.Awaitility.waitAtMost
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -139,12 +139,12 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           expectedX = proofReq.expectedShnarfResult.expectedX,
           expectedY = proofReq.expectedShnarfResult.expectedY,
           expectedShnarf = proofReq.expectedShnarfResult.expectedShnarf,
-          decompressionProof = Random.Default.nextBytes(512),
+          decompressionProof = Random.nextBytes(512),
           proverVersion = "mock-0.0.0",
           verifierID = 6789,
-          commitment = Random.Default.nextBytes(48),
-          kzgProofContract = Random.Default.nextBytes(48),
-          kzgProofSidecar = Random.Default.nextBytes(48),
+          commitment = Random.nextBytes(48),
+          kzgProofContract = Random.nextBytes(48),
+          kzgProofSidecar = Random.nextBytes(48),
         )
         val proofIndex = CompressionProofIndex(
           startBlockNumber = proofReq.startBlockNumber,
@@ -206,10 +206,10 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
             startBlockNumber = currentBlockNumber,
             endBlockNumber = endBlockNumber,
             conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-            tracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+            tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
           ),
         ),
-        compressedData = Random.Default.nextBytes(128),
+        compressedData = Random.nextBytes(128),
         startBlockTime = currentBlockTime,
         endBlockTime = endBlockTime,
       )
@@ -237,22 +237,22 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           startBlockNumber = blobEventStartBlock,
           endBlockNumber = blobEventEndBlock,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
         ),
         ConflationCalculationResult(
           startBlockNumber = blobEventEndBlock + 1UL,
           endBlockNumber = blobEventEndBlock + 200UL,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
         ),
         ConflationCalculationResult(
           startBlockNumber = blobEventEndBlock + 201UL,
           endBlockNumber = blobEventEndBlock + 300UL,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
         ),
       ),
-      compressedData = Random.Default.nextBytes(128),
+      compressedData = Random.nextBytes(128),
       startBlockTime = prevBlobRecord.endBlockTime.plus(12.seconds),
       endBlockTime = prevBlobRecord.endBlockTime.plus(3600.seconds),
     )
@@ -260,7 +260,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
     timeToReturn = Clock.System.now()
     blobCompressionProofCoordinator.handleBlob(blobEvent).get()
 
-    Awaitility.waitAtMost(10.seconds.toJavaDuration())
+    waitAtMost(10.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .untilAsserted {
         val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
@@ -298,10 +298,10 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           startBlockNumber = blobEventStartBlock,
           endBlockNumber = blobEventEndBlock,
           conflationTrigger = ConflationTrigger.TRACES_LIMIT,
-          tracesCounters = TracesCountersV2.Companion.EMPTY_TRACES_COUNT,
+          tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
         ),
       ),
-      compressedData = Random.Default.nextBytes(128),
+      compressedData = Random.nextBytes(128),
       startBlockTime = expectedEndBlockTime.plus(12.seconds),
       endBlockTime = expectedEndBlockTime.plus(1200.seconds),
     )
@@ -309,7 +309,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
     timeToReturn = Clock.System.now()
     blobCompressionProofCoordinator.handleBlob(blobEvent).get()
 
-    Awaitility.waitAtMost(10.seconds.toJavaDuration())
+    waitAtMost(10.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .untilAsserted {
         val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
@@ -347,7 +347,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       }.stream(),
     ).get()
 
-    Awaitility.waitAtMost(10.seconds.toJavaDuration())
+    waitAtMost(10.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .untilAsserted {
         val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
@@ -414,7 +414,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       }.stream(),
     ).get()
 
-    Awaitility.waitAtMost(100.seconds.toJavaDuration())
+    waitAtMost(100.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .untilAsserted {
         val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(

@@ -9,7 +9,7 @@ import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -80,22 +80,22 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
     val dbContent = feeHistoriesContentQuery().execute().get()
     val newlyInsertedRows =
       dbContent.filter { it.getLong("created_epoch_milli") == fakeClock.now().toEpochMilliseconds() }
-    Assertions.assertThat(newlyInsertedRows.size).isGreaterThan(0)
+    assertThat(newlyInsertedRows.size).isGreaterThan(0)
 
     newlyInsertedRows.forEachIndexed { i, row ->
-      Assertions.assertThat(row.getLong("block_number"))
+      assertThat(row.getLong("block_number"))
         .isEqualTo(feeHistory.oldestBlock.toLong() + i)
-      Assertions.assertThat(row.getLong("base_fee_per_gas"))
+      assertThat(row.getLong("base_fee_per_gas"))
         .isEqualTo(feeHistory.baseFeePerGas[i].toLong())
-      Assertions.assertThat(row.getLong("base_fee_per_blob_gas"))
+      assertThat(row.getLong("base_fee_per_blob_gas"))
         .isEqualTo(feeHistory.baseFeePerBlobGas.getOrElse(i) { 0uL }.toLong())
-      Assertions.assertThat(row.getFloat("gas_used_ratio"))
+      assertThat(row.getFloat("gas_used_ratio"))
         .isEqualTo(feeHistory.gasUsedRatio[i].toFloat())
-      Assertions.assertThat(row.getFloat("blob_gas_used_ratio"))
+      assertThat(row.getFloat("blob_gas_used_ratio"))
         .isEqualTo(feeHistory.blobGasUsedRatio.getOrElse(i) { 0.0 }.toFloat())
-      Assertions.assertThat(row.getArrayOfLongs("rewards"))
+      assertThat(row.getArrayOfLongs("rewards"))
         .containsAll(feeHistory.reward[i].map { it.toLong() })
-      Assertions.assertThat(row.getArrayOfFloats("reward_percentiles"))
+      assertThat(row.getArrayOfFloats("reward_percentiles"))
         .containsAll(rewardPercentiles.map { it.toFloat() })
     }
     return dbContent
@@ -108,7 +108,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
   }
 
   @Test
@@ -118,7 +118,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     // fee history of block 103, 104, 105, 106, 107
     val overlappedFeeHistory = createFeeHistory(
@@ -139,7 +139,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
     )
 
     dbContent = feeHistoriesContentQuery().execute().get()
-    Assertions.assertThat(dbContent).size().isEqualTo(8)
+    assertThat(dbContent).size().isEqualTo(8)
   }
 
   @Test
@@ -149,31 +149,31 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val p10BaseFeePerGas = feeHistoriesPostgresDao.findBaseFeePerGasAtPercentile(
       percentile = 10.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p10BaseFeePerGas).isEqualTo(10000uL)
+    assertThat(p10BaseFeePerGas).isEqualTo(10000uL)
 
     val p50BaseFeePerGas = feeHistoriesPostgresDao.findBaseFeePerGasAtPercentile(
       percentile = 50.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p50BaseFeePerGas).isEqualTo(10002uL)
+    assertThat(p50BaseFeePerGas).isEqualTo(10002uL)
 
     val p75BaseFeePerGas = feeHistoriesPostgresDao.findBaseFeePerGasAtPercentile(
       percentile = 75.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p75BaseFeePerGas).isEqualTo(10003uL)
+    assertThat(p75BaseFeePerGas).isEqualTo(10003uL)
 
     val p100BaseFeePerGas = feeHistoriesPostgresDao.findBaseFeePerGasAtPercentile(
       percentile = 100.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p100BaseFeePerGas).isEqualTo(10004uL)
+    assertThat(p100BaseFeePerGas).isEqualTo(10004uL)
   }
 
   @Test
@@ -183,31 +183,31 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val p10BaseFeePerBlobGas = feeHistoriesPostgresDao.findBaseFeePerBlobGasAtPercentile(
       percentile = 10.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p10BaseFeePerBlobGas).isEqualTo(1000uL)
+    assertThat(p10BaseFeePerBlobGas).isEqualTo(1000uL)
 
     val p50BaseFeePerBlobGas = feeHistoriesPostgresDao.findBaseFeePerBlobGasAtPercentile(
       percentile = 50.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p50BaseFeePerBlobGas).isEqualTo(1002uL)
+    assertThat(p50BaseFeePerBlobGas).isEqualTo(1002uL)
 
     val p75BaseFeePerBlobGas = feeHistoriesPostgresDao.findBaseFeePerBlobGasAtPercentile(
       percentile = 75.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p75BaseFeePerBlobGas).isEqualTo(1003uL)
+    assertThat(p75BaseFeePerBlobGas).isEqualTo(1003uL)
 
     val p100BaseFeePerBlobGas = feeHistoriesPostgresDao.findBaseFeePerBlobGasAtPercentile(
       percentile = 100.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p100BaseFeePerBlobGas).isEqualTo(1004uL)
+    assertThat(p100BaseFeePerBlobGas).isEqualTo(1004uL)
   }
 
   @Test
@@ -217,31 +217,31 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val avgP10Reward = feeHistoriesPostgresDao.findAverageRewardAtPercentile(
       rewardPercentile = 10.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(avgP10Reward).isEqualTo(1002uL)
+    assertThat(avgP10Reward).isEqualTo(1002uL)
 
     val avgP20Reward = feeHistoriesPostgresDao.findAverageRewardAtPercentile(
       rewardPercentile = 20.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(avgP20Reward).isEqualTo(2004uL)
+    assertThat(avgP20Reward).isEqualTo(2004uL)
 
     val avgP70Reward = feeHistoriesPostgresDao.findAverageRewardAtPercentile(
       rewardPercentile = 70.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(avgP70Reward).isEqualTo(7014uL)
+    assertThat(avgP70Reward).isEqualTo(7014uL)
 
     val avgP100Reward = feeHistoriesPostgresDao.findAverageRewardAtPercentile(
       rewardPercentile = 100.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(avgP100Reward).isEqualTo(10020uL)
+    assertThat(avgP100Reward).isEqualTo(10020uL)
   }
 
   @Test
@@ -251,13 +251,13 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val avgP15Reward = feeHistoriesPostgresDao.findAverageRewardAtPercentile(
       rewardPercentile = 15.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(avgP15Reward).isNull()
+    assertThat(avgP15Reward).isNull()
   }
 
   @Test
@@ -267,7 +267,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val rewardPercentile90 = listOf(90.0)
     val feeHistory = createFeeHistory(
@@ -287,27 +287,27 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentile90,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(10)
+    assertThat(dbContent).size().isEqualTo(10)
 
     val p10HighestBlockNumber = feeHistoriesPostgresDao.findHighestBlockNumberWithPercentile(
       rewardPercentile = 10.0,
     ).get()
-    Assertions.assertThat(p10HighestBlockNumber).isEqualTo(104L)
+    assertThat(p10HighestBlockNumber).isEqualTo(104L)
 
     val p20HighestBlockNumber = feeHistoriesPostgresDao.findHighestBlockNumberWithPercentile(
       rewardPercentile = 20.0,
     ).get()
-    Assertions.assertThat(p20HighestBlockNumber).isEqualTo(104L)
+    assertThat(p20HighestBlockNumber).isEqualTo(104L)
 
     val p100HighestBlockNumber = feeHistoriesPostgresDao.findHighestBlockNumberWithPercentile(
       rewardPercentile = 100.0,
     ).get()
-    Assertions.assertThat(p100HighestBlockNumber).isEqualTo(104L)
+    assertThat(p100HighestBlockNumber).isEqualTo(104L)
 
     val p90HighestBlockNumber = feeHistoriesPostgresDao.findHighestBlockNumberWithPercentile(
       rewardPercentile = 90.0,
     ).get()
-    Assertions.assertThat(p90HighestBlockNumber).isEqualTo(109L)
+    assertThat(p90HighestBlockNumber).isEqualTo(109L)
   }
 
   @Test
@@ -317,12 +317,12 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val p25HighestBlockNumber = feeHistoriesPostgresDao.findHighestBlockNumberWithPercentile(
       rewardPercentile = 25.0,
     ).get()
-    Assertions.assertThat(p25HighestBlockNumber).isNull()
+    assertThat(p25HighestBlockNumber).isNull()
   }
 
   @Test
@@ -332,33 +332,33 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     val p10NumOfRecords = feeHistoriesPostgresDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile = 10.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p10NumOfRecords).isEqualTo(5)
+    assertThat(p10NumOfRecords).isEqualTo(5)
 
     val p50NumOfRecords = feeHistoriesPostgresDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile = 50.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p50NumOfRecords).isEqualTo(5)
+    assertThat(p50NumOfRecords).isEqualTo(5)
 
     // unfound reward percentile
     val p75NumOfRecords = feeHistoriesPostgresDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile = 75.0,
       fromBlockNumber = 100L,
     ).get()
-    Assertions.assertThat(p75NumOfRecords).isEqualTo(0)
+    assertThat(p75NumOfRecords).isEqualTo(0)
 
     // out of block range
     val p20NumOfRecordsOutOfRange = feeHistoriesPostgresDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile = 20.0,
       fromBlockNumber = 110L,
     ).get()
-    Assertions.assertThat(p20NumOfRecordsOutOfRange).isEqualTo(0)
+    assertThat(p20NumOfRecordsOutOfRange).isEqualTo(0)
   }
 
   @Test
@@ -368,30 +368,30 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
         feeHistory,
         rewardPercentiles,
       )
-    Assertions.assertThat(dbContent).size().isEqualTo(5)
+    assertThat(dbContent).size().isEqualTo(5)
 
     var deletedNum = feeHistoriesPostgresDao.deleteFeeHistoriesUpToBlockNumber(
       blockNumberInclusive = 102L,
     ).get()
-    Assertions.assertThat(deletedNum).isEqualTo(3)
+    assertThat(deletedNum).isEqualTo(3)
 
     dbContent = feeHistoriesContentQuery().execute().get()
-    Assertions.assertThat(dbContent).size().isEqualTo(2)
+    assertThat(dbContent).size().isEqualTo(2)
 
     deletedNum = feeHistoriesPostgresDao.deleteFeeHistoriesUpToBlockNumber(
       blockNumberInclusive = 102L,
     ).get()
-    Assertions.assertThat(deletedNum).isEqualTo(0)
+    assertThat(deletedNum).isEqualTo(0)
 
     dbContent = feeHistoriesContentQuery().execute().get()
-    Assertions.assertThat(dbContent).size().isEqualTo(2)
+    assertThat(dbContent).size().isEqualTo(2)
 
     deletedNum = feeHistoriesPostgresDao.deleteFeeHistoriesUpToBlockNumber(
       blockNumberInclusive = 110L,
     ).get()
-    Assertions.assertThat(deletedNum).isEqualTo(2)
+    assertThat(deletedNum).isEqualTo(2)
 
     dbContent = feeHistoriesContentQuery().execute().get()
-    Assertions.assertThat(dbContent).size().isEqualTo(0)
+    assertThat(dbContent).size().isEqualTo(0)
   }
 }
