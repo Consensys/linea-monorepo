@@ -19,11 +19,14 @@ const DEFAULT_FILTERED_ADDRESS_PATH = join(__dirname, "..", "addresses-filter.tx
 const SET_FILTERED_STATUS_BATCH_SIZE = 300;
 
 /**
- * Filtered addresses loaded from the file at `ADDRESS_FILTER_FILE_PATH` (env) or
+ * Reads filtered addresses from the file at `ADDRESS_FILTER_FILE_PATH` (env) or
  * `contracts/addresses-filter.txt` (default). YAML-style list entries; excludes
  * precompiles already covered by {@link PRECOMPILES_ADDRESSES}.
+ *
+ * Called lazily inside the deploy function so a missing file does not crash unrelated
+ * Hardhat deploy runs that load this module for other `--tags`.
  */
-function loadAddressFilterFilteredAddressesFromFile(): string[] {
+export function loadAddressFilterFilteredAddressesFromFile(): string[] {
   const filePath = getOptionalEnvVar("ADDRESS_FILTER_FILE_PATH") ?? DEFAULT_FILTERED_ADDRESS_PATH;
   const precompileSet = new Set(PRECOMPILES_ADDRESSES.map((a) => a.toLowerCase()));
   const text = readFileSync(filePath, "utf8");
@@ -44,8 +47,6 @@ function loadAddressFilterFilteredAddressesFromFile(): string[] {
   return out;
 }
 
-export const ADDRESS_FILTER_FILTERED_ADDRESSES: string[] = loadAddressFilterFilteredAddressesFromFile();
-
 const func: DeployFunction = withSignerUiSession(
   "21_deploy_AddressFilter.ts",
   async function (hre: HardhatRuntimeEnvironment) {
@@ -54,7 +55,7 @@ const func: DeployFunction = withSignerUiSession(
 
     const councilAddress = ethers.getAddress(getRequiredEnvVar("L1_SECURITY_COUNCIL"));
     const deployerAddress = ethers.getAddress(await signer.getAddress());
-    const filteredAddresses = ADDRESS_FILTER_FILTERED_ADDRESSES;
+    const filteredAddresses = loadAddressFilterFilteredAddressesFromFile();
 
     // Constructor initcode must stay under EIP-3860 (49152 bytes). Deployer is temporary DEFAULT_ADMIN.
     const constructorInitialList = [...PRECOMPILES_ADDRESSES];
