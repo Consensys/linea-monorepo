@@ -4,9 +4,9 @@ Running log for the Sepolia quickstart: fixes applied, current status, and cavea
 
 ## Current snapshot - 2026-05-12
 
-Fresh Sepolia boot validates the cleaned key model, the current dev-prover path,
-the first real L1-to-L2 message smoke, and the opt-in partial-prover path
-through first L1 finalization:
+Fresh Sepolia boot validates the cleaned key model, the temporary dev-prover
+bring-up path, the first real L1-to-L2 message smoke, and the opt-in
+partial-prover path through first L1 finalization:
 
 - user still supplies one funded `L1_DEPLOYER_PRIVATE_KEY`;
 - `account-setup` generates fresh runtime keys for L1 blob submission, L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman;
@@ -19,8 +19,8 @@ through first L1 finalization:
 - coordinator submitted L1 blob transactions on Sepolia, then submitted separate `finalizeBlocks` transactions that advanced the rollup finalized L2 block;
 - L2 Blockscout frontend works locally at `http://localhost:4001`;
 - `scripts/generate-l2-erc20-traffic.sh` runs continuous local L2 ERC20Example transfers for realistic Blockscout/prover demo traffic; `scripts/send-l2-test-tx.sh` and `scripts/send-l2-erc20-transfer.sh` remain as one-shot manual checks;
-- `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta;
-- the bridge/message smoke was rerun against the partial-prover boot on 2026-05-12: L1 tx `0x1be291b7a9d3de8bd4d3e8a291d8d698fded71821c548573e6bbc60985a5cb4b`, L2 claim tx `0x5cc86e839128c30b9c2f58ea0dd3b0968373450db4074d1911280cea0ac972e4`, recipient delta `100000000000000` wei;
+- `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta; this is inbound L1-to-L2 only, not a full bridge/withdrawal smoke;
+- the L1-to-L2 message smoke was rerun against the partial-prover boot on 2026-05-12: L1 tx `0x1be291b7a9d3de8bd4d3e8a291d8d698fded71821c548573e6bbc60985a5cb4b`, L2 claim tx `0x5cc86e839128c30b9c2f58ea0dd3b0968373450db4074d1911280cea0ac972e4`, recipient delta `100000000000000` wei;
 - post-boot helper scripts are staged manually: read-only inspection first, optional L2 demo traffic second, real L1-to-L2 smoke third, then the same sequence again for partial-prover validation;
 - `L2_CHAIN_ID` is now treated as a single boot input and is rendered into Besu genesis, Maru genesis, prover public-input config, deploy metadata, and Blockscout config;
 - `PROVER_DEV_OVERRIDE=false` now requires an explicit `PROVER_GOMEMLIMIT` so partial validation fails early if the memory budget was not set;
@@ -39,9 +39,9 @@ Fixes found during this clean boot:
 
 Current caveats:
 
-- default proving is still dev/dummy proof mode; partial-prover validation is opt-in, resource-heavy, and should be rerun before release-signoff changes;
+- dev/dummy proof mode is temporary scaffolding for boot-flow debugging and should be removed after team review/testing; the target quickstart path is partial proving;
 - Docker Desktop must be raised well above the 8-16 GB laptop default before partial validation; about 30-32 GB assigned to Docker with `PROVER_GOMEMLIMIT=24GiB` is the current minimum tested shape, 48 GB preferred;
-- TokenBridge ERC20 smoke is still separate; the current bridge smoke validates the base L1-to-L2 message path;
+- L2-to-L1 message/withdrawal smoke is still missing; TokenBridge ERC20 smoke is also still separate;
 - no one-shot `quickstart-verify.sh` exists yet; keeping the helpers separate avoids hidden Sepolia spend during first boot;
 - transient nonce/replacement retries and a duplicate `StartingRootHashDoesNotMatch` retry can appear during catch-up after a successful finalization; judge progress by separate blob txs, successful `finalizeBlocks` txs, finalization events, and finalized block advancing;
 - the local L2 does not necessarily keep producing visible user blocks when idle. Use `./scripts/generate-l2-erc20-traffic.sh start` for continuous ERC20 transfer traffic during demos/evaluation.

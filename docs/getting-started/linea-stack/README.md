@@ -253,7 +253,7 @@ INTERVAL_SECONDS=1 ./scripts/generate-l2-erc20-traffic.sh start
 MAX_TXS=100 ./scripts/generate-l2-erc20-traffic.sh start
 ```
 
-4. Run the L1-to-L2 message smoke when you want to prove message relay:
+4. Run the L1-to-L2 message smoke when you want to prove inbound message relay:
 
 ```bash
 ./scripts/smoke-bridge-message.sh
@@ -262,6 +262,9 @@ MAX_TXS=100 ./scripts/generate-l2-erc20-traffic.sh start
 The smoke sends `sendMessage` on Sepolia, waits for Postman to claim on local
 L2, verifies `MessageClaimed`, checks the recipient balance delta, and prints
 both explorer links.
+
+This is **not** a full bridge test yet. It does not cover L2-to-L1 messages,
+withdrawal/finality, or TokenBridge ERC20 flow.
 
 The L2 traffic helpers mutate only the local quickstart L2 chain. The bridge
 smoke spends real Sepolia gas and sends Sepolia value into the quickstart
@@ -445,10 +448,15 @@ notes.
 - **Partial proving is opt-in and resource-heavy.** It has been validated
   through L1 finalization, but the default path uses dev proofs for quick
   feedback.
+- **Dev-proof mode is temporary scaffolding.** It exists to make boot-flow
+  debugging fast while the team reviews the sequence. The target quickstart is
+  partial proving, and dev-proof override should be removed once the flow is
+  agreed and validated.
 - **Verifier setup is quickstart-only.** The current deploy path uses
   `IntegrationTestTrueVerifier`, not a production verifier configuration.
-- **TokenBridge ERC20 smoke is still manual.** The included bridge smoke covers
-  the base L1-to-L2 message/ETH path.
+- **Message/bridge smoke is incomplete.** The included script covers only
+  L1-to-L2 `sendMessage` plus Postman L2 claim. A real L2-to-L1 message smoke
+  and TokenBridge ERC20 smoke are still required.
 - **No one-shot verification orchestrator or CI smoke test.** Validation today
   is compose-config + manual first-boot-against-Sepolia. The local helper
   scripts are intentionally staged; a future `quickstart-verify.sh` can chain
