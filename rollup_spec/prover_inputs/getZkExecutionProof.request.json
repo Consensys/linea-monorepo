@@ -2,7 +2,6 @@
     "_comment": "Execution-proof request — IDENTICAL under Option A and Option B. The execution proof statement (§2.1) and its 15-field PI tuple do not change between topologies; only what consumes the proof afterward (aggregation in A, compression-as-aggregator in B) is different. Therefore one shape lives here and is referenced from both option directories.",
 
     "proverVersion": "4.0.0-riscv",
-    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
     "blockRange": {
         "startBlockNumber": 1000501,
         "endBlockNumber":   1000503
@@ -31,45 +30,30 @@
     "chainConfig": {
         "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
         "coinbase":                  "0x0000000000000000000000000000000000000000",
-        "baseFee":                   1000000000,
         "chainId":                   59144
     },
 
-    "_comment_blocks": "Full Ethereum block headers (RLP) plus signature-stripped tx list. fromAddresses are stored explicitly so the guest can avoid in-circuit ECDSA recovery — keccak256(concat(fromAddresses across blocks)) is what binds publicInputs.txFromsHash. The parent block (immediately before startBlockNumber) is *not* a top-level field — its state root and any other anchoring data are part of the executionWitness payload below; the guest verifies that anchor against publicInputs.prevLastBlockHash. L2→L1 message hashing is derived from re-execution alone (filter MessageSent logs from chainConfig.l2MessageServiceContract, accumulate, assert keccak256 == publicInputs.L2L1MessagesHash). L1→L2 rolling hash is the asymmetric case — see l1L2Messages below.",
+    "_comment_blocks": "Canonical RLP-encoded L2 blocks (header + transaction list [+ withdrawals], EIP-2718 typed transactions in full signed form). The guest decodes each block, recovers the sender of every transaction via secp256k1, runs the EVM, and commits to the recovered sender list via publicInputs.txFromsHash (no separate fromAddresses field). The parent block (immediately before startBlockNumber) is *not* a top-level field — its state root and any other anchoring data are part of the executionWitness payload below; the guest verifies that anchor against publicInputs.prevLastBlockHash. L2→L1 message hashing is derived from re-execution alone (filter MessageSent logs from chainConfig.l2MessageServiceContract, accumulate, assert keccak256 == publicInputs.L2L1MessagesHash). L1→L2 rolling hash is the asymmetric case — see l1L2Messages below. forcedTransactions is per-block metadata identifying which entries in the block's tx list are FTXs and how they were resolved (§6.5).",
     "blocks": [
         {
-            "blockNumber": 1000501,
-            "headerRlp":   "0xf90215a0...",
-            "transactionsRlp": [
-                "0x02f873..."
-            ],
-            "fromAddresses": [
-                "0x0000000000000000000000000000000000000001"
-            ],
+            "blockRlp":           "0xf90215a0...",
             "forcedTransactions": []
         },
         {
-            "blockNumber": 1000502,
-            "headerRlp":   "0xf90215a0...",
-            "transactionsRlp": [],
-            "fromAddresses": [],
+            "blockRlp": "0xf90215a0...",
             "forcedTransactions": [
                 {
-                    "_comment":           "Per §2.1 + §6.5, FTXs are processed *after* normal block execution and appear at the start of the block tx list; per-FTX state_witness is non-null ONLY when acceptance is ACCEPTED-but-invalid (§6.5 'Invalid' branch).",
+                    "_comment":           "Per §2.1 + §6.5, FTXs are processed *after* normal block execution and appear at the start of the block tx list (in blockRlp above); this metadata identifies the entry and how it was resolved. stateWitness is non-null ONLY when acceptance is ACCEPTED-but-invalid (§6.5 'Invalid' branch).",
                     "ftxNumber":           17,
                     "deadlineBlockNumber": 1000600,
                     "fromAddress":         "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed",
-                    "transactionRlp":      "0x02f86b...",
                     "acceptance":          "ACCEPTED",
                     "stateWitness":        null
                 }
             ]
         },
         {
-            "blockNumber": 1000503,
-            "headerRlp":   "0xf90215a0...",
-            "transactionsRlp": [],
-            "fromAddresses": [],
+            "blockRlp":           "0xf90215a0...",
             "forcedTransactions": []
         }
     ],
@@ -83,28 +67,15 @@
         }
     ],
 
-    "_comment_forcedTransactionContext": "Witness data needed by the §6.5 deadline-sweep check. pendingFtxs lists every FTX with number > publicInputs.lastProcessedFtxNumber whose deadline ≤ some upper bound the coordinator picks (typically the last L1 block hash known at request time). The guest asserts: for every entry where deadlineBlockNumber ≤ publicInputs.newLastBlockNumber, ftxNumber must already be ≤ publicInputs.lastProcessedFtxNumber — i.e. nothing past-deadline was skipped. The L1 contract performs the symmetric check against its full stored ftxDeadline[] map at finalization time.",
-    "forcedTransactionContext": {
-        "pendingFtxs": [
-            {
-                "ftxNumber":           18,
-                "deadlineBlockNumber": 1010000,
-                "fromAddress":         "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed"
-            }
-        ]
-    },
-
-    "_comment_executionWitness": "Stateless witness from Besu `debug_executionWitness`. Format follows EIP-7864 (Verkle) post-Glamsterdam, falling back to MPT proofs in the transitional period. The witness envelope carries the parent state root that its account/storage proofs are anchored to; the guest asserts that anchor is consistent with publicInputs.prevLastBlockHash, then replays the EVM directly. One entry per block; the parent state root anchor lives at the top of the witness, not inside any per-block entry. No separate state-manager preprocessing step is needed (the Type-2 zkStateMerkleProof + conflatedExecutionTracesFile pair is gone). Treated as opaque-but-deterministic by the coordinator: the JSON is forwarded as-is, the guest is the only consumer.",
-    "executionWitness": {
-        "_comment_parentStateAnchor": "Top-level anchor; the guest checks it is consistent with publicInputs.prevLastBlockHash. Concrete shape (e.g. parent header RLP vs. parent state root + an inclusion proof against prevLastBlockHash) is pinned down by the prover team alongside the EIP-7864 witness format.",
-        "parentStateAnchor": "...",
-        "1000501": {
-            "stateProofs":   "...",
-            "storageProofs": "...",
-            "accounts":      "...",
-            "code":          "..."
+    "_comment_executionWitness": "Output of Besu's `debug_executionWitness` (zkEVM plugin) — see ExecutionWitnessJsonTest.java in besu-zkevm-plugin. One entry per block in canonical block-range order. Each entry is the verbatim JSON the plugin returns: state (state-trie nodes touched during execution), keys (storage keys accessed), codes (bytecode of accessed contracts), headers (recent block headers needed by the BLOCKHASH opcode — the parent header within this list carries the state root the guest verifies against publicInputs.prevLastBlockHash to anchor the start of the range). No separate state-manager preprocessing step is needed (the Type-2 zkStateMerkleProof + conflatedExecutionTracesFile pair is gone). Treated as opaque-but-deterministic by the coordinator: the JSON is forwarded as-is, the guest is the only consumer.",
+    "executionWitness": [
+        {
+            "state":   ["..."],
+            "keys":    ["..."],
+            "codes":   ["..."],
+            "headers": ["..."]
         },
-        "1000502": { "...": "..." },
-        "1000503": { "...": "..." }
-    }
+        { "state": ["..."], "keys": ["..."], "codes": ["..."], "headers": ["..."] },
+        { "state": ["..."], "keys": ["..."], "codes": ["..."], "headers": ["..."] }
+    ]
 }

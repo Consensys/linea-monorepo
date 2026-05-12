@@ -24,7 +24,7 @@ A single blob proof can fold `K ≥ 1` blobs together. `K = 1` is the simplest c
 
 - `proverVersion` — same string the existing prover responds with (e.g. `"4.0.0-riscv"`); coordinator forwards to L1.
 - `verifyingKeyShaSum` — required on responses today; on requests it is informational so the prover can fast-fail on a key mismatch.
-- `chainConfig` — the four fields hashed into `dynamicChainConfigHash` (`l2MessageServiceContract`, `coinbase`, `baseFee`, `chainID`); included as private input wherever the public-input tuple expects the hash.
+- `chainConfig` — the static fields supplied at the execution-proof layer (`l2MessageServiceContract`, `coinbase`, `chainID`). `dynamicChainConfigHash = Hash(chainID, coinbase, L2MessageServiceContract, baseFee)`; the execution-proof guest computes it by combining these three with `baseFee` taken from any block's header (asserted constant across the range). Blob and aggregation proofs do not carry `chainConfig` — they inherit the hash from inner-proof PIs.
 - `executionWitness` — Besu `debug_executionWitness` payload (stateless witness: account/storage trie proofs, contract code, code hashes). Treated as opaque-but-deterministic JSON.
 - `forcedTransactions` — per-block witness array mirroring `block.py::ForcedTransactionWitness`. Empty for blocks without FTXs.
 - All `bytes32` and `bytesN` fields are `0x`-prefixed hex; blob bytes stay base64-encoded to match `prover/backend/blobsubmission`.

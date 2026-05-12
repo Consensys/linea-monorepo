@@ -27,15 +27,7 @@
         "parentLastProcessedFtxNumber":                    0
     },
 
-    "_comment_chainConfig": "Used to verify the dynamicChainConfigHash that every inner blob proof must agree on. A chain-config change requires a finalisation boundary; consequently an aggregation proof never spans one.",
-    "chainConfig": {
-        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
-        "coinbase":                  "0x0000000000000000000000000000000000000000",
-        "baseFee":                   1000000000,
-        "chainId":                   59144
-    },
-
-    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple this proof will expose to L1 LineaRollup.finalize(). Block-hash continuity is folded into prev/newShnarf; chainID/coinbase/baseFee are folded into dynamicChainConfigHash. Provided so the coordinator can fail-fast on a mismatch with the response before submission.",
+    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple this proof will expose to L1 LineaRollup.finalize(). Block-hash continuity is folded into prev/newShnarf; dynamicChainConfigHash is inherited from the inner blob proofs (§2.3 step 2 asserts all blob proofs agree on it) — the hash preimage itself is `Hash(chainID, coinbase, L2MessageServiceContract, baseFee)`, computed once at the execution-proof layer. Provided so the coordinator can fail-fast on a mismatch with the response before submission.",
     "expectedAggregatedPublicInputs": {
         "newLastBlockNumber":                      1000567,
         "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",

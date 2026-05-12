@@ -87,15 +87,6 @@
         "execution/responses/1000511-1000515-getZkProof.json",
         "execution/responses/1000516-1000520-getZkProof.json"
     ],
-
-    "_comment_chainConfig": "Single value across the proof. Used to verify the dynamicChainConfigHash bound by every inner execution proof. A chain-config change is a finalisation boundary; consequently a blob proof never spans one.",
-    "chainConfig": {
-        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
-        "coinbase":                  "0x0000000000000000000000000000000000000000",
-        "baseFee":                   1000000000,
-        "chainId":                   59144
-    },
-
     "_comment_publicInputs": "The 14-field tuple this blob proof will output. Identical shape to §2.4 (and to getZkAggregatedProof.request.json::expectedAggregatedPublicInputs). Provided here so the coordinator can fail-fast on a mismatch with the response before forwarding the proof to the aggregation step.",
     "publicInputs": {
         "newLastBlockNumber":                      1000520,

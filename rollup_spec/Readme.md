@@ -74,7 +74,7 @@ The execution proof covers a contiguous range of L2 blocks and proves the EVM st
 | `prevL1L2BridgeRollingHashMessageNumber` | Message number corresponding to `prevL1L2BridgeRollingHash` |
 | `L1L2BridgeRollingHash` | Accumulated L1→L2 deposit rolling hash at the end of this range |
 | `L1L2BridgeRollingHashMessageNumber` | Message number corresponding to `L1L2BridgeRollingHash` |
-| `dynamicChainConfig` | Hash of the L2 `chainID, baseFee, coinBase` and `L2MessageServiceContract` |
+| `dynamicChainConfig` | Hash of the L2 `chainID`, `coinBase`, `L2MessageServiceContract`, and `baseFee`. The first three are static configuration; `baseFee` is taken by the guest from any block's header (asserted constant across the range) and folded into the same hash. |
 | `prevFtxRollingHash` | Forced-transaction rolling hash at the start of this range |
 | `newFtxRollingHash` | Forced-transaction rolling hash at the end of this range |
 | `lastProcessedFtxNumber` | Sequence number of the last forced transaction handled in this range |
@@ -83,11 +83,10 @@ The execution proof covers a contiguous range of L2 blocks and proves the EVM st
 
 **Private Inputs (Witness)**
 
-- The complete set of L2 block headers (all fields required for full RLP encoding: `parentHash`, `stateRoot`, `txsRoot`, `receiptsRoot`, `logsBloom`, `number`, `gasLimit`, `gasUsed`, `timestamp`, `extraData`, `mixHash`/`prevrandao`, `nonce`, `baseFeePerGas`, and any fork-relevant additions from Fusaka/Glamsterdam)
-- The signature-stripped ordered transaction list per block, with explicit per-transaction sender addresses
-- The stateless execution witness for the proven range (account/storage proofs, contract code, parent-state-root anchor)
+- The complete set of L2 blocks in canonical RLP encoding (header + transaction list [+ withdrawals]); EIP-2718 typed transactions in full signed form. The guest recovers each transaction's sender via `secp256k1` and commits to the recovered list via `txFromsHash`.
+- The stateless execution witness per block, as produced by Besu's `debug_executionWitness` (`state`, `keys`, `codes`, `headers`); the parent header within `headers` carries the state root that anchors `prevLastBlockHash`
 - The set of L1→L2 deposit messages consumed in this range, with their message numbers and the rolling hash chain anchored at the previous finalized state
-- The dynamic chain config: `L2MessageServiceContract, coinBase, baseFee, chainID`
+- The static chain config: `L2MessageServiceContract`, `coinBase`, `chainID`. `baseFee` is the fourth input to `dynamicChainConfigHash` but is sourced from the block header rather than this struct — see §3.2
 - The forced-transaction witnesses for FTXs in the range plus the `pendingFtxs` deadline-sweep set — see §6
 
 **What it proves:**
@@ -278,7 +277,7 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 
 **What is included:**
 
-- **Block context variables** — fields required to resolve EVM opcodes: `timestamp` (for `TIMESTAMP`), `mixHash`/`prevrandao` (for `PREVRANDAO`). Note: `gasLimit` and fields that are deterministic outputs of execution (such as `withdrawalsRoot`) are not included. `coinbase` (for `COINBASE`), `baseFee` are static configuration fields of the rollup.
+- **Block context variables** — fields required to resolve EVM opcodes: `timestamp` (for `TIMESTAMP`), `mixHash`/`prevrandao` (for `PREVRANDAO`), `baseFeePerGas` (for `BASEFEE`; the guest takes it from any block's header, asserts the value is constant across the range, and folds it into `dynamicChainConfigHash` as the fourth preimage component). Note: `gasLimit` and fields that are deterministic outputs of execution (such as `withdrawalsRoot`) are not included. `coinbase` (for `COINBASE`) is a static configuration field of the rollup.
 - **Target block hash** — `blockHash` is included so that users can infer the return value of the keccak opcode without having access to the entire block header since a Type-1 block hash requires a perfect RLP-encoding of the full header
 - **Signature-stripped transactions** — the ordered transaction list including `from` (sender address), `nonce`, gas parameters, `to`, `value`, `data`, and `accessLists`; ECDSA signatures `(v, r, s)` are omitted since the execution proof guarantees they were validly signed. `from` is stored explicitly so the sender can be recovered without signature verification during re-execution. However, the transaction must figure their corresponding blob-hashes and access-lists.
 
@@ -333,7 +332,7 @@ The new architecture dramatically simplifies the `LineaRollup` contract.
    - Assert `prevShnarf == currentFinalizedShnarf` (DA and block-hash continuity — the shnarf encodes the last block hash, so this check subsumes a separate `prevLastBlockHash` check)
    - Assert `prevL1L2BridgeRollingHash == currentFinalizedL1L2BridgeRollingHash` and `prevL1L2BridgeRollingHashMessageNumber == currentFinalizedL1L2BridgeRollingHashMessageNumber` (deposit bridge continuity)
    - Assert `L1L2BridgeRollingHash == l1RollingHash[L1L2BridgeRollingHashMessageNumber]` (deposit bridge authenticity — the proof's claimed end-of-range rolling hash must match L1's authoritative chain)
-   - Assert `chainID`, `coinbase`, and `baseFee` match the contract's registered chain configuration by checking the dynamic-chain config hash
+   - Assert `chainID`, `coinbase`, the L2 message-service address, and `baseFee` match the contract's registered chain configuration by checking the dynamic-chain config hash
    - Verify `keccak256(submittedRoots) == L2L1BridgeTransactionTree`; store each root via `l2MerkleRootsDepths[root] = D`
    - Optionally process `l2MessagingBlocksOffsets` calldata to emit `L2MessagingBlockAnchored` discovery events (unchanged from today)
    - Update storage: `currentFinalizedLastBlockHash`, `currentFinalizedShnarf`, `currentL2BlockNumber`, `currentFinalizedL1L2BridgeRollingHash`, `currentFinalizedL1L2BridgeRollingHashMessageNumber`
