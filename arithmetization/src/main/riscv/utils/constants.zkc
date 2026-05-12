@@ -292,5 +292,5 @@ const MASK_64_ERASE_LAST_BIT:u64 = 0xfffffffffffffffe
 // ======================
 // Syscalls
 // ======================
-const EXIT_SYSCALL:u64 = 93
-const WRITE_SYSCALL:u64 = 64
+const EXIT_SYSCALL:DoubleWord = 93
+const WRITE_SYSCALL:DoubleWord = 64
