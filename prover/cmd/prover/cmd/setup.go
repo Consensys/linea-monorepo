@@ -59,15 +59,23 @@ var AllCircuits = []circuits.CircuitID{
 }
 
 // PayloadCircuits defines the ordered list of payload circuits that can be aggregated.
-// This order corresponds to circuit IDs 0-5 in GlobalCircuitIDMapping.
+// This order corresponds to circuit IDs 0-13 in GlobalCircuitIDMapping.
 // Infrastructure circuits (emulation, aggregation, pi-interconnection, emulation-dummy) are NOT included here.
 var PayloadCircuits = []string{
-	"execution-dummy",         // ID 0
-	"data-availability-dummy", // ID 1
-	"execution",               // ID 2
-	"execution-large",         // ID 3
-	"execution-limitless",     // ID 4
-	"data-availability-v2",    // ID 5
+	"execution-dummy",                      // ID 0
+	"data-availability-dummy",              // ID 1
+	"execution",                            // ID 2
+	"execution-large",                      // ID 3
+	"execution-limitless",                  // ID 4
+	"data-availability-v2",                 // ID 5
+	"invalidity-nonce-balance-dummy",       // ID 6
+	"invalidity-precompile-logs-dummy",     // ID 7
+	"invalidity-filtered-address-dummy",    // ID 8
+	"invalidity-nonce-balance",             // ID 9
+	"invalidity-precompile-logs",           // ID 10
+	"invalidity-filtered-address",          // ID 11
+	"invalidity-precompile-logs-limitless", // ID 12
+	"invalidity-precompile-logs-large",     // ID 13
 }
 
 // Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
@@ -146,7 +154,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
 	}
 
-	// Collect verifying keys for payload circuits only (IDs 0-5)
+	// Collect verifying keys for payload circuits only (IDs 0-13)
 	// The IsAllowedCircuitID bitmask in the config determines which ones are actually allowed at runtime
 	payloadVks, err := collectPayloadVerifyingKeys(ctx, cfg, srsProvider)
 	if err != nil {
@@ -398,10 +406,10 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	}
 }
 
-// collectPayloadVerifyingKeys gathers verifying keys for payload circuits only (IDs 0-5).
+// collectPayloadVerifyingKeys gathers verifying keys for payload circuits only (IDs 0-13).
 // These are the circuits that can be aggregated. Infrastructure circuits (emulation,
 // aggregation, pi-interconnection, emulation-dummy) are excluded.
-// The returned slice is indexed by payload circuit ID (0-5).
+// The returned slice is indexed by payload circuit ID (0-13).
 func collectPayloadVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
 	payloadVks := make([]plonk.VerifyingKey, len(PayloadCircuits))
 
@@ -439,7 +447,10 @@ func collectPayloadVerifyingKeys(ctx context.Context, cfg *config.Config, srsPro
 // Note: emulation-dummy is NOT a payload dummy - it's an infrastructure circuit dummy.
 func isPayloadDummyCircuit(cID string) bool {
 	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID:
+	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID,
+		circuits.InvalidityNonceBalanceDummyCircuitID,
+		circuits.InvalidityPrecompileLogsDummyCircuitID,
+		circuits.InvalidityFilteredAddressDummyCircuitID:
 		return true
 	}
 	return false
