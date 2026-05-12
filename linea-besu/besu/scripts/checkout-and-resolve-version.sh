@@ -10,7 +10,7 @@ SHORT_COMMIT=${BESU_COMMIT:0:7}
 echo "SHORT_COMMIT=$SHORT_COMMIT"
 
 if [ ! -d "$BESU_DIR/.git" ]; then
-  echo "Cloning https://github.com/besu-eth/besu.git into $BESU_DIR"
+  echo "Cloning https://github.com/besu-eth/besu into $BESU_DIR"
   mkdir -p "$(dirname "$BESU_DIR")"
   # Partial clone: skip trees + blobs on the initial fetch so we only download the
   # commit graph + tag refs. That's all `git describe --tags --abbrev=0 <commit>`
