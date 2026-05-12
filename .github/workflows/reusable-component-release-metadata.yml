@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       include-path:
-        description: "git-cliff --include-path filter, either single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/besu/**\"]')"
+        description: "git-cliff --include-path filter, either single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
         required: true
         type: string
       cliff-config:
