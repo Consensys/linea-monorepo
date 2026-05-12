@@ -36,6 +36,7 @@ func Generate(c config.Curve, outputDir string, gen *common.Generator) error {
 		{filepath.Join(outputDir, "prove.go"), tmpl.ProveTemplate},
 		{filepath.Join(outputDir, "prove_stub.go"), tmpl.ProveStubTemplate},
 		{filepath.Join(outputDir, "plonk_test.go"), tmpl.PlonkTestTemplate},
+		{filepath.Join(outputDir, "fs_parity_test.go"), tmpl.FSParityTestTemplate},
 	}
 
 	for _, e := range entries {

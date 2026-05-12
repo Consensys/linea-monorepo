@@ -52,3 +52,6 @@ var ProveStubTemplate string
 
 //go:embed plonk_test.go.tmpl
 var PlonkTestTemplate string
+
+//go:embed fs_parity_test.go.tmpl
+var FSParityTestTemplate string
