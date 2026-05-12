@@ -109,6 +109,16 @@ ACT4_EXTENSIONS=M ./build_linea_elfs.sh
 ELF_DIR="../bin/work/linea-rv64im-zicclsm/elfs/rv64i/M" ./run_linea_elfs.sh
 ```
 
+## Running a single test by hand
+
+`run_linea_elfs.sh` caches each `elf2json` result at
+`../bin/logs/<test>.json`. After at least one sweep you can re-run any
+single test directly through `zkc`, bypassing the wrapper:
+
+```bash
+zkc exec --ir ../bin/logs/<test>.json ../../../../main/riscv/main.zkc
+```
+
 ## Build speed vs introspection
 
 `build_linea_elfs.sh` defaults to `ACT4_FAST=True` because most reproduce
