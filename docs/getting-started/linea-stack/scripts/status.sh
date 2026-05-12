@@ -12,6 +12,30 @@ env_value() {
   fi
 }
 
+json_string_field() {
+  key="$1"
+  sed -nE "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p" | head -1
+}
+
+hex_to_dec_small() {
+  hex="$1"
+  hex="${hex#0x}"
+  [ -n "$hex" ] || { echo "0"; return; }
+  # currentL2BlockNumber is small in the quickstart; fall back to hex if a
+  # shell cannot fit the value in its native integer range.
+  printf '%d\n' "$((16#$hex))" 2>/dev/null || printf '0x%s\n' "$hex"
+}
+
+shared_addr() {
+  file="$1"
+  section_name="$2"
+  key="$3"
+  docker run --rm -v linea-stack-shared-config:/shared:ro busybox sh -eu -c "
+    [ -f /shared/$file ] || exit 0
+    sed -nE '/\"$section_name\"[[:space:]]*:/,/^[[:space:]]*}/ s/.*\"$key\"[[:space:]]*:[[:space:]]*\"(0x[a-fA-F0-9]{40})\".*/\1/p' /shared/$file | head -1
+  " 2>/dev/null || true
+}
+
 if ! docker info >/dev/null 2>&1; then
   echo "[linea-status] ERROR: Docker daemon is not reachable from this shell." >&2
   exit 1
@@ -86,6 +110,97 @@ if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
   '
 else
   echo "rendered config volume missing"
+fi
+
+section "l1 data availability vs finalization"
+LINEA_ROLLUP_ADDRESS=""
+if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
+  LINEA_ROLLUP_ADDRESS="$(shared_addr addresses.json l1 LineaRollupV8)"
+fi
+
+if [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
+  echo "LineaRollupV8: $LINEA_ROLLUP_ADDRESS"
+else
+  echo "LineaRollupV8: unavailable until addresses.json exists"
+fi
+
+latest_blob_tx=""
+latest_finalization_tx=""
+latest_finalization_window=""
+if docker ps -a --format '{{.Names}}' | grep -qx coordinator; then
+  latest_blob_tx="$(docker logs --tail 4000 coordinator 2>&1 \
+    | sed -nE 's/.*blobs submitted:.*transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p' \
+    | tail -1 || true)"
+  latest_finalization_tx="$(docker logs --tail 4000 coordinator 2>&1 \
+    | sed -nE 's/.*submitted aggregation=[^ ]+ transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p' \
+    | tail -1 || true)"
+  latest_finalization_window="$(docker logs --tail 4000 coordinator 2>&1 \
+    | sed -nE 's/.*submitted aggregation=([^ ]+) transactionHash=0x[a-fA-F0-9]{64}.*/\1/p' \
+    | tail -1 || true)"
+fi
+
+if [ -n "$latest_blob_tx" ]; then
+  echo "latest blob tx (DA only): $latest_blob_tx"
+else
+  echo "latest blob tx (DA only): none seen in coordinator logs yet"
+fi
+
+if [ -n "$latest_finalization_tx" ]; then
+  if [ -n "$latest_finalization_window" ]; then
+    echo "latest finalization tx: $latest_finalization_tx aggregation=$latest_finalization_window"
+  else
+    echo "latest finalization tx: $latest_finalization_tx"
+  fi
+else
+  echo "latest finalization tx: none seen in coordinator logs yet"
+fi
+
+L1_RPC_URL="${L1_RPC_URL:-$(env_value L1_RPC_URL || true)}"
+if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
+  l2_finalized_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"$LINEA_ROLLUP_ADDRESS\",\"data\":\"0x695378f5\"},\"latest\"]}" \
+    "$L1_RPC_URL" 2>/dev/null || true)"
+  l2_finalized_hex="$(printf '%s\n' "$l2_finalized_resp" | json_string_field result)"
+  if [ -n "$l2_finalized_hex" ] && [ "$l2_finalized_hex" != "0x" ]; then
+    echo "rollup currentL2BlockNumber: $(hex_to_dec_small "$l2_finalized_hex") ($l2_finalized_hex)"
+  else
+    echo "rollup currentL2BlockNumber: unavailable"
+  fi
+
+  if [ -n "$latest_finalization_tx" ]; then
+    finalization_tx_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
+      -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getTransactionByHash\",\"params\":[\"$latest_finalization_tx\"]}" \
+      "$L1_RPC_URL" 2>/dev/null || true)"
+    finalization_input="$(printf '%s\n' "$finalization_tx_resp" | json_string_field input)"
+    finalization_selector="$(printf '%.10s' "$finalization_input")"
+    if [ "$finalization_selector" = "0x755bc62f" ]; then
+      echo "latest finalization method: finalizeBlocks(bytes,uint256,tuple) selector=$finalization_selector"
+    elif [ -n "$finalization_selector" ]; then
+      echo "latest finalization method: unexpected selector=$finalization_selector"
+    else
+      echo "latest finalization method: unavailable"
+    fi
+
+    finalization_receipt_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
+      -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_getTransactionReceipt\",\"params\":[\"$latest_finalization_tx\"]}" \
+      "$L1_RPC_URL" 2>/dev/null || true)"
+    finalization_status="$(printf '%s\n' "$finalization_receipt_resp" | json_string_field status)"
+    case "$finalization_receipt_resp" in
+      *a0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb*) data_finalized="yes" ;;
+      *) data_finalized="no" ;;
+    esac
+    case "$finalization_receipt_resp" in
+      *32e016ccc5c33419c35caa94023fdeb75143da613fb2ac738ab736404c09fc5d*) state_updated="yes" ;;
+      *) state_updated="no" ;;
+    esac
+    if [ -n "$finalization_status" ]; then
+      echo "latest finalization receipt: status=$finalization_status DataFinalizedV3=$data_finalized FinalizedStateUpdated=$state_updated"
+    else
+      echo "latest finalization receipt: unavailable"
+    fi
+  fi
+else
+  echo "Sepolia rollup state check: skipped (L1_RPC_URL or LineaRollupV8 unavailable)"
 fi
 
 section "coordinator"

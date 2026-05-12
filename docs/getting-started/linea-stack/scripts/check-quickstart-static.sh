@@ -141,6 +141,17 @@ check_l2_chain_id_wiring() {
   else
     fail "status.sh must report L2 chain ID and rendered prover mode"
   fi
+
+  if grep -q 'l1 data availability vs finalization' "$status_script" \
+    && grep -q 'latest blob tx (DA only)' "$status_script" \
+    && grep -q 'finalizeBlocks(bytes,uint256,tuple)' "$status_script" \
+    && grep -q 'currentL2BlockNumber' "$status_script" \
+    && grep -q 'DataFinalizedV3' "$status_script" \
+    && grep -q 'FinalizedStateUpdated' "$status_script"; then
+    pass "status.sh separates blob submission from rollup finalization"
+  else
+    fail "status.sh must distinguish blob submission from finalizeBlocks finalization"
+  fi
 }
 
 check_account_setup_key_model() {

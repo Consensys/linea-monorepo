@@ -178,7 +178,8 @@ mode. In partial mode, the 2026-05-12 M-series validation with 30 GiB assigned
 to Docker and `PROVER_GOMEMLIMIT=24GiB` reached first L1 finalization about 25
 min after coordinator/prover startup. Do not call a run successful just because
 containers are up: wait for `./scripts/status.sh` to show deployed addresses,
-coordinator ports, prover responses, and coordinator L1 submission logs. Use
+coordinator ports, prover responses, L1 blob submission, and a separate
+`finalizeBlocks` tx that advances the rollup's `currentL2BlockNumber`. Use
 `./scripts/links.sh` to print the current Sepolia and local L2 explorer links.
 
 ## 5. Endpoints
@@ -250,7 +251,10 @@ A useful first-boot checkpoint has all of these signals:
   TokenBridge, and ERC20Example addresses.
 - coordinator ports `9545` and `9546` are listening.
 - prover request/response counts are non-zero.
-- coordinator logs show L1 blob submission and aggregation/finalization activity.
+- `status.sh` shows a latest blob tx under `DA only`.
+- `status.sh` shows a separate latest finalization tx with
+  `finalizeBlocks(bytes,uint256,tuple)`, successful receipt, `DataFinalizedV3`,
+  `FinalizedStateUpdated`, and an advanced rollup `currentL2BlockNumber`.
 - L2 Blockscout UI responds on `http://localhost:4001`.
 
 For partial-prover validation, also check:
@@ -259,8 +263,9 @@ For partial-prover validation, also check:
   `is_allowed_circuit_id = 483`;
 - execution, compression, and aggregation response counts are non-zero;
 - coordinator logs include a `blobs submitted` transaction hash;
-- coordinator logs include `submitted aggregation` and a later
-  `finalization update`.
+- coordinator logs include `submitted aggregation`, and `status.sh` resolves
+  that tx to `finalizeBlocks` rather than only a blob submission;
+- coordinator logs include a later `finalization update`.
 
 Lower-level checks, when you need them:
 
