@@ -33,6 +33,49 @@ include "../utils/signed_sum.zkc"
 //   SYSTEM    — system calls (not yet implemented)
 //
 // For all opcodes except JALR, new_pc = pc + 4 (sequential fall-through).
+//
+// `process_syscall` is defined first so the SYSTEM case below can reference it
+// — zkc resolves symbols top-down within a file, with no forward declarations.
+fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
+    var call_num:DoubleWord = registers[17]
+    //
+    switch call_num {
+        case 93: { // exit
+            printf "ECALL for exit\n"
+            var a0:DoubleWord = registers[10]   // exit code
+            if a0 != 0 {
+                fail "exit with code %d", a0
+            }
+            printf "Program exited successfully (exit with code 0).\n"
+            // set stop signal to terminate execution
+            new_pc = MAX_UINT_64
+        }
+        case 64: { // write(fd, buf, count) — Linux RISC-V syscall convention
+            // a0 = fd (ignored — we treat every write as going to stdout);
+            // a1 = pointer to byte buffer in RAM;
+            // a2 = number of bytes to write.
+            // ACT4's RVMODEL_IO_WRITE_STR (in rvmodel_macros.h) issues this
+            // syscall so the framework's failure messages (failing PC,
+            // label, expected vs actual) surface on our printf channel.
+            // zkc's printf has no %c; bytes print as %x and a trailing
+            // newline frames each WRITE_STR call.
+            var a1:Address    = registers[11] as Address  // buf
+            var a2:DoubleWord = registers[12]              // count
+            var addr:Address  = a1
+            for i:DoubleWord = 0; i < a2; i = i + 1 {
+                printf "%x ", ram[addr]
+                addr = addr + 1
+            }
+            printf "\n"
+            registers[10] = a2  // return value: bytes written
+            new_pc = (pc + 4) as Address
+        }
+        default: {
+            fail "unsupported system call (%d)", call_num
+        }
+    }
+}
+
 fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
     var funct6:Funct6
     var funct7:Funct7
@@ -202,27 +245,6 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
             printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
             printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
             fail
-        }
-    }
-}
-
-fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
-    var call_num:DoubleWord = registers[17]
-    //
-    switch call_num {
-        case 93: { // exit 
-            printf "ECALL for exit\n"
-            var exit_code:DoubleWord = registers[10]
-            // check for non-zero exit code
-            if exit_code != 0 {
-                fail "exit with code %d", exit_code
-            }
-            printf "Program exited successfully (exit with code 0).\n"
-            // set stop signal to terminate execution
-            new_pc = MAX_UINT_64
-        }
-        default: {
-            fail "unsupported system call (%d)", call_num
         }
     }
 }
