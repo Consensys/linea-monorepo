@@ -75,6 +75,8 @@ their default positions. Output:
 | `ACT4_IMAGE`      | `riscv-act4:latest` | `build` | Docker image tag. |
 | `ACT4_EXTENSIONS` | `I,M` | `build` | Comma-separated list (e.g. `I` for just RV64I). |
 | `ACT4_JOBS`       | `4` | `build` | Parallel `make` jobs inside the container. |
+| `ACT4_FAST`       | `True` | `build` | When `True`, skip per-test `objdump` generation for faster builds. Set to empty (`ACT4_FAST=`) to get a `<test>.objdump` next to every ELF — useful when debugging. |
+| `ACT4_DEBUG`      | _(empty)_ | `build` | Set to `True` to enable the framework's full debug output: per-test `.objdump` + Sail `<test>.sig.log` instruction trace + `<test>.sig.trap_report`. Slowest, most verbose. Mutually exclusive with `ACT4_FAST` — `ACT4_DEBUG` wins if both are set. |
 | `ELF2JSON`        | `../bin/elf2json` (auto-built) | `run` | Path to the Go helper that converts ELF → zkc JSON. |
 | `ZKC_MAIN`        | `../../../../main/riscv/main.zkc` (relative to scripts dir) | `run` | The zkc program that interprets the ELF. |
 | `PER_TEST_TIMEOUT`| `300` (s) | `run` | Bail out on a stuck test. Requires GNU coreutils `timeout` (Linux: default; macOS: `brew install coreutils`, picked up as `gtimeout`). If neither is on `PATH` the script falls back to running without a deadline and prints a warning. |
@@ -96,6 +98,27 @@ their default positions. Output:
 ACT4_EXTENSIONS=M ./build_linea_elfs.sh
 ELF_DIR="../bin/work/linea-rv64im-zicclsm/elfs/rv64i/M" ./run_linea_elfs.sh
 ```
+
+## Build speed vs introspection
+
+`build_linea_elfs.sh` defaults to `ACT4_FAST=True` because most reproduce
+runs only need the ELFs. Two ways to ask for more output, in increasing
+order of slowness:
+
+```bash
+# generate a human-readable disassembly next to every ELF
+ACT4_FAST= ./build_linea_elfs.sh
+# look at ../bin/work/linea-rv64im-zicclsm/elfs/rv64i/I/I-add-00.objdump
+
+# additionally generate Sail instruction-by-instruction traces
+ACT4_DEBUG=True ./build_linea_elfs.sh
+# .sig.log  — full Sail trace
+# .sig.trap_report — human-readable trap summary
+```
+
+Both options are forwarded as the framework's own `FAST=` / `DEBUG=`
+make-args; the two are mutually exclusive and `ACT4_DEBUG` wins if both
+are set.
 
 ## Inspecting the generated tests
 

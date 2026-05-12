@@ -12,8 +12,13 @@
 #   ACT4_IMAGE          docker image tag    (default: riscv-act4:latest)
 #   ACT4_EXTENSIONS     comma-list of extensions to build (default: I,M)
 #   ACT4_JOBS           parallel build jobs (default: 4)
+#   ACT4_FAST           "True" → skip objdump generation (faster)  [default: True]
+#   ACT4_DEBUG          "True" → enable Sail trace + trap reports (slowest, most
+#                                 verbose). Mutually exclusive with ACT4_FAST;
+#                                 if both set, ACT4_DEBUG wins.
 #
 # Output: ELFs in $ACT4_WORK_DIR/linea-rv64im-zicclsm/elfs/
+# Per-test .objdump files appear next to each ELF when ACT4_FAST is unset.
 
 set -u
 
@@ -31,6 +36,17 @@ ACT4_CONFIG_DIR="${ACT4_CONFIG_DIR:-$DEFAULT_CONFIG_DIR}"
 ACT4_IMAGE="${ACT4_IMAGE:-riscv-act4:latest}"
 ACT4_EXTENSIONS="${ACT4_EXTENSIONS:-I,M}"
 ACT4_JOBS="${ACT4_JOBS:-4}"
+ACT4_FAST="${ACT4_FAST:-True}"
+ACT4_DEBUG="${ACT4_DEBUG:-}"
+
+# Translate ACT4_FAST / ACT4_DEBUG into the framework's mutually-exclusive
+# FAST= / DEBUG= make-args. DEBUG wins if both are set.
+MAKE_VERBOSITY=""
+if [ "$ACT4_DEBUG" = "True" ]; then
+    MAKE_VERBOSITY="DEBUG=True"
+elif [ "$ACT4_FAST" = "True" ]; then
+    MAKE_VERBOSITY="FAST=True"
+fi
 
 # Resolve to absolute paths (docker requires absolute mount sources).
 mkdir -p "$ACT4_WORK_DIR"
@@ -58,5 +74,5 @@ docker run --rm \
     bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && \
              CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml \
              EXTENSIONS=$ACT4_EXTENSIONS \
-             FAST=True \
+             $MAKE_VERBOSITY \
              make --jobs $ACT4_JOBS --keep-going"
