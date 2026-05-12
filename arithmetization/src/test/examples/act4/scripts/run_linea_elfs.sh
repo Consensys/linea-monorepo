@@ -91,20 +91,45 @@ for elf in $(find "$ELF_DIR" -name '*.elf' | sort); do
     count=$((count+1))
     json="$LOGS/${name}.json"
     out="$LOGS/${name}.out"
+    full="$LOGS/${name}.full"
 
     "$ELF2JSON" "$elf" "$IN_BYTES" "$PROGRAM_OFFSET" "$IN_BYTES_OFFSET" "$ENTRY_POINT" \
         > "$json" 2> "$LOGS/${name}.json.err"
 
     # `$TIMEOUT_CMD` is intentionally unquoted so word-splitting drops it
-    # entirely when no `timeout`/`gtimeout` is available.
-    $TIMEOUT_CMD zkc exec --ir "$json" "$ZKC_MAIN" 2>&1 \
+    # entirely when no `timeout`/`gtimeout` is available.  Tee the full
+    # interpreter output to `$full` so the WRITE_STR hex bytes survive
+    # past the summary filter below.
+    $TIMEOUT_CMD zkc exec --ir "$json" "$ZKC_MAIN" 2>&1 | tee "$full" \
         | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" \
         | head -3 > "$out"
 
     if grep -q "Program exited successfully" "$out"; then
         echo "PASS  $name" >> "$RESULTS"
         pass=$((pass+1))
+        rm -f "$full"
     else
+        # zkc has no `%c` printf, so `process_syscall` (case 64 in
+        # instruction_processing/i_type.zkc) dumps each WRITE_STR byte
+        # as `0xNN `. Decode those lines back to ASCII so the
+        # framework's failure message (failing label, PC, etc.) is
+        # directly readable in the `.out` file.
+        if command -v python3 >/dev/null 2>&1; then
+            decoded=$(grep -E '^(0x[0-9a-f]+ )+$' "$full" | python3 -c '
+import sys
+for line in sys.stdin:
+    for tok in line.split():
+        try: sys.stdout.write(chr(int(tok, 16)))
+        except ValueError: pass
+' 2>/dev/null)
+            if [ -n "$decoded" ]; then
+                {
+                    echo ""
+                    echo "--- WRITE_STR (decoded) ---"
+                    printf '%s\n' "$decoded"
+                } >> "$out"
+            fi
+        fi
         code=$(grep -oE "exit with code -?[0-9]+" "$out" | head -1 | grep -oE "\-?[0-9]+")
         [ -z "$code" ] && code="?"
         first=$(head -1 "$out" | tr -d '\n' | cut -c1-120)
