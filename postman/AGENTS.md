@@ -12,13 +12,13 @@ TypeScript backend service that facilitates cross-chain message delivery between
 # Build dependency projects first
 NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build && \
 pnpm run -F linea-shared-utils build && \
-pnpm run -F "./sdk/*" build
+pnpm run -F "./ts-libs/sdk/*" build
 
 # Build the postman
 pnpm -F @consensys/linea-postman run build
 
 # Run locally (requires local stack + PostgreSQL)
-npx ts-node src/main.ts
+pnpm exec ts-node src/main.ts
 
 # Run as part of full stack
 make start-env-with-tracing-v2

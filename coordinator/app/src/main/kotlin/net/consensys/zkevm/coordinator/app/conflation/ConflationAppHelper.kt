@@ -1,33 +1,18 @@
 package net.consensys.zkevm.coordinator.app.conflation
 
-import linea.coordinator.config.v2.CoordinatorConfig
-import linea.coordinator.config.v2.isDisabled
+import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.EthApiClient
 import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
-import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
-import net.consensys.zkevm.ethereum.coordination.DynamicBlockNumberSet
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByBlockLimit
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByExecutionTraces
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByTargetBlockNumbers
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByTimeDeadline
-import net.consensys.zkevm.ethereum.coordination.conflation.DeadlineConflationCalculatorRunner
-import net.consensys.zkevm.ethereum.coordination.conflation.TimestampHardForkConflationCalculator
-import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 object ConflationAppHelper {
   /**
    * Returns the last block number inclusive upto which we have consecutive proven blobs or the last finalized block
    * number inclusive
    */
-  fun resumeConflationFrom(
+  internal fun resumeConflationFrom(
     aggregationsRepository: AggregationsRepository,
     lastFinalizedBlock: ULong,
   ): SafeFuture<ULong> {
@@ -42,7 +27,7 @@ object ConflationAppHelper {
       }
   }
 
-  fun resumeAggregationFrom(
+  private fun resumeAggregationFrom(
     aggregationsRepository: AggregationsRepository,
     lastFinalizedBlock: ULong,
   ): SafeFuture<ULong> {
@@ -50,6 +35,34 @@ object ConflationAppHelper {
       .findHighestConsecutiveEndBlockNumber(lastFinalizedBlock.toLong() + 1)
       .thenApply { highestEndBlockNumber ->
         highestEndBlockNumber?.toULong() ?: lastFinalizedBlock
+      }
+  }
+
+  fun getLastConflatedAndAggregatedBlocks(
+    lastFinalizedBlock: ULong,
+    aggregationsRepository: AggregationsRepository,
+    l2EthClient: EthApiClient,
+  ): SafeFuture<LastProcessedBlocks> {
+    val lastConflatedBlock = resumeConflationFrom(
+      aggregationsRepository,
+      lastFinalizedBlock,
+    ).thenCompose { lastProcessedBlockNumber ->
+      l2EthClient.ethGetBlockByNumberTxHashes(
+        lastProcessedBlockNumber.toBlockParameter(),
+      )
+    }
+    val lastAggregatedBlock = resumeAggregationFrom(
+      aggregationsRepository,
+      lastFinalizedBlock,
+    ).thenCompose { lastConsecutiveAggregatedBlockNumber ->
+      l2EthClient.ethGetBlockByNumberTxHashes(
+        lastConsecutiveAggregatedBlockNumber.toBlockParameter(),
+      )
+    }
+
+    return SafeFuture.collectAll(lastConflatedBlock, lastAggregatedBlock)
+      .thenApply { blocks ->
+        LastProcessedBlocks(lastConflatedBlock = blocks.first(), lastAggregatedBlock = blocks.last())
       }
   }
 
@@ -68,88 +81,5 @@ object ConflationAppHelper {
         .deleteAggregationsAfterBlockNumber((lastConsecutiveAggregatedBlockNumber + 1u).toLong())
 
     return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
-  }
-
-  fun addBlocksLimitCalculatorIfDefined(
-    configs: CoordinatorConfig,
-    calculators: MutableList<ConflationCalculator>,
-  ) {
-    if (configs.conflation.blocksLimit != null) {
-      calculators.add(
-        ConflationCalculatorByBlockLimit(
-          blockLimit = configs.conflation.blocksLimit,
-        ),
-      )
-    }
-  }
-
-  fun addTimestampHardForkCalculatorIfDefined(
-    configs: CoordinatorConfig,
-    lastProcessedTimestamp: Instant,
-    calculators: MutableList<ConflationCalculator>,
-  ) {
-    if (configs.conflation.proofAggregation.timestampBasedHardForks.isNotEmpty()) {
-      calculators.add(
-        TimestampHardForkConflationCalculator(
-          hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
-          initialTimestamp = lastProcessedTimestamp,
-        ),
-      )
-    }
-  }
-
-  fun createCalculatorsForBlobsAndConflation(
-    configs: CoordinatorConfig,
-    compressedBlobCalculator: ConflationCalculatorByDataCompressed,
-    lastProcessedTimestamp: Instant,
-    dynamicTargetEndBlockNumberSet: DynamicBlockNumberSet,
-    logger: Logger,
-    metricsFacade: MetricsFacade,
-  ): List<ConflationCalculator> {
-    val calculators: MutableList<ConflationCalculator> =
-      mutableListOf(
-        ConflationCalculatorByExecutionTraces(
-          tracesCountersLimit = configs.conflation.tracesLimits,
-          emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
-          metricsFacade = metricsFacade,
-          log = logger,
-        ),
-        ConflationCalculatorByTargetBlockNumbers(targetEndBlockNumbers = dynamicTargetEndBlockNumberSet),
-        compressedBlobCalculator,
-      )
-    addBlocksLimitCalculatorIfDefined(configs = configs, calculators = calculators)
-    addTimestampHardForkCalculatorIfDefined(
-      configs = configs,
-      calculators = calculators,
-      lastProcessedTimestamp = lastProcessedTimestamp,
-    )
-    return calculators
-  }
-
-  fun createDeadlineConflationCalculatorRunner(
-    configs: CoordinatorConfig,
-    lastProcessedBlockNumber: ULong,
-    l2EthClient: EthApiClient,
-  ): DeadlineConflationCalculatorRunner? {
-    if (configs.conflation.isDisabled() || configs.conflation.conflationDeadline == null) {
-      return null
-    }
-
-    return DeadlineConflationCalculatorRunner(
-      conflationDeadlineCheckInterval = configs.conflation.conflationDeadlineCheckInterval,
-      delegate = ConflationCalculatorByTimeDeadline(
-        config = ConflationCalculatorByTimeDeadline.Config(
-          conflationDeadline = configs.conflation.conflationDeadline,
-          conflationDeadlineLastBlockConfirmationDelay =
-          configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
-        ),
-        lastBlockNumber = lastProcessedBlockNumber,
-        clock = Clock.System,
-        latestBlockProvider = FixedLaggingHeadSafeBlockProvider(
-          ethApiBlockClient = l2EthClient,
-          blocksToFinalization = 0UL,
-        ),
-      ),
-    )
   }
 }

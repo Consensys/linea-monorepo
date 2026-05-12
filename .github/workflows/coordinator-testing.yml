@@ -43,11 +43,6 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           pnpm-install-options: '--frozen-lockfile --prefer-offline --filter contracts --ignore-scripts'
-      - name: Build besu from source
-        shell: bash
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PskipDownloadBesuDist=true
-        env:
-          JAVA_OPTS: -Xmx2g
       - name: Build coordinator and Unit tests
         run: |
           ./gradlew -V coordinator:app:buildNeeded
@@ -57,6 +52,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Pre-pull images for running integration tests
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: ./gradlew composePullLocalStackStartedImages
       - name: Run integration tests
         timeout-minutes: 15
         run: |

@@ -23,7 +23,9 @@ import linea.metrics.LineaMetricsCategory
 import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
+import linea.persistence.FeeHistoriesPostgresDao
 import linea.persistence.ForcedTransactionsDao
+import linea.persistence.conflation.RecordsCleanupFinalizationHandler
 import linea.web3j.SmartContractErrors
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
@@ -32,6 +34,7 @@ import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.WMAFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.WMAGasProvider
+import net.consensys.linea.ethereum.gaspricing.dynamiccap.FeeHistoriesRepositoryImpl
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.FeeHistoryCachingService
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapCalculatorImpl
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.GasPriceCapFeeHistoryFetcher
@@ -49,7 +52,6 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
 import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
@@ -61,9 +63,6 @@ import net.consensys.zkevm.ethereum.finalization.AggregationSubmitterImpl
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
-import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesPostgresDao
-import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesRepositoryImpl
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
@@ -301,11 +300,6 @@ class L1DependentApp(
     }
 
   private val lastFinalizedBlock = lastFinalizedBlock().get()
-  private val lastProcessedBlockNumber = resumeConflationFrom(
-    aggregationsRepository,
-    lastFinalizedBlock,
-  ).get()
-
   private val lineaSmartContractClientForDataSubmission: LineaSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
     // dynamic gas pricing is disabled and will act as a fallback gas provider
@@ -343,7 +337,7 @@ class L1DependentApp(
     )
   }
 
-  private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "highest.accepted.block.number",
@@ -652,7 +646,7 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
-  val highestAcceptedFinalizationTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastFinalizedBlock).also {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "highest.accepted.block.number",

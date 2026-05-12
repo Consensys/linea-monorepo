@@ -1,12 +1,15 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.conflation.ConflationHandler
+import linea.conflation.ConflationSafeBlockNumberProvider
+import linea.conflation.ConflationService
+import linea.conflation.calculators.BlockConflationCalculator
 import linea.domain.Block
 import linea.domain.BlockCounters
 import linea.domain.BlocksConflation
 import linea.domain.ConflationCalculationResult
 import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.ethereum.coordination.blockcreation.ConflationSafeBlockNumberProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -14,7 +17,7 @@ import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.TimeUnit
 
 class ConflationServiceImpl(
-  private val calculator: TracesConflationCalculator,
+  private val calculator: BlockConflationCalculator,
   private val safeBlockNumberProvider: ConflationSafeBlockNumberProvider,
   metricsFacade: MetricsFacade,
   private val log: Logger = LogManager.getLogger(ConflationServiceImpl::class.java),
