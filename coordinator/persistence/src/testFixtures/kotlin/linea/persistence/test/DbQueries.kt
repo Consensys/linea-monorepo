@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db.test
+package linea.persistence.test
 
 import io.vertx.core.Future
 import io.vertx.sqlclient.PreparedQuery

@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.blob
+package linea.persistence.conflation
 
 import linea.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture

@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.aggregation
+package linea.persistence.conflation
 
 import linea.domain.Aggregation
 import linea.domain.BlobAndBatchCounters

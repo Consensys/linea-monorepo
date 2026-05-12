@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.blob
+package linea.persistence.conflation
 
 import io.vertx.core.Future
 import io.vertx.sqlclient.Row

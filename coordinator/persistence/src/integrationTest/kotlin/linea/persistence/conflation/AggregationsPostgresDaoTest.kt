@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.aggregation
+package linea.persistence.conflation
 
 import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.Row
@@ -16,10 +16,8 @@ import linea.domain.createBatch
 import linea.domain.createBlobRecordFromBatches
 import linea.domain.createProofToFinalize
 import linea.error.DuplicatedRecordException
-import linea.persistence.conflation.BatchesPostgresDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import net.consensys.zkevm.persistence.db.test.DbQueries
@@ -32,7 +30,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
-import kotlin.ByteArray
 import kotlin.time.Instant
 
 @ExtendWith(VertxExtension::class)

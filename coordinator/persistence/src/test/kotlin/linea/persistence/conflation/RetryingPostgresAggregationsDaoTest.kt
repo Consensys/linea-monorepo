@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.aggregation
+package linea.persistence.conflation
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension

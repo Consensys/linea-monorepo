@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.aggregation
+package linea.persistence.conflation
 
 import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
@@ -12,14 +12,10 @@ import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
 import linea.persistence.ForcedTransactionsDao
-import linea.persistence.conflation.BatchesPostgresDao
-import linea.persistence.conflation.PostgresBatchesRepository
 import linea.persistence.ftx.ForcedTransactionRecordFactory
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
-import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.apache.tuweni.bytes.Bytes32
