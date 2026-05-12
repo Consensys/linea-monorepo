@@ -15,8 +15,9 @@ sibling-clone layout described below.
 
 ## One-time setup
 
-1. **Clone `riscv-arch-test` alongside `linea-monorepo`** (the script
-   for the docker build assumes this exact layout — used once):
+1. **Clone [`riscv-arch-test`](https://github.com/riscv/riscv-arch-test)
+   alongside `linea-monorepo`** (the script for the docker build assumes
+   this exact layout — used once):
 
    ```
    <some-parent>/
