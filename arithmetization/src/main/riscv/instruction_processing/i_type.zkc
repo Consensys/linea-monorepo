@@ -210,7 +210,7 @@ fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
     var call_num:DoubleWord = registers[17]
     //
     switch call_num {
-        case 93: { // exit
+        case EXIT_SYSCALL: { // exit
             printf "ECALL for exit\n"
             var a0:DoubleWord = registers[10] // exit code
             if a0 != 0 {
@@ -220,7 +220,8 @@ fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
             // set stop signal to terminate execution
             new_pc = MAX_UINT_64
         }
-        case 64: { // write(fd, buf, count) — Linux RISC-V syscall convention
+        case WRITE_SYSCALL: {
+            // write(fd, buf, count) — Linux RISC-V syscall convention
             // a0 = fd (ignored — we treat every write as going to stdout);
             // a1 = pointer to byte buffer in RAM;
             // a2 = number of bytes to write.
@@ -229,7 +230,7 @@ fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
             // label, expected vs actual) surface on our printf channel.
             // zkc's printf has no %c; bytes print as %x and a trailing
             // newline frames each WRITE_STR call.
-            printf "ECALL for print\n"
+            printf "ECALL for write\n"
             var a1:Address = registers[11] as Address // buf
             var a2:DoubleWord = registers[12] // count
             var addr:Address = a1
