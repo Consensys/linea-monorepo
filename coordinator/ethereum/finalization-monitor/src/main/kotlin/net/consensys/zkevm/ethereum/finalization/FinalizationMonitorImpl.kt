@@ -81,12 +81,12 @@ class FinalizationMonitorImpl(
         try {
           finalizationHandler.handleUpdate(finalizationUpdate)
             .thenApply { }
-        } catch (e: Exception) {
+        } catch (th: Throwable) {
           log.error(
             "Finalization handler={} failed. errorMessage={}",
             handlerName,
-            e.message,
-            e,
+            th.message,
+            th,
           )
           SafeFuture.completedFuture(Unit)
         }
