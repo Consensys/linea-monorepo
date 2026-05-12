@@ -15,6 +15,21 @@ configurations {
   runtimeClasspath.exclude group: "org.hyperledger.besu", module: "gnark"
 }
 
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output +
+        sourceSets.main.compileClasspath +
+        sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output +
+        sourceSets.main.runtimeClasspath +
+        sourceSets.test.runtimeClasspath
+  }
+}
+
 dependencies {
   implementation project(':jvm-libs:generic:json-rpc')
   implementation project(':jvm-libs:generic:http-rest')
@@ -73,6 +88,8 @@ dependencies {
   testImplementation project(':coordinator:ethereum:test-utils')
   testImplementation "io.vertx:vertx-junit5"
   runtimeOnly "org.hyperledger.besu:secp256k1:${libs.versions.secp.get()}"
+
+  integrationTestImplementation testFixtures(project(':coordinator:core-interfaces'))
 }
 
 application {
@@ -137,22 +154,6 @@ tasks.register('integrationTestAllNeeded') {
     if (depProject.tasks.findByName("integrationTest")) {
       dependsOn "${dep.path}:integrationTest"
     }
-  }
-}
-
-
-sourceSets {
-  integrationTest {
-    kotlin {
-      compileClasspath += main.output
-      runtimeClasspath += main.output
-    }
-    compileClasspath += sourceSets.main.output +
-        sourceSets.main.compileClasspath +
-        sourceSets.test.compileClasspath
-    runtimeClasspath += sourceSets.main.output +
-        sourceSets.main.runtimeClasspath +
-        sourceSets.test.runtimeClasspath
   }
 }
 
