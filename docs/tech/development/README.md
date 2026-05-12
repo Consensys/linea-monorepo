@@ -6,7 +6,7 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | v22+ | TypeScript projects |
+| Node.js | >= 24.14.1 (see `.nvmrc`) | TypeScript projects |
 | pnpm | v10.28+ | Package management |
 | Docker | v24+ | Container runtime |
 | Docker Compose | v2.19+ | Multi-container orchestration |
@@ -121,7 +121,7 @@ make start-env COMPOSE_PROFILES=l1,l2,debug
 pnpm run build
 
 # Build specific package
-cd sdk && pnpm run build
+pnpm -F "./ts-libs/sdk/*" run build
 cd contracts && pnpm run build
 cd postman && pnpm run build
 
@@ -142,7 +142,7 @@ pnpm run test
 # Build specific project
 ./gradlew :coordinator:app:build
 ./gradlew :tracer:arithmetization:build
-./gradlew :besu-plugins:linea-sequencer:build
+./gradlew :linea-besu:plugins:linea-sequencer:build
 
 # Test
 ./gradlew test
@@ -177,16 +177,16 @@ go build -o controller ./cmd/controller
 cd contracts
 
 # Compile
-npx hardhat compile
+pnpm exec hardhat compile
 
 # Test
-npx hardhat test
+pnpm exec hardhat test
 
 # Specific test file
-npx hardhat test test/hardhat/rollup/LineaRollup.ts
+pnpm exec hardhat test test/hardhat/rollup/LineaRollup.ts
 
 # Coverage
-npx hardhat coverage
+pnpm exec hardhat coverage
 ```
 
 ## Docker Images
@@ -202,7 +202,7 @@ docker buildx build \
   --tag consensys/linea-coordinator:local .
 
 # Use local image
-COORDINATOR_TAG=local make start-env-with-tracing-v2
+LINEA_COORDINATOR_TAG=local make start-env-with-tracing-v2
 ```
 
 ### Pulling Pre-built Images
@@ -301,11 +301,11 @@ Key environment variables for stack customization:
 
 ```bash
 # Container image versions
-export BESU_PACKAGE_TAG=latest
+export LINEA_BESU_PACKAGE_TAG=latest
 export MARU_TAG=latest
-export COORDINATOR_TAG=latest
-export PROVER_TAG=latest
-export POSTMAN_TAG=latest
+export LINEA_COORDINATOR_TAG=latest
+export LINEA_PROVER_TAG=latest
+export LINEA_POSTMAN_TAG=latest
 
 # Coordinator settings
 export LINEA_COORDINATOR_SIGNER_TYPE=web3j  # or web3signer
@@ -320,16 +320,16 @@ export L1_ROLLUP_CONTRACT_ADDRESS=0x...
 
 | File | Location | Purpose |
 |------|----------|---------|
-| Coordinator config | `config/coordinator/` | Main coordinator settings |
+| Coordinator config | `docker/config/coordinator/` | Main coordinator settings |
 | Prover config | `config/prover/` | Prover settings |
-| Traces limits | `config/common/traces-limits-v2.toml` | Conflation limits |
-| Gas multipliers | `config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
+| Traces limits | `docker/config/common/traces-limits-v2.toml` | Conflation limits |
+| Gas multipliers | `docker/config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
 | L1 node | `docker/config/l1-node/` | L1 Besu/Teku config |
 | L2 sequencer | `docker/config/linea-besu-sequencer/` | Sequencer config |
 
 ### Tuning Conflation
 
-Edit `config/coordinator/coordinator-docker.config.toml`:
+Edit `docker/config/coordinator/coordinator-docker.config.toml`:
 
 ```toml
 [conflation]
@@ -407,7 +407,7 @@ cd prover && go test ./...
 ./gradlew integrationTest
 
 # Contract tests
-cd contracts && npx hardhat test
+cd contracts && pnpm exec hardhat test
 ```
 
 ### End-to-End Tests
@@ -459,9 +459,8 @@ pnpm clean
 
 ### Getting Help
 
-- Check [existing documentation](../docs/)
+- Check [existing documentation](../README.md) in the tech documentation index
 - Review [GitHub issues](https://github.com/Consensys/linea-monorepo/issues)
-- Join [Discord](https://discord.gg/linea)
 
 ## IDE Setup
 
@@ -469,7 +468,7 @@ pnpm clean
 
 1. Open project root
 2. Import Gradle project
-3. Set JDK 21
+3. Set JDK 25
 4. Install Kotlin plugin
 
 ### VS Code (TypeScript)

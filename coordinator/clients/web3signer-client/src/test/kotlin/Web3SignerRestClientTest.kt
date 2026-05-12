@@ -3,11 +3,11 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpVersion
+import io.vertx.core.http.PoolOptions
 import io.vertx.ext.web.client.WebClientOptions
 import io.vertx.junit5.VertxExtension
 import net.consensys.linea.httprest.client.VertxHttpRestClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.bouncycastle.util.encoders.Hex
 import org.junit.jupiter.api.AfterEach
@@ -39,11 +39,10 @@ class Web3SignerRestClientTest {
       WebClientOptions()
         .setKeepAlive(true)
         .setProtocolVersion(HttpVersion.HTTP_1_1)
-        .setMaxPoolSize(10)
         .setDefaultHost("localhost")
         .setDefaultPort(wiremock.port())
 
-    val vertxHttpRestClient = VertxHttpRestClient(webClientOptions, vertx)
+    val vertxHttpRestClient = VertxHttpRestClient(webClientOptions, PoolOptions().setHttp1MaxSize(10), vertx)
 
     web3SignerClient = Web3SignerRestClient(vertxHttpRestClient, publicKey.toString())
   }
@@ -72,7 +71,7 @@ class Web3SignerRestClientTest {
         ),
     )
 
-    val (r, s) = web3SignerClient.sign(Bytes.wrap(msg.toByteArray()))
+    val (r, s) = web3SignerClient.sign(msg.toByteArray())
     assertThat(r).isEqualTo(BigInteger(Hex.toHexString(signature.r), 16))
     assertThat(s).isEqualTo(BigInteger(Hex.toHexString(signature.s), 16))
 
@@ -92,6 +91,6 @@ class Web3SignerRestClientTest {
             .withStatusMessage("Public Key not found"),
         ),
     )
-    assertThrows<Exception> { web3SignerClient.sign(Bytes.wrap("Message".toByteArray())) }
+    assertThrows<Exception> { web3SignerClient.sign("Message".toByteArray()) }
   }
 }

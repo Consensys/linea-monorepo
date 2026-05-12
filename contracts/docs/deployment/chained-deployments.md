@@ -8,6 +8,28 @@ This section describes the scripts that can be run to deploy multiple contracts 
 
 <br />
 
+## UI-backed chained deployments
+
+Chained `--tags` deployments support the browser-wallet flow with **one session for the entire run**:
+
+```shell
+HARDHAT_SIGNER_UI=true pnpm exec hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+```
+
+When `HARDHAT_SIGNER_UI=true` is set:
+
+- **Single session per `hardhat deploy` invocation** — Hardhat overrides the `deploy:runDeploy` subtask so the local HTTP bridge and Next.js UI stay up until **all** scripts for the requested tags have finished (no restart between deploy files).
+- **Multiple transactions in one deploy file** still share that same session (sequential wallet approvals).
+- The UI can show **batch context** (tags, current script) and keep a **submitted-transaction history** in the browser (session storage) after the bridge closes.
+- By default the **Next.js process is stopped** when the deploy run ends (success or failure), alongside the HTTP bridge; the tab stays open with history in session storage. Set `HARDHAT_SIGNER_UI_LEAVE_NEXT_DEV_AFTER_DEPLOY=true` to keep Next running. The bridge reports a terminal outcome so the UI stops polling cleanly.
+- `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` cannot be set together. Hardhat now errors immediately if both are present.
+
+If `HARDHAT_SIGNER_UI` is not set (or not `true`), the existing **`DEPLOYER_PRIVATE_KEY`** / named-account flow is unchanged.
+
+See the **Browser wallet signing (`HARDHAT_SIGNER_UI`)** section in [README.md](README.md) and [signer-ui/README.md](../../signer-ui/README.md) for env vars and local stack notes.
+
+<br />
+
 ## L1MessageService Chained Deployments
 
 This will run the script that deploys PlonkVerifier, LineaRollup, Timelock contracts.
@@ -37,18 +59,20 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | VERIFIER_BASE_FEE | true | uint256 | Base fee passed to the verifier constructor |
 | VERIFIER_COINBASE | true | address | Coinbase address passed to the verifier constructor |
 | L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address passed to the verifier constructor |
+| VERIFIER_MIMC_ADDRESS | false | address | Optional. Reuse an existing deployed `Mimc` library for PlonkVerifier instead of deploying a new one (see [verifier.md](l1/verifier.md)). |
 | YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
+| LINEA_ROLLUP_ADDRESS_FILTER | true | address | AddressFilter contract address |
 
 <br />
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+pnpm exec hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 ```
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation pnpm exec hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 ```
 
 (make sure to replace `<value>` `<bytes>` `<key>` `<address>` with actual values)
@@ -78,12 +102,12 @@ This will run the script that deploys Timelock, L2MessageService contracts.
 
 Base command:
 ```shell
-npx hardhat deploy --network linea_sepolia --tags L2MessageService,Timelock
+pnpm exec hardhat deploy --network linea_sepolia --tags L2MessageService,Timelock
 ```
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L2_SECURITY_COUNCIL=<address> L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER=<address> L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD=<value> L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT=<value> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService,Timelock
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L2_SECURITY_COUNCIL=<address> L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER=<address> L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD=<value> L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT=<value> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> pnpm exec hardhat deploy --network linea_sepolia --tags L2MessageService,Timelock
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -113,11 +137,11 @@ This will run the script that deploys the TokenBridge and BridgedToken contracts
 
 Base command:
 ```shell
-npx hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
+pnpm exec hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 ```
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> pnpm exec hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 ```
 (make sure to replace `<value>` `<key>` `<address>` with actual values)

@@ -13,6 +13,13 @@
 - Claude Code: `CLAUDE.md`, then `AGENTS.md`
 - GitHub Copilot: `.github/copilot-instructions.md`, then `AGENTS.md`
 
+## Local Agent Workflows
+
+- `squash-bugbot`: canonical skill at `.agents/skills/squash-bugbot/SKILL.md`.
+- Use `/squash-bugbot <PR_NUMBER>` locally in Codex, Cursor, or Claude Code to triage unresolved bot PR comments.
+- Claude Code exposes the same workflow through `.claude/commands/squash-bugbot.md`, a symlink to the canonical skill.
+- Requires an authenticated `gh` CLI with access to read PR comments, write PR comments, resolve review threads, and push the current branch.
+
 ## Discoverability Index
 
 - Repository overview: `README.md`
@@ -21,7 +28,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `bridge-ui/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `linea-besu/plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -42,7 +49,7 @@ Only propose rules that are repository-specific and repeatable.
 
 ## Repository
 
-Linea zkEVM monorepo — the principal repository for [Linea](https://linea.build), a Layer 2 zero-knowledge rollup scaling Ethereum. Contains smart contracts, ZK prover, coordinator, postman (bridge message executor), bridge UI, SDKs, and supporting tooling. Licensed under Apache-2.0 and MIT.
+Linea zkEVM monorepo — the principal repository for [Linea](https://linea.build), a Layer 2 zero-knowledge rollup scaling Ethereum. Contains smart contracts, ZK prover, coordinator, postman (bridge message executor), SDKs, and supporting tooling. Licensed under Apache-2.0 and MIT.
 
 ## How to Run
 
@@ -50,11 +57,11 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Node.js | >= 22.22.0 | See `.nvmrc` |
-| pnpm | >= 10.28.0 | Enforced via `preinstall` |
-| JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
-| Gradle | 8.5+ | JVM service builds |
-| Go | 1.24.6 | Prover |
+| Node.js | >= 24.14.1 | See `.nvmrc` |
+| pnpm | >= 10.32.1 | Enforced via `preinstall` |
+| JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
+| Gradle | 9.4+ | use ./gradlew <task> |
+| Go | 1.25.7 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
 | Make | 3.81+ | Environment management |
@@ -72,7 +79,6 @@ This triggers `husky` setup via the `prepare` script. Only `pnpm` is allowed (en
 
 | Package | Command |
 |---------|---------|
-| Bridge UI | `pnpm -F bridge-ui dev` |
 | Full local stack | `make start-env` |
 | L1 + L2 with tracing | `make start-env-with-tracing-v2` |
 
@@ -90,9 +96,6 @@ cd prover && make build
 
 # Contracts (Solidity)
 pnpm -F contracts run build
-
-# Bridge UI (Next.js)
-pnpm -F bridge-ui run build
 ```
 
 ### Test
@@ -107,8 +110,6 @@ pnpm -F bridge-ui run build
 | SDK viem | `pnpm -F @consensys/linea-sdk-viem run test` |
 | Postman | `pnpm -F @consensys/linea-postman run test` |
 | E2E (requires local stack) | `pnpm -F e2e run test:local` |
-| Bridge UI unit | `pnpm -F bridge-ui run test:unit` |
-| Bridge UI E2E | `pnpm -F bridge-ui run test:e2e:headless` |
 | Coordinator (Kotlin) | `./gradlew :coordinator:app:test` |
 | Prover (Go) | `cd prover && go test ./... -tags nocorset,fuzzlight -timeout 30m` |
 | Native libs | `pnpm -F @consensys/linea-native-libs run test` |
@@ -131,8 +132,47 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 
 ### Typecheck
 
-- Bridge UI: `pnpm -F bridge-ui run check-types`
-- Other TS packages: typecheck is part of build (`tsc`)
+- TypeScript packages: typecheck is part of build (`tsc`)
+
+## Code Intelligence (LSP)
+
+LSP provides precise navigation (go-to-definition, find-references, diagnostics) and is far more reliable than text search. Use it as the primary navigation strategy when LSP tools are available.
+
+### Setup
+
+#### Step 1 — install language server binaries
+
+| Language | macOS | Linux/Windows |
+|----------|-------|---------------|
+| TypeScript / JS | `npm install -g typescript-language-server typescript` | same |
+| Go | `go install golang.org/x/tools/gopls@latest` (ensure `$GOPATH/bin` is in `$PATH`) | same |
+| Java | `brew install jdtls` | download from [eclipse-jdtls releases](https://github.com/eclipse-jdtls/eclipse.jdt.ls/releases), symlink `bin/jdtls` into `$PATH` |
+| Kotlin | `brew install JetBrains/utils/kotlin-lsp` | download from [kotlin-lsp releases](https://github.com/Kotlin/kotlin-lsp/releases), add `bin/` to `$PATH` |
+
+#### Step 2 — install plugins in Claude Code
+
+Run `/plugins` and install `typescript-lsp`, `gopls-lsp`, `jdtls-lsp`, and `kotlin-lsp` from the
+`claude-plugins-official` marketplace.  The project's `.claude/settings.json` already enables them
+and sets `ENABLE_LSP_TOOL=1`, so no changes to your personal settings are needed.
+
+Restart Claude Code after installing.
+
+### Usage
+
+Prefer LSP tools over Grep/Glob/Read for code navigation:
+
+- `goToDefinition` / `goToImplementation` — jump to source instead of grepping
+- `findReferences` — find all call sites before renaming or changing a signature
+- `workspaceSymbol` — locate where a type or function is defined
+- `documentSymbol` — list all symbols in the current file
+- `hover` — get type info without opening the file
+- `incomingCalls` / `outgoingCalls` — trace call hierarchy
+
+Use Grep/Glob only for text/pattern searches (comments, string literals, config values) where LSP doesn't apply.
+
+**Important:** Every LSP operation requires a `filePath` pointing to a **file**, never a directory.  The file routes the request to the correct language server — pass any relevant file in the project if you don't have a specific one in mind.
+
+After writing or editing code, check LSP diagnostics and fix any type errors or missing imports before moving on.
 
 ## Code Conventions
 
@@ -163,7 +203,7 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Context | Convention | Example |
 |---------|-----------|---------|
 | TS/JS files | kebab-case | `message-service.ts` |
-| React components | PascalCase | `BridgeForm.tsx` |
+| React components | PascalCase | `ResultsPanel.tsx` |
 | Solidity files | PascalCase | `LineaRollup.sol` |
 | Solidity interfaces | `I` prefix + PascalCase | `ILineaRollup.sol` |
 | Kotlin files | PascalCase | `CoordinatorApp.kt` |
@@ -184,13 +224,11 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 | Contracts (Hardhat) | Hardhat + ethers.js | `pnpm -F contracts run test` |
 | Contracts (Foundry) | Forge | `test/foundry/*` |
 | TypeScript packages | Jest 29.7.0 + ts-jest | `pnpm -F <pkg> run test` |
-| Bridge UI unit | Playwright | `pnpm -F bridge-ui run test:unit` |
-| Bridge UI E2E | Playwright + Synpress | `pnpm -F bridge-ui run test:e2e:headless` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
 
-- Coverage: Codecov with flags for `hardhat` and `kotlin`
+- Coverage: Codecov with flags for `hardhat`, `kotlin`, `postman`, `sdk-viem`, `sdk-core`, `sdk-ethers`, `linea-shared-utils`, `linea-native-libs`, `native-yield-automation-service`, `lido-governance-monitor`, and `tracer`
 - `linea-shared-utils` enforces strict coverage thresholds (branches: 85.71%, functions: 100%, lines: 95.23%)
 - Protocol E2E tests require a running local stack (`make start-env`)
 
@@ -250,6 +288,9 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 - **Dependabot:** Configured for GitHub Actions dependencies (weekly, Monday 03:00 UTC)
 - **Engine strict:** `engine-strict=true` in `.npmrc`
 
+Additions to `pnpm.onlyBuiltDependencies` require a security review of the package's install script, including its
+network, filesystem, and process execution surface, publisher reputation, and recent npm publish history.
+
 ### Irreversible Operations
 
 These require human approval and follow the release process:
@@ -282,10 +323,13 @@ These require human approval and follow the release process:
 
 1. Read existing code in the affected area
 2. Check for existing tests, conventions, and patterns in that package
-3. Plan the minimal change needed
-4. Implement with tests
-5. Run the package-specific lint and test commands
-6. Verify no secrets or credentials are exposed
+3. Prefer built-in language, framework, library, and repository helpers over hand-rolled replacements when equivalent functionality already exists
+4. Extend or compose existing helpers before introducing a new utility when that keeps the implementation smaller and clearer
+5. Plan the minimal change needed
+6. **Plan review**: Before starting implementation, review the plan using a separate agent with isolated context — give it only the original user request and the plan document, not the planning conversation or exploration history. This ensures the reviewer cannot inherit reasoning errors made during planning.
+7. Implement with tests
+8. Run the package-specific lint and test commands
+9. Verify no secrets or credentials are exposed
 
 ### Limiting Change Surface
 
@@ -303,20 +347,19 @@ These require human approval and follow the release process:
 |------|------|-------|---------|
 | `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry | Core protocol contracts (rollup, messaging, bridge, tokens) |
 | `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
-| `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
+| `prover` | Backend service | Go 1.25.7 | ZK proof generation (gnark, gnark-crypto) |
 | `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
-| `bridge-ui` | Frontend | Next.js 16.1.5, React 19, Wagmi, Viem | Bridge user interface |
-| `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
-| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
-| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
+| `ts-libs/sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
+| `ts-libs/sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
+| `ts-libs/sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
 | `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
-| `operations` | CLI tool | TypeScript, oclif | Operations management CLI |
+| `operations/operations-cli` | CLI tool | TypeScript, oclif | Operations management CLI |
 | `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
 | `ts-libs/linea-native-libs` | Library | TypeScript, Koffi (FFI) | Native library bindings |
 | `ts-libs/linea-shared-utils` | Library | TypeScript, Express, Viem | Shared utilities (server, metrics, logging) |
-| `native-yield-operations/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
-| `native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
-| `besu-plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
+| `operations/native-yield-operations/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
+| `operations/native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
+| `linea-besu/plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
 | `jvm-libs` | Libraries | Kotlin, Gradle | Shared JVM libraries (JSON-RPC, HTTP, persistence, metrics) |
 | `transaction-exclusion-api` | Backend service | Kotlin, Gradle, Vertx | Transaction exclusion tracking API |
 | `tracer` | Backend service | Java/Go Corset, Gradle | EVM trace generation and arithmetization |
@@ -330,23 +373,23 @@ coordinator/             Kotlin coordinator service
 prover/                  Go ZK prover
 corset/                  Rust constraint compiler
 postman/                 TypeScript bridge message executor
-bridge-ui/               Next.js bridge frontend
-sdk/                     TypeScript SDKs (core, ethers, viem)
+ts-libs/sdk/             TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
-operations/              Operations CLI tool
+operations/              Operations tools
+operations/operations-cli/ Operations CLI tool
 ts-libs/                 Shared TypeScript libraries
-native-yield-operations/ Native yield services
-besu-plugins/            Besu client plugins
+operations/native-yield-operations/ Native yield services
+linea-besu/plugins/      Besu client plugins
 jvm-libs/                Shared Kotlin/Java libraries
 transaction-exclusion-api/ Transaction exclusion API
 tracer/                  EVM tracer
-config/                  Service configuration files (TOML, JSON, XML)
+docker/config/           Service configuration files (TOML, JSON, XML)
 docker/                  Docker Compose files for local stack
 docs/                    Project documentation
-.github/workflows/       CI/CD workflows (78 files)
+.github/workflows/       CI/CD workflows
 .github/actions/         Custom GitHub Actions
 .cursor/rules/           Cursor IDE rules
-.agents/skills/          Agent skills (smart contract development)
+.agents/skills/          Agent skills (smart contract, dependency maintenance, local PR workflows)
 ```
 
 ### CI/CD
@@ -355,7 +398,7 @@ docs/                    Project documentation
 - **Main workflow:** `.github/workflows/main.yml` — triggers on PR and push to `main`
 - **Path filtering:** `dorny/paths-filter` detects which components changed
 - **Pipeline:** Filter changed paths -> Run component tests -> Build Docker images -> E2E tests -> Publish
-- **Coverage:** Codecov with Jacoco (JVM) and Hardhat coverage (Solidity)
+- **Coverage:** Codecov with Jacoco (JVM), Hardhat (Solidity), Jest LCOV (TS packages), and tracer Jacoco XML (`tracer` flag)
 - **Security:** CodeQL analysis, KICS Dockerfile scanning (weekly)
 - **Runners:** Custom scale-set runners (small, med, large, xl) on Ubuntu 22.04
 - **Concurrency:** Cancel in-progress runs on PRs; serial on `main`
@@ -364,15 +407,21 @@ docs/                    Project documentation
 ### Cross-Package Dependencies
 
 ```
-bridge-ui -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
-postman -> @consensys/linea-sdk, @consensys/linea-native-libs, @consensys/linea-shared-utils
+postman -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
+postman -> @consensys/linea-native-libs, @consensys/linea-shared-utils
 e2e -> @consensys/linea-shared-utils
-operations -> (standalone, uses ethers + viem)
-native-yield-operations/* -> @consensys/linea-shared-utils
+operations/operations-cli -> (standalone, uses ethers + viem)
+operations/native-yield-operations/* -> @consensys/linea-shared-utils
 coordinator -> jvm-libs/*
 transaction-exclusion-api -> jvm-libs/*
-besu-plugins -> jvm-libs/*
+linea-besu/plugins -> jvm-libs/*
 ```
+
+### External Docs
+
+| Dependency | Documentation | Notes |
+|------------|--------------|-------|
+| Hyperledger Besu | [besu/docs](https://github.com/besu-eth/besu/tree/main/docs) | Besu APIs, plugin interfaces, and internals — prefer this over grepping compiled JARs or decompressing artifacts |
 
 ### Internal Docs
 

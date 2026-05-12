@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -79,16 +80,19 @@ func (r Permutation) Name() ifaces.QueryID {
 // products will be unequal and this will be equal if the predicate is
 // satisfied.
 func (r Permutation) Check(run ifaces.Runtime) error {
-
 	var (
 		numCol    = len(r.A[0])
 		prods     = []field.Element{field.One(), field.One()}
+		prodsExt  = []fext.Element{fext.One(), fext.One()}
 		randGamma = field.Element{}
 		randAlpha = field.Element{}
 	)
 
 	randGamma.SetRandom()
 	randAlpha.SetRandom()
+
+	// Convert randAlpha to extension field for use with extension vectors
+	randAlphaExt := fext.Lift(randAlpha)
 
 	for k, aOrB := range [2][][]ifaces.Column{r.A, r.B} {
 		for frag := range aOrB {
@@ -102,77 +106,56 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha)
+			// Check if any of the column assignments are extension field vectors
+			hasExt := false
+			for _, assignment := range tab {
+				if !smartvectors.IsBase(assignment) {
+					hasExt = true
+					break
+				}
+			}
 
-			for row := 0; row < collapsed.Len(); row++ {
-				tmp := collapsed.Get(row)
-				prods[k].Mul(&prods[k], &tmp)
+			if hasExt {
+				// Use extension field version
+				// Lift the base field gamma into extension field
+				gammaExtVal := fext.Lift(randGamma)
+				gammaExt := smartvectors.NewConstantExt(gammaExtVal, numRowFrag)
+				collapsed := smartvectors.LinearCombinationExt(append(tab, gammaExt), randAlphaExt)
+
+				for row := 0; row < collapsed.Len(); row++ {
+					tmp := collapsed.GetExt(row)
+					prodsExt[k].Mul(&prodsExt[k], &tmp)
+				}
+			} else {
+				// Use regular field version
+				collapsed := smartvectors.LinearCombination(append(tab, gamma), randAlpha)
+
+				for row := 0; row < collapsed.Len(); row++ {
+					tmp := collapsed.Get(row)
+					prods[k].Mul(&prods[k], &tmp)
+				}
 			}
 		}
 	}
 
-	if prods[0] != prods[1] {
-		return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
-	}
-
-	return nil
-}
-
-// CheckPermutation manually checks that a permutation argument is satisfied.
-func CheckPermutation(a, b []ifaces.ColAssignment) error {
-	/*
-		Sample a random element alpha, usefull for multivalued inclusion checks
-		It allows to reference multiple number through a linear combination
-	*/
-	var alpha, beta field.Element
-	_, err := alpha.SetRandom()
-	_, err2 := beta.SetRandom()
-	if err != nil || err2 != nil {
-		utils.Panic("Could not generate a random number %v %v", err, err2)
-	}
-
-	/*
-		Sanity-check both sides should have the same number of cols
-	*/
-	if len(a) != len(b) {
-		utils.Panic("Not the same number of columns %v %v", len(a), len(b))
-	}
-
-	nRow := a[0].Len()
-	/*
-		Sanity-check, all sample should have the same number of rows.
-		This might become an error later, but this is easy to change.
-	*/
-	for i := range a {
-		if a[i].Len() != nRow {
-			utils.Panic("Row %v of a has an inconsistent size. Expected %v but got %v", i, nRow, a[i].Len())
-		}
-		if b[i].Len() != nRow {
-			utils.Panic("Row %v of b has an inconsistent size. Expected %v but got %v", i, nRow, b[i].Len())
+	// Check if we used extension fields or regular fields and compare accordingly
+	// Detect which was used by checking if the extension products are non-identity
+	usedExt := false
+	for _, prod := range prodsExt {
+		if prod != fext.One() {
+			usedExt = true
+			break
 		}
 	}
-	if nRow != b[0].Len() {
-		return fmt.Errorf("a and b do not have the same length : %v != %v", a[0].Len(), b[0].Len())
-	}
 
-	prodA := field.One()
-	prodB := field.One()
-
-	for i := 0; i < nRow; i++ {
-		// The product for a
-		tmp := rowLinComb(alpha, i, a)
-		tmp.Add(&tmp, &beta)
-		prodA.Mul(&prodA, &tmp)
-
-		// The product for b
-		tmp = rowLinComb(alpha, i, b)
-		tmp.Add(&tmp, &beta)
-		prodB.Mul(&prodB, &tmp)
-	}
-
-	// At the end, the two product should be equals
-	if prodA != prodB {
-		return fmt.Errorf("the permutation check rejected")
+	if usedExt {
+		if prodsExt[0] != prodsExt[1] {
+			return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+		}
+	} else {
+		if prods[0] != prods[1] {
+			return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+		}
 	}
 
 	return nil

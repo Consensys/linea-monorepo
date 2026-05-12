@@ -39,8 +39,10 @@ import org.web3j.crypto.BlobUtils;
 import org.web3j.protocol.core.methods.response.EthBlock;
 
 /*
- * Taken from besu-plugins acceptance-tests from linea-monorepo in linea-monorepo/besu-plugins/linea-sequencer/acceptance-tests/src/test/java/org/hyperledger/besu/tests/acceptance/dsl/EngineAPIService.java
- * EngineAPIService from the monorepo is compatible with Prague, so we adapt it here to Paris, Shanghai and Cancun
+ * Taken from Linea Besu plugin acceptance tests from
+ * linea-monorepo/linea-besu/plugins/linea-sequencer/acceptance-tests/src/test/java/org/hyperledger/besu/
+ * tests/acceptance/dsl/EngineAPIService.java.
+ * EngineAPIService from the monorepo is compatible with Prague, so we adapt it here to Paris, Shanghai and Cancun.
  * We use this class to emulate Engine API calls to the Besu Node.
  */
 public class EngineAPIService {
@@ -198,12 +200,12 @@ public class EngineAPIService {
     if (maybeTimeStamp.isPresent()) {
       ObjectNode payloadAttributes = mapper.createObjectNode();
       payloadAttributes.put("timestamp", blockTimestamp);
-      payloadAttributes.put("prevRandao", Hash.ZERO.toString());
-      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.toString());
+      payloadAttributes.put("prevRandao", Hash.ZERO.getBytes().toHexString());
+      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.getBytes().toHexString());
       // post Shanghai
       payloadAttributes.set("withdrawals", mapper.createArrayNode());
       // post Cancun
-      payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.toString());
+      payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.getBytes().toHexString());
       params.add(payloadAttributes);
     }
     return params;

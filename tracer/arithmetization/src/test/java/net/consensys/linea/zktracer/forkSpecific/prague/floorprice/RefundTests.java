@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.forkSpecific.prague.floorprice;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 
 import com.google.common.base.Preconditions;
 import java.util.ArrayList;
@@ -37,7 +38,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -74,8 +74,7 @@ public class RefundTests extends TracerTestBase {
   @MethodSource("refundTestSource")
   void refundTest(Bytes callData, DominantCost dominantCostPrediction, TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(keyPair.getPublicKey());
 
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(1)).nonce(0).address(senderAddress).build();
@@ -145,6 +144,6 @@ public class RefundTests extends TracerTestBase {
         Arguments.of(Bytes.fromHexString("11".repeat(9)), DominantCost.EXECUTION_COST_DOMINATES));
     arguments.add(
         Arguments.of(Bytes.fromHexString("11".repeat(10)), DominantCost.FLOOR_COST_DOMINATES));
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

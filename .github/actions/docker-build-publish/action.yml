@@ -55,6 +55,14 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [[ -z "${{ inputs.image_tag }}" ]]; then
+          echo "::error::image_tag is empty — this usually means the upstream version-tag job was cancelled or failed. Failing early to avoid an invalid Docker tag."
+          exit 1
+        fi
+
     - name: Set tags
       id: set-tags
       shell: bash
@@ -126,7 +134,7 @@ runs:
     # Build & push
     - name: Build & push
       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-      if: ${{ inputs.push_image == 'true' || github.event_name == 'workflow_dispatch' }}
+      if: ${{ inputs.push_image == 'true' }}
       with:
         context: ${{ inputs.docker_context }}
         build-contexts: ${{ inputs.build_contexts }}

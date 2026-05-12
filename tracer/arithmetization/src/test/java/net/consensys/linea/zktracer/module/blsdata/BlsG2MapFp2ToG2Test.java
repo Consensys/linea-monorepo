@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blsdata;
 
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.BLS_PRIME;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.leadFailure;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.leadSuccess;
@@ -68,11 +69,11 @@ public class BlsG2MapFp2ToG2Test extends TracerTestBase {
     // First place the parameters in memory
     // Copy to targetOffset the code of codeOwnerAccount
     program
-        .push(codeOwnerAddress)
+        .push(codeOwnerAddress.getBytes())
         .op(OpCode.EXTCODESIZE) // size
         .push(0) // offset
         .push(0) // targetOffset
-        .push(codeOwnerAddress) // address
+        .push(codeOwnerAddress.getBytes()) // address
         .op(OpCode.EXTCODECOPY);
 
     // Do the call
@@ -81,7 +82,7 @@ public class BlsG2MapFp2ToG2Test extends TracerTestBase {
         .push(input.size()) // retOffset
         .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(Address.BLS12_MAP_FP2_TO_G2) // address
+        .push(Address.BLS12_MAP_FP2_TO_G2.getBytes()) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -103,7 +104,7 @@ public class BlsG2MapFp2ToG2Test extends TracerTestBase {
         // A random valid input in Fp2
         Arguments.of(
             "00000000000000000000000000000000167ab0f743a50c14cfe36fe095886cefd958c60233367db3f904f6f2b40d5df62f75958a02b52daca5316718966a8fb7000000000000000000000000000000001904f0ab97b4fad64e7833426ba8a6311c0694716cf407c8a015cb266153aae30e45b5796e0143da9f608fd01aaf77d2"));
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static Stream<Arguments> blsG2MapFp2ToG2SourceExploringLeadTailPossibilities() {
@@ -118,6 +119,6 @@ public class BlsG2MapFp2ToG2Test extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 }

@@ -7,7 +7,18 @@ import io.vertx.micrometer.backends.NoopBackendRegistry
 import io.vertx.sqlclient.SqlClient
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.DatabaseConfig
-import linea.persistence.ftx.DisabledForcedTransactionsDao
+import linea.persistence.DisabledForcedTransactionsDao
+import linea.persistence.conflation.AggregationsRepositoryImpl
+import linea.persistence.conflation.BatchesPostgresDao
+import linea.persistence.conflation.BlobsPostgresDao
+import linea.persistence.conflation.BlobsRepositoryImpl
+import linea.persistence.conflation.PostgresAggregationsDao
+import linea.persistence.conflation.PostgresBatchesRepository
+import linea.persistence.conflation.RetryingBatchesPostgresDao
+import linea.persistence.conflation.RetryingBlobsPostgresDao
+import linea.persistence.conflation.RetryingPostgresAggregationsDao
+import linea.persistence.db.Db
+import linea.persistence.db.PersistenceRetryer
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -18,17 +29,6 @@ import net.consensys.linea.vertx.loadVertxConfig
 import net.consensys.zkevm.coordinator.api.Api
 import net.consensys.zkevm.coordinator.app.conflationbacktesting.ConflationBacktestingService
 import net.consensys.zkevm.fileio.DirectoryCleaner
-import net.consensys.zkevm.persistence.dao.aggregation.AggregationsRepositoryImpl
-import net.consensys.zkevm.persistence.dao.aggregation.PostgresAggregationsDao
-import net.consensys.zkevm.persistence.dao.aggregation.RetryingPostgresAggregationsDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.RetryingBatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
-import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
-import net.consensys.zkevm.persistence.dao.blob.RetryingBlobsPostgresDao
-import net.consensys.zkevm.persistence.db.Db
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -54,7 +54,7 @@ class CoordinatorApp(
   private val httpJsonRpcClientFactory =
     VertxHttpJsonRpcClientFactory(
       vertx = vertx,
-      metricsFacade = MicrometerMetricsFacade(meterRegistry),
+      metricsFacade = micrometerMetricsFacade,
       requestResponseLogLevel = Level.TRACE,
       failuresLogLevel = Level.WARN,
     )
@@ -64,18 +64,6 @@ class CoordinatorApp(
     configs = configs,
     metricsFacade = MicrometerMetricsFacade(NoopBackendRegistry.INSTANCE.meterRegistry, "conflationbacktesting"),
   )
-  private val api =
-    Api(
-      configs = Api.Config(
-        observabilityPort = configs.api.observabilityPort,
-        jsonRpcPort = configs.api.jsonRpcPort,
-        jsonRpcPath = configs.api.jsonRpcPath,
-        jsonRpcServerVerticles = configs.api.jsonRpcServerVerticles,
-      ),
-      vertx = vertx,
-      conflationBacktestingService = conflationBacktestingService,
-      metricsFacade = micrometerMetricsFacade,
-    )
 
   private val persistenceRetryer =
     PersistenceRetryer(
@@ -158,6 +146,20 @@ class CoordinatorApp(
       smartContractErrors = configs.smartContractErrors,
       metricsFacade = micrometerMetricsFacade,
       clock = this.clock,
+    )
+
+  private val api =
+    Api(
+      configs = Api.Config(
+        observabilityPort = configs.api.observabilityPort,
+        jsonRpcPort = configs.api.jsonRpcPort,
+        jsonRpcPath = configs.api.jsonRpcPath,
+        jsonRpcServerVerticles = configs.api.jsonRpcServerVerticles,
+      ),
+      vertx = vertx,
+      conflationBacktestingService = conflationBacktestingService,
+      metricsFacade = micrometerMetricsFacade,
+      conflationCheckpointResumeLatch = l1App::signalTargetCheckpointResumeFromApi,
     )
 
   private val requestFileCleanup =

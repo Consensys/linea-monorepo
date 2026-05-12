@@ -2,8 +2,11 @@ package horner
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -65,13 +68,13 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 			selectorsA = make([]ifaces.Column, widthA)
 			selectorsB = make([]ifaces.Column, widthB)
 			gamma      coin.Info
-			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.Field)
+			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.FieldExt)
 		)
 
 		round = max(round, qRound+1)
 
 		if numCols > 1 {
-			gamma = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.Field)
+			gamma = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.FieldExt)
 		}
 
 		for i := 0; i < widthA; i++ {
@@ -140,7 +143,21 @@ func (a AssignHornerQuery) Run(run *wizard.ProverRuntime) {
 	params.SetResult(run, a.Query)
 
 	if !params.FinalResult.IsZero() {
-		utils.Panic("expected final result to be zero, but computed %v", params.FinalResult.String())
+		// Diagnostic: dump per-part contributions so we know which projection failed.
+		perPart := params.GetPerPartResults(run, a.Query)
+		var offenders []string
+		for i := 0; i+1 < len(perPart); i += 2 {
+			sum := perPart[i].Contribution
+			sum.Add(&sum, &perPart[i+1].Contribution)
+			if !sum.IsZero() {
+				offenders = append(offenders, fmt.Sprintf("  %s count=%d vs %s count=%d (A-B=%v)",
+					perPart[i].Name, perPart[i].Count,
+					perPart[i+1].Name, perPart[i+1].Count,
+					sum.String()))
+			}
+		}
+		utils.Panic("expected final result to be zero, but computed %v (query=%v parts=%d)\nnon-canceling pairs:\n%s",
+			params.FinalResult.String(), a.Query.ID, len(a.Query.Parts), strings.Join(offenders, "\n"))
 	}
 
 	run.AssignHornerParams(a.Query.ID, params)
@@ -165,7 +182,10 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 
 func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	params := run.GetHornerParams(c.Query.ID)
-	api.AssertIsEqual(params.FinalResult, 0)
+	koalaAPI := koalagnark.NewAPI(api)
+
+	zero := koalagnark.NewExt(fext.Zero())
+	koalaAPI.AssertIsEqualExt(params.FinalResult, zero)
 
 	for _, p := range params.Parts {
 		api.AssertIsEqual(p.N0, 0)

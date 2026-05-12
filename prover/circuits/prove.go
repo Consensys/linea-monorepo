@@ -2,13 +2,13 @@ package circuits
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/consensys/gnark/backend/witness"
-
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
@@ -21,6 +21,7 @@ import (
 type proveCheckSettings struct {
 	cachedProofPath string
 }
+
 type ProveCheckOption func(*proveCheckSettings)
 
 func WithCachedProof(path string) ProveCheckOption {
@@ -53,7 +54,6 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 			verifierOpts = append(verifierOpts, o)
 		case ProveCheckOption:
 			o(&settings)
-
 		default:
 			return nil, fmt.Errorf("unknown option type to prove-check: %++v", o)
 		}
@@ -128,10 +128,14 @@ func SerializeProofSolidityBn254(proof plonk.Proof) string {
 }
 
 func tryReadCachedProof(setup Setup, cachedProofPath string, verifierOpts []backend.VerifierOption, witness witness.Witness) plonk.Proof {
-	logrus.Info("attempting to read cached proof")
+	logrus.Debug("attempting to read cached proof")
 	f, err := os.Open(cachedProofPath)
 	if err != nil {
-		logrus.Error(err)
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.Debug("no cached proof file, generating a new proof")
+		} else {
+			logrus.Errorf("could not open cached proof: %v", err)
+		}
 		return nil
 	}
 	defer f.Close()
@@ -165,7 +169,11 @@ func tryCacheProof(cachedProofPath string, proof plonk.Proof) {
 		logrus.Error(err)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			logrus.Error(err)
+		}
+	}()
 	if _, err = proof.WriteTo(f); err != nil {
 		logrus.Error(err)
 	}

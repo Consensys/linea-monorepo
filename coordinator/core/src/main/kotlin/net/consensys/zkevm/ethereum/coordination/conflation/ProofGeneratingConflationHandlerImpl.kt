@@ -7,16 +7,18 @@ import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.getOrThrow
 import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
+import linea.conflation.ConflationHandler
+import linea.domain.Batch
 import linea.domain.Block
+import linea.domain.BlocksConflation
+import linea.domain.ExecutionProofIndex
+import linea.metrics.LineaMetricsCategory
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.domain.Batch
-import net.consensys.zkevm.domain.BlocksConflation
-import net.consensys.zkevm.domain.ExecutionProofIndex
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
+import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofRequestHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -28,6 +30,7 @@ class ProofGeneratingConflationHandlerImpl(
   private val tracesProductionCoordinator: TracesConflationCoordinator,
   private val zkProofProductionCoordinator: ZkProofCreationCoordinator,
   private val batchProofHandler: BatchProofHandler,
+  private val batchProofRequestHandler: BatchProofRequestHandler? = null,
   private val vertx: Vertx,
   private val config: Config,
   private val log: Logger = LogManager.getLogger(ProofGeneratingConflationHandlerImpl::class.java),
@@ -44,6 +47,7 @@ class ProofGeneratingConflationHandlerImpl(
   data class Config(
     val conflationAndProofGenerationRetryBackoffDelay: Duration,
     val executionProofPollingInterval: Duration,
+    val executionProofPollsPerTick: Int = 200,
   )
 
   private val proofRequestsInProgress = ConcurrentLinkedDeque<ExecutionProofIndex>()
@@ -57,26 +61,34 @@ class ProofGeneratingConflationHandlerImpl(
     )
   }
 
-  override fun action(): SafeFuture<*> {
-    return if (proofRequestsInProgress.isNotEmpty()) {
-      val proofIndex = proofRequestsInProgress.peekFirst()
-      zkProofProductionCoordinator.isZkProofRequestProven(proofIndex).thenCompose { proven ->
-        if (proven) {
-          val batch = Batch(
-            startBlockNumber = proofIndex.startBlockNumber,
-            endBlockNumber = proofIndex.endBlockNumber,
-          )
-          log.info("execution proof generated: batch={}", batch)
-          batchProofHandler.acceptNewBatch(batch).thenApply {
-            proofRequestsInProgress.remove(proofIndex)
-          }
-        } else {
-          SafeFuture.completedFuture(Unit)
+  private fun pollProofIndex(proofIndex: ExecutionProofIndex): SafeFuture<*> {
+    return zkProofProductionCoordinator.isZkProofRequestProven(proofIndex).thenCompose { proven ->
+      if (proven) {
+        val batch = Batch(
+          startBlockNumber = proofIndex.startBlockNumber,
+          endBlockNumber = proofIndex.endBlockNumber,
+        )
+        log.info("execution proof generated: batch={}", batch)
+        batchProofHandler.acceptNewBatch(batch).thenApply {
+          proofRequestsInProgress.remove(proofIndex)
         }
+      } else {
+        SafeFuture.completedFuture(Unit)
       }
-    } else {
-      SafeFuture.completedFuture(Unit)
     }
+  }
+
+  override fun action(): SafeFuture<*> {
+    if (proofRequestsInProgress.isEmpty()) {
+      return SafeFuture.completedFuture(Unit)
+    }
+    val iterator = proofRequestsInProgress.iterator()
+    val proofIndicesToPoll = mutableListOf<ExecutionProofIndex>()
+    while (iterator.hasNext() && proofIndicesToPoll.size < config.executionProofPollsPerTick) {
+      proofIndicesToPoll.add(iterator.next())
+    }
+    val proofsPollFutures = proofIndicesToPoll.map { pollProofIndex(it) }
+    return SafeFuture.allOf(proofsPollFutures.stream())
   }
 
   override fun handleConflatedBatch(conflation: BlocksConflation): SafeFuture<*> {
@@ -123,6 +135,7 @@ class ProofGeneratingConflationHandlerImpl(
           ExecutionProofIndex(
             startBlockNumber = batch.startBlockNumber,
             endBlockNumber = batch.endBlockNumber,
+            startBlockTimestamp = conflation.blocks.first().headerSummary.timestamp,
           ),
         ).thenCompose { responseAlreadyDone ->
           if (responseAlreadyDone) {
@@ -149,7 +162,11 @@ class ProofGeneratingConflationHandlerImpl(
                   .createZkProofRequest(conflation, blocksTracesConflated)
                   .thenApply { proofIndex ->
                     log.info("execution proof request generated: proofIndex={}", proofIndex)
-                    proofRequestsInProgress.addLast(proofIndex)
+                    try {
+                      batchProofRequestHandler?.acceptNewBatchProofRequest(proofIndex, batch)
+                    } finally {
+                      proofRequestsInProgress.addLast(proofIndex)
+                    }
                   }
                   .whenException { th ->
                     log.debug(

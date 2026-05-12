@@ -1,15 +1,16 @@
 import { ethers } from "ethers";
+
 import {
   contractName as TestERC20ContractName,
   abi as TestERC20Abi,
   bytecode as TestERC20Bytecode,
 } from "./static-artifacts/TestERC20.json";
 import { deployContractFromArtifacts } from "../common/helpers/deployments";
-import { get1559Fees } from "../scripts/utils";
 import { getRequiredEnvVar } from "../common/helpers/environment";
+import { get1559Fees } from "../scripts/utils";
 
 async function main() {
-  const ORDERED_NONCE_POST_LINEAROLLUP = 4;
+  const ORDERED_NONCE_POST_LINEAROLLUP = 7;
   const ORDERED_NONCE_POST_TOKENBRIDGE = 5;
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
 

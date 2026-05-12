@@ -10,7 +10,7 @@ services:
     entrypoint: [ "sh","/initialization/init.sh" ]
     volumes:
       - ./config/l2-genesis-initialization/:/initialization:rw
-      - ../config/coordinator/coordinator-config-v2.toml:/coordinator/coordinator-config-v2.toml:ro
+      - ./config/coordinator/coordinator-config-v2.toml:/coordinator/coordinator-config-v2.toml:ro
 
   maru:
     image: consensys/maru:${MARU_TAG:-9737a45}
@@ -57,7 +57,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG:-dev-20260501155747-32a0f80}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       l2-genesis-initialization:
@@ -96,7 +96,7 @@ services:
       - ./config/linea-besu-sequencer/key:/var/lib/besu/key:ro
       - ./config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-besu-sequencer/tls-files:/var/lib/besu/tls-files/
-      - ../config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
     networks:
       l1network:
@@ -139,7 +139,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG:-dev-20260501155747-32a0f80}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -178,7 +178,7 @@ services:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ../config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
       - ../tmp/local/:/data/:rw
     networks:
@@ -189,7 +189,7 @@ services:
   l2-node-besu-leader:
     hostname: l2-node-besu-leader
     container_name: l2-node-besu-leader
-    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc7-20260317093900-c131e1a}
+    image: consensys/linea-besu-package-with-fleet:${LINEA_BESU_PACKAGE_TAG:-dev-20260501155747-32a0f80}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -222,7 +222,7 @@ services:
       - ./config/l2-node-besu/l2-node-besu-config-basic.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ../config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
       - ../tmp/local/:/data/:rw
     networks:
@@ -233,7 +233,7 @@ services:
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package-with-fleet:${BESU_PACKAGE_TAG:-beta-v5-rc7-20260317093900-c131e1a}
+    image: consensys/linea-besu-package-with-fleet:${LINEA_BESU_PACKAGE_TAG:-dev-20260501155747-32a0f80}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -258,7 +258,7 @@ services:
       - --genesis-file=/initialization/genesis-besu.json
       - --plugin-linea-rejected-tx-endpoint=http://transaction-exclusion-api:8080
       - --plugin-linea-node-type=RPC
-      
+
       # for fleet feature
       - --plugin-fleet-node-role=FOLLOWER
       - --plugin-fleet-leader-http-host=l2-node-besu-leader
@@ -266,7 +266,7 @@ services:
       - --plugin-fleet-follower-http-host=l2-node-besu-follower
       - --plugin-fleet-follower-http-port=8545
       - --plugin-fleet-follower-heartbeat-delay=4
-      
+
       - --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,LINEA,FLEET
       - --plugins=LineaEstimateGasEndpointPlugin,LineaExtraDataPlugin,LineaTransactionPoolValidatorPlugin,LineaBundleEndpointsPlugin,ForwardBundlesPlugin,FleetPlugin
       - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
@@ -274,7 +274,7 @@ services:
       - ./config/l2-node-besu/l2-node-besu-config-basic.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
-      - ../config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
+      - ./config/common/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
       - ./config/l2-genesis-initialization:/initialization/:ro
       - ../tmp/local/:/data/:rw
     networks:
@@ -285,7 +285,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-2fc4392}
+    image: consensys/linea-prover:${LINEA_PROVER_TAG:-4ddbeba}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -306,7 +306,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-92a1974}
+    image: consensys/linea-postman:${LINEA_POSTMAN_TAG:-4ddbeba}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     deploy:
@@ -318,7 +318,7 @@ services:
     ports:
       - "9090:3000"
     depends_on:
-      sequencer:
+      l2-node-besu:
         condition: service_healthy
       postgres:
         condition: service_healthy
@@ -332,7 +332,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-7247ad0}
+    image: consensys/linea-coordinator:${LINEA_COORDINATOR_TAG:-4ddbeba}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
@@ -360,22 +360,39 @@ services:
         limits:
           memory: 512M
     environment:
-      config__override__type2-state-proof-provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
-      config__override__l1-submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-      config__override__l1-submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-      config__override__l1-submission__data-availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
-      config__override__message-anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
-      dev_LINEA_COORDINATOR_DISABLED: ${dev_LINEA_COORDINATOR_DISABLED:-}
-    command: [ 'sh', '-c', 'if [ "$dev_LINEA_COORDINATOR_DISABLED" = "true" ]; then echo "Coordinator disabled"; else java -Xmx256m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml -jar libs/coordinator.jar --traces-limits-v5 config/traces-limits-v5.toml --smart-contract-errors config/smart-contract-errors.toml --gas-price-cap-time-of-day-multipliers config/gas-price-cap-time-of-day-multipliers.toml config/coordinator-config.toml; fi' ]
-    #command: [ 'echo', 'forced exit' ]
+      config__override__type2_state_proof_provider__disabled: ${LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER:-true}
+      config__override__l1_submission__blob__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1_submission__aggregation__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__message_anchoring__signer__type: ${LINEA_COORDINATOR_SIGNER_TYPE:-web3j}
+      config__override__l1_submission__data_availability: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
+      dev_LINEA_COORDINATOR_DISABLED: ${dev_LINEA_COORDINATOR_DISABLED:-false}
+      CONFIG_OVERRIDE_OPTS: ''
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$dev_LINEA_COORDINATOR_DISABLED" = "true" ]; then
+          echo "Coordinator disabled"
+        else
+          exec java \
+            -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \
+            -Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json \
+            -Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml \
+            $$CONFIG_OVERRIDE_OPTS \
+            -jar libs/coordinator.jar \
+            --traces-limits-v5 config/traces-limits-v5.toml \
+            --smart-contract-errors config/smart-contract-errors.toml \
+            --gas-price-cap-time-of-day-multipliers config/gas-price-cap-time-of-day-multipliers.toml \
+            config/coordinator-config.toml
+        fi
     volumes:
       - ./config/l2-genesis-initialization/coordinator-config-v2-hardforks.toml:/opt/consensys/linea/coordinator/config/coordinator-config.toml:ro
-      - ../config/common/traces-limits-v5.toml:/opt/consensys/linea/coordinator/config/traces-limits-v5.toml:ro
-      - ../config/common/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
-      - ../config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
-      - ../config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
-      - ../config/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
-      - ../config/coordinator/tls-files/:/tls-files/
+      - ./config/common/traces-limits-v5.toml:/opt/consensys/linea/coordinator/config/traces-limits-v5.toml:ro
+      - ./config/common/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
+      - ./config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
+      - ./config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
+      - ./config/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
+      - ./config/coordinator/tls-files/:/tls-files/
       - ../tmp/local/:/data/
     networks:
       l1network:
@@ -451,7 +468,7 @@ services:
       - l1network
 
   shomei:
-    image: consensys/linea-shomei:${LINEA_SHOMEI_TAG:-3.0.0}
+    image: consensys/linea-shomei:${LINEA_SHOMEI_TAG:-3.2.3}
     hostname: shomei
     container_name: shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -492,7 +509,7 @@ services:
   #      - ../tmp/local/shomei:/data/shomei/:z
 
   shomei-frontend:
-    image: consensys/linea-shomei:3.0.0
+    image: consensys/linea-shomei:${LINEA_SHOMEI_TAG:-3.2.3}
     hostname: shomei-frontend
     container_name: shomei-frontend
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -511,7 +528,7 @@ services:
     ports:
       - "8889:8888"
     healthcheck:
-      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
+      test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei-frontend/LOCK ]\"" ]
       interval: 1s
       timeout: 1s
       retries: 60
@@ -542,7 +559,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-8a0bcc8}
+    image: consensys/linea-transaction-exclusion-api:${LINEA_TRANSACTION_EXCLUSION_API_TAG:-4ddbeba}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -552,9 +569,9 @@ services:
       - "8082:8080"
     command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
     volumes:
-      - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
-      - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
-      - ../config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
+      - ./config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
+      - ./config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
+      - ./config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
     networks:
       linea:
         ipv4_address: 11.11.11.110
@@ -635,7 +652,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v5-rc6-20260316125820-f438666}
+    image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG:-dev-20260501155747-32a0f80}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "staterecovery", "external-to-monorepo" ]
@@ -687,10 +704,10 @@ services:
       - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
       - ./config/zkbesu-shomei/log4j-staterecovery.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
-      - ../besu-plugins/state-recovery/besu-plugin/build/libs/linea-staterecovery-besu-plugin-SNAPSHOT.jar:/opt/besu/plugins/linea-staterecovery-besu-plugin-SNAPSHOT.jar
+      - ../linea-besu/plugins/state-recovery/besu-plugin/build/libs/linea-staterecovery-besu-plugin-SNAPSHOT.jar:/opt/besu/plugins/linea-staterecovery-besu-plugin-SNAPSHOT.jar
 
   shomei-sr:
-    image: consensys/linea-shomei:3.0.0
+    image: consensys/linea-shomei:${LINEA_SHOMEI_TAG:-3.2.3}
     hostname: shomei-sr
     container_name: shomei-sr
     profiles: [ "staterecovery", "external-to-monorepo" ]

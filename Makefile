@@ -1,4 +1,4 @@
-include makefile-contracts.mk
+include contracts/makefile-contracts.mk
 
 docker-pull-images-external-to-monorepo:
 		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
@@ -15,13 +15,22 @@ clean-environment:
 		docker compose -f docker/compose-tracing-v2-ci-fleet-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery kill -s 9 || true;
 		docker compose -f docker/compose-tracing-v2-ci-fleet-extension.yml -f docker/compose-tracing-v2-staterecovery-extension.yml --profile l1 --profile l2 --profile debug --profile staterecovery down || true;
 		make clean-local-folders;
+		$(MAKE) seed-deny-list; # truncate runtime deny-list and drop any stale lockfile from a crashed run
 		docker volume rm linea-local-dev linea-logs || true; # ignore failure if volumes do not exist already
 		docker system prune -f || true;
+
+# Ensure the runtime sequencer deny-list exists (empty) before docker compose
+# bind-mounts it. Gitignored; may be mutated at test time by withDenyListAddresses.
+# Also drop any stale lockfile from a crashed previous run, otherwise every
+# mutation in the next run would spin for 30s before timing out.
+seed-deny-list:
+		: > docker/config/linea-besu-sequencer/deny-list.txt
+		rm -f docker/config/linea-besu-sequencer/deny-list.txt.lock || true
 
 start-env: COMPOSE_PROFILES:=l1,l2
 start-env: CLEAN_PREVIOUS_ENV:=true
 start-env: COMPOSE_FILE:=docker/compose-tracing-v2.yml
-start-env: L1_CONTRACT_VERSION:=7_1
+start-env: L1_CONTRACT_VERSION:=8
 start-env: SKIP_CONTRACTS_DEPLOYMENT:=false
 start-env: SKIP_L1_L2_NODE_HEALTH_CHECK:=false
 start-env: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
@@ -33,11 +42,12 @@ start-env:
 		echo "Starting stack reusing previous state"; \
 	fi; \
 	mkdir -p tmp/local; \
+	$(MAKE) seed-deny-list; \
 	COMPOSE_PROFILES=$(COMPOSE_PROFILES) docker compose -f $(COMPOSE_FILE) up -d; \
 	while [ "$(SKIP_L1_L2_NODE_HEALTH_CHECK)" = "false" ] && \
-			{ [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
-				[ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-cl-node | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
-  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
+			{ [ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-el-node | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
+				[ "$$(docker compose -f $(COMPOSE_FILE) ps -q l1-cl-node | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ] || \
+  			[ "$$(docker compose -f $(COMPOSE_FILE) ps -q sequencer | xargs -r docker inspect -f '{{.State.Health.Status}}')" != "healthy" ]; }; do \
   			sleep 2; \
   			echo "Checking health status of: l1-el-node, l1-cl-node and l2 sequencer..."; \
   	done
@@ -48,7 +58,7 @@ start-env:
 	fi
 
 start-env-with-validium:
-	$(MAKE) start-env L1_CONTRACT_VERSION=1 LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM LINEA_L1_CONTRACT_DEPLOYMENT_TARGET=deploy-validium
+	$(MAKE) start-env L1_CONTRACT_VERSION=2 LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM LINEA_L1_CONTRACT_DEPLOYMENT_TARGET=deploy-validium
 
 start-l1:
 	make start-env COMPOSE_PROFILES:=l1 COMPOSE_FILE:=docker/compose-tracing-v2.yml SKIP_CONTRACTS_DEPLOYMENT:=true SKIP_L1_L2_NODE_HEALTH_CHECK:=true
@@ -70,6 +80,10 @@ fresh-start-l2-blockchain-only:
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
+## Run with tracing-v2 with partial prover
+start-env-with-tracing-v2-partialprover:
+	make start-env COMPOSE_FILE="docker/compose-tracing-v2.yml -f docker/compose-tracing-v2-partialprover-override.yml"
+
 ## Enable L2 geth node
 start-env-with-tracing-v2-extra:
 	make start-env COMPOSE_PROFILES:=l1,l2 COMPOSE_FILE:=docker/compose-tracing-v2-extra-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true LINEA_COORDINATOR_DISABLE_TYPE2_STATE_PROOF_PROVIDER=false LINEA_COORDINATOR_SIGNER_TYPE=web3signer
@@ -89,7 +103,7 @@ start-env-with-staterecovery: L1_CONTRACT_VERSION:=6
 start-env-with-staterecovery:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-staterecovery-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
-staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
 staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1
 staterecovery-replay-from-block:
 	docker compose -f docker/compose-tracing-v2-staterecovery-extension.yml down zkbesu-shomei-sr shomei-sr
@@ -103,5 +117,3 @@ stop_pid:
 		else \
 			echo "$(PID_FILE) does not exist. No process to stop."; \
 		fi
-
-

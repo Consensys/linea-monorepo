@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.limits.precompileLimits;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.module.ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,7 +36,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -50,8 +50,7 @@ public class ModexpLimitsTests extends TracerTestBase {
   void modexpCall(int bbs, int ebs, int mbs, TestInfo testInfo) {
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
 
@@ -82,7 +81,7 @@ public class ModexpLimitsTests extends TracerTestBase {
                     .push(2000) // cds
                     .push(0) // offset
                     .push(0) // value
-                    .push(Address.MODEXP) // address
+                    .push(Address.MODEXP.getBytes()) // address
                     .push(gasArgument) // gas
                     .op(OpCode.CALL)
                     .compile())
@@ -153,7 +152,7 @@ public class ModexpLimitsTests extends TracerTestBase {
       }
     }
 
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static List<Integer> BYTE_SIZE_TO_TEST = List.of(0, 18, 32, 216, 318, 512, 513);

@@ -1,7 +1,8 @@
 import { task } from "hardhat/config";
-import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
-import { generateRoleAssignments, buildVendorInitializationData } from "../../../common/helpers";
+
 import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants";
+import { generateRoleAssignments, buildVendorInitializationData } from "../../../common/helpers";
+import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
 
 /*
   *******************************************************************************************
@@ -20,7 +21,7 @@ import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants";
   -------------------------------------------------------------------------------------------
   DEPLOYER_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_RPC_URL=https://0xrpc.io/hoodi \
-  npx hardhat addLidoStVaultYieldProvider \
+  pnpm exec hardhat addLidoStVaultYieldProvider \
     --yield-manager <address> \
     --yield-provider <address> \
     --node-operator <address> \

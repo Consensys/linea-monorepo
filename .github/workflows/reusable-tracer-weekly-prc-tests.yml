@@ -15,12 +15,12 @@ jobs:
   # Weekly PRC Call Tests
   # ==================================================================
   weekly-prc-calltests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Tracer Test Environment
         uses: ./.github/actions/setup-tracer-environment
@@ -35,21 +35,21 @@ jobs:
 
       - name: Upload prc calls test report
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: prc-call-tests-report-${{ inputs.zkevm_fork }}
           path: tracer/arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco weekly prc-call tests coverage report
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jacoco-prc-call-tests-coverage-report-${{ inputs.zkevm_fork }}
           path: tracer/arithmetization/build/reports/jacoco/jacocoPrcCallTestsReport/**/*
 
       - name: Upload jacoco weekly prc-call tests exec file
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jacoco-prc-call-tests-exec-file-${{ inputs.zkevm_fork }}
           path: tracer/arithmetization/build/jacoco/prcCallTests.exec

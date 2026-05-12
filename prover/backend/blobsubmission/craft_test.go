@@ -3,8 +3,9 @@ package blobsubmission
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"golang.org/x/crypto/sha3"
 
@@ -70,12 +71,6 @@ func hexToBytes(t *testing.T, s string) []byte {
 	b, err := hex.DecodeString(s)
 	assert.NoError(t, err)
 	return b
-}
-
-func hexToElem(t *testing.T, s string) bls12Fr.Element {
-	var res bls12Fr.Element
-	assert.NoError(t, res.SetBytesCanonical(hexToBytes(t, s)))
-	return res
 }
 
 func TestNewSchnarf(t *testing.T) {

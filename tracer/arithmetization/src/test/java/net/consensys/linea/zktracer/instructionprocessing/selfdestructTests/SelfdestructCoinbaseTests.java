@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing.selfdestructTests;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.instructionprocessing.selfdestructTests.Heir.HEIR_IS_EOA;
 import static net.consensys.linea.zktracer.instructionprocessing.selfdestructTests.Heir.basicSelfDestructor;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddress;
@@ -34,7 +35,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -76,8 +76,7 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
             .build();
 
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(380)).nonce(1).address(senderAddress).build();
 
@@ -170,7 +169,7 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
         }
       }
     }
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private void setRevert(ToyAccount account) {

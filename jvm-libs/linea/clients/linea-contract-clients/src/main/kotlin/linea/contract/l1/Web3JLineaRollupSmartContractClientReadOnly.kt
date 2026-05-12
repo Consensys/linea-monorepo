@@ -28,9 +28,9 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
   val contractAddress: String,
   private val ethLogsClient: EthLogsClient,
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java),
-) :
-  LineaRollupSmartContractClientReadOnly,
-  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
+) : LineaRollupSmartContractClientReadOnly,
+  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
+  FinalizedStateDataProvider {
 
   protected fun contractClientV8AtBlock(blockParameter: BlockParameter): LineaRollupV8 {
     return contractClientAtBlock(blockParameter, LineaRollupV8::class.java)
@@ -181,10 +181,42 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
       }
   }
 
-  private fun getFinalizedStateEvent(
+  override fun getFinalizedStateData(
+    blockParameter: BlockParameter,
+  ): SafeFuture<FinalizedStateDataProvider.FinalizedStateData> {
+    return getVersion()
+      .thenCombine(
+        finalizedL2BlockNumber(blockParameter),
+      ) { version, finalizedBlockNumber -> version to finalizedBlockNumber }
+      .thenCompose { (version, finalizedBlockNumber) ->
+        when (version) {
+          LineaRollupContractVersion.V6,
+          LineaRollupContractVersion.V7,
+          ->
+            SafeFuture.completedFuture(
+              FinalizedStateDataProvider.FinalizedStateData(
+                blockNumber = finalizedBlockNumber,
+                forcedTransactionNumber = 0UL, // ftx is not available in V6 and V7 contract, return the initial value
+              ),
+            )
+
+          LineaRollupContractVersion.V8 ->
+            findFinalizedStateEvent(blockParameter, finalizedBlockNumber)
+              .thenApply { finalizedState ->
+                val forcedTransactionNumber = finalizedState?.forcedTransactionNumber ?: 0UL
+                FinalizedStateDataProvider.FinalizedStateData(
+                  blockNumber = finalizedBlockNumber,
+                  forcedTransactionNumber = forcedTransactionNumber,
+                )
+              }
+        }
+      }
+  }
+
+  private fun findFinalizedStateEvent(
     upToBlock: BlockParameter,
     finalisedBlockNumber: ULong,
-  ): SafeFuture<FinalizedStateUpdatedEvent> {
+  ): SafeFuture<FinalizedStateUpdatedEvent?> {
     return ethLogsClient.getLogs(
       fromBlock = BlockParameter.Tag.EARLIEST,
       toBlock = upToBlock,
@@ -196,11 +228,21 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
     ).thenApply { logs ->
       // only one log expected because we use indexed finalized block number
       logs.firstOrNull()
-        ?.let(FinalizedStateUpdatedEvent::fromEthLog)?.event
+        ?.let(FinalizedStateUpdatedEvent::fromEthLog)
+        ?.event
+    }
+  }
+
+  private fun getFinalizedStateEvent(
+    upToBlock: BlockParameter,
+    finalisedBlockNumber: ULong,
+  ): SafeFuture<FinalizedStateUpdatedEvent> {
+    return findFinalizedStateEvent(upToBlock = upToBlock, finalisedBlockNumber = finalisedBlockNumber)
+      .thenApply { event ->
         // it means contract was just upgraded but no event published yet,
         // we cannot deterministically get the finalized fields
         // throw unsupported operation exception to let caller decide what to do, either retry later or fail
-        ?: throw UnsupportedOperationException("event FinalizedStateUpdated not found on L1")
-    }
+        event ?: throw UnsupportedOperationException("event FinalizedStateUpdated not found on L1")
+      }
   }
 }

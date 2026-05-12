@@ -65,7 +65,6 @@ yarn-debug.log*
 yarn-error.log*
 proving_key.bin
 
-.cache-synpress/
 .externalToolBuilders/
 .gradle/
 .idea/
@@ -77,9 +76,11 @@ proving_key.bin
 **/.direnv
 
 # Prisma generated clients
-/native-yield-operations/lido-governance-monitor/prisma/client/
+/operations/native-yield-operations/lido-governance-monitor/prisma/client/
 
 bin/
+!/operations/operations-cli/bin/
+!/operations/operations-cli/bin/**
 build/
 cache_forge/
 coverage/
@@ -95,19 +96,15 @@ typechain-types/
 generated/
 __pycache__/
 
-/besu-plugins/linea-sequencer/**/site
-
-/bridge-ui/.env*.local
-!/bridge-ui/.env.test
-/bridge-ui/cache
-/bridge-ui/out
-/bridge-ui/test-results
+/linea-besu/plugins/linea-sequencer/**/site
 
 /contracts/.env~
 /contracts/coverage.json
 /contracts/**/cache
 /contracts/deployments/zkevm_dev
 /contracts/lib/forge-std/
+/contracts/signer-ui/.next/
+/contracts/signer-ui/node_modules/
 
 /jvm-libs/**/linux-aarch64
 /jvm-libs/**/linux-x86-64
@@ -148,10 +145,10 @@ __pycache__/
 /docker/config/l2-genesis-initialization/fork-timestamp.txt
 
 !.gitkeep
-!operations/bin/
 # Authorize the kzg srs folder
 !prover/prover-assets/kzgsrs/**
-!prover/symbolic/testdata/**/*.csv
+!prover/**/testdata/**/*.csv
+!prover/**/testdata/**/*.json
 !prover/symbolic/testdata/**/*.tar.gz
 # except for single-round bin
 !prover/**/single_round/bin/
@@ -162,8 +159,26 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
+# Prover serde testdata
+!prover/protocol/serde/testdata/*.txt
+# Usually the profiling pdfs
+prover/*.pdf
+# Usually request/response files
+prover/*.json
+# Usually helper shell scripts to run the prover
+prover/*.sh
 
 .claude/settings.local.json
 contracts/.claude/settings.local.json
 *.analysis-report.html
 .worktrees/
+e2e/e2e-runtime-report.html
+e2e/e2e-runtime-report-summary.json
+.zig-cache/
+arithmetization/src/test/examples/linker_script.ld
+arithmetization/src/test/examples/asm/src/op/*.s
+
+# Runtime sequencer deny-list, seeded empty by Makefile/gradle before each env start
+# and mutated by E2E tests via withDenyListAddresses. Never commit.
+docker/config/linea-besu-sequencer/deny-list.txt
+docker/config/linea-besu-sequencer/deny-list.txt.lock

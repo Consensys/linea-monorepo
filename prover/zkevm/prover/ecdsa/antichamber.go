@@ -6,11 +6,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -25,9 +27,6 @@ const (
 )
 
 const (
-	// keccak digest is on size 32bytes
-	halfDigest = 16
-
 	// number of public inputs gnark circuit takes as a public witness
 	nbRowsPerGnarkPushing = 14
 
@@ -42,7 +41,7 @@ const (
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
-		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size)
+		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size, true)
 	}
 }
 
@@ -52,9 +51,10 @@ type antichamberInput struct {
 	RlpTxn       generic.GenDataModule
 	Settings     *Settings
 	PlonkOptions []query.PlonkOption
+	WithCircuit  bool // If false, skip gnark circuit compilation (useful for testing wizard constraints only)
 }
 
-type antichamber struct {
+type Antichamber struct {
 	Inputs     *antichamberInput
 	IsActive   ifaces.Column
 	ID         ifaces.Column
@@ -73,6 +73,8 @@ type antichamber struct {
 
 	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
 	Providers []generic.GenericByteModule
+
+	FlattenLimbs *common.FlattenColumn
 }
 
 type Settings struct {
@@ -86,7 +88,7 @@ func (l *Settings) sizeAntichamber() int {
 	return utils.NextPowerOfTwo(l.MaxNbEcRecover*nbRowsPerEcRec + l.MaxNbTx*nbRowsPerTxSign)
 }
 
-func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *antichamber {
+func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *Antichamber {
 
 	settings := inputs.Settings
 	if settings.MaxNbEcRecover+settings.MaxNbTx > settings.NbInputInstance*settings.NbCircuitInstances {
@@ -96,7 +98,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	createCol := createColFn(comp, NAME_ANTICHAMBER, size)
 
 	// declare the native columns
-	res := &antichamber{
+	res := &Antichamber{
 
 		IsActive:   createCol("IS_ACTIVE"),
 		ID:         createCol("ID"),
@@ -108,6 +110,8 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		Size: size,
 	}
 
+	pragmas.MarkRightPadded(res.IsFetching)
+
 	// declare submodules
 	txSignInputs := txSignatureInputs{
 		RlpTxn: inputs.RlpTxn,
@@ -117,18 +121,23 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	res.EcRecover = newEcRecover(comp, inputs.Settings, inputs.EcSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
 	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.TxSource)
-	toAlign := &plonk.CircuitAlignmentInput{
-		Name:               NAME_GNARK_DATA,
-		Round:              ROUND_NR,
-		DataToCircuit:      res.UnalignedGnarkData.GnarkData,
-		DataToCircuitMask:  res.IsPushing,
-		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
-		PlonkOptions:       inputs.PlonkOptions,
-		NbCircuitInstances: settings.NbCircuitInstances,
-		InputFillerKey:     plonkInputFillerKey,
-	}
 
-	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
+	res.FlattenLimbs = common.NewFlattenColumn(comp, res.UnalignedGnarkData.GnarkData.AsDynSize(), res.IsPushing)
+
+	// Only define the gnark circuit alignment if WithCircuit is true
+	if inputs.WithCircuit {
+		toAlign := &plonk.CircuitAlignmentInput{
+			Name:               NAME_GNARK_DATA,
+			Round:              ROUND_NR,
+			DataToCircuit:      res.FlattenLimbs.Limbs,
+			DataToCircuitMask:  res.FlattenLimbs.Mask,
+			Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
+			PlonkOptions:       inputs.PlonkOptions,
+			NbCircuitInstances: settings.NbCircuitInstances,
+			InputFillerKey:     plonkInputFillerKey,
+		}
+		res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
+	}
 
 	// root module constraints
 	res.csIsActiveActivation(comp)
@@ -137,6 +146,8 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	res.csIDSequential(comp)
 	res.csSource(comp)
 	res.csTransitions(comp)
+
+	res.FlattenLimbs.CsFlattenProjection(comp)
 
 	// consistency with submodules
 	// ecrecover
@@ -158,7 +169,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 //
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
-func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
+func (ac *Antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
 
 	var (
 		ecSrc             = ac.Inputs.EcSource
@@ -170,8 +181,15 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 	ac.EcRecover.Assign(run, ecSrc)
 	ac.TxSignature.assignTxSignature(run, nbActualEcRecover)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
+
+	ac.FlattenLimbs.Run(run)
+
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.Size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
-	ac.AlignedGnarkData.Assign(run)
+
+	// Only assign circuit data if the circuit was defined
+	if ac.AlignedGnarkData != nil {
+		ac.AlignedGnarkData.Assign(run)
+	}
 }
 
 // assignAntichamber assigns the values values in the main part of the antichamber, namely columns:
@@ -182,7 +200,7 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 //   - Source
 //
 // The assignment depends on the number of defined EcRecover and TxSignature instances.
-func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances, nbTxInstances int) {
+func (ac *Antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances, nbTxInstances int) {
 
 	var (
 		maxNbEcRecover = ac.Inputs.Settings.MaxNbEcRecover

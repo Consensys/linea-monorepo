@@ -285,13 +285,13 @@ docker buildx build \
 
 ```bash
 # With full stack
-COORDINATOR_TAG=local make start-env-with-tracing-v2
+LINEA_COORDINATOR_TAG=local make start-env-with-tracing-v2
 
 # Standalone (requires dependencies)
 java -jar coordinator/app/build/libs/coordinator.jar \
-  --traces-limits-v2 config/common/traces-limits-v2.toml \
-  --smart-contract-errors config/common/smart-contract-errors.toml \
-  config/coordinator/coordinator-config-v2.toml
+  --traces-limits-v2 docker/config/common/traces-limits-v2.toml \
+  --smart-contract-errors docker/config/common/smart-contract-errors.toml \
+  docker/config/coordinator/coordinator-config-v2.toml
 ```
 
 ## API Endpoints

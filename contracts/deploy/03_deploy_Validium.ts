@@ -1,12 +1,5 @@
 import { DeployFunction } from "hardhat-deploy/types";
-import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
-import {
-  generateRoleAssignments,
-  getEnvVarOrDefault,
-  getRequiredEnvVar,
-  tryVerifyContract,
-  LogContractDeployment,
-} from "../common/helpers";
+
 import {
   VALIDIUM_INITIALIZE_SIGNATURE,
   VALIDIUM_PAUSE_TYPES_ROLES,
@@ -15,12 +8,21 @@ import {
   OPERATOR_ROLE,
   ADDRESS_ZERO,
 } from "../common/constants";
+import {
+  generateRoleAssignments,
+  getEnvVarOrDefault,
+  getRequiredEnvVar,
+  tryVerifyContract,
+  LogContractDeployment,
+} from "../common/helpers";
+import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async function () {
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = getRequiredEnvVar("VERIFIER_ADDRESS");
   const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const validiumSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
@@ -63,7 +65,7 @@ const func: DeployFunction = async function () {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContract(contractAddress);
-};
+});
 
 export default func;
 func.tags = ["Validium"];

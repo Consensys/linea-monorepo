@@ -25,7 +25,7 @@ func TestRunCommand(t *testing.T) {
 
 	var (
 		eFrom   string = confM.Execution.DirFrom()
-		cFrom   string = confM.BlobDecompression.DirFrom()
+		cFrom   string = confM.DataAvailability.DirFrom()
 		aFrom   string = confM.Aggregation.DirFrom()
 		exit0   int    = 0
 		exit2   int    = 2
@@ -60,6 +60,11 @@ func TestRunCommand(t *testing.T) {
 	createTestInputFile(aFrom, 2, 4, aggregationJob, exit2)
 	createTestInputFile(aFrom, 4, 6, aggregationJob, exit77)
 	createTestInputFile(aFrom, 6, 8, aggregationJob, exit137)
+
+	// invalidity
+	iFrom := confM.Invalidity.DirFrom()
+	createTestInputFile(iFrom, 1000, 10, invalidityJob, exit0)
+	createTestInputFile(iFrom, 2000, 20, invalidityJob, exit2)
 
 	ctxM, stopM := context.WithCancel(context.Background())
 	ctxL, stopL := context.WithCancel(context.Background())
@@ -108,11 +113,11 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path:    confM.BlobDecompression.DirFrom(),
+			Path:    confM.DataAvailability.DirFrom(),
 			Entries: []string{},
 		},
 		{
-			Path: confM.BlobDecompression.DirDone(),
+			Path: confM.DataAvailability.DirDone(),
 			Entries: []string{
 				"0-2-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.success",
 				"2-4-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json.failure.code_2",
@@ -121,7 +126,7 @@ func TestRunCommand(t *testing.T) {
 			},
 		},
 		{
-			Path: confM.BlobDecompression.DirTo(),
+			Path: confM.DataAvailability.DirTo(),
 			Entries: []string{
 				"0-2-getZkBlobCompressionProof.json",
 			},
@@ -143,6 +148,21 @@ func TestRunCommand(t *testing.T) {
 			Path:    confM.Aggregation.DirTo(),
 			Entries: []string{"0-2-deadbeef57-getZkAggregatedProof.json"},
 		},
+		{
+			Path:    confM.Invalidity.DirFrom(),
+			Entries: []string{},
+		},
+		{
+			Path: confM.Invalidity.DirDone(),
+			Entries: []string{
+				"1000-10-getZkInvalidityProof.json.success",
+				"2000-20-getZkInvalidityProof.json.failure.code_2",
+			},
+		},
+		{
+			Path:    confM.Invalidity.DirTo(),
+			Entries: []string{"1000-10-getZkInvalidityProof.json"},
+		},
 	}
 
 	for _, dirVal := range expectedStructure {
@@ -162,12 +182,14 @@ func TestFileWatcherM(t *testing.T) {
 
 	// Create a list of files
 	eFrom := confM.Execution.DirFrom
-	cFrom := confM.BlobDecompression.DirFrom
+	cFrom := confM.DataAvailability.DirFrom
 	aFrom := confM.Aggregation.DirFrom
+	iFrom := confM.Invalidity.DirFrom
 
 	exitCode := 0 // we are not interesting in the exit code here
 
-	// The jobs, declared in the order in which they are expected to be found
+	// The jobs, declared in the order in which they are expected to be found.
+	// Order is determined by Score() = 100*End + Priority (ascending).
 
 	// Name of the expected inprogress files
 	expectedFNames := []struct {
@@ -205,6 +227,12 @@ func TestFileWatcherM(t *testing.T) {
 		},
 		{
 			FName: createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode),
+		},
+		{
+			FName: createTestInputFile(iFrom(), 1000, 10, invalidityJob, exitCode),
+		},
+		{
+			FName: createTestInputFile(iFrom(), 2000, 20, invalidityJob, exitCode),
 		},
 	}
 
@@ -288,6 +316,7 @@ func setupFsTest(t *testing.T) (confM, confL *config.Config) {
 		execution   = "execution"
 		compression = "compression"
 		aggregation = "aggregation"
+		invalidity  = "invalidity"
 	)
 
 	// Create a configuration using temporary directories
@@ -325,8 +354,9 @@ exit $CODE
 
 		Controller: config.Controller{
 			EnableExecution:            true,
-			EnableBlobDecompression:    true,
+			EnableDataAvailability:     true,
 			EnableAggregation:          true,
+			EnableInvalidity:           true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},
 			RetryDelays:                []int{0, 1},
@@ -341,7 +371,7 @@ exit $CODE
 				RequestsRootDir: path.Join(testDir, proverM, execution),
 			},
 		},
-		BlobDecompression: config.BlobDecompression{
+		DataAvailability: config.DataAvailability{
 			WithRequestDir: config.WithRequestDir{
 				RequestsRootDir: path.Join(testDir, proverM, compression),
 			},
@@ -351,6 +381,11 @@ exit $CODE
 				RequestsRootDir: path.Join(testDir, proverM, aggregation),
 			},
 		},
+		Invalidity: config.Invalidity{
+			WithRequestDir: config.WithRequestDir{
+				RequestsRootDir: path.Join(testDir, proverM, invalidity),
+			},
+		},
 	}
 
 	_confL := *confM
@@ -358,6 +393,39 @@ exit $CODE
 	confL.Controller.LocalID = proverL
 	confL.Controller.WorkerCmdLarge = cmdLarge
 	confL.Execution.CanRunFullLarge = true
+
+	// confL = &config.GlobalConfig{
+	// 	Version: "0.2.4",
+
+	// 	Controller: config.Controller{
+	// 		EnableExecution:            true,
+	// 		EnableDataAvailability:    false,
+	// 		EnableAggregation:          false,
+	// 		LocalID:                    proverL,
+	// 		Prometheus:                 config.Prometheus{Enabled: false},
+	// 		RetryDelays:                []int{0, 1},
+	// 		WorkerCmd:                  cmdLarge,
+	// 		WorkerCmdLarge:             cmdLarge,
+	// 		DeferToOtherLargeCodes:     []int{12, 137},
+	// 		RetryLocallyWithLargeCodes: []int{10, 77},
+	// 	},
+	// 	Execution: config.Execution{
+	// 		WithRequestDir: config.WithRequestDir{
+	// 			RequestsRootDir: path.Join(testDir, proverM, execution),
+	// 		},
+	// 		CanRunFullLarge: true,
+	// 	},
+	// 	DataAvailability: config.DataAvailability{
+	// 		WithRequestDir: config.WithRequestDir{
+	// 			RequestsRootDir: path.Join(testDir, proverM, compression),
+	// 		},
+	// 	},
+	// 	Aggregation: config.Aggregation{
+	// 		WithRequestDir: config.WithRequestDir{
+	// 			RequestsRootDir: path.Join(testDir, proverM, aggregation),
+	// 		},
+	// 	},
+	// }
 
 	// ensure the template are parsed
 	confM.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confM.Controller.WorkerCmd))
@@ -372,12 +440,15 @@ exit $CODE
 		os.MkdirAll(confM.Execution.DirFrom(), permCode),
 		os.MkdirAll(confM.Execution.DirTo(), permCode),
 		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
+		os.MkdirAll(confM.DataAvailability.DirFrom(), permCode),
+		os.MkdirAll(confM.DataAvailability.DirTo(), permCode),
+		os.MkdirAll(confM.DataAvailability.DirDone(), permCode),
 		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
 		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
 		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
+		os.MkdirAll(confM.Invalidity.DirFrom(), permCode),
+		os.MkdirAll(confM.Invalidity.DirTo(), permCode),
+		os.MkdirAll(confM.Invalidity.DirDone(), permCode),
 	)
 
 	if err != nil {
@@ -391,6 +462,7 @@ const (
 	execJob int = iota
 	compressionJob
 	aggregationJob
+	invalidityJob
 	forLarge bool = true
 )
 
@@ -410,6 +482,8 @@ func createTestInputFile(
 		fmtString = "%v-%v-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json"
 	case aggregationJob:
 		fmtString = "%v-%v-deadbeef57-getZkAggregatedProof.json"
+	case invalidityJob:
+		fmtString = "%v-%v-getZkInvalidityProof.json"
 	default:
 		panic("incorrect job type")
 	}
@@ -432,7 +506,7 @@ func createTestInputFile(
 }
 
 func TestSpotInstanceMode(t *testing.T) {
-	t.Skipf("this breaks the CI pipeline")
+	// t.Skipf("this breaks the CI pipeline")
 
 	var (
 		cfg    = setupFsTestSpotInstance(t)
@@ -550,7 +624,7 @@ func waitFor(t *testing.T, timeout time.Duration, interval time.Duration, condit
 // Test that on SIGTERM (graceful) the controller lets the job finish and the result is in the done folder.
 func TestSIGTERMGracefulShutdown(t *testing.T) {
 
-	t.Skipf("this breaks the CI pipeline")
+	// t.Skipf("this breaks the CI pipeline")
 
 	confM, _ := setupFsTest(t)
 

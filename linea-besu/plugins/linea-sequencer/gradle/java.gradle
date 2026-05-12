@@ -1,0 +1,47 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
+ */
+
+apply plugin: 'java-library'
+
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)) {
+  throw new GradleException("Java 25 or later is required to build Besu.\n" +
+          "  Detected version ${JavaVersion.current()}")
+}
+
+java {
+  sourceCompatibility = 25
+  targetCompatibility = 25
+
+  consistentResolution {
+    useCompileClasspathVersions()
+  }
+}
+
+dependencies {
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Takes the version, and if it equals "SNAPSHOT" or the suffix is "-SNAPSHOT" replaces SNAPSHOT
+// with the git commit version.
+ext.calculateVersion = { ->
+  // First try to get releaseVersion from project properties (for -P overrides),
+  // otherwise fallback to the parent project's releaseVersion
+  String version = project.findProperty('releaseVersion') ?: "SNAPSHOT"
+  if (version.endsWith("SNAPSHOT")) {
+    def lastSnapshot = version.lastIndexOf("SNAPSHOT")
+    version = version.substring(0, lastSnapshot) + "dev-${getCheckedOutGitCommitHash()}"
+  }
+
+  return version
+}
+
+static def getCheckedOutGitCommitHash() {
+  def hashLength = 7
+  "git rev-parse HEAD".execute().text.take(hashLength)
+}

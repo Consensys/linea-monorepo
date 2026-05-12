@@ -1,6 +1,8 @@
 package dedicated
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -13,17 +15,12 @@ import (
 
 // NewRepeatedPattern creates a new [RepeatedPattern] column. Any can be either a column or
 // a sym expression.
-func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Element, isActive ifaces.Column, name string) *RepeatedPattern {
-
-	if len(name) == 0 {
-		panic("name cannot be empty")
-	}
-
-	name = "REPEATED_PATTERN_" + name
+func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Element, isActive ifaces.Column, moduleName string) *RepeatedPattern {
 
 	var (
 		size              = isActive.Size()
 		period            = len(pattern)
+		name              = fmt.Sprintf("REPEATED_PATTERN_%v", moduleName)
 		patternSizePadded = utils.NextPowerOfTwo(period)
 		patternPos        = make([]field.Element, period)
 	)
@@ -33,7 +30,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 	}
 
 	res := &RepeatedPattern{
-		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size).(column.Natural),
+		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size, true).(column.Natural),
 		Pattern: pattern,
 		PatternPrecomp: comp.InsertPrecomputed(
 			ifaces.ColID(name)+"_PATTERN",
@@ -43,10 +40,11 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 			ifaces.ColID(name)+"_PATTERNPOS",
 			smartvectors.RightPadded(patternPos, field.NewFromString("-1"), patternSizePadded),
 		),
-		Counter: *NewCyclicCounter(comp, round, period, isActive),
+		Counter: *NewCyclicCounter(comp, round, period, isActive, moduleName),
 	}
 
-	pragmas.AddModuleRef(res.PatternPrecomp, name)
+	// advice for the repeated pattern for module discoverer
+	pragmas.AddModuleRef(res.PatternPrecomp, moduleName)
 
 	commonconstraints.MustZeroWhenInactive(comp, isActive, res.Natural)
 

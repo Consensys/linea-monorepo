@@ -15,11 +15,10 @@
 tasks.register('corsetExists') {
   dependsOn('installGoCorset')
   doLast {
-    def result = exec {
-      ignoreExitValue = true
-      commandLine "go-corset", "--version"
-    }
-    if (result.getExitValue() != 0) {
+    def process = ["go-corset", "--version"].execute()
+    process.consumeProcessOutput()
+    def exitCode = process.waitFor()
+    if (exitCode != 0) {
       throw new GradleException('go-corset not found!')
     }
   }
@@ -28,15 +27,18 @@ tasks.register('corsetExists') {
 ext {
   corsetVersion = project.hasProperty('corsetVersion')
     ? project.property('corsetVersion')
-    : System.getenv().getOrDefault('CORSET_VERSION', "v1.2.7")
+    : System.getenv().getOrDefault('LINEA_CORSET_VERSION', "v1.2.10")
 }
 
 tasks.register('installGoCorset') {
   description = 'Install go-corset'
   group = 'build'
 
+  // For configuration cache
+  def capturedCorsetVersion = project.ext.corsetVersion
+
   doLast {
-    def corsetVersion = project.ext.corsetVersion
+    def corsetVersion = capturedCorsetVersion
     def isWindows = System.getProperty('os.name').toLowerCase().contains('win')
     logger.lifecycle("Target version: $corsetVersion")
     if (corsetVersion.isEmpty()) {
@@ -143,5 +145,4 @@ tasks.register('buildAllTracers', Exec) {
     traceJava.parentFile.mkdirs()
   }
   commandLine 'go-corset', 'generate', '-p', TRACE_PKG, '-i', traceJava,
-    '-o', traceOsakaJava, zkevmOsakaBin
-}
+    '-o', traceOsakaJava, zkevmOsakaBin }

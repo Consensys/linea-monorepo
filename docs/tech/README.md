@@ -22,7 +22,7 @@ linea-monorepo/
 ├── Kotlin/Java (Gradle)
 │   ├── coordinator/          # Orchestration service
 │   ├── jvm-libs/             # Shared JVM libraries
-│   ├── besu-plugins/         # Besu plugin extensions
+│   ├── linea-besu/plugins/         # Besu plugin extensions
 │   ├── tracer/               # EVM trace generation
 │   ├── transaction-exclusion-api/
 │   └── testing-tools/
@@ -35,13 +35,13 @@ linea-monorepo/
 │   └── contracts/token-generation-event/  # Token generation event contracts
 │
 ├── TypeScript
-│   ├── sdk/                  # Developer SDK (viem/ethers)
-│   ├── bridge-ui/            # Bridge frontend (Next.js)
+│   ├── ts-libs/sdk/          # Developer SDK (viem/ethers)
 │   ├── postman/              # Message relay service
 │   ├── e2e/                  # End-to-end tests
 │   ├── ts-libs/              # Shared TS libraries
-│   ├── operations/           # CLI operational tools
-│   └── native-yield-operations/
+│   └── operations/
+│       ├── operations-cli/   # CLI operational tools
+│       └── native-yield-operations/
 │
 ├── Rust
 │   └── corset/               # Constraint compiler
@@ -67,7 +67,6 @@ linea-monorepo/
 | Prover | Go/gnark | ZK proof generation (PLONK + Vortex) |
 | Coordinator | Kotlin | Orchestration, L1 submission |
 | SDK | TypeScript | Developer integration library |
-| Bridge UI | Next.js/React | User-facing bridge interface |
 | Postman | TypeScript | Automated message claiming |
 
 > **Note**: Components marked *(external)* are not part of this repository. See [External Dependencies](./architecture/EXTERNAL-DEPENDENCIES.md) for details.
@@ -88,22 +87,22 @@ linea-monorepo/
 │         │                       │                      │               │
 │         ▼                       ▼                      ▼               │
 │  ┌─────────────┐        ┌─────────────┐         ┌─────────────┐        │
-│  │  Bridge UI  │        │    Maru     │         │   Prover    │        │
-│  │  (Next.js)  │        │   Engine    │         │  (Go/gnark) │        │
+│  │    SDK      │        │    Maru     │         │   Prover    │        │
+│  │ (TypeScript)│        │   Engine    │         │  (Go/gnark) │        │
 │  └──────┬──────┘        └─────────────┘         └──────┬──────┘        │
 │         │                                              │               │
-│         ▼                                              ▼               │
-│  ┌─────────────┐                                ┌─────────────┐        │
-│  │    SDK      │────────────────────────────────│ Coordinator │        │
-│  │ (TypeScript)│                                │  (Kotlin)   │        │
-│  └──────┬──────┘                                └──────┬──────┘        │
-│         │                                              │               │
-│         ▼                                              ▼               │
+│         └──────────────────────────────┐               ▼               │
+│                                        ▼       ┌─────────────┐        │
+│                                ┌─────────────┐ │ Coordinator │        │
+│                                │  Ethereum   │◀│  (Kotlin)   │        │
+│                                │     L1      │ └──────┬──────┘        │
+│                                └─────────────┘        │               │
+│                                                       │               │
+│                                                       ▼               │
 │  ┌──────────────────────────────────────────────────────────────┐      │
-│  │                       Ethereum L1                            │      │
+│  │                CROSS-CHAIN: Postman (TypeScript)            │      │
+│  │                       monitors L1 and L2                    │      │
 │  └──────────────────────────────────────────────────────────────┘      │
-│                                                                        │
-│  CROSS-CHAIN: Postman (TypeScript) ←→ L1 ←→ L2                         │
 │                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -111,7 +110,7 @@ linea-monorepo/
 ## Quick Start
 
 ```bash
-# Prerequisites: Node.js v22+, Docker v24+, pnpm v10+, Make, JDK 21
+# Prerequisites: Node.js >= 24.14.1 (see `.nvmrc`), Docker v24+, pnpm v10+, Make, JDK 25
 
 # 1. Install dependencies
 make pnpm-install

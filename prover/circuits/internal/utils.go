@@ -3,20 +3,18 @@ package internal
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
 	hint "github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	snarkHash "github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
 )
 
@@ -62,11 +60,24 @@ type Range struct {
 
 type NewRangeOption func(*bool)
 
-func NoCheck(b *bool) {
-	*b = false
-}
-
-func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOption) *Range {
+// NewRange creates a Range struct to help work with variable-length arrays in circuits.
+// Given an 'actualLength' (the actual length) and 'max' (the maximum possible length), it computes
+// three boolean indicator arrays:
+//
+//   - InRange[i]:       1 if i < actualLength, 0 otherwise (marks valid/active indices)
+//   - IsLast[i]:        1 if i == actualLength-1, 0 otherwise (marks the last valid index)
+//   - IsFirstBeyond[i]: 1 if i == actualLength, 0 otherwise (marks the first index beyond the range)
+//
+// Example: if actualLength=3 and max=5:
+//
+//	InRange       = [1, 1, 1, 0, 0]
+//	IsLast        = [0, 0, 1, 0, 0]
+//	IsFirstBeyond = [0, 0, 0, 1, 0]
+//
+// This is useful for conditionally applying constraints only to real entries
+// by multiplying constraint expressions by InRange[i].
+// It also implicitly checks that actualLength <= max
+func NewRange(api frontend.API, actualLength frontend.Variable, max int, opts ...NewRangeOption) *Range {
 
 	if max < 0 {
 		panic("negative maximum not allowed")
@@ -79,7 +90,7 @@ func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOp
 
 	if max == 0 {
 		if check {
-			api.AssertIsEqual(n, 0)
+			api.AssertIsEqual(actualLength, 0)
 		}
 		return &Range{api: api}
 	}
@@ -90,18 +101,18 @@ func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOp
 
 	prevInRange := frontend.Variable(1)
 	for i := range isFirstBeyond {
-		isFirstBeyond[i] = api.IsZero(api.Sub(i, n))
+		isFirstBeyond[i] = api.IsZero(api.Sub(i, actualLength))
 		prevInRange = api.Sub(prevInRange, isFirstBeyond[i])
 		inRange[i] = prevInRange
 		if i != 0 {
 			isLast[i-1] = isFirstBeyond[i]
 		}
 	}
-	isLast[max-1] = api.IsZero(api.Sub(max, n))
+	isLast[max-1] = api.IsZero(api.Sub(max, actualLength))
 
 	if check {
-		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise n > max
-		// if the last element is not in range, it already means n is in range and we don't need to check anything, but isLast = 0 = inRange will be the case anyway
+		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise actualLength > max
+		// if the last element is not in range, it already means actualLength is in range and we don't need to check anything, but isLast = 0 = inRange will be the case anyway
 		api.AssertIsEqual(isLast[max-1], inRange[max-1])
 	}
 
@@ -244,24 +255,11 @@ func (r *Range) StaticLength() int {
 	return len(r.InRange)
 }
 
-func MimcHash(api frontend.API, e ...frontend.Variable) frontend.Variable {
-	hsh, err := mimc.NewMiMC(api)
-	if err != nil {
-		panic(err)
-	}
-	hsh.Write(e...)
-	return hsh.Sum()
-}
-
 type Slice[T any] struct {
 
 	// @reviewer: better for slice to be non-generic with frontend.Variable type and just duplicate the funcs for the few [32]frontend.Variable applications?
 	Values []T // Values[:Length] contains the data
 	Length frontend.Variable
-}
-
-func (s VarSlice) Range(api frontend.API) *Range {
-	return NewRange(api, s.Length, len(s.Values))
 }
 
 // Concat does not range check the slice lengths individually, but it does their sum
@@ -326,141 +324,48 @@ func concatHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
-// SubSlice DOES NOT range check start and length, but it does end := start + length
-func SubSlice(api frontend.API, slice Slice[frontend.Variable], start, length frontend.Variable, maxLength int) Slice[frontend.Variable] {
-	if maxLength < 0 || maxLength > len(slice.Values) {
-		panic("invalid maxLength")
-	}
-	res := make([]frontend.Variable, maxLength)
-	t := SliceToTable(api, slice.Values)
-	/*for i := 0; i < maxLength; i++ {	TODO make sure padding is unnecessary
-		t.Insert(0)
-	}*/
-
-	end := api.Add(start, length)
-	api.AssertIsLessOrEqual(end, slice.Length)
-
-	r := NewRange(api, length, maxLength)
-	for i := range res {
-		res[i] = api.Mul(r.InRange[i], t.Lookup(api.Add(start, i))[0])
-	}
-
-	return Slice[frontend.Variable]{res, length}
-}
-
-// ChecksumSlice returns H(len(slice), partial) where partial is slice[0] if length is 1, and hsh(slice[0], slice[1], ..., slice[len(slice)-1]) otherwise
-// Proof of collision resistance: By the collision resistance of H, we may assume that f(a_1, ..., a_n) = f(b_1, ..., b_m) implies
-// m=1 and f(a_1,...,a_n) = f(b) = b. If n = 1, then f(a) = a and thus a = b.
-// Otherwise, n ≠ 1 implies H(n, f(a_1,...,a_n)) ≠ H(1, b).
-func ChecksumSlice(slice [][]byte) []byte {
-	if len(slice) == 0 {
-		panic("empty slice not supported")
-	}
-
-	partial := slice[0]
-	hsh := hash.MIMC_BLS12_377.New()
-	for i := 1; i < len(slice); i++ {
-		hsh.Reset()
-		hsh.Write(partial)
-		hsh.Write(slice[i])
-		partial = hsh.Sum(nil)
-	}
-
-	hsh.Reset()
-	n := Uint64To32Bytes(uint64(len(slice)))
-	hsh.Write(n[:])
-	hsh.Write(partial)
-
-	return hsh.Sum(nil)
-}
-
-// TODO test that ChecksumSliceSnark matches ChecksumSubSlices
-
 type VarSlice Slice[frontend.Variable]
 type Var32Slice Slice[[32]frontend.Variable]
 
-// Checksum is the SNARK equivalent of ChecksumSlice
-// TODO consider doing (r *Range) f (slice []frontend.Variable)
-func (s VarSlice) Checksum(api frontend.API, hsh snarkHash.FieldHasher) frontend.Variable {
-	if len(s.Values) == 0 {
-		panic("zero-length input")
+// MerkleDamgardChecksumSubSlices checks the correctness of given Merkle-Damgard hashes of consecutive sub-slices.
+// NB! User must ensure that no sub-slice is empty.
+// NB! The subEndPoints values must be outside reachable range past subEndPoints.Length.
+func MerkleDamgardChecksumSubSlices(api frontend.API, compressor snarkHash.Compressor, initialState frontend.Variable, slice []frontend.Variable, subEndPoints VarSlice, checksums []frontend.Variable) error {
+	if len(subEndPoints.Values) != len(checksums) {
+		return fmt.Errorf("length mismatch: %d sub-slices and %d claimed checksums", len(subEndPoints.Values), len(checksums))
 	}
-	api.AssertIsDifferent(s.Length, 0)
+	sumsT := SliceToTable(api, checksums)
+	endsT := SliceToTable(api, subEndPoints.Values)
 
-	r := NewRange(api, s.Length, len(s.Values))
+	// dummy final values to make the final iteration work
+	sumsT.Insert(0)
+	endsT.Insert(len(slice) + 1)
 
-	hsh.Reset()
-	sum := s.Values[0]
-	for i := 1; i < len(s.Values); i++ {
-		hsh.Reset()
-		hsh.Write(sum, s.Values[i])
-		sum = api.Select(r.InRange[i], hsh.Sum(), sum)
-	}
+	workingHash := initialState
+	curSubSliceI := frontend.Variable(0)
 
-	hsh.Reset()
-	hsh.Write(s.Length, sum)
+	// Note on perf: This function would benefit from multi-lookups
 
-	return hsh.Sum()
-}
+	// extra iteration in case the slice was fully utilized.
+	for i := range len(slice) + 1 {
+		prevEnds := api.IsZero(api.Sub(endsT.Lookup(curSubSliceI)[0], i))
 
-// ChecksumSubSlices returns the hash of consecutive sub-slices, compatible with ChecksumSliceSnark
-// the endpoints are not range checked and are assumed to be strictly increasing, and that endpoint[0] ≠ 0 and endpoint[endpoints.Length-1] \leq len(slice)
-// due to its hint, it only works with MiMC in BLS12-377
-func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []frontend.Variable, subEndPoints VarSlice) []frontend.Variable {
-	lastElems := make([]frontend.Variable, len(subEndPoints.Values))
-	endpointsR := subEndPoints.Range(api)
-	for i, e := range subEndPoints.Values {
-		// inRange ? e - 1 : l  = l + inRange * (e- 1 -l) = inRange * e - (1+l) * inRange + l
-		lastElems[i] =
-			plonk.EvaluateExpression(api, e, endpointsR.InRange[i], 0, -1-len(slice), 1, len(slice))
-	}
-	var lastElemsT logderivlookup.Table
-	if len(slice) > 1 {
-		lastElemsT = SliceToTable(api, lastElems)
-		lastElemsT.Insert(len(slice)) // in case subEndPoints is tight
+		// if the previous one ends here, check that the final hash is correct,
+		// reset the working hash to IV, and advance the current sub-slice index
+		AssertEqualIf(api, prevEnds, workingHash, sumsT.Lookup(curSubSliceI)[0])
+		curSubSliceI = api.Add(curSubSliceI, prevEnds)
+
+		// advance the hash chain
+		if i < len(slice) {
+			workingHash = api.Select(prevEnds, initialState, workingHash)
+			workingHash = compressor.Compress(workingHash, slice[i])
+		}
 	}
 
-	hintIn := make([]frontend.Variable, len(lastElems)+len(slice))
-	copy(hintIn, lastElems)
-	copy(hintIn[len(lastElems):], slice)
-	res, err := api.Compiler().NewHint(checksumSubSlicesHint, len(subEndPoints.Values), hintIn...)
-	if err != nil {
-		panic(err)
-	}
-	resT := SliceToTable(api, res)
-	resT.Insert(0) // in case subEndPoints is tight
+	// assert that we went through all sub-slices
+	api.AssertIsEqual(curSubSliceI, subEndPoints.Length)
 
-	var subI, workingHash, incrementI frontend.Variable
-	subI, workingHash, incrementI = 0, slice[0], api.IsZero(api.Sub(subEndPoints.Values[0], 1))
-
-	for i := 1; i < len(slice); i++ {
-
-		// if we are done with this hash, check it
-		AssertEqualIf(api, incrementI, workingHash, resT.Lookup(subI)[0])
-		subI = api.Add(subI, incrementI)
-
-		hsh.Reset()
-		hsh.Write(workingHash, slice[i])
-		workingHash = api.Select(incrementI, slice[i], hsh.Sum()) // if this is a new checksum, we will just take the raw value
-
-		incrementI = api.IsZero(api.Sub(i, lastElemsT.Lookup(subI)[0]))
-	}
-
-	// if we are done with this hash, check it (needed in case subEndPoints is tight)
-	AssertEqualIf(api, incrementI, workingHash, resT.Lookup(subI)[0])
-	subI = api.Add(subI, incrementI)
-
-	api.AssertIsEqual(subI, subEndPoints.Length)
-
-	lengths := Differences(api, subEndPoints.Values)
-
-	for i := range res {
-		hsh.Reset()
-		hsh.Write(lengths[i], res[i])
-		res[i] = hsh.Sum()
-	}
-
-	return res
+	return nil
 }
 
 // the in has the format [subEndPoints..., slice...]
@@ -579,23 +484,6 @@ func Pack(api frontend.API, words []frontend.Variable, bitsPerElem, bitsPerWord 
 	return res
 }
 
-func flatten(s [][32]frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, len(s)*32)
-	for i := range s {
-		for j := range s[i] {
-			res[i*32+j] = s[i][j]
-		}
-	}
-	return res
-}
-
-func (s Var32Slice) Checksum(api frontend.API) frontend.Variable {
-	values := PackFull(api, flatten(s.Values), 8)
-	valsAndLen := make([]frontend.Variable, 1, len(values)+1)
-	valsAndLen[0] = s.Length
-	return MimcHash(api, append(valsAndLen, values...)...)
-}
-
 func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]frontend.Variable {
 	r := big.NewInt(256)
 	return [2]frontend.Variable{
@@ -604,23 +492,24 @@ func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]fron
 	}
 }
 
-// Bls12381ScalarToBls12377Scalars interprets its input as a BLS12-381 scalar, with a modular reduction if necessary, returning two BLS12-377 scalars
-// r[1] is the lower 252 bits. r[0] is the higher 3 bits.
-// useful in circuit "assign" functions
-func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
-	var x fr381.Element
-	if _, err = x.SetInterface(v); err != nil {
-		return
+// CombineByteIntoWords combines an array of bytes into an array of 16-bits words
+func CombineByteIntoWords(api frontend.API, vs []frontend.Variable) []frontend.Variable {
+	r := big.NewInt(256)
+	if len(vs)%2 != 0 {
+		utils.Panic("odd number of bytes")
 	}
 
-	b := x.Bytes()
+	res := make([]frontend.Variable, len(vs)/2)
+	for i := range res {
+		res[i] = api.Add(api.Mul(vs[2*i], r), vs[2*i+1])
+	}
+	return res
+}
 
-	r[0] = make([]byte, fr377.Bytes)
-	r[0][fr381.Bytes-1] = b[0] >> 4
-
-	b[0] &= 0x0f
-	r[1] = b[:]
-	return
+// CombineWordsIntoElements takes an array of 8 16-bit words and returns a 128
+// bit element
+func CombineWordsIntoElements(api frontend.API, vs []frontend.Variable) frontend.Variable {
+	return compress.ReadNum(api, vs, big.NewInt(65536))
 }
 
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]
@@ -630,26 +519,6 @@ func PartialSums(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	for i := 1; i < len(s); i++ {
 		res[i] = api.Add(res[i-1], s[i])
 	}
-	return res
-}
-
-func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
-	prev := frontend.Variable(0)
-	for i := range s {
-		res[i] = api.Sub(s[i], prev)
-		prev = s[i]
-	}
-	return res
-}
-
-func Sum[T constraints.Integer](x ...T) T {
-	var res T
-
-	for _, xI := range x {
-		res += xI
-	}
-
 	return res
 }
 
@@ -685,25 +554,6 @@ func Truncate(api frontend.API, slice []frontend.Variable, n frontend.Variable) 
 		nYet = api.Add(nYet, api.IsZero(api.Sub(i, n)))
 		res[i] = api.MulAcc(api.Mul(1, slice[i]), slice[i], api.Neg(nYet))
 	}
-	return res
-}
-
-// RotateLeft rotates the slice v by n positions to the left, so that res[i] becomes v[(i+n)%len(v)]
-func RotateLeft(api frontend.API, v []frontend.Variable, n frontend.Variable) (res []frontend.Variable) {
-	res = make([]frontend.Variable, len(v))
-	t := SliceToTable(api, v)
-	for _, x := range v {
-		t.Insert(x)
-	}
-	for i := range res {
-		res[i] = t.Lookup(api.Add(i, n))[0]
-	}
-	return
-}
-
-func CloneSlice[T any](s []T, cap ...int) []T {
-	res := make([]T, len(s), max(len(s), Sum(cap...)))
-	copy(res, s)
 	return res
 }
 
@@ -910,4 +760,13 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 	remainder.Mod(a, b)
 
 	return nil
+}
+
+// FromBytesToElements converts a slice of bytes to a slice of field elements, with no range check.
+func FromBytesToElements(b []byte) []frontend.Variable {
+	var res = make([]frontend.Variable, len(b))
+	for i := range b {
+		res[i] = b[i]
+	}
+	return res
 }

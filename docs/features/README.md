@@ -15,17 +15,16 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | Smart Contracts | Solidity | `contracts/` | Hardhat + Foundry |
 | Coordinator | Kotlin | `coordinator/` | JVM / Vert.x |
 | Prover | Go + Rust (Corset) | `prover/` | gnark circuits |
-| Sequencer | Java/Kotlin | `besu-plugins/linea-sequencer/` | Besu plugin |
+| Sequencer | Java/Kotlin | `linea-besu/plugins/linea-sequencer/` | Besu plugin |
 | Tracer | Java/Kotlin | `tracer/` | Besu plugin |
-| State Recovery | Kotlin | `besu-plugins/state-recovery/` | Besu plugin |
+| State Recovery | Kotlin | `linea-besu/plugins/state-recovery/` | Besu plugin |
 | Transaction Exclusion API | Kotlin | `transaction-exclusion-api/` | Vert.x |
 | Postman | TypeScript | `postman/` | Node.js |
-| Yield Automation Service | TypeScript | `native-yield-operations/automation-service/` | Node.js |
-| Lido Governance Monitor | TypeScript | `native-yield-operations/lido-governance-monitor/` | Node.js + Prisma — see [Yield Management](yield-management.md) |
-| Operations CLI | TypeScript | `operations/` | oclif |
+| Yield Automation Service | TypeScript | `operations/native-yield-operations/automation-service/` | Node.js |
+| Lido Governance Monitor | TypeScript | `operations/native-yield-operations/lido-governance-monitor/` | Node.js + Prisma — see [Yield Management](yield-management.md) |
+| Operations CLI | TypeScript | `operations/operations-cli/` | oclif |
 | Integrity Verifier | TypeScript | `contracts/integrity-verifier/` | Node.js + Browser |
-| SDK | TypeScript | `sdk/` | Node.js |
-| Bridge UI | TypeScript | `bridge-ui/` | Next.js |
+| SDK | TypeScript | `ts-libs/sdk/` | Node.js |
 | Corset | Rust | `corset/` | CLI + shared library |
 
 ## Feature Index
@@ -76,4 +75,3 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | [Operational](operational.md) | Revenue vault, token burner, DEX adapters, uptime feed, operations CLI |
 | [Integrity Verifier](integrity-verifier.md) | Contract bytecode, ABI, and on-chain state verification |
 | [SDK](sdk.md) | Core, ethers, viem SDKs |
-| [Bridge UI](bridge-ui.md) | Next.js bridge interface |

@@ -3,7 +3,13 @@ import { node } from "@consensys/eslint-config/node";
 /** @type {import("eslint").Linter.Config[]} */
 export default [
   {
-    ignores: [".solcover.js", "docs/**", "integrity-verifier/**"],
+    ignores: [
+      ".solcover.js",
+      "docs/**",
+      "integrity-verifier/**",
+      "signer-ui/.next/**",
+      "signer-ui/node_modules/**",
+    ],
   },
   ...node,
   {
@@ -13,10 +19,6 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    rules: {
-      // TODO: this plugin is disabled for now to avoid a lot of files changes
-      "import/order": "off",
-    }
   },
   {
     files: ["test/**/*.ts"],

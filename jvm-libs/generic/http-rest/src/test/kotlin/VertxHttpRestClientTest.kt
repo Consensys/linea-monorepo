@@ -14,11 +14,12 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.http.PoolOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClientOptions
 import io.vertx.ext.web.client.impl.HttpResponseImpl
 import io.vertx.junit5.VertxExtension
-import net.consensys.linea.errors.ErrorResponse
+import linea.error.ErrorResponse
 import net.consensys.linea.httprest.client.RestErrorType
 import net.consensys.linea.httprest.client.VertxHttpRestClient
 import org.assertj.core.api.Assertions.assertThat
@@ -41,13 +42,16 @@ class VertxHttpRestClientTest {
     wiremock.start()
     val clientOptions =
       WebClientOptions()
-        .setMaxPoolSize(10)
         .setDefaultHost("localhost")
         .setDefaultPort(wiremock.port())
         .setLogActivity(true)
 
     meterRegistry = SimpleMeterRegistry()
-    client = VertxHttpRestClient(clientOptions, vertx)
+    client = VertxHttpRestClient(
+      webClientOptions = clientOptions,
+      poolOptions = PoolOptions().setHttp1MaxSize(10),
+      vertx = vertx,
+    )
   }
 
   @AfterEach

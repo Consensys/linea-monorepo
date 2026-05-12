@@ -113,7 +113,14 @@ Registers a new column in the protocol
 */
 func (b *Builder) RegisterCommit(name ifaces.ColID, size int) ifaces.Column {
 	b.fsStateIsDirty = true
-	return b.CompiledIOP.InsertCommit(b.currRound, name, size)
+	return b.CompiledIOP.InsertCommit(b.currRound, name, size, true)
+}
+
+// RegisterCommitExt registers a new column in the protocol and specified the
+// column should contain field extensions.
+func (b *Builder) RegisterCommitExt(name ifaces.ColID, size int) ifaces.Column {
+	b.fsStateIsDirty = true
+	return b.CompiledIOP.InsertCommit(b.currRound, name, size, false)
 }
 
 /*
@@ -168,6 +175,7 @@ func (b *Builder) UnivariateEval(name ifaces.QueryID, pols ...ifaces.Column) {
 	// Mark the state as dirty
 	b.fsStateIsDirty = true
 	b.InsertUnivariate(b.currRound, name, pols)
+
 }
 
 /*
@@ -210,14 +218,6 @@ a different order) but with the same multiplicity.
 */
 func (b *Builder) Permutation(name ifaces.QueryID, a, b_ []ifaces.Column) {
 	b.CompiledIOP.InsertPermutation(b.currRound, name, a, b_)
-}
-
-/*
-Creates a fixed-permutation query. Were 'a' is the fixedpermutation of 'b' for
-a given-permutation p: p(a)=b, p can be deifed only by 'b' over a defult vector 'a'.
-*/
-func (b *Builder) FixedPermutation(name ifaces.QueryID, p []ifaces.ColAssignment, a, b_ []ifaces.Column) {
-	b.CompiledIOP.InsertFixedPermutation(b.currRound, name, p, a, b_)
 }
 
 /*

@@ -4,20 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
+	"runtime"
 	"sort"
 	"sync"
 	"unsafe"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/dlclark/regexp2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,13 +31,6 @@ import (
 type StandardModuleDiscoverer struct {
 	// TargetWeight is the target weight for each module.
 	TargetWeight int
-	// Affinities indicates groups of columns (potentially spanning over
-	// multiple query-based modules) that are "alike" in the sense that
-	// they would be opportunistic to group in the same StandardModule.
-	Affinities [][]column.Natural
-	// Predivision indicates that all the inputs column size should be
-	// divided by some values before being added in a [QueryBasedModule].
-	Predivision int
 	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
 	// When used, the discoverer expects that every query-based module is provided
 	// with an advice otherwise, it will panic.
@@ -49,8 +45,8 @@ type QueryBasedModuleDiscoverer struct {
 	Mutex           *sync.Mutex
 	Modules         []*QueryBasedModule
 	ModuleNames     []ModuleName
-	ColumnsToModule map[ifaces.ColID]ModuleName
-	Predivision     int
+	ColumnsToModule *collection.DeterministicMap[ifaces.ColID, ModuleName]
+	ColumnOwners    map[ifaces.ColID]*QueryBasedModule
 }
 
 // StandardModule is a structure coalescing a set of [QueryBasedModule]s.
@@ -63,7 +59,8 @@ type StandardModule struct {
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
 	ModuleName   ModuleName
-	Ds           *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
+	Order        int
+	Ds           *collection.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
 	OriginalSize int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
@@ -122,14 +119,14 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 		Mutex:           &sync.Mutex{},
 		Modules:         []*QueryBasedModule{},
 		ModuleNames:     []ModuleName{},
-		ColumnsToModule: make(map[ifaces.ColID]ModuleName),
+		ColumnsToModule: collection.MakeDeterministicMap[ifaces.ColID, ModuleName](0),
+		ColumnOwners:    map[ifaces.ColID]*QueryBasedModule{},
 	}
 }
 
 func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	if len(disc.Advices) == 0 {
-		disc.analyzeBasic(comp)
-		return
+		panic("no advices provided")
 	}
 	disc.analyzeWithAdvices(comp)
 }
@@ -137,7 +134,6 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIOP) {
 
 	subDiscover := NewQueryBasedDiscoverer()
-	subDiscover.Predivision = 1
 	subDiscover.Analyze(comp)
 
 	var (
@@ -145,19 +141,18 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		// contains all the
 		moduleSets = map[ModuleName]*StandardModule{}
 		// adviceOfColumn lists
-		adviceOfColumn    = make(map[ifaces.ColID]*ModuleDiscoveryAdvice)
+		adviceOfColumn    = collection.MakeDeterministicMap[ifaces.ColID, *ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
 		adviceMappingErrs = []error{}
 	)
 
-	for _, colName := range comp.Columns.AllKeys() {
-		col := comp.Columns.GetHandle(colName)
+	for _, col := range comp.Columns.All() {
 		for _, adv := range disc.Advices {
 
 			if !adv.DoesMatch(col) {
 				continue
 			}
 
-			adviceOfColumn[col.GetColID()] = adv
+			adviceOfColumn.Set(col.GetColID(), adv)
 			if moduleSets[adv.Cluster] == nil {
 				moduleSets[adv.Cluster] = &StandardModule{
 					ModuleName: adv.Cluster,
@@ -183,8 +178,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			conflictingAdvices []*ModuleDiscoveryAdvice
 		)
 
-		for col := range qbm.Ds.Iter() {
-			if adv, found := adviceOfColumn[col]; found {
+		for _, col := range qbm.Ds.Rank.Keys {
+			if adv, found := adviceOfColumn.Get(col); found {
 
 				if adviceFound == nil {
 					adviceFound = adv
@@ -199,17 +194,13 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		if adviceFound == nil {
-			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for QBM: %v", qbm.Ds.Rank))
+			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for QBM: %v", qbm.Ds.Rank.Keys))
 			continue
 		}
 
 		if len(conflictingAdvices) > 0 {
-			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("conflicting advice for QBM: %v, first advice: %++v, conflicting advices: %++v", qbm.Ds.Rank, adviceFound, conflictingAdvices))
+			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("conflicting advice for QBM: %v, first advice: %++v, conflicting advices: %++v", qbm.Ds.Rank.Keys, adviceFound, conflictingAdvices))
 			continue
-		}
-
-		if adviceFound.BaseSize != qbm.OriginalSize && qbm.CantChangeSize {
-			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("qbm has different original size as advice.baseSize despite the module having precomputed columns, baseSize=%v originalSize=%v", adviceFound.BaseSize, qbm.OriginalSize))
 		}
 
 		newModule := moduleSets[adviceFound.Cluster]
@@ -234,9 +225,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	// weight.
 	for i := range disc.Modules {
 
-		// Store the original BaseSize from advice for each submodule as the minimum allowed size.
-		// For submodules with Plonk circuits, BaseSize represents the required number of public
-		// inputs and must not be reduced.
+		// Store the original BaseSize from advice for each submodule as the minimum allowed
+		// segment size. BaseSize is the advised minimum from the module definition and serves
+		// as a floor during the reduction loop below.
+		//
+		// BUG FIX: Previously, baseSizes was only enforced for Plonk circuit submodules
+		// (those with NbConstraintsOfPlonkCirc > 0). Non-Plonk submodules had no floor,
+		// allowing the reduction loop to shrink their segment size down to as low as 2 rows.
+		// This caused modules like BN-EC-OPS, BLS-G2, and BLS-PAIRING to be split into
+		// thousands of tiny segments (e.g., BN-EC-OPS: 2046 segments, BLS-G2: 600,
+		// BLS-PAIRING: 578), producing ~3238 GL and ~3238 LPP circuits total.
+		// This made the limitless prover run effectively forever.
+		//
+		// The fix applies baseSizes as a floor for ALL submodules (not just Plonk ones).
+		// This ensures that every submodule respects its advised minimum segment size,
+		// keeping segment counts reasonable while still allowing weight-based optimization.
 		baseSizes := make([]int, len(disc.Modules[i].NewSizes))
 		copy(baseSizes, disc.Modules[i].NewSizes)
 
@@ -252,7 +255,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		for j := range disc.Modules[i].NewSizes {
 			numRows := disc.Modules[i].NewSizes[j]
 			minNumRows = min(minNumRows, numRows)
-			weightTotalInitial += disc.Modules[i].SubModules[j].Weight(comp, numRows)
+			weightTotalInitial += disc.Modules[i].SubModules[j].Weight(numRows)
 		}
 
 		// Computes optimal newSizes by successively dividing by two the numbers
@@ -277,16 +280,18 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				switch {
 				case subModule.CantChangeSize:
 					numRow = subModule.OriginalSize
-				case subModule.NbConstraintsOfPlonkCirc > 0:
-					numRow = max(numRow/reduction, baseSizes[j])
 				default:
-					numRow /= reduction
+					// Apply reduction but never go below the advised BaseSize.
+					// Without this floor, large reduction factors (e.g., 512) can
+					// shrink a submodule from BaseSize=1024 to size=2, creating an
+					// enormous number of segments per module.
+					numRow = max(numRow/reduction, baseSizes[j])
 				}
 
 				if numRow < 1 {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
-				currWeight += disc.Modules[i].SubModules[j].Weight(comp, numRow)
+				currWeight += disc.Modules[i].SubModules[j].Weight(numRow)
 			}
 
 			currDist := utils.Abs(currWeight - disc.TargetWeight)
@@ -298,6 +303,9 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 		}
 
+		// Apply the best reduction found above to each submodule's segment size.
+		// The baseSizes floor is enforced again here to be consistent with the
+		// weight estimation loop (same logic, same floor).
 		for j := range disc.Modules[i].SubModules {
 			subModule := disc.Modules[i].SubModules[j]
 			bestSize := disc.Modules[i].NewSizes[j] / bestReduction
@@ -305,10 +313,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			switch {
 			case subModule.CantChangeSize:
 				disc.Modules[i].NewSizes[j] = subModule.OriginalSize
-			case subModule.NbConstraintsOfPlonkCirc > 0:
-				disc.Modules[i].NewSizes[j] = max(baseSizes[j], bestSize)
 			default:
-				disc.Modules[i].NewSizes[j] = bestSize
+				disc.Modules[i].NewSizes[j] = max(baseSizes[j], bestSize)
 			}
 		}
 	}
@@ -328,137 +334,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				disc.ColumnsToSize[colID] = newSize
 				numCol++
 			}
+			logrus.Debugf(
+				"module-discovery: submodule=%s module=%s columns=%d new_size=%d",
+				subModule.ModuleName,
+				moduleName,
+				numCol,
+				newSize,
+			)
 			numColModule += numCol
 		}
-	}
-}
-
-// analyzeBasic processes scans the comp and generate the modules. It works by
-// grouping columns that are part of the same query using the [QueryBasedModuleDiscoverer].
-// After that it sorts the generated modules by weight and
-func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
-
-	subDiscover := NewQueryBasedDiscoverer()
-	subDiscover.Predivision = disc.Predivision
-	subDiscover.Analyze(comp)
-
-	groupedByAffinity := groupQBModulesByAffinity(subDiscover.Modules, disc.Affinities)
-
-	sort.Slice(groupedByAffinity, func(i, j int) bool {
-		return weightOfGroupOfQBModules(comp, groupedByAffinity[i]) < weightOfGroupOfQBModules(comp, groupedByAffinity[j])
-	})
-
-	var (
-		groups        = [][]*QueryBasedModule{{}}
-		currWeightSum = 0
-	)
-
-	for i := range groupedByAffinity {
-
-		var (
-			groupNext  = groupedByAffinity[i]
-			weightNext = weightOfGroupOfQBModules(comp, groupNext)
-			distPrev   = utils.Abs(disc.TargetWeight - currWeightSum)
-			distNext   = utils.Abs(disc.TargetWeight - currWeightSum - weightNext)
+		logrus.Infof(
+			"[module-discovery] module=%s submodules=%d columns=%d",
+			moduleName,
+			len(disc.Modules[i].SubModules),
+			numColModule,
 		)
-
-		if weightNext == 0 {
-			continue
-		}
-
-		if distNext > distPrev && currWeightSum > 0 {
-			groups = append(groups, []*QueryBasedModule{})
-			currWeightSum = 0
-		}
-
-		currWeightSum += weightNext
-		groups[len(groups)-1] = append(groups[len(groups)-1], groupNext...)
-	}
-
-	disc.Modules = make([]*StandardModule, len(groups))
-
-	for i := range disc.Modules {
-
-		disc.Modules[i] = &StandardModule{
-			ModuleName: ModuleName(fmt.Sprintf("Module_%d", i)),
-			SubModules: groups[i],
-			NewSizes:   make([]int, len(groups[i])),
-		}
-
-		// weightTotalInitial is the weight of the module using the initial
-		// number of rows.
-		weightTotalInitial := 0
-		// maxNumRows is the number of rows of the "shallowest" submodule of in
-		// group[i]
-		minNumRows := math.MaxInt
-
-		// initializes the newSizes using the number of rows from the initial
-		// comp.
-		for j := range groups[i] {
-			numRows := groups[i][j].NumRow()
-			disc.Modules[i].NewSizes[j] = numRows
-			minNumRows = min(minNumRows, numRows)
-			weightTotalInitial += groups[i][j].Weight(comp, 0)
-		}
-
-		// Computes optimal newSizes by successively dividing by two the numbers
-		// of rows and checks if this brings the total weight of the module to
-		// the target weight.
-		var (
-			bestReduction = 1
-			bestWeight    = weightTotalInitial
-		)
-
-		for reduction := 2; reduction < minNumRows; reduction *= 2 {
-
-			currWeight := 0
-			for j := range groups[i] {
-				numRow := groups[i][j].NumRow()
-				if !groups[i][j].CantChangeSize {
-					numRow /= reduction
-				}
-
-				if numRow < 1 {
-					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
-				}
-				currWeight += groups[i][j].Weight(comp, numRow)
-			}
-
-			if currWeight == 0 {
-				utils.Panic("currWeight == 0, for module %v, index %d", disc.Modules[i].ModuleName, i)
-			}
-
-			currDist := utils.Abs(currWeight - disc.TargetWeight)
-			bestDist := utils.Abs(bestWeight - disc.TargetWeight)
-
-			if currDist < bestDist {
-				bestReduction = reduction
-				bestWeight = currWeight
-			}
-		}
-
-		for j := range groups[i] {
-			disc.Modules[i].NewSizes[j] /= bestReduction
-		}
-	}
-
-	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
-	disc.ColumnsToSize = make(map[ifaces.ColID]int)
-
-	for i := range disc.Modules {
-
-		moduleName := disc.Modules[i].ModuleName
-
-		for j := range disc.Modules[i].SubModules {
-
-			subModule := disc.Modules[i].SubModules[j]
-			newSize := disc.Modules[i].NewSizes[j]
-
-			for colID := range subModule.Ds.Iter() {
-				disc.ColumnsToModule[colID] = moduleName
-				disc.ColumnsToSize[colID] = newSize
-			}
-		}
 	}
 }
 
@@ -599,9 +489,21 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	// Pre-compile all PlonkInWizard circuits in parallel to avoid sequential
+	// compilation during the query loop below. This is the #1 bottleneck in
+	// Build+Distribute (~61s of 100s).
+	precompilePlonkConstraintCounts(comp)
+
+	disc.ColumnsToModule = collection.MakeDeterministicMap[ifaces.ColID, ModuleName](0)
 
 	moduleCandidates := []*QueryBasedModule{}
+	assignedColumns := make(map[ifaces.ColID]struct{}, comp.Columns.NumEntriesTotal())
+
+	markAssigned := func(columns []column.Natural) {
+		for _, col := range columns {
+			assignedColumns[col.GetColID()] = struct{}{}
+		}
+	}
 
 	for _, qName := range comp.QueriesNoParams.AllKeys() {
 
@@ -651,10 +553,6 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			nbInstancesOfPlonkQuery = 1
 		}
 
-		if disc.Predivision > 0 {
-			nbInstancesOfPlonkCirc /= disc.Predivision
-		}
-
 		for _, columns := range toGroup {
 			moduleCandidates = disc.GroupColumns(
 				columns,
@@ -663,6 +561,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				nbInstancesOfPlonkCirc,
 				nbInstancesOfPlonkQuery,
 			)
+			markAssigned(columns)
 		}
 	}
 
@@ -721,25 +620,22 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				moduleCandidates,
 				0, 0, 0,
 			)
+			markAssigned(columns)
 		}
 	}
 
 	// There could be some columns with no corresponding module. This happens
 	// when the column is lookup table usually. In that case, we make it be
 	// its own query based module.
-	for _, colNames := range comp.Columns.AllKeys() {
-		col := comp.Columns.GetHandle(colNames)
-		foundModuleForCol := false
-		for _, module := range disc.Modules {
-			if module.Ds.Has(col.GetColID()) {
-				foundModuleForCol = true
-				break
-			}
+	for _, col := range comp.Columns.All() {
+		colID := col.GetColID()
+		if _, found := assignedColumns[colID]; found {
+			continue
 		}
 
-		if !foundModuleForCol {
-			disc.GroupColumns([]column.Natural{col.(column.Natural)}, moduleCandidates, 0, 0, 0)
-		}
+		nat := col.(column.Natural)
+		disc.GroupColumns([]column.Natural{nat}, moduleCandidates, 0, 0, 0)
+		assignedColumns[colID] = struct{}{}
 	}
 
 	// Remove empty modules
@@ -751,9 +647,10 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		hasPrecomputed := false
 
 		for colID := range module.Ds.Iter() {
-			disc.ColumnsToModule[colID] = module.ModuleName
+			col := comp.Columns.GetHandle(colID)
+			disc.ColumnsToModule.Set(colID, module.ModuleName)
 			status := comp.Columns.Status(colID)
-			hp := status == column.Precomputed || status == column.VerifyingKey
+			hp := (status == column.Precomputed || status == column.VerifyingKey) && !pragmas.IsCompletelyPeriodic(col)
 			hasPrecomputed = hp || hasPrecomputed
 		}
 
@@ -788,7 +685,8 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
-		Ds:                  utils.NewDisjointSetFromList(columnIDs),
+		Order:               len(disc.Modules),
+		Ds:                  collection.NewDisjointSetFromList(columnIDs),
 		NbSegmentCache:      make(map[unsafe.Pointer][3]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 		OriginalSize:        columns[0].Size(),
@@ -819,6 +717,7 @@ func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule
 
 		for col := range module.Ds.Iter() {
 			mergedModule.Ds.Union(mergedModule.Ds.Find(col), col)
+			disc.ColumnOwners[col] = mergedModule
 		}
 
 		mergedModule.NbConstraintsOfPlonkCirc += module.NbConstraintsOfPlonkCirc
@@ -844,11 +743,33 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 ) []*QueryBasedModule {
 
 	overlappingModules := []*QueryBasedModule{}
+	seenModules := map[*QueryBasedModule]struct{}{}
+	allTracked := true
+	for _, col := range columns {
+		module, found := disc.ColumnOwners[col.GetColID()]
+		if !found || module == nil || module.Ds.Size() == 0 {
+			allTracked = false
+			continue
+		}
+		if _, seen := seenModules[module]; seen {
+			continue
+		}
+		seenModules[module] = struct{}{}
+		overlappingModules = append(overlappingModules, module)
+	}
 
-	// Find overlapping modules
-	for _, module := range moduleCandidates {
-		if module.HasOverlap(columns) {
-			overlappingModules = append(overlappingModules, module)
+	sort.Slice(overlappingModules, func(i, j int) bool {
+		return overlappingModules[i].Order < overlappingModules[j].Order
+	})
+
+	if !allTracked {
+		// Fall back to the full scan when some columns were not tracked
+		// by ColumnOwners, to ensure we find all overlapping modules.
+		overlappingModules = overlappingModules[:0]
+		for _, module := range moduleCandidates {
+			if module.HasOverlap(columns) {
+				overlappingModules = append(overlappingModules, module)
+			}
 		}
 	}
 
@@ -876,6 +797,10 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.NbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.NbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
 		moduleCandidates = append(moduleCandidates, assignedModule)
+	}
+
+	for _, colID := range columnIDs {
+		disc.ColumnOwners[colID] = assignedModule
 	}
 
 	return moduleCandidates
@@ -1171,7 +1096,7 @@ func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 // optional "withNumRow" arguments to let the caller use a custom hypothetical value for
 // [nbRows] in the calculation. If withNumRow=0, then the function uses the actual
 // number of rows.
-func (module *QueryBasedModule) Weight(comp *wizard.CompiledIOP, withNumRow int) int {
+func (module *QueryBasedModule) Weight(withNumRow int) int {
 
 	var (
 		numRow             = module.NumRow()
@@ -1192,11 +1117,11 @@ func (module *QueryBasedModule) Weight(comp *wizard.CompiledIOP, withNumRow int)
 }
 
 // Weight returns the total weight of the module
-func (module *StandardModule) Weight(comp *wizard.CompiledIOP) int {
+func (module *StandardModule) Weight() int {
 	weight := 0
 	for i := range module.SubModules {
 		numRow := module.NewSizes[i]
-		weight += module.SubModules[i].Weight(comp, numRow)
+		weight += module.SubModules[i].Weight(numRow)
 	}
 	return weight
 }
@@ -1211,49 +1136,42 @@ func (module *QueryBasedModule) NumColumn() int {
 	return module.Ds.Size()
 }
 
-// NewSizeOf returns the size (length) of a column.
-func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col column.Natural) int {
-	size := col.Size()
+type plonkConstraintCacheKey struct {
+	circuitType string
+	circuitPtr  uintptr
+	options     string
+	queryID     ifaces.QueryID
+}
 
-	mod := disc.ModuleOf(col)
-	for i := range disc.Modules {
-		if disc.Modules[i].ModuleName == mod {
-			qbm := disc.Modules[i]
-			if qbm.CantChangeSize {
-				return size
-			}
+func makePlonkConstraintCacheKey(piw *query.PlonkInWizard) plonkConstraintCacheKey {
+	key := plonkConstraintCacheKey{
+		circuitType: reflect.TypeOf(piw.Circuit).String(),
+		options:     fmt.Sprint(piw.PlonkOptions),
+		queryID:     piw.ID,
+	}
+
+	val := reflect.ValueOf(piw.Circuit)
+	if val.IsValid() {
+		switch val.Kind() {
+		case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.UnsafePointer:
+			key.circuitPtr = val.Pointer()
+			key.queryID = ""
 		}
 	}
 
-	if disc.Predivision > 0 && disc.Predivision < col.Size() {
-		return size / disc.Predivision
-	}
-
-	return size
+	return key
 }
 
-// ModuleList returns a list of all module names.
-func (disc *QueryBasedModuleDiscoverer) ModuleList() []ModuleName {
-	disc.Mutex.Lock()
-	defer disc.Mutex.Unlock()
-	return disc.ModuleNames
-}
+// plonkConstraintCache caches circuit constraint counts to avoid redundant compilations.
+var plonkConstraintCache sync.Map // map[plonkConstraintCacheKey]int
 
-// ModuleOf returns the module name for a given column.
-func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
-	disc.Mutex.Lock()
-	defer disc.Mutex.Unlock()
-
-	if moduleName, exists := disc.ColumnsToModule[col.ID]; exists {
-		return moduleName
-	}
-	return ""
-}
-
-// countConstraintsOfPlonkCirc returns the number of constraint of the circuit. The function is
-// quite expensive as this requires to compile the circuit. So it's better to cache
-// the result when possible.
+// countConstraintsOfPlonkCirc returns the number of constraints of the circuit.
+// Results are cached since compilation is expensive (~1-7s per circuit).
 func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
+	cacheKey := makePlonkConstraintCacheKey(piw)
+	if v, ok := plonkConstraintCache.Load(cacheKey); ok {
+		return v.(int)
+	}
 
 	hasAddGates := false
 	if len(piw.PlonkOptions) > 0 {
@@ -1265,7 +1183,41 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		utils.Panic("unable to compile plonk-in-wizard circuit %s: %v", piw.ID, err)
 	}
 	nbConstraints := ccs.GetNbConstraints()
+	plonkConstraintCache.Store(cacheKey, nbConstraints)
 	return nbConstraints
+}
+
+// precompilePlonkConstraintCounts compiles all PlonkInWizard circuits in parallel
+// and caches their constraint counts. This avoids sequential compilation during Analyze.
+func precompilePlonkConstraintCounts(comp *wizard.CompiledIOP) {
+	var circuits []*query.PlonkInWizard
+
+	for _, qName := range comp.QueriesNoParams.AllKeys() {
+		if comp.QueriesNoParams.IsIgnored(qName) {
+			continue
+		}
+		if piw, ok := comp.QueriesNoParams.Data(qName).(*query.PlonkInWizard); ok {
+			if _, cached := plonkConstraintCache.Load(makePlonkConstraintCacheKey(piw)); !cached {
+				circuits = append(circuits, piw)
+			}
+		}
+	}
+
+	if len(circuits) == 0 {
+		return
+	}
+
+	logrus.Infof("pre-compiling %d PlonkInWizard circuits in parallel for constraint counting", len(circuits))
+	var wg errgroup.Group
+	wg.SetLimit(runtime.GOMAXPROCS(0))
+	for _, piw := range circuits {
+		p := piw
+		wg.Go(func() error {
+			countConstraintsOfPlonkCirc(p)
+			return nil
+		})
+	}
+	wg.Wait()
 }
 
 // rootsOfColumns returns a clean and deduplicated list of the roots of the
@@ -1297,80 +1249,6 @@ func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 			utils.Panic("col=%v does not have a consistent size %v != %v", colID, size, colSize)
 		}
 	}
-}
-
-// groupQBModulesByAffinity groups the [QueryBasedModule] by affinity. Affinity
-// consists in a group of columns that are to be grouped in the same standard
-// module.
-func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
-
-	sets := make([]*collection.Set[*QueryBasedModule], len(qbModules))
-
-	for i := range qbModules {
-		s := collection.NewSet[*QueryBasedModule]()
-		sets[i] = &s
-		sets[i].Insert(qbModules[i])
-	}
-
-	for _, aff := range affinities {
-
-		matched := make([]*collection.Set[*QueryBasedModule], 0)
-		for i := range sets {
-
-			isSetMatched := false
-
-			for k := range aff {
-				for qbm := range sets[i].Iter() {
-					if qbm.Ds.Has(aff[k].ID) {
-						isSetMatched = true
-						continue
-					}
-				}
-			}
-
-			if isSetMatched {
-				matched = append(matched, sets[i])
-			}
-		}
-
-		if len(matched) <= 1 {
-			continue
-		}
-
-		mergedModule := matched[0]
-
-		for i := 1; i < len(matched); i++ {
-			mergedModule.Merge(matched[i])
-			matched[i].Clear()
-		}
-	}
-
-	groups = make([][]*QueryBasedModule, 0, len(sets))
-
-	for i := range sets {
-		if sets[i].Size() == 0 {
-			continue
-		}
-
-		groups = append(
-			groups,
-			sets[i].SortKeysBy(
-				func(qbm1, qbm2 *QueryBasedModule) bool {
-					return string(qbm1.ModuleName) < string(qbm2.ModuleName)
-				},
-			),
-		)
-	}
-
-	return groups
-}
-
-func weightOfGroupOfQBModules(comp *wizard.CompiledIOP, group []*QueryBasedModule) int {
-	var weight int
-	for i := range group {
-		weight += group[i].Weight(comp, 0)
-	}
-	return weight
 }
 
 // LPPSegmentBoundaryCalculator is an ad-hoc structure used to help the
@@ -1421,8 +1299,12 @@ func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRunt
 
 		switch paddingInfo {
 		case noPaddingInformation:
-			qbm, _ := ls.Disc.QbmOf(col)
-			utils.Panic("cannot guess how to pad the column, you may want to recheck your module grouping because the current one is not padded but grouped with padded modules, newLen=%v, stop=%v, start=%v, col=%v, qbm=%v module=%v", newLen, stop, start, col.ID, qbm.ModuleName, module)
+			// The column is "full" (data spans [0, fullSize) with no padding).
+			// When the LPP module requires more segments than this column can
+			// fill, treat it as right-padded: extend beyond fullSize so that
+			// SegmentOfColumn pads the extra segments with the last value (or
+			// zeros if MarkZeroPadded).
+			return 0, newLen
 		case constantPaddingInformation:
 			return 0, 0 // There should not be anyway to end up in that situation
 		case leftPaddingInformation:
@@ -1464,83 +1346,4 @@ func (disc *StandardModuleDiscoverer) IndexOf(moduleName ModuleName) int {
 		}
 	}
 	panic("module not found")
-}
-
-// ModuleDiscoveryAdvice is an advice provided by the user and allows having
-// fine-grained control over the assignment of columns to modules and their
-// sizes.
-type ModuleDiscoveryAdvice struct {
-	Column    ifaces.Column
-	Regexp    string
-	ModuleRef string
-	Cluster   ModuleName
-	BaseSize  int
-	rgxp      *regexp2.Regexp `serde:"omit"`
-}
-
-// SameSizeAdvice returns an advice from a column where the base-size equals
-// the one of the provided column.
-func SameSizeAdvice(cls ModuleName, column ifaces.Column) *ModuleDiscoveryAdvice {
-	return &ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
-}
-
-// DoesMatch returns true if the present advices matches the provided column.
-func (ad *ModuleDiscoveryAdvice) DoesMatch(column ifaces.Column) bool {
-
-	ad.assertWellFormed()
-
-	if ad.Column != nil {
-		// We should not have two columns with the same column ID. So that's a
-		// valid and less-edge-case-ish way to compare two columns.
-		return ad.Column.GetColID() == column.GetColID()
-	}
-
-	if len(ad.ModuleRef) > 0 {
-		modRef, ok := pragmas.TryGetModuleRef(column)
-		if !ok {
-			return false
-		}
-		return modRef == ad.ModuleRef
-	}
-
-	// Assertedly, the regexp is provided and we already checked that in
-	// [assertWellFormed].
-	if ad.rgxp == nil {
-		rgxp, err := regexp2.Compile(ad.Regexp, regexp2.Singleline)
-		if err != nil {
-			utils.Panic("failed to compile regexp: %++v", err)
-		}
-		ad.rgxp = rgxp
-	}
-
-	res, err := ad.rgxp.MatchString(string(column.GetColID()))
-	if err != nil {
-		utils.Panic("failed to match regexp: %s", err.Error())
-	}
-
-	return res
-}
-
-// AreConflicting returns true if the two advices conflict. Namely, if their
-// BaseSize or Cluster differ.
-func (ad ModuleDiscoveryAdvice) AreConflicting(other *ModuleDiscoveryAdvice) bool {
-	return ad.BaseSize != other.BaseSize || ad.Cluster != other.Cluster
-}
-
-// assertWellFormeded sanity-checks if the advice is well-formed.
-func (ad ModuleDiscoveryAdvice) assertWellFormed() error {
-
-	if ad.Column == nil && len(ad.Regexp) == 0 && len(ad.ModuleRef) == 0 {
-		utils.Panic("advice does not specify a column or a regexp: %++v", ad)
-	}
-
-	if !utils.IsPowerOfTwo(ad.BaseSize) {
-		utils.Panic("advice does not specify a base size that is a power of two, %++v", ad)
-	}
-
-	if len(ad.Cluster) == 0 {
-		utils.Panic("advice does not specify a cluster: %++v", ad)
-	}
-
-	return nil
 }

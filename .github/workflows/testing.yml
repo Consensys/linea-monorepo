@@ -28,6 +28,9 @@ on:
       prover_changed:
         required: true
         type: string
+      prover_ray_changed:
+        required: true
+        type: string
       transaction_exclusion_api_changed:
         required: true
         type: string
@@ -59,19 +62,30 @@ jobs:
     if: ${{ inputs.prover_changed == 'true' }}
     secrets: inherit
 
+  prover-ray:
+    uses: ./.github/workflows/prover-ray-testing.yml
+    if: ${{ inputs.prover_ray_changed == 'true' }}
+    secrets: inherit
+
   native-yield-automation-service:
     uses: ./.github/workflows/native-yield-automation-service-testing.yml
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   lido-governance-monitor:
     uses: ./.github/workflows/lido-governance-monitor-testing.yml
     if: ${{ inputs.lido_governance_monitor_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ inputs.postman_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
   transaction-exclusion-api:
@@ -110,7 +124,7 @@ jobs:
 
   # Run Jacoco report after all JVM tests complete
   jacoco-report:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Generate Jacoco Coverage Report
     # Run if at least one JVM test job completed (whether passed, failed, or cancelled)
     # Don't run if all test jobs were skipped due to no changes
@@ -131,9 +145,9 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup Tracer Environment # configures Go, Java, and Gradle
         uses: ./.github/actions/setup-tracer-environment
@@ -173,7 +187,7 @@ jobs:
         run: |
           ./gradlew jacocoRootReport
       - name: Upload Jacoco test coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
           if-no-files-found: error
@@ -181,7 +195,7 @@ jobs:
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 #v6.0.0
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
@@ -194,7 +208,7 @@ jobs:
   # If all jobs are skipped, the workflow will still succeed.
   always_succeed:
     runs-on: ubuntu-24.04
-    if: ${{ inputs.coordinator_changed == 'false' && inputs.prover_changed == 'false' && inputs.native_yield_automation_service_changed == 'false' && inputs.lido_governance_monitor_changed == 'false' && inputs.postman_changed == 'false' && inputs.transaction_exclusion_api_changed == 'false' && inputs.staterecovery_changed == 'false' && inputs.smart_contracts_changed == 'false' && inputs.linea_sequencer_changed == 'false' && inputs.constraints_changed == 'false' }}
+    if: ${{ inputs.coordinator_changed == 'false' && inputs.prover_changed == 'false' && inputs.prover_ray_changed == 'false' && inputs.native_yield_automation_service_changed == 'false' && inputs.lido_governance_monitor_changed == 'false' && inputs.postman_changed == 'false' && inputs.transaction_exclusion_api_changed == 'false' && inputs.staterecovery_changed == 'false' && inputs.smart_contracts_changed == 'false' && inputs.linea_sequencer_changed == 'false' && inputs.constraints_changed == 'false' }}
     steps:
       - name: Ensure Workflow Success
         run: echo "All jobs were skipped, but workflow succeeds."

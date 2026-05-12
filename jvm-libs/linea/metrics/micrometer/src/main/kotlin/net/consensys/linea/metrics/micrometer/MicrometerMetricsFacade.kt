@@ -70,7 +70,11 @@ class MicrometerMetricsFacade(
     tags: List<Tag>,
     isRatio: Boolean,
     baseUnit: String?,
+    publishPercentileHistogram: Boolean,
   ): Histogram {
+    require(!(isRatio && baseUnit != null)) {
+      "isRatio=true is incompatible with a baseUnit"
+    }
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
     tags.forEach { it.requireValidMicrometerName() }
@@ -78,10 +82,16 @@ class MicrometerMetricsFacade(
     val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
       .description(description)
       .baseUnit(baseUnit)
+      .also {
+        if (publishPercentileHistogram) {
+          it.publishPercentileHistogram()
+        }
+      }
       .tags(allMetricsCommonMicrometerTags)
       .tags(tags.toMicrometerTags())
     if (isRatio) {
       distributionSummaryBuilder.scale(100.0)
+      distributionSummaryBuilder.minimumExpectedValue(0.01)
       distributionSummaryBuilder.maximumExpectedValue(100.0)
     }
     return MicrometerHistogramAdapter(distributionSummaryBuilder.register(registry))
@@ -101,11 +111,11 @@ class MicrometerMetricsFacade(
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
     commonTags.forEach { it.requireValidMicrometerName() }
-    return DynamicTagTimerImpl<T>(
+    return DynamicTagTimerImpl(
       meterRegistry = registry,
       name = metricHandle(category, name),
       description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
+      commonTags = this.allMetricsCommonTags + commonTags,
       extractor = tagValueExtractor,
       extractorOnError = tagValueExtractorOnError,
     )
@@ -124,7 +134,7 @@ class MicrometerMetricsFacade(
       meterRegistry = registry,
       name = metricHandle(category, name),
       description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
+      commonTags = this.allMetricsCommonTags + commonTags,
     )
   }
 
@@ -141,7 +151,7 @@ class MicrometerMetricsFacade(
       meterRegistry = registry,
       name = metricHandle(category, name),
       description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
+      commonTags = this.allMetricsCommonTags + commonTags,
     )
   }
 }

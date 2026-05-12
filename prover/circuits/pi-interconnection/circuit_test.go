@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
@@ -19,7 +14,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )
@@ -113,23 +112,24 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	properties.Property("provides the correct number of public inputs", prop.ForAll(
-		func(maxNbDecompression, maxNbExecution int) bool {
+		func(maxNbDecompression, maxNbExecution, maxNbInvalidity int) bool {
 			cfg := config.PublicInput{
-				MaxNbDecompression: maxNbDecompression,
-				MaxNbExecution:     maxNbExecution,
-				MaxNbCircuits:      20,
-				ExecutionMaxNbMsg:  2,
-				L2MsgMerkleDepth:   5,
-				L2MsgMaxNbMerkle:   2,
-				MockKeccakWizard:   true,
+				MaxNbDataAvailability: maxNbDecompression,
+				MaxNbExecution:        maxNbExecution,
+				MaxNbInvalidity:       maxNbInvalidity,
+				MaxNbCircuits:         30,
+				ExecutionMaxNbMsg:     2,
+				L2MsgMerkleDepth:      5,
+				L2MsgMaxNbMerkle:      2,
+				MockKeccakWizard:      true,
 			}
 
-			c, err := pi_interconnection.Compile(cfg)
+			c, err := pi_interconnection.Compile(cfg, nil)
 			assert.NoError(t, err)
 			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
 			assert.NoError(t, err)
-			return cfg.MaxNbDecompression+cfg.MaxNbExecution == pi_interconnection.GetMaxNbCircuitsSum(cs)
-		}, gen.IntRange(1, 10), gen.IntRange(1, 10),
+			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution+cfg.MaxNbInvalidity == pi_interconnection.GetMaxNbCircuitsSum(cs)
+		}, gen.IntRange(1, 10), gen.IntRange(1, 10), gen.IntRange(1, 10),
 	))
 
 	properties.TestingRun(t)

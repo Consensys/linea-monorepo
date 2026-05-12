@@ -249,7 +249,7 @@ TypeORM auto-generation does not work reliably for this schema, so migrations mu
 # Build dependencies
 NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build
 pnpm run -F linea-shared-utils build
-pnpm run -F "./sdk/*" build
+pnpm run -F "./ts-libs/sdk/*" build
 
 # Configure
 cd postman
@@ -280,7 +280,7 @@ Tests are colocated with implementations in `__tests__/` subdirectories, using `
 
 ## Configuration
 
-See the [README.md](../../postman/README.md) for complete environment variable documentation.
+See the [README.md](../../../postman/README.md) for complete environment variable documentation.
 
 | Category | Key Variables |
 |----------|---------------|

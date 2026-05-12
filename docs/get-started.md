@@ -2,12 +2,12 @@
 
 ### Requirements:
 
-- Node.js >= 22.22.0 (see `.nvmrc`)
+- Node.js >= 24.14.1 (see `.nvmrc`)
 - Docker v24 or higher
   - Docker should ideally have ~16 GB of Memory and 4+ CPUs to run the entire stack.
 - Docker Compose version v2.19+
 - Make v3.81+
-- Pnpm >= 10.28.0 (https://pnpm.io/installation)
+- Pnpm >= 10.32.1 (https://pnpm.io/installation)
 
 ### Run stack locally
 
@@ -27,7 +27,7 @@ pnpm -F e2e run test:local
 To stop the stack:
 
 ```
-make clean-enviroment
+make clean-environment
 ```
 
 While running the end-to-end tests, you should observe files being generated in `tmp/local/` directory.
@@ -76,9 +76,14 @@ docker system prune --volumes
 ## Tuning in conflation
 
 For local testing and development conflation deadline is set to 6s `conflation-deadline=PT6S` in
-`config/coordinator/coordinator-docker.config.toml` file.
+`docker/config/coordinator/coordinator-config-v2.toml` (Docker-based `make start-env*` stacks often mount a different file from `docker/config/`).
 Hence, only a two-block conflation.
 If you want bigger conflations, increase the deadline accordingly.
+
+For **target block / timestamp checkpoints**, L1 finalization and API **resume** (`target-end-blocks`,
+`timestamp-based-hard-forks`, `wait-target-block-l1-finalization`, `wait-api-resume-after-target-block`, and
+`conflation_signalTargetCheckpointResume`), see
+[Target checkpoints, L1 finalization, and API resume](conflation-target-checkpoints.md).
 
 ## Next steps
 

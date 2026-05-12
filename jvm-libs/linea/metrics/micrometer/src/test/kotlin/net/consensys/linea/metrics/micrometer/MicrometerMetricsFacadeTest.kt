@@ -3,6 +3,8 @@ package net.consensys.linea.metrics.micrometer
 import io.micrometer.core.instrument.ImmutableTag
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import net.consensys.linea.metrics.MetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -121,6 +123,70 @@ class MicrometerMetricsFacadeTest {
     assertThat(createdHistogram.totalAmount()).isEqualTo(115.0)
     assertThat(createdHistogram.mean()).isCloseTo(38.333, Offset.offset(0.1))
     assertThat(createdHistogram.max()).isEqualTo(100.0)
+  }
+
+  @Test
+  fun `createHistogram with publishPercentileHistogram enables histogram buckets`() {
+    val prometheusRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+    val prometheusFacade = MicrometerMetricsFacade(prometheusRegistry, metricsPrefix = "linea.test")
+    val histogram = prometheusFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
+      name = "hist.buckets.metric",
+      description = "Histogram with percentile histogram",
+      baseUnit = "seconds",
+      publishPercentileHistogram = true,
+    )
+
+    histogram.record(10.0)
+    histogram.record(50.0)
+
+    val scrapeOutput = prometheusRegistry.scrape()
+    assertThat(scrapeOutput).contains("linea_test_test_category_hist_buckets_metric_seconds_bucket{le=\"")
+  }
+
+  @Test
+  fun `createHistogram without publishPercentileHistogram does not enable extra histogram buckets`() {
+    val prometheusRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+    val prometheusFacade = MicrometerMetricsFacade(prometheusRegistry, metricsPrefix = "linea.test")
+    val histogram = prometheusFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
+      name = "no.hist.buckets.metric",
+      description = "Histogram without percentile histogram",
+      baseUnit = "seconds",
+    )
+
+    histogram.record(10.0)
+    histogram.record(50.0)
+
+    val scrapeOutput = prometheusRegistry.scrape()
+    // Without publishPercentileHistogram, Prometheus still produces default buckets
+    // but should not have the fine-grained Micrometer percentile histogram buckets
+    val bucketLines = scrapeOutput.lines()
+      .filter { it.startsWith("linea_test_test_category_no_hist_buckets_metric_seconds_bucket{") }
+    // Default Prometheus buckets are coarse (typically ~15 buckets)
+    // publishPercentileHistogram() generates many more (60+)
+    assertThat(bucketLines.size).isLessThan(20)
+  }
+
+  @Test
+  fun `createHistogram without percentileBuckets does not publish specific percentiles`() {
+    val histogram = metricsFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
+      name = "some.no.percentile.metric",
+      description = "Histogram without percentiles",
+      baseUnit = "seconds",
+    )
+
+    for (i in 1..100) {
+      histogram.record(i.toDouble())
+    }
+
+    val createdHistogram = meterRegistry.find("linea.test.test.category.some.no.percentile.metric").summary()
+    assertThat(createdHistogram).isNotNull
+    assertThat(createdHistogram!!.count()).isEqualTo(100L)
+
+    val percentileSnapshots = createdHistogram.takeSnapshot().percentileValues()
+    assertThat(percentileSnapshots).isEmpty()
   }
 
   @Test

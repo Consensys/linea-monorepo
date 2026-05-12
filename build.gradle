@@ -9,13 +9,49 @@ plugins {
   alias(libs.plugins.docker)
 }
 
-task compileAll
+tasks.register("compileAll") {
+  group = "build"
+  description = "Compiles all Java and Kotlin sources, including tests, across all projects."
+}
 
 // to allow to have unused vars/imports,etc for faster debugging/prototyping
 // instead of deleting and re-adding code all the time
 def allowCompilationWarnings = System.getenv('LINEA_DEV_ALLOW_WARNINGS') != null
 
+spotless {
+  predeclareDeps()
+}
+
+spotlessPredeclare {
+  groovyGradle {
+    greclipse("4.35")
+  }
+  java {
+    removeUnusedImports()
+    googleJavaFormat(libs.versions.googleJavaFormat.get())
+  }
+  kotlin {
+    ktlint(libs.versions.ktlint.get().toString())
+        .editorConfigOverride([
+          'ktlint_standard_discouraged-comment-location': 'disabled',
+          'ktlint_standard_property-naming': 'disabled',
+          'ktlint_standard_function-naming': 'disabled',
+          'ktlint_standard_function-signature': 'disabled',
+        ])
+  }
+}
+
 allprojects {
+  // Aggregate every Java/Kotlin compile task (main + tests, all source sets) into root :compileAll.
+  afterEvaluate { proj ->
+    proj.tasks.withType(JavaCompile).all { compileTask ->
+      rootProject.tasks.named("compileAll").configure { dependsOn(compileTask) }
+    }
+    proj.tasks.withType(KotlinCompile).all { compileTask ->
+      rootProject.tasks.named("compileAll").configure { dependsOn(compileTask) }
+    }
+  }
+
   repositories {
     mavenCentral()
     mavenLocal()
@@ -24,15 +60,40 @@ allprojects {
   apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
   apply plugin: 'jacoco'
 
+  // Override JUnit version from Besu BOM to ensure Java 25 compatibility
+  configurations.configureEach { cfg ->
+    resolutionStrategy.eachDependency { details ->
+      if (details.requested.group in [
+            'org.junit.platform',
+            'org.junit.jupiter',
+            'org.junit'
+          ]) {
+        def junitVersion = details.requested.group == 'org.junit.platform' ?
+            "${libs.versions.junitPlatform.get()}" : "${libs.versions.junit.get()}"
+        details.useVersion(junitVersion)
+        details.because('Java 25 requires JUnit 5.13+ for ASM compatibility')
+      }
+
+      if (!cfg.name.toLowerCase().contains('spotless')
+          && !cfg.name.toLowerCase().contains('ktlint')
+          && details.requested.group in [
+            'org.hyperledger.besu',
+            'org.hyperledger.besu.internal'
+          ] &&
+          (!details.requested.version || details.requested.version.trim().isEmpty())) {
+        details.useVersion(rootProject.ext.resolveBesuVersion())
+        details.because('Versionless Besu dependencies are aligned to the lazily resolved Besu version') // e.g. jvm-libs:linea:besu-libs
+      }
+    }
+  }
+
   tasks.withType(KotlinCompile).configureEach {
-    compileAll.dependsOn it
     compilerOptions {
       allWarningsAsErrors = !allowCompilationWarnings
     }
   }
 
   tasks.withType(JavaCompile).configureEach {
-    compileAll.dependsOn it
     options.encoding = 'UTF-8'
     options.deprecation = true
     options.compilerArgs.addAll([
@@ -43,25 +104,31 @@ allprojects {
       '-Xlint:finally',
       '-Xlint:static',
       '-Xlint:deprecation',
+      '-Xlint:unchecked',
+      '-Xlint:rawtypes',
+      '-Werror'
     ])
-    if (!allowCompilationWarnings) {
-      options.compilerArgs.addAll(['-Werror'])
+    if (allowCompilationWarnings) {
+      options.compilerArgs.remove('-Werror')
     }
 
-    if (!project.path.contains("testing-tools")) {
+    if (project.path.contains("testing-tools")) {
       // testing tools have 100+ errors because of this
       // skipping them for now
-      options.compilerArgs.addAll(['-Xlint:rawtypes'])
+      options.compilerArgs.remove('-Xlint:rawtypes')
     }
   }
 
   jacoco {
-    toolVersion = '0.8.11'
+    toolVersion = libs.versions.jacoco.get()
     if (project.tasks.findByName('integrationTest')) {
       applyTo integrationTest
     }
     if (project.tasks.findByName('acceptanceTest')) {
       applyTo acceptanceTest
+    }
+    if (project.tasks.findByName('acceptanceTests')) {
+      applyTo acceptanceTests
     }
   }
 
@@ -170,12 +237,10 @@ task jacocoRootReport(type: JacocoReport) {
     xml.required = true
     // xml.enabled = true FIXME: deprecated, breaking latest versions of gradle.
     csv.required = true
-    html.destination file("build/reports/jacocoHtml")
+    html.outputLocation = file("build/reports/jacocoHtml")
   }
   onlyIf = { true }
 }
-
-apply plugin: 'linea.besu-plugin'
 
 dockerCompose {
   localStack {
@@ -256,6 +321,33 @@ dockerCompose {
     noRecreate = true
     projectName = "docker"
   }
+}
+
+// Pull only the images required by `startedServices` of the `localStack` compose stack.
+// Useful in CI to retry the (sometimes flaky) Docker Hub pull in isolation, without
+// rerunning the integration test.
+tasks.register("composePullLocalStackStartedImages", Exec) {
+  group = 'docker'
+  description = "Pull only the startedServices images for the 'localStack' compose stack."
+  workingDir rootDir
+  doFirst {
+    def settings = dockerCompose.localStack
+    def fileArgs = settings.useComposeFiles.get().collectMany { ['-f', it.toString()] }
+    def additionalArgs = settings.composeAdditionalArgs.get()
+    def services = settings.startedServices.get()
+    commandLine(['docker', 'compose'] + fileArgs + additionalArgs + ['pull'] + services)
+  }
+}
+
+// Seed the gitignored runtime deny-list before any compose-up so the sequencer's
+// bind-mount finds a regular file (not an auto-created directory) on fresh checkouts.
+// Delegates to the Makefile target so Make and Gradle stay in lockstep.
+def seedSequencerDenyList = tasks.register("seedSequencerDenyList", Exec) {
+  workingDir rootDir
+  commandLine 'make', 'seed-deny-list'
+}
+tasks.matching { it.name.endsWith("ComposeUp") }.configureEach {
+  dependsOn(seedSequencerDenyList)
 }
 
 static Boolean hasKotlinPlugin(Project proj) {

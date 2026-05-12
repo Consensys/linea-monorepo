@@ -1,0 +1,44 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
+ *
+ * SPDX-License-Identifier: MIT OR Apache-2.0
+ */
+
+def lineaSequencerProject = project(lineaSequencerProjectPath)
+
+tasks.register('sourcesJar', Jar) {
+  dependsOn classes
+  archiveClassifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+tasks.register('javadocJar', Jar) {
+  dependsOn javadoc
+  archiveClassifier = 'javadoc'
+  from javadoc.destinationDir
+}
+
+jar {
+  archiveBaseName = lineaSequencerProject.distributionIdentifier
+  version = calculateVersion()
+
+  manifest {
+    attributes(
+      'Specification-Title': archiveBaseName.get(),
+      'Specification-Version': calculateVersion(),
+      'Implementation-Title': archiveBaseName.get(),
+      'Implementation-Version': calculateVersion()
+    )
+  }
+
+  // Explicitly include Kotlin stdlib in the JAR to ensure kotlin.time.Instant and other
+  // Kotlin standard library classes are available at runtime when the plugin is loaded by Besu
+  from {
+    configurations.runtimeClasspath
+      .filter { it.name.startsWith('kotlin-stdlib') }
+      .collect { zipTree(it) }
+  }
+}

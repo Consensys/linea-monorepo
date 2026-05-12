@@ -50,12 +50,15 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Execution.DirDone(),
 		cfg.Execution.DirFrom(),
 		cfg.Execution.DirTo(),
-		cfg.BlobDecompression.DirDone(),
-		cfg.BlobDecompression.DirFrom(),
-		cfg.BlobDecompression.DirTo(),
+		cfg.DataAvailability.DirDone(),
+		cfg.DataAvailability.DirFrom(),
+		cfg.DataAvailability.DirTo(),
 		cfg.Aggregation.DirDone(),
 		cfg.Aggregation.DirFrom(),
 		cfg.Aggregation.DirTo(),
+		cfg.Invalidity.DirDone(),
+		cfg.Invalidity.DirFrom(),
+		cfg.Invalidity.DirTo(),
 	}
 
 	for _, dir := range dirs {

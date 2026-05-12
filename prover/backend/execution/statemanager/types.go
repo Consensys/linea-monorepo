@@ -10,9 +10,9 @@ import (
 
 // Handy type aliases
 type (
-	Digest      = types.Bytes32
+	Digest      = types.KoalaOctuplet
 	Address     = types.EthAddress
-	Account     = types.Account
+	Account     = types.AccountShomeiTraces
 	FullBytes32 = types.FullBytes32
 )
 
@@ -58,8 +58,8 @@ const (
 // Represents a Shomei output
 type ShomeiOutput struct {
 	Result struct {
-		ZkParentStateRootHash types.Bytes32    `json:"zkParentStateRootHash"`
-		ZkStateMerkleProof    [][]DecodedTrace `json:"zkStateMerkleProof"`
+		ZkParentStateRootHash types.KoalaOctuplet `json:"zkParentStateRootHash"`
+		ZkStateMerkleProof    [][]DecodedTrace    `json:"zkStateMerkleProof"`
 	} `json:"result"`
 }
 
@@ -76,6 +76,10 @@ type DecodedTrace struct {
 }
 
 func (dec *DecodedTrace) UnmarshalJSON(data []byte) error {
+
+	if string(data) == "null" {
+		return nil
+	}
 
 	// First decode using reflection-only. The goal is to determine whether
 	// the location corresponds to the account trie or a storage trie and to

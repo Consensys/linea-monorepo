@@ -13,14 +13,37 @@ permissions:
   packages: write
 
 jobs:
+  code-analysis:
+    uses: ./.github/workflows/codeql.yml
+  
+  lint-latest-commit-messages:
+    uses: ./.github/workflows/lint-commit-messages.yml
+
+  component-changelog-upload:
+    needs: [lint-latest-commit-messages]
+    permissions:
+      pull-requests: write
+    if: always()
+    uses: ./.github/workflows/component-changelog-upload.yml
+  
+  component-changelog-commit:
+    needs: [component-changelog-upload]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/component-changelog-commit.yml
+    secrets: inherit
+
   filter-commit-changes:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    needs: [lint-latest-commit-messages]
+    if: always()
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
       staterecovery: ${{ steps.filter.outputs.staterecovery }}
       postman: ${{ steps.filter.outputs.postman }}
       prover: ${{ steps.filter.outputs.prover }}
+      prover-ray: ${{ steps.filter.outputs.prover-ray }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       linea-besu: ${{ steps.filter.outputs.linea-besu }}
       linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
@@ -34,7 +57,7 @@ jobs:
       has-changes-requiring-linea-besu-package-build: ${{ steps.filter.outputs.linea-sequencer-plugin == 'true' || steps.filter.outputs.tracer == 'true' || steps.filter.outputs.tracer-constraints == 'true' ||  steps.filter.outputs.linea-besu == 'true' || steps.filter.outputs.linea-besu-package == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Filter commit changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
         id: filter
@@ -54,8 +77,6 @@ jobs:
               - '.github/workflows/coordinator-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-              - 'docker/compose-*.yml'
             staterecovery:
               - 'state-recovery/**'
               - 'buildSrc/**'
@@ -66,23 +87,24 @@ jobs:
               - 'settings.gradle'
               - '.github/workflows/staterecovery-*.yml'
               - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
             postman:
               - 'postman/**'
-              - 'sdk/**'
+              - 'ts-libs/sdk/**'
               - 'ts-libs/linea-native-libs/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/postman-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
               - '.nvmrc'
             prover:
               - 'prover/**'
-              - '.github/workflows/prover-*.yml'
+              - '.github/workflows/prover-testing.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
+            prover-ray:
+              - 'prover-ray/**'
+              - '.github/workflows/prover-ray-testing.yml'
+              - '.github/workflows/main.yml'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
               - 'jvm-libs/generic/extensions/futures/**'
@@ -96,7 +118,6 @@ jobs:
               - '.github/workflows/transaction-exclusion-api-*.yml'
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
               - 'buildSrc/**'
               - 'gradle/**'
               - 'build.gradle'
@@ -109,7 +130,7 @@ jobs:
               - '.github/workflows/main.yml'
               - '.github/workflows/run-smc-tests.yml'
             linea-sequencer-plugin:
-              - 'besu-plugins/linea-sequencer/**'
+              - 'linea-besu/plugins/linea-sequencer/**'
               - '.github/workflows/linea-sequencer-plugin-testing.yml'
               - 'buildSrc/**'
               - 'gradle/**'
@@ -117,23 +138,25 @@ jobs:
               - 'gradle.properties'
               - 'settings.gradle'
             linea-besu:
-              - 'linea-besu/**'
+              - 'linea-besu/besu/**'
             linea-besu-package:
-              - 'linea-besu-package/versions.env'
-              - 'linea-besu-package/scripts/assemble-packages.sh'
+              - 'linea-besu/package/versions.env'
+              - 'linea-besu/package/scripts/assemble-packages.sh'
             native-yield-automation-service:
-              - 'native-yield-operations/automation-service/**'
+              - 'operations/native-yield-operations/automation-service/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/native-yield-automation-service-*.yml'
               - '.nvmrc'
             lido-governance-monitor:
-              - 'native-yield-operations/lido-governance-monitor/**'
+              - 'operations/native-yield-operations/lido-governance-monitor/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/lido-governance-monitor-*.yml'
               - '.nvmrc'
             tracer:
+              - 'gradle/**'
               - 'tracer/**'
             tracer-constraints:
+              - 'gradle/**'
               - 'tracer-constraints/**'
               - '.github/workflows/tracer-constraints-*.yml'
               - 'tracer/gradle/corset.gradle'
@@ -170,12 +193,9 @@ jobs:
       lido_governance_monitor_changed: ${{ needs.filter-commit-changes.outputs.lido-governance-monitor }}
     secrets: inherit
 
-  code-analysis:
-    uses: ./.github/workflows/codeql.yml
-
   testing:
     needs: [filter-commit-changes, check-and-tag-images]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' && needs.check-and-tag-images.outputs.commit_tag != '' }}
     uses: ./.github/workflows/testing.yml
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
@@ -183,6 +203,7 @@ jobs:
       linea_sequencer_changed: ${{ needs.filter-commit-changes.outputs.linea-sequencer-plugin }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      prover_ray_changed: ${{ needs.filter-commit-changes.outputs.prover-ray }}
       smart_contracts_changed: ${{ needs.filter-commit-changes.outputs.smart-contracts }}
       staterecovery_changed: false # disable until we have time to address it ${{ needs.filter-commit-changes.outputs.staterecovery }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
@@ -197,7 +218,7 @@ jobs:
     uses: ./.github/workflows/get-has-changes-requiring-e2e-testing.yml
 
   manual-docker-build-and-e2e-tests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     needs: [check-and-tag-images, get-has-changes-requiring-e2e-testing]
     if: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
@@ -250,7 +271,7 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
+      image_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
       linea_besu_package_tag: ${{ needs.docker-build.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
@@ -268,8 +289,8 @@ jobs:
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
-    needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests]
-    if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests, get-has-changes-requiring-e2e-testing]
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.check-and-tag-images.outputs.commit_tag != '' && needs.testing.result == 'success' && (needs.run-e2e-tests.outputs.tests_outcome == 'success' || needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'false') }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
       push_image: true
@@ -293,7 +314,7 @@ jobs:
   cleanup-deployments:
     needs: [run-e2e-tests]
     if: ${{ always() && github.event.pull_request.head.repo.fork == false }}
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     permissions:
       contents: read
       deployments: write
@@ -322,10 +343,15 @@ jobs:
         cleanup-deployments,
       ]
     if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: "Main workflow Failed"
       run_id: ${{ github.run_id }}
+      enable_ai_analysis: ${{ needs.run-e2e-tests.result == 'failure' }}
     secrets:
       channel_id: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
       slack_bot_token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

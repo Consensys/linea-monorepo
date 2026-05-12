@@ -6,7 +6,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -18,11 +20,45 @@ func RandomVec(size int) smartvectors.SmartVector {
 	return smartvectors.PseudoRand(rng, size)
 }
 
-// RandomVecPadded returns a random vector of size "size" such that the
+// RandomOctupletVec returns 8 random vectors of size "size".
+func RandomOctupletVec(size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		res[i] = smartvectors.PseudoRand(rng, size)
+	}
+
+	return res
+}
+
+// ZeroOctupletVec returns 8 random zero vectors of size "size".
+func ZeroOctupletVec(size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		res[i] = smartvectors.NewConstant(field.Zero(), size)
+	}
+
+	return res
+}
+
+// RandomVecFext returns a random vector of size "size" defined over the
+// extension field
+func RandomVecFext(size int) smartvectors.SmartVector {
+	return smartvectors.PseudoRandExt(rng, size)
+}
+
+// RandomOctupletVecPadded returns a random vector of size "size" such that the
 // last "size-density" are zero.
-func RandomVecPadded(density, size int) smartvectors.SmartVector {
-	v := vector.PseudoRand(rng, density)
-	return smartvectors.RightZeroPadded(v, size)
+func RandomOctupletVecPadded(density, size int) [8]smartvectors.SmartVector {
+	var res [8]smartvectors.SmartVector
+
+	for i := range res {
+		v := vector.PseudoRand(rng, density)
+		res[i] = smartvectors.RightZeroPadded(v, size)
+	}
+
+	return res
 }
 
 // RandomMatrix returns a random matrix of size "rows x cols" as a list
@@ -35,18 +71,6 @@ func RandomMatrix(rows, cols int) []smartvectors.SmartVector {
 	return res
 }
 
-// RandomBinary returns a random vector of binary values with 50% ones
-// and 50% zeroes.
-func RandBinary(size int) smartvectors.SmartVector {
-	res := make([]field.Element, size)
-	for i := range res {
-		if rng.IntN(2) == 0 {
-			res[i] = field.One()
-		}
-	}
-	return smartvectors.NewRegular(res)
-}
-
 // RandomFromSeed returns a random vector generated from a user-supplied
 // seed. This can be used to ensure that the same vector is generated
 // through several calls.
@@ -54,6 +78,25 @@ func RandomFromSeed(size int, seed int64) smartvectors.SmartVector {
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(utils.NewRandSource(seed))
 	return smartvectors.PseudoRand(rng, size)
+}
+
+// Reverse returns a smartvector with reverted entries. It expects a Regular
+// or RegularExt smartvector.
+func Reverse(v smartvectors.SmartVector) smartvectors.SmartVector {
+	switch w := v.(type) {
+	case *smartvectors.Regular:
+		u := []field.Element(*w)
+		u = vector.DeepCopy(u)
+		vector.Reverse(u)
+		return smartvectors.NewRegular(u)
+	case *smartvectors.RegularExt:
+		u := []fext.Element(*w)
+		u = vectorext.DeepCopy(u)
+		vectorext.Reverse(u)
+		return smartvectors.NewRegularExt(u)
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
 }
 
 // OnesAt returns a vector of size "size" with ones at the positions
@@ -100,16 +143,6 @@ func CountingAt(size int, init int, at []int) smartvectors.SmartVector {
 		}
 	}
 
-	return smartvectors.NewRegular(res)
-}
-
-// RandomAt returns a vector of size "size" with random values at the
-// positions given in "positions".
-func RandomAt(size int, positions ...int) smartvectors.SmartVector {
-	res := make([]field.Element, size)
-	for _, pos := range positions {
-		res[pos] = field.PseudoRand(rng)
-	}
 	return smartvectors.NewRegular(res)
 }
 

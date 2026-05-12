@@ -1,12 +1,15 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
+import linea.conflation.ConflationHandler
+import linea.conflation.ConflationSafeBlockNumberProvider
+import linea.conflation.ConflationService
+import linea.conflation.calculators.BlockConflationCalculator
 import linea.domain.Block
-import net.consensys.linea.metrics.LineaMetricsCategory
+import linea.domain.BlockCounters
+import linea.domain.BlocksConflation
+import linea.domain.ConflationCalculationResult
+import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.BlocksConflation
-import net.consensys.zkevm.domain.ConflationCalculationResult
-import net.consensys.zkevm.ethereum.coordination.blockcreation.ConflationSafeBlockNumberProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -14,7 +17,7 @@ import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.TimeUnit
 
 class ConflationServiceImpl(
-  private val calculator: TracesConflationCalculator,
+  private val calculator: BlockConflationCalculator,
   private val safeBlockNumberProvider: ConflationSafeBlockNumberProvider,
   metricsFacade: MetricsFacade,
   private val log: Logger = LogManager.getLogger(ConflationServiceImpl::class.java),
@@ -119,7 +122,7 @@ class ConflationServiceImpl(
       if (!safeBlockNumberProvider.isBlockSafeToConflate(nextBlockNumberToConflate)) {
         log.info(
           "conflation temporarily paused: blockNumber={} (likely paused by forced transactions)",
-          nextBlockNumberToConflate,
+          nextBlockNumberToConflate - 1UL,
         )
         break
       }

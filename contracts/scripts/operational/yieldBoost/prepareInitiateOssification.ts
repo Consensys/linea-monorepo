@@ -1,4 +1,5 @@
 import { task } from "hardhat/config";
+
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
 
 /*
@@ -18,7 +19,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
   -------------------------------------------------------------------------------------------
   DEPLOYER_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_RPC_URL=https://0xrpc.io/hoodi \
-  npx hardhat prepareInitiateOssification \
+  pnpm exec hardhat prepareInitiateOssification \
     --yield-manager <address> \
     --yield-provider <address> \
     --dashboard <address> \

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
 import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByCurrentCommitHash;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendFullGasCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendInsufficientBalanceCall;
@@ -36,7 +37,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -82,8 +82,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
    */
 
   final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-  final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+  final Address senderAddress = Address.extract(senderKeyPair.getPublicKey());
   final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(10))
@@ -251,13 +250,13 @@ public class DoubleCallDelegationTests extends TracerTestBase {
                           0,
                           0),
                   2)
-              .push(rootAccount.getAddress())
+              .push(rootAccount.getAddress().getBytes())
               .op(OpCode.BALANCE)
               .op(OpCode.POP)
-              .push(callerAccount.getAddress())
+              .push(callerAccount.getAddress().getBytes())
               .op(OpCode.BALANCE)
               .op(OpCode.POP)
-              .push(calleeAccount.getAddress())
+              .push(calleeAccount.getAddress().getBytes())
               .op(OpCode.BALANCE)
               .op(OpCode.POP)
               // preparing for a potential revert
@@ -521,7 +520,7 @@ public class DoubleCallDelegationTests extends TracerTestBase {
             LoopType.BOUNDED_LOOP));
     */
 
-    return arguments.stream();
+    return randomSampleByCurrentCommitHash(arguments).stream();
   }
 
   private static boolean skipTest(

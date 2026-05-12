@@ -3,7 +3,8 @@ export function getRequiredEnvVar(name: string): string {
   if (!envValue) {
     throw new Error(`Required environment variable "${name}" is missing or empty.`);
   }
-  console.log(`Using environment variable ${name}=${envValue}`);
+  // Do not log the value of the environment variable for safety reasons
+  console.log(`Using environment variable ${name}`);
   return envValue;
 }
 
@@ -27,6 +28,14 @@ export function getEnvVarOrDefault(envVar: string, defaultValue: unknown) {
     }
   } catch {
     console.log(`Unable to parse ${envVar}, returning as string.`);
+  }
+  return envValue;
+}
+
+export function getOptionalEnvVar(name: string): string | undefined {
+  const envValue = process.env[name];
+  if (envValue === undefined) {
+    return undefined;
   }
   return envValue;
 }

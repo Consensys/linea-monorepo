@@ -24,7 +24,7 @@ buildscript {
 
 apply plugin: 'jacoco'
 jacoco {
-  toolVersion = '0.8.12'
+  toolVersion = libs.versions.jacoco.get()
 }
 
 /*
@@ -59,6 +59,7 @@ tasks.withType(Test).configureEach {
 //    '-Xlog:gc',
     // Mockito and jackson-databind do some strange reflection during tests.
     // This suppresses an illegal access warning.
+    '-Xss4m',
     '--add-opens',
     'java.base/java.util=ALL-UNNAMED',
     '--add-opens',
@@ -160,6 +161,12 @@ tasks.withType(Test).configureEach {
 // Test Tasks
 // =============================================================================
 
+// Gradle 9: custom Test tasks must explicitly wire the test source set
+tasks.withType(Test).matching { it.name != 'test' }.configureEach {
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+}
+
 tasks.test.configure {
   // Following required as some unit tests run BESU checks
   dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
@@ -240,6 +247,11 @@ tasks.register("besuNodeTests", Test) {
   forkEvery = 1
   maxParallelForks = 3
   environment("RUN_WITH_BESU_NODE", true)
+  // Disable JIT compilation to prevent JVM safepoint deadlocks caused by gnark's
+  // Go/cgo runtime threads hijacking Java threads in Go's goroutine scheduler.
+  // With JIT enabled, compiler-triggered safepoints deadlock against Go threads.
+  // This doesn't seem to be needed for a non-MacOSX systems
+  // jvmArgs += ['-Xint']
   //
   useJUnitPlatform {
     excludeTags("nightly")
@@ -257,6 +269,8 @@ tasks.register("besuNodeFastReplayTests", Test) {
   forkEvery = 1
   maxParallelForks = 3
   environment("RUN_WITH_BESU_NODE", true)
+  // Disable JIT — see besuNodeTests comment for explanation
+  // jvmArgs += ['-Xint']
   //
   useJUnitPlatform {
     includeTags("replay")

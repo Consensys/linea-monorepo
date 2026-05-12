@@ -4,20 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"iter"
 	"math"
-	"math/big"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/consensys/gnark/frontend"
 	"golang.org/x/exp/constraints"
 )
 
@@ -48,7 +43,7 @@ func DivCeil(a, b int) int {
 func DivExact(a, b int) int {
 	res := a / b
 	if res*b != a {
-		panic("inexact division")
+		Panic("inexact division: %v / %v", a, b)
 	}
 	return res
 }
@@ -137,29 +132,6 @@ func Log2Ceil(a int) int {
 	return floor
 }
 
-// GCD calculates GCD of a and b by Euclidian algorithm.
-func GCD[T ~int](a, b T) T {
-	for a != b {
-		if a > b {
-			a -= b
-		} else {
-			b -= a
-		}
-	}
-
-	return a
-}
-
-// Returns a SHA256 checksum of the given asset.
-// TODO @gbotrel merge with Digest
-// Sha2SumHexOf returns a SHA256 checksum of the given asset.
-func Sha2SumHexOf(w io.WriterTo) string {
-	hasher := sha256.New()
-	w.WriteTo(hasher)
-	res := hasher.Sum(nil)
-	return HexEncodeToString(res)
-}
-
 // Digest computes the SHA256 Digest of the contents of file and prepends a "0x"
 // byte to it. Callers are responsible for closing the file. The reliance on
 // SHA256 is motivated by the fact that we use the sum checksum for the verifier
@@ -204,26 +176,6 @@ func RepeatSlice[T any](s []T, n int) []T {
 	return res
 }
 
-func BigsToBytes(ins []*big.Int) []byte {
-	res := make([]byte, len(ins))
-	for i := range ins {
-		res[i] = byte(ins[i].Uint64())
-	}
-	return res
-}
-
-func BigsToInts(ints []*big.Int) []int {
-	res := make([]int, len(ints))
-	for i := range ints {
-		u := ints[i].Uint64()
-		res[i] = int(u) // #nosec G115 - check below
-		if !ints[i].IsUint64() || uint64(res[i]) != u {
-			panic("overflow")
-		}
-	}
-	return res
-}
-
 // ToInt converts a uint, uint64 or int64 to an int, panicking on overflow.
 // Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
 func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
@@ -233,26 +185,11 @@ func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
 	return int(i) // #nosec G115 -- Checked for overflow
 }
 
-// ToUint64 converts a signed integer into a uint64, panicking on negative values.
-// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
-func ToUint64[T constraints.Signed](i T) uint64 {
-	if i < 0 {
-		panic("negative")
-	}
-	return uint64(i)
-}
-
 func ToUint16[T ~int | ~uint](i T) uint16 {
 	if i < 0 || i > math.MaxUint16 {
 		panic("out of range")
 	}
 	return uint16(i) // #nosec G115 -- Checked for overflow
-}
-
-func ToVariableSlice[X any](s []X) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
-	Copy(res, s)
-	return res
 }
 
 func countInts[I constraints.Integer](s []I) []I {
@@ -299,28 +236,11 @@ func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
 	return res
 }
 
+// FillRange modifies dst into [start, start+1, ..., start+len(dst)-1]
 func FillRange[T constraints.Integer](dst []T, start T) {
 	for l := range dst {
 		dst[l] = T(l) + start
 	}
-}
-
-func ReadFromJSON(path string, v interface{}) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return json.NewDecoder(f).Decode(v)
-}
-
-func WriteToJSON(path string, v interface{}) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return json.NewEncoder(f).Encode(v)
 }
 
 func WriterstoEqual(expected, actual io.WriterTo) error {
@@ -428,24 +348,6 @@ func (e *BytesEqualError) Error() string {
 	return e.error
 }
 
-func ReadFromFile(path string, to io.ReaderFrom) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	_, err = to.ReadFrom(f)
-	return errors.Join(err, f.Close())
-}
-
-func WriteToFile(path string, from io.WriterTo) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600) // TODO @Tabaie option for permissions?
-	if err != nil {
-		return err
-	}
-	_, err = from.WriteTo(f)
-	return errors.Join(err, f.Close())
-}
-
 // SortedKeysOf returns a sorted list of the keys of the map using less
 // to determine the order. Less is as in [sort.Slice]
 func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
@@ -462,6 +364,13 @@ func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
 	})
 
 	return keys
+}
+
+// StringKeysOfMap returns a sorted list of the keys of the map
+func StringKeysOfMap[K ~string, V any](m map[K]V) []K {
+	return SortedKeysOf(m, func(a, b K) bool {
+		return a < b
+	})
 }
 
 // MapFunc maps f to every entries of the slice and return an array with the
@@ -531,32 +440,6 @@ func ChainIterators[V any](iters ...iter.Seq[V]) iter.Seq[V] {
 			}
 		}
 	}
-}
-
-// ConstantIterator returns an iterator that always returns the same value
-// n times.
-func ConstantIterator[T any](value T, n int) iter.Seq[T] {
-	return func(yield func(T) bool) {
-		for i := 0; i < n; i++ {
-			if !yield(value) {
-				return
-			}
-		}
-	}
-}
-
-// SpliceExact splits a slice into a slice of slices of size n
-func SpliceExact[T any](slice []T, n int) [][]T {
-
-	if len(slice)%n != 0 {
-		panic("slice length must be a multiple of n")
-	}
-
-	slices := make([][]T, 0, len(slice)/n)
-	for i := 0; i < len(slice); i += n {
-		slices = append(slices, slice[i:i+n])
-	}
-	return slices
 }
 
 // SetDiff returns the difference between two sets. The elements are returned
@@ -629,4 +512,13 @@ func GrowSliceSize[T any](slice []T, size int) []T {
 		slice = append(slice, t)
 	}
 	return slice
+}
+
+// SliceToAnys converts a slice into an []any
+func SliceToAnys[T any](slice []T) []any {
+	res := make([]any, len(slice))
+	for i, v := range slice {
+		res[i] = v
+	}
+	return res
 }

@@ -3,19 +3,21 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.clients.ProofAggregationProverClientV2
+import linea.conflation.calculators.AggregationCalculator
+import linea.domain.Aggregation
+import linea.domain.AggregationProofIndex
+import linea.domain.BlobAndBatchCounters
+import linea.domain.BlobCounters
+import linea.domain.BlobsToAggregate
 import linea.domain.BlockIntervals
+import linea.domain.CompressionProofIndex
+import linea.domain.InvalidityProofIndex
+import linea.domain.ProofsToAggregate
+import linea.domain.createProofToFinalize
+import linea.persistence.AggregationsRepository
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
-import net.consensys.zkevm.domain.Aggregation
-import net.consensys.zkevm.domain.BlobAndBatchCounters
-import net.consensys.zkevm.domain.BlobCounters
-import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.CompressionProofIndex
-import net.consensys.zkevm.domain.InvalidityProofIndex
-import net.consensys.zkevm.domain.ProofsToAggregate
-import net.consensys.zkevm.domain.createProofToFinalize
-import net.consensys.zkevm.persistence.AggregationsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
@@ -76,11 +78,11 @@ class ProofAggregationCoordinatorServiceTest {
     val config =
       ProofAggregationCoordinatorService.Config(
         pollingInterval = 10.milliseconds,
-        proofsLimit = blobsToPoll,
         proofGenerationRetryBackoffDelay = 5.milliseconds,
       )
 
     var provenAggregation = 0UL
+    val aggregationProofRequestCaptures = mutableListOf<Pair<AggregationProofIndex, Aggregation>>()
 
     val proofAggregationCoordinatorService =
       ProofAggregationCoordinatorService(
@@ -92,12 +94,17 @@ class ProofAggregationCoordinatorServiceTest {
           provenAggregation = aggregation.endBlockNumber
           mockAggregationsRepository.saveNewAggregation(aggregation)
         },
+        aggregationProofRequestHandler = { proofIndex, unProvenAggregation ->
+          aggregationProofRequestCaptures.add(proofIndex to unProvenAggregation)
+        },
         consecutiveProvenBlobsProvider = mockAggregationsRepository::findConsecutiveProvenBlobs,
         proofAggregationClient = mockProofAggregationClient,
         aggregationL2StateProvider = mockAggregationL2StateProvider,
         metricsFacade = metricsFacade,
         invalidityProofProvider = mockInvalidityProofProvider,
       )
+    proofAggregationCoordinatorService.aggregationProofPoller.start()
+
     verify(mockAggregationCalculator).onAggregation(proofAggregationCoordinatorService)
 
     val blob1 = listOf(createBlob(11u, 19u), createBlob(20u, 33u), createBlob(34u, 41u))
@@ -188,6 +195,7 @@ class ProofAggregationCoordinatorServiceTest {
       InvalidityProofIndex(
         ftxNumber = 1UL,
         simulatedExecutionBlockNumber = agg1StartBlockNumber - 1UL,
+        startBlockTimestamp = Instant.fromEpochSeconds(0),
       ),
     )
 
@@ -199,9 +207,10 @@ class ProofAggregationCoordinatorServiceTest {
         compressionProofIndexes =
         compressionBlobs1.map {
           CompressionProofIndex(
-            it.blobCounters.startBlockNumber,
-            it.blobCounters.endBlockNumber,
-            it.blobCounters.expectedShnarf,
+            startBlockNumber = it.blobCounters.startBlockNumber,
+            endBlockNumber = it.blobCounters.endBlockNumber,
+            hash = it.blobCounters.expectedShnarf,
+            startBlockTimestamp = it.blobCounters.startBlockTimestamp,
           )
         },
         executionProofs = executionProofs1,
@@ -211,6 +220,7 @@ class ProofAggregationCoordinatorServiceTest {
         parentAggregationLastL1RollingHash = rollingInfo1.parentAggregationLastL1RollingHash,
         parentAggregationLastFtxNumber = rollingInfo1.parentAggregationLastFtxNumber,
         parentAggregationLastFtxRollingHash = rollingInfo1.parentAggregationLastFtxRollingHash,
+        startBlockTimestamp = compressionBlobs1.first().blobCounters.startBlockTimestamp,
       )
 
     val proofsToAggregate2 =
@@ -218,9 +228,10 @@ class ProofAggregationCoordinatorServiceTest {
         compressionProofIndexes =
         compressionBlobs2.map {
           CompressionProofIndex(
-            it.blobCounters.startBlockNumber,
-            it.blobCounters.endBlockNumber,
-            it.blobCounters.expectedShnarf,
+            startBlockNumber = it.blobCounters.startBlockNumber,
+            endBlockNumber = it.blobCounters.endBlockNumber,
+            hash = it.blobCounters.expectedShnarf,
+            startBlockTimestamp = it.blobCounters.startBlockTimestamp,
           )
         },
         executionProofs = executionProofs2,
@@ -230,6 +241,7 @@ class ProofAggregationCoordinatorServiceTest {
         parentAggregationLastL1RollingHash = rollingInfo2.parentAggregationLastL1RollingHash,
         parentAggregationLastFtxNumber = rollingInfo2.parentAggregationLastFtxNumber,
         parentAggregationLastFtxRollingHash = rollingInfo2.parentAggregationLastFtxRollingHash,
+        startBlockTimestamp = compressionBlobs2.first().blobCounters.startBlockTimestamp,
       )
 
     val aggregationProof1 = aggregationProofResponse.copy(finalBlockNumber = 23)
@@ -242,6 +254,12 @@ class ProofAggregationCoordinatorServiceTest {
         batchCount = compressionBlobs1.sumOf { it.blobCounters.numberOfBatches }.toULong(),
         aggregationProof = aggregationProof1,
       )
+    val aggregation1ProofIndex = AggregationProofIndex(
+      startBlockNumber = aggregation1.startBlockNumber,
+      endBlockNumber = aggregation1.endBlockNumber,
+      hash = Random.nextBytes(32),
+      startBlockTimestamp = Instant.fromEpochSeconds(0),
+    )
 
     val aggregation2 =
       Aggregation(
@@ -250,15 +268,31 @@ class ProofAggregationCoordinatorServiceTest {
         batchCount = compressionBlobs2.sumOf { it.blobCounters.numberOfBatches }.toULong(),
         aggregationProof = aggregationProof2,
       )
+    val aggregation2ProofIndex = AggregationProofIndex(
+      startBlockNumber = aggregation2.startBlockNumber,
+      endBlockNumber = aggregation2.endBlockNumber,
+      hash = Random.nextBytes(32),
+      startBlockTimestamp = Instant.fromEpochSeconds(0),
+    )
 
-    whenever(mockProofAggregationClient.requestProof(any()))
+    whenever(mockProofAggregationClient.createProofRequest(any()))
       .thenAnswer {
         if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate1) {
-          SafeFuture.completedFuture(aggregationProof1)
+          SafeFuture.completedFuture(aggregation1ProofIndex)
         } else if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate2) {
-          SafeFuture.completedFuture(aggregationProof2)
+          SafeFuture.completedFuture(aggregation2ProofIndex)
         } else {
           throw IllegalStateException()
+        }
+      }
+
+    whenever(mockProofAggregationClient.findProofResponse(any<AggregationProofIndex>()))
+      .thenAnswer {
+        val proofIndex = it.getArgument<AggregationProofIndex>(0)
+        when (proofIndex) {
+          aggregation1ProofIndex -> SafeFuture.completedFuture(aggregationProof1)
+          aggregation2ProofIndex -> SafeFuture.completedFuture(aggregationProof2)
+          else -> SafeFuture.completedFuture(null)
         }
       }
 
@@ -301,9 +335,20 @@ class ProofAggregationCoordinatorServiceTest {
         assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(23.0)
         assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
         assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
-        verify(mockProofAggregationClient).requestProof(proofsToAggregate1)
+        verify(mockProofAggregationClient).createProofRequest(proofsToAggregate1)
+        verify(mockProofAggregationClient).findProofResponse(aggregation1ProofIndex)
         verify(mockAggregationsRepository).saveNewAggregation(aggregation1)
         assertThat(provenAggregation).isEqualTo(aggregation1.endBlockNumber)
+        assertThat(aggregationProofRequestCaptures).hasSize(1)
+        assertThat(aggregationProofRequestCaptures.single().first).isEqualTo(aggregation1ProofIndex)
+        assertThat(aggregationProofRequestCaptures.single().second).isEqualTo(
+          Aggregation(
+            startBlockNumber = blobsToAggregate1.startBlockNumber,
+            endBlockNumber = blobsToAggregate1.endBlockNumber,
+            batchCount = compressionBlobs1.sumOf { it.blobCounters.numberOfBatches }.toULong(),
+            aggregationProof = null,
+          ),
+        )
       }
 
     // Second aggregation should Trigger
@@ -319,9 +364,20 @@ class ProofAggregationCoordinatorServiceTest {
         assertThat(meterRegistry.summary("aggregation.blocks.size").max()).isEqualTo(27.0)
         assertThat(meterRegistry.summary("aggregation.batches.size").max()).isEqualTo(6.0)
         assertThat(meterRegistry.summary("aggregation.blobs.size").max()).isEqualTo(2.0)
-        verify(mockProofAggregationClient).requestProof(proofsToAggregate2)
+        verify(mockProofAggregationClient).createProofRequest(proofsToAggregate2)
+        verify(mockProofAggregationClient).findProofResponse(aggregation2ProofIndex)
         verify(mockAggregationsRepository).saveNewAggregation(aggregation2)
         assertThat(provenAggregation).isEqualTo(aggregation2.endBlockNumber)
+        assertThat(aggregationProofRequestCaptures).hasSize(2)
+        assertThat(aggregationProofRequestCaptures[1].first).isEqualTo(aggregation2ProofIndex)
+        assertThat(aggregationProofRequestCaptures[1].second).isEqualTo(
+          Aggregation(
+            startBlockNumber = blobsToAggregate2.startBlockNumber,
+            endBlockNumber = blobsToAggregate2.endBlockNumber,
+            batchCount = compressionBlobs2.sumOf { it.blobCounters.numberOfBatches }.toULong(),
+            aggregationProof = null,
+          ),
+        )
       }
   }
 }

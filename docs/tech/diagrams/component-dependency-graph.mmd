@@ -1,15 +1,11 @@
 %% Component Dependency Graph
 flowchart TB
-    BridgeUI["bridge-ui<br/>(Next.js)"]
-    
     subgraph SDK["sdk"]
         Core["core"]
         Viem["viem"]
         Ethers["ethers"]
     end
-    
-    BridgeUI --> SDK
-    
+
     Contracts["contracts<br/>(L1 + L2)"]
     Postman["postman<br/>(message relay)"]
     E2E["e2e<br/>(testing)"]
@@ -28,7 +24,7 @@ flowchart TB
     
     Prover["prover<br/>(Go)"]
     JvmLibs["jvm-libs<br/>shared"]
-    BesuPlugins["besu-plugins<br/>sequencer + state<br/>recovery"]
+    BesuPlugins["linea-besu/plugins<br/>sequencer + state<br/>recovery"]
     
     Coordinator --> Prover
     Coordinator --> JvmLibs

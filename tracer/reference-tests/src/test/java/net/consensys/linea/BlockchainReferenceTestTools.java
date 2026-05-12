@@ -49,7 +49,7 @@ import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
 import org.hyperledger.besu.ethereum.core.Block;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.MutableWorldState;
+import org.hyperledger.besu.ethereum.mainnet.BlockAccessListValidator;
 import org.hyperledger.besu.ethereum.mainnet.BlockImportResult;
 import org.hyperledger.besu.ethereum.mainnet.HeaderValidationMode;
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockImporter;
@@ -59,6 +59,7 @@ import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseS
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedules;
 import org.hyperledger.besu.ethereum.rlp.RLPException;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.provider.WorldStateQueryParams;
+import org.hyperledger.besu.plugin.services.worldstate.MutableWorldState;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
 
@@ -587,7 +588,8 @@ public class BlockchainReferenceTestTools {
         MainnetBlockValidatorBuilder.frontier(
             protocolSpec.getBlockHeaderValidator(),
             protocolSpec.getBlockBodyValidator(),
-            corsetBlockProcessor);
+            corsetBlockProcessor,
+            BlockAccessListValidator.ALWAYS_REJECT_BAL);
 
     return new MainnetBlockImporter(blockValidator);
   }

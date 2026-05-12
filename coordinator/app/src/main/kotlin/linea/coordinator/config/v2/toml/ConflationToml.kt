@@ -39,7 +39,7 @@ data class ConflationToml(
     val blobSizeLimit: UInt = 102400u,
     val handlerPollingInterval: Duration = 1.seconds,
     val batchesLimit: UInt? = null,
-    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
+    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V3,
   ) {
     fun reified(): ConflationConfig.BlobCompression {
       return ConflationConfig.BlobCompression(
@@ -61,6 +61,8 @@ data class ConflationToml(
     val aggregationSizeMultipleOf: UInt = 1u,
     val timestampBasedHardForks: List<Instant> = emptyList(),
     val waitForNoL2ActivityToTriggerAggregation: Boolean = false,
+    val waitTargetBlockL1Finalization: Boolean = false,
+    val waitApiResumeAfterTargetBlock: Boolean = false,
   ) {
     init {
       require(timestampBasedHardForks.toSet().size == timestampBasedHardForks.size) {
@@ -79,6 +81,8 @@ data class ConflationToml(
         aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
         timestampBasedHardForks = timestampBasedHardForks,
         waitForNoL2ActivityToTriggerAggregation = this.waitForNoL2ActivityToTriggerAggregation,
+        waitTargetBlockL1Finalization = this.waitTargetBlockL1Finalization,
+        waitApiResumeAfterTargetBlock = this.waitApiResumeAfterTargetBlock,
       )
     }
   }

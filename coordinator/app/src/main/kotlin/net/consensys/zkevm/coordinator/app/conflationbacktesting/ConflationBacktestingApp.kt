@@ -4,98 +4,106 @@ import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
+import linea.blob.BlobCompressorFactory
+import linea.blob.BlobCompressorVersion
+import linea.clients.ExecutionProverClientV2
+import linea.conflation.AlwaysSafeBlockNumberProvider
+import linea.conflation.ConflationService
+import linea.conflation.FixedLaggingHeadSafeBlockProvider
+import linea.conflation.calculators.CalculatorsFactory
+import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
+import linea.domain.Aggregation
+import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.BlockParameter
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.kotlin.decodeHex
+import linea.persistence.DisabledForcedTransactionsDao
+import linea.timer.VertxTimerFactory
+import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
-import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderAsync
-import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
+import net.consensys.zkevm.coordinator.blockcreation.LastProvenBlockNumberProviderSync
+import net.consensys.zkevm.coordinator.blockcreation.TargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
-import net.consensys.zkevm.domain.CompressionProofIndex
+import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationL2StateProviderImpl
+import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProviderImpl
+import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobShnarfMetaData
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
-import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressor
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
-import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
 import net.consensys.zkevm.ethereum.coordination.conflation.BlockToBatchSubmissionCoordinator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationService
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationServiceImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlobAwareConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlockConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConflationHandlerImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
-import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-@OptIn(ExperimentalAtomicApi::class)
 class ConflationBacktestingApp(
   val vertx: Vertx,
   val conflationBacktestingAppConfig: ConflationBacktestingConfig,
   mainCoordinatorConfig: CoordinatorConfig,
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   val metricsFacade: MetricsFacade,
+  val clock: Clock = Clock.System,
 ) : LongRunningService {
 
   init {
     require(mainCoordinatorConfig.conflation.backtestingDirectory != null) {
       "Backtesting requests parent directory must be set in conflation config"
     }
-    mainCoordinatorConfig.traces.common?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
-    mainCoordinatorConfig.traces.counters?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
-    mainCoordinatorConfig.traces.conflation?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
-  }
+    require(conflationBacktestingAppConfig.blobCompressorVersion != BlobCompressorVersion.V2) {
+      "Blob compressor version 2 is not supported for backtesting"
+    }
+    val mainCoordinatorConfigTracesEndpoints = emptySet<String>()
+      .plus(mainCoordinatorConfig.traces.common?.endpoints ?: emptyList())
+      .plus(mainCoordinatorConfig.traces.counters?.endpoints ?: emptyList())
+      .plus(mainCoordinatorConfig.traces.conflation?.endpoints ?: emptyList())
 
-  private val log = LogManager.getLogger("conflation_backtesting.job_${conflationBacktestingAppConfig.jobId()}")
+    val backtestingTracesEndpoints = setOf(
+      conflationBacktestingAppConfig.tracesApi.endpoint,
+      conflationBacktestingAppConfig.tracesConflationApi?.endpoint,
+    ).filterNotNull().toSet()
 
-  private val conflationBacktestingComplete = AtomicBoolean(false)
-
-  fun isConflationBacktestingComplete(): Boolean = conflationBacktestingComplete.load()
-
-  fun onConflationProgress(
-    proofIndex: CompressionProofIndex,
-  ): SafeFuture<*> {
-    return if (proofIndex.endBlockNumber == conflationBacktestingAppConfig.endBlockNumber) {
-      conflationBacktestingComplete.store(true)
-      log.info("Conflation backtesting complete")
-      this.stop()
-    } else {
-      log.info(
-        "Conflation backtesting progress: processed till blockNumber={}, targetEndBlock={}",
-        proofIndex.endBlockNumber,
-        conflationBacktestingAppConfig.endBlockNumber,
-      )
-      SafeFuture.completedFuture(Unit)
+    require(mainCoordinatorConfigTracesEndpoints.intersect(backtestingTracesEndpoints).isEmpty()) {
+      "Cannot use same traces endpoint for backtesting and main conflation"
+    }
+    require(
+      conflationBacktestingAppConfig.tracesConflationApi == null ||
+        conflationBacktestingAppConfig.tracesConflationApi.version == conflationBacktestingAppConfig.tracesApi.version,
+    ) {
+      "When tracesConflationApi is set, its version must match tracesApi.version"
     }
   }
 
+  private val log = LogManager.getLogger("conflation_backtesting_job_${conflationBacktestingAppConfig.jobId()}")
+
+  private val progressTracker = BacktestingProgressTracker(
+    startBlockNumber = conflationBacktestingAppConfig.startBlockNumber,
+    targetEndBlockNumber = conflationBacktestingAppConfig.endBlockNumber,
+    log = log,
+  )
+
+  fun isConflationBacktestingComplete(): Boolean = progressTracker.isComplete()
+
   val backtestingCoordinatorConfig: CoordinatorConfig = mainCoordinatorConfig.copy(
     conflation = mainCoordinatorConfig.conflation.copy(
-      l2FetchBlocksLimit = UInt.MAX_VALUE,
       blocksLimit = conflationBacktestingAppConfig.batchesFixedSize,
       forceStopConflationAtBlockInclusive = conflationBacktestingAppConfig.endBlockNumber,
       conflationDeadline = null,
@@ -121,21 +129,25 @@ class ConflationBacktestingApp(
         )
       },
     ),
-    traces = mainCoordinatorConfig.traces.copy(
-      expectedTracesApiVersion = conflationBacktestingAppConfig.tracesApi.version,
-      common = ClientApiConfig(
-        endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
-        requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
-      ),
-      counters = mainCoordinatorConfig.traces.counters?.copy(
-        endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
-        requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
-      ),
-      conflation = mainCoordinatorConfig.traces.conflation?.copy(
-        endpoints = listOf(conflationBacktestingAppConfig.tracesApi.endpoint),
-        requestLimitPerEndpoint = conflationBacktestingAppConfig.tracesApi.requestLimitPerEndpoint,
-      ),
-    ),
+    traces = run {
+      val bt = conflationBacktestingAppConfig
+      val tracesApiClient = ClientApiConfig(
+        endpoints = listOf(bt.tracesApi.endpoint),
+        requestLimitPerEndpoint = bt.tracesApi.requestLimitPerEndpoint,
+      )
+      val conflationApiClient = bt.tracesConflationApi?.let { api ->
+        ClientApiConfig(
+          endpoints = listOf(api.endpoint),
+          requestLimitPerEndpoint = api.requestLimitPerEndpoint,
+        )
+      }
+      mainCoordinatorConfig.traces.copy(
+        expectedTracesApiVersion = bt.tracesApi.version,
+        common = if (conflationApiClient == null) tracesApiClient else null,
+        counters = if (conflationApiClient == null) null else tracesApiClient,
+        conflation = conflationApiClient,
+      )
+    },
     stateManager = mainCoordinatorConfig.stateManager.copy(
       endpoints = listOf(conflationBacktestingAppConfig.shomeiApi.endpoint),
       requestLimitPerEndpoint = conflationBacktestingAppConfig.shomeiApi.requestLimitPerEndpoint,
@@ -157,48 +169,36 @@ class ConflationBacktestingApp(
     BlockParameter.fromNumber(lastProcessedBlockNumber),
   ).get()
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock.timestamp.toLong())
+  val blobCompressor = BlobCompressorFactory.getInstance(
+    compressorVersion = backtestingCoordinatorConfig.conflation.blobCompression.blobCompressorVersion,
+    dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit.toInt(),
+  )
 
-  private val conflationCalculator: TracesConflationCalculator = run {
-    // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.getInstance(
-      compressorVersion = backtestingCoordinatorConfig.conflation.blobCompression.blobCompressorVersion,
-      dataLimit = backtestingCoordinatorConfig.conflation.blobCompression.blobSizeLimit,
-      metricsFacade = metricsFacade,
-    )
-
-    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
-      blobCompressor = blobCompressor,
-    )
-
-    val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
-      syncCalculators = ConflationAppHelper.createCalculatorsForBlobsAndConflation(
-        configs = backtestingCoordinatorConfig,
-        compressedBlobCalculator = compressedBlobCalculator,
-        lastProcessedTimestamp = lastProcessedTimestamp,
-        logger = log,
-        metricsFacade = metricsFacade,
-      ),
-      deferredTriggerConflationCalculators = emptyList(),
-      emptyTracesCounters = backtestingCoordinatorConfig.conflation.tracesLimits.emptyTracesCounters,
-      log = log,
-    )
-
-    val batchesLimit = backtestingCoordinatorConfig.conflation.blobCompression.batchesLimit
-      ?: (backtestingCoordinatorConfig.conflation.proofAggregation.proofsLimit - 1U)
-
-    GlobalBlobAwareConflationCalculator(
-      conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
-      metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit,
-      log = log,
-    )
-  }
+  private val conflationCalculators = CalculatorsFactory.create(
+    blobCompressor = blobCompressor,
+    tracesCountersLimit = backtestingCoordinatorConfig.conflation.tracesLimits,
+    blocksLimit = backtestingCoordinatorConfig.conflation.blocksLimit,
+    timestampBasedHardForks = backtestingCoordinatorConfig.conflation.proofAggregation.timestampBasedHardForks,
+    lastAggregatedBlockNumber = lastProcessedBlockNumber,
+    lastAggregatedTimestamp = lastProcessedTimestamp,
+    blobBatchesLimit = backtestingCoordinatorConfig.conflation.blobCompression.batchesLimit,
+    aggregationProofsLimit = backtestingCoordinatorConfig.conflation.proofAggregation.proofsLimit,
+    aggregationBlobLimit = backtestingCoordinatorConfig.conflation.proofAggregation.blobsLimit,
+    aggregationSizeMultipleOf = backtestingCoordinatorConfig.conflation.proofAggregation.aggregationSizeMultipleOf,
+    aggregationTargetEndBlockNumbers = backtestingCoordinatorConfig.conflation.proofAggregation.targetEndBlocks?.toSet()
+      ?: emptySet(),
+    timerFactory = VertxTimerFactory(vertx),
+    safeBlockProvider = FixedLaggingHeadSafeBlockProvider(
+      ethApiBlockClient = l2EthClient,
+      blocksToFinalization = 0UL,
+    ),
+    metricsFacade = metricsFacade,
+    clock = this.clock,
+  )
 
   private val conflationService: ConflationService =
     ConflationServiceImpl(
-      calculator = conflationCalculator,
+      calculator = conflationCalculators.blockConflationCalculator,
       safeBlockNumberProvider = AlwaysSafeBlockNumberProvider(),
       metricsFacade = metricsFacade,
       log = log,
@@ -249,6 +249,13 @@ class ConflationBacktestingApp(
         log = log,
       ),
       batchProofHandler = { _ -> SafeFuture.completedFuture(Unit) },
+      batchProofRequestHandler = { proofIndex, unProvenBatch ->
+        log.info(
+          "Backtesting execution proof request produced: batch={}",
+          unProvenBatch.intervalString(),
+        )
+        progressTracker.recordExecutionRequestEndBlock(proofIndex.endBlockNumber)
+      },
       vertx = vertx,
       config = ProofGeneratingConflationHandlerImpl.Config(
         conflationAndProofGenerationRetryBackoffDelay = 5.seconds,
@@ -258,6 +265,10 @@ class ConflationBacktestingApp(
       metricsFacade = metricsFacade,
     )
   }
+
+  // In-memory blob store: captures per-batch execution proof boundaries at blob-creation
+  // time and promotes blobs to proven once the compression proof request is submitted.
+  private val inMemoryProvenBlobsTracker = InMemoryConsecutiveProvenBlobsProvider()
 
   private val blobCompressionProofCoordinator = run {
     val parentBlobDataProvider = object : ParentBlobDataProvider {
@@ -296,8 +307,13 @@ class ConflationBacktestingApp(
       blobCompressionProofHandler = {
         SafeFuture.completedFuture(Unit)
       },
-      blobCompressionProofRequestHandler = { proofIndex, _ ->
-        onConflationProgress(proofIndex)
+      blobCompressionProofRequestHandler = { proofIndex, blobRecord ->
+        log.info(
+          "Backtesting compression proof request produced: blob={}",
+          blobRecord.intervalString(),
+        )
+        inMemoryProvenBlobsTracker.acceptProvenBlobRecord(proofIndex, blobRecord)
+        progressTracker.recordCompressionRequestEndBlock(blobRecord.endBlockNumber)
       },
       log = log,
       metricsFacade = metricsFacade,
@@ -307,8 +323,50 @@ class ConflationBacktestingApp(
 
   init {
     conflationService.onConflatedBatch(proofGeneratingConflationHandlerImpl)
-    conflationCalculator.onBlobCreation(blobCompressionProofCoordinator::handleBlob)
+    conflationCalculators.blockConflationCalculator.onBlobCreation { blob ->
+      inMemoryProvenBlobsTracker.captureBlobExecutionProofs(blob)
+      blobCompressionProofCoordinator.handleBlob(blob)
+    }
   }
+
+  private val l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
+    web3jClient = createWeb3jHttpClient(
+      rpcUrl = backtestingCoordinatorConfig.conflation.l2Endpoint.toString(),
+      log = log,
+    ),
+    ethApiClient = l2EthClient,
+    contractAddress = backtestingCoordinatorConfig.protocol.l2.contractAddress,
+    smartContractErrors = backtestingCoordinatorConfig.smartContractErrors,
+    smartContractDeploymentBlockNumber = backtestingCoordinatorConfig.protocol.l2.contractDeploymentBlockNumber
+      ?.getNumber(),
+  )
+
+  private val proofAggregationCoordinatorService: LongRunningService = ProofAggregationCoordinatorService.create(
+    vertx = vertx,
+    aggregationCalculator = conflationCalculators.aggregationCalculator,
+    aggregationCoordinatorPollingInterval =
+    backtestingCoordinatorConfig.conflation.proofAggregation.coordinatorPollingInterval,
+    startBlockNumberInclusive = conflationBacktestingAppConfig.startBlockNumber,
+    aggregationProofHandler = { aggregation: Aggregation ->
+      SafeFuture.completedFuture(Unit)
+    },
+    aggregationProofRequestHandler = { proofIndex, unProvenAggregation ->
+      log.info(
+        "Backtesting aggregation proof request produced: aggregation={}",
+        unProvenAggregation.intervalString(),
+      )
+      progressTracker.recordAggregationRequestEndBlock(proofIndex.endBlockNumber)
+    },
+    invalidityProofProvider = InvalidityProofProviderImpl(DisabledForcedTransactionsDao()),
+    aggregationL2StateProvider = AggregationL2StateProviderImpl(
+      ethApiClient = l2EthClient,
+      messageService = l2MessageService,
+      forcedTransactionsDao = DisabledForcedTransactionsDao(),
+    ),
+    consecutiveProvenBlobsProvider = inMemoryProvenBlobsTracker,
+    proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
+    metricsFacade = metricsFacade,
+  )
 
   private val blockToBatchSubmissionCoordinator = BlockToBatchSubmissionCoordinator(
     conflationService = conflationService,
@@ -323,9 +381,9 @@ class ConflationBacktestingApp(
     ethApi = l2EthClient,
     startingBlockNumberExclusive = conflationBacktestingAppConfig.startBlockNumber.toLong() - 1,
     blockCreationListener = blockToBatchSubmissionCoordinator,
-    lastProvenBlockNumberProviderAsync = object : LastProvenBlockNumberProviderAsync {
-      override fun getLastProvenBlockNumber(): SafeFuture<Long> {
-        return SafeFuture.completedFuture(conflationBacktestingAppConfig.startBlockNumber.toLong() - 1)
+    lastProvenBlockNumberProviderSync = object : LastProvenBlockNumberProviderSync {
+      override fun getLastKnownProvenBlockNumber(): Long {
+        return progressTracker.lastExecutionRequestEndBlock()
       }
     },
     config = BlockCreationMonitor.Config(
@@ -338,11 +396,17 @@ class ConflationBacktestingApp(
       lastL2BlockNumberToProcessInclusive = conflationBacktestingAppConfig.endBlockNumber + 1uL,
     ),
     log = log,
+    targetCheckpointPauseController = object : TargetCheckpointPauseController {
+      override fun shouldPauseConflation(): Boolean = false
+      override fun importBlock(block: Block) = Unit
+      override fun signalResumeFromApi(): Boolean = false
+    },
   )
 
   override fun start(): SafeFuture<Unit> {
     return proofGeneratingConflationHandlerImpl.start()
       .thenCompose { blobCompressionProofCoordinator.start() }
+      .thenCompose { proofAggregationCoordinatorService.start() }
       .thenCompose { blockCreationMonitor.start() }
       .thenPeek {
         log.info("Conflation backtesting started successfully")
@@ -353,8 +417,14 @@ class ConflationBacktestingApp(
     return SafeFuture.allOf(
       proofGeneratingConflationHandlerImpl.stop(),
       blobCompressionProofCoordinator.stop(),
+      SafeFuture.of(proofAggregationCoordinatorService.stop()),
       blockCreationMonitor.stop(),
     ).thenApply {
+      try {
+        blobCompressor.close()
+      } catch (_: Throwable) {
+        // Ignored, we want to attempt to close the compressor but it should not prevent the rest of the shutdown
+      }
       log.info("Conflation backtesting stopped successfully")
     }
   }

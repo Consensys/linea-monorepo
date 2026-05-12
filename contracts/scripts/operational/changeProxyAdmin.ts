@@ -1,4 +1,6 @@
 import { ethers, upgrades } from "hardhat";
+
+import { warnIfUsingPrivateKeySigning } from "../hardhat/signer-ui-bridge";
 import { requireEnv } from "../hardhat/utils";
 
 /*
@@ -13,11 +15,16 @@ import { requireEnv } from "../hardhat/utils";
 
     
     *******************************************************************************************
-    NEW_PROXY_ADMIN_ADDRESS=0x.. PROXY_ADDRESS=0x.. CONTRACT_TYPE=TokenBridge npx hardhat run --network zkevm_dev scripts/operational/changeProxyAdmin.ts
+    NEW_PROXY_ADMIN_ADDRESS=0x.. PROXY_ADDRESS=0x.. CONTRACT_TYPE=TokenBridge pnpm exec hardhat run --network zkevm_dev scripts/operational/changeProxyAdmin.ts
     *******************************************************************************************
 */
 
 async function main() {
+  warnIfUsingPrivateKeySigning({
+    scriptContext: "scripts/operational/changeProxyAdmin.ts",
+    uiSupported: false,
+  });
+
   const newProxyAdmin = requireEnv("NEW_PROXY_ADMIN_ADDRESS");
   const proxyAddress = requireEnv("PROXY_ADDRESS");
   const contractType = requireEnv("CONTRACT_TYPE");

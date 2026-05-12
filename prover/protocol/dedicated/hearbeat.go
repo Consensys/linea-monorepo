@@ -55,11 +55,11 @@ type RepeatedPattern struct {
 // masked by an [IsActive] column which control it is zero-padded.
 //
 // The function also defines and assign underlying columns
-func CreateHeartBeat(comp *wizard.CompiledIOP, round, period, offset int, isActive any) *HeartBeatColumn {
+func CreateHeartBeat(comp *wizard.CompiledIOP, round, period, offset int, isActive any, callerName string) *HeartBeatColumn {
 
 	hb := &HeartBeatColumn{
 		Offset:  offset,
-		Counter: *NewCyclicCounter(comp, round, period, isActive),
+		Counter: *NewCyclicCounter(comp, round, period, isActive, callerName),
 	}
 
 	if offset == -1 || offset == period-1 {
@@ -104,6 +104,11 @@ func cleanIsActive(isActiveAny any) (isActive *sym.Expression, fullyActive bool,
 		board := act.Board()
 		size = column.ExprIsOnSameLengthHandles(&board)
 	case verifiercol.ConstCol:
+		if !act.IsBase() {
+			utils.Panic("activator column is defined over field extensions with value=%v", act.F.String())
+			return
+		}
+
 		isActive = sym.NewConstant(act.F)
 		fullyActive = act.F.IsOne()
 		size = act.Size()

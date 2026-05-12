@@ -8,6 +8,8 @@ Running the script with an .env file set, you will need to make sure that the co
 Running the script without an .env file will require you to place the variables as command-line arguments.
 The command-line arguments will create or replace existing .env (only in memory) environment variables. If the variables are provided in the terminal as command-line arguments, they will have priority over the same variables if they are defined in the .env file. These need not exist in the .env file.
 
+Selected operational Hardhat tasks also support browser-wallet signing with `HARDHAT_SIGNER_UI=true`. `HARDHAT_SIGNER_UI=true` and `DEPLOYER_PRIVATE_KEY` are mutually exclusive; Hardhat errors immediately if both are set.
+
 <br />
 
 ## Network specific variables
@@ -44,7 +46,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 Base command:
 
 ```shell
-npx hardhat getCurrentFinalizedBlockNumber --network sepolia
+pnpm exec hardhat getCurrentFinalizedBlockNumber --network sepolia
 ```
 
 Base command with cli arguments:
@@ -52,7 +54,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat getCurrentFinalizedBlockNumber \
+pnpm exec hardhat getCurrentFinalizedBlockNumber \
 --contract-type <string> \
 --proxy-address <address> \
 --network sepolia
@@ -81,7 +83,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat grantContractRoles --network sepolia
+pnpm exec hardhat grantContractRoles --network sepolia
 ```
 
 Base command with cli arguments:
@@ -89,7 +91,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat grantContractRoles \
+pnpm exec hardhat grantContractRoles \
 --admin-address <address>  \
 --proxy-address <address>  \
 --contract-type <string> \
@@ -121,7 +123,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat renounceContractRoles --network sepolia
+pnpm exec hardhat renounceContractRoles --network sepolia
 ```
 
 Base command with cli arguments:
@@ -129,7 +131,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat renounceContractRoles \
+pnpm exec hardhat renounceContractRoles \
 --old-admin-address <address>  \
 --new-admin-address <address>  \
 --proxy-address <address> \
@@ -165,7 +167,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat setRateLimit --network linea_sepolia
+pnpm exec hardhat setRateLimit --network linea_sepolia
 ```
 
 Base command with cli arguments:
@@ -173,7 +175,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat setRateLimit \
+pnpm exec hardhat setRateLimit \
 --message-service-address <address> \
 --message-service-type <string> \
 --withdraw-limit <uint256> \
@@ -205,7 +207,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 Base command:
 
 ```shell
-npx hardhat setVerifierAddress --network sepolia
+pnpm exec hardhat setVerifierAddress --network sepolia
 ```
 
 Base command with cli arguments:
@@ -213,7 +215,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat setVerifierAddress \
+pnpm exec hardhat setVerifierAddress \
 --verifier-proof-type <uint256> \
 --proxy-address <address> \
 --verifier-address <address> \
@@ -246,7 +248,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 Base command:
 
 ```shell
-npx hardhat setMessageServiceOnTokenBridge --network sepolia
+pnpm exec hardhat setMessageServiceOnTokenBridge --network sepolia
 ```
 
 Base command with cli arguments:
@@ -254,7 +256,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat setMessageServiceOnTokenBridge \
+pnpm exec hardhat setMessageServiceOnTokenBridge \
 --message-service-address <address> \
 --token-bridge-address <address> \
 --network sepolia
@@ -286,7 +288,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 Base command:
 
 ```shell
-npx hardhat transferProxyAdminOwnership --network sepolia
+pnpm exec hardhat transferProxyAdminOwnership --network sepolia
 ```
 
 Base command with cli arguments:
@@ -294,7 +296,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat transferProxyAdminOwnership \
+pnpm exec hardhat transferProxyAdminOwnership \
 --proxy-admin-owner-address <address> \
 --proxy-address <address> \
 --contract-type <string> \
@@ -327,7 +329,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 Base command:
 
 ```shell
-npx hardhat changeProxyAdmin --network sepolia
+pnpm exec hardhat changeProxyAdmin --network sepolia
 ```
 
 Base command with cli arguments:
@@ -335,7 +337,7 @@ Base command with cli arguments:
 ```shell
 DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
-npx hardhat changeProxyAdmin \
+pnpm exec hardhat changeProxyAdmin \
 --new-proxy-admin-address <address> \
 --proxy-address <address> \
 --contract-type <string> \

@@ -2,7 +2,7 @@
  * Runs as git pre-commit hook
  * Filters the list of changed files on 'git commit'
  * If *.ts files in specified projects are detected, runs the 'lint:ts:fix' package.json script for that project
- * E.g. if a *.ts file is changed in /sdk, then this script will run 'pnpm run lint:ts:fix' in the /sdk project
+ * E.g. if a *.ts file is changed in /ts-libs/sdk, then this script will run 'pnpm run lint:ts:fix' in the /ts-libs/sdk project
  */
 
 const fs = require('fs');
@@ -20,7 +20,6 @@ const FILE_EXTENSION = {
 
 // Projects to filter for
 const FOLDER = {
-    BRIDGEUI: "BRIDGEUI",
     CONTRACTS: "CONTRACTS",
     E2E: "E2E",
     OPERATIONS: "OPERATIONS",
@@ -58,19 +57,17 @@ const FILE_EXTENSION_DOCUMENTATION_UPDATING_COMMAND = {
 
 // Project => Path in monorepo
 const FOLDER_PATH = {
-    [FOLDER.BRIDGEUI]: "bridge-ui/",
     [FOLDER.CONTRACTS]: "contracts/",
     [FOLDER.E2E]: "e2e/",
-    [FOLDER.OPERATIONS]: "operations/",
+    [FOLDER.OPERATIONS]: "operations/operations-cli/",
     [FOLDER.POSTMAN]: "postman/",
-    [FOLDER["SDK-CORE"]]: "sdk/sdk-core/",
-    [FOLDER["SDK-ETHERS"]]: "sdk/sdk-ethers/",
-    [FOLDER["SDK-VIEM"]]: "sdk/sdk-viem/",
+    [FOLDER["SDK-CORE"]]: "ts-libs/sdk/sdk-core/",
+    [FOLDER["SDK-ETHERS"]]: "ts-libs/sdk/sdk-ethers/",
+    [FOLDER["SDK-VIEM"]]: "ts-libs/sdk/sdk-viem/",
 };
 
 // Project => List of changed files
 const FOLDER_CHANGED_FILES = {
-    [FOLDER.BRIDGEUI]: new Array(),
     [FOLDER.CONTRACTS]: new Array(),
     [FOLDER.E2E]: new Array(),
     [FOLDER.OPERATIONS]: new Array(),
@@ -82,7 +79,6 @@ const FOLDER_CHANGED_FILES = {
 
 // Project => Runtime
 const FOLDER_RUNTIME = {
-    [FOLDER.BRIDGEUI]: RUNTIME.NODEJS,
     [FOLDER.CONTRACTS]: RUNTIME.NODEJS,
     [FOLDER.E2E]: RUNTIME.NODEJS,
     [FOLDER.OPERATIONS]: RUNTIME.NODEJS,

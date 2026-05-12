@@ -3,34 +3,39 @@ package net.consensys.zkevm.coordinator.app.conflation
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
+import linea.clients.ExecutionProverClientV2
+import linea.conflation.ConflationService
+import linea.conflation.FixedLaggingHeadSafeBlockProvider
+import linea.conflation.calculators.CalculatorsFactory
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
-import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.BlobRecord
+import linea.domain.BlocksConflation
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.ftx.ForcedTransactionsApp
-import linea.persistence.ftx.ForcedTransactionsDao
+import linea.metrics.LineaMetricsCategory
+import linea.persistence.AggregationsRepository
+import linea.persistence.BatchesRepository
+import linea.persistence.BlobsRepository
+import linea.persistence.ForcedTransactionsDao
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
+import linea.timer.VertxTimerFactory
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.createCalculatorsForBlobsAndConflation
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.createDeadlineConflationCalculatorRunner
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeAggregationFrom
-import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
+import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.getLastConflatedAndAggregatedBlocks
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory.createTracesClients
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
-import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
-import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
+import net.consensys.zkevm.coordinator.blockcreation.ConflationTargetCheckpointPauseController
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
@@ -44,32 +49,22 @@ import net.consensys.zkevm.ethereum.coordination.aggregation.InvalidityProofProv
 import net.consensys.zkevm.ethereum.coordination.aggregation.ProofAggregationCoordinatorService
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProviderImpl
-import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressor
+import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobCompressorAdapter
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.ParentBlobDataProviderImpl
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.BlockToBatchSubmissionCoordinator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculatorByDataCompressed
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationService
 import net.consensys.zkevm.ethereum.coordination.conflation.ConflationServiceImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlobAwareConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.GlobalBlockConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.ProofGeneratingConflationHandlerImpl
-import net.consensys.zkevm.ethereum.coordination.conflation.TimestampHardForkConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalculator
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
+import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandlerImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
-import net.consensys.zkevm.persistence.AggregationsRepository
-import net.consensys.zkevm.persistence.BatchesRepository
-import net.consensys.zkevm.persistence.BlobsRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 class ConflationApp(
   private val vertx: Vertx,
@@ -178,85 +173,103 @@ class ConflationApp(
     }
   }
 
-  private val lastProcessedBlockNumber = resumeConflationFrom(
-    aggregationsRepository,
+  private val lastProcessedBlocks = getLastConflatedAndAggregatedBlocks(
     lastFinalizedBlock,
-  ).get()
-  private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
     aggregationsRepository,
-    lastFinalizedBlock,
+    l2EthClient,
   ).get()
-  private val lastProcessedBlock = l2EthClient.ethGetBlockByNumberTxHashes(
-    lastProcessedBlockNumber.toBlockParameter(),
-  ).get()
-  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
+  private val lastConflatedBlock = lastProcessedBlocks.lastConflatedBlock
+  private val lastAggregatedBlock = lastProcessedBlocks.lastAggregatedBlock
 
-  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
-    configs = configs,
-    lastProcessedBlockNumber = lastProcessedBlockNumber,
-    l2EthClient = l2EthClient,
-  ).also {
-    if (it == null) {
-      log.info("Conflation deadline calculator is disabled")
-    }
+  init {
+    log.info(
+      "Resuming conflation from block={} inclusive blockTime={}",
+      lastConflatedBlock.number + 1UL,
+      lastConflatedBlock.headerSummary.timestamp,
+    )
+    log.info(
+      "Resuming aggregation from block={} inclusive blockTime={}",
+      lastAggregatedBlock.number + 1u,
+      lastAggregatedBlock.headerSummary.timestamp,
+    )
   }
 
-  private val conflationCalculator: TracesConflationCalculator = run {
-    val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
+  private val lastProvenBlockNumberProvider = run {
+    val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
+      lastConflatedBlock.headerSummary.number.toLong(),
+      lastFinalizedBlock.toLong(),
+      batchesRepository,
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BATCH,
+      name = "proven.highest.consecutive.block.number",
+      description = "Highest proven consecutive execution batch block number",
+      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() },
+    )
+    lastProvenConsecutiveBatchBlockNumberProvider
+  }
 
-    // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.getInstance(
+  private val targetCheckpointPauseController =
+    ConflationTargetCheckpointPauseController(
+      ConflationTargetCheckpointPauseController.Config(
+        initialLastImportedBlockTimestamp = lastConflatedBlock.headerSummary.timestamp,
+        targetEndBlocks = (configs.conflation.proofAggregation.targetEndBlocks ?: emptyList()).toSet(),
+        targetTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
+        waitTargetBlockL1Finalization = configs.conflation.proofAggregation.waitTargetBlockL1Finalization,
+        waitApiResumeAfterTargetBlock = configs.conflation.proofAggregation.waitApiResumeAfterTargetBlock,
+      ),
+      latestL1FinalizedBlockProvider = lastProvenBlockNumberProvider,
+    )
+
+  val conflationCalculators = CalculatorsFactory.create(
+    blobCompressor = GoBackedBlobCompressorAdapter.getInstance(
       compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
       dataLimit = configs.conflation.blobCompression.blobSizeLimit,
       metricsFacade = metricsFacade,
-    )
-
-    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
-      blobCompressor = blobCompressor,
-    )
-    val syncCalculators = createCalculatorsForBlobsAndConflation(
-      configs = configs,
-      compressedBlobCalculator = compressedBlobCalculator,
-      lastProcessedTimestamp = lastProcessedTimestamp,
-      logger = logger,
-      metricsFacade = metricsFacade,
-    ).also {
-      it.filterIsInstance<TimestampHardForkConflationCalculator>().forEach { calculator ->
-        log.info(
-          "Added timestamp-based hard fork calculator={} ",
-          calculator,
-        )
-      }
-    }
-
-    val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
-      syncCalculators = syncCalculators + forcedTransactionsApp.conflationCalculator,
-      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
-      emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
-      log = logger,
-    )
-
-    val batchesLimit = configs.conflation.blobCompression.batchesLimit
-      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
-    GlobalBlobAwareConflationCalculator(
-      conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
-      metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit,
-    )
-  }
+    ),
+    tracesCountersLimit = configs.conflation.tracesLimits,
+    blocksLimit = configs.conflation.blocksLimit,
+    timestampBasedHardForks = configs.conflation.proofAggregation.timestampBasedHardForks,
+    lastConflatedBlockNumber = lastConflatedBlock.number,
+    lastConflatedTimestamp = lastConflatedBlock.headerSummary.timestamp,
+    lastAggregatedBlockNumber = lastAggregatedBlock.number,
+    lastAggregatedTimestamp = lastAggregatedBlock.headerSummary.timestamp,
+    blobBatchesLimit = configs.conflation.blobCompression.batchesLimit,
+    aggregationProofsLimit = configs.conflation.proofAggregation.proofsLimit,
+    aggregationBlobLimit = configs.conflation.proofAggregation.blobsLimit,
+    aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
+    aggregationTargetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks?.toSet() ?: emptySet(),
+    extraSyncCalculators = listOf(forcedTransactionsApp.conflationCalculator),
+    timerFactory = VertxTimerFactory(vertx),
+    safeBlockProvider = FixedLaggingHeadSafeBlockProvider(
+      ethApiBlockClient = l2EthClient,
+      blocksToFinalization = 0UL,
+    ),
+    conflationDeadline = configs.conflation.conflationDeadline,
+    conflationDeadlineCheckInterval = configs.conflation.conflationDeadlineCheckInterval,
+    conflationDeadlineLastBlockConfirmationDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
+    aggregationDeadline = configs.conflation.proofAggregation.deadline.takeUnless { it.isInfinite() },
+    aggregationDeadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
+    aggregationDeadlineNoL2ActivityTimeout =
+    if (configs.conflation.proofAggregation.waitForNoL2ActivityToTriggerAggregation) {
+      configs.conflation.conflationDeadlineLastBlockConfirmationDelay
+    } else {
+      0.seconds
+    },
+    metricsFacade = metricsFacade,
+    clock = clock,
+  )
 
   private val conflationService: ConflationService =
     ConflationServiceImpl(
-      calculator = conflationCalculator,
+      calculator = conflationCalculators.blockConflationCalculator,
       safeBlockNumberProvider = forcedTransactionsApp.conflationSafeBlockNumberProvider,
       metricsFacade = metricsFacade,
     )
 
   private val blobCompressionProofCoordinator = run {
     val maxProvenBlobCache = run {
-      val highestProvenBlobTracker = HighestProvenBlobTracker(lastProcessedBlockNumber)
+      val highestProvenBlobTracker = HighestProvenBlobTracker(lastConflatedBlock.number)
       metricsFacade.createGauge(
         category = LineaMetricsCategory.BLOB,
         name = "proven.highest.block.number",
@@ -292,7 +305,7 @@ class ConflationApp(
       blobCompressionProofHandler = blobCompressionProofHandler,
       metricsFacade = metricsFacade,
     )
-    val highestUnprovenBlobTracker = HighestUnprovenBlobTracker(lastProcessedBlockNumber)
+    val highestUnprovenBlobTracker = HighestUnprovenBlobTracker(lastConflatedBlock.number)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.BLOB,
       name = "unproven.highest.block.number",
@@ -306,14 +319,14 @@ class ConflationApp(
         highestUnprovenBlobTracker,
       ),
     )
-    conflationCalculator.onBlobCreation(compositeSafeFutureHandler)
+    conflationCalculators.blockConflationCalculator.onBlobCreation(compositeSafeFutureHandler)
     blobCompressionProofCoordinator
   }
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(
       aggregationsRepository,
-      lastProcessedBlockNumber,
+      lastConflatedBlock.number,
     )
 
     metricsFacade.createGauge(
@@ -323,7 +336,7 @@ class ConflationApp(
       measurementSupplier = maxBlobEndBlockNumberTracker,
     )
 
-    val highestAggregationTracker = HighestULongTracker(lastConsecutiveAggregatedBlockNumber)
+    val highestAggregationTracker = HighestULongTracker(lastAggregatedBlock.number)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "proven.highest.block.number",
@@ -331,14 +344,13 @@ class ConflationApp(
       measurementSupplier = highestAggregationTracker,
     )
 
-    val highestConsecutiveAggregationTracker = HighestULongTracker(lastConsecutiveAggregatedBlockNumber)
+    val highestConsecutiveAggregationTracker = HighestULongTracker(lastAggregatedBlock.number)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "proven.highest.consecutive.block.number",
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
-    log.info("Resuming aggregation from block={} inclusive", lastConsecutiveAggregatedBlockNumber + 1u)
 
     val l2MessageService = Web3JL2MessageServiceSmartContractClient.createReadOnly(
       web3jClient = createWeb3jHttpClient(
@@ -354,16 +366,9 @@ class ConflationApp(
     ProofAggregationCoordinatorService
       .create(
         vertx = vertx,
+        aggregationCalculator = conflationCalculators.aggregationCalculator,
         aggregationCoordinatorPollingInterval = configs.conflation.proofAggregation.coordinatorPollingInterval,
-        deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
-        aggregationDeadline = configs.conflation.proofAggregation.deadline,
-        latestBlockProvider = FixedLaggingHeadSafeBlockProvider(
-          ethApiBlockClient = l2EthClient,
-          blocksToFinalization = 0UL,
-        ),
-        maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
-        maxBlobsPerAggregation = configs.conflation.proofAggregation.blobsLimit,
-        startBlockNumberInclusive = lastConsecutiveAggregatedBlockNumber + 1u,
+        startBlockNumberInclusive = lastAggregatedBlock.number + 1u,
         aggregationProofHandler = AggregationProofHandlerImpl(
           aggregationsRepository = aggregationsRepository,
           provenAggregationEndBlockNumberConsumer = { aggEndBlockNumber ->
@@ -383,23 +388,13 @@ class ConflationApp(
         ),
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
-        l2EthApiClient = l2EthClient,
-        l2MessageService = l2MessageService,
-        noL2ActivityTimeout = configs.conflation.conflationDeadlineLastBlockConfirmationDelay,
-        waitForNoL2ActivityToTriggerAggregation =
-        configs.conflation.proofAggregation.waitForNoL2ActivityToTriggerAggregation,
-        targetEndBlockNumbers = configs.conflation.proofAggregation.targetEndBlocks ?: emptyList(),
         metricsFacade = metricsFacade,
-        aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
-        hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
-        initialTimestamp = lastProcessedTimestamp,
-        forcedTransactionTriggerAggCalculator = forcedTransactionsApp.aggregationCalculator,
       )
   }
 
   val proofGeneratingConflationHandlerImpl = run {
     val maxProvenBatchCache = run {
-      val highestProvenBatchTracker = HighestProvenBatchTracker(lastProcessedBlockNumber)
+      val highestProvenBatchTracker = HighestProvenBatchTracker(lastConflatedBlock.number)
       metricsFacade.createGauge(
         category = LineaMetricsCategory.BATCH,
         name = "proven.highest.block.number",
@@ -443,7 +438,7 @@ class ConflationApp(
 
   private val block2BatchCoordinator = run {
     val blobsConflationHandler: (BlocksConflation) -> SafeFuture<*> = run {
-      val highestConflationTracker = HighestConflationTracker(lastProcessedBlockNumber)
+      val highestConflationTracker = HighestConflationTracker(lastConflatedBlock.number)
       metricsFacade.createGauge(
         category = LineaMetricsCategory.CONFLATION,
         name = "last.block.number",
@@ -478,29 +473,27 @@ class ConflationApp(
     )
   }
 
-  private val lastProvenBlockNumberProvider = run {
-    val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
-      lastProcessedBlockNumber.toLong(),
-      lastFinalizedBlock.toLong(),
-      batchesRepository,
-    )
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BATCH,
-      name = "proven.highest.consecutive.block.number",
-      description = "Highest proven consecutive execution batch block number",
-      measurementSupplier = { lastProvenConsecutiveBatchBlockNumberProvider.getLastKnownProvenBlockNumber() },
-    )
-    lastProvenConsecutiveBatchBlockNumberProvider
+  // This object acts as an independent periodic polling service which is responsible
+  // for monitoring the highest consecutive proven block number in the batch db
+  private val provenBlockNumberMonitor = object : VertxPeriodicPollingService(
+    vertx = vertx,
+    pollingIntervalMs = 1.seconds.inWholeMilliseconds,
+    log = log,
+    name = "ProvenBlockNumberMonitor",
+    timerSchedule = TimerSchedule.FIXED_DELAY,
+  ) {
+    override fun action(): SafeFuture<*> {
+      return lastProvenBlockNumberProvider.getLastProvenBlockNumber()
+    }
   }
 
   private val blockCreationMonitor = run {
-    log.info("Resuming conflation from block={} inclusive", lastProcessedBlockNumber + 1UL)
     val blockCreationMonitor = BlockCreationMonitor(
       vertx = vertx,
       ethApi = l2EthClient,
-      startingBlockNumberExclusive = lastProcessedBlockNumber.toLong(),
+      startingBlockNumberExclusive = lastConflatedBlock.number.toLong(),
       blockCreationListener = block2BatchCoordinator,
-      lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
+      lastProvenBlockNumberProviderSync = lastProvenBlockNumberProvider,
       config = BlockCreationMonitor.Config(
         pollingInterval = configs.conflation.blocksPollingInterval,
         blocksToFinalization = 0L,
@@ -511,25 +504,26 @@ class ConflationApp(
         lastL2BlockNumberToProcessInclusive = configs.conflation.forceStopConflationAtBlockInclusive?.inc(),
         lastL2BlockTimestampToProcessInclusive = configs.conflation.forceStopConflationAtBlockTimestampInclusive,
       ),
+      targetCheckpointPauseController = targetCheckpointPauseController,
     )
     blockCreationMonitor
   }
 
   override fun start(): CompletableFuture<Unit> {
-    // TODO: add ftx table clean up
     return cleanupDbDataAfterBlockNumbers(
-      lastProcessedBlockNumber = lastProcessedBlockNumber,
-      lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
+      lastProcessedBlockNumber = lastConflatedBlock.number,
+      lastConsecutiveAggregatedBlockNumber = lastAggregatedBlock.number,
       batchesRepository = batchesRepository,
       blobsRepository = blobsRepository,
       aggregationsRepository = aggregationsRepository,
     )
       .thenCompose { proofGeneratingConflationHandlerImpl.start() }
       .thenCompose { proofAggregationCoordinatorService.start() }
-      .thenCompose { deadlineConflationCalculatorRunner?.start() ?: SafeFuture.completedFuture(Unit) }
+      .thenCompose { conflationCalculators.service.start() }
       .thenCompose { blockCreationMonitor.start() }
       .thenCompose { blobCompressionProofCoordinator.start() }
       .thenCompose { forcedTransactionsApp.start() }
+      .thenCompose { provenBlockNumberMonitor.start() }
       .thenPeek {
         log.info("Conflation started")
       }
@@ -540,14 +534,19 @@ class ConflationApp(
       proofGeneratingConflationHandlerImpl.stop(),
       proofAggregationCoordinatorService.stop(),
       blockCreationMonitor.stop(),
-      deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
+      conflationCalculators.service.stop(),
       blobCompressionProofCoordinator.stop(),
       forcedTransactionsApp.stop(),
+      provenBlockNumberMonitor.stop(),
     )
       .thenApply { log.info("Conflation Stopped") }
   }
 
   fun updateLatestL1FinalizedBlock(blockNumber: Long): SafeFuture<Unit> {
     return lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(blockNumber)
+  }
+
+  fun signalTargetCheckpointResumeFromApi(): Boolean {
+    return targetCheckpointPauseController.signalResumeFromApi()
   }
 }

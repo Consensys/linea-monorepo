@@ -22,7 +22,7 @@ docker buildx build --file coordinator/Dockerfile \
   --tag consensys/linea-coordinator:local .
 
 # Run as part of full stack
-make start-env-with-tracing-v2 COORDINATOR_TAG=local
+make start-env-with-tracing-v2 LINEA_COORDINATOR_TAG=local
 ```
 
 ### Test
@@ -61,17 +61,17 @@ coordinator/
 ├── core/         Core business logic
 ├── clients/      Client implementations (prover, smart-contract, web3signer, traces-generator)
 ├── ethereum/     Ethereum modules (gas-pricing, blob-submitter, finalization-monitor, message-anchoring)
-├── persistence/  Database persistence (aggregation, batch, blob, feehistory, db-common)
+├── persistence/  Database persistence (aggregation, batch, blob, fee history)
 └── utilities/    Shared utilities
 ```
 
 ### Configuration Files
 
-- `config/coordinator/coordinator-config-v2.toml` — Main configuration
-- `config/coordinator/vertx-options.json` — Vert.x runtime options
-- `config/coordinator/log4j2-dev.xml` — Log4j2 logging config
-- `config/common/traces-limits-vV.toml` — Trace limits
-- `config/common/smart-contract-errors.toml` — Smart contract error mappings
+- `docker/config/coordinator/coordinator-config-v2.toml` — Main configuration
+- `docker/config/coordinator/vertx-options.json` — Vert.x runtime options
+- `docker/config/coordinator/log4j2-dev.xml` — Log4j2 logging config
+- `docker/config/common/traces-limits-vV.toml` — Trace limits
+- `docker/config/common/smart-contract-errors.toml` — Smart contract error mappings
 
 ### Key Dependencies
 

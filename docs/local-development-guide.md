@@ -6,14 +6,14 @@ This guide provides instructions for setting up and running Linea services local
 
 Before you start, make sure you have the following installed:
 
-- Node.js >= 22.22.0 (see `.nvmrc`)
+- Node.js >= 24.14.1 (see `.nvmrc`)
 - Docker v24 or higher
   - Docker should have ~16 GB of Memory and 4+ CPUs to run the entire stack
 - Docker Compose version v2.19+
 - Make v3.81+
-- Pnpm >= 10.28.0 (https://pnpm.io/installation)
-- Java Development Kit (JDK) 21 (required for building the coordinator)
-- Gradle 8.5+ (for building Java-based services)
+- Pnpm >= 10.32.1 (https://pnpm.io/installation)
+- Java Development Kit (JDK) 25 (required for building the coordinator)
+- Gradle 9.4+ (for building Java-based services)
 
 ## Building the Coordinator Locally
 
@@ -24,7 +24,7 @@ The coordinator is a Java-based service that orchestrates the Linea protocol's o
 If you haven't already, clone the repository and navigate to the project directory:
 
 ```bash
-git clone https://github.com/ConsenSys/linea-monorepo.git
+git clone https://github.com/Consensys/linea-monorepo.git
 cd linea-monorepo
 ```
 
@@ -68,7 +68,7 @@ The recommended way to run the coordinator is as part of the complete Linea stac
 
 ```bash
 # Start the entire stack with tracing v2 using your local coordinator image
-COORDINATOR_TAG=local make start-env-with-tracing-v2
+LINEA_COORDINATOR_TAG=local make start-env-with-tracing-v2
 ```
 
 This command:
@@ -89,13 +89,13 @@ export POSTGRES_PASSWORD=postgres
 docker compose -f docker/compose-tracing-v2.yml up -d postgres
 
 # Run the coordinator with your local build
-java -Dvertx.configurationFile=config/coordinator/vertx-options.json \
-     -Dlog4j2.configurationFile=config/coordinator/log4j2-dev.xml \
+java -Dvertx.configurationFile=docker/config/coordinator/vertx-options.json \
+     -Dlog4j2.configurationFile=docker/config/coordinator/log4j2-dev.xml \
      -jar coordinator/app/build/libs/coordinator.jar \
-     --traces-limits-v4 config/common/traces-limits-v4.4.toml \
-     --smart-contract-errors config/common/smart-contract-errors.toml \
-     --gas-price-cap-time-of-day-multipliers config/common/gas-price-cap-time-of-day-multipliers.toml \
-     config/coordinator/coordinator-config-v2.toml
+     --traces-limits-v4 docker/config/common/traces-limits-v4.4.toml \
+     --smart-contract-errors docker/config/common/smart-contract-errors.toml \
+     --gas-price-cap-time-of-day-multipliers docker/config/common/gas-price-cap-time-of-day-multipliers.toml \
+     docker/config/coordinator/coordinator-config-v2.toml
 ```
 
 Note: When running the coordinator standalone, you'll need to ensure that all its dependencies (such as L1 and L2 nodes) are properly configured and running.
@@ -104,10 +104,10 @@ Note: When running the coordinator standalone, you'll need to ensure that all it
 
 The coordinator uses several configuration files:
 
-- `config/coordinator/coordinator-config-v2.toml`: Main configuration file
-- `config/common/traces-limits-v4.4.toml`: Traces limits configuration
-- `config/common/smart-contract-errors.toml`: Smart contract errors configuration
-- `config/common/gas-price-cap-time-of-day-multipliers.toml`: Gas price cap multipliers
+- `docker/config/coordinator/coordinator-config-v2.toml`: Main configuration file
+- `docker/config/common/traces-limits-v4.4.toml`: Traces limits configuration
+- `docker/config/common/smart-contract-errors.toml`: Smart contract errors configuration
+- `docker/config/common/gas-price-cap-time-of-day-multipliers.toml`: Gas price cap multipliers
 
 For development, you may want to modify the following parameters in the coordinator configuration:
 
