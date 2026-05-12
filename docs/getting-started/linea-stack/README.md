@@ -3,14 +3,17 @@
 > v0 of the "Streamlined Linea Stack deployment" feature. Local L2 stack
 > pointed at user-supplied **Sepolia** as L1.
 
-> **Status:** Fresh Sepolia boot validated on 2026-05-11 with dev proofs.
+> **Status:** Fresh Sepolia boot validated on 2026-05-12 with dev proofs.
 > Contracts deploy on Sepolia, the L2 chain starts, coordinator binds `9545` /
 > `9546`, the prover file pipeline writes requests and responses, Blockscout UI
 > serves the local L2, and coordinator L1 blob/aggregation/finalization
-> submissions have been observed on Sepolia.
+> submissions have been observed on Sepolia. A real L1-to-L2 message smoke has
+> also been validated: the script sends `sendMessage` on Sepolia, waits for
+> Postman to claim it on L2, verifies the `MessageClaimed` receipt, and checks
+> the recipient balance delta.
 >
 > This is still a bring-up checkpoint, not a final "done" stamp: partial-prover
-> validation and a real bridge/message smoke test remain the next gates.
+> validation remains the next gate.
 >
 > If you boot this and hit something
 > [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
@@ -187,7 +190,40 @@ convention** — connect dapps/wallets to `:8745`.
 
 ## 6. Verifying it works
 
-Start with the helper scripts:
+First boot is intentionally automatic-only: Compose starts the services,
+generates keys, renders config/genesis, deploys contracts, and starts the
+coordinator/prover/postman path. It does **not** send demo traffic or bridge
+messages for you, because those mutate state and spend Sepolia gas.
+
+Recommended post-boot sequence:
+
+1. Inspect the stack with the read-only helpers:
+
+```bash
+./scripts/status.sh
+./scripts/links.sh
+```
+
+2. Send optional local L2 demo traffic when you want Blockscout to visibly move:
+
+```bash
+COUNT=5 ./scripts/send-l2-test-tx.sh
+./scripts/send-l2-erc20-transfer.sh
+```
+
+3. Run the real L1-to-L2 acceptance smoke when you want to prove message relay:
+
+```bash
+./scripts/smoke-bridge-message.sh
+```
+
+4. For partial-prover validation, switch prover mode, restart the rendered
+prover config, then rerun the same read-only checks and bridge smoke.
+
+The scripts stay independent on purpose, so testers can rerun only the stage
+they are validating instead of replaying the whole first boot.
+
+### Read-only helpers
 
 ```bash
 # Redacted milestone view across Docker, deploy logs, coordinator, and prover
@@ -251,25 +287,29 @@ COUNT=5 ./scripts/send-l2-test-tx.sh
 ./scripts/send-l2-erc20-transfer.sh
 ```
 
-### Bridge/message smoke test
+### L1-to-L2 bridge/message smoke test
 
-`scripts/smoke-bridge-message.sh` currently preflights the deployed bridge and
-message-service addresses, then exits non-zero on purpose so it cannot be
-mistaken for a full pass/fail bridge test:
+`scripts/smoke-bridge-message.sh` sends a real Sepolia L1-to-L2 ETH message and
+does not print success until it verifies the Postman L2 claim:
 
 ```bash
 ./scripts/smoke-bridge-message.sh
 ```
 
-It also has an explicitly gated experimental send path:
+Default behavior:
+
+- sends `sendMessage` to the deployed Sepolia `LineaRollupV8`;
+- waits for Postman to ingest the `MessageSent` event;
+- waits for Postman DB status `CLAIMED_SUCCESS`;
+- verifies the local L2 claim receipt emitted `MessageClaimed`;
+- checks the recipient L2 balance increased by the bridged value;
+- prints the Sepolia L1 tx, local L2 claim tx, message hash, and explorer links.
+
+Useful overrides:
 
 ```bash
-BRIDGE_SMOKE_SEND=1 L1_MESSAGE_VALUE_WEI=<wei> ./scripts/smoke-bridge-message.sh
+RECIPIENT=0x... L1_MESSAGE_VALUE_WEI=100000000000000 ./scripts/smoke-bridge-message.sh
 ```
-
-That mode submits an L1 message transaction, but still does not verify L2 claim
-or final delivery. Do not treat the quickstart as final until the script proves
-the user-facing message path end to end.
 
 ## 7. Tearing down
 
@@ -435,11 +475,10 @@ notes.
 - **Partial-prover validation is still pending.** The current validated path uses
   dev proofs for quick feedback; partial proving remains a separate acceptance
   gate.
-- **No scripted bridge smoke test yet.** A real message/bridge path test is still
-  needed before calling the quickstart final.
-- **No CI smoke test.** Validation today is compose-config + manual
-  first-boot-against-Sepolia. A scripted end-to-end smoke test remains follow-up
-  work.
+- **No one-shot verification orchestrator or CI smoke test.** Validation today
+  is compose-config + manual first-boot-against-Sepolia. The local helper
+  scripts are intentionally staged; a future `quickstart-verify.sh` can chain
+  read-only checks, optional demo traffic, and the bridge smoke.
 - **Partial proving is not the default.** The default is dev proofs for
   quickstart usability; partial proving remains opt-in and resource-heavy.
 
@@ -489,7 +528,7 @@ docs/getting-started/linea-stack/
 │   ├── status.sh                ← redacted boot status summary
 │   ├── send-l2-test-tx.sh       ← sends tiny L2 ETH txs for Blockscout demos
 │   ├── send-l2-erc20-transfer.sh ← sends a tiny L2 ERC20Example transfer
-│   ├── smoke-bridge-message.sh  ← guarded bridge/message smoke scaffold
+│   ├── smoke-bridge-message.sh  ← sends and verifies L1-to-L2 message delivery
 │   └── DEPLOY-ENV-CONTRACT.md   ← env vars per deploy step
 └── config/
     ├── DEV-KEYS-INVENTORY.md    ← what's checked in vs runtime

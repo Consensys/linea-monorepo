@@ -221,10 +221,14 @@ check_smoke_and_traffic_scripts() {
     fail "send-l2-erc20-transfer.sh must transfer ERC20Example on L2"
   fi
 
-  if [ -f "$STACK/scripts/smoke-bridge-message.sh" ] && grep -q 'BRIDGE_SMOKE_SEND' "$STACK/scripts/smoke-bridge-message.sh" && grep -q 'not a pass/fail bridge smoke test yet' "$STACK/scripts/smoke-bridge-message.sh"; then
-    pass "smoke-bridge-message.sh is guarded against fake bridge success"
+  if [ -f "$STACK/scripts/smoke-bridge-message.sh" ] \
+    && grep -q 'CLAIMED_SUCCESS' "$STACK/scripts/smoke-bridge-message.sh" \
+    && grep -q 'claim_tx_hash' "$STACK/scripts/smoke-bridge-message.sh" \
+    && grep -q 'MessageClaimed' "$STACK/scripts/smoke-bridge-message.sh" \
+    && ! grep -q 'not a pass/fail bridge smoke test yet' "$STACK/scripts/smoke-bridge-message.sh"; then
+    pass "smoke-bridge-message.sh verifies a real L1-to-L2 claim"
   else
-    fail "smoke-bridge-message.sh must be guarded against fake bridge success"
+    fail "smoke-bridge-message.sh must send and verify a real L1-to-L2 claim"
   fi
 }
 

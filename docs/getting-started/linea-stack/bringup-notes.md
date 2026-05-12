@@ -2,9 +2,10 @@
 
 Running log for the Sepolia quickstart: fixes applied, current status, and caveats that still block calling the project finished.
 
-## Current snapshot - 2026-05-11
+## Current snapshot - 2026-05-12
 
-Fresh Sepolia boot validates the cleaned key model and the current dev-prover path:
+Fresh Sepolia boot validates the cleaned key model, the current dev-prover path,
+and the first real L1-to-L2 message smoke:
 
 - user still supplies one funded `L1_DEPLOYER_PRIVATE_KEY`;
 - `account-setup` generates fresh runtime keys for L1 blob submission, L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman;
@@ -14,9 +15,11 @@ Fresh Sepolia boot validates the cleaned key model and the current dev-prover pa
 - liveness is disabled for the v0 quickstart;
 - `deploy-contracts` writes `addresses.json`, funds generated runtime signers, and is retry-safe from persisted deploy logs;
 - Web3Signer loads 3 generated signer key files, postman starts with generated L1/L2 postman keys, and coordinator ports bind;
-- coordinator submitted L1 blob transactions and aggregations on Sepolia, and finalization advanced to L2 block 10;
+- coordinator submitted L1 blob transactions and aggregations on Sepolia, and finalization advanced during smoke traffic;
 - L2 Blockscout frontend works locally at `http://localhost:4001`;
 - `scripts/send-l2-test-tx.sh` and `scripts/send-l2-erc20-transfer.sh` generate local L2 ETH/token traffic for Blockscout demos;
+- `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta;
+- post-boot helper scripts are staged manually: read-only inspection first, optional L2 demo traffic second, real L1-to-L2 smoke third, then the same sequence again for partial-prover validation;
 
 Fixes found during this clean boot:
 
@@ -27,11 +30,12 @@ Fixes found during this clean boot:
 Current caveats:
 
 - default proving is still dev/dummy proof mode; partial-prover validation remains a separate gate;
-- full bridge/message smoke verification is still needed; `scripts/smoke-bridge-message.sh` only preflights addresses and gates experimental L1 message submission;
+- TokenBridge ERC20 smoke is still separate; the current bridge smoke validates the base L1-to-L2 message path;
+- no one-shot `quickstart-verify.sh` exists yet; keeping the helpers separate avoids hidden Sepolia spend during first boot;
 - transient nonce/replacement retries can appear during catch-up; judge progress by blob/aggregation txs and finalized block advancing;
 - the local L2 does not necessarily keep producing visible user blocks when idle. Use `./scripts/send-l2-test-tx.sh` to create fresh blocks for Blockscout demos.
 
-Next work should focus on full bridge/message smoke verification and partial-prover validation.
+Next work should focus on partial-prover validation, then a small optional `quickstart-verify.sh` wrapper once the manual sequence is stable.
 
 ## Historical fix log
 
