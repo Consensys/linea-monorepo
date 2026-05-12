@@ -58,31 +58,9 @@ What you get from `docker compose up`: a live local L2 chain, fresh Linea
 contracts deployed to Sepolia from your address, and a coordinator/prover path
 that can create default dev proofs and submit L1 blob/finalization transactions.
 
-Validated paths as of 2026-05-12:
-
-- default dev-proof boot: Sepolia contract deploy, local L2 chain, coordinator,
-  prover, postman, and L2 Blockscout;
-- L1 data availability and finalization: blob submission plus a separate
-  `finalizeBlocks` transaction that advances the rollup's
-  `currentL2BlockNumber`;
-- L1-to-L2 message smoke: sends `sendMessage` on Sepolia, waits for Postman to
-  claim on local L2, verifies `MessageClaimed`, and checks the recipient balance
-  delta;
-- opt-in partial-prover boot: execution/invalidity in partial mode,
-  compression/aggregation in dev mode, validated through L1 finalization.
-
-What this is **NOT**:
-- Not portable outside this monorepo — it bind-mounts `../../../contracts` so
-  Hardhat tasks run against the real contracts.
-- Not the full prover — full proving requires >700 GB RAM. Quickstart defaults
-  to dev proofs; partial proving is opt-in for validation runs.
-- No L1 explorer — use [sepolia.etherscan.io](https://sepolia.etherscan.io)
-  with the LineaRollup address from `addresses.json`.
-- No Timelock, no Security Council. The L1 deployer key owns everything.
-  Governance/upgrade flows are out of scope.
-- Not a TypeScript-first implementation yet. Most orchestration is still shell;
-  the TypeScript files are targeted deploy/address helpers. Moving more logic
-  to TypeScript is a follow-up after the team aligns on the boot flow.
+Use the default dev-proof mode for the first evaluation. Partial proving is
+available for heavier validation runs, but it needs more Docker memory and more
+time. Known limitations are listed near the end of this page.
 
 ## 2. Prerequisites
 
@@ -90,7 +68,7 @@ What this is **NOT**:
 |-----------------|----------------------------------------------------------|
 | RAM             | 8 GB Docker Desktop works for default dev proofs; partial mode needs about 30-32 GB assigned to Docker |
 | RAM (recommended) | 48 GB for partial-prover validation                  |
-| Disk            | ~80 GB free (image pulls + chaindata + service DBs)      |
+| Disk            | ~30 GB free; leave more headroom for long traffic/prover runs |
 | CPU             | 8 cores                                                  |
 | Docker          | v24+                                                     |
 | Compose         | v2.19+                                                   |
@@ -227,166 +205,73 @@ convention** — connect dapps/wallets to `:8745`.
 
 ## 6. Verifying it works
 
-First boot is intentionally automatic-only: Compose starts the services,
-generates keys, renders config/genesis, deploys contracts, and starts the
-coordinator/prover/postman path. It does **not** send demo traffic or bridge
-messages for you, because those mutate state and spend Sepolia gas.
+First boot starts the stack and deploys contracts. It does **not** send demo
+traffic or bridge messages for you.
 
-Recommended post-boot sequence:
-
-1. Inspect the stack with the read-only helpers:
+1. Print status and links:
 
 ```bash
 ./scripts/status.sh
 ./scripts/links.sh
 ```
 
-2. Start continuous local L2 ERC20 traffic when you want Blockscout and the
-   prover path to keep moving during a demo or evaluation:
+`status.sh` should show:
+
+- `addresses.json` present;
+- coordinator ports `9545` and `9546` listening;
+- prover request/response counts above zero;
+- a blob tx under `DA only`;
+- a separate finalization tx that advances `rollup currentL2BlockNumber`.
+
+On Sepolia Etherscan, finalization may appear as method selector `0x755bc62f`
+instead of a decoded name. That selector is `finalizeBlocks(bytes,uint256,tuple)`.
+Do not treat `Submit Blobs` as finalization.
+
+2. Open the local L2 explorer:
+
+```text
+http://localhost:4001
+```
+
+3. Start continuous ERC20 traffic for demos/evaluation:
 
 ```bash
 ./scripts/generate-l2-erc20-traffic.sh start
 ./scripts/generate-l2-erc20-traffic.sh logs
 ```
 
-Stop it explicitly when you are done:
+Default: one `ERC20Example.transfer(...)` every 2 seconds until stopped.
 
 ```bash
 ./scripts/generate-l2-erc20-traffic.sh stop
 ```
 
-3. Run the real L1-to-L2 acceptance smoke when you want to prove message relay:
+Useful knobs:
+
+```bash
+INTERVAL_SECONDS=1 ./scripts/generate-l2-erc20-traffic.sh start
+MAX_TXS=100 ./scripts/generate-l2-erc20-traffic.sh start
+```
+
+4. Run the L1-to-L2 message smoke when you want to prove message relay:
 
 ```bash
 ./scripts/smoke-bridge-message.sh
 ```
 
-4. For partial-prover validation, use a clean boot with `PROVER_DEV_OVERRIDE=false`
-and an explicit `PROVER_GOMEMLIMIT`, then rerun the same read-only checks and
-bridge smoke.
+The smoke sends `sendMessage` on Sepolia, waits for Postman to claim on local
+L2, verifies `MessageClaimed`, checks the recipient balance delta, and prints
+both explorer links.
 
-The scripts stay independent on purpose, so testers can rerun only the stage
-they are validating instead of replaying the whole first boot.
+The L2 traffic helpers mutate only the local quickstart L2 chain. The bridge
+smoke spends real Sepolia gas and sends Sepolia value into the quickstart
+LineaRollup contract, then credits the local L2 recipient through Postman.
 
-### Read-only helpers
-
-```bash
-# Redacted milestone view across Docker, deploy logs, coordinator, and prover
-./scripts/status.sh
-
-# Current Sepolia contract links and local L2 explorer links
-./scripts/links.sh
-```
-
-A useful first-boot success check has all of these signals:
-
-- `addresses.json` exists and includes LineaRollupV8, L2MessageService,
-  TokenBridge, and ERC20Example addresses.
-- coordinator ports `9545` and `9546` are listening.
-- prover request/response counts are non-zero.
-- `status.sh` shows a latest blob tx under `DA only`.
-- `status.sh` shows a separate latest finalization tx with
-  `finalizeBlocks(bytes,uint256,tuple)`, successful receipt, `DataFinalizedV3`,
-  `FinalizedStateUpdated`, and an advanced rollup `currentL2BlockNumber`.
-- L2 Blockscout UI responds on `http://localhost:4001`.
-
-For partial-prover validation, also check:
-
-- rendered prover config shows `partial`, `dev`, `partial`, `dev` and
-  `is_allowed_circuit_id = 483`;
-- execution, compression, and aggregation response counts are non-zero;
-- coordinator logs include a `blobs submitted` transaction hash;
-- coordinator logs include `submitted aggregation`, and `status.sh` resolves
-  that tx to `finalizeBlocks` rather than only a blob submission;
-- coordinator logs include a later `finalization update`.
-
-Lower-level checks, when you need them:
-
-```bash
-# Service status
-docker compose --env-file versions.env --env-file .env --profile stack-partial-prover ps
-
-# Final contract addresses (post-deploy)
-docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
-  cat /shared/addresses.json | head -60
-
-# Boot-critical precomputed addresses (account-setup output)
-docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
-  cat /shared/addresses-precomputed.json
-
-# Per-step deploy logs (one file per step, persists across container restarts)
-docker run --rm -v linea-stack-shared-config:/shared:ro busybox \
-  ls /shared/deploy-logs/
-
-# Current L2 block
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-  http://localhost:8745
-
-# L2 Blockscout indexing?
-curl -s http://localhost:4000/api/v2/main-page/blocks | head -c 200
-
-# L2 Blockscout frontend responding?
-curl -fsS http://localhost:4001 >/dev/null
-```
-
-The local L2 can look idle in Blockscout after deployment if nobody sends L2
-transactions. For evaluation/demo runs, use the continuous ERC20 traffic helper
-so Blockscout, the coordinator, and the prover keep receiving fresh L2 blocks:
-
-```bash
-# Start one ERC20Example transfer every 2 seconds until stopped.
-./scripts/generate-l2-erc20-traffic.sh start
-
-# Watch generated tx hashes and Blockscout links.
-./scripts/generate-l2-erc20-traffic.sh logs
-
-# Stop traffic.
-./scripts/generate-l2-erc20-traffic.sh stop
-```
-
-By default the continuous helper sends `1` base unit of `ERC20Example` every 2
-seconds from the generated L2 deployer to the generated L2 postman address. You
-can tune it with `INTERVAL_SECONDS=1`, `AMOUNT_WEI=10`, `TO=0x...`, or
-`MAX_TXS=100`. `MAX_TXS=0`, the default, means run until you stop the helper or
-stop Docker.
-
-The older one-shot helpers are still available for deterministic manual checks:
+Optional one-shot local checks:
 
 ```bash
 ./scripts/send-l2-test-tx.sh
 ./scripts/send-l2-erc20-transfer.sh
-```
-
-The L2 ETH and ERC20 traffic helpers mutate only the local quickstart L2 chain.
-The local L2 ETH is pre-funded quickstart gas balance, not Sepolia ETH, and it
-has no value outside the local L2 chain. The bridge smoke spends real Sepolia
-gas and sends Sepolia value into the quickstart LineaRollup contract, then
-credits the local L2 recipient through Postman; that credited L2 balance is
-still only useful inside this local quickstart chain.
-
-### L1-to-L2 bridge/message smoke test
-
-`scripts/smoke-bridge-message.sh` sends a real Sepolia L1-to-L2 ETH message and
-does not print success until it verifies the Postman L2 claim:
-
-```bash
-./scripts/smoke-bridge-message.sh
-```
-
-Default behavior:
-
-- sends `sendMessage` to the deployed Sepolia `LineaRollupV8`;
-- waits for Postman to ingest the `MessageSent` event;
-- waits for Postman DB status `CLAIMED_SUCCESS`;
-- verifies the local L2 claim receipt emitted `MessageClaimed`;
-- checks the recipient L2 balance increased by the bridged value;
-- prints the Sepolia L1 tx, local L2 claim tx, message hash, and explorer links.
-
-Useful overrides:
-
-```bash
-RECIPIENT=0x... L1_MESSAGE_VALUE_WEI=100000000000000 ./scripts/smoke-bridge-message.sh
 ```
 
 ## 7. Tearing down
@@ -428,82 +313,37 @@ Use `ROLLUP` unless you are intentionally debugging the Validium path.
 
 ### Switching prover mode (dev ↔ partial)
 
-The default quickstart mode is **dev proofs everywhere**. It is the fastest path
-for evaluating boot, contract deployment, L2 explorer, coordinator submission,
-and message relay.
-
-The opt-in validation mode is **partial proving**: execution + invalidity in
-`partial` mode, data_availability + aggregation in `dev` mode, aggregation gate
-at `is_allowed_circuit_id = 483`. That is what
-`config/l2/prover/prover-config-partial.toml.template` ships with. The default
-`PROVER_DEV_OVERRIDE=true` setting patches only the rendered copy in the Docker
-volume, leaving the template itself in the upstream partial shape.
-
-For fast iteration, keep this env var in `.env`:
+Default mode is **dev proofs everywhere**. Keep this for first boot, demos,
+Blockscout, message smoke tests, and normal evaluation:
 
 ```bash
 PROVER_DEV_OVERRIDE=true
 ```
 
-Then recreate the rendered config and bounce the prover:
-
-```bash
-docker compose --env-file versions.env --env-file .env \
-  --profile stack-partial-prover up -d --force-recreate config-render prover
-```
-
-`config-render` post-patches the rendered prover config in the volume — flips
-the 4 prover_mode lines to `dev` and the aggregation bitmask to `963`. The
-**template on disk stays partial**, only the rendered
-file in the volume is patched. Verify:
-
-```bash
-docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
-  grep -E "^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
-# Expected in default quickstart mode:
-#   prover_mode = "dev" × 4
-#   is_allowed_circuit_id = 963
-```
-
-To run partial mode, set `PROVER_DEV_OVERRIDE=false`, raise Docker Desktop
-memory substantially, set `PROVER_GOMEMLIMIT`, and use a clean boot:
+Partial validation mode runs execution + invalidity in `partial` mode while
+compression + aggregation stay in `dev` mode. Use a clean boot and set an
+explicit memory limit:
 
 ```bash
 PROVER_DEV_OVERRIDE=false
 PROVER_GOMEMLIMIT=24GiB
-```
 
-```bash
 docker compose --env-file versions.env --env-file .env \
   --profile stack-partial-prover down -v --remove-orphans
 docker compose --env-file versions.env --env-file .env \
   --profile stack-partial-prover up -d
 ```
 
-Before waiting on proofs, verify the rendered config:
+For a 30-32 GB Docker allocation, `PROVER_GOMEMLIMIT=24GiB` leaves room for the
+rest of the stack. If Docker has 48 GB or more, `32GiB` is a better validation
+setting.
+
+Check which mode rendered:
 
 ```bash
 docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
   grep -E "^chain_id|^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
-# Expected in partial validation mode:
-#   prover_mode = "partial"
-#   prover_mode = "dev"
-#   prover_mode = "partial"
-#   prover_mode = "dev"
-#   is_allowed_circuit_id = 483
-#   chain_id = 1337
 ```
-
-Use `24GiB` when Docker Desktop is capped around 30-32 GB, so the prover leaves
-memory for Besu, Shomei, coordinator, and Blockscout. If Docker has 48 GB or
-more, `32GiB` is a safer validation-machine setting.
-
-Observed 2026-05-12 partial run shape on M-series with 30 GiB Docker memory and
-`PROVER_GOMEMLIMIT=24GiB`: first execution proof completed, aggregation proof
-was generated, coordinator submitted a Sepolia blob tx and a Sepolia
-aggregation/finalization tx, and finalization advanced to L2 block 2. Prover
-memory peaked around 23 GiB. The run can continue proving later boot blocks for
-some time after the first finalization.
 
 If `PROVER_DEV_OVERRIDE=false` and `PROVER_GOMEMLIMIT` is missing,
 `config-render` exits before the prover starts. That is intentional: a silent
@@ -596,6 +436,8 @@ notes.
 
 ## 10. Known limitations
 
+- **Monorepo-bound.** The deploy container bind-mounts `../../../contracts` so
+  Hardhat tasks run against the real Linea contracts in this repository.
 - **No Timelock, no Security Council.** L1 contracts are owned by your deployer
   EOA. Governance/upgrade flows are out of scope for this quickstart.
 - **No full prover.** >700 GB RAM is out of scope.
