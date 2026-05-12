@@ -7,6 +7,7 @@ import io.vertx.sqlclient.RowSet
 import linea.domain.Batch
 import linea.domain.createBatch
 import linea.error.DuplicatedRecordException
+import linea.persistence.test.DbQueries
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper

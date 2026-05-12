@@ -8,7 +8,6 @@ import linea.kotlin.encodeHex
 import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.Db
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach

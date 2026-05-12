@@ -16,11 +16,11 @@ import linea.domain.createBatch
 import linea.domain.createBlobRecordFromBatches
 import linea.domain.createProofToFinalize
 import linea.error.DuplicatedRecordException
+import linea.persistence.test.DbQueries
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
-import net.consensys.zkevm.persistence.db.test.DbQueries
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
