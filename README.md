@@ -46,7 +46,7 @@ Linea's stack is made up of multiple repositories, these include:
 - This repo, [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network
 > Also maintains a set of Linea-Besu plugins for the sequencer and RPC nodes.
 - [linea-besu-upstream](https://github.com/Consensys/linea-besu-upstream/): Besu build configured for Linea
-- [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
+- [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applides and that serve as inputs to the prover
 - [linea-constraints](https://github.com/Consensys/linea-constraints): Implementation of the constraint system from the specification
 - [linea-specification](https://github.com/Consensys/linea-specification): Specification of the constraint system defining Linea's zkEVM
 

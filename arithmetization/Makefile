@@ -19,7 +19,7 @@ GO_CORSET_VERSION ?= v1.2.14
 ZKC_FILES := $(shell find $(MAKEFILE_DIR)src/main/riscv/* -name "*.zkc")
 ZKC_MAIN := $(MAKEFILE_DIR)src/main/riscv/main.zkc
 
-.PHONY: checkout-go-corset install-go-corset install-zkc zkc-compile check
+.PHONY: checkout-go-corset install-go-corset install-zkc zkc-compile check test-instructions test-xfail test-all
 
 # Fetch go-corset if missing (no-op when CI already checked it out into GO_CORSET).
 checkout-go-corset:
@@ -52,6 +52,62 @@ zkc-lint-apply:
 riscv-check-compilation: install-zkc zkc-compile
 
 riscv-check-lint: install-zkc zkc-lint
+
+EXAMPLES_DIR := $(MAKEFILE_DIR)src/test/examples
+
+# Instruction-type tests. Each test_<type>type_*.s file (type ∈ {r,i,s,b,u,j})
+# is a self-checking guest that traps on wrong results via an illegal opcode
+# → zkc exec exits non-zero. The *type_* glob naturally excludes test_xfail_*.s.
+INSTR_TESTS := $(notdir $(wildcard $(EXAMPLES_DIR)/asm/src/test_*type_*.s))
+test-instructions: install-zkc
+	@echo "Cleaning instruction-test artifacts under $(EXAMPLES_DIR)/asm/bin/"
+	@rm -f $(EXAMPLES_DIR)/asm/bin/test_*type_*
+	@if [ -z "$(INSTR_TESTS)" ]; then \
+	    echo "No tests matching test_*type_*.s — nothing to run"; \
+	    exit 0; \
+	fi
+	@fail=0; \
+	for t in $(INSTR_TESTS); do \
+	    echo "=== $$t ==="; \
+	    if $(MAKE) -C $(EXAMPLES_DIR) TEST=$$t exec >/tmp/$$t.out 2>&1; then \
+	        echo "[PASS] $$t"; \
+	    else \
+	        cat /tmp/$$t.out; \
+	        echo "[FAIL] $$t"; \
+	        fail=1; \
+	    fi; \
+	    rm -f /tmp/$$t.out; \
+	done; \
+	exit $$fail
+
+# Known-failure tests: each test_xfail_*.s exercises a behavior that is currently
+# broken in zkC and is *expected* to make `zkc exec` exit non-zero. Pass/fail is
+# inverted vs the per-type targets: a zkc exec failure is [XFAIL] (expected),
+# a clean exit is [UNEXPECTED PASS] (the underlying bug was fixed and the test
+# should be moved into the regular suite).
+XFAIL_TESTS := $(notdir $(wildcard $(EXAMPLES_DIR)/asm/src/test_xfail_*.s))
+test-xfail: install-zkc
+	@echo "Cleaning XFAIL artifacts under $(EXAMPLES_DIR)/asm/bin/"
+	@rm -f $(EXAMPLES_DIR)/asm/bin/test_xfail_*
+	@if [ -z "$(XFAIL_TESTS)" ]; then \
+	    echo "No tests matching test_xfail_*.s — nothing to run"; \
+	    exit 0; \
+	fi
+	@fail=0; \
+	for t in $(XFAIL_TESTS); do \
+	    echo "=== $$t ==="; \
+	    if $(MAKE) -C $(EXAMPLES_DIR) TEST=$$t exec >/tmp/$$t.out 2>&1; then \
+	        cat /tmp/$$t.out; \
+	        echo "[UNEXPECTED PASS] $$t — expected zkc exec to FAIL; was the underlying bug fixed?"; \
+	        fail=1; \
+	    else \
+	        echo "[XFAIL] $$t (expected)"; \
+	    fi; \
+	    rm -f /tmp/$$t.out; \
+	done; \
+	exit $$fail
+
+test-all: test-instructions test-xfail
 
 # Install the go-corset CLI from a released version (skips if already at the target version).
 install-go-corset:
