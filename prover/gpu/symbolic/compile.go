@@ -4,26 +4,26 @@
 // into bytecode for parallel GPU evaluation.  One GPU thread per vector element,
 // zero warp divergence — every thread executes the identical instruction stream.
 //
-//  ┌─────────────────────────┐         ┌──────────────────────────┐
-//  │  NodeOp[] (topo-sorted) │         │  kern_symbolic_eval      │
-//  │                         │         │                          │
-//  │  liveness analysis      │  H2D    │  thread i:               │
-//  │  register allocation    │ ──────▶ │    E4 slots[S]           │
-//  │  bytecode emission      │         │    for pc in program:    │
-//  │                         │         │      execute(i)          │
-//  │  → GPUProgram           │         │    out[i] = slots[R]     │
-//  └─────────────────────────┘         └──────────────────────────┘
+//	┌─────────────────────────┐         ┌──────────────────────────┐
+//	│  NodeOp[] (topo-sorted) │         │  kern_symbolic_eval      │
+//	│                         │         │                          │
+//	│  liveness analysis      │  H2D    │  thread i:               │
+//	│  register allocation    │ ──────▶ │    E4 slots[S]           │
+//	│  bytecode emission      │         │    for pc in program:    │
+//	│                         │         │      execute(i)          │
+//	│  → GPUProgram           │         │    out[i] = slots[R]     │
+//	└─────────────────────────┘         └──────────────────────────┘
 //
 // The NodeOp representation is decoupled from linea-monorepo's symbolic package.
 // A thin adapter in the monorepo converts ExpressionBoard.Nodes[] → []NodeOp.
 //
 // Bytecode format (uint32 words):
 //
-//   OP_CONST   (0): [0, dst, const_idx]                        3 words
-//   OP_INPUT   (1): [1, dst, input_id]                         3 words
-//   OP_MUL     (2): [2, dst, n, s₀, e₀, ..., sₙ, eₙ]        3 + 2n words
-//   OP_LINCOMB (3): [3, dst, n, s₀, c₀, ..., sₙ, cₙ]        3 + 2n words
-//   OP_POLYEVAL(4): [4, dst, n, s₀, s₁, ..., sₙ]             3 + n words
+//	OP_CONST   (0): [0, dst, const_idx]                        3 words
+//	OP_INPUT   (1): [1, dst, input_id]                         3 words
+//	OP_MUL     (2): [2, dst, n, s₀, e₀, ..., sₙ, eₙ]        3 + 2n words
+//	OP_LINCOMB (3): [3, dst, n, s₀, c₀, ..., sₙ, cₙ]        3 + 2n words
+//	OP_POLYEVAL(4): [4, dst, n, s₀, s₁, ..., sₙ]             3 + n words
 package symbolic
 
 // Opcodes — match CUDA kernel's switch cases exactly.
@@ -44,9 +44,9 @@ const (
 //	Kind=OpPolyEval: Horner(Children[0]=x, Children[1..]=coefficients)
 type NodeOp struct {
 	Kind     int
-	Children []int      // indices into nodes array (child < self)
-	Coeffs   []int      // LinComb: coefficients, Product: exponents
-	ConstVal [4]uint32  // E4 constant, [b0.a0, b0.a1, b1.a0, b1.a1]
+	Children []int     // indices into nodes array (child < self)
+	Coeffs   []int     // LinComb: coefficients, Product: exponents
+	ConstVal [4]uint32 // E4 constant, [b0.a0, b0.a1, b1.a0, b1.a1]
 }
 
 // GPUProgram holds compiled bytecode ready for GPU evaluation.

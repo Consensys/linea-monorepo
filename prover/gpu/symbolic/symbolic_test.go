@@ -223,10 +223,10 @@ func TestGPUSymEval_PolyEval(t *testing.T) {
 	five.SetUint64(5)
 
 	nodes := []symbolic.NodeOp{
-		{Kind: symbolic.OpConst, ConstVal: [4]uint32{uint32(two[0]), 0, 0, 0}}, // x=2
+		{Kind: symbolic.OpConst, ConstVal: [4]uint32{uint32(two[0]), 0, 0, 0}},    // x=2
 		{Kind: symbolic.OpConst, ConstVal: [4]uint32{uint32(three_[0]), 0, 0, 0}}, // c₀=3
 		{Kind: symbolic.OpConst, ConstVal: [4]uint32{uint32(five[0]), 0, 0, 0}},   // c₁=5
-		{Kind: symbolic.OpPolyEval, Children: []int{0, 1, 2}}, // P(x) = c₀ + c₁·x
+		{Kind: symbolic.OpPolyEval, Children: []int{0, 1, 2}},                     // P(x) = c₀ + c₁·x
 	}
 	pgm := symbolic.CompileGPU(nodes)
 

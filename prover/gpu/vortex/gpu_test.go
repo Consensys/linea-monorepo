@@ -526,6 +526,6 @@ func TestGPUVortexLinCombRate16(t *testing.T) {
 	}
 }
 
-func BenchmarkCommit_64x16_rate16(b *testing.B)   { benchCommit(b, 64, 16, 16) }
+func BenchmarkCommit_64x16_rate16(b *testing.B)    { benchCommit(b, 64, 16, 16) }
 func BenchmarkCommit_256x64_rate16(b *testing.B)   { benchCommit(b, 256, 64, 16) }
 func BenchmarkCommit_1024x128_rate16(b *testing.B) { benchCommit(b, 1024, 128, 16) }

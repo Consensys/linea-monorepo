@@ -15,8 +15,9 @@ import (
 // for the full IFFT → coset FFT sequence used in quotient computation.
 //
 // GPU convention:
-//   BitReverse → FFTInverse → Scale(1/n) → coefficients
-//   CopyFromDevice → CosetFFT(shift) → BitReverse → evaluations
+//
+//	BitReverse → FFTInverse → Scale(1/n) → coefficients
+//	CopyFromDevice → CosetFFT(shift) → BitReverse → evaluations
 //
 // Note: GPU FFTInverse does NOT include 1/n normalization (unlike gnark-crypto).
 func TestGPUNTTCosetEval(t *testing.T) {

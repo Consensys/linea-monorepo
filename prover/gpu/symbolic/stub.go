@@ -34,10 +34,10 @@ type SymInput struct {
 	Val    [4]uint32
 }
 
-func SymInputFromVec(_ *vortex.KBVector) SymInput                { panic("gpu: cuda required") }
-func SymInputFromRotatedVec(_ *vortex.KBVector, _ int) SymInput  { panic("gpu: cuda required") }
-func SymInputFromE4Vec(_ *vortex.KBVector) SymInput              { panic("gpu: cuda required") }
-func SymInputFromConst(_ fext.E4) SymInput                       { panic("gpu: cuda required") }
+func SymInputFromVec(_ *vortex.KBVector) SymInput               { panic("gpu: cuda required") }
+func SymInputFromRotatedVec(_ *vortex.KBVector, _ int) SymInput { panic("gpu: cuda required") }
+func SymInputFromE4Vec(_ *vortex.KBVector) SymInput             { panic("gpu: cuda required") }
+func SymInputFromConst(_ fext.E4) SymInput                      { panic("gpu: cuda required") }
 
 func EvalSymGPU(_ *gpu.Device, _ *GPUSymProgram, _ []SymInput, _ int) []fext.E4 {
 	panic("gpu: cuda required")

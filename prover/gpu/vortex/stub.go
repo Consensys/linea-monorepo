@@ -16,19 +16,19 @@ import (
 
 type KBVector struct{}
 
-func NewKBVector(_ *gpu.Device, _ int) (*KBVector, error)     { panic("gpu: cuda required") }
-func (v *KBVector) Free()                                     {}
-func (v *KBVector) Len() int                                  { return 0 }
-func (v *KBVector) CopyFromHost(_ []koalabear.Element)        { panic("gpu: cuda required") }
-func (v *KBVector) CopyToHost(_ []koalabear.Element)          { panic("gpu: cuda required") }
-func (v *KBVector) Add(_, _ *KBVector)                        { panic("gpu: cuda required") }
-func (v *KBVector) Sub(_, _ *KBVector)                        { panic("gpu: cuda required") }
-func (v *KBVector) Mul(_, _ *KBVector)                        { panic("gpu: cuda required") }
-func (v *KBVector) Scale(_ koalabear.Element)                 { panic("gpu: cuda required") }
-func (v *KBVector) ScaleByPowers(_ koalabear.Element)         { panic("gpu: cuda required") }
-func (v *KBVector) BitReverse()                               { panic("gpu: cuda required") }
-func (v *KBVector) CopyFromDevice(_ *KBVector)                 { panic("gpu: cuda required") }
-func (v *KBVector) DevicePtr() unsafe.Pointer                 { panic("gpu: cuda required") }
+func NewKBVector(_ *gpu.Device, _ int) (*KBVector, error) { panic("gpu: cuda required") }
+func (v *KBVector) Free()                                 {}
+func (v *KBVector) Len() int                              { return 0 }
+func (v *KBVector) CopyFromHost(_ []koalabear.Element)    { panic("gpu: cuda required") }
+func (v *KBVector) CopyToHost(_ []koalabear.Element)      { panic("gpu: cuda required") }
+func (v *KBVector) Add(_, _ *KBVector)                    { panic("gpu: cuda required") }
+func (v *KBVector) Sub(_, _ *KBVector)                    { panic("gpu: cuda required") }
+func (v *KBVector) Mul(_, _ *KBVector)                    { panic("gpu: cuda required") }
+func (v *KBVector) Scale(_ koalabear.Element)             { panic("gpu: cuda required") }
+func (v *KBVector) ScaleByPowers(_ koalabear.Element)     { panic("gpu: cuda required") }
+func (v *KBVector) BitReverse()                           { panic("gpu: cuda required") }
+func (v *KBVector) CopyFromDevice(_ *KBVector)            { panic("gpu: cuda required") }
+func (v *KBVector) DevicePtr() unsafe.Pointer             { panic("gpu: cuda required") }
 
 // ─── GPUFFTDomain ────────────────────────────────────────────────────────────
 
