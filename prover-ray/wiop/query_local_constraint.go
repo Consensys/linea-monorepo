@@ -2,38 +2,52 @@ package wiop
 
 import "fmt"
 
-// NewLocalConstraint registers a [Vanishing] that is enforced only at logical
-// row 0 — a "local constraint" in the sense of prover/protocol/query.LocalConstraint.
+// NewLocalConstraint registers a [Vanishing] enforced at a single row of the
+// module — a "local constraint" in the sense of
+// prover/protocol/query.LocalConstraint.
 //
-// Every column reference in expr is interpreted as the column's value at row
-// 0. A reference of the form col.View().Shift(k) (a [*ColumnView] with
-// ShiftingOffset k) becomes the column's value at row (k mod n), where n is
-// the module size; this matches the prover-side convention that "to evaluate
-// a local constraint at a different point, the column must be shifted first".
+// The position argument selects which row of the module the predicate is
+// pinned to. Only three values are accepted:
+//
+//   -  0: the first row (row 0).
+//   -  1: the second row (row 1).
+//   - -1: the last row (row n−1, where n is the module size).
+//
+// Every column reference in expr is interpreted as the column's value at the
+// chosen row. A reference of the form col.View().Shift(k) (a [*ColumnView]
+// with non-zero ShiftingOffset k) is composed with position: the column is
+// read at row (position + k) mod n. Coins, cells, and scalar constants do
+// not depend on position and are evaluated as-is.
 //
 // Internally, every [*ColumnView] in expr is rewritten to a [*ColumnPosition]
-// and every vector [*Constant] is collapsed to its scalar form. The lowered
-// expression is necessarily scalar, so the returned [*Vanishing] is checked
-// through the scalar branch of [Vanishing.Check]. This keeps a single Query
-// type for both "global" (multi-valued) and "local" (scalar) vanishing
-// predicates.
+// at the resolved row, and every vector [*Constant] is collapsed to its
+// scalar form. The lowered expression is necessarily scalar, so the returned
+// [*Vanishing] is checked through the scalar branch of [Vanishing.Check].
+// This keeps a single Query type for both "global" (multi-valued) and "local"
+// (scalar) vanishing predicates.
 //
-// All columns referenced in expr must belong to m. Negative shifts require m
-// to be statically sized: for an unsized or dynamic module the row-0 position
-// cannot be normalised at construction time and a negative shift would not
-// fit into a non-negative [ColumnPosition.Position].
+// All columns referenced in expr must belong to m. Reading row −1 (or any
+// negative resolved row) requires m to be statically sized so the row can be
+// normalised; an unsized or dynamic module cannot resolve negative rows at
+// construction time.
 //
-// Panics if ctx or expr is nil, if any column reference belongs to a
-// different module, or if a negative shift is used on an unsized/dynamic
-// module.
-func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression) *Vanishing {
+// Panics if ctx or expr is nil, if position is not in {−1, 0, 1}, if any
+// column reference belongs to a different module, or if a resolved row is
+// negative on an unsized/dynamic module.
+func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression, position int) *Vanishing {
 	if ctx == nil {
 		panic("wiop: Module.NewLocalConstraint requires a non-nil ContextFrame")
 	}
 	if expr == nil {
 		panic("wiop: Module.NewLocalConstraint requires a non-nil Expression")
 	}
-	scalar := m.lowerToRowZero(expr)
+	if position != -1 && position != 0 && position != 1 {
+		panic(fmt.Sprintf(
+			"wiop: Module.NewLocalConstraint: position must be -1 (last row), 0 (first row), or 1 (second row), got %d",
+			position,
+		))
+	}
+	scalar := m.lowerToRow(expr, position)
 	if scalar.IsMultiValued() {
 		panic(fmt.Sprintf(
 			"wiop: Module.NewLocalConstraint(%s): lowered expression is unexpectedly multi-valued",
@@ -43,12 +57,12 @@ func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression) *Vanishi
 	return m.newVanishing(ctx, scalar, nil)
 }
 
-// lowerToRowZero traverses expr bottom-up via [EditExpression] and produces
-// the scalar expression that the prover's LocalConstraint would evaluate.
+// lowerToRow traverses expr bottom-up via [EditExpression] and produces the
+// scalar expression that the local constraint evaluates at the given row.
 // The rewrite rules are:
 //
 //   - [*ColumnView]{Column: c, ShiftingOffset: k}
-//     → [*ColumnPosition]{Column: c, Position: (k mod n)}.
+//     → [*ColumnPosition]{Column: c, Position: (position + k) mod n}.
 //
 //   - vector [*Constant]{Value: v, module: !=nil}
 //     → scalar [*Constant]{Value: v, module: nil} (the same value at any row).
@@ -60,12 +74,12 @@ func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression) *Vanishi
 //
 // All [*ColumnView] and [*ColumnPosition] leaves must reference columns
 // belonging to m; otherwise the call panics.
-func (m *Module) lowerToRowZero(expr Expression) Expression {
+func (m *Module) lowerToRow(expr Expression, position int) Expression {
 	return EditExpression(expr, func(curr Expression, newChildren []Expression) Expression {
 		switch e := curr.(type) {
 		case *ColumnView:
 			m.assertOwnsColumn(e.Column)
-			return columnViewToRowZeroPosition(e)
+			return columnViewAtRow(e, position)
 		case *ColumnPosition:
 			m.assertOwnsColumn(e.Column)
 			return e
@@ -92,22 +106,23 @@ func (m *Module) assertOwnsColumn(col *Column) {
 	))
 }
 
-// columnViewToRowZeroPosition converts a [*ColumnView] into the
-// [*ColumnPosition] it would evaluate to at logical row 0. The returned
-// position lies in [0, n) when the parent module is sized. For an unsized or
-// dynamic module the offset is passed through directly; a negative offset is
-// rejected upfront because it cannot be normalised without knowing n.
-func columnViewToRowZeroPosition(cv *ColumnView) *ColumnPosition {
-	off := cv.ShiftingOffset
+// columnViewAtRow converts a [*ColumnView] into the [*ColumnPosition] it
+// evaluates to at logical row `position`. The resolved row is
+// (position + cv.ShiftingOffset) and is normalised modulo the module size
+// when the module is sized. For an unsized or dynamic module the resolved
+// row is passed through directly; a negative resolved row is rejected because
+// it cannot be normalised without knowing n.
+func columnViewAtRow(cv *ColumnView, position int) *ColumnPosition {
+	target := position + cv.ShiftingOffset
 	m := cv.Column.Module
 	if m.IsSized() {
 		n := m.Size()
-		off = ((off % n) + n) % n
-	} else if off < 0 {
+		target = ((target % n) + n) % n
+	} else if target < 0 {
 		panic(fmt.Sprintf(
-			"wiop: NewLocalConstraint: negative shift %d on column %q requires a sized module",
-			cv.ShiftingOffset, cv.Column.Context.Path(),
+			"wiop: NewLocalConstraint: resolved row %d (position %d + shift %d) on column %q requires a sized module",
+			target, position, cv.ShiftingOffset, cv.Column.Context.Path(),
 		))
 	}
-	return &ColumnPosition{Column: cv.Column, Position: off}
+	return &ColumnPosition{Column: cv.Column, Position: target}
 }
