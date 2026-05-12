@@ -232,6 +232,7 @@ fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
             // label, expected vs actual) surface on our printf channel.
             // zkc's printf has no %c; bytes print as %x and a trailing
             // newline frames each WRITE_STR call.
+            printf "ECALL for print\n"
             var a1:Address = registers[11] as Address // buf
             var a2:DoubleWord = registers[12] // count
             var addr:Address = a1
