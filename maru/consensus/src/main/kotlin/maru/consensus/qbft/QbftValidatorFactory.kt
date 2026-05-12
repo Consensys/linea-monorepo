@@ -267,7 +267,7 @@ class QbftValidatorFactory(
         /* chainHeight = */
         chainHeaderNumber,
       )
-    val gossiper = QbftGossiper(validatorMulticaster)
+    val gossiper = QbftGossiper()
     val qbftController =
       QbftController(
         /* blockchain = */

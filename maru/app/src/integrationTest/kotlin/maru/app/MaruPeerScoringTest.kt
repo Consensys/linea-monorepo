@@ -42,7 +42,6 @@ import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.besu.ethGetBlockByNumber
 import testutils.maru.MaruFactory
-import java.lang.Thread.sleep
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -131,10 +130,16 @@ class MaruPeerScoringTest {
         validatorCooldownPeriod = 20.seconds,
         timerFactory = timerFactory,
       )
-    sleep((timeout - 1.seconds).inWholeMilliseconds)
-    assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
 
-    await.untilAsserted {
+    // Wait for the follower to dial and connect to the validator. Previously this was a fixed
+    // `sleep(timeout - 1s)` followed by `assertEquals(1)`; that races on slow CI when peering
+    // takes longer than the sleep window, observing peerCount=0 before the connection completes.
+    await.atMost(10.seconds.toJavaDuration()).untilAsserted {
+      assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
+    }
+
+    // After the request timeout fires, the follower should disconnect the unresponsive validator.
+    await.atMost((delay + 5.seconds).toJavaDuration()).untilAsserted {
       assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(0)
     }
   }

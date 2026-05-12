@@ -8,6 +8,7 @@
  */
 package maru.consensus.qbft.adapters
 
+import io.libp2p.pubsub.MessageAlreadySeenException
 import io.libp2p.pubsub.NoPeersForOutboundMessageException
 import maru.p2p.P2PNetwork
 import org.apache.logging.log4j.LogManager
@@ -21,9 +22,9 @@ import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageDat
  *
  * This adapter is used by the QBFT consensus protocol to send messages to validators.
  *
- * The send is fire-and-forget: BftProcessor's Thread-14 must not block on network I/O or it
- * serialises the entire QBFT pipeline (every hop waits for the previous send to complete).
- * Errors are logged but not propagated; QBFT is resilient to individual message delivery failures.
+ * The send waits for the broadcast future to complete. Missing peers and already-seen messages
+ * are benign libp2p outcomes and are not propagated. Other broadcast failures propagate to the
+ * caller.
  */
 class P2PValidatorMulticaster(
   private val p2pNetwork: P2PNetwork,
@@ -39,12 +40,14 @@ class P2PValidatorMulticaster(
     @Suppress("UNCHECKED_CAST")
     (p2pNetwork.broadcastMessage(message.toDomain()) as SafeFuture<Any?>)
       .exceptionally { e ->
-        if (hasNoPeersCause(e)) {
-          log.debug("No gossip peers subscribed to QBFT topic, message not delivered")
-          null
-        } else {
-          throw e
+        when {
+          hasCause<NoPeersForOutboundMessageException>(e) ->
+            log.debug("No gossip peers subscribed to QBFT topic, message not delivered")
+          hasCause<MessageAlreadySeenException>(e) ->
+            log.debug("QBFT gossip message was already seen, message not re-published")
+          else -> throw e
         }
+        null
       }.get()
   }
 
@@ -62,14 +65,10 @@ class P2PValidatorMulticaster(
     send(message)
   }
 
-  /**
-   * Walks the exception cause chain to detect [NoPeersForOutboundMessageException].
-   * The async future delivers it wrapped in [java.util.concurrent.CompletionException].
-   */
-  private fun hasNoPeersCause(e: Throwable): Boolean {
+  private inline fun <reified T : Throwable> hasCause(e: Throwable): Boolean {
     var current: Throwable? = e
     while (current != null) {
-      if (current is NoPeersForOutboundMessageException) return true
+      if (current is T) return true
       current = current.cause
     }
     return false
