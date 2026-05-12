@@ -10,8 +10,8 @@ import linea.domain.BlobShnarfCalculator
 import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
 import linea.domain.ShnarfResult
-import linea.kotlin.zeroHash32
 import linea.kotlin.encodeHex
+import linea.kotlin.zeroHash32
 import linea.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

@@ -4,8 +4,8 @@ import io.vertx.core.Vertx
 import linea.contract.l1.LineaSmartContractClient
 import linea.domain.BlobRecord
 import linea.domain.ProofToFinalize
-import linea.kotlin.zeroHash32
 import linea.kotlin.trimToMinutePrecision
+import linea.kotlin.zeroHash32
 import linea.persistence.AggregationsRepository
 import linea.persistence.BlobsRepository
 import linea.timer.TimerSchedule
