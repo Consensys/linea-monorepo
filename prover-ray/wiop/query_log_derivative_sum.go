@@ -149,8 +149,6 @@ func (rr *LogDerivativeSum) reduce(rt Runtime) field.Gen {
 			n = numVec.Plain.Len()
 		case denIsVec:
 			n = denVec.Plain.Len()
-		default:
-			n = filterVec.Plain.Len()
 		}
 
 		readGen := func(scalar ConcreteField, vec ConcreteVector, isVec bool, row int) field.Gen {
