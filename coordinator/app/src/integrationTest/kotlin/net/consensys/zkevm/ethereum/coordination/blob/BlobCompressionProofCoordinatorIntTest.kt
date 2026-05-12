@@ -17,7 +17,9 @@ import linea.domain.BlockIntervals
 import linea.domain.CompressionProofIndex
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
+import linea.domain.FakeBlobShnarfCalculator
 import linea.domain.ProofIndex
+import linea.domain.createBlobRecord
 import linea.kotlin.ByteArrayExt
 import linea.persistence.BlobsRepository
 import net.consensys.linea.traces.TracesCountersV2
@@ -25,8 +27,7 @@ import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
-import org.apache.tuweni.bytes.Bytes32
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -71,10 +72,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   private val expectedStartBlock = 1UL
   private val expectedEndBlock = 100UL
   private val blobHandlerPollingInterval = 50.milliseconds
-  private val expectedStartBlockTime = Instant.Companion.fromEpochMilliseconds(fixedClock.now().toEpochMilliseconds())
-  private val expectedEndBlockTime = Instant.Companion.fromEpochMilliseconds(
-    fixedClock.now().plus(1200.seconds).toEpochMilliseconds(),
-  )
+  private val expectedStartBlockTime = fixedClock.now()
+  private val expectedEndBlockTime = fixedClock.now().plus(1200.seconds)
   private var expectedBlobCompressionProofResponse: BlobCompressionProof? = null
   private val proofIndexExpectedProofResponseMap: MutableMap<ProofIndex, BlobCompressionProof> = mutableMapOf()
 
@@ -117,8 +116,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       .thenReturn(
         SafeFuture.completedFuture(
           BlobZkState(
-            parentStateRootHash = Bytes32.random().toArray(),
-            finalStateRootHash = Bytes32.random().toArray(),
+            parentStateRootHash = ByteArrayExt.random32(),
+            finalStateRootHash = ByteArrayExt.random32(),
           ),
         ),
       )
@@ -269,17 +268,17 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           blobEvent.endBlockTime.plus(1.seconds),
         ).get()
 
-        Assertions.assertThat(actualBlobs).size().isEqualTo(2)
+        assertThat(actualBlobs).size().isEqualTo(2)
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(any())
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(eq(expectedEndBlock.toLong()))
         val blobCompressionProof = actualBlobs[1].blobCompressionProof
-        Assertions.assertThat(blobCompressionProof).isEqualTo(expectedBlobCompressionProofResponse)
-        Assertions.assertThat(actualBlobs[1].startBlockNumber).isEqualTo(blobEventStartBlock)
-        Assertions.assertThat(actualBlobs[1].endBlockNumber).isEqualTo(blobEventEndBlock + 300UL)
-        Assertions.assertThat(actualBlobs[1].batchesCount).isEqualTo(3U)
-        Assertions.assertThat(actualBlobs[1].blobHash).isEqualTo(blobCompressionProof?.dataHash)
-        Assertions.assertThat(blobCompressionProof?.parentDataHash).isEqualTo(prevBlobRecord.blobHash)
-        Assertions.assertThat(blobCompressionProof?.prevShnarf).isEqualTo(prevBlobRecord.expectedShnarf)
+        assertThat(blobCompressionProof).isEqualTo(expectedBlobCompressionProofResponse)
+        assertThat(actualBlobs[1].startBlockNumber).isEqualTo(blobEventStartBlock)
+        assertThat(actualBlobs[1].endBlockNumber).isEqualTo(blobEventEndBlock + 300UL)
+        assertThat(actualBlobs[1].batchesCount).isEqualTo(3U)
+        assertThat(actualBlobs[1].blobHash).isEqualTo(blobCompressionProof?.dataHash)
+        assertThat(blobCompressionProof?.parentDataHash).isEqualTo(prevBlobRecord.blobHash)
+        assertThat(blobCompressionProof?.prevShnarf).isEqualTo(prevBlobRecord.expectedShnarf)
         verify(mockShnarfCalculator).calculateShnarf(any(), any(), any(), any(), any())
         verify(blobCompressionProverClientMock).createProofRequest(any())
         verify(blobCompressionProverClientMock).findProofResponse(any())
@@ -318,7 +317,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           blobEvent.endBlockTime.plus(1.seconds),
         ).get()
 
-        Assertions.assertThat(actualBlobs).size().isEqualTo(0)
+        assertThat(actualBlobs).size().isEqualTo(0)
       }
     testContext.completeNow()
   }
@@ -356,7 +355,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           blobs.last().endBlockTime.plus(1.seconds),
         ).get()
 
-        Assertions.assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
+        assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(any())
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(eq(expectedEndBlock.toLong()))
 
@@ -364,8 +363,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         actualBlobs.drop(1).forEach { blobRecord ->
           val blobCompressionProof = blobRecord.blobCompressionProof!!
           testContext.verify {
-            Assertions.assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
-            Assertions.assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
+            assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
+            assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
           }
           previousBlob = blobRecord
         }
@@ -401,8 +400,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       } else {
         SafeFuture.completedFuture(
           BlobZkState(
-            parentStateRootHash = Bytes32.random().toArray(),
-            finalStateRootHash = Bytes32.random().toArray(),
+            parentStateRootHash = ByteArrayExt.random32(),
+            finalStateRootHash = ByteArrayExt.random32(),
           ),
         )
       }
@@ -423,7 +422,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           blobs.last().endBlockTime.plus(1.seconds),
         ).get()
 
-        Assertions.assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
+        assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(any())
         verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(eq(expectedEndBlock.toLong()))
 
@@ -431,8 +430,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         actualBlobs.drop(1).forEach { blobRecord ->
           val blobCompressionProof = blobRecord.blobCompressionProof!!
           testContext.verify {
-            Assertions.assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
-            Assertions.assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
+            assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
+            assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
           }
           previousBlob = blobRecord
         }
