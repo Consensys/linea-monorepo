@@ -1,25 +1,12 @@
 # Linea Stack — quickstart (Sepolia L1)
 
-> v0 of the "Streamlined Linea Stack deployment" feature. Local L2 stack
-> pointed at user-supplied **Sepolia** as L1.
+Run a local Linea L2 stack that uses Sepolia as its L1. The quickstart deploys
+the required L1 contracts to Sepolia from your funded deployer account, starts a
+local L2 chain, runs coordinator/postman/prover services, and exposes a local L2
+Blockscout explorer.
 
-> **Status:** Fresh Sepolia boot validated on 2026-05-12 with dev proofs, and
-> opt-in partial proving validated through first L1 finalization. Contracts
-> deploy on Sepolia, the L2 chain starts, coordinator binds `9545` / `9546`, the
-> prover file pipeline writes requests and responses, Blockscout UI serves the
-> local L2, and coordinator L1 blob/aggregation/finalization submissions have
-> been observed on Sepolia. A real L1-to-L2 message smoke has also been
-> validated in the default dev-proof path: the script sends `sendMessage` on
-> Sepolia, waits for Postman to claim it on L2, verifies the `MessageClaimed`
-> receipt, and checks the recipient balance delta.
->
-> This is still a bring-up checkpoint, not a final "done" stamp: partial mode is
-> resource-heavy and the bridge smoke should still be rerun against that mode
-> before calling the whole demo path final.
->
-> If you boot this and hit something
-> [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
-> learn there so the next person doesn't have to rediscover it from logs.
+This quickstart is for local development and evaluation only. It is not a
+production deployment model.
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -64,23 +51,38 @@
 
 A Docker Compose stack with Linea Besu sequencer, Maru consensus, L2 RPC
 follower, Shomei state manager, coordinator, postman, web3signer, prover, and an
-L2 Blockscout API backend and frontend explorer UI. All L1 traffic goes through **your Sepolia RPC**.
+L2 Blockscout API backend and frontend explorer UI. All L1 traffic goes through
+**your Sepolia RPC**.
 
 What you get from `docker compose up`: a live local L2 chain, fresh Linea
 contracts deployed to Sepolia from your address, and a coordinator/prover path
-that can create default dev proofs and submit L1 blob/aggregation transactions.
-Opt-in partial proving has also been validated through first execution proof,
-aggregation proof, blob submission, and finalization on Sepolia.
+that can create default dev proofs and submit L1 blob/finalization transactions.
+
+Validated paths as of 2026-05-12:
+
+- default dev-proof boot: Sepolia contract deploy, local L2 chain, coordinator,
+  prover, postman, and L2 Blockscout;
+- L1 data availability and finalization: blob submission plus a separate
+  `finalizeBlocks` transaction that advances the rollup's
+  `currentL2BlockNumber`;
+- L1-to-L2 message smoke: sends `sendMessage` on Sepolia, waits for Postman to
+  claim on local L2, verifies `MessageClaimed`, and checks the recipient balance
+  delta;
+- opt-in partial-prover boot: execution/invalidity in partial mode,
+  compression/aggregation in dev mode, validated through L1 finalization.
 
 What this is **NOT**:
-- Not portable — bind-mounts `../../../contracts` from the linea-monorepo so
-  Hardhat tasks run against the real contracts. v1 will package this.
+- Not portable outside this monorepo — it bind-mounts `../../../contracts` so
+  Hardhat tasks run against the real contracts.
 - Not the full prover — full proving requires >700 GB RAM. Quickstart defaults
   to dev proofs; partial proving is opt-in for validation runs.
 - No L1 explorer — use [sepolia.etherscan.io](https://sepolia.etherscan.io)
   with the LineaRollup address from `addresses.json`.
 - No Timelock, no Security Council. The L1 deployer key owns everything.
   Governance/upgrade flows are out of scope.
+- Not a TypeScript-first implementation yet. Most orchestration is still shell;
+  the TypeScript files are targeted deploy/address helpers. Moving more logic
+  to TypeScript is a follow-up after the team aligns on the boot flow.
 
 ## 2. Prerequisites
 
@@ -239,11 +241,18 @@ Recommended post-boot sequence:
 ./scripts/links.sh
 ```
 
-2. Send optional local L2 demo traffic when you want Blockscout to visibly move:
+2. Start continuous local L2 ERC20 traffic when you want Blockscout and the
+   prover path to keep moving during a demo or evaluation:
 
 ```bash
-COUNT=5 ./scripts/send-l2-test-tx.sh
-./scripts/send-l2-erc20-transfer.sh
+./scripts/generate-l2-erc20-traffic.sh start
+./scripts/generate-l2-erc20-traffic.sh logs
+```
+
+Stop it explicitly when you are done:
+
+```bash
+./scripts/generate-l2-erc20-traffic.sh stop
 ```
 
 3. Run the real L1-to-L2 acceptance smoke when you want to prove message relay:
@@ -269,7 +278,7 @@ they are validating instead of replaying the whole first boot.
 ./scripts/links.sh
 ```
 
-A useful first-boot checkpoint has all of these signals:
+A useful first-boot success check has all of these signals:
 
 - `addresses.json` exists and includes LineaRollupV8, L2MessageService,
   TokenBridge, and ERC20Example addresses.
@@ -322,27 +331,39 @@ curl -fsS http://localhost:4001 >/dev/null
 ```
 
 The local L2 can look idle in Blockscout after deployment if nobody sends L2
-transactions. Use the traffic helpers when you want the explorer UI to visibly
-move:
+transactions. For evaluation/demo runs, use the continuous ERC20 traffic helper
+so Blockscout, the coordinator, and the prover keep receiving fresh L2 blocks:
 
 ```bash
-# Send one tiny L2 ETH transfer from the generated L2 deployer.
+# Start one ERC20Example transfer every 2 seconds until stopped.
+./scripts/generate-l2-erc20-traffic.sh start
+
+# Watch generated tx hashes and Blockscout links.
+./scripts/generate-l2-erc20-traffic.sh logs
+
+# Stop traffic.
+./scripts/generate-l2-erc20-traffic.sh stop
+```
+
+By default the continuous helper sends `1` base unit of `ERC20Example` every 2
+seconds from the generated L2 deployer to the generated L2 postman address. You
+can tune it with `INTERVAL_SECONDS=1`, `AMOUNT_WEI=10`, `TO=0x...`, or
+`MAX_TXS=100`. `MAX_TXS=0`, the default, means run until you stop the helper or
+stop Docker.
+
+The older one-shot helpers are still available for deterministic manual checks:
+
+```bash
 ./scripts/send-l2-test-tx.sh
-
-# Send five tiny L2 ETH transfers.
-COUNT=5 ./scripts/send-l2-test-tx.sh
-
-# Transfer one base unit of the deployed L2 ERC20Example token.
 ./scripts/send-l2-erc20-transfer.sh
 ```
 
-`COUNT=5` means five transactions, not five ETH. By default the L2 ETH traffic
-helper sends `1 wei` per transaction from the generated L2 deployer, which is
-pre-funded in the local L2 genesis. This ETH is local quickstart gas balance,
-not Sepolia ETH, and it has no value outside the local L2 chain. The bridge
-smoke spends real Sepolia gas and sends Sepolia value into the quickstart
-LineaRollup contract, then credits the local L2 recipient through Postman; that
-credited L2 balance is still only useful inside this local quickstart chain.
+The L2 ETH and ERC20 traffic helpers mutate only the local quickstart L2 chain.
+The local L2 ETH is pre-funded quickstart gas balance, not Sepolia ETH, and it
+has no value outside the local L2 chain. The bridge smoke spends real Sepolia
+gas and sends Sepolia value into the quickstart LineaRollup contract, then
+credits the local L2 recipient through Postman; that credited L2 balance is
+still only useful inside this local quickstart chain.
 
 ### L1-to-L2 bridge/message smoke test
 
@@ -392,7 +413,7 @@ HOST_PORT_L2_BLOCKSCOUT_FRONTEND=4001
 # ... see .env.example for the full list
 ```
 
-### Switching DA mode (Rollup ↔ Validium)
+### Switching DA mode (Rollup ↔ vValidium)
 
 ```bash
 LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM \
@@ -402,19 +423,23 @@ LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM \
 
 `deploy-contracts.sh` and the coordinator both respect the env var. Validium
 deploys a different rollup contract (`ValidiumV2`) with a separate constructor
-shape, but this knob is not part of the currently validated v0 first-boot path.
+shape, but this knob is not part of the currently validated quickstart path.
 Use `ROLLUP` unless you are intentionally debugging the Validium path.
 
 ### Switching prover mode (dev ↔ partial)
 
-The deliverable shape is **partial prover** — execution + invalidity in `partial`
-mode, data_availability + aggregation in `dev` mode, aggregation gate at
-`is_allowed_circuit_id = 483`. That's what `config/l2/prover/prover-config-partial.toml.template`
-ships and what gets rendered into the live volume on a fresh `up -d` after
-`down -v`.
+The default quickstart mode is **dev proofs everywhere**. It is the fastest path
+for evaluating boot, contract deployment, L2 explorer, coordinator submission,
+and message relay.
 
-For fast iteration (dummy proofs everywhere, ~minutes per cycle vs ~tens-of-minutes
-for partial proving), set one env var in `.env`:
+The opt-in validation mode is **partial proving**: execution + invalidity in
+`partial` mode, data_availability + aggregation in `dev` mode, aggregation gate
+at `is_allowed_circuit_id = 483`. That is what
+`config/l2/prover/prover-config-partial.toml.template` ships with. The default
+`PROVER_DEV_OVERRIDE=true` setting patches only the rendered copy in the Docker
+volume, leaving the template itself in the upstream partial shape.
+
+For fast iteration, keep this env var in `.env`:
 
 ```bash
 PROVER_DEV_OVERRIDE=true
@@ -429,7 +454,7 @@ docker compose --env-file versions.env --env-file .env \
 
 `config-render` post-patches the rendered prover config in the volume — flips
 the 4 prover_mode lines to `dev` and the aggregation bitmask to `963`. The
-**template on disk stays partial** (deliverable correct), only the rendered
+**template on disk stays partial**, only the rendered
 file in the volume is patched. Verify:
 
 ```bash
@@ -487,7 +512,7 @@ failure files.
 
 ### Pointing at a different L1
 
-This scaffold is intentionally Sepolia-shaped. To target a different L1
+This quickstart is intentionally Sepolia-shaped. To target a different L1
 (another testnet, your own devnet) you'd need to:
 - Update timing tunables that assume 12s blocks (`coordinator-config.toml.template`'s
   `block-time`, `consistent-number-of-blocks-on-l1-to-wait`; postman's
@@ -521,7 +546,7 @@ and `fork-timestamp.txt` live in Docker volume `linea-stack-l2-genesis`.
 | `account-setup` exits with "could not extract deployers.l1" | malformed JSON output (Foundry version mismatch?) | See [bringup-notes.md](./bringup-notes.md) — `cast wallet address` flag drift is one possibility |
 | deploy-contracts step 1 fails with "insufficient funds" | deployer's Sepolia balance too low | Top up via faucet; Sepolia gas spikes can blow through 0.5 ETH |
 | deploy-contracts dies with `ADDRESS MISMATCH` | LineaRollupV8 or L2MessageService no longer lands at the boot-critical precomputed address | Usually means the deploy script changed and `account-setup.sh` needs a corresponding nonce/precompute update |
-| Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans`; this scaffold keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
+| Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans`; this quickstart keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
 | Coordinator logs `address already reserved` during L1 blob/finalization submission | stale boot volume or old image/config still maps multiple jobs to the same signer | Fresh boot after the runtime-key cleanup should use distinct generated signer addresses; run `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v` before retesting |
 | Aggregation/finalization occasionally reverts with a starting-root mismatch while catching up | coordinator retried an aggregation window after an earlier finalization tx succeeded | Known caveat; watch whether `finalization update` advances before calling it stuck |
 | Coordinator restarts on first boot | usually a race against shomei's first-block trace; self-heals within ~30s | If it persists past 1 min, check `docker logs coordinator`; see fix log entries on web3signer mTLS |
@@ -569,21 +594,26 @@ Sepolia migration phases, #28-#34 the first real-Sepolia boot fixes, and #35+
 the coordinator/prover bring-up, security cleanups, and remaining validation
 notes.
 
-## 10. What's NOT yet in v0
+## 10. Known limitations
 
 - **No Timelock, no Security Council.** L1 contracts are owned by your deployer
-  EOA. Governance/upgrade flows = v1.
+  EOA. Governance/upgrade flows are out of scope for this quickstart.
 - **No full prover.** >700 GB RAM is out of scope.
 - **No L1 Blockscout.** Use Sepolia Etherscan.
-- **Partial-prover validation is still pending.** The current validated path uses
-  dev proofs for quick feedback; partial proving remains a separate acceptance
-  gate.
+- **Partial proving is opt-in and resource-heavy.** It has been validated
+  through L1 finalization, but the default path uses dev proofs for quick
+  feedback.
+- **Verifier setup is quickstart-only.** The current deploy path uses
+  `IntegrationTestTrueVerifier`, not a production verifier configuration.
+- **TokenBridge ERC20 smoke is still manual.** The included bridge smoke covers
+  the base L1-to-L2 message/ETH path.
 - **No one-shot verification orchestrator or CI smoke test.** Validation today
   is compose-config + manual first-boot-against-Sepolia. The local helper
   scripts are intentionally staged; a future `quickstart-verify.sh` can chain
   read-only checks, optional demo traffic, and the bridge smoke.
-- **Partial proving is not the default.** The default is dev proofs for
-  quickstart usability; partial proving remains opt-in and resource-heavy.
+- **Most orchestration is still shell.** Bash remains the wrapper/orchestrator
+  for boot and deploy scripts. Broader TypeScript migration is a follow-up once
+  the team aligns on the final boot flow.
 
 ## 11. Reference
 
@@ -609,16 +639,15 @@ l2-blockscout            (blockscout/blockscout, API backend)
 l2-blockscout-frontend   (ghcr.io/blockscout/frontend, explorer UI)
 ```
 
-> Observability stack (prometheus / loki / promtail / grafana) was dropped in
-> Phase-7 — out of scope for v0 deliverable. Use `docker logs <service>` for
-> per-container output.
+> Prometheus/Grafana/Loki are not included in this quickstart. Use
+> `docker logs <service>` and `./scripts/status.sh` for per-container output and
+> milestone checks.
 
 ### File structure
 
 ```
 docs/getting-started/linea-stack/
 ├── README.md                    ← you are here
-├── SCAFFOLD-PLAN.md             ← historical planning doc (pre-Sepolia)
 ├── bringup-notes.md            ← fix history, current caveats, validation notes
 ├── docker-compose.yml
 ├── versions.env                 ← pinned image tags
@@ -627,16 +656,17 @@ docs/getting-started/linea-stack/
 │   ├── account-setup.sh         ← generates runtime keys + boot addresses
 │   ├── deploy-contracts.sh      ← 6-step deploy + address capture
 │   ├── aggregate-addresses.ts   ← writes addresses.json from deploy logs
+│   ├── deployBridgedTokenAndTokenBridgeV1_1.ts ← TokenBridge deploy helper
 │   ├── links.sh                 ← prints useful Sepolia + local explorer links
 │   ├── status.sh                ← redacted boot status summary
 │   ├── send-l2-test-tx.sh       ← sends tiny L2 ETH txs for Blockscout demos
 │   ├── send-l2-erc20-transfer.sh ← sends a tiny L2 ERC20Example transfer
+│   ├── generate-l2-erc20-traffic.sh ← runs continuous L2 ERC20Example traffic
 │   ├── smoke-bridge-message.sh  ← sends and verifies L1-to-L2 message delivery
 │   └── DEPLOY-ENV-CONTRACT.md   ← env vars per deploy step
 └── config/
     ├── DEV-KEYS-INVENTORY.md    ← what's checked in vs runtime
     ├── explorer/
-    ├── observability/
     ├── postgres/
     ├── web3signer/
     │   └── tls-files/           ← mTLS keystore + password + known-clients
@@ -653,14 +683,15 @@ docs/getting-started/linea-stack/
 
 ### Volumes
 
-- `linea-shared-config` — written by `account-setup` (runtime keys,
+- `linea-stack-shared-config` — written by `account-setup` (runtime keys,
   boot-critical precomputed addresses, web3signer keystores) and
   `deploy-contracts` (addresses.json, deploy logs); read by config-render,
   coordinator, postman, prover, web3signer
-- `linea-rendered-config` — written by `config-render` (full render of 5
+- `linea-stack-l2-genesis` — written by `l2-genesis-init` (rendered Besu/Maru
+  genesis plus fork timestamp); read by L2 services and deploy-contracts
+- `linea-stack-rendered-config` — written by `config-render` (full render of 5
   templates) and `deploy-contracts` (in-place patch of coord-config); read by
   sequencer, maru, l2-node-besu, coordinator, prover
-- `linea-local-dev` — chaindata + prover state
-- `linea-logs` — kept as a shared log-output volume; was previously tailed
-  by promtail (dropped Phase-7 with the rest of the observability stack).
+- `linea-stack-local-dev` — chaindata + prover state
+- `linea-stack-logs` — shared log-output volume
 - per-service postgres volumes

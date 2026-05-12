@@ -298,7 +298,7 @@ check_partial_prover_guardrails() {
 }
 
 check_smoke_and_traffic_scripts() {
-  for script in send-l2-test-tx.sh send-l2-erc20-transfer.sh smoke-bridge-message.sh; do
+  for script in send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh; do
     script_path="$STACK/scripts/$script"
     if [ -x "$script_path" ]; then
       pass "$script is executable"
@@ -323,6 +323,15 @@ check_smoke_and_traffic_scripts() {
     pass "send-l2-erc20-transfer.sh transfers ERC20Example on L2"
   else
     fail "send-l2-erc20-transfer.sh must transfer ERC20Example on L2"
+  fi
+
+  if [ -f "$STACK/scripts/generate-l2-erc20-traffic.sh" ] \
+    && grep -q 'docker run -d' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'while \[ "$MAX_TXS" -eq 0 \]' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'transfer(address,uint256)' "$STACK/scripts/generate-l2-erc20-traffic.sh"; then
+    pass "generate-l2-erc20-traffic.sh runs continuous L2 ERC20Example traffic"
+  else
+    fail "generate-l2-erc20-traffic.sh must run continuous L2 ERC20Example traffic"
   fi
 
   if [ -f "$STACK/scripts/smoke-bridge-message.sh" ] \

@@ -237,8 +237,8 @@ services:
         #   [invalidity] prover_mode "partial" → "dev"
         #   [aggregation] is_allowed_circuit_id 483 → 963
         #   drop conflated_traces_dir / ignore_compatibility_check / serialization
-        # The TEMPLATE on disk stays partial (deliverable correct); only the
-        # rendered file in the volume is patched. README §8 explains both modes.
+        # The template on disk stays partial; only the rendered file in the
+        # volume is patched for fast local iteration. README §8 explains both modes.
         # ─────────────────────────────────────────────────────────────────
         if [ "$$PROVER_DEV_OVERRIDE" = "true" ]; then
           P=/rendered/prover-config-partial.toml
