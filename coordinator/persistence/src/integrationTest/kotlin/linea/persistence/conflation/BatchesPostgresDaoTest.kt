@@ -12,7 +12,7 @@ import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import net.consensys.zkevm.persistence.db.test.DbQueries
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -30,7 +30,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-batches")
-  private var fakeClockTime = Instant.Companion.parse("2023-12-11T00:00:00.000Z")
+  private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   private var fakeClock = FakeFixedClock(fakeClockTime)
   private fun batchesContentQuery(): PreparedQuery<RowSet<Row>> =
     sqlClient.preparedQuery("select * from ${BatchesPostgresDao.batchesTableName}")
@@ -63,7 +63,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     val dbContent1 =
       performInsertTest(batch1)
-    Assertions.assertThat(dbContent1).size().isEqualTo(1)
+    assertThat(dbContent1).size().isEqualTo(1)
 
     val expectedStartBlock2 = 6UL
     val expectedEndBlock2 = 9UL
@@ -75,7 +75,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     val dbContent2 =
       performInsertTest(batch2)
-    Assertions.assertThat(dbContent2).size().isEqualTo(2)
+    assertThat(dbContent2).size().isEqualTo(2)
   }
 
   private fun performInsertTest(batch: Batch): RowSet<Row>? {
@@ -83,12 +83,12 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
     val dbContent = batchesContentQuery().execute().get()
     val newlyInsertedRow =
       dbContent.find { it.getLong("created_epoch_milli") == fakeClock.now().toEpochMilliseconds() }
-    Assertions.assertThat(newlyInsertedRow).isNotNull
+    assertThat(newlyInsertedRow).isNotNull
 
-    Assertions.assertThat(newlyInsertedRow!!.getLong("start_block_number"))
+    assertThat(newlyInsertedRow!!.getLong("start_block_number"))
       .isEqualTo(batch.startBlockNumber.toLong())
-    Assertions.assertThat(newlyInsertedRow.getLong("end_block_number")).isEqualTo(batch.endBlockNumber.toLong())
-    Assertions.assertThat(newlyInsertedRow.getInteger("status"))
+    assertThat(newlyInsertedRow.getLong("end_block_number")).isEqualTo(batch.endBlockNumber.toLong())
+    assertThat(newlyInsertedRow.getInteger("status"))
       .isEqualTo(BatchesPostgresDao.batchStatusToDbValue(Batch.Status.Proven))
     return dbContent
   }
@@ -105,13 +105,13 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     val dbContent1 =
       performInsertTest(batch1)
-    Assertions.assertThat(dbContent1).size().isEqualTo(1)
+    assertThat(dbContent1).size().isEqualTo(1)
 
     assertThrows<ExecutionException> {
       batchesDao.saveNewBatch(batch1).get()
     }.also { executionException ->
-      Assertions.assertThat(executionException.cause).isInstanceOf(DuplicatedRecordException::class.java)
-      Assertions.assertThat(executionException.cause!!.message)
+      assertThat(executionException.cause).isInstanceOf(DuplicatedRecordException::class.java)
+      assertThat(executionException.cause!!.message)
         .isEqualTo(
           "Batch startBlockNumber=1, endBlockNumber=1 is already persisted!",
         )
@@ -120,13 +120,13 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `findHighestConsecutiveEndBlockNumberFromBlockNumber when empty returns null`() {
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(1L)
         .get(),
     ).isEqualTo(null)
 
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(1L)
         .get(),
@@ -147,7 +147,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(20L)
         .get(),
@@ -166,7 +166,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(1L)
         .get(),
@@ -183,7 +183,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(1L)
         .get(),
@@ -200,7 +200,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .findHighestConsecutiveEndBlockNumberFromBlockNumber(5L)
         .get(),
@@ -224,7 +224,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       it.getLong("end_block_number") > 6L
     }
 
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .deleteBatchesUpToEndBlockNumber(
           endBlockNumberInclusive = 6L,
@@ -234,7 +234,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(2)
 
     val dbContent = batchesContentQuery().execute().get()
-    Assertions.assertThat(dbContent.size()).isEqualTo(expectedRows.size)
+    assertThat(dbContent.size()).isEqualTo(expectedRows.size)
   }
 
   @Test
@@ -247,7 +247,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .deleteBatchesUpToEndBlockNumber(
           endBlockNumberInclusive = 1L,
@@ -257,7 +257,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(0)
 
     val remainingBatches = DbQueries.getBatches(sqlClient)
-    Assertions.assertThat(remainingBatches).hasSameElementsAs(batches)
+    assertThat(remainingBatches).hasSameElementsAs(batches)
   }
 
   @Test
@@ -276,7 +276,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       it.getLong("end_block_number") < 6L
     }.sortedBy { it.getLong("start_block_number") }.toList()
 
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .deleteBatchesAfterBlockNumber(
           startingBlockNumberInclusive = 6L,
@@ -286,9 +286,9 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(2)
 
     val dbContent = batchesContentQuery().execute().get().sortedBy { it.getLong("start_block_number") }.toList()
-    Assertions.assertThat(dbContent.size).isEqualTo(expectedRows.size)
+    assertThat(dbContent.size).isEqualTo(expectedRows.size)
     dbContent.forEachIndexed { index, row ->
-      Assertions.assertThat(row.toJson()).isEqualTo(expectedRows[index].toJson())
+      assertThat(row.toJson()).isEqualTo(expectedRows[index].toJson())
     }
   }
 
@@ -302,7 +302,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
 
     SafeFuture.collectAll(batches.map { batchesDao.saveNewBatch(it) }.stream()).get()
-    Assertions.assertThat(
+    assertThat(
       batchesDao
         .deleteBatchesAfterBlockNumber(
           startingBlockNumberInclusive = 7L,
@@ -312,6 +312,6 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(0)
 
     val remainingBatches = DbQueries.getBatches(sqlClient)
-    Assertions.assertThat(remainingBatches).hasSameElementsAs(batches)
+    assertThat(remainingBatches).hasSameElementsAs(batches)
   }
 }

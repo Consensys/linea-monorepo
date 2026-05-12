@@ -15,7 +15,7 @@ import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -62,13 +62,13 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     val dbContent = blobsContentQuery().execute().get()
     val newlyInsertedRow =
       dbContent.find { it.getLong("created_epoch_milli") == fakeClock.now().toEpochMilliseconds() }
-    Assertions.assertThat(newlyInsertedRow).isNotNull
+    assertThat(newlyInsertedRow).isNotNull
 
-    Assertions.assertThat(newlyInsertedRow!!.getLong("start_block_number"))
+    assertThat(newlyInsertedRow!!.getLong("start_block_number"))
       .isEqualTo(blobRecord.startBlockNumber.toLong())
-    Assertions.assertThat(newlyInsertedRow.getLong("end_block_number"))
+    assertThat(newlyInsertedRow.getLong("end_block_number"))
       .isEqualTo(blobRecord.endBlockNumber.toLong())
-    Assertions.assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(
+    assertThat(newlyInsertedRow.getInteger("status")).isEqualTo(
       BlobsPostgresDao.blobStatusToDbValue(BlobStatus.COMPRESSION_PROVEN),
     )
 
@@ -85,7 +85,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     fakeClock.setTimeTo(Clock.System.now())
 
     val dbContent1 = performInsertTest(blobRecord1)
-    Assertions.assertThat(dbContent1).size().isEqualTo(1)
+    assertThat(dbContent1).size().isEqualTo(1)
 
     val blobRecord2 = createBlobRecord(
       startBlockNumber = expectedEndBlock + 1UL,
@@ -95,7 +95,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
     fakeClock.advanceBy(1.seconds)
 
     val dbContent2 = performInsertTest(blobRecord2)
-    Assertions.assertThat(dbContent2).size().isEqualTo(2)
+    assertThat(dbContent2).size().isEqualTo(2)
   }
 
   @Test
@@ -108,13 +108,13 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     val dbContent1 =
       performInsertTest(blobRecord1)
-    Assertions.assertThat(dbContent1).size().isEqualTo(1)
+    assertThat(dbContent1).size().isEqualTo(1)
 
     assertThrows<ExecutionException> {
       blobsPostgresDao.saveNewBlob(blobRecord1).get()
     }.also { executionException ->
-      Assertions.assertThat(executionException.cause).isInstanceOf(DuplicatedRecordException::class.java)
-      Assertions.assertThat(executionException.cause!!.message)
+      assertThat(executionException.cause).isInstanceOf(DuplicatedRecordException::class.java)
+      assertThat(executionException.cause!!.message)
         .isEqualTo(
           "Blob [1..100]100 is already persisted!",
         )
@@ -138,7 +138,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
         expectedStartBlock1,
         expectedEndBlockTime.plus(12.seconds),
       ).get()
-    Assertions.assertThat(actualBlobs).hasSameElementsAs(listOf(expectedBlob))
+    assertThat(actualBlobs).hasSameElementsAs(listOf(expectedBlob))
   }
 
   @Test
@@ -169,7 +169,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
       expectedStartBlock + 1UL,
       blobRecord3.endBlockTime.plus(1.seconds),
     ).get().also { blobs ->
-      Assertions.assertThat(blobs).isEmpty()
+      assertThat(blobs).isEmpty()
     }
   }
 
@@ -232,7 +232,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
           startingBlockNumberInclusive = expectedBlobs.first().startBlockNumber,
           endBlockCreatedBefore = expectedBlobs.last().endBlockTime.plus(1.seconds),
         ).get()
-    Assertions.assertThat(actualBlobs).hasSameElementsAs(expectedBlobs)
+    assertThat(actualBlobs).hasSameElementsAs(expectedBlobs)
   }
 
   @Test
@@ -245,19 +245,19 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     blobsPostgresDao.saveNewBlob(expectedBlob).get()
 
-    Assertions.assertThat(blobsPostgresDao.findBlobByEndBlockNumber(90UL))
+    assertThat(blobsPostgresDao.findBlobByEndBlockNumber(90UL))
       .succeedsWithin(1.seconds.toJavaDuration())
       .isEqualTo(expectedBlob)
 
-    Assertions.assertThat(blobsPostgresDao.findBlobByEndBlockNumber(91UL))
+    assertThat(blobsPostgresDao.findBlobByEndBlockNumber(91UL))
       .succeedsWithin(1.seconds.toJavaDuration())
       .isNull()
 
-    Assertions.assertThat(blobsPostgresDao.findBlobByStartBlockNumber(1UL))
+    assertThat(blobsPostgresDao.findBlobByStartBlockNumber(1UL))
       .succeedsWithin(1.seconds.toJavaDuration())
       .isEqualTo(expectedBlob)
 
-    Assertions.assertThat(blobsPostgresDao.findBlobByStartBlockNumber(2UL))
+    assertThat(blobsPostgresDao.findBlobByStartBlockNumber(2UL))
       .succeedsWithin(1.seconds.toJavaDuration())
       .isNull()
   }
@@ -324,7 +324,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
         rowSet.map(BlobsPostgresDao::parseRecord)
       }.get()
 
-    Assertions.assertThat(existedBlobRecords).hasSameElementsAs(expectedBlobs)
+    assertThat(existedBlobRecords).hasSameElementsAs(expectedBlobs)
   }
 
   @Test
@@ -389,7 +389,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
         rowSet.map(BlobsPostgresDao::parseRecord)
       }.get()
 
-    Assertions.assertThat(existedBlobRecords).hasSameElementsAs(expectedBlobs)
+    assertThat(existedBlobRecords).hasSameElementsAs(expectedBlobs)
   }
 
   private fun saveBlobs(blobRecords: List<BlobRecord>) {

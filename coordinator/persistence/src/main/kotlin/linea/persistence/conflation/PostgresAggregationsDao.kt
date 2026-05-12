@@ -186,8 +186,8 @@ class PostgresAggregationsDao(
     return BatchRecordWithBlobInfo(
       blobStartBlockNumber = record.getLong("blob_start_block_number").toULong(),
       blobEndBlockNumber = record.getLong("blob_end_block_number").toULong(),
-      blobStartBlockTimestamp = Instant.Companion.fromEpochMilliseconds(record.getLong("start_block_timestamp")),
-      blobEndBlockTimestamp = Instant.Companion.fromEpochMilliseconds(record.getLong("end_block_timestamp")),
+      blobStartBlockTimestamp = Instant.fromEpochMilliseconds(record.getLong("start_block_timestamp")),
+      blobEndBlockTimestamp = Instant.fromEpochMilliseconds(record.getLong("end_block_timestamp")),
       blobExpectedShnarf = record.getString("blob_expected_shnarf").decodeHex(),
       batchesCount = record.getLong("batches_count").toUInt(),
       batchStartBlockNumber = record.getLong("start_block_number").toULong(),
@@ -403,7 +403,7 @@ class PostgresAggregationsDao(
 
   private fun serializeAggregationProof(proofToFinalize: ProofToFinalize?): String? {
     return proofToFinalize?.let {
-      ProofToFinalizeJsonResponse.Companion.fromDomainObject(
+      ProofToFinalizeJsonResponse.fromDomainObject(
         proofToFinalize,
       ).toJsonString()
     }
@@ -411,6 +411,6 @@ class PostgresAggregationsDao(
 
   private fun parseAggregationProofs(record: Row): ProofToFinalize {
     val aggregationProofJsonObj = record.getJsonObject("aggregation_proof")
-    return ProofToFinalizeJsonResponse.Companion.fromJsonString(aggregationProofJsonObj.encode()).toDomainObject()
+    return ProofToFinalizeJsonResponse.fromJsonString(aggregationProofJsonObj.encode()).toDomainObject()
   }
 }

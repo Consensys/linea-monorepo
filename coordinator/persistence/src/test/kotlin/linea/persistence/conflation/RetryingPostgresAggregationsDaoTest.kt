@@ -12,8 +12,9 @@ import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mockito
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -23,7 +24,7 @@ import kotlin.time.Instant
 @ExtendWith(VertxExtension::class)
 class RetryingPostgresAggregationsDaoTest {
   private lateinit var retryingAggregationsPostgresDao: RetryingPostgresAggregationsDao
-  private val delegateAggregationsDao = Mockito.mock<PostgresAggregationsDao>()
+  private lateinit var delegateAggregationsDao: PostgresAggregationsDao
   private val fakeClock = FakeFixedClock()
   private val createdBeforeInstant = fakeClock.now()
   private val aggregation = createAggregation(
@@ -33,6 +34,7 @@ class RetryingPostgresAggregationsDaoTest {
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
+    delegateAggregationsDao = mock<PostgresAggregationsDao>()
     retryingAggregationsPostgresDao = RetryingPostgresAggregationsDao(
       delegate = delegateAggregationsDao,
       PersistenceRetryer(
@@ -52,9 +54,9 @@ class RetryingPostgresAggregationsDaoTest {
     val aggregationProof = createProofToFinalize(
       firstBlockNumber = 0,
       finalBlockNumber = 10,
-      parentAggregationLastBlockTimestamp = Instant.Companion.fromEpochSeconds(0),
-      startBlockTime = Instant.Companion.fromEpochSeconds(0),
-      finalTimestamp = Instant.Companion.parse("2024-04-28T15:00:00Z"),
+      parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(0),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:00:00Z"),
     )
 
     whenever(delegateAggregationsDao.findConsecutiveProvenBlobs(eq(0L)))
@@ -92,32 +94,32 @@ class RetryingPostgresAggregationsDaoTest {
   @Test
   fun `retrying batches dao should delegate all queries to standard dao`() {
     retryingAggregationsPostgresDao.findConsecutiveProvenBlobs(0L)
-    verify(delegateAggregationsDao, Mockito.times(1)).findConsecutiveProvenBlobs(eq(0L))
+    verify(delegateAggregationsDao, times(1)).findConsecutiveProvenBlobs(eq(0L))
 
     retryingAggregationsPostgresDao.saveNewAggregation(aggregation)
-    verify(delegateAggregationsDao, Mockito.times(1)).saveNewAggregation(eq(aggregation))
+    verify(delegateAggregationsDao, times(1)).saveNewAggregation(eq(aggregation))
 
     retryingAggregationsPostgresDao.getProofsToFinalize(
       fromBlockNumber = 0L,
       finalEndBlockCreatedBefore = createdBeforeInstant,
       maximumNumberOfProofs = 1,
     )
-    verify(delegateAggregationsDao, Mockito.times(1)).getProofsToFinalize(
+    verify(delegateAggregationsDao, times(1)).getProofsToFinalize(
       eq(0L),
       eq(createdBeforeInstant),
       eq(1),
     )
 
     retryingAggregationsPostgresDao.findHighestConsecutiveEndBlockNumber(0L)
-    verify(delegateAggregationsDao, Mockito.times(1)).findConsecutiveProvenBlobs(eq(0L))
+    verify(delegateAggregationsDao, times(1)).findConsecutiveProvenBlobs(eq(0L))
 
     retryingAggregationsPostgresDao.findAggregationProofByEndBlockNumber(10L)
-    verify(delegateAggregationsDao, Mockito.times(1)).findAggregationProofByEndBlockNumber(eq(10L))
+    verify(delegateAggregationsDao, times(1)).findAggregationProofByEndBlockNumber(eq(10L))
 
     retryingAggregationsPostgresDao.deleteAggregationsUpToEndBlockNumber(10L)
-    verify(delegateAggregationsDao, Mockito.times(1)).deleteAggregationsUpToEndBlockNumber(eq(10L))
+    verify(delegateAggregationsDao, times(1)).deleteAggregationsUpToEndBlockNumber(eq(10L))
 
     retryingAggregationsPostgresDao.deleteAggregationsAfterBlockNumber(0L)
-    verify(delegateAggregationsDao, Mockito.times(1)).deleteAggregationsAfterBlockNumber(eq(0L))
+    verify(delegateAggregationsDao, times(1)).deleteAggregationsAfterBlockNumber(eq(0L))
   }
 }

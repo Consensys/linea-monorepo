@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -53,18 +54,18 @@ class RetryingBatchesPostgresDaoTest {
     retryingBatchesPostgresDao.saveNewBatch(
       batch,
     )
-    verify(delegateBatchesDao, Mockito.times(1)).saveNewBatch(batch)
+    verify(delegateBatchesDao, times(1)).saveNewBatch(batch)
 
     retryingBatchesPostgresDao.findHighestConsecutiveEndBlockNumberFromBlockNumber(0L)
-    verify(delegateBatchesDao, Mockito.times(1))
+    verify(delegateBatchesDao, times(1))
       .findHighestConsecutiveEndBlockNumberFromBlockNumber(eq(0L))
 
     retryingBatchesPostgresDao.deleteBatchesUpToEndBlockNumber(10L)
-    verify(delegateBatchesDao, Mockito.times(1))
+    verify(delegateBatchesDao, times(1))
       .deleteBatchesUpToEndBlockNumber(eq(10L))
 
     retryingBatchesPostgresDao.deleteBatchesAfterBlockNumber(0L)
-    verify(delegateBatchesDao, Mockito.times(1))
+    verify(delegateBatchesDao, times(1))
       .deleteBatchesAfterBlockNumber(eq(0L))
   }
 }

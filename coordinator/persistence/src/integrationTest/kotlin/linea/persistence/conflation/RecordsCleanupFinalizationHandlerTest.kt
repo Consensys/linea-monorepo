@@ -19,7 +19,7 @@ import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.apache.tuweni.bytes.Bytes32
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -161,31 +161,31 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
     val aggregationsBeforeCleanup = aggregationsContentQuery().execute().get()
     val forcedTransactionsBeforeCleanup = forcedTransactionsDao.list().get()
 
-    Assertions.assertThat(batchesBeforeCleanup.size()).isEqualTo(batches.size)
-    Assertions.assertThat(blobsBeforeCleanup.size()).isEqualTo(blobs.size)
-    Assertions.assertThat(aggregationsBeforeCleanup.size()).isEqualTo(aggregations.size)
-    Assertions.assertThat(forcedTransactionsBeforeCleanup.size).isEqualTo(forcedTransactions.size)
+    assertThat(batchesBeforeCleanup.size()).isEqualTo(batches.size)
+    assertThat(blobsBeforeCleanup.size()).isEqualTo(blobs.size)
+    assertThat(aggregationsBeforeCleanup.size()).isEqualTo(aggregations.size)
+    assertThat(forcedTransactionsBeforeCleanup.size).isEqualTo(forcedTransactions.size)
 
     recordsCleanupFinalizationHandler.handleUpdate(update).get()
 
     val batchesAfterCleanup = batchesContentQuery().execute().get()
-    Assertions.assertThat(batchesAfterCleanup.size()).isEqualTo(0)
+    assertThat(batchesAfterCleanup.size()).isEqualTo(0)
 
     val blobsAfterCleanup = blobsContentQuery().execute().get()
       .map { BlobsPostgresDao.parseRecord(it) }
       .sortedBy { it.startBlockNumber }
-    Assertions.assertThat(blobsAfterCleanup.size).isEqualTo(1)
-    Assertions.assertThat(blobsAfterCleanup[0]).isEqualTo(blob3)
+    assertThat(blobsAfterCleanup.size).isEqualTo(1)
+    assertThat(blobsAfterCleanup[0]).isEqualTo(blob3)
 
     val aggregationsAfterCleanup = aggregationsContentQuery().execute().get()
-    Assertions.assertThat(aggregationsAfterCleanup.size()).isEqualTo(1)
-    Assertions.assertThat(
+    assertThat(aggregationsAfterCleanup.size()).isEqualTo(1)
+    assertThat(
       aggregationsRepository.findAggregationProofByEndBlockNumber(aggregation3.endBlockNumber.toLong()).get(),
     )
       .isNotNull()
 
     val forcedTransactionsAfterCleanup = forcedTransactionsDao.list().get()
-    Assertions.assertThat(forcedTransactionsAfterCleanup.map { it.ftxNumber })
+    assertThat(forcedTransactionsAfterCleanup.map { it.ftxNumber })
       .isEqualTo(listOf(3UL, 4UL))
   }
 }

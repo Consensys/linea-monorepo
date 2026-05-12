@@ -9,7 +9,7 @@ import net.consensys.linea.async.get
 import net.consensys.zkevm.persistence.db.Db
 import net.consensys.zkevm.persistence.db.DbHelper
 import net.consensys.zkevm.persistence.db.test.DbQueries
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -95,14 +95,14 @@ class DbSchemaUpdatesIntTest {
     )
 
     DbQueries.insertBatch(sqlClient, DbQueries.insertBatchQueryV1, paramsV1).get()
-    Assertions.assertThat(
+    assertThat(
       DbQueries.getTableContent(sqlClient, DbQueries.batchesTable).execute().get().size(),
     ).isEqualTo(1)
 
     assertThrows<ExecutionException> {
       DbQueries.insertBatch(sqlClient, DbQueries.insertBatchQueryV2, paramsV2).get()
     }
-    Assertions.assertThat(
+    assertThat(
       DbQueries.getTableContent(sqlClient, DbQueries.batchesTable).execute().get().size(),
     ).isEqualTo(1)
   }
@@ -127,11 +127,11 @@ class DbSchemaUpdatesIntTest {
     )
 
     DbQueries.insertBatch(sqlClient, DbQueries.insertBatchQueryV2, batchParamsV2).get()
-    Assertions.assertThat(
+    assertThat(
       DbQueries.getTableContent(sqlClient, DbQueries.batchesTable).execute().get().size(),
     ).isEqualTo(1)
 
-    Assertions.assertThat(
+    assertThat(
       DbQueries.getTableContent(sqlClient, DbQueries.batchesTable).execute().get().size(),
     ).isEqualTo(1)
 
@@ -150,7 +150,7 @@ class DbSchemaUpdatesIntTest {
     )
 
     DbQueries.insertBlob(sqlClient, DbQueries.insertBlobQuery, blobParams).get()
-    Assertions.assertThat(
+    assertThat(
       DbQueries.getTableContent(sqlClient, DbQueries.blobsTable).execute().get().size(),
     ).isEqualTo(1)
   }
