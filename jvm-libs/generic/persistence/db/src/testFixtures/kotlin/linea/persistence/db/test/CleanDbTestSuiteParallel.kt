@@ -1,12 +1,12 @@
-package net.consensys.zkevm.persistence.db.test
+package linea.persistence.db.test
 
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.SqlClient
-import net.consensys.zkevm.persistence.db.Db
-import net.consensys.zkevm.persistence.db.Db.vertxConnectionPool
-import net.consensys.zkevm.persistence.db.Db.vertxSqlClient
-import net.consensys.zkevm.persistence.db.DbHelper
+import linea.persistence.db.Db
+import linea.persistence.db.Db.vertxConnectionPool
+import linea.persistence.db.Db.vertxSqlClient
+import linea.persistence.db.DbHelper
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.postgresql.ds.PGSimpleDataSource

@@ -1,7 +1,7 @@
 package linea.persistence.conflation
 
 import linea.domain.Batch
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
+import linea.persistence.db.PersistenceRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RetryingBatchesPostgresDao(

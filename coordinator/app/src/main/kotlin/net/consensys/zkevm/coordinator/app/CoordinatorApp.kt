@@ -17,6 +17,8 @@ import linea.persistence.conflation.PostgresBatchesRepository
 import linea.persistence.conflation.RetryingBatchesPostgresDao
 import linea.persistence.conflation.RetryingBlobsPostgresDao
 import linea.persistence.conflation.RetryingPostgresAggregationsDao
+import linea.persistence.db.Db
+import linea.persistence.db.PersistenceRetryer
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -27,8 +29,6 @@ import net.consensys.linea.vertx.loadVertxConfig
 import net.consensys.zkevm.coordinator.api.Api
 import net.consensys.zkevm.coordinator.app.conflationbacktesting.ConflationBacktestingService
 import net.consensys.zkevm.fileio.DirectoryCleaner
-import net.consensys.zkevm.persistence.db.Db
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

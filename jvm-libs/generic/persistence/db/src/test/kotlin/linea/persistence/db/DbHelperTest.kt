@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db
+package linea.persistence.db
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.RepeatedTest

@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db
+package linea.persistence.db
 
 import io.vertx.pgclient.PgException
 import linea.error.DuplicatedRecordException

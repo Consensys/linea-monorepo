@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db
+package linea.persistence.db
 
 import io.vertx.core.Vertx
 import net.consensys.linea.async.AsyncRetryer

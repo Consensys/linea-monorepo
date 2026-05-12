@@ -7,8 +7,8 @@ import linea.domain.BlockIntervals
 import linea.domain.blobCounters
 import linea.domain.createAggregation
 import linea.domain.createProofToFinalize
+import linea.persistence.db.PersistenceRetryer
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

@@ -10,10 +10,10 @@ import linea.domain.BlobStatus
 import linea.error.DuplicatedRecordException
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
+import linea.persistence.db.SQLQueryLogger
+import linea.persistence.db.isDuplicateKeyException
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.coordinator.clients.prover.serialization.BlobCompressionProofJsonResponse
-import net.consensys.zkevm.persistence.db.SQLQueryLogger
-import net.consensys.zkevm.persistence.db.isDuplicateKeyException
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

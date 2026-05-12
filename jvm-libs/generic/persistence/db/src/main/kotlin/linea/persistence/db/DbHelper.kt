@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db
+package linea.persistence.db
 
 import java.time.Clock
 import java.time.ZoneId

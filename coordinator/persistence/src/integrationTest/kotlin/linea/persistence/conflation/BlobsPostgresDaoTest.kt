@@ -10,11 +10,11 @@ import linea.domain.createBlobRecord
 import linea.error.DuplicatedRecordException
 import linea.kotlin.trimToMillisecondPrecision
 import linea.kotlin.trimToSecondPrecision
+import linea.persistence.db.DbHelper
+import linea.persistence.db.test.CleanDbTestSuiteParallel
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

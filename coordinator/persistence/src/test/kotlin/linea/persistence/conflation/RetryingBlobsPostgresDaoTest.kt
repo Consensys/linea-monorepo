@@ -7,8 +7,8 @@ import linea.domain.BlockIntervals
 import linea.domain.createBlobRecord
 import linea.kotlin.setFirstByteToZero
 import linea.kotlin.trimToSecondPrecision
+import linea.persistence.db.PersistenceRetryer
 import net.consensys.FakeFixedClock
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

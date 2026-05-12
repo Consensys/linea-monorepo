@@ -12,12 +12,12 @@ import linea.persistence.AggregationsRepository
 import linea.persistence.BatchesRepository
 import linea.persistence.BlobsRepository
 import linea.persistence.ForcedTransactionsDao
+import linea.persistence.db.DbHelper
+import linea.persistence.db.test.CleanDbTestSuiteParallel
 import linea.persistence.ftx.ForcedTransactionRecordFactory
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach

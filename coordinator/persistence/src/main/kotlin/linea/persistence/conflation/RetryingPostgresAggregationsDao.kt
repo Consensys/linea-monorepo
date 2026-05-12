@@ -4,7 +4,7 @@ import linea.domain.Aggregation
 import linea.domain.BlobAndBatchCounters
 import linea.domain.ProofToFinalize
 import linea.persistence.AggregationsDao
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
+import linea.persistence.db.PersistenceRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant
 

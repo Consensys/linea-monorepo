@@ -14,9 +14,9 @@ import linea.domain.toBlockIntervalsString
 import linea.error.DuplicatedRecordException
 import linea.kotlin.decodeHex
 import linea.persistence.AggregationsDao
+import linea.persistence.db.SQLQueryLogger
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
-import net.consensys.zkevm.persistence.db.SQLQueryLogger
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
