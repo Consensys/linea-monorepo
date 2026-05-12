@@ -27,6 +27,11 @@ STRIP ?= false
 # Ignored for .s and .rs files
 ZIG_STRIP ?= true
 
+# Disassembler: prefer llvm-objdump (shows bytes in memory order, matching the JSON format).
+# Falls back to the Homebrew keg-only path on macOS, then to riscv64-unknown-elf-objdump.
+# Override with: make OBJDUMP=/path/to/objdump
+OBJDUMP ?= $(or $(shell command -v llvm-objdump 2>/dev/null),$(shell command -v rust-objdump 2>/dev/null),$(shell test -x /opt/homebrew/opt/llvm/bin/llvm-objdump && echo /opt/homebrew/opt/llvm/bin/llvm-objdump),$(shell command -v riscv64-unknown-elf-objdump 2>/dev/null))
+
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
 GO_MAIN  := $(MAKEFILE_DIR)main.go
 ZKC_MAIN := $(MAKEFILE_DIR)../../main/riscv/main.zkc
@@ -68,7 +73,20 @@ compile: $(SRC)
 		riscv64-unknown-elf-strip -S $(BIN); \
 	fi
 	@echo "\nDisassembling $(BIN)"
-	@riscv64-unknown-elf-objdump -d --line-numbers -S $(BIN) > $(BIN)_disassembled.elf
+  # the following regular expression maps
+  #
+  # <hex-pc>: <byte_1><byte_2><byte_3><byte_4><non hex><etc>
+  #
+  # to
+  #
+  # <hex-pc>: <byte_1><byte_2><byte_3><byte_4> (<byte_4><byte_3><byte_2><byte_1>)<non hex><etc>
+  #
+  # Claude also included the same type of operation for COMPRESSED instructions ... the 2nd -e expression
+	@$(OBJDUMP) -d --line-numbers -S $(BIN) \
+		| sed -E \
+		-e 's/^([[:space:]]*[0-9a-f]+:[[:space:]]*)([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([^0-9a-f])/\1\2\3\4\5 (\5\4\3\2)\6/' \
+		-e 's/^([[:space:]]*[0-9a-f]+:[[:space:]]*)([0-9a-f]{2})([0-9a-f]{2})([^0-9a-f])/\1\2\3 (\3\2)\4/' \
+		> $(BIN)_disassembled.elf
 	@echo "\nGenerating $(JSON) from $(BIN)"
 	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
