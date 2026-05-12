@@ -62,6 +62,10 @@ import org.hyperledger.besu.ethereum.trie.pathbased.common.provider.WorldStateQu
 import org.hyperledger.besu.plugin.services.worldstate.MutableWorldState;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 import org.junit.jupiter.api.Assumptions;
+import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutableDataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutablePathBasedExtraStorageConfiguration;
+import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
 
 @Slf4j
 public class BlockchainReferenceTestTools {
@@ -484,7 +488,10 @@ public class BlockchainReferenceTestTools {
 
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
     final MutableBlockchain blockchain = spec.buildBlockchain();
-    final ProtocolContext context = spec.buildProtocolContext(blockchain);
+    // Disable state root parallelization for ref testing, generates a StackOverflowError in Bonsai when running with a large number of blocks
+    // Differs from production but StackOverflow does not happen on Ethereum Mainnet
+    final DataStorageConfiguration storageConfiguration =  ImmutableDataStorageConfiguration.builder().dataStorageFormat(DataStorageFormat.BONSAI).pathBasedExtraStorageConfiguration(ImmutablePathBasedExtraStorageConfiguration.builder().parallelStateRootComputationEnabled(false).build()).build();
+    final ProtocolContext context = spec.buildProtocolContext(storageConfiguration, blockchain);
     final MutableWorldState worldState =
         context
             .getWorldStateArchive()
