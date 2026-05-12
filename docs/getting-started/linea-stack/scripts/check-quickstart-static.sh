@@ -33,6 +33,39 @@ check_no_tracked_generated_genesis() {
   done
 }
 
+check_generated_genesis_is_volume_scoped() {
+  compose="$STACK/docker-compose.yml"
+  deploy_contracts="$STACK/scripts/deploy-contracts.sh"
+
+  if grep -q 'linea-l2-genesis:' "$compose" \
+    && grep -q 'name: "linea-stack-l2-genesis"' "$compose"; then
+    pass "generated L2 genesis has a named Docker volume"
+  else
+    fail "generated L2 genesis must live in a Docker volume, not the repo tree"
+  fi
+
+  if grep -q './config/l2/genesis-init:/templates:ro' "$compose" \
+    && grep -q 'linea-l2-genesis:/initialization:rw' "$compose"; then
+    pass "l2-genesis-init reads templates from repo and writes generated genesis to volume"
+  else
+    fail "l2-genesis-init must separate read-only templates from generated genesis output"
+  fi
+
+  if grep -q './config/l2/genesis-init:/initialization' "$compose" \
+    || grep -q './config/l2/genesis-init/genesis-besu.json' "$compose"; then
+    fail "services must not bind-mount generated genesis files from the repo tree"
+  else
+    pass "services do not bind-mount generated genesis files from the repo tree"
+  fi
+
+  if grep -q 'linea-l2-genesis:/generated-genesis:ro' "$compose" \
+    && grep -q '/generated-genesis/fork-timestamp.txt' "$deploy_contracts"; then
+    pass "deploy-contracts reads fork timestamp from generated genesis volume"
+  else
+    fail "deploy-contracts must read fork timestamp from the generated genesis volume"
+  fi
+}
+
 check_generated_l2_deployer_genesis() {
   genesis_template="$STACK/config/l2/genesis-init/genesis-besu.json.template"
   genesis_init="$STACK/config/l2/genesis-init/init.sh"
@@ -45,7 +78,9 @@ check_generated_l2_deployer_genesis() {
 
   if node - "$genesis_template" <<'NODE'
 const fs = require("fs");
-const genesis = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const template = fs.readFileSync(process.argv[2], "utf8")
+  .replace(/__L2_CHAIN_ID__/g, "1337");
+const genesis = JSON.parse(template);
 const funded = Object.entries(genesis.alloc)
   .filter(([, entry]) => BigInt(entry.balance || "0") > 0n)
   .map(([addr]) => addr)
@@ -66,6 +101,45 @@ NODE
     pass "genesis only funds generated L2 deployer and L2MessageService"
   else
     fail "genesis must only fund generated L2 deployer and L2MessageService, with no privateKey entries"
+  fi
+}
+
+check_l2_chain_id_wiring() {
+  besu_genesis="$STACK/config/l2/genesis-init/genesis-besu.json.template"
+  maru_genesis="$STACK/config/l2/genesis-init/genesis-maru.json.template"
+  genesis_init="$STACK/config/l2/genesis-init/init.sh"
+  prover_template="$STACK/config/l2/prover/prover-config-partial.toml.template"
+  compose="$STACK/docker-compose.yml"
+  status_script="$STACK/scripts/status.sh"
+
+  if grep -q '"chainId": __L2_CHAIN_ID__' "$besu_genesis" \
+    && grep -q '"chainId": __L2_CHAIN_ID__' "$maru_genesis" \
+    && grep -qF 's/__L2_CHAIN_ID__/$L2_CHAIN_ID/g' "$genesis_init"; then
+    pass "L2_CHAIN_ID is templated into Besu and Maru genesis"
+  else
+    fail "L2_CHAIN_ID must be templated into both L2 genesis files"
+  fi
+
+  if grep -q '^chain_id = __L2_CHAIN_ID__' "$prover_template" \
+    && grep -qF 's|__L2_CHAIN_ID__|$$L2_CHAIN_ID|g' "$compose"; then
+    pass "L2_CHAIN_ID is templated into prover public input config"
+  else
+    fail "L2_CHAIN_ID must feed prover-config-partial.toml.template"
+  fi
+
+  if grep -qF 'L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}' "$compose" \
+    && grep -qF 'NEXT_PUBLIC_NETWORK_ID: ${L2_CHAIN_ID:-1337}' "$compose" \
+    && grep -qF 'CHAIN_ID: ${L2_CHAIN_ID:-1337}' "$compose"; then
+    pass "docker compose propagates L2_CHAIN_ID to init, deploy, and explorer"
+  else
+    fail "docker compose must propagate L2_CHAIN_ID to init/deploy/explorer"
+  fi
+
+  if grep -q 'eth_chainId' "$status_script" \
+    && grep -qF '^chain_id|^prover_mode|^is_allowed_circuit_id' "$status_script"; then
+    pass "status.sh reports L2 chain ID and rendered prover mode"
+  else
+    fail "status.sh must report L2 chain ID and rendered prover mode"
   fi
 }
 
@@ -193,6 +267,25 @@ check_incremental_typescript_helpers() {
   fi
 }
 
+check_partial_prover_guardrails() {
+  compose="$STACK/docker-compose.yml"
+  prover_template="$STACK/config/l2/prover/prover-config-partial.toml.template"
+
+  if grep -q 'PROVER_GOMEMLIMIT must be set explicitly when PROVER_DEV_OVERRIDE=false' "$compose"; then
+    pass "partial prover mode requires explicit PROVER_GOMEMLIMIT"
+  else
+    fail "PROVER_DEV_OVERRIDE=false must require explicit PROVER_GOMEMLIMIT"
+  fi
+
+  if grep -q '^prover_mode = "partial"' "$prover_template" \
+    && grep -q '^is_allowed_circuit_id = 483' "$prover_template" \
+    && grep -q 'partial render verified: 2× partial, 2× dev, is_allowed_circuit_id=483' "$compose"; then
+    pass "partial prover render is verified before prover starts"
+  else
+    fail "config-render must verify partial prover modes and bitmask"
+  fi
+}
+
 check_smoke_and_traffic_scripts() {
   for script in send-l2-test-tx.sh send-l2-erc20-transfer.sh smoke-bridge-message.sh; do
     script_path="$STACK/scripts/$script"
@@ -233,10 +326,13 @@ check_smoke_and_traffic_scripts() {
 }
 
 check_no_tracked_generated_genesis
+check_generated_genesis_is_volume_scoped
 check_generated_l2_deployer_genesis
+check_l2_chain_id_wiring
 check_account_setup_key_model
 check_postman_key_model
 check_incremental_typescript_helpers
+check_partial_prover_guardrails
 check_smoke_and_traffic_scripts
 
 if [ "$FAILURES" -ne 0 ]; then

@@ -5,13 +5,14 @@ Running log for the Sepolia quickstart: fixes applied, current status, and cavea
 ## Current snapshot - 2026-05-12
 
 Fresh Sepolia boot validates the cleaned key model, the current dev-prover path,
-and the first real L1-to-L2 message smoke:
+the first real L1-to-L2 message smoke, and the opt-in partial-prover path
+through first L1 finalization:
 
 - user still supplies one funded `L1_DEPLOYER_PRIVATE_KEY`;
 - `account-setup` generates fresh runtime keys for L1 blob submission, L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman;
 - L2 genesis only funds the generated L2 deployer plus the precomputed `L2MessageService` address;
 - only `LineaRollupV8` and `L2MessageService` are precomputed before boot;
-- generated genesis/rendered artifacts are ignored, while templates stay committed;
+- generated genesis is now volume-scoped (`linea-stack-l2-genesis`) and templates stay committed;
 - liveness is disabled for the v0 quickstart;
 - `deploy-contracts` writes `addresses.json`, funds generated runtime signers, and is retry-safe from persisted deploy logs;
 - Web3Signer loads 3 generated signer key files, postman starts with generated L1/L2 postman keys, and coordinator ports bind;
@@ -20,22 +21,29 @@ and the first real L1-to-L2 message smoke:
 - `scripts/send-l2-test-tx.sh` and `scripts/send-l2-erc20-transfer.sh` generate local L2 ETH/token traffic for Blockscout demos;
 - `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta;
 - post-boot helper scripts are staged manually: read-only inspection first, optional L2 demo traffic second, real L1-to-L2 smoke third, then the same sequence again for partial-prover validation;
+- `L2_CHAIN_ID` is now treated as a single boot input and is rendered into Besu genesis, Maru genesis, prover public-input config, deploy metadata, and Blockscout config;
+- `PROVER_DEV_OVERRIDE=false` now requires an explicit `PROVER_GOMEMLIMIT` so partial validation fails early if the memory budget was not set;
+- partial validation on 2026-05-12 used 30 GiB Docker memory with `PROVER_GOMEMLIMIT=24GiB`; first finalization reached L2 block 2 about 25 min after coordinator/prover startup;
+- partial validation produced Sepolia blob tx `0x807a6669baf390bff07cec32aebfdfcb3dac500bdbc49c1a8d31c8fdde5ee9d7` and aggregation/finalization tx `0x1b4b6eb15bc87f2886fa44e58de593d819588f932252dc7821c24116fd5c7bd9`;
 
 Fixes found during this clean boot:
 
 - L1 blob/finalization signer top-up default reduced from 0.25 ETH to 0.15 ETH each;
+- rendered L2 genesis was moved out of the repo bind mount and into the `linea-stack-l2-genesis` Docker volume, after a clean partial boot hit a stale host `genesis-besu.json` that funded the previous generated L2 deployer;
 - `/shared/runtime-keys.env` must be readable by non-root service containers, otherwise postman cannot start;
 - `/shared/web3signer-keys/*.yaml` must be readable by the Web3Signer container, otherwise Web3Signer starts with zero signers and coordinator gets signer `404 Not Found` errors.
 
 Current caveats:
 
-- default proving is still dev/dummy proof mode; partial-prover validation remains a separate gate;
+- default proving is still dev/dummy proof mode; partial-prover validation is opt-in, resource-heavy, and should be rerun before release-signoff changes;
+- Docker Desktop must be raised well above the 8-16 GB laptop default before partial validation; about 30-32 GB assigned to Docker with `PROVER_GOMEMLIMIT=24GiB` is the current minimum tested shape, 48 GB preferred;
 - TokenBridge ERC20 smoke is still separate; the current bridge smoke validates the base L1-to-L2 message path;
+- the bridge/message smoke has not yet been rerun against the partial-prover boot;
 - no one-shot `quickstart-verify.sh` exists yet; keeping the helpers separate avoids hidden Sepolia spend during first boot;
-- transient nonce/replacement retries can appear during catch-up; judge progress by blob/aggregation txs and finalized block advancing;
+- transient nonce/replacement retries and a duplicate `StartingRootHashDoesNotMatch` retry can appear during catch-up after a successful finalization; judge progress by blob/aggregation txs and finalized block advancing;
 - the local L2 does not necessarily keep producing visible user blocks when idle. Use `./scripts/send-l2-test-tx.sh` to create fresh blocks for Blockscout demos.
 
-Next work should focus on partial-prover validation, then a small optional `quickstart-verify.sh` wrapper once the manual sequence is stable.
+Next work should focus on rerunning the bridge/message smoke against the partial boot, then a small optional `quickstart-verify.sh` wrapper once the manual sequence is stable.
 
 ## Historical fix log
 

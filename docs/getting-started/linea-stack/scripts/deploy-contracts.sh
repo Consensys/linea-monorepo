@@ -147,12 +147,12 @@ NODE
 wait_rpc "$L1_RPC_URL" L1
 wait_rpc "$L2_RPC_URL" L2
 
-# L2 genesis-init writes /initialization/fork-timestamp.txt. The l2-genesis-init
-# bind-mount is at /initialization in the genesis-init container; in our
-# deploy-contracts container it's only reachable via /workspace/docs/...
-# We try both common paths and fall back to the makefile-contracts.mk default.
+# L2 genesis-init writes /initialization/fork-timestamp.txt into the
+# linea-l2-genesis volume. deploy-contracts mounts that volume read-only at
+# /generated-genesis. The repo-path fallbacks are kept for older local runs.
 FORK_TIMESTAMP=""
 for f in \
+    "/generated-genesis/fork-timestamp.txt" \
     "/workspace/docs/getting-started/linea-stack/config/l2/genesis-init/fork-timestamp.txt" \
     "/workspace/docker/config/l2-genesis-initialization/fork-timestamp.txt"; do
   if [[ -f "$f" ]]; then

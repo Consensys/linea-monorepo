@@ -1,7 +1,7 @@
 {
   "@_WARNING": "FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE",
   "config": {
-    "chainId": 1337,
+    "chainId": __L2_CHAIN_ID__,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip155Block": 0,

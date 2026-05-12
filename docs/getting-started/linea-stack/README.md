@@ -3,17 +3,19 @@
 > v0 of the "Streamlined Linea Stack deployment" feature. Local L2 stack
 > pointed at user-supplied **Sepolia** as L1.
 
-> **Status:** Fresh Sepolia boot validated on 2026-05-12 with dev proofs.
-> Contracts deploy on Sepolia, the L2 chain starts, coordinator binds `9545` /
-> `9546`, the prover file pipeline writes requests and responses, Blockscout UI
-> serves the local L2, and coordinator L1 blob/aggregation/finalization
-> submissions have been observed on Sepolia. A real L1-to-L2 message smoke has
-> also been validated: the script sends `sendMessage` on Sepolia, waits for
-> Postman to claim it on L2, verifies the `MessageClaimed` receipt, and checks
-> the recipient balance delta.
+> **Status:** Fresh Sepolia boot validated on 2026-05-12 with dev proofs, and
+> opt-in partial proving validated through first L1 finalization. Contracts
+> deploy on Sepolia, the L2 chain starts, coordinator binds `9545` / `9546`, the
+> prover file pipeline writes requests and responses, Blockscout UI serves the
+> local L2, and coordinator L1 blob/aggregation/finalization submissions have
+> been observed on Sepolia. A real L1-to-L2 message smoke has also been
+> validated in the default dev-proof path: the script sends `sendMessage` on
+> Sepolia, waits for Postman to claim it on L2, verifies the `MessageClaimed`
+> receipt, and checks the recipient balance delta.
 >
-> This is still a bring-up checkpoint, not a final "done" stamp: partial-prover
-> validation remains the next gate.
+> This is still a bring-up checkpoint, not a final "done" stamp: partial mode is
+> resource-heavy and the bridge smoke should still be rerun against that mode
+> before calling the whole demo path final.
 >
 > If you boot this and hit something
 > [`bringup-notes.md`](./bringup-notes.md) doesn't already cover, append what you
@@ -66,7 +68,9 @@ L2 Blockscout API backend and frontend explorer UI. All L1 traffic goes through 
 
 What you get from `docker compose up`: a live local L2 chain, fresh Linea
 contracts deployed to Sepolia from your address, and a coordinator/prover path
-that can create dev proofs and submit L1 blob/aggregation transactions.
+that can create default dev proofs and submit L1 blob/aggregation transactions.
+Opt-in partial proving has also been validated through first execution proof,
+aggregation proof, blob submission, and finalization on Sepolia.
 
 What this is **NOT**:
 - Not portable — bind-mounts `../../../contracts` from the linea-monorepo so
@@ -82,8 +86,8 @@ What this is **NOT**:
 
 | Requirement     | Minimum                                                  |
 |-----------------|----------------------------------------------------------|
-| RAM             | 8 GB Docker Desktop works for default dev proofs; partial mode needs much more |
-| RAM (recommended) | 48 GB                                                  |
+| RAM             | 8 GB Docker Desktop works for default dev proofs; partial mode needs about 30-32 GB assigned to Docker |
+| RAM (recommended) | 48 GB for partial-prover validation                  |
 | Disk            | ~80 GB free (image pulls + chaindata + service DBs)      |
 | CPU             | 8 cores                                                  |
 | Docker          | v24+                                                     |
@@ -112,6 +116,8 @@ L1_DEPLOYER_PRIVATE_KEY=0x<your-sepolia-funded-key>
 # L1_ROLE_TOP_UP_WEI=150000000000000000
 # L1_POSTMAN_MIN_BALANCE_WEI=20000000000000000
 # L1_POSTMAN_TOP_UP_WEI=50000000000000000
+# optional: keep 1337 unless intentionally validating a different local L2 chain ID
+# L2_CHAIN_ID=1337
 ```
 
 Everything else has sensible defaults. Optional knobs (port collisions, DA
@@ -135,7 +141,8 @@ T+0:00  account-setup       → /shared/runtime-keys.env, /shared/web3signer-key
                               boot-critical LineaRollupV8 + L2MessageService)
 T+0:00  l2-genesis-init     → renders L2 genesis with only the generated L2
                               deployer funded, plus precomputed L2MessageService
-                              pre-funded at 1B ETH
+                              pre-funded at 1B ETH; output lives in the
+                              linea-stack-l2-genesis Docker volume
 T+0:00  config-render       → writes /rendered/{coordinator, maru, sequencer,
                               l2-node-besu, prover}-config with precomputed addrs
 T+0:30  web3signer ready    (3 generated signer keys: L1 blob submission,
@@ -155,7 +162,8 @@ T+2:00  deploy-contracts begins
         └─ patch /rendered/coordinator-config (state root + shnarf + deploy block)
 T+5-8m  coordinator + postman + prover start
         postman reads generated signer keys and deployed addresses at startup
-T+8m+   coordinator writes prover requests; dev prover writes responses
+T+8m+   coordinator writes prover requests; dev prover writes fast responses
+        (partial mode can spend many minutes on the first execution proof)
 T+10m+  coordinator starts L1 blob/aggregation submissions once enough L2
         blocks have been conflated/proven
 ```
@@ -165,11 +173,13 @@ The dominating variables on real Sepolia are:
 - Sepolia gas-price spikes (deploys can take much longer when basefee is high)
 - Image pull on first boot (~6 GB total)
 
-Plan ~20-30 min for first-boot evidence on a cold Docker host. Do not call a
-run successful just because containers are up: wait for `./scripts/status.sh` to
-show deployed addresses, coordinator ports, prover responses, and coordinator L1
-submission logs. Use `./scripts/links.sh` to print the current Sepolia and local
-L2 explorer links.
+Plan ~20-30 min for first-boot evidence on a cold Docker host in default dev
+mode. In partial mode, the 2026-05-12 M-series validation with 30 GiB assigned
+to Docker and `PROVER_GOMEMLIMIT=24GiB` reached first L1 finalization about 25
+min after coordinator/prover startup. Do not call a run successful just because
+containers are up: wait for `./scripts/status.sh` to show deployed addresses,
+coordinator ports, prover responses, and coordinator L1 submission logs. Use
+`./scripts/links.sh` to print the current Sepolia and local L2 explorer links.
 
 ## 5. Endpoints
 
@@ -217,8 +227,9 @@ COUNT=5 ./scripts/send-l2-test-tx.sh
 ./scripts/smoke-bridge-message.sh
 ```
 
-4. For partial-prover validation, switch prover mode, restart the rendered
-prover config, then rerun the same read-only checks and bridge smoke.
+4. For partial-prover validation, use a clean boot with `PROVER_DEV_OVERRIDE=false`
+and an explicit `PROVER_GOMEMLIMIT`, then rerun the same read-only checks and
+bridge smoke.
 
 The scripts stay independent on purpose, so testers can rerun only the stage
 they are validating instead of replaying the whole first boot.
@@ -241,6 +252,15 @@ A useful first-boot checkpoint has all of these signals:
 - prover request/response counts are non-zero.
 - coordinator logs show L1 blob submission and aggregation/finalization activity.
 - L2 Blockscout UI responds on `http://localhost:4001`.
+
+For partial-prover validation, also check:
+
+- rendered prover config shows `partial`, `dev`, `partial`, `dev` and
+  `is_allowed_circuit_id = 483`;
+- execution, compression, and aggregation response counts are non-zero;
+- coordinator logs include a `blobs submitted` transaction hash;
+- coordinator logs include `submitted aggregation` and a later
+  `finalization update`.
 
 Lower-level checks, when you need them:
 
@@ -384,8 +404,49 @@ docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
 ```
 
 To run partial mode, set `PROVER_DEV_OVERRIDE=false`, raise Docker Desktop
-memory substantially, optionally set `PROVER_GOMEMLIMIT`, and re-run the same
-`up -d --force-recreate config-render prover` command.
+memory substantially, set `PROVER_GOMEMLIMIT`, and use a clean boot:
+
+```bash
+PROVER_DEV_OVERRIDE=false
+PROVER_GOMEMLIMIT=24GiB
+```
+
+```bash
+docker compose --env-file versions.env --env-file .env \
+  --profile stack-partial-prover down -v --remove-orphans
+docker compose --env-file versions.env --env-file .env \
+  --profile stack-partial-prover up -d
+```
+
+Before waiting on proofs, verify the rendered config:
+
+```bash
+docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
+  grep -E "^chain_id|^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
+# Expected in partial validation mode:
+#   prover_mode = "partial"
+#   prover_mode = "dev"
+#   prover_mode = "partial"
+#   prover_mode = "dev"
+#   is_allowed_circuit_id = 483
+#   chain_id = 1337
+```
+
+Use `24GiB` when Docker Desktop is capped around 30-32 GB, so the prover leaves
+memory for Besu, Shomei, coordinator, and Blockscout. If Docker has 48 GB or
+more, `32GiB` is a safer validation-machine setting.
+
+Observed 2026-05-12 partial run shape on M-series with 30 GiB Docker memory and
+`PROVER_GOMEMLIMIT=24GiB`: first execution proof completed, aggregation proof
+was generated, coordinator submitted a Sepolia blob tx and a Sepolia
+aggregation/finalization tx, and finalization advanced to L2 block 2. Prover
+memory peaked around 23 GiB. The run can continue proving later boot blocks for
+some time after the first finalization.
+
+If `PROVER_DEV_OVERRIDE=false` and `PROVER_GOMEMLIMIT` is missing,
+`config-render` exits before the prover starts. That is intentional: a silent
+fallback to `4GiB` wastes time and usually fails later with OOM-style proof
+failure files.
 
 ### Pointing at a different L1
 
@@ -397,6 +458,9 @@ This scaffold is intentionally Sepolia-shaped. To target a different L1
 - Verify the LineaRollup contract's expected verifier shape works on that L1
 - Make sure `account-setup`'s nonce-offset assumptions hold (they're tied to
   the deploy script's tx sequence — see `scripts/account-setup.sh`)
+- Keep `L2_CHAIN_ID` consistent everywhere. The quickstart templates derive
+  Besu genesis, Maru genesis, prover public inputs, deploy metadata, and
+  Blockscout config from the same value.
 
 ## 9. Troubleshooting
 
@@ -407,9 +471,10 @@ docker compose --env-file versions.env --env-file .env --profile stack-partial-p
 docker compose --env-file versions.env --env-file .env --profile stack-partial-prover up -d
 ```
 
-`down -v` is critical — without `-v`, the genesis volumes survive and the next
-boot will reuse stale precomputed addresses against a deployer whose Sepolia
-nonce has advanced.
+`down -v` is critical — without `-v`, the shared config, rendered config,
+chaindata, and generated L2 genesis volumes survive. The repo keeps only
+`genesis-*.json.template`; rendered `genesis-besu.json`, `genesis-maru.json`,
+and `fork-timestamp.txt` live in Docker volume `linea-stack-l2-genesis`.
 
 ### Common failures
 
@@ -421,9 +486,10 @@ nonce has advanced.
 | deploy-contracts dies with `ADDRESS MISMATCH` | LineaRollupV8 or L2MessageService no longer lands at the boot-critical precomputed address | Usually means the deploy script changed and `account-setup.sh` needs a corresponding nonce/precompute update |
 | Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans`; this scaffold keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
 | Coordinator logs `address already reserved` during L1 blob/finalization submission | stale boot volume or old image/config still maps multiple jobs to the same signer | Fresh boot after the runtime-key cleanup should use distinct generated signer addresses; run `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v` before retesting |
-| Aggregation/finalization occasionally reverts with a starting-root mismatch while catching up | coordinator is retrying aggregation windows while the local L2 catches up to the L1 contract state | Known caveat; watch whether `lastFinalizedBlockNumber` advances before calling it stuck |
+| Aggregation/finalization occasionally reverts with a starting-root mismatch while catching up | coordinator retried an aggregation window after an earlier finalization tx succeeded | Known caveat; watch whether `finalization update` advances before calling it stuck |
 | Coordinator restarts on first boot | usually a race against shomei's first-block trace; self-heals within ~30s | If it persists past 1 min, check `docker logs coordinator`; see fix log entries on web3signer mTLS |
 | Web3signer mTLS handshake errors | known-clients fingerprint out of sync (only after regenerating one side) | Regenerate both sides or restore from git |
+| `config-render` exits with `PROVER_GOMEMLIMIT must be set explicitly` | `PROVER_DEV_OVERRIDE=false` selected without a partial-prover memory limit | Set `PROVER_GOMEMLIMIT=24GiB` for a 30-32 GB Docker allocation, or `32GiB` for a larger validation machine, then clean boot |
 | Prover execution proofs exit `137` or files get `.large.failure.code_137` | partial prover ran under too little Docker memory | Use default `PROVER_DEV_OVERRIDE=true`, or raise Docker memory substantially before partial-mode validation |
 | Port collision (5432, 8745, 4000, 4001, 9000, 3001, 9091) | Another service uses the port | Override via `HOST_PORT_*` in `.env` |
 

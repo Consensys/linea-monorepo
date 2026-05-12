@@ -2,8 +2,9 @@
 #
 # Verbatim from `docker/config/prover/v3/prover-config-partial.toml` in this
 # monorepo, with one change: `message_service_contract` is templated as
-# `__L2_MESSAGE_SERVICE_ADDRESS__` and substituted at boot by config-render
-# from `/shared/addresses-precomputed.json` (account-setup output).
+# `chain_id` + `__L2_MESSAGE_SERVICE_ADDRESS__` are templated and substituted
+# at boot by config-render from compose env + `/shared/addresses-precomputed.json`
+# (account-setup output).
 #
 # "Partial" here is a hybrid by design — execution + invalidity in `partial`
 # mode (real partial proving), data_availability + aggregation in `dev` mode
@@ -16,17 +17,12 @@
 # FAST-ITERATE DEV OVERRIDE (when iterating without partial-proving overhead)
 # ─────────────────────────────────────────────────────────────────────────────
 # To swap to all-dev mode (dummy proofs everywhere; ~minutes per cycle vs
-# ~tens-of-minutes for partial), edit four lines in this file:
-#   line ~28: [execution]      prover_mode = "partial"  →  prover_mode = "dev"
-#                              (also drop `conflated_traces_dir`,
-#                               `ignore_compatibility_check`, `serialization`)
-#   line ~38: [invalidity]     prover_mode = "partial"  →  prover_mode = "dev"
-#   line ~46: [aggregation]    is_allowed_circuit_id = 483  →  963
-# data_availability already at "dev" — no change.
-# Then `docker compose --env-file versions.env --env-file .env --profile
-# stack-partial-prover up -d --force-recreate config-render prover` to render
-# + restart the prover.
-# Don't ship dev overrides as a PR — flip back before commit.
+# ~tens-of-minutes for partial), set `PROVER_DEV_OVERRIDE=true` in `.env`.
+# config-render patches only the rendered copy in the docker volume:
+#   [execution]   prover_mode = "partial" → "dev"
+#   [invalidity]  prover_mode = "partial" → "dev"
+#   [aggregation] is_allowed_circuit_id = 483 → 963
+# The template on disk stays partial.
 # ─────────────────────────────────────────────────────────────────────────────
 environment = "integration-development"
 version = "3.0.0"
@@ -77,7 +73,7 @@ is_allowed_circuit_id = 483
 verifier_id = 0
 
 [layer2]
-chain_id = 1337
+chain_id = __L2_CHAIN_ID__
 base_fee = 7
 coin_base = "0x0000000000000000000000000000000000000000"
 # Substituted at boot by config-render from /shared/addresses-precomputed.json.l2.L2MessageService

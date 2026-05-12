@@ -37,6 +37,8 @@ volumes:
     name: "linea-stack-logs"
   linea-shared-config:
     name: "linea-stack-shared-config"  # addresses.json handoff between deploy-contracts and consumers
+  linea-l2-genesis:
+    name: "linea-stack-l2-genesis"  # rendered Besu/Maru genesis + fork timestamp
   coordinator-pg-data:
   postman-pg-data:
   blockscout-l2-pg-data:
@@ -91,11 +93,12 @@ services:
     depends_on:
       account-setup:
         condition: service_completed_successfully
-    # Idempotent: skips generation if the L2 genesis files have already been
-    # rendered. Re-running with mismatching fork-timestamp would diverge from
-    # any existing on-disk chaindata. Run `docker compose down -v` to force a
-    # re-render — also required if account-setup wrote a new precomputed JSON
-    # (e.g., L1 deployer nonce advanced between runs).
+    # Idempotent inside the generated-genesis volume: skips generation if the
+    # L2 genesis files have already been rendered. Re-running with mismatching
+    # fork-timestamp would diverge from any existing on-disk chaindata. Run
+    # `docker compose down -v` to force a re-render — also required if
+    # account-setup wrote a new precomputed JSON (e.g., L1 deployer nonce
+    # advanced between runs).
     entrypoint:
       - sh
       - -c
@@ -105,9 +108,10 @@ services:
           exit 0
         fi
         echo "[l2-genesis-init] Rendering fresh L2 genesis."
-        sh /initialization/init.sh
+        sh /templates/init.sh
     volumes:
-      - ./config/l2/genesis-init/:/initialization:rw
+      - ./config/l2/genesis-init:/templates:ro
+      - linea-l2-genesis:/initialization:rw
       - linea-shared-config:/shared:ro
 
   config-render:
@@ -138,10 +142,12 @@ services:
         condition: service_completed_successfully
     environment:
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
+      L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}
       # Defaults to all-dev prover mode for quickstart/laptop usability. Set
       # PROVER_DEV_OVERRIDE=false in .env for partial proving; that needs a much
       # higher Docker memory cap and is intended for validation, not first boot.
       PROVER_DEV_OVERRIDE: ${PROVER_DEV_OVERRIDE:-true}
+      PROVER_GOMEMLIMIT: ${PROVER_GOMEMLIMIT:-}
     entrypoint:
       - sh
       - -c
@@ -156,6 +162,19 @@ services:
         # controlled shape so POSIX sed -E is enough.
         LINEA_ROLLUP_ADDR=$$(sed -nE 's/.*"LineaRollupV8":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
         L2_MS_ADDR=$$(sed -nE 's/.*"L2MessageService":[[:space:]]*"(0x[a-fA-F0-9]{40})".*/\1/p' "$$PRECOMPUTED" | head -1)
+        case "$$L2_CHAIN_ID" in
+          ''|*[!0-9]*)
+            echo "[config-render] FATAL: L2_CHAIN_ID must be a decimal integer (got '$$L2_CHAIN_ID')" >&2
+            exit 1
+            ;;
+        esac
+        case "$$PROVER_DEV_OVERRIDE" in
+          true|false) ;;
+          *)
+            echo "[config-render] FATAL: PROVER_DEV_OVERRIDE must be true or false (got '$$PROVER_DEV_OVERRIDE')" >&2
+            exit 1
+            ;;
+        esac
         # Uncompressed secp256k1 pubkeys (128 hex chars, NO 0x prefix). The
         # L1 blob and finalization signers are deliberately separate senders;
         # message anchoring signs L2 transactions, so it uses the L2 anchorer.
@@ -169,6 +188,7 @@ services:
         echo "$$L2_MESSAGE_ANCHORING_PUBKEY"      | grep -qE '^[a-fA-F0-9]{128}$$' || { echo "[config-render] FATAL: signers.l2MessageAnchoringPubkey missing from $$PRECOMPUTED" >&2; exit 1; }
 
         echo "[config-render] L1_RPC_URL is set (redacted)"
+        echo "[config-render] L2_CHAIN_ID = $$L2_CHAIN_ID"
         echo "[config-render] LineaRollupV8 = $$LINEA_ROLLUP_ADDR"
         echo "[config-render] L2MessageService = $$L2_MS_ADDR"
         echo "[config-render] L1 blob signer pubkey = $${L1_BLOB_SUBMITTER_PUBKEY%????????????????????????????????????????????????????????}…"
@@ -190,6 +210,7 @@ services:
           dst="$${src_dst##*:}"
           sed \
             -e "s|__L1_RPC_URL__|$$L1_RPC_URL|g" \
+            -e "s|__L2_CHAIN_ID__|$$L2_CHAIN_ID|g" \
             -e "s|__LINEA_ROLLUP_ADDRESS__|$$LINEA_ROLLUP_ADDR|g" \
             -e "s|__L2_MESSAGE_SERVICE_ADDRESS__|$$L2_MS_ADDR|g" \
             -e "s|__L1_BLOB_SUBMITTER_PUBKEY_NO_PREFIX__|$$L1_BLOB_SUBMITTER_PUBKEY|g" \
@@ -230,14 +251,27 @@ services:
             "$$P"
           # Verify patch landed (4 dev modes, bitmask 963).
           dev_count=$$(grep -cE '^prover_mode = "dev"$$' "$$P" || true)
-          if [ "$$dev_count" != "4" ] || ! grep -qE '^is_allowed_circuit_id = 963$$' "$$P"; then
+          if [ "$$dev_count" != "4" ] || ! grep -qE '^is_allowed_circuit_id = 963$$' "$$P" || ! grep -qE "^chain_id = $$L2_CHAIN_ID$$" "$$P"; then
             echo "[config-render] FATAL: PROVER_DEV_OVERRIDE patch failed — got $$dev_count dev modes, expected 4" >&2
-            grep -E '^prover_mode|^is_allowed_circuit_id' "$$P" >&2
+            grep -E '^prover_mode|^is_allowed_circuit_id|^chain_id' "$$P" >&2
             exit 1
           fi
           echo "[config-render] dev override applied: 4× prover_mode=dev, is_allowed_circuit_id=963"
         else
+          if [ -z "$$PROVER_GOMEMLIMIT" ]; then
+            echo "[config-render] FATAL: PROVER_GOMEMLIMIT must be set explicitly when PROVER_DEV_OVERRIDE=false" >&2
+            echo "[config-render] Example: PROVER_GOMEMLIMIT=32GiB" >&2
+            exit 1
+          fi
           echo "[config-render] PROVER_DEV_OVERRIDE=false → keeping upstream partial defaults in rendered config"
+          partial_count=$$(grep -cE '^prover_mode = "partial"$$' /rendered/prover-config-partial.toml || true)
+          dev_count=$$(grep -cE '^prover_mode = "dev"$$' /rendered/prover-config-partial.toml || true)
+          if [ "$$partial_count" != "2" ] || [ "$$dev_count" != "2" ] || ! grep -qE '^is_allowed_circuit_id = 483$$' /rendered/prover-config-partial.toml || ! grep -qE "^chain_id = $$L2_CHAIN_ID$$" /rendered/prover-config-partial.toml; then
+            echo "[config-render] FATAL: partial prover render mismatch — got partial=$$partial_count dev=$$dev_count" >&2
+            grep -E '^prover_mode|^is_allowed_circuit_id|^chain_id' /rendered/prover-config-partial.toml >&2
+            exit 1
+          fi
+          echo "[config-render] partial render verified: 2× partial, 2× dev, is_allowed_circuit_id=483, GOMEMLIMIT=$$PROVER_GOMEMLIMIT"
         fi
     volumes:
       - ./config/l2/coordinator/coordinator-config.toml.template:/templates/coordinator-config.toml.template:ro
@@ -283,7 +317,7 @@ services:
       - ./config/l2/sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/l2/sequencer/tls-files:/var/lib/besu/tls-files:ro
       - ./config/l2/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
-      - ./config/l2/genesis-init:/initialization/:ro
+      - linea-l2-genesis:/initialization:ro
     ports:
       # Sequencer RPC is internal-only by convention. Not user-facing.
       # Use l2-node-besu (HOST_PORT_L2_RPC) for end-user RPC.
@@ -317,7 +351,7 @@ services:
       - linea-rendered-config:/rendered:ro
       - ./config/l2/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
       - ./config/l2/maru/private-key:/tmp/maru-db/private-key:ro
-      - ./config/l2/genesis-init:/initialization/:ro
+      - linea-l2-genesis:/initialization:ro
     ports:
       - "${HOST_PORT_MARU:-8080}:8080"
     networks: [linea]
@@ -366,7 +400,7 @@ services:
       - ./config/l2/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/l2/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/l2/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
-      - ./config/l2/genesis-init:/initialization/:ro
+      - linea-l2-genesis:/initialization:ro
       - linea-local-dev:/data
     ports:
       - "${HOST_PORT_L2_RPC:-8745}:8545"
@@ -539,6 +573,7 @@ services:
       L1_RPC_URL: ${L1_RPC_URL:?L1_RPC_URL must be set in .env (Sepolia HTTP RPC URL)}
       L1_DEPLOYER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:?L1_DEPLOYER_PRIVATE_KEY must be set in .env (Sepolia-funded)}
       L2_RPC_URL: http://l2-node-besu:8545
+      L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}
       ADDRESSES_OUTPUT_PATH: /shared/addresses.json
       LINEA_COORDINATOR_DATA_AVAILABILITY: ${LINEA_COORDINATOR_DATA_AVAILABILITY:-ROLLUP}
     volumes:
@@ -555,6 +590,7 @@ services:
       # scripts/deployBridgedTokenAndTokenBridgeV1_1.ts header for details.
       - ./scripts/deployBridgedTokenAndTokenBridgeV1_1.ts:/workspace/contracts/local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1_1.ts:ro
       - linea-shared-config:/shared
+      - linea-l2-genesis:/generated-genesis:ro
       # RW mount of rendered config volume so this script can patch coordinator
       # deploy-time values (state root, shnarf, deploy block).
       - linea-rendered-config:/rendered:rw
@@ -723,8 +759,10 @@ services:
       ETHEREUM_JSONRPC_WS_URL: ws://l2-node-besu:8546/
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@blockscout-l2-pg:5432/l2_blockscout?ssl=false
       ECTO_USE_SSL: "false"
+      CHAIN_ID: ${L2_CHAIN_ID:-1337}
+      CHAIN_SPEC_PATH: /app/genesis-init/genesis-besu.json
     volumes:
-      - ./config/l2/genesis-init/genesis-besu.json:/app/genesis.json:ro
+      - linea-l2-genesis:/app/genesis-init:ro
     ports:
       - "${HOST_PORT_L2_BLOCKSCOUT:-4000}:4000"
     networks: [linea]
@@ -746,7 +784,7 @@ services:
       NEXT_PUBLIC_APP_INSTANCE: linea-stack-local
       NEXT_PUBLIC_NETWORK_NAME: "Local Linea"
       NEXT_PUBLIC_NETWORK_SHORT_NAME: Linea
-      NEXT_PUBLIC_NETWORK_ID: "1337"
+      NEXT_PUBLIC_NETWORK_ID: ${L2_CHAIN_ID:-1337}
       NEXT_PUBLIC_NETWORK_RPC_URL: http://localhost:${HOST_PORT_L2_RPC:-8745}
       NEXT_PUBLIC_NETWORK_CURRENCY_NAME: Ether
       NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL: ETH
@@ -771,4 +809,3 @@ services:
     ports:
       - "${HOST_PORT_L2_BLOCKSCOUT_FRONTEND:-4001}:3000"
     networks: [linea]
-

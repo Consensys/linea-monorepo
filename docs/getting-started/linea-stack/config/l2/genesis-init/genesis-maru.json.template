@@ -1,5 +1,5 @@
 {
-  "chainId": 1337,
+  "chainId": __L2_CHAIN_ID__,
   "config": {
     "0": {
       "type": "qbft",

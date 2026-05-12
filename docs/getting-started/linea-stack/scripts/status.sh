@@ -5,6 +5,13 @@ set -eu
 
 section() { printf '\n[linea-status] %s\n' "$*"; }
 
+env_value() {
+  key="$1"
+  if [ -f .env ]; then
+    sed -nE "s/^${key}=([^#[:space:]].*)$/\1/p" .env | tail -1
+  fi
+}
+
 if ! docker info >/dev/null 2>&1; then
   echo "[linea-status] ERROR: Docker daemon is not reachable from this shell." >&2
   exit 1
@@ -48,12 +55,45 @@ else
   '
 fi
 
+section "chain / prover config"
+HOST_PORT_L2_RPC="${HOST_PORT_L2_RPC:-$(env_value HOST_PORT_L2_RPC || true)}"
+[ -n "$HOST_PORT_L2_RPC" ] || HOST_PORT_L2_RPC=8745
+L2_RPC_URL="${L2_RPC_URL:-http://localhost:$HOST_PORT_L2_RPC}"
+chain_response="$(curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+  "$L2_RPC_URL" 2>/dev/null || true)"
+if [ -n "$chain_response" ]; then
+  echo "l2 rpc eth_chainId: $chain_response"
+else
+  echo "l2 rpc eth_chainId: unavailable at $L2_RPC_URL"
+fi
+
+if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
+  docker run --rm -v linea-stack-shared-config:/shared:ro busybox sh -eu -c '
+    if [ -f /shared/addresses.json ]; then
+      sed -nE "s/.*\"l2ChainId\":[[:space:]]*\"?([0-9]+)\"?.*/addresses.json l2ChainId: \1/p" /shared/addresses.json | head -1
+    fi
+  '
+fi
+
+if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
+  docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox sh -eu -c '
+    if [ -f /rendered/prover-config-partial.toml ]; then
+      grep -E "^chain_id|^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
+    else
+      echo "rendered prover config: missing"
+    fi
+  '
+else
+  echo "rendered config volume missing"
+fi
+
 section "coordinator"
 if docker ps --format '{{.Names}}' | grep -qx coordinator; then
   docker exec coordinator sh -eu -c '
     if grep -qi ":2549" /proc/net/tcp /proc/net/tcp6 2>/dev/null; then echo "observability 9545: listening"; else echo "observability 9545: not listening"; fi
     if grep -qi ":254A" /proc/net/tcp /proc/net/tcp6 2>/dev/null; then echo "json-rpc 9546: listening"; else echo "json-rpc 9546: not listening"; fi
-    for lane in execution compression aggregation; do
+    for lane in execution compression invalidity aggregation; do
       req_dir="/data/prover/v3/$lane/requests"
       resp_dir="/data/prover/v3/$lane/responses"
       if [ -d "$req_dir" ]; then
@@ -81,8 +121,9 @@ fi
 
 section "prover"
 if docker ps --format '{{.Names}}' | grep -qx prover; then
+  docker stats --no-stream --format 'prover resources: mem={{.MemUsage}} cpu={{.CPUPerc}}' prover 2>/dev/null || true
   docker logs --tail 120 prover 2>&1 \
-    | grep -E 'ERROR|WARN|proof|request|response|done|completed|failed' \
+    | grep -E 'ERROR|WARN|Running the|Chain config|IsAllowedCircuitID|proof|request|response|done|completed|failed' \
     | tail -25 \
     | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' || true
 else
