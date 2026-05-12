@@ -50,8 +50,8 @@ jobs:
           PACKAGE: ${{ inputs.package }}
         run: |
           case "$PACKAGE" in
-            sdk-core) echo "dir=sdk/sdk-core" >> "$GITHUB_OUTPUT" ;;
-            sdk-viem) echo "dir=sdk/sdk-viem" >> "$GITHUB_OUTPUT" ;;
+            sdk-core) echo "dir=ts-libs/sdk/sdk-core" >> "$GITHUB_OUTPUT" ;;
+            sdk-viem) echo "dir=ts-libs/sdk/sdk-viem" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Compute next version
@@ -150,7 +150,7 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: "--frozen-lockfile --prefer-offline"
+          pnpm-install-options: "--frozen-lockfile --prefer-offline --ignore-scripts"
 
       - name: Lint
         env:

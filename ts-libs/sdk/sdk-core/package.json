@@ -1,0 +1,62 @@
+{
+  "name": "@consensys/linea-sdk-core",
+  "version": "1.0.0",
+  "description": "Core utilities for the Linea bridge SDK — Merkle tree, message types, chain and contract helpers",
+  "author": "Consensys Software Inc.",
+  "license": "(MIT OR Apache-2.0)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Consensys/linea-monorepo.git",
+    "directory": "ts-libs/sdk/sdk-core"
+  },
+  "homepage": "https://github.com/Consensys/linea-monorepo/tree/main/ts-libs/sdk/sdk-core#readme",
+  "bugs": {
+    "url": "https://github.com/Consensys/linea-monorepo/issues"
+  },
+  "keywords": [
+    "linea",
+    "bridge",
+    "sdk",
+    "merkle-tree",
+    "messaging",
+    "ethereum",
+    "layer2",
+    "zk-rollup"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup --tsconfig tsconfig.build.json",
+    "test": "jest --bail --detectOpenHandles",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "clean": "rimraf dist node_modules coverage"
+  },
+  "devDependencies": {
+    "@consensys/eslint-config": "workspace:*",
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "tsup": "catalog:",
+    "viem": "catalog:"
+  },
+  "dependencies": {
+    "abitype": "1.2.4"
+  }
+}
