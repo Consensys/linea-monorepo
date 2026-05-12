@@ -222,15 +222,6 @@ func TestLocalConstraint_InvalidPosition_Panics(t *testing.T) {
 	}
 }
 
-func TestLocalConstraint_CrossModule_Panics(t *testing.T) {
-	sys, r0, _, modA := newTestSystem(t)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colB := modB.NewColumn(sys.Context.Childf("crossCol"), wiop.VisibilityOracle, r0)
-	assert.Panics(t, func() {
-		modA.NewLocalConstraint(sys.Context.Childf("crossLC"), colB.View(), 0)
-	})
-}
-
 func TestLocalConstraint_PositionMinus1_UnsizedModule_Panics(t *testing.T) {
 	sys := wiop.NewSystemf("lcUnsized")
 	r0 := sys.NewRound()

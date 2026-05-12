@@ -26,14 +26,18 @@ import "fmt"
 // This keeps a single Query type for both "global" (multi-valued) and "local"
 // (scalar) vanishing predicates.
 //
-// All columns referenced in expr must belong to m. Reading row −1 (or any
-// negative resolved row) requires m to be statically sized so the row can be
-// normalised; an unsized or dynamic module cannot resolve negative rows at
-// construction time.
+// Reading row −1 (or any negative resolved row) requires m to be statically
+// sized so the row can be normalised; an unsized or dynamic module cannot
+// resolve negative rows at construction time.
 //
-// Panics if ctx or expr is nil, if position is not in {−1, 0, 1}, if any
-// column reference belongs to a different module, or if a resolved row is
-// negative on an unsized/dynamic module.
+// Column ownership is not validated: in line with [Module.NewVanishing], the
+// caller is responsible for ensuring that the expression references columns
+// belonging to m. Mixing columns from different modules will still evaluate
+// correctly (each [*ColumnPosition] resolves through its own column's module)
+// but is outside the intended use.
+//
+// Panics if ctx or expr is nil, if position is not in {−1, 0, 1}, or if a
+// resolved row is negative on an unsized/dynamic module.
 func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression, position int) *Vanishing {
 	if ctx == nil {
 		panic("wiop: Module.NewLocalConstraint requires a non-nil ContextFrame")
@@ -71,17 +75,12 @@ func (m *Module) NewLocalConstraint(ctx *ContextFrame, expr Expression, position
 //     [*Constant]) is passed through unchanged.
 //
 //   - [*ArithmeticOperation] is rebuilt with the rewritten operands.
-//
-// All [*ColumnView] and [*ColumnPosition] leaves must reference columns
-// belonging to m; otherwise the call panics.
 func (m *Module) lowerToRow(expr Expression, position int) Expression {
 	return EditExpression(expr, func(curr Expression, newChildren []Expression) Expression {
 		switch e := curr.(type) {
 		case *ColumnView:
-			m.assertOwnsColumn(e.Column)
 			return columnViewAtRow(e, position)
 		case *ColumnPosition:
-			m.assertOwnsColumn(e.Column)
 			return e
 		case *Constant:
 			if e.module != nil {
@@ -92,18 +91,6 @@ func (m *Module) lowerToRow(expr Expression, position int) Expression {
 			return DefaultConstruct(curr, newChildren)
 		}
 	})
-}
-
-// assertOwnsColumn panics if col is not owned by m. Used during local-constraint
-// lowering to enforce the single-module invariant of [Vanishing].
-func (m *Module) assertOwnsColumn(col *Column) {
-	if col.Module == m {
-		return
-	}
-	panic(fmt.Sprintf(
-		"wiop: Module.NewLocalConstraint: column %q belongs to module %q, not %q",
-		col.Context.Path(), col.Module.Context.Path(), m.Context.Path(),
-	))
 }
 
 // columnViewAtRow converts a [*ColumnView] into the [*ColumnPosition] it
@@ -117,7 +104,10 @@ func columnViewAtRow(cv *ColumnView, position int) *ColumnPosition {
 	m := cv.Column.Module
 	if m.IsSized() {
 		n := m.Size()
-		target = ((target % n) + n) % n
+		target %= n
+		if target < 0 {
+			target += n
+		}
 	} else if target < 0 {
 		panic(fmt.Sprintf(
 			"wiop: NewLocalConstraint: resolved row %d (position %d + shift %d) on column %q requires a sized module",
