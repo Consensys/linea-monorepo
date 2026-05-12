@@ -33,9 +33,6 @@ include "../utils/signed_sum.zkc"
 //   SYSTEM    — system calls (not yet implemented)
 //
 // For all opcodes except JALR, new_pc = pc + 4 (sequential fall-through).
-//
-// `process_syscall` is defined first so the SYSTEM case below can reference it
-// — zkc resolves symbols top-down within a file, with no forward declarations.
 fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
     var funct6:Funct6
     var funct7:Funct7
