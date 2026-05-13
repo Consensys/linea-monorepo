@@ -1,6 +1,8 @@
 # Prover I/O Drafts — Type-1 RISC-V Rollup
 
-This directory drafts the prover-request JSON schemas for the new RISC-V proving stack described in `../Readme.md`. The shapes track the existing Linea conventions (0x-prefixed hex, base64-encoded blob bytes, RLP-encoded blocks, version strings) but cover the new public-input surface (14 fields, FTX rolling hash, shnarf rebased on `lastBlockHash`).
+This directory drafts the prover-request **logical schemas** for the new RISC-V proving stack described in `../Readme.md`. The shapes track the existing Linea conventions (0x-prefixed hex, base64-encoded blob bytes, RLP-encoded blocks, version strings) but cover the new public-input surface (14 fields, FTX rolling hash, shnarf rebased on `lastBlockHash`).
+
+> **JSON ≠ on-wire format.** These files describe *what* the coordinator hands to the prover at each layer (which fields exist, what they mean, how they relate). The bytes actually carried into the zkVM guest are **binary** — a length-prefixed container holding RLP-encoded blocks and the `debug_executionWitness` payload verbatim. See §3.3 of `../Readme.md` for the on-wire format spec. The JSON form here is the canonical source of truth for the schema, and is also accepted directly by the guest in a `--json` debug mode for fixture loading.
 
 ## Proving flow
 

@@ -1,5 +1,5 @@
 {
-    "_comment": "Execution-proof request — IDENTICAL under Option A and Option B. The execution proof statement (§2.1) and its 15-field PI tuple do not change between topologies; only what consumes the proof afterward (aggregation in A, compression-as-aggregator in B) is different. Therefore one shape lives here and is referenced from both option directories.",
+    "_comment": "Execution proof request schema. Covers a contiguous range of L2 blocks; emits the 15-field PI tuple defined in §2.1.",
 
     "proverVersion": "4.0.0-riscv",
     "blockRange": {
@@ -7,7 +7,7 @@
         "endBlockNumber":   1000503
     },
 
-    "_comment_publicInputs": "The 15 fields from §2.1 + §6.4. Coordinator supplies prev_* values; the guest recomputes new_* from the witness and asserts equality. The L1 contract verifies prev_* against its stored anchors after aggregation+SNARK wrap.",
+    "_comment_publicInputs": "The 15-field PI tuple defined in §2.1.",
     "publicInputs": {
         "prevLastBlockHash":                       "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "newLastBlockHash":                        "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -26,14 +26,14 @@
         "txFromsHash":                             "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
     },
 
-    "_comment_chainConfig": "Private input. The guest hashes (Keccak256 over RLP) and asserts the result equals publicInputs.dynamicChainConfigHash. Single value across the range — a config change is a finalization boundary, not a per-block event.",
+    "_comment_chainConfig": "Static chain configuration. Combined with `baseFee` (sourced from the block header) to form the preimage of publicInputs.dynamicChainConfigHash (§2.1). Single value across the range — a config change is a finalization boundary.",
     "chainConfig": {
         "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
         "coinbase":                  "0x0000000000000000000000000000000000000000",
         "chainId":                   59144
     },
 
-    "_comment_blocks": "Canonical RLP-encoded L2 blocks (header + transaction list [+ withdrawals], EIP-2718 typed transactions in full signed form). The guest decodes each block, recovers the sender of every transaction via secp256k1, runs the EVM, and commits to the recovered sender list via publicInputs.txFromsHash (no separate fromAddresses field). The parent block (immediately before startBlockNumber) is *not* a top-level field — its state root and any other anchoring data are part of the executionWitness payload below; the guest verifies that anchor against publicInputs.prevLastBlockHash. L2→L1 message hashing is derived from re-execution alone (filter MessageSent logs from chainConfig.l2MessageServiceContract, accumulate, assert keccak256 == publicInputs.L2L1MessagesHash). L1→L2 rolling hash is the asymmetric case — see l1L2Messages below. forcedTransactions is per-block metadata identifying which entries in the block's tx list are FTXs and how they were resolved (§6.5).",
+    "_comment_blocks": "Canonical RLP-encoded L2 blocks (header + transaction list [+ withdrawals]), EIP-2718 typed transactions in full signed form. The parent block is not a top-level field — it lives inside `executionWitness.headers`. `forcedTransactions` is per-block FTX metadata (§6.5); empty for blocks without FTXs.",
     "blocks": [
         {
             "blockRlp":           "0xf90215a0...",
@@ -43,10 +43,11 @@
             "blockRlp": "0xf90215a0...",
             "forcedTransactions": [
                 {
-                    "_comment":           "Per §2.1 + §6.5, FTXs are processed *after* normal block execution and appear at the start of the block tx list (in blockRlp above); this metadata identifies the entry and how it was resolved. stateWitness is non-null ONLY when acceptance is ACCEPTED-but-invalid (§6.5 'Invalid' branch).",
+                    "_comment":           "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `fromAddress` are the L1-anchored fields. `signedTxRlp` is the full RLP-encoded signed FTX as stored on L1 by `storeForcedTransaction`. `stateWitness` is non-null only for the ACCEPTED-but-invalid branch (§6.5 'Invalid').",
                     "ftxNumber":           17,
                     "deadlineBlockNumber": 1000600,
                     "fromAddress":         "0xfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed",
+                    "signedTxRlp":         "0x02f86b...",
                     "acceptance":          "ACCEPTED",
                     "stateWitness":        null
                 }
@@ -58,7 +59,7 @@
         }
     ],
 
-    "_comment_l1L2Messages": "L1→L2 deposit messages consumed in this range. Each entry feeds one rolling-hash step; the guest chains them starting from publicInputs.prevL1L2BridgeRollingHash and asserts the final value equals publicInputs.L1L2BridgeRollingHash. messageNumber must be strictly increasing; the first entry's messageNumber must equal prevL1L2BridgeRollingHashMessageNumber + 1.",
+    "_comment_l1L2Messages": "L1→L2 deposit messages consumed in this range. Each entry contributes one rolling-hash step (§4.1). `messageNumber` is strictly increasing; the first entry's `messageNumber` equals `prevL1L2BridgeRollingHashMessageNumber + 1`.",
     "l1L2Messages": [
         {
             "messageNumber":     42,
@@ -67,7 +68,7 @@
         }
     ],
 
-    "_comment_executionWitness": "Output of Besu's `debug_executionWitness` (zkEVM plugin) — see ExecutionWitnessJsonTest.java in besu-zkevm-plugin. One entry per block in canonical block-range order. Each entry is the verbatim JSON the plugin returns: state (state-trie nodes touched during execution), keys (storage keys accessed), codes (bytecode of accessed contracts), headers (recent block headers needed by the BLOCKHASH opcode — the parent header within this list carries the state root the guest verifies against publicInputs.prevLastBlockHash to anchor the start of the range). No separate state-manager preprocessing step is needed (the Type-2 zkStateMerkleProof + conflatedExecutionTracesFile pair is gone). Treated as opaque-but-deterministic by the coordinator: the JSON is forwarded as-is, the guest is the only consumer.",
+    "_comment_executionWitness": "Output of Besu's `debug_executionWitness`, one entry per block in canonical block-range order. Each entry contains `state` (state-trie nodes touched), `keys` (storage keys accessed), `codes` (accessed contract bytecode), `headers` (recent block headers for the BLOCKHASH opcode; the parent header's state root anchors `prevLastBlockHash`).",
     "executionWitness": [
         {
             "state":   ["..."],

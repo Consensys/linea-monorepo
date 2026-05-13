@@ -87,7 +87,7 @@ The execution proof covers a contiguous range of L2 blocks and proves the EVM st
 - The stateless execution witness per block, as produced by Besu's `debug_executionWitness` (`state`, `keys`, `codes`, `headers`); the parent header within `headers` carries the state root that anchors `prevLastBlockHash`
 - The set of L1→L2 deposit messages consumed in this range, with their message numbers and the rolling hash chain anchored at the previous finalized state
 - The static chain config: `L2MessageServiceContract`, `coinBase`, `chainID`. `baseFee` is the fourth input to `dynamicChainConfigHash` but is sourced from the block header rather than this struct — see §3.2
-- The forced-transaction witnesses for FTXs in the range plus the `pendingFtxs` deadline-sweep set — see §6
+- The forced-transaction witnesses for FTXs in the range — see §6
 
 **What it proves:**
 
@@ -145,11 +145,13 @@ Plus three **new** blob-level fields: `prevShnarf` (input), `newShnarf` (compute
 | `blobHash_b` | The blob's versioned hash as submitted on L1 |
 | `KzgProof_b` | KZG proof for blob `b` |
 | `KzgY_b` | KZG evaluation claim for blob `b` |
-| `blockData_{b,1} … blockData_{b,m_b}` | Truncated block data for the blocks inside blob `b` |
+| `blockRange_b` | The `(startBlockNumber, endBlockNumber)` pair for blob `b`'s decompression range |
 | `E₁ … Eₙ` | The execution proofs, ordered by block range, tiling the combined range of all K blobs |
 | `PI_E₁ … PI_Eₙ` | The public-input tuple for each execution proof |
 | `L2L1MsgList_e` | Per-execution-proof L2→L1 message hash list, for `e ∈ [1, N]` |
 | `froms_e` | Per-execution-proof sender address list (block-then-transaction order) |
+
+The decompressed truncated blocks (`blockData_{b,1} … blockData_{b,m_b}`) are **computed** inside the proof by step 2, not provided as a separate witness. The proven statement is decompression: the guest attests that running `decompress_lz4` on `blobContent_b` yields the truncated blocks it then uses downstream.
 
 **Statement (RISC-V Guest)**
 
@@ -157,25 +159,25 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
 
 1. **Schwartz–Zippel evaluation (per blob).** Derive evaluation point `X_b` from `blobHash_b` and `blobContent_b`. Check the KZG proof using `blobHash_b`, `X_b` and `KzgProof_b`. In parallel, directly check `P_b(X_b) = KzgY_b` using `blobContent_b`.
 
-2. **Decompress and parse (per blob).** Decompress `blobContent_b` and assert the result is consistent with `blockData_{b,1} … blockData_{b,m_b}` (modulo the stripped-down fields — see §3.2).
+2. **Decompress and parse (per blob).** Run `decompress_lz4(blobContent_b)` and parse the result into `m_b` `TruncatedEthereumBlock` entries (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`). Assert that `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`. These decompressed blocks are used directly by the steps below — there is no separate witnessed `blockData`.
 
 3. **Chain the shnarf (per blob).** Recompute:
    ```
    shnarf_b = Hash(shnarf_{b-1}, lastBlockHash_b, blobHash_b)
    ```
-   where `shnarf_0 = prevShnarf` (public input) and `lastBlockHash_b` is the block hash of the last block in `blockData_{b,*}`. After all K blobs, assert `shnarf_K == newShnarf`.
+   where `shnarf_0 = prevShnarf` (public input) and `lastBlockHash_b` is the `blockHash` field of the last decompressed `TruncatedEthereumBlock` of blob `b` (from step 2). After all K blobs, assert `shnarf_K == newShnarf`.
 
-4. **Recompute the combined block-hash sequence.** Using `prevLastBlockHash` as a basis, walk the concatenated `blockData_{b,*}` lists across all K blobs in order, asserting parent-hash continuity at each step, and recover the list of block hashes for the entire range. Assert that the final entry equals `lastBlockHash_K` chained into the shnarf in step 3.
+4. **Recompute the combined block-hash sequence.** Concatenate the decompressed truncated-block lists across all K blobs in canonical order and walk them, asserting parent-hash continuity at each step (the truncated form does not carry parent pointers directly; alignment is enforced via the execution-proof block-hash chain in step 7 + step 9). The first entry's hash must match the chain that descends from `prevLastBlockHash`; the final entry's hash must equal `lastBlockHash_K` chained into the shnarf in step 3.
 
 5. **Verify sender addresses.** For each execution proof `Eᵢ`, assert:
    ```
    keccak256(froms_e) == PI_Eᵢ.txFromsHash
    ```
-   Then assert that `froms_1 ‖ … ‖ froms_N` equals the concatenation of all `blockData_{b,j}.froms` across all K blobs in canonical order.
+   Then assert that `froms_1 ‖ … ‖ froms_N` equals the concatenation of `froms` across all decompressed truncated blocks (step 2 output), in canonical block-then-transaction order.
 
 6. **Verify the execution proofs.** Recursively verify each `Eᵢ` against `PI_Eᵢ`.
 
-7. **Check execution-proof block-hash alignment.** The `prevLastBlockHash` of the first execution proof must equal `prevLastBlockHash` from the public inputs; the `newLastBlockHash` of the last execution proof must equal `lastBlockHash_K` from step 4; intermediate boundary points must line up with the recomputed sequence.
+7. **Check execution-proof block-hash alignment.** The `prevLastBlockHash` of the first execution proof must equal `prevLastBlockHash` from the public inputs; the `newLastBlockHash` of the last execution proof must equal `lastBlockHash_K` from step 4; intermediate boundary points must line up with the decompressed block-hash sequence.
 
 8. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
 
@@ -289,6 +291,27 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 
 **Encoding and compression:** The remaining payload is compressed with a standard algorithm (LZ4 or zstd) and packed into the 4096 × 32-byte EIP-4844 blob field. Stripping the above outputs and using an unconstrained compressor significantly increases the effective throughput per blob compared to the current LZSS-based approach.
 
+### 3.3 Prover I/O — On-Wire Format
+
+The JSON files under `prover_inputs/` describe a logical schema. The bytes carried into the zkVM guest are binary.
+
+**Transport.** The guest reads input bytes via the zkVM's read-input primitive (`ziskos::read_input()` on Zisk). Transport framing is an 8-byte little-endian length prefix per chunk, padded to 8-byte alignment.
+
+**Container.** Inside the payload, the execution-proof layout is:
+
+```
+[u64 BE: block_rlp_len] [block_rlp_bytes]                — RLP-encoded block
+ExecutionWitness:
+  state:   [u64 BE: count] then [u64 BE: len][bytes]*    — debug_executionWitness field "state"
+  codes:   [u64 BE: count] then [u64 BE: len][bytes]*    — debug_executionWitness field "codes"
+  keys:    [u64 BE: count] then [u64 BE: len][bytes]*    — debug_executionWitness field "keys"
+  headers: [u64 BE: count] then [u64 BE: len][bytes]*    — debug_executionWitness field "headers"
+```
+
+Outer framing is length-prefixed binary; inner payloads are RLP. The per-FTX `signedTxRlp` / `stateWitness` payloads, the `l1L2Messages` array, and the `chainConfig` fields are appended in the same `count + length-prefixed bytes` style. Blob-proof and aggregation-proof containers follow the same convention and are pinned alongside the corresponding guest implementations.
+
+**Debug format.** The `prover_inputs/` JSONs are the canonical schema source; the coordinator translates them to the binary container before invoking the prover. A separate supporting tool can convert JSON fixtures (e.g. `block.json` + `witness.json`) into the same binary container for local replay.
+
 ---
 
 ## 4. Bridge Mechanics
@@ -392,27 +415,22 @@ A FTX whose deadline falls before the start of this range was already expired; i
 
 **Authenticity.** Re-derive the rolling hash step and assert it matches the L1-stored value:
 ```
-keccak256(rollingHash, txHash, ftx.deadlineBlockNumber, ftx.fromAddress) == ftxRollingHash[ftx.number]
+keccak256(rollingHash ‖ txHash ‖ deadlineBlockNumber ‖ fromAddress) == ftxRollingHash[ftx.number]
 ```
+where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction hash of the FTX's signed RLP (as stored on L1 by `storeForcedTransaction`). The guest also asserts `fromAddress == recover_sender(signedTxRlp, chainID)` to bind the witness fields to the canonical signed transaction.
 
 **Outcome:**
-- *Included* — the guest asserts the transaction hash appears in the declared block's transaction list (directly observable from the execution witness).
-- *Invalid* — pre-validation fails; the guest reads the relevant account state from the EVM state trie (already in the witness) and asserts the failure condition:
+- *Included* — the guest asserts `txHash` appears in the declared block's transaction list (decoded from `blockRlp`).
+- *Invalid* — pre-validation fails; the guest reads `tx.nonce`, `tx.value`, `tx.gasLimit`, `tx.maxFeePerGas` from `signedTxRlp` and the relevant account state from the EVM state trie (via `stateWitness`, anchored against the parent state root) and asserts the failure condition:
   - Bad nonce: `account.nonce != tx.nonce`
   - Bad balance: `account.balance < tx.gasLimit × tx.maxFeePerGas + tx.value`
   - Similar checks for other pre-validation failures.
   No separate invalidity proof type is needed; this is proven inline.
 - *Refused* — the rollup declines for compliance reasons. No governance witness is required inside the proof; the sequencer simply declares the refusal. The L1 contract verifies a posteriori that each refused address appears in its reference sanction list — if any entry is absent, the finalization call reverts. Two refusal modes are supported:
   - *Refused-from*: the sender is sanctioned; `fromAddress` is appended to the filtered address list.
-  - *Refused-to*: the recipient is sanctioned; `toAddress` is appended to the filtered address list instead.
+  - *Refused-to*: the recipient is sanctioned; `toAddress` (decoded from `signedTxRlp`; rejected if the FTX is a contract-creation transaction with `to == None`) is appended instead.
 
 After the loop the guest asserts `rollingHash == newFtxRollingHash` and outputs `filteredAddressesHash = keccak256(filtered address list)`.
-
-**Deadline sweep.** After the loop, assert that every FTX with `deadlineBlockNumber <= newLastBlockNumber` has been covered:
-```
-for each pending FTX K where ftxDeadline[K] <= newLastBlockNumber:
-    assert!(K <= lastProcessedFtxNumber)
-```
 
 ### 6.6 Propagation Through the Proof Tree
 
