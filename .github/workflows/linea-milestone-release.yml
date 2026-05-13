@@ -39,17 +39,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # check-branch:
-  #   runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-  #   steps:
-  #     - name: Enforce main branch
-  #       if: github.ref_name != 'main'
-  #       run: |
-  #         echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
-  #         exit 1
+  check-branch:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Enforce main branch
+        if: github.ref_name != 'main'
+        run: |
+          echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
+          exit 0
   
   coordinator-component-release:
-    #needs: [check-branch]
+    needs: [check-branch]
     uses: ./.github/workflows/coordinator-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -58,54 +58,54 @@ jobs:
       build_local_only: true
     secrets: inherit
 
-  # postman-component-release:
-  #   #needs: [check-branch]
-  #   uses: ./.github/workflows/postman-release.yml
-  #   with:
-  #     image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-  #     draft_release: ${{ inputs.draft_release || false }}
-  #     pre_release: ${{ inputs.pre_release || true }}
-  #     build_local_only: true
-  #   secrets: inherit
+  postman-component-release:
+    #needs: [check-branch]
+    uses: ./.github/workflows/postman-release.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
+      draft_release: ${{ inputs.draft_release || false }}
+      pre_release: ${{ inputs.pre_release || true }}
+      build_local_only: true
+    secrets: inherit
 
-  # prover-component-release:
-  #   #needs: [check-branch]
-  #   uses: ./.github/workflows/prover-release.yml
-  #   with:
-  #     image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-  #     draft_release: ${{ inputs.draft_release || false }}
-  #     pre_release: ${{ inputs.pre_release || true }}
-  #     build_local_only: true
-  #   secrets: inherit
+  prover-component-release:
+    #needs: [check-branch]
+    uses: ./.github/workflows/prover-release.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
+      draft_release: ${{ inputs.draft_release || false }}
+      pre_release: ${{ inputs.pre_release || true }}
+      build_local_only: true
+    secrets: inherit
 
-  # tx-exclusion-api-component-release:
-  #   #needs: [check-branch]
-  #   uses: ./.github/workflows/tx-exclusion-api-release.yml
-  #   with:
-  #     image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-  #     draft_release: ${{ inputs.draft_release || false }}
-  #     pre_release: ${{ inputs.pre_release || true }}
-  #     build_local_only: true
-  #   secrets: inherit
+  tx-exclusion-api-component-release:
+    #needs: [check-branch]
+    uses: ./.github/workflows/tx-exclusion-api-release.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
+      draft_release: ${{ inputs.draft_release || false }}
+      pre_release: ${{ inputs.pre_release || true }}
+      build_local_only: true
+    secrets: inherit
 
-  # linea-besu-component-release:
-  #   #needs: [check-branch]
-  #   uses: ./.github/workflows/linea-besu-release.yml
-  #   with:
-  #     image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-  #     draft_release: ${{ inputs.draft_release || false }}
-  #     pre_release: ${{ inputs.pre_release || true }}
-  #     without_besu_fleet_plugin: 'false'
-  #     build_local_only: true
-  #   secrets: inherit
+  linea-besu-component-release:
+    #needs: [check-branch]
+    uses: ./.github/workflows/linea-besu-release.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
+      draft_release: ${{ inputs.draft_release || false }}
+      pre_release: ${{ inputs.pre_release || true }}
+      without_besu_fleet_plugin: 'false'
+      build_local_only: true
+    secrets: inherit
 
   component-latest-docker-tags:
     needs:
       - coordinator-component-release
-      # - postman-component-release
-      # - prover-component-release
-      # - tx-exclusion-api-component-release
-      # - linea-besu-component-release
+      - postman-component-release
+      - prover-component-release
+      - tx-exclusion-api-component-release
+      - linea-besu-component-release
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
       fail-fast: false
@@ -151,18 +151,18 @@ jobs:
     needs: 
       - component-latest-docker-tags
       - coordinator-component-release
-      # - postman-component-release
-      # - prover-component-release
-      # - tx-exclusion-api-component-release
-      # - linea-besu-component-release
+      - postman-component-release
+      - prover-component-release
+      - tx-exclusion-api-component-release
+      - linea-besu-component-release
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
       coordinator_tag: ${{ needs.coordinator-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
-      # postman_tag: ${{ needs.postman-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
-      # prover_tag: ${{ needs.prover-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
-      # tx_exclusion_api_tag: ${{ needs.tx-exclusion-api-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
-      # linea_besu_package_tag: ${{ needs.linea-besu-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || '' }}
+      postman_tag: ${{ needs.postman-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
+      prover_tag: ${{ needs.prover-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
+      tx_exclusion_api_tag: ${{ needs.tx-exclusion-api-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
+      linea_besu_package_tag: ${{ needs.linea-besu-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || '' }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
