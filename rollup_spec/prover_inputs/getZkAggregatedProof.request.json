@@ -9,14 +9,14 @@
         "endBlockNumber":   1000567
     },
 
-    "_comment_blobProofs": "Ordered by shnarf-chain order. Each entry is a file path to a serialised blob-proof prover-response JSON — same convention as today's prover/backend/aggregation Request.executionProofs / .compressionProofs []string. The aggregation guest decodes each file and reads proof bytes + 14-field PI tuple + per-blob-proof private witness (L2L1 root array, filtered-address list) directly from the response.",
+    "_comment_blobProofs": "Ordered by shnarf-chain order. Each entry is a file path to a serialised blob-proof prover-response JSON (`<startBlock>-<endBlock>-getZkBlobProof.json`).",
     "blobProofs": [
         "blob/responses/1000501-1000520-blobs1to2-getZkBlobProof.json",
         "blob/responses/1000521-1000545-blobs3to4-getZkBlobProof.json",
         "blob/responses/1000546-1000567-blob5-getZkBlobProof.json"
     ],
 
-    "_comment_l1Context": "Coordinator-supplied L1 anchors. The guest binds them into the public output so finalize() can assert continuity in storage. Mirrors the parentAggregation* fields on today's aggregation Request, extended for the new RISC-V design.",
+    "_comment_l1Context": "Coordinator-supplied anchors from the previously finalised aggregation. Bound into the public output for L1 continuity checks (§5).",
     "l1Context": {
         "parentAggregationLastL1RollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentAggregationLastL1RollingHashMessageNumber": 0,
@@ -26,7 +26,7 @@
         "parentLastProcessedFtxNumber":                    0
     },
 
-    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple this proof will expose to L1 LineaRollup.finalize(). Block-hash continuity is folded into prev/newShnarf; dynamicChainConfigHash is inherited from the inner blob proofs (§2.3 step 2 asserts all blob proofs agree on it) — the hash preimage itself is `Hash(chainID, coinbase, L2MessageServiceContract, baseFee)`, computed once at the execution-proof layer. Provided so the coordinator can fail-fast on a mismatch with the response before submission.",
+    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple defined in §2.4.",
     "expectedAggregatedPublicInputs": {
         "newLastBlockNumber":                      1000567,
         "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
