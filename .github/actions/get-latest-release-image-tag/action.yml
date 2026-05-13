@@ -70,7 +70,7 @@ runs:
           | jq -r '.results[] | select(.content_type == "image") | .name')
 
         # Filter by suffix
-        MATCH=$(echo "$TAGS" | grep -e "${SUFFIX}$" | head -1)
+        MATCH=$(echo "$TAGS" | grep -e "${SUFFIX}$" | head -1 || true)
 
         if [ -z "$MATCH" ]; then
           echo "No matching docker image tag with suffix=$SUFFIX found, will set as 'develop' instead"
