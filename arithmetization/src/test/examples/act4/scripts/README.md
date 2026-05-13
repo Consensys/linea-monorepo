@@ -63,13 +63,13 @@ their default positions. Output:
 - `../bin/results.txt` — one `PASS` / `FAIL` line per test, plus
   totals on the last line.
 - `../bin/logs/<test>.out` — filtered zkc terminal output per test.
-  On FAIL, also includes a `--- WRITE_STR (decoded) ---` block with
-  the framework's diagnostic message (failing label, PC, expected
-  vs actual) decoded back to ASCII from the hex bytes our
-  `syscall 64` handler emits — zkc's `printf` has no `%c`.
+  On FAIL, also includes a `--- WRITE_STR ---` block with the
+  framework's diagnostic message (failing label, PC, expected vs
+  actual) — emitted verbatim by the `syscall 64` handler via the
+  `%c` printf format.
 - `../bin/logs/<test>.full` — full unfiltered zkc output, kept only
-  when a test fails (useful when the decoded `WRITE_STR` block is
-  not enough to root-cause).
+  when a test fails (useful when the `WRITE_STR` block is not
+  enough to root-cause).
 - `../bin/elf2json` — cached Go-built ELF→JSON helper.
 - `../bin/work/linea-rv64im-zicclsm/elfs/` — the compiled ACT4 ELFs.
 
@@ -99,8 +99,6 @@ their default positions. Output:
 - `go` (auto-builds `elf2json` from `../../main.go` the first time)
 - `zkc` on `PATH`
 - bash, GNU coreutils
-- `python3` (optional — only needed to decode the `WRITE_STR` block
-  appended to `.out` on FAIL; if absent the section is silently skipped)
 
 ## Building just one extension
 
