@@ -14,15 +14,15 @@ inputs:
 outputs:
   release_tag_commit:
     description: release tag commit
-    value: ${{ steps.latest_main_tag.outputs.release_tag_commit }}
+    value: ${{ steps.latest_tag.outputs.release_tag_commit }}
 
   release_tag:
     description: release tag
-    value: ${{ steps.latest_main_tag.outputs.release_tag }}
+    value: ${{ steps.latest_tag.outputs.release_tag }}
 
   image_tag:
     description: docker image tag
-    value: ${{ steps.find_image_tag.outputs.image_tag }}
+    value: ${{ steps.find_image_tag.outputs.image_tag || 'develop' }}
 
 runs:
   using: "composite"
@@ -72,6 +72,12 @@ runs:
         # Filter by suffix
         MATCH=$(echo "$TAGS" | grep -e "${SUFFIX}$" | head -1)
 
-        echo "Found image tag: $MATCH"
+        if [ -z "$MATCH" ]; then
+          echo "No matching docker image tag with suffix=$SUFFIX found, will set as 'develop' instead"
+          MATCH=develop
+        else
+          echo "Found image tag: $MATCH"
+        fi
+
         echo "image_tag=$MATCH" >> $GITHUB_OUTPUT
 
