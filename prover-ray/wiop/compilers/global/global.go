@@ -838,20 +838,19 @@ func collectRootColumns(expr wiop.Expression) []*wiop.Column {
 // d + c = degreeFactor * (n-1) + c. Dividing by the annihilator (x^n - 1)
 // gives a quotient of degree at most:
 //
-//	quotientDeg = degreeFactor * (n-1) + c - n
-//	            = (degreeFactor - 1) * n + (c - degreeFactor)
-//	            = (degreeFactor - 1) * (n - 1) + (c - 1)
+//	quotientDeg = degreeFactor * (n-1) + c - n +1
+//	            = (degreeFactor - 1) * n + (c - degreeFactor + 1)
 //
 // For this to fit in ratio shares of size n (i.e., degree < ratio * n), we need:
 //
 //	ratio * n > quotientDeg
-//	ratio > (degreeFactor - 1) + (c - degreeFactor) / n
+//	ratio > (degreeFactor - 1) + (c - degreeFactor +1) / n
 func computeRatio(v *wiop.Vanishing) int {
 	factor := v.Expression.DegreeFactor()
-	// usually n > c, n >factor, so if c-factor > 0 ratio>= factor, otherwise ratio>= factor-1.
+	// usually n > c, n >factor, so if c-factor+1> 0 ratio= factor, otherwise ratio= factor-1.
 	// We use
 	// max(1, ratio) since ratio must be at least 1.
-	if len(v.CancelledPositions)-factor > 0 {
+	if len(v.CancelledPositions)-factor+1 > 0 {
 		return utils.NextPowerOfTwo(max(1, factor))
 	}
 	return utils.NextPowerOfTwo(max(1, factor-1))
