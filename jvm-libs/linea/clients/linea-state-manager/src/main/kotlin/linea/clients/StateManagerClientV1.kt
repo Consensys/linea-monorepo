@@ -1,11 +1,7 @@
-package build.linea.clients
+package linea.clients
 
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.github.michaelbull.result.Result
-import linea.clients.AsyncClient
-import linea.clients.ClientError
-import linea.clients.ClientRequest
-import linea.clients.unwrapResultMonad
 import linea.domain.BlockInterval
 import linea.error.ErrorResponse
 import linea.kotlin.encodeHex

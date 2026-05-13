@@ -1,4 +1,4 @@
-package build.linea.clients
+package linea.clients
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper

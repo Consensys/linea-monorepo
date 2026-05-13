@@ -1,4 +1,4 @@
-package build.linea.clients
+package linea.clients
 
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
