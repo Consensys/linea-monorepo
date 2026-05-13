@@ -149,7 +149,8 @@ Plus three **new** blob-level fields: `parentShnarf` (input), `endShnarf` (compu
 | `E₁ … Eₙ` | The execution proofs, ordered by block range, tiling the combined range of all K blobs |
 | `PI_E₁ … PI_Eₙ` | The public-input tuple for each execution proof |
 | `L2L1MsgList_e` | Per-execution-proof L2→L1 message hash list, for `e ∈ [1, N]` |
-| `froms_e` | Per-execution-proof sender address list (block-then-transaction order) |
+| `froms_e` | Per-execution-proof sender address list (block-then-transaction order) — preimage of `PI_E_e.txFromsHash` |
+| `addrs_e` | Per-execution-proof refused-FTX address list (§6.5) — preimage of `PI_E_e.filteredAddressesHash` |
 
 The decompressed truncated blocks (`blockData_{b,1} … blockData_{b,m_b}`) are **computed** inside the proof by step 2, not provided as a separate witness. The proven statement is decompression: the guest attests that running `decompress_lz4` on `blobContent_b` yields the truncated blocks it then uses downstream.
 
@@ -191,7 +192,7 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
    ```
    Continuity *between* blobs is implicit — the same `assert_eq!` block applies at the blob boundary because the execution proofs already tile across it.
 
-10. **Collect forced-transaction outputs and emit PI.** Concatenate the filtered address lists from all N execution proofs in order and output `filteredAddressesHash = keccak256(concatenated list)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
+10. **Collect forced-transaction outputs and emit PI.** For each `e ∈ [1, N]`, receive `addrs_e` as a private witness and assert `keccak256(addrs_e) == PI_E_e.filteredAddressesHash`. Concatenate all N lists in order and output `filteredAddressesHash = keccak256(addrs_1 ‖ … ‖ addrs_N)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
 
 ### 2.3 Aggregation Proof
 
