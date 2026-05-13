@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	poseidon2 "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/ringsis"
 	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
@@ -74,6 +76,9 @@ func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments 
 // Reed-Solomon codeword check is needed — the codeword property is implicit:
 // any T coefficients describe a unique degree-<T polynomial.
 func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error {
+	if got, want := len(proof.LinearCombination), params.RsParams.NbColumns(); got != want {
+		return fmt.Errorf("invalid linear combination length: expected %d coefficients, got %d", want, got)
+	}
 
 	if err := CheckLinComb(params.RsParams, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns); err != nil {
 		return err
