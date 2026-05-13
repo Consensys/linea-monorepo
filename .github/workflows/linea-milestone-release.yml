@@ -56,7 +56,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       build_local_only: true
-    # secrets: inherit
+    secrets: inherit
 
   postman-component-release:
     #needs: [check-branch]
@@ -66,7 +66,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       build_local_only: true
-    # secrets: inherit
+    secrets: inherit
 
   prover-component-release:
     #needs: [check-branch]
@@ -76,7 +76,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       build_local_only: true
-    # secrets: inherit
+    secrets: inherit
 
   tx-exclusion-api-component-release:
     #needs: [check-branch]
@@ -86,7 +86,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       build_local_only: true
-    # secrets: inherit
+    secrets: inherit
 
   linea-besu-component-release:
     #needs: [check-branch]
@@ -97,7 +97,7 @@ jobs:
       pre_release: ${{ inputs.pre_release }}
       without_besu_fleet_plugin: 'false'
       build_local_only: true
-    # secrets: inherit
+    secrets: inherit
 
   component-latest-docker-tags:
     needs:
