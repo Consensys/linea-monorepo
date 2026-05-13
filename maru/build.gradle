@@ -22,7 +22,125 @@ subprojects.each {
 
 allprojects {
   apply plugin: libs.plugins.dependencyManagement.get().getPluginId()
-  apply from: "${project(':maru').projectDir}/gradle/versions.gradle"
+  dependencyManagement {
+    dependencies {
+      applyMavenExclusions = false
+
+      dependencySet(group: 'com.fasterxml.jackson.core', version: libs.versions.jackson.get()) {
+        entry 'jackson-databind'
+        entry 'jackson-datatype'
+        entry 'jackson-datatype-jdk8'
+      }
+      dependency "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+      dependency "com.google.errorprone:error_prone_core:${libs.versions.errorproneCore.get()}"
+      dependency "com.google.guava:guava:${libs.versions.guava.get()}-jre"
+      dependency "com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}"
+      dependency "io.javalin:javalin:${libs.versions.javalin.get()}"
+      dependencySet(group: 'info.picocli', version: libs.versions.picoli.get()) {
+        entry 'picocli'
+      }
+      dependencySet(group: 'com.sksamuel.hoplite', version: libs.versions.hoplite.get()) {
+        entry 'hoplite-core'
+        entry 'hoplite-toml'
+        entry 'hoplite-json'
+      }
+      dependency group: 'io.libp2p', name: 'jvm-libp2p', version: libs.versions.jvmLibp2p.get()
+      dependency(
+          group: 'io.netty',
+          name: 'netty-transport-native-epoll',
+          version: libs.versions.netty.get(),
+          classifier: 'linux-x86_64',
+          )
+      dependency(
+          group: 'io.netty',
+          name: 'netty-transport-native-kqueue',
+          version: libs.versions.netty.get(),
+          classifier: 'osx-x86_64',
+          )
+      dependency "io.pkts:pkts-core:${libs.versions.pkts.get()}"
+      dependencySet(group: 'io.consensys.tuweni', version: libs.versions.tuweni.get()) {
+        entry 'tuweni-bytes'
+        entry 'tuweni-config'
+        entry 'tuweni-concurrent'
+        entry 'tuweni-crypto'
+        entry 'tuweni-devp2p'
+        entry 'tuweni-io'
+        entry 'tuweni-net'
+        entry 'tuweni-rlp'
+        entry 'tuweni-toml'
+        entry 'tuweni-units'
+      }
+      dependencySet(group: 'org.http4k', version: libs.versions.http4k.get()) {
+        entry 'http4k-core'
+        entry 'http4k-client-okhttp'
+        entry 'http4k-format-jackson'
+        entry 'http4k-openapi'
+      }
+      imports {
+        mavenBom("io.vertx:vertx-stack-depchain:${libs.versions.vertx.get()}")
+      }
+      dependency "org.assertj:assertj-core:${libs.versions.assertj.get()}"
+      dependency "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
+      dependencySet(group: 'org.bouncycastle', version: libs.versions.bouncycastle.get()) {
+        entry 'bcpkix-jdk18on'
+        entry 'bcprov-jdk18on'
+      }
+      dependencySet(group: 'org.mockito', version: libs.versions.mockito.get()) {
+        entry 'mockito-core'
+        entry 'mockito-junit-jupiter'
+      }
+      dependency "org.junit:junit-bom:${libs.versions.junit.get()}"
+      dependency "org.mockito.kotlin:mockito-kotlin:${libs.versions.mockitoKotlin.get()}"
+      dependency "org.rocksdb:rocksdbjni:${libs.versions.rocksdb.get()}"
+      dependency "org.web3j:core:${libs.versions.web3j.get()}"
+      dependencySet(group: 'com.palantir.docker.compose', version: libs.versions.dockerComposeRule.get()) {
+        entry 'docker-compose-rule-junit4'
+        entry 'docker-compose-junit-jupiter'
+      }
+      dependencySet(group: 'org.wiremock', version: libs.versions.wiremock.get()) {
+        entry 'wiremock'
+      }
+      dependency("io.consensys.protocols:discovery:${libs.versions.discovery.get()}") {
+        exclude group: 'io.consensys.tuweni', name: 'tuweni-bytes'
+        exclude group: 'io.consensys.tuweni', name: 'tuweni-crypto'
+        exclude group: 'io.consensys.tuweni', name: 'tuweni-units'
+        exclude group: 'io.consensys.tuweni', name: 'tuweni-rlp'
+      }
+      dependencySet(group: 'tech.pegasys.teku.internal', version: libs.versions.teku.get()) {
+        entry 'async'
+        entry 'time'
+        entry 'bytes'
+        entry 'ethereum-events'
+        entry 'infrastructure-events'
+        entry 'spec'
+        entry 'executionclient'
+        entry 'unsigned'
+        entry 'ssz'
+        entry 'storage'
+        entry 'p2p'
+        entry 'eth2'
+        entry 'logging'
+      }
+      dependencySet(group: 'org.apache.logging.log4j', version: libs.versions.log4j.get()) {
+        entry 'log4j-api'
+        entry 'log4j-core'
+        entry 'log4j-slf4j-impl'
+        entry 'log4j-slf4j2-impl'
+      }
+      def besuResolved = rootProject.file("linea-besu/besu/.besu-resolved")
+      def besuVersion = besuResolved
+          .readLines()
+          .find { it.startsWith("besuVersion=") }
+          .replace("besuVersion=", "")
+      imports {
+        mavenBom "org.hyperledger.besu:bom:$besuVersion"
+        mavenBom "org.slf4j:slf4j-bom:${libs.versions.slf4j.get()}"
+      }
+      dependency "org.hyperledger.besu.internal:besu-plugins-rocksdb:$besuVersion"
+      dependency "com.michael-bull.kotlin-result:kotlin-result:${libs.versions.kotlinResult.get()}"
+      dependency "org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}"
+    }
+  }
   apply plugin: 'java-library'
 
   tasks.withType(KotlinCompilationTask) {

@@ -55,7 +55,7 @@ dependencies {
   testImplementation(testFixtures(project(":maru:core")))
   testImplementation(testFixtures(project(":maru:crypto")))
   testImplementation(project(":maru:jvm-libs:test-utils"))
-  testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
+  testImplementation "org.jetbrains.kotlin:kotlin-test:${libs.versions.kotlin.get()}"
   testImplementation "tech.pegasys.teku.internal:executionclient"
   testImplementation "tech.pegasys.teku.internal:spec"
   testImplementation project(":jvm-libs:linea:core:metrics")
