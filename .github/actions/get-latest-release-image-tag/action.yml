@@ -1,0 +1,75 @@
+---
+name: Get Latest Release and Image Tags
+description: 'Composite action to get the latest release tag and docker image tag on main'
+
+inputs:
+  component-name:
+    description: "Component name — (e.g. coordinator, postman, tx-exclusion-api)"
+    required: true
+
+  image-name:
+    description: "Docker image name - linea-[image-name] (e.g. coordinator, postman, transaction-exclusion-api)"
+    required: true
+  
+outputs:
+  release_tag_commit:
+    description: release tag commit
+    value: ${{ steps.latest_main_tag.outputs.release_tag_commit }}
+
+  release_tag:
+    description: release tag
+    value: ${{ steps.latest_main_tag.outputs.release_tag }}
+
+  image_tag:
+    description: docker image tag
+    value: ${{ steps.find_image_tag.outputs.image_tag }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get latest tag of ${{ inputs.component-name }} on main
+      id: latest_main_tag
+      shell: bash
+      env:
+        COMPONENT: ${{ inputs.component-name }}
+        TARGET_REF: ${{ github.head_ref || github.ref_name }}
+      run: |
+        # Ensure we have the target branch ref (main or the current branch)
+        git fetch origin "$TARGET_REF"
+
+        # Loop tags sorted by version, find the first one reachable from the target branch
+        LATEST_TAG=$(git tag --list "releases/$COMPONENT/v*" --sort=-version:refname \
+          | while read tag; do
+              if git merge-base --is-ancestor "$tag" "origin/$TARGET_REF"; then
+                echo "$tag"
+                break
+              fi
+            done)
+
+        if [ -z "$LATEST_TAG" ]; then
+          echo "No matching tag found reachable from origin/$TARGET_REF"
+          exit 1
+        fi
+
+        COMMIT_HASH=$(git rev-list -n 1 "$LATEST_TAG")
+
+        echo "release_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        echo "release_tag_commit=$(git rev-parse --short=7 $COMMIT_HASH)" >> $GITHUB_OUTPUT
+
+    - name: Find docker image tag of ${{ inputs.component-name }} by commit hash suffix
+      id: find_image_tag
+      shell: bash
+      env:
+        IMAGE: consensys/${{ inputs.image-name }}
+        SUFFIX: ${{ steps.latest_tag.outputs.commit }}
+      run: |
+        # Fetch tags from DockerHub API
+        TAGS=$(curl -s "https://hub.docker.com/v2/repositories/${IMAGE}/tags?page_size=100" \
+          | jq -r '.results[] | select(.content_type == "image") | .name')
+
+        # Filter by suffix
+        MATCH=$(echo "$TAGS" | grep -e "${SUFFIX}$" | head -1)
+
+        echo "Found image tag: $MATCH"
+        echo "image_tag=$MATCH" >> $GITHUB_OUTPUT
+

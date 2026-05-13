@@ -7,6 +7,47 @@ permissions:
   packages: write
 
 on:
+  workflow_call:
+    inputs:
+      image_tag_suffix:
+        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      without_besu_fleet_plugin:
+        description: 'Type "true" to exclude besu-fleet-plugin in the release'
+        required: false
+        type: string
+        default: ''
+      draft_release:
+        description: 'Draft Release'
+        required: false
+        default: false
+        type: boolean
+      pre_release:
+        description: 'Pre Release'
+        required: false
+        default: false
+        type: boolean
+      build_local_only:
+        description: 'Build local image only'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      tag_changed:
+        description: "Indicate whether the release tag of the component has changed"
+        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.tag_changed }}
+      docker_tag:
+        description: "Docker image tag associated with the release tag, empty if tag_changed is false"
+        value: ${{ inputs.build_local_only && jobs.build-and-upload-artifact.outputs.linea_besu_package_tag || jobs.build-linea-besu-docker-image-and-gh-release.outputs.linea_besu_package_tag }}
+      release_version:
+        description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
+        value: ${{ jobs.compute-linea-besu-release-metadata.release_version }}
+      release_tag:
+        description: "Release tag (e.g. releases/coordinator/v1.2.3), empty if tag_changed is false"
+        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_tag }}
+
   workflow_dispatch:
     inputs:
       image_tag_suffix:
@@ -52,6 +93,7 @@ jobs:
 
   run-test:
     needs: [ build-and-upload-artifact ]
+    if: ${{ !inputs.build_local_only }}
     concurrency:
       group: run-test-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -61,6 +103,7 @@ jobs:
 
   run-e2e-tests:
     needs: [ build-and-upload-artifact ]
+    if: ${{ !inputs.build_local_only }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
