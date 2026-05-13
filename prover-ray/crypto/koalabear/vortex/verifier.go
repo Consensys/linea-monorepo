@@ -84,9 +84,5 @@ func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error 
 		return err
 	}
 
-	if err := CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha); err != nil {
-		return err
-	}
-
-	return nil
+	return CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 }
