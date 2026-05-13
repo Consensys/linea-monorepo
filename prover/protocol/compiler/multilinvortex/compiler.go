@@ -169,16 +169,59 @@ func terminalShortcutAllowed(comp *wizard.CompiledIOP, q query.MultilinearEval, 
 	return false
 }
 
-func chooseNRow(numVars, nFoldRows int) int {
+// chooseNRow picks the row half of the multilinear-variable split so that the
+// COMMITTED codeword matrix is as close to square as possible.
+//
+// CommitOriginalMLColumns stacks K_orig polys vertically, each viewed as
+// (2^nRow × 2^nCol). The codeword (after RS blowup b) has:
+//
+//	codeword_rows = K_orig · 2^nRow
+//	codeword_cols = b · 2^nCol
+//
+// With nRow + nCol = nv and b = vortexBlowup, "square" requires
+//
+//	log2(K_orig) + nRow = log2(b) + nCol
+//	2·nRow = nv + log2(b) - log2(K_orig)
+//	nRow  = (nv + log2(b) - log2(K_orig)) / 2
+//
+// When K_orig = 1 (no stacking) the formula reduces to ⌈(nv + log2(b))/2⌉,
+// which for b = 2 gives the legacy ⌈nv/2⌉+ε. Larger K_orig shifts nRow DOWN
+// (more cols, fewer rows) to undo the K-fold row inflation.
+//
+// nFoldRows ≥ 1 overrides the balanced value (used by CompileWithFold).
+//
+// nRow is clamped to [1, numVars-1] so that both halves remain non-degenerate.
+func chooseNRow(numVars, kOrig, nFoldRows int) int {
 	if numVars <= 1 {
 		return 1
 	}
-	nRow := (numVars + 1) / 2
 	if nFoldRows >= 1 {
-		nRow = nFoldRows
+		nRow := nFoldRows
 		if nRow >= numVars {
 			nRow = numVars - 1
 		}
+		return nRow
+	}
+	if kOrig < 1 {
+		kOrig = 1
+	}
+	// logK = ⌈log₂(kOrig)⌉; bits.Len(0)=0 handles kOrig=1 cleanly.
+	logK := 0
+	if kOrig > 1 {
+		logK = bits.Len(uint(kOrig - 1))
+	}
+	// vortexBlowup is 2 throughout this package (see CommitMerkleWithSIS callers).
+	const logBlowup = 1
+	// Solve 2·nRow = nv + logBlowup − logK for nRow (integer-div rounds DOWN
+	// when the exact balance is non-integer; this matches the legacy
+	// ⌈nv/2⌉ behaviour for K = 1 and keeps the row count from inflating
+	// the SIS leaf size).
+	nRow := (numVars + logBlowup - logK) / 2
+	if nRow < 1 {
+		nRow = 1
+	}
+	if nRow >= numVars {
+		nRow = numVars - 1
 	}
 	return nRow
 }
@@ -205,7 +248,14 @@ func compileWithNRow(comp *wizard.CompiledIOP, nFoldRows int) {
 			continue
 		}
 
-		nRow := chooseNRow(n, nFoldRows)
+		// kOrig is the number of UNIQUE input columns — what actually gets
+		// stacked in the orig commit matrix. Shared-input contexts collapse
+		// K duplicate Q polys to kOrig = 1; legacy contexts use K as-is.
+		kOrig := len(q.Pols)
+		if allSameInput(q.Pols) {
+			kOrig = 1
+		}
+		nRow := chooseNRow(n, kOrig, nFoldRows)
 		var ctx *Context
 		if allSameInput(q.Pols) {
 			if isSharedSafeQuery(comp, q.Name()) {
@@ -554,7 +604,11 @@ func compileWithNRowPacked(comp *wizard.CompiledIOP, nFoldRows int) {
 			continue
 		}
 
-		nRow := chooseNRow(n, nFoldRows)
+		// In compileWithNRowPacked the K input polys are locator-packed into
+		// ONE proof column for committed inputs; for non-committed inputs the
+		// K UAlpha/RowEvals are themselves packed into a single Merkle tree
+		// of effective K = 1 column. Either way kOrig = 1 for the balance calc.
+		nRow := chooseNRow(n, 1, nFoldRows)
 		var ctx *Context
 		if hasCommittedInputs(comp, q) {
 			ctx = buildContext(comp, r, q, nRow, idx)
