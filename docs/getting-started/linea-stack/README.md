@@ -233,6 +233,11 @@ Do not treat `Submit Blobs` as finalization.
 http://localhost:4001
 ```
 
+If the L2 block height stops advancing when there is no traffic, that is
+expected. Maru is configured with `allow-empty-blocks = false`, so the sequencer
+does not produce empty blocks just to keep the explorer moving. Send demo
+traffic when you want visible Blockscout activity.
+
 3. Start continuous ERC20 traffic for demos/evaluation:
 
 ```bash
