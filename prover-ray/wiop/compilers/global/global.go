@@ -513,8 +513,7 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 			qk := rt.GetCellValue(claim) // Q_k(r)
 			qr = qr.Add(rPowKN.Mul(qk))
 			// Advance: r^{(k+1)n} = r^{kn} · r^n
-			rPowN := computeAnnihilator(r, n) // r^n − 1 + 1 = r^n ... just compute r^n
-			rPowN = rPowN.Add(field.ElemOne())
+			rPowN := expFieldElem(r, n)
 			rPowKN = rPowKN.Mul(rPowN)
 		}
 
