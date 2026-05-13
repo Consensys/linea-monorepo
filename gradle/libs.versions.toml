@@ -8,6 +8,7 @@ dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", ver
 lombok = { id = "io.freefair.lombok", version = "9.2.0" }
 gradleVersions = { id = "com.github.ben-manes.versions", version = "0.51.0" }
 dependencyManagement = { id = "io.spring.dependency-management", version = "1.1.5" }
+errorprone = { id = "net.ltgt.errorprone", version = "4.0.1" }
 besuPluginLibrary = { id = "net.consensys.besu-plugin-library", version = "0.2.1" }
 besuPluginDistribution = { id = "net.consensys.besu-plugin-distribution", version = "0.2.1" }
 hierynomusLicense = { id = "com.github.hierynomus.license", version = "0.16.1" }

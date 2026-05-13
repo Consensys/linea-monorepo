@@ -14,7 +14,7 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
 dependencies {
@@ -23,6 +23,6 @@ dependencies {
   implementation "tech.pegasys.teku.internal:time"
   implementation "tech.pegasys.teku.internal:ethereum-events"
   implementation "tech.pegasys.teku.internal:infrastructure-events"
-  implementation "build.linea.internal:logging"
-  implementation "build.linea.internal:json-rpc"
+  implementation project(":jvm-libs:generic:logging")
+  implementation project(":jvm-libs:generic:json-rpc")
 }

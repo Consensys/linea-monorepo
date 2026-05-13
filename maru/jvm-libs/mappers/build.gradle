@@ -14,12 +14,12 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
 dependencies {
-  implementation(project(":core"))
-  implementation(project(":jvm-libs:extensions"))
+  implementation(project(":maru:core"))
+  implementation(project(":maru:jvm-libs:extensions"))
 
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"

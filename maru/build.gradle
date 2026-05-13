@@ -4,10 +4,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
   alias(libs.plugins.errorprone)
-  alias(libs.plugins.spotless)
-  alias(libs.plugins.spring.dependency.management)
+  alias(libs.plugins.dependencyManagement)
   id "jacoco"
-  id 'maru.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
 }
 
 subprojects.each {
@@ -22,44 +21,9 @@ subprojects.each {
 }
 
 allprojects {
-  apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
-  apply from: "${rootDir}/gradle/versions.gradle"
+  apply plugin: libs.plugins.dependencyManagement.get().getPluginId()
+  apply from: "${project(':maru').projectDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
-  apply plugin: libs.plugins.spotless.get().getPluginId()
-
-  spotless {
-    kotlin {
-      // by default the target is every '.kt' and '.kts` file in the java sourcesets
-      ktlint(libs.versions.ktlint.get().toString())
-          .editorConfigOverride([
-            'ktlint_standard_discouraged-comment-location': 'disabled',
-            'ktlint_standard_property-naming': 'disabled',
-            'ktlint_standard_function-naming': 'disabled',
-            'ktlint_standard_function-signature': 'disabled',
-          ])
-      licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
-          "*ConsenSys AG\\.)")
-    }
-    java {
-      // This path needs to be relative to each project
-      target 'src/**/*.java'
-      removeUnusedImports()
-      googleJavaFormat()
-      importOrder 'build.linea', 'java', ''
-      trimTrailingWhitespace()
-      endWithNewline()
-      // apply appropriate license header files.
-      licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
-          "*ConsenSys AG\\.)")
-    }
-    // spotless check applied to build.gradle (groovy) files
-    groovyGradle {
-      target '*.gradle'
-      greclipse("4.35")
-      leadingTabsToSpaces(2)
-      endWithNewline()
-    }
-  }
 
   tasks.withType(KotlinCompilationTask) {
     compilerOptions {
