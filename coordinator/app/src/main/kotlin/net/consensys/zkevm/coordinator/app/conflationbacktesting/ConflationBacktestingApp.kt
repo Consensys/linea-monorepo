@@ -51,14 +51,10 @@ import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCo
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
-import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.AtomicLong
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-@OptIn(ExperimentalAtomicApi::class)
 class ConflationBacktestingApp(
   val vertx: Vertx,
   val conflationBacktestingAppConfig: ConflationBacktestingConfig,
@@ -98,24 +94,13 @@ class ConflationBacktestingApp(
 
   private val log = LogManager.getLogger("conflation_backtesting_job_${conflationBacktestingAppConfig.jobId()}")
 
-  private val conflationBacktestingComplete = AtomicBoolean(false)
+  private val progressTracker = BacktestingProgressTracker(
+    startBlockNumber = conflationBacktestingAppConfig.startBlockNumber,
+    targetEndBlockNumber = conflationBacktestingAppConfig.endBlockNumber,
+    log = log,
+  )
 
-  fun isConflationBacktestingComplete(): Boolean = conflationBacktestingComplete.load()
-
-  fun onConflationProgress(
-    blockNumber: ULong,
-  ) {
-    if (blockNumber == conflationBacktestingAppConfig.endBlockNumber) {
-      conflationBacktestingComplete.store(true)
-      log.info("Conflation backtesting complete")
-    } else {
-      log.info(
-        "Conflation backtesting progress: processed till blockNumber={}, targetEndBlock={}",
-        blockNumber,
-        conflationBacktestingAppConfig.endBlockNumber,
-      )
-    }
-  }
+  fun isConflationBacktestingComplete(): Boolean = progressTracker.isComplete()
 
   val backtestingCoordinatorConfig: CoordinatorConfig = mainCoordinatorConfig.copy(
     conflation = mainCoordinatorConfig.conflation.copy(
@@ -243,7 +228,6 @@ class ConflationBacktestingApp(
     logger = log,
   )
 
-  val lastProcessedBatchEndBlockNumber = AtomicLong(conflationBacktestingAppConfig.startBlockNumber.toLong() - 1)
   val proofGeneratingConflationHandlerImpl = run {
     val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(log = log)
 
@@ -270,7 +254,7 @@ class ConflationBacktestingApp(
           "Backtesting execution proof request produced: batch={}",
           unProvenBatch.intervalString(),
         )
-        lastProcessedBatchEndBlockNumber.store(proofIndex.endBlockNumber.toLong())
+        progressTracker.recordExecutionRequestEndBlock(proofIndex.endBlockNumber)
       },
       vertx = vertx,
       config = ProofGeneratingConflationHandlerImpl.Config(
@@ -329,6 +313,7 @@ class ConflationBacktestingApp(
           blobRecord.intervalString(),
         )
         inMemoryProvenBlobsTracker.acceptProvenBlobRecord(proofIndex, blobRecord)
+        progressTracker.recordCompressionRequestEndBlock(blobRecord.endBlockNumber)
       },
       log = log,
       metricsFacade = metricsFacade,
@@ -370,7 +355,7 @@ class ConflationBacktestingApp(
         "Backtesting aggregation proof request produced: aggregation={}",
         unProvenAggregation.intervalString(),
       )
-      onConflationProgress(proofIndex.endBlockNumber)
+      progressTracker.recordAggregationRequestEndBlock(proofIndex.endBlockNumber)
     },
     invalidityProofProvider = InvalidityProofProviderImpl(DisabledForcedTransactionsDao()),
     aggregationL2StateProvider = AggregationL2StateProviderImpl(
@@ -398,7 +383,7 @@ class ConflationBacktestingApp(
     blockCreationListener = blockToBatchSubmissionCoordinator,
     lastProvenBlockNumberProviderSync = object : LastProvenBlockNumberProviderSync {
       override fun getLastKnownProvenBlockNumber(): Long {
-        return lastProcessedBatchEndBlockNumber.load()
+        return progressTracker.lastExecutionRequestEndBlock()
       }
     },
     config = BlockCreationMonitor.Config(
