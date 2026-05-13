@@ -196,34 +196,15 @@ func (r *RsParams) IsCodewordExt(v []field.Ext) error {
 	return nil
 }
 
-// LCEvalsToCoefficients takes a length-T vector of evaluations of a polynomial
-// over the small domain (T = NbColumns()) and returns its T monomial
-// coefficients. This is used to send the Vortex linear combination U_alpha in
-// coefficient form (T elements) rather than evaluation form (T × blowup
-// elements), shrinking the proof by a factor of `blowup`.
-func (r *RsParams) LCEvalsToCoefficients(v []field.Ext) []field.Ext {
-	t := r.NbColumns()
-	if len(v) != t {
-		panic(fmt.Sprintf("LCEvalsToCoefficients: expected %d evals got %d", t, len(v)))
-	}
-	coeffs := make([]field.Ext, t)
-	copy(coeffs, v)
-	r.Domains[0].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
-	utils.BitReverse(coeffs)
-	return coeffs
-}
-
-// ExtCoefficientsToAllEvaluations evaluates the degree-<T polynomial given by T
-// monomial coefficients at all N = NbEncodedColumns() points of the RS
-// domain (ω_N^0, ω_N^1, ..., ω_N^{N-1}). The returned slice has length N. This
-// is the verifier-side counterpart of LCEvalsToCoefficients: it expands the
-// T coefficients back to all N evaluations so the verifier can look up
-// U_alpha(ω_N^selectedColID).
-func (r *RsParams) ExtCoefficientsToAllEvaluations(coefficients []field.Ext) []field.Ext {
+// EncodeFromMonomials evaluates p(X) = Σᵢ coefficients[i]·Xⁱ (T = len(coefficients))
+// at the N = NbEncodedColumns() points ωⱼ = ω_N^j (j = 0,…,N-1, ω_N a primitive
+// N-th root of unity), returning the length-N Reed-Solomon codeword c[j] = p(ωⱼ)
+// via a single FFT_N over the extension field.
+func (r *RsParams) EncodeFromMonomials(coefficients []field.Ext) []field.Ext {
 	t := r.NbColumns()
 	n := r.NbEncodedColumns()
 	if len(coefficients) != t {
-		panic(fmt.Sprintf("ExtCoefficientsToAllEvaluations: expected %d coeffs got %d", t, len(coefficients)))
+		panic(fmt.Sprintf("EncodeFromMonomials: expected %d coeffs got %d", t, len(coefficients)))
 	}
 	buf := make([]field.Ext, n)
 	copy(buf, coefficients)

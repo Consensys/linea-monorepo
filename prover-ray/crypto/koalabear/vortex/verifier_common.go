@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 )
 
 var (
@@ -39,8 +39,8 @@ type VerifierInput struct {
 func CheckStatement(coefficients []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
 
 	yJoined := slices.Concat(ys...)
-	alphaY := vortex.EvalFextPolyHorner(coefficients, x)
-	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
+	alphaY := polynomials.EvalCanonical(field.VecFromExt(coefficients), field.ElemFromExt(x)).AsExt()
+	alphaYPrime := polynomials.EvalCanonical(field.VecFromExt(yJoined), field.ElemFromExt(alpha)).AsExt()
 
 	if !alphaY.Equal(&alphaYPrime) {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
@@ -61,7 +61,7 @@ func CheckLinComb(
 	columns [][][]field.Element,
 ) (err error) {
 
-	evals := rsParams.ExtCoefficientsToAllEvaluations(coefficients)
+	evals := rsParams.EncodeFromMonomials(coefficients)
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
@@ -74,7 +74,7 @@ func CheckLinComb(
 		}
 
 		// U_alpha(ω^selectedColID) must equal α-Horner of the opened column
-		y := vortex.EvalBasePolyHorner(fullCol, alpha)
+		y := polynomials.EvalCanonical(field.VecFromBase(fullCol), field.ElemFromExt(alpha)).AsExt()
 		other := evals[selectedColID]
 
 		if y != other {

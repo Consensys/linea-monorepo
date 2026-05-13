@@ -3,6 +3,7 @@ package vortex
 import (
 	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
 )
 
@@ -26,7 +27,7 @@ func Prove(
 		allPolys = append(allPolys, pl...)
 	}
 	LinearCombination(proof, allPolys, alpha)
-	proof.LinearCombination = params.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
+	proof.LinearCombination = polynomials.LCEvalsToCoefficients(params.RsParams.Domains[0], proof.LinearCombination)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 
