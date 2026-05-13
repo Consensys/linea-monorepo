@@ -9,18 +9,18 @@
 
     "_comment_publicInputs": "The 15-field PI tuple defined in §2.1.",
     "publicInputs": {
-        "prevLastBlockHash":                       "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "newLastBlockHash":                        "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "newLastBlockNumber":                      1000503,
-        "finalStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
+        "parentBlockHash":                       "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "endBlockHash":                        "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "endBlockNumber":                      1000503,
+        "endStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
         "L2L1MessagesHash":                        "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "prevL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "prevL1L2BridgeRollingHashMessageNumber":  0,
-        "L1L2BridgeRollingHash":                   "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "L1L2BridgeRollingHashMessageNumber":      0,
+        "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentL1L2BridgeRollingHashMessageNumber":  0,
+        "endL1L2BridgeRollingHash":                   "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "endL1L2BridgeRollingHashMessageNumber":      0,
         "dynamicChainConfigHash":                  "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
-        "prevFtxRollingHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "newFtxRollingHash":                       "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "parentFtxRollingHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "endFtxRollingHash":                       "0x0000000000000000000000000000000000000000000000000000000000000000",
         "lastProcessedFtxNumber":                  0,
         "filteredAddressesHash":                   "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
         "txFromsHash":                             "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -59,7 +59,7 @@
         }
     ],
 
-    "_comment_l1L2Messages": "L1→L2 deposit messages consumed in this range. Each entry contributes one rolling-hash step (§4.1). `messageNumber` is strictly increasing; the first entry's `messageNumber` equals `prevL1L2BridgeRollingHashMessageNumber + 1`.",
+    "_comment_l1L2Messages": "L1→L2 deposit messages consumed in this range. Each entry contributes one rolling-hash step (§4.1). `messageNumber` is strictly increasing; the first entry's `messageNumber` equals `parentL1L2BridgeRollingHashMessageNumber + 1`.",
     "l1L2Messages": [
         {
             "messageNumber":     42,
@@ -68,7 +68,7 @@
         }
     ],
 
-    "_comment_executionWitness": "Output of Besu's `debug_executionWitness`, one entry per block in canonical block-range order. Each entry contains `state` (state-trie nodes touched), `keys` (storage keys accessed), `codes` (accessed contract bytecode), `headers` (recent block headers for the BLOCKHASH opcode; the parent header's state root anchors `prevLastBlockHash`).",
+    "_comment_executionWitness": "Output of Besu's `debug_executionWitness`, one entry per block in canonical block-range order. Each entry contains `state` (state-trie nodes touched), `keys` (storage keys accessed), `codes` (accessed contract bytecode), `headers` (recent block headers for the BLOCKHASH opcode; the parent header's state root anchors `parentBlockHash`).",
     "executionWitness": [
         {
             "state":   ["..."],
