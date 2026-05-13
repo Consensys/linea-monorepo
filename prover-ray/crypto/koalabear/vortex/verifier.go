@@ -68,24 +68,20 @@ func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments 
 	return err
 }
 
-// VerifyCommon performs the common verification steps shared by Verify and similar functions.
+// VerifyCommon performs the common verification steps shared by Verify and
+// similar functions. In coefficient mode proof.LinearCombination holds T
+// monomial coefficients of U_alpha (not N evaluations), so no separate
+// Reed-Solomon codeword check is needed — the codeword property is implicit:
+// any T coefficients describe a unique degree-<T polynomial.
 func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error {
 
-	err := CheckIsCodeWord(params.RsParams, proof.LinearCombination)
-	if err != nil {
+	if err := CheckLinComb(params.RsParams, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns); err != nil {
 		return err
 	}
 
-	err = CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
-	if err != nil {
+	if err := CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha); err != nil {
 		return err
 	}
 
-	err = CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
-	if err != nil {
-		return err
-	}
-
-	return err
-
+	return nil
 }

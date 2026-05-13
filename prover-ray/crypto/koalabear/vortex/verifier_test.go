@@ -56,7 +56,7 @@ func getProofVortexNCommitmentsWithMerkle(_ *testing.T, nCommitments, nbPolys, p
 	}
 
 	// Generate the proof
-	proof, merkleProofs := Prove(vi.EntryList, encodedMatrices, trees, vi.Alpha)
+	proof, merkleProofs := Prove(vortexInstance, vi.EntryList, polyLists, encodedMatrices, trees, vi.Alpha)
 
 	return vortexInstance, proof, vi, commitments, merkleProofs
 }

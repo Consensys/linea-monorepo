@@ -7,18 +7,26 @@ import (
 )
 
 // Prove constructs an opening proof for the given encoded matrices at the positions in entryList.
+//
+// The linear combination U_alpha is sent in coefficient form (T elements)
+// rather than evaluation form (T × blowup elements). It is computed from the
+// T-length source polynomials (cheaper than from the N-length encoded matrices)
+// and then converted to monomial coefficients via the T-point IFFT.
 func Prove(
+	params *Params,
 	entryList []int,
+	polys [][][]field.Element,
 	encodedMatrices []EncodedMatrix,
 	trees []*smt.Tree, alpha field.Ext) (*OpeningProof, [][]smt.Proof) {
 
 	proof := &OpeningProof{}
 
-	_encodedMatrices := make([][]field.Element, 0, len(encodedMatrices))
-	for _, m := range encodedMatrices {
-		_encodedMatrices = append(_encodedMatrices, m...)
+	allPolys := make([][]field.Element, 0)
+	for _, pl := range polys {
+		allPolys = append(allPolys, pl...)
 	}
-	LinearCombination(proof, _encodedMatrices, alpha)
+	LinearCombination(proof, allPolys, alpha)
+	proof.LinearCombination = params.RsParams.LCEvalsToCoefficients(proof.LinearCombination)
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 
