@@ -57,7 +57,7 @@ With the layout above, from this directory:
 ./run_linea_elfs.sh         # run each through zkc, write ../bin/results.txt (~5 min for I+M)
 ```
 
-That's it. No env vars need to be set when the cloned repos are in
+No env vars need to be set when the cloned repos are in
 their default positions. Output:
 
 - `../bin/results.txt` — one `PASS` / `FAIL` line per test, plus
@@ -87,7 +87,6 @@ their default positions. Output:
 | `ACT4_DEBUG`      | _(empty)_ | `build` | Set to `True` to enable the framework's full debug output: per-test `.objdump` + Sail `<test>.sig.log` instruction trace + `<test>.sig.trap_report`. Slowest, most verbose. Mutually exclusive with `ACT4_FAST` — `ACT4_DEBUG` wins if both are set. |
 | `ELF2JSON`        | `../bin/elf2json` (auto-built) | `run` | Path to the Go helper that converts ELF → zkc JSON. |
 | `ZKC_MAIN`        | `../../../../main/riscv/main.zkc` (relative to scripts dir) | `run` | The zkc program that interprets the ELF. |
-| `PER_TEST_TIMEOUT`| `300` (s) | `run` | Bail out on a stuck test. Requires GNU coreutils `timeout` (Linux: default; macOS: `brew install coreutils`, picked up as `gtimeout`). If neither is on `PATH` the script falls back to running without a deadline and prints a warning. |
 | `IN_BYTES`        | `""` (empty — ACT4 tests are self-contained) | `run` | Forwarded to `elf2json`; same meaning as in `../../Makefile`. |
 | `PROGRAM_OFFSET`  | `0x00000000` | `run` | Forwarded to `elf2json`. |
 | `IN_BYTES_OFFSET` | `0x08800000` | `run` | Forwarded to `elf2json` (unused by ACT4 but kept consistent with the Makefile). |

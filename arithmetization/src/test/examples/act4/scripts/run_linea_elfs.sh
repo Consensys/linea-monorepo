@@ -9,12 +9,12 @@
 #   ELF2JSON            path to the elf-to-json binary (auto-built if missing)
 #   ZKC_MAIN            path to main.zkc (default: ../../../main/riscv/main.zkc
 #                       relative to this script)
-#   PER_TEST_TIMEOUT    seconds per test (default: 300)
 #
 # Output:
 #   $RESULTS            per-test PASS/FAIL summary  (default: ../bin/results.txt)
 #   $LOGS/<name>.out    per-test zkc terminal lines (default: ../bin/logs/)
 
+# Ensures the script crashes immediately if it attempts to read any unassigned variable
 set -u
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -24,7 +24,6 @@ ZKC_MAIN_DEFAULT="$EXAMPLES_DIR/../../main/riscv/main.zkc"
 
 ZKC_MAIN="${ZKC_MAIN:-$ZKC_MAIN_DEFAULT}"
 ELF2JSON="${ELF2JSON:-$ACT4_DIR/bin/elf2json}"
-PER_TEST_TIMEOUT="${PER_TEST_TIMEOUT:-300}"
 
 # Memory layout — same defaults as ../../Makefile. Override via env, e.g.
 # `IN_BYTES_OFFSET=0x10000000 ./run_linea_elfs.sh`. ACT4 tests are self-
@@ -67,22 +66,6 @@ if ! command -v zkc >/dev/null 2>&1; then
     exit 2
 fi
 
-# Portable per-test timeout. GNU coreutils' `timeout` is on Linux PATH by
-# default but on macOS only after `brew install coreutils`, where it lands
-# as `gtimeout`. Fall back to running without a deadline if neither is
-# available (a stuck test will then hang the sweep — visible at least).
-# Use a plain string here instead of an array — macOS's bash 3.2 plus
-# `set -u` errors out on `"${arr[@]}"` when the array is empty.
-if command -v gtimeout >/dev/null 2>&1; then
-    TIMEOUT_CMD="gtimeout $PER_TEST_TIMEOUT"
-elif command -v timeout >/dev/null 2>&1; then
-    TIMEOUT_CMD="timeout $PER_TEST_TIMEOUT"
-else
-    echo "warning: neither 'timeout' nor 'gtimeout' on PATH; running without a per-test deadline" >&2
-    echo "         (on macOS: 'brew install coreutils')" >&2
-    TIMEOUT_CMD=""
-fi
-
 count=0
 pass=0
 fail=0
@@ -96,11 +79,7 @@ for elf in $(find "$ELF_DIR" -name '*.elf' | sort); do
     "$ELF2JSON" "$elf" "$IN_BYTES" "$PROGRAM_OFFSET" "$IN_BYTES_OFFSET" "$ENTRY_POINT" \
         > "$json" 2> "$LOGS/${name}.json.err"
 
-    # `$TIMEOUT_CMD` is intentionally unquoted so word-splitting drops it
-    # entirely when no `timeout`/`gtimeout` is available.  Tee the full
-    # interpreter output to `$full` so the framework's WRITE_STR lines
-    # (now plain ASCII thanks to zkc %c) survive past the summary filter.
-    $TIMEOUT_CMD zkc exec "$json" "$ZKC_MAIN" 2>&1 | tee "$full" \
+    zkc exec "$json" "$ZKC_MAIN" 2>&1 | tee "$full" \
         | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" \
         | head -3 > "$out"
 
