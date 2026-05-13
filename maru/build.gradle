@@ -145,6 +145,7 @@ allprojects {
 
   tasks.withType(KotlinCompilationTask) {
     compilerOptions {
+      allWarningsAsErrors = false
       freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
   }

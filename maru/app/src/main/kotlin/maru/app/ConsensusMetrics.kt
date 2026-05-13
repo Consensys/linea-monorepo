@@ -67,7 +67,6 @@ class ConsensusMetrics(
     description = description,
     tags = listOf(Tag("role", role)),
     publishPercentileHistogram = true,
-    percentileBuckets = listOf(.5, .8, .95, .99),
   )
 
   // Total consensus latency: timer-fire to block committed (ms).
