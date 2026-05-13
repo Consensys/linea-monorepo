@@ -1,4 +1,4 @@
-package build.linea.tuweni
+package linea.tuweni
 
 import linea.kotlin.toULong
 import org.apache.tuweni.bytes.Bytes32

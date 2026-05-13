@@ -1,4 +1,4 @@
-package build.linea.s11n.jackson
+package linea.s11n.jackson
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser

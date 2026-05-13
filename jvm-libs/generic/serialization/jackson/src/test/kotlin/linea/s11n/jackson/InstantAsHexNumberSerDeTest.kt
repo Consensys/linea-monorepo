@@ -1,4 +1,4 @@
-package build.linea.s11n.jackson
+package linea.s11n.jackson
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule

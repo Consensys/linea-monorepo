@@ -1,4 +1,4 @@
-package build.linea.s11n.jackson
+package linea.s11n.jackson
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
@@ -8,14 +8,14 @@ import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import kotlin.time.Instant
 
-object InstantISO8601Serializer : JsonSerializer<Instant>() {
+object InstantAsHexNumberSerializer : JsonSerializer<Instant>() {
   override fun serialize(value: Instant, gen: JsonGenerator, serializers: SerializerProvider) {
-    gen.writeString(value.toString())
+    gen.writeString("0x${value.epochSeconds.toString(16)}")
   }
 }
 
-object InstantISO8601Deserializer : JsonDeserializer<Instant>() {
+object InstantAsHexNumberDeserializer : JsonDeserializer<Instant>() {
   override fun deserialize(p: JsonParser, ctxt: DeserializationContext): Instant {
-    return Instant.parse(p.text)
+    return Instant.fromEpochSeconds(p.text.replace("0x", "").toLong(16))
   }
 }
