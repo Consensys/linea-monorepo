@@ -1,15 +1,25 @@
 #![no_std]
 #![no_main]
 
-//! Keccak-256 on a **5440-bit left-padded** word plus a **64-bit length** (raw bytes in memory).
+//! Keccak-256 verifier over **N_VECTORS** test vectors laid out back-to-back
+//! in the VM input region.
 //!
-//! ## Memory layout (`IN_BYTES` from `main.go`; same pattern as `blake_with_in_bytes.rs`)
+//! ## Per-vector layout (720 bytes)
 //! - **680 bytes** — big-endian 5440-bit field (zeros on the left, logical message on the right).
-//! - **8 bytes** — `msg_len_bits` as **little-endian** `u64` (bit length of the logical message, ≤ 5440).
-//! - **32 bytes** — expected Keccak-256 digest (compare with this program’s output).
-//! **Total = 720** bytes of input region before the VM runs.
+//! - **8 bytes**   — `msg_len_bits` as **little-endian** `u64` (bit length of the logical message, ≤ 5440).
+//! - **32 bytes**  — expected Keccak-256 digest (compare with this program's output).
 //!
-//! Exit codes: `0` = hash matches expected, `1` = mismatch, `2` = invalid length or I/O-shaped errors.
+//! ## Whole input region
+//! `vector_0 || vector_1 || … || vector_{N_VECTORS-1}` (no count prefix; no
+//! separator). Total = `N_VECTORS * 720` bytes. Build it with
+//! `scripts/build_keccak_in_bytes.py` against
+//! `testdata/zkc/bench/keccakf_with_padding.accepts` in go-corset (or
+//! against any other source that follows the same JSON-Lines shape).
+//!
+//! Exit codes:
+//! - `0` : every vector's computed digest matched its expected digest.
+//! - `1` : at least one vector's digest mismatched.
+//! - `2` : invalid `msg_len_bits` (> 5440) for some vector.
 
 use core::convert::TryInto;
 
@@ -23,12 +33,20 @@ pub const KECCAK256_PADDED_BITS: usize = 5440;
 pub const KECCAK256_PADDED_BYTES: usize = KECCAK256_PADDED_BITS / 8;
 
 const LENGTH_FIELD_BYTES: usize = 8;
-/// Input payload: padded field + length (no expected digest).
+/// Input payload of one vector: padded field + length (no expected digest).
 const INPUT_LEN: usize = KECCAK256_PADDED_BYTES + LENGTH_FIELD_BYTES;
 /// Expected digest length.
 const OUTPUT_LEN: usize = OUTPUT_BYTES;
-/// Full buffer: input || expected.
-const TOTAL_LEN: usize = INPUT_LEN + OUTPUT_LEN;
+/// Bytes consumed by a single test vector in the input region.
+const VECTOR_BYTES: usize = INPUT_LEN + OUTPUT_LEN;
+
+/// Number of test vectors packed into the input region. Must match the
+/// size of the IN_BYTES blob built by the harness; if the harness ships
+/// fewer vectors, the program will read past the end of the valid data.
+const N_VECTORS: usize = 100;
+
+/// Total bytes the program expects to find at `_input_start`.
+const TOTAL_INPUT_BYTES: usize = N_VECTORS * VECTOR_BYTES;
 
 /// Max extracted message size after stripping left pad (= full field in the worst case).
 const MAX_KECCAK_MSG_BYTES: usize = KECCAK256_PADDED_BYTES;
@@ -258,26 +276,40 @@ pub fn keccak256_padded_5440(
 
 #[no_mangle]
 fn main() -> ! {
-    let (input, expected) = get_test_vector();
+    let region = input_region();
 
-    let padded: [u8; KECCAK256_PADDED_BYTES] = match input[..KECCAK256_PADDED_BYTES].try_into() {
-        Ok(a) => a,
-        Err(_) => exit(2),
-    };
-    let len_field: [u8; LENGTH_FIELD_BYTES] = match input[KECCAK256_PADDED_BYTES..INPUT_LEN].try_into()
-    {
-        Ok(b) => b,
-        Err(_) => exit(2),
-    };
-    let msg_len_bits = u64::from_le_bytes(len_field);
+    for v in 0..N_VECTORS {
+        let base = v * VECTOR_BYTES;
 
-    let code = match keccak256_padded_5440(&padded, msg_len_bits) {
-        Ok(result) if digest_eq(&result, expected) => 0,
-        Ok(_) => 1,
-        Err(()) => 2,
-    };
+        // Per-vector slice boundaries.
+        let padded_end = base + KECCAK256_PADDED_BYTES;
+        let len_end = padded_end + LENGTH_FIELD_BYTES;
+        let expected_end = len_end + OUTPUT_LEN;
 
-    exit(code);
+        // try_into on a slice produces an owned array, which is fine here:
+        // 680 + 8 bytes copied per iteration is dwarfed by the 24-round
+        // Keccak-f permutation that follows on each padded block.
+        let padded: [u8; KECCAK256_PADDED_BYTES] =
+            match region[base..padded_end].try_into() {
+                Ok(a) => a,
+                Err(_) => exit(2),
+            };
+        let len_field: [u8; LENGTH_FIELD_BYTES] =
+            match region[padded_end..len_end].try_into() {
+                Ok(b) => b,
+                Err(_) => exit(2),
+            };
+        let msg_len_bits = u64::from_le_bytes(len_field);
+        let expected = &region[len_end..expected_end];
+
+        match keccak256_padded_5440(&padded, msg_len_bits) {
+            Ok(result) if digest_eq(&result, expected) => {}
+            Ok(_) => exit(1),
+            Err(()) => exit(2),
+        }
+    }
+
+    exit(0);
 }
 
 fn digest_eq(computed: &[u8; OUTPUT_BYTES], expected: &[u8]) -> bool {
@@ -291,12 +323,10 @@ fn digest_eq(computed: &[u8; OUTPUT_BYTES], expected: &[u8]) -> bool {
     ok
 }
 
-fn get_test_vector() -> (&'static [u8], &'static [u8]) {
-    static mut BUF: [u8; TOTAL_LEN] = [0u8; TOTAL_LEN];
-    unsafe {
-        read_memory(&raw mut BUF as *mut u8, TOTAL_LEN);
-        let input = &BUF[..INPUT_LEN];
-        let expected = &BUF[INPUT_LEN..INPUT_LEN + OUTPUT_LEN];
-        (input, expected)
-    }
+/// Returns a static slice over the whole input region. The host fills
+/// `_input_start..` with `TOTAL_INPUT_BYTES` bytes before the VM is
+/// kicked, so reading lazily (rather than memcpy-ing 7.2 MB into a
+/// `static mut BUF`) saves the copy and the static allocation.
+fn input_region() -> &'static [u8] {
+    unsafe { core::slice::from_raw_parts(&raw const _input_start, TOTAL_INPUT_BYTES) }
 }
