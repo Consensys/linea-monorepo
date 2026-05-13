@@ -6,7 +6,7 @@ Two scripts to drive the upstream RISC-V Architectural Compliance Tests
 | Script | Purpose |
 |---|---|
 | `build_linea_elfs.sh` | Compiles the ACT4 self-checking ELFs for the Linea (`linea-rv64im-zicclsm`) config, inside the official `riscv-act4` docker image. |
-| `run_linea_elfs.sh`   | Converts each ELF to a zkc JSON and runs `zkc exec --ir` on it. Writes a PASS/FAIL summary plus per-test logs. |
+| `run_linea_elfs.sh`   | Converts each ELF to a zkc JSON and runs `zkc exec` on it. Writes a PASS/FAIL summary plus per-test logs. |
 
 Both scripts resolve all paths relative to their own location (no
 absolute paths baked in). External inputs (config dir, ELF dir, image
@@ -114,7 +114,7 @@ ELF_DIR="../bin/work/linea-rv64im-zicclsm/elfs/rv64i/M" ./run_linea_elfs.sh
 single test directly through `zkc`, bypassing the wrapper:
 
 ```bash
-zkc exec --ir ../bin/logs/<test>.json ../../../../main/riscv/main.zkc
+zkc exec ../bin/logs/<test>.json ../../../../main/riscv/main.zkc
 ```
 
 ## Build speed vs introspection

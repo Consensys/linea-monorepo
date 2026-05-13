@@ -100,7 +100,7 @@ for elf in $(find "$ELF_DIR" -name '*.elf' | sort); do
     # entirely when no `timeout`/`gtimeout` is available.  Tee the full
     # interpreter output to `$full` so the framework's WRITE_STR lines
     # (now plain ASCII thanks to zkc %c) survive past the summary filter.
-    $TIMEOUT_CMD zkc exec --ir "$json" "$ZKC_MAIN" 2>&1 | tee "$full" \
+    $TIMEOUT_CMD zkc exec "$json" "$ZKC_MAIN" 2>&1 | tee "$full" \
         | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" \
         | head -3 > "$out"
 
@@ -109,11 +109,22 @@ for elf in $(find "$ELF_DIR" -name '*.elf' | sort); do
         pass=$((pass+1))
         rm -f "$full"
     else
-        # Append the framework's ACT4 diagnostic block ("RVCP-SUMMARY:
-        # TEST FAILED ...", "RVCP: ...") from the full log so the
-        # failing label, instruction, register and expected vs actual
-        # are directly readable.
-        rvcp=$(grep -E '^(RVCP-SUMMARY|RVCP):' "$full" 2>/dev/null)
+        # Append the framework's ACT4 diagnostic block (each
+        # `ECALL for write` emits one syscall-64 string verbatim via
+        # the %c format). Strip the interpreter's `-----------`
+        # divider that gets concatenated onto the last byte of each
+        # WRITE_STR call (since the message ends without a newline).
+        # TODO: make this more robust by changing the framework to emit a more unique marker before/after each write.
+        rvcp=$(awk '
+            /^ECALL for write$/ { capture = 1; next }
+            capture && /-----------/ {
+                sub(/-+.*$/, "", $0)
+                if (length($0)) print
+                capture = 0
+                next
+            }
+            capture { print }
+      ' "$full")
         if [ -n "$rvcp" ]; then
             {
                 echo ""
