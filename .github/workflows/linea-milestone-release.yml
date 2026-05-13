@@ -39,18 +39,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  check-branch:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    steps:
-      - name: Enforce main branch
-        if: github.ref_name != 'main'
-        run: |
-          echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
-          ## TODO: The below will switch back to 1 after testing on feature branch
-          exit 0
+  # check-branch:
+  #   runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+  #   steps:
+  #     - name: Enforce main branch
+  #       if: github.ref_name != 'main'
+  #       run: |
+  #         echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
+  #         exit 1
   
   coordinator-component-release:
-    needs: [check-branch]
+    #needs: [check-branch]
     uses: ./.github/workflows/coordinator-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -60,7 +59,7 @@ jobs:
     # secrets: inherit
 
   postman-component-release:
-    needs: [check-branch]
+    #needs: [check-branch]
     uses: ./.github/workflows/postman-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -70,7 +69,7 @@ jobs:
     # secrets: inherit
 
   prover-component-release:
-    needs: [check-branch]
+    #needs: [check-branch]
     uses: ./.github/workflows/prover-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -80,7 +79,7 @@ jobs:
     # secrets: inherit
 
   tx-exclusion-api-component-release:
-    needs: [check-branch]
+    #needs: [check-branch]
     uses: ./.github/workflows/tx-exclusion-api-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -90,7 +89,7 @@ jobs:
     # secrets: inherit
 
   linea-besu-component-release:
-    needs: [check-branch]
+    #needs: [check-branch]
     uses: ./.github/workflows/linea-besu-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
