@@ -2,7 +2,6 @@
     "_comment": "Blob proof — generalised across K ≥ 1 EIP-4844 blobs in a single proof, fused with the recursive verification of the N execution proofs whose ranges tile the combined block range. Per §2.2 of the rollup_spec Readme. The 14-field public-input tuple matches §2.4 verbatim, so an aggregation proof can consume blob proofs as-is and (if hierarchy is added later, see §2.5) a higher-level aggregation proof can consume aggregation proofs the same way.",
 
     "proverVersion":      "4.0.0-riscv",
-    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
 
     "_comment_blockRange": "Combined block range across all K blobs in this proof. Must equal blobs[0].blockRange.startBlockNumber .. blobs[K-1].blockRange.endBlockNumber, with no gaps between consecutive blob ranges (continuity is enforced by the guest via the per-blob shnarf chain plus the execution-proof block-hash sequence — see §2.2 steps 3 and 4).",
     "blockRange": {

@@ -2,7 +2,6 @@
     "_comment": "Aggregation proof — flat aggregation of M blob proofs per §2.3 of the rollup_spec Readme. This is the final proof of the chain. The prover request bundles two operations: (1) the recursive STARK aggregation that verifies each blob proof, asserts pairwise continuity (newShnarf == prevShnarf, rolling hashes, dynamicChainConfigHash, FTX rolling hash), and concatenates per-blob-proof L2L1 root arrays and FTX filtered-address lists; (2) the STARK→SNARK emulation wrap (Groth16/Plonk) so the response is directly consumable by the L1 LineaRollup.finalize() verifier — no separate emulation prover request. Hierarchical aggregation is a future option (§2.5); when added, the same guest is re-used at higher tree levels because the PI shape it consumes is identical to the one it emits.",
 
     "proverVersion":      "4.0.0-riscv",
-    "verifyingKeyShaSum": "0xc4a868954d361bf8c18d4b3699c4fa973a6b2e4543ddea0ce7970d6941f55758",
 
     "_comment_blockRange": "Combined block range across all M blob proofs. Equals blobProofs[0]'s startBlockNumber .. blobProofs[M-1]'s endBlockNumber.",
     "blockRange": {
