@@ -59,7 +59,7 @@ jobs:
     secrets: inherit
 
   postman-component-release:
-    #needs: [check-branch]
+    needs: [check-branch]
     uses: ./.github/workflows/postman-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -69,7 +69,7 @@ jobs:
     secrets: inherit
 
   prover-component-release:
-    #needs: [check-branch]
+    needs: [check-branch]
     uses: ./.github/workflows/prover-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -79,7 +79,7 @@ jobs:
     secrets: inherit
 
   tx-exclusion-api-component-release:
-    #needs: [check-branch]
+    needs: [check-branch]
     uses: ./.github/workflows/tx-exclusion-api-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
@@ -89,7 +89,7 @@ jobs:
     secrets: inherit
 
   linea-besu-component-release:
-    #needs: [check-branch]
+    needs: [check-branch]
     uses: ./.github/workflows/linea-besu-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
