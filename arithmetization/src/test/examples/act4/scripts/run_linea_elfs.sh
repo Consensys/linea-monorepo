@@ -52,6 +52,9 @@ RESULTS="${RESULTS:-$BIN_DIR/results.txt}"
 mkdir -p "$BIN_DIR" "$LOGS"
 > "$RESULTS"
 
+# Clean logs from previous run
+rm -f "$LOGS"/*
+
 # Auto-build elf2json from ../../main.go if not provided.
 if [ ! -x "$ELF2JSON" ]; then
     if ! command -v go >/dev/null 2>&1; then
