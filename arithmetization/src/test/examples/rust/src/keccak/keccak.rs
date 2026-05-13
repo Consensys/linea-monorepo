@@ -1,9 +1,40 @@
+#![no_std]
+#![no_main]
+
+//! Keccak-256 on a **5440-bit left-padded** word plus a **64-bit length** (raw bytes in memory).
+//!
+//! ## Memory layout (`IN_BYTES` from `main.go`; same pattern as `blake_with_in_bytes.rs`)
+//! - **680 bytes** — big-endian 5440-bit field (zeros on the left, logical message on the right).
+//! - **8 bytes** — `msg_len_bits` as **little-endian** `u64` (bit length of the logical message, ≤ 5440).
+//! - **32 bytes** — expected Keccak-256 digest (compare with this program’s output).
+//! **Total = 720** bytes of input region before the VM runs.
+//!
+//! Exit codes: `0` = hash matches expected, `1` = mismatch, `2` = invalid length or I/O-shaped errors.
+
+use core::convert::TryInto;
+
+include!("../custom_std.rs");
+
 const RATE_BYTES: usize = 136; // 1088 bits / 8
 const OUTPUT_BYTES: usize = 32; // 256 bits / 8
 
 /// Fixed-width input for padded Keccak entrypoints: 5440 bits = 680 bytes.
 pub const KECCAK256_PADDED_BITS: usize = 5440;
 pub const KECCAK256_PADDED_BYTES: usize = KECCAK256_PADDED_BITS / 8;
+
+const LENGTH_FIELD_BYTES: usize = 8;
+/// Input payload: padded field + length (no expected digest).
+const INPUT_LEN: usize = KECCAK256_PADDED_BYTES + LENGTH_FIELD_BYTES;
+/// Expected digest length.
+const OUTPUT_LEN: usize = OUTPUT_BYTES;
+/// Full buffer: input || expected.
+const TOTAL_LEN: usize = INPUT_LEN + OUTPUT_LEN;
+
+/// Max extracted message size after stripping left pad (= full field in the worst case).
+const MAX_KECCAK_MSG_BYTES: usize = KECCAK256_PADDED_BYTES;
+/// Sponge input buffer: `msg || 0x01 || … || 0x80` (Keccak multi-rate), worst-case size.
+const MAX_PADDED_KECCAK_BYTES: usize =
+    (MAX_KECCAK_MSG_BYTES + 1 + RATE_BYTES - 1) / RATE_BYTES * RATE_BYTES;
 
 // Round constants
 const RC: [u64; 24] = [
@@ -127,66 +158,41 @@ fn lane_to_bytes(lane: u64) -> [u8; 8] {
     ]
 }
 
-/// Parse hex string to bytes.
-/// Strips a `0x` / `0X` prefix. An odd number of hex digits is padded with a leading `0`
-/// (same convention as `cast keccak 0xabc`).
-fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
-    let hex = hex.trim_start_matches("0x").trim_start_matches("0X");
-    let hex = if hex.len() % 2 == 0 {
-        hex.to_string()
-    } else {
-        format!("0{hex}")
-    };
-
-    let mut bytes = Vec::new();
-    for i in (0..hex.len()).step_by(2) {
-        let byte_str = &hex[i..i + 2];
-        let byte = u8::from_str_radix(byte_str, 16)
-            .map_err(|_| format!("Invalid hex character at position {}", i))?;
-        bytes.push(byte);
+/// Pad `msg` into `buf` for Keccak-256; returns total padded length written.
+/// Ethereum Keccak-256: `0x01`, then `0x00` until length is a multiple of the rate,
+/// then OR `0x80` into the last byte.
+fn pad_message_into(msg: &[u8], buf: &mut [u8]) -> usize {
+    let m = msg.len();
+    let need = m + 1;
+    let total = (need + RATE_BYTES - 1) / RATE_BYTES * RATE_BYTES;
+    buf[..m].copy_from_slice(msg);
+    buf[m] = 0x01;
+    for i in m + 1..total {
+        buf[i] = 0;
     }
-
-    Ok(bytes)
+    buf[total - 1] |= 0x80;
+    total
 }
 
-/// Pad message to a multiple of RATE_BYTES
-/// Ethereum Keccak-256 padding: append `0x01`, then `0x00` until the length is a multiple of the
-/// rate, then OR `0x80` into the **last** byte (same as `sha3::Keccak256` — `0x01` and `0x80` may
-/// combine in one byte, e.g. `0x81`).
-fn pad_message(msg: &[u8]) -> Vec<u8> {
-    let mut padded = msg.to_vec();
-    padded.push(0x01);
-    while padded.len() % RATE_BYTES != 0 {
-        padded.push(0x00);
-    }
-    let last = padded.len() - 1;
-    padded[last] |= 0x80;
-    padded
-}
+/// Keccak-256 over raw message bytes.
+fn keccak256_bytes(msg: &[u8]) -> [u8; OUTPUT_BYTES] {
+    let mut padded_storage = [0u8; MAX_PADDED_KECCAK_BYTES];
+    let plen = pad_message_into(msg, &mut padded_storage);
+    let padded = &padded_storage[..plen];
 
-/// Keccak-256 hash function that takes bytes
-pub fn keccak256_bytes(msg: &[u8]) -> [u8; OUTPUT_BYTES] {
-    // 1. Padding
-    let padded = pad_message(msg);
-
-    // 2. Initialize state to all zeros
     let mut state: State = [0u64; 25];
 
-    // 3. Absorption phase
     for block_idx in 0..(padded.len() / RATE_BYTES) {
         let block = &padded[block_idx * RATE_BYTES..(block_idx + 1) * RATE_BYTES];
 
-        // XOR block into the rate portion of the state (first 136 bytes = 17 lanes)
         for lane_idx in 0..17 {
             let lane_bytes = &block[lane_idx * 8..(lane_idx + 1) * 8];
             state[lane_idx] ^= bytes_to_lane(lane_bytes);
         }
 
-        // Apply Keccak-f permutation
         keccak_f(&mut state);
     }
 
-    // 4. Squeezing phase
     let mut output = [0u8; OUTPUT_BYTES];
     for lane_idx in 0..4 {
         let lane_bytes = lane_to_bytes(state[lane_idx]);
@@ -198,29 +204,25 @@ pub fn keccak256_bytes(msg: &[u8]) -> [u8; OUTPUT_BYTES] {
     output
 }
 
-/// Interpret `padded` as one **big-endian** 5440-bit word (byte 0 = MSB). The logical message
-/// is **left-padded with zero bits** to 5440 bits; `msg_len_bits` is its true length in bits.
-/// The returned bytes pack the message in order: first message bit → MSB of the first output
-/// byte (any trailing bits in the last byte are zero in the lower positions).
+/// Interpret `padded` as one **big-endian** 5440-bit word. Writes the logical message into `out`;
+/// returns its byte length.
 fn extract_left_padded_message_5440(
     padded: &[u8; KECCAK256_PADDED_BYTES],
     msg_len_bits: u64,
-) -> Result<Vec<u8>, String> {
+    out: &mut [u8; KECCAK256_PADDED_BYTES],
+) -> Result<usize, ()> {
     if msg_len_bits > KECCAK256_PADDED_BITS as u64 {
-        return Err(format!(
-            "msg_len_bits {} exceeds {}-bit capacity",
-            msg_len_bits, KECCAK256_PADDED_BITS
-        ));
+        return Err(());
     }
     let len = msg_len_bits as usize;
     if len == 0 {
-        return Ok(Vec::new());
+        return Ok(0);
     }
 
     let skip = KECCAK256_PADDED_BITS - len;
-    let mut out = Vec::with_capacity((len + 7) / 8);
     let mut acc: u8 = 0;
     let mut acc_bits: u32 = 0;
+    let mut out_len = 0;
 
     for bit_i in skip..skip + len {
         let byte_idx = bit_i / 8;
@@ -229,86 +231,72 @@ fn extract_left_padded_message_5440(
         acc = (acc << 1) | bit;
         acc_bits += 1;
         if acc_bits == 8 {
-            out.push(acc);
+            out[out_len] = acc;
+            out_len += 1;
             acc = 0;
             acc_bits = 0;
         }
     }
     if acc_bits > 0 {
-        out.push(acc << (8 - acc_bits));
+        out[out_len] = acc << (8 - acc_bits);
+        out_len += 1;
     }
 
-    Ok(out)
+    Ok(out_len)
 }
 
-/// Keccak-256 over a **5440-bit left-padded** message. `msg_len_bits` (typically passed as
-/// `u64` in a circuit) selects the suffix of meaningful bits; leading zero bits are stripped.
+/// Keccak-256 over a **5440-bit left-padded** message: strip leading zero bits using
+/// `msg_len_bits`, then hash.
 pub fn keccak256_padded_5440(
     padded: &[u8; KECCAK256_PADDED_BYTES],
     msg_len_bits: u64,
-) -> Result<[u8; OUTPUT_BYTES], String> {
-    let msg = extract_left_padded_message_5440(padded, msg_len_bits)?;
-    Ok(keccak256_bytes(&msg))
+) -> Result<[u8; OUTPUT_BYTES], ()> {
+    let mut msg_buf = [0u8; KECCAK256_PADDED_BYTES];
+    let msg_len = extract_left_padded_message_5440(padded, msg_len_bits, &mut msg_buf)?;
+    Ok(keccak256_bytes(&msg_buf[..msg_len]))
 }
 
-/// Keccak-256 over a 5440-bit **big-endian** buffer (`padded`) and a **64-bit length in bits**
-/// (`msg_len_bits`). Leading zero bits are stripped before hashing. Digest is a `0x`-prefixed
-/// hex string.
-pub fn keccak256_hex(
-    padded: &[u8; KECCAK256_PADDED_BYTES],
-    msg_len_bits: u64,
-) -> Result<String, String> {
-    let hash = keccak256_padded_5440(padded, msg_len_bits)?;
-    let hash_hex = hash
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>();
-    Ok(format!("0x{}", hash_hex))
+#[no_mangle]
+fn main() -> ! {
+    let (input, expected) = get_test_vector();
+
+    let padded: [u8; KECCAK256_PADDED_BYTES] = match input[..KECCAK256_PADDED_BYTES].try_into() {
+        Ok(a) => a,
+        Err(_) => exit(2),
+    };
+    let len_field: [u8; LENGTH_FIELD_BYTES] = match input[KECCAK256_PADDED_BYTES..INPUT_LEN].try_into()
+    {
+        Ok(b) => b,
+        Err(_) => exit(2),
+    };
+    let msg_len_bits = u64::from_le_bytes(len_field);
+
+    let code = match keccak256_padded_5440(&padded, msg_len_bits) {
+        Ok(result) if digest_eq(&result, expected) => 0,
+        Ok(_) => 1,
+        Err(()) => 2,
+    };
+
+    exit(code);
 }
 
-fn main() {
-    println!("Keccak-256 (5440-bit left-padded) Test");
-    println!("=======================\n");
+fn digest_eq(computed: &[u8; OUTPUT_BYTES], expected: &[u8]) -> bool {
+    if expected.len() != OUTPUT_BYTES {
+        return false;
+    }
+    let mut ok = true;
+    for i in 0..OUTPUT_BYTES {
+        ok &= computed[i] == expected[i];
+    }
+    ok
+}
 
-    let tests: Vec<(&str, u64, &str)> = vec![(
-        "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e29aab6a376efeea9660d20be388309eb224092b96131c0b880c09b9bdd0344cda03ecf711e3f0c5022d8d80d087b8a2ae98e08ce5047a647c6f2ea35303665f16f769b357835fc2b4449ae18890ea5eb73c322e2660e06b135019d02d19099076d425e3c06d2229ecfa0b90665a76d57b69f0d998bc9312e40a6355641da10e1ea683f999f84ffa5d72520eb25deacb7f949a9cbeee5f48a7acb5becca9debf7b52e991508554aeb82715de9c91f9f38c443adf1e61ffd0e8656ee952a130e7c25b92da622fb170662db88822c0b9ce13befa2f5eae205fe6fc3998e483f895458c62f30acfc0cbd7d6d2311b1f658c7126753f937fd9a3ba3ce50ac1d00a895fbc5d38c9edd8ba59b491f8d8b485ab0b0a12a0ded7a439682efcebfa8481da5f6a81b20f8740cd5797e4ca3fe53ed6fb94d0bbbb81fb0c9a21927ed36064c3e258895e55f509001dd1c2fc1463852b3c982ec0768edf353d04d097504240af8ecc596217357c8da3ebf574c542e11bfc0e03d4d5aa8797c357c637011f7e5c5088e7952c8cb6d23158c8d938472e3f60478557581cdb46602c529a94780193956265cde4ff4b3aca975278be84bb45e5757a58c3a128e40464ca89076ef73b271b973c0bdd2ced221f17371f14806421bddd442acd97c37e1722c44e94b4cd321e81f689b2abcbff8378b52e6648927c135b4f1034ff27f3914daaf8395fe925a5a2da00f940f50cb0482647aa4eac4a18d65a2d63357ed8b91b84d3",
-        4328,
-        "16a4bb4a4dbbbe42fc73e9ea93fe1eb92ec96875425c3bc3f7be73a3bd1e949b",
-    )];
-
-    for (padded_hex, len_bits, expected) in tests {
-        let bytes = match hex_to_bytes(padded_hex) {
-            Ok(b) => b,
-            Err(e) => {
-                println!("Decode padded hex - Error: {}\n", e);
-                continue;
-            }
-        };
-        let padded: [u8; KECCAK256_PADDED_BYTES] = match bytes.try_into() {
-            Ok(arr) => arr,
-            Err(v) => {
-                println!(
-                    "Expected {} padded bytes, got {}\n",
-                    KECCAK256_PADDED_BYTES,
-                    v.len()
-                );
-                continue;
-            }
-        };
-
-        match keccak256_hex(&padded, len_bits) {
-            Ok(result) => {
-                let matches = result.to_lowercase() == format!("0x{}", expected.to_lowercase());
-                let status = if matches { "✅ PASS" } else { "❌ FAIL" };
-
-                println!("len_bits: {}", len_bits);
-                println!("Expected: 0x{}", expected);
-                println!("Got:      {}", result);
-                println!("Status:   {}\n", status);
-            }
-            Err(e) => {
-                println!("Hash error: {}\n", e);
-            }
-        }
+fn get_test_vector() -> (&'static [u8], &'static [u8]) {
+    static mut BUF: [u8; TOTAL_LEN] = [0u8; TOTAL_LEN];
+    unsafe {
+        read_memory(&raw mut BUF as *mut u8, TOTAL_LEN);
+        let input = &BUF[..INPUT_LEN];
+        let expected = &BUF[INPUT_LEN..INPUT_LEN + OUTPUT_LEN];
+        (input, expected)
     }
 }
