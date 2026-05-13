@@ -136,8 +136,8 @@ var fieldOne = field.One()
 func rowHash(alpha field.Ext, head field.Ext, usePrepend bool, cols [][]field.Ext, i int) field.Ext {
 	if !usePrepend {
 		// acc = cols[0][i] + α·cols[1][i] + α²·cols[2][i] + …
-		var acc field.Ext = cols[0][i]
-		var pow field.Ext = alpha
+		acc := cols[0][i]
+		pow := alpha
 		for k := 1; k < len(cols); k++ {
 			var term field.Ext
 			term.Mul(&pow, &cols[k][i])

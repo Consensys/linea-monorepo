@@ -338,7 +338,7 @@ func TestCompile_MultipleQueriesSameTable(t *testing.T) {
 	lookuptologderivsum.Compile(sys)
 	// Exactly one M column should have been added to modT — both queries
 	// share the same lookup table and therefore the same multiplicity column.
-	assert.Equal(t, colsBefore+1, len(modT.Columns),
+	assert.Len(t, modT.Columns, colsBefore+1,
 		"a single shared lookup table must yield exactly one M column")
 	for _, q := range sys.TableRelations {
 		assert.True(t, q.IsReduced(),
@@ -384,9 +384,9 @@ func TestCompile_MultipleQueriesDistinctTables(t *testing.T) {
 	colsT1Before := len(modT1.Columns)
 	colsT2Before := len(modT2.Columns)
 	lookuptologderivsum.Compile(sys)
-	assert.Equal(t, colsT1Before+1, len(modT1.Columns),
+	assert.Len(t, modT1.Columns, colsT1Before+1,
 		"modT1 must carry exactly one new M column")
-	assert.Equal(t, colsT2Before+1, len(modT2.Columns),
+	assert.Len(t, modT2.Columns, colsT2Before+1,
 		"modT2 must carry exactly one new M column")
 	logderivativesum.Compile(sys)
 
@@ -470,7 +470,7 @@ func TestCompile_VerifierFailsOnZeroM(t *testing.T) {
 
 	colsBefore := len(modT.Columns)
 	lookuptologderivsum.Compile(sys)
-	require.Equal(t, colsBefore+1, len(modT.Columns),
+	require.Len(t, modT.Columns, colsBefore+1,
 		"lookuptologderivsum.Compile must add exactly one M column to modT")
 	mCol := modT.Columns[colsBefore]
 	logderivativesum.Compile(sys)

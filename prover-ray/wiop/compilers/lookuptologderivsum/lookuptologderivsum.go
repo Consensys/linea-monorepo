@@ -281,10 +281,11 @@ func compileGroup(
 	// The T-side fraction:  −M / (γ + bRLC).
 	negM := wiop.Negate(mCol.View())
 	bDen := wiop.Add(gamma, bRLC)
-	fractions := []wiop.Fraction{{
+	fractions := make([]wiop.Fraction, 0, 1+len(g.included))
+	fractions = append(fractions, wiop.Fraction{
 		Numerator:   negM,
 		Denominator: bDen,
-	}}
+	})
 
 	// The A-side fractions: one per A fragment.
 	for _, inc := range g.included {

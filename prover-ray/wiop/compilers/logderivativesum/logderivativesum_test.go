@@ -109,11 +109,11 @@ func TestCompile_AddsZColumnAndVanishing(t *testing.T) {
 
 	logderivativesum.Compile(sys)
 
-	assert.Equal(t, colsBefore+1, len(mod.Columns),
+	assert.Len(t, mod.Columns, colsBefore+1,
 		"compile must add exactly one Z column for a single fraction")
 	require.Len(t, mod.Vanishings, 1,
 		"compile must add exactly one recurrence vanishing for a single fraction")
-	assert.Equal(t, openingsBefore+2, len(mod.LocalOpenings),
+	assert.Len(t, mod.LocalOpenings, openingsBefore+2,
 		"compile must add Z[0] and Z[n-1] openings")
 	assert.True(t, sys.LogDerivativeSums[0].IsReduced(),
 		"the LogDerivativeSum query must be marked reduced after compile")
@@ -142,11 +142,11 @@ func TestCompile_Idempotent(t *testing.T) {
 
 	logderivativesum.Compile(sys)
 
-	assert.Equal(t, colsAfterFirst, len(mod.Columns),
+	assert.Len(t, mod.Columns, colsAfterFirst,
 		"second compile must not add new Z columns")
-	assert.Equal(t, vansAfterFirst, len(mod.Vanishings),
+	assert.Len(t, mod.Vanishings, vansAfterFirst,
 		"second compile must not add new vanishings")
-	assert.Equal(t, openingsAfterFirst, len(mod.LocalOpenings),
+	assert.Len(t, mod.LocalOpenings, openingsAfterFirst,
 		"second compile must not add new openings")
 }
 
@@ -182,7 +182,7 @@ func TestCompile_PacksFractions(t *testing.T) {
 	colsBefore := len(mod.Columns)
 	logderivativesum.Compile(sys)
 
-	assert.Equal(t, colsBefore+2, len(mod.Columns),
+	assert.Len(t, mod.Columns, colsBefore+2,
 		"4 fractions must be packed into ⌈4/3⌉ = 2 Z columns")
 	assert.Len(t, mod.Vanishings, 2,
 		"each Z column must have its own recurrence vanishing")
