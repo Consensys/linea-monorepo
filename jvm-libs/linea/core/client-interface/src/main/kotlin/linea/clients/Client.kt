@@ -1,4 +1,4 @@
-package build.linea.clients
+package linea.clients
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
