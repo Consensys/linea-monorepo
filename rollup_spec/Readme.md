@@ -320,7 +320,7 @@ Outer framing is length-prefixed binary; inner payloads are RLP. The per-FTX `si
 
 The L1→L2 bridge state is tracked via `L1L2BridgeRollingHash` and its associated `L1L2BridgeRollingHashMessageNumber`. The execution proof guest consumes L1 deposit messages (per §2.1) and advances the rolling hash across its range.
 
-Security against L1 re-orgs is not the responsibility of the proof. The bridge contract handles this by waiting for L1 epochs to finalize before making deposit messages available to the sequencer — the same model as today.
+Security against L1 re-orgs is not the responsibility of the proof. The Coordinator handles this by waiting for L1 epochs to finalize before anchoring the L1 -> L2 messages — the same model as today.
 
 Across blob and aggregation proofs, continuity is enforced by the aggregation proof's `assert_eq!` checks on rolling hash bounds (§2.3). The `prevL1L2BridgeRollingHash` in the final public inputs allows the L1 contract to verify that the submitted proof continues exactly from the previously finalized bridge state; the new `L1L2BridgeRollingHash` is cross-checked against L1's authoritative `l1RollingHash[messageNumber]` chain at finalization (§5).
 
