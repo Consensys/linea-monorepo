@@ -16,6 +16,11 @@ sourceSets {
   }
 }
 
+configurations.named("integrationTestRuntimeClasspath") {
+  // Besu's Vert.x 4 test runtime expects the pre-1.13 Prometheus registry package.
+  resolutionStrategy.force "io.micrometer:micrometer-registry-prometheus:1.12.13"
+}
+
 dependencies {
   implementation(project(":maru:api"))
   implementation(project(":maru:config"))
@@ -58,6 +63,7 @@ dependencies {
 
   integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
   integrationTestImplementation 'org.jetbrains.kotlinx:kotlinx-datetime'
+  integrationTestImplementation 'org.awaitility:awaitility-kotlin'
   integrationTestImplementation(project(":maru:jvm-libs:test-utils"))
   integrationTestImplementation(testFixtures(project(":maru:p2p")))
   integrationTestImplementation(testFixtures(project(":maru:crypto")))

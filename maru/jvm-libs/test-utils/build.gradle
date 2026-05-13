@@ -28,6 +28,8 @@ dependencies {
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
   implementation project(":jvm-libs:linea:core:metrics")
+  implementation "io.vertx:vertx-health-check"
+  implementation "io.vertx:vertx-web"
 
   implementation "org.web3j:core"
   implementation 'org.assertj:assertj-core'
