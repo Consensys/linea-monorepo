@@ -63,7 +63,9 @@ class L2CalldataSizeAccumulatorImpl(
               config.blockSizeNonCalldataOverhead,
 
             )
-            lastCalldataSizeSum.set(blockNumber to calldataSizeSum)
+            lastCalldataSizeSum.updateAndGet { current ->
+              if (blockNumber >= current.first) blockNumber to calldataSizeSum else current
+            }
           }
         }
     } else {
