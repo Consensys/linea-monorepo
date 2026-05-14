@@ -8,6 +8,17 @@ import io.vertx.sqlclient.SqlClient
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.DatabaseConfig
 import linea.persistence.DisabledForcedTransactionsDao
+import linea.persistence.conflation.AggregationsRepositoryImpl
+import linea.persistence.conflation.BatchesPostgresDao
+import linea.persistence.conflation.BlobsPostgresDao
+import linea.persistence.conflation.BlobsRepositoryImpl
+import linea.persistence.conflation.PostgresAggregationsDao
+import linea.persistence.conflation.PostgresBatchesRepository
+import linea.persistence.conflation.RetryingBatchesPostgresDao
+import linea.persistence.conflation.RetryingBlobsPostgresDao
+import linea.persistence.conflation.RetryingPostgresAggregationsDao
+import linea.persistence.db.Db
+import linea.persistence.db.PersistenceRetryer
 import linea.persistence.ftx.PostgresForcedTransactionsDao
 import linea.persistence.ftx.RetryingPostgresForcedTransactionsDao
 import net.consensys.linea.async.toSafeFuture
@@ -18,17 +29,6 @@ import net.consensys.linea.vertx.loadVertxConfig
 import net.consensys.zkevm.coordinator.api.Api
 import net.consensys.zkevm.coordinator.app.conflationbacktesting.ConflationBacktestingService
 import net.consensys.zkevm.fileio.DirectoryCleaner
-import net.consensys.zkevm.persistence.dao.aggregation.AggregationsRepositoryImpl
-import net.consensys.zkevm.persistence.dao.aggregation.PostgresAggregationsDao
-import net.consensys.zkevm.persistence.dao.aggregation.RetryingPostgresAggregationsDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.RetryingBatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
-import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
-import net.consensys.zkevm.persistence.dao.blob.RetryingBlobsPostgresDao
-import net.consensys.zkevm.persistence.db.Db
-import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -208,7 +208,7 @@ class CoordinatorApp(
   }
 
   fun stop(): Int {
-    return runCatching {
+    return try {
       SafeFuture.allOf(
         l1App.stop(),
         api.stop(),
@@ -223,10 +223,10 @@ class CoordinatorApp(
         log.info("CoordinatorApp Stopped")
       }.get()
       0
-    }.recover { e ->
+    } catch (e: Exception) {
       log.error("CoordinatorApp Stopped with error: errorMessage={}", e.message, e)
       1
-    }.getOrThrow()
+    }
   }
 
   private fun initDb(dbConfig: DatabaseConfig): SqlClient {

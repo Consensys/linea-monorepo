@@ -1,12 +1,12 @@
 package net.consensys.zkevm.coordinator.app.conflationbacktesting
 
-import build.linea.clients.StateManagerClientV1
-import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.blob.BlobCompressorFactory
 import linea.blob.BlobCompressorVersion
 import linea.clients.ExecutionProverClientV2
+import linea.clients.StateManagerClientV1
+import linea.clients.StateManagerV1JsonRpcClient
 import linea.conflation.AlwaysSafeBlockNumberProvider
 import linea.conflation.ConflationService
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
@@ -51,15 +51,10 @@ import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCo
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
-import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.AtomicLong
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.fetchAndUpdate
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-@OptIn(ExperimentalAtomicApi::class)
 class ConflationBacktestingApp(
   val vertx: Vertx,
   val conflationBacktestingAppConfig: ConflationBacktestingConfig,
@@ -99,24 +94,13 @@ class ConflationBacktestingApp(
 
   private val log = LogManager.getLogger("conflation_backtesting_job_${conflationBacktestingAppConfig.jobId()}")
 
-  private val conflationBacktestingComplete = AtomicBoolean(false)
+  private val progressTracker = BacktestingProgressTracker(
+    startBlockNumber = conflationBacktestingAppConfig.startBlockNumber,
+    targetEndBlockNumber = conflationBacktestingAppConfig.endBlockNumber,
+    log = log,
+  )
 
-  fun isConflationBacktestingComplete(): Boolean = conflationBacktestingComplete.load()
-
-  fun onConflationProgress(
-    blockNumber: ULong,
-  ) {
-    if (blockNumber == conflationBacktestingAppConfig.endBlockNumber) {
-      conflationBacktestingComplete.store(true)
-      log.info("Conflation backtesting complete")
-    } else {
-      log.info(
-        "Conflation backtesting progress: processed till blockNumber={}, targetEndBlock={}",
-        blockNumber,
-        conflationBacktestingAppConfig.endBlockNumber,
-      )
-    }
-  }
+  fun isConflationBacktestingComplete(): Boolean = progressTracker.isComplete()
 
   val backtestingCoordinatorConfig: CoordinatorConfig = mainCoordinatorConfig.copy(
     conflation = mainCoordinatorConfig.conflation.copy(
@@ -134,7 +118,9 @@ class ConflationBacktestingApp(
     proversConfig = mainCoordinatorConfig.proversConfig.copy(
       proverA = getUpdatedProverConfig(
         proverConfig = mainCoordinatorConfig.proversConfig.proverA,
-        backtestingDirectory = mainCoordinatorConfig.conflation.backtestingDirectory!!,
+        backtestingDirectory = requireNotNull(mainCoordinatorConfig.conflation.backtestingDirectory) {
+          "conflation.backtestingDirectory must be set when running in backtesting mode"
+        },
         conflationBacktestingJobId = conflationBacktestingAppConfig.jobId(),
       ),
       proverB = mainCoordinatorConfig.proversConfig.proverB?.let { proverB ->
@@ -167,7 +153,6 @@ class ConflationBacktestingApp(
     stateManager = mainCoordinatorConfig.stateManager.copy(
       endpoints = listOf(conflationBacktestingAppConfig.shomeiApi.endpoint),
       requestLimitPerEndpoint = conflationBacktestingAppConfig.shomeiApi.requestLimitPerEndpoint,
-      version = conflationBacktestingAppConfig.shomeiApi.version,
     ),
   ).also {
     log.info("Conflation backtesting coordinatorConfig={}", it)
@@ -237,14 +222,12 @@ class ConflationBacktestingApp(
   private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(
     rpcClientFactory = httpJsonRpcClientFactory,
     endpoints = backtestingCoordinatorConfig.stateManager.endpoints.map { it.toURI() },
-    zkStateManagerVersion = backtestingCoordinatorConfig.stateManager.version,
     maxInflightRequestsPerClient = backtestingCoordinatorConfig.stateManager.requestLimitPerEndpoint,
     requestRetry = backtestingCoordinatorConfig.stateManager.requestRetries.toJsonRpcRetry(),
     requestTimeout = backtestingCoordinatorConfig.stateManager.requestTimeout?.inWholeMilliseconds,
     logger = log,
   )
 
-  val lastProcessedBatchEndBlockNumber = AtomicLong(conflationBacktestingAppConfig.startBlockNumber.toLong() - 1)
   val proofGeneratingConflationHandlerImpl = run {
     val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(log = log)
 
@@ -271,15 +254,7 @@ class ConflationBacktestingApp(
           "Backtesting execution proof request produced: batch={}",
           unProvenBatch.intervalString(),
         )
-        // check to prevent out of order proof request from regressing teh last processed batch number.
-        lastProcessedBatchEndBlockNumber.fetchAndUpdate {
-            current ->
-          if (current < proofIndex.endBlockNumber.toLong()) {
-            proofIndex.endBlockNumber.toLong()
-          } else {
-            current
-          }
-        }
+        progressTracker.recordExecutionRequestEndBlock(proofIndex.endBlockNumber)
       },
       vertx = vertx,
       config = ProofGeneratingConflationHandlerImpl.Config(
@@ -338,6 +313,7 @@ class ConflationBacktestingApp(
           blobRecord.intervalString(),
         )
         inMemoryProvenBlobsTracker.acceptProvenBlobRecord(proofIndex, blobRecord)
+        progressTracker.recordCompressionRequestEndBlock(blobRecord.endBlockNumber)
       },
       log = log,
       metricsFacade = metricsFacade,
@@ -379,7 +355,7 @@ class ConflationBacktestingApp(
         "Backtesting aggregation proof request produced: aggregation={}",
         unProvenAggregation.intervalString(),
       )
-      onConflationProgress(proofIndex.endBlockNumber)
+      progressTracker.recordAggregationRequestEndBlock(proofIndex.endBlockNumber)
     },
     invalidityProofProvider = InvalidityProofProviderImpl(DisabledForcedTransactionsDao()),
     aggregationL2StateProvider = AggregationL2StateProviderImpl(
@@ -407,7 +383,7 @@ class ConflationBacktestingApp(
     blockCreationListener = blockToBatchSubmissionCoordinator,
     lastProvenBlockNumberProviderSync = object : LastProvenBlockNumberProviderSync {
       override fun getLastKnownProvenBlockNumber(): Long {
-        return lastProcessedBatchEndBlockNumber.load()
+        return progressTracker.lastExecutionRequestEndBlock()
       }
     },
     config = BlockCreationMonitor.Config(
@@ -446,8 +422,8 @@ class ConflationBacktestingApp(
     ).thenApply {
       try {
         blobCompressor.close()
-      } catch (_: Throwable) {
-        // Ignored, we want to attempt to close the compressor but it should not prevent the rest of the shutdown
+      } catch (t: Throwable) {
+        log.warn("Failed to close blobCompressor during shutdown: errorMessage={}", t.message, t)
       }
       log.info("Conflation backtesting stopped successfully")
     }

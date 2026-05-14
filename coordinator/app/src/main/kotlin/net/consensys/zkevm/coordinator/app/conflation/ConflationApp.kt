@@ -1,9 +1,9 @@
 package net.consensys.zkevm.coordinator.app.conflation
 
-import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.clients.ExecutionProverClientV2
+import linea.clients.StateManagerV1JsonRpcClient
 import linea.conflation.ConflationService
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
 import linea.conflation.calculators.CalculatorsFactory
@@ -97,7 +97,6 @@ class ConflationApp(
     maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
     requestRetry = configs.stateManager.requestRetries.toJsonRpcRetry(),
     requestTimeout = configs.stateManager.requestTimeout?.inWholeMilliseconds,
-    zkStateManagerVersion = configs.stateManager.version,
     logger = LogManager.getLogger("clients.StateManagerShomeiClient"),
   )
   val tracesClients =

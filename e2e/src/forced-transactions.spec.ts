@@ -26,6 +26,8 @@ import {
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
 const l2AccountManager = context.getL2AccountManager();
+const l1EventTimeOutMs = process.env.PARTIAL_PROVER != "true" ? 200_000 : 2400_000;
+const timeOutMs = process.env.PARTIAL_PROVER != "true" ? 300_000 : 3000_000;
 
 async function expectReceiptNotFound(
   client: { getTransactionReceipt: (args: { hash: Hash }) => Promise<unknown> },
@@ -37,7 +39,7 @@ async function expectReceiptNotFound(
 }
 
 describe("Forced transaction test suite", () => {
-  it.skip(
+  it.concurrent(
     "Should successfully submit a forced transaction containing a valid l2 transaction",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
@@ -147,7 +149,7 @@ describe("Forced transaction test suite", () => {
         toBlock: "latest",
         pollingIntervalMs: 2_000,
         strict: true,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
       });
@@ -156,10 +158,10 @@ describe("Forced transaction test suite", () => {
         `Finalization includes forced transaction. blockNumber=${finalizedEvent.args.blockNumber} forcedTransactionNumber=${finalizedEvent.args.forcedTransactionNumber}`,
       );
     },
-    200_000,
+    timeOutMs,
   );
 
-  it.skip(
+  it.concurrent(
     "Should successfully submit a forced transaction containing an invalid L2 tx.",
     async () => {
       const [l1Account, l2Account] = await Promise.all([
@@ -258,7 +260,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -273,10 +275,10 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("Checked for forced transaction receipt on L2; confirmed that receipt was not found as expected.");
     },
-    200_000,
+    timeOutMs,
   );
 
-  it.skip(
+  it.concurrent(
     "Should reject a forced transaction that calls an excluded precompile (BadPrecompile)",
     async () => {
       const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
@@ -409,7 +411,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -424,12 +426,17 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("BadPrecompile forced transaction confirmed: receipt not found on L2 as expected.");
     },
-    300_000,
+    timeOutMs,
   );
 
-  it.skip(
+  it.concurrent(
     "Should reject a forced transaction that exceeds the L2-L1 log limit (TooManyLogs)",
     async () => {
+      if (process.env.PARTIAL_PROVER == "true") {
+        logger.warn('Skipped the forced transaction "TooManyLogs" test with partial prover');
+        return;
+      }
+
       const [l1Account, l2Deployer, l2ForcedAccount] = await Promise.all([
         l1AccountManager.generateAccount(),
         l2AccountManager.generateAccount(),
@@ -570,7 +577,7 @@ describe("Forced transaction test suite", () => {
         fromBlock: receipt.blockNumber,
         toBlock: "latest",
         pollingIntervalMs: 2_000,
-        timeoutMs: 200_000,
+        timeoutMs: l1EventTimeOutMs,
         strict: true,
         criteria: async (events) =>
           events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -585,12 +592,20 @@ describe("Forced transaction test suite", () => {
       await expectReceiptNotFound(l2PublicClient, l2TxHash);
       logger.debug("TooManyLogs forced transaction confirmed: receipt not found on L2 as expected.");
     },
-    300_000,
+    timeOutMs,
   );
 
-  it.skip(
+  it.concurrent(
     "Should reject a forced transaction from a denylisted sender (FilteredAddressFrom)",
     async () => {
+      // For partial prover test, if we run both denylisted tests, one of them would have
+      // the FTX event simulated at a high number block number compared to those in other
+      // FTX tests, so here we disabled one of them
+      if (process.env.PARTIAL_PROVER == "true") {
+        logger.warn('Skipped the forced transaction "FilteredAddressFrom" test with partial prover');
+        return;
+      }
+
       const [l1Account, l2DeniedSender, l2Recipient] = await Promise.all([
         l1AccountManager.generateAccount(),
         l2AccountManager.generateAccount(),
@@ -705,7 +720,7 @@ describe("Forced transaction test suite", () => {
               fromBlock: receipt.blockNumber,
               toBlock: "latest",
               pollingIntervalMs: 2_000,
-              timeoutMs: 200_000,
+              timeoutMs: l1EventTimeOutMs,
               strict: true,
               criteria: async (events) =>
                 events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -725,10 +740,10 @@ describe("Forced transaction test suite", () => {
         );
       });
     },
-    300_000,
+    timeOutMs,
   );
 
-  it.skip(
+  it.concurrent(
     "Should reject a forced transaction to a denylisted recipient (FilteredAddressTo)",
     async () => {
       const [l1Account, l2ForcedSender, l2DeniedRecipient] = await Promise.all([
@@ -845,7 +860,7 @@ describe("Forced transaction test suite", () => {
               fromBlock: receipt.blockNumber,
               toBlock: "latest",
               pollingIntervalMs: 2_000,
-              timeoutMs: 200_000,
+              timeoutMs: l1EventTimeOutMs,
               strict: true,
               criteria: async (events) =>
                 events.filter((e) => e.args.forcedTransactionNumber >= submittedForcedTransactionNumber),
@@ -865,6 +880,6 @@ describe("Forced transaction test suite", () => {
         );
       });
     },
-    300_000,
+    timeOutMs,
   );
 });
