@@ -41,7 +41,7 @@ install-zkc: checkout-go-corset
 
 # Compile the main RISC-V ZKC program.
 zkc-compile: $(ZKC_FILES)
-	zkc compile $(ZKC_MAIN)
+	zkc compile --wir $(ZKC_MAIN) >/dev/null
 
 zkc-lint:
 	zkc format --check $(ZKC_FILES)
