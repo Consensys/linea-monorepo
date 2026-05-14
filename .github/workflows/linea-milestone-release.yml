@@ -49,17 +49,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        component-name: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
         include:
           - component-name: coordinator
             include-path: '"coordinator/**"'
           - component-name: prover
             include-path: '"prover/**"'
-          - component: postman
+          - component-name: postman
             include-path: '"postman/**"'
-          - component: tx-exclusion-api
+          - component-name: tx-exclusion-api
             include-path: '"transaction-exclusion-api/**"'
-          - component: linea-besu
+          - component-name: linea-besu
             include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
     outputs:
       coordinator: ${{ steps.changelog-outputs.outputs.coordinator }}
@@ -91,14 +91,25 @@ jobs:
       
       - name: Changelog outputs
         id: changelog-outputs
+        env:
+          COMPONENT_NAME: ${{ matrix.component-name }}
+          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.changelog_content }}
+          NEXT_VERSION: ${{ steps.changelog.outputs.next_version }}
+          NEXT_TAG: ${{ steps.changelog.outputs.next_tag }}
+          TAG_CHANGED: ${{ steps.changelog.outputs.tag_changed }}
         run: |
-          JSON_OUTPUTS=$(jq -n \
-            --arg changelog_content "${{ steps.changelog.outputs.changelog_content }}" \
-            --arg next_version "${{ steps.changelog.outputs.next_version }}" \
-            --arg next_tag "${{ steps.changelog.outputs.next_tag }}" \
-            --arg tag_changed "${{ steps.changelog.outputs.tag_changed }}" \
+          set -euo pipefail
+          JSON_OUTPUTS=$(jq -c -n \
+            --arg changelog_content "$CHANGELOG_CONTENT" \
+            --arg next_version      "$NEXT_VERSION" \
+            --arg next_tag          "$NEXT_TAG" \
+            --arg tag_changed       "$TAG_CHANGED" \
             '{changelog_content: $changelog_content, next_version: $next_version, next_tag: $next_tag, tag_changed: $tag_changed}')
-          echo "${{ matrix.component-name }}=$JSON_OUTPUTS" >> $GITHUB_OUTPUT
+          {
+            echo "${COMPONENT_NAME}<<__JSON_EOF__"
+            printf '%s\n' "$JSON_OUTPUTS"
+            echo "__JSON_EOF__"
+          } >> "$GITHUB_OUTPUT"
 
   build-local-coordinator:
     needs: [component-release-metadata]
