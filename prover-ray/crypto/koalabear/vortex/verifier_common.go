@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
@@ -39,7 +38,7 @@ func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) e
 	// Check the consistency of Ys and proof.Linear combination
 	yJoined := slices.Concat(ys...)
 	alphaY := polynomials.EvalLagrange(field.VecFromExt(linComb), field.ElemFromExt(x))
-	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
+	alphaYPrime := evalFextPolyHorner(yJoined, alpha)
 
 	if !alphaY.Equal(&alphaYPrime) {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
@@ -73,13 +72,35 @@ func CheckLinComb(
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := vortex.EvalBasePolyHorner(fullCol, alpha)
+		y := evalBasePolyHorner(fullCol, alpha)
 		other := linComb[selectedColID]
 
-		if y != other {
+		if !y.Equal(&other) {
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}
 
 	return nil
+}
+
+// evalFextPolyHorner evaluates a polynomial whose coefficients live in the
+// extension field, at an extension point, using Horner's method.
+func evalFextPolyHorner(poly []field.Ext, x field.Ext) field.Ext {
+	var res field.Ext
+	for i := len(poly) - 1; i >= 0; i-- {
+		res.Mul(&res, &x)
+		res.Add(&res, &poly[i])
+	}
+	return res
+}
+
+// evalBasePolyHorner evaluates a base-coefficient polynomial at an extension
+// point. Each addition only touches the lifted constant slot of res.
+func evalBasePolyHorner(poly []field.Element, x field.Ext) field.Ext {
+	var res field.Ext
+	for i := len(poly) - 1; i >= 0; i-- {
+		res.Mul(&res, &x)
+		res.B0.A0.Add(&res.B0.A0, &poly[i])
+	}
+	return res
 }
