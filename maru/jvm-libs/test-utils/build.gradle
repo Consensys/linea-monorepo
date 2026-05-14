@@ -1,15 +1,18 @@
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation(project(":consensus"))
-  implementation(project(":app"))
-  implementation(project(":crypto"))
-  implementation(testFixtures(project(":crypto")))
-  implementation(project(":p2p"))
-  implementation(project(":config"))
-  implementation(project(":jvm-libs:extensions"))
+  implementation(project(':maru:consensus'))
+  implementation(project(':maru:app'))
+  implementation(project(':maru:crypto'))
+  implementation(testFixtures(project(':maru:crypto')))
+  implementation(project(':maru:p2p'))
+  implementation(project(':maru:config'))
+  implementation(project(':maru:jvm-libs:extensions'))
   implementation "build.linea.internal:kotlin"
   implementation "build.linea.internal:long-running-service"
 

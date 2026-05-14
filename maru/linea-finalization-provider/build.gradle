@@ -14,13 +14,16 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
   id 'java-test-fixtures'
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation(project(":jvm-libs:extensions"))
-  api(project(":core"))
+  implementation(project(':maru:jvm-libs:extensions'))
+  api(project(':maru:core'))
   api("build.linea.internal:linea-contract-clients"){
     exclude group: "build.linea", module: "besu-libs"
   }

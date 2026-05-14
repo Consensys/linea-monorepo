@@ -14,15 +14,18 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
 
-dependencies {
-  implementation(project(":core"))
-  implementation(project(":config"))
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
-  implementation(project(":jvm-libs:mappers"))
-  implementation(project(":jvm-libs:extensions"))
+dependencies {
+  implementation(project(':maru:core'))
+  implementation(project(':maru:config'))
+
+  implementation(project(':maru:jvm-libs:mappers'))
+  implementation(project(':maru:jvm-libs:extensions'))
 
   api "tech.pegasys.teku.internal:executionclient"
 
@@ -34,6 +37,6 @@ dependencies {
   implementation "build.linea.internal:metrics"
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
-  testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures(project(':maru:core')))
   testImplementation(testFixtures('build.linea.internal:kotlin'))
 }

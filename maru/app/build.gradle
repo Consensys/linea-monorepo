@@ -2,8 +2,11 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
-  id 'maru.kotlin-application-conventions'
+  id 'net.consensys.zkevm.kotlin-application-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
+
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 sourceSets {
   integrationTest {
@@ -17,30 +20,39 @@ sourceSets {
 }
 
 dependencies {
-  implementation(project(":api"))
-  implementation(project(":config"))
-  implementation(project(":consensus"))
-  implementation(project(":core"))
-  implementation(project(":executionlayer"))
-  implementation(project(":p2p"))
-  implementation(project(":storage"))
-  implementation(project(":syncing"))
-  implementation(project(":crypto"))
-  implementation(project(":serialization"))
-  implementation(project(":observability"))
-  implementation(project(":syncing"))
-  implementation(project(":jvm-libs:teku-web3j"))
-  api(project(":linea-finalization-provider")) {
+  implementation(project(':maru:api'))
+  implementation(project(':maru:config'))
+  implementation(project(':maru:consensus'))
+  implementation(project(':maru:core'))
+  implementation(project(':maru:executionlayer'))
+  implementation(project(':maru:p2p'))
+  implementation(project(':maru:storage'))
+  implementation(project(':maru:syncing'))
+  implementation(project(':maru:crypto'))
+  implementation(project(':maru:serialization'))
+  implementation(project(':maru:observability'))
+  implementation(project(':maru:syncing'))
+  implementation(project(':maru:jvm-libs:teku-web3j'))
+  api(project(':maru:linea-finalization-provider')) {
     exclude group: "build.linea", module: "besu-libs"
   }
   implementation("build.linea.internal:web3j-extensions") {
     exclude group: "build.linea", module: "besu-libs"
   }
-  implementation(project(":jvm-libs:extensions"))
-  implementation(project(":jvm-libs:mappers"))
+  implementation(project(':maru:jvm-libs:extensions'))
+  implementation(project(':maru:jvm-libs:mappers'))
 
   implementation "build.linea.internal:futures"
   implementation "build.linea.internal:long-running-service"
+
+  // Previously inherited from maru's `maru.kotlin-application-conventions` plugin (which the
+  // import dropped in favor of zkevm's lighter `net.consensys.zkevm.kotlin-application-conventions`).
+  // Resolved via maru/gradle/versions.gradle until the catalog fold replaces these with project
+  // references / catalog accessors.
+  implementation "build.linea.internal:metrics"
+  implementation "build.linea.internal:micrometer"
+  implementation "build.linea.internal:vertx-helper"
+  implementation "io.vertx:vertx-micrometer-metrics"
 
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
@@ -54,9 +66,9 @@ dependencies {
 
   integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
   integrationTestImplementation 'org.jetbrains.kotlinx:kotlinx-datetime'
-  integrationTestImplementation(project(":jvm-libs:test-utils"))
-  integrationTestImplementation(testFixtures(project(":p2p")))
-  integrationTestImplementation(testFixtures(project(":crypto")))
+  integrationTestImplementation(project(':maru:jvm-libs:test-utils'))
+  integrationTestImplementation(testFixtures(project(':maru:p2p')))
+  integrationTestImplementation(testFixtures(project(':maru:crypto')))
   integrationTestImplementation("org.hyperledger.besu.internal:besu-crypto-services")
   integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
@@ -64,7 +76,7 @@ dependencies {
   integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   integrationTestImplementation("com.squareup.okhttp3:okhttp")
   integrationTestImplementation("io.javalin:javalin")
-  testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures(project(':maru:core')))
 }
 
 // Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when

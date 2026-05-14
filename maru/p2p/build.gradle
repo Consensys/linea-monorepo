@@ -14,16 +14,19 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
   id 'java-test-fixtures'
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation project(":config")
-  implementation project(":serialization")
-  implementation project(":crypto")
-  implementation project(":core")
-  implementation project(":observability")
+  implementation project(':maru:config')
+  implementation project(':maru:serialization')
+  implementation project(':maru:crypto')
+  implementation project(':maru:core')
+  implementation project(':maru:observability')
 
   api "io.libp2p:jvm-libp2p"
 
@@ -50,11 +53,11 @@ dependencies {
   implementation 'io.consensys.protocols:discovery'
   implementation 'org.jetbrains.kotlinx:kotlinx-datetime'
 
-  implementation(project(":core"))
+  implementation(project(':maru:core'))
 
-  testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures(project(':maru:core')))
 
-  testFixturesImplementation(project(":serialization"))
-  testFixturesImplementation(project(":crypto"))
-  testFixturesImplementation(testFixtures(project(":core")))
+  testFixturesImplementation(project(':maru:serialization'))
+  testFixturesImplementation(project(':maru:crypto'))
+  testFixturesImplementation(testFixtures(project(':maru:core')))
 }

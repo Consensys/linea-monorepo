@@ -2,21 +2,24 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation project(":core")
-  implementation project(":app")
-  implementation project(":consensus")
-  implementation project(":executionlayer")
-  implementation project(":config")
-  implementation project(":p2p")
+  implementation project(':maru:core')
+  implementation project(':maru:app')
+  implementation project(':maru:consensus')
+  implementation project(':maru:executionlayer')
+  implementation project(':maru:config')
+  implementation project(':maru:p2p')
   // For the syncing logic
-  implementation project(":jvm-libs:mappers")
-  implementation(project(":serialization"))
-  implementation(project(":jvm-libs:extensions"))
-  implementation project(":jvm-libs:test-utils")
+  implementation project(':maru:jvm-libs:mappers')
+  implementation(project(':maru:serialization'))
+  implementation(project(':maru:jvm-libs:extensions'))
+  implementation project(':maru:jvm-libs:test-utils')
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"

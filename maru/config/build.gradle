@@ -14,12 +14,15 @@
  */
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation(project(":jvm-libs:extensions"))
-  implementation(project(":core"))
+  implementation(project(':maru:jvm-libs:extensions'))
+  implementation(project(':maru:core'))
   api("build.linea.internal:domain-models")
   api("build.linea.internal:kotlin")
 

@@ -2,13 +2,16 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation(project(":jvm-libs:extensions"))
-  implementation project(":jvm-libs:test-utils")
-  implementation project(":api")
+  implementation(project(':maru:jvm-libs:extensions'))
+  implementation project(':maru:jvm-libs:test-utils')
+  implementation project(':maru:api')
   implementation("build.linea.internal:file-system")
   implementation("build.linea.internal:web3j-extensions") {
     exclude group: "build.linea", module: "besu-libs"

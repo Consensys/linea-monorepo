@@ -1,11 +1,14 @@
 plugins {
-  id 'maru.kotlin-library-conventions'
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  alias(libs.plugins.dependencyManagement)
   id 'java-test-fixtures'
 }
 
+apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
+
 dependencies {
-  implementation(project(":core"))
-  implementation(project(":jvm-libs:extensions"))
+  implementation(project(':maru:core'))
+  implementation(project(':maru:jvm-libs:extensions'))
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-crypto-services")
