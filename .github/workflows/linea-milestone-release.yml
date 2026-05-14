@@ -93,16 +93,16 @@ jobs:
         id: changelog-outputs
         run: |
           JSON_OUTPUTS=$(jq -n \
-            --arg changelog-content "${{ steps.changelog.outputs.changelog_content }}" \
-            --arg next-version "${{ steps.changelog.outputs.next_version }}" \
-            --arg next-tag "${{ steps.changelog.outputs.next_tag }}" \
-            --arg tag-changed "${{ steps.changelog.outputs.tag_changed }}" \
-            '{changelog-content : $changelog-content, next-version: $next-version, tag-changed: $tag-changed}')
+            --arg changelog_content "${{ steps.changelog.outputs.changelog_content }}" \
+            --arg next_version "${{ steps.changelog.outputs.next_version }}" \
+            --arg next_tag "${{ steps.changelog.outputs.next_tag }}" \
+            --arg tag_changed "${{ steps.changelog.outputs.tag_changed }}" \
+            '{changelog_content: $changelog_content, next_version: $next_version, next_tag: $next_tag, tag_changed: $tag_changed}')
           echo "${{ matrix.component-name }}=$JSON_OUTPUTS" >> $GITHUB_OUTPUT
 
   build-local-coordinator:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag-changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed == 'true' }}
     uses: ./.github/workflows/coordinator-build-and-publish.yml
     with:
       image_tag: local
@@ -113,7 +113,7 @@ jobs:
 
   build-local-postman:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag-changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed == 'true' }}
     uses: ./.github/workflows/postman-build-and-publish.yml
     with:
       image_tag: local
@@ -124,7 +124,7 @@ jobs:
 
   build-local-prover:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag-changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed == 'true' }}
     uses: ./.github/workflows/prover-build-and-publish.yml
     with:
       image_tag: local
@@ -135,7 +135,7 @@ jobs:
 
   build-local-tx-exclusion-api:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag-changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed == 'true' }}
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
     with:
       image_tag: local
@@ -146,10 +146,10 @@ jobs:
 
   build-local-linea-besu:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag-changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed == 'true' }}
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).next-version }}
+      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).next_version }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 
@@ -212,11 +212,11 @@ jobs:
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
-      coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
-      postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
-      prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
-      tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
-      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
+      coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
+      postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
+      prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
+      tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
+      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
