@@ -1,0 +1,84 @@
+name: verifier-ray
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'verifier-ray/**'
+      - 'prover-ray/**'
+      - '.github/workflows/verifier-ray.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'verifier-ray/**'
+      - 'prover-ray/**'
+      - '.github/workflows/verifier-ray.yml'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GO_VERSION: '1.25.7'
+  GO_CORSET_VERSION: 'v1.2.14'
+  GO_CORSET_REF_FOR_ZKC: 'v1.2.14'
+  ZIG_VERSION: '0.17.0-dev.251+0db721ec2'
+
+concurrency:
+  group: verifier-ray-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: false
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Install go-corset and zkc
+        run: |
+          go install github.com/consensys/go-corset/cmd/go-corset@${GO_CORSET_VERSION}
+          go install github.com/consensys/go-corset/cmd/zkc@${GO_CORSET_REF_FOR_ZKC}
+          go-corset --version
+          go version -m "$(which zkc)"
+
+      - name: Zig format check
+        working-directory: verifier-ray
+        run: zig fmt --check build.zig src test
+
+      - name: Zig build
+        working-directory: verifier-ray
+        run: zig build
+
+      - name: Zig tests
+        working-directory: verifier-ray
+        run: zig build test
+
+      - name: Codegen format check
+        working-directory: verifier-ray/codegen
+        run: |
+          if [[ -n "$(gofmt -l .)" ]]; then
+            echo "please run gofmt"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Codegen tests
+        working-directory: verifier-ray/codegen
+        run: go test ./...
