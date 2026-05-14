@@ -4,6 +4,7 @@ permissions:
   actions: read
   contents: write
   packages: write
+  pull-requests: write
 
 on:
   workflow_call:
