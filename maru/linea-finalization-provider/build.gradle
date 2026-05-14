@@ -24,9 +24,9 @@ apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 dependencies {
   implementation(project(':maru:jvm-libs:extensions'))
   api(project(':maru:core'))
-  api("build.linea.internal:linea-contract-clients"){
+  api(project(':jvm-libs:linea:clients:linea-contract-clients')){
     exclude group: "build.linea", module: "besu-libs"
   }
-  api("build.linea.internal:interfaces")
-  implementation("build.linea.internal:long-running-service")
+  api(project(':jvm-libs:linea:clients:interfaces'))
+  implementation(project(':jvm-libs:linea:core:long-running-service'))
 }

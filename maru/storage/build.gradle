@@ -30,5 +30,5 @@ dependencies {
   implementation "org.hyperledger.besu:besu-plugin-api"
   testImplementation (testFixtures(project(':maru:core')))
   testImplementation (project(':maru:observability'))
-  testImplementation ("build.linea.internal:metrics")
+  testImplementation (project(':jvm-libs:linea:core:metrics'))
 }

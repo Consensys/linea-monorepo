@@ -52,7 +52,7 @@ dependencies {
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:spec"
 
-  implementation "build.linea.internal:long-running-service"
+  implementation project(':jvm-libs:linea:core:long-running-service')
 
 
   testImplementation(testFixtures(project(':maru:core')))
@@ -61,5 +61,5 @@ dependencies {
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
   testImplementation "tech.pegasys.teku.internal:executionclient"
   testImplementation "tech.pegasys.teku.internal:spec"
-  testImplementation "build.linea.internal:metrics"
+  testImplementation project(':jvm-libs:linea:core:metrics')
 }

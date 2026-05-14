@@ -12,8 +12,8 @@ dependencies {
   implementation(project(':maru:jvm-libs:extensions'))
   implementation project(':maru:jvm-libs:test-utils')
   implementation project(':maru:api')
-  implementation("build.linea.internal:file-system")
-  implementation("build.linea.internal:web3j-extensions") {
+  implementation(project(':jvm-libs:linea:testing:file-system'))
+  implementation(project(':jvm-libs:linea:web3j-extensions')) {
     exclude group: "build.linea", module: "besu-libs"
   }
 

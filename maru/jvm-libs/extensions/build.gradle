@@ -21,7 +21,7 @@ plugins {
 apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
-  implementation "build.linea.internal:metrics"
-  implementation "build.linea.internal:futures"
+  implementation project(':jvm-libs:linea:core:metrics')
+  implementation project(':jvm-libs:generic:extensions:futures')
   implementation "tech.pegasys.teku.internal:executionclient"
 }
