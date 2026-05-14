@@ -508,8 +508,7 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 		// --- Recombine quotient shares: Q(r) = Σ_k r^{kn} · Q_k(r) ---
 		qr := field.ElemZero()
 		rPowKN := field.ElemOne() // r^{kn}, starts at r^0 = 1
-		for k, claim := range bkt.quotientClaims {
-			_ = k
+		for _, claim := range bkt.quotientClaims {
 			qk := rt.GetCellValue(claim) // Q_k(r)
 			qr = qr.Add(rPowKN.Mul(qk))
 			// Advance: r^{(k+1)n} = r^{kn} · r^n

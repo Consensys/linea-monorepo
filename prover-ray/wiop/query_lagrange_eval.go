@@ -16,7 +16,7 @@ import (
 //
 // For a column C of size n and evaluation point X, the evaluation is:
 //
-//	(X^n − 1) / n · Σ_{i<n} C[i] / (X − ω^i)
+//	(X^n − 1) / n · Σ_{i<n} C[i] * w^i / (X − ω^i)
 //
 // where ω is the canonical n-th root of unity of the ambient field.
 //
