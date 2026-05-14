@@ -281,6 +281,9 @@ check_incremental_typescript_helpers() {
 check_partial_prover_guardrails() {
   compose="$STACK/docker-compose.yml"
   prover_template="$STACK/config/l2/prover/prover-config-partial.toml.template"
+  coordinator_template="$STACK/config/l2/coordinator/coordinator-config.toml.template"
+  env_example="$STACK/.env.example"
+  readme="$STACK/README.md"
 
   if grep -q 'PROVER_GOMEMLIMIT must be set explicitly when PROVER_DEV_OVERRIDE=false' "$compose"; then
     pass "partial prover mode requires explicit PROVER_GOMEMLIMIT"
@@ -295,10 +298,22 @@ check_partial_prover_guardrails() {
   else
     fail "config-render must verify partial prover modes and bitmask"
   fi
+
+  if grep -q '__L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI__' "$coordinator_template" \
+    && grep -q '__L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI__' "$coordinator_template" \
+    && grep -q 'L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI' "$compose" \
+    && grep -q 'L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI' "$compose" \
+    && grep -q 'L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI' "$env_example" \
+    && grep -q 'L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI' "$env_example" \
+    && grep -q 'L1 gas caps and Sepolia congestion' "$readme"; then
+    pass "L1 blob/finalization gas caps are documented and configurable"
+  else
+    fail "L1 blob/finalization gas caps must be documented and configurable"
+  fi
 }
 
 check_smoke_and_traffic_scripts() {
-  for script in send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh; do
+  for script in check-ports.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh; do
     script_path="$STACK/scripts/$script"
     if [ -x "$script_path" ]; then
       pass "$script is executable"
@@ -312,6 +327,16 @@ check_smoke_and_traffic_scripts() {
       fail "$script has invalid shell syntax"
     fi
   done
+
+  if [ -f "$STACK/scripts/check-ports.sh" ] \
+    && grep -q 'HOST_PORT_L2_RPC' "$STACK/scripts/check-ports.sh" \
+    && grep -q 'HOST_PORT_L2_BLOCKSCOUT_FRONTEND' "$STACK/scripts/check-ports.sh" \
+    && grep -q 'HOST_PORT_COORDINATOR' "$STACK/scripts/check-ports.sh" \
+    && grep -q './scripts/check-ports.sh' "$STACK/README.md"; then
+    pass "check-ports.sh preflights expected host ports"
+  else
+    fail "check-ports.sh must preflight expected host ports and be documented"
+  fi
 
   if [ -f "$STACK/scripts/send-l2-test-tx.sh" ] && grep -q 'L2_DEPLOYER_PRIVATE_KEY' "$STACK/scripts/send-l2-test-tx.sh" && grep -q 'cast send' "$STACK/scripts/send-l2-test-tx.sh"; then
     pass "send-l2-test-tx.sh sends a simple L2 transaction from the generated L2 deployer"
@@ -345,6 +370,26 @@ check_smoke_and_traffic_scripts() {
   fi
 }
 
+check_pinned_utility_images_and_docs() {
+  versions="$STACK/versions.env"
+  readme="$STACK/README.md"
+
+  if grep -q '^FOUNDRY_TAG=' "$versions" && ! grep -q '^FOUNDRY_TAG=latest$' "$versions"; then
+    pass "Foundry image tag is pinned"
+  else
+    fail "FOUNDRY_TAG must be pinned, not latest"
+  fi
+
+  if grep -q 'Accounts and funding model' "$readme" \
+    && grep -q 'generated L2 deployer' "$readme" \
+    && grep -q 'L2MessageService' "$readme" \
+    && grep -q 'ERC20Example' "$readme"; then
+    pass "README documents L2 ETH and ERC20Example funding model"
+  else
+    fail "README must document L2 ETH and ERC20Example funding model"
+  fi
+}
+
 check_no_tracked_generated_genesis
 check_generated_genesis_is_volume_scoped
 check_generated_l2_deployer_genesis
@@ -354,6 +399,7 @@ check_postman_key_model
 check_incremental_typescript_helpers
 check_partial_prover_guardrails
 check_smoke_and_traffic_scripts
+check_pinned_utility_images_and_docs
 
 if [ "$FAILURES" -ne 0 ]; then
   printf '[quickstart-static] %s failure(s)\n' "$FAILURES" >&2

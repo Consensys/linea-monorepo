@@ -148,6 +148,12 @@ services:
       # higher Docker memory cap and is intended for validation, not first boot.
       PROVER_DEV_OVERRIDE: ${PROVER_DEV_OVERRIDE:-true}
       PROVER_GOMEMLIMIT: ${PROVER_GOMEMLIMIT:-}
+      L1_DYNAMIC_GAS_PRICE_CAP_DISABLED: ${L1_DYNAMIC_GAS_PRICE_CAP_DISABLED:-false}
+      L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI: ${L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI:-100000000000}
+      L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI: ${L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI:-100000000000}
+      L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI: ${L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI:-20000000000}
+      L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI: ${L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI:-200000000000}
+      L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI: ${L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI:-40000000000}
     entrypoint:
       - sh
       - -c
@@ -175,6 +181,28 @@ services:
             exit 1
             ;;
         esac
+        case "$$L1_DYNAMIC_GAS_PRICE_CAP_DISABLED" in
+          true|false) ;;
+          *)
+            echo "[config-render] FATAL: L1_DYNAMIC_GAS_PRICE_CAP_DISABLED must be true or false (got '$$L1_DYNAMIC_GAS_PRICE_CAP_DISABLED')" >&2
+            exit 1
+            ;;
+        esac
+        for gas_spec in \
+          "L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI=$$L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI" \
+          "L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI=$$L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI" \
+          "L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI=$$L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI" \
+          "L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI=$$L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI" \
+          "L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI=$$L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI"; do
+          gas_var="$${gas_spec%%=*}"
+          gas_value="$${gas_spec#*=}"
+          case "$$gas_value" in
+            ''|*[!0-9]*)
+              echo "[config-render] FATAL: $$gas_var must be a decimal wei value (got '$$gas_value')" >&2
+              exit 1
+              ;;
+          esac
+        done
         # Uncompressed secp256k1 pubkeys (128 hex chars, NO 0x prefix). The
         # L1 blob and finalization signers are deliberately separate senders;
         # message anchoring signs L2 transactions, so it uses the L2 anchorer.
@@ -216,6 +244,12 @@ services:
             -e "s|__L1_BLOB_SUBMITTER_PUBKEY_NO_PREFIX__|$$L1_BLOB_SUBMITTER_PUBKEY|g" \
             -e "s|__L1_FINALIZATION_SUBMITTER_PUBKEY_NO_PREFIX__|$$L1_FINALIZATION_SUBMITTER_PUBKEY|g" \
             -e "s|__L2_MESSAGE_ANCHORING_PUBKEY_NO_PREFIX__|$$L2_MESSAGE_ANCHORING_PUBKEY|g" \
+            -e "s|__L1_DYNAMIC_GAS_PRICE_CAP_DISABLED__|$$L1_DYNAMIC_GAS_PRICE_CAP_DISABLED|g" \
+            -e "s|__L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI__|$$L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI|g" \
+            -e "s|__L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI__|$$L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI|g" \
+            -e "s|__L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI__|$$L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI|g" \
+            -e "s|__L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI__|$$L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI|g" \
+            -e "s|__L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI__|$$L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI|g" \
             -e "s|__GENESIS_STATE_ROOT_HASH__|$$ZERO_HASH|g" \
             -e "s|__GENESIS_SHNARF__|$$ZERO_HASH|g" \
             -e "s|__LINEA_ROLLUP_DEPLOY_BLOCK__|0|g" \

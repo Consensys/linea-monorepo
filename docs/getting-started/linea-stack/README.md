@@ -103,6 +103,35 @@ L1_DEPLOYER_PRIVATE_KEY=0x<your-sepolia-funded-key>
 Everything else has sensible defaults. Optional knobs (port collisions, DA
 mode, postgres credentials) are commented in `.env.example`.
 
+Check host-port collisions before boot:
+
+```bash
+./scripts/check-ports.sh
+```
+
+If a port is busy, either stop the conflicting local service or override the
+matching `HOST_PORT_*` value in `.env`.
+
+### Accounts and funding model
+
+The only user-funded account is `L1_DEPLOYER_PRIVATE_KEY` on Sepolia. During
+boot, `account-setup` generates fresh runtime keys for L1 blob submission, L1
+finalization, L1 postman, L2 deployer, L2 message anchorer, and L2 postman.
+
+L2 ETH is local genesis ETH, not bridged Sepolia ETH. The generated L2 deployer
+is injected into the L2 genesis and funded with 90,000 ETH so it can deploy L2
+contracts and pay local gas. The precomputed `L2MessageService` address is also
+funded in genesis with 1,000,000,000 ETH so L1-to-L2 message claims can pay out
+value on the local L2. After L2 boot, `deploy-contracts` tops up the generated
+L2 anchorer and L2 postman from the generated L2 deployer.
+
+`ERC20Example` is deployed on both Sepolia and the local L2 during boot. The L2
+copy mints its initial supply to the generated L2 deployer, because that key
+deploys the contract. `send-l2-erc20-transfer.sh` and
+`generate-l2-erc20-traffic.sh` use the generated L2 deployer key from the Docker
+shared volume, so they already have L2 ETH for gas and L2 `ERC20Example` tokens
+to transfer.
+
 ## 4. Boot
 
 ```bash
@@ -185,6 +214,46 @@ Observed on 2026-05-12 with Docker Desktop set to 30 GiB and
 Do not use local L2 block height as proof of L1 finality. Blockscout may show
 new local L2 blocks immediately, while the rollup's Sepolia
 `currentL2BlockNumber` only advances after a successful `finalizeBlocks` tx.
+
+### L1 gas caps and Sepolia congestion
+
+The coordinator uses dynamic gas-price caps for L1 submissions. The defaults
+are intentionally bounded for a quickstart:
+
+| Path | Default cap |
+|------|-------------|
+| Blob transaction max fee per gas | 100 gwei |
+| Blob transaction max fee per blob gas | 100 gwei |
+| Blob transaction priority fee | 20 gwei |
+| Finalization transaction max fee per gas | 200 gwei |
+| Finalization transaction priority fee | 40 gwei |
+
+If Sepolia execution gas or blob gas spikes above those caps, the prover can be
+done while the coordinator waits or retries L1 submission. `status.sh` will show
+proof/compression/aggregation responses, but no new blob tx or no new
+`finalizeBlocks` tx. Coordinator logs may repeat `blobs to submit`, or show
+messages such as `Estimated miner tip ... exceeds configured max fee`,
+`replacement transaction underpriced`, or gas-price cap details.
+
+Inspect the L1 submission path with:
+
+```bash
+docker logs --since 15m coordinator | \
+  grep -Ei 'blobs to submit|blobs submitted|submitted aggregation|Estimated miner tip|underpriced|gasPriceCaps|error'
+```
+
+Adjust before boot in `.env` when Sepolia is congested:
+
+```bash
+L1_BLOB_MAX_FEE_PER_GAS_CAP_WEI=150000000000
+L1_BLOB_MAX_FEE_PER_BLOB_GAS_CAP_WEI=150000000000
+L1_BLOB_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI=30000000000
+L1_FINALIZATION_MAX_FEE_PER_GAS_CAP_WEI=300000000000
+L1_FINALIZATION_MAX_PRIORITY_FEE_PER_GAS_CAP_WEI=60000000000
+```
+
+Values are wei. Raising caps can spend more Sepolia ETH from the generated L1
+runtime signers; the deployer tops those signers up during boot.
 
 ## 5. Endpoints
 
@@ -401,7 +470,7 @@ and `fork-timestamp.txt` live in Docker volume `linea-stack-l2-genesis`.
 | Web3signer mTLS handshake errors | known-clients fingerprint out of sync (only after regenerating one side) | Regenerate both sides or restore from git |
 | `config-render` exits with `PROVER_GOMEMLIMIT must be set explicitly` | `PROVER_DEV_OVERRIDE=false` selected without a partial-prover memory limit | Set `PROVER_GOMEMLIMIT=24GiB` for a 30-32 GB Docker allocation, or `32GiB` for a larger validation machine, then clean boot |
 | Prover execution proofs exit `137` or files get `.large.failure.code_137` | partial prover ran under too little Docker memory | Use default `PROVER_DEV_OVERRIDE=true`, or raise Docker memory substantially before partial-mode validation |
-| Port collision (5432, 8745, 4000, 4001, 9000, 3001, 9091) | Another service uses the port | Override via `HOST_PORT_*` in `.env` |
+| Port collision | Another local service uses a required host port | Run `./scripts/check-ports.sh`, then stop the conflicting service or override the matching `HOST_PORT_*` in `.env` |
 
 ### Inspecting
 
@@ -512,6 +581,7 @@ docs/getting-started/linea-stack/
 │   ├── deploy-contracts.sh      ← 6-step deploy + address capture
 │   ├── aggregate-addresses.ts   ← writes addresses.json from deploy logs
 │   ├── deployBridgedTokenAndTokenBridgeV1_1.ts ← TokenBridge deploy helper
+│   ├── check-ports.sh           ← preflights host port collisions
 │   ├── links.sh                 ← prints useful Sepolia + local explorer links
 │   ├── status.sh                ← redacted boot status summary
 │   ├── send-l2-test-tx.sh       ← sends tiny L2 ETH txs for Blockscout demos
