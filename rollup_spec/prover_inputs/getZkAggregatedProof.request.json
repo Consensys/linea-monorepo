@@ -9,11 +9,30 @@
         "endBlockNumber":   1000567
     },
 
-    "_comment_blobProofs": "Ordered by shnarf-chain order. Each entry is a file path to a serialised blob-proof prover-response JSON (`<startBlock>-<endBlock>-getZkBlobProof.json`).",
+    "_comment_blobProofs": "M blob proofs in shnarf-chain order. Each entry inlines everything the aggregation-proof guest needs for that blob proof: the recursive STARK `proof` bytes, the 14-field `publicInputs` tuple, and the preimages of the two hash-committed PI fields — `L2L1Roots` (preimage of publicInputs.L2L1BridgeTransactionTree) and `filteredAddresses` (preimage of publicInputs.filteredAddressesHash).",
     "blobProofs": [
-        "blob/responses/1000501-1000520-blobs1to2-getZkBlobProof.json",
-        "blob/responses/1000521-1000545-blobs3to4-getZkBlobProof.json",
-        "blob/responses/1000546-1000567-blob5-getZkBlobProof.json"
+        {
+            "proof": "0x...",
+            "publicInputs": {
+                "endBlockNumber":                           1000520,
+                "endStateRootHash":                         "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
+                "L2L1BridgeTransactionTree":                "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "parentL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "parentL1L2BridgeRollingHashMessageNumber": 0,
+                "endL1L2BridgeRollingHash":                 "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "endL1L2BridgeRollingHashMessageNumber":    0,
+                "dynamicChainConfigHash":                   "0xc0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff",
+                "parentFtxRollingHash":                     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "endFtxRollingHash":                        "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "lastProcessedFtxNumber":                   0,
+                "filteredAddressesHash":                    "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+                "parentShnarf":                             "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
+                "endShnarf":                                "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
+            },
+            "L2L1Roots":         [],
+            "filteredAddresses": []
+        },
+        { "_comment": "remaining M-1 entries (blob proofs covering 1000521-1000545 and 1000546-1000567) have the same shape; abbreviated in the fixture" }
     ],
 
     "_comment_l1Context": "Coordinator-supplied anchors from the previously finalised aggregation. Bound into the public output for L1 continuity checks (§5).",
