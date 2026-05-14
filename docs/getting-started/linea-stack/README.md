@@ -127,12 +127,11 @@ L2 anchorer and L2 postman from the generated L2 deployer.
 
 `ERC20Example` is deployed on both Sepolia and the local L2 during boot. The L2
 copy mints its initial supply to the generated L2 deployer, because that key is
-the bootstrap/admin deployer for local L2 contracts. Demo traffic does not run
-from that deployer account. `send-l2-erc20-transfer.sh` and
-`generate-l2-erc20-traffic.sh` create or reuse a disposable demo traffic account
-in `/shared/demo-traffic.env`; the L2 deployer funds that traffic account once
-with small local L2 ETH and `ERC20Example`, then the traffic account sends the
-visible ERC20 transfers.
+the bootstrap/admin deployer for local L2 contracts. For demo activity,
+`send-l2-erc20-transfer.sh` and `generate-l2-erc20-traffic.sh` create or reuse a
+disposable traffic account in `/shared/demo-traffic.env`. The L2 deployer funds
+that account once with small local L2 ETH and `ERC20Example`, then the traffic
+account sends the visible ERC20 transfers.
 
 ## 4. Boot
 
