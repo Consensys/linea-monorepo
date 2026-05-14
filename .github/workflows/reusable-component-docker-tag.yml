@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       image-tag-suffix:
-        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDD]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDD]-[commit]'
         required: false
         type: string
         default: ''
@@ -36,7 +36,7 @@ jobs:
 
       - name: Set timestamp
         id: timestamp
-        run: echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+        run: echo "TIMESTAMP=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Set docker tag
         id: dockertag

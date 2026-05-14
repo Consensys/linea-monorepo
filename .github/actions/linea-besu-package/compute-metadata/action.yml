@@ -91,7 +91,7 @@ runs:
       id: timestamp
       shell: bash
       run: |
-        echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        echo "TIMESTAMP=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
 
     - name: set docker tag
       id: dockertag

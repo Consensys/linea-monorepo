@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag_suffix:
-        description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix]'
+        description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDD]-[commit]-[suffix]'
         required: true
         type: string
       without_besu_fleet_plugin:

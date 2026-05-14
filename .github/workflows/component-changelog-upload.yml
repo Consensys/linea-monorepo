@@ -67,13 +67,21 @@ jobs:
           name: unreleased-changelog-${{ matrix.artifact-name || matrix.folder-name }}
           path: ${{ matrix.folder-name }}/CHANGELOG.md
 
+      - name: Capitalize component name
+        if: github.ref != 'refs/heads/main' && steps.changelog.outputs.tag_changed == 'true'
+        id: component-cap
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: echo "name=${COMPONENT^}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
         if: github.ref != 'refs/heads/main' && steps.changelog.outputs.tag_changed == 'true'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: ${{ matrix.component }}-changelog-preview
           message: |
-            ## ${{ matrix.component }} Changelog Preview (informational)
+            ## ${{ steps.component-cap.outputs.name }} Changelog Preview (informational)
 
             <details>
             <summary><strong>[Unreleased] diff</strong> (commits touching <code>${{ matrix.component }}/**</code> since latest <code>releases/${{ matrix.component }}/v*</code> tag)</summary>

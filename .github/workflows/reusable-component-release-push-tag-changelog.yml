@@ -119,7 +119,7 @@ jobs:
         with:
           token: ${{ steps.app_token.outputs.token }}
           commit-message: "chore(${{ inputs.component-name }}): update CHANGELOG.md for ${{ steps.prepend-changelog.outputs.next_tag }} release [skip ci]"
-          branch: ci/chore-${{ inputs.component-name }}-changelog-update-release-v${{ inputs.release_tag_suffix != '' && format('{0}-{1}', steps.prepend-changelog.outputs.next_version, inputs.release_tag_suffix) || steps.prepend-changelog.outputs.next_version }}
+          branch: ci/chore-${{ inputs.component-name }}-changelog-update-release-v${{ steps.prepend-changelog.outputs.next_version }}
           base: main
           title: "chore(${{ inputs.component-name }}): update CHANGELOG.md for ${{ steps.prepend-changelog.outputs.next_tag }} release [skip ci]"
           add-paths: ${{ inputs.folder-name }}/CHANGELOG.md

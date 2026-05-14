@@ -108,6 +108,7 @@ runs:
         next_semver="${next_tag#releases/${COMPONENT}/v}"
         if [ -n "${RELEASE_TAG_SUFFIX}" ]; then
           next_tag="${next_tag}-${RELEASE_TAG_SUFFIX}"
+          next_semver="${next_semver}-${RELEASE_TAG_SUFFIX}"
         fi
 
         # Get the latest tag matching the release pattern (newest by semver).
@@ -132,7 +133,7 @@ runs:
       env:
         COMPONENT: ${{ inputs.component-name }}
         CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && (inputs.release_tag_suffix != '' && format(' --tag {0}-{1}', steps.version.outputs.version, inputs.release_tag_suffix) || format(' --tag {0}', steps.version.outputs.version)) || '' }}
+        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
       shell: bash
       run: |
         set -euo pipefail
@@ -156,7 +157,7 @@ runs:
         COMPONENT: ${{ inputs.component-name }}
         FOLDER_NAME: ${{ inputs.folder-name }}
         CLIFF_CONFIG: ${{ inputs.cliff-config }}
-        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && (inputs.release_tag_suffix != '' && format(' --tag {0}-{1}', steps.version.outputs.version, inputs.release_tag_suffix) || format(' --tag {0}', steps.version.outputs.version)) || '' }}
+        TAG_CONFIG: ${{ inputs.generate-changelog-with-next-tag-version == 'true' && format(' --tag {0}', steps.version.outputs.version) || '' }}
         TARGET_REF: ${{ github.head_ref || github.ref_name }}
       shell: bash
       run: |
