@@ -2,7 +2,7 @@
 
 ### 🚀 Features
 
-- *(coordinator)* Testing bump version
+- *(coordinator)* Testing bump version for testing
 
 ### ⚙️ Miscellaneous Tasks
 
