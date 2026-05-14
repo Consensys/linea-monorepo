@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"strings"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
@@ -46,44 +47,48 @@ func TestCompile_Soundness(t *testing.T) {
 	}
 }
 
-func TestVerifier_CheckZig_Fibonacci(t *testing.T) {
-	zigPath, err := exec.LookPath("zig")
-	if err != nil {
-		t.Skip("zig binary is not installed")
+func Test_zigTest(t *testing.T) {
+	zigTest(t)
+}
+
+func zigTest(t *testing.T) {
+	t.Helper()
+	zigPath, zigErr := exec.LookPath("zig")
+
+	repoRoot := repoRootFromTest(t)
+	outputDir := filepath.Join(repoRoot, "wiop", "zigverifiers")
+	zigStatics := filepath.Join(repoRoot, "wiop", "zigstatics", "koalabear_field.zig")
+	require.NoError(t, os.MkdirAll(outputDir, 0o755))
+
+	for _, build := range wioptest.VanishingScenarios() {
+		sc := build()
+		t.Run(sc.Name, func(t *testing.T) {
+			global.Compile(sc.Sys)
+
+			rt := wiop.NewRuntime(sc.Sys)
+			sc.AssignHonest(&rt)
+			require.NoError(t, wioptest.RunAndVerify(&rt),
+				"Go verifier must accept before generating the equivalent Zig verifier")
+
+			src, err := findGlobalVerifier(t, sc.Sys).GenerateZig(rt)
+			require.NoError(t, err)
+
+			zigFile := filepath.Join(outputDir, zigVerifierFileName(sc.Name))
+			require.NoError(t, os.WriteFile(zigFile, src, 0o600))
+			if zigErr != nil {
+				return
+			}
+
+			//nolint:gosec // Test executes the local Zig compiler on generated verifier source.
+			cmd := exec.Command(zigPath, "test", "--dep", "koalabear", "-Mroot="+zigFile, "-Mkoalabear="+zigStatics)
+			cmd.Dir = repoRoot
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "zig test failed:\n%s", out)
+		})
 	}
-
-	sc := wioptest.NewFibonacciVanishingScenario()
-	global.Compile(sc.Sys)
-
-	rt := wiop.NewRuntime(sc.Sys)
-	sc.AssignHonest(&rt)
-	require.NoError(t, wioptest.RunAndVerify(&rt),
-		"Go verifier must accept before generating the equivalent Zig verifier")
-
-	tmp := t.TempDir()
-	outputDir := filepath.Join(tmp, "zigverifiers")
-	zigStatics := copyZigStatics(t, tmp)
-	cmdDir := tmp
-	if os.Getenv("LINEA_KEEP_ZIG_VERIFIER") == "1" {
-		repoRoot := repoRootFromTest(t)
-		outputDir = filepath.Join(repoRoot, "wiop", "zigverifiers")
-		zigStatics = filepath.Join(repoRoot, "wiop", "zigstatics", "koalabear_field.zig")
-		cmdDir = repoRoot
+	if zigErr != nil {
+		t.Skip("zig binary is not installed; generated Zig files were written but not compiled")
 	}
-
-	zigFile, err := findGlobalVerifier(t, sc.Sys).CheckZigToDir(rt, outputDir)
-	require.NoError(t, err)
-	require.FileExists(t, zigFile)
-
-	//nolint:gosec // Test executes the local Zig compiler on generated verifier source.
-	cmd := exec.Command(zigPath, "test", "--dep", "koalabear", "-Mroot="+zigFile, "-Mkoalabear="+zigStatics)
-	cmd.Env = append(os.Environ(),
-		"ZIG_GLOBAL_CACHE_DIR="+filepath.Join(tmp, "global-cache"),
-		"ZIG_LOCAL_CACHE_DIR="+filepath.Join(tmp, "local-cache"),
-	)
-	cmd.Dir = cmdDir
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "zig test failed:\n%s", out)
 }
 
 func findGlobalVerifier(t *testing.T, sys *wiop.System) *global.Verifier {
@@ -99,22 +104,13 @@ func findGlobalVerifier(t *testing.T, sys *wiop.System) *global.Verifier {
 	return nil
 }
 
-func copyZigStatics(t *testing.T, tmp string) string {
-	t.Helper()
-	src := filepath.Join(repoRootFromTest(t), "wiop", "zigstatics", "koalabear_field.zig")
-	dstDir := filepath.Join(tmp, "zigstatics")
-	require.NoError(t, os.MkdirAll(dstDir, 0o755))
-
-	data, err := os.ReadFile(src)
-	require.NoError(t, err)
-	dst := filepath.Join(dstDir, "koalabear_field.zig")
-	require.NoError(t, os.WriteFile(dst, data, 0o600))
-	return dst
-}
-
 func repoRootFromTest(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := goruntime.Caller(0)
 	require.True(t, ok, "runtime.Caller should locate the test file")
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
+}
+
+func zigVerifierFileName(scenarioName string) string {
+	return "global_verifier_" + strings.ToLower(scenarioName) + ".zig"
 }
