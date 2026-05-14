@@ -29,11 +29,6 @@ on:
         required: false
         default: false
         type: boolean
-      build_local_only:
-        description: 'Build local image only'
-        required: false
-        default: false
-        type: boolean
     outputs:
       tag_changed:
         description: "Indicate whether the release tag of the component has changed"
@@ -86,5 +81,4 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
-      build_local_only: ${{ inputs.build_local_only }}
     secrets: inherit
