@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -61,6 +62,28 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		expectedMaxUncompressedBytes = cfg.DataAvailability.MaxUncompressedNbBytes
 	default:
 		return nil, fmt.Errorf("unsupported blob version: %v", version)
+	}
+
+	// Compression always uses the GPU prover when one is detected. The GPU
+	// path only needs the canonical SRS, so we skip the Lagrange SRS read
+	// (saves ~17s on the 126M-constraint compression circuit).
+	useGPU := gpu.HasDevice()
+
+	type setupResult struct {
+		setup circuits.Setup
+		err   error
+	}
+	var setupCh chan setupResult
+	if cfg.DataAvailability.ProverMode != config.ProverModeDev {
+		setupCh = make(chan setupResult, 1)
+		go func() {
+			var setupOpts []circuits.LoadSetupOption
+			if useGPU {
+				setupOpts = append(setupOpts, circuits.WithoutLagrangeSRS())
+			}
+			setup, err := circuits.LoadSetup(cfg, circuitID, setupOpts...)
+			setupCh <- setupResult{setup: setup, err: err}
+		}()
 	}
 
 	logrus.Info("reading dictionaries")
@@ -112,9 +135,12 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 		proofSerialized = dummy.MakeProof(&setup, pubInput, circuits.MockCircuitIDDecompression)
 	} else {
-		if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
+		setupRes := <-setupCh
+		if setupRes.err != nil {
+			err = setupRes.err
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
+		setup = setupRes.setup
 
 		maxUsableBytes, err := setup.Manifest.GetInt("maxUsableBytes")
 		if err != nil {
@@ -140,11 +166,12 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		opts := []any{
 			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			circuits.WithGPU(useGPU),
 		}
 
 		// This actually runs the compression prover
 
-		logrus.Infof("running the decompression prover")
+		logrus.Infof("running the decompression prover (gpu=%t)", useGPU)
 
 		proof, err := circuits.ProveCheck(
 			&setup,

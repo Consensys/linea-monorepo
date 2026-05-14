@@ -16,7 +16,9 @@ import (
 	invalidityLimitless "github.com/consensys/linea-monorepo/prover/backend/invalidity/limitless"
 	invalidityCir "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
+	"github.com/sirupsen/logrus"
 )
 
 type ProverArgs struct {
@@ -42,6 +44,32 @@ func Prove(args ProverArgs) error {
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
+	}
+
+	gpuDeviceID, gpuConfigured, cleanupGPU, err := gpu.PinConfiguredDevice()
+	if err != nil {
+		return err
+	}
+	defer cleanupGPU()
+	if gpuConfigured {
+		logrus.Infof("pinned prover process to GPU device %d via %s", gpuDeviceID, gpu.EnvDeviceID)
+	}
+
+	// When the operator opts into the aggregation GPU path, propagate the
+	// master flag to the keccak-vendored sub-flags that the public-input
+	// wizard reads (PI Vortex GPU MiMC, ring-SIS, quotient reevaluation).
+	// Operators can still pin individual sub-flags to "0" before launching
+	// the binary to disable a sub-path for triage.
+	if gpu.IsAggregationEnabled() {
+		for _, name := range []string{
+			"LINEA_PROVER_GPU_PI_MIMC",
+			"LINEA_PROVER_GPU_PI_SIS",
+			"LINEA_PROVER_GPU_PI_QUOTIENT_REEVAL",
+		} {
+			if os.Getenv(name) == "" {
+				_ = os.Setenv(name, "1")
+			}
+		}
 	}
 
 	// Determine job type from input file name

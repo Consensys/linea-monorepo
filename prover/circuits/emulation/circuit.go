@@ -84,12 +84,18 @@ func (c *CircuitEmulation) Define(api frontend.API) error {
 	return nil
 }
 
-// Produces a proof for the outer-proof outside on the BN field
+// Produces a proof for the outer-proof outside on the BN field.
+//
+// useGPU forwards the GPU choice from the aggregation backend to the
+// underlying ProveCheck. The BN254 emulation circuit is one of the GPU
+// targets gated behind LINEA_PROVER_GPU_AGGREGATION; the backend computes
+// that boolean once and threads it through here.
 func MakeProof(
 	setup *circuits.Setup,
 	circuitID int,
 	innerProof plonk.Proof,
 	publicInput fr.Element,
+	useGPU bool,
 ) (
 	proof plonk.Proof,
 	err error,
@@ -105,7 +111,7 @@ func MakeProof(
 		return nil, fmt.Errorf("while generating the aggregation circuit assignment: %w", err)
 	}
 
-	return circuits.ProveCheck(setup, assignment)
+	return circuits.ProveCheck(setup, assignment, circuits.WithGPU(useGPU))
 }
 
 // Allocates a new outer-circuit that can be passed to `frontend.Compile`. The

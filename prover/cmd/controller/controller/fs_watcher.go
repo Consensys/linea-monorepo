@@ -11,6 +11,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/gpu"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )
@@ -35,7 +36,17 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		Logger:     conf.Logger().WithField("component", "filesystem-watcher"),
 	}
 
-	if conf.Controller.EnableExecution {
+	// On a GPU host the prover only has GPU acceleration for the compression
+	// proof; running execution / aggregation / invalidity here would fall
+	// back to CPU and be much slower than scheduling them onto the dedicated
+	// CPU pool. Force the controller to only accept compression jobs in that
+	// case, even if the operator left the other Enable* flags on.
+	gpuOnlyCompression := gpu.HasDevice()
+	if gpuOnlyCompression {
+		fs.Logger.Infof("GPU detected — restricting job types to compression (data-availability) only")
+	}
+
+	if conf.Controller.EnableExecution && !gpuOnlyCompression {
 		fs.JobToWatch = append(fs.JobToWatch, ExecutionDefinition(conf))
 	}
 
@@ -43,11 +54,11 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, CompressionDefinition(conf))
 	}
 
-	if conf.Controller.EnableAggregation {
+	if conf.Controller.EnableAggregation && !gpuOnlyCompression {
 		fs.JobToWatch = append(fs.JobToWatch, AggregatedDefinition(conf))
 	}
 
-	if conf.Controller.EnableInvalidity {
+	if conf.Controller.EnableInvalidity && !gpuOnlyCompression {
 		fs.JobToWatch = append(fs.JobToWatch, InvalidityDefinition(conf))
 	}
 

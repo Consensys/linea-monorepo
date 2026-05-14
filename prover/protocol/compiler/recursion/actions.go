@@ -68,7 +68,17 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		)
 
 		if committedMatrix != nil {
-			committedMatrices = append(committedMatrices, committedMatrix.(vortex_koalabear.EncodedMatrix))
+			// Accept either the legacy raw EncodedMatrix or the new
+			// *committedHandle wrapper introduced when SIS-applied Koala
+			// rounds went device-resident. For GPU handles this forces
+			// a full D2H — unavoidable here because the recursion
+			// witness needs the host-side encoded matrix to feed into
+			// the recursion-circuit's verifier.
+			em := vortex.EncodedMatrixFromState(committedMatrix)
+			if em == nil {
+				utils.Panic("recursion ExtractWitness: unexpected vortex state type %T", committedMatrix)
+			}
+			committedMatrices = append(committedMatrices, em)
 		} else {
 			committedMatrices = append(committedMatrices, nil)
 		}

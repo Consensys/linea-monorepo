@@ -1,16 +1,23 @@
 package vortex
 
 import (
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuvortex "github.com/consensys/linea-monorepo/prover/gpu/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -19,6 +26,61 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
+
+// fextE4 alias used for clarity in the GPU LinComb glue. The underlying
+// type is github.com/consensys/gnark-crypto/field/koalabear/extensions.E4
+// (the same type the rest of the protocol uses via prover/maths/field/fext).
+type fextE4 = extensions.E4
+
+// useGPUVortex returns true when the wizard Vortex commit prover should
+// dispatch to gpu/vortex. Tied to the master aggregation flag — see
+// gpu.IsAggregationEnabled. Compression's wizard runs on CPU for both
+// commits and quotient; only the BLS12-377 PlonK proof at the end of
+// compression goes to gpu/plonk2.
+func useGPUVortex() bool {
+	return gpu.IsAggregationEnabled()
+}
+
+// forceGPUVortexRecommit forces every committed matrix back to host before
+// the OpenSelectedColumnsProverAction so we always re-encode + re-hash on
+// CPU at open time, instead of keeping the device-resident snapshot. This
+// is an advanced override used to debug the device-resident path; it is
+// not needed in production.
+func forceGPUVortexRecommit() bool {
+	return os.Getenv("LINEA_PROVER_GPU_VORTEX_RECOMMIT") == "1"
+}
+
+// gpuVortexSnapshotBudgetBytes caps how many GPU bytes we'll keep alive in
+// the cross-round Vortex snapshot before dropping it (forcing a recommit at
+// open time). Default 48 GiB leaves headroom on the 96 GiB reference card
+// for the PlonK MSM/NTT phases that run later.
+func gpuVortexSnapshotBudgetBytes() uint64 {
+	const defaultGiB = 48
+	gib := uint64(defaultGiB)
+	if v := os.Getenv("LINEA_PROVER_GPU_VORTEX_SNAPSHOT_BUDGET_GIB"); v != "" {
+		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
+			gib = n
+		}
+	}
+	return gib << 30
+}
+
+func (ctx *Ctx) shouldSnapshotGPUVortex() bool {
+	if ctx.IsSelfrecursed {
+		return true
+	}
+	if forceGPUVortexRecommit() {
+		return false
+	}
+	var sisRows uint64
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsSISApplied {
+			sisRows += uint64(ctx.CommitmentsByRounds.LenOf(round))
+		}
+	}
+	estimatedBytes := sisRows * uint64(ctx.NumEncodedCols()) * 4
+	return estimatedBytes <= gpuVortexSnapshotBudgetBytes()
+}
 
 type commitmentMode int
 
@@ -119,15 +181,75 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 			run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(roots[i], 1))
 		}
 	} else {
-		var tree *smt_koalabear.Tree
+		var (
+			tree  *smt_koalabear.Tree
+			gpuCS *gpuvortex.CommitState // device-resident handle when SIS+GPU
+		)
 
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatrix, _, tree, noSisColHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			// SIS-applied Koala rounds are the GPU sweet spot: most of the
+			// segment-prover wall-clock comes from these.
+			//
+			// Path selection:
+			//
+			//   GPU device-resident (CommitSIS): keeps the encoded matrix on
+			//     device. Downstream LinComb runs as a single device kernel
+			//     that produces a small UAlpha vector (~16 MiB at 2^20 scw),
+			//     and OpenSelectedColumns extracts only the verifier's
+			//     selected columns (~few MiB). Net: we save ~1.4 s of host
+			//     reconstruction at production size and 4.7× the AVX-512 CPU
+			//     vortex_koalabear baseline. Requires the goroutine to have
+			//     bound a GPU via runtime.LockOSThread + dev.Bind() — that's
+			//     what limitless.pinGPU(slot) does.
+			//
+			//   GPU drop-in (CommitMerkleWithSIS): D2Hs the full encoded
+			//     matrix and rebuilds []SmartVector in Go-managed memory.
+			//     The reconstruction overhead alone (~1.4 s at 2^20×2^11)
+			//     wipes out the GPU compute win. NOT used here — kept around
+			//     for legacy callers that still expect EncodedMatrix.
+			//
+			//   CPU AVX-512 (vortex_koalabear): production fallback. Used
+			//     when GPU is unavailable, or LIMITLESS_GPU_VORTEX is unset.
+			if useGPUVortex() && gpu.CurrentDevice() != nil {
+				start := time.Now()
+				if ctx.shouldSnapshotGPUVortex() {
+					gpuCS, tree, sisColHashes = gpuvortex.CommitSIS(
+						ctx.VortexKoalaParams, pols, ctx.IsSelfrecursed)
+				} else {
+					var ok bool
+					tree, sisColHashes, ok = gpuvortex.CommitSISRootOnly(
+						ctx.VortexKoalaParams, pols, ctx.IsSelfrecursed)
+					if ok {
+						gpuCS = nil
+					} else {
+						committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+					}
+				}
+				gpu.TraceEvent("vortex_commit_sis", gpu.CurrentDeviceID(), time.Since(start), map[string]any{
+					"round":    round,
+					"rows":     len(pols),
+					"cols":     ctx.VortexKoalaParams.NbColumns,
+					"snapshot": ctx.shouldSnapshotGPUVortex(),
+				})
+			} else {
+				committedMatrix, _, tree, sisColHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
+			}
 		}
 
-		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+		// Store the per-round commit handle. For GPU SIS rounds we wrap the
+		// *CommitState; otherwise we wrap the host EncodedMatrix. Downstream
+		// actions read both via asHandle() and dispatch on the variant.
+		var handle *committedHandle
+		if gpuCS != nil {
+			handle = newGPUHandle(gpuCS)
+		} else if committedMatrix == nil && useGPUVortex() && ctx.RoundStatus[round] == IsSISApplied {
+			handle = newGPURecommitHandle(len(pols))
+		} else {
+			handle = newHostHandle(committedMatrix)
+		}
+		run.State.InsertNew(ctx.VortexProverStateName(round), handle)
 		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
 		// Only to be read by the self-recursion compiler.
@@ -151,58 +273,117 @@ type LinearCombinationComputationProverAction struct {
 	*Ctx
 }
 
-// Prover steps of Vortex that is run when committing to the linear combination
-// We stack the No SIS round matrices before the SIS round matrices in the committed matrix stack.
-// For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
-// we stack it on top of the No SIS round matrices if SIS is not used on it.
+// Run computes UAlpha = Σᵢ αⁱ · row[i] over the Vortex stack:
+// all NoSIS matrices first, then all SIS matrices. Each chunk is accumulated
+// with its explicit global row offset so hybrid host/GPU/fallback execution
+// cannot silently reorder rows.
 func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime) {
-	var (
-		committedSVSIS   = []smartvectors.SmartVector{}
-		committedSVNoSIS = []smartvectors.SmartVector{}
-	)
-	// Add the precomputed columns
-	if ctx.IsNonEmptyPrecomputed() {
-		var precomputedSV = []smartvectors.SmartVector{}
-		precomputedSV = append(precomputedSV, ctx.Items.Precomputeds.CommittedMatrix...)
+	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
+	proof := &vortex.OpeningProof{}
+	offset := 0
 
-		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
-		if ctx.IsSISAppliedToPrecomputed() {
-			committedSVSIS = append(committedSVSIS, precomputedSV...)
-		} else {
-			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
-		}
+	if ctx.IsNonEmptyPrecomputed() && !ctx.IsSISAppliedToPrecomputed() {
+		addHostRowsToLinComb(proof, ctx.Items.Precomputeds.CommittedMatrix, randomCoinLC, offset)
+		offset += len(ctx.Items.Precomputeds.CommittedMatrix)
 	}
 
-	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
-		if ctx.RoundStatus[round] == IsEmpty {
+		if ctx.RoundStatus[round] != IsNoSis {
 			continue
 		}
+		raw := pr.State.MustGet(ctx.VortexProverStateName(round))
+		h := asHandle(raw)
+		if h == nil {
+			utils.Panic("vortex linComb: unexpected NoSIS state type at round %v: %T", round, raw)
+		}
+		rows := h.hostMatrix()
+		addHostRowsToLinComb(proof, rows, randomCoinLC, offset)
+		offset += len(rows)
+	}
 
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex_bls12377.EncodedMatrix)
+	if ctx.IsNonEmptyPrecomputed() && ctx.IsSISAppliedToPrecomputed() {
+		addHostRowsToLinComb(proof, ctx.Items.Precomputeds.CommittedMatrix, randomCoinLC, offset)
+		offset += len(ctx.Items.Precomputeds.CommittedMatrix)
+	}
 
-		// Push pols to the right stack
-		if ctx.RoundStatus[round] == IsNoSis {
-			committedSVNoSIS = append(committedSVNoSIS, committedMatrix...)
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] != IsSISApplied {
+			continue
+		}
+		raw := pr.State.MustGet(ctx.VortexProverStateName(round))
+		h := asHandle(raw)
+		if h == nil {
+			utils.Panic("vortex linComb: unexpected SIS state type at round %v: %T", round, raw)
+		}
 
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedSVSIS = append(committedSVSIS, committedMatrix...)
+		switch {
+		case h.isRecommit():
+			pols := ctx.getPols(pr, round)
+			partial, nRows, err := gpuvortex.CommitSISLinComb(ctx.VortexKoalaParams, pols, randomCoinLC)
+			if err != nil {
+				utils.Panic("vortex recommit linComb round %v: %v", round, err)
+			}
+			addPartialToLinComb(proof, partial, randomCoinLC, offset)
+			offset += nRows
+		case h.isGPU():
+			partial, err := h.gpu.LinComb(randomCoinLC)
+			if err != nil {
+				utils.Panic("vortex GPU linComb round %v: %v", round, err)
+			}
+			addPartialToLinComb(proof, partial, randomCoinLC, offset)
+			offset += h.numRows()
+		default:
+			rows := h.hostMatrix()
+			addHostRowsToLinComb(proof, rows, randomCoinLC, offset)
+			offset += len(rows)
 		}
 	}
-	// Construct committedSV by stacking the No SIS round
-	// matrices before the SIS round matrices
-	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
-	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
-
-	// and compute and assign the random linear combination of the rows
-	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+}
 
+func addHostRowsToLinComb(proof *vortex.OpeningProof, rows []smartvectors.SmartVector, alpha fextE4, offset int) {
+	if len(rows) == 0 {
+		return
+	}
+	chunkProof := &vortex.OpeningProof{}
+	vortex.LinearCombination(chunkProof, rows, alpha)
+	partial := make([]fextE4, chunkProof.LinearCombination.Len())
+	chunkProof.LinearCombination.WriteInSliceExt(partial)
+	addPartialToLinComb(proof, partial, alpha, offset)
+}
+
+func addPartialToLinComb(proof *vortex.OpeningProof, partial []fextE4, alpha fextE4, offset int) {
+	if len(partial) == 0 {
+		return
+	}
+	if proof.LinearCombination == nil {
+		zeros := make([]fextE4, len(partial))
+		proof.LinearCombination = smartvectors.NewRegularExt(zeros)
+	}
+	dst, ok := proof.LinearCombination.(*smartvectors.RegularExt)
+	if !ok {
+		utils.Panic("vortex linComb: unexpected accumulator type %T", proof.LinearCombination)
+	}
+	if len(*dst) != len(partial) {
+		utils.Panic("vortex linComb: partial length mismatch got %v want %v", len(partial), len(*dst))
+	}
+
+	scale := alphaPower(alpha, offset)
+	for j := range partial {
+		var t fextE4
+		t.Mul(&partial[j], &scale)
+		(*dst)[j].Add(&(*dst)[j], &t)
+	}
+}
+
+func alphaPower(alpha fextE4, exp int) fextE4 {
+	var res fextE4
+	res.SetOne()
+	for ; exp > 0; exp-- {
+		res.Mul(&res, &alpha)
+	}
+	return res
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
@@ -230,7 +411,17 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 			continue
 		}
 
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
+		// Read either the new *committedHandle wrapper or the legacy raw
+		// EncodedMatrix. For GPU handles this triggers a full D2H — same
+		// caveat as ExtractWitness above. ComputeLinearCombFromRsMatrix
+		// is on the recursion-vortex hot path where a future improvement
+		// could split host vs GPU partials like the main
+		// LinearCombinationComputationProverAction does.
+		raw := run.State.MustGet(ctx.VortexProverStateName(round))
+		committedMatrix := EncodedMatrixFromState(raw)
+		if committedMatrix == nil {
+			utils.Panic("recursion-vortex linComb: unexpected state type at round %v: %T", round, raw)
+		}
 
 		// Push pols to the right stack
 		if ctx.RoundStatus[round] == IsNoSis {
@@ -261,6 +452,20 @@ type OpenSelectedColumnsProverAction struct {
 	*Ctx
 }
 
+// Run extracts the selected columns + Merkle proofs and writes them into
+// the proof under the appropriate column IDs.
+//
+// GPU integration
+// ───────────────
+// For SIS-applied Koala rounds with a *committedHandle wrapping a
+// gpuvortex.CommitState, columns are extracted directly via
+// cs.ExtractColumns — a small D2H of only the selected entries. The
+// host-side Merkle tree (already stored under MerkleTreeName(round)) is
+// used unchanged for proof generation. After all columns are extracted
+// the GPU buffers are freed via h.free().
+//
+// Host SIS rounds, NoSIS rounds, BLS rounds, and precomputeds all stay
+// on the existing host path.
 func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
@@ -269,6 +474,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		treesSIS               = []*smt_koalabear.Tree{}
 		treesNoSIS             = []*smt_koalabear.Tree{}
 		blsTrees               = []*smt_bls12377.Tree{}
+		// GPU SIS rounds: handle (for ExtractColumns + free) and the index
+		// into the final committedMatrices list. We pass an empty
+		// EncodedMatrix as a placeholder so SelectColumnsAndMerkleProofs's
+		// per-matrix iteration still indexes correctly; we overwrite
+		// proof.Columns[idx] afterward.
+		gpuSISHandles   []*committedHandle
+		gpuSISColumns   [][][]field.Element
+		gpuSISMatrixIdx []int // global index into committedMatrices = NoSIS+SIS
 	)
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
@@ -289,23 +502,32 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
+	entryList := run.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
+
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
 		// is no need to proceed.
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-		// Fetch it from the state
-		committedMatrix := run.State.MustGet(ctx.VortexProverStateName(round)).(vortex_koalabear.EncodedMatrix)
-		// and delete it because it won't be needed anymore and its very heavy
+		// Fetch the round's commit handle (legacy callers may store a raw
+		// EncodedMatrix; new callers store a *committedHandle that may
+		// wrap either a host EncodedMatrix or a GPU CommitState).
+		raw := run.State.MustGet(ctx.VortexProverStateName(round))
+		// Delete eagerly: the encoded matrix may be very large and the
+		// state map keeps references alive longer than necessary.
 		run.State.Del(ctx.VortexProverStateName(round))
+
+		h := asHandle(raw)
+		if h == nil {
+			utils.Panic("vortex open: unexpected state type at round %v: %T", round, raw)
+		}
 
 		// Also fetches the trees from the prover state
 		if ctx.IsBLS {
+			// BLS path has no GPU implementation yet — must be host-resident.
+			committedMatrix := h.hostMatrix()
 			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_bls12377.Tree)
-			// conditionally stack the matrix and tree
-			// to SIS or no SIS matrices and trees
-
 			if ctx.RoundStatus[round] == IsNoSis {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 				blsTrees = append(blsTrees, tree)
@@ -315,17 +537,59 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		} else {
 			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_koalabear.Tree)
-			// conditionally stack the matrix and tree
-			// to SIS or no SIS matrices and trees
 			if ctx.RoundStatus[round] == IsNoSis {
-				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
+				// NoSIS rounds are host-resident.
+				committedMatricesNoSIS = append(committedMatricesNoSIS, h.hostMatrix())
 				treesNoSIS = append(treesNoSIS, tree)
 			} else if ctx.RoundStatus[round] == IsSISApplied {
-				committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
-				treesSIS = append(treesSIS, tree)
+				if h.isRecommit() {
+					cols, err := gpuvortex.CommitSISExtractColumns(
+						ctx.VortexKoalaParams, ctx.getPols(run, round), entryList)
+					if err != nil {
+						utils.Panic("vortex recommit open round %v: %v", round, err)
+					}
+					gpuSISHandles = append(gpuSISHandles, nil)
+					gpuSISColumns = append(gpuSISColumns, cols)
+					committedMatricesSIS = append(committedMatricesSIS, vortex_bls12377.EncodedMatrix{})
+					treesSIS = append(treesSIS, tree)
+				} else if h.isGPU() {
+					// Reserve a slot in the SIS section with an empty
+					// placeholder; we'll overwrite proof.Columns[idx] after
+					// SelectColumnsAndMerkleProofs runs. The host path
+					// iterates `range committedMatrices[i]` so an empty
+					// slice is safe — proof.Columns[idx] just becomes a
+					// list of empty []field.Element which we replace.
+					gpuSISHandles = append(gpuSISHandles, h)
+					gpuSISColumns = append(gpuSISColumns, nil)
+					committedMatricesSIS = append(committedMatricesSIS, vortex_bls12377.EncodedMatrix{})
+					treesSIS = append(treesSIS, tree)
+				} else {
+					committedMatricesSIS = append(committedMatricesSIS, h.hostMatrix())
+					treesSIS = append(treesSIS, tree)
+				}
 			}
 		}
 
+	}
+
+	// Pre-compute the global index of each GPU SIS matrix in the final
+	// committedMatrices list (NoSIS first, then SIS).
+	if len(gpuSISHandles) > 0 {
+		// SIS section starts at len(committedMatricesNoSIS).
+		// gpu handles were appended to committedMatricesSIS in the order
+		// we encountered them, so their SIS-section offsets are
+		// (len(committedMatricesSIS) - len(gpuSISHandles)) + i, but a
+		// single sweep is simpler:
+		nNoSIS := len(committedMatricesNoSIS)
+		gpuSISMatrixIdx = make([]int, 0, len(gpuSISHandles))
+		gpuPtr := 0
+		for sisIdx := 0; sisIdx < len(committedMatricesSIS); sisIdx++ {
+			if len(committedMatricesSIS[sisIdx]) == 0 {
+				gpuSISMatrixIdx = append(gpuSISMatrixIdx, nNoSIS+sisIdx)
+				gpuPtr++
+			}
+		}
+		_ = gpuPtr // assertion: gpuPtr should equal len(gpuSISHandles)
 	}
 
 	// Free original committed columns from run.Columns — their data has been
@@ -342,8 +606,6 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
 	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)
 	trees := append(treesNoSIS, treesSIS...)
-
-	entryList := run.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}
 
 	// Amend the Vortex proof with the Merkle proofs and registers
@@ -362,12 +624,57 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		merkleProofs := vortex_koalabear.SelectColumnsAndMerkleProofs(&proof, entryList, committedMatrices, trees)
 
+		// For GPU SIS rounds, SelectColumnsAndMerkleProofs above produced
+		// empty placeholder slots in proof.Columns. Replace them with the
+		// real columns extracted directly from the device buffers.
+		// This is the small D2H — only |entryList| × nRows × 4 bytes per
+		// matrix, never the full encoded matrix.
+		for i, h := range gpuSISHandles {
+			matrixIdx := gpuSISMatrixIdx[i]
+			if gpuSISColumns[i] != nil {
+				proof.Columns[matrixIdx] = gpuSISColumns[i]
+			} else {
+				proof.Columns[matrixIdx] = h.extractColumns(entryList)
+			}
+		}
+
 		packedMProofs := ctx.packMerkleProofs(merkleProofs)
 
 		for i := range ctx.Items.MerkleProofs {
 			run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])
 		}
 
+	}
+	// Release GPU buffers now that columns have been extracted. Subsequent
+	// recursion / self-recursion paths read host data only.
+	for _, h := range gpuSISHandles {
+		if h != nil {
+			h.free()
+		}
+	}
+
+	// Evict the per-device GPUVortex pipeline cache for THIS segment's
+	// device. Production segments commit at multiple Vortex rounds with
+	// different (nCols, nRows, rate) shapes; each shape gets its own
+	// cached *GPUVortex holding multi-GiB device buffers (d_work,
+	// d_encoded_col, d_sis, d_tree, d_leaves). Without eviction the
+	// cache grows monotonically across rounds within a segment and
+	// fills the 96 GiB device — we observed allocs failing with CUDA
+	// errors and wall-clock timing exploding to >2 minutes per call as
+	// the runtime retried + thrashed.
+	//
+	// Evicting after Open is correct: this is the last Vortex action of
+	// the inner-prove. The recursion stage's Vortex commits will create
+	// fresh pipelines on demand. Pinned host buffers also released —
+	// they'll be reallocated on the recursion-stage's first commit if
+	// needed.
+	if useGPUVortex() {
+		dev := gpu.CurrentDevice()
+		if dev != nil {
+			id := gpu.CurrentDeviceID()
+			gpuvortex.EvictPipelineCacheForDevice(id)
+			gpuvortex.ReleasePinnedCache(id)
+		}
 	}
 	selectedCols := proof.Columns
 

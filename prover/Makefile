@@ -2,6 +2,7 @@
 SHELL := /usr/bin/env bash
 
 VERSION ?= $(shell git rev-parse --short=7 HEAD)
+GO_BUILD_TAGS ?= debug
 
 CONSTRAINTS_COMMIT_HASH := c94b73d3aef361b5138986d38f27f21675aef275
 GO_CORSET_VERSION := v1.2.7
@@ -33,6 +34,7 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 	lib/compressor-and-shnarf-calculator-local \
 	docker \
 	bin/prover \
+	bin/prover-cuda \
 	bin/checker \
 	go-corset \
 	testdata \
@@ -85,7 +87,10 @@ bin/controller:
 bin/prover:
 	mkdir -p bin
 	rm -f $@
-	go build -tags debug -o $@ ./cmd/prover
+	go build -tags "$(GO_BUILD_TAGS)" -o $@ ./cmd/prover
+
+bin/prover-cuda:
+	$(MAKE) GO_BUILD_TAGS=debug,cuda bin/prover
 
 ##
 ##	Compiles the state-manager inspector

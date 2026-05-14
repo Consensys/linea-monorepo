@@ -14,12 +14,18 @@ import (
 
 // Make proof runs the prover of the aggregation circuit and returns the
 // corresponding proof.
+//
+// useGPU forwards the GPU choice from the aggregation backend to the
+// underlying ProveCheck. The aggregation BW6 circuit is one of the GPU
+// targets gated behind LINEA_PROVER_GPU_AGGREGATION; the backend computes
+// that boolean once and threads it through here.
 func MakeProof(
 	setup *circuits.Setup,
 	maxNbProof int,
 	proofClaims []ProofClaimAssignment,
 	piInfo PiInfo,
 	publicInput fr.Element,
+	useGPU bool,
 ) (
 	plonk.Proof,
 	error,
@@ -37,12 +43,13 @@ func MakeProof(
 		return nil, fmt.Errorf("while generating the aggregation circuit assignment: %w", err)
 	}
 
-	logrus.Infof("Running the prove-check")
+	logrus.Infof("Running the prove-check (gpu=%t)", useGPU)
 	return circuits.ProveCheck(
 		setup,
 		assignment,
 		emPlonk.GetNativeProverOptions(ecc.BN254.ScalarField(), setup.Circuit.Field()),
 		emPlonk.GetNativeVerifierOptions(ecc.BN254.ScalarField(), setup.Circuit.Field()),
+		circuits.WithGPU(useGPU),
 	)
 }
 

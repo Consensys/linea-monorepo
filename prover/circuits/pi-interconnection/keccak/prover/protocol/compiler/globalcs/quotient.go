@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/variables"
@@ -23,8 +24,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/parallel"
-	ppool "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/parallel/pool"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/profiling"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -171,6 +172,15 @@ type computeQuotientCtx struct {
 	maxRatio                  int
 }
 
+// quotientCoeffEntry caches the coefficient form of a root column witness.
+// Quotient evaluation reuses root columns across cosets, so computing this once
+// avoids repeating the inverse FFT for every quotient share.
+type quotientCoeffEntry struct {
+	isConst  bool
+	constVal field.Element
+	coeffs   []field.Element
+}
+
 // refineContext analyzes the context and the prover runtime to build a refined
 // context that is more efficient to use during the actual quotient computation.
 // In particular, it tries to simplify the expressions by doing constant
@@ -313,6 +323,31 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		vArena         = arena.NewVectorArena[field.Element](cctx.maxNbAllocs * ctx.DomainSize)
 		vArenaEvaluate = arena.NewVectorArena[field.Element]((cctx.maxExprNodes * symbolic.ChunkSize()) * runtime.GOMAXPROCS(0))
 	)
+	globalRootsMap, globalRoots := collectQuotientRoots(cctx.rootsForRatio)
+	tCoeffCache := time.Now()
+	globalCoeffCache := ctx.computeQuotientCoeffCache(run, domain, globalRoots)
+	timeCoeffCache := time.Since(tCoeffCache)
+	numNonConstRoots := 0
+	for i := range globalCoeffCache {
+		if !globalCoeffCache[i].isConst {
+			numNonConstRoots++
+		}
+	}
+
+	tDomainCosets := time.Now()
+	domainCosets := make([]*fft.Domain, cctx.maxRatio)
+	domainCosetShifts := make([]field.Element, cctx.maxRatio)
+	for i := range domainCosets {
+		shift := computeShift(uint64(ctx.DomainSize), cctx.maxRatio, i)
+		domainCosetShifts[i] = shift
+		domainCosets[i] = fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache(), fft.WithShift(shift))
+	}
+	timeDomainCosets := time.Since(tDomainCosets)
+
+	metadatasByRatio := make([][]symbolic.Metadata, len(cctx.aggregateExpressionsBoard))
+	for j := range cctx.aggregateExpressionsBoard {
+		metadatasByRatio[j] = cctx.aggregateExpressionsBoard[j].ListVariableMetadata()
+	}
 
 	// Precompute annulator inverses for all cosets
 	chAnnulator := make(chan struct{}, 1)
@@ -323,11 +358,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		close(chAnnulator)
 	}()
 
-	var computedReeval sync.Map
-	var wgAssignments sync.WaitGroup
+	var totalReeval, totalInput, totalEval time.Duration
 
 	for i := 0; i < cctx.maxRatio; i++ {
-		computedReeval.Clear()
+		computedReeval := make(map[ifaces.ColID]sv.SmartVector, len(globalRoots))
 		vArena.Reset(0)
 
 		for j, ratio := range ctx.Ratios {
@@ -338,33 +372,64 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			share := i * ratio / cctx.maxRatio
 			roots := cctx.rootsForRatio[j]
 			board := cctx.aggregateExpressionsBoard[j]
-			metadatas := board.ListVariableMetadata()
+			metadatas := metadatasByRatio[j]
 
-			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
-			domainCoset := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache(), fft.WithShift(shift))
+			domainCoset := domainCosets[i]
 
 			// Reevaluate roots on coset in parallel
-			ppool.ExecutePoolChunky(len(roots), func(k int) {
-				root := roots[k]
-				name := root.GetColID()
-
-				_v, found := computedReeval.Load(name)
-				if found && _v != nil {
-					return
+			tReeval := time.Now()
+			missingRoots := make([]ifaces.Column, 0, len(roots))
+			for _, root := range roots {
+				if _, found := computedReeval[root.GetColID()]; !found {
+					missingRoots = append(missingRoots, root)
 				}
-				// Mark as in-progress, this should be useless since we use "unique roots for ratio"
-				// there shouldn't be any collisions
-				computedReeval.Store(name, nil)
+			}
+			missingResults := make([]sv.SmartVector, len(missingRoots))
 
-				v, isNatural := run.TryGetColumn(name)
-				if !isNatural {
-					v = root.GetColAssignment(run)
+			gpuInputs := make([][]field.Element, 0, len(missingRoots))
+			gpuOutputs := make([][]field.Element, 0, len(missingRoots))
+			gpuResultIndexes := make([]int, 0, len(missingRoots))
+			for k, root := range missingRoots {
+				entry := &globalCoeffCache[globalRootsMap[root.GetColID()]]
+				if entry.isConst {
+					missingResults[k] = sv.NewConstant(entry.constVal, ctx.DomainSize)
+					continue
 				}
-				reevaledRoot := reevalOnCoset(v, vArena, domain, domainCoset)
-				computedReeval.Store(name, reevaledRoot)
-			})
+				res := arena.Get[field.Element](vArena, ctx.DomainSize)
+				gpuInputs = append(gpuInputs, entry.coeffs)
+				gpuOutputs = append(gpuOutputs, res)
+				gpuResultIndexes = append(gpuResultIndexes, k)
+			}
+
+			usedGPU := tryGPUQuotientReevalCoset(ctx.DomainSize, domainCosetShifts[i], gpuInputs, gpuOutputs)
+			if usedGPU {
+				for idx, resultIndex := range gpuResultIndexes {
+					missingResults[resultIndex] = sv.NewRegular(gpuOutputs[idx])
+				}
+			} else {
+				parallel.Execute(len(missingRoots), func(start, stop int) {
+					for k := start; k < stop; k++ {
+						entry := &globalCoeffCache[globalRootsMap[missingRoots[k].GetColID()]]
+						var reevaledRoot sv.SmartVector
+						if entry.isConst {
+							reevaledRoot = sv.NewConstant(entry.constVal, ctx.DomainSize)
+						} else {
+							res := arena.Get[field.Element](vArena, ctx.DomainSize)
+							copy(res, entry.coeffs)
+							domainCoset.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+							reevaledRoot = sv.NewRegular(res)
+						}
+						missingResults[k] = reevaledRoot
+					}
+				})
+			}
+			for k, root := range missingRoots {
+				computedReeval[root.GetColID()] = missingResults[k]
+			}
+			totalReeval += time.Since(tReeval)
 
 			// Prepare evaluation inputs for the constraint expression
+			tInput := time.Now()
 			var wg sync.WaitGroup
 			evalInputs := make([]sv.SmartVector, len(metadatas))
 			for k := 0; k < len(metadatas); k++ {
@@ -372,8 +437,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				case ifaces.Column:
 					root := column.RootParents(metadata)
 					rootName := root.GetColID()
-					_reevaledRoot, _ := computedReeval.Load(rootName)
-					reevaledRoot := _reevaledRoot.(sv.SmartVector)
+					reevaledRoot := computedReeval[rootName]
 					if !metadata.IsComposite() {
 						evalInputs[k] = reevaledRoot
 						continue
@@ -405,23 +469,30 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				}
 			}
 			wg.Wait()
+			totalInput += time.Since(tInput)
 
 			// Evaluate and assign quotient share
+			tEval := time.Now()
 			vArenaEvaluate.Reset(0)
 			quotientShare := board.Evaluate(evalInputs, vArenaEvaluate)
 
 			<-chAnnulator
 			quotientShare = sv.ScalarMul(quotientShare, annulatorInv[i])
 			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
+			totalEval += time.Since(tEval)
 		}
 
 	}
 
 	vArena = nil
 	vArenaEvaluate = nil
-	computedReeval.Clear()
+	globalCoeffCache = nil
 
-	wgAssignments.Wait()
+	logrus.Infof(
+		"[pi-quotient] domain=%d maxRatio=%d roots=%d nonConstRoots=%d coeffCache=%v domainCosets=%v reeval=%v inputPrep=%v evalScaleAssign=%v",
+		ctx.DomainSize, cctx.maxRatio, len(globalRoots), numNonConstRoots,
+		timeCoeffCache, timeDomainCosets, totalReeval, totalInput, totalEval,
+	)
 
 	if ctx.DomainSize >= GC_DOMAIN_SIZE {
 		runtime.GC()
@@ -429,34 +500,66 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 }
 
-// reevalOnCoset takes a vector v in evaluation form on the base domain
-// and returns the vector evaluated on the coset defined by (cosetRatio, cosetID)
-func reevalOnCoset(v sv.SmartVector, vArena *arena.VectorArena, domain, domainCoset *fft.Domain) sv.SmartVector {
-	skipInverse := false
-	switch x := v.(type) {
-	case *sv.Constant:
-		return x
-	case *sv.PaddedCircularWindow:
-		interval := x.Interval()
-		if interval.IntervalLen == 1 && interval.Start() == 0 && x.PaddingVal_.IsZero() {
-			// It's a multiple of the first Lagrange polynomial c * (1 + x + x^2 + x^3 + ...)
-			// The ifft is (c) = (c/N, c/N, c/N, ...)
-			constTerm := field.NewElement(uint64(x.Len()))
-			constTerm.Inverse(&constTerm)
-			constTerm.Mul(&constTerm, &x.Window_[0])
-			v = sv.NewConstant(constTerm, x.Len())
-			skipInverse = true
+func collectQuotientRoots(rootsForRatio [][]ifaces.Column) (map[ifaces.ColID]int, []ifaces.Column) {
+	rootMap := make(map[ifaces.ColID]int)
+	var roots []ifaces.Column
+	for _, ratioRoots := range rootsForRatio {
+		for _, root := range ratioRoots {
+			name := root.GetColID()
+			if _, ok := rootMap[name]; ok {
+				continue
+			}
+			rootMap[name] = len(roots)
+			roots = append(roots, root)
 		}
 	}
-	res := arena.Get[field.Element](vArena, v.Len())
-	v.WriteInSlice(res)
+	return rootMap, roots
+}
 
-	if !skipInverse {
-		domain.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
-	}
+func (ctx *QuotientCtx) computeQuotientCoeffCache(
+	run *wizard.ProverRuntime,
+	domain *fft.Domain,
+	roots []ifaces.Column,
+) []quotientCoeffEntry {
+	cache := make([]quotientCoeffEntry, len(roots))
+	nbIFFTTasks := max(2, min(64, runtime.GOMAXPROCS(0)/max(1, len(roots))))
 
-	domainCoset.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
-	return sv.NewRegular(res)
+	parallel.Execute(len(roots), func(start, stop int) {
+		for k := start; k < stop; k++ {
+			root := roots[k]
+			name := root.GetColID()
+			v, isNatural := run.TryGetColumn(name)
+			if !isNatural {
+				v = root.GetColAssignment(run)
+			}
+
+			if c, ok := v.(*sv.Constant); ok {
+				cache[k] = quotientCoeffEntry{isConst: true, constVal: c.Value}
+				continue
+			}
+
+			coeffs := make([]field.Element, ctx.DomainSize)
+			skipInverse := false
+			if x, ok := v.(*sv.PaddedCircularWindow); ok {
+				interval := x.Interval()
+				if interval.IntervalLen == 1 && interval.Start() == 0 && x.PaddingVal_.IsZero() {
+					constTerm := field.NewElement(uint64(x.Len()))
+					constTerm.Inverse(&constTerm)
+					constTerm.Mul(&constTerm, &x.Window_[0])
+					v = sv.NewConstant(constTerm, x.Len())
+					skipInverse = true
+				}
+			}
+
+			v.WriteInSlice(coeffs)
+			if !skipInverse {
+				domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(nbIFFTTasks))
+			}
+			cache[k] = quotientCoeffEntry{coeffs: coeffs}
+		}
+	})
+
+	return cache
 }
 
 func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {

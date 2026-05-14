@@ -16,10 +16,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuplonk2 "github.com/consensys/linea-monorepo/prover/gpu/plonk2"
 )
 
 type proveCheckSettings struct {
 	cachedProofPath string
+	useGPU          bool
 }
 
 type ProveCheckOption func(*proveCheckSettings)
@@ -30,10 +33,47 @@ func WithCachedProof(path string) ProveCheckOption {
 	}
 }
 
+// WithGPU enables (or explicitly disables) the gpu/plonk2 prover for this
+// ProveCheck call. When enabled but no GPU device is reachable (e.g. CPU build
+// or device init failed), ProveCheck returns an error rather than silently
+// falling back to CPU — callers gate this option on gpu.HasDevice() (for
+// compression) or gpu.IsAggregationEnabled() (for aggregation phases) so the
+// fallback decision is made once at the call site, not buried here.
+func WithGPU(enabled bool) ProveCheckOption {
+	return func(s *proveCheckSettings) {
+		s.useGPU = enabled
+	}
+}
+
 // Generates a PlonkProof and sanity-checks it against the verifying key. Can
 // take a list of options which can of either backend.ProverOption of backend.
 // VerifierOption.
 func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.Proof, error) {
+	proof, witness, verifierOpts, err := proveNoCheck(setup, assignment, opts...)
+	if err != nil {
+		return nil, err
+	}
+	logrus.Infof("Sanity-checking the proof")
+	// Sanity-check : the proof must pass
+	pubwitness, err := witness.Public()
+	if err != nil {
+		panic(err)
+	}
+
+	err = plonk.Verify(proof, setup.VerifyingKey, pubwitness, verifierOpts...)
+	if err != nil {
+		panic(err)
+	}
+	// logrus.Infof("the proof passed with\nproof=%++v\nwit=%++v\nvkey=%++v\n", proof, pubwitness, pp.VK)
+
+	return proof, nil
+}
+
+func proveNoCheck(
+	setup *Setup,
+	assignment frontend.Circuit,
+	opts ...any,
+) (plonk.Proof, witness.Witness, []backend.VerifierOption, error) {
 
 	proverOpts := []backend.ProverOption{}
 	verifierOpts := []backend.VerifierOption{}
@@ -55,7 +95,7 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 		case ProveCheckOption:
 			o(&settings)
 		default:
-			return nil, fmt.Errorf("unknown option type to prove-check: %++v", o)
+			return nil, nil, nil, fmt.Errorf("unknown option type to prove-check: %++v", o)
 		}
 	}
 
@@ -64,21 +104,12 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 	logrus.Infof("Creating the witness")
 	witness, err := frontend.NewWitness(assignment, setup.Circuit.Field())
 	if err != nil {
-		return nil, fmt.Errorf("while generating the gnark witness: %w", err)
+		return nil, nil, nil, fmt.Errorf("while generating the gnark witness: %w", err)
 	}
 
 	logrus.Infof("Generating the proof")
 	var proof plonk.Proof
-
-	if settings.cachedProofPath != "" {
-		proof = tryReadCachedProof(*setup, settings.cachedProofPath, verifierOpts, witness)
-		if proof != nil {
-			return proof, nil
-		}
-	}
-
-	proof, err = plonk.Prove(setup.Circuit, setup.ProvingKey, witness, proverOpts...)
-	if err != nil {
+	proveErr := func(err error) error {
 		// The error returned by the Plonk prover is usually not helpful at
 		// all. So, in order to get more details, we run the "test" Solver.
 		logrus.Errorf("plonk.Prove returned an error, using the test.IsSolved to get more details: %s", err.Error())
@@ -89,29 +120,65 @@ func ProveCheck(setup *Setup, assignment frontend.Circuit, opts ...any) (plonk.P
 			// this test engine prover option was no-op before and it was removed
 			// test.WithBackendProverOptions(proverOpts...),
 		)
-		return nil, fmt.Errorf("while running the plonk prover: %w", errDetail)
+		return fmt.Errorf("while running the plonk prover: %w", errDetail)
 	}
 
-	logrus.Infof("Sanity-checking the proof")
-	// Sanity-check : the proof must pass
-	{
-		pubwitness, err := witness.Public()
-		if err != nil {
-			panic(err)
+	if settings.cachedProofPath != "" {
+		proof = tryReadCachedProof(*setup, settings.cachedProofPath, verifierOpts, witness)
+		if proof != nil {
+			return proof, witness, verifierOpts, nil
 		}
-
-		err = plonk.Verify(proof, setup.VerifyingKey, pubwitness, verifierOpts...)
-		if err != nil {
-			panic(err)
-		}
-		// logrus.Infof("the proof passed with\nproof=%++v\nwit=%++v\nvkey=%++v\n", proof, pubwitness, pp.VK)
 	}
+
+	if settings.useGPU {
+		if !gpu.Enabled {
+			return nil, nil, nil, errors.New("circuits.WithGPU: binary not built with the cuda tag")
+		}
+		dev, deviceID, err := gpu.DeviceFromEnvOrCurrent()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if dev == nil {
+			return nil, nil, nil, errors.New("circuits.WithGPU: no GPU device is available")
+		}
+		logrus.Infof(
+			"Generating the proof with gpu/plonk2 on GPU device %d: circuit=%T provingKey=%T verifyingKey=%T",
+			deviceID,
+			setup.Circuit,
+			setup.ProvingKey,
+			setup.VerifyingKey,
+		)
+		var gpuProver *gpuplonk2.Prover
+		gpuProver, err = gpuplonk2.NewProver(
+			dev,
+			setup.Circuit,
+			setup.ProvingKey,
+			setup.VerifyingKey,
+			gpuplonk2.WithEnabled(true),
+			gpuplonk2.WithStrictMode(true),
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("while creating the gpu/plonk2 prover: %w", err)
+		}
+		defer gpuProver.Close()
+		gpuProof, err := gpuProver.Prove(witness, proverOpts...)
+		if err != nil {
+			return nil, nil, nil, proveErr(err)
+		}
+		proof = gpuProof
+	} else {
+		proof, err = plonk.Prove(setup.Circuit, setup.ProvingKey, witness, proverOpts...)
+		if err != nil {
+			return nil, nil, nil, proveErr(err)
+		}
+	}
+	logrus.Infof("Generated proof type %T", proof)
 
 	if settings.cachedProofPath != "" {
 		tryCacheProof(settings.cachedProofPath, proof)
 	}
 
-	return proof, nil
+	return proof, witness, verifierOpts, nil
 }
 
 // Serializes the proof in an 0x prefixed hexstring

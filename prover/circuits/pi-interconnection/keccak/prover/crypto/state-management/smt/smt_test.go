@@ -57,6 +57,26 @@ func TestMerkleProofNative(t *testing.T) {
 	}
 }
 
+func TestBuildCompleteMiMCEquivalent(t *testing.T) {
+	const depth = 12
+	config := &smt.Config{
+		HashFunc: hashtypes.MiMC,
+		Depth:    depth,
+	}
+
+	leavesFr := vector.Rand(1 << config.Depth)
+	leaves := make([]Bytes32, len(leavesFr))
+	for i := range leaves {
+		leaves[i] = Bytes32(leavesFr[i].Bytes())
+	}
+
+	generic := smt.BuildComplete(leaves, config.HashFunc)
+	specialized := smt.BuildCompleteMiMC(leaves)
+
+	require.Equal(t, generic.Root, specialized.Root, "specialized MiMC tree root should match generic builder")
+	require.Equal(t, generic.OccupiedNodes, specialized.OccupiedNodes, "specialized MiMC tree nodes should match generic builder")
+}
+
 func BenchmarkBuildComplete(b *testing.B) {
 	config := &smt.Config{
 		HashFunc: hashtypes.MiMC,
@@ -72,5 +92,19 @@ func BenchmarkBuildComplete(b *testing.B) {
 
 	for b.Loop() {
 		_ = smt.BuildComplete(leaves, config.HashFunc)
+	}
+}
+
+func BenchmarkBuildCompleteMiMC(b *testing.B) {
+	const depth = 20
+
+	leavesFr := vector.Rand(1 << depth)
+	leaves := make([]Bytes32, len(leavesFr))
+	for i := range leaves {
+		leaves[i] = Bytes32(leavesFr[i].Bytes())
+	}
+
+	for b.Loop() {
+		_ = smt.BuildCompleteMiMC(leaves)
 	}
 }

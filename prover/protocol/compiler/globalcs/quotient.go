@@ -15,6 +15,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/gpu"
+	gpuquotient "github.com/consensys/linea-monorepo/prover/gpu/quotient"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -195,8 +197,43 @@ type coeffEntry struct {
 	ext      []fext.Element
 }
 
-// compute the quotient shares.
+// compute the quotient shares. When the master aggregation flag is set
+// (gpu.IsAggregationEnabled) and a GPU is bound to the calling goroutine,
+// the work is delegated to gpu/quotient.RunGPU; on any error the CPU
+// implementation runs as a fallback, so correctness is preserved even if
+// the GPU path errors out.
+//
+// On multi-GPU hosts each segment goroutine pins itself to one GPU via
+// gpu.SetCurrentDevice, and we honour that here through gpu.CurrentDevice().
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
+	if gpu.IsAggregationEnabled() {
+		if dev := gpu.CurrentDevice(); dev != nil {
+			devID := gpu.CurrentDeviceID()
+			start := time.Now()
+			err := gpuquotient.RunGPU(
+				dev, run,
+				ctx.DomainSize,
+				ctx.Ratios,
+				ctx.AggregateExpressionsBoard,
+				ctx.RootsForRatio,
+				ctx.ShiftedColumnsForRatio,
+				ctx.QuotientShares,
+				ctx.ConstraintsByRatio,
+			)
+			gpu.TraceEvent("quotient", devID, time.Since(start), map[string]any{
+				"domain": ctx.DomainSize,
+				"ok":     err == nil,
+			})
+			if err == nil {
+				return
+			}
+			log.Warnf("[quotient d=%d] GPU path failed on device %d, falling back to CPU: %v", ctx.DomainSize, devID, err)
+		}
+	}
+	ctx.runCPU(run)
+}
+
+func (ctx *QuotientCtx) runCPU(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)
 	defer stopTimer()
 
