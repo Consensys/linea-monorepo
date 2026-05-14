@@ -62,6 +62,10 @@ jobs:
         working-directory: verifier-ray
         run: make fmt
 
+      - name: Verifier-ray generated testdata
+        working-directory: verifier-ray
+        run: make verify-testdata
+
       - name: Verifier-ray build
         working-directory: verifier-ray
         run: make build

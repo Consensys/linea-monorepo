@@ -18,14 +18,14 @@ import `prover-ray` structures when needed.
 ## Local Checks
 
 ```bash
-zig build
-zig build test
-
-cd codegen
-go test ./...
+make fmt
+make verify-testdata
+make build
+make build-release
+make test
+make zkc-verify
 ```
 
-The current implementation is a scaffold. Cryptographic operations and Vortex
-verification are placeholders until prover-ray fixtures and generated verifier
-actions are wired in.
-
+The current implementation covers Milestone 1 static field, extension,
+polynomial, Poseidon2, and Fiat-Shamir primitives with prover-ray golden tests.
+Vortex verification and zkVM `zkc` execution are still placeholders.

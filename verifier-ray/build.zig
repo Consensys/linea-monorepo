@@ -3,9 +3,16 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const strip = b.option(bool, "strip", "Omit debug symbols") orelse (optimize == .ReleaseSmall);
 
     const verifier_mod = b.addModule("verifier_ray", .{
         .root_source_file = b.path("src/lib.zig"),
+        .target = target,
+        .optimize = optimize,
+        .strip = strip,
+    });
+    const test_vectors_mod = b.addModule("test_vectors", .{
+        .root_source_file = b.path("testdata/generated/vectors.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -16,6 +23,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .strip = strip,
             .imports = &.{
                 .{ .name = "verifier_ray", .module = verifier_mod },
             },
@@ -30,6 +38,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "verifier_ray", .module = verifier_mod },
+                .{ .name = "test_vectors", .module = test_vectors_mod },
             },
         }),
     });

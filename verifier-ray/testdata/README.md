@@ -10,3 +10,6 @@ Suggested groups:
 - `vortex/` for commitment opening vectors.
 - `generated/` for generated verifier golden files.
 
+Run `make generate-testdata` from `verifier-ray/` to refresh the generated Zig
+vectors from local `prover-ray` references. `make verify-testdata` refreshes the
+vectors and fails if the checked-in output is stale.
