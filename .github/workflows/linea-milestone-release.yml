@@ -10,14 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag_suffix:
-        description: 'Custom image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix]'
+        description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix]'
         required: true
         type: string
-      # milestone_commit:
-      #   description: 'Commit hash on main branch for milestone release, if not given would use the latest one'
-      #   required: false
-      #   type: string
-      #   default: ''
       draft_release:
         description: 'Draft Release'
         required: false
@@ -28,11 +23,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches:
-      - ci/feat-milestone-release-manual-workflow
-    # paths:
-    #   - 'CHANGELOG.md'
 
 concurrency:
   group: linea-milestone-release-${{ github.ref }}
@@ -47,65 +37,124 @@ jobs:
         run: |
           echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
           exit 0
-  
-  coordinator-component-release:
+
+  component-release-metadata:
     needs: [check-branch]
-    uses: ./.github/workflows/coordinator-release.yml
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        include:
+          - component-name: coordinator
+            include-path: '"coordinator/**"'
+          - component-name: prover
+            include-path: '"prover/**"'
+          - component: postman
+            include-path: '"postman/**"'
+          - component: tx-exclusion-api
+            include-path: '"transaction-exclusion-api/**"'
+          - component: linea-besu
+            include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
+    outputs:
+      coordinator: ${{ steps.changelog-outputs.outputs.coordinator }}
+      prover: ${{ steps.changelog-outputs.outputs.prover }}
+      postman: ${{ steps.changelog-outputs.outputs.postman }}
+      tx-exclusion-api: ${{ steps.changelog-outputs.outputs.tx-exclusion-api }}
+      linea-besu: ${{ steps.changelog-outputs.outputs.linea-besu }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
+      - name: Generate ${{ matrix.component-name }} latest changelog
+        id: changelog
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: ${{ matrix.component-name }}
+          include-path: ${{ matrix.include-path }}
+          generate-changelog-with-next-tag-version: 'true'
+      
+      - name: Changelog outputs
+        id: changelog-outputs
+        run: |
+          JSON_OUTPUTS=$(jq -n \
+            --arg changelog-content "${{ steps.changelog.outputs.changelog_content }}" \
+            --arg next-version "${{ steps.changelog.outputs.next_version }}" \
+            --arg next-tag "${{ steps.changelog.outputs.next_tag }}" \
+            --arg tag-changed "${{ steps.changelog.outputs.tag_changed }}" \
+            '{changelog-content : $changelog-content, next-version: $next-version, tag-changed: $tag-changed}')
+          echo "${{ matrix.component-name }}=$JSON_OUTPUTS" >> $GITHUB_OUTPUT
+
+  build-local-coordinator:
+    needs: [component-release-metadata]
+    if: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag-changed == 'true' }}
+    uses: ./.github/workflows/coordinator-build-and-publish.yml
     with:
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
-      build_local_only: true
+      image_tag: local
+      develop_tag: develop
+      image_name: consensys/linea-coordinator
+      push_image: false
     secrets: inherit
 
-  postman-component-release:
-    needs: [check-branch]
-    uses: ./.github/workflows/postman-release.yml
+  build-local-postman:
+    needs: [component-release-metadata]
+    if: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag-changed == 'true' }}
+    uses: ./.github/workflows/postman-build-and-publish.yml
     with:
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
-      build_local_only: true
+      image_tag: local
+      develop_tag: develop
+      image_name: consensys/linea-postman
+      push_image: false
     secrets: inherit
 
-  prover-component-release:
-    needs: [check-branch]
-    uses: ./.github/workflows/prover-release.yml
+  build-local-prover:
+    needs: [component-release-metadata]
+    if: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag-changed == 'true' }}
+    uses: ./.github/workflows/prover-build-and-publish.yml
     with:
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
-      build_local_only: true
+      image_tag: local
+      develop_tag: develop
+      image_name: consensys/linea-prover
+      push_image: false
     secrets: inherit
 
-  tx-exclusion-api-component-release:
-    needs: [check-branch]
-    uses: ./.github/workflows/tx-exclusion-api-release.yml
+  build-local-tx-exclusion-api:
+    needs: [component-release-metadata]
+    if: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag-changed == 'true' }}
+    uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
     with:
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
-      build_local_only: true
+      image_tag: local
+      develop_tag: develop
+      image_name: consensys/linea-transaction-exclusion-api
+      push_image: false
     secrets: inherit
 
-  linea-besu-component-release:
-    needs: [check-branch]
-    uses: ./.github/workflows/linea-besu-release.yml
+  build-local-linea-besu:
+    needs: [component-release-metadata]
+    if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag-changed == 'true' }}
+    uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'milestone_test' }}
-      draft_release: ${{ inputs.draft_release || false }}
-      pre_release: ${{ inputs.pre_release || true }}
-      without_besu_fleet_plugin: 'false'
-      build_local_only: true
+      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).next-version }}
+      with_besu_fleet_plugin: 'true'
     secrets: inherit
 
   component-latest-docker-tags:
     needs:
-      - coordinator-component-release
-      - postman-component-release
-      - prover-component-release
-      - tx-exclusion-api-component-release
-      - linea-besu-component-release
+      - build-local-coordinator
+      - build-local-postman
+      - build-local-prover
+      - build-local-tx-exclusion-api
+      - build-local-linea-besu
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
       fail-fast: false
@@ -150,19 +199,19 @@ jobs:
   run-e2e-tests:
     needs: 
       - component-latest-docker-tags
-      - coordinator-component-release
-      - postman-component-release
-      - prover-component-release
-      - tx-exclusion-api-component-release
-      - linea-besu-component-release
+      - build-local-coordinator
+      - build-local-postman
+      - build-local-prover
+      - build-local-tx-exclusion-api
+      - build-local-linea-besu
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
-      coordinator_tag: ${{ needs.coordinator-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
-      postman_tag: ${{ needs.postman-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
-      prover_tag: ${{ needs.prover-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
-      tx_exclusion_api_tag: ${{ needs.tx-exclusion-api-component-release.outputs.tag_changed  != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
-      linea_besu_package_tag: ${{ needs.linea-besu-component-release.outputs.tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || '' }}
+      coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
+      postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
+      prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
+      tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
+      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag-changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit

@@ -10,7 +10,12 @@ on:
   workflow_call:
     inputs:
       image_tag_suffix:
-        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix:
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         type: string
         default: ''
@@ -45,13 +50,18 @@ on:
         description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
         value: ${{ jobs.compute-linea-besu-release-metadata.release_version }}
       release_tag:
-        description: "Release tag (e.g. releases/coordinator/v1.2.3), empty if tag_changed is false"
+        description: "Release tag (e.g. releases/linea-besu/v1.2.3), empty if tag_changed is false"
         value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_tag }}
 
   workflow_dispatch:
     inputs:
       image_tag_suffix:
-        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix:
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         type: string
         default: ''
@@ -81,6 +91,7 @@ jobs:
     with:
       component-name: linea-besu
       include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
 
   build-and-upload-artifact:
     needs: [compute-linea-besu-release-metadata]
@@ -121,6 +132,7 @@ jobs:
       component-name: linea-besu
       folder-name: linea-besu/package
       include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
     secrets: inherit
 
   build-linea-besu-docker-image-and-gh-release:

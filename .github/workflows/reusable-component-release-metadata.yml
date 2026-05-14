@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         default: "cliff.toml"
+      release_tag_suffix:
+        description: "Custom release tag suffix, i.e. release tag would be releases/[component/v[semver]-[suffix]"
+        required: false
+        type: string
+        default: ''
     outputs:
       release_tag:
         description: "Full release tag (e.g. releases/coordinator/v0.2.0)"
@@ -58,4 +63,5 @@ jobs:
         with:
           component-name: ${{ inputs.component-name }}
           include-path: ${{ inputs.include-path }}
+          release_tag_suffix: ${{ inputs.release_tag_suffix }}
           generate-changelog-with-next-tag-version: 'true'

@@ -21,7 +21,12 @@ on:
         required: true
         type: string
       image_tag_suffix:
-        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDDHHMMSS]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDDHHMMSS]-[commit]'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix:
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         type: string
         default: ''
@@ -55,11 +60,22 @@ on:
         value: ${{ jobs.compute-release-metadata.outputs.release_tag }}
 
 jobs:
+  check-branch-and-release-tag-suffix:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Enforce main branch cannot have custom tag suffix
+        if: github.ref_name == 'main' && inputs.release_tag_suffix != ''
+        run: |
+          echo "❌ Main branch cannot have custom tag suffix: ${{ inputs.release_tag_suffix }}"
+          exit 1
+
   compute-release-metadata:
+    needs: [check-branch-and-release-tag-suffix]
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: ${{ inputs.component-name }}
       include-path: ${{ inputs.include-path }}
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
 
   build-local-coordinator:
     needs: [compute-release-metadata]
@@ -130,6 +146,7 @@ jobs:
       component-name: ${{ inputs.component-name }}
       folder-name: ${{ inputs.folder-name }}
       include-path: ${{ inputs.include-path }}
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
     secrets: inherit
 
   compute-docker-tag:
@@ -239,7 +256,7 @@ jobs:
       - name: gh-release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          name: ${{ env.COMPONENT_CAP }} v${{ needs.compute-release-metadata.outputs.release_version }}
+          name: ${{ env.COMPONENT_CAP }} v${{ inputs.tag_suffix != '' && format('{0}-{1}', needs.compute-release-metadata.outputs.release_version, inputs.release_tag_suffix ) || needs.compute-release-metadata.outputs.release_version }}
           tag_name: ${{ needs.compute-release-metadata.outputs.release_tag }}
           body_path: release/output.md
           draft: ${{ inputs.draft_release }}
