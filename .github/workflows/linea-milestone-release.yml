@@ -172,6 +172,13 @@ jobs:
       - build-local-prover
       - build-local-tx-exclusion-api
       - build-local-linea-besu
+    if: >
+      always() && !cancelled() &&
+      ((fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' || needs.build-local-coordinator.result == 'success') &&
+      (fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' || needs.build-local-postman.result == 'success') &&
+      (fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' || needs.build-local-prover.result == 'success') &&
+      (fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' || needs.build-local-tx-exclusion-api.result == 'success') &&
+      (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.build-local-linea-besu.result == 'success'))
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
       fail-fast: false
@@ -215,12 +222,10 @@ jobs:
 
   run-e2e-tests:
     needs: 
+      - component-release-metadata
       - component-latest-docker-tags
-      - build-local-coordinator
-      - build-local-postman
-      - build-local-prover
-      - build-local-tx-exclusion-api
       - build-local-linea-besu
+    if: always() && !cancelled() && needs.component-latest-docker-tags.result == 'success'
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
