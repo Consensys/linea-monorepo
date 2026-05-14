@@ -3,7 +3,9 @@
 Run a local Linea L2 stack that uses Sepolia as its L1. The quickstart deploys
 the required L1 contracts to Sepolia from your funded deployer account, starts a
 local L2 chain, runs coordinator/postman/prover services, and exposes a local L2
-Blockscout explorer.
+Blockscout explorer. By default, the stack runs in dev-proof mode: proofs are
+fast and dummy. Partial proving is available for real validation, but requires
+more RAM and time. This README covers both modes.
 
 This quickstart is for local development and evaluation only. It is not a
 production deployment model.
@@ -39,13 +41,15 @@ production deployment model.
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-> **Apple Silicon note.** The Linea prover image is `linux/amd64` only — runs
-> under Rosetta on M-series, 3–5× slower than native x86_64. **Mitigation for
-> day-to-day work**: keep `PROVER_DEV_OVERRIDE=true` in `.env` (see §8) so the
-> prover serves dummy proofs in seconds regardless of arch. The 3–5× penalty
-> only matters when you flip the override OFF for real partial-mode validation
-> — first proof there is ~30 min on M-series vs ~5–10 min on native x86_64.
-> Everything else in the stack is multi-arch.
+:::note Apple Silicon
+The Linea prover image is `linux/amd64` only and runs under Rosetta on M-series,
+3-5x slower than native x86_64. For day-to-day work, keep
+`PROVER_DEV_OVERRIDE=true` in `.env` (see §8) so the prover serves dummy proofs
+in seconds regardless of architecture. The slowdown only matters when you turn
+the override off for real partial-mode validation: first proof there is roughly
+30 minutes on M-series vs. 5-10 minutes on native x86_64. Everything else in the
+stack is multi-arch.
+:::
 
 ## 1. What this is
 
@@ -64,16 +68,16 @@ time. Known limitations are listed near the end of this page.
 
 ## 2. Prerequisites
 
-| Requirement     | Minimum                                                  |
-|-----------------|----------------------------------------------------------|
-| RAM             | 8 GB Docker Desktop works for default dev proofs; partial mode needs about 30-32 GB assigned to Docker |
-| RAM (recommended) | 48 GB for partial-prover validation                  |
-| Disk            | ~30 GB free; leave more headroom for long traffic/prover runs |
-| CPU             | 8 cores                                                  |
-| Docker          | v24+                                                     |
-| Compose         | v2.19+                                                   |
-| Sepolia RPC     | HTTPS endpoint (Infura / Alchemy / your own node)        |
-| Sepolia ETH     | ~1 ETH recommended on the deployer; quickstart reserves 0.15 ETH for L1 blob submission, 0.15 ETH for L1 finalization, 0.05 ETH for L1 postman, and uses the rest for L1 deploy gas |
+| Requirement              | Minimum                                                  |
+|--------------------------|----------------------------------------------------------|
+| RAM (dev-proof mode)     | 8 GB Docker Desktop minimum                              |
+| RAM (partial-proof mode) | 30-32 GB assigned to Docker; 48 GB recommended           |
+| Disk                     | ~30 GB free; leave more headroom for long traffic/prover runs |
+| CPU                      | 8 cores                                                  |
+| Docker                   | v24+                                                     |
+| Compose                  | v2.19+                                                   |
+| Sepolia RPC              | HTTPS endpoint (Infura / Alchemy / your own node)        |
+| Sepolia ETH              | ~1 ETH recommended on the deployer; quickstart reserves 0.15 ETH for L1 blob submission, 0.15 ETH for L1 finalization, 0.05 ETH for L1 postman, and uses the rest for L1 deploy gas |
 
 Faucets: [sepoliafaucet.com](https://sepoliafaucet.com) ·
 [Alchemy Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia).
@@ -91,12 +95,18 @@ Required values in `.env`:
 ```bash
 L1_RPC_URL=https://sepolia.infura.io/v3/<your-project-id>
 L1_DEPLOYER_PRIVATE_KEY=0x<your-sepolia-funded-key>
-# optional: tune generated L1 runtime signer top-ups if Sepolia gas spikes
+```
+
+Optional tuning knobs:
+
+```bash
+# tune generated L1 runtime signer top-ups if Sepolia gas spikes
 # L1_ROLE_MIN_BALANCE_WEI=100000000000000000
 # L1_ROLE_TOP_UP_WEI=150000000000000000
 # L1_POSTMAN_MIN_BALANCE_WEI=20000000000000000
 # L1_POSTMAN_TOP_UP_WEI=50000000000000000
-# optional: keep 1337 unless intentionally validating a different local L2 chain ID
+
+# keep 1337 unless intentionally validating a different local L2 chain ID
 # L2_CHAIN_ID=1337
 ```
 
@@ -139,7 +149,9 @@ account sends the visible ERC20 transfers.
 docker compose --env-file versions.env --env-file .env --profile stack-partial-prover up -d
 ```
 
-`stack-partial-prover` is the only profile.
+`stack-partial-prover` is the only profile. The profile name means "start the
+full stack including the prover service"; whether proofs are dev or partial is
+controlled by `PROVER_DEV_OVERRIDE`.
 
 ### Boot timeline
 
@@ -149,11 +161,13 @@ T+0:00  account-setup       → /shared/runtime-keys.env, /shared/web3signer-key
                               (queries Sepolia for chain ID + deployer nonce;
                               generates fresh runtime keys; precomputes only
                               boot-critical LineaRollupV8 + L2MessageService)
-T+0:00  l2-genesis-init     → renders L2 genesis with only the generated L2
+T+0:05  l2-genesis-init     → starts after account-setup completes; renders L2
+                              genesis with only the generated L2
                               deployer funded, plus precomputed L2MessageService
                               pre-funded at 1B ETH; output lives in the
                               linea-stack-l2-genesis Docker volume
-T+0:00  config-render       → writes /rendered/{coordinator, maru, sequencer,
+T+0:05  config-render       → starts after account-setup completes; writes
+                              /rendered/{coordinator, maru, sequencer,
                               l2-node-besu, prover}-config with precomputed addrs
 T+0:30  web3signer ready    (3 generated signer keys: L1 blob submission,
                               L1 finalization, L2 message anchoring)
@@ -275,6 +289,10 @@ convention** — connect dapps/wallets to `:8745`.
 
 ## 6. Verifying it works
 
+You have a successful boot when `addresses.json` exists, the local L2 and
+Blockscout are live, and the Sepolia rollup has both a blob submission and a
+successful `finalizeBlocks` transaction that advances `currentL2BlockNumber`.
+
 First boot starts the stack and deploys contracts. It does **not** send demo
 traffic or bridge messages for you.
 
@@ -295,7 +313,12 @@ traffic or bridge messages for you.
 
 On Sepolia Etherscan, finalization may appear as method selector `0x755bc62f`
 instead of a decoded name. That selector is `finalizeBlocks(bytes,uint256,tuple)`.
-Do not treat `Submit Blobs` as finalization.
+
+:::warning
+Do not treat `Submit Blobs` as finalization. Blob submission publishes L2 batch
+data/commitments for data availability; only a successful `finalizeBlocks` tx
+advances the rollup's finalized L2 block/state on Sepolia.
+:::
 
 2. Open the local L2 explorer:
 
@@ -378,7 +401,7 @@ HOST_PORT_L2_BLOCKSCOUT_FRONTEND=4001
 # ... see .env.example for the full list
 ```
 
-### Switching DA mode (Rollup ↔ vValidium)
+### Switching DA mode (Rollup ↔ Validium)
 
 ```bash
 LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM \
@@ -389,7 +412,8 @@ LINEA_COORDINATOR_DATA_AVAILABILITY=VALIDIUM \
 `deploy-contracts.sh` and the coordinator both respect the env var. Validium
 deploys a different rollup contract (`ValidiumV2`) with a separate constructor
 shape, but this knob is not part of the currently validated quickstart path.
-Use `ROLLUP` unless you are intentionally debugging the Validium path.
+Use `ROLLUP` unless you are intentionally debugging the Validium path. This is
+also listed in §10 because the validated boot path is Rollup-only today.
 
 ### Switching prover mode (dev ↔ partial)
 
@@ -525,10 +549,10 @@ notes.
 - **Partial proving is opt-in and resource-heavy.** It has been validated
   through L1 finalization, but the default path uses dev proofs for quick
   feedback.
-- **Dev-proof mode is temporary scaffolding.** It exists to make boot-flow
-  debugging fast while the team reviews the sequence. The target quickstart is
-  partial proving, and dev-proof override should be removed once the flow is
-  agreed and validated.
+- **Dev-proof mode is for fast evaluation only.** It does not produce real ZK
+  proofs. Use partial mode when you need production-shaped proving behavior.
+- **Validium mode is not part of the validated quickstart path.** The env knob
+  exists for debugging, but the validated first boot uses `ROLLUP`.
 - **Verifier setup is quickstart-only.** The current deploy path uses
   `IntegrationTestTrueVerifier`, not a production verifier configuration.
 - **Message/bridge smoke is incomplete.** The included script covers only
