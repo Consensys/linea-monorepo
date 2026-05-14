@@ -85,25 +85,30 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*")
-        next_tag=$(git cliff "${cliff_args[@]}")
-        if [ -z "${next_tag}" ]; then
-          echo "git-cliff returned no version; nothing to release."
-          echo "tag=" >> "$GITHUB_OUTPUT"
-          echo "version=" >> "$GITHUB_OUTPUT"
-          echo "changed=false" >> "$GITHUB_OUTPUT"
-          exit 0
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$")
+        # Capture stdout and stderr separately so we can both surface git-cliff's
+        # logs and detect the "nothing to bump" warning it writes to stderr.
+        stderr_file=$(mktemp)
+        trap 'rm -f "${stderr_file}"' EXIT
+        next_tag=$(git cliff "${cliff_args[@]}" 2> "${stderr_file}")
+        cat "${stderr_file}" >&2
+        changed=true
+        if grep -q "There is nothing to bump" "${stderr_file}"; then
+          changed=false
         fi
-        current_tag=$(git describe --tags --abbrev=0 --match "releases/${COMPONENT}/v*" 2>/dev/null || echo "")
-        changed=false
-        if [ "${current_tag}" != "${next_tag}" ]; then
-          changed=true
+        if [ -z "${next_tag}" ] || [ "${changed}" = "false" ]; then
+          echo "git-cliff reports nothing to bump for ${COMPONENT}; nothing to release."
+          {
+            echo "tag="
+            echo "version="
+            echo "changed=false"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
         fi
         next_semver="${next_tag#releases/${COMPONENT}/v}"
         if [ -n "${RELEASE_TAG_SUFFIX}" ]; then
           next_tag="${next_tag}-${RELEASE_TAG_SUFFIX}"
         fi
-        echo "current ${COMPONENT} tag: ${current_tag}"
         echo "next ${COMPONENT} tag:    ${next_tag}"
         echo "next ${COMPONENT} semver: ${next_semver}"
         {
@@ -128,7 +133,7 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$")
         {
           echo 'content<<__CLIFF_EOF__'
           git cliff "${cliff_args[@]}"
@@ -168,5 +173,5 @@ runs:
         for p in "${paths[@]}"; do
           cliff_args+=(--include-path "${p}")
         done
-        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v.*" --prepend "${CHANGELOG_FILE}")
+        cliff_args+=(--tag-pattern "releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$" --prepend "${CHANGELOG_FILE}")
         git cliff "${cliff_args[@]}"
