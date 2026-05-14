@@ -58,27 +58,18 @@ jobs:
           go-corset --version
           go version -m "$(which zkc)"
 
-      - name: Zig format check
+      - name: Verifier-ray format check
         working-directory: verifier-ray
-        run: zig fmt --check build.zig src test
+        run: make fmt
 
-      - name: Zig build
+      - name: Verifier-ray build
         working-directory: verifier-ray
-        run: zig build
+        run: make build
 
-      - name: Zig tests
+      - name: Verifier-ray tests
         working-directory: verifier-ray
-        run: zig build test
+        run: make test
 
-      - name: Codegen format check
-        working-directory: verifier-ray/codegen
-        run: |
-          if [[ -n "$(gofmt -l .)" ]]; then
-            echo "please run gofmt"
-            gofmt -l .
-            exit 1
-          fi
-
-      - name: Codegen tests
-        working-directory: verifier-ray/codegen
-        run: go test ./...
+      - name: ZKC verifier smoke test
+        working-directory: verifier-ray
+        run: make zkc-verify
