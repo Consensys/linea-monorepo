@@ -11,10 +11,10 @@ REPO_ROOT := $(abspath $(MAKEFILE_DIR)/..)
 GO_CORSET ?= $(REPO_ROOT)/go-corset
 GO_CORSET_REPO ?= https://github.com/consensys/go-corset.git
 # Optional: pin a commit or branch (e.g. 763f30878e5fc260f0d88863c9883c904f8fc056). Leave empty for default branch.
-GO_CORSET_REF_FOR_ZKC ?= 86b793ca155ae7733b0b4a2774ea5cae92b281f5
+GO_CORSET_REF_FOR_ZKC ?=
 
 # Used to install go-corset
-GO_CORSET_VERSION ?= 86b793ca155ae7733b0b4a2774ea5cae92b281f5
+GO_CORSET_VERSION ?= v1.2.15
 
 ZKC_FILES := $(shell find $(MAKEFILE_DIR)src/main/riscv/* -name "*.zkc")
 ZKC_MAIN := $(MAKEFILE_DIR)src/main/riscv/main.zkc
