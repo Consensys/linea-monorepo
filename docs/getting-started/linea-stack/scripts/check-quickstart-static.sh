@@ -344,19 +344,29 @@ check_smoke_and_traffic_scripts() {
     fail "send-l2-test-tx.sh must send a simple L2 transaction from the generated L2 deployer"
   fi
 
-  if [ -f "$STACK/scripts/send-l2-erc20-transfer.sh" ] && grep -q 'ERC20Example' "$STACK/scripts/send-l2-erc20-transfer.sh" && grep -q 'transfer(address,uint256)' "$STACK/scripts/send-l2-erc20-transfer.sh"; then
-    pass "send-l2-erc20-transfer.sh transfers ERC20Example on L2"
+  if [ -f "$STACK/scripts/send-l2-erc20-transfer.sh" ] \
+    && grep -q 'ERC20Example' "$STACK/scripts/send-l2-erc20-transfer.sh" \
+    && grep -q 'transfer(address,uint256)' "$STACK/scripts/send-l2-erc20-transfer.sh" \
+    && grep -q 'DEMO_TRAFFIC_ENV="/shared/demo-traffic.env"' "$STACK/scripts/send-l2-erc20-transfer.sh" \
+    && grep -q 'L2_TRAFFIC_PRIVATE_KEY' "$STACK/scripts/send-l2-erc20-transfer.sh" \
+    && grep -q 'L2_TRAFFIC_ETH_TOP_UP_WEI' "$STACK/scripts/send-l2-erc20-transfer.sh" \
+    && grep -q 'L2_TRAFFIC_ERC20_TOP_UP_WEI' "$STACK/scripts/send-l2-erc20-transfer.sh"; then
+    pass "send-l2-erc20-transfer.sh uses a funded disposable L2 traffic account"
   else
-    fail "send-l2-erc20-transfer.sh must transfer ERC20Example on L2"
+    fail "send-l2-erc20-transfer.sh must fund and transfer from a disposable L2 traffic account"
   fi
 
   if [ -f "$STACK/scripts/generate-l2-erc20-traffic.sh" ] \
     && grep -q 'docker run -d' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
     && grep -q 'while \[ "$MAX_TXS" -eq 0 \]' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
-    && grep -q 'transfer(address,uint256)' "$STACK/scripts/generate-l2-erc20-traffic.sh"; then
-    pass "generate-l2-erc20-traffic.sh runs continuous L2 ERC20Example traffic"
+    && grep -q 'transfer(address,uint256)' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'DEMO_TRAFFIC_ENV="/shared/demo-traffic.env"' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'L2_TRAFFIC_PRIVATE_KEY' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'L2_TRAFFIC_ETH_TOP_UP_WEI' "$STACK/scripts/generate-l2-erc20-traffic.sh" \
+    && grep -q 'L2_TRAFFIC_ERC20_TOP_UP_WEI' "$STACK/scripts/generate-l2-erc20-traffic.sh"; then
+    pass "generate-l2-erc20-traffic.sh runs continuous traffic from a disposable L2 traffic account"
   else
-    fail "generate-l2-erc20-traffic.sh must run continuous L2 ERC20Example traffic"
+    fail "generate-l2-erc20-traffic.sh must run continuous traffic from a disposable L2 traffic account"
   fi
 
   if [ -f "$STACK/scripts/smoke-bridge-message.sh" ] \
@@ -383,10 +393,12 @@ check_pinned_utility_images_and_docs() {
   if grep -q 'Accounts and funding model' "$readme" \
     && grep -q 'generated L2 deployer' "$readme" \
     && grep -q 'L2MessageService' "$readme" \
-    && grep -q 'ERC20Example' "$readme"; then
+    && grep -q 'ERC20Example' "$readme" \
+    && grep -q 'disposable demo traffic account' "$readme" \
+    && grep -q 'bootstrap/admin' "$readme"; then
     pass "README documents L2 ETH and ERC20Example funding model"
   else
-    fail "README must document L2 ETH and ERC20Example funding model"
+    fail "README must document L2 ETH, ERC20Example, and disposable traffic-account funding model"
   fi
 }
 

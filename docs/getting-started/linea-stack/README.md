@@ -126,11 +126,13 @@ value on the local L2. After L2 boot, `deploy-contracts` tops up the generated
 L2 anchorer and L2 postman from the generated L2 deployer.
 
 `ERC20Example` is deployed on both Sepolia and the local L2 during boot. The L2
-copy mints its initial supply to the generated L2 deployer, because that key
-deploys the contract. `send-l2-erc20-transfer.sh` and
-`generate-l2-erc20-traffic.sh` use the generated L2 deployer key from the Docker
-shared volume, so they already have L2 ETH for gas and L2 `ERC20Example` tokens
-to transfer.
+copy mints its initial supply to the generated L2 deployer, because that key is
+the bootstrap/admin deployer for local L2 contracts. Demo traffic does not run
+from that deployer account. `send-l2-erc20-transfer.sh` and
+`generate-l2-erc20-traffic.sh` create or reuse a disposable demo traffic account
+in `/shared/demo-traffic.env`; the L2 deployer funds that traffic account once
+with small local L2 ETH and `ERC20Example`, then the traffic account sends the
+visible ERC20 transfers.
 
 ## 4. Boot
 
@@ -314,7 +316,9 @@ traffic when you want visible Blockscout activity.
 ./scripts/generate-l2-erc20-traffic.sh logs
 ```
 
-Default: one `ERC20Example.transfer(...)` every 2 seconds until stopped.
+Default: one `ERC20Example.transfer(...)` every 2 seconds until stopped. The
+first run creates/reuses the disposable demo traffic account, tops it up from
+the L2 deployer if needed, and then sends transfers from that traffic account.
 
 ```bash
 ./scripts/generate-l2-erc20-traffic.sh stop
