@@ -99,10 +99,10 @@ runs:
         if [ "${current_tag}" != "${next_tag}" ]; then
           changed=true
         fi
+        next_semver="${next_tag#releases/${COMPONENT}/v}"
         if [ -n "${RELEASE_TAG_SUFFIX}" ]; then
           next_tag="${next_tag}-${RELEASE_TAG_SUFFIX}"
         fi
-        next_semver="${next_tag#releases/${COMPONENT}/v}"
         echo "current ${COMPONENT} tag: ${current_tag}"
         echo "next ${COMPONENT} tag:    ${next_tag}"
         echo "next ${COMPONENT} semver: ${next_semver}"
