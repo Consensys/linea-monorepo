@@ -23,11 +23,11 @@ outputs:
 
   dockertag:
     description: docker image tag base (without suffix)
-    value: ${{ steps.dockertag.outputs.docker_tag }}
+    value: ${{ steps.dockertag.outputs.dockertag }}
 
   dockertag_with_suffix:
     description: docker image tag with suffix (same value as dockertag if no suffix is given)
-    value: ${{ steps.dockertag.outputs.docker_tag_with_suffix }}
+    value: ${{ steps.dockertag.outputs.dockertag_with_suffix }}
 
   dockerimage:
     description: docker image
