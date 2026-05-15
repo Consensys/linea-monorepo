@@ -80,6 +80,7 @@ pub const MDHasher = struct {
     pub fn sumElement(self: *MDHasher) Digest {
         if (self.buffer_len != 0) {
             var block: Digest = zeroArray(block_size);
+            // Match prover-ray MDHasher: partial blocks are zero-left-padded.
             @memcpy(block[block_size - self.buffer_len ..], self.buffer[0..self.buffer_len]);
             self.state = compress(self.state, block);
             self.buffer_len = 0;
