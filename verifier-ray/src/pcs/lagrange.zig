@@ -5,11 +5,11 @@ pub const Error = field.Error || error{InvalidCardinality};
 
 pub fn evaluateBaseAtBase(values: []const field.Element, point: field.Element) Error!field.Element {
     if (values.len == 0) return field.Element.zero();
-    try ensureCardinality(values.len);
+    const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(values.len).inverse();
-    const vanishing = point.pow(@intCast(values.len)).sub(field.Element.one());
+    const inv_n = field.Element.init(n).inverse();
+    const vanishing = point.pow(n).sub(field.Element.one());
 
     var omega_i = field.Element.one();
     var sum = field.Element.zero();
@@ -26,11 +26,11 @@ pub fn evaluateBaseAtBase(values: []const field.Element, point: field.Element) E
 
 pub fn evaluateBaseAtExt(values: []const field.Element, point: ext.Ext) Error!ext.Ext {
     if (values.len == 0) return ext.Ext.zero();
-    try ensureCardinality(values.len);
+    const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(values.len).inverse();
-    const vanishing = point.pow(@intCast(values.len)).sub(ext.Ext.one());
+    const inv_n = field.Element.init(n).inverse();
+    const vanishing = point.pow(n).sub(ext.Ext.one());
 
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
@@ -48,11 +48,11 @@ pub fn evaluateBaseAtExt(values: []const field.Element, point: ext.Ext) Error!ex
 
 pub fn evaluateExtAtBase(values: []const ext.Ext, point: field.Element) Error!ext.Ext {
     if (values.len == 0) return ext.Ext.zero();
-    try ensureCardinality(values.len);
+    const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(values.len).inverse();
-    const vanishing = point.pow(@intCast(values.len)).sub(field.Element.one());
+    const inv_n = field.Element.init(n).inverse();
+    const vanishing = point.pow(n).sub(field.Element.one());
 
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
@@ -69,11 +69,11 @@ pub fn evaluateExtAtBase(values: []const ext.Ext, point: field.Element) Error!ex
 
 pub fn evaluateExtAtExt(values: []const ext.Ext, point: ext.Ext) Error!ext.Ext {
     if (values.len == 0) return ext.Ext.zero();
-    try ensureCardinality(values.len);
+    const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(values.len).inverse();
-    const vanishing = point.pow(@intCast(values.len)).sub(ext.Ext.one());
+    const inv_n = field.Element.init(n).inverse();
+    const vanishing = point.pow(n).sub(ext.Ext.one());
 
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
@@ -137,11 +137,14 @@ pub fn evaluate(values: []const field.Element, point: field.Element) Error!field
     return evaluateBaseAtBase(values, point);
 }
 
-fn ensureCardinality(cardinality: usize) Error!void {
+fn checkedCardinality(cardinality: usize) Error!u32 {
     if (!field.isPowerOfTwo(cardinality)) {
         return error.InvalidCardinality;
     }
     if (field.log2PowerOfTwo(cardinality) > field.max_order_root) {
         return error.InvalidCardinality;
     }
+    // Koalabear domains are bounded by max_order_root, so the validated length
+    // always fits in u32; truncate keeps the field-sized conversion explicit.
+    return @truncate(cardinality);
 }
