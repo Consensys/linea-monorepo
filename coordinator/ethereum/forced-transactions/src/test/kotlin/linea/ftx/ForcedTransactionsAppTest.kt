@@ -1,10 +1,10 @@
 package linea.ftx
 
-import build.linea.clients.StateManagerAccountProofClient
-import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.clients.InvalidityProverClientV1
+import linea.clients.StateManagerAccountProofClient
+import linea.clients.StateManagerClientV1
 import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
 import linea.conflation.calculators.CalculatorsFactory
@@ -15,6 +15,8 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.FakeLineaRollupSmartContractClient
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
+import linea.coordination.blob.FakeBlobCompressor
+import linea.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
 import linea.domain.BlobCounters
 import linea.domain.BlockCounters
 import linea.domain.BlockInterval
@@ -37,8 +39,6 @@ import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV5
 import net.consensys.linea.traces.TracingModuleV5
-import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.ethereum.coordination.blob.FakeBlobCompressor
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat

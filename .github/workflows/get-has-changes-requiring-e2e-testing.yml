@@ -31,8 +31,6 @@ jobs:
               - 'transaction-exclusion-api/**/src/main/**'
               - 'config/**/*.toml'
               - 'linea-besu/**'
-              - 'linea-besu-package/versions.env'
-              - 'linea-besu-package/scripts/assemble-packages.sh'
               - 'gradle/libs.versions.toml'
               - 'postman/src/**'
               - 'postman/package.json'
@@ -43,7 +41,7 @@ jobs:
               - '**/Dockerfile'
               - 'e2e/src/**'
               - 'e2e/package.json'
-              - 'besu-plugins/linea-sequencer/**'
+              - 'linea-besu/plugins/linea-sequencer/**'
               - 'tracer/**'
               - 'tracer-constraints/**'
               - 'ts-libs/**/src/**'
@@ -65,22 +63,22 @@ jobs:
             echo "result=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           echo "Matched files: $E2E_PATHS_FILES"
-          
+
           # Parse JSON array safely using jq
           mapfile -t FILES < <(echo "$E2E_PATHS_FILES" | jq -r '.[]')
-          
+
           for file in "${FILES[@]}"; do
             # Skip unit test files EXCEPT those in e2e/src/ (e2e tests themselves)
             if [[ "$file" =~ \.test\.ts$ ]] && [[ ! "$file" =~ ^e2e/src/ ]]; then
               continue
             fi
-            
+
             if [[ "$file" =~ \.spec\.ts$ ]] && [[ ! "$file" =~ ^e2e/src/ ]]; then
               continue
             fi
-            
+
             if [[ "$file" =~ _test\.go$ ]]; then
               continue
             fi
@@ -90,19 +88,19 @@ jobs:
               continue
             fi
 
-            if [[ "$file" =~ ^besu-plugins/linea-sequencer/acceptance-tests/ ]]; then
+            if [[ "$file" =~ ^linea-besu/plugins/linea-sequencer/acceptance-tests/ ]]; then
               continue
             fi
-            
+
             # Skip doc files
             if [[ "$file" =~ \.(md|mdx)$ ]]; then
               continue
             fi
-            
+
             echo "✓ e2e-relevant file: $file"
             echo "result=true" >> $GITHUB_OUTPUT
             exit 0
           done
-          
+
           echo "Only excluded e2e paths, test files, or doc files changed"
           echo "result=false" >> $GITHUB_OUTPUT

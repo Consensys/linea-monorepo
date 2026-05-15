@@ -14,7 +14,7 @@ GO_CORSET_REPO ?= https://github.com/consensys/go-corset.git
 GO_CORSET_REF_FOR_ZKC ?=
 
 # Used to install go-corset
-GO_CORSET_VERSION ?= v1.2.14
+GO_CORSET_VERSION ?= v1.2.15
 
 ZKC_FILES := $(shell find $(MAKEFILE_DIR)src/main/riscv/* -name "*.zkc")
 ZKC_MAIN := $(MAKEFILE_DIR)src/main/riscv/main.zkc
@@ -41,7 +41,7 @@ install-zkc: checkout-go-corset
 
 # Compile the main RISC-V ZKC program.
 zkc-compile: $(ZKC_FILES)
-	zkc compile $(ZKC_MAIN)
+	zkc compile --wir $(ZKC_MAIN) >/dev/null
 
 zkc-lint:
 	zkc format --check $(ZKC_FILES)
