@@ -14,6 +14,7 @@ pub fn evaluateBaseAtBase(values: []const field.Element, point: field.Element) E
     var omega_i = field.Element.one();
     var sum = field.Element.zero();
     for (values) |value| {
+        if (point.eql(omega_i)) return value;
         const weighted = omega_i.mul(inv_n).mul(value);
         const inv_denom = point.sub(omega_i).inverse();
         sum = sum.add(weighted.mul(inv_denom));
@@ -34,8 +35,10 @@ pub fn evaluateBaseAtExt(values: []const field.Element, point: ext.Ext) Error!ex
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
     for (values) |value| {
+        const domain_point = ext.Ext.lift(omega_i);
+        if (point.eql(domain_point)) return ext.Ext.lift(value);
         const weighted = omega_i.mul(inv_n).mul(value);
-        const denom = point.sub(ext.Ext.lift(omega_i));
+        const denom = point.sub(domain_point);
         sum = sum.add(denom.inverse().mulByBase(weighted));
         omega_i = omega_i.mul(omega);
     }
@@ -54,6 +57,7 @@ pub fn evaluateExtAtBase(values: []const ext.Ext, point: field.Element) Error!ex
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
     for (values) |value| {
+        if (point.eql(omega_i)) return value;
         const weighted = value.mulByBase(omega_i.mul(inv_n));
         const inv_denom = point.sub(omega_i).inverse();
         sum = sum.add(weighted.mulByBase(inv_denom));
@@ -74,8 +78,10 @@ pub fn evaluateExtAtExt(values: []const ext.Ext, point: ext.Ext) Error!ext.Ext {
     var omega_i = field.Element.one();
     var sum = ext.Ext.zero();
     for (values) |value| {
+        const domain_point = ext.Ext.lift(omega_i);
+        if (point.eql(domain_point)) return value;
         const weighted = value.mulByBase(omega_i.mul(inv_n));
-        const denom = point.sub(ext.Ext.lift(omega_i));
+        const denom = point.sub(domain_point);
         sum = sum.add(weighted.mul(denom.inverse()));
         omega_i = omega_i.mul(omega);
     }
