@@ -123,8 +123,7 @@ func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadInputs) 
 	binfCommit, binfCommitOk := a.Metadata.String("commit")
 
 	if !binfCommitOk {
-		logrus.Error("missing commit metadata from binary constraints file")
-		logrus.Panic("compatibility check failed")
+		logrus.Warn("missing commit metadata from binary constraints file")
 	}
 	//
 	logrus.Infof("constraints commit: %s", binfCommit)

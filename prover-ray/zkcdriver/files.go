@@ -45,10 +45,9 @@ func UnmarshalConstraintsFile(buf []byte) (*BinaryFile, typed.Map, error) {
 	}
 	// extract file header (which contains versioning info + metadata)
 	header := binf.Header()
-	// Attempt to extract metadata from bin file, and sanity check constraints
-	// commit information is available.
-	if metadata, err = header.GetMetaData(); metadata.IsEmpty() {
-		return nil, metadata, errors.New("missing metatdata from binary constraints file")
+	// Check metadata in binary constraints file is valid
+	if metadata, err = header.GetMetaData(); err != nil {
+		return nil, metadata, errors.New("corrupt metatdata in binary constraints file")
 	}
 	// Done
 	return &binf, metadata, err
