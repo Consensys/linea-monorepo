@@ -21,6 +21,8 @@ github.com/consensys/go-corset v1.2.16-0.20260514214910-b27f43f7af6b h1:eXJBfUlA
 github.com/consensys/go-corset v1.2.16-0.20260514214910-b27f43f7af6b/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
 github.com/consensys/go-corset v1.2.16-0.20260515013543-1724e9e2d1ac h1:7PYXP7YYXn6eYf7gwdunZK1LpsuJbZ2SmXIcIRna5OA=
 github.com/consensys/go-corset v1.2.16-0.20260515013543-1724e9e2d1ac/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
+github.com/consensys/go-corset v1.2.16 h1:IR+g8FQIZLbG/xh17UZ6y3J+KO4HwFyIyX1w6PdxRVw=
+github.com/consensys/go-corset v1.2.16/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

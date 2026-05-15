@@ -1,6 +1,7 @@
 package zkcdriver_test
 
 import (
+	"fmt"
 	"testing"
 
 	zkc_util "github.com/consensys/go-corset/pkg/zkc/util"
@@ -9,20 +10,36 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/zkcdriver"
 )
 
-func TestExample(t *testing.T) {
+func TestZkc_01a(t *testing.T) {
+	runTest(t, "zkc_01", "{\"data\": \"0x0000_0001\" }")
+}
+
+func TestZkc_01b(t *testing.T) {
+	runTest(t, "zkc_01", "{\"data\": \"0x0041_0042\" }")
+}
+
+func TestZkc_02a(t *testing.T) {
+	runTest(t, "zkc_02", "{\"data\": \"0x0003_0008\" }")
+}
+
+func TestZkc_02b(t *testing.T) {
+	runTest(t, "zkc_02", "{\"data\": \"0x000f_8000\" }")
+}
+
+// nolint
+func runTest(t *testing.T, test, input string) {
 	sys := wiop.NewSystemf("zkc-test")
 	// set an example input
 	var (
-		// define an example input file
-		json = "{\"data\": \"0x0041_0042\" }"
+		testfile = fmt.Sprintf("./testdata/%s.bin", test)
 		// construct inputs map
-		input zkcdriver.PreReadInputs
+		inputs zkcdriver.PreReadInputs
 	)
 	// parse example input
-	input.Inputs, input.Err = zkc_util.ParseJsonInputFile([]byte(json))
+	inputs.Inputs, inputs.Err = zkc_util.ParseJsonInputFile([]byte(input))
 	// Sanity check
-	if input.Err != nil {
-		t.Errorf("error parsing program inputs (%v)", input.Err)
+	if inputs.Err != nil {
+		t.Errorf("error parsing program inputs (%v)", inputs.Err)
 		t.FailNow()
 	}
 	// initialise round
@@ -31,13 +48,13 @@ func TestExample(t *testing.T) {
 	driver := zkcdriver.NewZkCDriver(
 		sys,
 		zkcdriver.Settings{},
-		files.MustRead("./testdata/zkc_example.bin"))
+		files.MustRead(testfile))
 	// FIXME: not sure how best to instantiate runtime here?
-	driver.AssignWithPreRead(&wiop.Runtime{}, input)
+	driver.AssignWithPreRead(&wiop.Runtime{}, inputs)
 	// FIXME: run the prover to complete the test.  For now, I just used
 	// go-corset's internal check to illustrate how this can work (e.g. it might
 	// be useful for debugging). Run go-corset constraint check
-	runZkcConstraintCheck(t, driver, input.Inputs)
+	runZkcConstraintCheck(t, driver, inputs.Inputs)
 }
 
 func runZkcConstraintCheck(t *testing.T, driver *zkcdriver.ZkCDriver, input map[string][]byte) {
