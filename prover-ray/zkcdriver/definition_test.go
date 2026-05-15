@@ -3,7 +3,6 @@ package zkcdriver_test
 import (
 	"testing"
 
-	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/linea-monorepo/prover-ray/utils/files"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 	"github.com/consensys/linea-monorepo/prover-ray/zkcdriver"
@@ -18,7 +17,7 @@ func TestZkEVMDefinition(t *testing.T) {
 	sys.NewRound()
 	_ = zkcdriver.NewZkCDriver(
 		sys,
-		zkcdriver.Settings{OptimisationLevel: &mir.DEFAULT_OPTIMISATION_LEVEL},
+		zkcdriver.Settings{},
 		files.MustRead("./testdata/zkevm.bin"),
 	)
 }

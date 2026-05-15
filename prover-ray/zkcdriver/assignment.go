@@ -3,6 +3,7 @@ package zkcdriver
 import (
 	"unsafe"
 
+	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
@@ -19,14 +20,26 @@ var _ [1]uint32 = field.Element{}
 
 // ReadExpandedTraces parses the provided trace file, expands it and returns the
 // corset object holding the expanded traces.
-func AssignFromLtTraces(run *wiop.Runtime, expTraces trace.Trace[koalabear.Element]) {
+func AssignFromTrace(run *wiop.Runtime, traces trace.Trace[koalabear.Element], schema air.Schema[koalabear.Element]) {
 
 	// Parallelize across modules
 	eg := &errgroup.Group{}
-	for modID := range expTraces.Width() {
+	for modID := range traces.Width() {
 		eg.Go(func() error {
 
-			trMod := expTraces.Module(modID)
+			trMod := traces.Module(modID)
+			scMod := schema.Module(modID)
+
+			if scMod.IsStatic() {
+				// FIXME: slightly unclear what will happen here for static
+				// reference tables.  There will be a module for these in
+				// expTraces, but that module should always be empty (feel free
+				// to sanity check this).
+				//
+				// My feeling is that you can just return here without assigning
+				// anything for this module.
+				panic("todo")
+			}
 
 			// Iterate each column in module
 			parallel.Execute(int(trMod.Width()), func(start, stop int) {
@@ -41,7 +54,7 @@ func AssignFromLtTraces(run *wiop.Runtime, expTraces trace.Trace[koalabear.Eleme
 					)
 
 					if _, ok := columnIDMap[name]; !ok {
-						logrus.Debugf("zkcdriver: AssignFromLtTraces: skipping unknown column %q", name)
+						logrus.Debugf("zkcdriver: AssignFromTrace: skipping unknown column %q", name)
 						continue
 					}
 
@@ -74,6 +87,6 @@ func AssignFromLtTraces(run *wiop.Runtime, expTraces trace.Trace[koalabear.Eleme
 		})
 	}
 	if err := eg.Wait(); err != nil {
-		logrus.Panicf("AssignFromLtTraces failed: %v", err)
+		logrus.Panicf("zkcdriver: AssignFromTrace failed: %v", err)
 	}
 }

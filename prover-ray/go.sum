@@ -17,6 +17,10 @@ github.com/consensys/gnark-crypto v0.20.1 h1:PXDUBvk8AzhvWowHLWBEAfUQcV1/aZgWIqD
 github.com/consensys/gnark-crypto v0.20.1/go.mod h1:RBWrSgy+IDbGR69RRV313th3M/aZU1ubk2om+qHuTSc=
 github.com/consensys/go-corset v1.2.10 h1:uKUICiHmERuMWzDRiRJr285fV2WncNGiCENSdNcQodY=
 github.com/consensys/go-corset v1.2.10/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
+github.com/consensys/go-corset v1.2.16-0.20260514214910-b27f43f7af6b h1:eXJBfUlA1izTo/MqJ6E00pFnSwPBT9vjxBJybq8CLlw=
+github.com/consensys/go-corset v1.2.16-0.20260514214910-b27f43f7af6b/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
+github.com/consensys/go-corset v1.2.16-0.20260515013543-1724e9e2d1ac h1:7PYXP7YYXn6eYf7gwdunZK1LpsuJbZ2SmXIcIRna5OA=
+github.com/consensys/go-corset v1.2.16-0.20260515013543-1724e9e2d1ac/go.mod h1:QKFoNJZHdCrDslg9XFjk+GoFMgrhKSVdBNnx4hq7WJA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
