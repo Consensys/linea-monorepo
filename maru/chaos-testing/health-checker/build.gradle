@@ -3,10 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:jvm-libs:extensions'))
@@ -17,9 +14,9 @@ dependencies {
     exclude group: "build.linea", module: "besu-libs"
   }
 
-  implementation("org.http4k:http4k-core")
-  implementation("org.http4k:http4k-client-okhttp")
-  implementation("org.http4k:http4k-format-jackson")
+  implementation("org.http4k:http4k-core:${libs.versions.http4k.get()}")
+  implementation("org.http4k:http4k-client-okhttp:${libs.versions.http4k.get()}")
+  implementation("org.http4k:http4k-format-jackson:${libs.versions.http4k.get()}")
 }
 
 sourceSets {
@@ -31,6 +28,10 @@ sourceSets {
     compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
     runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
   }
+}
+
+dependencies {
+  acceptanceTestImplementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
 }
 
 build.dependsOn compileAcceptanceTestKotlin

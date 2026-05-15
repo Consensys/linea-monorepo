@@ -3,10 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 sourceSets {
   integrationTest {
@@ -47,25 +44,24 @@ dependencies {
 
   // Previously inherited from maru's `maru.kotlin-application-conventions` plugin (which the
   // import dropped in favor of zkevm's lighter `net.consensys.zkevm.kotlin-application-conventions`).
-  // Resolved via maru/gradle/versions.gradle until the catalog fold replaces these with project
-  // references / catalog accessors.
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:metrics:micrometer')
   implementation project(':jvm-libs:generic:vertx-helper')
   implementation "io.vertx:vertx-micrometer-metrics"
 
-  implementation "info.picocli:picocli"
-  implementation "com.sksamuel.hoplite:hoplite-core"
+  implementation "info.picocli:picocli:${libs.versions.picoli.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
 
   implementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   implementation("org.hyperledger.besu.internal:besu-metrics-core")
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
-  implementation("tech.pegasys.teku.internal:p2p")
-  implementation("tech.pegasys.teku.internal:eth2")
-  implementation ("io.consensys.protocols:discovery")
+  implementation("tech.pegasys.teku.internal:p2p:${libs.versions.teku.get()}")
+  implementation("tech.pegasys.teku.internal:eth2:${libs.versions.teku.get()}")
+  implementation ("io.consensys.protocols:discovery:${libs.versions.discovery.get()}")
 
-  integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
-  integrationTestImplementation 'org.jetbrains.kotlinx:kotlinx-datetime'
+  integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher:${libs.versions.junitPlatform.get()}")
+  integrationTestImplementation "org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}"
+  integrationTestImplementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
   integrationTestImplementation(project(':maru:jvm-libs:test-utils'))
   integrationTestImplementation(testFixtures(project(':maru:p2p')))
   integrationTestImplementation(testFixtures(project(':maru:crypto')))
@@ -74,8 +70,8 @@ dependencies {
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
   integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
-  integrationTestImplementation("com.squareup.okhttp3:okhttp")
-  integrationTestImplementation("io.javalin:javalin")
+  integrationTestImplementation("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
+  integrationTestImplementation("io.javalin:javalin:${libs.versions.javalin.get()}")
   testImplementation(testFixtures(project(':maru:core')))
 }
 

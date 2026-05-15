@@ -1,10 +1,7 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
   id 'java-test-fixtures'
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:core'))
@@ -13,12 +10,12 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-crypto-services")
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
-  implementation "io.consensys.tuweni:tuweni-bytes"
+  implementation "io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}"
 
-  testFixturesImplementation "io.libp2p:jvm-libp2p"
-  testFixturesImplementation "tech.pegasys.teku.internal:p2p"
+  testFixturesImplementation "io.libp2p:jvm-libp2p:${libs.versions.jvmLibp2p.get()}"
+  testFixturesImplementation "tech.pegasys.teku.internal:p2p:${libs.versions.teku.get()}"
   testFixturesImplementation project(':jvm-libs:generic:extensions:kotlin')
-  testFixturesImplementation "io.consensys.tuweni:tuweni-bytes"
+  testFixturesImplementation "io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}"
   testFixturesImplementation "org.hyperledger.besu.internal:besu-crypto-algorithms"
   testFixturesImplementation "org.hyperledger.besu.internal:besu-crypto-services"
 

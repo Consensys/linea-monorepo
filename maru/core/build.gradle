@@ -15,19 +15,16 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
   id 'java-test-fixtures'
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:jvm-libs:extensions'))
   implementation project(':jvm-libs:generic:extensions:kotlin')
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:core:long-running-service')
-  implementation "io.consensys.tuweni:tuweni-bytes"
-  implementation "org.jetbrains.kotlin:kotlin-reflect"
+  implementation "io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}"
+  implementation "org.jetbrains.kotlin:kotlin-reflect:${libs.versions.kotlin.get()}"
   testImplementation(project(':maru:serialization'))
   testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
   testFixturesImplementation("org.hyperledger.besu:besu-plugin-api")

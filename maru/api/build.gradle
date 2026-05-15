@@ -1,20 +1,17 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation project(':jvm-libs:linea:core:metrics')
   implementation project(':jvm-libs:linea:core:long-running-service')
-  implementation "com.fasterxml.jackson.module:jackson-module-kotlin"
-  implementation "io.javalin:javalin"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  implementation "io.javalin:javalin:${libs.versions.javalin.get()}"
   implementation project(':maru:core')
   implementation project(':maru:p2p')
   implementation project(':maru:jvm-libs:extensions')
 
   testImplementation(testFixtures(project(':maru:core')))
   testImplementation(project(':maru:syncing'))
-  testImplementation("com.squareup.okhttp3:okhttp")
+  testImplementation("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
 }

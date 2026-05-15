@@ -15,10 +15,7 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:core'))
@@ -49,8 +46,8 @@ dependencies {
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:besu-evm")
 
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation "tech.pegasys.teku.internal:spec"
+  implementation "tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
 
   implementation project(':jvm-libs:linea:core:long-running-service')
 
@@ -59,7 +56,7 @@ dependencies {
   testImplementation(testFixtures(project(':maru:crypto')))
   testImplementation(project(':maru:jvm-libs:test-utils'))
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
-  testImplementation "tech.pegasys.teku.internal:executionclient"
-  testImplementation "tech.pegasys.teku.internal:spec"
+  testImplementation "tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}"
+  testImplementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
   testImplementation project(':jvm-libs:linea:core:metrics')
 }

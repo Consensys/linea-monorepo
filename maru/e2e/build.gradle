@@ -3,10 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation project(':maru:core')
@@ -21,20 +18,20 @@ dependencies {
   implementation(project(':maru:jvm-libs:extensions'))
   implementation project(':maru:jvm-libs:test-utils')
 
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation "tech.pegasys.teku.internal:time"
-  implementation "tech.pegasys.teku.internal:ethereum-events"
-  implementation "tech.pegasys.teku.internal:spec"
+  implementation "tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:time:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:ethereum-events:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
 
 
-  implementation ("org.web3j:core")
+  implementation ("org.web3j:core:${libs.versions.web3j.get()}")
 
-  implementation "com.sksamuel.hoplite:hoplite-toml"
-  implementation "com.sksamuel.hoplite:hoplite-json"
-  implementation "com.sksamuel.hoplite:hoplite-core"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-json:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
 
-  implementation('com.palantir.docker.compose:docker-compose-rule-junit4')
-  implementation('com.palantir.docker.compose:docker-compose-junit-jupiter')
+  implementation("com.palantir.docker.compose:docker-compose-rule-junit4:${libs.versions.dockerComposeRule.get()}")
+  implementation("com.palantir.docker.compose:docker-compose-junit-jupiter:${libs.versions.dockerComposeRule.get()}")
   implementation "org.hyperledger.besu.internal:besu-acceptance-tests-dsl"
 
   implementation project(':jvm-libs:linea:core:metrics')
@@ -51,6 +48,10 @@ sourceSets {
     compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
     runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
   }
+}
+
+dependencies {
+  acceptanceTestImplementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
 }
 
 

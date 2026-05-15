@@ -15,17 +15,14 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
 
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
-
 dependencies {
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation "tech.pegasys.teku.internal:logging"
-  implementation "tech.pegasys.teku.internal:time"
-  implementation "tech.pegasys.teku.internal:ethereum-events"
-  implementation "tech.pegasys.teku.internal:infrastructure-events"
+  implementation "tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:logging:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:time:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:ethereum-events:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:infrastructure-events:${libs.versions.teku.get()}"
   implementation project(':jvm-libs:generic:logging')
   implementation project(':jvm-libs:generic:json-rpc')
 }

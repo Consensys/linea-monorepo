@@ -1,9 +1,6 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:consensus'))
@@ -28,13 +25,13 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-consensus-qbft")
   implementation("org.hyperledger.besu.internal:besu-plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
 
   implementation project(':jvm-libs:linea:core:metrics')
 
-  implementation "org.web3j:core"
-  implementation 'org.assertj:assertj-core'
-  implementation 'org.awaitility:awaitility-kotlin'
+  implementation "org.web3j:core:${libs.versions.web3j.get()}"
+  implementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
+  implementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
 }
 
 test {

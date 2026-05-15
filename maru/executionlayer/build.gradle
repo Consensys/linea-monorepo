@@ -15,10 +15,7 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  alias(libs.plugins.dependencyManagement)
 }
-
-apply from: "${rootProject.projectDir}/maru/gradle/versions.gradle"
 
 dependencies {
   implementation(project(':maru:core'))
@@ -27,16 +24,16 @@ dependencies {
   implementation(project(':maru:jvm-libs:mappers'))
   implementation(project(':maru:jvm-libs:extensions'))
 
-  api "tech.pegasys.teku.internal:executionclient"
+  api "tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}"
 
-  api("tech.pegasys.teku.internal:time")
-  api("tech.pegasys.teku.internal:ethereum-events")
-  implementation "tech.pegasys.teku.internal:unsigned"
-  implementation "tech.pegasys.teku.internal:bytes"
-  implementation "tech.pegasys.teku.internal:spec"
+  api("tech.pegasys.teku.internal:time:${libs.versions.teku.get()}")
+  api("tech.pegasys.teku.internal:ethereum-events:${libs.versions.teku.get()}")
+  implementation "tech.pegasys.teku.internal:unsigned:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
+  implementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
   implementation project(':jvm-libs:linea:core:metrics')
 
-  testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')
+  testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', version: libs.versions.teku.get(), classifier: 'test-fixtures')
   testImplementation(testFixtures(project(':maru:core')))
   testImplementation(testFixtures(project(':jvm-libs:generic:extensions:kotlin')))
 }
