@@ -17,7 +17,7 @@ def to_big_endian_hex(value, length):
 with open(sys.argv[1]) as f:
     for n, line in enumerate(f, 1):
         line = line.strip()
-        # Skip blank lines and commented slow cases.
+        # Skip blank lines and commented test cases (starting with ";;")
         if not line or line.startswith(";;"):
             continue
         test_case = json.loads(line)["F"]
