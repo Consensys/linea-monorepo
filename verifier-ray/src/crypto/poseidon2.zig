@@ -11,7 +11,7 @@ const partial_rounds = 21;
 const total_rounds = full_rounds + partial_rounds;
 
 pub fn zeroDigest() Digest {
-    return [_]field.Element{field.Element.zero()} ** block_size;
+    return zeroArray(block_size);
 }
 
 pub fn compress(left: Digest, right: Digest) Digest {
@@ -49,7 +49,7 @@ pub const MDHasher = struct {
     pub fn init() MDHasher {
         return .{
             .state = zeroDigest(),
-            .buffer = [_]field.Element{field.Element.zero()} ** block_size,
+            .buffer = zeroArray(block_size),
             .buffer_len = 0,
         };
     }
@@ -79,7 +79,7 @@ pub const MDHasher = struct {
 
     pub fn sumElement(self: *MDHasher) Digest {
         if (self.buffer_len != 0) {
-            var block = [_]field.Element{field.Element.zero()} ** block_size;
+            var block: Digest = zeroArray(block_size);
             @memcpy(block[block_size - self.buffer_len ..], self.buffer[0..self.buffer_len]);
             self.state = compress(self.state, block);
             self.buffer_len = 0;
@@ -175,7 +175,7 @@ fn matMulM4InPlace(comptime width: usize, state: *[width]field.Element) void {
 fn matMulExternalInPlace(comptime width: usize, state: *[width]field.Element) void {
     matMulM4InPlace(width, state);
 
-    var sums = [_]field.Element{field.Element.zero()} ** 4;
+    var sums: [4]field.Element = zeroArray(4);
     for (0..width / 4) |chunk| {
         const offset = 4 * chunk;
         sums[0] = sums[0].add(state[offset]);
@@ -191,6 +191,14 @@ fn matMulExternalInPlace(comptime width: usize, state: *[width]field.Element) vo
         state[offset + 2] = state[offset + 2].add(sums[2]);
         state[offset + 3] = state[offset + 3].add(sums[3]);
     }
+}
+
+fn zeroArray(comptime len: usize) [len]field.Element {
+    var out: [len]field.Element = undefined;
+    for (&out) |*limb| {
+        limb.* = field.Element.zero();
+    }
+    return out;
 }
 
 fn matMulInternalInPlace(comptime width: usize, state: *[width]field.Element) void {
