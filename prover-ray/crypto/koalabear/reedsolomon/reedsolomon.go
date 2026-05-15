@@ -210,6 +210,6 @@ func (r *RsParams) EncodeFromMonomials(coefficients []field.Ext) []field.Ext {
 	copy(buf, coefficients)
 	// DIT FFT expects bit-reversed input; natural-order evaluations come out.
 	utils.BitReverse(buf)
-	r.Domains[1].FFTExt(buf, fft.DIT, fft.WithNbTasks(1))
+	r.Domains[1].FFTExt(buf, fft.DIT)
 	return buf
 }
