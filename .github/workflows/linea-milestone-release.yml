@@ -37,7 +37,7 @@ concurrency:
 jobs:
   check-branch:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    steps:
+    steps: #TODO: set exit back to 1
       - name: Enforce main branch
         if: github.ref_name != 'main'
         run: |
@@ -105,7 +105,7 @@ jobs:
             --arg next_version      "$NEXT_VERSION" \
             --arg next_tag          "$NEXT_TAG" \
             --arg tag_changed       "$TAG_CHANGED" \
-            '{changelog_content: $changelog_content, next_version: $next_version, next_tag: $next_tag, tag_changed: $tag_changed}')
+            '{changelog: $changelog_content, release_version: $next_version, release_tag: $next_tag, tag_changed: $tag_changed}')
           {
             echo "${COMPONENT_NAME}<<__JSON_EOF__"
             printf '%s\n' "$JSON_OUTPUTS"
@@ -181,7 +181,7 @@ jobs:
       (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.build-local-linea-besu.result == 'success'))
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
         include:
@@ -237,3 +237,105 @@ jobs:
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
+
+  coordinator-gh-release:
+    needs: [component-release-metadata, run-e2e-tests]
+    if: >
+      always() && !cancelled() && 
+      needs.run-e2e-tests.result == 'success' &&
+      fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed == 'true'
+    uses: ./.github/workflows/reusable-component-gh-release.yml
+    with:
+      component-name: coordinator
+      folder-name: coordinator
+      include-path: '"coordinator/**"'
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ''
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).changelog }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+    secrets: inherit
+
+  prover-gh-release:
+    needs: [component-release-metadata, run-e2e-tests]
+    if: >
+      always() && !cancelled() && 
+      needs.run-e2e-tests.result == 'success' &&
+      fromJson(needs.component-release-metadata.outputs.prover).tag_changed == 'true'
+    uses: ./.github/workflows/reusable-component-gh-release.yml
+    with:
+      component-name: prover
+      folder-name: prover
+      include-path: '"prover/**"'
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ''
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.prover).changelog }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+    secrets: inherit
+
+  postman-gh-release:
+    needs: [component-release-metadata, run-e2e-tests]
+    if: >
+      always() && !cancelled() && 
+      needs.run-e2e-tests.result == 'success' &&
+      fromJson(needs.component-release-metadata.outputs.postman).tag_changed == 'true'
+    uses: ./.github/workflows/reusable-component-gh-release.yml
+    with:
+      component-name: postman
+      folder-name: postman
+      include-path: '"postman/**"'
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ''
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.postman).changelog }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+    secrets: inherit
+
+  tx-exclusion-api-gh-release:
+    needs: [component-release-metadata, run-e2e-tests]
+    if: >
+      always() && !cancelled() && 
+      needs.run-e2e-tests.result == 'success' &&
+      fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed == 'true'
+    uses: ./.github/workflows/reusable-component-gh-release.yml
+    with:
+      component-name: tx-exclusion-api
+      folder-name: transaction-exclusion-api
+      include-path: '"transaction-exclusion-api/**"'
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ''
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).changelog }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+    secrets: inherit
+
+  linea-besu-gh-release:
+    needs: [component-release-metadata, run-e2e-tests]
+    if: >
+      always() && !cancelled() && 
+      needs.run-e2e-tests.result == 'success' &&
+      fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed == 'true'
+    uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ''
+      without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).changelog }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+    secrets: inherit
+
+# retag docker tag with image_tag_suffix for unchanged tag components
+# prepend CHANGELOG for each component for linea release (and then create PR)
+# tag linea release with aggregated included-path

@@ -119,29 +119,16 @@ jobs:
       e2e-tests-with-besu-fleet: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 
-  release-linea-besu-push-tag-changelog:
+  push-tag-update-changelog-and-gh-release:
     needs: [run-test, run-e2e-tests]
-    uses: ./.github/workflows/reusable-component-release-push-tag-changelog.yml
+    uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
     with:
-      component-name: linea-besu
-      folder-name: linea-besu/package
-      include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
-      release_tag_suffix: ${{ inputs.release_tag_suffix }}
-    secrets: inherit
-
-  build-linea-besu-docker-image-and-gh-release:
-    needs: [compute-linea-besu-release-metadata, release-linea-besu-push-tag-changelog]
-    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
-    with:
-      release_tag_prefix: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      run_test: false
-      run_e2e_test: false
-      push_image: true
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
+      without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
+      release_version: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
+      release_tag: ${{ needs.compute-linea-besu-release-metadata.outputs.release_tag }}
+      changelog: ${{ needs.compute-linea-besu-release-metadata.outputs.changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
-      with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
-      changelog: ${{ needs.compute-linea-besu-release-metadata.outputs.changelog }}
-      release_tag: ${{ needs.compute-linea-besu-release-metadata.outputs.release_tag }}
-      release_version: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
     secrets: inherit
