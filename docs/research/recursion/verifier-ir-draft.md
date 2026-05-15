@@ -1,19 +1,22 @@
-# Verifier IR — Design Sketch
+#  Unify Verify Across Compression and Aggregation
 
-**Status:** draft / discussion note
-**Scope:** unify the wizard compilation pipelines (segment, conglomeration, finalwrap, tree aggregation) under a single declarative representation.
+
 
 ## Motivation
 
-The selfrecursion pipeline + compression chain that drives wizard compilation today is confusing for three reasons:
+**Goal.** Refactor the verify logic that appears inside both *compression* and *aggregation*, and disentangle it from the surrounding commit / recommit / final-wrap steps that today's imperative chain conflates with it. The output is four declarative primitives — `InitialCommit`, `Verify`, `Recommit`, `FinalWrap` — composing into clean pipelines and making the load-bearing invariant structural: **every `Verify` must be followed by `Recommit`**.
+
+`Verify` is the most visible win because it is the *common* operation across the two flows that look superficially different today:
+
+- **Compression** uses `Verify` with the `WizardRewrite` backend (today's `selfrecursion.SelfRecurse` — rewrites a prior Vortex's verifier as wizard constraints).
+- **Aggregation** uses `Verify` with the `PlonkRecurse` backend (today's `recursion.DefineRecursionOf` — builds a PLONK-in-wizard circuit that verifies k child proofs).
+
+The compression chain (which embeds the `selfrecursion.SelfRecurse` step as its `Verify` half) is confusing for three reasons:
 
 1. **The same skeleton is repeated 9 times across 5 files**, hand-tuned with parameters like `WithTargetColSize`, `ForceNumOpenedColumns`, and `VortexBlowup` that vary only slightly between call sites.
 2. **Verification and commitment are mixed inside what looks like one operation**, even though they are distinct: `selfrecursion.SelfRecurse` produces wizard constraints, not a proof; the follow-up `Arcane → [MPTS] → Vortex` is what actually commits.
 3. **Aggregation and compression are independent operations** that the imperative code conflates. A reader cannot tell from a call sequence which lines do aggregation, which do compression, and which do both.
 
-We want to abstract this — identify the primitives, separate aggregation from compression cleanly, and express pipelines as data so they can be inspected, transformed, and searched.
-
-**Scope note.** This document is a **tactical cleanup of the current wizard architecture**. It is *not* the same thing as the "Recursion proposal" (Ray-prover + Zig zkVM verifier + code-generated PLONK wrap), which envisions replacing the gnark-circuit recursive verifier altogether. The proposal's M1 ("Zig verifier stub") operates one level lower than what we describe here — it is per-`VerifierAction` code generation, not per-pipeline structure. If that proposal lands in its current form, much of the chain this document refactors goes away and this work becomes obsolete. The work below is useful only as long as the current selfrecursion + Arcane + Vortex pipeline is in production.
 
 ---
 
@@ -54,9 +57,9 @@ Sites `#4` and `#6` are *the same chain in different hash backends* — they wil
 
 ## 2. Aggregation and compression are different — aggregation always needs compression after
 
-The compression chain from §1 is one of *two* primitives in the broader pipeline. The other is **aggregation**, and they are independent.
+The compression chain from §1 is one of two **pipeline-level operations**. The other is **aggregation**. They are independent at the pipeline level — each is itself built from finer-grained primitives introduced in §3.
 
-### Aggregation primitive
+### Aggregation
 
 `recursion.DefineRecursionOf(MaxNumProof=k)` — one PLONK recursion call that verifies k child proofs in a single statement.
 
@@ -65,9 +68,9 @@ The compression chain from §1 is one of *two* primitives in the broader pipelin
 
 The gnark verifier circuit is **itself arity-1**. Arity-k aggregation is `MaxNumProof` independent gnark instances batched into a single PLONK witness via `PlonkCtx.Run` ([recursion.go:302-363](protocol/compiler/recursion/recursion.go#L302-L363)).
 
-### Compression primitive
+### Compression
 
-The chain from §1 — a compile-time wizard rewrite that shrinks an IOP.
+The chain from §1 — a compile-time wizard rewrite that shrinks an IOP. Selfrecursion (`selfrecursion.SelfRecurse`) is one step inside it — specifically the *Verify* half. The *Recommit* half (`Arcane → [MPTS] → Vortex`) is what actually shrinks the proof.
 
 ### The invariant: aggregation must be followed by compression
 
@@ -82,7 +85,7 @@ conglo.Compile(comp, ...)                                    // ← bare aggrega
 d.CompiledConglomeration = CompileSegment(conglo, params)    // ← compression chain
 ```
 
-`ModuleConglo.Compile` is just `recursion.DefineRecursionOf(MaxNumProof=2)` — pure aggregation, no compression. The compression that makes the resulting wizard usable is in the subsequent `CompileSegment` call. Today this pairing is implicit in the call sequence; in the IR it becomes structural.
+`ModuleConglo.Compile` is just `recursion.DefineRecursionOf(MaxNumProof=2)` — pure aggregation, no compression. The compression that makes the resulting wizard usable is in the subsequent `CompileSegment` call. 
 
 ---
 
@@ -91,10 +94,13 @@ d.CompiledConglomeration = CompileSegment(conglo, params)    // ← compression 
 A correct unification splits the pipeline into **four primitive node types** that compose in dataflow order:
 
 ```
-InitialCommit ; (Verify ; Recommit)* ; [FinalWrap]
+InitialCommit  →  (Verify → Recommit) × N rounds  →  [FinalWrap]
 ```
 
-An earlier sketch (`Verify(claims, proofs) → (claim, proof)`) was too coarse — it conflated *committing*, *verifying*, and *recommitting* into one signature. Splitting them mirrors what the code actually does.
+- **`InitialCommit`** — every pipeline starts here.
+- **`(Verify → Recommit)`** — the repeating unit; one full compression or aggregation step. Verify never appears without a Recommit after it.
+- **`FinalWrap`** — optional terminal step; present only at the root of the proof tree (publishes the proof to L1).
+
 
 ### `InitialCommit`
 
@@ -102,9 +108,6 @@ An earlier sketch (`Verify(claims, proofs) → (claim, proof)`) was too coarse �
 InitialCommit{params}   :   original_IOP → (claim, proof)
 ```
 
-The only primitive that does not take a proof as input. Commits a freshly Arcane-compiled IOP for the first time — every pipeline starts here.
-
-Today: the first `vortex.Compile(...)` after the original `compiler.Arcane(...)` pass. Distinguished from compression-round vortices by having no preceding `selfrecursion.SelfRecurse`, a different blowup (typically 2 vs 8), and many more opened columns (256 vs 40). Optionally exposes app-level PI like `lppMerkleRootPublicInput`.
 
 ### `Verify`
 
@@ -249,7 +252,9 @@ The full proof pipeline composes the two shapes above and terminates at `FinalWr
 
 Two termination points coexist: every `Recommit{TerminalChild}` is *locally* terminal for its branch (and serves as input to the next level); `FinalWrap` is *globally* terminal for the whole tree.
 
-### Record types
+### Record types — the pipeline IR as data
+
+A `Pipeline` is a flat slice of nodes; each node is one of the four primitives. The interpreter walks this slice in order and emits the corresponding `wizard.ContinueCompilation(...)` calls. (`oneof` below is sum-type notation — concretely an interface in Go.)
 
 ```go
 type Pipeline []Stage
@@ -301,20 +306,13 @@ type FinalWrap struct {
 - Unifying the MiMC and Poseidon2 trees — sites `#4` and `#6` collapse to one record with `Hash` set differently.
 - Exposing `TargetColSize`, blowup, opened-cols as data instead of literals at five call sites.
 
-### What this representation unlocks
-
-- **Invariant enforcement** — `Verify` must be followed by `Recommit`; pipelines start with `InitialCommit`; the tree root terminates with `FinalWrap`. Checkable structurally rather than by code review.
-- **A planner** that picks `Verify` backend (WizardRewrite vs PlonkRecurse) by capability/cost rather than the call site choosing.
-- **Parameter search** over the chain (which today requires editing five files).
-- **Serialization of the pipeline as an artifact alongside proofs** — useful for debugging, reproducibility, and version pinning between prover and verifier.
-- **Alternative compression backends as first-class.** The `perf/bench-recursion` ML pipeline (`InsertBootstrapperOpenings → multilinvortex.Compile → multilineareval.CompileAllRound × 7`) is a different compression mechanism that can sit alongside `WizardRewrite` as a second `Verify` backend or a second `Recommit` flavor.
 
 ### Open questions to lock down before coding
 
 1. **Public-input plumbing.** Three special-cased PI groups exist: `lppMerkleRootPublicInput`, `VerifyingKey*PublicInput`, `conglomeration*`. The IR needs first-class PI annotations (`passthrough | fold-into-digest | expose-as-root`) so the special-casing in [segment_compilation.go:266-282](circuits/pi-interconnection/keccak/prover/protocol/distributed/segment_compilation.go#L266-L282) goes away. **Get this wrong and the IR won't capture all pipelines.**
 2. **FS binding for arity ≥ 2.** Each aggregation must consume child claims into its transcript seed (or admit sibling malleability). Today this is implicit in `KoalaFS`'s init order — the IR should make it a property of the `Verify` node.
 3. **Compile-time vs prove-time split.** `Verify{WizardRewrite}` is compile-time; `Verify{PlonkRecurse}` is gnark-circuit-build (still compile-time, before prove); `Recommit` is always compile-time wizard rewrite; `FinalWrap` is gnark-circuit-build + prove-time PLONK. The IR is a *plan*; realization is a separate concern that must not leak into the IR shape.
-4. **Verifier replay.** "Verifier IR" implies the *verifier* reads the same IR to replay. Strictly larger lift than the prover-side refactor — needs explicit design for what gets serialized, versioning, and FS transcript binding.
+4. **Verifier-side replay.** Letting the verifier (native and gnark) read the same pipeline IR to replay is a strictly larger lift than the prover-side refactor — needs explicit design for what gets serialized, versioning, and FS transcript binding. Out of scope for the next steps below; flagged here for completeness.
 
 ### Concrete next steps, in dependency order
 
