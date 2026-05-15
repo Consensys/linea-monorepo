@@ -10,18 +10,21 @@ FIELDS_IN = [
 FIELDS_OUT = ["h0h1_be", "h2h3_be", "h4h5_be", "h6h7_be"]
 
 
-def be(value, length):
+def to_big_endian_hex(value, length):
     return int(value).to_bytes(length, "big").hex()
 
 
 with open(sys.argv[1]) as f:
     for n, line in enumerate(f, 1):
         line = line.strip()
+        # Skip blank lines and commented slow cases.
         if not line or line.startswith(";;"):
             continue
-        case = json.loads(line)["F"]
-        data = be(case["r"][0], 4)
-        data += "".join(be(case[k][0], 16) for k in FIELDS_IN)
-        data += be(case["f"][0], 1)
-        data += "".join(be(case[k][0], 16) for k in FIELDS_OUT)
+        test_case = json.loads(line)["F"]
+
+        # Build: 213 bytes input, then 64 bytes expected output.
+        data = to_big_endian_hex(test_case["r"][0], 4)
+        data += "".join(to_big_endian_hex(test_case[k][0], 16) for k in FIELDS_IN)
+        data += to_big_endian_hex(test_case["f"][0], 1)
+        data += "".join(to_big_endian_hex(test_case[k][0], 16) for k in FIELDS_OUT)
         print(f"{n}:0x{data}")
