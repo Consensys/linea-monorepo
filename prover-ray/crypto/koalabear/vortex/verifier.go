@@ -14,17 +14,30 @@ import (
 func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 	merkleProofs [][]smt.Proof, commitments []Commitment, WithSis []bool) error {
 
+	if got, want := len(columns), len(commitments); got != want {
+		return fmt.Errorf("columns length %d does not match commitments length %d", got, want)
+	}
+	if got, want := len(merkleProofs), len(commitments); got != want {
+		return fmt.Errorf("merkleProofs length %d does not match commitments length %d", got, want)
+	}
+	if got, want := len(WithSis), len(commitments); got != want {
+		return fmt.Errorf("WithSis length %d does not match commitments length %d", got, want)
+	}
+	for i := range commitments {
+		if got, want := len(merkleProofs[i]), len(columns[i]); got != want {
+			return fmt.Errorf("merkleProofs[%d] length %d does not match columns[%d] length %d", i, got, i, want)
+		}
+	}
+
 	sisHash := make([]field.Element, sis.OutputSize())
-	// var leaf fr.Element
 	h := poseidon2.NewMDHasher()
 	for i := 0; i < len(commitments); i++ {
 
 		for j := 0; j < len(columns[i]); j++ {
 			var leaf field.Octuplet
 			if WithSis[i] {
-				// compute leaf = poseidon2_bls12377(columns[i][j]))
 				if err := sis.SisGnarkCrypto.Hash(columns[i][j], sisHash); err != nil {
-					panic(err)
+					return fmt.Errorf("sis hash failed for commitment %d column %d: %w", i, j, err)
 				}
 				h.Reset()
 				h.WriteElements(sisHash...)
@@ -51,23 +64,28 @@ func CheckColumnInclusion(sis *ringsis.Key, columns [][][]field.Element,
 func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments []Commitment,
 	merkleProofs [][]smt.Proof, WithSis []bool) error {
 
-	// If WithSis is not assigned, we assign them with default true values
-	if WithSis == nil {
-		WithSis = make([]bool, len(merkleProofs))
+	if got, want := len(proof.Columns), len(commitments); got != want {
+		return fmt.Errorf("proof.Columns length %d does not match commitments length %d", got, want)
+	}
+	if got, want := len(merkleProofs), len(commitments); got != want {
+		return fmt.Errorf("merkleProofs length %d does not match commitments length %d", got, want)
+	}
+	if WithSis != nil {
+		if got, want := len(WithSis), len(commitments); got != want {
+			return fmt.Errorf("WithSis length %d does not match commitments length %d", got, want)
+		}
+	} else {
+		WithSis = make([]bool, len(commitments))
 		for i := range WithSis {
 			WithSis[i] = true
 		}
 	}
 
-	err := VerifyCommon(params, proof, vi)
-	if err != nil {
+	if err := VerifyCommon(params, proof, vi); err != nil {
 		return err
 	}
 
-	err = CheckColumnInclusion(params.Key, proof.Columns,
-		merkleProofs, commitments, WithSis)
-
-	return err
+	return CheckColumnInclusion(params.Key, proof.Columns, merkleProofs, commitments, WithSis)
 }
 
 // VerifyCommon performs the common verification steps shared by Verify and
@@ -78,6 +96,29 @@ func Verify(params *Params, proof *OpeningProof, vi *VerifierInput, commitments 
 func VerifyCommon(params *Params, proof *OpeningProof, vi *VerifierInput) error {
 	if got, want := len(proof.LinearCombination), params.RsParams.NbColumns(); got != want {
 		return fmt.Errorf("invalid linear combination length: expected %d coefficients, got %d", want, got)
+	}
+
+	if len(vi.EntryList) == 0 {
+		return fmt.Errorf("empty entry list")
+	}
+	n := params.RsParams.NbEncodedColumns()
+	for j, selectedColID := range vi.EntryList {
+		if selectedColID < 0 || selectedColID >= n {
+			return fmt.Errorf("entryList[%d] = %d out of bounds [0, %d)", j, selectedColID, n)
+		}
+	}
+	if got, want := len(vi.Ys), len(proof.Columns); got != want {
+		return fmt.Errorf("vi.Ys length %d does not match proof.Columns length %d", got, want)
+	}
+	for i := range proof.Columns {
+		if got, want := len(proof.Columns[i]), len(vi.EntryList); got != want {
+			return fmt.Errorf("proof.Columns[%d] length %d does not match entryList length %d", i, got, want)
+		}
+		for j := range proof.Columns[i] {
+			if got, want := len(proof.Columns[i][j]), len(vi.Ys[i]); got != want {
+				return fmt.Errorf("proof.Columns[%d][%d] length %d does not match vi.Ys[%d] length %d", i, j, got, i, want)
+			}
+		}
 	}
 
 	if err := CheckLinComb(params.RsParams, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns); err != nil {

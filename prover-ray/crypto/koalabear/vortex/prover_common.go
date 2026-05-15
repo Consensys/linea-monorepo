@@ -35,23 +35,18 @@ func LinearCombination(proof *OpeningProof, d *fft.Domain, v [][]field.Element, 
 	parallel.Execute(nColumns, func(start, stop int) {
 
 		var (
-			x            = field.OneExt()
-			localLinComb = make([]field.Ext, stop-start)
-			tmp          field.Ext
+			x   = field.OneExt()
+			tmp field.Ext
 		)
 
+		out := linComb[start:stop]
 		for i := range v {
-			// we distinguish the case of a regular vector and constant to avoid
-			// unnecessary allocations and copies
-			for j := range localLinComb {
+			for j := range out {
 				tmp.MulByElement(&x, &v[i][start+j])
-				localLinComb[j].Add(&localLinComb[j], &tmp)
+				out[j].Add(&out[j], &tmp)
 			}
-
 			x.Mul(&x, &randomCoin)
 		}
-
-		copy(linComb[start:stop], localLinComb)
 	})
 
 	proof.LinearCombination = polynomials.LCEvalsToCoefficients(d, linComb)
