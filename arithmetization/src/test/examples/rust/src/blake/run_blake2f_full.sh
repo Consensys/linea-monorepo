@@ -14,15 +14,10 @@ cases=$(python3 blake/blake2f_to_in_bytes.py "$vectors") || exit 1
 failures=()
 while IFS=: read -r n in_bytes; do
   printf 'case %s... ' "$n"
-<<<<<<< HEAD
-  # The zkc program result is reported in the final output line.
+  # The zkc program result is reported in the final output line
   output=$(make -f "$makefile" TEST=blake/blake_with_in_bytes.rs IN_BYTES="$in_bytes" 2>&1)
   last_line=$(printf '%s\n' "$output" | sed '/^[[:space:]]*$/d' | tail -n 1)
-  if [[ "$last_line" == "Program exited successfully (exit with code 0)" ]]; then
-=======
-  # Run one zkVM test invocation per vector
-  if make -f "$makefile" TEST=blake/blake_with_in_bytes.rs IN_BYTES="$in_bytes" >/dev/null; then
->>>>>>> 9daf65afefa8c47745b840ba829b6229805d3bf2
+  if [[ "$last_line" == "Program exited successfully (exit with code 0)." ]]; then
     echo ok
   else
     echo "failed ($last_line)"
