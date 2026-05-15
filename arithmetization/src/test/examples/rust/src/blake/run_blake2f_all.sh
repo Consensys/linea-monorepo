@@ -3,13 +3,7 @@ cd "$(dirname "$0")/.."
 
 makefile="../../Makefile"
 vectors="blake/blake2f.all"
-selector=""
-if [[ "${1:-}" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-  selector="$1"
-else
-  vectors="${1:-$vectors}"
-  selector="${2:-}"
-fi
+selector="${1:-}"
 [[ -f "$vectors" ]] || { echo "missing vector file: $vectors"; exit 1; }
 
 # Convert .all rows to IN_BYTES values expected by the Rust test

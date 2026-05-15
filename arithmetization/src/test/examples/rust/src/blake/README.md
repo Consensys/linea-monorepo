@@ -22,11 +22,7 @@ Runs `blake_with_in_bytes.rs` once per converted test case:
 ./run_blake2f_all.sh
 ```
 
-By default it uses `blake/blake2f.all`. Pass a vector file path to override this:
-
-```bash
-./run_blake2f_all.sh blake/blake2f.all
-```
+It always uses `blake/blake2f.all`.
 
 Run only one original `.all` line:
 
@@ -38,12 +34,6 @@ Run an inclusive range of original `.all` lines:
 
 ```bash
 ./run_blake2f_all.sh 340-350
-```
-
-The same selector can be used after an explicit vector file path:
-
-```bash
-./run_blake2f_all.sh blake/blake2f.all 340-350
 ```
 
 A case is considered passing only when zkc reports:
