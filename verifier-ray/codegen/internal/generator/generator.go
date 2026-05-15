@@ -26,7 +26,7 @@ type Round struct {
 // Generate emits a compilable Zig verifier stub.
 func Generate(system System, opts Options, dst io.Writer) error {
 	if opts.EntryPoint == "" {
-		opts.EntryPoint = "verifyGenerated"
+		opts.EntryPoint = defaultEntryPoint
 	}
 
 	w := &Writer{}
