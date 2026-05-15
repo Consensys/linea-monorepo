@@ -41,15 +41,21 @@ jobs:
         with:
           submodules: false
 
+      # Keep this aligned with .github/actions/setup-arithmetization-riscv, but use
+      # newer Go because verifier-ray/prover-ray modules declare go 1.25.7.
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/*.sum"
 
       - name: Install Zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: ${{ env.ZIG_VERSION }}
+
+      - name: Install riscv64-unknown-elf-as
+        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf
 
       - name: Install go-corset and zkc
         run: |
