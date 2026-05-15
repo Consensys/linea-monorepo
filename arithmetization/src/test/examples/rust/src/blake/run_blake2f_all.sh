@@ -2,11 +2,29 @@
 cd "$(dirname "$0")/.."
 
 makefile="../../Makefile"
-vectors="${1:-blake/blake2f.all}"
+vectors="blake/blake2f.all"
+selector=""
+if [[ "${1:-}" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
+  selector="$1"
+else
+  vectors="${1:-$vectors}"
+  selector="${2:-}"
+fi
 [[ -f "$vectors" ]] || { echo "missing vector file: $vectors"; exit 1; }
 
 # Convert .all rows to IN_BYTES values expected by the Rust test
 cases=$(python3 blake/blake2f_all_to_in_bytes.py "$vectors") || exit 1
+if [[ -n "$selector" ]]; then
+  if [[ "$selector" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+    cases=$(printf '%s\n' "$cases" | awk -F: -v start="${BASH_REMATCH[1]}" -v end="${BASH_REMATCH[2]}" '$1 >= start && $1 <= end')
+  elif [[ "$selector" =~ ^[0-9]+$ ]]; then
+    cases=$(printf '%s\n' "$cases" | awk -F: -v n="$selector" '$1 == n')
+  else
+    echo "selector must be N or START-END"
+    exit 1
+  fi
+  [[ -n "$cases" ]] || { echo "no cases matched: $selector"; exit 1; }
+fi
 
 failures=()
 while IFS=: read -r n in_bytes; do
