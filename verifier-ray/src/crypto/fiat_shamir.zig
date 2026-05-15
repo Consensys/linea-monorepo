@@ -39,20 +39,6 @@ pub const Transcript = struct {
         } };
     }
 
-    pub fn randomManyIntegers(self: *Transcript, out: []usize, upper_bound: usize) void {
-        if (!field.isPowerOfTwo(upper_bound)) unreachable;
-
-        var i: usize = 0;
-        while (i < out.len) {
-            const challenge = self.randomField();
-            for (challenge) |limb| {
-                out[i] = limb.value % upper_bound;
-                i += 1;
-                if (i == out.len) break;
-            }
-        }
-    }
-
     pub fn state(self: Transcript) poseidon2.Digest {
         return self.hasher.getState();
     }
