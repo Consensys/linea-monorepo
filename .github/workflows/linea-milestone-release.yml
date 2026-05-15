@@ -201,11 +201,11 @@ jobs:
           - component: linea-besu
             image-name: linea-besu-package
     outputs:
-      coordinator-docker-tag: ${{ steps.latest-docker-tag.outputs.coordinator-latest-docker-tag }}
-      prover-docker-tag: ${{ steps.latest-docker-tag.outputs.prover-latest-docker-tag }}
-      postman-docker-tag: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
-      tx-exclusion-api-docker-tag: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
-      linea-besu-docker-tag: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-docker-tag }}
+      coordinator: ${{ steps.latest-docker-tag.outputs.coordinator-latest-docker-tag }}
+      prover: ${{ steps.latest-docker-tag.outputs.prover-latest-docker-tag }}
+      postman: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
+      tx-exclusion-api: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
+      linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-docker-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
@@ -234,11 +234,11 @@ jobs:
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       image_tag: local
-      coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator-docker-tag || '' }}
-      postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman-docker-tag || '' }}
-      prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.prover-docker-tag || '' }}
-      tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api-docker-tag || '' }}
-      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-docker-tag || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
+      coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator || '' }}
+      postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman || '' }}
+      prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.prover || '' }}
+      tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api || '' }}
+      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
@@ -341,6 +341,56 @@ jobs:
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit
 
-# retag docker tag with image_tag_suffix for unchanged tag components
+  # retag docker image tags with image_tag_suffix for tag-unchanged components
+  retag-latest-docker-tags:
+    needs: [component-release-metadata, component-latest-docker-tags, run-e2e-tests]
+    if: >
+      always() && !cancelled() &&
+      needs.run-e2e-tests.result == 'success' &&
+      needs.component-latest-docker-tags.result == 'success'
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
+    strategy:
+      fail-fast: true
+      matrix:
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        include:
+          - component: coordinator
+            image-name: linea-coordinator
+          - component: prover
+            image-name: linea-prover
+          - component: postman
+            image-name: linea-postman
+          - component: tx-exclusion-api
+            image-name: linea-transaction-exclusion-api
+          - component: linea-besu
+            image-name: linea-besu-package
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      
+      - name: Retag latest docker tag
+        id: retag-latest-docker-tag
+        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ matrix.image-name }}
+          IMAGE_TAG: ${{ needs.component-latest-docker-tags.outputs[matrix.component] }}
+          IMAGE_TAG_SUFFIX: ${{ inputs.image_tag_suffix }}
+        run: |
+          SOURCE_IMAGE="consensys/${IMAGE_NAME}:${IMAGE_TAG}"
+          TARGET_IMAGE="consensys/${IMAGE_NAME}:${IMAGE_TAG}-${IMAGE_TAG_SUFFIX}"
+
+          docker buildx imagetools create --tag "${TARGET_IMAGE}" "${SOURCE_IMAGE}"
+
+          # docker pull "${SOURCE_IMAGE}"
+          # docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}"
+          # docker push "${TARGET_IMAGE}"
+      
 # prepend CHANGELOG for each component for linea release (and then create PR)
 # tag linea release with aggregated included-path

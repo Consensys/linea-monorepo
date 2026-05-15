@@ -77,6 +77,7 @@ jobs:
     uses: ./.github/workflows/coordinator-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+      image_tag_with_suffix: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
       develop_tag: develop
       image_name: consensys/linea-coordinator
       push_image: true
@@ -88,6 +89,7 @@ jobs:
     uses: ./.github/workflows/postman-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+      image_tag_with_suffix: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
       develop_tag: develop
       image_name: consensys/linea-postman
       push_image: true
@@ -99,6 +101,7 @@ jobs:
     uses: ./.github/workflows/prover-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+      image_tag_with_suffix: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
       develop_tag: develop
       image_name: consensys/linea-prover
       push_image: true
@@ -110,6 +113,7 @@ jobs:
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
     with:
       image_tag: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+      image_tag_with_suffix: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
       develop_tag: develop
       image_name: consensys/linea-transaction-exclusion-api
       push_image: true
@@ -135,7 +139,7 @@ jobs:
           # Pass via env to avoid shell injection: changelog content is derived
           # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
           CHANGELOG: ${{ inputs.changelog }}
-          DOCKER_TAG: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+          DOCKER_TAG: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
           DOCKER_IMAGE_SUFFIX: ${{ inputs.folder-name }}
         run: |
           mkdir release && cd release
