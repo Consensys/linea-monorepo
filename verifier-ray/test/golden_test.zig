@@ -120,6 +120,36 @@ test "lagrange polynomial evaluation matches prover-ray golden cases" {
     }
 }
 
+test "lagrange evaluation returns domain value at roots of unity" {
+    const base_values = [_]field.Element{
+        elem(3),
+        elem(1),
+        elem(4),
+        elem(1),
+    };
+    const ext_values = [_]ext.Ext{
+        extElem(.{ 3, 1, 4, 1 }),
+        extElem(.{ 5, 9, 2, 6 }),
+        extElem(.{ 5, 3, 5, 8 }),
+        extElem(.{ 9, 7, 9, 3 }),
+    };
+
+    const omega = try field.rootOfUnityBy(base_values.len);
+    var domain_point = field.Element.one();
+    for (base_values, ext_values) |base_value, ext_value| {
+        try expectElem(try lagrange.evaluateBaseAtBase(&base_values, domain_point), base_value.value);
+        try expectExt(try lagrange.evaluateBaseAtExt(&base_values, ext.Ext.lift(domain_point)), .{
+            base_value.value,
+            0,
+            0,
+            0,
+        });
+        try expectExt(try lagrange.evaluateExtAtBase(&ext_values, domain_point), extValues(ext_value));
+        try expectExt(try lagrange.evaluateExtAtExt(&ext_values, ext.Ext.lift(domain_point)), extValues(ext_value));
+        domain_point = domain_point.mul(omega);
+    }
+}
+
 test "poseidon2 compression and merkle-damgard match prover-ray golden cases" {
     for (vectors.poseidon_compress_cases) |case| {
         try expectDigest(poseidon2.compress(digest(case.left), digest(case.right)), case.expected);
@@ -192,6 +222,15 @@ fn expectExt(actual: ext.Ext, expected: [4]u32) !void {
     for (actual.limbs, expected) |actual_limb, expected_limb| {
         try expectElem(actual_limb, expected_limb);
     }
+}
+
+fn extValues(value: ext.Ext) [4]u32 {
+    return .{
+        value.limbs[0].value,
+        value.limbs[1].value,
+        value.limbs[2].value,
+        value.limbs[3].value,
+    };
 }
 
 fn expectDigest(actual: poseidon2.Digest, expected: [8]u32) !void {
