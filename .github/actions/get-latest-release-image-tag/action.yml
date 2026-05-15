@@ -38,7 +38,9 @@ runs:
         git fetch origin "$TARGET_REF"
 
         # Loop tags sorted by version, find the first one reachable from the target branch
-        LATEST_TAG=$(git tag --list "releases/$COMPONENT/v*" --sort=-version:refname \
+        LATEST_TAG=$(git tag --list "releases/${COMPONENT}/v*" \
+          | grep -E "^releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$" \
+          | sort -V \
           | while read tag; do
               if git merge-base --is-ancestor "$tag" "origin/$TARGET_REF"; then
                 echo "$tag"
