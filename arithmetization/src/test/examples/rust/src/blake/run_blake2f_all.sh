@@ -10,6 +10,7 @@ selector="${1:-}"
 cases=$(python3 blake/blake2f_all_to_in_bytes.py "$vectors") || exit 1
 if [[ -n "$selector" ]]; then
   if [[ "$selector" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+    # BASH_REMATCH contains the regex captures from the selector range
     cases=$(printf '%s\n' "$cases" | awk -F: -v start="${BASH_REMATCH[1]}" -v end="${BASH_REMATCH[2]}" '$1 >= start && $1 <= end')
   elif [[ "$selector" =~ ^[0-9]+$ ]]; then
     cases=$(printf '%s\n' "$cases" | awk -F: -v n="$selector" '$1 == n')
