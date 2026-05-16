@@ -46,7 +46,7 @@ jobs:
 
       # Build the new milestone section in a standalone temp file so we never
       # touch the existing CHANGELOG.md content during prepend/demote/header.
-      - name: Initialise temp milestone CHANGELOG
+      - name: Initialize temp milestone CHANGELOG
         run: |
           set -euo pipefail
           : > "${TMP_CHANGELOG}"
@@ -104,12 +104,12 @@ jobs:
             postman/**
             prover/**
             transaction-exclusion-api/**
-            'tracer/**'
-            'tracer-constraints/**'
-            'linea-besu/plugins/linea-sequencer/**'
-            'linea-besu/besu/**'
-            'linea-besu/package/**'
-            'gradle/libs.versions.toml'
+            tracer/**
+            tracer-constraints/**
+            linea-besu/plugins/linea-sequencer/**
+            linea-besu/besu/**
+            linea-besu/package/**
+            gradle/libs.versions.toml
           release_tag_suffix: ''
 
       # Prepend the milestone version header, e.g. "## [1.1.0] - 2026-05-16".
