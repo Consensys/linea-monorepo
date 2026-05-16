@@ -147,17 +147,37 @@ jobs:
 
       - name: Create Github App token (for create a PR on main)
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
-        id: app_token
+        id: app-token
         with:
           app-id: ${{ secrets.CREATE_GITHUB_PR_APP_ID }}
           private-key: ${{ secrets.CREATE_GITHUB_PR_PRIVATE_KEY }}
+
+      # Look up the App's bot user id so the commit author email follows
+      # GitHub's canonical noreply format and shows up under the App in the UI.
+      - name: Resolve bot user id
+        id: bot-user
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          USER_ID: ${{ steps.bot-user.outputs.user-id }}
+        run: |
+          git config user.name  "${APP_SLUG}[bot]"
+          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         env:
           RELEASE_VERSION: ${{ steps.compute-release-tag.outputs.next_version }}
         with:
-          token: ${{ steps.app_token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(linea): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }} [skip ci]"
           branch: ci/chore-linea-milestone-changelog-v${{ env.RELEASE_VERSION }}
           base: ${{ github.head_ref || github.ref_name }}
