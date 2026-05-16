@@ -20,20 +20,26 @@ jobs:
         include:
           - component: coordinator
             folder-name: coordinator
-            include-path: 'coordinator/**'
+            include-path: coordinator/**
           - component: prover
             folder-name: prover
-            include-path: 'prover/**'
+            include-path: prover/**
           - component: postman
             folder-name: postman
-            include-path: 'postman/**'
+            include-path: postman/**
           - component: tx-exclusion-api
             folder-name: transaction-exclusion-api
-            include-path: 'transaction-exclusion-api/**'
+            include-path: transaction-exclusion-api/**
           - component: linea-besu
             folder-name: linea-besu/package
             artifact-name: linea-besu-package
-            include-path: [ 'tracer/**', 'tracer-constraints/**', 'linea-besu/plugins/linea-sequencer/**', 'linea-besu/besu/**', 'linea-besu/package/**', 'gradle/libs.versions.toml' ]
+            include-path: |
+              tracer/**
+              tracer-constraints/**
+              linea-besu/plugins/linea-sequencer/**
+              linea-besu/besu/**
+              linea-besu/package/**
+              gradle/libs.versions.toml
 
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
@@ -57,7 +63,7 @@ jobs:
         with:
           component-name: ${{ matrix.component }}
           folder-name: ${{ matrix.folder-name }}
-          include-path: ${{ toJSON(matrix.include-path) }}
+          include-path: ${{ matrix.include-path }}
           prepend-changelog: 'true'
 
       - name: Upload CHANGELOG.md artifact

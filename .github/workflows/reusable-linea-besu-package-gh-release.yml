@@ -54,7 +54,13 @@ jobs:
     with:
       component-name: linea-besu
       folder-name: linea-besu/package
-      include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
+      include-path: |
+        tracer/**
+        tracer-constraints/**
+        linea-besu/plugins/linea-sequencer/**
+        linea-besu/besu/**
+        linea-besu/package/**
+        gradle/libs.versions.toml
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
     secrets: inherit
 

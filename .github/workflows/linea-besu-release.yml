@@ -86,7 +86,12 @@ jobs:
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: linea-besu
-      include-path: '["tracer/**","tracer-constraints/**","linea-besu/plugins/linea-sequencer/**","linea-besu/**","gradle/libs.versions.toml"]'
+      include-path:
+        tracer/**
+        tracer-constraints/**
+        linea-besu/plugins/linea-sequencer/**
+        linea-besu/**
+        gradle/libs.versions.toml
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
 
   build-and-upload-artifact:

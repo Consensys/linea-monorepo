@@ -9,7 +9,15 @@ inputs:
     description: "Folder name of the component which hosts CHANGELOG.md (e.g. linea-besu's home folder is linea-besu/package)"
     required: false
   include-path:
-    description: "git-cliff --include-path filter, either single path (e.g. '\"coordinator/**\"') or JSON array string (e.g. '[\"tracer/**\",\"linea-besu/**\"]')"
+    description: |
+      git-cliff --include-path filter, as a newline-separated string (one path per line, YAML literal block):
+
+        include-path: |
+          tracer/**
+          tracer-constraints/**
+          linea-besu/**
+
+      Blank/whitespace-only lines are ignored; leading/trailing whitespace on each line is trimmed.
     required: true
   cliff-config:
     description: "Path to the cliff.toml config file"
@@ -45,13 +53,9 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    # Normalize inputs.include-path into one path per line so downstream
-    # steps reconstruct a bash array safely. Accepts any of:
-    #   - bare path           e.g. coordinator/**
-    #   - JSON string scalar  e.g. "coordinator/**"
-    #   - JSON array string   e.g. ["tracer/**","linea-besu/**"]
-    # Bare paths are not valid JSON, so we probe with `jq -e .` first and
-    # fall back to emitting the input verbatim when JSON parsing fails.
+    # Normalize inputs.include-path (newline-separated paths) into one
+    # trimmed, non-empty path per line so downstream steps can reconstruct a
+    # bash array safely.
     - name: Build include-path list
       id: paths
       shell: bash
@@ -61,12 +65,8 @@ runs:
         set -euo pipefail
         {
           echo 'include_paths<<__PATHS_EOF__'
-          if printf '%s' "$INCLUDE_PATH" | jq -e . >/dev/null 2>&1; then
-            printf '%s' "$INCLUDE_PATH" \
-              | jq -r 'if type == "array" then .[] else . end'
-          else
-            printf '%s\n' "$INCLUDE_PATH"
-          fi
+          printf '%s\n' "$INCLUDE_PATH" \
+            | awk '{ sub(/^[[:space:]]+/,""); sub(/[[:space:]]+$/,""); if (length) print }'
           echo '__PATHS_EOF__'
         } >> "$GITHUB_OUTPUT"
 

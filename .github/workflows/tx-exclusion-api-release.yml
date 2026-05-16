@@ -77,7 +77,7 @@ jobs:
     with:
       component-name: tx-exclusion-api
       folder-name: transaction-exclusion-api
-      include-path: '"transaction-exclusion-api/**"'
+      include-path: transaction-exclusion-api/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
       draft_release: ${{ inputs.draft_release }}
