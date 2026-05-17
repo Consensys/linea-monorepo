@@ -1,9 +1,16 @@
 #!/usr/bin/env sh
-# Print a redacted, milestone-oriented status report for the Linea quickstart.
+# Print a redacted, milestone-oriented status report for the Lineth quickstart.
 # Run from docs/getting-started/linea-stack while the stack is booting.
 set -eu
 
-section() { printf '\n[linea-status] %s\n' "$*"; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="status"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+
+lineth_banner "status · local L2 + Sepolia finality"
 
 env_value() {
   key="$1"
@@ -44,17 +51,17 @@ shared_addr() {
 }
 
 if ! docker info >/dev/null 2>&1; then
-  echo "[linea-status] ERROR: Docker daemon is not reachable from this shell." >&2
-  exit 1
+  lineth_die "Docker daemon is not reachable from this shell."
 fi
 
 section "containers"
 docker ps -a --format 'table {{.Names}}\t{{.Status}}' \
-  | awk 'NR == 1 || /^(account-setup|config-render|l2-genesis-init|sequencer|l2-node-besu|shomei|deploy-contracts|coordinator|prover|postman|web3signer|maru|l2-blockscout)[[:space:]]/'
+  | awk 'NR == 1 || /^(account-setup|config-render|l2-genesis-init|sequencer|l2-node-besu|shomei|deploy-contracts|coordinator|prover|postman|web3signer|maru|l2-blockscout)[[:space:]]/' \
+  | lineth_indent
 
 section "deploy milestones"
 if ! docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
-  echo "shared volume missing: deploy has not started"
+  lineth_warn "shared volume missing: deploy has not started"
 else
   docker run --rm -v linea-stack-shared-config:/shared:ro busybox sh -eu -c '
     if [ -f /shared/addresses-precomputed.json ]; then
@@ -83,7 +90,7 @@ else
         echo "$name: present, no deploy marker yet"
       fi
     done
-  '
+  ' | lineth_indent
 fi
 
 section "chain / prover config"
@@ -94,9 +101,9 @@ chain_response="$(curl -s -X POST -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
   "$L2_RPC_URL" 2>/dev/null || true)"
 if [ -n "$chain_response" ]; then
-  echo "l2 rpc eth_chainId: $chain_response"
+  lineth_kv "l2 rpc eth_chainId" "$chain_response"
 else
-  echo "l2 rpc eth_chainId: unavailable at $L2_RPC_URL"
+  lineth_warn "l2 rpc eth_chainId unavailable at $L2_RPC_URL"
 fi
 
 local_l2_latest_block_dec=""
@@ -106,9 +113,9 @@ block_response="$(curl -s -X POST -H "Content-Type: application/json" \
 local_l2_latest_block_hex="$(printf '%s\n' "$block_response" | json_string_field result)"
 if [ -n "$local_l2_latest_block_hex" ] && [ "$local_l2_latest_block_hex" != "0x" ]; then
   local_l2_latest_block_dec="$(hex_to_dec_small "$local_l2_latest_block_hex")"
-  echo "l2 rpc latest block: $local_l2_latest_block_dec ($local_l2_latest_block_hex)"
+  lineth_kv "l2 rpc latest block" "$local_l2_latest_block_dec ($local_l2_latest_block_hex)"
 else
-  echo "l2 rpc latest block: unavailable at $L2_RPC_URL"
+  lineth_warn "l2 rpc latest block unavailable at $L2_RPC_URL"
 fi
 
 if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
@@ -116,7 +123,7 @@ if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
     if [ -f /shared/addresses.json ]; then
       sed -nE "s/.*\"l2ChainId\":[[:space:]]*\"?([0-9]+)\"?.*/addresses.json l2ChainId: \1/p" /shared/addresses.json | head -1
     fi
-  '
+  ' | lineth_indent
 fi
 
 if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
@@ -126,9 +133,9 @@ if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
     else
       echo "rendered prover config: missing"
     fi
-  '
+  ' | lineth_indent
 else
-  echo "rendered config volume missing"
+  lineth_warn "rendered config volume missing"
 fi
 
 section "l1 data availability vs finalization"
@@ -138,9 +145,9 @@ if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
 fi
 
 if [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
-  echo "LineaRollupV8: $LINEA_ROLLUP_ADDRESS"
+  lineth_kv "LineaRollupV8" "$LINEA_ROLLUP_ADDRESS"
 else
-  echo "LineaRollupV8: unavailable until addresses.json exists"
+  lineth_warn "LineaRollupV8 unavailable until addresses.json exists"
 fi
 
 latest_blob_tx=""
@@ -159,19 +166,19 @@ if docker ps -a --format '{{.Names}}' | grep -qx coordinator; then
 fi
 
 if [ -n "$latest_blob_tx" ]; then
-  echo "latest blob tx (DA only): $latest_blob_tx"
+  lineth_kv "latest blob tx (DA only)" "$latest_blob_tx"
 else
-  echo "latest blob tx (DA only): none seen in coordinator logs yet"
+  lineth_info "latest blob tx (DA only): none seen in coordinator logs yet"
 fi
 
 if [ -n "$latest_finalization_tx" ]; then
   if [ -n "$latest_finalization_window" ]; then
-    echo "latest finalization tx: $latest_finalization_tx aggregation=$latest_finalization_window"
+    lineth_kv "latest finalization tx" "$latest_finalization_tx aggregation=$latest_finalization_window"
   else
-    echo "latest finalization tx: $latest_finalization_tx"
+    lineth_kv "latest finalization tx" "$latest_finalization_tx"
   fi
 else
-  echo "latest finalization tx: none seen in coordinator logs yet"
+  lineth_info "latest finalization tx: none seen in coordinator logs yet"
 fi
 
 L1_RPC_URL="${L1_RPC_URL:-$(env_value L1_RPC_URL || true)}"
@@ -182,15 +189,15 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
   l2_finalized_hex="$(printf '%s\n' "$l2_finalized_resp" | json_string_field result)"
   if [ -n "$l2_finalized_hex" ] && [ "$l2_finalized_hex" != "0x" ]; then
     rollup_current_l2_block_dec="$(hex_to_dec_small "$l2_finalized_hex")"
-    echo "rollup currentL2BlockNumber: $rollup_current_l2_block_dec ($l2_finalized_hex)"
+    lineth_kv "rollup currentL2BlockNumber" "$rollup_current_l2_block_dec ($l2_finalized_hex)"
     if is_uint "$rollup_current_l2_block_dec" \
       && is_uint "$local_l2_latest_block_dec" \
       && [ "$rollup_current_l2_block_dec" -gt "$local_l2_latest_block_dec" ]; then
-      echo "WARNING: rollup finalized block is ahead of local L2 latest block."
-      echo "WARNING: local chain state does not match the preserved L1 rollup state; run docker compose down -v for a clean boot."
+      lineth_warn "rollup finalized block is ahead of local L2 latest block."
+      lineth_warn "local chain state does not match the preserved L1 rollup state; run docker compose down -v for a clean boot."
     fi
   else
-    echo "rollup currentL2BlockNumber: unavailable"
+    lineth_warn "rollup currentL2BlockNumber unavailable"
   fi
 
   if [ -n "$latest_finalization_tx" ]; then
@@ -200,11 +207,11 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
     finalization_input="$(printf '%s\n' "$finalization_tx_resp" | json_string_field input)"
     finalization_selector="$(printf '%.10s' "$finalization_input")"
     if [ "$finalization_selector" = "0x755bc62f" ]; then
-      echo "latest finalization method: finalizeBlocks(bytes,uint256,tuple) selector=$finalization_selector"
+      lineth_kv "latest finalization method" "finalizeBlocks(bytes,uint256,tuple) selector=$finalization_selector"
     elif [ -n "$finalization_selector" ]; then
-      echo "latest finalization method: unexpected selector=$finalization_selector"
+      lineth_warn "latest finalization method unexpected selector=$finalization_selector"
     else
-      echo "latest finalization method: unavailable"
+      lineth_warn "latest finalization method unavailable"
     fi
 
     finalization_receipt_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
@@ -220,13 +227,13 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
       *) state_updated="no" ;;
     esac
     if [ -n "$finalization_status" ]; then
-      echo "latest finalization receipt: status=$finalization_status DataFinalizedV3=$data_finalized FinalizedStateUpdated=$state_updated"
+      lineth_kv "latest finalization receipt" "status=$finalization_status DataFinalizedV3=$data_finalized FinalizedStateUpdated=$state_updated"
     else
-      echo "latest finalization receipt: unavailable"
+      lineth_warn "latest finalization receipt unavailable"
     fi
   fi
 else
-  echo "Sepolia rollup state check: skipped (L1_RPC_URL or LineaRollupV8 unavailable)"
+  lineth_info "Sepolia rollup state check skipped: L1_RPC_URL or LineaRollupV8 unavailable"
 fi
 
 section "coordinator"
@@ -251,22 +258,25 @@ if docker ps --format '{{.Names}}' | grep -qx coordinator; then
       fi
       echo "prover $lane: requests=$requests responses=$responses failed=$failed inprogress=$inprogress"
     done
-  '
+  ' | lineth_indent
   docker logs --tail 200 coordinator 2>&1 \
     | grep -E 'Rollup finalized block updated|execution proof request generated|blob compression proof generated|blobs to submit|aggregation proof|submitted|finalized|ERROR|WARN' \
     | tail -25 \
-    | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' || true
+    | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
+    | lineth_indent || true
 else
-  echo "coordinator: not running"
+  lineth_warn "coordinator not running"
 fi
 
 section "prover"
 if docker ps --format '{{.Names}}' | grep -qx prover; then
-  docker stats --no-stream --format 'prover resources: mem={{.MemUsage}} cpu={{.CPUPerc}}' prover 2>/dev/null || true
+  docker stats --no-stream --format 'prover resources: mem={{.MemUsage}} cpu={{.CPUPerc}}' prover 2>/dev/null \
+    | lineth_indent || true
   docker logs --tail 120 prover 2>&1 \
     | grep -E 'ERROR|WARN|Running the|Chain config|IsAllowedCircuitID|proof|request|response|done|completed|failed' \
     | tail -25 \
-    | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' || true
+    | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
+    | lineth_indent || true
 else
-  echo "prover: not running"
+  lineth_warn "prover not running"
 fi

@@ -2,9 +2,14 @@
 # Run continuous L2 ERC20Example transfer traffic for Blockscout/prover demos.
 set -eu
 
-section() { printf '\n[l2-erc20-traffic] %s\n' "$*"; }
-log() { printf '[l2-erc20-traffic] %s\n' "$*"; }
-die() { printf '[l2-erc20-traffic] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="l2-erc20-traffic"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+log() { lineth_info "$*"; }
+die() { lineth_die "$*"; }
 
 env_value() {
   key="$1"
@@ -29,6 +34,8 @@ container_running() {
 command="${1:-start}"
 CONTAINER_NAME="${TRAFFIC_CONTAINER_NAME:-linea-l2-erc20-traffic}"
 
+lineth_banner "ERC20 traffic · start/logs/stop"
+
 if ! docker info >/dev/null 2>&1; then
   die "Docker daemon is not reachable"
 fi
@@ -42,7 +49,7 @@ esac
 
 if [ "$command" = "status" ]; then
   if container_running; then
-    docker ps --filter "name=^/${CONTAINER_NAME}$" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+    docker ps --filter "name=^/${CONTAINER_NAME}$" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | lineth_indent
   elif container_exists; then
     log "$CONTAINER_NAME exists but is not running"
   else
@@ -55,7 +62,7 @@ if [ "$command" = "logs" ]; then
   if ! container_exists; then
     die "$CONTAINER_NAME does not exist"
   fi
-  docker logs -f --tail "${TAIL:-80}" "$CONTAINER_NAME"
+  docker logs -f --tail "${TAIL:-80}" "$CONTAINER_NAME" 2>&1 | lineth_clean_prefixes
   exit 0
 fi
 
@@ -113,7 +120,7 @@ L2_TRAFFIC_ERC20_MIN_BALANCE_WEI="${L2_TRAFFIC_ERC20_MIN_BALANCE_WEI:-100}"
 L2_TRAFFIC_ERC20_TOP_UP_WEI="${L2_TRAFFIC_ERC20_TOP_UP_WEI:-10000}"
 
 section "starting continuous ERC20Example traffic"
-docker run -d \
+container_id="$(docker run -d \
   --name "$CONTAINER_NAME" \
   --user 0:0 \
   --entrypoint sh \
@@ -227,7 +234,9 @@ docker run -d \
 
     echo "[l2-erc20-traffic] completed maxTxs=$MAX_TXS"
   '
+)"
 
+lineth_kv "container id" "$container_id"
 log "started $CONTAINER_NAME"
 log "Blockscout UI: $BLOCKSCOUT_BASE_URL"
 log "tail it with: $0 logs"

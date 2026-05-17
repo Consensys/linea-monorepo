@@ -6,9 +6,16 @@
 # path, and verifies the Sepolia claim receipt emitted MessageClaimed.
 set -eu
 
-section() { printf '\n[bridge-smoke-l2-to-l1] %s\n' "$*"; }
-log() { printf '[bridge-smoke-l2-to-l1] %s\n' "$*"; }
-die() { printf '[bridge-smoke-l2-to-l1] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="bridge-smoke-l2-to-l1"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+log() { lineth_info "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "bridge smoke · L2 to L1 message"
 
 env_value() {
   key="$1"
@@ -255,7 +262,7 @@ SEND_OUTPUT="$(
       printf "[bridge-smoke-l2-to-l1] l2Block=%s\n" "$block_number"
     '
 )"
-printf '%s\n' "$SEND_OUTPUT"
+printf '%s\n' "$SEND_OUTPUT" | lineth_child_output
 
 L2_SENDER="$(printf '%s\n' "$SEND_OUTPUT" | sed -nE 's/.*sender=(0x[a-fA-F0-9]{40}).*/\1/p' | tail -1)"
 L2_TX_HASH="$(printf '%s\n' "$SEND_OUTPUT" | sed -nE 's/.*l2Tx=(0x[a-fA-F0-9]{64}).*/\1/p' | tail -1)"

@@ -7,9 +7,16 @@
 # needed, and verifies the L1 ERC20Example recipient balance increased.
 set -eu
 
-section() { printf '\n[erc20-bridge-l2-to-l1] %s\n' "$*"; }
-log() { printf '[erc20-bridge-l2-to-l1] %s\n' "$*"; }
-die() { printf '[erc20-bridge-l2-to-l1] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="erc20-bridge-l2-to-l1"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+log() { lineth_info "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "ERC20 bridge smoke · L2 to L1"
 
 env_value() {
   key="$1"
@@ -333,7 +340,7 @@ SEND_OUTPUT="$(
       printf "[erc20-bridge-l2-to-l1] bridgeBlock=%s\n" "$bridge_block"
     '
 )"
-printf '%s\n' "$SEND_OUTPUT"
+printf '%s\n' "$SEND_OUTPUT" | lineth_child_output
 
 APPROVE_TX_HASH="$(printf '%s\n' "$SEND_OUTPUT" | sed -nE 's/.*approveTx=(0x[a-fA-F0-9]{64}).*/\1/p' | tail -1)"
 BRIDGE_TX_HASH="$(printf '%s\n' "$SEND_OUTPUT" | sed -nE 's/.*bridgeTx=(0x[a-fA-F0-9]{64}).*/\1/p' | tail -1)"

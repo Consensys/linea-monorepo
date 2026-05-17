@@ -315,6 +315,7 @@ check_partial_prover_guardrails() {
 check_reuse_guardrails() {
   deploy_contracts="$STACK/scripts/deploy-contracts.sh"
   status_script="$STACK/scripts/status.sh"
+  logging_lib="$STACK/scripts/lib/logging.sh"
 
   if grep -q 'step_already_done_with_code' "$deploy_contracts" \
     && grep -q 'cast code' "$deploy_contracts" \
@@ -334,10 +335,23 @@ check_reuse_guardrails() {
   else
     fail "status.sh must warn when preserved L1 rollup state is ahead of local L2"
   fi
+
+  if [ -f "$logging_lib" ] \
+    && sh -n "$logging_lib" \
+    && grep -q 'lineth_banner' "$logging_lib" \
+    && grep -q 'lineth_section' "$logging_lib" \
+    && grep -q 'lib/logging.sh' "$status_script" \
+    && grep -q 'lineth_banner "status' "$status_script"; then
+    pass "status.sh uses the shared Lineth terminal logger"
+  else
+    fail "status.sh must use scripts/lib/logging.sh for the Lineth terminal banner"
+  fi
 }
 
 check_smoke_and_traffic_scripts() {
-  for script in check-ports.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh smoke-bridge-erc20-l1-to-l2.sh smoke-bridge-message-l2-to-l1.sh smoke-bridge-erc20-l2-to-l1.sh; do
+  user_facing_scripts="check-ports.sh links.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh smoke-bridge-erc20-l1-to-l2.sh smoke-bridge-message-l2-to-l1.sh smoke-bridge-erc20-l2-to-l1.sh"
+
+  for script in $user_facing_scripts; do
     script_path="$STACK/scripts/$script"
     if [ -x "$script_path" ]; then
       pass "$script is executable"
@@ -349,6 +363,14 @@ check_smoke_and_traffic_scripts() {
       pass "$script has valid shell syntax"
     elif [ -f "$script_path" ]; then
       fail "$script has invalid shell syntax"
+    fi
+
+    if [ -f "$script_path" ] \
+      && grep -q 'lib/logging.sh' "$script_path" \
+      && grep -q 'lineth_banner' "$script_path"; then
+      pass "$script uses the shared Lineth terminal logger"
+    elif [ -f "$script_path" ]; then
+      fail "$script must use scripts/lib/logging.sh for terminal output"
     fi
   done
 

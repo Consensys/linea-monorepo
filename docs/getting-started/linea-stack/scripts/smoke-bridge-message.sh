@@ -6,9 +6,16 @@
 # checks the recipient L2 balance increased by the bridged value.
 set -eu
 
-section() { printf '\n[bridge-smoke] %s\n' "$*"; }
-log() { printf '[bridge-smoke] %s\n' "$*"; }
-die() { printf '[bridge-smoke] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="bridge-smoke"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+log() { lineth_info "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "bridge smoke · L1 to L2 message"
 
 env_value() {
   key="$1"

@@ -2,7 +2,14 @@
 # Print local quickstart links and L1/L2 explorer URLs from the shared runtime volume.
 set -eu
 
-section() { printf '\n[linea-links] %s\n' "$*"; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="links"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+
+lineth_banner "links · local services + explorers"
 
 env_value() {
   key="$1"
@@ -23,13 +30,11 @@ HOST_PORT_POSTMAN="$(with_default "${HOST_PORT_POSTMAN:-$(env_value HOST_PORT_PO
 HOST_PORT_COORDINATOR="$(with_default "${HOST_PORT_COORDINATOR:-$(env_value HOST_PORT_COORDINATOR || true)}" 9545)"
 
 if ! docker info >/dev/null 2>&1; then
-  echo "[linea-links] ERROR: Docker daemon is not reachable." >&2
-  exit 1
+  lineth_die "Docker daemon is not reachable."
 fi
 
 if ! docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
-  echo "[linea-links] ERROR: linea-stack-shared-config volume not found. Boot the stack first." >&2
-  exit 1
+  lineth_die "linea-stack-shared-config volume not found. Boot the stack first."
 fi
 
 TMP_DIR="$(mktemp -d)"
@@ -58,22 +63,22 @@ print_l1() {
   label="$1"
   addr="$2"
   [ -n "$addr" ] || return 0
-  printf '%-28s %s\n' "$label" "https://sepolia.etherscan.io/address/$addr"
+  lineth_kv "$label" "https://sepolia.etherscan.io/address/$addr"
 }
 
 print_l2() {
   label="$1"
   addr="$2"
   [ -n "$addr" ] || return 0
-  printf '%-28s %s\n' "$label" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT_FRONTEND/address/$addr"
+  lineth_kv "$label" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT_FRONTEND/address/$addr"
 }
 
 section "local services"
-printf '%-28s %s\n' "L2 RPC" "http://localhost:$HOST_PORT_L2_RPC"
-printf '%-28s %s\n' "L2 Blockscout UI" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT_FRONTEND"
-printf '%-28s %s\n' "L2 Blockscout API" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT"
-printf '%-28s %s\n' "Postman API" "http://localhost:$HOST_PORT_POSTMAN"
-printf '%-28s %s\n' "Coordinator observability" "http://localhost:$HOST_PORT_COORDINATOR"
+lineth_kv "L2 RPC" "http://localhost:$HOST_PORT_L2_RPC"
+lineth_kv "L2 Blockscout UI" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT_FRONTEND"
+lineth_kv "L2 Blockscout API" "http://localhost:$HOST_PORT_L2_BLOCKSCOUT"
+lineth_kv "Postman API" "http://localhost:$HOST_PORT_POSTMAN"
+lineth_kv "Coordinator observability" "http://localhost:$HOST_PORT_COORDINATOR"
 
 if [ -s "$PRE" ]; then
   section "pre-boot contract links"
@@ -81,15 +86,15 @@ if [ -s "$PRE" ]; then
   print_l2 "L2MessageService" "$(json_addr "$PRE" l2 L2MessageService)"
 
   section "runtime signer addresses"
-  printf '%-28s %s\n' "L1 blob submitter" "$(json_field "$PRE" l1BlobSubmitterAddress)"
-  printf '%-28s %s\n' "L1 finalization" "$(json_field "$PRE" l1FinalizationSubmitterAddress)"
-  printf '%-28s %s\n' "L1 postman" "$(json_field "$PRE" l1PostmanAddress)"
-  printf '%-28s %s\n' "L2 deployer" "$(json_field "$PRE" l2DeployerAddress)"
-  printf '%-28s %s\n' "L2 anchorer" "$(json_field "$PRE" l2MessageAnchoringAddress)"
-  printf '%-28s %s\n' "L2 postman" "$(json_field "$PRE" l2PostmanAddress)"
+  lineth_kv "L1 blob submitter" "$(json_field "$PRE" l1BlobSubmitterAddress)"
+  lineth_kv "L1 finalization" "$(json_field "$PRE" l1FinalizationSubmitterAddress)"
+  lineth_kv "L1 postman" "$(json_field "$PRE" l1PostmanAddress)"
+  lineth_kv "L2 deployer" "$(json_field "$PRE" l2DeployerAddress)"
+  lineth_kv "L2 anchorer" "$(json_field "$PRE" l2MessageAnchoringAddress)"
+  lineth_kv "L2 postman" "$(json_field "$PRE" l2PostmanAddress)"
 else
   section "pre-boot contract links"
-  echo "addresses-precomputed.json missing"
+  lineth_warn "addresses-precomputed.json missing"
 fi
 
 if [ -s "$ADDR" ]; then
@@ -105,5 +110,5 @@ if [ -s "$ADDR" ]; then
   print_l2 "ERC20Example" "$(json_addr "$ADDR" l2 ERC20Example)"
 else
   section "deployed contracts"
-  echo "addresses.json missing; deploy-contracts has not completed yet"
+  lineth_warn "addresses.json missing; deploy-contracts has not completed yet"
 fi

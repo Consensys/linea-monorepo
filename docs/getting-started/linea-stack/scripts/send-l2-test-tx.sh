@@ -2,8 +2,15 @@
 # Send one or more tiny L2 ETH transfers to make the local L2 and Blockscout move.
 set -eu
 
-section() { printf '\n[l2-test-tx] %s\n' "$*"; }
-die() { printf '[l2-test-tx] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="l2-test-tx"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "L2 ETH transfer · local sequencer"
 
 env_value() {
   key="$1"
@@ -45,7 +52,7 @@ HOST_PORT_L2_BLOCKSCOUT_FRONTEND="$(with_default "${HOST_PORT_L2_BLOCKSCOUT_FRON
 BLOCKSCOUT_BASE_URL="${BLOCKSCOUT_BASE_URL:-http://localhost:$HOST_PORT_L2_BLOCKSCOUT_FRONTEND}"
 
 section "sending L2 ETH transfer(s)"
-docker run --rm \
+if ! lineth_run_stream docker run --rm \
   --user 0:0 \
   --entrypoint sh \
   --network linea-stack_linea \
@@ -93,6 +100,9 @@ docker run --rm \
     current_block=$(cast block-number --rpc-url "$L2_RPC_URL")
     printf "[l2-test-tx] currentL2Block=%s\n" "$current_block"
   '
+then
+  exit 1
+fi
 
 section "links"
-printf '[l2-test-tx] Blockscout UI: %s\n' "$BLOCKSCOUT_BASE_URL"
+lineth_kv "Blockscout UI" "$BLOCKSCOUT_BASE_URL"

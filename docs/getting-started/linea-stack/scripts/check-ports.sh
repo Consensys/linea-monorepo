@@ -2,8 +2,14 @@
 # Preflight host port collisions before starting the quickstart stack.
 set -eu
 
-section() { printf '\n[check-ports] %s\n' "$*"; }
-log() { printf '[check-ports] %s\n' "$*"; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="check-ports"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+
+lineth_banner "port preflight · local services"
 
 failures=0
 seen_ports=" "
@@ -44,7 +50,7 @@ check_port() {
 
   case "$port" in
     ''|*[!0-9]*)
-      log "FAIL $env_name must be a decimal port, got '$port'"
+      lineth_error "$env_name must be a decimal port, got '$port'"
       failures=$((failures + 1))
       return
       ;;
@@ -52,7 +58,7 @@ check_port() {
 
   case "$seen_ports" in
     *" $port "*)
-      log "FAIL duplicate quickstart host port $port at $env_name ($name)"
+      lineth_error "duplicate quickstart host port $port at $env_name ($name)"
       failures=$((failures + 1))
       return
       ;;
@@ -61,10 +67,10 @@ check_port() {
 
   owner="$(port_owner "$port" || true)"
   if [ -n "$owner" ]; then
-    log "BUSY $env_name=$port ($name) -> $owner"
+    lineth_error "$env_name=$port ($name) -> $owner"
     failures=$((failures + 1))
   else
-    log "OK   $env_name=$port ($name)"
+    lineth_ok "$env_name=$port ($name)"
   fi
 }
 
@@ -86,7 +92,7 @@ check_port "Blockscout frontend" HOST_PORT_L2_BLOCKSCOUT_FRONTEND 4001
 
 if [ "$failures" -gt 0 ]; then
   section "found $failures port issue(s)"
-  log "Stop the conflicting service or override the matching HOST_PORT_* in .env."
+  lineth_info "Stop the conflicting service or override the matching HOST_PORT_* in .env."
   exit 1
 fi
 

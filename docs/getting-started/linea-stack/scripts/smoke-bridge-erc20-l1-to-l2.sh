@@ -6,9 +6,16 @@
 # local L2, and verifies the recipient received the bridged ERC20 balance.
 set -eu
 
-section() { printf '\n[erc20-bridge-smoke] %s\n' "$*"; }
-log() { printf '[erc20-bridge-smoke] %s\n' "$*"; }
-die() { printf '[erc20-bridge-smoke] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="erc20-bridge-l1-to-l2"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+log() { lineth_info "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "ERC20 bridge smoke · L1 to L2"
 
 env_value() {
   key="$1"

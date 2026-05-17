@@ -2,8 +2,15 @@
 # Transfer a tiny amount of the deployed L2 ERC20Example token.
 set -eu
 
-section() { printf '\n[l2-erc20-transfer] %s\n' "$*"; }
-die() { printf '[l2-erc20-transfer] ERROR: %s\n' "$*" >&2; exit 1; }
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
+LINETH_LOG_CONTEXT="l2-erc20-transfer"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/logging.sh"
+
+section() { lineth_section "$*"; }
+die() { lineth_die "$*"; }
+
+lineth_banner "L2 ERC20Example transfer · demo account"
 
 env_value() {
   key="$1"
@@ -45,7 +52,7 @@ L2_TRAFFIC_ERC20_MIN_BALANCE_WEI="${L2_TRAFFIC_ERC20_MIN_BALANCE_WEI:-100}"
 L2_TRAFFIC_ERC20_TOP_UP_WEI="${L2_TRAFFIC_ERC20_TOP_UP_WEI:-10000}"
 
 section "sending L2 ERC20Example transfer"
-docker run --rm \
+if ! lineth_run_stream docker run --rm \
   --user 0:0 \
   --entrypoint sh \
   --network linea-stack_linea \
@@ -150,6 +157,9 @@ docker run --rm \
     printf "[l2-erc20-transfer] blockscout=%s/tx/%s\n" "$BLOCKSCOUT_BASE_URL" "$tx_hash"
     printf "[l2-erc20-transfer] tokenUrl=%s/token/%s\n" "$BLOCKSCOUT_BASE_URL" "$erc20"
   '
+then
+  exit 1
+fi
 
 section "links"
-printf '[l2-erc20-transfer] Blockscout UI: %s\n' "$BLOCKSCOUT_BASE_URL"
+lineth_kv "Blockscout UI" "$BLOCKSCOUT_BASE_URL"
