@@ -1,4 +1,14 @@
-# Linea Stack — quickstart (Sepolia L1)
+# Lineth Stack — quickstart (Sepolia L1)
+
+```text
+ _      ___ _   _ _____ _____ _   _      ____ _____  _    ____ _  __
+| |    |_ _| \ | | ____|_   _| | | |    / ___|_   _|/ \  / ___| |/ /
+| |     | ||  \| |  _|   | | | |_| |    \___ \ | | / _ \| |   | ' /
+| |___  | || |\  | |___  | | |  _  |     ___) || |/ ___ \ |___| . \
+|_____|___|_| \_|_____| |_| |_| |_|    |____/ |_/_/   \_\____|_|\_\
+
+                         quickstart (Sepolia L1)
+```
 
 Run a local Linea L2 stack that uses Sepolia as its L1. The quickstart deploys
 the required L1 contracts to Sepolia from your funded deployer account, starts a
