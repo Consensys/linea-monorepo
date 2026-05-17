@@ -227,6 +227,7 @@ jobs:
 
   component-latest-docker-tags:
     needs:
+      - component-release-metadata
       - build-local-coordinator
       - build-local-postman
       - build-local-prover
