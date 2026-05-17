@@ -382,6 +382,28 @@ step_already_done() {
   [[ -f "$logfile" ]] && grep -qE "^contract=${contract_name} deployed: " "$logfile"
 }
 
+# Same as step_already_done, but also verifies that the logged contract exists
+# on the target chain. This protects local L2 restarts: /shared/deploy-logs can
+# survive while local Besu chain state does not.
+step_already_done_with_code() {
+  local logfile="$1" contract_name="$2" rpc_url="$3" chain_label="$4"
+  local address code
+
+  if ! step_already_done "$logfile" "$contract_name"; then
+    return 1
+  fi
+
+  address="$(require_address "$logfile" "$contract_name")"
+  code="$(cast code "$address" --rpc-url "$rpc_url" 2>/dev/null || true)"
+  if [[ "$code" =~ ^0x[0-9a-fA-F]+$ && "$code" != "0x" ]]; then
+    log "$contract_name: prior $chain_label deploy log verified with on-chain code at $address"
+    return 0
+  fi
+
+  log "$contract_name: prior $chain_label deploy log present but no code at $address — redeploying"
+  return 1
+}
+
 # Step 1 — deploy-linea-rollup-v$L1_CONTRACT_VERSION (or deploy-validium-v2)
 step1_l1_rollup() {
   step "Step 1: deploy L1 Verifier + LineaRollup (or Validium)"
@@ -469,7 +491,7 @@ step2_l2_message_service() {
   step "Step 2: deploy L2 MessageService"
   local logfile="$LOG_DIR/step2-l2-message-service.log"
 
-  if step_already_done "$logfile" "L2MessageService"; then
+  if step_already_done_with_code "$logfile" "L2MessageService" "$L2_RPC_URL" "L2"; then
     log "Step 2: $logfile present — skipping deploy"
     L2_MESSAGE_SERVICE_ADDRESS="$(require_address "$logfile" "L2MessageService")"
     export L2_MESSAGE_SERVICE_ADDRESS
@@ -534,7 +556,7 @@ step4_token_bridge_l2() {
   step "Step 4: deploy L2 TokenBridge + L2 BridgedToken"
   local logfile="$LOG_DIR/step4-token-bridge-l2.log"
 
-  if step_already_done "$logfile" "TokenBridge"; then
+  if step_already_done_with_code "$logfile" "TokenBridge" "$L2_RPC_URL" "L2"; then
     log "Step 4: $logfile present — skipping deploy"
     return 0
   fi
@@ -595,7 +617,7 @@ step6_l2_test_erc20() {
   step "Step 6: deploy L2 ERC20Example"
   local logfile="$LOG_DIR/step6-l2-test-erc20.log"
 
-  if step_already_done "$logfile" "TestERC20"; then
+  if step_already_done_with_code "$logfile" "TestERC20" "$L2_RPC_URL" "L2"; then
     log "Step 6: $logfile present — skipping deploy"
     L2_TEST_ERC20_ADDRESS="$(require_address "$logfile" "TestERC20")"
     log "Captured L2 ERC20Example: $L2_TEST_ERC20_ADDRESS"

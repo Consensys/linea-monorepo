@@ -26,6 +26,13 @@ hex_to_dec_small() {
   printf '%d\n' "$((16#$hex))" 2>/dev/null || printf '0x%s\n' "$hex"
 }
 
+is_uint() {
+  case "$1" in
+    ''|*[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
 shared_addr() {
   file="$1"
   section_name="$2"
@@ -90,6 +97,18 @@ if [ -n "$chain_response" ]; then
   echo "l2 rpc eth_chainId: $chain_response"
 else
   echo "l2 rpc eth_chainId: unavailable at $L2_RPC_URL"
+fi
+
+local_l2_latest_block_dec=""
+block_response="$(curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  "$L2_RPC_URL" 2>/dev/null || true)"
+local_l2_latest_block_hex="$(printf '%s\n' "$block_response" | json_string_field result)"
+if [ -n "$local_l2_latest_block_hex" ] && [ "$local_l2_latest_block_hex" != "0x" ]; then
+  local_l2_latest_block_dec="$(hex_to_dec_small "$local_l2_latest_block_hex")"
+  echo "l2 rpc latest block: $local_l2_latest_block_dec ($local_l2_latest_block_hex)"
+else
+  echo "l2 rpc latest block: unavailable at $L2_RPC_URL"
 fi
 
 if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
@@ -162,7 +181,14 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
     "$L1_RPC_URL" 2>/dev/null || true)"
   l2_finalized_hex="$(printf '%s\n' "$l2_finalized_resp" | json_string_field result)"
   if [ -n "$l2_finalized_hex" ] && [ "$l2_finalized_hex" != "0x" ]; then
-    echo "rollup currentL2BlockNumber: $(hex_to_dec_small "$l2_finalized_hex") ($l2_finalized_hex)"
+    rollup_current_l2_block_dec="$(hex_to_dec_small "$l2_finalized_hex")"
+    echo "rollup currentL2BlockNumber: $rollup_current_l2_block_dec ($l2_finalized_hex)"
+    if is_uint "$rollup_current_l2_block_dec" \
+      && is_uint "$local_l2_latest_block_dec" \
+      && [ "$rollup_current_l2_block_dec" -gt "$local_l2_latest_block_dec" ]; then
+      echo "WARNING: rollup finalized block is ahead of local L2 latest block."
+      echo "WARNING: local chain state does not match the preserved L1 rollup state; run docker compose down -v for a clean boot."
+    fi
   else
     echo "rollup currentL2BlockNumber: unavailable"
   fi

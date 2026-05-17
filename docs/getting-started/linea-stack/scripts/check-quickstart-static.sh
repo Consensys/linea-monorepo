@@ -312,8 +312,32 @@ check_partial_prover_guardrails() {
   fi
 }
 
+check_reuse_guardrails() {
+  deploy_contracts="$STACK/scripts/deploy-contracts.sh"
+  status_script="$STACK/scripts/status.sh"
+
+  if grep -q 'step_already_done_with_code' "$deploy_contracts" \
+    && grep -q 'cast code' "$deploy_contracts" \
+    && grep -q 'present but no code' "$deploy_contracts" \
+    && grep -q 'step_already_done_with_code "$logfile" "L2MessageService"' "$deploy_contracts" \
+    && grep -q 'step_already_done_with_code "$logfile" "TokenBridge"' "$deploy_contracts" \
+    && grep -q 'step_already_done_with_code "$logfile" "TestERC20"' "$deploy_contracts"; then
+    pass "deploy-contracts verifies L2 code before trusting prior deploy logs"
+  else
+    fail "deploy-contracts must verify L2 on-chain code before skipping from prior deploy logs"
+  fi
+
+  if grep -q 'l2 rpc latest block' "$status_script" \
+    && grep -q 'rollup finalized block is ahead of local L2 latest block' "$status_script" \
+    && grep -q 'local chain state does not match the preserved L1 rollup state' "$status_script"; then
+    pass "status.sh warns when preserved L1 rollup state is ahead of local L2"
+  else
+    fail "status.sh must warn when preserved L1 rollup state is ahead of local L2"
+  fi
+}
+
 check_smoke_and_traffic_scripts() {
-  for script in check-ports.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh; do
+  for script in check-ports.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh smoke-bridge-erc20-l1-to-l2.sh smoke-bridge-message-l2-to-l1.sh smoke-bridge-erc20-l2-to-l1.sh; do
     script_path="$STACK/scripts/$script"
     if [ -x "$script_path" ]; then
       pass "$script is executable"
@@ -378,6 +402,47 @@ check_smoke_and_traffic_scripts() {
   else
     fail "smoke-bridge-message.sh must send and verify a real L1-to-L2 claim"
   fi
+
+  if [ -f "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" ] \
+    && grep -q 'bridgeToken(address,uint256,address)' "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" \
+    && grep -q 'approve(address,uint256)' "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" \
+    && grep -q 'nativeToBridgedToken(uint256,address)' "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" \
+    && grep -q 'balanceOf(address)(uint256)' "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" \
+    && grep -q 'CLAIMED_SUCCESS' "$STACK/scripts/smoke-bridge-erc20-l1-to-l2.sh" \
+    && grep -q 'smoke-bridge-erc20-l1-to-l2.sh' "$STACK/README.md"; then
+    pass "smoke-bridge-erc20-l1-to-l2.sh verifies a real ERC20 TokenBridge L1-to-L2 transfer"
+  else
+    fail "smoke-bridge-erc20-l1-to-l2.sh must bridge ERC20 through TokenBridge and verify the L2 balance"
+  fi
+
+  if [ -f "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" ] \
+    && grep -q 'bridgeToken(address,uint256,address)' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'approve(address,uint256)' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'L2_SEND_RPC_URL' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'claimOnL1' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'getMessageProof' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'balanceOf(address)(uint256)' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'BridgingFinalizedV2' "$STACK/scripts/smoke-bridge-erc20-l2-to-l1.sh" \
+    && grep -q 'smoke-bridge-erc20-l2-to-l1.sh' "$STACK/README.md"; then
+    pass "smoke-bridge-erc20-l2-to-l1.sh verifies a real ERC20 TokenBridge L2-to-L1 withdrawal"
+  else
+    fail "smoke-bridge-erc20-l2-to-l1.sh must bridge ERC20 through TokenBridge, claim on L1, and verify the L1 balance"
+  fi
+
+  if [ -f "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" ] \
+    && grep -q 'L2_TO_L1' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'L2MessageService' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'sendMessage(address,uint256,bytes)' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'L2_SEND_RPC_URL' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'claimOnL1' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'getMessageProof' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'CLAIMED_SUCCESS' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'MessageClaimed' "$STACK/scripts/smoke-bridge-message-l2-to-l1.sh" \
+    && grep -q 'smoke-bridge-message-l2-to-l1.sh' "$STACK/README.md"; then
+    pass "smoke-bridge-message-l2-to-l1.sh verifies a real L2-to-L1 claim"
+  else
+    fail "smoke-bridge-message-l2-to-l1.sh must send, finalize, claim, and verify a real L2-to-L1 message"
+  fi
 }
 
 check_pinned_utility_images_and_docs() {
@@ -410,6 +475,7 @@ check_account_setup_key_model
 check_postman_key_model
 check_incremental_typescript_helpers
 check_partial_prover_guardrails
+check_reuse_guardrails
 check_smoke_and_traffic_scripts
 check_pinned_utility_images_and_docs
 

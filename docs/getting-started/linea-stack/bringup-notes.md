@@ -2,11 +2,11 @@
 
 Running log for the Sepolia quickstart: fixes applied, current status, and caveats that still block calling the project finished.
 
-## Current snapshot - 2026-05-12
+## Current snapshot - 2026-05-17
 
-Fresh Sepolia boot validates the cleaned key model, the temporary dev-prover
-bring-up path, the first real L1-to-L2 message smoke, and the opt-in
-partial-prover path through first L1 finalization:
+Fresh Sepolia boot validates the cleaned key model, the default dev-proof path,
+the first real L1-to-L2 message smoke, and the opt-in partial-prover path
+through first L1 finalization:
 
 - user still supplies one funded `L1_DEPLOYER_PRIVATE_KEY`;
 - `account-setup` generates fresh runtime keys for L1 blob submission, L1 finalization, L1 postman, L2 deployer, L2 anchorer, and L2 postman;
@@ -19,9 +19,11 @@ partial-prover path through first L1 finalization:
 - coordinator submitted L1 blob transactions on Sepolia, then submitted separate `finalizeBlocks` transactions that advanced the rollup finalized L2 block;
 - L2 Blockscout frontend works locally at `http://localhost:4001`;
 - `scripts/generate-l2-erc20-traffic.sh` runs continuous local L2 ERC20Example transfers for realistic Blockscout/prover demo traffic; `scripts/send-l2-test-tx.sh` and `scripts/send-l2-erc20-transfer.sh` remain as one-shot manual checks;
-- `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta; this is inbound L1-to-L2 only, not a full bridge/withdrawal smoke;
+- `scripts/smoke-bridge-message.sh` now sends a real Sepolia `sendMessage`, waits for Postman `CLAIMED_SUCCESS`, verifies the L2 `MessageClaimed` receipt, and checks the recipient L2 balance delta;
+- `scripts/smoke-bridge-message-l2-to-l1.sh` covers a zero-value outbound message: it sends L2 `sendMessage`, waits for Sepolia anchoring/finality, claims on L1 with the SDK `getMessageProof`/`claimOnL1` path, and verifies the L1 `MessageClaimed` receipt;
+- `scripts/smoke-bridge-erc20-l1-to-l2.sh` and `scripts/smoke-bridge-erc20-l2-to-l1.sh` cover ERC20 TokenBridge deposit and withdrawal. The 2026-05-17 live withdrawal used L2 bridge tx `0x4f4f8b92ecb759c213609fbe07a611ac2e5cc27e30702035261f6e9cf93f6c10`, finalized on Sepolia in aggregation tx `0x7d095cc17ea9199ee70df7824d1a69e6a8878ff3540f605700e72bfc61e9b793`, and claimed on L1 in tx `0x6d0d42194c2adec229752381d8745004d3c798c4ec4490923ad4b439411e0ea7`;
 - the L1-to-L2 message smoke was rerun against the partial-prover boot on 2026-05-12: L1 tx `0x1be291b7a9d3de8bd4d3e8a291d8d698fded71821c548573e6bbc60985a5cb4b`, L2 claim tx `0x5cc86e839128c30b9c2f58ea0dd3b0968373450db4074d1911280cea0ac972e4`, recipient delta `100000000000000` wei;
-- post-boot helper scripts are staged manually: read-only inspection first, optional L2 demo traffic second, real L1-to-L2 smoke third, then the same sequence again for partial-prover validation;
+- post-boot helper scripts are staged manually: read-only inspection first, optional L2 demo traffic second, L1-to-L2 smoke third, L2-to-L1 smoke fourth, then the same sequence again for partial-prover validation;
 - `L2_CHAIN_ID` is now treated as a single boot input and is rendered into Besu genesis, Maru genesis, prover public-input config, deploy metadata, and Blockscout config;
 - `PROVER_DEV_OVERRIDE=false` now requires an explicit `PROVER_GOMEMLIMIT` so partial validation fails early if the memory budget was not set;
 - most orchestration is still shell; TypeScript is currently limited to targeted deploy/address helpers, and broader TypeScript migration is left for team alignment on the final boot flow;
@@ -39,14 +41,14 @@ Fixes found during this clean boot:
 
 Current caveats:
 
-- dev/dummy proof mode is temporary scaffolding for boot-flow debugging and should be removed after team review/testing; the target quickstart path is partial proving;
+- dev-proof mode is for fast evaluation only and does not produce real ZK proofs; use partial mode when production-shaped proving behavior matters;
 - Docker Desktop must be raised well above the 8-16 GB laptop default before partial validation; about 30-32 GB assigned to Docker with `PROVER_GOMEMLIMIT=24GiB` is the current minimum tested shape, 48 GB preferred;
-- L2-to-L1 message/withdrawal smoke is still missing; TokenBridge ERC20 smoke is also still separate;
+- ETH withdrawal smoke is still missing; the current TokenBridge smokes prove ERC20 deposit and withdrawal, not ETH withdrawal behavior;
 - no one-shot `quickstart-verify.sh` exists yet; keeping the helpers separate avoids hidden Sepolia spend during first boot;
 - transient nonce/replacement retries and a duplicate `StartingRootHashDoesNotMatch` retry can appear during catch-up after a successful finalization; judge progress by separate blob txs, successful `finalizeBlocks` txs, finalization events, and finalized block advancing;
 - the local L2 does not necessarily keep producing visible user blocks when idle. Use `./scripts/generate-l2-erc20-traffic.sh start` for continuous ERC20 transfer traffic during demos/evaluation.
 
-Next work should focus on tracking finalization of the post-smoke L2 blocks, then a small optional `quickstart-verify.sh` wrapper once the manual sequence is stable.
+Next work should focus on improving terminal log readability, then starting the broader Bash-to-TypeScript migration once the team is happy with the manual quickstart flow.
 
 ## Historical fix log
 

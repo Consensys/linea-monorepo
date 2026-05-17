@@ -363,12 +363,60 @@ The smoke sends `sendMessage` on Sepolia, waits for Postman to claim on local
 L2, verifies `MessageClaimed`, checks the recipient balance delta, and prints
 both explorer links.
 
-This is **not** a full bridge test yet. It does not cover L2-to-L1 messages,
-withdrawal/finality, or TokenBridge ERC20 flow.
+5. Run the L1-to-L2 ERC20 TokenBridge smoke when you want to prove a real
+TokenBridge transfer:
+
+```bash
+./scripts/smoke-bridge-erc20-l1-to-l2.sh
+```
+
+The smoke mints `ERC20Example` to the configured Sepolia deployer, approves the
+L1 TokenBridge, calls `bridgeToken(...)`, waits for Postman to claim on local
+L2, and verifies the recipient's balance on the L2 bridged token contract. By
+default it sends `1 ERC20` to the disposable demo traffic account. Run this
+again whenever the disposable account needs more bridged ERC20 for the
+withdrawal smoke.
+
+6. Run the L2-to-L1 ERC20 TokenBridge smoke when you want to prove withdrawal
+back to Sepolia:
+
+```bash
+./scripts/smoke-bridge-erc20-l2-to-l1.sh
+```
+
+This smoke expects the L1-to-L2 ERC20 smoke to have created and funded the L2
+bridged token first. It approves the L2 TokenBridge, calls `bridgeToken(...)`
+from the disposable demo traffic account, waits for coordinator/prover
+finalization, claims on Sepolia if Postman has not already claimed, and
+verifies the L1 `ERC20Example` recipient balance delta. It sends L2 bridged
+ERC20 back to Sepolia; it is not an ETH withdrawal test.
+
+7. Run the L2-to-L1 message smoke when you want to prove outbound message
+finality and claiming:
+
+```bash
+./scripts/smoke-bridge-message-l2-to-l1.sh
+```
+
+The smoke sends a zero-value, zero-postman-fee `sendMessage` from the
+disposable L2 traffic account, pays the L2 `minimumFeeInWei` required by
+`L2MessageService`, waits until the coordinator finalizes/anchors that L2
+message on Sepolia, claims it on L1 with the SDK
+`getMessageProof`/`claimOnL1` path, and verifies the Sepolia receipt emitted
+`MessageClaimed`.
+
+Together, these smoke scripts cover generic message relay in both directions and
+TokenBridge ERC20 deposit plus withdrawal. They are still **not** ETH withdrawal
+tests.
 
 The L2 traffic helpers mutate only the local quickstart L2 chain. The bridge
-smoke spends real Sepolia gas and sends Sepolia value into the quickstart
-LineaRollup contract, then credits the local L2 recipient through Postman.
+smokes spend real Sepolia gas. The L1-to-L2 smoke also sends Sepolia value into
+the quickstart LineaRollup contract, then credits the local L2 recipient through
+Postman. The generic L2-to-L1 message smoke sends a zero-value message, pays
+only the L2 minimum message-service fee on send, and uses the generated L1
+postman key for the manual L1 claim transaction. The ERC20 L2-to-L1 smoke burns
+the disposable account's bridged ERC20 on L2 and releases `ERC20Example` on
+Sepolia.
 
 Optional one-shot local checks:
 
@@ -555,9 +603,9 @@ notes.
   exists for debugging, but the validated first boot uses `ROLLUP`.
 - **Verifier setup is quickstart-only.** The current deploy path uses
   `IntegrationTestTrueVerifier`, not a production verifier configuration.
-- **Message/bridge smoke is incomplete.** The included script covers only
-  L1-to-L2 `sendMessage` plus Postman L2 claim. A real L2-to-L1 message smoke
-  and TokenBridge ERC20 smoke are still required.
+- **ETH withdrawal smoke is still missing.** The included TokenBridge smokes
+  prove ERC20 L1-to-L2 deposit and ERC20 L2-to-L1 withdrawal. They do not yet
+  prove ETH withdrawal behavior.
 - **No one-shot verification orchestrator or CI smoke test.** Validation today
   is compose-config + manual first-boot-against-Sepolia. The local helper
   scripts are intentionally staged; a future `quickstart-verify.sh` can chain
@@ -615,6 +663,9 @@ docs/getting-started/linea-stack/
 │   ├── send-l2-erc20-transfer.sh ← sends a tiny L2 ERC20Example transfer
 │   ├── generate-l2-erc20-traffic.sh ← runs continuous L2 ERC20Example traffic
 │   ├── smoke-bridge-message.sh  ← sends and verifies L1-to-L2 message delivery
+│   ├── smoke-bridge-erc20-l1-to-l2.sh ← sends and verifies an ERC20 TokenBridge deposit
+│   ├── smoke-bridge-erc20-l2-to-l1.sh ← sends, claims, and verifies an ERC20 TokenBridge withdrawal
+│   ├── smoke-bridge-message-l2-to-l1.sh ← sends, claims, and verifies L2-to-L1 message delivery
 │   └── DEPLOY-ENV-CONTRACT.md   ← env vars per deploy step
 └── config/
     ├── DEV-KEYS-INVENTORY.md    ← what's checked in vs runtime
