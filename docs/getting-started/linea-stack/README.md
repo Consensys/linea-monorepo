@@ -1,17 +1,5 @@
 # Lineth Stack — quickstart (Sepolia L1)
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│               LINETH STACK quickstart (Sepolia L1)               │
-├──────────────────────────────────────────────────────────────────┤
-│  _     ___ _   _ _____ _____ _   _   ____ _____  _    ____ _  __ │
-│ | |   |_ _| \ | | ____|_   _| | | | / ___|_   _|/ \  / ___| |/ / │
-│ | |    | ||  \| |  _|   | | | |_| | \___ \ | | / _ \| |   | ' /  │
-│ | |___ | || |\  | |___  | | |  _  |  ___) || |/ ___ \ |___| . \  │
-│ |_____|___|_| \_|_____| |_| |_| |_| |____/ |_/_/   \_\____|_|\_\ │
-└──────────────────────────────────────────────────────────────────┘
-```
-
 Run a local Linea L2 stack that uses Sepolia as its L1. The quickstart deploys
 the required L1 contracts to Sepolia from your funded deployer account, starts a
 local L2 chain, runs coordinator/postman/prover services, and exposes a local L2
