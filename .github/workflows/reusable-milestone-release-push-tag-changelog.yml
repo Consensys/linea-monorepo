@@ -2,19 +2,19 @@ name: "Linea Milestone Push Tag and CHANGELOG Update"
 
 on:
   workflow_call:
-    outputs:
-      tag_changed:
-        description: "Indicate whether the release tag of the component has changed"
-        value: ${{ jobs.update-linea-milestone-changelog.outputs.tag_changed }}
+    inputs:
       release_version:
-        description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.update-linea-milestone-changelog.outputs.release_version }}
+        description: "Release semver associated with the release tag (e.g. 1.2.3)"
+        required: true
+        type: string
       release_tag:
-        description: "Release tag (e.g. releases/coordinator/v1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.update-linea-milestone-changelog.outputs.release_tag }}
-  push:
-    branches:
-      - ci/feat-milestone-release-manual-workflow
+        description: "Release tag (e.g. releases/linea/v1.2.3)"
+        required: true
+        type: string
+    outputs:
+      changelog:
+        description: "Milestone CHANGELOG.md content (milestone header + per-component sections, with heading levels demoted by one)"
+        value: ${{ jobs.update-linea-milestone-changelog.outputs.changelog }}
 
 permissions:
   contents: write
@@ -24,9 +24,7 @@ jobs:
   update-linea-milestone-changelog:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     outputs:
-      release_version: ${{ steps.compute-release-tag.outputs.next_version }}
-      release_tag: ${{ steps.compute-release-tag.outputs.next_tag }}
-      tag_changed: ${{ steps.compute-release-tag.outputs.tag_changed }}
+      changelog: ${{ steps.prepend-milestone-header.outputs.changelog }}
     env:
       LINEA_TAG_PATTERN: 'releases/linea/v[0-9]+\.[0-9]+\.[0-9]+$'
       TMP_CHANGELOG: CHANGELOG.linea-milestone.tmp.md
@@ -94,28 +92,11 @@ jobs:
           sed -i.bak -E 's/^#/##/' "${TMP_CHANGELOG}"
           rm -f "${TMP_CHANGELOG}.bak"
 
-      - name: Compute Linea milestone next release tag
-        id: compute-release-tag
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: linea
-          include-path: |
-            coordinator/**
-            postman/**
-            prover/**
-            transaction-exclusion-api/**
-            tracer/**
-            tracer-constraints/**
-            linea-besu/plugins/linea-sequencer/**
-            linea-besu/besu/**
-            linea-besu/package/**
-            gradle/libs.versions.toml
-          release_tag_suffix: ''
-
       # Prepend the milestone version header, e.g. "## [1.1.0] - 2026-05-16".
       - name: Prepend milestone version header (temp file)
+        id: prepend-milestone-header
         env:
-          RELEASE_VERSION: ${{ steps.compute-release-tag.outputs.next_version }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
         run: |
           set -euo pipefail
           DATE=$(date -u +%Y-%m-%d)
@@ -123,6 +104,15 @@ jobs:
             printf '## [%s] - %s\n\n' "${RELEASE_VERSION}" "${DATE}"
             cat "${TMP_CHANGELOG}"
           } > "${TMP_CHANGELOG}.new" && mv "${TMP_CHANGELOG}.new" "${TMP_CHANGELOG}"
+
+          # Expose the finalized temp CHANGELOG content as a step output so
+          # downstream steps/jobs (or callers, via job/workflow outputs) can
+          # consume it without re-reading the file.
+          {
+            echo 'changelog<<__CHANGELOG_EOF__'
+            cat "${TMP_CHANGELOG}"
+            echo '__CHANGELOG_EOF__'
+          } >> "$GITHUB_OUTPUT"
 
       # Now the only edit to the real ./CHANGELOG.md: strip the existing
       # [unreleased] block, then concatenate the temp file on top.
@@ -175,7 +165,7 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         env:
-          RELEASE_VERSION: ${{ steps.compute-release-tag.outputs.next_version }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
         with:
           token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(linea): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }} [skip ci]"
@@ -196,7 +186,7 @@ jobs:
       - name: Create and push Linea milestone release tag
         env:
           COMPONENT: "Linea Milestone"
-          TAG: ${{ steps.compute-release-tag.outputs.next_tag }}
+          TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           if [ -z "${TAG}" ]; then

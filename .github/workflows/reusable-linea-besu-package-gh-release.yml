@@ -47,6 +47,13 @@ on:
         required: false
         default: false
         type: boolean
+    outputs:
+      docker_tag:
+        description: "Docker image tag base (without suffix)"
+        value: ${{ jobs.build-linea-besu-docker-image-and-gh-release.outputs.docker_tag }}
+      docker_tag_with_suffix:
+        description: "Docker image tag with suffix (same value as docker_tag if no suffix is given)"
+        value: ${{ jobs.build-linea-besu-docker-image-and-gh-release.outputs.docker_tag_with_suffix }}
 
 jobs:
   release-linea-besu-push-tag-changelog:

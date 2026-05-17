@@ -53,6 +53,13 @@ on:
         required: false
         default: false
         type: boolean
+    outputs:
+      docker_tag:
+        description: "Docker image tag base (without suffix)"
+        value: ${{ jobs.compute-docker-tag.outputs.docker_tag }}
+      docker_tag_with_suffix:
+        description: "Docker image tag with suffix (same value as docker_tag if no suffix is given)"
+        value: ${{ jobs.compute-docker-tag.outputs.docker_tag_with_suffix }}
 
 jobs:
   release-push-tag-changelog:
@@ -139,16 +146,20 @@ jobs:
           # Pass via env to avoid shell injection: changelog content is derived
           # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
           CHANGELOG: ${{ inputs.changelog }}
-          DOCKER_TAG: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
+          DOCKER_TAG: ${{ needs.compute-docker-tag.outputs.docker_tag }}
+          DOCKER_TAG_WITH_SUFFIX: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
           DOCKER_IMAGE_SUFFIX: ${{ inputs.folder-name }}
         run: |
           mkdir release && cd release
           printf '%s\n' "$CHANGELOG" >> output.md
           echo "### Docker Image Details" >> output.md
           echo "" >> output.md
-          echo "To pull the image, use the following command:" >> output.md
+          echo "To pull the image, use any of the following commands:" >> output.md
           echo "\`\`\`" >> output.md
           printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG" >> output.md
+          if [ -n "$DOCKER_TAG_WITH_SUFFIX" ] && [ "$DOCKER_TAG_WITH_SUFFIX" != "$DOCKER_TAG" ]; then
+            printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG_WITH_SUFFIX" >> output.md
+          fi
           echo "\`\`\`" >> output.md
 
       - name: Set capitalized component name

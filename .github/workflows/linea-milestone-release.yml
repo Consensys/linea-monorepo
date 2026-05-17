@@ -39,8 +39,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  check-branch:
+  check-branch-and-compute-tag:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    outputs:
+      release_version: ${{ steps.compute-release-tag.outputs.next_version }}
+      release_tag: ${{ steps.compute-release-tag.outputs.next_tag }}
+      tag_changed: ${{ steps.compute-release-tag.outputs.tag_changed }}
     steps: #TODO: set exit back to 1
       - name: Enforce main branch
         if: github.ref_name != 'main'
@@ -48,8 +52,53 @@ jobs:
           echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
           exit 0
 
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
+        with:
+          tool: git-cliff
+
+      - name: Compute Linea milestone next release tag
+        id: compute-release-tag
+        uses: ./.github/actions/run-git-cliff-commands
+        with:
+          component-name: linea
+          include-path: |
+            coordinator/**
+            postman/**
+            prover/**
+            transaction-exclusion-api/**
+            tracer/**
+            tracer-constraints/**
+            linea-besu/plugins/linea-sequencer/**
+            linea-besu/besu/**
+            linea-besu/package/**
+            gradle/libs.versions.toml
+          release_tag_suffix: ''
+
+      - name: Check if the next release tag already existed
+        env:
+          TAG: ${{ steps.compute-release-tag.outputs.next_tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAG}" ]; then
+            echo "No next tag computed; aborting."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
+            echo "Tag ${TAG} already exists; exit now."
+            exit 1
+          fi
+
   component-release-metadata:
-    needs: [check-branch]
+    needs: [check-branch-and-compute-tag]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
       fail-fast: false
@@ -215,6 +264,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
+        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
@@ -222,12 +272,14 @@ jobs:
       - name: Component latest docker tag
         id: get-latest-docker-tag
         uses: ./.github/actions/get-latest-release-image-tag
+        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
         with:
           component-name: ${{ matrix.component }}
           image-name: ${{ matrix.image-name }}
       
       - name: Output latest docker tags
         id: latest-docker-tag
+        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
         run: |
           echo "${{ matrix.component }}-latest-docker-tag=${{ steps.get-latest-docker-tag.outputs.image_tag }}" >> $GITHUB_OUTPUT
 
@@ -352,6 +404,7 @@ jobs:
     needs: [component-release-metadata, component-latest-docker-tags, run-e2e-tests]
     if: >
       always() && !cancelled() &&
+      inputs.image_tag_suffix != '' &&
       needs.run-e2e-tests.result == 'success' &&
       needs.component-latest-docker-tags.result == 'success'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
@@ -401,6 +454,7 @@ jobs:
   # prepend CHANGELOG for each component for linea release (and then create PR)
   linea-milestone-changelog-update:
     needs:
+      - check-branch-and-compute-tag
       - retag-latest-docker-tags
       - coordinator-gh-release
       - postman-gh-release
@@ -408,14 +462,90 @@ jobs:
       - tx-exclusion-api-gh-release
       - linea-besu-gh-release
     if: >
-      always() && !cancelled() && 
-      needs.retag-latest-docker-tags.result == 'success' &&
+      always() && !cancelled() &&
+      (inputs.image_tag_suffix == '' || needs.retag-latest-docker-tags.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' || needs.coordinator-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' || needs.postman-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' || needs.prover-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' || needs.tx-exclusion-api-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.linea-besu-gh-release.result == 'success')
     uses: ./.github/workflows/reusable-milestone-release-push-tag-changelog.yml
+    with:
+      release_version: needs.check-branch-and-compute-tag.outputs.release_version
+      release_tag: needs.check-branch-and-compute-tag.outputs.release_tag
     secrets: inherit
 
-# tag linea release with aggregated included-path
+  linea-milestone-gh-release:
+    needs: 
+      - check-branch-and-compute-tag
+      - component-release-metadata
+      - component-latest-docker-tags
+      - linea-milestone-changelog-update
+      - coordinator-gh-release
+      - postman-gh-release
+      - prover-gh-release
+      - tx-exclusion-api-gh-release
+      - linea-besu-gh-release
+    if: >
+      always() && !cancelled() &&
+      needs.linea-milestone-changelog-update.result == 'success'
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Append Changelog Action to release note
+        id: append_change_log
+        shell: bash
+        env:
+          # Pass via env to avoid shell injection: changelog content is derived
+          # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
+          CHANGELOG: ${{ needs.linea-milestone-changelog-update.outputs.changelog }}
+          IMAGE_TAG_SUFFIX: ${{ inputs.image_tag_suffix }}
+          # One row per component: name|image|tag_changed|released_tag|latest_tag
+          # released_tag : docker tag produced by this run's component gh-release
+          #                (with suffix already baked in, when applicable)
+          # latest_tag   : most recent docker tag previously published for the
+          #                component, used as a fallback when nothing changed
+          COMPONENT_ROWS: |
+            coordinator|linea-coordinator|${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed }}|${{ needs.coordinator-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.coordinator }}
+            postman|linea-postman|${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed }}|${{ needs.postman-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.postman }}
+            prover|linea-prover|${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed }}|${{ needs.prover-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.prover }}
+            tx-exclusion-api|linea-transaction-exclusion-api|${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed }}|${{ needs.tx-exclusion-api-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
+            linea-besu|linea-besu-package|${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed }}|${{ needs.linea-besu-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.linea-besu }}
+        run: |
+          set -euo pipefail
+          mkdir release && cd release
+          printf '%s\n' "$CHANGELOG" >> output.md
+          echo "### Docker Image Details" >> output.md
+          echo "" >> output.md
+
+          while IFS='|' read -r name image tag_changed released_tag latest_tag; do
+            # Skip blank/whitespace-only rows (e.g. trailing newline of the literal).
+            trimmed="$(echo "$name" | tr -d '[:space:]')"
+            [ -z "$trimmed" ] && continue
+
+            echo "To pull the ${name} image, use the following command:" >> output.md
+            echo "\`\`\`" >> output.md
+            if [ "$tag_changed" = "true" ]; then
+              printf 'docker pull consensys/%s:%s\n' "$image" "$released_tag" >> output.md
+            elif [ -n "$IMAGE_TAG_SUFFIX" ]; then
+              printf 'docker pull consensys/%s:%s-%s\n' "$image" "$latest_tag" "$IMAGE_TAG_SUFFIX" >> output.md
+            else
+              printf 'docker pull consensys/%s:%s\n' "$image" "$latest_tag" >> output.md
+            fi
+            echo "\`\`\`" >> output.md
+            echo "" >> output.md
+          done <<< "$COMPONENT_ROWS"
+
+      - name: gh-release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
+        with:
+          name: Linea Milestone v${{ needs.check-branch-and-compute-tag.outputs.release_version }}
+          tag_name: ${{ needs.check-branch-and-compute-tag.outputs.release_tag }}
+          body_path: release/output.md
+          draft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.pre_release }}
+          generate_release_notes: false
+          target_commitish: ${{ github.sha }}
+          fail_on_unmatched_files: true
