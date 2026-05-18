@@ -1,4 +1,4 @@
-name: Tracer riscv-constraints check compilation
+name: Tracer risc binary run and go-corset check
 
 on:
   pull_request:
@@ -34,8 +34,8 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-arithmetization-riscv
 
-      - name: Install zkc and check compilation of RISC-V in ZkC
-        run: make -C arithmetization riscv-check-compilation
-
-      - name: Linting Check
-        run: make -C arithmetization riscv-check-lint
+      - name: Install zkc, compile risc binary for simple zkc test program and go-corset check it
+        run: make -C arithmetization zkc-compile-and-check
+        env:
+          ZKC_FILES: arithmetization/src/test/examples/zkc/simple_add.zkc
+          ZKC_INPUT: arithmetization/src/test/examples/zkc/simple_add.json

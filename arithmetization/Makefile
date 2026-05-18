@@ -52,7 +52,7 @@ zkc-compile: $(ZKC_FILES)
 zkc-check:
 	zkc exec --check $(ZKC_INPUT) $(ZKC_BINDIR)/$(ZKC_BINARY)
 
-zkc-compile-and-check: zkc-compile zkc-check
+zkc-compile-and-check: install-zkc zkc-compile zkc-check
 
 zkc-lint:
 	zkc format --check $(ZKC_FILES)
