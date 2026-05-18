@@ -262,6 +262,11 @@ jobs:
       postman: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
       tx-exclusion-api: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
       linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-docker-tag }}
+      coordinator-release-version: ${{ steps.latest-docker-tag.outputs.coordinator-latest-release-version }}
+      prover-release-version: ${{ steps.latest-docker-tag.outputs.prover-latest-release-version }}
+      postman-release-version: ${{ steps.latest-docker-tag.outputs.postman-latest-release-version }}
+      tx-exclusion-api-release-version: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-release-version }}
+      linea-besu-release-version: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-release-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
@@ -283,6 +288,12 @@ jobs:
         if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
         run: |
           echo "${{ matrix.component }}-latest-docker-tag=${{ steps.get-latest-docker-tag.outputs.image_tag }}" >> $GITHUB_OUTPUT
+
+      - name: Output latest release version
+        id: latest-release-version
+        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
+        run: |
+          echo "${{ matrix.component }}-latest-release-version=${{ steps.get-latest-docker-tag.outputs.release_version }}" >> $GITHUB_OUTPUT
 
   run-e2e-tests:
     needs: 
@@ -461,6 +472,8 @@ jobs:
   linea-milestone-changelog-update:
     needs:
       - check-branch-and-compute-tag
+      - component-release-metadata
+      - component-latest-docker-tags
       - retag-latest-docker-tags
       - coordinator-gh-release
       - postman-gh-release
@@ -477,8 +490,13 @@ jobs:
       (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.linea-besu-gh-release.result == 'success')
     uses: ./.github/workflows/reusable-milestone-release-push-tag-changelog.yml
     with:
-      release_version: needs.check-branch-and-compute-tag.outputs.release_version
-      release_tag: needs.check-branch-and-compute-tag.outputs.release_tag
+      release_version: ${{ needs.check-branch-and-compute-tag.outputs.release_version }}
+      release_tag: ${{ needs.check-branch-and-compute-tag.outputs.release_tag }}
+      coordinator_release_version: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_version || needs.component-latest-docker-tags.outputs.coordinator-release-version }}
+      postman_release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version || needs.component-latest-docker-tags.outputs.postman-release-version }}
+      prover_release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version || needs.component-latest-docker-tags.outputs.prover-release-version }}
+      tx_exclusion_api_release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version || needs.component-latest-docker-tags.outputs.tx-exclusion-api-release-version }}
+      linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version || needs.component-latest-docker-tags.outputs.linea-besu-release-version }}
     secrets: inherit
 
   linea-milestone-gh-release:
@@ -531,7 +549,7 @@ jobs:
             trimmed="$(echo "$name" | tr -d '[:space:]')"
             [ -z "$trimmed" ] && continue
 
-            echo "To pull the ${name} image, use the following command:" >> output.md
+            echo "To pull the **${name}** image, use the following command:" >> output.md
             echo "\`\`\`" >> output.md
             if [ "$tag_changed" = "true" ]; then
               printf 'docker pull consensys/%s:%s\n' "$image" "$released_tag" >> output.md

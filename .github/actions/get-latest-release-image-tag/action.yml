@@ -20,6 +20,10 @@ outputs:
     description: release tag
     value: ${{ steps.latest_tag.outputs.release_tag }}
 
+  release_version:
+    description: release version
+    value: ${{ steps.latest_tag.outputs.release_version }}
+
   image_tag:
     description: docker image tag
     value: ${{ steps.find_image_tag.outputs.image_tag || 'develop' }}
@@ -33,12 +37,13 @@ runs:
       env:
         COMPONENT: ${{ inputs.component-name }}
         TARGET_REF: ${{ github.head_ref || github.ref_name }}
+        RELEASE_TAG_PREFIX: releases/${{ inputs.component-name }}/v*
       run: |
         # Ensure we have the target branch ref (main or the current branch)
         git fetch origin "$TARGET_REF"
 
         # Loop tags sorted by version, find the first one reachable from the target branch
-        LATEST_TAG=$(git tag --list "releases/${COMPONENT}/v*" \
+        LATEST_TAG=$(git tag --list "${RELEASE_TAG_PREFIX}" \
           | grep -E "^releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$" \
           | sort -V \
           | while read tag; do
@@ -57,8 +62,10 @@ runs:
 
         echo "Found latest tag: $LATEST_TAG"
         echo "Found latest tag commit hash: $(git rev-parse --short=7 $COMMIT_HASH)"
+        echo "Found latest release version: ${LATEST_TAG#$RELEASE_TAG_PREFIX}"
         echo "release_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
         echo "release_tag_commit=$(git rev-parse --short=7 $COMMIT_HASH)" >> $GITHUB_OUTPUT
+        echo "release_version=${LATEST_TAG#$RELEASE_TAG_PREFIX}" >> GITHUB_OUTPUT
 
     - name: Find docker image tag of ${{ inputs.component-name }} by commit hash suffix
       id: find_image_tag
