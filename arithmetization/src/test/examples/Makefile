@@ -231,7 +231,7 @@ build-act4:
 		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) DEBUG=$(ACT4_DEBUG) make --jobs $(ACT4_JOBS) --keep-going"
 
 # Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
-# Keep the ecall output area: ACT4 writes messages with RVMODEL_IO_WRITE_STR and exits with RVMODEL_HALT_*.
+# ACT4 writes messages and exits via ecall, so keep the line after each ecall marker.
 run-act4:
 	@set -u; \
 	[ -d "$(ACT4_ELF_DIR)" ] || { echo "error: missing ELF dir '$(ACT4_ELF_DIR)'; run make build-act4 first"; exit 2; }; \
@@ -247,18 +247,20 @@ run-act4:
 		count=$$((count + 1)); \
 		go run $(GO_MAIN) "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
 		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
-		awk '/ECALL for write|ECALL for exit/ {show=1} show' "$$base.full" > "$$base.out"; \
-		if [ ! -s "$$base.out" ]; then grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" "$$base.full" > "$$base.out" || true; fi; \
-		if grep -qx "Program exited successfully (exit with code 0)." "$$base.out"; then \
+		awk 'previous == "ECALL for write" || previous == "ECALL for exit" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
+		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
+		if [ "$$exit_line" = "Program exited successfully (exit with code 0)." ]; then \
 			echo "PASS  $$name"; \
 			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
+			awk '{ print "  " $$0 }' "$$base.out"; \
+			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
 			rm -f "$$base.full"; \
 		else \
 			echo "FAIL  $$name"; \
 			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
-			sed 's/^/  /' "$$base.out"; \
-			sed 's/^/  /' "$$base.out" >> "$(ACT4_RESULTS)"; \
+			awk '{ print "  " $$0 }' "$$base.out"; \
+			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done; \
