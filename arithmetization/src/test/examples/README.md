@@ -39,7 +39,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 zkc-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        clean-all|linker-script|blake2f-all)
+        clean-all|linker-script|blake-all)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
@@ -72,6 +72,8 @@ zkc-test compile <name>.<ext>
 zkc-test clean <name>.<ext>
 # Clean all build artifacts
 zkc-test clean-all
+# Run all converted Blake test vectors
+zkc-test blake-all
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
 zkc-test blake/blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs with IN_BYTES="0x<213_bytes_input_hex><64_bytes_expected_output_hex>"
@@ -99,6 +101,7 @@ zkc-test compile <name>.<ext> VERIFY_ELF=true
 | `make clean-all`                 | Remove all build artifacts                                            |
 | `make linker-script`             | Generate the linker script with the memory layout                     |
 | `make verify-elf TEST=foo.<ext>` | Verify ELF offsets, entry point and sp match the ones in the Makefile |
+| `make blake-all`                 | Run all converted Blake test vectors in `rust/src/blake/blake.all`    |
 
 ## Options
 
