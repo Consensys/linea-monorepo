@@ -109,52 +109,6 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make build-act4`                | Build ACT4 ELFs with the Linea ACT4 config                            |
 | `make run-act4`                  | Run ACT4 ELFs through zkc and write results/logs under `act4/bin/`     |
 
-## ACT4
-
-The ACT4 targets use the Linea config in `act4/config/linea-rv64im-zicclsm/`.
-The `riscv-arch-test` checkout should have the same parent directory as `linea-monorepo`:
-
-```text
-parent/
-├── linea-monorepo/
-│   └── arithmetization/src/test/examples/
-│       └── act4/
-│           ├── config/linea-rv64im-zicclsm/    # Linea ACT4 config
-│           └── bin/
-│               ├── work/linea-rv64im-zicclsm/  # ACT4 generated files
-│               │   └── elfs/                   # generated ACT4 ELFs
-│               ├── logs/                       # per-test JSON and zkc logs
-│               └── results.txt                 # PASS/FAIL summary
-└── riscv-arch-test/                            # ACT4 framework checkout
-```
-
-```bash
-cd /path/to/parent-of-linea-monorepo
-git clone -b act4 https://github.com/riscv/riscv-arch-test.git
-cd riscv-arch-test
-docker build -t riscv-act4 .
-```
-
-Then, from `linea-monorepo/arithmetization/src/test/examples`:
-
-```bash
-make build-act4
-make run-act4
-```
-
-ACT4 debug objdumps are under `act4/bin/work/linea-rv64im-zicclsm/` and can be found with:
-
-```bash
-find act4/bin/work/linea-rv64im-zicclsm -name '*objdump*' -print
-```
-
-After `make run-act4`, per-test JSON inputs are kept in `act4/bin/logs/`.
-To rerun one generated ACT4 test through zkc:
-
-```bash
-zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
-```
-
 ## Options
 
 | Variable         | Default                                                                                 | Description                                                                   |
@@ -170,6 +124,46 @@ zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 All programs are compiled targeting `RV64IM` accordingly to the [Ethereum zkVM standards](https://github.com/eth-act/zkvm-standards/blob/main/standards/riscv-target/target.md).
 Note that `Zicclsm` extension does not affect the generated ELF so it is omitted.
 Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
+
+## ACT4
+
+The `Makefile` in this folder allows to run test from the [ACT4 framework](https://github.com/riscv/riscv-arch-test). It uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
+The `riscv-arch-test` repository should have the same parent directory as `linea-monorepo`. The folders structure is the following:
+
+```text
+parent/
+├── linea-monorepo/
+│   └── arithmetization/src/test/examples/
+│       └── act4/
+│           ├── config/linea-rv64im-zicclsm/    # Linea ACT4 config
+│           └── bin/
+│               ├── work/linea-rv64im-zicclsm/  # ACT4 generated files (including ELFs and objdumps)
+│               │   └── elfs/                   # generated ACT4 ELFs
+│               ├── logs/                       # per-test JSON and zkc logs
+│               └── results.txt                 # PASS/FAIL summary
+└── riscv-arch-test/                            # ACT4 framework checkout
+```
+
+First of all, Docker container must be built:
+
+```bash
+git clone -b act4 https://github.com/riscv/riscv-arch-test.git
+cd riscv-arch-test
+docker build -t riscv-act4 .
+```
+
+Then, from `linea-monorepo/arithmetization/src/test/examples`:
+
+```bash
+make build-act4
+make run-act4
+```
+
+To rerun one generated ACT4 test through zkc:
+
+```bash
+zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
+```
 
 ## Default memory layout
 
