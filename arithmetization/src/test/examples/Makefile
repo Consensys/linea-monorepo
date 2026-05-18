@@ -248,7 +248,7 @@ run-act4:
 		name=$$(basename "$$elf" .elf); \
 		base="$(ACT4_LOGS)/$$name"; \
 		count=$$((count + 1)); \
-		go run $(GO_MAIN) "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
+		go run $(GO_MAIN) "$$elf" "" "$(PROGRAM_OFFSET)" 0 "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
 		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
 		awk 'previous == "ECALL for write" || previous == "ECALL for exit" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
 		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
