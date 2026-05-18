@@ -160,6 +160,13 @@ make build-act4
 make run-act4
 ```
 
+By default, ACT4 is built with debug artifacts enabled and fast mode disabled.
+To build faster without objdumps, traces and trap reports:
+
+```bash
+make build-act4 ACT4_DEBUG=false ACT4_FAST=true
+```
+
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
 
