@@ -4,7 +4,7 @@ This folder contains Rust zkVM tests for the Blake2b-F compression function.
 
 ## `blake2f.all`
 
-The original `.all` fixture format has already been converted. `blake2f.all` now contains one `IN_BYTES` value per line.
+`blake2f.all` now contains one `IN_BYTES` value per line.
 
 Each line is:
 
