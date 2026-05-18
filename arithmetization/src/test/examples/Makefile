@@ -75,7 +75,7 @@ ACT4_JOBS       := 4
 ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
 ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
 ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
-ACT4_FAST       := false
+# DEBUG asks ACT4 to emit debug artifacts, which helps inspect failures
 ACT4_DEBUG      := true
 
 # Default target (make)
@@ -218,8 +218,6 @@ blake-all:
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config
 build-act4:
 	@set -u; \
-	verbosity=""; \
-	if [ "$(ACT4_DEBUG)" = "true" ]; then verbosity="DEBUG=true"; elif [ "$(ACT4_FAST)" = "true" ]; then verbosity="FAST=true"; fi; \
 	mkdir -p "$(ACT4_WORK_DIR)"; \
 	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
 	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
@@ -230,9 +228,10 @@ build-act4:
 		-v "$$config_dir:/act4/config/cores/linea:ro" \
 		-v "$$work_dir:/act4/work" \
 		"$(ACT4_IMAGE)" \
-		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $$verbosity make --jobs $(ACT4_JOBS) --keep-going"
+		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) DEBUG=$(ACT4_DEBUG) make --jobs $(ACT4_JOBS) --keep-going"
 
-# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines
+# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
+# Keep the ecall output area: ACT4 writes messages with RVMODEL_IO_WRITE_STR and exits with RVMODEL_HALT_*.
 run-act4:
 	@set -u; \
 	[ -d "$(ACT4_ELF_DIR)" ] || { echo "error: missing ELF dir '$(ACT4_ELF_DIR)'; run make build-act4 first"; exit 2; }; \
@@ -244,23 +243,22 @@ run-act4:
 	count=0; pass=0; fail=0; \
 	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
 		name=$$(basename "$$elf" .elf); \
+		base="$(ACT4_LOGS)/$$name"; \
 		count=$$((count + 1)); \
-		json="$(ACT4_LOGS)/$$name.json"; \
-		out="$(ACT4_LOGS)/$$name.out"; \
-		full="$(ACT4_LOGS)/$$name.full"; \
-		go run $(GO_MAIN) "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$json" 2> "$(ACT4_LOGS)/$$name.json.err"; \
-		zkc exec "$$json" $(ZKC_MAIN) 2>&1 | tee "$$full" | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" | head -3 > "$$out"; \
-		if grep -q "Program exited successfully" "$$out"; then \
+		go run $(GO_MAIN) "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
+		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
+		awk '/ECALL for write|ECALL for exit/ {show=1} show' "$$base.full" > "$$base.out"; \
+		if [ ! -s "$$base.out" ]; then grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" "$$base.full" > "$$base.out" || true; fi; \
+		if grep -qx "Program exited successfully (exit with code 0)." "$$base.out"; then \
 			echo "PASS  $$name"; \
 			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
-			rm -f "$$full"; \
+			rm -f "$$base.full"; \
 		else \
-			code=$$(grep -oE "exit with code -?[0-9]+" "$$out" | head -1 | grep -oE "\-?[0-9]+"); \
-			[ -n "$$code" ] || code="?"; \
-			first=$$(head -1 "$$out" | tr -d '\n' | cut -c1-120); \
-			echo "FAIL  $$name  code=$$code  '$$first'"; \
-			echo "FAIL  $$name  code=$$code  '$$first'" >> "$(ACT4_RESULTS)"; \
+			echo "FAIL  $$name"; \
+			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
+			sed 's/^/  /' "$$base.out"; \
+			sed 's/^/  /' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done; \
