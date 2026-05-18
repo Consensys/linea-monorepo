@@ -235,7 +235,7 @@ jobs:
             echo "To pull the image, use any of the following commands:" >> output.md
             echo "\`\`\`" >> output.md
             echo "docker pull consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }}" >> output.md
-            if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ] && [ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
+            if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
               printf 'docker pull consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
             fi
             echo "\`\`\`" >> output.md
@@ -243,7 +243,7 @@ jobs:
               echo "To pull the image with Besu fleet plugin, use any of the following commands:" >> output.md
               echo "\`\`\`" >> output.md
               echo "docker pull consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag }}" >> output.md
-              if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ] && [ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
+              if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
                 printf 'docker pull consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
               fi
               echo "\`\`\`" >> output.md
