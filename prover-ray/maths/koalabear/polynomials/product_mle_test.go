@@ -697,8 +697,8 @@ func TestBuildMonomialMaskExtConsistency(t *testing.T) {
 	rng := newRng()
 
 	for range testN {
-		m := 1 + int(rng.Uint32()%4) // 1..4 polynomials
-		n := 1 << (1 + int(rng.Uint32()%5))  // 2..32
+		m := 1 + int(rng.Uint32()%4)        // 1..4 polynomials
+		n := 1 << (1 + int(rng.Uint32()%5)) // 2..32
 
 		zs := field.VecPseudoRandExt(rng, m)
 		rhos := field.VecPseudoRandExt(rng, m)

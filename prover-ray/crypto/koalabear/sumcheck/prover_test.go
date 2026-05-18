@@ -16,7 +16,7 @@ const testN = 20 // repetitions for randomised tests
 
 func newRng() *rand.Rand { return rand.New(rand.NewPCG(0xdeadbeef, 0)) }
 
-func randExt(rng *rand.Rand) field.Ext   { return field.PseudoRandExt(rng) }
+func randExt(rng *rand.Rand) field.Ext      { return field.PseudoRandExt(rng) }
 func randBase(rng *rand.Rand) field.Element { return field.PseudoRand(rng) }
 
 func extEq(a, b field.Ext) bool { return a.Equal(&b) }
@@ -388,7 +388,7 @@ func TestSumcheckParallel(t *testing.T) {
 // identityGate is a local degree-1 gate used only in tests.
 type identityGate struct{}
 
-func (identityGate) Degree() int { return 1 }
+func (identityGate) Degree() int                                      { return 1 }
 func (identityGate) EvalBatch(res []field.Ext, inputs ...[]field.Ext) { copy(res, inputs[0]) }
 
 // evalPolyAtPoint evaluates Σ_h z^h · coeffs[h], the univariate polynomial
