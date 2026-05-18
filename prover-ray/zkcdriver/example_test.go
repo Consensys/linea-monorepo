@@ -7,6 +7,7 @@ import (
 	zkc_util "github.com/consensys/go-corset/pkg/zkc/util"
 	"github.com/consensys/linea-monorepo/prover-ray/utils/files"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/wioptest"
 	"github.com/consensys/linea-monorepo/prover-ray/zkcdriver"
 )
 
@@ -51,6 +52,10 @@ func runTest(t *testing.T, test, input string) {
 		files.MustRead(testfile))
 	rt := wiop.NewRuntime(sys)
 	driver.AssignWithPreRead(&rt, inputs)
+
+	if err := wioptest.RunAndVerify(&rt); err != nil {
+		t.Fatalf("error running verifier: %v", err)
+	}
 	// FIXME: run the prover to complete the test.  For now, I just used
 	// go-corset's internal check to illustrate how this can work (e.g. it might
 	// be useful for debugging). Run go-corset constraint check
