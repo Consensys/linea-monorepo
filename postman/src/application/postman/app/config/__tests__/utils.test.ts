@@ -201,6 +201,41 @@ describe("Config utils", () => {
         },
       });
     });
+
+    it.each([31, 32])("should accept supported L2 message tree depth boundary %p", (l2MessageTreeDepth) => {
+      const config = getConfig(
+        buildMinimalOptions({
+          l2Options: {
+            rpcUrl: TEST_RPC_URL,
+            messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
+            l2MessageTreeDepth,
+            listener: {},
+            claiming: { signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY } },
+          },
+        }),
+      );
+
+      expect(config.l2Config.l2MessageTreeDepth).toBe(l2MessageTreeDepth);
+    });
+
+    it.each([0, 1, 33, 64, Number.NaN, 5.5, Number.MAX_SAFE_INTEGER + 1])(
+      "should reject invalid L2 message tree depth %p",
+      (l2MessageTreeDepth) => {
+        expect(() =>
+          getConfig(
+            buildMinimalOptions({
+              l2Options: {
+                rpcUrl: TEST_RPC_URL,
+                messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
+                l2MessageTreeDepth,
+                listener: {},
+                claiming: { signer: { type: "private-key" as const, privateKey: TEST_L2_SIGNER_PRIVATE_KEY } },
+              },
+            }),
+          ),
+        ).toThrow("Invalid postman configuration:");
+      },
+    );
   });
 
   describe("validateEventsFiltersConfig", () => {

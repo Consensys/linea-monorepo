@@ -163,6 +163,33 @@ describe("ViemLineaRollupClient", () => {
           messageHash: TEST_MESSAGE_HASH,
           lineaRollupAddress: TEST_CONTRACT_ADDRESS_1,
           l2MessageServiceAddress: TEST_CONTRACT_ADDRESS_2,
+          l2MessageTreeDepth: 5,
+        }),
+      );
+    });
+
+    it("passes configured L2 message tree depth to SDK getMessageProof", async () => {
+      const clientWithCustomTreeDepth = new ViemLineaRollupClient(
+        publicClient,
+        walletClient,
+        TEST_CONTRACT_ADDRESS_1,
+        l2PublicClient,
+        TEST_CONTRACT_ADDRESS_2,
+        gasProvider,
+        32,
+      );
+      const mockProof = {
+        proof: [TEST_MERKLE_ROOT as `0x${string}`],
+        root: TEST_MERKLE_ROOT as `0x${string}`,
+        leafIndex: 0,
+      };
+      (getMessageProof as jest.Mock).mockResolvedValue(mockProof);
+
+      await clientWithCustomTreeDepth.getMessageProof(TEST_MESSAGE_HASH);
+      expect(getMessageProof).toHaveBeenCalledWith(
+        publicClient,
+        expect.objectContaining({
+          l2MessageTreeDepth: 32,
         }),
       );
     });

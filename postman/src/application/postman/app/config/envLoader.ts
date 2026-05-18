@@ -45,6 +45,10 @@ function optionalInt(envVar: string | undefined): number | undefined {
   return envVar ? parseInt(envVar) : undefined;
 }
 
+function optionalNumber(envVar: string | undefined): number | undefined {
+  return envVar ? Number(envVar) : undefined;
+}
+
 function optionalBigInt(envVar: string | undefined): bigint | undefined {
   return envVar ? BigInt(envVar) : undefined;
 }
@@ -131,7 +135,7 @@ export function loadPostmanOptionsFromEnv(): PostmanOptions {
       isCalldataEnabled: process.env.L2_L1_CALLDATA_ENABLED === "true",
       listener: buildListenerOptions("L2"),
       claiming: buildClaimingOptions("L2"),
-      l2MessageTreeDepth: optionalInt(process.env.L2_MESSAGE_TREE_DEPTH),
+      l2MessageTreeDepth: optionalNumber(process.env.L2_MESSAGE_TREE_DEPTH),
       enableLineaEstimateGas: process.env.ENABLE_LINEA_ESTIMATE_GAS === "true",
     },
     l1L2AutoClaimEnabled: process.env.L1_L2_AUTO_CLAIM_ENABLED === "true",

@@ -1,0 +1,2 @@
+export const DEFAULT_L2_MESSAGE_TREE_DEPTH = 5;
+export const MAX_L2_MESSAGE_TREE_DEPTH = 32;

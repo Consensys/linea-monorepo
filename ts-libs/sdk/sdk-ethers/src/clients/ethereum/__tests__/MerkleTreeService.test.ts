@@ -2,7 +2,6 @@ import { describe, beforeEach } from "@jest/globals";
 import { Wallet } from "ethers";
 import { MockProxy, mock } from "jest-mock-extended";
 
-import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import {
   TEST_CONTRACT_ADDRESS_1,
   TEST_CONTRACT_ADDRESS_2,
@@ -26,7 +25,6 @@ describe("MerkleTreeService", () => {
   let providerMock: MockProxy<Provider>;
   let l2ProviderMock: MockProxy<LineaProvider>;
   let walletMock: MockProxy<Wallet>;
-  let lineaRollupMock: MockProxy<LineaRollup>;
 
   let merkleTreeService: MerkleTreeService;
   let lineaRollupLogClient: EthersLineaRollupLogClient;
@@ -36,7 +34,6 @@ describe("MerkleTreeService", () => {
     providerMock = mock<Provider>();
     l2ProviderMock = mock<LineaProvider>();
     walletMock = mock<Wallet>();
-    lineaRollupMock = mock<LineaRollup>();
 
     const clients = generateLineaRollupClient(
       providerMock,
@@ -64,9 +61,38 @@ describe("MerkleTreeService", () => {
         "Message hash not found in messages.",
       );
     });
+
+    it.each([0, 1, 33, 64, Number.NaN, 5.5, Number.MAX_SAFE_INTEGER + 1])(
+      "should reject invalid tree depth %p before selecting siblings",
+      (treeDepth) => {
+        expect(() => merkleTreeService.getMessageSiblings(TEST_MESSAGE_HASH, [TEST_MESSAGE_HASH], treeDepth)).toThrow();
+      },
+    );
   });
 
   describe("getMessageProof", () => {
+    it.each([0, 1, 31, 32, 64, 2n ** 80n])(
+      "should reject finalization tree depth %p before proof construction",
+      async (finalizationTreeDepth) => {
+        const messageHash = TEST_MESSAGE_HASH;
+        const transactionReceipt = generateTransactionReceiptWithLogs(undefined, [
+          generateL2MerkleTreeAddedLog(TEST_MERKLE_ROOT_2, finalizationTreeDepth),
+          generateL2MessagingBlockAnchoredLog(10n),
+        ]);
+        jest
+          .spyOn(l2MessageServiceLogClient, "getMessageSentEventsByMessageHash")
+          .mockResolvedValue([testMessageSentEvent]);
+        jest
+          .spyOn(lineaRollupLogClient, "getL2MessagingBlockAnchoredEvents")
+          .mockResolvedValue([testL2MessagingBlockAnchoredEvent]);
+        jest.spyOn(providerMock, "getTransactionReceipt").mockResolvedValue(transactionReceipt);
+
+        await expect(merkleTreeService.getMessageProof(messageHash)).rejects.toThrow(
+          "Finalization treeDepth must equal configured l2MessageTreeDepth",
+        );
+      },
+    );
+
     it("should throw a BaseError if merkle tree build failed", async () => {
       const messageHash = TEST_MESSAGE_HASH;
       const transactionReceipt = generateTransactionReceiptWithLogs(undefined, [
@@ -83,9 +109,26 @@ describe("MerkleTreeService", () => {
         .spyOn(lineaRollupLogClient, "getL2MessagingBlockAnchoredEvents")
         .mockResolvedValue([testL2MessagingBlockAnchoredEvent]);
       jest.spyOn(providerMock, "getTransactionReceipt").mockResolvedValue(transactionReceipt);
-      jest.spyOn(LineaRollup__factory, "connect").mockReturnValueOnce(lineaRollupMock);
 
       await expect(merkleTreeService.getMessageProof(messageHash)).rejects.toThrow("Merkle tree build failed.");
     });
+  });
+
+  describe("constructor", () => {
+    it.each([0, 1, 33, 64, Number.NaN, 5.5, Number.MAX_SAFE_INTEGER + 1])(
+      "should reject invalid configured tree depth %p",
+      (l2MessageTreeDepth) => {
+        expect(
+          () =>
+            new MerkleTreeService(
+              providerMock,
+              TEST_CONTRACT_ADDRESS_1,
+              lineaRollupLogClient,
+              l2MessageServiceLogClient,
+              l2MessageTreeDepth,
+            ),
+        ).toThrow();
+      },
+    );
   });
 });

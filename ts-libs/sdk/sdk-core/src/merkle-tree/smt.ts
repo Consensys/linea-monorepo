@@ -1,6 +1,7 @@
 import { zeroHash } from "../constants/bytes";
 import { MessageProof } from "../types/message";
 import { Hex } from "../types/misc";
+import { validateL2MessageTreeDepth } from "../utils/message-tree-depth";
 
 /**
  * A sparse Merkle tree implementation using 1-based flat indexing.
@@ -55,15 +56,11 @@ export class SparseMerkleTree {
    * @throws If depth <= 1.
    */
   constructor(depth: number, hashFn: (left: Hex, right: Hex) => Hex) {
-    if (depth <= 1) {
-      throw new Error("Merkle tree depth must be greater than 1");
-    }
-
     this.hashFn = hashFn;
-    this.depth = depth;
-    this.zeroHashes = this.buildZeroHashes(depth);
+    this.depth = validateL2MessageTreeDepth(depth, "Merkle tree depth");
+    this.zeroHashes = this.buildZeroHashes(this.depth);
     // Seed the root (index 1) to the empty-tree root
-    this.nodeMap.set(1n, this.zeroHashes[depth]);
+    this.nodeMap.set(1n, this.zeroHashes[this.depth]);
   }
 
   /**
@@ -108,11 +105,15 @@ export class SparseMerkleTree {
    * @returns {number} The depth of the tree.
    */
   private leafNodeIndex(idx: number): bigint {
-    if (idx < 0 || idx >= 1 << this.depth) {
+    if (!Number.isSafeInteger(idx) || idx < 0 || BigInt(idx) >= this.leafCapacity()) {
       throw new Error("Leaf index is out of range");
     }
     // Flat-tree leaf index: 2^depth + idx
     return (1n << BigInt(this.depth)) + BigInt(idx);
+  }
+
+  private leafCapacity(): bigint {
+    return 1n << BigInt(this.depth);
   }
 
   /**

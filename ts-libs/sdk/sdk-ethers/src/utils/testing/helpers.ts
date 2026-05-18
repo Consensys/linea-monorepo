@@ -297,7 +297,7 @@ export const generateL2MessagingBlockAnchoredLog = (l2Block: bigint, overrides?:
 
 export const generateL2MerkleTreeAddedLog = (
   l2MerkleRoot: string,
-  treeDepth: number,
+  treeDepth: number | bigint,
   overrides?: Partial<ethers.Log>,
 ): ethers.Log => {
   return new ethers.Log(

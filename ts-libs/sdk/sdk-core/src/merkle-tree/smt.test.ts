@@ -8,7 +8,20 @@ const hash = (left: Hex, right: Hex): Hex => keccak256(encodePacked(["bytes32", 
 describe("SparseMerkleTree", () => {
   describe("Initialization", () => {
     it("should throw an error if depth <= 1", () => {
+      expect(() => new SparseMerkleTree(0, hash)).toThrow("Merkle tree depth must be greater than 1");
       expect(() => new SparseMerkleTree(1, hash)).toThrow("Merkle tree depth must be greater than 1");
+    });
+
+    it.each([Number.NaN, 2.5, Number.MAX_SAFE_INTEGER + 1])("should throw when depth is %p", (depth) => {
+      expect(() => new SparseMerkleTree(depth, hash)).toThrow("Merkle tree depth must be a finite safe integer");
+    });
+
+    it.each([33, 64])("should throw when depth exceeds the supported maximum", (depth) => {
+      expect(() => new SparseMerkleTree(depth, hash)).toThrow("Merkle tree depth must be less than or equal to 32");
+    });
+
+    it.each([31, 32])("should initialize supported boundary depth %p", (depth) => {
+      expect(() => new SparseMerkleTree(depth, hash)).not.toThrow();
     });
 
     it("should return initialized tree", () => {

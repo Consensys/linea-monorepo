@@ -45,6 +45,7 @@ const L2_BLOCK_ANCHORED_ABI = ["event L2MessagingBlockAnchored(uint256 indexed l
 const L2_MERKLE_ROOT_ADDED_ABI = ["event L2MerkleRootAdded(bytes32 indexed l2MerkleRoot, uint256 indexed treeDepth)"];
 const FINALIZATION_ABI = [...L2_MERKLE_ROOT_ADDED_ABI, ...L2_BLOCK_ANCHORED_ABI];
 const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
+const MAX_L2_MESSAGE_TREE_DEPTH = 32;
 const TOTAL_STEPS = 6;
 
 type BlockBound = number | "earliest" | "latest";
@@ -179,21 +180,39 @@ function smtHash(left: string, right: string): string {
   return ethers.solidityPackedKeccak256(["bytes32", "bytes32"], [left, right]);
 }
 
+function validateTreeDepth(depth: number, label = "treeDepth"): number {
+  if (!Number.isFinite(depth) || !Number.isSafeInteger(depth)) {
+    throw new Error(`${label} must be a finite safe integer`);
+  }
+  if (depth <= 1) {
+    throw new Error(`${label} must be greater than 1`);
+  }
+  if (depth > MAX_L2_MESSAGE_TREE_DEPTH) {
+    throw new Error(`${label} must be less than or equal to ${MAX_L2_MESSAGE_TREE_DEPTH}`);
+  }
+  return depth;
+}
+
+function parseTreeDepth(value: unknown): number {
+  const depth = BigInt(value as string | number | bigint);
+  if (depth > BigInt(MAX_L2_MESSAGE_TREE_DEPTH)) {
+    throw new Error(`treeDepth must be less than or equal to ${MAX_L2_MESSAGE_TREE_DEPTH}`);
+  }
+  return validateTreeDepth(Number(depth));
+}
+
 class SparseMerkleTree {
   private depth: number;
   private nodeMap = new Map<bigint, string>();
   private zeroHashes: string[];
 
   constructor(depth: number) {
-    if (depth <= 1) {
-      throw new Error("Merkle tree depth must be greater than 1");
-    }
-    this.depth = depth;
+    this.depth = validateTreeDepth(depth, "Merkle tree depth");
     this.zeroHashes = [ZERO_HASH];
-    for (let i = 1; i <= depth; i++) {
+    for (let i = 1; i <= this.depth; i++) {
       this.zeroHashes[i] = smtHash(this.zeroHashes[i - 1], this.zeroHashes[i - 1]);
     }
-    this.nodeMap.set(1n, this.zeroHashes[depth]);
+    this.nodeMap.set(1n, this.zeroHashes[this.depth]);
   }
 
   public getRoot(): string {
@@ -226,10 +245,14 @@ class SparseMerkleTree {
   }
 
   private leafNodeIndex(idx: number): bigint {
-    if (idx < 0 || idx >= 1 << this.depth) {
+    if (!Number.isSafeInteger(idx) || idx < 0 || BigInt(idx) >= this.leafCapacity()) {
       throw new Error("Leaf index is out of range");
     }
     return (1n << BigInt(this.depth)) + BigInt(idx);
+  }
+
+  private leafCapacity(): bigint {
+    return 1n << BigInt(this.depth);
   }
 
   private parentIndex(nodeIdx: bigint): bigint {
@@ -257,7 +280,7 @@ class SparseMerkleTree {
 }
 
 function getMessageSiblings(targetMessageHash: string, messageHashes: string[], treeDepth: number): string[] {
-  const treeCapacity = 2 ** treeDepth;
+  const treeCapacity = 2 ** validateTreeDepth(treeDepth);
   const messageHashIndex = findHashIndex(messageHashes, targetMessageHash);
   if (messageHashIndex === -1) {
     throw new Error(`Message hash ${targetMessageHash} not found in the finalization message set`);
@@ -265,14 +288,7 @@ function getMessageSiblings(targetMessageHash: string, messageHashes: string[], 
 
   const chunkStart = Math.floor(messageHashIndex / treeCapacity) * treeCapacity;
   const chunkEnd = Math.min(messageHashes.length, chunkStart + treeCapacity);
-  const siblings = messageHashes.slice(chunkStart, chunkEnd);
-
-  const remainder = siblings.length % treeCapacity;
-  if (remainder !== 0) {
-    siblings.push(...Array(treeCapacity - remainder).fill(ZERO_HASH));
-  }
-
-  return siblings;
+  return messageHashes.slice(chunkStart, chunkEnd);
 }
 
 function parseFinalizationReceipt(receipt: ethers.TransactionReceipt, lineaRollupAddress: string): FinalizationInfo {
@@ -292,7 +308,7 @@ function parseFinalizationReceipt(receipt: ethers.TransactionReceipt, lineaRollu
       }
       if (parsed.name === "L2MerkleRootAdded") {
         l2MerkleRoots.push(parsed.args.l2MerkleRoot as string);
-        treeDepth = Number(parsed.args.treeDepth);
+        treeDepth = parseTreeDepth(parsed.args.treeDepth);
       } else if (parsed.name === "L2MessagingBlockAnchored") {
         anchoredBlocks.push(Number(parsed.args.l2Block));
       }

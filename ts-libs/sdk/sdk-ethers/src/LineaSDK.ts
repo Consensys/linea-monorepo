@@ -25,7 +25,7 @@ import { NETWORKS } from "./core/constants";
 import { Direction } from "./core/enums";
 import { makeBaseError } from "./core/errors/utils";
 import { L1FeeEstimatorOptions, L2FeeEstimatorOptions, LineaSDKOptions, Network, SDKMode } from "./core/types";
-import { isString } from "./core/utils";
+import { isString, validateL2MessageTreeDepth } from "./core/utils";
 
 export class LineaSDK {
   private network: Network;
@@ -56,7 +56,7 @@ export class LineaSDK {
 
     this.network = network;
     this.mode = mode;
-    this.l2MessageTreeDepth = l2MessageTreeDepth;
+    this.l2MessageTreeDepth = validateL2MessageTreeDepth(l2MessageTreeDepth);
 
     this.l1Provider = this.getL1Provider(l1RpcUrlOrProvider);
     this.l2Provider = this.getL2Provider(l2RpcUrlOrProvider);

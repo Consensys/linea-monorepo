@@ -90,6 +90,7 @@ async function buildSharedInfrastructure(
     l2.publicClient,
     l2Config.messageServiceContractAddress,
     l1GasProvider,
+    l2Config.l2MessageTreeDepth,
   );
   const l2MessageServiceClient = new ViemL2MessageServiceClient(
     l2.publicClient,

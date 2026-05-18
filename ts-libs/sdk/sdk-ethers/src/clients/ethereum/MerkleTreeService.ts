@@ -1,6 +1,5 @@
 import { Block, TransactionReceipt, TransactionRequest, TransactionResponse } from "ethers";
 
-import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
 import {
   ILineaRollupLogClient,
   FinalizationMessagingInfo,
@@ -12,14 +11,14 @@ import { IL2MessageServiceLogClient } from "../../core/clients/linea";
 import {
   L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
   L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE,
-  ZERO_HASH,
 } from "../../core/constants";
 import { makeBaseError } from "../../core/errors/utils";
+import { validateL2MessageTreeDepth, validateL2MessageTreeDepthFromLog } from "../../core/utils";
 import { SparseMerkleTreeFactory } from "../../utils/merkleTree/MerkleTreeFactory";
 import { BrowserProvider, Provider } from "../providers";
 
 export class MerkleTreeService implements IMerkleTreeService {
-  private readonly contract: LineaRollup;
+  private readonly l2MessageTreeDepth: number;
 
   /**
    * Initializes a new instance of the `MerkleTreeService`.
@@ -41,9 +40,9 @@ export class MerkleTreeService implements IMerkleTreeService {
     private readonly contractAddress: string,
     private readonly lineaRollupLogClient: ILineaRollupLogClient,
     private readonly l2MessageServiceLogClient: IL2MessageServiceLogClient,
-    private readonly l2MessageTreeDepth: number,
+    l2MessageTreeDepth: number,
   ) {
-    this.contract = LineaRollup__factory.connect(contractAddress, this.provider);
+    this.l2MessageTreeDepth = validateL2MessageTreeDepth(l2MessageTreeDepth);
   }
 
   /**
@@ -101,20 +100,18 @@ export class MerkleTreeService implements IMerkleTreeService {
       throw makeBaseError(`Transaction does not exist or no logs found in this transaction: ${transactionHash}.`);
     }
 
-    let treeDepth = 0;
+    let treeDepth: number | undefined;
     const l2MerkleRoots: string[] = [];
     const blocksNumber: number[] = [];
 
     const filteredLogs = receipt.logs.filter((log) => log.address === this.contractAddress);
 
     for (const log of filteredLogs) {
-      const parsedLog = this.contract.interface.parseLog(log);
-
       if (log.topics[0] === L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE) {
-        treeDepth = parseInt(parsedLog?.args.treeDepth);
-        l2MerkleRoots.push(parsedLog?.args.l2MerkleRoot);
+        treeDepth = validateL2MessageTreeDepthFromLog(BigInt(log.topics[2]), this.l2MessageTreeDepth);
+        l2MerkleRoots.push(log.topics[1]);
       } else if (log.topics[0] === L2_MESSAGING_BLOCK_ANCHORED_EVENT_SIGNATURE) {
-        blocksNumber.push(Number(parsedLog?.args.l2Block));
+        blocksNumber.push(Number(BigInt(log.topics[1])));
       }
     }
 
@@ -132,7 +129,7 @@ export class MerkleTreeService implements IMerkleTreeService {
         endBlock: Math.max(...blocksNumber),
       },
       l2MerkleRoots,
-      treeDepth,
+      treeDepth: treeDepth ?? this.l2MessageTreeDepth,
     };
   }
 
@@ -160,7 +157,7 @@ export class MerkleTreeService implements IMerkleTreeService {
    * @returns {string[]} The message siblings.
    */
   public getMessageSiblings(messageHash: string, messageHashes: string[], treeDepth: number): string[] {
-    const numberOfMessagesInTrees = 2 ** treeDepth;
+    const numberOfMessagesInTrees = 2 ** validateL2MessageTreeDepth(treeDepth, "treeDepth");
     const messageHashesLength = messageHashes.length;
 
     const messageHashIndex = messageHashes.indexOf(messageHash);
@@ -172,13 +169,6 @@ export class MerkleTreeService implements IMerkleTreeService {
     const start = Math.floor(messageHashIndex / numberOfMessagesInTrees) * numberOfMessagesInTrees;
     const end = Math.min(messageHashesLength, start + numberOfMessagesInTrees);
 
-    const siblings = messageHashes.slice(start, end);
-
-    const remainder = siblings.length % numberOfMessagesInTrees;
-    if (remainder !== 0) {
-      siblings.push(...Array(numberOfMessagesInTrees - remainder).fill(ZERO_HASH));
-    }
-
-    return siblings;
+    return messageHashes.slice(start, end);
   }
 }

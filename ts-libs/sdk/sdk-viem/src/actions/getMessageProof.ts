@@ -1,4 +1,11 @@
-import { getContractsAddressesByChainId, MessageProof, SparseMerkleTree } from "@consensys/linea-sdk-core";
+import {
+  DEFAULT_L2_MESSAGE_TREE_DEPTH,
+  getContractsAddressesByChainId,
+  MessageProof,
+  SparseMerkleTree,
+  validateL2MessageTreeDepth,
+  validateL2MessageTreeDepthFromLog,
+} from "@consensys/linea-sdk-core";
 import {
   Abi,
   Account,
@@ -21,7 +28,6 @@ import {
   parseEventLogs,
   ParseEventLogsErrorType,
   Transport,
-  zeroHash,
 } from "viem";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
 
@@ -58,6 +64,8 @@ export type GetMessageProofParameters<
   lineaRollupAddress?: Address | undefined;
   // Defaults to the message service address for the L2 chain
   l2MessageServiceAddress?: Address | undefined;
+  // Defaults to the protocol L2 message tree depth
+  l2MessageTreeDepth?: number | undefined;
 };
 
 export type GetMessageProofReturnType = MessageProof;
@@ -137,6 +145,7 @@ export async function getMessageProof<
 
   const lineaRollupAddress =
     parameters.lineaRollupAddress ?? getContractsAddressesByChainId(client.chain.id).messageService;
+  const l2MessageTreeDepth = validateL2MessageTreeDepth(parameters.l2MessageTreeDepth ?? DEFAULT_L2_MESSAGE_TREE_DEPTH);
 
   const [l2MessagingBlockAnchoredEvent] = await getContractEvents(client, {
     address: lineaRollupAddress,
@@ -163,6 +172,7 @@ export async function getMessageProof<
   const finalizationInfo = await getFinalizationMessagingInfo(client, {
     transactionHash: l2MessagingBlockAnchoredEvent.transactionHash,
     lineaRollupAddress,
+    l2MessageTreeDepth,
   });
 
   const l2MessageHashesInBlockRange = (
@@ -205,12 +215,13 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
   client: Client<Transport, chain, account>,
   parameters: {
     lineaRollupAddress: Hex;
+    l2MessageTreeDepth: number;
     transactionHash: Hex;
   },
 ) {
   const receipt = await getTransactionReceipt(client, { hash: parameters.transactionHash });
 
-  let treeDepth = 0;
+  let treeDepth: number | undefined;
   const l2MerkleRoots: string[] = [];
   const blocksNumber: number[] = [];
 
@@ -242,7 +253,7 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
 
   for (const log of parsedLogs) {
     if (log.eventName === "L2MerkleRootAdded") {
-      treeDepth = parseInt(log.args.treeDepth.toString());
+      treeDepth = validateL2MessageTreeDepthFromLog(log.args.treeDepth, parameters.l2MessageTreeDepth);
       l2MerkleRoots.push(log.args.l2MerkleRoot);
     } else if (log.eventName === "L2MessagingBlockAnchored") {
       blocksNumber.push(parseInt(log.args.l2Block.toString()));
@@ -269,12 +280,12 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
       endBlock: BigInt(Math.max(...blocksNumber)),
     },
     l2MerkleRoots,
-    treeDepth,
+    treeDepth: treeDepth ?? parameters.l2MessageTreeDepth,
   };
 }
 
 function getMessageSiblings(messageHash: Hex, messageHashes: Hex[], treeDepth: number): Hex[] {
-  const numberOfMessagesInTrees = 2 ** treeDepth;
+  const numberOfMessagesInTrees = 2 ** validateL2MessageTreeDepth(treeDepth, "treeDepth");
   const messageHashesLength = messageHashes.length;
 
   const messageHashIndex = messageHashes.indexOf(messageHash);
@@ -286,12 +297,5 @@ function getMessageSiblings(messageHash: Hex, messageHashes: Hex[], treeDepth: n
   const start = Math.floor(messageHashIndex / numberOfMessagesInTrees) * numberOfMessagesInTrees;
   const end = Math.min(messageHashesLength, start + numberOfMessagesInTrees);
 
-  const siblings = messageHashes.slice(start, end);
-
-  const remainder = siblings.length % numberOfMessagesInTrees;
-  if (remainder !== 0) {
-    siblings.push(...Array(numberOfMessagesInTrees - remainder).fill(zeroHash));
-  }
-
-  return siblings;
+  return messageHashes.slice(start, end);
 }

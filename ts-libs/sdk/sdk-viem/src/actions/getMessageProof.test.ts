@@ -42,6 +42,46 @@ describe("getMessageProof", () => {
   const mockL2Client = (chainId?: number): MockClient =>
     ({ chain: chainId ? { id: chainId } : undefined }) as unknown as MockClient;
 
+  const mockMessageSentEvent = () => {
+    const messageSentLog = generateMessageSentLog({ blockNumber: l2BlockNumber });
+    return {
+      messageSender: messageSentLog.args._from!,
+      destination: messageSentLog.args._to!,
+      fee: messageSentLog.args._fee!,
+      value: messageSentLog.args._value!,
+      messageNonce: messageSentLog.args._nonce!,
+      calldata: messageSentLog.args._calldata!,
+      messageHash: messageSentLog.args._messageHash!,
+      blockNumber: messageSentLog.blockNumber,
+      logIndex: messageSentLog.logIndex,
+      contractAddress: messageSentLog.address,
+      transactionHash: messageSentLog.transactionHash,
+    };
+  };
+
+  const mockProofDependencies = (finalizationTreeDepth: number | bigint = treeDepth) => {
+    (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>).mockResolvedValue([
+      mockMessageSentEvent(),
+    ]);
+    (getContractEvents as jest.Mock<ReturnType<typeof getContractEvents>>).mockResolvedValue([
+      generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+        address: getContractsAddressesByChainId(mainnetId).messageService,
+      }),
+    ]);
+    (getTransactionReceipt as jest.Mock).mockResolvedValue(
+      generateTransactionReceipt({
+        logs: [
+          generateL2MerkleTreeAddedLog(TEST_MERKLE_ROOT, finalizationTreeDepth, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+          generateL2MessagingBlockAnchoredLog(l2BlockNumber, {
+            address: getContractsAddressesByChainId(mainnetId).messageService,
+          }),
+        ],
+      }),
+    );
+  };
+
   afterEach(() => {
     jest.clearAllMocks();
     (getMessageSentEvents as jest.Mock).mockReset();
@@ -227,6 +267,32 @@ describe("getMessageProof", () => {
     const result = await getMessageProof(client, { l2Client, messageHash });
     expect(result).toEqual({ proof, root: merkleRoot, leafIndex });
   });
+
+  it.each([0, 1, 31, 32, 64, 2n ** 80n])(
+    "rejects finalization tree depth %p before proof construction",
+    async (finalizationTreeDepth) => {
+      const client = mockClient(mainnetId);
+      const l2Client = mockL2Client(lineaId);
+      mockProofDependencies(finalizationTreeDepth);
+
+      await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
+        "Finalization treeDepth must equal configured l2MessageTreeDepth",
+      );
+    },
+  );
+
+  it.each([0, 1, 33, 64, Number.NaN, 5.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects configured l2MessageTreeDepth %p",
+    async (l2MessageTreeDepth) => {
+      const client = mockClient(mainnetId);
+      const l2Client = mockL2Client(lineaId);
+      (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>).mockResolvedValue([
+        mockMessageSentEvent(),
+      ]);
+
+      await expect(getMessageProof(client, { l2Client, messageHash, l2MessageTreeDepth })).rejects.toThrow();
+    },
+  );
 
   it("propagates errors from getMessageSentEvents", async () => {
     const client = mockClient(mainnetId);

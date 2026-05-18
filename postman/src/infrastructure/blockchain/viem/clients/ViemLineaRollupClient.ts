@@ -6,7 +6,7 @@ import { ILineaRollupClient } from "../../../../core/clients/blockchain/ethereum
 import { Proof } from "../../../../core/clients/blockchain/ethereum/IMerkleTreeService";
 import { IEthereumGasProvider } from "../../../../core/clients/blockchain/IGasProvider";
 import { ZERO_ADDRESS } from "../../../../core/constants/blockchain";
-import { DEFAULT_RATE_LIMIT_MARGIN } from "../../../../core/constants/common";
+import { DEFAULT_L2_MESSAGE_TREE_DEPTH, DEFAULT_RATE_LIMIT_MARGIN } from "../../../../core/constants/common";
 import { MessageProps } from "../../../../core/entities/Message";
 import { OnChainMessageStatus } from "../../../../core/enums";
 import { Address, Hash, ErrorDescription, MessageSent, Overrides, TransactionSubmission } from "../../../../core/types";
@@ -20,6 +20,7 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
     private readonly l2PublicClient: PublicClient,
     private readonly l2ContractAddress: Address,
     private readonly gasProvider: IEthereumGasProvider,
+    private readonly l2MessageTreeDepth: number = DEFAULT_L2_MESSAGE_TREE_DEPTH,
   ) {}
 
   public async getMessageStatus(params: {
@@ -43,6 +44,7 @@ export class ViemLineaRollupClient implements ILineaRollupClient {
       messageHash,
       lineaRollupAddress: this.contractAddress,
       l2MessageServiceAddress: this.l2ContractAddress,
+      l2MessageTreeDepth: this.l2MessageTreeDepth,
       l2LogsBlockRange: messageBlockNumber
         ? { fromBlock: BigInt(messageBlockNumber), toBlock: BigInt(messageBlockNumber) }
         : undefined,

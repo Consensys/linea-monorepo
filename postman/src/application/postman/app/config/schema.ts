@@ -1,3 +1,4 @@
+import { MAX_L2_MESSAGE_TREE_DEPTH } from "@consensys/linea-sdk-core";
 import { isHex, size } from "viem/utils";
 import { z } from "zod";
 
@@ -88,7 +89,13 @@ export const networkOptionsSchema = z.object({
 });
 
 export const l2NetworkOptionsSchema = networkOptionsSchema.extend({
-  l2MessageTreeDepth: z.number().positive().optional(),
+  l2MessageTreeDepth: z
+    .number()
+    .int()
+    .min(2)
+    .max(MAX_L2_MESSAGE_TREE_DEPTH)
+    .refine(Number.isSafeInteger, "Must be a safe integer")
+    .optional(),
   enableLineaEstimateGas: z.boolean().optional(),
 });
 

@@ -107,7 +107,7 @@ export const generateL2MessagingBlockAnchoredLog = (
 
 export const generateL2MerkleTreeAddedLog = (
   l2MerkleRoot: Hex,
-  treeDepth: number,
+  treeDepth: number | bigint,
   overrides?: Partial<
     Log<
       bigint,
@@ -158,7 +158,11 @@ export const generateL2MerkleTreeAddedLog = (
     removed: false,
     transactionHash: TEST_TRANSACTION_HASH,
     address: TEST_CONTRACT_ADDRESS_1,
-    topics: [L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE, l2MerkleRoot, padHex(toHex(treeDepth), { size: 32, dir: "right" })],
+    topics: [
+      L2_MERKLE_TREE_ADDED_EVENT_SIGNATURE,
+      l2MerkleRoot,
+      padHex(toHex(BigInt(treeDepth)), { size: 32, dir: "right" }),
+    ],
     data: "0x",
     logIndex: 0,
     blockHash: TEST_BLOCK_HASH,

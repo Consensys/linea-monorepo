@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { Proof } from "../../core/clients/ethereum";
 import { ZERO_HASH } from "../../core/constants";
 import { makeBaseError } from "../../core/errors";
+import { validateL2MessageTreeDepth } from "../../core/utils";
 
 class MerkleTreeNode {
   public value: string;
@@ -27,10 +28,7 @@ export class SparseMerkleTree {
    * @param {number} depth - The depth of the Merkle tree. Must be greater than 1.
    */
   constructor(depth: number) {
-    if (depth <= 1) {
-      throw makeBaseError("Merkle tree depth must be greater than 1");
-    }
-    this.depth = depth;
+    this.depth = validateL2MessageTreeDepth(depth, "Merkle tree depth");
     this.emptyLeaves = this.generateEmptyLeaves(this.depth);
     this.root = this.createDefaultNode(this.depth);
   }
@@ -42,6 +40,7 @@ export class SparseMerkleTree {
    * @param {string} value - The value of the leaf to add.
    */
   public addLeaf(key: number, value: string): void {
+    this.validateLeafKey(key);
     const binaryKey = this.keyToBinary(key);
     this.root = this.insert(this.root, binaryKey, value, 0);
   }
@@ -53,9 +52,7 @@ export class SparseMerkleTree {
    * @returns {Proof} An object containing the proof elements, the root hash, and the leaf index.
    */
   public getProof(key: number): Proof {
-    if (key < 0 || key >= Math.pow(2, this.depth)) {
-      throw makeBaseError(`Leaf index is out of range`);
-    }
+    this.validateLeafKey(key);
 
     const binaryKey = this.keyToBinary(key);
     const leaf = this.getLeaf(key);
@@ -78,9 +75,7 @@ export class SparseMerkleTree {
    * @returns {string} The value of the leaf at the specified key.
    */
   public getLeaf(key: number): string {
-    if (key < 0 || key >= Math.pow(2, this.depth)) {
-      throw makeBaseError("Leaf index is out of range");
-    }
+    this.validateLeafKey(key);
     const binaryKey = this.keyToBinary(key);
     return this.getLeafHelper(this.root, binaryKey, 0);
   }
@@ -102,6 +97,16 @@ export class SparseMerkleTree {
    */
   private keyToBinary(key: number): string {
     return key.toString(2).padStart(this.depth, "0");
+  }
+
+  private leafCapacity(): bigint {
+    return 1n << BigInt(this.depth);
+  }
+
+  private validateLeafKey(key: number): void {
+    if (!Number.isSafeInteger(key) || key < 0 || BigInt(key) >= this.leafCapacity()) {
+      throw makeBaseError("Leaf index is out of range");
+    }
   }
 
   /**

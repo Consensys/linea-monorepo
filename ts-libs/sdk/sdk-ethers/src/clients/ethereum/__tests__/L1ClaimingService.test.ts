@@ -1,5 +1,5 @@
 import { describe, it } from "@jest/globals";
-import { ContractTransactionResponse, ethers } from "ethers";
+import { ContractTransactionResponse } from "ethers";
 import { MockProxy, mock, mockClear } from "jest-mock-extended";
 
 import { ZERO_ADDRESS } from "../../../core/constants";
@@ -179,7 +179,6 @@ describe("L1ClaimingService", () => {
         expectedIndexRange: {
           start: 0,
           end: 32,
-          numberOfZeroHashes: 0,
         },
       },
       {
@@ -188,7 +187,6 @@ describe("L1ClaimingService", () => {
         expectedIndexRange: {
           start: 32,
           end: 35,
-          numberOfZeroHashes: 29,
         },
       },
       {
@@ -197,21 +195,22 @@ describe("L1ClaimingService", () => {
         expectedIndexRange: {
           start: 64,
           end: 96,
-          numberOfZeroHashes: 0,
         },
       },
     ])(
       "should return message siblings with message index $messageIndex and $messageHashes.length messages",
       ({ messageHashes, messageIndex, expectedIndexRange }) => {
         const messageHash = messageHashes[messageIndex];
-        const zeroHashes =
-          expectedIndexRange.numberOfZeroHashes > 0
-            ? Array(expectedIndexRange.numberOfZeroHashes).fill(ethers.ZeroHash)
-            : [];
-        expect(l1ClaimingService.getMessageSiblings(messageHash, messageHashes, 5)).toStrictEqual([
-          ...messageHashes.slice(expectedIndexRange.start, expectedIndexRange.end),
-          ...zeroHashes,
-        ]);
+        expect(l1ClaimingService.getMessageSiblings(messageHash, messageHashes, 5)).toStrictEqual(
+          messageHashes.slice(expectedIndexRange.start, expectedIndexRange.end),
+        );
+      },
+    );
+
+    it.each([0, 1, 33, 64, Number.NaN, 5.5, Number.MAX_SAFE_INTEGER + 1])(
+      "should reject invalid tree depth %p before selecting siblings",
+      (treeDepth) => {
+        expect(() => l1ClaimingService.getMessageSiblings(TEST_MESSAGE_HASH, [TEST_MESSAGE_HASH], treeDepth)).toThrow();
       },
     );
   });
