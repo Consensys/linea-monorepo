@@ -550,7 +550,7 @@ jobs:
             trimmed="$(echo "$name" | tr -d '[:space:]')"
             [ -z "$trimmed" ] && continue
 
-            echo "To pull the **${name}** image, use the following command:" >> output.md
+            echo "To pull the **${name}** image:" >> output.md
             echo "\`\`\`" >> output.md
             if [ "$tag_changed" = "true" ]; then
               printf 'docker pull consensys/%s:%s\n' "$image" "$released_tag" >> output.md
