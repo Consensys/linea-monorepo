@@ -39,7 +39,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 riscv-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        clean-all|linker-script|blake-all)
+        clean-all|linker-script|blake-all|build-act4|run-act4)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
@@ -74,6 +74,10 @@ riscv-test clean <name>.<ext>
 riscv-test clean-all
 # Run all converted Blake test vectors
 riscv-test blake-all
+# Build ACT4 ELFs
+riscv-test build-act4
+# Run ACT4 ELFs through zkc
+riscv-test run-act4
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
 riscv-test blake/blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs with IN_BYTES="0x<213_bytes_input_hex><64_bytes_expected_output_hex>"
@@ -102,6 +106,75 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make linker-script`             | Generate the linker script with the memory layout                     |
 | `make verify-elf TEST=foo.<ext>` | Verify ELF offsets, entry point and sp match the ones in the Makefile |
 | `make blake-all`                 | Run all blake test vectors in `rust/src/blake/blake.all`              |
+| `make build-act4`                | Build ACT4 ELFs with the Linea ACT4 config                            |
+| `make run-act4`                  | Run ACT4 ELFs through zkc and write results/logs under `act4/bin/`     |
+
+## ACT4
+
+ACT4 targets use the Linea config in `act4/config/linea-rv64im-zicclsm/`.
+
+Build the ACT4 docker image once from a `riscv-arch-test` checkout:
+
+```bash
+cd /path/to/riscv-arch-test
+docker build -t riscv-act4 .
+```
+
+Then build and run the Linea ACT4 ELFs:
+
+```bash
+make build-act4
+make run-act4
+```
+
+The default output locations are:
+
+- `act4/bin/work/linea-rv64im-zicclsm/elfs/` — generated ELFs
+- `act4/bin/results.txt` — PASS/FAIL summary
+- `act4/bin/logs/` — per-test JSON and filtered zkc output
+
+Run a single ACT4 test after `make run-act4` has generated JSON logs:
+
+```bash
+zkc exec act4/bin/logs/<test>.json ../../main/riscv/main.zkc
+```
+
+When overriding paths, use the same variables as `run-act4`:
+
+```bash
+LOGS=act4/bin/logs
+ZKC_MAIN=../../main/riscv/main.zkc
+zkc exec "$LOGS/<test>.json" "$ZKC_MAIN"
+```
+
+Disassemble a generated ELF:
+
+```bash
+riscv64-unknown-elf-objdump -d act4/bin/work/linea-rv64im-zicclsm/elfs/rv64i/I/I-add-00.elf
+```
+
+Build a single extension by overriding the build and run inputs:
+
+```bash
+ACT4_EXTENSIONS=M make build-act4
+ELF_DIR=act4/bin/work/linea-rv64im-zicclsm/elfs/rv64i/M make run-act4
+```
+
+Useful overrides:
+
+| Variable | Default | Used by |
+|---|---|---|
+| `ACT4_CONFIG_DIR` | `act4/config` | `build-act4` |
+| `ACT4_WORK_DIR` | `act4/bin/work` | both |
+| `ELF_DIR` | derived from `ACT4_WORK_DIR` | `run-act4` |
+| `ACT4_IMAGE` | `riscv-act4:latest` | `build-act4` |
+| `ACT4_EXTENSIONS` | `I,M` | `build-act4` |
+| `ACT4_JOBS` | `4` | `build-act4` |
+| `ACT4_FAST` | `True` | `build-act4` |
+| `ACT4_DEBUG` | empty | `build-act4` |
+| `ELF2JSON` | `act4/bin/elf2json` | `run-act4` |
+| `LOGS` | `act4/bin/logs` | `run-act4` |
+| `RESULTS` | `act4/bin/results.txt` | `run-act4` |
 
 ## Options
 

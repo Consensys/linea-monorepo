@@ -3,14 +3,14 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-all
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-all build-act4 run-act4
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script blake-all,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake-all build-act4 run-act4,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -201,3 +201,72 @@ blake-all:
 		result_line=$$(printf '%s\n' "$$output" | sed '/^[[:space:]]*$$/d' | tail -n 2 | head -n 1); \
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
+
+# Build the ACT4 self-checking ELFs with the Linea ACT4 config.
+build-act4:
+	@set -u; \
+	work_dir="$${ACT4_WORK_DIR:-$(MAKEFILE_DIR)act4/bin/work}"; \
+	config_dir="$${ACT4_CONFIG_DIR:-$(MAKEFILE_DIR)act4/config}"; \
+	image="$${ACT4_IMAGE:-riscv-act4:latest}"; \
+	extensions="$${ACT4_EXTENSIONS:-I,M}"; \
+	jobs="$${ACT4_JOBS:-4}"; \
+	fast="$${ACT4_FAST:-True}"; \
+	debug="$${ACT4_DEBUG:-}"; \
+	verbosity=""; \
+	if [ "$$debug" = "True" ]; then verbosity="DEBUG=True"; elif [ "$$fast" = "True" ]; then verbosity="FAST=True"; fi; \
+	mkdir -p "$$work_dir"; \
+	work_dir=$$(cd "$$work_dir" && pwd); \
+	[ -d "$$config_dir/linea-rv64im-zicclsm" ] || { echo "error: missing $$config_dir/linea-rv64im-zicclsm"; exit 2; }; \
+	config_dir=$$(cd "$$config_dir" && pwd); \
+	docker image inspect "$$image" >/dev/null 2>&1 || { echo "error: docker image '$$image' not found"; exit 2; }; \
+	echo "building ACT4 ELFs in $$work_dir"; \
+	docker run --rm \
+		-v "$$config_dir:/act4/config/cores/linea:ro" \
+		-v "$$work_dir:/act4/work" \
+		"$$image" \
+		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$$extensions $$verbosity make --jobs $$jobs --keep-going"
+
+# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
+run-act4:
+	@set -u; \
+	work_dir="$${ACT4_WORK_DIR:-$(MAKEFILE_DIR)act4/bin/work}"; \
+	elf_dir="$${ELF_DIR:-$$work_dir/linea-rv64im-zicclsm/elfs}"; \
+	bin_dir="$(MAKEFILE_DIR)act4/bin"; \
+	logs="$${LOGS:-$$bin_dir/logs}"; \
+	results="$${RESULTS:-$$bin_dir/results.txt}"; \
+	elf2json="$${ELF2JSON:-$$bin_dir/elf2json}"; \
+	[ -d "$$elf_dir" ] || { echo "error: missing ELF dir '$$elf_dir'; run make build-act4 first"; exit 2; }; \
+	mkdir -p "$$bin_dir" "$$logs"; \
+	rm -f "$$logs"/*; \
+	> "$$results"; \
+	if [ ! -x "$$elf2json" ]; then \
+		command -v go >/dev/null 2>&1 || { echo "error: go not found"; exit 2; }; \
+		go build -o "$$elf2json" $(GO_MAIN); \
+	fi; \
+	command -v zkc >/dev/null 2>&1 || { echo "error: zkc not found"; exit 2; }; \
+	count=0; pass=0; fail=0; \
+	for elf in $$(find "$$elf_dir" -name '*.elf' | sort); do \
+		name=$$(basename "$$elf" .elf); \
+		count=$$((count + 1)); \
+		json="$$logs/$$name.json"; \
+		out="$$logs/$$name.out"; \
+		full="$$logs/$$name.full"; \
+		"$$elf2json" "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$json" 2> "$$logs/$$name.json.err"; \
+		zkc exec "$$json" $(ZKC_MAIN) 2>&1 | tee "$$full" | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" | head -3 > "$$out"; \
+		if grep -q "Program exited successfully" "$$out"; then \
+			echo "PASS  $$name"; \
+			echo "PASS  $$name" >> "$$results"; \
+			pass=$$((pass + 1)); \
+			rm -f "$$full"; \
+		else \
+			code=$$(grep -oE "exit with code -?[0-9]+" "$$out" | head -1 | grep -oE "\-?[0-9]+"); \
+			[ -n "$$code" ] || code="?"; \
+			first=$$(head -1 "$$out" | tr -d '\n' | cut -c1-120); \
+			echo "FAIL  $$name  code=$$code  '$$first'"; \
+			echo "FAIL  $$name  code=$$code  '$$first'" >> "$$results"; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done; \
+	echo "DONE: $$count tests   PASS: $$pass   FAIL: $$fail" | tee -a "$$results"; \
+	echo "results: $$results"; \
+	echo "logs:    $$logs/"
