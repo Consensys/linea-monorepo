@@ -77,6 +77,8 @@ ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
 ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
 # DEBUG asks ACT4 to emit debug artifacts, which helps inspect failures
 ACT4_DEBUG      := true
+# FAST asks ACT4 to skip objdump generation for faster builds
+ACT4_FAST       := false
 
 # Default target (make)
 exec: compile zkc-exec
@@ -228,7 +230,7 @@ build-act4:
 		-v "$$config_dir:/act4/config/cores/linea:ro" \
 		-v "$$work_dir:/act4/work" \
 		"$(ACT4_IMAGE)" \
-		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) DEBUG=$(ACT4_DEBUG) make --jobs $(ACT4_JOBS) --keep-going"
+		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going"
 
 # Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
 # ACT4 writes messages and exits via ecall, so keep the line after each ecall marker.
