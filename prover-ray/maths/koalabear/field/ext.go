@@ -1,7 +1,6 @@
 package field
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,7 +9,6 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover-ray/utils/parallel"
 )
@@ -189,9 +187,15 @@ func SetInterface(z *Ext, i1 interface{}) (*Ext, error) {
 			return nil, errors.New("can't set fr.Element with <nil>")
 		}
 		z.B0.A0.SetBigInt(c1)
+		z.B0.A1.SetZero()
+		z.B1.SetZero()
+		z.B2.SetZero()
 		return z, nil
 	case big.Int:
 		z.B0.A0.SetBigInt(&c1)
+		z.B0.A1.SetZero()
+		z.B1.SetZero()
+		z.B2.SetZero()
 		return z, nil
 	case []byte:
 		z := BytesToExt(c1)
@@ -395,11 +399,11 @@ func ExtToBytes(z *Ext) (res [Bytes * ExtensionDegree]byte) {
 // big-endian encoding produced by [ExtToBytes].
 func BytesToExt(data []byte) Ext {
 	var res Ext
-	res.B0.A0 = koalabear.Element{binary.BigEndian.Uint32(data[0*Bytes : 1*Bytes])}
-	res.B0.A1 = koalabear.Element{binary.BigEndian.Uint32(data[1*Bytes : 2*Bytes])}
-	res.B1.A0 = koalabear.Element{binary.BigEndian.Uint32(data[2*Bytes : 3*Bytes])}
-	res.B1.A1 = koalabear.Element{binary.BigEndian.Uint32(data[3*Bytes : 4*Bytes])}
-	res.B2.A0 = koalabear.Element{binary.BigEndian.Uint32(data[4*Bytes : 5*Bytes])}
-	res.B2.A1 = koalabear.Element{binary.BigEndian.Uint32(data[5*Bytes : 6*Bytes])}
+	res.B0.A0.SetBytes(data[0*Bytes : 1*Bytes])
+	res.B0.A1.SetBytes(data[1*Bytes : 2*Bytes])
+	res.B1.A0.SetBytes(data[2*Bytes : 3*Bytes])
+	res.B1.A1.SetBytes(data[3*Bytes : 4*Bytes])
+	res.B2.A0.SetBytes(data[4*Bytes : 5*Bytes])
+	res.B2.A1.SetBytes(data[5*Bytes : 6*Bytes])
 	return res
 }

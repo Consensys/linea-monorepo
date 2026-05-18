@@ -5,9 +5,9 @@ KoalaBear extension field (`extensions.E4`) to the degree-6 extension
 (`extensions.E6`) shipped in `gnark-crypto@v0.20.2-0.20260514182922-df0578435b08`.
 
 The target was every reference to the degree-4 extension under `prover-ray/`
-and all of its sub-packages (`maths`, `crypto`, `wiop`). The migration is
-intended to be drop-in from the caller's perspective and preserve test
-coverage.
+and all of its sub-packages (`maths`, `crypto`, `wiop`). This is not a
+source- or binary-compatible change: constructors, public byte encodings, and
+some circuit helper names now expose six extension coordinates.
 
 ---
 
@@ -123,11 +123,9 @@ Benchmarks for `EvalLagrange` and `ComputeLagrangeAtZ` on extension inputs.
 
 ### `crypto/koalabear/vortex/verifier_common.go`
 
-- The gnark-crypto helper `vortex.EvalFextPolyHorner` / `EvalBasePolyHorner`
-  are still E4-typed in gnark-crypto, so the linea code base now ships
-  drop-in local equivalents (`evalFextPolyHorner`, `evalBasePolyHorner`)
-  that operate on `field.Ext` (= E6) directly. This also removes a
-  cross-package dependency on the upstream vortex implementation.
+- The verifier now uses the local `polynomials.EvalCanonical` helper, whose
+  `field.Vec` / `field.Gen` dispatch supports both base-field and E6
+  coefficients.
 - The opening-check comparison switched from `!=` (compile-error on E6) to
   `!y.Equal(&other)`.
 
@@ -143,8 +141,10 @@ Benchmarks for `EvalLagrange` and `ComputeLagrangeAtZ` on extension inputs.
 - `proverBucket` lost the `scratchC0..C3` fields; `Plan` no longer
   allocates them.
 
-### `wiop/{query_lagrange_eval.go, query_lagrange_eval_test.go,
-###       query_vanishing_test.go, ...}`
+### `wiop` query tests and helpers
+
+Files such as `query_lagrange_eval.go`, `query_lagrange_eval_test.go`, and
+`query_vanishing_test.go` did not need structural changes.
 
 No structural change needed: the test helpers and production code only
 access `B0.A0` (the lifted base slot). Those references work unchanged on
@@ -246,11 +246,9 @@ resolutions:
 - **Allocation thrashing in `SumExt`**: the closure-based getter was
   allocating six `[]Element` slices per call. Hoisted the scratch slice to
   a single allocation reused across the six coordinate reductions.
-- **Reuse suggestion: `EvalCanonical` for Horner kernels in vortex**: kept
-  the local `evalFextPolyHorner` / `evalBasePolyHorner` because the
-  recommended replacement would re-introduce `field.Vec`/`field.Gen`
-  wrapping at every call. The local kernels are 5 lines each and stay in a
-  hot loop.
+- **Reuse suggestion: `EvalCanonical` for Horner kernels in vortex**:
+  after the merge from `main`, `EvalCanonical` is `field.Gen`-aware, so the
+  verifier uses it directly instead of local Horner kernels.
 - **`NewHintExt` native vs emulated DRY-up**: kept the two branches
   separate. The element constructors and input/output element types
   differ; unifying via reflection or type parameters would obscure rather
@@ -273,8 +271,6 @@ go test  ./...  -count=1 -timeout=600s
   wiop/codegen, zkcdriver                                    OK
 go test -bench=Benchmark...  -count=3 -run=^$                OK
 ```
-
-Raw benchmark artefacts: `/tmp/fp6/baseline.txt`, `/tmp/fp6/after.txt`.
 
 ---
 

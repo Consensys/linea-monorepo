@@ -13,12 +13,12 @@ const benchSize = 1 << 14
 // multiplication and batch inversion together.
 func BenchmarkEvalLagrangeExtExt(b *testing.B) {
 	rng := newRng()
-	canonical := make([]field.Ext, benchSize)
-	for i := range canonical {
-		canonical[i] = randExt(rng)
+	evals := make([]field.Ext, benchSize)
+	for i := range evals {
+		evals[i] = randExt(rng)
 	}
 	z := field.ElemFromExt(randExt(rng))
-	poly := field.VecFromExt(canonical)
+	poly := field.VecFromExt(evals)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = EvalLagrange(poly, z)

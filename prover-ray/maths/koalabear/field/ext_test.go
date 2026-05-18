@@ -345,6 +345,33 @@ func TestSetInterface(t *testing.T) {
 		}
 	})
 
+	t.Run("baseInputsClearUpperCoordinates", func(t *testing.T) {
+		cases := []struct {
+			name  string
+			input any
+			want  uint64
+		}{
+			{name: "string", input: "123", want: 123},
+			{name: "*big.Int", input: big.NewInt(999), want: 999},
+			{name: "big.Int", input: *big.NewInt(777), want: 777},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				z := PseudoRandExt(rng)
+				if _, err := SetInterface(&z, tc.input); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if z.B0.A0.Uint64() != tc.want {
+					t.Errorf("B0.A0 = %d, want %d", z.B0.A0.Uint64(), tc.want)
+				}
+				if !extUpperIsZero(z) {
+					t.Error("SetInterface base input should clear all extension coordinates")
+				}
+			})
+		}
+	})
+
 	t.Run("[]byte", func(t *testing.T) {
 		// The []byte case in SetInterface returns a new *Ext built via
 		// BytesToExt rather than modifying the receiver. This is an
@@ -557,10 +584,8 @@ func TestExpByIntExt(t *testing.T) {
 //  1. All-zero bytes produce the zero extension element.
 //  2. BytesToExt and SetInterface([]byte) agree on their output.
 //
-// Note: BytesToExt stores the input uint32 values as raw Montgomery-form
-// internal representations. ExtToUint64s uses Bits()[0] which converts *from*
-// Montgomery form, so ExtToUint64s(BytesToExt(data)) ≠ the raw numeric bytes
-// — this is expected.
+// Note: BytesToExt expects the canonical coordinate encoding produced by
+// Element.Bytes.
 func TestBytesToExt(t *testing.T) {
 	// All-zero bytes produce the zero element (zero is zero in any representation).
 	zeroData := make([]byte, ExtensionDegree*Bytes)
@@ -574,6 +599,9 @@ func TestBytesToExt(t *testing.T) {
 		src := PseudoRandExt(rng)
 		b := ExtToBytes(&src)
 		fromFunc := BytesToExt(b[:])
+		if !extEq(src, fromFunc) {
+			t.Error("BytesToExt(ExtToBytes(src)) should round-trip to src")
+		}
 		var dummy Ext
 		result, err := SetInterface(&dummy, b[:])
 		if err != nil {

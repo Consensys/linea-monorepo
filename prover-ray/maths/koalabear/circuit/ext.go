@@ -180,15 +180,6 @@ func (a *API) DoubleExt(x Ext) Ext {
 // qnrE2 is the quadratic non-residue constant for E2: u^2 = 3.
 var qnrE2 = big.NewInt(3)
 
-// e2MulByQuadraticNonResidue multiplies an E2 by u (where u^2 = 3).
-// Returns (3*a1, a0).
-func (a *API) e2MulByQuadraticNonResidue(x E2) E2 {
-	return E2{
-		A0: a.MulConst(x.A1, qnrE2),
-		A1: x.A0,
-	}
-}
-
 // e2MulByCubicNonResidue multiplies an E2 by the cubic non-residue (u+1).
 // Given x = a0 + a1*u, (a0 + a1*u)*(1+u) = (a0+3*a1) + (a0+a1)*u (because u^2=3).
 func (a *API) e2MulByCubicNonResidue(x E2) E2 {
@@ -256,7 +247,7 @@ func (a *API) e2MulConst(x E2, c *big.Int) E2 {
 
 // MulExt returns x * y in the extension field using Karatsuba over E2.
 // Implements Algorithm 13 from https://eprint.iacr.org/2010/354.pdf, specialized
-// for E6 = E2[v]/(v^3 - (u+1)). Costs 6 E2 multiplications (≈24 base muls).
+// for E6 = E2[v]/(v^3 - (u+1)). Costs 6 E2 multiplications (≈18 variable base muls).
 func (a *API) MulExt(x, y Ext, more ...*Ext) Ext {
 	t0 := a.e2Mul(x.B0, y.B0)
 	t1 := a.e2Mul(x.B1, y.B1)
@@ -510,9 +501,7 @@ func (a *API) DivByBaseExt(x Ext, y Element) Ext {
 	}
 }
 
-// extDegree mirrors field.ExtensionDegree but is used as an int literal in
-// hint allocations, hence kept local for readability.
-const extDegree = 6
+const extDegree = field.ExtensionDegree
 
 // extFromVars creates an Ext from 6 Vars.
 func (a *API) extFromVars(v []Element) Ext {
