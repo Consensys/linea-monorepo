@@ -66,6 +66,18 @@ ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) 
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
 VERIFY_ELF               ?= false             
 
+# ACT4 testing framework specific variables
+ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
+ACT4_WORK_DIR 	:= $(MAKEFILE_DIR)act4/bin/work
+ACT4_IMAGE      := riscv-act4:latest
+ACT4_EXTENSIONS := I,M
+ACT4_JOBS       := 4
+ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
+ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
+ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
+ACT4_FAST       := false
+ACT4_DEBUG      := true
+
 # Default target (make)
 exec: compile zkc-exec
 
@@ -203,18 +215,7 @@ blake-all:
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
 
-ACT4_CONFIG_DIR ?= $(MAKEFILE_DIR)act4/config
-ACT4_WORK_DIR ?= $(MAKEFILE_DIR)act4/bin/work
-ACT4_IMAGE ?= riscv-act4:latest
-ACT4_EXTENSIONS ?= I,M
-ACT4_JOBS ?= 4
-ACT4_FAST ?= true
-ACT4_DEBUG ?= false
-ACT4_ELF_DIR ?= $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
-ACT4_LOGS ?= $(MAKEFILE_DIR)act4/bin/logs
-ACT4_RESULTS ?= $(MAKEFILE_DIR)act4/bin/results.txt
-
-# Build the ACT4 self-checking ELFs with the Linea ACT4 config.
+# Build the ACT4 self-checking ELFs with the Linea ACT4 config
 build-act4:
 	@set -u; \
 	verbosity=""; \
@@ -231,7 +232,7 @@ build-act4:
 		"$(ACT4_IMAGE)" \
 		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $$verbosity make --jobs $(ACT4_JOBS) --keep-going"
 
-# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
+# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines
 run-act4:
 	@set -u; \
 	[ -d "$(ACT4_ELF_DIR)" ] || { echo "error: missing ELF dir '$(ACT4_ELF_DIR)'; run make build-act4 first"; exit 2; }; \
