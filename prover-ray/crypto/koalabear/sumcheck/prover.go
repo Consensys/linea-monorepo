@@ -137,6 +137,63 @@ func NewProverStateWithMask(
 	return finishProverState(cfg, gate, extTables, eq, bits.TrailingZeros(uint(n)), claim), nil
 }
 
+// NewProverStateFromExtTables constructs a [ProverState] like [NewProverStateWithMask]
+// but accepts input tables that are already in extension-field form. Use this when
+// one or more gate-input columns are intrinsically ext-field (e.g. geometric mask
+// tables M_j[h] = z_j^h for an ext-field point z_j).
+//
+// The tables are copied into cfg.Tables so that [FoldAndAdvance] can shrink them
+// in place without mutating the caller's slices.
+func NewProverStateFromExtTables(
+	cfg *ProverConfig,
+	gate Gate,
+	tables [][]field.Ext,
+	mask []field.Ext,
+	claim field.Ext,
+) (*ProverState, error) {
+	if len(tables) == 0 {
+		return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: tables must be non-empty")
+	}
+	n := len(tables[0])
+	if n == 0 || bits.OnesCount(uint(n)) != 1 {
+		return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: table length %d is not a positive power of two", n)
+	}
+	if len(tables) > len(cfg.Tables) {
+		return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: %d tables exceed cfg.Tables capacity %d",
+			len(tables), len(cfg.Tables))
+	}
+	if n > len(cfg.EqScratch) {
+		return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: n=%d exceeds cfg.EqScratch capacity %d",
+			n, len(cfg.EqScratch))
+	}
+	for k, t := range tables {
+		if len(t) != n {
+			return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: table[%d] has length %d, want %d",
+				k, len(t), n)
+		}
+	}
+	if mask != nil && len(mask) != n {
+		return nil, fmt.Errorf("sumcheck: NewProverStateFromExtTables: mask length %d != table length %d",
+			len(mask), n)
+	}
+
+	extTables := cfg.Tables[:len(tables)]
+	for k, t := range tables {
+		copy(extTables[k][:n], t)
+	}
+
+	eq := cfg.EqScratch[:n]
+	if mask != nil {
+		copy(eq, mask)
+	} else {
+		for i := range eq {
+			eq[i].SetOne()
+		}
+	}
+
+	return finishProverState(cfg, gate, extTables, eq, bits.TrailingZeros(uint(n)), claim), nil
+}
+
 // ComputeRoundPoly computes the round polynomial for the current round and
 // returns it in Gruen compressed format (evaluations at {0, 2, …, d}).
 // Panics if called after all rounds are complete.

@@ -179,17 +179,6 @@ func buildGeomMask(dst []field.Ext, z field.Ext) {
 	}
 }
 
-// foldExt folds an ext-field table in place at challenge r: work[k] += r*(work[mid+k]-work[k]).
-func foldExt(work []field.Ext, r field.Ext) {
-	mid := len(work) / 2
-	for k := range mid {
-		var d field.Ext
-		d.Sub(&work[mid+k], &work[k])
-		d.Mul(&d, &r)
-		work[k].Add(&work[k], &d)
-	}
-}
-
 // ---------------------------------------------------------------------------
 // Prover action
 // ---------------------------------------------------------------------------
@@ -202,15 +191,7 @@ func (p *mptsProver) Run(rt wiop.Runtime) {
 	domain := fft.NewDomain(uint64(n))
 
 	lambda := rt.GetCoinValue(g.lambdaCoin).AsExt()
-
-	// Build λ^j powers.
-	rhos := make([]field.Ext, m)
-	var lambdaPow field.Ext
-	lambdaPow.SetOne()
-	for j := range m {
-		rhos[j] = lambdaPow
-		lambdaPow.Mul(&lambdaPow, &lambda)
-	}
+	gate := NewEvalGate(lambda, m)
 
 	// iNTT each Lagrange column → hat_P_j (base-field), assign coefficient col.
 	hatPs := make([][]field.Element, m)
@@ -237,19 +218,15 @@ func (p *mptsProver) Run(rt wiop.Runtime) {
 		buildGeomMask(masks[j], z)
 	}
 
-	// Lift hat_P_j to ext-field working copies (needed because the fold
-	// challenge is ext-field, which promotes base × ext → ext).
-	hatPsW := make([][]field.Ext, m)
+	// Interleave lifted hatP and mask tables: [hatP_0, M_0, hatP_1, M_1, ...].
+	interleavedTables := make([][]field.Ext, 2*m)
 	for j := range m {
-		hatPsW[j] = make([]field.Ext, n)
+		hatPExt := make([]field.Ext, n)
 		for h := range n {
-			hatPsW[j][h] = field.Lift(hatPs[j][h])
+			hatPExt[h] = field.Lift(hatPs[j][h])
 		}
-	}
-	masksW := make([][]field.Ext, m)
-	for j := range m {
-		masksW[j] = make([]field.Ext, n)
-		copy(masksW[j], masks[j])
+		interleavedTables[2*j] = hatPExt
+		interleavedTables[2*j+1] = masks[j]
 	}
 
 	// Compute initial claim Y = Σ_j λ^j y_j.
@@ -257,7 +234,7 @@ func (p *mptsProver) Run(rt wiop.Runtime) {
 	for j, e := range g.entries {
 		yj := rt.GetCellValue(e.claim).AsExt()
 		var term field.Ext
-		term.Mul(&rhos[j], &yj)
+		term.Mul(&gate.Lambdas[j], &yj)
 		Y.Add(&Y, &term)
 	}
 
@@ -266,69 +243,32 @@ func (p *mptsProver) Run(rt wiop.Runtime) {
 	fs.UpdateExt(lambda)
 	fs.UpdateExt(Y)
 
-	// EvalGate sumcheck: Y = Σ_h Σ_j λ^j hat_P_j[h] * M_j[h].
-	// Round poly (degree 2): P(t) = Σ_j λ^j Σ_{k<mid} hatPj(k,t) * Mj(k,t).
-	claim := Y
-	hPrimeVals := make([]field.Ext, logN)
+	cfg := sumcheck.NewProverConfig(logN, 2*m, 1)
+	state, err := sumcheck.NewProverStateFromExtTables(cfg, gate, interleavedTables, nil, Y)
+	if err != nil {
+		panic(fmt.Sprintf("mpts prover: %v", err))
+	}
 
 	for i := range logN {
-		mid := len(hatPsW[0]) / 2
+		rp := state.ComputeRoundPoly()
 
-		// P(0): bottom-half sum.
-		var p0 field.Ext
-		for j := range m {
-			for k := range mid {
-				var term field.Ext
-				term.Mul(&hatPsW[j][k], &masksW[j][k])
-				term.Mul(&rhos[j], &term)
-				p0.Add(&p0, &term)
-			}
-		}
+		rt.AssignCell(g.roundPolyCells[i][0], field.ElemFromExt(rp[0]))
+		rt.AssignCell(g.roundPolyCells[i][1], field.ElemFromExt(rp[1]))
 
-		// P(2): linear-extrapolate each table to t=2, then sum.
-		var p2 field.Ext
-		for j := range m {
-			for k := range mid {
-				var h2, m2, term field.Ext
-				// hatP_j at t=2: 2*top - bot
-				h2.Add(&hatPsW[j][mid+k], &hatPsW[j][mid+k])
-				h2.Sub(&h2, &hatPsW[j][k])
-				// M_j at t=2: 2*top - bot
-				m2.Add(&masksW[j][mid+k], &masksW[j][mid+k])
-				m2.Sub(&m2, &masksW[j][k])
-
-				term.Mul(&h2, &m2)
-				term.Mul(&rhos[j], &term)
-				p2.Add(&p2, &term)
-			}
-		}
-
-		rt.AssignCell(g.roundPolyCells[i][0], field.ElemFromExt(p0))
-		rt.AssignCell(g.roundPolyCells[i][1], field.ElemFromExt(p2))
-
-		fs.UpdateExt(p0)
-		fs.UpdateExt(p2)
+		fs.UpdateExt(rp[0])
+		fs.UpdateExt(rp[1])
 		ri := fs.RandomFext()
 
 		rt.AssignCell(g.hPrimeCells[i], field.ElemFromExt(ri))
-		hPrimeVals[i] = ri
-
-		// Advance claim.
-		rp := sumcheck.RoundPoly{p0, p2}
-		claim = rp.EvalAt(ri, claim)
-
-		// Fold all working tables at ri.
-		for j := range m {
-			foldExt(hatPsW[j], ri)
-			foldExt(masksW[j], ri)
-			hatPsW[j] = hatPsW[j][:mid]
-			masksW[j] = masksW[j][:mid]
-		}
+		state.FoldAndAdvance(rp, ri)
 	}
 
-	// Assign individual claims: u_j = P̂_j(h') = hatPsW[j][0].
+	// Assign individual claims: u_j = P̂_j(h') at index 1+2*j in FinalClaims.
+	// FinalClaims returns [eq_claim, table[0]_claim, table[1]_claim, ...] =
+	// [1, hatP_0(h'), M_0(h'), hatP_1(h'), M_1(h'), ...].
+	claims := state.FinalClaims()
 	for j := range m {
-		rt.AssignCell(g.uCells[j], field.ElemFromExt(hatPsW[j][0]))
+		rt.AssignCell(g.uCells[j], field.ElemFromExt(claims[1+2*j]))
 	}
 }
 
