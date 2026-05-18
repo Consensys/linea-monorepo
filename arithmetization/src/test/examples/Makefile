@@ -68,7 +68,7 @@ VERIFY_ELF               ?= false
 
 # ACT4 testing framework specific variables
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
-ACT4_WORK_DIR 	:= $(MAKEFILE_DIR)act4/bin/work
+ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
 ACT4_IMAGE      := riscv-act4:latest
 ACT4_EXTENSIONS := I,M
 ACT4_JOBS       := 4

@@ -127,8 +127,8 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 
 ## ACT4
 
-The `Makefile` in this folder allows to run test from the [ACT4 framework](https://github.com/riscv/riscv-arch-test). It uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-The `riscv-arch-test` repository should have the same parent directory as `linea-monorepo`. The folders structure is the following:
+The `Makefile` in this folder allows running tests from the [ACT4 framework](https://github.com/riscv/riscv-arch-test). It uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
+The `riscv-arch-test` repository should have the same parent directory as `linea-monorepo`. The folder structure is the following:
 
 ```text
 parent/
