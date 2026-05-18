@@ -16,7 +16,9 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 		numCPU = runtime.NumCPU()
 	}
 
-	res := make([]Element, len(a))
+	// Allocate with +1 capacity to prevent gnark-crypto AVX-512 innerProdVec
+	// overread when the result is subsequently used in InnerProduct.
+	res := make([]Element, len(a), len(a)+1)
 
 	parallel.Execute(len(a), func(start, stop int) {
 		subRes := BatchInvert(a[start:stop])

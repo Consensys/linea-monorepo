@@ -36,6 +36,15 @@ func ScalarMul(res, vec []field.Element, scalar field.Element) {
 func ScalarProd(a, b []field.Element) field.Element {
 	// The length checks is done by gnark-crypto already
 	a_ := fr.Vector(a)
+	// Workaround for gnark-crypto AVX-512 innerProdVec overread:
+	// The assembly reads 4 bytes past the last element of the receiver via
+	// VPMULUDQ.BCST at offset 28 (8-byte load from byte 28 of a 32-byte element).
+	// When the allocation is page-aligned this causes SIGSEGV. Ensure extra capacity.
+	if len(a) > 0 && cap(a) == len(a) {
+		padded := make(fr.Vector, len(a)+1)
+		copy(padded, a_)
+		a_ = padded[:len(a)]
+	}
 	res := a_.InnerProduct(fr.Vector(b))
 	return res
 }
