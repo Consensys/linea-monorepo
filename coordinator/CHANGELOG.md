@@ -1,3 +1,16 @@
+## [0.1.2-mrc7] - 2026-05-18
+
+### 🚀 Features
+
+- *(coordinator)* Testing bump version
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Merged conflicts on CHANGELOG.md
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* Bump version tesing
 ## [0.2.0-mrc3] - 2026-05-18
 
 ### 🚀 Features
