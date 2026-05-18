@@ -24,7 +24,7 @@ jobs:
     steps:
       # Mint a short-lived token either for the release bot GitHub App to commit the changelog changes 
       # directly bypassin the branch-protection or for PR bot GitHub App to create PR with the changelog changes.
-      - name: Generate release bot App token
+      - name: Generate release or PR bot App token
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
@@ -43,14 +43,6 @@ jobs:
           user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
           echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git identity
-        env:
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          USER_ID: ${{ steps.bot-user.outputs.user-id }}
-        run: |
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -60,7 +52,15 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: false
-      
+
+      - name: Configure git identity
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          USER_ID: ${{ steps.bot-user.outputs.user-id }}
+        run: |
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
       - name: Download CHANGELOG.md artifact and distribute to component folders
         uses: ./.github/actions/download-and-update-changelog
         with:

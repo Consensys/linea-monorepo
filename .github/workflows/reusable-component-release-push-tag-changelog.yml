@@ -72,15 +72,6 @@ jobs:
           user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
           echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git identity for app bot
-        if: ${{ !inputs.upload_changelog }}
-        env:
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          USER_ID: ${{ steps.bot-user.outputs.user-id }}
-        run: |
-          git config user.name "${APP_SLUG}[bot]"
-          git config use.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -90,6 +81,21 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: false
+
+      - name: Configure git identity for app bot
+        if: ${{ !inputs.upload_changelog }}
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          USER_ID: ${{ steps.bot-user.outputs.user-id }}
+        run: |
+          git config user.name "${APP_SLUG}[bot]"
+          git config use.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+      - name: Configure git identity for push tag use
+        if: ${{ inputs.upload_changelog }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install git-cliff
         uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
@@ -159,12 +165,6 @@ jobs:
         with:
           name: prepended-changelog-${{ inputs.component-name }}
           path: ${{ inputs.folder-name }}/CHANGELOG.md
-
-      - name: Configure git identity for push tag use
-        if: ${{ inputs.upload_changelog }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push ${{ inputs.component-name }} release tag
         env:
