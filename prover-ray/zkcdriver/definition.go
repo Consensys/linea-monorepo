@@ -2,11 +2,11 @@ package zkcdriver
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/schema"
@@ -118,7 +118,7 @@ func (s *schemaScanner) scanColumns() {
 			// issue, care must be taken to ensure it really happens (e.g.
 			// through testing negative cases which should cause constraint
 			// failures).
-			log.Panic("zkcdriver: add support for native modules!")
+			logrus.Panic("zkcdriver: add support for native modules!")
 		}
 
 		// moduleName is the name of the module as given by the arithmetization
