@@ -16,7 +16,7 @@ on:
         type: string
         default: "cliff.toml"
       release_tag_suffix:
-        description: "Custom release tag suffix, i.e. release tag would be releases/[component/v[semver]-[suffix]"
+        description: "Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]"
         required: false
         type: string
         default: ''

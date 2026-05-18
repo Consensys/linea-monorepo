@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       release_tag_suffix:
-        description: 'Custom release tag suffix, i.e. release tag would be releases/[component/v[semver]-[suffix]'
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         default: ''
       without_besu_fleet_plugin:
@@ -81,7 +81,7 @@ jobs:
             linea-besu/besu/**
             linea-besu/package/**
             gradle/libs.versions.toml
-          release_tag_suffix: ''
+          release_tag_suffix: ${{ inputs.release_tag_suffix }}
 
       - name: Check if the next release tag already existed
         env:

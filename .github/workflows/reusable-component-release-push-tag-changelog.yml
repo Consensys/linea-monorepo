@@ -21,7 +21,7 @@ on:
         type: string
         default: "cliff.toml"
       release_tag_suffix:
-        description: "Custom tag release tag suffix, i.e. releases/[component/v[semver]-[suffix]"
+        description: "Custom tag release tag suffix, i.e. releases/[component]/v[semver]-[suffix]"
         required: false
         type: string
         default: ''
@@ -77,8 +77,8 @@ jobs:
           name: prepended-changelog-${{ inputs.component-name }}
           path: ${{ inputs.folder-name }}/CHANGELOG.md
 
-      - name: Configure git identity
-        if: ${{ !inputs.upload_changelog && github.ref_name != 'main' }}
+      - name: Configure git identity (for non-main branch or upload changelog only)
+        if: ${{ github.ref_name != 'main' || inputs.upload_changelog }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
