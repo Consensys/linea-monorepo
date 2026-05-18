@@ -106,3 +106,4 @@
 - *(coordinator)* Move Web3SignerTxSignService into web3j-extensions lib (#3091)
 - *(coordinator)* Remove "build" prefix from package names
 ###Testing
+## [0.1.1] - 2026-05-18
