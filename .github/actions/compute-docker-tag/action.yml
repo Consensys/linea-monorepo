@@ -23,7 +23,7 @@ outputs:
 
   dockertag_with_suffix:
     description: "Docker image tag with suffix (same value as docker_tag if no suffix is given)"
-    value: ${{ steps.dockertag.outputs.dockertag }}
+    value: ${{ steps.dockertag.outputs.dockertag_with_suffix }}
 
 runs:
   using: "composite"
