@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
@@ -18,9 +17,7 @@ var (
 
 // VerifierInput holds the public inputs needed by the verifier.
 type VerifierInput struct {
-	// RsParams *reedsolomon.RsParams
-
-	// alpha random coin used for the linear combination
+	// Alpha random coin used for the linear combination
 	Alpha field.Ext
 
 	// X is the univariate evaluation point
@@ -33,13 +30,14 @@ type VerifierInput struct {
 	EntryList []int
 }
 
-// CheckStatement verifies that the linear combination is consistent with the claimed evaluations ys at point x.
-func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
-
-	// Check the consistency of Ys and proof.Linear combination
+// CheckStatement verifies that the linear combination U_alpha — given as T
+// monomial coefficients — is consistent with the claimed evaluations ys at
+// point x. Evaluates U_alpha(x) by Horner on the coefficients and checks it
+// equals EvalCanonical(ys_joined, alpha).
+func CheckStatement(coefficients []field.Ext, ys [][]field.Ext, x, alpha field.Ext) error {
 	yJoined := slices.Concat(ys...)
-	alphaY := polynomials.EvalLagrange(field.VecFromExt(linComb), field.ElemFromExt(x))
-	alphaYPrime := vortex.EvalFextPolyHorner(yJoined, alpha)
+	alphaY := polynomials.EvalCanonical(field.VecFromExt(coefficients), field.ElemFromExt(x)).AsExt()
+	alphaYPrime := polynomials.EvalCanonical(field.VecFromExt(yJoined), field.ElemFromExt(alpha)).AsExt()
 
 	if !alphaY.Equal(&alphaYPrime) {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
@@ -48,7 +46,7 @@ func CheckStatement(linComb []field.Ext, ys [][]field.Ext, x, alpha field.Ext) e
 	return nil
 }
 
-// VerifierInputMultilinear holds the public inputs for multilinear-evaluation
+// VerifierInputMultilinear holds the public inputs for the multilinear-evaluation
 // variant of the Vortex verifier. It replaces the univariate point X with a
 // multilinear evaluation point H.
 type VerifierInputMultilinear struct {
@@ -66,59 +64,58 @@ type VerifierInputMultilinear struct {
 	EntryList []int
 }
 
-// CheckStatementMultilinear verifies that the linear combination is consistent
-// with the claimed multilinear evaluations ys at the point h.
+// CheckStatementMultilinear verifies that the linear combination U_alpha —
+// given as T monomial coefficients — is consistent with the claimed multilinear
+// evaluations ys at point h.
 //
-// It decodes the N systematic Lagrange values from the encoded linComb, then
-// checks EvalMultilin(decoded, h) == EvalFextPolyHorner(ys_joined, alpha).
+// It recovers the T original row evaluations from the coefficients via the
+// small-domain forward FFT (the inverse of LCEvalsToCoefficients), then checks
+// EvalMultilin(rowEvals, h) == EvalCanonical(ys_joined, alpha).
 func CheckStatementMultilinear(rsParams *reedsolomon.RsParams,
-	linComb []field.Ext, ys [][]field.Ext, h []field.Ext, alpha field.Ext,
+	coefficients []field.Ext, ys [][]field.Ext, h []field.Ext, alpha field.Ext,
 ) error {
-	decoded := rsParams.SystematicExt(linComb)
+	rowEvals := rsParams.EncodeFromMonomialsSmallDomain(coefficients)
 
 	coords := make([]field.Gen, len(h))
 	for i, hi := range h {
 		coords[i] = field.ElemFromExt(hi)
 	}
 
-	lhs := polynomials.EvalMultilin(field.VecFromExt(decoded), coords).AsExt()
+	lhs := polynomials.EvalMultilin(field.VecFromExt(rowEvals), coords).AsExt()
 
 	yJoined := slices.Concat(ys...)
-	rhs := vortex.EvalFextPolyHorner(yJoined, alpha)
+	rhs := polynomials.EvalCanonical(field.VecFromExt(yJoined), field.ElemFromExt(alpha)).AsExt()
 
 	if !lhs.Equal(&rhs) {
-		return fmt.Errorf("multilinear statement check failed: EvalMultilin=%v != Horner=%v", lhs, rhs)
+		return fmt.Errorf("multilinear statement check failed: EvalMultilin=%v != EvalCanonical=%v", lhs, rhs)
 	}
 	return nil
 }
 
-// CheckIsCodeWord returns nil iff v is a valid Reed-Solomon codeword.
-func CheckIsCodeWord(rsParams *reedsolomon.RsParams, v []field.Ext) error {
-	return rsParams.IsCodewordExt(v)
-}
-
-// CheckLinComb verifies the linear combination of opened columns against the proof.
+// CheckLinComb verifies that U_alpha — given as T monomial coefficients —
+// agrees with the alpha-Horner combination of the opened columns at every
+// selected position. The verifier expands the coefficients to all N domain
+// evaluations once via EncodeFromMonomials, then looks up U_alpha(ω^selectedColID).
 func CheckLinComb(
-	linComb []field.Ext,
+	rsParams *reedsolomon.RsParams,
+	coefficients []field.Ext,
 	entryList []int,
 	alpha field.Ext,
 	columns [][][]field.Element,
 ) (err error) {
 
+	evals := rsParams.EncodeFromMonomials(coefficients)
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
-		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []field.Element{}
-
 		for i := range numCommitments {
-			// Entries of the selected columns #j contained in the commitment #i.
 			fullCol = append(fullCol, columns[i][j]...)
 		}
 
-		// Check the linear combination is consistent with the opened column
-		y := vortex.EvalBasePolyHorner(fullCol, alpha)
-		other := linComb[selectedColID]
+		// U_alpha(ω^selectedColID) must equal α-Horner of the opened column
+		y := polynomials.EvalCanonical(field.VecFromBase(fullCol), field.ElemFromExt(alpha)).AsExt()
+		other := evals[selectedColID]
 
 		if y != other {
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())

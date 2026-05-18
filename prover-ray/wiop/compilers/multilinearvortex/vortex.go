@@ -1,8 +1,6 @@
 package multilinearvortex
 
 import (
-	"sort"
-
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 )
 
@@ -27,18 +25,11 @@ type CommitmentPhase struct {
 // Run is the prover
 func (cp *CommitmentPhase) Run(rt wiop.Runtime) {
 
-	// 1. Gather all the column assignment
-	// 2. Layout the columns in the Vortex matrix
-	// 3. Commit the Vortex matrix
-	// 4. Saves the Vortex commitment in the runtime "blobs"
-	// 5. Also saves the layout in the proof blob.
-
 	columnSizes := make([]int, len(cp.ColumnIDs))
 	for i := range columnSizes {
 		module := rt.System.Modules[cp.ColumnIDs[i].Slot()]
 		columnSizes[i] = module.RuntimeSize(rt)
 	}
 
-	sort.Stable()
-
+	_ = columnSizes
 }

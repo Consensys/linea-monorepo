@@ -12,7 +12,7 @@ TypeScript backend service that facilitates cross-chain message delivery between
 # Build dependency projects first
 NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build && \
 pnpm run -F linea-shared-utils build && \
-pnpm run -F "./sdk/*" build
+pnpm run -F "./ts-libs/sdk/*" build
 
 # Build the postman
 pnpm -F @consensys/linea-postman run build
@@ -104,7 +104,7 @@ postman/
 
 ### Testing
 
-- Framework: Jest 29.7.0 with ts-jest preset
+- Framework: Jest 30.3.0 with ts-jest preset
 - Uses `jest-mock-extended` for mock generation
 - `--forceExit` and `--detectOpenHandles` flags enabled
 - Test files: `**/__tests__/*.test.ts` pattern

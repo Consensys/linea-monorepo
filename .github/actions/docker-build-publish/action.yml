@@ -126,7 +126,7 @@ runs:
 
     - name: Upload Docker image artifact
       if: ${{ inputs.save_artifact == 'true' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ inputs.artifact_name }}
         path: ${{ inputs.artifact_name }}-docker-image.tar.gz
@@ -134,7 +134,7 @@ runs:
     # Build & push
     - name: Build & push
       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-      if: ${{ inputs.push_image == 'true' || github.event_name == 'workflow_dispatch' }}
+      if: ${{ inputs.push_image == 'true' }}
       with:
         context: ${{ inputs.docker_context }}
         build-contexts: ${{ inputs.build_contexts }}

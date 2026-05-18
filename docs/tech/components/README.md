@@ -12,8 +12,8 @@ This section provides detailed documentation for each component in the Linea mon
 | [Prover](./prover.md) | Go | `prover/` | ZK proof generation |
 | [Contracts](./contracts.md) | Solidity | `contracts/` | Smart contracts |
 | [Tracer](./tracer.md) | Java | `tracer/` | EVM trace generation |
-| [Besu Plugins](./besu-plugins.md) | Kotlin/Java | `besu-plugins/` | Sequencer extensions |
-| [SDK](./sdk.md) | TypeScript | `sdk/` | Developer SDK |
+| [Besu Plugins](./besu-plugins.md) | Kotlin/Java | `linea-besu/plugins/` | Sequencer extensions |
+| [SDK](./sdk.md) | TypeScript | `ts-libs/sdk/` | Developer SDK |
 | [Postman](./postman.md) | TypeScript | `postman/` | Message relay |
 | [E2E Tests](./e2e.md) | TypeScript | `e2e/` | End-to-end tests |
 | [Tracer Constraints](./tracer-constraints.md) | Lisp | `tracer-constraints/` | ZK constraints |
@@ -49,7 +49,7 @@ This section provides detailed documentation for each component in the Linea mon
         │               │               │
         ▼               ▼               ▼
 ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐
-│   prover    │ │  jvm-libs   │ │    besu-plugins     │
+│   prover    │ │  jvm-libs   │ │ linea-besu/plugins  │
 │    (Go)     │ │   shared    │ │  sequencer + state  │
 └──────┬──────┘ └─────────────┘ │      recovery       │
        │                        └──────────┬──────────┘
@@ -78,7 +78,7 @@ root build.gradle
 ├── jvm-libs/
 │   ├── generic/ (shared utilities)
 │   └── linea/ (Linea-specific libs)
-├── besu-plugins/
+├── linea-besu/plugins/
 │   ├── linea-sequencer/ (sequencer plugins)
 │   └── state-recovery/ (recovery plugin)
 ├── tracer/
@@ -92,34 +92,35 @@ root build.gradle
 ```
 root package.json
 ├── contracts/ (Hardhat + TypeScript tests)
-├── sdk/
-│   ├── sdk-core (shared types)
-│   ├── sdk-viem (Viem-based)
-│   └── sdk-ethers (Ethers-based)
 ├── postman/ (message relay service)
 ├── e2e/ (end-to-end tests)
 ├── ts-libs/
+│   ├── sdk/
+│   │   ├── sdk-core (shared types)
+│   │   ├── sdk-viem (Viem-based)
+│   │   └── sdk-ethers (Ethers-based)
 │   ├── linea-shared-utils
 │   ├── linea-native-libs
 │   └── eslint-config
-├── operations/ (CLI tools)
-└── native-yield-operations/
-    └── automation-service/
+└── operations/
+    ├── operations-cli/ (CLI tools)
+    └── native-yield-operations/
+        └── automation-service/
 ```
 
 ## Language-Specific Notes
 
 ### Kotlin/Java (Gradle)
 
-- Java 21 required
-- Gradle 8.5+ for building
+- Java 25 required
+- Gradle 9.4+ for building
 - Run tests: `./gradlew test`
 - Build all: `./gradlew build`
 - Code style: ktlint for Kotlin, Google Java Format for Java
 
 ### Go
 
-- Go 1.24.6 required
+- Go 1.25.7 required
 - Build: `go build ./...`
 - Test: `go test ./...`
 - Uses gnark library for ZK circuits
@@ -136,7 +137,7 @@ root package.json
 
 - Hardhat for development
 - Protocol contracts: Solidity **0.8.33** (see [`contracts/AGENTS.md`](../../../contracts/AGENTS.md))
-- Besu plugin acceptance tests use Web3j wrappers generated from a separate Solidity version for fixtures (see [`besu-plugins/AGENTS.md`](../../../besu-plugins/AGENTS.md))
+- Besu plugin acceptance tests use Web3j wrappers generated from a separate Solidity version for fixtures (see [`linea-besu/plugins/AGENTS.md`](../../../linea-besu/plugins/AGENTS.md))
 - OpenZeppelin upgradeable contracts
 - Compile: `pnpm -F contracts run compile`
 
