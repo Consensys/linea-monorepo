@@ -1,4 +1,4 @@
-name: Tracer risc binary run and go-corset check
+name: Tracer simple zkc binary run and go-corset check
 
 on:
   pull_request:
