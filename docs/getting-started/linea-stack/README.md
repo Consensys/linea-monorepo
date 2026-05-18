@@ -71,9 +71,9 @@ time. Known limitations are listed near the end of this page.
 | Requirement              | Minimum                                                  |
 |--------------------------|----------------------------------------------------------|
 | RAM (dev-proof mode)     | 8 GB Docker Desktop minimum                              |
-| RAM (partial-proof mode) | 30-32 GB assigned to Docker; 48 GB recommended           |
+| RAM (partial-proof mode) | 30-32 GB assigned to Docker; 128 GB recommended          |
 | Disk                     | ~30 GB free; leave more headroom for long traffic/prover runs |
-| CPU                      | 8 cores                                                  |
+| CPU                      | 8 cores minimum; 32 cores recommended for partial proving |
 | Docker                   | v24+                                                     |
 | Compose                  | v2.19+                                                   |
 | Sepolia RPC              | HTTPS endpoint (Infura / Alchemy / your own node)        |
@@ -113,6 +113,21 @@ Optional tuning knobs:
 Everything else has sensible defaults. Optional knobs (port collisions, DA
 mode, postgres credentials) are commented in `.env.example`.
 
+### Config model
+
+Keep `.env` as the single runtime config file. The `env/*.env.example` files
+are copy-paste recipes for focused tuning:
+
+| File | Purpose |
+|------|---------|
+| `env/ports.env.example` | Host port overrides when local ports collide |
+| `env/gas-sepolia.env.example` | Sepolia L1 gas caps and generated runtime signer top-ups |
+| `env/prover-partial.env.example` | Partial-prover validation mode |
+| `env/validium-debug.env.example` | Unvalidated Validium debugging path |
+
+Do not pass those recipe files directly to Compose yet. Copy only the values
+you need into `.env`; the shell helpers also read `.env`.
+
 Check host-port collisions before boot:
 
 ```bash
@@ -145,13 +160,23 @@ account sends the visible ERC20 transfers.
 
 ## 4. Boot
 
+Run the starter path:
+
 ```bash
+./scripts/check-ports.sh
 docker compose --env-file versions.env --env-file .env --profile stack-partial-prover up -d
+./scripts/watch.sh --tail
 ```
 
 `stack-partial-prover` is the only profile. The profile name means "start the
 full stack including the prover service"; whether proofs are dev or partial is
 controlled by `PROVER_DEV_OVERRIDE`.
+
+The watcher is read-only. It replaces the manual loop of `docker logs -f
+deploy-contracts`, `docker logs -f coordinator`, and repeated `status.sh` checks
+with a filtered deploy/proof/finality timeline. By default it exits after the
+first L1 finalization. Use `./scripts/watch.sh --tail` to keep watching, or
+`./scripts/watch.sh --once` for a single snapshot.
 
 ### Boot timeline
 
@@ -229,8 +254,17 @@ Observed on 2026-05-12 with Docker Desktop set to 30 GiB and
 Do not use local L2 block height as proof of L1 finality. Blockscout may show
 new local L2 blocks immediately, while the rollup's Sepolia
 `currentL2BlockNumber` only advances after a successful `finalizeBlocks` tx.
+Use `./scripts/watch.sh` during boot to see the filtered proof/finality
+timeline without reading raw coordinator logs.
 
 ### L1 gas caps and Sepolia congestion
+
+:::warning
+Sepolia gas and blob fees can block L1 submission even when proving is done. If
+the current Sepolia base fee is above the configured caps, the coordinator keeps
+retrying and no blob/finalization transaction is sent. For long validation runs,
+check current Sepolia gas first and keep caps wide enough for the run.
+:::
 
 The coordinator uses dynamic gas-price caps for L1 submissions. The defaults
 are intentionally bounded for a quickstart:
@@ -248,13 +282,14 @@ done while the coordinator waits or retries L1 submission. `status.sh` will show
 proof/compression/aggregation responses, but no new blob tx or no new
 `finalizeBlocks` tx. Coordinator logs may repeat `blobs to submit`, or show
 messages such as `Estimated miner tip ... exceeds configured max fee`,
-`replacement transaction underpriced`, or gas-price cap details.
+`replacement transaction underpriced`, `max fee per gas less than block base
+fee`, or gas-price cap details.
 
 Inspect the L1 submission path with:
 
 ```bash
 docker logs --since 15m coordinator | \
-  grep -Ei 'blobs to submit|blobs submitted|submitted aggregation|Estimated miner tip|underpriced|gasPriceCaps|error'
+  grep -Ei 'blobs to submit|blobs submitted|submitted aggregation|Estimated miner tip|underpriced|gasPriceCaps|max fee per gas less than block base fee|error'
 ```
 
 Adjust before boot in `.env` when Sepolia is congested:
@@ -296,7 +331,15 @@ successful `finalizeBlocks` transaction that advances `currentL2BlockNumber`.
 First boot starts the stack and deploys contracts. It does **not** send demo
 traffic or bridge messages for you.
 
-1. Print status and links:
+1. Follow the guided progress view until first L1 finalization:
+
+```bash
+./scripts/watch.sh
+```
+
+`watch.sh` should eventually print `first L1 finalization observed`.
+
+2. Print full status and links:
 
 ```bash
 ./scripts/status.sh
@@ -320,7 +363,33 @@ data/commitments for data availability; only a successful `finalizeBlocks` tx
 advances the rollup's finalized L2 block/state on Sepolia.
 :::
 
-2. Open the local L2 explorer:
+The relevant L1 path looks like this:
+
+| Status/log | Meaning |
+|------------|---------|
+| `execution proof request generated` | Coordinator has selected an L2 block range for proving |
+| `blob compression proof generated` | DA payload for that L2 range is ready |
+| `blobs to submit` | Coordinator sees a blob candidate but may still be waiting on gas, nonce, or submission retry timing |
+| `blobs submitted` | DA transaction was sent to Sepolia; this is not finalization |
+| `aggregation proof generated` | Finalization proof/input is ready for a range |
+| `submitted aggregation` | Coordinator sent `finalizeBlocks(...)` to Sepolia |
+| `rollup currentL2BlockNumber` advanced | Sepolia rollup state finalized that L2 range |
+
+Use `rollup currentL2BlockNumber`, not local L2 block height, as the L1 finality
+marker.
+
+3. Export a local evidence bundle when you want files to share or archive:
+
+```bash
+./scripts/export-output.sh
+```
+
+This writes `lineth-output/addresses.json`, `lineth-output/links.json`,
+`lineth-output/finality-report.json`, `lineth-output/smoke-report.json`, and
+`lineth-output/deploy-logs/`.
+`lineth-output/` is ignored by git.
+
+4. Open the local L2 explorer:
 
 ```text
 http://localhost:4001
@@ -473,8 +542,10 @@ PROVER_DEV_OVERRIDE=true
 ```
 
 Partial validation mode runs execution + invalidity in `partial` mode while
-compression + aggregation stay in `dev` mode. Use a clean boot and set an
-explicit memory limit:
+compression + aggregation stay in `dev` mode. It is a heavy-hardware validation
+path, not the laptop-friendly quickstart path; laptop runs can take tens of
+minutes before first L1 finalization. Use a clean boot and set an explicit
+memory limit:
 
 ```bash
 PROVER_DEV_OVERRIDE=false
@@ -494,7 +565,9 @@ Check which mode rendered:
 
 ```bash
 docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox \
-  grep -E "^chain_id|^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
+  awk '/^\[[^]]+\]/ { section=$0; gsub(/^\[/, "", section); gsub(/\]$/, "", section); next }
+       /^prover_mode|^is_allowed_circuit_id|^chain_id/ { print section "." $0 }' \
+  /rendered/prover-config-partial.toml
 ```
 
 If `PROVER_DEV_OVERRIDE=false` and `PROVER_GOMEMLIMIT` is missing,
@@ -639,8 +712,8 @@ l2-blockscout-frontend   (ghcr.io/blockscout/frontend, explorer UI)
 ```
 
 > Prometheus/Grafana/Loki are not included in this quickstart. Use
-> `docker logs <service>` and `./scripts/status.sh` for per-container output and
-> milestone checks.
+> `./scripts/watch.sh`, `./scripts/status.sh`, and `docker logs <service>` for
+> progress, milestone checks, and raw per-container output.
 
 ### File structure
 
@@ -651,6 +724,7 @@ docs/getting-started/linea-stack/
 ├── docker-compose.yml
 ├── versions.env                 ← pinned image tags
 ├── .env.example                 ← copy to .env, fill in L1 RPC + key
+├── env/                         ← copy-paste optional config recipes
 ├── scripts/
 │   ├── account-setup.sh         ← generates runtime keys + boot addresses
 │   ├── deploy-contracts.sh      ← 6-step deploy + address capture
@@ -659,6 +733,8 @@ docs/getting-started/linea-stack/
 │   ├── check-ports.sh           ← preflights host port collisions
 │   ├── links.sh                 ← prints useful Sepolia + local explorer links
 │   ├── status.sh                ← redacted boot status summary
+│   ├── watch.sh                 ← guided deploy/proof/finality progress view
+│   ├── export-output.sh         ← writes lineth-output evidence bundle
 │   ├── send-l2-test-tx.sh       ← sends tiny L2 ETH txs for Blockscout demos
 │   ├── send-l2-erc20-transfer.sh ← sends a tiny L2 ERC20Example transfer
 │   ├── generate-l2-erc20-traffic.sh ← runs continuous L2 ERC20Example traffic
@@ -667,6 +743,7 @@ docs/getting-started/linea-stack/
 │   ├── smoke-bridge-erc20-l2-to-l1.sh ← sends, claims, and verifies an ERC20 TokenBridge withdrawal
 │   ├── smoke-bridge-message-l2-to-l1.sh ← sends, claims, and verifies L2-to-L1 message delivery
 │   └── DEPLOY-ENV-CONTRACT.md   ← env vars per deploy step
+├── lineth-output/               ← generated local evidence bundle, gitignored
 └── config/
     ├── DEV-KEYS-INVENTORY.md    ← what's checked in vs runtime
     ├── explorer/

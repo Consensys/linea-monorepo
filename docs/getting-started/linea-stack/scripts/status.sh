@@ -50,9 +50,51 @@ shared_addr() {
   " 2>/dev/null || true
 }
 
+rpc_json() {
+  url="$1"
+  method="$2"
+  params="$3"
+  [ -n "$url" ] || return 0
+  curl -sS -X POST -H "Content-Type: application/json" \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\",\"params\":$params}" \
+    "$url" 2>/dev/null || true
+}
+
+check_contract_code() {
+  scope="$1"
+  url="$2"
+  label="$3"
+  address="$4"
+
+  [ -n "$address" ] || return 0
+  if [ -z "$url" ]; then
+    lineth_warn "$scope code check skipped for $label: RPC unavailable"
+    STATE_MISMATCH=1
+    return 0
+  fi
+
+  code_resp="$(rpc_json "$url" eth_getCode "[\"$address\",\"latest\"]")"
+  code="$(printf '%s\n' "$code_resp" | json_string_field result)"
+  if [ -z "$code_resp" ] || [ -z "$code" ]; then
+    lineth_warn "$scope $label code check unavailable at $address"
+    return 0
+  fi
+  case "$code" in
+    "0x")
+      lineth_error "$scope $label has no code at $address"
+      STATE_MISMATCH=1
+      ;;
+    *)
+      lineth_kv "$scope $label code" "ok ($address)"
+      ;;
+  esac
+}
+
 if ! docker info >/dev/null 2>&1; then
   lineth_die "Docker daemon is not reachable from this shell."
 fi
+
+STATE_MISMATCH=0
 
 section "containers"
 docker ps -a --format 'table {{.Names}}\t{{.Status}}' \
@@ -97,19 +139,20 @@ section "chain / prover config"
 HOST_PORT_L2_RPC="${HOST_PORT_L2_RPC:-$(env_value HOST_PORT_L2_RPC || true)}"
 [ -n "$HOST_PORT_L2_RPC" ] || HOST_PORT_L2_RPC=8745
 L2_RPC_URL="${L2_RPC_URL:-http://localhost:$HOST_PORT_L2_RPC}"
-chain_response="$(curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-  "$L2_RPC_URL" 2>/dev/null || true)"
+chain_response="$(rpc_json "$L2_RPC_URL" eth_chainId '[]')"
+local_l2_chain_hex="$(printf '%s\n' "$chain_response" | json_string_field result)"
+local_l2_chain_dec=""
 if [ -n "$chain_response" ]; then
   lineth_kv "l2 rpc eth_chainId" "$chain_response"
+  if [ -n "$local_l2_chain_hex" ]; then
+    local_l2_chain_dec="$(hex_to_dec_small "$local_l2_chain_hex")"
+  fi
 else
   lineth_warn "l2 rpc eth_chainId unavailable at $L2_RPC_URL"
 fi
 
 local_l2_latest_block_dec=""
-block_response="$(curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-  "$L2_RPC_URL" 2>/dev/null || true)"
+block_response="$(rpc_json "$L2_RPC_URL" eth_blockNumber '[]')"
 local_l2_latest_block_hex="$(printf '%s\n' "$block_response" | json_string_field result)"
 if [ -n "$local_l2_latest_block_hex" ] && [ "$local_l2_latest_block_hex" != "0x" ]; then
   local_l2_latest_block_dec="$(hex_to_dec_small "$local_l2_latest_block_hex")"
@@ -129,7 +172,19 @@ fi
 if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
   docker run --rm -v linea-stack-rendered-config:/rendered:ro busybox sh -eu -c '
     if [ -f /rendered/prover-config-partial.toml ]; then
-      grep -E "^chain_id|^prover_mode|^is_allowed_circuit_id" /rendered/prover-config-partial.toml
+      awk "
+        /^\\[[^]]+\\]/ {
+          section = \$0
+          gsub(/^\\[/, \"\", section)
+          gsub(/\\]$/, \"\", section)
+          next
+        }
+        /^prover_mode[[:space:]]*=/ ||
+        /^is_allowed_circuit_id[[:space:]]*=/ ||
+        /^chain_id[[:space:]]*=/ {
+          printf \"%s.%s\\n\", section, \$0
+        }
+      " /rendered/prover-config-partial.toml
     else
       echo "rendered prover config: missing"
     fi
@@ -137,6 +192,64 @@ if docker volume inspect linea-stack-rendered-config >/dev/null 2>&1; then
 else
   lineth_warn "rendered config volume missing"
 fi
+
+section "state mismatch guardrails"
+L2_MESSAGE_SERVICE_ADDRESS=""
+L2_TOKEN_BRIDGE_ADDRESS=""
+L2_ERC20_ADDRESS=""
+L1_TOKEN_BRIDGE_ADDRESS=""
+L1_ERC20_ADDRESS=""
+ADDRESSES_L2_CHAIN_ID=""
+L2_DEPLOY_MAX_BLOCK=""
+if docker volume inspect linea-stack-shared-config >/dev/null 2>&1; then
+  L2_MESSAGE_SERVICE_ADDRESS="$(shared_addr addresses.json l2 L2MessageService)"
+  L2_TOKEN_BRIDGE_ADDRESS="$(shared_addr addresses.json l2 TokenBridge)"
+  L2_ERC20_ADDRESS="$(shared_addr addresses.json l2 ERC20Example)"
+  L1_TOKEN_BRIDGE_ADDRESS="$(shared_addr addresses.json l1 TokenBridge)"
+  L1_ERC20_ADDRESS="$(shared_addr addresses.json l1 ERC20Example)"
+  ADDRESSES_L2_CHAIN_ID="$(docker run --rm -v linea-stack-shared-config:/shared:ro busybox sh -eu -c '
+    [ -f /shared/addresses.json ] || exit 0
+    sed -nE "s/.*\"l2ChainId\"[[:space:]]*:[[:space:]]*\"?([0-9]+)\"?.*/\1/p" /shared/addresses.json | head -1
+  ' 2>/dev/null || true)"
+  L2_DEPLOY_MAX_BLOCK="$(docker run --rm -v linea-stack-shared-config:/shared:ro busybox sh -eu -c '
+    max=0
+    for f in /shared/deploy-logs/*.log; do
+      [ -f "$f" ] || continue
+      awk "/contract=.* deployed:.*chainId=1337/ {
+        if (match(\$0, /blockNumber=[0-9]+/)) {
+          v=substr(\$0, RSTART + 12, RLENGTH - 12)
+          if (v > max) max = v
+        }
+      } END { if (max > 0) print max }" "$f"
+    done | awk "BEGIN { max=0 } { if (\$1 > max) max=\$1 } END { if (max > 0) print max }"
+  ' 2>/dev/null || true)"
+fi
+
+if [ -n "$ADDRESSES_L2_CHAIN_ID" ] && [ -n "$local_l2_chain_dec" ]; then
+  if [ "$ADDRESSES_L2_CHAIN_ID" = "$local_l2_chain_dec" ]; then
+    lineth_kv "addresses.json vs local chainId" "ok ($ADDRESSES_L2_CHAIN_ID)"
+  else
+    lineth_error "addresses.json l2ChainId=$ADDRESSES_L2_CHAIN_ID but local eth_chainId=$local_l2_chain_dec"
+    STATE_MISMATCH=1
+  fi
+else
+  lineth_info "addresses.json/local chainId comparison unavailable"
+fi
+
+if [ -n "$L2_DEPLOY_MAX_BLOCK" ] && is_uint "$L2_DEPLOY_MAX_BLOCK" && is_uint "$local_l2_latest_block_dec"; then
+  if [ "$L2_DEPLOY_MAX_BLOCK" -le "$local_l2_latest_block_dec" ]; then
+    lineth_kv "L2 deploy-log block floor" "ok (max deployed block $L2_DEPLOY_MAX_BLOCK <= local latest $local_l2_latest_block_dec)"
+  else
+    lineth_error "deploy logs reference L2 block $L2_DEPLOY_MAX_BLOCK but local latest block is $local_l2_latest_block_dec"
+    STATE_MISMATCH=1
+  fi
+else
+  lineth_info "L2 deploy-log block floor unavailable"
+fi
+
+check_contract_code "L2" "$L2_RPC_URL" "L2MessageService" "$L2_MESSAGE_SERVICE_ADDRESS"
+check_contract_code "L2" "$L2_RPC_URL" "TokenBridge" "$L2_TOKEN_BRIDGE_ADDRESS"
+check_contract_code "L2" "$L2_RPC_URL" "ERC20Example" "$L2_ERC20_ADDRESS"
 
 section "l1 data availability vs finalization"
 LINEA_ROLLUP_ADDRESS=""
@@ -183,9 +296,11 @@ fi
 
 L1_RPC_URL="${L1_RPC_URL:-$(env_value L1_RPC_URL || true)}"
 if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
-  l2_finalized_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"$LINEA_ROLLUP_ADDRESS\",\"data\":\"0x695378f5\"},\"latest\"]}" \
-    "$L1_RPC_URL" 2>/dev/null || true)"
+  check_contract_code "L1" "$L1_RPC_URL" "LineaRollupV8" "$LINEA_ROLLUP_ADDRESS"
+  check_contract_code "L1" "$L1_RPC_URL" "TokenBridge" "$L1_TOKEN_BRIDGE_ADDRESS"
+  check_contract_code "L1" "$L1_RPC_URL" "ERC20Example" "$L1_ERC20_ADDRESS"
+
+  l2_finalized_resp="$(rpc_json "$L1_RPC_URL" eth_call "[{\"to\":\"$LINEA_ROLLUP_ADDRESS\",\"data\":\"0x695378f5\"},\"latest\"]")"
   l2_finalized_hex="$(printf '%s\n' "$l2_finalized_resp" | json_string_field result)"
   if [ -n "$l2_finalized_hex" ] && [ "$l2_finalized_hex" != "0x" ]; then
     rollup_current_l2_block_dec="$(hex_to_dec_small "$l2_finalized_hex")"
@@ -195,15 +310,14 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
       && [ "$rollup_current_l2_block_dec" -gt "$local_l2_latest_block_dec" ]; then
       lineth_warn "rollup finalized block is ahead of local L2 latest block."
       lineth_warn "local chain state does not match the preserved L1 rollup state; run docker compose down -v for a clean boot."
+      STATE_MISMATCH=1
     fi
   else
     lineth_warn "rollup currentL2BlockNumber unavailable"
   fi
 
   if [ -n "$latest_finalization_tx" ]; then
-    finalization_tx_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
-      -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getTransactionByHash\",\"params\":[\"$latest_finalization_tx\"]}" \
-      "$L1_RPC_URL" 2>/dev/null || true)"
+    finalization_tx_resp="$(rpc_json "$L1_RPC_URL" eth_getTransactionByHash "[\"$latest_finalization_tx\"]")"
     finalization_input="$(printf '%s\n' "$finalization_tx_resp" | json_string_field input)"
     finalization_selector="$(printf '%.10s' "$finalization_input")"
     if [ "$finalization_selector" = "0x755bc62f" ]; then
@@ -214,9 +328,7 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
       lineth_warn "latest finalization method unavailable"
     fi
 
-    finalization_receipt_resp="$(curl -sS -X POST -H "Content-Type: application/json" \
-      -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"eth_getTransactionReceipt\",\"params\":[\"$latest_finalization_tx\"]}" \
-      "$L1_RPC_URL" 2>/dev/null || true)"
+    finalization_receipt_resp="$(rpc_json "$L1_RPC_URL" eth_getTransactionReceipt "[\"$latest_finalization_tx\"]")"
     finalization_status="$(printf '%s\n' "$finalization_receipt_resp" | json_string_field status)"
     case "$finalization_receipt_resp" in
       *a0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb*) data_finalized="yes" ;;
@@ -234,6 +346,19 @@ if [ -n "$L1_RPC_URL" ] && [ -n "$LINEA_ROLLUP_ADDRESS" ]; then
   fi
 else
   lineth_info "Sepolia rollup state check skipped: L1_RPC_URL or LineaRollupV8 unavailable"
+fi
+
+if [ "$STATE_MISMATCH" -ne 0 ]; then
+  section "state mismatch action"
+  lineth_error "Local L2 state and preserved Sepolia/shared state do not belong together."
+  lineth_info "Stop debugging this boot; reset with:"
+  lineth_info "docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans"
+elif [ -n "$LINEA_ROLLUP_ADDRESS" ] || [ -n "$ADDRESSES_L2_CHAIN_ID" ]; then
+  section "state mismatch action"
+  lineth_ok "no local/L1 state mismatch detected"
+else
+  section "state mismatch action"
+  lineth_info "guardrails pending until addresses.json exists"
 fi
 
 section "coordinator"
@@ -260,7 +385,7 @@ if docker ps --format '{{.Names}}' | grep -qx coordinator; then
     done
   ' | lineth_indent
   docker logs --tail 200 coordinator 2>&1 \
-    | grep -E 'Rollup finalized block updated|execution proof request generated|blob compression proof generated|blobs to submit|aggregation proof|submitted|finalized|ERROR|WARN' \
+    | grep -E 'Rollup finalized block updated|execution proof request generated|blob compression proof generated|blobs to submit|blob submission failed|max fee per gas less than block base fee|aggregation proof|submitted|finalized|ERROR|WARN' \
     | tail -25 \
     | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
     | lineth_indent || true

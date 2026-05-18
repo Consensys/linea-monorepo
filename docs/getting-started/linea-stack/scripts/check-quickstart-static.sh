@@ -136,10 +136,10 @@ check_l2_chain_id_wiring() {
   fi
 
   if grep -q 'eth_chainId' "$status_script" \
-    && grep -qF '^chain_id|^prover_mode|^is_allowed_circuit_id' "$status_script"; then
-    pass "status.sh reports L2 chain ID and rendered prover mode"
+    && grep -qF 'printf \"%s.%s\\n\", section, \$0' "$status_script"; then
+    pass "status.sh reports section-qualified L2 chain ID and rendered prover mode"
   else
-    fail "status.sh must report L2 chain ID and rendered prover mode"
+    fail "status.sh must report section-qualified L2 chain ID and rendered prover mode"
   fi
 
   if grep -q 'l1 data availability vs finalization' "$status_script" \
@@ -330,10 +330,14 @@ check_reuse_guardrails() {
 
   if grep -q 'l2 rpc latest block' "$status_script" \
     && grep -q 'rollup finalized block is ahead of local L2 latest block' "$status_script" \
-    && grep -q 'local chain state does not match the preserved L1 rollup state' "$status_script"; then
-    pass "status.sh warns when preserved L1 rollup state is ahead of local L2"
+    && grep -q 'local chain state does not match the preserved L1 rollup state' "$status_script" \
+    && grep -q 'state mismatch guardrails' "$status_script" \
+    && grep -q 'eth_getCode' "$status_script" \
+    && grep -q 'deploy logs reference L2 block' "$status_script" \
+    && grep -q 'addresses.json l2ChainId=' "$status_script"; then
+    pass "status.sh warns when preserved L1/shared state does not match local L2"
   else
-    fail "status.sh must warn when preserved L1 rollup state is ahead of local L2"
+    fail "status.sh must warn when preserved L1/shared state does not match local L2"
   fi
 
   if [ -f "$logging_lib" ] \
@@ -349,7 +353,7 @@ check_reuse_guardrails() {
 }
 
 check_smoke_and_traffic_scripts() {
-  user_facing_scripts="check-ports.sh links.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh smoke-bridge-erc20-l1-to-l2.sh smoke-bridge-message-l2-to-l1.sh smoke-bridge-erc20-l2-to-l1.sh"
+  user_facing_scripts="check-ports.sh links.sh watch.sh export-output.sh send-l2-test-tx.sh send-l2-erc20-transfer.sh generate-l2-erc20-traffic.sh smoke-bridge-message.sh smoke-bridge-erc20-l1-to-l2.sh smoke-bridge-message-l2-to-l1.sh smoke-bridge-erc20-l2-to-l1.sh"
 
   for script in $user_facing_scripts; do
     script_path="$STACK/scripts/$script"
@@ -382,6 +386,29 @@ check_smoke_and_traffic_scripts() {
     pass "check-ports.sh preflights expected host ports"
   else
     fail "check-ports.sh must preflight expected host ports and be documented"
+  fi
+
+  if [ -f "$STACK/scripts/export-output.sh" ] \
+    && grep -q 'lineth-output' "$ROOT/.gitignore" \
+    && grep -q 'links.json' "$STACK/scripts/export-output.sh" \
+    && grep -q 'finality-report.json' "$STACK/scripts/export-output.sh" \
+    && grep -q 'smoke-report.json' "$STACK/scripts/export-output.sh" \
+    && grep -q 'postmanMessageSummary' "$STACK/scripts/export-output.sh" \
+    && grep -q 'deploy-logs' "$STACK/scripts/export-output.sh" \
+    && grep -q './scripts/export-output.sh' "$STACK/README.md"; then
+    pass "export-output.sh writes a local lineth-output evidence bundle"
+  else
+    fail "export-output.sh must write lineth-output addresses, links, finality/smoke reports, and deploy logs"
+  fi
+
+  if [ -f "$STACK/scripts/watch.sh" ] \
+    && grep -q 'pipeline timeline' "$STACK/scripts/watch.sh" \
+    && grep -q 'retry noise' "$STACK/scripts/watch.sh" \
+    && grep -q 'first L1 finalization observed' "$STACK/scripts/watch.sh" \
+    && grep -q './scripts/watch.sh' "$STACK/README.md"; then
+    pass "watch.sh provides the guided deploy/proof/finality progress view"
+  else
+    fail "watch.sh must provide a documented guided deploy/proof/finality progress view"
   fi
 
   if [ -f "$STACK/scripts/send-l2-test-tx.sh" ] && grep -q 'L2_DEPLOYER_PRIVATE_KEY' "$STACK/scripts/send-l2-test-tx.sh" && grep -q 'cast send' "$STACK/scripts/send-l2-test-tx.sh"; then
@@ -486,6 +513,16 @@ check_pinned_utility_images_and_docs() {
     pass "README documents L2 ETH and ERC20Example funding model"
   else
     fail "README must document L2 ETH, ERC20Example, and disposable traffic-account funding model"
+  fi
+
+  if grep -q 'Config model' "$readme" \
+    && grep -q 'env/ports.env.example' "$readme" \
+    && grep -q 'env/gas-sepolia.env.example' "$readme" \
+    && grep -q 'env/prover-partial.env.example' "$readme" \
+    && grep -q 'env/validium-debug.env.example' "$readme"; then
+    pass "README documents the .env plus recipe-file config model"
+  else
+    fail "README must document the .env plus recipe-file config model"
   fi
 }
 

@@ -41,6 +41,15 @@ port_owner() {
   fi
 }
 
+port_row() {
+  target="$1"
+  status="$2"
+  color="$3"
+  detail="$4"
+
+  printf '  %-42s %s%-5s%s %s\n' "$target" "$color" "$status" "$LINETH_RESET" "$detail"
+}
+
 check_port() {
   name="$1"
   env_name="$2"
@@ -50,7 +59,7 @@ check_port() {
 
   case "$port" in
     ''|*[!0-9]*)
-      lineth_error "$env_name must be a decimal port, got '$port'"
+      port_row "$env_name=$port" "bad" "$LINETH_RED" "$name must be a decimal port"
       failures=$((failures + 1))
       return
       ;;
@@ -58,7 +67,7 @@ check_port() {
 
   case "$seen_ports" in
     *" $port "*)
-      lineth_error "duplicate quickstart host port $port at $env_name ($name)"
+      port_row "$env_name=$port" "dup" "$LINETH_RED" "$name duplicates another quickstart host port"
       failures=$((failures + 1))
       return
       ;;
@@ -67,10 +76,10 @@ check_port() {
 
   owner="$(port_owner "$port" || true)"
   if [ -n "$owner" ]; then
-    lineth_error "$env_name=$port ($name) -> $owner"
+    port_row "$env_name=$port" "busy" "$LINETH_RED" "$name -> $owner"
     failures=$((failures + 1))
   else
-    lineth_ok "$env_name=$port ($name)"
+    port_row "$env_name=$port" "free" "$LINETH_GREEN" "$name"
   fi
 }
 

@@ -151,6 +151,7 @@ __pycache__/
 /docs/getting-started/linea-stack/config/l2/genesis-init/fork-timestamp.txt
 /docs/getting-started/linea-stack/.rendered/
 /docs/getting-started/linea-stack/rendered/
+/docs/getting-started/linea-stack/lineth-output/
 
 !.gitkeep
 !operations/bin/

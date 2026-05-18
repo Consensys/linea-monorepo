@@ -9,7 +9,13 @@ if [ -z "${NO_COLOR:-}" ] && { [ -t 1 ] || [ "${LINETH_COLOR:-auto}" = "always" 
   LINETH_RESET="$(printf '\033[0m')"
   LINETH_BOLD="$(printf '\033[1m')"
   LINETH_DIM="$(printf '\033[2m')"
-  LINETH_BLUE="$(printf '\033[38;5;45m')"
+  LINETH_BLUE="$(printf '\033[38;2;97;223;255m')"
+  LINETH_BLUE_1="$(printf '\033[38;2;97;223;255m')"
+  LINETH_BLUE_2="$(printf '\033[38;2;90;203;233m')"
+  LINETH_BLUE_3="$(printf '\033[38;2;84;186;213m')"
+  LINETH_BLUE_4="$(printf '\033[38;2;68;146;170m')"
+  LINETH_BLUE_5="$(printf '\033[38;2;57;115;137m')"
+  LINETH_BLUE_6="$(printf '\033[38;2;57;115;137m')"
   LINETH_SHADOW="$(printf '\033[38;5;24m')"
   LINETH_BADGE="$(printf '\033[38;5;16m\033[48;5;122m')"
   LINETH_GREEN="$(printf '\033[38;5;82m')"
@@ -21,6 +27,12 @@ else
   LINETH_BOLD=""
   LINETH_DIM=""
   LINETH_BLUE=""
+  LINETH_BLUE_1=""
+  LINETH_BLUE_2=""
+  LINETH_BLUE_3=""
+  LINETH_BLUE_4=""
+  LINETH_BLUE_5=""
+  LINETH_BLUE_6=""
   LINETH_SHADOW=""
   LINETH_BADGE=""
   LINETH_GREEN=""
@@ -30,33 +42,28 @@ fi
 
 LINETH_SECTION_INDEX="${LINETH_SECTION_INDEX:-0}"
 
+lineth_logo_line() {
+  color="$1"
+  text="$2"
+
+  if [ -n "$LINETH_COLOR_ENABLED" ]; then
+    # Draw a one-column shadow, then return to column 0 and draw the foreground line.
+    printf ' %s%s\r%s%s%s%s\n' "$LINETH_SHADOW" "$text" "$color" "$LINETH_BOLD" "$text" "$LINETH_RESET"
+  else
+    printf '%s\n' "$text"
+  fi
+}
+
 lineth_banner() {
   subtitle="${1:-quickstart (Sepolia L1)}"
 
   printf '\n'
-  if [ -n "$LINETH_COLOR_ENABLED" ]; then
-    printf '%s' "$LINETH_SHADOW"
-    sed 's/^/ /' <<'EOF'
-██╗     ██╗███╗   ██╗███████╗████████╗██╗  ██╗
-██║     ██║████╗  ██║██╔════╝╚══██╔══╝██║  ██║
-██║     ██║██╔██╗ ██║█████╗     ██║   ███████║
-██║     ██║██║╚██╗██║██╔══╝     ██║   ██╔══██║
-███████╗██║██║ ╚████║███████╗   ██║   ██║  ██║
-╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝
-EOF
-    printf '\033[6A\r%s%s' "$LINETH_BLUE" "$LINETH_BOLD"
-  else
-    printf '%s' "$LINETH_BLUE"
-  fi
-  cat <<'EOF'
-██╗     ██╗███╗   ██╗███████╗████████╗██╗  ██╗
-██║     ██║████╗  ██║██╔════╝╚══██╔══╝██║  ██║
-██║     ██║██╔██╗ ██║█████╗     ██║   ███████║
-██║     ██║██║╚██╗██║██╔══╝     ██║   ██╔══██║
-███████╗██║██║ ╚████║███████╗   ██║   ██║  ██║
-╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝
-EOF
-  printf '%s' "$LINETH_RESET"
+  lineth_logo_line "$LINETH_BLUE_1" "██╗     ██╗███╗   ██╗███████╗████████╗██╗  ██╗"
+  lineth_logo_line "$LINETH_BLUE_2" "██║     ██║████╗  ██║██╔════╝╚══██╔══╝██║  ██║"
+  lineth_logo_line "$LINETH_BLUE_3" "██║     ██║██╔██╗ ██║█████╗     ██║   ███████║"
+  lineth_logo_line "$LINETH_BLUE_4" "██║     ██║██║╚██╗██║██╔══╝     ██║   ██╔══██║"
+  lineth_logo_line "$LINETH_BLUE_5" "███████╗██║██║ ╚████║███████╗   ██║   ██║  ██║"
+  lineth_logo_line "$LINETH_BLUE_6" "╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝"
   printf '  %s lineth stack %s  %s%s%s\n' "$LINETH_BADGE" "$LINETH_RESET" "$LINETH_DIM" "$subtitle" "$LINETH_RESET"
 }
 
