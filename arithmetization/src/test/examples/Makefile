@@ -75,10 +75,11 @@ ACT4_JOBS       := 4
 ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
 ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
 ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
-# DEBUG asks ACT4 to emit debug artifacts, which helps inspect failures
-ACT4_DEBUG      := true
-# FAST asks ACT4 to skip objdump generation for faster builds
-ACT4_FAST       := false
+# Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
+# If true, disables objdump generation for faster builds
+ACT4_FAST       ?= false
+# If true, enables debug output (signature objdump, trace files, and trap report)
+ACT4_DEBUG      ?= true
 
 # Default target (make)
 exec: compile zkc-exec
