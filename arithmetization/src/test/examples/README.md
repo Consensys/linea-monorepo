@@ -101,7 +101,7 @@ zkc-test compile <name>.<ext> VERIFY_ELF=true
 | `make clean-all`                 | Remove all build artifacts                                            |
 | `make linker-script`             | Generate the linker script with the memory layout                     |
 | `make verify-elf TEST=foo.<ext>` | Verify ELF offsets, entry point and sp match the ones in the Makefile |
-| `make blake-all`                 | Run all Blake test vectors in `rust/src/blake/blake.all`              |
+| `make blake-all`                 | Run all blake test vectors in `rust/src/blake/blake.all`              |
 
 ## Options
 

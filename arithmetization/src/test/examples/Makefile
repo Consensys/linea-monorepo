@@ -193,6 +193,7 @@ verify-elf: $(BIN)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
+# Run all blake test vectors in `rust/src/blake/blake.all`
 blake-all:
 	@i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
