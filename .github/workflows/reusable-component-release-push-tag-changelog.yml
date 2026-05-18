@@ -51,7 +51,7 @@ jobs:
     steps:
       # Mint a short-lived token either for the release bot GitHub App to commit the changelog changes 
       # directly bypassin the branch-protection or for PR bot GitHub App to create PR with the changelog changes.
-      - name: Generate release bot App token
+      - name: Generate release or PR bot App token
         id: app-token
         if: ${{ !inputs.upload_changelog }}
         uses: actions/create-github-app-token@v2
@@ -72,7 +72,7 @@ jobs:
           user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
           echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git identity
+      - name: Configure git identity for app bot
         if: ${{ !inputs.upload_changelog }}
         env:
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
@@ -80,6 +80,11 @@ jobs:
         run: |
           git config user.name "${APP_SLUG}[bot]"
           git config use.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Checkout
         uses: actions/checkout@v6
