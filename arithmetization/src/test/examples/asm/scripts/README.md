@@ -1,26 +1,18 @@
 # Atomic RV64IM opcode tests
 
-Tiny single-opcode tests under `../src/op_*.s`, plus the scripts that
-generate and run them.
+Tiny single-opcode tests under `../src/op_*.s`, plus the script that run them.
 
 ## Files
 
 | Path | Purpose | 
 |---|---|
-| `gen_op_tests.py`   | Regenerates every `../src/op/op_*.s` from a single Python source. |
 | `run_op_tests.sh`   | Compiles every `../src/op/op_*.s`, runs it through `zkc exec --ir`, and writes a summary. |
 | `../src/op/op_*.s`     | The generated test programs. One opcode per file. |
-
-Both scripts resolve all paths relative to their own location, so they
-work regardless of the current working directory.
 
 ## Usage
 
 ```bash
-# (Re)generate the test sources
-python3 gen_op_tests.py
-
-# Compile + run all of them, write report to ../bin/results.txt
+# Compile + run all tests, write report to ../bin/results.txt
 ./run_op_tests.sh
 ```
 
@@ -51,7 +43,6 @@ PASS; anything else is FAIL with the diff in the exit code.
 
 The same toolchain the rest of `../../examples` already needs:
 
-- `python3` (any 3.x)
 - `bash`
 - GNU `make` — invoked as `make` on Linux, as `gmake` on macOS once you
   `brew install make`. The runner picks `gmake` when available.
@@ -64,10 +55,3 @@ The same toolchain the rest of `../../examples` already needs:
 
 The runner verifies all of these are on `PATH` and exits early with a
 helpful message if anything is missing.
-
-## Adding a new opcode test
-
-Add an `emit(...)` call in `gen_op_tests.py` (see the existing helpers
-`rr_test`, `imm_test`, `shamt_test`, `branch_taken_test`,
-`branch_nottaken_test`), then re-run `python3 gen_op_tests.py` to write
-out the new `op_<name>.s` file.
