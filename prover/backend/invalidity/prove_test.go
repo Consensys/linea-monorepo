@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	keccakDummy "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -169,6 +170,7 @@ func TestProveBadPrecompile(t *testing.T) {
 	builder := invalidity.NewBuilder(
 		invalidity.Config{
 			ZkEvmComp: comp,
+			MaxL2Logs: config.GetTestTracesLimits().BlockL2L1Logs(),
 		},
 		&invalidity.BadPrecompileCircuit{},
 	)
@@ -178,6 +180,7 @@ func TestProveBadPrecompile(t *testing.T) {
 		ZkEvmComp:        comp,
 		ZkEvmWizardProof: wizProof,
 		Transaction:      tx,
+		MaxL2Logs:        config.GetTestTracesLimits().BlockL2L1Logs(),
 		FuncInputs: public_input.Invalidity{
 
 			TxHash:      common.Hash(piTxHashBytes),

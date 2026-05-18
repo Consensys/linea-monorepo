@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -144,6 +145,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			// Allocate the circuit
 			circuit.Allocate(invalidity.Config{
 				ZkEvmComp: comp,
+				MaxL2Logs: config.GetTestTracesLimits().BlockL2L1Logs(),
 			})
 
 			// Compile the circuit

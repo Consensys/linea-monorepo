@@ -104,6 +104,7 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 			InvalidityType: req.InvalidityType,
 			FuncInputs:     *funcInput,
 			MaxRlpByteSize: cfg.Invalidity.MaxRlpByteSize,
+			MaxL2Logs:      cfg.TracesLimits.BlockL2L1Logs(),
 		}
 
 		switch req.InvalidityType {

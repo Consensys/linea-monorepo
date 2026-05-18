@@ -341,6 +341,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+			MaxL2Logs: limits.BlockL2L1Logs(),
 		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsLargeCircuitID:
@@ -350,6 +351,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		zkEvm := zkevm.FullZkEvmLarge(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+			MaxL2Logs: limits.BlockL2L1Logs(),
 		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsLimitlessCircuitID:
@@ -364,7 +366,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 			// buf is intentionally not released: zero-copy deserialization means conglo
 			// points into the mmap region, which must stay mapped until Compile() finishes.
 			// For a one-shot setup process this is safe — the OS reclaims it at exit.
-			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS), extraFlags, nil
+			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS, cfg.TracesLimits.BlockL2L1Logs()), extraFlags, nil
 		}
 
 		logrus.Info("execution-limitless assets not found; generating them now for invalidity limitless setup")
@@ -378,7 +380,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		asset = nil
 		runtime.GC()
 
-		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS), extraFlags, nil
+		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS, cfg.TracesLimits.BlockL2L1Logs()), extraFlags, nil
 	case circuits.InvalidityFilteredAddressCircuitID:
 		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 		return invalidity.NewBuilder(
