@@ -40,11 +40,16 @@ jobs:
           submodules: false
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
-      - name: Build consensus and Unit tests
+      - name: Build maru and run unit + integration tests
         run: |
           # force tests to run even if the code is not changed
           # this is to debug flaky tests
-          ./gradlew -V :maru:app:buildNeeded --rerun-tasks
+          # :maru:build is an aggregate task defined in maru/build.gradle that
+          # depends on each :maru:* subproject's `build`. We avoid `buildNeeded`
+          # because :maru:core's testFixtures depend on :maru:serialization
+          # which depends on :maru:core's main jar -- linear under `build` but a
+          # cycle under `buildNeeded` (which walks testFixtures).
+          ./gradlew -V :maru:build --rerun-tasks
       - name: Store reports
         if: failure()
         uses: actions/upload-artifact@v4
