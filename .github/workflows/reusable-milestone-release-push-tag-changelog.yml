@@ -221,7 +221,9 @@ jobs:
             - Stripped the previous `[unreleased]` section from `CHANGELOG.md`
             - Concatenated the milestone block on top
             - In addition, also updated CHANGLOG.md for each newly released component for this milestone release
-          add-paths: CHANGELOG.md
+          add-paths: |
+            CHANGELOG.md
+            **/CHANGELOG.md
       
       - name: Create and push Linea milestone release tag
         env:
