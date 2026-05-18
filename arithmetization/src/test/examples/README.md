@@ -137,8 +137,9 @@ parent/
 │       └── act4/
 │           ├── config/linea-rv64im-zicclsm/    # Linea ACT4 config
 │           └── bin/
-│               ├── work/linea-rv64im-zicclsm/  # ACT4 generated files (including ELFs and objdumps)
-│               │   └── elfs/                   # generated ACT4 ELFs
+│               ├── work/linea-rv64im-zicclsm/  # ACT4 generated files
+│               │   ├── build/                  # intermediate/debug ACT4 artifacts
+│               │   └── elfs/                   # final self-checking ACT4 ELFs
 │               ├── logs/                       # per-test JSON and zkc logs
 │               └── results.txt                 # PASS/FAIL summary
 └── riscv-arch-test/                            # ACT4 framework checkout
@@ -158,6 +159,9 @@ Then, from `linea-monorepo/arithmetization/src/test/examples`:
 make build-act4
 make run-act4
 ```
+
+The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
+The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
 
 To rerun one generated ACT4 test through zkc:
 
