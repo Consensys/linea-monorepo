@@ -2,38 +2,34 @@
 
 This folder contains Rust zkVM tests for the Blake2b-F compression function.
 
-## `blake2f_all_to_in_bytes.py`
+## `blake2f.all`
 
-Converts each runnable row from `blake2f.all` into the `IN_BYTES` format expected by `blake_with_in_bytes.rs`.
+The original `.all` fixture format has already been converted. `blake2f.all` now contains one `IN_BYTES` value per line.
 
-The emitted value is:
+Each line is:
 
 ```text
 0x<213 bytes Blake input><64 bytes expected output>
 ```
 
-Blank lines and commented rows starting with `;;` are skipped.
+## `Makefile`
 
-## `run_blake2f_all.sh`
-
-Runs `blake_with_in_bytes.rs` once per converted test case:
+Runs `blake_with_in_bytes.rs` once per line in `blake2f.all`:
 
 ```bash
-./run_blake2f_all.sh
+make
 ```
 
-It always uses `blake/blake2f.all`.
-
-Run only one original `.all` line:
+Run only one case:
 
 ```bash
-./run_blake2f_all.sh 344
+make SELECTOR=344
 ```
 
-Run an inclusive range of original `.all` lines:
+Run an inclusive range of cases:
 
 ```bash
-./run_blake2f_all.sh 340-350
+make SELECTOR=340-350
 ```
 
 A case is considered passing only when zkc reports:
@@ -42,4 +38,4 @@ A case is considered passing only when zkc reports:
 Program exited successfully (exit with code 0).
 ```
 
-At the end, the script prints either `all cases passed` or the failing case numbers.
+At the end, the Makefile prints either `all cases passed` or the failing case numbers.
