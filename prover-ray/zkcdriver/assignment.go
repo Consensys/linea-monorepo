@@ -1,7 +1,6 @@
 package zkcdriver
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/consensys/go-corset/pkg/ir/air"
@@ -42,8 +41,6 @@ func AssignFromTrace(run *wiop.Runtime, traces trace.Trace[koalabear.Element], s
 			// Iterate each column in module
 			parallel.Execute(int(trMod.Width()), func(start, stop int) {
 				for id := start; id < stop; id++ {
-
-					fmt.Printf("zkcdriver: AssignFromTrace: processing column %d : annotation %v\n", id, run.System.Annotations)
 
 					var (
 						sys         = run.System
