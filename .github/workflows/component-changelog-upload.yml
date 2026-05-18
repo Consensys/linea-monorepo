@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu, linea ]
         include:
           - component: coordinator
             folder-name: coordinator
@@ -34,6 +34,20 @@ jobs:
             folder-name: linea-besu/package
             artifact-name: linea-besu-package
             include-path: |
+              tracer/**
+              tracer-constraints/**
+              linea-besu/plugins/linea-sequencer/**
+              linea-besu/besu/**
+              linea-besu/package/**
+              gradle/libs.versions.toml
+          - component: linea
+            folder-name: .
+            artifact-name: linea
+            include-path: |
+              coordinator/**
+              prover/**
+              prover/**
+              transaction-exclusion-api/**
               tracer/**
               tracer-constraints/**
               linea-besu/plugins/linea-sequencer/**

@@ -135,6 +135,11 @@ jobs:
       - name: Show updated CHANGELOG.md (head)
         run: head -n 80 CHANGELOG.md || true
 
+      - name: Download CHANGELOG.md artifact and distribute to component folders
+        uses: ./.github/actions/download-and-update-changelog
+        with:
+          artifact_prefix: prepended-changelog-
+
       - name: Create Github App token (for create a PR on main)
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: app-token
@@ -168,10 +173,10 @@ jobs:
           RELEASE_VERSION: ${{ inputs.release_version }}
         with:
           token: ${{ steps.app-token.outputs.token }}
-          commit-message: "chore(linea): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }} [skip ci]"
+          commit-message: "chore(misc): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }} [skip ci]"
           branch: ci/chore-linea-milestone-changelog-v${{ env.RELEASE_VERSION }}
           base: ${{ github.head_ref || github.ref_name }}
-          title: "chore(linea): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }}"
+          title: "chore(misc): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }}"
           body: |
             Auto-generated milestone CHANGELOG update for `releases/linea/v${{ env.RELEASE_VERSION }}`.
 
@@ -181,6 +186,7 @@ jobs:
               - Added top-level `## [${{ env.RELEASE_VERSION }}]` header
             - Stripped the previous `[unreleased]` section from `CHANGELOG.md`
             - Concatenated the milestone block on top
+            - In addition, also updated CHANGLOG.md for each newly released component for this milestone release
           add-paths: CHANGELOG.md
       
       - name: Create and push Linea milestone release tag

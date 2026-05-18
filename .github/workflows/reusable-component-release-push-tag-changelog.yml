@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: ''
+      upload_changelog:
+        description: "Upload the updated CHANGELOG.md and skip pushing the commit or creating PR"
+        required: false
+        type: boolean
+        default: false
       runner:
         description: "Runner label"
         required: false
@@ -65,14 +70,21 @@ jobs:
           prepend-changelog: 'true'
           generate-changelog-with-next-tag-version: 'true'
 
+      - name: Upload CHANGELOG.md artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.upload_changelog }}
+        with:
+          name: prepended-changelog-${{ inputs.component-name }}
+          path: ${{ inputs.folder-name }}/CHANGELOG.md
+
       - name: Configure git identity
-        if: ${{  github.ref_name != 'main' }}
+        if: ${{ !inputs.upload_changelog && github.ref_name != 'main' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push ${{ inputs.component-name }}/CHANGELOG.md
-        if: ${{ github.ref_name != 'main' }}
+        if: ${{ !inputs.upload_changelog && github.ref_name != 'main' }}
         env:
           COMPONENT: ${{ inputs.component-name }}
           FOLDER_NAME: ${{ inputs.folder-name }}
@@ -106,18 +118,38 @@ jobs:
     
       - name: Create Github App token (for create a PR on main)
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
-        if: ${{  github.ref_name == 'main' }}
-        id: app_token
+        if: ${{ !inputs.upload_changelog && github.ref_name == 'main' }}
+        id: app-token
         with:
           app-id: ${{ secrets.CREATE_GITHUB_PR_APP_ID }}
           private-key: ${{ secrets.CREATE_GITHUB_PR_PRIVATE_KEY }}
 
+      - name: Resolve bot user id
+        if: ${{ !inputs.upload_changelog && github.ref_name == 'main' }}
+        id: bot-user
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        if: ${{ !inputs.upload_changelog && github.ref_name == 'main' }}
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          USER_ID: ${{ steps.bot-user.outputs.user-id }}
+        run: |
+          git config user.name  "${APP_SLUG}[bot]"
+          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
-        if: ${{  github.ref_name == 'main' }}
+        if: ${{ !inputs.upload_changelog && github.ref_name == 'main' }}
         id: create-pull-request
         with:
-          token: ${{ steps.app_token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(${{ inputs.component-name }}): update CHANGELOG.md for ${{ steps.prepend-changelog.outputs.next_tag }} release [skip ci]"
           branch: ci/chore-${{ inputs.component-name }}-changelog-update-release-v${{ steps.prepend-changelog.outputs.next_version }}
           base: main

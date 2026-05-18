@@ -320,6 +320,7 @@ jobs:
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
+      upload_changelog: true
     secrets: inherit
 
   prover-gh-release:
@@ -340,6 +341,7 @@ jobs:
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.prover).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
+      upload_changelog: true
     secrets: inherit
 
   postman-gh-release:
@@ -360,6 +362,7 @@ jobs:
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.postman).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
+      upload_changelog: true
     secrets: inherit
 
   tx-exclusion-api-gh-release:
@@ -380,6 +383,7 @@ jobs:
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
+      upload_changelog: true
     secrets: inherit
 
   linea-besu-gh-release:
@@ -398,6 +402,7 @@ jobs:
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
+      upload_changelog: true
     secrets: inherit
 
   # retag docker image tags with image_tag_suffix for tag-unchanged components

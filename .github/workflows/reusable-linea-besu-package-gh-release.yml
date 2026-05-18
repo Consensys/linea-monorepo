@@ -47,6 +47,11 @@ on:
         required: false
         default: false
         type: boolean
+      upload_changelog:
+        description: "Upload the updated CHANGELOG.md and skip pushing the commit or creating PR"
+        required: false
+        type: boolean
+        default: false
     outputs:
       docker_tag:
         description: "Docker image tag base (without suffix)"
@@ -69,6 +74,7 @@ jobs:
         linea-besu/package/**
         gradle/libs.versions.toml
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
+      upload_changelog: ${{ inputs.upload_changelog }}
     secrets: inherit
 
   build-linea-besu-docker-image-and-gh-release:
