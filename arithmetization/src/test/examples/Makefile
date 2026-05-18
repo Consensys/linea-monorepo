@@ -127,13 +127,6 @@ zkc-exec:
 zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
 
-blake2f-all:
-	@i=0; while IFS= read -r in_bytes; do \
-		i=$$((i + 1)); \
-		echo "case $$i"; \
-		make -f $(MAKEFILE_DIR)Makefile TEST=blake/blake_with_in_bytes.rs IN_BYTES="$$in_bytes"; \
-	done < $(MAKEFILE_DIR)rust/src/blake/blake2f.all
-
 clean:
 	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
 
@@ -199,3 +192,10 @@ verify-elf: $(BIN)
 		(echo "ERROR: SP mismatch: expected $(SP), got $(SP_FROM_ELF)" && exit 1)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
+
+blake2f-all:
+	@i=0; while IFS= read -r in_bytes; do \
+		i=$$((i + 1)); \
+		echo "case $$i"; \
+		make -f $(MAKEFILE_DIR)Makefile TEST=blake/blake_with_in_bytes.rs IN_BYTES="$$in_bytes"; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake2f.all

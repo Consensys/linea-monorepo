@@ -39,7 +39,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 zkc-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        clean-all|linker-script)
+        clean-all|linker-script|blake2f-all)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
