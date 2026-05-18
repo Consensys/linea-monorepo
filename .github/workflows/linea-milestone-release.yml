@@ -497,6 +497,7 @@ jobs:
       prover_release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version || needs.component-latest-docker-tags.outputs.prover-release-version }}
       tx_exclusion_api_release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version || needs.component-latest-docker-tags.outputs.tx-exclusion-api-release-version }}
       linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version || needs.component-latest-docker-tags.outputs.linea-besu-release-version }}
+      create_pull_request: true # TODO: remove this later
     secrets: inherit
 
   linea-milestone-gh-release:

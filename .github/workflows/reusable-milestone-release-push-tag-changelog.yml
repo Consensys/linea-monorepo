@@ -31,6 +31,12 @@ on:
         description: "Linea-besu-package release version"
         required: true
         type: string
+      create_pull_request:
+        description: "Create PR instead of direct commit"
+        required: false
+        type: boolean
+        default: false
+
     outputs:
       changelog:
         description: "Milestone CHANGELOG.md content (milestone header + per-component sections, with heading levels demoted by one)"
@@ -49,9 +55,40 @@ jobs:
       LINEA_TAG_PATTERN: 'releases/linea/v[0-9]+\.[0-9]+\.[0-9]+$'
       TMP_CHANGELOG: CHANGELOG.linea-milestone.tmp.md
     steps:
+      # Mint a short-lived token either for the release bot GitHub App to commit the changelog changes 
+      # directly bypassin the branch-protection or for PR bot GitHub App to create PR with the changelog changes.
+      - name: Generate release bot App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ !inputs.create_pull_request && secrets.RELEASE_BOT_APP_ID || secrets.CREATE_GITHUB_PR_APP_ID }}
+          private-key: ${{ !inputs.create_pull_request && secrets.RELEASE_BOT_PRIVATE_KEY || secrets.CREATE_GITHUB_PR_PRIVATE_KEY }}
+
+      # Look up the App's bot user id so the commit author email follows
+      # GitHub's canonical noreply format and shows up under the App in the UI.
+      - name: Resolve bot user id
+        id: bot-user
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git identity
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          USER_ID: ${{ steps.bot-user.outputs.user-id }}
+        run: |
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # Use the App token so subsequent `git push` is authenticated as the App.
+          token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
           fetch-tags: true
@@ -174,34 +211,39 @@ jobs:
         with:
           artifact_prefix: prepended-changelog-
 
-      - name: Create Github App token (for create a PR on main)
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
-        id: app-token
-        with:
-          app-id: ${{ secrets.CREATE_GITHUB_PR_APP_ID }}
-          private-key: ${{ secrets.CREATE_GITHUB_PR_PRIVATE_KEY }}
-
-      # Look up the App's bot user id so the commit author email follows
-      # GitHub's canonical noreply format and shows up under the App in the UI.
-      - name: Resolve bot user id
-        id: bot-user
+      - name: Commit and push all CHANGELOG.md
+        if: ${{ !inputs.create_pull_request }}
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
         run: |
           set -euo pipefail
-          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
-          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
+          if git diff --quiet; then
+            echo "No CHANGELOG.md changes to commit."
+            exit 0
+          fi
+          git add '*/CHANGELOG.md' '*/*/CHANGELOG.md'
+          git commit -m "chore(misc): update CHANGELOG.md for milestone v${{ env.RELEASE_VERSION }} [skip ci]"
 
-      - name: Configure git identity
-        env:
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          USER_ID: ${{ steps.bot-user.outputs.user-id }}
-        run: |
-          git config user.name  "${APP_SLUG}[bot]"
-          git config user.email "${USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+          # Rebase on top of any commits that landed on the branch between
+          # checkout and now (e.g. a concurrent component-changelog-update push),
+          # then push. Retry a few times in case of repeated races.
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            if ! git rebase "origin/${GITHUB_REF_NAME}"; then
+              git rebase --abort
+              echo "Rebase conflict on attempt ${attempt}; aborting."
+              exit 1
+            fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "Push rejected on attempt ${attempt}; refetching and retrying..."
+          done
+          echo "Failed to push CHANGELOG.md changes after 3 attempts." >&2
+          exit 1
 
       - name: Create pull request
+        if: ${{ inputs.create_pull_request }}
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         env:
           RELEASE_VERSION: ${{ inputs.release_version }}

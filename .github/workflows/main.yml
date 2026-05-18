@@ -23,17 +23,18 @@ jobs:
     needs: [lint-latest-commit-messages]
     permissions:
       pull-requests: write
-    if: always()
     uses: ./.github/workflows/component-changelog-upload.yml
   
   component-changelog-commit:
     needs: [component-changelog-upload]
     permissions:
       contents: write
+      pull-requests: write
     uses: ./.github/workflows/component-changelog-commit.yml
     secrets: inherit
 
   filter-commit-changes:
+    needs: [lint-latest-commit-messages]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
